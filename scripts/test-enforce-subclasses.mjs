@@ -356,5 +356,105 @@ await test(
   },
 );
 
+// ---- the character creator audit (cc1113) ----
+
+const { AUTHORED_TABLE, heldAuthored } = await import("../src/lib/srd/authored-effects.ts");
+const { optionKindOpenedBy, optionsOfKind, optionFeatureName, openOptionSlots } = await import("../src/lib/srd/options.ts");
+const { featureCastsHeld } = await import("../src/lib/srd/mt-fb-casts.ts");
+const { levelUpChangeOffers, applyLevelUpChanges } = await import("../src/lib/srd/level-up-changes.ts");
+const { textKey } = await import("../src/lib/language/text-logic.ts");
+
+// A subclass feature's choice the rules make again in play (each rage, each
+// rest, each summon), or one another grant already makes: these stay with
+// the in-play choose. Every other choice is made once, when the feature
+// arrives, and so is asked where every other pick is (the builder, the
+// level-up, the sheet's owed picks).
+const CHOSEN_IN_PLAY = new Map([
+  ["Elemental Cleaver", "the damage type is picked each rage"],
+  ["Lunar Phase", "the phase is picked after each long rest"],
+  ["Hex Warrior Weapon", "the weapon is touched after each long rest"],
+  ["Transmuter's Stone", "the benefit is picked each time a stone is made"],
+  ["Armor Model", "the model changes after each rest"],
+  ["Drake Essence", "the damage type is picked each time the drake is summoned"],
+  ["Draconic Strike", "the damage type is picked each use"],
+  ["Bestial Soul", "the adaptation changes after each rest"],
+  ["Elegant Courtier", "the save it falls back to is the training grant's pick (subclass-training.ts)"],
+]);
+
+await test(
+  "A01 Every lasting choice a subclass feature makes (a totem, a storm's environment, a cantrip, a Divine Soul's affinity, a genie's kind) is a pick the builder, the level-up and the owed picks ask when the feature arrives, and the engine reads the pick.",
+  () => {
+    const problems = [];
+    let walked = 0;
+    for (const [key, entry] of Object.entries(AUTHORED_TABLE)) {
+      const [classId, feature] = key.split("::");
+      if (!entry.subclass || !subclassNamesFor(classId).includes(entry.subclass)) continue;
+      for (const spend of entry.spends ?? []) {
+        if (spend.does.kind !== "choose" || spend.pool || CHOSEN_IN_PLAY.has(spend.name)) continue;
+        walked += 1;
+        const label = `${entry.subclass}: ${feature}`;
+        const kind = optionKindOpenedBy(feature);
+        if (!kind) {
+          problems.push(`${label} is chosen only in play`);
+          continue;
+        }
+        const offered = optionsOfKind(kind).map((option) => textKey(option.n)).sort();
+        const ruled = spend.does.options.map((option) => textKey(option)).sort();
+        if (JSON.stringify(offered) !== JSON.stringify(ruled)) {
+          problems.push(`${label} offers ${offered.join("/")}, its rule ${ruled.join("/")}`);
+        }
+        const at = classFeaturesFor(classId, entry.subclass, 20).find((held) => held.name === feature)?.level;
+        const features = classFeaturesFor(classId, entry.subclass, at);
+        const slot = openOptionSlots({ classId, subclass: entry.subclass, level: at, features }).find((open) => open.kind === kind);
+        if (slot?.total !== 1) {
+          problems.push(`${label} opens ${slot?.total ?? 0} picks at ${classId} ${at}`);
+        }
+        if (at > 1 && openOptionSlots({ classId, subclass: entry.subclass, level: at - 1, features: classFeaturesFor(classId, entry.subclass, at - 1) }).some((open) => open.kind === kind)) {
+          problems.push(`${label} is asked before ${classId} ${at}`);
+        }
+        const option = spend.does.options[0];
+        const picked = [...features.map((held) => ({ ...held, source: "class" })), { name: optionFeatureName(kind, option), source: "choice" }];
+        const held = heldAuthored({ class: classId, level: at, classes: [{ id: classId, level: at, subclass: entry.subclass }], features: picked }).find((row) => row.feature === feature);
+        if (textKey(held?.choice ?? "") !== textKey(option)) {
+          problems.push(`${label}: the engine reads ${held?.choice ?? "nothing"} from the pick ${option}`);
+        }
+        const after = openOptionSlots({ classId, subclass: entry.subclass, level: at, features: picked }).find((open) => open.kind === kind);
+        if (after?.remaining !== 0) {
+          problems.push(`${label}: the pick ${option} leaves ${after?.remaining} owed`);
+        }
+      }
+    }
+    assert.ok(walked >= 8, `only ${walked} lasting choices were walked`);
+    assert.equal(problems.length, 0, problems.join("; "));
+  },
+);
+
+await test("A01 A cantrip chosen for Giant's Power or Arcane Archer Lore is castable, however the sheet writes the pick", () => {
+  for (const [feature, cantrip] of [["Giant's Power", "Thaumaturgy"], ["Arcane Archer Lore", "Druidcraft"]]) {
+    for (const name of [`${feature} (${cantrip})`, `${feature}: ${cantrip}`]) {
+      const casts = featureCastsHeld([{ name, source: name.includes(":") ? "choice" : "class" }]);
+      assert.deepEqual(casts.map((cast) => cast.spell), [cantrip], name);
+    }
+  }
+});
+
+await test("A01 A storm's environment chosen in the builder changes at a barbarian level, the pick itself and nothing beside it", () => {
+  const classes = [{ id: "barbarian", level: 5, subclass: "Path of the Storm Herald" }];
+  const features = [
+    ...classFeaturesFor("barbarian", "Path of the Storm Herald", 5).map((held) => ({ ...held, source: "class" })),
+    { name: "Storm Aura: Sea", source: "choice" },
+  ];
+  const sheet = { class: "barbarian", level: 5, classes, features };
+  const facts = { classLevel: () => 5, cantrips: [] };
+  const [offer] = levelUpChangeOffers(sheet, "barbarian", facts);
+  assert.equal(offer?.from, "Storm Aura: Sea");
+  assert.ok(offer.options.includes("Storm Aura: Desert"), offer.options.join(", "));
+  const changed = applyLevelUpChanges(sheet, "barbarian", [{ from: "Storm Aura: Sea", to: "Storm Aura: Desert" }], facts);
+  const names = changed.features.map((held) => held.name);
+  assert.ok(names.includes("Storm Aura") && names.includes("Storm Aura: Desert") && !names.includes("Storm Aura: Sea"), names.join(", "));
+  const slot = openOptionSlots({ classId: "barbarian", subclass: "Path of the Storm Herald", level: 5, features: changed.features }).find((open) => open.kind === optionKindOpenedBy("Storm Aura"));
+  assert.equal(slot?.remaining, 0);
+});
+
 world.close();
 finish();

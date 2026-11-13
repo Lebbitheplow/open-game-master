@@ -13,7 +13,7 @@
 // spell DC and the Hand's spell cards all see them as they see an
 // invocation's spell. A ritual-only grant casts with `ritual` and no other
 // way (src/lib/dm/cast-rules.ts). Pure.
-import { isNamed, nameChoice } from "@/lib/srd/feature-names";
+import { choiceIn, isNamed, nameChoice } from "@/lib/srd/feature-names";
 import { textKey } from "@/lib/language/text-logic";
 
 type Ability = "str" | "dex" | "con" | "int" | "wis" | "cha";
@@ -47,9 +47,13 @@ export function featureCastsHeld(features: ReadonlyArray<{ name: string; source?
   }
   for (const row of CANTRIP_PICKS) {
     for (const feature of held) {
-      const chosen = textKey(nameChoice(feature.name) ?? "");
+      // "Giant's Power (Thaumaturgy)", the in-play choose's, or "Giant's
+      // Power: Thaumaturgy", the pick the builder and the level-up write
+      // (src/lib/srd/options.ts giant_cantrip).
+      const picked = choiceIn(feature.name, row.feature);
+      const chosen = textKey(picked ?? nameChoice(feature.name) ?? "");
       const cantrip = row.cantrips.find((name) => textKey(name) === chosen);
-      if (cantrip && textKey(feature.name.replace(/\s*\([^()]*\)\s*$/, "")) === textKey(row.feature)) {
+      if (cantrip && (picked !== null || textKey(feature.name.replace(/\s*\([^()]*\)\s*$/, "")) === textKey(row.feature))) {
         out.push({ source: row.feature, spell: cantrip, slot: "free", ability: row.ability });
       }
     }

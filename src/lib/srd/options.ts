@@ -41,7 +41,15 @@ export type OptionKind =
   | "land_circle"
   | "spell_mastery_1"
   | "spell_mastery_2"
-  | "signature_spell";
+  | "signature_spell"
+  | "totem_spirit"
+  | "totem_aspect"
+  | "totem_attunement"
+  | "storm_environment"
+  | "giant_cantrip"
+  | "arcane_archer_cantrip"
+  | "divine_affinity"
+  | "genie_kind";
 
 export type OptionDef = {
   k: OptionKind;
@@ -329,6 +337,23 @@ const GRANTS: Grant[] = [
   { kind: "spell_mastery_1", classId: "wizard", opens: ["Spell Mastery"], steps: [[18, 1]] },
   { kind: "spell_mastery_2", classId: "wizard", opens: ["Spell Mastery"], steps: [[18, 1]] },
   { kind: "signature_spell", classId: "wizard", opens: ["Signature Spells"], steps: [[20, 2]] },
+  // The choices a subclass feature makes once, when it arrives: a Totem
+  // Warrior's animal at each of its three features (each its own pick, SRD
+  // shape: "you can choose the same animal or a different one"), a Storm
+  // Herald's environment (changed at a barbarian level, level-up-changes.ts),
+  // the cantrip Giant's Power or Arcane Archer Lore teaches, a Divine Soul's
+  // affinity and a genie patron's kind. Each was only an in-play choose
+  // (src/lib/srd/authored-effects.ts), reachable from a seated sheet alone, so
+  // a character built at 6th level arrived without its totem, a Divine Soul
+  // without its affinity spell and a Genie warlock without its patron's spells.
+  { kind: "totem_spirit", classId: "barbarian", subclass: "Path of the Totem Warrior", opens: ["Totem Spirit"], steps: [[3, 1]] },
+  { kind: "totem_aspect", classId: "barbarian", subclass: "Path of the Totem Warrior", opens: ["Aspect of the Beast"], steps: [[6, 1]] },
+  { kind: "totem_attunement", classId: "barbarian", subclass: "Path of the Totem Warrior", opens: ["Totemic Attunement"], steps: [[14, 1]] },
+  { kind: "storm_environment", classId: "barbarian", subclass: "Path of the Storm Herald", opens: ["Storm Aura"], steps: [[3, 1]] },
+  { kind: "giant_cantrip", classId: "barbarian", subclass: "Path of the Giant", opens: ["Giant's Power"], steps: [[3, 1]] },
+  { kind: "arcane_archer_cantrip", classId: "fighter", subclass: "Arcane Archer", opens: ["Arcane Archer Lore"], steps: [[3, 1]] },
+  { kind: "divine_affinity", classId: "sorcerer", subclass: "Divine Soul", opens: ["Divine Magic"], opensInClass: true, steps: [[1, 1]] },
+  { kind: "genie_kind", classId: "warlock", subclass: "The Genie", opens: ["Genie's Vessel"], steps: [[1, 1]] },
   {
     kind: "discipline",
     classId: "monk",

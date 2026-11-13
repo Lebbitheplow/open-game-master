@@ -8,7 +8,8 @@
 
 import { heldAuthored, type AuthoredSheet } from "@/lib/srd/authored-effects";
 import { holdsFeat } from "@/lib/srd/feat-effects";
-import { chosenOptions, optionFeatureName, optionReqProblem, optionsOfKind } from "@/lib/srd/options";
+import { chosenOptions, optionFeatureName, optionKindOpenedBy, optionReqProblem, optionsOfKind } from "@/lib/srd/options";
+import { choiceIn } from "@/lib/srd/feature-names";
 import { textKey } from "@/lib/language/text-logic";
 
 export type LevelUpChange = { from: string; to: string };
@@ -35,16 +36,22 @@ export function levelUpChangeOffers(sheet: ChangeSheet, classId: string, facts: 
       const does = spend.does;
       if (does.kind !== "choose" || does.changeAt !== "level" || !held.choice) continue;
       const others = does.options.filter((option) => textKey(option) !== textKey(held.choice ?? ""));
-      const named = (option: string) => `${held.feature} (${option})`;
+      // A choice made as a pick ("Storm Aura: Sea", the builder's and the
+      // level-up's, src/lib/srd/options.ts) changes as that pick: renaming the
+      // feature beside it left the sheet holding two environments.
+      const kind = optionKindOpenedBy(held.feature);
+      const pick = kind ? sheet.features.find((feature) => choiceIn(feature.name, held.feature) !== null) : undefined;
+      const from = pick?.name ?? held.name;
+      const named = (option: string) => (pick && kind ? optionFeatureName(kind, option) : `${held.feature} (${option})`);
       // The held choice is read as a key ("desert"): it is shown as its option
       // is written ("Desert"), beside the others it may become.
       const kept = does.options.find((option) => textKey(option) === textKey(held.choice ?? "")) ?? held.choice;
       offers.push({
         kind: "choice",
         label: held.feature,
-        from: held.name,
+        from,
         options: others.map(named),
-        shown: Object.fromEntries([[held.name, kept], ...others.map((option) => [named(option), option])]),
+        shown: Object.fromEntries([[from, kept], ...others.map((option) => [named(option), option])]),
       });
     }
   }
