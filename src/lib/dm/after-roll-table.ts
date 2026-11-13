@@ -478,6 +478,24 @@ export const AFTER_ROLL_ROWS = [
     note: "Use your reaction and 2 sorcery points: roll 1d4 and add it to this {what}.",
   },
   {
+    // Bountiful Luck (a halfling's feat): an ally in sight within 30 feet
+    // rolls a 1 on the d20, and the halfling's reaction lets them roll it
+    // again; their own Lucky then waits out their next turn (bountiful-luck.ts).
+    id: "bountiful_luck",
+    feature: "Bountiful Luck",
+    cost: "own",
+    reaction: true,
+    kinds: ["check", "save", "attack"],
+    whose: "other",
+    rangeFt: 30,
+    sight: true,
+    effect: "own",
+    module: "bountiful-luck.ts",
+    when: "short",
+    label: "Bountiful Luck: {name} rolls the 1 again",
+    note: "Use your reaction: {name} rolls that d20 again and must use the new roll. Your own Lucky does nothing until the end of your next turn.",
+  },
+  {
     // The Storm Rune's prophetic state (Rune Knight 7): a reaction gives a
     // roll of the knight or a creature in sight within 60 feet advantage
     // (mt-fb-runes.ts).

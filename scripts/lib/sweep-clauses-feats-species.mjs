@@ -9,6 +9,7 @@ import { call } from "./enforce-campaign.mjs";
 export const SPECIES_PROBES = [
   "feat.flames-of-phlegethos.reroll", "feat.flames-of-phlegethos.wreathe", "feat.flames-of-phlegethos.burn",
   "feat.orcish-fury.die", "feat.orcish-fury.rest", "feat.orcish-fury.strike",
+  "feat.bountiful-luck.reroll", "feat.bountiful-luck.lucky",
 ];
 
 const worn = (...names) => names.map((name) => ({ name, qty: 1, equipped: true }));
@@ -128,5 +129,58 @@ export function speciesProbes(rig, P) {
       outcome[label] = out.ok ? before - t.enemy(foe).currentHp : "refused";
     }
     assert.deepEqual(outcome, { plain: "refused", unspent: "refused", fury: 8 }, "the reaction's longsword hit (5 + 3)");
+  };
+
+  // A fighter's Strength check (DC 15, +3) lands on a natural 1 and waits on
+  // its card; the halfling within 30 feet, their player at the table, is
+  // offered Bountiful Luck, and the fighter's die is rolled again.
+  const luckyTable = async (feats) => {
+    const t = await rig.table({ gameSettings: { dicePolicy: "real_allowed" } });
+    const roller = t.hero({ class: "fighter", level: 4, race: "hill_dwarf" });
+    const halfling = t.hero({ class: "rogue", level: 4, race: "lightfoot_halfling", feats });
+    const { subscribe } = await import("../../src/lib/events.ts");
+    subscribe(t.world.campaignId, () => {}, t.sheet(halfling).userId);
+    const { listOpenPendingRolls, getPendingRoll } = await import("../../src/lib/db/dm-turns.ts");
+    const { listRecentRolls } = await import("../../src/lib/db/rolls.ts");
+    const route = await t.world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]/after-roll");
+    const check = async (who, faces) => {
+      await t.invoke("request_roll", { characterId: who.id, kind: "ability_check", ability: "str", dc: 15, reason: "the gate" }, faces);
+      const [pending] = listOpenPendingRolls(t.world.campaignId);
+      return { pending, offered: (pending?.thrown?.options ?? []).map((option) => `${option.id}${option.by ? `:${option.by === halfling.id ? "halfling" : option.by}` : ""}`) };
+    };
+    const lend = async (pending, ...faces) => {
+      t.world.signIn({ id: t.sheet(halfling).userId });
+      t.world.dice(...faces);
+      const out = await call(route, "POST", { use: "bountiful_luck", by: halfling.id }, { campaignId: t.world.campaignId, pendingRollId: pending.id });
+      t.world.clearDice();
+      const landed = listRecentRolls(t.world.campaignId, 30).find((roll) => roll.id === getPendingRoll(pending.id).rollId);
+      return { out, total: landed?.total ?? null };
+    };
+    return { t, roller, halfling, check, lend };
+  };
+
+  P["feat.bountiful-luck.reroll"] = async () => {
+    const plain = await luckyTable([]);
+    assert.equal((await plain.check(plain.roller, [1])).offered.includes("bountiful_luck:halfling"), false, "a halfling without the feat was offered Bountiful Luck");
+    const { check, lend, roller } = await luckyTable(["Bountiful Luck"]);
+    const missed = await check(roller, [4]);
+    assert.equal(missed.offered.includes("bountiful_luck:halfling"), false, "Bountiful Luck was offered on a 4");
+    const one = await check(roller, [1]);
+    assert.ok(one.offered.includes("bountiful_luck:halfling"), `the card of a natural 1 offered ${JSON.stringify(one.offered)}`);
+    const { out, total } = await lend(one.pending, 17);
+    assert.equal(out.status, 200, JSON.stringify(out.json));
+    assert.equal(total, 20, "the new roll of 17, + 3 Strength, stands");
+  };
+
+  P["feat.bountiful-luck.lucky"] = async () => {
+    const { t, check, lend, roller, halfling } = await luckyTable(["Bountiful Luck"]);
+    const before = await t.roll(halfling, { kind: "saving_throw", ability: "wis", dc: 30 }, [1, 19]);
+    assert.deepEqual(before.faces, [19], `the staging: Lucky rolls the halfling's own 1 again (${JSON.stringify(before.faces)})`);
+    const one = await check(roller, [1]);
+    assert.equal((await lend(one.pending, 17)).out.status, 200);
+    assert.equal(t.has(halfling, "bountiful luck lent"), true, `conditions: ${t.sheet(halfling).conditions.join(", ")}`);
+    // The halfling's own natural 1 is not rolled again by Lucky now.
+    const own = await t.roll(halfling, { kind: "saving_throw", ability: "wis", dc: 30 }, [1, 19]);
+    assert.deepEqual(own.faces, [1], `the halfling's own save threw ${JSON.stringify(own.faces)}`);
   };
 }

@@ -649,6 +649,8 @@ export function featEngineTag(feat: string, campaignId?: string): string | null 
     // Flames of Phlegethos's fire dice, wreath and burn (pc-attack-plan.ts,
     // cast-at-enemy-damage.ts, aoe-damage.ts, affinity-cast.ts, authored-hooks.ts).
     "flames of phlegethos",
+    // Bountiful Luck: the ally's card of a natural 1 offers it (bountiful-luck.ts).
+    "bountiful luck",
   ].includes(name)) return "[server]";
   if (["fey touched", "shadow touched", "magic initiate", "ritual caster", "telepathic", "telekinetic", "fey teleportation", "wood elf magic", "drow high magic", "artificer initiate"].includes(name)) return "[cast tools]";
   return null;

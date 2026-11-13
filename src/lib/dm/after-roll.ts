@@ -51,6 +51,7 @@ import { swingFacts } from "@/lib/dm/mt-mr-offers";
 import { fateChoicesFor, spendFateAfterRoll } from "@/lib/dm/fate-turn";
 import { isFatePower } from "@/lib/dm/fate-turn-logic";
 import { propheticChoicesFor, spendPropheticState } from "@/lib/dm/mt-fb-runes";
+import { bountifulLuckChoicesFor, spendBountifulLuck } from "@/lib/dm/bountiful-luck";
 
 // Whether this character's rolls can wait on their player. A companion rolls
 // for the party, and a die whose mote bursts at the throw is left as it was. A
@@ -121,7 +122,8 @@ export function optionsForPending(
 // spend Flash of Genius on their own roll), Violent Attraction on a weapon's
 // hit; then the rows of their own: Convergent Future and Bend Luck
 // (fate-turn.ts), a Rune Knight's prophetic state (mt-fb-runes.ts), the
-// roller's own among them. A helper on the bench (one character fielded per
+// roller's own among them, and a halfling's Bountiful Luck on a natural 1
+// (bountiful-luck.ts). A helper on the bench (one character fielded per
 // player) answers nobody.
 export function allyChoicesFor(
   campaignId: string,
@@ -160,7 +162,7 @@ export function allyChoicesFor(
       if (option) helps.push(option);
     }
   }
-  return [...shifts, ...helps, ...fateChoicesFor(campaignId, sheet, roll, others, !done.kept), ...propheticChoicesFor(campaignId, sheet, roll, others, !done.kept)];
+  return [...shifts, ...helps, ...fateChoicesFor(campaignId, sheet, roll, others, !done.kept), ...propheticChoicesFor(campaignId, sheet, roll, others, !done.kept), ...bountifulLuckChoicesFor(campaignId, sheet, roll, others)];
 }
 
 // The roll's d20s thrown again, one fresh die for each it threw, obeying what
@@ -238,6 +240,9 @@ export function spendAfterRoll(
   // modules; the monk's and rogue's go through the route's mrSpendAfterRoll.
   if (id === "prophetic_state") {
     return spendPropheticState(campaign, sheet, outcome, payer);
+  }
+  if (id === "bountiful_luck") {
+    return spendBountifulLuck(campaign, sheet, outcome, payer);
   }
   if (isFatePower(id)) {
     return spendFateAfterRoll(campaign, sheet, id, outcome, payer, target);

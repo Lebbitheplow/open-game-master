@@ -356,6 +356,11 @@
       "name": "Orcish Fury",
       "prerequisite": "Half-orc",
       "desc": "Increase your Strength or Constitution by 1, to a maximum of 20. When you hit with a weapon attack, you can roll one of the weapon's damage dice one more time and add it to the damage, of the weapon's own type. Once you do so, you can't again until you finish a short or long rest. Right after you use your Relentless Endurance, you can use your reaction to make one weapon attack."
+    },
+    {
+      "name": "Bountiful Luck",
+      "prerequisite": "Halfling",
+      "desc": "When an ally you can see within 30 feet of you rolls a 1 on the d20 of an attack roll, an ability check or a saving throw, you can use your reaction to let them roll that die again, and they must use the new roll. Once you do so, your own Lucky trait does nothing until the end of your next turn."
     }
   ]
 }

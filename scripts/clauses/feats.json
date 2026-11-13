@@ -1930,5 +1930,35 @@
     "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.orcish-fury.strike"
    }
   ]
+ },
+ "feat::Bountiful Luck": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "7755e07d19af",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Halfling",
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
+   },
+   {
+    "c": "When an ally you can see within 30 feet of you rolls a 1 on the d20 of an attack roll, an ability check or a saving throw, you can use your reaction to let them roll that die again, and they must use the new roll.",
+    "is": "held",
+    "by": "src/lib/dm/bountiful-luck.ts: the ally's card of a natural 1 offers the halfling's reaction (after-roll.ts allyChoicesFor), and the kept 1 is rolled again",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.bountiful-luck.reroll"
+   },
+   {
+    "c": "Once you do so, your own Lucky trait does nothing until the end of your next turn.",
+    "is": "held",
+    "by": "bountiful-luck.ts lays 'bountiful luck lent' until the end of the halfling's next turn; feature-effects.ts hasHalflingLuck reads it",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.bountiful-luck.lucky"
+   }
+  ]
  }
 }
