@@ -1021,11 +1021,9 @@
   "clauses": [
    {
     "c": "After you hit with Ram Speed, make one extra attack against a different creature within reach",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Gore Drift#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Gore Drift: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Gore Drift: a Ram Speed hit grants one more attack this turn, which must go to a creature other than the one rammed",
+    "by": "src/lib/dm/genre-gb-gore-drift.ts goreDrift (src/lib/dm/attack-blow.ts, after the blow) and goreDriftRefusal (src/lib/dm/pc-attack-plan.ts)"
    }
   ]
  },
@@ -1049,18 +1047,21 @@
    },
    {
     "c": "for 1 minute your speed doubles, Ram Speed deals +4d6, and you resist all damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:post_apocalyptic_last_ride_of_the_reaver#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Last Ride of the Reaver: the spend lays a minute in which speed doubles, a Ram Speed hit rolls 4d6 more and every damage type is resisted",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Last Ride of the Reaver (buff spend, hit_rider 4d6 after a 20-foot run and resist all, gated on the condition) and src/lib/srd/genre-gb-conditions.ts (speed x2)"
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:post_apocalyptic_last_ride_of_the_reaver#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Last Ride of the Reaver: the spend lays a minute in which speed doubles, a Ram Speed hit rolls 4d6 more and every damage type is resisted",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Last Ride of the Reaver (buff spend, hit_rider 4d6 after a 20-foot run and resist all, gated on the condition) and src/lib/srd/genre-gb-conditions.ts (speed x2)"
    },
    {
     "c": "+4d6",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:post_apocalyptic_last_ride_of_the_reaver#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Last Ride of the Reaver: the spend lays a minute in which speed doubles, a Ram Speed hit rolls 4d6 more and every damage type is resisted",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Last Ride of the Reaver (buff spend, hit_rider 4d6 after a 20-foot run and resist all, gated on the condition) and src/lib/srd/genre-gb-conditions.ts (speed x2)"
    }
   ]
  },

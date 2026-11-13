@@ -12,6 +12,8 @@ import { ownTurnOf } from "@/lib/dm/held-turn";
 import { mergeAdvantage } from "@/lib/dm/condition-logic";
 import { mountedAdvantage } from "@/lib/dm/ar-wbf-feat-doors";
 import { steampunkAttackCover } from "@/lib/dm/genre-b-steampunk-cover";
+import { goreDriftRefusal } from "@/lib/dm/genre-gb-gore-drift";
+import { budgetApplies } from "@/lib/dm/action-budget";
 import { coverFeatName, damageShakesConcentration, elementalAdeptApplies, floorDamageDice, hasSkulker, polearmButtDamage, powerAttackFeat, shotIgnoresCover, shotIgnoresLongRange, spellIgnoresCover, stunningSniperApplies } from "@/lib/srd/feat-combat";
 import { underwaterRangeMiss } from "@/lib/dm/underwater";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -317,6 +319,11 @@ export function planPcAttack(input: {
     if (shell) {
       return { refused: shell };
     }
+  }
+  // Gore Drift's extra attack goes to another creature (genre-gb-gore-drift.ts).
+  const drift = weaponAttack && budgetApplies(encounter.turnBudget, sheet.id, encounter.round) ? goreDriftRefusal(encounter.turnBudget, enemy.id, enemy.displayName) : null;
+  if (drift) {
+    return { refused: { error: drift, refused: "rules" as const } };
   }
   const featNotes: string[] = [];
   // Sharpshooter's shot and Spell Sniper's spell pass half and

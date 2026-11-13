@@ -8,6 +8,7 @@
 // Pure data; no database.
 import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 import type { GenreRow } from "@/lib/srd/authored-effects-genre";
+import { LAST_RIDE } from "@/lib/srd/genre-gb-conditions";
 
 const row = (feature: string, classes: string[], entry: Omit<AuthoredEntry, "subclass">): GenreRow => ({
   feature,
@@ -38,4 +39,19 @@ export const GENRE_GB_AUTHORED: GenreRow[] = [
   // "Advantage on Intimidation and Persuasion against raiders, cultists, and
   // the desperate": a raider is the SRD's bandit, a cultist its cultist.
   row("Shepherd's Stare", ["waste_preacher"], { effects: [{ kind: "check_adv", skills: ["intimidation", "persuasion"], creatures: ["raider", "bandit", "cultist", "desperate"] }] }),
+
+  // ---- the road warrior's run ----
+  // "1/long rest, for 1 minute your speed doubles, Ram Speed deals +4d6, and
+  // you resist all damage": the spend lays the minute (its speed is the
+  // condition's row, genre-gb-conditions.ts); the dice ride Ram Speed's run as
+  // Ram Speed's own do (genre-a-strikes.ts afterRunFt). No action is named, so
+  // the ride costs none.
+  row("Last Ride of the Reaver", ["road_warrior"], {
+    counter: "post_apocalyptic_last_ride_of_the_reaver",
+    effects: [
+      { kind: "hit_rider", dice: "4d6", when: "melee", afterRunFt: 20, gate: { condition: LAST_RIDE } },
+      { kind: "resist", types: "all", gate: { condition: LAST_RIDE } },
+    ],
+    spends: [{ name: "Last Ride of the Reaver", pool: { id: "post_apocalyptic_last_ride_of_the_reaver" }, action: "none", does: { kind: "buff", condition: LAST_RIDE, rounds: 10 } }],
+  }),
 ];
