@@ -66,10 +66,12 @@ for (const [classId, name, level, spell, type, extra] of [
   ["waste_preacher", "Judgment", 11, "Sacred Flame", "radiant", 3],
   ["salvage_tech", "Blessed Isotope", 3, "Acid Splash", "radiant", 3],
   ["aether_channeler", "Dynamo Spark", 1, "Acid Splash", "lightning", 3],
+  // An apostate's stigmata (horror catalog, Scarred Initiate 1).
+  ["apostate", "First Scar", 1, "Acid Splash", "necrotic", 3],
 ]) {
   await run(`${name}: a damaging spell deals +${extra} ${type} once a turn, and the second spell of the turn does not`, async () => {
     const hero = rig.holder(feature(classId, name, level));
-    caster(hero, classId === "aether_channeler" ? "cha" : classId === "waste_preacher" ? "wis" : "int");
+    caster(hero, classId === "aether_channeler" || classId === "apostate" ? "cha" : classId === "waste_preacher" ? "wis" : "int");
     const { near } = await rig.fight(hero);
     const base = await rig.without(hero, { name }, async () => {
       await castAt(hero, near, spell);
@@ -195,6 +197,19 @@ await run("Catalyst Stone: or +1d4 to one healing spell, and the heal spends it"
   // 1d8 (5) + INT 3 + the stone's 2.
   assert.equal(world.sheet(ally.id).currentHp, 50, `the healed ally stands at ${world.sheet(ally.id).currentHp}`);
   assert.ok(!world.sheet(hero.id).conditions.includes("catalyst stone"), "the heal did not spend the stone");
+});
+
+// Lament of the Lost (dirgesinger 9): "Your healing dirges add your CHA
+// modifier again to HP restored".
+await run("Lament of the Lost: a dirgesinger's healing spell adds the CHA modifier again", async () => {
+  const hero = rig.holder(feature("dirgesinger", "Lament of the Lost", 9));
+  caster(hero, "cha");
+  world.patch(ally.id, { currentHp: 40 });
+  clearDice();
+  dice(5, 5);
+  rig.must(await world.invoke("heal", { characterId: ally.id, casterId: hero.id, spell: "Cure Wounds", level: 1 }), "heal");
+  // 1d8 (5) + CHA 3, and CHA 3 again.
+  assert.equal(world.sheet(ally.id).currentHp, 51, `the healed ally stands at ${world.sheet(ally.id).currentHp}`);
 });
 
 // ---- healing sermons ----

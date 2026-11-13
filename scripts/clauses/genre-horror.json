@@ -2990,27 +2990,15 @@
   "clauses": [
    {
     "c": "1/turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap apostate::First Scar#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs: First Scar: a damaging spell deals +3 necrotic once a turn, and the second spell of the turn does not",
+    "by": "src/lib/dm/genre-b-spell-hits.ts ONCE_A_TURN (First Scar), called by landSpellDamage for every creature a spell damages"
    },
    {
     "c": "add your CHA modifier as necrotic damage to a damaging stigmata",
-    "run": {
-     "k": "spell_dmg",
-     "ability": "cha"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap apostate::First Scar#1",
-    "observed": "damage First Scar adds to a Fire Bolt (3 with it, 3 without): the engine gives 0, the text 2",
-    "where": "the cast damage path (src/lib/dm/pc-attack-damage.ts for spell attacks): no rider for the feature",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs: First Scar: a damaging spell deals +3 necrotic once a turn, and the second spell of the turn does not",
+    "by": "src/lib/dm/genre-b-spell-hits.ts ONCE_A_TURN (First Scar), called by landSpellDamage for every creature a spell damages"
    }
   ]
  },

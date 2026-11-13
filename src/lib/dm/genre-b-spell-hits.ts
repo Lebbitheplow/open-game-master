@@ -8,6 +8,7 @@
 //   Judgment (waste preacher)        1/turn, +1d8 radiant to one target
 //   Blessed Isotope (salvage tech)   1/turn, +1d6 radiant
 //   Dynamo Spark (aether channeler)  1/turn, the CHA modifier as lightning
+//   First Scar (apostate)            1/turn, the CHA modifier as necrotic
 //   Catalyst Stone (alchemist)       its spent stone: +1d4 (+1d8 with Improved
 //                                    Catalyst) of the spell's own type, once
 //   Volatile Chain (alchemist)       one creature beside the target takes the
@@ -68,6 +69,10 @@ const ONCE_A_TURN: Rider[] = [
   { feature: "Judgment", classId: "waste_preacher", dice: () => "1d8", type: "radiant" },
   { feature: "Blessed Isotope", classId: "salvage_tech", dice: () => "1d6", type: "radiant" },
   { feature: "Dynamo Spark", classId: "aether_channeler", dice: (sheet) => String(Math.max(0, mod(sheet.abilities?.cha))), type: "lightning" },
+  // An apostate's First Scar (their subclass's first feature): "1/turn, add your
+  // CHA modifier as necrotic damage to a damaging stigmata". Every spell an
+  // apostate casts is one of their stigmata.
+  { feature: "First Scar", classId: "apostate", dice: (sheet) => String(Math.max(0, mod(sheet.abilities?.cha))), type: "necrotic" },
 ];
 
 function holdsMark(sheet: CharacterSheet, mark: string): boolean {
