@@ -11,6 +11,7 @@ import authoredResourcesJson from "@/lib/srd/authored-resources.json";
 import { innateSpellCounters, racialCounterRest, racialCounterSpell, RACIAL_COUNTER_PREFIX, speciesSpellsReadable } from "@/lib/srd/racial-grants";
 import { INVOCATION_COUNTER_PREFIX, invocationCounters, invocationOfCounter } from "@/lib/srd/granted-casts";
 import { freeCastOf, freeCastResourceId, freeCastSpellOf, isFreeCastResource } from "@/lib/srd/feat-spells";
+import { legerdemainCounterId, legerdemainSpellsHeld } from "@/lib/srd/mt-fb-casts";
 import { LATE_RESOURCE_DEFS } from "@/lib/srd/class-resources-late";
 import { UNLIMITED_USES } from "@/lib/srd/resource-limits";
 import { tableFeat } from "@/lib/srd/feat-effects";
@@ -1302,6 +1303,12 @@ export function populateResources(
       const id = freeCastResourceId(free.spell);
       out[id] = { max: 1, used: Math.min(existing?.[id]?.used ?? 0, 1) };
     }
+  }
+  // A Smuggler's Legerdemain spell, cast once a long rest without a slot
+  // (src/lib/srd/mt-fb-casts.ts), on the free cast's own counter.
+  for (const spell of legerdemainSpellsHeld(features)) {
+    const id = legerdemainCounterId(spell);
+    out[id] = { max: 1, used: Math.min(existing?.[id]?.used ?? 0, 1) };
   }
   // An invocation that casts its spell once a long rest (granted-casts.ts).
   for (const counter of invocationCounters(features)) {

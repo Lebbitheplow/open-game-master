@@ -20,7 +20,7 @@ import {
 import { suggestArmor } from "@/lib/srd/armor";
 import { classFeaturesFor, subclassSpellsFor } from "@/lib/srd/features";
 import { fightingStyleChoices, fightingStyleSlots } from "@/lib/srd/feature-effects";
-import { openOptionSlots, optionFeatureName, slotTakes, type OptionSlot } from "@/lib/srd/options";
+import { openOptionSlots, optionFeatureName, optionReqProblem, slotTakes, type OptionSlot } from "@/lib/srd/options";
 import { subclassChoiceSlots } from "@/lib/srd/subclass-choice-picks";
 import { parseSubclassChoicePick, subclassChoicePickName } from "@/lib/content/subclass-choices";
 import { subclassPickFeatures } from "@/lib/srd/subclass-choice-picks";
@@ -208,7 +208,8 @@ function casterDeskOf(
   // `features` holds the picks: a workshop choice's option spells (issue #833).
   const subclassSpells = casts ? withLearned(subclassSpellsFor(row.id, subclass, level, undefined, features), spellGrants) : [];
   const spellWider = casts
-    ? { spells: subclassExpandedSpellsFor(row.id, subclass, level), lists: subclassSpellListsFor(row.id, subclass) }
+    ? // The picks too: a genie's kind and an animal lord add their own spells.
+      { spells: subclassExpandedSpellsFor(row.id, subclass, level, undefined, features), lists: subclassSpellListsFor(row.id, subclass) }
     : { spells: [], lists: [] };
   const spellStyle: SpellStyle | null = !casts
     ? null
@@ -962,6 +963,26 @@ export function useBuilderDerived({
       return merged.map((entry) => (entry === held ? { ...held, total, remaining: Math.max(0, total - held.chosen.length) } : entry));
     }, []);
   }, [classList, grantedFeatures, optionPicks, featNames, spells]);
+  // The options not open yet, by their feature name, with why: a level the
+  // class has not reached ("Breath of Winter needs monk level 17"), a pact
+  // boon not taken. The class step shows them closed, as the level-up and
+  // the owed picks do; the save refuses one (sheet-legality.ts). A cantrip
+  // prerequisite waits for the spell step and the save.
+  const optionUnmet = useMemo(() => {
+    const facts = {
+      classLevel: (id: string) => classList.find((entry) => textKey(entry.id) === textKey(id))?.level ?? 0,
+      features: [...grantedFeatures, ...optionPicks.map((optionName) => ({ name: optionName }))],
+      cantrips: [] as string[],
+    };
+    const out: Record<string, string> = {};
+    for (const slot of optionSlots) {
+      for (const option of slot.options) {
+        const reason = optionReqProblem(option, facts, { cantripsLater: true });
+        if (reason) out[optionFeatureName(slot.kind, option.n)] = reason;
+      }
+    }
+    return out;
+  }, [classList, grantedFeatures, optionPicks, optionSlots]);
   // A workshop subclass's own choices (a bloodline, an element): one pick
   // each, at the class level its author set, kept as "Bloodline (Storm)"
   // among the option picks (issue #833).
@@ -992,9 +1013,10 @@ export function useBuilderDerived({
   const spellWider = useMemo(
     () =>
       casterKlass && casting.casts
-        ? { spells: subclassExpandedSpellsFor(casterKlass.id, casterSubclass, casterLevel), lists: subclassSpellListsFor(casterKlass.id, casterSubclass) }
+        ? // The picks too: a genie's kind and an animal lord add their own spells.
+          { spells: subclassExpandedSpellsFor(casterKlass.id, casterSubclass, casterLevel, undefined, pickFeatures), lists: subclassSpellListsFor(casterKlass.id, casterSubclass) }
         : { spells: [], lists: [] },
-    [casterKlass, casterSubclass, casterLevel, casting.casts],
+    [casterKlass, casterSubclass, casterLevel, casting.casts, pickFeatures],
   );
   // A class that casts, and has something to cast at this level. A level 1
   // paladin or ranger has a spellcasting ability and no spells, no cantrips
@@ -1262,6 +1284,7 @@ export function useBuilderDerived({
     styleSlots,
     styleChoices,
     optionSlots,
+    optionUnmet,
     subclassChoiceSlots: subclassChoiceSlotsOpen,
     spellSearchClass,
     spellWider,

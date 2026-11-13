@@ -1,4 +1,4 @@
-// Subclasses: the twelve the SRD prints, and the 105 ODM wrote.
+// Subclasses: the twelve the SRD prints, and the 106 ODM wrote.
 //
 // SRD 5.1 has one subclass per class. Each is held here against a table
 // written out by hand (scripts/lib/enforce-srd-progression.mjs): the feature
@@ -129,8 +129,8 @@ await test("domain and oath spells arrive when the SRD says, at a level the char
 
 // ---- the authored subclasses, as written ----
 
-await test("there are 105 authored subclasses, each under a real class with a name of its own", () => {
-  assert.equal(authored.length, 105);
+await test("there are 106 authored subclasses, each under a real class with a name of its own", () => {
+  assert.equal(authored.length, 106);
   for (const classId of Object.keys(subclassesJson.classes)) {
     assert.ok(findClass(classId), `${classId} is not a class`);
     assert.ok(SRD_CLASSES[classId], `${classId} has no class table to hold it against`);
@@ -355,6 +355,226 @@ await test(
     assert.ok(optionSlotsFor("warlock", "", 2, "invocation") > 0);
   },
 );
+
+// ---- the character creator audit (cc1113) ----
+
+const { AUTHORED_TABLE, heldAuthored } = await import("../src/lib/srd/authored-effects.ts");
+const { optionKindOpenedBy, optionsOfKind, optionFeatureName, openOptionSlots } = await import("../src/lib/srd/options.ts");
+const { featureCastsHeld } = await import("../src/lib/srd/mt-fb-casts.ts");
+const { levelUpChangeOffers, applyLevelUpChanges } = await import("../src/lib/srd/level-up-changes.ts");
+const { textKey } = await import("../src/lib/language/text-logic.ts");
+
+// A subclass feature's choice the rules make again in play (each rage, each
+// rest, each summon), or one another grant already makes: these stay with
+// the in-play choose. Every other choice is made once, when the feature
+// arrives, and so is asked where every other pick is (the builder, the
+// level-up, the sheet's owed picks).
+const CHOSEN_IN_PLAY = new Map([
+  ["Elemental Cleaver", "the damage type is picked each rage"],
+  ["Lunar Phase", "the phase is picked after each long rest"],
+  ["Hex Warrior Weapon", "the weapon is touched after each long rest"],
+  ["Transmuter's Stone", "the benefit is picked each time a stone is made"],
+  ["Armor Model", "the model changes after each rest"],
+  ["Drake Essence", "the damage type is picked each time the drake is summoned"],
+  ["Draconic Strike", "the damage type is picked each use"],
+  ["Bestial Soul", "the adaptation changes after each rest"],
+  ["Elegant Courtier", "the save it falls back to is the training grant's pick (subclass-training.ts)"],
+]);
+
+await test(
+  "A01 Every lasting choice a subclass feature makes (a totem, a storm's environment, a cantrip, a Divine Soul's affinity, a genie's kind) is a pick the builder, the level-up and the owed picks ask when the feature arrives, and the engine reads the pick.",
+  () => {
+    const problems = [];
+    let walked = 0;
+    for (const [key, entry] of Object.entries(AUTHORED_TABLE)) {
+      const [classId, feature] = key.split("::");
+      if (!entry.subclass || !subclassNamesFor(classId).includes(entry.subclass)) continue;
+      for (const spend of entry.spends ?? []) {
+        if (spend.does.kind !== "choose" || spend.pool || CHOSEN_IN_PLAY.has(spend.name)) continue;
+        walked += 1;
+        const label = `${entry.subclass}: ${feature}`;
+        const kind = optionKindOpenedBy(feature);
+        if (!kind) {
+          problems.push(`${label} is chosen only in play`);
+          continue;
+        }
+        const offered = optionsOfKind(kind).map((option) => textKey(option.n)).sort();
+        const ruled = spend.does.options.map((option) => textKey(option)).sort();
+        if (JSON.stringify(offered) !== JSON.stringify(ruled)) {
+          problems.push(`${label} offers ${offered.join("/")}, its rule ${ruled.join("/")}`);
+        }
+        const at = classFeaturesFor(classId, entry.subclass, 20).find((held) => held.name === feature)?.level;
+        const features = classFeaturesFor(classId, entry.subclass, at);
+        const slot = openOptionSlots({ classId, subclass: entry.subclass, level: at, features }).find((open) => open.kind === kind);
+        if (slot?.total !== 1) {
+          problems.push(`${label} opens ${slot?.total ?? 0} picks at ${classId} ${at}`);
+        }
+        if (at > 1 && openOptionSlots({ classId, subclass: entry.subclass, level: at - 1, features: classFeaturesFor(classId, entry.subclass, at - 1) }).some((open) => open.kind === kind)) {
+          problems.push(`${label} is asked before ${classId} ${at}`);
+        }
+        const option = spend.does.options[0];
+        const picked = [...features.map((held) => ({ ...held, source: "class" })), { name: optionFeatureName(kind, option), source: "choice" }];
+        const held = heldAuthored({ class: classId, level: at, classes: [{ id: classId, level: at, subclass: entry.subclass }], features: picked }).find((row) => row.feature === feature);
+        if (textKey(held?.choice ?? "") !== textKey(option)) {
+          problems.push(`${label}: the engine reads ${held?.choice ?? "nothing"} from the pick ${option}`);
+        }
+        const after = openOptionSlots({ classId, subclass: entry.subclass, level: at, features: picked }).find((open) => open.kind === kind);
+        if (after?.remaining !== 0) {
+          problems.push(`${label}: the pick ${option} leaves ${after?.remaining} owed`);
+        }
+      }
+    }
+    assert.ok(walked >= 8, `only ${walked} lasting choices were walked`);
+    assert.equal(problems.length, 0, problems.join("; "));
+  },
+);
+
+await test("A01 A cantrip chosen for Giant's Power or Arcane Archer Lore is castable, however the sheet writes the pick", () => {
+  for (const [feature, cantrip] of [["Giant's Power", "Thaumaturgy"], ["Arcane Archer Lore", "Druidcraft"]]) {
+    for (const name of [`${feature} (${cantrip})`, `${feature}: ${cantrip}`]) {
+      const casts = featureCastsHeld([{ name, source: name.includes(":") ? "choice" : "class" }]);
+      assert.deepEqual(casts.map((cast) => cast.spell), [cantrip], name);
+    }
+  }
+});
+
+await test("A01 A storm's environment chosen in the builder changes at a barbarian level, the pick itself and nothing beside it", () => {
+  const classes = [{ id: "barbarian", level: 5, subclass: "Path of the Storm Herald" }];
+  const features = [
+    ...classFeaturesFor("barbarian", "Path of the Storm Herald", 5).map((held) => ({ ...held, source: "class" })),
+    { name: "Storm Aura: Sea", source: "choice" },
+  ];
+  const sheet = { class: "barbarian", level: 5, classes, features };
+  const facts = { classLevel: () => 5, cantrips: [] };
+  const [offer] = levelUpChangeOffers(sheet, "barbarian", facts);
+  assert.equal(offer?.from, "Storm Aura: Sea");
+  assert.ok(offer.options.includes("Storm Aura: Desert"), offer.options.join(", "));
+  const changed = applyLevelUpChanges(sheet, "barbarian", [{ from: "Storm Aura: Sea", to: "Storm Aura: Desert" }], facts);
+  const names = changed.features.map((held) => held.name);
+  assert.ok(names.includes("Storm Aura") && names.includes("Storm Aura: Desert") && !names.includes("Storm Aura: Sea"), names.join(", "));
+  const slot = openOptionSlots({ classId: "barbarian", subclass: "Path of the Storm Herald", level: 5, features: changed.features }).find((open) => open.kind === optionKindOpenedBy("Storm Aura"));
+  assert.equal(slot?.remaining, 0);
+});
+
+const { packSubclassExtras } = await import("../src/lib/content/archetype-tables.ts");
+const { getContentDb } = await import("../src/lib/content/db.ts");
+const { spellHeldProblem } = await import("../src/lib/dm/cast-rules.ts");
+const { hasPack } = await import("./lib/enforce-world.mjs");
+
+const UNPRINTED = ["Bloodbound"];
+
+await test(
+  "A02 A content-pack subclass whose text prints a spell table grants it: a domain's, an oath's, a circle's or a ranger conclave's spells always prepared from the class level each row names, a patron's added to the warlock's list from the level its spells can be cast.",
+  () => {
+    if (!hasPack) return;
+    const db = getContentDb();
+    const extras = packSubclassExtras();
+    const rows = db.prepare("SELECT name, class_slug, document_slug, data_json FROM archetypes WHERE document_slug != 'odm-expanded'").all();
+    const known = new Set(db.prepare("SELECT name FROM spells").all().map((row) => textKey(row.name)));
+    const problems = [];
+    const unknown = [];
+    let tables = 0;
+    for (const row of rows) {
+      const classId = row.class_slug;
+      if (!SRD_CLASSES[classId] || subclassNamesFor(classId).includes(row.name)) continue;
+      const desc = JSON.parse(row.data_json).desc ?? "";
+      // A table of spells by level, not a third caster's slots table.
+      const table = /^\s*\|\s*(spell level|[a-z]* ?level)\s*\|[^\n]*spells[^\n]*\|/im.exec(desc);
+      if (!table || /cantrips known/i.test(table[0])) continue;
+      tables += 1;
+      const expandedList = /^\s*\|\s*spell level/i.test(table[0]);
+      const at20 = expandedList ? subclassExpandedSpellsFor(classId, row.name, 20, extras) : subclassSpellsFor(classId, row.name, 20, extras);
+      // Every table here starts by 3rd level (a druid circle's at 3, past
+      // the druid's subclass level).
+      const first = (expandedList ? subclassExpandedSpellsFor : subclassSpellsFor)(classId, row.name, Math.max(3, SRD_CLASSES[classId].subclassAt), extras);
+      if (at20.length < 5) problems.push(`${row.name} (${classId}) grants ${at20.length} of its table's spells at 20`);
+      if (!first.length) problems.push(`${row.name} (${classId}) grants none of its spells when it is chosen`);
+      for (const spell of at20) {
+        if (!known.has(textKey(spell))) unknown.push(spell);
+      }
+    }
+    assert.ok(tables >= 30, `only ${tables} spell tables were read`);
+    // The pack prints these books' subclasses without every spell they name
+    // (Tome of Heroes' own spells): the name is kept, as the book gives it.
+    assert.deepEqual([...new Set(unknown)].sort(), UNPRINTED);
+    // The rows by name: the levels the tables print.
+    const expect = (classId, name, level, spells, expandedList = false) => {
+      const got = (expandedList ? subclassExpandedSpellsFor : subclassSpellsFor)(classId, name, level, extras).map(textKey);
+      for (const spell of spells) if (!got.includes(textKey(spell))) problems.push(`${name} at ${classId} ${level} lacks ${spell}`);
+    };
+    expect("cleric", "Hunt Domain", 1, ["Bloodbound", "Illuminate Spoor"]);
+    expect("paladin", "Oath of Justice", 3, ["Color Spray", "Guiding Bolt"]);
+    expect("warlock", "Ancient Dragons", 1, ["Inflict Wounds", "Magic Missile"], true);
+    expect("druid", "Circle of the Green", 2, ["Entangle", "Goodberry"]);
+    expect("ranger", "Grove Warden", 3, ["Entangle"]);
+    if (subclassExpandedSpellsFor("warlock", "Ancient Dragons", 2, extras).length !== subclassExpandedSpellsFor("warlock", "Ancient Dragons", 1, extras).length) {
+      problems.push("Ancient Dragons adds 2nd-level spells before warlock 3");
+    }
+    // The engine: a Hunt Domain cleric casts its domain spell unprepared, as
+    // a Life Domain cleric casts Bless.
+    const cleric = {
+      name: "Hunter",
+      class: "cleric",
+      subclass: "Hunt Domain",
+      level: 1,
+      classes: [],
+      features: classFeaturesFor("cleric", "Hunt Domain", 1, extras),
+      spellcasting: { ability: "wis", cantrips: [], known: [], prepared: [], slots: { 1: 2 }, slotsUsed: {} },
+    };
+    if (spellHeldProblem(cleric, "Illuminate Spoor", null, { extras })) problems.push("a Hunt Domain cleric cannot cast Illuminate Spoor unprepared");
+    if (!spellHeldProblem(cleric, "Sleep", null, { extras })) problems.push("a Hunt Domain cleric casts Sleep unprepared");
+    assert.equal(problems.length, 0, problems.join("; "));
+  },
+);
+
+await test("A04 A content-pack subclass feature that teaches a named cantrip (\"you learn the shillelagh cantrip\") gives it: the engine lets its holder cast it.", () => {
+  if (!hasPack) return;
+  const extras = packSubclassExtras();
+  const problems = [];
+  let walked = 0;
+  for (const [classId, tables] of Object.entries(extras)) {
+    for (const table of tables) {
+      if (subclassNamesFor(classId).includes(table.name)) continue;
+      for (const [at, rows] of Object.entries(table.levels)) {
+        for (const row of rows) {
+          for (const found of row.d.toLowerCase().replace(/[*_]/g, "").matchAll(/\b(?:you learn|you know|you gain) the ([a-z' ]+?) cantrip\b/g)) {
+            walked += 1;
+            const level = Number(at);
+            const sheet = {
+              name: "Holder",
+              class: classId,
+              subclass: table.name,
+              level,
+              classes: [],
+              features: classFeaturesFor(classId, table.name, level, extras),
+              spellcasting: { ability: "wis", cantrips: [], known: [], prepared: [], slots: {}, slotsUsed: {} },
+            };
+            if (spellHeldProblem(sheet, found[1].trim(), null, { extras })) problems.push(`${table.name} ${level}: ${row.n} teaches ${found[1].trim()}, which its holder cannot cast`);
+          }
+        }
+      }
+    }
+  }
+  assert.ok(walked >= 6, `only ${walked} taught cantrips were walked`);
+  assert.deepEqual(problems, []);
+});
+
+await test("A07 An Animal Lords warlock picks its lord, and the air, earth or water spells of that lord's affinity join its expanded list beside the lords' own.", () => {
+  if (!hasPack) return;
+  const extras = packSubclassExtras();
+  const features = classFeaturesFor("warlock", "Animal Lords", 1, extras);
+  const slot = openOptionSlots({ classId: "warlock", subclass: "Animal Lords", level: 1, features }).find((open) => open.label === "Animal Lord");
+  assert.ok(slot, "no lord is asked of an Animal Lords warlock");
+  assert.equal(slot.total, 1);
+  assert.ok(slot.options.some((option) => option.n === "Toad King"));
+  const lord = (name, level) => subclassExpandedSpellsFor("warlock", "Animal Lords", level, extras, [...features, { name: optionFeatureName(slot.kind, name), source: "choice" }]).map(textKey);
+  assert.ok(lord("Bat King", 1).includes(textKey("Thunderwave")), "an air lord's 1st-level spell");
+  assert.ok(lord("Bat King", 1).includes(textKey("Speak with Animals")), "the lords' own spell");
+  assert.ok(!lord("Bat King", 1).includes(textKey("Fog Cloud")), "a water lord's spell on an air lord's list");
+  assert.ok(lord("Toad King", 1).includes(textKey("Fog Cloud")));
+  assert.ok(!lord("Toad King", 2).includes(textKey("Misty Step")) && lord("Toad King", 3).includes(textKey("Misty Step")), "2nd-level spells from warlock 3");
+  assert.ok(lord("Brother Ox", 5).includes(textKey("Phantom Seed")));
+});
 
 world.close();
 finish();

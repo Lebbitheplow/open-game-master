@@ -27,6 +27,7 @@ import { computeSheetDerived } from "@/lib/srd";
 import { hasCondition, heldAuthored, resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
 import type { Ability, SpendDoes } from "@/lib/srd/authored-effects-types";
 import { STORM_AURA } from "@/lib/srd/authored-effects-data";
+import { optionKindOpenedBy } from "@/lib/srd/options";
 import { incapacitatedBy, likelierSave, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { healArea } from "@/lib/dm/authored-heal-area";
 import { canRegain, regainHitPoints } from "@/lib/dm/regain";
@@ -267,6 +268,12 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
       // level-up dialog's to change (src/lib/srd/level-up-changes.ts).
       if (does.changeAt === "level" && ctx.held.choice && textKey(ctx.held.choice) !== textKey(option)) {
         return { error: `${sheet.name}'s ${ctx.held.feature} is ${ctx.held.choice}, and it changes only when they gain a ${ctx.held.classId} level: the level-up offers the change. Nothing was spent.`, refused: "rules" };
+      }
+      // A choice made once, when the feature arrived (a totem, a Divine
+      // Soul's affinity, a genie's kind: a pick-list of src/lib/srd/
+      // options.ts, which the builder and the level-up ask), stays made.
+      if (!does.feature && !does.changeAt && ctx.held.choice && textKey(ctx.held.choice) !== textKey(option) && optionKindOpenedBy(ctx.held.feature)) {
+        return { error: `${sheet.name}'s ${ctx.held.feature} is ${ctx.held.choice}, chosen when the feature was gained, and it does not change. Nothing was spent.`, refused: "rules" };
       }
       // The feature's own option already chosen changes nothing, and in a
       // fight would take its bonus action for it (Elemental Cleaver).

@@ -226,6 +226,14 @@ export function wearsHeavy(sheet: AuthoredSheet): boolean {
   );
 }
 
+// A suit of this name on (Battlerager Armor's spiked armor), however the
+// sheet spells it ("Spiked Armor", "spiked armour").
+export function wearsArmorNamed(sheet: Pick<AuthoredSheet, "equipment">, name: string): boolean {
+  const items = sheet.equipment ?? [];
+  const wanted = textKey(name);
+  return items.some((item) => isWorn(item, items) && textKey(matchArmor(item)?.name ?? item.name ?? "") === wanted);
+}
+
 // Any body armor on, light to heavy (a shield is not worn on the body):
 // Dragon Wings cannot come through it (SRD 5.1). The sheet's fly speed, the
 // board's and the spend read this one answer (issue #833 review).
@@ -248,6 +256,9 @@ export function gateHolds(gate: Gate | undefined, sheet: AuthoredSheet, held: He
     return false;
   }
   if (gate.unarmored && wearsBodyArmor(sheet)) {
+    return false;
+  }
+  if (gate.wornArmor && !wearsArmorNamed(sheet, gate.wornArmor)) {
     return false;
   }
   if (gate.concentrating && !sheet.concentratingOn) {

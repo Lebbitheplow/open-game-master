@@ -34,6 +34,10 @@ export type ExtraSubclass = {
   // third-caster.ts). Read only for a class that casts nothing of its own
   // (src/lib/srd/features.ts subclassCastingProfileFor).
   castingProfile?: ThirdCasterProfile;
+  // Spells that hang off an option the player picks (Tome of Heroes'
+  // Animal Lords: the air, earth or water column of the lord's affinity),
+  // read as the bundled tables' choiceSpells are (src/lib/srd/features.ts).
+  choiceSpells?: { feature: string; expanded?: boolean; options: Record<string, Record<string, string[]>> };
   // What its player picks at a class level: a bloodline, an element (src/lib/
   // content/subclass-choices.ts, issue #833). A workshop subclass's only.
   choices?: SubclassChoice[];
@@ -105,6 +109,95 @@ const SENTENCE_ORDINAL = /(?:^|[.!?]\s+)(?:at|beginning at|starting at|when you 
 
 type Row = { name: string; source: string; data: Record<string, unknown> };
 
+// A spell's name as a table cell prints it ("*find familiar* (snakes only)",
+// "*longstrider,*"), in the catalog's capitals.
+const MINOR_WORDS = new Set(["a", "an", "and", "as", "at", "by", "for", "from", "in", "into", "of", "on", "or", "the", "to", "with", "without"]);
+function spellCellNames(cell: string): string[] {
+  return cell
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/[*_]/g, "")
+    .split(/,|;/)
+    .map((name) => name.replace(/[^a-z'/ -]/gi, " ").replace(/\s+/g, " ").trim())
+    .filter((name) => name && name !== "-")
+    .map((name) =>
+      name
+        .toLowerCase()
+        .split(" ")
+        .map((word, index) => (index && MINOR_WORDS.has(word) ? word : word.replace(/^[a-z]/, (first) => first.toUpperCase()).replace(/\/[a-z]/, (rest) => rest.toUpperCase())))
+        .join(" "),
+    );
+}
+
+// The spell table a content-pack subclass prints in its prose: a domain's,
+// an oath's, a circle's or a conclave's by class level ("| Cleric Level |
+// Spells |", "| 3rd | *color spray*, *guiding bolt* |"), always prepared; a
+// patron's by spell level ("| Spell Level | Spells |"), added to the spells
+// a warlock may learn from the class level that casts that level (1st at 1,
+// 2nd at 3, ...). The first spell column only: Tome of Heroes' Animal Lords
+// add a column per affinity, a choice this reading cannot make. Several
+// tables are a choice too (the Circle of the Land's terrains), and give
+// none. A third caster's slots table ("Cantrips Known") is no spell list.
+// Without this a pack domain, oath or patron granted none of its spells.
+export function proseSpellTables(desc: string): {
+  spells?: Record<string, string[]>;
+  expanded?: Record<string, string[]>;
+  choiceSpells?: ExtraSubclass["choiceSpells"];
+} {
+  const lines = String(desc ?? "").split("\n");
+  const found: Array<{ byspell: boolean; levels: Record<string, string[]>; columns: Record<string, Record<string, string[]>> }> = [];
+  const cells = (line: string) => line.trim().replace(/^\|/, "").replace(/\|\s*$/, "").split("|").map((cell) => cell.trim());
+  // A table that sorts named options by an affinity ("| Animal Lord |
+  // Affinity | ... |", "| Bat King | Air | ... |"): the pick the affinity
+  // columns of the spell table hang off.
+  let affinity: { feature: string; of: Record<string, string> } | null = null;
+  for (let at = 0; at < lines.length; at += 1) {
+    if (!/^\s*\|/.test(lines[at]) || !/^\s*\|[\s|:-]+$/.test(lines[at + 1] ?? "")) continue;
+    const head = cells(lines[at]);
+    const sorts = head.findIndex((cell, index) => index > 0 && /^affinity$/i.test(cell));
+    if (sorts > 0 && head[0]) {
+      const of: Record<string, string> = {};
+      for (let row = at + 2; row < lines.length && /^\s*\|/.test(lines[row]); row += 1) {
+        const line = cells(lines[row]);
+        if (line[0] && line[sorts]) of[line[0]] = line[sorts];
+      }
+      affinity = { feature: head[0], of };
+      continue;
+    }
+    if (!/\blevel\b/i.test(head[0] ?? "") || head.some((cell) => /known|slots|max\.? cr/i.test(cell))) continue;
+    const column = head.findIndex((cell, index) => index > 0 && /\bspells\b/i.test(cell));
+    if (column < 0) continue;
+    const byspell = /^spell level$/i.test(head[0]);
+    const levels: Record<string, string[]> = {};
+    // Further spell columns named for an affinity ("Air Spells").
+    const extra = head.flatMap((cell, index) => {
+      const named = /^(\w+) spells$/i.exec(cell);
+      return index > column && named ? [{ index, key: named[1].toLowerCase() }] : [];
+    });
+    const columns: Record<string, Record<string, string[]>> = {};
+    for (let row = at + 2; row < lines.length && /^\s*\|/.test(lines[row]); row += 1) {
+      const line = cells(lines[row]);
+      const ordinal = /^(\d{1,2})/.exec(line[0] ?? "");
+      if (!ordinal) continue;
+      const level = byspell ? Number(ordinal[1]) * 2 - 1 : Number(ordinal[1]);
+      if (level < 1 || level > 20) continue;
+      const names = spellCellNames(line[column] ?? "");
+      if (names.length) (levels[String(level)] ??= []).push(...names);
+      for (const { index, key } of extra) {
+        const more = spellCellNames(line[index] ?? "");
+        if (more.length) ((columns[key] ??= {})[String(level)] ??= []).push(...more);
+      }
+    }
+    if (Object.keys(levels).length) found.push({ byspell, levels, columns });
+  }
+  if (found.length !== 1) return {};
+  const [table] = found;
+  const options = affinity
+    ? Object.fromEntries(Object.entries(affinity.of).flatMap(([name, kind]) => (table.columns[kind.toLowerCase()] ? [[name, table.columns[kind.toLowerCase()]]] : [])))
+    : {};
+  const choiceSpells = affinity && Object.keys(options).length ? { choiceSpells: { feature: affinity.feature, expanded: table.byspell, options } } : {};
+  return { ...(table.byspell ? { expanded: table.levels } : { spells: table.levels }), ...choiceSpells };
+}
+
 function homebrewLevels(raw: unknown): Record<string, SubclassFeatureRow[]> {
   const out: Record<string, SubclassFeatureRow[]> = {};
   for (const [level, rows] of Object.entries((raw ?? {}) as Record<string, unknown>)) {
@@ -157,6 +250,25 @@ function castingProfileOf(data: Record<string, unknown>, levels: Record<string, 
   return undefined;
 }
 
+// The cantrips a pack subclass's features teach by name ("you learn the
+// shillelagh cantrip", Tome of Heroes' Old Wood), known from the feature's
+// level as a domain's list is: read only for their proficiencies, seven pack
+// subclasses taught nothing their text gave. A cantrip "of your choice" is a
+// pick, not read here.
+const TAUGHT_CANTRIP = /\b(?:you learn|you know|you gain) the ([a-z' ]+?) cantrip\b/g;
+function withTaughtCantrips(spells: Record<string, string[]> | undefined, levels: Record<string, SubclassFeatureRow[]>): Record<string, string[]> | undefined {
+  const out: Record<string, string[]> = Object.fromEntries(Object.entries(spells ?? {}).map(([level, names]) => [level, [...names]]));
+  for (const [level, rows] of Object.entries(levels)) {
+    for (const row of rows) {
+      for (const found of row.d.toLowerCase().replace(/[*_]/g, "").matchAll(TAUGHT_CANTRIP)) {
+        const [name] = spellCellNames(found[1]);
+        if (name && !(out[level] ?? []).includes(name)) (out[level] ??= []).push(name);
+      }
+    }
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
 // One fetched archetype row as a table, or null when it says nothing a
 // grant could use.
 // An Open5e v2 archetype row lists its features with the levels they arrive
@@ -188,11 +300,12 @@ export function extraSubclassOf(row: Row, defaultLevel = 3): ExtraSubclass | nul
     : Object.keys(prose).length
       ? prose
       : (levelledFeatures(row.data.features) ?? prose);
-  const spells = homebrew ? spellLevels(row.data.spells) : undefined;
-  const expanded = homebrew ? spellLevels(row.data.expanded) : undefined;
+  const printed = homebrew ? {} : proseSpellTables(String(row.data.desc ?? ""));
+  const spells = homebrew ? spellLevels(row.data.spells) : withTaughtCantrips(printed.spells, levels);
+  const expanded = homebrew ? spellLevels(row.data.expanded) : printed.expanded;
   const castingProfile = homebrew ? castingProfileOf(row.data, levels) : (thirdCasterProfileForPackSubclass(row.name) ?? undefined);
   const choices = homebrew ? storedSubclassChoices(row.data.choices) : [];
-  if (!Object.keys(levels).length && !spells && !expanded && !choices.length) {
+  if (!Object.keys(levels).length && !spells && !expanded && !choices.length && !printed.choiceSpells) {
     if (!castingProfile) return null;
   }
   return {
@@ -202,6 +315,7 @@ export function extraSubclassOf(row: Row, defaultLevel = 3): ExtraSubclass | nul
     ...(expanded ? { expanded } : {}),
     ...(castingProfile ? { castingProfile } : {}),
     ...(choices.length ? { choices } : {}),
+    ...(printed.choiceSpells ? { choiceSpells: printed.choiceSpells } : {}),
     source: homebrew ? "homebrew" : "pack",
   };
 }

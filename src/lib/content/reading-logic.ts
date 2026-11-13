@@ -50,9 +50,11 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 //      second wave (a firbolg's and a genasi's magic are innate spells, and
 //      the lineage traits carry the numbers their lines state).
 //  11: a v2 class row's tool sentence splits its pick from the tool it
-//      names (Black Flag's Mechanist), and a v2 archetype row whose text has
-//      no feature headings reads its feature list (Black Flag's Metallurgist,
-//      Open5e's Abjurationist).
+//      names (Black Flag's Mechanist), a v2 archetype row whose text has no
+//      feature headings reads its feature list (Black Flag's Metallurgist,
+//      Open5e's Abjurationist), and a pack archetype's printed spell table
+//      is read (a domain's, an oath's, a circle's spells, a patron's
+//      expanded list): the cc1113 creator audit.
 export const READER_REVISION = 11;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";

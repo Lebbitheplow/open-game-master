@@ -66,7 +66,7 @@ import { casterViewsOf, dedupeNames, withCasterViews, type CasterView } from "@/
 import { isThirdCaster } from "@/lib/srd/third-caster";
 import { featureHitPoints, holdsFeature, withPrimalChampion } from "@/lib/srd/trait-rules";
 import { isChoiceFeature, unmetPrerequisite } from "@/lib/srd/legality/features";
-import { findOptionByFeatureName, optionReqProblem, pickInSpellbook } from "@/lib/srd/options";
+import { findOptionByFeatureName, openOptionSlots, optionReqProblem, pickInSpellbook, requiredPickProblem } from "@/lib/srd/options";
 import { sheetCantrips, sheetSpellbook } from "@/lib/srd/owed-picks-logic";
 import { subclassChoicePickProblems } from "@/lib/srd/subclass-choice-picks";
 import { castingClassesOf } from "@/lib/srd/legality/spells";
@@ -589,6 +589,16 @@ export function buildLevelUp(
       if (!newStyleFits(heldStyles, style, after)) {
         const open = fightingStyleChoices(after).filter((entry) => newStyleFits(heldStyles, entry.name, after));
         return refuse(`${style} is not a fighting style ${sheet.name}'s classes offer; pick one of ${open.map((entry) => entry.name).join(", ") || "none"}.`);
+      }
+    }
+  }
+  // A kind whose picks must hold one option (Elemental Attunement among a
+  // Four Elements monk's disciplines), once this level's picks are made.
+  for (const entry of classes) {
+    for (const slot of openOptionSlots({ classId: entry.id, subclass: entry.subclass ?? "", level: entry.level, features: featuresWithPicks })) {
+      const missing = picked.some((pick) => findOptionByFeatureName(pick.name)?.k === slot.kind) ? requiredPickProblem(slot) : null;
+      if (missing) {
+        return refuse(missing);
       }
     }
   }

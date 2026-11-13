@@ -272,5 +272,30 @@ await test("The boot resync repairs a Life Domain cleric already in play, and a 
   assert.ok(repaired.proficiencies.armor.includes("heavy"), "the library character was not repaired");
 });
 
+await test("A03 A subclass language given 'or another if you already know it' becomes a pick of another for a character who speaks it (Path of the Giant's Giant, a Drakewarden's Draconic).", async () => {
+  const subclassesJson = (await import("../src/lib/srd/subclasses.json", { with: { type: "json" } })).default;
+  const problems = [];
+  let walked = 0;
+  for (const [classId, entries] of Object.entries(subclassesJson.classes)) {
+    for (const entry of entries) {
+      for (const [level, rows] of Object.entries(entry.levels)) {
+        for (const row of rows) {
+          const named = /\b(?:learn|speak, read and write)\s+(?:to speak, read and write\s+)?([A-Z][a-z]+),? or another language if you already (?:know|speak) it/.exec(row.d);
+          if (!named) continue;
+          walked += 1;
+          const grants = training.subclassGrants([{ id: classId, subclass: entry.name, level: Number(level) }]).filter((grant) => grant.name === row.n);
+          const settled = training.grantsForHeldTraining(grants, { skills: [], languages: ["Common", named[1]] });
+          const spec = settled[0]?.spec;
+          if (!spec || spec.fixedLanguages.includes(named[1]) || spec.languages !== 1) {
+            problems.push(`${entry.name}: ${row.n} gives ${named[1]} again to one who speaks it`);
+          }
+        }
+      }
+    }
+  }
+  assert.ok(walked >= 2, `only ${walked} such features were walked`);
+  assert.deepEqual(problems, []);
+});
+
 creation.world.close();
 finish();

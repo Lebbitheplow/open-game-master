@@ -77,6 +77,20 @@ const ICON_ALIASES: Record<string, { kind: IconKind; slug: string }> = {
   "family/option-spell-mastery-1": { kind: "feature", slug: "spell-mastery" },
   "family/option-spell-mastery-2": { kind: "feature", slug: "spell-mastery" },
   "family/option-signature-spell": { kind: "feature", slug: "signature-spells" },
+  // The once-made subclass choices the creator audit added (cc1113): the
+  // painting of what each choice is for, no new art.
+  "family/option-totem-spirit": { kind: "feature", slug: "spirit-totem" },
+  "family/option-totem-aspect": { kind: "feature", slug: "spirit-totem" },
+  "family/option-totem-attunement": { kind: "feature", slug: "spirit-totem" },
+  "family/option-storm-environment": { kind: "feature", slug: "storm-aura" },
+  "family/option-giant-cantrip": { kind: "feature", slug: "giants-might" },
+  "family/option-arcane-archer-cantrip": { kind: "feature", slug: "arcane-shot" },
+  "family/option-divine-affinity": { kind: "feature", slug: "divine-allegiance" },
+  "family/option-genie-kind": { kind: "feature", slug: "elemental-gift" },
+  "family/option-animal-lord": { kind: "feature", slug: "bonded-beast" },
+  "family/option-legerdemain-cantrip": { kind: "spell", slug: "minor-illusion" },
+  "family/option-legerdemain-spell": { kind: "spell", slug: "disguise-self" },
+  "family/option-legerdemain-spell-2": { kind: "spell", slug: "invisibility" },
   // A Draconic sorcerer's three spends (issue #833): wings for the wings,
   // fear for the aura, warding against an element for the resistance.
   "feature/dragon-wings": { kind: "feature", slug: "wings-unfurled" },

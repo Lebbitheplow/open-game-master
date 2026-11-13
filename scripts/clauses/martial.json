@@ -3874,5 +3874,67 @@
     "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: rend-mind-three-dice"
    }
   ]
+ },
+ "barbarian::Battlerager Armor": {
+  "source": "src/lib/srd/subclasses.json",
+  "group": "Path of the Battlerager",
+  "level": 3,
+  "sha": "0813878b3760",
+  "clauses": [
+   {
+    "c": "While you rage in spiked armor, a bonus action makes one melee attack with the armor's spikes against a creature within 5 feet: 1d4 piercing damage plus your Strength modifier.",
+    "is": "held",
+    "by": "natural_weapon Armor Spikes gated raging and wornArmor Spiked Armor, bonusAlone (src/lib/dm/authored-attacks.ts secondWeaponProblem)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: battlerager-spikes-bonus"
+   },
+   {
+    "c": "And when you grapple a creature with the Attack action while raging in it, the spikes deal it 3 piercing damage.",
+    "is": "held",
+    "by": "src/lib/dm/combat-actions.ts grapple success (battleragerGrappleSpikes)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: battlerager-grapple-spikes"
+   }
+  ]
+ },
+ "barbarian::Reckless Abandon": {
+  "source": "src/lib/srd/subclasses.json",
+  "group": "Path of the Battlerager",
+  "level": 6,
+  "sha": "2b8701fbaa2e",
+  "clauses": [
+   {
+    "c": "When you use Reckless Attack while raging, you gain temporary hit points equal to your Constitution modifier (at least 1), which last until the rage ends.",
+    "is": "held",
+    "by": "src/lib/dm/pc-attack.ts markAttackOptions (the rage claims the pool)",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: reckless-abandon"
+   }
+  ]
+ },
+ "barbarian::Battlerager Charge": {
+  "source": "src/lib/srd/subclasses.json",
+  "group": "Path of the Battlerager",
+  "level": 10,
+  "sha": "aead85c12f92",
+  "clauses": [
+   {
+    "c": "While raging, you can take the Dash action as a bonus action.",
+    "is": "held",
+    "by": "bonus_route dash gated raging",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: battlerager-charge"
+   }
+  ]
+ },
+ "barbarian::Spiked Retribution": {
+  "source": "src/lib/srd/subclasses.json",
+  "group": "Path of the Battlerager",
+  "level": 14,
+  "sha": "680f8a076fd7",
+  "clauses": [
+   {
+    "c": "While you rage in spiked armor and are not incapacitated, a creature within 5 feet of you that hits you with a melee attack takes 3 piercing damage.",
+    "is": "held",
+    "by": "retaliate 3 piercing, melee, gated raging, wornArmor Spiked Armor and notCondition incapacitated",
+    "probe": "scripts/test-enforce-sweep-clauses-martial-barbarian.mjs: spiked-retribution"
+   }
+  ]
  }
 }
