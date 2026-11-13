@@ -49,7 +49,9 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 //  10: the species traits read by the race reader changed with the gap sweep's
 //      second wave (a firbolg's and a genasi's magic are innate spells, and
 //      the lineage traits carry the numbers their lines state).
-export const READER_REVISION = 10;
+//  11: the bundled kenku, changeling, lizardfolk and warforged picks name
+//      their lists (their stored readings are the bundled rows).
+export const READER_REVISION = 11;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";
 

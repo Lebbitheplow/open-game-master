@@ -89,7 +89,9 @@ export function normalizeRaceData(source: Raw, data: Raw & { desc: string }): { 
   const tools = words(source.tools, 6);
   if (tools) data.tools = tools;
   const toolChoice = (source.toolChoice ?? null) as Raw | null;
-  const toolFrom = words(toolChoice?.from, 12);
+  // Every tool, for a pick the rules leave open (a warforged's Specialized
+  // Design): forty or so names.
+  const toolFrom = words(toolChoice?.from, 48);
   if (toolChoice && toolFrom) data.toolChoice = { count: clamp(toolChoice.count, 1, 3, 1), from: toolFrom };
   const armor = words(source.armor, 6);
   if (armor) data.armor = armor;

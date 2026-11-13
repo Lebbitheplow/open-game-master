@@ -1,6 +1,7 @@
 import { raceMechanics, type RaceMechanics } from "@/lib/content/mechanics";
 import { readSpeciesVariants, variantRecordName } from "@/lib/content/species-variants";
 import { readSpeciesSpells } from "@/lib/content/species-spells";
+import { speciesProseGrants } from "@/lib/content/species-prose-logic";
 import { SRD_RACES, type SrdRace } from "@/lib/srd";
 import { isDwarf, srdRaceId, type SpeciesRules } from "@/lib/srd/race-id";
 import { isEdition2024 } from "@/lib/content/edition";
@@ -164,6 +165,17 @@ function withParent(
       (merged as Record<string, unknown>)[key] = value;
     }
   }
+  // A subrace's training adds to its parent's: a mushroomfolk acid cap is
+  // proficient in Survival (Hardy Survivor) and Athletics (Clan Athlete).
+  for (const key of ["skills", "tools", "armor", "weapons"] as const) {
+    const both = [...new Set([...(parent[key] ?? []), ...(sub[key] ?? [])])];
+    if (both.length) {
+      merged[key] = both;
+    }
+  }
+  if (!merged.spells && parent.spells) {
+    merged.spells = parent.spells;
+  }
   // A gearforged's two picks and its human chassis's one are three picks.
   if (
     sub.asiChoice &&
@@ -174,6 +186,40 @@ function withParent(
   ) {
     merged.asiChoice = { count: sub.asiChoice.count + parent.asiChoice.count, amount: sub.asiChoice.amount };
   }
+  return merged;
+}
+
+// A third-party pack row's rules are in its prose (Tome of Heroes, Open5e's
+// own); a bundled row's are in races.json, and a workshop species is typed
+// into its fields.
+const readsProse = (row: RaceRow) => !isBundledDocument(row.documentSlug) && row.documentSlug !== "homebrew";
+
+// The row with what its prose states (src/lib/content/species-prose-logic.ts):
+// the engine-read lines join its trait names, the training joins its fields.
+function withProse(mechanics: RaceMechanics, data: Record<string, unknown>): RaceMechanics {
+  const prose = speciesProseGrants(data);
+  const join = (held: string[] | undefined, more: string[]) => {
+    const all = [...(held ?? [])];
+    for (const entry of more) {
+      if (!all.some((item) => textKey(item) === textKey(entry))) all.push(entry);
+    }
+    return all;
+  };
+  // A trait whose name already carries its resistance ("Acid Cap
+  // Resistance") is read by the damage engine as it stands.
+  const named = mechanics.traitNames.map((name) => name.toLowerCase()).filter((name) => name.includes("resistance"));
+  const lines = prose.lines.filter((line) => {
+    const type = /^(\w+) resistance$/i.exec(line)?.[1]?.toLowerCase();
+    return !type || !named.some((name) => name.includes(type));
+  });
+  const merged: RaceMechanics = { ...mechanics, traitNames: join(mechanics.traitNames, lines) };
+  for (const key of ["skills", "weapons", "armor", "tools"] as const) {
+    const list = join(mechanics[key], prose[key]);
+    if (list.length) merged[key] = list;
+  }
+  if (!merged.skillChoice && prose.skillChoice) merged.skillChoice = prose.skillChoice;
+  if (!merged.toolChoice && prose.toolChoice) merged.toolChoice = prose.toolChoice;
+  if (!merged.spells && prose.spells) merged.spells = prose.spells;
   return merged;
 }
 
@@ -232,6 +278,9 @@ export function packRaceOptions(rows: RaceRow[], keepIds: Iterable<string> = [])
       // And its own spells (issue #833).
       const spells = readSpeciesSpells(row.data.spells);
       mechanics = { ...raceMechanics(row.data), ...(variants ? { variants } : {}), ...(spells ? { spells } : {}) };
+      if (readsProse(row)) {
+        mechanics = withProse(mechanics, row.data);
+      }
       parsed.set(row.slug, mechanics);
     }
     return mechanics;

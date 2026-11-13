@@ -137,7 +137,15 @@ export function hpBonusPerLevel(raceId: string, rules?: SpeciesRules | null): nu
   if (srdRaceId(raceId) === "hill_dwarf") {
     return 1;
   }
-  return speciesHoldsTrait(speciesRulesFor(raceId, rules), "dwarven toughness") ? 1 : 0;
+  const species = speciesRulesFor(raceId, rules);
+  if (speciesHoldsTrait(species, "dwarven toughness")) {
+    return 1;
+  }
+  // The same rule under another name, as a content pack species' prose is
+  // read (src/lib/content/species-prose-logic.ts): "+1 HP per level
+  // (Dwarven Stoutness)", a darakhul of dwarf heritage.
+  const stated = (species?.traitNames ?? []).map((trait) => /^\+(\d) hp per level\b/i.exec(trait.trim())).find(Boolean);
+  return stated ? Number(stated[1]) : 0;
 }
 
 // Only the variant human is handed a feat by its race, under every spelling

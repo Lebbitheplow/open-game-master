@@ -233,16 +233,21 @@ test("backgroundChoices is optional and bounded", () => {
   assert.equal(field.safeParse({ skills: ["x".repeat(41)] }).success, false);
 });
 
+// After each row's headings come the lines its prose states, in the bundled
+// lineages' words (src/lib/content/species-prose-logic.ts,
+// scripts/test-species-prose.mjs): a parent's after the parent's headings.
 test("trait names: headings only, and a subrace drops its parent's choice heading", () => {
-  assert.deepEqual(race("catfolk").traitNames, ["Cat's Claws", "Hunter's Senses"]);
+  assert.deepEqual(race("catfolk").traitNames, ["Cat's Claws", "Hunter's Senses", "Claws (1d4 slashing unarmed strike)"]);
   assert.deepEqual(race("human-chassis").traitNames, [
-    "Construct Resilience", "Construct Vitality", "Living Construct", "Adaptable Acumen", "Inspired Ingenuity",
+    "Construct Resilience", "Construct Vitality", "Living Construct", "Poison Resistance", "Disease Immunity",
+    "Saves with advantage against poisoned", "Adaptable Acumen", "Inspired Ingenuity",
   ]);
   assert.deepEqual(race("acid-cap").traitNames, [
-    "Fungoid Form", "Hardy Survivor", "Acid Cap Resistance", "Acid Spores", "Clan Athlete",
+    "Fungoid Form", "Hardy Survivor", "Poison Resistance", "Disease Immunity", "Saves with advantage against poison",
+    "Acid Cap Resistance", "Acid Spores", "Clan Athlete",
   ]);
   assert.deepEqual(race("mutated").traitNames, [
-    "Eldritch Resilience", "Sunlight Sensitivity", "Athletic Training", "Otherworldly Influence",
+    "Eldritch Resilience", "Sunlight Sensitivity", "Saves with advantage against spells (Constitution)", "Athletic Training", "Otherworldly Influence",
   ]);
   assert.ok(race("shade").traitNames.includes("Living Origin"));
   assert.deepEqual(raceMechanics(find(rows.races, "elf").data).traitNames, ["Keen Senses", "Fey Ancestry", "Trance"]);
@@ -266,13 +271,14 @@ test("a pack-only race saves its trait names, and a level-up regrant keeps them"
     background: { id: "artisan", name: "Artisan", ...background("artisan") },
   });
   const raceFeatures = result.sheet.features.filter((feature) => feature.source === "race");
-  assert.deepEqual(raceFeatures.map((feature) => feature.name), ["Cat's Claws", "Hunter's Senses"]);
+  const CATFOLK = ["Cat's Claws", "Hunter's Senses", "Claws (1d4 slashing unarmed strike)"];
+  assert.deepEqual(raceFeatures.map((feature) => feature.name), CATFOLK);
   assert.deepEqual(result.sheet.backgroundChoices, { skills: ["insight"], gear: [] });
 
   const regranted = populateFeaturesForClasses(result.sheet.features, [{ id: "fighter", subclass: "", level: 2 }], "catfolk");
   assert.deepEqual(
     regranted.filter((feature) => feature.source === "race").map((feature) => feature.name),
-    ["Cat's Claws", "Hunter's Senses"],
+    CATFOLK,
   );
   // A bundled race's traits still come from the bundled data alone.
   const hillDwarf = populateFeaturesForClasses(

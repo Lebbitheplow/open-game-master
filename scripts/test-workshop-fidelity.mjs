@@ -443,7 +443,9 @@ test("every published species copied into the workshop grants the same, and the 
     }
     const rules = speciesRulesOf(copy);
     const engines = JSON.stringify(engineSpecies("homebrew:copy", rules));
-    const original = JSON.stringify(engineSpecies(option.id, { size: option.size, heavyArmorSpeed: option.heavyArmorSpeed, traitNames: option.traitNames }));
+    // The published row as the server reads it (src/lib/characters/species-rules.ts):
+    // a pack species' spells read from its text ride with it.
+    const original = JSON.stringify(engineSpecies(option.id, speciesRulesOf(option)));
     if (engines !== original) changed.push(`${option.name} at the table: ${original} -> ${engines}`);
   }
   assert.ok(copied >= 9, `only ${copied} species copied`);

@@ -19,7 +19,7 @@ import {
   authoredSaveProficiencies,
 } from "@/lib/srd/authored-effects";
 import { holdsFeature } from "@/lib/srd/feature-names";
-import type { SaveAgainst } from "@/lib/dm/roll-about";
+import { listedAgainst, type SaveAgainst } from "@/lib/dm/roll-about";
 import { keyFits, type RollKey } from "@/lib/srd/roll-keys";
 import { textKey } from "@/lib/language/text-logic";
 import { subclassNamed } from "@/lib/srd/subclass-name";
@@ -117,7 +117,43 @@ export function heldSaveTraits(sheet: TraitSheet): SaveTrait[] {
   for (const item of sheet.equipment?.length ? magicItemRiders(sheet.equipment, sheet).spellSaveAdvantage : []) {
     out.push({ roll: "save", magical: true, note: `${item}: advantage on saves against spells` });
   }
-  return [...out, ...authoredSaveTraits(sheet)];
+  return [...out, ...lineageSaveLines(sheet), ...authoredSaveTraits(sheet)];
+}
+
+// The save advantages a content pack's species states in prose, as
+// src/lib/content/species-prose-logic.ts writes them on the sheet: "Saves
+// with advantage against charmed, poisoned" (a darakhul's Undead
+// Resilience), "Saves with advantage against spells (Constitution)" (a
+// derro's Eldritch Resilience). Before, those species held only the trait's
+// name, and no save they rolled had advantage.
+const SAVE_LINE = /^saves with advantage against (?!spells\b)(.+)$/i;
+const SPELL_SAVE_LINE = /^saves with advantage against spells \(([^)]+)\)$/i;
+const ABILITY_OF: Record<string, Ability> = {
+  strength: "str", dexterity: "dex", constitution: "con", intelligence: "int", wisdom: "wis", charisma: "cha",
+};
+function lineageSaveLines(sheet: TraitSheet): SaveTrait[] {
+  const out: SaveTrait[] = [];
+  for (const feature of sheet.features ?? []) {
+    const name = feature.name.trim();
+    const spells = SPELL_SAVE_LINE.exec(name);
+    if (spells) {
+      const abilities = spells[1].split(/,\s*/).map((word) => ABILITY_OF[word.trim().toLowerCase()]).filter(Boolean);
+      out.push({ roll: "save", abilities, magical: true, note: `${name}: advantage on ${abilities.map((ability) => ability.toUpperCase()).join(", ")} saves against spells` });
+      continue;
+    }
+    const plain = SAVE_LINE.exec(name);
+    if (plain) {
+      const against = plain[1].split(/,\s*/).flatMap((word) => {
+        const value = word.trim().toLowerCase();
+        return value === "poison" ? ["poison", "poisoned"] : [value];
+      });
+      const known = against.map(listedAgainst).filter((value): value is NonNullable<typeof value> => Boolean(value));
+      if (known.length) {
+        out.push({ roll: "save", against: known, note: `${name}: advantage on these saves` });
+      }
+    }
+  }
+  return out;
 }
 
 // Advantage a trait gives on one save, with the line that says why, keyed to
@@ -245,6 +281,11 @@ export function featureConditionImmunities(sheet: TraitSheet): {
   if (holdsFeature(sheet, "constructed resilience")) {
     add("poisoned", "Constructed Resilience");
     add("diseased", "Constructed Resilience");
+  }
+  // A content pack species' "you are immune to disease" (Undead Resilience,
+  // Fungoid Form), as src/lib/content/species-prose-logic.ts writes it.
+  if (holdsFeature(sheet, "disease immunity")) {
+    add("diseased", "Disease Immunity");
   }
   const magicalSleep = holdsFeature(sheet, "fey ancestry")
     ? "Fey Ancestry"
