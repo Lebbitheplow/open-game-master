@@ -14,10 +14,10 @@ import { getBattleMapForEncounter, listTokens } from "@/lib/db/battle-maps";
 import { findSpellByName } from "@/lib/content";
 import { authoredSpellRow } from "@/lib/srd/spell-mechanics";
 import { templateTiles, type TemplateShape } from "@/lib/battlemap/template";
-import { footprintForSize, footprintTiles } from "@/lib/battlemap/footprint";
+import { footprintDistance, footprintForSize, footprintTiles } from "@/lib/battlemap/footprint";
 import { layZone } from "@/lib/battlemap/zones";
 import { zoneRowFor, type ZoneNamed } from "@/lib/battlemap/zones-spells";
-import { chebyshev, tileIndex, type XY } from "@/lib/battlemap/types";
+import { tileIndex, type BattleToken, type XY } from "@/lib/battlemap/types";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { areaShapeFromText, blastPickOf, blastTemplate, SRD_AREAS, type AreaShape } from "@/lib/battlemap/area-shape";
 import { textKey } from "@/lib/language/text-logic";
@@ -48,6 +48,14 @@ export function abilityAreaShape(stats: { traits?: string[] }, ability: string):
 }
 
 type Creature = { id: string; name: string };
+
+// Feet from the nearest square a caster fills to a point (SRD 5.1, Range), as
+// every other range on the board is measured. From a Large caster's top-left
+// square a point 60 feet from its side read 65 and was refused.
+function feetFromCaster(caster: Pick<BattleToken, "x" | "y" | "kind" | "refId">, at: XY): number {
+  const size = caster.kind === "enemy" ? getEnemy(caster.refId)?.stats.size : undefined;
+  return footprintDistance(caster, footprintForSize(size), at, 1) * FEET_PER_TILE;
+}
 
 // Null when one placement of the area holds everyone named (or there is no
 // board to judge on); the refusal otherwise.
@@ -125,7 +133,7 @@ export function areaProblem(input: {
     // body and fell 10 feet short of a hero standing 60 feet off.
     origins = around ? [{ x: caster.x, y: caster.y }] : casterSpace;
   } else if (input.at) {
-    if (caster && input.rangeFeet !== null && chebyshev(caster.x, caster.y, input.at.x, input.at.y) * FEET_PER_TILE > input.rangeFeet) {
+    if (caster && input.rangeFeet !== null && feetFromCaster(caster, input.at) > input.rangeFeet) {
       return { error: `${input.label}'s point of origin (${input.at.x}, ${input.at.y}) is beyond its ${input.rangeFeet}-foot range from ${input.casterName}. Nothing was spent.`, retry: true };
     }
     origins = [input.at];
@@ -137,7 +145,7 @@ export function areaProblem(input: {
     origins = [];
     for (let y = Math.max(0, Math.max(...ys) - reach - 1); y <= Math.min(map.height - 1, Math.min(...ys) + reach + 1); y += 1) {
       for (let x = Math.max(0, Math.max(...xs) - reach - 1); x <= Math.min(map.width - 1, Math.min(...xs) + reach + 1); x += 1) {
-        if (!caster || input.rangeFeet === null || chebyshev(caster.x, caster.y, x, y) * FEET_PER_TILE <= input.rangeFeet) {
+        if (!caster || input.rangeFeet === null || feetFromCaster(caster, { x, y }) <= input.rangeFeet) {
           origins.push({ x, y });
         }
       }
@@ -185,7 +193,7 @@ export function creaturesInBlast(input: {
   if (!caster && (input.area.self || pick !== "point")) {
     return null;
   }
-  if (pick === "point" && input.at && caster && input.rangeFeet !== null && chebyshev(caster.x, caster.y, input.at.x, input.at.y) * FEET_PER_TILE > input.rangeFeet) {
+  if (pick === "point" && input.at && casterToken && input.rangeFeet !== null && feetFromCaster(casterToken, input.at) > input.rangeFeet) {
     return { error: `${input.label}'s point of origin (${input.at.x}, ${input.at.y}) is beyond its ${input.rangeFeet}-foot range from ${input.casterName}. Nothing was spent.`, retry: true };
   }
   const spec = blastTemplate(input.area, { caster, ...(input.at ? { at: input.at } : {}), ...(input.toward ? { toward: input.toward } : {}) });
