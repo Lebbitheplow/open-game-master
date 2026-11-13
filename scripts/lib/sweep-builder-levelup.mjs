@@ -138,6 +138,7 @@ export async function openLevelSweep({ prepare, ...options } = {}) {
     const prime = classId ? (classes.find((entry) => key(entry.id) === key(classId)) ?? { id: classId, level: 0, subclass: "" }) : classes[0];
     if (classId) body.levelUpClass = classId;
     if (choices.levelUpSkill) body.levelUpSkill = choices.levelUpSkill.options[0];
+    if (choices.levelUpTools) body.levelUpTools = choices.levelUpTools.options.slice(0, choices.levelUpTools.count);
     if (choices.subclass) {
       const wanted = subclass && choices.subclass.options.find((name) => key(name) === key(subclass));
       body.subclass = wanted ?? (subclass ? subclass : choices.subclass.options[0]);

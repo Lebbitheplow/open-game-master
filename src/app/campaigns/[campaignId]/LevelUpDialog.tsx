@@ -1,6 +1,7 @@
 "use client";
 
 import { arcanumLevelsFor, arcanumPickRefusal } from "@/lib/srd/mystic-arcanum";
+import { splitToolGrants } from "@/lib/srd/tool-choices";
 import {
   classFeaturesFor,
   subclassCastingProfileFor,
@@ -221,6 +222,7 @@ export function LevelUpDialog({
   // A genre class's feature text arrives on demand (issue 411).
   useClassFeatureText([classChoice]);
   const [skillPick, setSkillPick] = useState("");
+  const [toolPicks, setToolPicks] = useState<string[]>([]);
 
   const levelsGained = 1;
   const chosenEntry = classList.find(
@@ -276,6 +278,8 @@ export function LevelUpDialog({
   }, [genre, pack, classQuery, newClassOptions]);
   const classListId = useId();
 
+  // What this host's code has (src/lib/capabilities.ts SERVER_FEATURES).
+  const capabilities = useCapabilities();
   // Some multiclass grants include one class-skill pick (rogue, ranger,
   // bard); offered right in the class step and validated server-side.
   const chosenGrant = isNewClass ? multiclassGrantsFor(classChoice) : null;
@@ -286,6 +290,15 @@ export function LevelUpDialog({
       ).filter((id) => !sheet.proficiencies.skills.includes(id))
     : [];
   const needsSkillPick = skillOptions.length > 0;
+  // A tool the grant leaves to the player (a bard's one musical instrument),
+  // named here as the server asks (src/lib/srd/level-up.ts levelUpTools).
+  const toolChoicesOpen = chosenGrant ? splitToolGrants(chosenGrant.tools).choices : [];
+  const toolCount = toolChoicesOpen.reduce((sum, choice) => sum + choice.count, 0);
+  const toolOptions = [...new Set(toolChoicesOpen.flatMap((choice) => choice.from))].filter(
+    (tool) => !(sheet.proficiencies.tools ?? []).some((held) => textKey(held) === textKey(tool)),
+  );
+  // An older host drops the pick unread (src/lib/capabilities.ts).
+  const needsToolPick = toolCount > 0 && toolOptions.length > 0 && hostOffers(capabilities, "multiclassTools");
 
   // Picking a subclass keeps only the option picks it has slots for: three
   // Battle Master maneuvers do not survive a switch to Champion, and the
@@ -313,6 +326,7 @@ export function LevelUpDialog({
     setStylePicks([]);
     setOptionPicks([]);
     setSkillPick("");
+    setToolPicks([]);
     setAsiChoices([]);
     setForgetPick("");
     setOriginPick(null);
@@ -414,7 +428,6 @@ export function LevelUpDialog({
   ).filter((slot) => !slot.chosen);
   const choicePicked = (label: string) => optionPicks.find((pick) => textKey(parseSubclassChoicePick(pick)?.label ?? "") === textKey(label));
   // An older host drops levelUpChanges unread: the picks show only where it reads them.
-  const capabilities = useCapabilities();
   const changesHeard = hostOffers(capabilities, "levelUpChanges");
   const changeOffers = useMemo(
     () =>
@@ -672,9 +685,13 @@ export function LevelUpDialog({
   // A spell given up makes room for one more. Additional Magical Secrets'
   // two spells and the Book of Shadows' three cantrips sit on top of the
   // counts, as the route counts them.
+  // An older host counts a Mystic Arcanum inside the spells known
+  // (src/lib/capabilities.ts mysticArcanum): no room on top of the column.
+  const arcanumHeard = hostOffers(capabilities, "mysticArcanum");
+  const extraSpells = spellGrants.extraSpells - (arcanumHeard ? 0 : arcanumLevelsFor(classChoice, classLevelAfter).length);
   const spellRoom =
     bookGain ??
-    (allowance ? Math.max(0, allowance.count + spellGrants.extraSpells - heldSpells) + (forgetPick ? 1 : 0) : null);
+    (allowance ? Math.max(0, allowance.count + extraSpells - heldSpells) + (forgetPick ? 1 : 0) : null);
   const cantripAllowance =
     showSpells && caster.cantripCap !== null ? caster.cantripCap + spellGrants.extraCantrips : null;
   // The race's cantrips (a high elf's pick, a tiefling's Thaumaturgy) are
@@ -920,6 +937,7 @@ export function LevelUpDialog({
           levelUpClass: classChoice,
           ...(hpMethod === "rolled" ? { hpChoice } : {}),
           ...(skillPick ? { levelUpSkill: skillPick } : {}),
+          ...(needsToolPick && toolPicks.length === toolCount ? { levelUpTools: toolPicks } : {}),
           ...(choices.length ? { asiChoices: choices } : {}),
           ...(Object.keys(picksSentFor([...featsPicked, ...freshTraining.map((grant) => grant.name)])).length
             ? { featChoices: picksSentFor([...featsPicked, ...freshTraining.map((grant) => grant.name)]) }
@@ -973,7 +991,7 @@ export function LevelUpDialog({
   // them; it only says so.
   const stepOpen =
     step === "class"
-      ? needsSkillPick && !skillPick
+      ? (needsSkillPick && !skillPick) || (needsToolPick && toolPicks.length < toolCount)
       : step === "asi"
         ? asiLevels.some((_, index) => !asiChoices[index]) || featPicksOpen
         : step === "expertise"
@@ -1328,6 +1346,41 @@ export function LevelUpDialog({
                               </button>
                               <InfoButton label={name} text={describeSkill(skillId)} />
                             </span>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : null}
+                  {needsToolPick ? (
+                    <>
+                      <p className="text-stone-300">
+                        {chosenKlass?.name ?? classChoice} grants {toolCount === 1 ? "a tool" : `${toolCount} tools`} of your choice. Pick{" "}
+                        {toolCount === 1 ? "it" : "them"}:
+                      </p>
+                      <div className="stagger-pop flex flex-wrap gap-1.5" role="group" aria-label={`${chosenKlass?.name ?? classChoice} tool proficiency`}>
+                        {toolOptions.map((tool) => {
+                          const picked = toolPicks.some((entry) => textKey(entry) === textKey(tool));
+                          const full = !picked && toolPicks.length >= toolCount;
+                          return (
+                            <button
+                              key={tool}
+                              type="button"
+                              aria-pressed={picked}
+                              disabled={full}
+                              onClick={() =>
+                                setToolPicks((current) =>
+                                  picked ? current.filter((entry) => textKey(entry) !== textKey(tool)) : [...current, tool],
+                                )
+                              }
+                              className={cn(
+                                "min-h-10 rounded-full border px-3 py-1 text-sm capitalize focus-visible:outline-2 focus-visible:outline-amber-400",
+                                picked
+                                  ? "border-amber-600 bg-stone-900 text-amber-100"
+                                  : "border-stone-700 hover:border-amber-800 hover:bg-stone-900 disabled:opacity-50",
+                              )}
+                            >
+                              {tool}
+                            </button>
                           );
                         })}
                       </div>

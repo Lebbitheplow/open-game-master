@@ -12,6 +12,7 @@
 //
 // Pure: the route supplies the table's settings and its subclass list.
 import { arcanumLevelsFor } from "@/lib/srd/mystic-arcanum";
+import { splitToolGrants } from "@/lib/srd/tool-choices";
 import {
   casterPreview,
   expertiseOpen,
@@ -117,6 +118,9 @@ export type LevelUpOptions = {
     // the level-up refuses.
     featurePicks?: Array<{ label: string; count: number; options: string[]; notYet?: Array<{ option: string; reason: string }> }>;
     levelUpSkill?: { options: string[] };
+    // The tools a new class's grant leaves to the player (a bard's one
+    // musical instrument), sent back in levelUpTools.
+    levelUpTools?: { count: number; options: string[] };
     training?: Array<{ name: string; picks: string }>;
     spells?: {
       list: string;
@@ -333,6 +337,12 @@ export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsCon
       if (options.length) {
         choices.levelUpSkill = { options };
       }
+    }
+    const toolChoices = splitToolGrants(grant.tools).choices;
+    if (toolChoices.length) {
+      const holding = new Set((sheet.proficiencies.tools ?? []).map(textKey));
+      const options = [...new Set(toolChoices.flatMap((choice) => choice.from))].filter((tool) => !holding.has(textKey(tool)));
+      choices.levelUpTools = { count: toolChoices.reduce((sum, choice) => sum + choice.count, 0), options };
     }
   }
 

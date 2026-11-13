@@ -78,6 +78,7 @@ import {
   type SpellFacts,
 } from "@/lib/srd/legality/types";
 import { textKey } from "@/lib/language/text-logic";
+import { splitToolGrants, toolPickProblem } from "@/lib/srd/tool-choices";
 import { carrySwapRecords } from "@/lib/dm/ar-ws-spell-swap-record";
 import { featChoice } from "@/lib/schemas/sheet";
 
@@ -394,11 +395,22 @@ export function buildLevelUp(
   ];
   if (isNewClass) {
     const grants = multiclassGrantsFor(klass.id);
+    // A tool the grant leaves to the player (SRD 5.1, Multiclassing: a bard's
+    // "one musical instrument of your choice") is the one named in
+    // levelUpTools; the sheet held the sentence as a proficiency.
+    const { fixed: fixedTools, choices: toolChoices } = splitToolGrants(grants.tools);
+    const toolPicks = (request.levelUpTools ?? []).map((tool) => tool.trim()).filter(Boolean);
+    if (toolPicks.length) {
+      const problem = toolChoices.length ? toolPickProblem(toolChoices, toolPicks) : `${klass.name} leaves no tool to choose.`;
+      if (problem) {
+        return refuse(problem);
+      }
+    }
     proficiencies = {
       ...proficiencies,
       armor: union(proficiencies.armor, grants.armor),
       weapons: union(proficiencies.weapons, grants.weapons),
-      tools: union(proficiencies.tools, grants.tools),
+      tools: union(proficiencies.tools, toolPicks.length ? [...fixedTools, ...toolPicks] : grants.tools),
     };
     // The one skill some grants offer. A pick off the grant's list is not
     // taken; the level still is.
