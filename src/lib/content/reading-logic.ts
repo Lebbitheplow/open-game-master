@@ -52,7 +52,11 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 //  11: the bundled kenku, changeling, lizardfolk and warforged picks name
 //      their lists (their stored readings are the bundled rows), and a race
 //      walks at the speed its text states over the field beside it.
-export const READER_REVISION = 11;
+//  12: the bundled satyr, centaur, hobgoblin and rabbitfolk carry the trait
+//      lines their moments are played by (Mirthful Leaps, Charge, Saving Face,
+//      Lucky Footwork), the shifter its subtype pick, and a pack option's
+//      reaction burst (Tainted Blood) reads as a line.
+export const READER_REVISION = 12;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";
 
