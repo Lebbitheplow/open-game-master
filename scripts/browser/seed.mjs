@@ -2544,6 +2544,66 @@ const wieldTables = {};
   }
 }
 
+// The engine's guess never costs a turn (scenario guess-rehand,
+// src/lib/dm/held-default.ts): an archer whose pack lists the shortsword
+// before the longbow, made without saying what she holds, so the guess put
+// the sword in her hand. It is her turn in a fight: the bow's card is open,
+// and the sheet's weapon rows read In hand and Packed.
+const GUESS_TITLE = "Guess Table";
+const guessTables = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const maps = await import("../../src/lib/db/battle-maps.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(player.id, {
+      title: `${GUESS_TITLE} (${viewport})`,
+      description: "One goblin across a field.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 3,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the lead at the guess table: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const hero = sheets.createSheet(table.id, world.owner.id, 3, {
+      ...heroInput({ name: "Ayla Venn", class: "fighter", level: 3, equipment: [{ name: "Leather Armor", qty: 1 }, { name: "Shortsword", qty: 1 }, { name: "Longbow", qty: 1 }] }),
+      proficiencies: { saves: ["str", "con"], skills: [], expertise: [], languages: ["Common"], tools: [], armor: ["light", "medium", "heavy", "shields"], weapons: ["simple", "martial"] },
+      acOverride: false,
+    });
+    const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, {
+      name: "start_encounter",
+      args: { enemies: [{ monster: "goblin", count: 1 }] },
+    });
+    if (!started.ok) {
+      throw new Error(`the guess table's fight did not start: ${started.error}`);
+    }
+    const encounter = encounterRows.getActiveEncounter(table.id);
+    const board = maps.getBattleMapForEncounter(encounter.id);
+    maps.setBattleMapTerrain(board.id, ".".repeat(board.width * board.height));
+    getDatabase().prepare("UPDATE battle_maps SET doors_json = '{}' WHERE id = ?").run(board.id);
+    const place = encounter.order.findIndex((entry) => entry.characterId === hero.id);
+    if (place < 0) {
+      throw new Error("the guess table's archer has no place in the order");
+    }
+    encounterRows.saveEncounter({
+      ...encounter,
+      orderReady: true,
+      round: Math.max(1, encounter.round),
+      turnIndex: place,
+      turnBudget: null,
+      legendary: { ...encounter.legendary, due: [] },
+    });
+    const { initiativeFloorFor } = await import("../../src/lib/dm/encounter-tools.ts");
+    campaigns.setFloor(table.id, initiativeFloorFor(table.id) ?? { mode: "open" });
+    guessTables[viewport] = { id: table.id, hero: hero.id };
+  }
+}
+
 // PR 782: the after-the-roll card on a real parked roll. A table the player
 // runs, with the lead's hero holding the Lucky feat, one per viewport: the
 // scenario asks for a check from the GM's seat and the lead answers the card.
@@ -4030,6 +4090,7 @@ const ids = {
   speciesSpells,
   noticeTables,
   wieldTables,
+  guessTables,
   afterRollTables,
   afterAttackTables,
   wrathTables,
@@ -4163,6 +4224,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(spellbook).map(([viewport, table]) => [table.id, `${SPELLBOOK_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(noticeTables).map(([viewport, table]) => [table.id, `${NOTICE_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(wieldTables).map(([viewport, table]) => [table.id, `${WIELD_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(guessTables).map(([viewport, table]) => [table.id, `${GUESS_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(afterRollTables).map(([viewport, table]) => [table.id, `${AFTER_ROLL_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(afterAttackTables).map(([viewport, table]) => [table.id, `${AFTER_ATTACK_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(wrathTables).map(([viewport, table]) => [table.id, `${WRATH_TITLE} (${viewport})`])),
