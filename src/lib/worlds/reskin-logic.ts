@@ -78,7 +78,23 @@ export function displayName(
   }
   const wanted = textKey(canonical);
   const match = pack[kind].find((entry) => textKey(entry.from) === wanted);
-  return match ? match.name : canonical;
+  if (match) {
+    return match.name;
+  }
+  // The class tables list one feature at each step of its growth: "Bardic
+  // Inspiration (d6)", "Channel Divinity (1/rest)", "Channel Divinity: Turn
+  // Undead". A pack renames the feature, so each step wears the new name
+  // with its die or count kept; matched on the exact name only, every one of
+  // them showed the canonical name.
+  const split = /^(.*?)(\s*\(.*\)|:\s.*)$/.exec(canonical);
+  if (split) {
+    const base = textKey(split[1]);
+    const stem = pack[kind].find((entry) => textKey(entry.from) === base);
+    if (stem) {
+      return `${stem.name}${split[2]}`;
+    }
+  }
+  return canonical;
 }
 
 export type IdReskinKind = "races" | "classes" | "backgrounds";

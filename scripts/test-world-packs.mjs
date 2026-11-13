@@ -22,6 +22,9 @@ const { SRD_WEAPONS } = await import("../src/lib/srd/weapons.ts");
 const { SRD_ARMOR } = await import("../src/lib/srd/armor.ts");
 const { normalizeCreatureType } = await import("../src/lib/bestiary/statblock.ts");
 const { packArtSlots, MAX_PACK_ART_BYTES } = await import("../src/lib/worlds/art.ts");
+const { displayName } = await import("../src/lib/worlds/reskin-logic.ts");
+const { srdClassOptions } = await import("../src/lib/characters/options.ts");
+const { classFeaturesFor } = await import("../src/lib/srd/features.ts");
 
 const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
 // Only the BUNDLED directory is checked here. Installed packs live in the
@@ -143,6 +146,31 @@ test("every reskinned race, class and background id resolves", () => {
     }
     for (const raceId of pack.companionRaces) {
       assert.ok(findRace(raceId), `${file}: companionRaces entry ${raceId} does not exist`);
+    }
+  }
+});
+
+// A feature reskin renames a class feature the Calling step lists. Several
+// are listed with a die or a use count ("Bardic Inspiration (d6)", "Channel
+// Divinity (1/rest)"), and each of those is the same feature, so each wears
+// the pack's name.
+test("every feature reskin renames a feature the creator lists", () => {
+  const listed = new Set();
+  for (const klass of srdClassOptions()) {
+    for (const feature of classFeaturesFor(klass.id, "", 20)) listed.add(feature.name);
+  }
+  for (const { file, pack } of packs) {
+    for (const entry of pack.features) {
+      const base = entry.from.toLowerCase();
+      const named = [...listed].filter((name) => {
+        const lower = name.toLowerCase();
+        return lower === base || lower.startsWith(`${base} (`) || lower.startsWith(`${base}:`);
+      });
+      assert.ok(named.length > 0, `${file}: feature "${entry.from}" is not a feature any class lists`);
+      for (const name of named) {
+        assert.notEqual(displayName(pack, "features", name), name, `${file}: "${name}" does not wear the pack's name ${entry.name}`);
+        assert.ok(displayName(pack, "features", name).startsWith(entry.name), `${file}: "${name}" shows as ${displayName(pack, "features", name)}`);
+      }
     }
   }
 });
