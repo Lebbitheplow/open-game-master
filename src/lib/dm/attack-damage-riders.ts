@@ -29,6 +29,8 @@ import { textKey, words } from "@/lib/language/text-logic";
 import { CALL_THE_HUNT } from "@/lib/srd/authored-effects-w2-martial";
 import { lineageRiders } from "@/lib/srd/mt-species-traits";
 import { graveTouchedDie } from "@/lib/dm/ar-wbf-warlock-grave-logic";
+import { genreAttackBonus, genreStrikeRiders } from "@/lib/dm/genre-a-strikes";
+import { programRiders } from "@/lib/dm/genre-a-cyberpunk-programs";
 
 export type FeatureRider = CombatRiders["damageRiders"][number];
 
@@ -48,6 +50,8 @@ export type AttackDamageRiders = {
   abilityRiders: Array<{ feature: string; amount: number }>;
   onHit: ReturnType<typeof conditionOnHitDice>;
   featureRiders: FeatureRider[];
+  // What features add to the attack roll (src/lib/dm/genre-a-strikes.ts).
+  toHitRiders: Array<{ feature: string; amount: number }>;
 };
 
 export function attackDamageRiders(input: {
@@ -60,7 +64,7 @@ export function attackDamageRiders(input: {
   // are left out.
   // `stats`: the creature's defenses, for a rider whose type is the
   // attacker's choice (the Nature Domain's Divine Strike).
-  enemy?: Pick<EncounterEnemy, "currentHp" | "maxHp"> & { id?: string; conditions?: string[]; stats?: Partial<Pick<EncounterEnemy["stats"], "immune" | "resist" | "vulnerable">> };
+  enemy?: Pick<EncounterEnemy, "currentHp" | "maxHp"> & { id?: string; conditions?: string[]; stats?: { type?: string } & Partial<Pick<EncounterEnemy["stats"], "immune" | "resist" | "vulnerable">> };
   // The marking conditions (Hunter's Mark, Hex) whose die rides a hit on
   // this target (src/lib/dm/attack-marks.ts). Absent: every one does.
   marked?: Set<string>;
@@ -68,6 +72,8 @@ export function attackDamageRiders(input: {
   // bugbear's Surprise Attack, src/lib/srd/mt-species-traits.ts). Absent
   // (the Hand): the rider is left out.
   surprised?: boolean;
+  // The target has not acted yet this fight (genre-a-strikes.ts enemyNotActed).
+  notActed?: boolean;
 }): AttackDamageRiders {
   const { sheet, profile, riders, kind, marked } = input;
   const rageBonus = ragingMeleeBonus(sheet, profile);
@@ -82,8 +88,21 @@ export function attackDamageRiders(input: {
   // (pc-attack-damage.ts claimOncePerTurnRiders), as Sneak Attack is.
   const featureRiders: FeatureRider[] =
     kind === "spell" || kind === "granted"
-      ? [...riders.damageRiders.filter((rider) => rider.when === "attack"), ...graveTouchedDie(sheet, profile)].map((rider) => ({ ...rider, type: riderType(sheet, rider, input.enemy?.stats) }))
-      : [...riders.damageRiders, ...hunterRiders(sheet, input.enemy), ...pactRiders(sheet, kind, profile), ...heldConditionRiders(sheet), ...lineageRiders(sheet, { surprised: input.surprised }), ...graveTouchedDie(sheet, profile)]
+      ? [
+          ...[...riders.damageRiders.filter((rider) => rider.when === "attack"), ...graveTouchedDie(sheet, profile)].map((rider) => ({ ...rider, type: riderType(sheet, rider, input.enemy?.stats) })),
+          // A spell attack also carries the riders of the caster's programs
+          // (src/lib/dm/genre-a-cyberpunk-programs.ts: Lethal Payload, Neural Spike).
+          ...(kind === "spell" ? programRiders(sheet) : []),
+        ]
+      : [
+          ...riders.damageRiders,
+          ...hunterRiders(sheet, input.enemy),
+          ...pactRiders(sheet, kind, profile),
+          ...heldConditionRiders(sheet),
+          ...lineageRiders(sheet, { surprised: input.surprised }),
+          ...graveTouchedDie(sheet, profile),
+          ...genreStrikeRiders(sheet, profile, input.enemy ? { type: input.enemy.stats?.type, notActed: input.notActed } : undefined),
+        ]
           // Read as feature riders: a lineage's rider names no weapon of its own.
           .filter((rider: FeatureRider) => {
             if (rider.when === "melee" && profile.ranged) {
@@ -101,7 +120,8 @@ export function attackDamageRiders(input: {
             return (!rider.requiresCondition || (sheet.conditions.some((entry) => entry.toLowerCase() === rider.requiresCondition) && onQuarry(sheet, rider.requiresCondition, input.enemy?.id))) && riderGateHolds(sheet, rider.feature);
           })
           .map((rider) => ({ ...rider, type: riderType(sheet, rider, input.enemy?.stats) }));
-  return { rageBonus, abilityRiders, onHit, featureRiders };
+  const toHitRiders = kind === "spell" || kind === "granted" ? [] : genreAttackBonus(sheet, profile);
+  return { rageBonus, abilityRiders, onHit, featureRiders, toHitRiders };
 }
 
 // A rider gated on a condition that names one creature (its meta's quarry:

@@ -19,6 +19,7 @@ import { COMBAT_CONDITION_EFFECTS } from "@/lib/srd/combat-rows";
 import { AUTHORED_CONDITION_ROWS } from "@/lib/srd/authored-conditions";
 import { AFFLICTION_CONDITION_EFFECTS } from "@/lib/srd/affliction-conditions";
 import { LAST_CONDITION_EFFECTS } from "@/lib/srd/condition-effects-last";
+import { GENRE_A_CONDITIONS } from "@/lib/srd/genre-a-conditions";
 import { NUMBERED_CONDITION_EFFECTS, STRIKE_CONDITION_EFFECTS } from "@/lib/srd/condition-effects-spells";
 import type { ConditionEffectRow, SaveAbilityId } from "@/lib/srd/condition-effect-types";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -827,6 +828,7 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
   ...AUTHORED_CONDITION_ROWS,
   ...AFFLICTION_CONDITION_EFFECTS,
   ...LAST_CONDITION_EFFECTS,
+  ...GENRE_A_CONDITIONS,
 ];
 
 // The registry row a condition name resolves to, or null: a row's term as

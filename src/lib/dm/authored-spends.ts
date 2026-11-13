@@ -16,7 +16,7 @@ import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { authoredSpendFor, gateHolds, hasCondition, heldAuthored, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
-import { matchResource, resourceDef, resourceName as counterName } from "@/lib/srd/class-resources";
+import { matchResource, resourceDef, resourceName as counterName, sheetCatalog } from "@/lib/srd/class-resources";
 import { holdsFeature, isNamed, nameChoice } from "@/lib/srd/feature-names";
 import type { SpendAction, SpendDoes } from "@/lib/srd/authored-effects-types";
 import { canAct } from "@/lib/dm/can-act";
@@ -175,7 +175,7 @@ function pickVariant(does: SpendDoes, variant: string | undefined, spend: Author
 // an option with a choice of its own (Knowledge of the Ages' skill) can name
 // the option in the resource and the choice in the variant.
 function poolOptionSpend(sheet: CharacterSheet, resourceName: string, variant: string | undefined) {
-  const pool = matchResource(resourceName);
+  const pool = matchResource(resourceName, sheetCatalog(sheet));
   for (const option of [variant, nameChoice(resourceName)]) {
     const found = option && pool ? authoredSpendFor(sheet, option) : null;
     // The pool named pays for it, at once or once the option's own free use is

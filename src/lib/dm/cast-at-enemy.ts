@@ -11,6 +11,7 @@
 import { READ_THOUGHTS, isSuggestion, thoughtsReadBy } from "@/lib/dm/read-thoughts";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { extendedMeta, factsAsCast, heightenedSave, secondTargetProblem } from "@/lib/dm/mt-srd-metamagic";
+import { spendRealityRend } from "@/lib/dm/genre-a-cyberpunk-spends";
 import { magicImmunityNote } from "@/lib/dm/monster-traits";
 import { describeConditionDuration, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
@@ -477,6 +478,11 @@ export function handleCastAtEnemy(
   if (overchannel) {
     base.overchannel = payOverchannel(campaign, turn, sheet.id, spellLevel);
   }
+  // Reality Rend: the next damaging psionic at its maximum (genre-a-cyberpunk-spends.ts).
+  const rend = damageExpression ? spendRealityRend(campaign, sheet) : null;
+  if (rend) {
+    base.realityRend = rend;
+  }
 
   // The enemy's save, from its real stat block with its conditions and
   // lasting effects (src/lib/dm/forced-save.ts). Auto-hit spells (Magic
@@ -569,7 +575,7 @@ export function handleCastAtEnemy(
         sheetsById,
         ...(sharedRoll !== undefined ? { sharedRoll } : {}),
         ...(sharedSecond !== undefined ? { sharedSecond } : {}),
-        ...(overchannel ? { atMaximum: true } : {}),
+        ...(overchannel || rend ? { atMaximum: true } : {}),
       })
     : null;
   const damageDealt = landed?.dealt ?? 0;

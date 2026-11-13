@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { fallResistances } from "@/lib/dm/genre-a-cyberpunk-defenses";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -293,6 +294,7 @@ function resolveHazard(
         // A fall or a hazard: no creature dealt it (Emissary of Redemption).
         noCreature: true,
         reason: source,
+        resists: fallResistances(sheet, damageType),
       });
       fall.close(rolled.total);
       const pos = tokenPosition(campaign.id, sheet.id);

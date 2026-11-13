@@ -15,8 +15,10 @@ import { landsStrideClaim } from "@/lib/dm/mt-srd-druid";
 import { noteShift, takeSaveHelp, takeShift } from "@/lib/dm/chronal-shift";
 import { takeFate } from "@/lib/dm/fate-turn";
 import { recordInspiredSuccess, recordSave } from "@/lib/dm/last-save";
+import { lentRolls } from "@/lib/dm/genre-a-auras";
+import { counterIntrusion } from "@/lib/dm/genre-a-cyberpunk-defenses";
 import { diehardSaveAdvantage, shieldMasterSaveBonus } from "@/lib/srd/feat-combat";
-import { LUCK_SPEND } from "@/lib/dm/roll-riders";
+import { LUCK_SPEND, INSPIRATION_SPEND, spendInspirationCounter } from "@/lib/dm/roll-riders";
 import { spendLuckCounter } from "@/lib/srd/class-resources";
 import { allocateSeq, getCampaignById, type Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -37,7 +39,6 @@ import { effectOutcome, rollEffectExtras } from "@/lib/dm/effect-tools";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import { listedAgainst, type SaveAgainst } from "@/lib/dm/roll-about";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
-import { INSPIRATION_SPEND, spendInspirationCounter } from "@/lib/dm/roll-riders";
 import { inDirectSunlight } from "@/lib/dm/sunlight";
 import { obscuredFor } from "@/lib/dm/zone-rules";
 import { rollerLight } from "@/lib/dm/place-light";
@@ -81,6 +82,8 @@ export function rollExtrasFor(campaign: Campaign, sheet: CharacterSheet, kind: s
     // A Spirit Totem's aura the roller stands in (spirit-totem.ts).
     ...(kind === "saving_throw" || kind === "skill_check" || kind === "ability_check" ? { totemAdvantage: spiritTotemRollAdvantage(campaign.id, sheet) } : {}),
     ...(sentinel ? { initiativeBonus: sentinel.bonus, initiativeNote: sentinel.note } : {}),
+    // The genre classes' auras on saves and checks (src/lib/dm/genre-a-auras.ts).
+    ...(kind === "saving_throw" || kind === "skill_check" || kind === "ability_check" ? { lent: lentRolls(campaign.id, sheet) } : {}),
     ...rollEffectExtras(campaign.id, sheet.id, kind),
     encumbrance: campaign.gameSettings.variantRules.encumbrance,
     // Sunlight Sensitivity reads the board's sky (src/lib/dm/sunlight.ts).
@@ -444,6 +447,9 @@ export function rollCharacterSave(
   if (from) {
     recordSave(campaign.id, sheet.id, ability, { id: from.id, name: from.displayName }, outcome.total >= dc, resists?.against, dc);
   }
+  // A netrunner's Counter-Intrusion burns the caster of a spell they saved
+  // against (src/lib/dm/genre-a-cyberpunk-defenses.ts).
+  const intrusion = from && outcome.total >= dc && resists?.magical ? counterIntrusion(campaign, turn, sheet, from) : null;
   return {
     success: outcome.total >= dc,
     total: outcome.total,
@@ -458,6 +464,7 @@ export function rollCharacterSave(
       ...(strength ? [strength.note] : []),
       ...(shiftLine ? [`${shiftLine}${outcome.total})`] : []),
       ...(helped ? [helped.line] : []),
+      ...(intrusion ? [intrusion] : []),
     ],
   };
 }

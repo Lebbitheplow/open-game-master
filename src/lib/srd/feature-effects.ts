@@ -18,6 +18,7 @@
 import subclassesJson from "@/lib/srd/subclasses.json";
 import authoredFeatsJson from "@/lib/srd/authored-feats.json";
 import { authoredFeatureDefs } from "@/lib/srd/authored-feature-defs";
+import { GENRE_A_FEATURE_DEFS, GENRE_A_MARK_ATTACKS } from "@/lib/srd/genre-a-feature-defs";
 import { tableFeat } from "@/lib/srd/feat-effects";
 import { textKey } from "@/lib/language/text-logic";
 import { choiceIn, isConditionNamed, isNamed } from "@/lib/srd/feature-names";
@@ -601,6 +602,9 @@ const AUTHORED_PARSED = new Map<string, { effects: FeatureEffect[]; guidance: st
   // (walking speed, an ability on initiative, a damage rider), typed by hand
   // in src/lib/srd/authored-effects-data*.ts where the phrasing does not
   // parse. A name the table already answers keeps its entry.
+  // The genre classes' own (src/lib/srd/genre-a-feature-defs.ts), each
+  // naming its class.
+  FEATURE_EFFECTS.push(...GENRE_A_FEATURE_DEFS);
   for (const def of authoredFeatureDefs()) {
     if (!FEATURE_EFFECTS.some((existing) => existing.match.some((term) => def.match.includes(term)))) {
       FEATURE_EFFECTS.push(def);
@@ -706,7 +710,9 @@ export function effectsFor(input: {
           (term) => term.length,
         ),
       );
-      if (length > bestLength) {
+      // At an equal match the entry written for the holder's class wins: the
+      // esper's Thought Shield is not the Great Old One's.
+      if (length > bestLength || (length === bestLength && def.classes && !best?.classes)) {
         best = def;
         bestLength = length;
       }
@@ -794,6 +800,9 @@ export function combatRiders(sheet: {
   classes?: Array<{ id: string; level: number }>;
   // The table, for its workshop feats.
   campaignId?: string | null;
+  // The marks a spend lays that add an attack to the Attack action while they
+  // hold (genre-a-feature-defs.ts GENRE_A_MARK_ATTACKS: Storm of Blades).
+  conditions?: string[];
 }): CombatRiders {
   const level = clampLevel(sheet.level);
   // The level a feature's scaling resolves at: its granting class's when
@@ -916,6 +925,13 @@ export function combatRiders(sheet: {
         break;
       default:
         break;
+    }
+  }
+  // "One additional attack" on top of Extra Attack, which does not add to
+  // itself: the hand, the turn budget and the board all read this sum.
+  for (const [mark, attacks] of Object.entries(GENRE_A_MARK_ATTACKS)) {
+    if (sheet.conditions?.some((entry) => isConditionNamed(entry, mark))) {
+      riders.extraAttacks += attacks;
     }
   }
   return riders;

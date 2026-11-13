@@ -36,6 +36,8 @@ import { authoredRows } from "@/lib/srd/authored-effects";
 //   moved_near   `creatureId` moved to within `feet` of `characterId`, from `fromFeet`
 //   heal_roll    `creatureId` rolled a spell's healing dice for `characterId`
 //   teleport     `creatureId` teleported (an enemy, with `enemy`)
+//   damaged      `creatureId` damaged `characterId` through neither a hit nor a
+//                save of record (a breath weapon, an aura)
 export type TriggerEventKind =
   | "hit"
   | "miss"
@@ -54,7 +56,8 @@ export type TriggerEventKind =
   | "inspired_success"
   | "moved_near"
   | "heal_roll"
-  | "teleport";
+  | "teleport"
+  | "damaged";
 
 export type TriggerEvent = {
   id: string;
@@ -316,7 +319,7 @@ function opens(on: TriggerOn, event: TriggerEvent, ctx: TriggerContext): boolean
   const self = (id: string) => id === ctx.holderId;
   switch (on.kind) {
     case "damaged":
-      return self(event.characterId) && Boolean(event.creatureId) && Boolean(event.damaged) && (event.kind === "hit" || event.kind === "save") && (!on.spell || Boolean(event.spell)) && reach(event.creatureId, on.rangeFt);
+      return self(event.characterId) && Boolean(event.creatureId) && Boolean(event.damaged) && (event.kind === "hit" || event.kind === "save" || event.kind === "damaged") && (!on.spell || Boolean(event.spell)) && reach(event.creatureId, on.rangeFt);
     case "missed":
       return event.kind === "miss" && self(event.characterId) && (!on.melee || Boolean(event.melee));
     case "hit_seen":

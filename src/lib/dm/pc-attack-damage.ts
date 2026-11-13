@@ -17,7 +17,7 @@ import type { AttackProfile } from "@/lib/dm/attack-logic";
 import { damageParts, type TypedRider } from "@/lib/dm/damage-parts";
 import type { BlowSource } from "@/lib/dm/damage-logic";
 import { effectOutcome } from "@/lib/dm/effect-tools";
-import type { Encounter, EncounterEnemy } from "@/lib/db/encounters";
+import { getActiveEncounter, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { authoredSneakEdge } from "@/lib/dm/authored-hooks";
 import { authoredSneakBonus } from "@/lib/srd/authored-effects-more";
 import { getSheetById } from "@/lib/db/sheets";
@@ -32,6 +32,7 @@ import type { AttackPlan } from "@/lib/dm/pc-attack-plan";
 import type { AttackKind } from "@/lib/dm/pc-attack-profile";
 import type { OnHitSpends } from "@/lib/dm/pc-attack-riders";
 import { attackDamageRiders, type FeatureRider } from "@/lib/dm/attack-damage-riders";
+import { enemyNotActed } from "@/lib/dm/genre-a-strikes";
 import { cursedAgainst } from "@/lib/srd/magic-items";
 import { conditionStrikesMagical } from "@/lib/srd/condition-effect-queries";
 import { effectsFor, type CombatRiders } from "@/lib/srd/feature-effects";
@@ -60,6 +61,9 @@ export function foldDamageRiders(input: {
   surprised?: boolean;
 }) {
   const { campaignId, sheet } = input;
+  // Gutter Fighting's "a creature that has not acted yet this combat".
+  const fight = input.enemy?.id ? getActiveEncounter(campaignId) : null;
+  const notActed = Boolean(fight && input.enemy?.id && enemyNotActed(fight, input.enemy.id));
   let profile = input.profile;
 
   // Rage, an ability a feature adds (Aura of Hate), the dice a held
@@ -68,7 +72,10 @@ export function foldDamageRiders(input: {
   // attack-damage-riders.ts, which the Hand's attack cards print from too.
   // The server folds them into the damage dice so both the digital and
   // physical-dice paths carry them.
-  const { rageBonus, abilityRiders, onHit, featureRiders } = attackDamageRiders(input);
+  const { rageBonus, abilityRiders, onHit, featureRiders, toHitRiders } = attackDamageRiders({ ...input, notActed });
+  for (const rider of toHitRiders) {
+    profile = { ...profile, toHit: profile.toHit + rider.amount, riderNotes: [...profile.riderNotes, `${rider.feature}: +${rider.amount} to hit`] };
+  }
   if (rageBonus) {
     profile = {
       ...profile,

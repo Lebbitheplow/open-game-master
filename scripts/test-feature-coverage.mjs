@@ -23,6 +23,7 @@ const { effectsFor } = await import("../src/lib/srd/feature-effects.ts");
 const { matchResource, populateResources, RESOURCE_DEFS } = await import(
   "../src/lib/srd/class-resources.ts"
 );
+const { DROP_HOLD_COUNTERS } = await import("../src/lib/srd/genre-a-counter-terms.ts");
 const AUTHORED_ROWS = (await import("../src/lib/srd/authored-effects.ts")).authoredRows();
 const { COUNTER_REACTION_IDS } = await import("../src/lib/dm/reaction-kinds.ts");
 const { BONUS_ATTACK_COUNTERS } = await import("../src/lib/dm/feature-bonus-attacks.ts");
@@ -497,7 +498,9 @@ test("a counter with mechanical wording carries a typed effect or is deliberatel
       // Rolled and applied by src/lib/dm/reaction-counters.ts, or spent by
       // the bonus attack they buy (feature-bonus-attacks.ts) (issue 233).
       !COUNTER_REACTION_IDS.includes(def.id) &&
-      !BONUS_ATTACK_COUNTERS.includes(def.id),
+      !BONUS_ATTACK_COUNTERS.includes(def.id) &&
+      // Held at the hit point drop (src/lib/dm/genre-drop-holds.ts).
+      !DROP_HOLD_COUNTERS.includes(def.id),
   ).map((def) => def.id);
   assert.deepEqual(
     offenders,

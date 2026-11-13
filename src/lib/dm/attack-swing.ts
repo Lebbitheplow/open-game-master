@@ -6,6 +6,7 @@
 
 import { markDefenderCommanded } from "@/lib/dm/defender-dodge";
 import { empoweredRoll } from "@/lib/dm/mt-srd-metamagic";
+import { SPELL_HIT } from "@/lib/dm/genre-a-cyberpunk-spends";
 import { getSheetById } from "@/lib/db/sheets";
 import { spendWrath, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { attackWrathDice, holdsDestructiveWrath } from "@/lib/dm/destructive-wrath-logic";
@@ -192,6 +193,10 @@ export function judgeSwing(scene: SwingScene, record: AttackRecord, toHit: RollR
     // to the holders of a rider.
     if (record.weaponAttack ?? !record.spell) {
       markAttackTurn(campaign.id, record, `${WEAPON_HIT}${record.targetEnemyId}`);
+    } else {
+      // A spell attack's hit, for what answers a creature a psionic hit
+      // (Synaptic Overload, src/lib/dm/genre-a-cyberpunk-spends.ts).
+      markAttackTurn(campaign.id, record, `${SPELL_HIT}${record.targetEnemyId}`);
     }
     // The hit that spent the turn's Sneak Attack names its creature, so a
     // feature that answers a Sneak Attack (Wails from the Grave) knows the

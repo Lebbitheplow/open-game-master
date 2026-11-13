@@ -1101,6 +1101,9 @@ export function patchSheet(
       conditions: next.conditions,
       // Durable Magic's +2 holds while a spell is concentrated on.
       concentratingOn: next.concentratingOn,
+      // A bonus while below half hit points (Skin Like Scripture) moves with them.
+      currentHp: next.currentHp,
+      maxHp: next.maxHp,
     });
   }
 

@@ -23,6 +23,7 @@
 
 import { defenderDodging } from "@/lib/dm/defender-dodge";
 import { darkVeil } from "@/lib/dm/ar-ws-lunar-empowerment";
+import { enemyNotActed } from "@/lib/dm/genre-a-strikes";
 import { fightMarked, markFight } from "@/lib/dm/turn-marks";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -50,6 +51,7 @@ import { hitSavesOnHit } from "@/lib/dm/hit-save";
 import { effectiveMaxHp, isIncapacitated, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { withinFeet } from "@/lib/dm/authored-saves";
+import { besideDownedAlly } from "@/lib/dm/genre-a-cyberpunk-defenses";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
 import { edgeQuarry, ENTROPIC_EDGE, entropicQuarry, HAWK_EDGE } from "@/lib/dm/reaction-kinds";
 import { naturalWeaponOnHit } from "@/lib/dm/authored-attacks";
@@ -151,7 +153,13 @@ export function authoredIncomingAttack(input: {
     }
   }
   for (const { effect, held } of activeAuthored(target, "attacked_disadv")) {
-    if (effect.from.some((kind) => type.includes(kind))) {
+    if (effect.besideDowned) {
+      const fallen = besideDownedAlly(input.campaignId, input.encounterId, target);
+      if (fallen) {
+        sources.push("disadvantage");
+        notes.push(`${held.feature}: ${target.name} stands over ${fallen.name}, so the attack is at disadvantage`);
+      }
+    } else if (effect.from.some((kind) => type.includes(kind))) {
       sources.push("disadvantage");
       notes.push(`${held.feature}: a ${type} attacks ${target.name} at disadvantage`);
     }
@@ -281,12 +289,7 @@ export function authoredAttackSituation(input: {
   for (const { effect, held } of activeAuthored(sheet, "attack_adv")) {
     let applies = false;
     if (effect.vs === "not_acted") {
-      const at = encounter.orderReady
-        ? encounter.order.findIndex((entry) => entry.kind === "enemy" && entry.enemyId === enemy.id)
-        : -1;
-      applies =
-        encounter.round <= 1 &&
-        (encounter.surprisedIds.includes(enemy.id) || (at >= 0 && at > encounter.turnIndex));
+      applies = enemyNotActed(encounter, enemy.id);
     } else if (effect.vs === "frightened_by_self") {
       const condition = enemy.conditions.find((entry) => textKey(entry) === "frightened");
       applies = Boolean(condition && metaOf(enemy, condition)?.source === sheet.id);

@@ -24,6 +24,7 @@ import { empoweredLine, empoweredRoll } from "@/lib/dm/mt-srd-metamagic";
 import { flooredDamage, maximizedDamage } from "@/lib/dm/spell-riders";
 import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { curseBurn } from "@/lib/dm/spell-retort";
+import { programSpellLanded } from "@/lib/dm/genre-a-cyberpunk-spell-hits";
 import { spellDamageRiders } from "@/lib/srd/spell-damage-riders";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -196,6 +197,12 @@ export function landSpellDamage(input: {
     }
     // Grim Harvest, Keeper of Souls on the kill (ar-ws-harvest.ts).
     const onKill = applied.dead && encounter ? spellKill(campaign, encounter, enemy, sheet.id, { spell, spellLevel, slotLevel: input.slotLevel }) : [];
+    // A cyberpunk caster's once-a-turn rider on the program that struck
+    // (genre-a-cyberpunk-spell-hits.ts).
+    const programs = applied.dead ? [] : programSpellLanded({ campaign, turn, encounter, sheet, enemy, first: sharedRoll === undefined, sheets, sheetsById });
+    if (programs.length) {
+      base.programRiders = programs;
+    }
     if (onKill.length) {
       base.subclassFeatures = onKill;
     }

@@ -222,11 +222,12 @@ export function authoredConcentrationGuard(
 export function authoredTwinSpell(
   sheet: AuthoredSheet,
   spell: { name?: string | null; school?: string | null; level: number },
-): { feature: string; anywhere: boolean } | null {
+): { feature: string; anywhere: boolean; targets?: number } | null {
   for (const { effect, held } of activeAuthored(sheet, "twin_spell")) {
     const named = !effect.spells || effect.spells.some((entry) => textKey(entry) === textKey(spell.name ?? ""));
-    if (named && textKey(spell.school ?? "") === textKey(effect.school) && spell.level >= (effect.minLevel ?? 1) && spell.level <= effect.maxLevel) {
-      return { feature: held.feature, anywhere: Boolean(effect.anywhere) };
+    const school = effect.anySchool || textKey(spell.school ?? "") === textKey(effect.school);
+    if (named && school && spell.level >= (effect.minLevel ?? 1) && spell.level <= effect.maxLevel) {
+      return { feature: held.feature, anywhere: Boolean(effect.anywhere || effect.anyRange), ...(effect.targets ? { targets: effect.targets } : {}) };
     }
   }
   return null;

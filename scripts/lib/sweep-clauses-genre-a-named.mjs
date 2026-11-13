@@ -48,9 +48,19 @@ export const NAMED = {
     if (run.hp) t.world.patch(hero.id, { currentHp: run.hp });
     flush(t);
     t.world.dice(10, 17, 3);
-    const out = must(await t.world.invoke("request_roll", { characterId: hero.id, kind: "skill_check", skill: run.skill, dc: 10, reason: "a probe" }), "the check");
+    // A check about a creature (Ghost in the Feed: a construct) names it, as
+    // the GM's call does; the same check about another creature is the control.
+    const about = run.creature ? { creature: run.creature } : {};
+    const out = must(await t.world.invoke("request_roll", { characterId: hero.id, kind: "skill_check", skill: run.skill, dc: 10, reason: "a probe", ...about }), "the check");
     t.world.clearDice();
     const log = t.world.diceLog();
+    if (run.creature && run.want === "adv") {
+      flush(t);
+      t.world.dice(10, 17, 3);
+      must(await t.world.invoke("request_roll", { characterId: hero.id, kind: "skill_check", skill: run.skill, dc: 10, reason: "a probe", creature: "humanoid" }), "the control check");
+      t.world.clearDice();
+      eq(t.world.diceLog().filter((die) => die.sides === 20).length, 1, `d20s thrown for a ${run.skill} check about a humanoid`);
+    }
     const base = 10 + mod(SKILL_ABILITY[run.skill]) + prof(level);
     if (run.want === "adv") eq(log.filter((die) => die.sides === 20).length, 2, `d20s thrown for the ${run.skill} check`);
     if (run.want === "d4") eq(log.filter((die) => die.sides === 4).length, 1, `d4s added to the ${run.skill} check`);
@@ -270,6 +280,16 @@ export const NAMED = {
       eq(after.currentHp - before, (run.dice ?? 0) * die + plus, `hit points ${run.id} restored`);
     }
   },
+  // "restore a creature dead less than 1 minute to life at half HP": the ally
+  // who died this round, spent on, stands at half their hit points.
+  async revive(t, run, feature) {
+    const scene = await t.stage(feature);
+    t.world.patch(scene.fallen.id, { currentHp: 0, deathSaves: { successes: 0, failures: 3, stable: false, dead: true } });
+    const out = await spendOn(t, scene, run.id, { targetCharacterId: scene.fallen.id });
+    eq(out.ok, true, `${run.id} on the ally who just died: ${out.error}`);
+    const after = t.world.sheet(scene.fallen.id);
+    eq(after.deathSaves?.dead === true ? "dead" : after.currentHp, Math.floor(after.maxHp / 2), "the ally's hit points after the spend");
+  },
   async ghost(t, run, feature) {
     const scene = await t.stage(feature);
     must((await spendAny(t, scene, "cyberpunk_ghost_protocol")).out, "Ghost Protocol");
@@ -304,7 +324,9 @@ export const NAMED = {
     const scene = await t.stage(feature);
     const out = must(await spendOn(t, scene, "dark_fantasy_requiem_inspiration", { targetCharacterId: scene.ally.id }), "Requiem Inspiration");
     const ally = t.world.sheet(scene.ally.id);
-    const handed = /\b1?(d\d+)\b/.exec(JSON.stringify([out.result.inspiration, out.result, ally.conditionMeta, ally.conditions]))?.[1] ?? "no die";
+    // What was granted first: the result's guidance repeats the 1st-level
+    // text ("gains a d6") whatever the die is now.
+    const handed = /\b1?(d\d+)\b/.exec(JSON.stringify([out.result.granted, out.result.inspiration, ally.conditions, ally.conditionMeta, out.result]))?.[1] ?? "no die";
     eq(handed, run.die, `the die handed to the ally at level ${feature.level}`);
   },
 
@@ -424,6 +446,14 @@ export const NAMED = {
   },
   async ally_resist(t, run, feature) {
     const scene = await t.stage(feature);
+    // "while you sing": a dirge held. The control first: with none held, the
+    // ally takes all 10.
+    if (run.sing) {
+      must(await t.world.invoke("apply_damage", { characterId: scene.ally.id, amount: 10, type: run.type }), "the control damage");
+      eq(20 - t.hp(scene.ally.id), 10, `hit points an ally lost to 10 ${run.type} while the holder holds no dirge`);
+      t.world.patch(scene.ally.id, { currentHp: 20 });
+      t.world.patch(scene.holder.id, { concentratingOn: "Bane" });
+    }
     must(await t.world.invoke("apply_damage", { characterId: scene.ally.id, amount: 10, type: run.type }), "the damage");
     eq(20 - t.hp(scene.ally.id), 5, `hit points an ally 5 feet away lost to 10 ${run.type}`);
   },

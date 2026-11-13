@@ -61,7 +61,7 @@ import { projectionAfterSpend } from "@/lib/dm/spirit-projection";
 import { planCounterReaction } from "@/lib/dm/reaction-counters";
 import { channelOptions, channelOptionsHeld, optionCost } from "@/lib/dm/option-costs";
 import { BONUS_ATTACK_COUNTERS } from "@/lib/dm/feature-bonus-attacks";
-import { matchResource } from "@/lib/srd/class-resources";
+import { matchResource, sheetCatalog } from "@/lib/srd/class-resources";
 import { prepareUseItem } from "@/lib/dm/object-actions";
 import { chargedItemUse, paidItemCast } from "@/lib/dm/item-use";
 import { releaseStoredSpell, storeSpell } from "@/lib/dm/spell-storing";
@@ -1487,7 +1487,7 @@ function dmMutation(
       // A reaction counter that acts on the hit that triggered it, or on
       // dropping to 0 (src/lib/dm/reaction-counters.ts): its trigger is
       // checked before anything is spent, its effect applied after.
-      const counter = matchResource(resourceName);
+      const counter = matchResource(resourceName, sheetCatalog(sheet));
       const reacting = counter
         ? planCounterReaction({ campaign, turnId, sheet: getSheetById(sheet.id) ?? sheet, defId: counter.id, targetCharacterId: args.targetCharacterId, targetEnemyId: args.targetEnemyId, variant: args.variant, sheets, sheetsById })
         : null;

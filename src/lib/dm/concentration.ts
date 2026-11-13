@@ -1,5 +1,6 @@
 import { concentrationFeat } from "@/lib/srd/feat-combat";
 import { bladesongConcentrationBonus } from "@/lib/dm/ar-ws-bladesong";
+import { concentrationAdvantage } from "@/lib/dm/genre-a-cyberpunk-defenses";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import {
@@ -397,6 +398,8 @@ export function concentrationDamageHook(
   // (src/lib/srd/feat-combat.ts), and Starry Form's floor under the d20 are
   // what this save adds.
   const feat = concentrationFeat(fresh);
+  // Split Focus: the same advantage, from a genre feature (genre-a-cyberpunk-defenses.ts).
+  const focus = concentrationAdvantage(fresh);
   const warCaster = feat?.advantage === true;
   const floor = conditionConcentrationFloor(fresh.conditions);
   // The Bladesong's Intelligence modifier on this save alone (ar-ws-bladesong.ts).
@@ -411,7 +414,7 @@ export function concentrationDamageHook(
     `CON save to keep concentration (${spell})`,
     undefined,
     null,
-    warCaster ? { advantage: "advantage", reason: "War Caster: advantage to keep concentration" } : null,
+    warCaster || focus ? { advantage: "advantage", reason: `${warCaster ? "War Caster" : focus}: advantage to keep concentration` } : null,
     false,
     { ...(added ? { die: added } : {}), ...(floor ? { floor } : {}) },
   );

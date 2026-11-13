@@ -40,6 +40,8 @@ import {
   removeConditions,
 } from "@/lib/dm/condition-logic";
 import { rollFeatureSave } from "@/lib/dm/contest-roll";
+import { genreDropHold } from "@/lib/dm/genre-drop-holds";
+import { genreBelowHalf } from "@/lib/dm/genre-a-slots";
 import { holdsFeature } from "@/lib/srd/trait-rules";
 import { PRONE } from "@/lib/dm/vitals-logic";
 import { authoredAuraResistances } from "@/lib/dm/authored-saves";
@@ -103,6 +105,8 @@ export type PcDamageInput = {
   // with no attacker. A resistance to damage "dealt by other creatures"
   // (Emissary of Redemption) does not meet it.
   noCreature?: boolean;
+  // Resistances this blow alone meets (a fall's, for Kinetic Buffer).
+  resists?: string[];
   reason?: string;
 };
 
@@ -380,6 +384,15 @@ export function applyPcDamage(
     ...stoked,
   });
   publishSheet(campaign, sheet.id);
+  // Unfinished Ritual: the blow that takes the apostate below half gives
+  // their slots back (src/lib/dm/genre-a-slots.ts).
+  const ritual = genreBelowHalf(getSheetById(sheet.id) ?? sheet, sheet.currentHp, math.currentHp, effectiveMaxHp(sheet));
+  if (ritual) {
+    patchSheet(sheet.id, ritual.patch);
+    audit(campaign, turnId, sheet, "apply_damage", { unfinishedRitual: true }, reason, ritual.patch);
+    publishSheet(campaign, sheet.id);
+  }
+  const ritualInfo = ritual ? { unfinishedRitual: ritual.line } : {};
   // Damage is great stress: cackle fever's laughter, madness's confusion
   // (src/lib/dm/afflictions.ts).
   if (carried > 0 && !math.dropped) {
@@ -401,6 +414,7 @@ export function applyPcDamage(
     afflictionStress(campaign, turnId, sheet.id, "damage");
     return {
       ...held,
+      ...ritualInfo,
       ...shapeInfo,
       ...proneInfo,
       ...(adjusted.note ? { resistance: `${sheet.name} is ${adjusted.note}` } : {}),
@@ -496,6 +510,15 @@ export function applyPcDamage(
   } else if (soul) {
     soulInfo = { soulOfArtifice: soul.why };
   }
+  // The genre classes' "drop to 1 instead" counters (src/lib/dm/genre-drop-holds.ts).
+  const genre = genreDropHold(campaign, sheet, math, input, (target, patch, delta) => {
+    patchSheet(target.id, patch);
+    audit(campaign, turnId, target, "apply_damage", delta, reason, patch);
+    publishSheet(campaign, target.id);
+  });
+  if (genre) {
+    return tookIt(genre);
+  }
   // A barbarian knocked unconscious stops raging. Checked after Relentless
   // Endurance, which keeps them on their feet still raging.
   let rageInfo: Record<string, unknown> = {};
@@ -538,6 +561,7 @@ export function applyPcDamage(
     ok: true,
     hp: `${math.currentHp}/${effectiveMaxHp(sheet)}`,
     ...soulInfo,
+    ...ritualInfo,
     ...shapeInfo,
     ...rageInfo,
     ...proneInfo,

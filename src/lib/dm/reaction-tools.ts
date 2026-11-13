@@ -14,7 +14,7 @@
 //     the map is resolved here as one attack with the reaction.
 // Split from action-tools.ts, which re-exports the handler.
 
-import { heldAuthored } from "@/lib/srd/authored-effects";
+import { heldAuthored, authoredReactionNamed, heldReaction } from "@/lib/srd/authored-effects";
 import { catchProblem } from "@/lib/dm/mt-srd-monk";
 import { cuttingWordsImmunity } from "@/lib/dm/mt-srd-reach";
 import { tranceFloored } from "@/lib/dm/ar-ws-trance-floor";
@@ -45,7 +45,6 @@ import { petReaction, summonReaction } from "@/lib/dm/summon-reactions";
 import { hawkReaction } from "@/lib/dm/spirit-totem-hawk";
 import { openFailedSave, standingBeforeSave } from "@/lib/dm/save-turned";
 import { reactionTimingOf, timingOfDoes, type ReactionTiming, spendsNoReaction } from "@/lib/dm/reaction-kinds";
-import { authoredReactionNamed, heldReaction } from "@/lib/srd/authored-effects";
 import { removeConditions } from "@/lib/dm/condition-logic";
 import { answerKey, answeredBy, attackerFoeId, cutBlow, freshLastHit, heaviestHit, heaviestRaw, hitIdOf, openHitAimed, openHits, plainOfReroll, reactedLate, rerollAttacker, withHitAim, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import type { RollAttacker } from "@/lib/db/rolls";
@@ -63,7 +62,7 @@ import { maneuverReaction } from "@/lib/dm/maneuver-reactions";
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { handleTeleportToken, teleportSquareRefusal } from "@/lib/dm/map-tools";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
-import { matchResource } from "@/lib/srd/class-resources";
+import { matchResource, sheetCatalog } from "@/lib/srd/class-resources";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { standingForDeflection } from "@/lib/dm/ar-ws-deflection";
@@ -774,7 +773,7 @@ function useReaction(
   // Warding Maneuver, Strength before Death...) is a use_resource spend: the
   // use, the reaction and the effect go together there, where before this
   // branch let use_reaction spend the reaction and leave the counter full.
-  const counter = matchResource(feature);
+  const counter = matchResource(feature, sheetCatalog(sheet));
   if (counter?.action === "reaction" && sheet.resources?.[counter.id]) {
     // A reaction that teleports its holder (Misty Escape) moves them now when
     // the square is named, through move_token's teleport, which takes the

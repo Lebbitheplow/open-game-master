@@ -1,3 +1,4 @@
+import type { LentRoll } from "@/lib/srd/genre-a-lent";
 import { named } from "@/lib/dm/roll-about";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { luckPointsLeft } from "@/lib/srd/class-resources";
@@ -339,6 +340,8 @@ function resolveUnfloored(
     // A Spirit Totem's aura the roller stands in (src/lib/dm/spirit-totem.ts):
     // advantage on saves and checks of these abilities and on these skills.
     totemAdvantage?: { saves: string[]; checks: string[]; skills: string[]; note: string } | null;
+    // What allies' auras lend this roll (src/lib/dm/genre-a-auras.ts).
+    lent?: LentRoll[];
     encumbrance?: boolean;
     // Active effects riding on the roller for THIS kind of roll
     // (src/lib/dm/effects-logic.ts). Passed in for the same reason the aura
@@ -476,6 +479,7 @@ function resolveUnfloored(
     ability: derivationAbility,
     movedLittle: extras?.movedLittle,
     keepHeldDie: extras?.keepHeldDie,
+    lent: extras?.lent,
   });
   if ("error" in riders) {
     return riders;

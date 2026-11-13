@@ -670,7 +670,7 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
     // A feat's pour-in (Inner Resilience's ki) lives under the class counter's id, never its own card.
     // Channel Divinity and Psionic Energy are one card per option, each at its
     // own cost (hand-options.ts).
-    if (!def || def.passive || def.into || id === "sub_superiority_dice" || id === "ki" || def.effect.kind === "recover_slots") continue;
+    if (!def || def.passive || def.into || id === "sub_superiority_dice" || id === "ki" || (def.effect.kind === "recover_slots" && !def.effect.now)) continue;
     if (id === "channel_divinity" || (id === "sub_psionic_energy" && psionicOptions(sheet).length)) continue;
     // Spent by the bonus attack itself (hand-class.ts bonusStrikeCards).
     if (BONUS_ATTACK_COUNTERS.includes(id)) continue;

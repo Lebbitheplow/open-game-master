@@ -45,8 +45,8 @@ import { rollEnemySave } from "@/lib/dm/forced-save";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import { answerKey, answerLabel, answeredBy, attackerFoeId, carryCuts, critTurnsNormal, cutBlow, freshLastHit, openHits, plainOfReroll, rerollAttacker, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
-import { ENTROPIC_EDGE } from "@/lib/dm/reaction-kinds";
-import { answerSave, kindOf, MENTAL, openSaves, openTriggers, recordTrigger, savedIt, type LastSave } from "@/lib/dm/last-save";
+import { ENTROPIC_EDGE, reachAtLevel } from "@/lib/dm/reaction-kinds";
+import { answerSave, kindOf, MENTAL, openSaves, openTriggers, recordTrigger, savedIt, type LastSave, damageDealtBy } from "@/lib/dm/last-save";
 import { rollAgainst } from "@/lib/roll-labels";
 import { applyPcDamage, blowDefenses, meetDefenses } from "@/lib/dm/pc-damage";
 import { ownTurnOf } from "@/lib/dm/held-turn";
@@ -55,7 +55,6 @@ import { answerTriggers, openTriggersFor, triggerRefusal, triggerSpecOf, type Tr
 import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { allyOf, noHit, settle, SPENT, spendReaction, type Ctx } from "@/lib/dm/reaction-tools";
 import { unseenRefusal, withinFeet } from "@/lib/dm/authored-saves";
-import { reachAtLevel } from "@/lib/dm/reaction-kinds";
 import { resolveMoreReaction } from "@/lib/dm/authored-reactions-more";
 import { projectWard } from "@/lib/dm/arcane-ward";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -581,7 +580,15 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (hidden) return hidden;
       const hit = lastHitOn(ctx, covered, label);
       if ("error" in hit) return hit;
+      if (does.rangedOnly && !hit.record.ranged) {
+        return { error: `${reaction.name} answers a ranged attack, and ${hit.record.attack} was made in melee. Nothing was spent.`, refused: "rules" };
+      }
       const swing = hit.record.swings[hit.index];
+      // "When a hostile program or spell targets you" (ICE Pick): a spell's
+      // attack or its missile, never a club.
+      if (does.spellOnly && hit.record.source !== "missile" && !swing.flags?.spell) {
+        return { error: `${reaction.name} answers a spell that targets ${covered.name}, and ${hit.record.attack} was no spell. Nothing was spent.`, refused: "rules" };
+      }
       // "A creature you can see within 10 feet" (the tail of Form of the Beast).
       const striker = attackerFoeId(hit.record);
       if (does.attackerWithinFt && encounter && striker && !withinFeet(encounter.id, ctx.sheet.id, striker, does.attackerWithinFt)) {
@@ -725,7 +732,12 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       }
       const corrected = hit.record.swings.map((entry) => (textKey(entry.type ?? hit.record.type) === type && entry.hit ? cutBlow(entry, "half") : entry));
       const settled = settle(ctx, hit.record, corrected, label);
-      return { applied: `${target.name} resists this ${type} damage: ${settled.given} hit points come back. HP ${settled.hp}.` };
+      if (does.lingers) {
+        const now = getSheetById(target.id) ?? target;
+        const name = `${does.lingers} (${type})`;
+        reactionPatch(ctx.campaign, ctx.turn.id, target.id, { conditions: [...now.conditions, name], conditionMeta: { ...(now.conditionMeta ?? {}), [name]: { rounds: 1 } } }, `${reaction.name}: resistance to ${type} until the next turn`);
+      }
+      return { applied: `${target.name} resists this ${type} damage${does.lingers ? " until the start of their next turn" : ""}: ${settled.given} hit points come back. HP ${settled.hp}.` };
     }
     case "take_for_ally": {
       const ally = allyOf(ctx);
@@ -829,7 +841,9 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       const record = does.afterSave
         ? null
         : (freshLastHit(ctx.campaign.id, ctx.sheet.id, (hit) => hit.source !== "effect" && (!ctx.args.targetEnemyId || hit.attacker.id === ctx.args.targetEnemyId)) ?? freshLastHit(ctx.campaign.id, ctx.sheet.id));
-      const enemy = enemyTarget(ctx, saved ? saved.save.forcer.id : attackerFoeId(record));
+      // With no hit open, the creature whose damage is on record (a breath
+      // weapon, a spell's save: last-save.ts recordDamage).
+      const enemy = enemyTarget(ctx, saved ? saved.save.forcer.id : (attackerFoeId(record) ?? damageDealtBy(ctx.campaign.id, ctx.sheet.id)));
       if (!enemy || !encounter) {
         return { error: `${reaction.name} strikes a creature in the fight: pass targetEnemyId. Nothing was spent.`, retry: true };
       }

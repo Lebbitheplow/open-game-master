@@ -142,6 +142,9 @@ export type AcSource = {
   feats?: string[];
   // The spell being concentrated on (Durable Magic's +2 AC holds while one is).
   concentratingOn?: string | null;
+  // Hit points, for a bonus that holds below half of them (Skin Like Scripture).
+  currentHp?: number;
+  maxHp?: number;
   // Extra flat adds on top of whatever the feature table already grants.
   bonus?: number;
   // Who wears the gear: a magic item that names who may attune to it gives

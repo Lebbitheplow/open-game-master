@@ -32,6 +32,14 @@ function strip(t, scene, name) {
   }
 }
 
+// The option a "Pick one" feature was given (`run.choice`): the record the
+// pick writes, "Combat Wetware (Smartlink)", in place of the bare name.
+function pick(t, id, feature, run) {
+  if (!run.choice) return;
+  const features = t.world.sheet(id).features.map((entry) => (key(entry.name) === key(feature.name) ? { ...entry, name: `${feature.name} (${run.choice})` } : entry));
+  t.world.patch(id, { features });
+}
+
 // A use spent by counter id, with the target shapes a row may ask for.
 async function spend(t, scene, resource, args = {}) {
   return t.world.invoke("use_resource", { characterId: scene.holder.id, resource, ...args });
@@ -136,7 +144,12 @@ export const PROBES = {
 
   // Resistance halves 10 of the type; immunity takes none. Played with the
   // feature and without it, so a resistance another feature lends by accident
-  // does not pass for this one.
+  // does not pass for this one. The control is measured against what the rest
+  // of the sheet gives that type: a sheet that also resists it through another
+  // feature (the esper's Mind Fortress beside Ascendant Mind, Miasma Ward
+  // beside Iron Constitution) loses 5 without the feature, and the feature
+  // must still change that; with every feature off the type costs the full 10,
+  // so nothing but the features answers.
   async resist(t, run, feature) {
     t.fresh();
     const hero = t.hero(feature.classId, run.level ?? feature.level);
@@ -159,8 +172,15 @@ export const PROBES = {
       const kept = t.world.sheet(hero.id).features;
       t.world.patch(hero.id, { features: kept.filter((entry) => key(entry.name) !== key(feature.name)) });
       const without = await lose(type);
+      t.world.patch(hero.id, { features: [] });
+      const bare = await lose(type);
       t.world.patch(hero.id, { features: kept });
-      eq(without, 10, `${what} is cut without ${feature.name} too: something else on the sheet answers, not this feature`);
+      eq(bare, 10, `${what} with no feature on the sheet: something outside the features answers`);
+      // What the other features give alone: full damage, or half when one of
+      // them resists the type too (then only an immunity can still differ).
+      const others = without === 5 ? 5 : 10;
+      eq(without, others, `${what} without ${feature.name}`);
+      assert.ok(withIt < without, `${what} is cut as much without ${feature.name}: something else on the sheet answers, not this feature`);
     }
   },
 
@@ -186,6 +206,7 @@ export const PROBES = {
       bare: { equipment: [], base: 10 + mod("dex") },
     }[run.wear ?? "none"];
     const hero = t.hero(feature.classId, run.level ?? feature.level, { equipment: wear.equipment });
+    pick(t, hero.id, feature, run);
     const want = run.formula ? 10 + run.formula.reduce((sum, ability) => sum + mod(ability), 0) : wear.base + run.n;
     eq(t.srd.deriveAc(t.world.sheet(hero.id)), want, `armor class (${run.wear ?? "none"} worn)`);
   },
@@ -242,9 +263,11 @@ export const PROBES = {
     const extra = run.mode === "ranged" ? { equipment: [{ name: "Shortbow", qty: 1, equipped: true }, { name: "Arrows", qty: 20 }] } : run.mode === "unarmed" ? { equipment: [] } : {};
     const scene = await t.stage(feature, { level: run.level, hp: run.hp ?? 100, extra, lane: run.mode === "ranged" });
     const target = run.mode === "ranged" ? scene.far : scene.near;
+    pick(t, scene.holder.id, feature, run);
     if (run.type) t.kit.setEnemy(target.id, { stats: { type: run.type } });
     const args = run.mode === "unarmed" ? { weapon: "Unarmed Strike" } : {};
-    const faces = [15, 4, 3, 3, 3, 3, 3, 3];
+    // An unarmed strike rolls no weapon die: every die after the d20 is a rider's.
+    const faces = run.mode === "unarmed" ? [15, 3, 3, 3, 3, 3, 3, 3] : [15, 4, 3, 3, 3, 3, 3, 3];
     // A rider the text puts on a weapon another spend calls up (the grave
     // knight's pact blade): that spend is made before each swing.
     const callUp = async () => {
@@ -265,6 +288,7 @@ export const PROBES = {
     const extra = run.mode === "ranged" ? { equipment: [{ name: "Shortbow", qty: 1, equipped: true }, { name: "Arrows", qty: 20 }] } : {};
     const scene = await t.stage(feature, { level: run.level, hp: run.hp ?? 100, extra, lane: run.mode === "ranged" });
     const target = run.mode === "ranged" ? scene.far : scene.near;
+    pick(t, scene.holder.id, feature, run);
     const withIt = await swing(t, scene, target);
     strip(t, scene, feature.name);
     t.kit.giveTurn(scene.holder.id);
@@ -320,7 +344,11 @@ export const PROBES = {
 
   // A use spent with the action cost the text names.
   async spend_cost(t, run, feature) {
-    const scene = await t.stage(feature, { level: run.level });
+    // `hp`: a use the text allows only below half (Wired Soul).
+    const scene = await t.stage(feature, { level: run.level, ...(run.hp ? { hp: run.hp } : {}) });
+    // `foeType`: a use that only creatures of that type answer (Rite of
+    // Repulsion's fiends and undead): the near foe is made one.
+    if (run.foeType) t.kit.setEnemy(scene.near.id, { stats: { ...t.kit.enemy(scene.near.id).stats, type: run.foeType } });
     const tries = [{}, { targetCharacterId: scene.ally.id }, { targetEnemyId: scene.near.id }];
     let out = null;
     for (const args of tries) {

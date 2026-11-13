@@ -29,6 +29,7 @@ import { rollEnemySave } from "@/lib/dm/forced-save";
 import { openLastHit } from "@/lib/dm/last-hit";
 import { pushTokenAway } from "@/lib/dm/map-tools";
 import { bulwarkBanish } from "@/lib/dm/mortal-bulwark";
+import { apexAttack, kineticShove } from "@/lib/dm/genre-a-cyberpunk-hits";
 import { landNaturalOnHit } from "@/lib/dm/natural-onhit";
 import { landBlow } from "@/lib/dm/pc-attack-damage";
 import { applyRiderCondition, gainTempHp, riderBarred, stunningStrikeSave } from "@/lib/dm/pc-attack-riders";
@@ -200,6 +201,10 @@ export function landSwingBlow(
   const out: Record<string, unknown> = { ...applied, damage: dealt };
   if (!over) {
     notes.push(...bonusActionsOpened(scene, record, crit, dead));
+    const apex = apexAttack(scene, record, dead);
+    if (apex) {
+      notes.push(apex);
+    }
   }
   // What the hit leaves on the target: Stunning Sniper's stun, Slasher's
   // hamstring and Crusher's shove once a turn, and their critical hits'
@@ -219,6 +224,11 @@ export function landSwingBlow(
     const shoved = ballistaPush(campaign, enemy.encounterId, sheet.id, enemy, record.weapon);
     if (shoved) {
       notes.push(shoved);
+    }
+    // Kinetic Buffer's push on a spell attack (genre-a-cyberpunk-hits.ts).
+    const kinetic = kineticShove(scene, record);
+    if (kinetic) {
+      notes.push(kinetic);
     }
     if (ask.maneuver && record.maneuver) {
       out.maneuver = maneuverRiderSave(scene, record.maneuver);

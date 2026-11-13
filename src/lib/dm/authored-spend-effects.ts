@@ -10,6 +10,7 @@ import { rerollHealing } from "@/lib/dm/ar-ws-empowered-healing";
 import { pickChaos, wildSurge } from "@/lib/dm/ar-ws-wild-surge";
 import { moonlightEnds, toggleLight } from "@/lib/dm/ar-ws-lunar-empowerment";
 import { markMantleStride } from "@/lib/dm/ar-wbf-bard-mantle";
+import { resolveCyberSpend } from "@/lib/dm/genre-a-cyberpunk-spends";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { spellHurt } from "@/lib/dm/spell-damage-logic";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
@@ -50,6 +51,7 @@ import { createItem } from "@/lib/dm/authored-spend-arcane";
 import { summonHound } from "@/lib/dm/ar-ws-hound";
 import { jumpToSquare } from "@/lib/dm/ar-ws-shadow-walk";
 import { companionGoes, companionOf, healOne, healRefusal, layLunarWard, veil } from "@/lib/dm/ar-ws-lunar-phenomenon";
+import { summonGenreCompanion } from "@/lib/dm/genre-a-summons";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { diceFor, rollOwnDice } from "@/lib/dm/character-roll";
@@ -801,6 +803,10 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
       return pickChaos(ctx);
     case "damage_ward":
       return layWard(ctx, does);
+    case "cyber_spend":
+      return resolveCyberSpend({ campaign: ctx.campaign, sheet, label: ctx.spend.name, args: ctx.args }, does.what, (next) => resolveSpendEffect(ctx, next));
+    case "genre_summon":
+      return summonGenreCompanion(ctx.campaign, sheet, does.companion, ctx.held.level);
     // Bolstering Magic's slot (src/lib/dm/authored-spend-counters.ts).
     case "regain_slot":
       return regainSlot(ctx, does);

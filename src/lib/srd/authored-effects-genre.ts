@@ -11,6 +11,7 @@
 // action, Target Lock was a sentence, Feedback Loop spent the reaction and
 // dealt nothing.
 import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
+import { GENRE_A_AUTHORED } from "@/lib/srd/authored-effects-genre-a";
 
 export type GenreRow = { feature: string; classes?: string[]; entry: AuthoredEntry };
 
@@ -26,7 +27,7 @@ export const GENRE_AUTHORED: GenreRow[] = [
   // ---- marks: the bonus action, then every attack on the creature ----
   {
     feature: "Target Lock",
-    entry: { subclass: "genre", spends: [{ name: "Target Lock", action: "bonus", does: { kind: "buff", condition: "target lock", rounds: 600, quarry: true } }] },
+    entry: { subclass: "genre", spends: [{ name: "Target Lock", action: "bonus", does: { kind: "buff", condition: "target lock", rounds: 600, quarry: true, sight: true } }] },
   },
   {
     feature: "Hunter's Brand",
@@ -39,7 +40,9 @@ export const GENRE_AUTHORED: GenreRow[] = [
   // ---- bonus actions ----
   {
     feature: "Deathly Pact Blade",
-    entry: { subclass: "genre", spends: [{ name: "Deathly Pact Blade", action: "bonus", does: note("The bonded weapon is in hand, wherever it was, and it counts as magical.") }] },
+    // The bonded weapon in hand, as a condition the strikes read: it counts
+    // as magical (genre-a-conditions.ts) and carries Reaping Blade's necrotic.
+    entry: { subclass: "genre", spends: [{ name: "Deathly Pact Blade", action: "bonus", does: { kind: "buff", condition: "deathly pact blade", rounds: 600 } }] },
   },
   {
     feature: "Ashen Hymn",
@@ -47,7 +50,16 @@ export const GENRE_AUTHORED: GenreRow[] = [
   },
   {
     feature: "Candlelight Vigil",
-    entry: { subclass: "genre", spends: [{ name: "Candlelight Vigil", action: "bonus", does: { kind: "buff", condition: "candlelight vigil", rounds: 10 } }] },
+    // "allies in 10 ft add +1d4 to saves against the supernatural": a fear
+    // or a charm, or any save against magic (src/lib/dm/genre-a-auras.ts).
+    entry: {
+      subclass: "genre",
+      spends: [{ name: "Candlelight Vigil", action: "bonus", does: { kind: "buff", condition: "candlelight vigil", rounds: 10 } }],
+      effects: [
+        { kind: "aura_roll", rangeFt: 10, roll: "save", against: ["frightened", "charmed"], die: "1d4", gate: { condition: "candlelight vigil" } },
+        { kind: "aura_roll", rangeFt: 10, roll: "save", magical: true, die: "1d4", gate: { condition: "candlelight vigil" } },
+      ],
+    },
   },
   {
     feature: "Head of Steam",
@@ -81,7 +93,7 @@ export const GENRE_AUTHORED: GenreRow[] = [
     entry: { subclass: "genre", spends: [{ name: "Field Instruments", action: "action", does: note("The GM says whether the supernatural is present within 60 feet, and its rough direction.") }] },
   },
   // ---- reactions ----
-  { feature: "ICE Pick", entry: { subclass: "genre", reactions: [{ name: "ICE Pick", does: { kind: "ac_vs_hit", amount: 2 } }] } },
+  { feature: "ICE Pick", entry: { subclass: "genre", reactions: [{ name: "ICE Pick", does: { kind: "ac_vs_hit", amount: 2, spellOnly: true } }] } },
   { feature: "Feedback Loop", entry: { subclass: "genre", reactions: [{ name: "Feedback Loop", does: { kind: "strike_back", amount: "cha", type: "psychic" } }] } },
   { feature: "Barrow Ward", entry: { subclass: "genre", reactions: [{ name: "Barrow Ward", does: { kind: "reduce", amount: "cha+prof", who: "ally", rangeFt: 10 } }] } },
   { feature: "Penance Shared", entry: { subclass: "genre", reactions: [{ name: "Penance Shared", does: { kind: "take_for_ally", rangeFt: 5, share: "halved" } }] } },
@@ -90,4 +102,5 @@ export const GENRE_AUTHORED: GenreRow[] = [
   { feature: "Duelist's Flourish", entry: { subclass: "genre", reactions: [{ name: "Duelist's Flourish", does: { kind: "attack", rangeFt: 5 } }] } },
   { feature: "Intercept Protocol", entry: { subclass: "genre", reactions: [{ name: "Intercept Protocol", does: { kind: "take_for_ally", rangeFt: 5 } }] } },
   { feature: "Blood Bond", entry: { subclass: "genre", reactions: [{ name: "Blood Bond", does: { kind: "take_for_ally", rangeFt: 30, share: "split" } }] } },
+  ...GENRE_A_AUTHORED,
 ];

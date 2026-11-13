@@ -49,6 +49,7 @@ import { soulTrinketAtRestEnd } from "@/lib/dm/mt-mr-trinkets";
 import { tranquilityAfterLongRest } from "@/lib/dm/srd-defenses";
 import { argumentsRefusal, type ToolResult } from "@/lib/dm/tool-errors";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
+import { recoverSlotLevels, regainedLine } from "@/lib/dm/genre-a-slots";
 
 // The rest engine: short rests spend hit dice with real server rolls, long
 // rests restore HP, slots, and half the hit dice. Every sheet write is
@@ -624,34 +625,31 @@ function applySlotRecovery(
     if (!sheet?.spellcasting || sheet.deathSaves?.dead) {
       continue;
     }
-    for (const id of ["arcane_recovery", "natural_recovery"]) {
-      const state = sheet.resources?.[id];
+    // Every counter whose effect returns slots on a short rest: Arcane and
+    // Natural Recovery, The Net Remembers, Nanite Reserve (genre-a-slots.ts).
+    let live = sheet;
+    for (const id of Object.keys(sheet.resources ?? {})) {
+      const state = live.resources?.[id];
       const def = resourceDef(id);
-      if (!state || state.used >= state.max || !def || def.effect.kind !== "recover_slots") {
+      if (!state || state.used >= state.max || !def || def.effect.kind !== "recover_slots" || def.effect.now || !live.spellcasting) {
         continue;
       }
       // Multiclass: Arcane/Natural Recovery reads the wizard/druid levels.
-      let budget = def.effect.levels(resourceLevel(def, sheet));
-      const slots = { ...sheet.spellcasting.slots };
-      const regained: string[] = [];
-      for (const level of [1, 2, 3, 4, 5]) {
-        const slot = slots[String(level)];
-        while (slot && slot.used > 0 && budget >= level) {
-          slots[String(level)] = { max: slot.max, used: slot.used - 1 };
-          slot.used -= 1;
-          budget -= level;
-          regained.push(`level ${level}`);
-        }
-      }
-      if (!regained.length) {
+      const budget = def.effect.levels(resourceLevel(def, live), computeSheetDerived(live).abilityMods);
+      const back = recoverSlotLevels(live.spellcasting.slots, budget, { maxLevel: def.effect.maxLevel, most: def.effect.most });
+      if (!back.regained.length) {
         continue;
       }
+      // A counter that comes back on a short rest (Psi Font's "on a short
+      // rest", every one) is given back by the very rest that spends it.
+      const everyRest = (def.rechargeFor?.(resourceLevel(def, live)) ?? def.recharge) === "short";
       const patch = {
-        spellcasting: { ...sheet.spellcasting, slots },
-        resources: { ...sheet.resources, [id]: { max: state.max, used: state.used + 1 } },
+        spellcasting: { ...live.spellcasting, slots: back.slots },
+        resources: { ...live.resources, [id]: { max: state.max, used: everyRest ? state.used : state.used + 1 } },
       };
-      auditRest(campaign, turnId, sheet, "rest_short", patch, reason);
-      recovered.push(`${sheet.name} (${def.displayName}): ${regained.join(", ")}`);
+      auditRest(campaign, turnId, live, "rest_short", patch, reason);
+      live = getSheetById(live.id) ?? live;
+      recovered.push(`${sheet.name} (${def.displayName}): ${regainedLine(back.regained)}`);
     }
   }
   return recovered;
