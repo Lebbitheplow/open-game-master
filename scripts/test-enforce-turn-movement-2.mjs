@@ -194,6 +194,29 @@ await test("An ambusher's Disengage that closes the turn it was owed leaves its 
   assert.equal(kit.token(goblin.id).x, 12);
 });
 
+// ---- frightened of something large ----
+
+// SRD 5.1, Frightened: "can't willingly move closer to the source of its
+// fear". A Huge goblin stand-in fills (10..12, 4..6); Kara at (6,8) is 20 feet
+// from its nearest square and (7,8) is 15. Measured to its top-left square
+// both read 20, and the step was taken.
+await test("A character frightened of a Huge creature cannot step closer to its nearest square, and may walk around it at the same distance.", async () => {
+  const goblin = await stage();
+  kit.setEnemy(goblin.id, { stats: { size: "Huge" } });
+  try {
+    kit.place(goblin.id, 10, 4);
+    kit.place(kara.id, 6, 8);
+    world.patch(kara.id, { conditions: ["frightened"], conditionMeta: { frightened: { source: goblin.id } } });
+    assert.equal(await walk(kara, 7, 8), 409, "a frightened step from 20 to 15 feet off the creature was taken");
+    assert.deepEqual(at(kara.id), [6, 8]);
+    // (6,10) is still 20 feet from it (four squares left of its side).
+    assert.equal(await walk(kara, 6, 10), 200, "a step at the same distance was refused");
+  } finally {
+    world.patch(kara.id, { conditions: [], conditionMeta: {} });
+    kit.setEnemy(goblin.id, { stats: { size: "Small" } });
+  }
+});
+
 // ---- mounting ----
 
 await test("Mounting costs half the rider's speed during their own move; the AI is refused off their turn, the console is not.", async () => {

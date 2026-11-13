@@ -134,4 +134,19 @@ test("a fleeing creature runs to the reachable square farthest from what it flee
   assert.equal(flee.farthestFrom(from, source, [{ x: 4, y: 4, cost: 1 }, { x: 5, y: 6, cost: 1 }]), null, "cornered: nowhere farther");
 });
 
+// SRD 5.1, Frightened: "can't willingly move closer to the source of its
+// fear". A Huge dragon fills (10..12, 10..12); distance is to its nearest
+// square, as every other reach and range on the board is measured.
+test("fear is measured to the nearest square of a Huge source, not its top-left one", () => {
+  const dragon = { x: 10, y: 10, footprint: 3 };
+  const width = 24;
+  const nearer = new Set(flee.nearerSquares(width, 18, { x: 6, y: 14 }, dragon));
+  // (6,14) is 20 feet from its west side; (7,15) is 15 feet from it.
+  assert.equal(nearer.has(15 * width + 7), true, "a step from 20 to 15 feet off the dragon was not nearer");
+  // (14,10) is 10 feet from its east side; (12,8) is 10 feet from its top.
+  assert.equal(new Set(flee.nearerSquares(width, 18, { x: 14, y: 10 }, dragon)).has(8 * width + 12), false, "a step around the dragon at the same distance was nearer");
+  assert.equal(flee.fearDistance({ x: 13, y: 11 }, dragon), 1);
+  assert.equal(flee.fearDistance({ x: 11, y: 11 }, dragon), 0);
+});
+
 console.log(`test-enemy-turn-logic: ${passed} passed`);

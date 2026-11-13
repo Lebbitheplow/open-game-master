@@ -21,7 +21,7 @@ import { swingMode, type EnemyAttackProfile } from "@/lib/dm/enemy-profile";
 import { enemyMoveBudget, enemySpeedTiles } from "@/lib/dm/enemy-speed";
 import { endsOwedTurn, markEnemyActed } from "@/lib/dm/can-act";
 import { forgetEnemyTurns } from "@/lib/dm/enemy-turn-logic";
-import { FLEEING, TURNED } from "@/lib/dm/flee-logic";
+import { FLEEING, TURNED, fearDistance } from "@/lib/dm/flee-logic";
 import { aggressiveSteps } from "@/lib/dm/enemy-aggressive";
 import { missileDeflection, zoneStepsFor } from "@/lib/dm/zone-rules";
 import { zonesAfterMove } from "@/lib/dm/zone-triggers";
@@ -58,26 +58,27 @@ export function fearSourceAt(
   mapId: string,
   conditions: string[],
   meta: Record<string, { source?: string } | undefined>,
-): XY | null {
+): (XY & { footprint?: number }) | null {
   const held = ["frightened", TURNED, FLEEING].map((name) => conditions.find((entry) => entry.toLowerCase() === name)).filter((entry): entry is string => Boolean(entry));
   const source = held.map((name) => meta?.[name]?.source).find(Boolean);
   if (!source) {
     return null;
   }
   const token = getTokenByRef(mapId, source);
-  return token ? { x: token.x, y: token.y } : null;
+  // Its size goes with it: fear is measured to the nearest square it fills.
+  return token ? { x: token.x, y: token.y, footprint: tokenFootprint(token) } : null;
 }
 
 // The steps of a walk a frightened creature may take: it stops before the
 // first square that is closer to the source of its fear than where it began.
-export function awayFromFear(from: XY, steps: XY[], source: XY | null): XY[] {
+export function awayFromFear(from: XY, steps: XY[], source: (XY & { footprint?: number }) | null): XY[] {
   if (!source) {
     return steps;
   }
-  const start = chebyshev(from.x, from.y, source.x, source.y);
+  const start = fearDistance(from, source);
   const allowed: XY[] = [];
   for (const step of steps) {
-    if (chebyshev(step.x, step.y, source.x, source.y) < start) {
+    if (fearDistance(step, source) < start) {
       break;
     }
     allowed.push(step);
