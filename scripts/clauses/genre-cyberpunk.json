@@ -1606,15 +1606,12 @@
   "clauses": [
    {
     "c": "Sell goods at full value",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs the shop's sell route with a priced item; not staged here",
     "run": {
-     "k": "hook"
+     "k": "cc_full_value"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap fixer::Silver Ledger#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-fixer.ts sellsAtFullValue, read by src/lib/dm/shop-tools.ts handleSellItem",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: fixer::Silver Ledger#0"
    },
    {
     "c": "you can always find a buyer or seller within a day",
@@ -1631,15 +1628,12 @@
   "clauses": [
    {
     "c": "When you roll initiative, move up to your speed without provoking opportunity attacks",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "cc_exit"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap fixer::Exit Strategy#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-fixer.ts exitAtInitiative (src/lib/dm/feature-hooks.ts, as initiative is rolled) and src/lib/dm/genre-cc-a-spends.ts exitStrategy (src/lib/dm/authored-reactions-more.ts reactionMove: full speed, no opportunity attack)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: fixer::Exit Strategy#0"
    }
   ]
  },
@@ -1703,15 +1697,12 @@
   "clauses": [
    {
     "c": "A creature that accepts your parley cannot attack you until your next turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "cc_parley"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap fixer::Neutral Ground#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-spends.ts parley (the neutral ground mark until the fixer's next turn), read by src/lib/dm/enemy-attack.ts through src/lib/dm/genre-cc-a-fixer.ts parleyHolds",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: fixer::Neutral Ground#0"
    }
   ]
  },
@@ -2878,15 +2869,8 @@
   "clauses": [
    {
     "c": "Carry or drag allies at full speed",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Extraction#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "left",
+    "why": "A position the engine does not track for any class: no character carries or drags an ally on the board (src/lib/dm/drag-move.ts drags only a grappled foe), so the speed of carrying one is the GM's to narrate. The nearest written reason is docs/rules-enforcement-audit.md, \"What stays narrated, and why\": \"Authored features, 11. Roleplay or information (Master of Nature, Know Your Enemy, ...), a position or companion the engine does not track\"."
    },
    {
     "c": "allies you stabilize or heal gain 1d6 temp HP",

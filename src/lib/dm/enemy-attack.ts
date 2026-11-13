@@ -8,6 +8,7 @@
 // on the other side (a creature the party dominates) is struck stat block
 // against stat block (src/lib/dm/enemy-strike.ts).
 
+import { parleyHolds } from "@/lib/dm/genre-cc-a-fixer";
 import { endRageBound } from "@/lib/dm/rage-bound";
 import { paBlowResists } from "@/lib/dm/genre-b-post-apocalyptic-blows";
 import { hostileTo, resolveCombatant } from "@/lib/dm/combatant";
@@ -353,6 +354,14 @@ export function handleEnemyAttack(
   if (charmedBy(found.conditions, found.conditionMeta, target.id)) {
     return {
       error: `${found.displayName} is charmed by ${target.name} and cannot attack them. It may attack someone else or take another action.`,
+      retry: true,
+      stop: "target",
+    };
+  }
+  // Neutral Ground: a creature that accepted the fixer's parley (genre-cc-a-fixer.ts).
+  if (parleyHolds(found, target.id)) {
+    return {
+      error: `${found.displayName} accepted ${target.name}'s parley and cannot attack them until their next turn. It may attack someone else or take another action.`,
       retry: true,
       stop: "target",
     };

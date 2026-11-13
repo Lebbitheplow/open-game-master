@@ -41,6 +41,8 @@ import { sideOf } from "@/lib/dm/combatant";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { CANDLE, ELEGY_MARK, SWARMED } from "@/lib/srd/genre-cc-a-conditions";
+import { EXIT, PARLEY } from "@/lib/dm/genre-cc-a-fixer";
+import { reactionMove } from "@/lib/dm/authored-reactions-more";
 import { getEnemy, saveEncounter } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
 import { getTokenByRef, setTokenLight } from "@/lib/db/battle-maps";
@@ -55,7 +57,7 @@ import { getBattleMapForEncounter, listTokens } from "@/lib/db/battle-maps";
 import { zonesAfterMove } from "@/lib/dm/zone-triggers";
 import { isNamed } from "@/lib/srd/feature-names";
 
-export type GenreCcPlay = "crown" | "rat_tide" | "no_rest" | "rite" | "elegy" | "candle" | "daemon_cache";
+export type GenreCcPlay = "crown" | "rat_tide" | "no_rest" | "rite" | "elegy" | "candle" | "daemon_cache" | "parley" | "exit";
 
 type Resolution = ToolError | { patch?: Record<string, unknown>; result: Record<string, unknown> };
 
@@ -77,6 +79,10 @@ export function genreCcSpend(ctx: SpendContext, play: GenreCcPlay): Resolution {
       return candle(ctx);
     case "daemon_cache":
       return daemonCache(ctx);
+    case "parley":
+      return parley(ctx);
+    case "exit":
+      return exitStrategy(ctx);
   }
 }
 
@@ -198,4 +204,33 @@ function daemonCache(ctx: SpendContext): Resolution {
   const mark = grown ? "slotless cast (5th)" : "slotless cast (3rd)";
   const marked = turnMark(ctx, mark, { rounds: 14400 });
   return "error" in marked ? marked : { ...marked, result: { applied: [`${ctx.spend.name}: ${ctx.sheet.name}'s cached program (${grown ? "5th" : "3rd"} level or lower) is cast once with no slot.`] } };
+}
+
+// Neutral Ground: the creature named accepted the parley; it cannot attack
+// the fixer until their next turn starts.
+function parley(ctx: SpendContext): Resolution {
+  const encounter = getActiveEncounter(ctx.campaign.id);
+  const enemy = ctx.args.targetEnemyId && encounter ? getEnemy(ctx.args.targetEnemyId) : null;
+  if (!enemy || enemy.status !== "alive") {
+    return { error: `${ctx.spend.name} names the creature that accepted ${ctx.sheet.name}'s parley: pass its targetEnemyId. Nothing was spent.`, retry: true };
+  }
+  const kept = enemy.conditions.filter((entry) => !isConditionNamed(entry, PARLEY));
+  patchEnemyConditions(enemy.id, [...kept, PARLEY], { ...((enemy.conditionMeta ?? {}) as ConditionMetaMap), [PARLEY]: { source: ctx.sheet.id, untilTurnOf: ctx.sheet.id } } as typeof enemy.conditionMeta);
+  publishEncounter(ctx.campaign.id);
+  return { result: { applied: [`${ctx.spend.name}: ${enemy.displayName} accepts the parley and cannot attack ${ctx.sheet.name} until their next turn.`] } };
+}
+
+// Exit Strategy: the move the fight's start allows, up to the fixer's speed,
+// drawing no opportunity attack (the reactions' own move, reactionMove).
+function exitStrategy(ctx: SpendContext): Resolution {
+  const held = ctx.sheet.conditions.find((entry) => isConditionNamed(entry, EXIT));
+  if (!held) {
+    return { error: `${ctx.spend.name} is the move ${ctx.sheet.name} makes as initiative is rolled, before their first turn. Nothing was spent.`, refused: "rules" };
+  }
+  const moved = reactionMove({ campaign: ctx.campaign, encounter: ctx.encounter ?? getActiveEncounter(ctx.campaign.id), sheet: ctx.sheet, args: ctx.args } as unknown as Parameters<typeof reactionMove>[0], ctx.spend.name, "opened", "full");
+  if ("error" in moved) {
+    return moved as ToolError;
+  }
+  const left = removeConditions(ctx.sheet.conditions, ctx.sheet.conditionMeta as ConditionMetaMap, [held]);
+  return { patch: { conditions: left.conditions, conditionMeta: left.meta }, result: { applied: [String((moved as { applied?: unknown }).applied ?? "")] } };
 }

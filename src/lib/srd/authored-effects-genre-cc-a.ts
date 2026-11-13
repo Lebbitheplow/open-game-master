@@ -98,6 +98,11 @@ export const GENRE_CC_A_AUTHORED: GenreRow[] = [
   // Evasive Subroutines is the drones' (src/lib/dm/genre-cc-a-drones.ts).
   { feature: "Evasive Subroutines", classes: ["rigger"], entry: { subclass: "genre", heldBy: { file: "src/lib/dm/aoe-characters.ts", call: "droneEvades(" } } },
 
+  // The fixer (src/lib/dm/genre-cc-a-fixer.ts).
+  { feature: "Silver Ledger", classes: ["fixer"], entry: { subclass: "genre", heldBy: { file: "src/lib/dm/shop-tools.ts", call: "sellsAtFullValue(" } } },
+  { feature: "Neutral Ground", classes: ["fixer"], entry: { subclass: "genre", spends: [{ name: "Neutral Ground", action: "none", does: { kind: "genre_cc", play: "parley", aim: "enemy" } }] } },
+  { feature: "Exit Strategy", classes: ["fixer"], entry: { subclass: "genre", spends: [{ name: "Exit Strategy", action: "none", does: { kind: "genre_cc", play: "exit" } }] } },
+
   {
     feature: "Silver Tongue",
     classes: ["grifter"],

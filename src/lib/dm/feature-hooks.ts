@@ -5,6 +5,7 @@
 // and Stillness of Mind (an action that ends a charm or a fear).
 //
 // Must not import mutations.ts (which reaches it through feature-spends.ts).
+import { exitAtInitiative } from "@/lib/dm/genre-cc-a-fixer";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
@@ -58,7 +59,7 @@ export function applyInitiativeRefills(campaign: Campaign, sheetId: string): str
     return [];
   }
   // What a horror feature gives as the fight starts (genre-a-horror-initiative.ts).
-  const horror = horrorAtInitiative(campaign, sheet.id);
+  const horror = [...horrorAtInitiative(campaign, sheet.id), ...exitAtInitiative(campaign, sheet.id)];
   const refill = initiativeRefills(sheet.resources, sheet.features);
   if (!refill) {
     return horror;

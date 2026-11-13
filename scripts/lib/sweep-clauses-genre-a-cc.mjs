@@ -470,6 +470,52 @@ Object.assign(CC, {
   },
 });
 
+Object.assign(CC, {
+  // Silver Ledger: a dagger (2 gp) sells for 200 copper, and for 100 once the
+  // feature is gone.
+  async cc_full_value(t, run, feature) {
+    const shops = await load("lib/db/shops.ts");
+    t.fresh();
+    const hero = t.hero(feature.classId, feature.level, { equipment: [{ name: "Dagger", qty: 2 }] });
+    const shop = shops.insertShop(t.world.campaignId, { name: "Fence", kind: "general", size: "town", markup: 1, stock: [{ itemName: "Rope", qty: 1, priceCp: 100, note: "" }] });
+    const copper = () => { const sheet = t.world.sheet(hero.id); return (sheet.gold ?? 0) * 100 + (sheet.silver ?? 0) * 10 + (sheet.copper ?? 0); };
+    const sell = async () => {
+      const before = copper();
+      must(await t.world.invoke("sell_item", { characterId: hero.id, shop: shop.id, item: "Dagger" }), "the sale");
+      return copper() - before;
+    };
+    const full = await sell();
+    stripFeature(t, hero.id, feature.name);
+    eq(`${full}/${await sell()}`, "200/100", "copper for a dagger with Silver Ledger / without it");
+  },
+
+  // Neutral Ground: the foe that accepted the parley cannot club the fixer.
+  async cc_parley(t, run, feature) {
+    const scene = await t.stage(feature);
+    await spend(t, scene, "Neutral Ground", { targetEnemyId: scene.near.id });
+    t.foesTurn(scene);
+    t.kit.freshRound();
+    const out = await t.world.invoke("enemy_attack", { enemyId: scene.near.id, targetCharacterId: scene.holder.id });
+    eq(`${out.ok}/${t.hp(scene.holder.id)}`, "false/100", "the parleying foe's attack on the fixer / the fixer's hit points");
+  },
+
+  // Exit Strategy: initiative leaves the fixer the move; they walk 20 feet
+  // away from the foe beside them and draw no opportunity attack.
+  async cc_exit(t, run, feature) {
+    const scene = await t.stage(feature);
+    t.world.patch(scene.holder.id, { conditions: ["exit strategy"], conditionMeta: { "exit strategy": { untilTurnOf: scene.holder.id } } });
+    const { exitAtInitiative } = await load("lib/dm/genre-cc-a-fixer.ts");
+    const lines = exitAtInitiative(t.world.campaign(), scene.holder.id);
+    eq(lines.length, 1, "the line initiative gives the fixer");
+    t.world.clearDice();
+    t.world.dice(19, 19, 6, 6);
+    must(await t.world.invoke("use_resource", { characterId: scene.holder.id, resource: "Exit Strategy", x: 5, y: 1 }), "Exit Strategy");
+    t.world.clearDice();
+    const token = t.kit.token(scene.holder.id);
+    eq(`${token.x},${token.y}/${t.hp(scene.holder.id)}/${conditionsOf(t, scene.holder.id).includes("exit strategy")}`, "5,1/100/false", "the fixer's square / hit points (no opportunity attack) / the move still held");
+  },
+});
+
 // The vermin lord's dire rat, built before the fight (Favored of the Swarm).
 async function ratPack(t, feature) {
   t.fresh();

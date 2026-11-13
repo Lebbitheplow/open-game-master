@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { sellsAtFullValue } from "@/lib/dm/genre-cc-a-fixer";
 import type { Campaign } from "@/lib/db/campaigns";
 import { allocateSeq } from "@/lib/db/campaigns";
 import { insertCampaignMessage, listRecentMessages } from "@/lib/db/messages";
@@ -516,7 +517,7 @@ export function handleSellItem(campaign: Campaign, rawArguments: string, at: Tra
   // Selling Treasure), priced by the worth they were given; a name is never
   // read for a price (src/lib/dm/trade-value.ts).
   const listCp = listPriceCp(line);
-  const each = listCp !== null ? (keepsFullValue(line) ? listCp : offerPriceCp(listCp)) : args.priceCp ?? null;
+  const each = listCp !== null ? (keepsFullValue(line) || sellsAtFullValue(sheet) ? listCp : offerPriceCp(listCp)) : args.priceCp ?? null;
   if (each === null) {
     // `unpriced`: the Market has no price to send, so it hands the sale to
     // whoever runs the story to name one (MarketPanel.tsx).
