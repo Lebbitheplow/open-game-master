@@ -112,6 +112,11 @@ import { ADVANTAGE_SOURCES } from "@/lib/dm/pc-attack-options";
 import { PLACE_DIRECTIONS, PLACE_DISTANCES } from "@/lib/overworld/places";
 import { heroFell } from "@/lib/characters/fallen-logic";
 
+// The rolls the moment shows have landed and been told (issue 931): under a
+// bare "Recent rolls" the model told last round's 6 damage on the hero again
+// as the enemy's new blow.
+export const RECENT_ROLLS_HEADING = "Recent rolls (already resolved and on the table; never narrate one again as new):";
+
 export { DM_SYSTEM, dmSystemText, ENCOUNTER_RULES, encounterRulesText } from "@/lib/dm/prompt-rules";
 
 // Full system prompt for a campaign: base rules plus genre flavor plus any
@@ -207,7 +212,9 @@ export type DmEncounterState = {
   // what to do.
   // `round`: the round the current character's turn is in, the next one
   // when the enemies due close this one.
-  enemiesDue?: { before: string; enemies: Array<{ enemyId: string; name: string }>; round: number };
+  // `endsRound`: the enemies are the last of that round, and `before` opens
+  // the next (`round`), rather than acting first in it.
+  enemiesDue?: { before: string; enemies: Array<{ enemyId: string; name: string }>; round: number; endsRound?: number };
   // The hits a reaction may still answer, by character (turn.ts
   // openHitsForState); `ai` marks a companion nobody commands, whose
   // reactions are the AI's. Absent when none are open.
@@ -1143,11 +1150,13 @@ export function buildGameStateBlock(state: DmGameState): string {
       // Their turns come first: asking the current character's player now
       // would leave them to the backstop.
       if (encounter.enemiesDue) {
-        const { before, enemies, round } = encounter.enemiesDue;
+        const { before, enemies, round, endsRound } = encounter.enemiesDue;
         const due = enemies.map((enemy) => `${enemy.name} [enemyId=${enemy.enemyId}]`);
         const one = due.length === 1;
         lines.push(
-          `${due.join(" and ")} ${one ? "acts" : "act"} before ${before}; the turn passed ${one ? "it" : "them"} outside your turn. ${ENEMY_TURNS_CUE} ${before}'s turn comes after ${one ? "its" : "theirs"}: a new turn in round ${round}, its action, bonus action and movement unspent.`,
+          endsRound
+            ? `${due.join(" and ")} ${one ? "takes its turn" : "take their turns"} now, the last of round ${endsRound}; the turn passed ${one ? "it" : "them"} outside your turn. ${ENEMY_TURNS_CUE} Then round ${round} begins with ${before}: a new turn, its action, bonus action and movement unspent.`
+            : `${due.join(" and ")} ${one ? "acts" : "act"} before ${before}; the turn passed ${one ? "it" : "them"} outside your turn. ${ENEMY_TURNS_CUE} ${before}'s turn comes after ${one ? "its" : "theirs"}: a new turn in round ${round}, its action, bonus action and movement unspent.`,
         );
       } else if (encounter.awaitingPlayer) {
         const name = encounter.awaitingPlayer;
@@ -1449,7 +1458,7 @@ export function buildGameStateBlock(state: DmGameState): string {
       .join("\n")}`,
   );
   if (rollLines.length) {
-    moment.push(`Recent rolls:\n${rollLines.join("\n")}`);
+    moment.push(`${RECENT_ROLLS_HEADING}\n${rollLines.join("\n")}`);
   }
   if (state.pins?.length) {
     // Unconditional and unfiltered by design: the table asked for these to be
@@ -1997,7 +2006,7 @@ export function buildDmMessages(
     // parsing the sentence (src/lib/dm/intent-logic.ts).
     const card =
       message.authorType === "player" && message.intent
-        ? `\n${describeIntent(message.intent, message.characterId, { resolved: (state.engineCardIds?.has(message.id) ?? false) || Boolean(message.cardResolvedAt) })}`
+        ? `\n${describeIntent(message.intent, message.characterId, { resolved: (state.engineCardIds?.has(message.id) ?? false) || Boolean(message.cardResolvedAt), returned: Boolean(message.cardReturned) })}`
         : "";
     return { message, id: message.id, seq: message.seq, text: `${content}${card}`, gm: message.authorType === "dm" };
   });

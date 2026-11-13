@@ -59,7 +59,7 @@ function FloorControl({
       await fetch(`/api/campaigns/${campaignId}/floor`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ set: next }),
+        body: JSON.stringify({ set: next, expect: { mode } }),
       });
     } catch {
       // The floor_changed event is the source of truth; a failed click

@@ -1597,7 +1597,7 @@
     "lib/dm/enemy-swing-odds.ts#re-word": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/engine-boundary.ts#[a-z]": [["key",1,"the engine's designator letter (\"Goblin B\")"]],
     "lib/dm/engine-boundary.ts#re-word": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
-    "lib/dm/engine-boundary.ts#str-eq": [["key",5,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/engine-boundary.ts#str-eq": [["key",6,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/engine-boundary.ts#str-list": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/explore-tools.ts#str-eq": [["key",3,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/explore-tools.ts#str-list": [["key",9,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],

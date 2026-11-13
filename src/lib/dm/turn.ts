@@ -122,8 +122,9 @@ import {
   fightAnnounced,
   initiativeStartsFight,
   unpaidCast,
-  unrolledBlow,
+  unrolledBlowAt,
   unrolledBlowPrompt,
+  unrolledEnemyBlowPrompt,
   unrolledFigure,
   unrolledDamagePrompt,
 } from "@/lib/dm/engine-boundary";
@@ -160,6 +161,8 @@ import { storerHolding } from "@/lib/srd/spell-storing";
 import type { SlotlessCast } from "@/lib/dm/narration-guard";
 import { takeBackItemCast } from "@/lib/dm/item-use";
 import { DIRECT_CALL_ID_PREFIX, directCardCalls, drawStopsCast, intentAnswered, intentCorrection, intentNeedsTool, isStoredCast, returnedCardNote, returnReason, unresolvedCards, type MessageIntent, type PlayedCard, type TurnCall } from "@/lib/dm/intent-logic";
+import { cardStillDue } from "@/lib/dm/direct-card-logic";
+import { cardMoment } from "@/lib/dm/intent-check";
 import type { SpellMech } from "@/lib/srd/spell-mech-types";
 import { handleCompleteBeat } from "@/lib/dm/arc";
 import { markActiveBeat, settleEarlyTicks, tickWaypointsFromCalls } from "@/lib/dm/waypoint-tick";
@@ -505,8 +508,10 @@ export function buildEncounterState(campaignId: string, sheets: CharacterSheet[]
             before: encounter.order[encounter.turnIndex].name,
             enemies: due.map((enemy) => ({ enemyId: enemy.id, name: enemy.displayName })),
             // Enemies before the end of the order act in this round, which
-            // turns over once they have (issue 713).
+            // turns over once they have (issue 713): they close it, and the
+            // one they come before opens the next (issue 931).
             round: encounter.round + (encounter.legendary.rest?.wrap ? 1 : 0),
+            ...(encounter.legendary.rest?.wrap ? { endsRound: encounter.round } : {}),
           },
         }
       : {}),
@@ -755,6 +760,11 @@ async function openTurn(
   // context is read, so the prompt sees the party as it now stands.
   const leavingNotes = oocOnly ? [] : settleCompanionLeaving(campaign);
   const context = loadContext(campaign);
+  // Asked before the opening rolls anyone's initiative, which may move the
+  // pointer: what the fight was when the turn began is what a card is held to.
+  if (!oocOnly) {
+    returnStaleCards(campaignId, history);
+  }
   // Combat can never wedge on missing initiative: when nothing is pending,
   // stragglers are auto-rolled before the prompt is built.
   if (!oocOnly) {
@@ -2655,7 +2665,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       // the model is sent to the tool for the attack the player declared.
       const blow =
         !finalCall && !attackNudged && read && narration && turn.narrationParts[turn.narrationParts.length - 1] === narration
-          ? unrolledBlow(claims, read.outcomes)
+          ? unrolledBlowAt(claims, read.outcomes)
           : null;
       if (blow) {
         attackNudged = true;
@@ -2667,7 +2677,10 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
           tool_calls: echoedToolCalls,
         });
         answerRanAbove(fightOwnsFloor(campaignId), false);
-        turn.conversation.push({ role: "user", content: unrolledBlowPrompt(blow) });
+        // A blow on one of the party is an enemy's: its tool is
+        // enemy_attack, which the hand-off end_turn made lets through
+        // (enemy-turn-order.ts), not the player's attack (issue 931).
+        turn.conversation.push({ role: "user", content: blow.onParty ? unrolledEnemyBlowPrompt(blow.quote) : unrolledBlowPrompt(blow.quote) });
         saveDmTurn(turn);
         continue;
       }
@@ -3287,7 +3300,7 @@ function playedCard(context: TurnContext, message: CampaignMessage & { intent: M
 // plays it again nor chases it.
 function cardsPlayed(context: TurnContext): PlayedCard[] {
   return playerLinesSinceDm(context.campaign.id).flatMap((message) =>
-    message.intent && !message.cardResolvedAt && intentNeedsTool(message.intent) ? [playedCard(context, { ...message, intent: message.intent })] : [],
+    message.intent && !message.cardResolvedAt && !message.cardReturned && intentNeedsTool(message.intent) ? [playedCard(context, { ...message, intent: message.intent })] : [],
   );
 }
 
@@ -3317,7 +3330,7 @@ function cardsToSettle(context: TurnContext, turn: DmTurn): PlayedCard[] {
   const direct = directlyPlayed(turn.conversation);
   const began = Date.parse(turn.createdAt);
   return playerLinesSinceDm(context.campaign.id).flatMap((message) => {
-    if (!message.intent || message.cardResolvedAt || Date.parse(message.createdAt) > began) {
+    if (!message.intent || message.cardResolvedAt || message.cardReturned || Date.parse(message.createdAt) > began) {
       return [];
     }
     return intentNeedsTool(message.intent) || direct.has(cardCallKey(message.id)) ? [playedCard(context, { ...message, intent: message.intent })] : [];
@@ -3406,12 +3419,36 @@ type DirectCard = { messageId: string; index: number; name: string; args: Record
 function directCards(context: TurnContext): DirectCard[] {
   const authors = spellAuthorsFor(context.campaign);
   return playerLinesSinceDm(context.campaign.id).flatMap((message) => {
-    if (!message.intent || !message.characterId || message.cardResolvedAt) {
+    if (!message.intent || !message.characterId || message.cardResolvedAt || message.cardReturned) {
       return [];
     }
     const calls = directCardCalls(message.intent, message.characterId, directContextFor(context.campaign.id, message.intent, authors, message.characterId));
     return (calls ?? []).map((call, index) => ({ messageId: message.id, index, ...call }));
   });
+}
+
+// The cards a stopped turn left behind that the fight has since moved past
+// (issue 931): read as the player lines since the GM last spoke, a round-1
+// off-hand card was rolled in round 2 after the lead skipped its turn. They go
+// back to their players before the turn reads them, on the line the table
+// sees and in the history the prompt is built from, so nothing plays them.
+const STALE_CARD_REASON = "The fight moved on before the GM answered it, so it was not played and nothing was spent. Play it again if it still fits.";
+function returnStaleCards(campaignId: string, history: CampaignMessage[]): void {
+  const now = cardMoment(campaignId);
+  for (const message of playerLinesSinceDm(campaignId)) {
+    if (!message.intent || message.cardResolvedAt || message.cardReturned || cardStillDue(message.intent, now)) {
+      continue;
+    }
+    const updated = markCardReturned(message.id, STALE_CARD_REASON);
+    if (!updated) {
+      continue;
+    }
+    publishPersisted(campaignId, "message_updated", { message: updated });
+    const at = history.findIndex((entry) => entry.id === message.id);
+    if (at >= 0) {
+      history[at] = updated;
+    }
+  }
 }
 
 // The reply the turn loop reads for the direct cards, shaped as the model's

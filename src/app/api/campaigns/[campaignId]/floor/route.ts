@@ -11,6 +11,7 @@ import { keepRollsLeftBehind } from "@/lib/dm/pending-roll-land";
 import { requestDmTurn } from "@/lib/dm/loop";
 import { settleTableWait, tableWaitHasAnswers } from "@/lib/dm/table-wait";
 import { publishPersisted } from "@/lib/events";
+import { floorMoved, floorMovedLine } from "@/lib/dm/floor-expect-logic";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,6 +25,15 @@ const setFloorSchema = z.object({
   // spotlight only.
   characterIds: z.array(z.string()).max(12).optional(),
   prompt: z.string().trim().max(300).optional(),
+  // The floor the press was made against (src/lib/dm/floor-expect-logic.ts):
+  // one that has moved since is answered 409 and nothing is done.
+  expect: z
+    .object({
+      mode: z.enum(["open", "hold", "spotlight", "initiative"]),
+      currentName: z.string().max(120).optional(),
+      round: z.number().int().min(0).max(100_000).optional(),
+    })
+    .optional(),
 });
 
 // Release, layered: a hold opens into its stored next floor (which may be a
@@ -48,7 +58,15 @@ export async function POST(
   const floor = getFloor(campaignId);
 
   const parsed = setFloorSchema.safeParse(await request.json().catch(() => ({})));
-  const wanted = parsed.success ? parsed.data.set : undefined;
+  // A body it cannot read was taken as a bare release, which skips a turn in
+  // a fight: it is refused instead.
+  if (!parsed.success) {
+    return Response.json({ error: "That floor request could not be read." }, { status: 400 });
+  }
+  if (parsed.data.expect && floorMoved(floor, parsed.data.expect)) {
+    return Response.json({ error: floorMovedLine(floor), floor }, { status: 409 });
+  }
+  const wanted = parsed.data.set;
   if (wanted) {
     // Initiative is the encounter's to own; nothing sets the floor into or
     // out of it but the combat engine. That includes a hold that opens back
