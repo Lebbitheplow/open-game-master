@@ -1,4 +1,5 @@
 import { settleFrenzies } from "@/lib/dm/frenzy";
+import { regainHitPoints } from "@/lib/dm/regain";
 import { endRageBound } from "@/lib/dm/rage-bound";
 import { type Campaign } from "@/lib/db/campaigns";
 import type { TurnBudget } from "@/lib/dm/action-budget";
@@ -333,17 +334,11 @@ function startTurnFeatures(campaign: Campaign, combatantIds: string[]) {
     if (sheet.currentHp <= 0 || sheet.currentHp > Math.floor(max / 2)) {
       continue;
     }
-    const regained = Math.max(0, 5 + computeSheetDerived(sheet).abilityMods.con);
-    const currentHp = Math.min(max, sheet.currentHp + regained);
-    if (currentHp === sheet.currentHp) {
-      continue;
+    // Through the healing door (regain.ts), which bars what may not regain.
+    const regained = regainHitPoints(campaign, null, sheet, Math.max(0, 5 + computeSheetDerived(sheet).abilityMods.con), "Survivor, as their turn starts");
+    if (regained > 0) {
+      lines.push(`${sheet.name} regains ${regained} hit points (Survivor).`);
     }
-    patchSheetAudited(campaign.id, sheet.id, { currentHp }, {
-      kind: "heal",
-      reason: "Survivor, as their turn starts",
-      delta: { amount: currentHp - sheet.currentHp, newHp: currentHp },
-    });
-    lines.push(`${sheet.name} regains ${currentHp - sheet.currentHp} hit points (Survivor).`);
   }
   if (lines.length) {
     noteAtTable(campaign.id, lines);

@@ -22,6 +22,7 @@
 //
 // This module does not import mutations.ts: the cast is handed in.
 
+import { regainHitPoints } from "@/lib/dm/regain";
 import { spellBreaker } from "@/lib/dm/spell-breaker";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { recordCast } from "@/lib/dm/last-save";
@@ -285,13 +286,11 @@ export function castHealingSpell(
   // cleric 2 + the slot's level.
   if (slotLevel >= 1 && target.id !== caster.id && holdsFeature(caster, "blessed healer")) {
     const self = getSheetById(caster.id) ?? caster;
-    const currentHp = Math.min(effectiveMaxHp(self), self.currentHp + 2 + slotLevel);
-    if (currentHp > self.currentHp && self.currentHp > 0) {
-      const healed = patchSheet(self.id, { currentHp });
-      if (healed) {
-        publishPersisted(campaign.id, "sheet_updated", { sheet: healed });
-      }
-      riders.push(`Blessed Healer: ${caster.name} regains ${currentHp - self.currentHp}`);
+    // Through the healing door (regain.ts): a cursed or chilled cleric
+    // regains nothing.
+    const regained = self.currentHp > 0 ? regainHitPoints(campaign, null, self, 2 + slotLevel, "Blessed Healer") : 0;
+    if (regained > 0) {
+      riders.push(`Blessed Healer: ${caster.name} regains ${regained}`);
     }
   }
   // Spell Breaker (Arcana 6): one spell of the slot's level or lower ends.
