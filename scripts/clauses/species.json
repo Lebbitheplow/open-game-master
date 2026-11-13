@@ -2813,5 +2813,173 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.owlfolk.grants"
    }
   ]
+ },
+ "species::centaur": {
+  "source": "src/lib/srd/races.json",
+  "group": "species",
+  "level": null,
+  "sha": "b1815ab05df7",
+  "clauses": [
+   {
+    "c": "\"speed\":40",
+    "is": "held",
+    "by": "builder race option speed -> sheet.speed -> srd/index.ts speedFor",
+    "probe": "scripts/test-enforce-sweep-clauses-species.mjs: species.centaur.speed"
+   },
+   {
+    "c": "\"size\":\"Medium\"",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.centaur.grants"
+   },
+   {
+    "c": "\"asi\":{\"str\":2,\"wis\":1}",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.centaur.grants"
+   },
+   {
+    "c": "Hooves (1d4 bludgeoning unarmed strike)",
+    "is": "held",
+    "by": "src/lib/srd/racial-weapons.ts racialNaturalWeapon, read by pc_attack",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.centaur.natural-weapon"
+   },
+   {
+    "c": "Equine Build (count as one size larger for carrying)",
+    "is": "held",
+    "by": "src/lib/srd/mt-species-traits.ts carrySize (Equine Build), read by src/lib/dm/load-rules.ts liftLimits",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.centaur.powerful-build"
+   },
+   {
+    "c": "Survivor (one skill from Animal Handling, Medicine, Nature, Survival)",
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.centaur.choices"
+   },
+   {
+    "c": "\"languages\":[\"Common\",\"Sylvan\"]",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.centaur.grants"
+   },
+   {
+    "c": "\"skillChoice\":{\"count\":1,\"from\":[\"animal_handling\",\"medicine\",\"nature\",\"survival\"]}",
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.centaur.choices"
+   }
+  ]
+ },
+ "species::rabbitfolk": {
+  "source": "src/lib/srd/races.json",
+  "group": "species",
+  "level": null,
+  "sha": "b07a8c9b724c",
+  "clauses": [
+   {
+    "c": "\"speed\":30",
+    "is": "held",
+    "by": "builder race option speed -> sheet.speed -> srd/index.ts speedFor",
+    "probe": "scripts/test-enforce-sweep-clauses-species.mjs: species.rabbitfolk.speed"
+   },
+   {
+    "c": "\"size\":\"Medium\"",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.rabbitfolk.grants"
+   },
+   {
+    "c": "\"asi\":{\"dex\":2,\"wis\":1}",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.rabbitfolk.grants"
+   },
+   {
+    "c": "Hare-Trigger (add your proficiency bonus to initiative)",
+    "is": "held",
+    "by": "src/lib/srd/feature-effects.ts (Hare-Trigger, initiative_proficiency), read by src/lib/srd/index.ts computeSheetDerived initiative",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.rabbitfolk.hare-trigger"
+   },
+   {
+    "c": "Perception proficiency (Leporine Senses)",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.rabbitfolk.grants"
+   },
+   {
+    "c": "Rabbit Hop (a bonus-action leap of 5 feet times your proficiency bonus, as many times a long rest as your proficiency bonus)",
+    "is": "held",
+    "by": "src/lib/srd/authored-resources.json race_rabbit_hop (proficiency-bonus uses, long rest), spent by use_resource",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.rabbitfolk.rabbit-hop"
+   },
+   {
+    "c": "\"languages\":[\"Common\",\"Sylvan\"]",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.rabbitfolk.grants"
+   },
+   {
+    "c": "\"skills\":[\"perception\"]",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.rabbitfolk.grants"
+   }
+  ]
+ },
+ "species::shifter": {
+  "source": "src/lib/srd/races.json",
+  "group": "species",
+  "level": null,
+  "sha": "86de397afaa6",
+  "clauses": [
+   {
+    "c": "\"speed\":30",
+    "is": "held",
+    "by": "builder race option speed -> sheet.speed -> srd/index.ts speedFor",
+    "probe": "scripts/test-enforce-sweep-clauses-species.mjs: species.shifter.speed"
+   },
+   {
+    "c": "\"size\":\"Medium\"",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.shifter.grants"
+   },
+   {
+    "c": "\"asi\":{\"dex\":2,\"wis\":1}",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.shifter.grants"
+   },
+   {
+    "c": "Darkvision 60 ft",
+    "is": "held",
+    "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.shifter.darkvision"
+   },
+   {
+    "c": "Bestial Instincts (one skill from Acrobatics, Athletics, Intimidation, Survival)",
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.shifter.choices"
+   },
+   {
+    "c": "Shifting (a bonus action for 1 minute of temporary hit points twice your proficiency bonus, as many times a long rest as your proficiency bonus)",
+    "is": "held",
+    "by": "src/lib/srd/authored-resources.json race_shifting (proficiency-bonus uses, the shifted form and its temporary hit points), spent by use_resource",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.shifter.shifting"
+   },
+   {
+    "c": "\"languages\":[\"Common\",\"Sylvan\"]",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.shifter.grants"
+   },
+   {
+    "c": "\"skillChoice\":{\"count\":1,\"from\":[\"acrobatics\",\"athletics\",\"intimidation\",\"survival\"]}",
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.shifter.choices"
+   }
+  ]
  }
 }

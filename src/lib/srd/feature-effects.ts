@@ -232,6 +232,12 @@ export const FEATURE_EFFECTS: FeatureDef[] = ([
   },
   {
     // The warforged lineage's built-in plating, applied by the AC engine.
+    // A rabbitfolk's Hare-Trigger: the proficiency bonus added to initiative.
+    match: ["hare-trigger"],
+    effects: [{ kind: "initiative_proficiency" }],
+    guidance: "Hare-Trigger: the proficiency bonus is added to initiative rolls. The server adds it.",
+  },
+  {
     // And a Tome of Heroes derro's Tenebrous Flesh, "a +1 bonus to your
     // Armor Class" (src/lib/content/species-prose-logic.ts).
     match: ["integrated protection", "tenebrous flesh"],

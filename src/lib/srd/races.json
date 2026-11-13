@@ -1347,6 +1347,84 @@
       "skills": [
         "stealth"
       ]
+    },
+    {
+      "id": "centaur",
+      "name": "Centaur",
+      "speed": 40,
+      "size": "Medium",
+      "asi": {
+        "str": 2,
+        "wis": 1
+      },
+      "traits": [
+        "Hooves (1d4 bludgeoning unarmed strike)",
+        "Equine Build (count as one size larger for carrying)",
+        "Survivor (one skill from Animal Handling, Medicine, Nature, Survival)"
+      ],
+      "languages": [
+        "Common",
+        "Sylvan"
+      ],
+      "skillChoice": {
+        "count": 1,
+        "from": [
+          "animal_handling",
+          "medicine",
+          "nature",
+          "survival"
+        ]
+      }
+    },
+    {
+      "id": "rabbitfolk",
+      "name": "Rabbitfolk",
+      "speed": 30,
+      "size": "Medium",
+      "asi": {
+        "dex": 2,
+        "wis": 1
+      },
+      "traits": [
+        "Hare-Trigger (add your proficiency bonus to initiative)",
+        "Perception proficiency (Leporine Senses)",
+        "Rabbit Hop (a bonus-action leap of 5 feet times your proficiency bonus, as many times a long rest as your proficiency bonus)"
+      ],
+      "languages": [
+        "Common",
+        "Sylvan"
+      ],
+      "skills": [
+        "perception"
+      ]
+    },
+    {
+      "id": "shifter",
+      "name": "Shifter",
+      "speed": 30,
+      "size": "Medium",
+      "asi": {
+        "dex": 2,
+        "wis": 1
+      },
+      "traits": [
+        "Darkvision 60 ft",
+        "Bestial Instincts (one skill from Acrobatics, Athletics, Intimidation, Survival)",
+        "Shifting (a bonus action for 1 minute of temporary hit points twice your proficiency bonus, as many times a long rest as your proficiency bonus)"
+      ],
+      "languages": [
+        "Common",
+        "Sylvan"
+      ],
+      "skillChoice": {
+        "count": 1,
+        "from": [
+          "acrobatics",
+          "athletics",
+          "intimidation",
+          "survival"
+        ]
+      }
     }
   ],
   "_license_authored": "The lineages below the SRD nine are original content for Open Game Master: their trait lines are written from scratch to state the mechanics. No publisher's descriptive text is reproduced."

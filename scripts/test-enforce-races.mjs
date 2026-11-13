@@ -140,10 +140,11 @@ await test("the bundled race table matches the rulebook: bonuses, speed, size, l
 });
 
 await test("every bundled race is well formed, and none lowers a score", () => {
-  assert.equal(srd.SRD_RACES.length, 43);
-  assert.equal(new Set(srd.SRD_RACES.map((race) => race.id)).size, 43);
+  assert.equal(srd.SRD_RACES.length, 46);
+  assert.equal(new Set(srd.SRD_RACES.map((race) => race.id)).size, 46);
   for (const race of srd.SRD_RACES) {
-    assert.ok([25, 30, 35].includes(race.speed), `${race.id} speed ${race.speed}`);
+    // A centaur gallops at 40.
+    assert.ok([25, 30, 35, 40].includes(race.speed), `${race.id} speed ${race.speed}`);
     assert.ok(["Small", "Medium"].includes(race.size), `${race.id} size`);
     assert.ok(race.languages.includes("Common"), `${race.id} speaks no Common`);
     assert.ok(race.traits.length > 0, `${race.id} has no traits`);
@@ -327,6 +328,8 @@ await test("every racial skill or tool pick is offered from the list its trait n
     changeling: ["deception", "insight", "intimidation", "persuasion"],
     lizardfolk: ["animal_handling", "nature", "perception", "stealth", "survival"],
     orc: ["animal_handling", "insight", "intimidation", "medicine", "nature", "perception", "survival"],
+    centaur: ["animal_handling", "medicine", "nature", "survival"],
+    shifter: ["acrobatics", "athletics", "intimidation", "survival"],
   };
   const OPEN = ["half_elf", "variant_human", "warforged"];
   const label = (id) => id.replace(/_/g, " ");
@@ -376,6 +379,7 @@ const SOUGHT = {
   eladrin: "Elf (Eladrin)", sea_elf: "Elf (Sea)", duergar: "Dwarf (Duergar)",
   triton: "Triton", serpentfolk: "Serpentfolk", kobold: "Kobold", aarakocra: "Aarakocra",
   hobgoblin: "Hobgoblin", satyr: "Satyr", fairy: "Fairy", owlfolk: "Owlfolk",
+  centaur: "Centaur", rabbitfolk: "Rabbitfolk", shifter: "Shifter",
 };
 await test("the builder offers the lineages players look for, with no content pack", () => {
   const missing = Object.entries(SOUGHT).filter(([id, name]) => builder.races.find((entry) => entry.id === id)?.name !== name).map(([id]) => id);

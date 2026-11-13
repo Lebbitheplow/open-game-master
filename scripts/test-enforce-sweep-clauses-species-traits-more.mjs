@@ -127,7 +127,7 @@ for (const row of RACES) {
       same([80 - hurt, out.ok, t.sheet(who).currentHp, t.used(who, "race_stones_endurance"), again.ok], [6, true, 80, 1, false], `${row.name}: a blow of 6 answered with Stone's Endurance, then a second answer (${out.error ?? ""})`);
     });
   }
-  if (holds(row, "powerful build")) {
+  if (holds(row, "powerful build") || holds(row, "equine build")) {
     probe("powerful-build", async () => {
       const { liftLimits } = await import("../src/lib/dm/load-rules.ts");
       const t = await rig.table();
@@ -273,6 +273,32 @@ for (const row of RACES) {
       const heavy = flightOf(encounter, t.kit.token(who.id));
       const feet = Number(/flying speed of (\d+)/.exec(row.traits.join(" "))[1]);
       same([bare, light, heavy, flightOf(encounter, t.kit.token(other.id))], [feet, feet, null, null], `${row.name}: flying speed bare, in leather, in chain mail, and a human's`);
+    });
+  }
+  // Hare-Trigger: the proficiency bonus on initiative, beside a human's.
+  if (holds(row, "hare-trigger")) {
+    probe("hare-trigger", async () => {
+      const t = await rig.table();
+      const who = t.hero(of());
+      const other = t.hero(plain());
+      const dex = (sheet) => Math.floor((sheet.abilities.dex - 10) / 2);
+      same([t.derived(who).initiative, t.derived(other).initiative], [dex(t.sheet(who)) + 3, dex(t.sheet(other))], `${row.name}: initiative at 5th level (proficiency +3), beside a human's`);
+    });
+  }
+  // A use counted in proficiency bonuses, back on a long rest; Shifting also
+  // lays its form and twice the proficiency bonus in temporary hit points.
+  for (const [trait, id, name, resource] of [["rabbit hop", "rabbit-hop", "Rabbit Hop", "race_rabbit_hop"], ["shifting (", "shifting", "Shifting", "race_shifting"]]) {
+    if (!holds(row, trait)) continue;
+    probe(id, async () => {
+      const t = await rig.table();
+      const who = t.hero(of());
+      await t.fight([who]);
+      const out = await t.use(who, name);
+      const seen = [out.ok, t.max(who, resource), t.used(who, resource), t.budget()?.bonusUsed];
+      const form = resource === "race_shifting" ? [t.has(who, "shifted"), t.sheet(who).tempHp] : [];
+      await t.kit.endFight();
+      await t.rest("long");
+      same([seen, form, t.used(who, resource)], [[true, 3, 1, true], resource === "race_shifting" ? [true, 6] : [], 0], `${row.name}: one use of three at 5th level (a bonus action), ${resource === "race_shifting" ? "the form and 6 temporary hit points, " : ""}and every use back after a long rest (${out.error ?? ""})`);
     });
   }
   if (holds(row, "expert forgery")) {
@@ -509,6 +535,8 @@ const NAMES = [
   "species.serpentfolk.magic-resistance", "species.serpentfolk.poison-immunity",
   "species.kobold.pack-tactics", "species.aarakocra.flight", "species.aarakocra.natural-weapon",
   "species.satyr.magic-resistance", "species.satyr.natural-weapon", "species.fairy.flight", "species.owlfolk.flight",
+  "species.centaur.natural-weapon", "species.centaur.powerful-build",
+  "species.rabbitfolk.hare-trigger", "species.rabbitfolk.rabbit-hop", "species.shifter.shifting",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
 
