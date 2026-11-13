@@ -26,7 +26,7 @@ import { computeAbilityScore, INSPIRATION_SPEND, toolProficiencyBonus } from "@/
 import { rollFeatureRiders } from "@/lib/dm/roll-feature-riders";
 import type { RollArgs } from "@/lib/dm/roll-args";
 import { DM_TOOL_NAME_PATTERN, invokeToolCallRegex, toolTextRegex, withoutIdArguments, withoutServerLines, xmlToolCallRegex } from "@/lib/dm/tool-text";
-import { acBreakdownFor, computeSheetDerived, findSkill } from "@/lib/srd";
+import { acBreakdownFor, computeSheetDerived, findSkill, SRD_SKILLS } from "@/lib/srd";
 import { withoutSentences, type NarrationClaim } from "@/lib/dm/claims-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { Light } from "@/lib/dm/notice-logic";
@@ -814,6 +814,25 @@ function resolveUnfloored(
     return { error: `${args.kind} needs a dice expression like "1d20+4" or "2d6+2".`, retry: true };
   }
   return { expression: args.expression, detail: args.reason?.slice(0, 60) ?? "" };
+}
+
+// A custom roll that is really a check, a save or an attack: a d20 with a
+// modifier added, or one whose reason names an ability, a skill or a kind of
+// roll. Qwen3.6-35B rolled "1d20+3" for "Dexterity (Physical)" as a custom
+// roll (issue 942), so the sheet's modifier, its conditions and proficiency,
+// and the DC never came into it, and the card read "Roll (Dexterity
+// (Physical))". A bare d20 for a table to roll on stays a custom roll.
+const CHECK_WORDS = new RegExp(
+  `\\b(?:str|dex|con|int|wis|cha|strength|dexterity|constitution|intelligence|wisdom|charisma|checks?|saves?|saving|throws?|initiative|attacks?|to[- ]hit|${SRD_SKILLS.map((skill) => skill.id.replaceAll("_", "[ _-]")).join("|")})\\b`,
+  "i",
+);
+
+export function customRollIsCheck(args: Pick<RollArgs, "kind" | "expression" | "reason">): boolean {
+  const expression = (args.expression ?? "").replace(/\s+/g, "");
+  if (args.kind !== "custom" || !/d20(?!\d)/i.test(expression)) {
+    return false;
+  }
+  return /d20(?:k[hl]\d+)?[+-]\d/i.test(expression) || CHECK_WORDS.test(args.reason ?? "");
 }
 
 // Finds the sheet a model-supplied character reference points at: exact id

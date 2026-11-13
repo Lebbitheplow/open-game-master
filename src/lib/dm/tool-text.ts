@@ -141,6 +141,19 @@ const SERVER_LINE = new RegExp(`\\[(?:${SERVER_TAGS})[^\\n]*(?:\\n|$)`, "g");
 // above its narration, it is a label, and the narration under it stays.
 const GM_LABEL = /\[Game Master\][ \t]*/g;
 
+// The story arc's bookkeeping as the prompt writes it (arc-logic.ts
+// renderArcPrompt): a beat's status marker, the [NOW] beat's waypoint
+// checklist and its numbered steps. Qwen3.6-35B, ticking a step in words
+// instead of passing `waypoint` on a call, ended a scene on "[waypoint=3]"
+// and "The [NOW] beat is complete." (issue 941). No story writes any of
+// them, in any language: a sentence holding one is the model's note to
+// itself, and goes whole (claims-logic.ts metaQuotes, narration-tidy-logic.ts
+// withoutToolTalk). The markers are the server's words, case and all.
+export const ARC_MARKER = /\[(?:NOW|ahead|done|skipped)\]|\[[ \t]*waypoints?\b[^\]\n]{0,40}\]|\bwaypoints?[ \t]*(?:[=#:]|no\.)[ \t]*\d|\bwaypoints?[ \t]+\d+\b|(?:^|[ \t])\[[ xX]\][ \t]/;
+// The same markers as the draft streams (story-prompt.ts STREAM_STRIP), the
+// bracketed ones only: the rest wait for the sentence's end in the tidy.
+export const ARC_MARKER_STREAM_SOURCE = `\\[(?:NOW|ahead|done|skipped)\\][ \\t]*|\\[[ \\t]*waypoints?\\b[^\\]\\n]{0,40}\\][ \\t]*`;
+
 // What a reply holds of the server's own lines, cut: the card line and every
 // tagged line above.
 export function withoutServerLines(text: string): string {

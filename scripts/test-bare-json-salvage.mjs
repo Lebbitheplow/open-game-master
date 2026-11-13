@@ -286,7 +286,7 @@ const toolResults = (request) =>
   assert.equal(repeated.text, NARRATION, `expected the new narration, got: ${repeated.text}`);
   assert.equal(repeated.calls, 2);
   assert.ok(
-    repeated.requests[1].messages.some((m) => m.role === "user" && /repeats your previous narration/.test(String(m.content))),
+    repeated.requests[1].messages.some((m) => m.role === "user" && /repeats one of your earlier narrations/.test(String(m.content))),
     "the second call says why",
   );
   const fresh = await run("A new turn", ["narrate"], LAST_TURN);

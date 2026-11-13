@@ -15,6 +15,7 @@ import { textKey, words } from "../language/text-logic.ts";
 import type { TableLanguage } from "../schemas/game-settings-options.ts";
 import { DEED_KINDS, type DeedKind } from "./companion-values-logic.ts";
 import { BOND_MOVES, bondClaim, bondKindLine, type BondClaim } from "./story-moves-logic.ts";
+import { ARC_MARKER } from "./tool-text.ts";
 
 export const CLAIM_KINDS = ["hit", "miss", "dies", "downed", "amount", "cast", "fight_start", "roll_ask", "aside", "speaker", "turn_over", "deed", "bond"] as const;
 export type ClaimKind = (typeof CLAIM_KINDS)[number];
@@ -602,11 +603,12 @@ export function withoutSentences(text: string, quotes: readonly string[]): strin
 // its own input format echoed back ("Bram | attempt to ask the merchant..."),
 // a table note copied out, and sentences about tool calls and corrections
 // ("I will correct this by calling the necessary tool to resolve the attack
-// properly"). The phrasings are English, read only at an English table; the
+// properly"), and about the story arc in plain words ("The current beat is
+// complete.", issue 941). The phrasings are English, read only at an English table; the
 // reader's asides cover every language. A sentence holding a quotation is
 // speech and is never taken.
 const ENGLISH_META_SENTENCE =
-  /\btool[ -]?calls?\b|\b(?:the|this|a) tool'?s? (?:output|result)s?\b|\bcalling the (?:necessary |right |appropriate |correct )?tools?\b|\bnarrate the results?\b|\bunwarranted assumption\b|\bmy (?:previous|last|earlier) (?:response|reply|narration|message)\b/i;
+  /\btool[ -]?calls?\b|\b(?:the|this|a) tool'?s? (?:output|result)s?\b|\bcalling the (?:necessary |right |appropriate |correct )?tools?\b|\bnarrate the results?\b|\bunwarranted assumption\b|\bmy (?:previous|last|earlier) (?:response|reply|narration|message)\b|\bstory beats?\b|\b(?:the|this) (?:current |active |next )?beat is (?:now )?(?:complete|completed|done|finished)\b/i;
 const ECHOED_LINE = /^[ \t]*(?:\[[^\]\n]{1,80}\|\s*attempt\][^\n]*|[^\n|[\]]{1,60}\s\|\s*attempt\b[^\n]*|\[Table note\][^\n]*)$/gim;
 // The board squares a small model (Qwen3.5 9B) copied into the story,
 // "(7,13)": the board shows them; the prose never needs them. The turn order
@@ -617,7 +619,9 @@ const GRID_SQUARE = /\(\s*\d{1,3}\s*,\s*\d{1,3}\s*\)/;
 export function metaQuotes(text: string, language: TableLanguage): string[] {
   const quotes = [...text.matchAll(ECHOED_LINE)].map((match) => match[0].trim());
   for (const match of text.matchAll(/[^.!?\n]+[.!?]*/g)) {
-    if (((language === "english" && ENGLISH_META_SENTENCE.test(match[0])) || GRID_SQUARE.test(match[0])) && !/["\u201c\u201d\u00ab\u00bb]/.test(match[0])) {
+    // The story arc's markers go at every table, quoted or not: no one in a
+    // story says "[NOW]" (tool-text.ts ARC_MARKER, issue 941).
+    if (ARC_MARKER.test(match[0]) || (((language === "english" && ENGLISH_META_SENTENCE.test(match[0])) || GRID_SQUARE.test(match[0])) && !/["\u201c\u201d\u00ab\u00bb]/.test(match[0]))) {
       quotes.push(match[0].trim());
     }
   }

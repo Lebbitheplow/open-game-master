@@ -1,4 +1,4 @@
-import { partialServerTextStart, SERVER_TEXT_STREAM_SOURCE, withoutIdArguments, withoutServerLines } from "./dm/tool-text.ts";
+import { ARC_MARKER_STREAM_SOURCE, partialServerTextStart, SERVER_TEXT_STREAM_SOURCE, withoutIdArguments, withoutServerLines } from "./dm/tool-text.ts";
 
 export type StoryModelResult = {
   storyText: string;
@@ -126,9 +126,10 @@ const STREAM_CHANNEL_BOUNDARY = /<\|?channel\|?>|<\|?(?:start|im_start)\|?>/i;
 // finished narration (src/lib/dm/tool-text.ts withoutRollMarkers): it never
 // reaches the draft either (issue #531), nor does a card's line or another
 // line of the server's the model copied back, nor an id one carries (issue
-// 900, src/lib/dm/tool-text.ts SERVER_TEXT_STREAM_SOURCE).
+// 900, src/lib/dm/tool-text.ts SERVER_TEXT_STREAM_SOURCE), nor the story
+// arc's markers (issue 941, ARC_MARKER_STREAM_SOURCE).
 const STREAM_STRIP = new RegExp(
-  `${/<\/(?:think|thinking|thought|reasoning)>|<\|?channel\|?>\s*final\s*(?:<\|?message\|?>)?|assistantfinal[:\s]*|<\|?(?:start|im_start)\|?>\s*assistant\b|<\|?(?:start|end|message|channel|return|constrain|call|im_start|im_end)\|?>|\[roll:[^\]\n]{0,80}\][ \t]*/.source}|${SERVER_TEXT_STREAM_SOURCE}`,
+  `${/<\/(?:think|thinking|thought|reasoning)>|<\|?channel\|?>\s*final\s*(?:<\|?message\|?>)?|assistantfinal[:\s]*|<\|?(?:start|im_start)\|?>\s*assistant\b|<\|?(?:start|end|message|channel|return|constrain|call|im_start|im_end)\|?>|\[roll:[^\]\n]{0,80}\][ \t]*/.source}|${SERVER_TEXT_STREAM_SOURCE}|${ARC_MARKER_STREAM_SOURCE}`,
   "i",
 );
 
