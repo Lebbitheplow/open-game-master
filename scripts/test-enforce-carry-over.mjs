@@ -4,6 +4,7 @@
 import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
+import { combatKit } from "./lib/enforce-combat.mjs";
 
 const { test, finish } = suite("test-enforce-carry-over");
 const world = await openWorld();
@@ -46,6 +47,20 @@ await test("What was laid on a fight's foes ends with the fight; what a hero car
   patchEnemyHp(goblin.id, 0, "dead");
   assert.equal((await world.invoke("end_encounter", { outcome: "victory" })).ok, true);
   assert.deepEqual(listEffects(world.campaignId).map((effect) => effect.name), ["Goblin's Hex"]);
+});
+
+await test("What lasts until somebody's next turn ends with the fight: no Dodge carried into the next one (SRD 5.1, Dodge)", async () => {
+  // "Until the start of your next turn": with the fight over there are no
+  // turns left to wait for. The hero who dodged last walked into the next
+  // fight still dodging, so its first-round attacks rolled at disadvantage.
+  const hero = world.addHero({ class: "fighter", level: 5, maxHp: 44 });
+  await world.beginFight([{ monster: "goblin", count: 1 }]);
+  (await combatKit(world)).giveTurn(hero.id);
+  const dodged = await world.invoke("take_action", { characterId: hero.id, action: "dodge" });
+  assert.equal(dodged.ok, true, dodged.error);
+  assert.deepEqual(world.sheet(hero.id).conditions, ["dodging"]);
+  assert.equal((await world.invoke("end_encounter", { outcome: "enemies_fled" })).ok, true);
+  assert.deepEqual(world.sheet(hero.id).conditions, []);
 });
 
 world.close();

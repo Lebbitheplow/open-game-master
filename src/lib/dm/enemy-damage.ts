@@ -28,7 +28,8 @@ import { spellEffectsOnEnemyDamage } from "@/lib/dm/spell-effects";
 import { enemyDamageMath, fightOverLine } from "@/lib/dm/encounter-logic";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
-import { damageAdjust, removeConditions, resistsAllDamage } from "@/lib/dm/condition-logic";
+import { damageAdjust, removeConditions, resistsAllDamage, tickConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { BURNING_OIL_DAMAGE, COVERED_IN_OIL, oilCatches } from "@/lib/srd/gear-weapons";
 import { enemyDefenseLines, meetEnemyPart } from "@/lib/dm/enemy-defenses";
 import { authoredIgnoresResistance } from "@/lib/dm/authored-saves";
@@ -265,6 +266,7 @@ export function settleFightState(campaign: Campaign, encounterId: string): { ite
   endFightEffects(campaign.id);
   // And what was laid on its foes (active-effects.ts endFoeEffects).
   endFoeEffects(campaign.id, listEnemies(encounterId).map((enemy) => enemy.id));
+  endTurnBoundOnSheets(campaign);
   // A frenzy outliving its rage costs its level of exhaustion (frenzy.ts).
   settleFrenzies(campaign);
   // Whoever is still inside a creature that swallowed them comes out, prone
@@ -273,6 +275,30 @@ export function settleFightState(campaign: Campaign, encounterId: string): { ite
   // What was dropped stays where it fell; what a fallen enemy held lies with
   // it (src/lib/db/dropped-items.ts, issue #424). Returns what lies there.
   return { itemsLeft: settleDroppedOnFightEnd(campaign.id, encounterId), swallowedOut };
+}
+
+// What lasts to the start or the end of somebody's next turn (Dodge, Shield,
+// Help, the Protection style, a Stunning Strike) ends with the fight: there
+// are no more turns to wait for, as the clock already rules for time passing
+// outside one (condition-logic.ts tickConditions endTurnBound). Kept, a hero
+// who dodged on the last turn walked into the next fight still dodging, and
+// every attack at them in its first round rolled at disadvantage.
+function endTurnBoundOnSheets(campaign: Campaign) {
+  for (const stale of listSheets(campaign.id)) {
+    const sheet = getSheetById(stale.id) ?? stale;
+    const ended = tickConditions(sheet.conditions, sheet.conditionMeta as ConditionMetaMap, 0, { endTurnBound: true, saves: false });
+    if (!ended.expired.length && JSON.stringify(ended.meta) === JSON.stringify(sheet.conditionMeta)) {
+      continue;
+    }
+    const updated = patchSheetAudited(campaign.id, sheet.id, { conditions: ended.conditions, conditionMeta: ended.meta }, {
+      kind: "condition_clock",
+      reason: "the fight ended",
+      delta: { ended: ended.expired },
+    });
+    if (updated) {
+      publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
+    }
+  }
 }
 
 // What follows any fight's end, the lead's force-end included (issue 657):
