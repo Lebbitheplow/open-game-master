@@ -342,7 +342,10 @@ await test(
 );
 
 saveGlobalConfig({ images: { comfyWorkflowPreset: "checkpoint" } });
-await test("switching back keeps the stored checkpoint and submits the standard graph", fakeComfy(), async ({ seen }) => {
+await test("switching back keeps the stored checkpoint and submits the standard graph", fakeComfy({
+  "/object_info/CheckpointLoaderSimple": () =>
+    json({ CheckpointLoaderSimple: { input: { required: { ckpt_name: [["model.safetensors", "keep-this-checkpoint.safetensors"]] } } } }),
+}), async ({ seen }) => {
   await generateComfyImage({ url: COMFY, checkpoint: getGlobalConfig().images.comfyCheckpoint,
     prompt: "a tavern", mode: "fast", aspect: "square", seed: 42 });
   const sent = JSON.parse(seen.find((call) => call.url.endsWith("/prompt")).body);
@@ -372,6 +375,29 @@ await test(
     await generateComfyImage({ url: COMFY, checkpoint: "picked.safetensors", prompt: "a tavern", mode: "fast", aspect: "square", seed: 7 });
     const sent = JSON.parse(seen.find((call) => call.url.endsWith("/prompt")).body);
     assert.equal(sent.prompt["1"].inputs.ckpt_name, "picked.safetensors");
+  },
+);
+
+// Issue 943's report: a Flux-only ComfyUI with an empty checkpoint list got
+// the desktop app's stored SDXL name, and every map showed ComfyUI's raw 400.
+await test(
+  "a checkpoint this ComfyUI does not list is refused by name before anything is queued",
+  fakeComfy({ "/object_info/CheckpointLoaderSimple": () => json({ CheckpointLoaderSimple: { input: { required: { ckpt_name: [[]] } } } }) }),
+  async ({ seen }) => {
+    await assert.rejects(
+      generateComfyImage({ url: COMFY, checkpoint: "sd_xl_base_1.0.safetensors", prompt: "a tavern", mode: "fast", aspect: "square" }),
+      /ComfyUI has no checkpoint named sd_xl_base_1\.0\.safetensors\..*Admin > Images/,
+    );
+    assert.ok(!seen.some((call) => call.url.endsWith("/prompt")), "nothing is queued");
+  },
+);
+
+await test(
+  "a ComfyUI that does not answer its list is left to the submission to report",
+  fakeComfy({ "/object_info/CheckpointLoaderSimple": () => new Response("busy", { status: 503 }) }),
+  async ({ seen }) => {
+    await generateComfyImage({ url: COMFY, checkpoint: "model.safetensors", prompt: "a tavern", mode: "fast", aspect: "square", seed: 3 });
+    assert.ok(seen.some((call) => call.url.endsWith("/prompt")));
   },
 );
 
