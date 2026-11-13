@@ -459,7 +459,10 @@ function arcanumBlocks(desk: DeskCounts, block: (target: BlockerTarget, message:
   const levelled = desk.chosenPrepared.map((name) => ({ name, level: spellLevelOf(name) }));
   const owed = arcanumProblems(desk.klass.id ?? "", desk.casterLevel, levelled).map((line) => block("spells", line));
   const missing = levels.filter((spellLevel) => !levelled.some((spell) => spell.level === spellLevel));
-  if (missing.length) {
+  // A pack spell the bundled checklist has no level for may be the arcanum:
+  // the server, which knows its level, judges it.
+  const unknown = levelled.filter((spell) => spell.level === null).length;
+  if (missing.length > unknown) {
     owed.push(
       block(
         "spells",

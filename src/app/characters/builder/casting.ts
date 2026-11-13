@@ -63,7 +63,9 @@ export function builderCasting(
     third || klass.casterType !== "none"
       ? Math.max(
           Object.keys(spellSlotsFor(klass.id, level, subclass, profile)).reduce((top, slot) => Math.max(top, Number(slot)), 0),
-          third ? 0 : arcanumTopFor(rules, level),
+          // The warlock's own feature: a setting class on the warlock's
+          // tables has no arcanum to pick.
+          third ? 0 : arcanumTopFor(klass.id, level),
         )
       : 0;
   const cantripCap = !ability

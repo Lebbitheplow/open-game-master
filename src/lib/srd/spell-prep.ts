@@ -481,6 +481,9 @@ export function spellListProblems(
     freeSpells?: string[];
     // The table's subclasses, for a workshop subclass's always-prepared spells.
     extras?: SubclassExtras;
+    // A spell's level the bundled checklist may not know (a pack spell held
+    // as a Mystic Arcanum); the checklist's when absent.
+    spellLevelOf?: (name: string) => number | null;
   } = {},
 ): string[] {
   const problems: string[] = [];
@@ -514,7 +517,7 @@ export function spellListProblems(
     // Mystic Arcanum's spells sit on top of the count, one of each arcanum
     // level (src/lib/srd/mystic-arcanum.ts): the rest are held to the
     // column alone, so an arcanum never stands in for a spell known.
-    const levelled = held.map((name) => ({ name, level: spellLevelOf(name) }));
+    const levelled = held.map((name) => ({ name, level: spellLevelOf(name) ?? options.spellLevelOf?.(name) ?? null }));
     const arcanumSlots = arcanumLevelsFor(view.classId, view.level).length;
     const regular = counted - arcanaHeld(view.classId, view.level, levelled);
     if (cap && counted > cap.count) {

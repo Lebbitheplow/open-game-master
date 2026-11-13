@@ -152,6 +152,13 @@ test("a multiclassed sheet checks each caster class at its own level", () => {
     assert.equal(prep.spellCapOf(view(20, []), abilities).count, 15, "the column itself is unchanged");
   });
 
+  test("a content pack's 6th-level spell is an arcanum too, by the level the pack gives it", () => {
+    const known = [...regular(11), "Astral Assembly Of The Test"];
+    const held = sheet("warlock", 11, { ability: "cha", cantrips: cantrips.slice(0, 4), known });
+    assert.deepEqual(spellListProblems(held, { spellLevelOf: (name) => (name === "Astral Assembly Of The Test" ? 6 : null) }), []);
+    assert.match(spellListProblems(held).join(" "), /may hold 11 spells known/, "a name of no known level counts as a spell known");
+  });
+
   const { arcanumPickRefusal } = await import("../src/lib/srd/mystic-arcanum.ts");
   test("the level-up dialog keeps room for the arcanum and takes one of its level", () => {
     const at11 = { classId: "warlock", level: 11, held: [1, 2, 3, 4, 5, 5, 5, 5, 5, 5], room: 2 };
