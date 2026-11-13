@@ -119,7 +119,7 @@ export function revisedSpecies(raceId: string, raceTraitNames: readonly string[]
 // The bundled dwarves under every spelling of their ids, and a race written
 // "Dwarf": never a species whose id only holds the word (Tome of Heroes'
 // Dwarf Chassis answers by its own rules).
-const DWARVES = new Set(["dwarf", "hill_dwarf", "mountain_dwarf"]);
+const DWARVES = new Set(["dwarf", "hill_dwarf", "mountain_dwarf", "duergar"]);
 export function isDwarf(raceId: string): boolean {
   return DWARVES.has(srdRaceId(raceId));
 }

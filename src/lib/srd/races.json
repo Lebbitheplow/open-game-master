@@ -76,6 +76,60 @@
       ]
     },
     {
+      "id": "duergar",
+      "name": "Dwarf (Duergar)",
+      "speed": 25,
+      "size": "Medium",
+      "asi": {
+        "con": 2,
+        "str": 1
+      },
+      "traits": [
+        "Superior Darkvision 120 ft",
+        "Dwarven Resilience (adv. vs poison)",
+        "Dwarven Combat Training (battleaxe, handaxe, light hammer, warhammer)",
+        "Stonecunning",
+        "Duergar Resilience (adv. vs illusions, charmed and paralyzed)",
+        "Duergar Magic (enlarge/reduce on yourself from 3rd level, invisibility on yourself from 5th, 1/long rest each)",
+        "Sunlight Sensitivity (disadvantage on attacks and sight-based Perception in direct sunlight)"
+      ],
+      "languages": [
+        "Common",
+        "Dwarvish",
+        "Undercommon"
+      ],
+      "toolChoice": {
+        "count": 1,
+        "from": [
+          "smith's tools",
+          "brewer's supplies",
+          "mason's tools"
+        ]
+      },
+      "weapons": [
+        "battleaxes",
+        "handaxes",
+        "light hammers",
+        "warhammers"
+      ],
+      "innateSpells": {
+        "trait": "Duergar Magic",
+        "ability": "int",
+        "spells": [
+          {
+            "name": "Enlarge/Reduce",
+            "level": 3,
+            "per": "long"
+          },
+          {
+            "name": "Invisibility",
+            "level": 5,
+            "per": "long"
+          }
+        ]
+      }
+    },
+    {
       "id": "high_elf",
       "name": "Elf (High)",
       "speed": 30,
@@ -191,6 +245,82 @@
           }
         ]
       }
+    },
+    {
+      "id": "eladrin",
+      "name": "Elf (Eladrin)",
+      "speed": 30,
+      "size": "Medium",
+      "asi": {
+        "dex": 2,
+        "cha": 1
+      },
+      "traits": [
+        "Darkvision 60 ft",
+        "Fey Ancestry (adv. vs charm, immune to magical sleep)",
+        "Trance",
+        "Perception proficiency (Keen Senses)",
+        "Elf Weapon Training (longsword, shortsword, shortbow, longbow)",
+        "Fey Step (misty step, 1/short rest)"
+      ],
+      "languages": [
+        "Common",
+        "Elvish"
+      ],
+      "skills": [
+        "perception"
+      ],
+      "weapons": [
+        "longswords",
+        "shortswords",
+        "shortbows",
+        "longbows"
+      ],
+      "innateSpells": {
+        "trait": "Fey Step",
+        "ability": "cha",
+        "spells": [
+          {
+            "name": "Misty Step",
+            "level": 1,
+            "rest": "short"
+          }
+        ]
+      }
+    },
+    {
+      "id": "sea_elf",
+      "name": "Elf (Sea)",
+      "speed": 30,
+      "size": "Medium",
+      "asi": {
+        "dex": 2,
+        "con": 1
+      },
+      "traits": [
+        "Darkvision 60 ft",
+        "Fey Ancestry (adv. vs charm, immune to magical sleep)",
+        "Trance",
+        "Perception proficiency (Keen Senses)",
+        "Sea Elf Training (spear, trident, light crossbow, net)",
+        "30 ft swim speed",
+        "Amphibious (breathe air and water)",
+        "Friend of the Sea (share simple ideas with beasts that have a swimming speed)"
+      ],
+      "languages": [
+        "Common",
+        "Elvish",
+        "Aquan"
+      ],
+      "skills": [
+        "perception"
+      ],
+      "weapons": [
+        "spears",
+        "tridents",
+        "light crossbows",
+        "nets"
+      ]
     },
     {
       "id": "lightfoot_halfling",

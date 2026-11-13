@@ -139,8 +139,8 @@ await test("the bundled race table matches the rulebook: bonuses, speed, size, l
 });
 
 await test("every bundled race is well formed, and none lowers a score", () => {
-  assert.equal(srd.SRD_RACES.length, 32);
-  assert.equal(new Set(srd.SRD_RACES.map((race) => race.id)).size, 32);
+  assert.equal(srd.SRD_RACES.length, 35);
+  assert.equal(new Set(srd.SRD_RACES.map((race) => race.id)).size, 35);
   for (const race of srd.SRD_RACES) {
     assert.ok([25, 30, 35].includes(race.speed), `${race.id} speed ${race.speed}`);
     assert.ok(["Small", "Medium"].includes(race.size), `${race.id} size`);
@@ -355,6 +355,19 @@ await test("every racial skill or tool pick is offered from the list its trait n
   const alchemist = buildRace("warforged", { racialTool: "alchemist's supplies", racialSkills: ["arcana"] });
   assert.equal(alchemist.blocker, null, alchemist.blocker?.message);
   assert.ok(alchemist.sheet.proficiencies.tools.includes("alchemist's supplies"));
+});
+
+// The lineages players come to the builder asking for by concept, each
+// offered without a content pack: a teleporting fey elf, a sea elf, a gray
+// dwarf of the deep roads.
+const SOUGHT = { eladrin: "Elf (Eladrin)", sea_elf: "Elf (Sea)", duergar: "Dwarf (Duergar)" };
+await test("the builder offers the lineages players look for, with no content pack", () => {
+  const missing = Object.entries(SOUGHT).filter(([id, name]) => builder.races.find((entry) => entry.id === id)?.name !== name).map(([id]) => id);
+  assert.deepEqual(missing, []);
+  for (const id of Object.keys(SOUGHT)) {
+    const built = buildRace(id);
+    assert.equal(built.blocker, null, `${id}: ${built.blocker?.message}`);
+  }
 });
 
 await test("with the content pack, the SRD's races come through its rows unchanged", () => {

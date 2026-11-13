@@ -441,6 +441,7 @@ const NAMES = [
   "species.lizardfolk.natural-armor", "species.lizardfolk.natural-weapon", "species.lizardfolk.breath", "species.lizardfolk.speeds", "species.lizardfolk.hungry-jaws",
   "species.orc.aggressive", "species.orc.powerful-build",
   "species.rock_gnome.tinker",
+  "species.sea_elf.speeds", "species.sea_elf.breath",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
 

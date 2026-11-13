@@ -95,6 +95,11 @@ export function heldSaveTraits(sheet: TraitSheet): SaveTrait[] {
   if (hasCondition(sheet, "antitoxin")) {
     out.push({ roll: "save", against: ["poison", "poisoned"], note: "Antitoxin: advantage on saves against poison" });
   }
+  // Duergar Resilience: advantage on saves against being charmed or
+  // paralyzed (its illusions have no word on a save; the GM's).
+  if (holdsFeature(sheet, "duergar resilience")) {
+    out.push({ roll: "save", against: ["charmed", "paralyzed"], note: "Duergar Resilience: advantage on saves against being charmed or paralyzed" });
+  }
   if (holdsFeature(sheet, "gnome cunning")) {
     out.push({ roll: "save", abilities: ["int", "wis", "cha"], magical: true, note: "Gnome Cunning: advantage on INT, WIS and CHA saves against magic" });
   }

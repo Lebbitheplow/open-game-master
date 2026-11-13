@@ -100,6 +100,8 @@ const NAMES = [
   "species.tiefling.speed", "species.aasimar.speed", "species.goliath.speed", "species.firbolg.speed", "species.tabaxi.speed", "species.kenku.speed",
   "species.tortle.speed", "species.fire_genasi.speed", "species.water_genasi.speed", "species.air_genasi.speed", "species.earth_genasi.speed",
   "species.changeling.speed", "species.warforged.speed", "species.goblin.speed", "species.bugbear.speed", "species.lizardfolk.speed", "species.orc.speed",
+  "species.eladrin.speed", "species.sea_elf.speed", "species.duergar.speed",
+  "species.eladrin.save-advantage", "species.sea_elf.save-advantage", "species.duergar.save-advantage",
   "species.stout_halfling.resistance", "species.tiefling.resistance", "species.aasimar.resistance", "species.fire_genasi.resistance",
   "species.water_genasi.resistance", "species.air_genasi.resistance", "species.warforged.resistance",
   "species.hill_dwarf.save-advantage", "species.mountain_dwarf.save-advantage", "species.high_elf.save-advantage", "species.wood_elf.save-advantage", "species.drow.save-advantage", "species.lightfoot_halfling.save-advantage", "species.stout_halfling.save-advantage",

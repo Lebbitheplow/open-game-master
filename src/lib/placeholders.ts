@@ -51,6 +51,10 @@ const RACE_FAMILY: Record<string, string> = {
   mountain_dwarf: "mountain-dwarf",
   high_elf: "elf",
   wood_elf: "wood-elf",
+  // The bundled subraces with no plate of their own wear their people's.
+  eladrin: "elf",
+  sea_elf: "elf",
+  duergar: "dwarf",
   drow: "drow",
   lightfoot_halfling: "halfling",
   stout_halfling: "stout-halfling",
