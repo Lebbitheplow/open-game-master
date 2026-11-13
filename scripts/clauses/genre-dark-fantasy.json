@@ -395,14 +395,11 @@
    {
     "c": "take an extra full turn immediately after killing your branded quarry",
     "run": {
-     "k": "spend_moves",
-     "id": "dark_fantasy_no_rest_for_the_wicked"
+     "k": "cc_no_rest"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::No Rest for the Wicked#1",
-    "observed": "spending dark_fantasy_no_rest_for_the_wicked moved its counter and the turn's cost and nothing else; the result was its guidance: 1/long rest, take an extra full turn immediately after killing your branded quarry.",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-spends.ts noRest (refused until a creature the brand was on is dead; the turn's budget and reaction given back)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::No Rest for the Wicked#1"
    }
   ]
  },
@@ -470,15 +467,23 @@
    },
    {
     "c": "emit bright warding light 20 ft for 10 minutes",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_candle_in_the_dark#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-dark-fantasy-candle-in-the-dark"
+    "run": {
+     "k": "cc_candle",
+     "part": "light"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-spends.ts candle (the candle in the dark mark for 100 rounds and the token's 20-foot light)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Candle in the Dark#1"
    },
    {
     "c": "hostile undead and fiends in it have disadvantage on attacks against your allies",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_candle_in_the_dark#GUIDANCE_ONLY",
-    "same_probe_as": 1
+    "run": {
+     "k": "cc_candle",
+     "part": "ward"
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts Candle in the Dark (attacked_disadv from undead and fiends within 20 feet, gated on the mark), read by src/lib/dm/authored-hooks.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Candle in the Dark#2"
    }
   ]
  },
@@ -776,15 +781,12 @@
   "clauses": [
    {
     "c": "Your healing remedies also cure one disease or poison per casting",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "cc_dosage"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Controlled Dosage#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-dark-fantasy-more.ts controlledDosage, read by src/lib/dm/heal-spell.ts castHealingSpell",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Controlled Dosage#0"
    }
   ]
  },
@@ -2786,15 +2788,12 @@
   "clauses": [
    {
     "c": "When an ally within 30 ft drops to 0 HP, your next dirge this minute costs no slot if 2nd level or lower",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "cc_grief"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Grief Made Strength#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-dark-fantasy-more.ts griefMadeStrength, read by src/lib/dm/pc-damage.ts as an ally drops (slotless cast (2nd) for 10 rounds, src/lib/dm/genre-b-free-cast.ts MARKS)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::Grief Made Strength#0"
    }
   ]
  },
@@ -2819,21 +2818,20 @@
    {
     "c": "repeat the last dirge you cast this turn at a new target for free",
     "run": {
-     "k": "spend_moves",
-     "id": "dark_fantasy_elegy_of_echoes"
+     "k": "cc_elegy"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Elegy of Echoes#1",
-    "observed": "spending dark_fantasy_elegy_of_echoes moved its counter and the turn's cost and nothing else; the result was its guidance: 1/rest, repeat the last dirge you cast this turn at a new target for free (3rd level or lower).",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-spends.ts elegy (after a spell this turn, the slotless cast (3rd) mark until the turn ends, read by src/lib/dm/genre-b-free-cast.ts genreFreeCast)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::Elegy of Echoes#1"
    },
    {
     "c": "3rd level or lower",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "follows clause #1 (gap dirgesinger::Elegy of Echoes#1), which fails: the spend moves its counter and the turn's cost and nothing else; with nothing on the table there is no state this clause could be read on",
-    "same_probe_as": 1
+    "run": {
+     "k": "cc_elegy"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-b-free-cast.ts MARKS (slotless cast (3rd): a cast of 3rd level or lower)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::Elegy of Echoes#2"
    }
   ]
  },
@@ -2876,9 +2874,12 @@
    },
    {
     "c": "sing a fallen ally within a minute of death back to 1 HP without material components",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_the_rite_completed#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-dark-fantasy-the-rite-completed"
+    "run": {
+     "k": "cc_rite"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-spends.ts riteCompleted (a dead ally within the minute, src/lib/dm/revival.ts minutesSinceDeath, back at 1 hit point)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::The Rite Completed#1"
    }
   ]
  },
@@ -3175,21 +3176,21 @@
    },
    {
     "c": "drop through a grate, crack, or shadow as a reaction when targeted",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_vanish_below#TRIGGER_AS_CARD",
-    "recorded_as": "spends-trigger-as-card-counter-dark-fantasy-vanish-below"
+    "run": {
+     "k": "cc_vanish"
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts Vanish Below (a reaction on dark_fantasy_vanish_below, force_miss with moveFt 15), resolved by src/lib/dm/authored-reactions.ts and src/lib/dm/authored-reactions-more.ts reactionMove",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Vanish Below#1"
    },
    {
     "c": "the attack misses and you move 15 ft",
     "run": {
-     "k": "spend_moves",
-     "id": "dark_fantasy_vanish_below"
+     "k": "cc_vanish"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Vanish Below#2",
-    "observed": "spending dark_fantasy_vanish_below moved its counter and the turn's cost and nothing else; the result was its guidance: 1/rest, drop through a grate, crack, or shadow as a reaction when targeted; the attack misses and you move 15 ft.",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/authored-reactions.ts force_miss (the hit on the holder turned to a miss, its hit points back) and reactionMove (15 feet, drawing no opportunity attack)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Vanish Below#2"
    }
   ]
  },

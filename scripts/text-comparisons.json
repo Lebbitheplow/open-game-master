@@ -14,6 +14,8 @@
     "lib/db/core.ts"
   ],
   "sites": {
+    "lib/dm/genre-cc-a-dark-fantasy-more.ts#str-list": [["key",1,"condition names the engine lays and reads (engine vocabulary): what a remedy cures"]],
+    "lib/srd/authored-effects-genre-cc-a.ts#str-list": [["english-source",1,"ODM's authored effect rows (bundled data): the creature types a feature names"]],
     "lib/srd/genre-a-cyberpunk-focus.ts#str-list": [["english-source",1,"the English names of the reference item rows that are a plague doctor's kit and mask (Herbalism Kit, Healer's Kit), found by the carried-line rule of src/lib/srd/item-row.ts lineNamed, as the cyberdeck is"]],
     "lib/dm/invoke-roll.ts#re-word": [["table-language",1,"backstop reader: the model naming a request_roll a hit die (#932), in English; the reading that serves every language is take_rest itself, which the rest result and the rest rule point to"]],
     "lib/srd/infusion-picks.ts#str-includes": [["english-source",2,"a mundane helmet, boots, ring, robes or gem has no field naming what it is (the wear-slot table lists magic items, gems carry no tag): its wear slot is read first, its own word for itself after; the weapon properties"]],

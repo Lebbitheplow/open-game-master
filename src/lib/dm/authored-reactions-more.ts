@@ -92,8 +92,9 @@ export function resolveMoreReaction(ctx: Ctx, reaction: AuthoredReaction): ToolR
 // `opened`: the move another call already allowed (Maneuvering Attack's hit,
 // src/lib/dm/maneuver-reactions.ts), with nothing more to check here.
 // `share`: how much of the speed the move may use (Mantle of Inspiration's
-// is the whole of it, src/lib/dm/ar-wbf-bard-mantle.ts).
-export function reactionMove(ctx: Ctx, name: string, trigger: "enemy_adjacent" | "oa_hit" | "opened", share: "half" | "full" = "half"): ToolResult {
+// is the whole of it, src/lib/dm/ar-wbf-bard-mantle.ts), or a number of feet
+// whatever the speed (Vanish Below's 15).
+export function reactionMove(ctx: Ctx, name: string, trigger: "enemy_adjacent" | "oa_hit" | "opened", share: "half" | "full" | number = "half"): ToolResult {
   const { campaign, encounter } = ctx;
   const map = encounter ? getBattleMapForEncounter(encounter.id) : null;
   const token = map ? getTokenByRef(map.id, ctx.sheet.id) : null;
@@ -116,7 +117,8 @@ export function reactionMove(ctx: Ctx, name: string, trigger: "enemy_adjacent" |
     }
   }
   const { speed } = pcMoveBudget(campaign.id, encounter, map, ctx.sheet, token);
-  const half = share === "full" ? speedToTiles(speed) : Math.floor(speedToTiles(speed) / 2);
+  const half = typeof share === "number" ? Math.floor(share / 5) : share === "full" ? speedToTiles(speed) : Math.floor(speedToTiles(speed) / 2);
+  const allowed = typeof share === "number" ? `${share} feet` : `${share === "full" ? "" : "half "}their speed`;
   const enemiesById = new Map(listEnemies(encounter.id).map((enemy) => [enemy.id, enemy]));
   const tokens = listTokens(map.id);
   const footprintOf = footprintLookup(enemiesById);
@@ -132,7 +134,7 @@ export function reactionMove(ctx: Ctx, name: string, trigger: "enemy_adjacent" |
   });
   const reach = reachableTiles(map.terrain, map.width, map.height, occupiedTiles(map, tokens, token, footprintOf), token, half, 1, token.movement === "fly", traits);
   if (!reach.has(tileIndex(map.width, x, y))) {
-    return { error: `${ctx.sheet.name} cannot reach (${x},${y}) with ${share === "full" ? "" : "half "}their speed (${half * 5} feet). Nothing was spent.`, retry: true };
+    return { error: `${ctx.sheet.name} cannot reach (${x},${y}) with ${allowed} (${half * 5} feet). Nothing was spent.`, retry: true };
   }
   // A reaction's move draws no opportunity attack, and it is not the turn's
   // own movement, so the round's count stands.
@@ -147,7 +149,7 @@ export function reactionMove(ctx: Ctx, name: string, trigger: "enemy_adjacent" |
   }
   releaseGrapplesOutOfReach(campaign);
   publishBattleMapUpdate(campaign.id);
-  return { applied: `${ctx.sheet.name} moves to (${x},${y}), up to ${share === "full" ? "" : "half "}their speed, without drawing opportunity attacks.` };
+  return { applied: `${ctx.sheet.name} moves to (${x},${y}), up to ${allowed}, without drawing opportunity attacks.` };
 }
 
 // ---- Tipsy Sway ----

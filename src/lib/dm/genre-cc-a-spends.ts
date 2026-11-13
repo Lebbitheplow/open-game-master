@@ -13,16 +13,41 @@
 //   rat_tide: Rat Tide, "a swarm floods a 15-ft cube" (20 with Rat Tide
 //     (2 uses)): the area of src/lib/battlemap/zones-genre-cc-a.ts thrown
 //     onto a creature within 30 feet, and with The Walls Have Teeth the
-//     enemies near it lose their reactions at once.
+//     enemies near it lose their reactions at once;
+//   no_rest: No Rest for the Wicked, "take an extra full turn immediately
+//     after killing your branded quarry": on the hunter's own turn, with a
+//     creature their brand was on now dead, the turn's action, bonus action,
+//     movement and reaction come back (Terminal Focus's second turn);
+//   rite: The Rite Completed, "sing a fallen ally within a minute of death
+//     back to 1 HP without material components": a dead character named,
+//     dead no longer than a minute (src/lib/dm/revival.ts), at 1 hit point;
+//   elegy: Elegy of Echoes, "repeat the last dirge you cast this turn at a
+//     new target for free (3rd level or lower)": after a spell this turn, one
+//     cast of 3rd level or lower costs no slot until the turn ends (the
+//     slotless mark src/lib/dm/genre-b-free-cast.ts reads);
+//   candle: Candle in the Dark, "emit bright warding light 20 ft for 10
+//     minutes": the mark for a hundred rounds and the token's light (the
+//     warding is the row's attacked_disadv, gated on the mark);
+//   daemon_cache: Daemon Cache, "cast it once without a slot per long rest":
+//     the cached program's cast, 3rd level or lower (5th with Daemon Cache (2
+//     programs)), costs no slot (the same slotless mark).
 import { getActiveEncounter, listEnemies, patchEnemyConditions } from "@/lib/db/encounters";
 import type { SpendContext } from "@/lib/dm/authored-spend-effects";
 import { withinFeet } from "@/lib/dm/authored-saves";
-import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { sideOf } from "@/lib/dm/combatant";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { isConditionNamed } from "@/lib/srd/feature-names";
-import { SWARMED } from "@/lib/srd/genre-cc-a-conditions";
+import { CANDLE, ELEGY_MARK, SWARMED } from "@/lib/srd/genre-cc-a-conditions";
+import { getEnemy, saveEncounter } from "@/lib/db/encounters";
+import { getSheetById } from "@/lib/db/sheets";
+import { getTokenByRef, setTokenLight } from "@/lib/db/battle-maps";
+import { patchSheetAudited } from "@/lib/dm/audited-patch";
+import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
+import { minutesSinceDeath } from "@/lib/dm/revival";
+import { holdsFeature } from "@/lib/srd/feature-names";
 import { resolveSpendEffect } from "@/lib/dm/authored-spend-effects";
 import { refreshTeeth } from "@/lib/dm/genre-cc-a-turns";
 import { RAT_TIDE, RAT_TIDE_GROWN } from "@/lib/battlemap/zones-genre-cc-a";
@@ -30,9 +55,9 @@ import { getBattleMapForEncounter, listTokens } from "@/lib/db/battle-maps";
 import { zonesAfterMove } from "@/lib/dm/zone-triggers";
 import { isNamed } from "@/lib/srd/feature-names";
 
-export type GenreCcPlay = "crown" | "rat_tide";
+export type GenreCcPlay = "crown" | "rat_tide" | "no_rest" | "rite" | "elegy" | "candle" | "daemon_cache";
 
-type Resolution = ToolError | { result: Record<string, unknown> };
+type Resolution = ToolError | { patch?: Record<string, unknown>; result: Record<string, unknown> };
 
 const MINUTE = 10;
 
@@ -42,6 +67,16 @@ export function genreCcSpend(ctx: SpendContext, play: GenreCcPlay): Resolution {
       return crown(ctx);
     case "rat_tide":
       return ratTide(ctx);
+    case "no_rest":
+      return noRest(ctx);
+    case "rite":
+      return riteCompleted(ctx);
+    case "elegy":
+      return elegy(ctx);
+    case "candle":
+      return candle(ctx);
+    case "daemon_cache":
+      return daemonCache(ctx);
   }
 }
 
@@ -88,4 +123,79 @@ function ratTide(ctx: SpendContext): Resolution {
   }
   const teeth = refreshTeeth(ctx.campaign, getActiveEncounter(ctx.campaign.id) ?? encounter);
   return { ...laid, result: { ...laid.result, ...(caught.length ? { caught } : {}), ...(teeth.length ? { teeth } : {}) } };
+}
+
+const turnMark = (ctx: SpendContext, condition: string, meta: Record<string, unknown>): Resolution => {
+  const kept = ctx.sheet.conditions.filter((entry) => !isConditionNamed(entry, condition));
+  return { patch: { conditions: [...kept, condition], conditionMeta: { ...ctx.sheet.conditionMeta, [condition]: meta } }, result: {} } as Resolution;
+};
+
+// The mark a branded creature's death leaves on a hunter who holds No Rest
+// for the Wicked, until their turn ends (genre-a-dark-fantasy-deaths.ts).
+const QUARRY_SLAIN = "quarry slain";
+export function quarrySlainMark(sheet: CharacterSheet): { condition: string; meta: Record<string, unknown> } | null {
+  return holdsFeature(sheet, "No Rest for the Wicked") ? { condition: QUARRY_SLAIN, meta: { untilTurnEndOf: sheet.id } } : null;
+}
+
+function noRest(ctx: SpendContext): Resolution {
+  const encounter = getActiveEncounter(ctx.campaign.id);
+  if (!encounter || !ctx.marks) {
+    return { error: `${ctx.spend.name} is an extra turn taken on ${ctx.sheet.name}'s own turn in a fight. Nothing was spent.`, refused: "rules" };
+  }
+  const meta = (ctx.sheet.conditionMeta ?? {}) as ConditionMetaMap;
+  const held = ctx.sheet.conditions.find((entry) => isConditionNamed(entry, QUARRY_SLAIN));
+  const slain = held ? getEnemy(String(meta[held]?.quarry ?? "")) : null;
+  if (!held || !slain) {
+    return { error: `${ctx.spend.name} follows the kill of ${ctx.sheet.name}'s branded quarry, and no creature their brand was on has fallen. Nothing was spent.`, refused: "rules" };
+  }
+  saveEncounter({ ...encounter, turnBudget: null, reactionsUsed: encounter.reactionsUsed.filter((id) => id !== ctx.sheet.id) });
+  publishEncounter(ctx.campaign.id);
+  const left = removeConditions(ctx.sheet.conditions, meta, [held]);
+  return { patch: { conditions: left.conditions, conditionMeta: left.meta }, result: { applied: [`${ctx.spend.name}: ${slain.displayName} is dead, and ${ctx.sheet.name} takes an extra full turn now: their action, bonus action, movement and reaction are fresh.`] } };
+}
+
+function riteCompleted(ctx: SpendContext): Resolution {
+  const target = ctx.args.targetCharacterId ? getSheetById(ctx.args.targetCharacterId) : null;
+  if (!target || target.campaignId !== ctx.campaign.id || target.id === ctx.sheet.id) {
+    return { error: `${ctx.spend.name} sings a fallen ally back: name them by targetCharacterId. Nothing was spent.`, retry: true };
+  }
+  if (!target.deathSaves?.dead) {
+    return { error: `${target.name} is not dead; ${ctx.spend.name} sings back an ally dead less than a minute. Nothing was spent.`, refused: "rules" };
+  }
+  const since = minutesSinceDeath(ctx.campaign.id, target.id);
+  if (since !== null && since > 1) {
+    return { error: `${target.name} died ${since} minutes ago; ${ctx.spend.name} reaches only an ally dead within the minute. Nothing was spent.`, refused: "rules" };
+  }
+  const conditions = target.conditions.filter((entry) => !isConditionNamed(entry, "unconscious"));
+  patchSheetAudited(ctx.campaign.id, target.id, { currentHp: 1, deathSaves: { successes: 0, failures: 0, stable: false, dead: false }, conditions }, { kind: "heal", reason: `${ctx.spend.name} by ${ctx.sheet.name}`, delta: { hp: 1 } });
+  return { result: { applied: [`${ctx.spend.name}: ${target.name} is sung back to life at 1 hit point; no material component is spent.`] } };
+}
+
+function elegy(ctx: SpendContext): Resolution {
+  const encounter = getActiveEncounter(ctx.campaign.id);
+  const budget = encounter?.turnBudget;
+  if (!encounter || !ctx.marks || !budget || !budget.castThisAction) {
+    return { error: `${ctx.spend.name} repeats a dirge ${ctx.sheet.name} cast this turn, and they have cast none. Nothing was spent.`, refused: "rules" };
+  }
+  const marked = turnMark(ctx, ELEGY_MARK, { untilTurnEndOf: ctx.sheet.id });
+  return "error" in marked ? marked : { ...marked, result: { applied: [`${ctx.spend.name}: ${ctx.sheet.name}'s next dirge of 3rd level or lower this turn, at a new target, costs no slot.`] } };
+}
+
+function candle(ctx: SpendContext): Resolution {
+  const encounter = getActiveEncounter(ctx.campaign.id);
+  const map = encounter ? getBattleMapForEncounter(encounter.id) : null;
+  const token = map ? getTokenByRef(map.id, ctx.sheet.id) : null;
+  if (token && token.lightRadius < 4) {
+    setTokenLight(token.id, 4, 0, 0, 0);
+    publishBattleMapUpdate(ctx.campaign.id);
+  }
+  const marked = turnMark(ctx, CANDLE, { rounds: 100 });
+  return "error" in marked ? marked : { ...marked, result: { applied: [`${ctx.spend.name}: ${ctx.sheet.name} sheds bright warding light for 20 feet for 10 minutes; hostile undead and fiends within it attack at disadvantage.`] } };
+}
+
+function daemonCache(ctx: SpendContext): Resolution {
+  const grown = holdsFeature(ctx.sheet, "Daemon Cache (2 programs)");
+  const mark = grown ? "slotless cast (5th)" : "slotless cast (3rd)";
+  const marked = turnMark(ctx, mark, { rounds: 14400 });
+  return "error" in marked ? marked : { ...marked, result: { applied: [`${ctx.spend.name}: ${ctx.sheet.name}'s cached program (${grown ? "5th" : "3rd"} level or lower) is cast once with no slot.`] } };
 }

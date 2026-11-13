@@ -119,12 +119,13 @@
   "clauses": [
    {
     "c": "Stores one program of level 1-3",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "a stored program is not a state any tool of the catalog writes; there is no call to make",
-    "probe": "none of its own: no program is stored on the sheet; the hook probe now answers for the counter of clause #1",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "run": {
+     "k": "cc_daemon",
+     "level": 5
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts Daemon Cache, resolved by src/lib/dm/genre-cc-a-spends.ts daemonCache (slotless cast (3rd), read by src/lib/dm/genre-b-free-cast.ts genreFreeCast)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Daemon Cache#0"
    },
    {
     "c": "cast it once without a slot per long rest",
@@ -195,12 +196,13 @@
   "clauses": [
    {
     "c": "Cache holds two programs of level 1-5",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "a stored program is not a state any tool of the catalog writes; there is no call to make",
-    "probe": "none of its own: no program is stored on the sheet; the hook probe now answers for the Daemon Cache counter",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "run": {
+     "k": "cc_daemon",
+     "level": 11
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-spends.ts daemonCache (slotless cast (5th) with Daemon Cache (2 programs)) and the counter's upgrade to two uses (src/lib/srd/genre-a-counter-terms.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Daemon Cache (2 programs)#0"
    }
   ]
  },

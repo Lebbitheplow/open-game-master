@@ -57,7 +57,7 @@ import { answerTriggers, openTriggersFor, triggerRefusal, triggerSpecOf, type Tr
 import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { allyOf, noHit, settle, SPENT, spendReaction, type Ctx } from "@/lib/dm/reaction-tools";
 import { unseenRefusal, withinFeet } from "@/lib/dm/authored-saves";
-import { resolveMoreReaction } from "@/lib/dm/authored-reactions-more";
+import { reactionMove, resolveMoreReaction } from "@/lib/dm/authored-reactions-more";
 import { bodyguardExtras } from "@/lib/dm/genre-b-mystery-enforcer";
 import { projectWard } from "@/lib/dm/arcane-ward";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -1191,7 +1191,13 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if ("error" in hit) return hit;
       const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, hit: false, raw: 0 } : entry)), label);
       if (!does.exhaustion) {
-        return { applied: `The attack misses: ${settled.given} hit points come back to ${target.name}. HP ${settled.hp}.` };
+        const missed = `The attack misses: ${settled.given} hit points come back to ${target.name}. HP ${settled.hp}.`;
+        // Vanish Below's move, to the square named (none named: they stay).
+        if (does.moveFt && ctx.args.x !== undefined && ctx.args.y !== undefined) {
+          const moved = reactionMove(ctx, reaction.name, "opened", does.moveFt);
+          return { applied: `${missed} ${"error" in moved ? `They stay where they are: ${moved.error}` : String(moved.applied ?? "")}` };
+        }
+        return { applied: missed };
       }
       const now = getSheetById(ctx.sheet.id) ?? ctx.sheet;
       reactionPatch(ctx.campaign, ctx.turn.id, now.id, { exhaustion: Math.min(6, (now.exhaustion ?? 0) + does.exhaustion) }, `${reaction.name}: exhaustion`);

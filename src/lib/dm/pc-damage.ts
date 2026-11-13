@@ -13,6 +13,7 @@
 //
 // This module must not import mutations.ts (which imports it).
 // Registers the incapacity watch's answer (Faithful Summons) wherever damage runs.
+import { griefMadeStrength } from "@/lib/dm/genre-cc-a-dark-fantasy-more";
 import { ragesBeyondDeath } from "@/lib/dm/mt-fb-rage-death-logic";
 import "@/lib/dm/faithful-summons";
 import { immersedResistance } from "@/lib/dm/underwater";
@@ -578,6 +579,10 @@ export function applyPcDamage(
   const deathInfo = applyDamageDeathHook(campaign, turnId, sheet, fatal, input.crit === true, input.nonlethal === true && !input.disintegrate);
   // Unconscious at 0 is incapacitated: a grapple they held ends.
   const letGo = math.dropped ? releaseGrapplesHeldBy(campaign, sheet.id) : [];
+  // Grief Made Strength: a dirgesinger within 30 feet sees the ally fall.
+  if (math.dropped && !sheet.summon) {
+    griefMadeStrength(campaign, sheet);
+  }
   // And a mark held only while its holder can act ends, as it does when a
   // condition incapacitates them: a dead warlock's Hexblade's Curse stood
   // for its minute (ar-wbf-warlock-marks.ts).

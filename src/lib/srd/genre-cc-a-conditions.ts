@@ -22,7 +22,20 @@ export const TEETH = "the walls have teeth";
 // (disadvantage on STR checks 1 minute)".
 export const WEAKENED = "weakening bite";
 
+// Candle in the Dark: "bright warding light 20 ft for 10 minutes" (its
+// warding is the row's attacked_disadv, src/lib/srd/authored-effects-genre-cc-a.ts).
+export const CANDLE = "candle in the dark";
+// Elegy of Echoes: the repeated dirge's slotless cast, until the turn ends
+// (src/lib/dm/genre-b-free-cast.ts MARKS).
+export const ELEGY_MARK = "slotless cast (3rd)";
+// Grief Made Strength: "your next dirge this minute costs no slot if 2nd
+// level or lower".
+export const GRIEF_MARK = "slotless cast (2nd)";
+
 export const GENRE_CC_A_CONDITIONS: ConditionEffectRow[] = [
+  { id: "quarry_slain", match: ["quarry slain"], summary: "No Rest for the Wicked: the branded quarry is dead; the extra full turn may be taken before this turn ends." },
+  { id: "slotless_cast_2nd", match: [GRIEF_MARK], summary: "Grief Made Strength: the next dirge of 2nd level or lower this minute costs no slot." },
+  { id: "candle_in_the_dark", match: [CANDLE], summary: "Candle in the Dark: bright warding light 20 feet around the witch hunter; hostile undead and fiends in it attack at disadvantage." },
   { id: "distracted_by_rats", match: [RAT_DISTRACTED], summary: "Rat Tide: disadvantage on its next attack roll.", attackDisadvantage: true, consumedBy: "attack" },
   { id: "swarmed", match: [SWARMED], summary: "The Crown Descends: swarmed by rats, half speed, no reactions, and 1d6 piercing at the start of each of its turns.", speedMultiplier: 0.5, noReactions: true },
   { id: "the_walls_have_teeth", match: [TEETH], summary: "The Walls Have Teeth: within 10 feet of the vermin lord's swarm, it cannot take reactions.", noReactions: true },

@@ -21,6 +21,8 @@ type Mark = { condition: string; max: number; exact?: boolean; minute?: boolean 
 
 export const MARKS: Mark[] = [
   { condition: "slotless cast (1st)", max: 1 },
+  // Grief Made Strength (dirgesinger 3): the next dirge of 2nd level or lower.
+  { condition: "slotless cast (2nd)", max: 2 },
   { condition: "slotless cast (3rd)", max: 3 },
   { condition: "slotless cast (5th)", max: 5 },
   { condition: "slotless cast (6th)", max: 6 },

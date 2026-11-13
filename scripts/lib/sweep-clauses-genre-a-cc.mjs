@@ -297,6 +297,109 @@ Object.assign(CC, {
   },
 });
 
+Object.assign(CC, {
+  // Vanish Below: after a club hits the vermin lord, the reaction turns it to
+  // a miss (the hit points back) and moves them 15 feet to the square named.
+  async cc_vanish(t, run, feature) {
+    const scene = await t.stage(feature);
+    await t.clubs(scene, scene.holder, 16, 4);
+    if (t.hp(scene.holder.id) >= 100) throw new Error("the staged club did not hit");
+    must(await t.world.invoke("use_reaction", { characterId: scene.holder.id, feature: "Vanish Below", x: 5, y: 2 }), "Vanish Below");
+    const token = t.kit.token(scene.holder.id);
+    eq(`${t.hp(scene.holder.id)}/${token.x},${token.y}`, "100/5,2", "the vermin lord's hit points / square after Vanish Below");
+  },
+
+  // Candle in the Dark: the light (20 feet, ten minutes of rounds) and the
+  // ward: an undead's club at the ally beside the hunter is rolled at
+  // disadvantage, a goblin's is not.
+  async cc_candle(t, run, feature) {
+    const { listRecentRolls } = await load("lib/db/rolls.ts");
+    const scene = await t.stage(feature);
+    await spend(t, scene, "Candle in the Dark");
+    if (run.part === "light") {
+      const meta = t.world.sheet(scene.holder.id).conditionMeta?.["candle in the dark"];
+      eq(`${conditionsOf(t, scene.holder.id).includes("candle in the dark")}/${meta?.rounds}/${t.kit.token(scene.holder.id).lightRadius}`, "true/100/4", "the candle / its rounds / the token's bright light in squares");
+      return;
+    }
+    const swing = async (type) => {
+      t.kit.setEnemy(scene.near.id, { stats: { ...t.kit.enemy(scene.near.id).stats, type } });
+      await t.clubs(scene, scene.ally, 16, 4);
+      return listRecentRolls(t.world.campaignId, 6).filter((entry) => entry.kind === "attack").at(-1)?.advantage ?? "none";
+    };
+    eq(`${await swing("undead")}/${await swing("humanoid")}`, "disadvantage/none", "a club at the ally by an undead / by a goblin, in the candle's light");
+  },
+
+  // No Rest for the Wicked: refused while the branded foe lives; once it is
+  // killed, the turn comes back whole.
+  async cc_no_rest(t, run, feature) {
+    const scene = await t.stage(feature);
+    must(await t.world.invoke("use_resource", { characterId: scene.holder.id, resource: "Hunter's Brand", targetEnemyId: scene.near.id }), "Hunter's Brand");
+    const again = () => t.world.invoke("use_resource", { characterId: scene.holder.id, resource: "No Rest for the Wicked" });
+    eq((await again()).ok, false, "No Rest for the Wicked with the branded foe alive");
+    t.kit.setEnemy(scene.near.id, { currentHp: 1 });
+    must(await t.kit.swing(scene.holder.id, scene.near.id, [15, 4, 4, 4, 4]), "the killing blow");
+    eq(t.kit.enemy(scene.near.id).status !== "alive", true, "the branded foe is dead");
+    must(await again(), "No Rest for the Wicked after the kill");
+    eq(`${Boolean(t.budget().actionUsed)}/${Boolean(t.budget().bonusUsed)}`, "false/false", "the action / bonus action after the extra turn begins");
+  },
+
+  // The Rite Completed: refused for a living ally; the dead one is sung back at 1.
+  async cc_rite(t, run, feature) {
+    const scene = await t.stage(feature);
+    const sing = (id) => t.world.invoke("use_resource", { characterId: scene.holder.id, resource: "The Rite Completed", targetCharacterId: id });
+    eq((await sing(scene.ally.id)).ok, false, "The Rite Completed on a living ally");
+    t.world.patch(scene.fallen.id, { deathSaves: { successes: 0, failures: 3, stable: false, dead: true } });
+    must(await sing(scene.fallen.id), "The Rite Completed on the dead ally");
+    const fallen = t.world.sheet(scene.fallen.id);
+    eq(`${fallen.currentHp}/${fallen.deathSaves.dead}`, "1/false", "the ally's hit points / dead, after the rite");
+  },
+
+  // Elegy of Echoes: refused before any dirge this turn; after one, the next
+  // cast of 3rd level or lower this turn is slotless.
+  async cc_elegy(t, run, feature) {
+    const scene = await t.stage(feature, { extra: { spellcasting: { ability: "cha", slots: { 1: { max: 4, used: 0 } }, known: ["Healing Word"], prepared: ["Healing Word"], cantrips: ["Vicious Mockery"] } } });
+    const echo = () => t.world.invoke("use_resource", { characterId: scene.holder.id, resource: "Elegy of Echoes" });
+    eq((await echo()).ok, false, "Elegy of Echoes with no dirge cast this turn");
+    t.world.clearDice();
+    t.world.dice(1, 3, 3);
+    must(await t.world.invoke("cast_at_enemy", { characterId: scene.holder.id, targetEnemyId: scene.near.id, spell: "Vicious Mockery" }), "Vicious Mockery");
+    t.world.clearDice();
+    must(await echo(), "Elegy of Echoes after a dirge");
+    const meta = t.world.sheet(scene.holder.id).conditionMeta?.["slotless cast (3rd)"];
+    eq(`${conditionsOf(t, scene.holder.id).includes("slotless cast (3rd)")}/${meta?.untilTurnEndOf === scene.holder.id}`, "true/true", "the slotless cast / until the turn ends");
+  },
+
+  // Grief Made Strength: the ally beside the dirgesinger drops to 0, and the
+  // next dirge of 2nd level or lower this minute is slotless.
+  async cc_grief(t, run, feature) {
+    const scene = await t.stage(feature);
+    must(await t.world.invoke("apply_damage", { characterId: scene.ally.id, amount: 40, type: "slashing" }), "the ally's fall");
+    const meta = t.world.sheet(scene.holder.id).conditionMeta?.["slotless cast (2nd)"];
+    eq(`${conditionsOf(t, scene.holder.id).includes("slotless cast (2nd)")}/${meta?.rounds}`, "true/10", "the slotless cast (2nd) / its rounds");
+  },
+
+  // Controlled Dosage: the plague doctor's Healing Word on a poisoned ally
+  // ends the poison.
+  async cc_dosage(t, run, feature) {
+    const scene = await t.stage(feature, { extra: { spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 } }, known: ["Healing Word"], prepared: ["Healing Word"], cantrips: [] } } });
+    t.world.patch(scene.ally.id, { conditions: ["poisoned"] });
+    t.world.clearDice();
+    t.world.dice(3, 3);
+    must(await t.world.invoke("heal", { characterId: scene.ally.id, casterId: scene.holder.id, spell: "Healing Word" }), "Healing Word");
+    t.world.clearDice();
+    eq(conditionsOf(t, scene.ally.id).includes("poisoned"), false, "poisoned after the doctor's Healing Word");
+  },
+
+  // Daemon Cache: the spend marks one slotless cast, 3rd level or lower; with
+  // two programs, 5th, and two of them a long rest.
+  async cc_daemon(t, run, feature) {
+    const scene = await t.stage(feature, { level: run.level });
+    await spend(t, scene, "Daemon Cache");
+    const mark = run.level >= 11 ? "slotless cast (5th)" : "slotless cast (3rd)";
+    eq(`${conditionsOf(t, scene.holder.id).includes(mark)}/${t.world.sheet(scene.holder.id).resources.cyberpunk_daemon_cache.max}`, `true/${run.level >= 11 ? 2 : 1}`, `${mark} / Daemon Cache uses`);
+  },
+});
+
 // The vermin lord's dire rat, built before the fight (Favored of the Swarm).
 async function ratPack(t, feature) {
   t.fresh();

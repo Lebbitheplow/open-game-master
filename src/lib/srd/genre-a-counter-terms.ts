@@ -129,7 +129,8 @@ const WEEKLY = { recovers: "7" } as const;
 export const GENRE_A_EXTRA_COUNTERS: CustomResourceRow[] = [
   row("cyberpunk_the_big_favor", "The Big Favor", "fixer", 1, "long", "1/week, a contact performs a genuinely dangerous service for the fixer (the GM says what it costs them)."),
   row("cyberpunk_lazarus_protocol", "Lazarus Protocol", "trauma_doc", 1, "long", "1/week, a creature dead less than 1 minute is restored to life at half its hit points."),
-  row("cyberpunk_daemon_cache", "Daemon Cache", "netrunner", 1, "long", "The cached program (level 1-3, or 1-5 with two programs) is cast once without a slot; back after a long rest."),
+  // Daemon Cache (2 programs): "Cache holds two programs", each cast once.
+  { ...row("cyberpunk_daemon_cache", "Daemon Cache", "netrunner", 1, "long", "The cached program (level 1-3, or 1-5 with two programs) is cast once without a slot; back after a long rest."), upgrades: [{ match: "daemon cache (2 programs)", uses: 2 }] },
   row("cyberpunk_psi_font", "Psi Font", "esper", 1, "short", "One expended 1st-level spell slot back on each short rest."),
   row("cyberpunk_autodoc_implant", "Autodoc Implant", "trauma_doc", 5, "long", "While below half HP, the trauma doc regains WIS-mod HP at the start of their turn, for 5 rounds per long rest."),
   row("dark_fantasy_gutter_king_s_word", "Gutter King's Word", "vermin_lord", 1, "long", "One favor per day from beggars, urchins and rat-folk, within their power."),
