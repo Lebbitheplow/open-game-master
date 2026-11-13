@@ -42,6 +42,7 @@ import {
 } from "@/lib/db/dm-turns";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import { getActiveEncounter, turnKey } from "@/lib/db/encounters";
 import { getRoll, insertRoll, type RollKind, type RollVisibility, type StoredRoll } from "@/lib/db/rolls";
 import type { Advantage, RollResult } from "@/lib/dice";
 import type { ThrownRoll } from "@/lib/dm/after-roll-logic";
@@ -397,6 +398,7 @@ function parkCard(campaign: Campaign, turn: DmTurn, call: HeldCallSpec, trial: T
     decided: trial.decided,
     tape: trial.drawn.slice(0, park.tapeAt),
     ...(park.thrown ? { siteThrew: true } : {}),
+    ...ownTurnOf(campaign.id, park.sheet.id),
   };
   const pending = createPendingRoll({
     campaignId: campaign.id,
@@ -423,6 +425,14 @@ function parkCard(campaign: Campaign, turn: DmTurn, call: HeldCallSpec, trial: T
   const answer: ToolResult = { ok: true, parked: true, note: park.note };
   PARKED.add(answer);
   return answer;
+}
+
+// The fight turn a call is held on when it is the roller's own: their End
+// Turn waits for the roll (open-roll-logic.ts attackRollWithPlayer).
+function ownTurnOf(campaignId: string, characterId: string): { ownTurn?: string } {
+  const fight = getActiveEncounter(campaignId);
+  const current = fight?.orderReady && fight.kind !== "scene" ? fight.order[fight.turnIndex] : undefined;
+  return fight && current?.kind === "pc" && current.characterId === characterId ? { ownTurn: turnKey(fight) } : {};
 }
 
 // Who runs a held call again: the dispatcher, registered by

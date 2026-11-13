@@ -424,6 +424,10 @@ export type HeldRollCall = {
   // The roll site threw the dice itself and parked them for the player's
   // choice: what lands is the site's own roll, already whole.
   siteThrew?: boolean;
+  // The fight turn (encounters.ts turnKey) the call was made on, when it was
+  // the rolling character's own: their action waits on this roll, so their
+  // turn does not end under it (open-roll-logic.ts attackRollWithPlayer).
+  ownTurn?: string;
 };
 
 export type PendingRoll = {

@@ -26,6 +26,7 @@ import {
   type InitiativeFloor,
 } from "@/lib/db/campaigns";
 import {
+  fightNow,
   createEncounter,
   endEncounter,
   getActiveEncounter,
@@ -1219,7 +1220,7 @@ function handleEndTurn(
   // now, the swing would never land, and what they chose would be spent on
   // nothing. The resumed turn ends it once the roll lands.
   // Nor would one whose dice the player has yet to enter (open-roll-logic.ts).
-  const withPlayer = attackRollWithPlayer(listOpenPendingRolls(campaign.id), sheet.id, encounter);
+  const withPlayer = attackRollWithPlayer(listOpenPendingRolls(campaign.id), sheet.id, fightNow(encounter));
   if (withPlayer) {
     return { error: endTurnToolLine(sheet.name, withPlayer), retry: true };
   }
@@ -2446,7 +2447,7 @@ function advanceAfterNarration(campaign: Campaign, turn?: DmTurn) {
   // narration that handed the turn on, or their own words ending it, waits
   // for it as End Turn and end_turn do. A turn told while the card was open
   // (another player posted) moved the pointer here, and the swing was lost.
-  if (resolved && !stuck && attackRollWithPlayer(listOpenPendingRolls(campaign.id), current.characterId, encounter)) {
+  if (resolved && !stuck && attackRollWithPlayer(listOpenPendingRolls(campaign.id), current.characterId, fightNow(encounter))) {
     return;
   }
   if (!resolved && !stuck) {
@@ -2926,7 +2927,7 @@ function endOwnTurnNow(campaignId: string, userId: string): boolean | "held" {
   }
   // Their attack's d20 is still with them: ended now, the swing would never
   // land (open-roll-logic.ts). endTurnRefusal says which card to answer.
-  if (attackRollWithPlayer(listOpenPendingRolls(campaignId), current.characterId, encounter)) {
+  if (attackRollWithPlayer(listOpenPendingRolls(campaignId), current.characterId, fightNow(encounter))) {
     return false;
   }
   // A watcher who could answer a save this move rolls: the move waits on
@@ -2988,7 +2989,7 @@ export function endTurnRefusal(campaignId: string, userId: string): string {
     return dominated;
   }
   if (encounter && campaign && current?.kind === "pc" && turnUserId(campaign, current) === userId) {
-    const withPlayer = attackRollWithPlayer(listOpenPendingRolls(campaignId), current.characterId, encounter);
+    const withPlayer = attackRollWithPlayer(listOpenPendingRolls(campaignId), current.characterId, fightNow(encounter));
     if (withPlayer && !enemiesOwedTurn(encounter).length) {
       return endTurnWaitsLine(withPlayer);
     }

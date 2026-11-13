@@ -10,7 +10,7 @@ import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 // Nothing is spent here.
 
 import type { Campaign } from "@/lib/db/campaigns";
-import type { Encounter, EncounterEnemy } from "@/lib/db/encounters";
+import { fightNow, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { actingCombatantId, canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal, releasesReadiedOffTurn, turnHeldForEnemies } from "@/lib/dm/held-turn";
 import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
@@ -69,7 +69,7 @@ export function gatePcAttack(input: {
   // left the table (pending-roll-land.ts), so they never meet it here.
   // Confusion's lash-out (anySide) is the engine's own swing, not the player's.
   if (onTurn && !input.anySide) {
-    const waiting = attackRollWithPlayer(listOpenPendingRolls(campaign.id), sheet.id, encounter);
+    const waiting = attackRollWithPlayer(listOpenPendingRolls(campaign.id), sheet.id, fightNow(encounter));
     if (waiting) {
       return { refused: { error: attackWaitsToolLine(sheet.name, waiting), refused: "rules" } };
     }

@@ -60,6 +60,12 @@ export function turnKey(encounter: Pick<Encounter, "round" | "order" | "turnInde
   return `${encounter.round}:${owner}`;
 }
 
+// The fight as the open rolls are held against it (open-roll-logic.ts): when
+// it began, its round, and whose turn of that round the pointer rests on.
+export function fightNow(encounter: Pick<Encounter, "createdAt" | "round" | "order" | "turnIndex">): { createdAt: string; round: number; turnKey: string } {
+  return { createdAt: encounter.createdAt, round: encounter.round, turnKey: turnKey(encounter) };
+}
+
 export type EncounterStatus = "active" | "ended";
 export type EnemyStatus = "alive" | "dead" | "fled";
 

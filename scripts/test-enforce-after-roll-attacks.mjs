@@ -312,6 +312,34 @@ await test("Damage dice the player has yet to enter hold the turn too, at the bu
   }
 });
 
+// A grapple's contest is the player's own d20 on their own turn, held on its
+// card (held-call.ts). End Turn went through under it, the grapple ran again
+// on a turn no longer theirs and was refused, and nothing was grappled.
+await test("A grapple whose contest d20 is still with the player holds the turn; entered, the grapple lands on the hero's turn.", async () => {
+  const enemy = await stage(NONE);
+  const userId = world.sheet(hero.id).userId;
+  setMemberRealDice(world.campaignId, userId, true);
+  try {
+    const out = await world.invoke("take_action", { characterId: hero.id, action: "grapple", targetEnemyId: enemy.id, reason: "seize it" });
+    assert.equal(out.ok, true, out.error);
+    const [card] = open();
+    assert.ok(card?.carry?.call, "the grapple waits on its card");
+    assert.equal(kit.endTurn(userId), false, "End Turn waited for the contest");
+    assert.match(tools.endTurnRefusal(world.campaignId, userId), /The roll you were asked for is waiting on you\. Roll it, then end the turn\./);
+    const ended = await world.invoke("end_turn", { characterId: hero.id });
+    assert.equal(ended.ok, false);
+    assert.equal(kit.current().characterId, hero.id);
+    world.signIn({ id: userId });
+    world.dice(1);
+    assert.equal((await call(route.pending, "POST", { dice: [20] }, { campaignId: world.campaignId, pendingRollId: card.id })).status, 200);
+    world.clearDice();
+    assert.ok(kit.enemy(enemy.id).conditions.includes("grappled"), "the grapple landed");
+    assert.equal(kit.endTurn(userId), true);
+  } finally {
+    setMemberRealDice(world.campaignId, userId, false);
+  }
+});
+
 // The third door: a GM turn told while the card is open (another player
 // posted) whose narration hands the turn on, or the player's own words that
 // end it, moved the pointer after the narration with no look at the roll.

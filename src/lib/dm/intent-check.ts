@@ -13,7 +13,7 @@
 // the target's AC and everything the dice decide stay with the DM's tool
 // call, which the model still makes.
 import type { Campaign } from "@/lib/db/campaigns";
-import { getActiveEncounter } from "@/lib/db/encounters";
+import { fightNow, getActiveEncounter } from "@/lib/db/encounters";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { actingCombatantId, canAct, type ActKind } from "@/lib/dm/can-act";
 import { ownTurnOf } from "@/lib/dm/held-turn";
@@ -216,7 +216,7 @@ export function intentRefusal(
     // spent attack refused, and the GM told the first swing as resolved. The
     // card waits until the roll is in, as End Turn does (open-roll-logic.ts).
     const swings = intent.card === "attack" || intent.card === "rider";
-    const waiting = swings && encounter && ownTurnOf(encounter, sheet.id) ? attackRollWithPlayer(listOpenPendingRolls(campaign.id), sheet.id, encounter) : null;
+    const waiting = swings && encounter && ownTurnOf(encounter, sheet.id) ? attackRollWithPlayer(listOpenPendingRolls(campaign.id), sheet.id, fightNow(encounter)) : null;
     if (waiting) {
       return attackCardWaitsLine(waiting);
     }
