@@ -57,6 +57,8 @@ import { combatRiders, hasHalflingLuck } from "@/lib/srd/feature-effects";
 import { magicItemRiders } from "@/lib/srd/magic-items";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { markOpportunityHit } from "@/lib/dm/authored-reactions-more";
+import { enemyExhaustion, hasTrait } from "@/lib/dm/monster-abilities";
+import { inDirectSunlight } from "@/lib/dm/sunlight";
 
 // A turn for the swing's rolls and audit rows, closed as soon as it is used
 // so nothing waits on it.
@@ -378,4 +380,24 @@ function spendAttackCarriers(campaign: Campaign, sheet: CharacterSheet, enemy: E
       publishEncounter(campaign.id);
     }
   }
+}
+
+// What an enemy's own state does to its opportunity attack on a character,
+// as enemy_attack reads it (enemy-swing-odds.ts, enemy-attack.ts): a spell
+// on it (Bane's d4 off the roll, Bless's on), exhaustion 3 or more, and
+// Sunlight Sensitivity in direct sunlight. The reaction's swing read only
+// the conditions, so a Baned goblin's swing at a fleeing hero rolled whole.
+export function enemyOpportunityRiders(campaignId: string, enemy: EncounterEnemy) {
+  const riders = conditionRollRiders(enemy.conditions, "attack");
+  const worn = enemyExhaustion(enemy.conditions) >= 3;
+  const sunlit = hasTrait(enemy.stats, "sunlightSensitivity") && inDirectSunlight(campaignId);
+  return {
+    riders,
+    sources: [...riders.advantageSources, ...(worn || sunlit ? ["disadvantage" as const] : [])],
+    notes: [
+      ...riders.notes,
+      ...(worn ? [`exhaustion ${enemyExhaustion(enemy.conditions)}: disadvantage on attack rolls`] : []),
+      ...(sunlit ? ["Sunlight Sensitivity: disadvantage in direct sunlight"] : []),
+    ],
+  };
 }
