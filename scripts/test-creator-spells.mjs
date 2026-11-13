@@ -17,7 +17,8 @@ register("./lib/register-alias.mjs", import.meta.url);
 const { test, finish } = suite("test-creator-spells");
 const { checklistSpell, checklistSpellsOn } = await import("../src/lib/srd/spell-lists.ts");
 const { spellOnListKey } = await import("../src/lib/classes/class-spell-list.ts");
-const { cantripCapOf, spellCapOf, maxSpellLevelOf } = await import("../src/lib/srd/spell-prep.ts");
+const { cantripCapOf, spellCapOf, maxSpellLevelOf, spellListProblems, casterViewsOf } = await import("../src/lib/srd/spell-prep.ts");
+const { levelUpSpells } = await import("../src/lib/srd/level-up-spells.ts");
 const { bundledSpellSupply } = await import("../src/app/characters/builder/spellSupply.ts");
 const { bundledSpellFacts } = await import("../src/lib/srd/spell-facts.ts");
 const { allPackSpells } = await import("../src/lib/content/index.ts");
@@ -155,6 +156,83 @@ await test("P01: an artificer at every level has a list long enough for its cant
     }
   }
   assert.deepEqual(short, []);
+});
+
+// ---- P02: a warlock's Mystic Arcanum ----
+//
+// SRD 5.1, Warlock: at 11th level "choose one 6th-level spell from the
+// warlock spell list as this arcanum", and one 7th, 8th and 9th at 13th, 15th
+// and 17th. The Spells Known column stops at 5th level spells and does not
+// hold them. The creation check and the level-up counted the arcanum as a
+// spell known (a warlock reaching 11th gave up the level's new spell to take
+// it) and let two spells of one arcanum level in.
+const WARLOCK_KNOWN = [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15];
+const WARLOCK_SPELLS = [
+  "Hex", "Armor of Agathys", "Hellish Rebuke", "Charm Person", "Comprehend Languages", "Expeditious Retreat",
+  "Protection from Evil and Good", "Unseen Servant", "Witch Bolt", "Hold Person", "Misty Step", "Darkness",
+  "Invisibility", "Mirror Image", "Counterspell", "Fly", "Banishment", "Dimension Door", "Hold Monster", "Scrying",
+];
+const ARCANA = { 6: "Circle of Death", 7: "Etherealness", 8: "Demiplane", 9: "Foresight" };
+const warlockAbilities = { str: 8, dex: 14, con: 14, int: 10, wis: 10, cha: 18 };
+const warlockSheet = (level, known) => ({
+  class: "warlock",
+  level,
+  subclass: "The Fiend",
+  abilities: warlockAbilities,
+  features: [],
+  spellcasting: { ability: "cha", known, prepared: [], cantrips: ["Eldritch Blast", "Minor Illusion", "Mage Hand", "Prestidigitation"].slice(0, level >= 10 ? 4 : level >= 4 ? 3 : 2) },
+});
+const arcanaAt = (level) => Object.entries(ARCANA).filter(([spellLevel]) => level >= 11 + 2 * (Number(spellLevel) - 6)).map(([, name]) => name);
+
+await test("P02: a warlock at every level 11 to 20 holds its whole Spells Known column and one arcanum of each level reached", () => {
+  const problems = [];
+  for (let level = 1; level <= 20; level += 1) {
+    const sheet = warlockSheet(level, [...WARLOCK_SPELLS.slice(0, WARLOCK_KNOWN[level - 1]), ...arcanaAt(level)]);
+    problems.push(...spellListProblems(sheet, { bookAllowance: true }).map((line) => `level ${level}: ${line}`));
+  }
+  assert.deepEqual(problems, []);
+});
+
+await test("P02: a second spell of an arcanum level is refused at creation, and one past the arcana reached too", () => {
+  const two = spellListProblems(warlockSheet(13, [...WARLOCK_SPELLS.slice(0, 10), "Circle of Death", "True Seeing"]));
+  assert.ok(two.some((line) => /Mystic Arcanum/.test(line) && /True Seeing/.test(line)), JSON.stringify(two));
+  const early = spellListProblems(warlockSheet(11, [...WARLOCK_SPELLS.slice(0, 11), "Etherealness"]));
+  assert.ok(early.some((line) => /Etherealness/.test(line)), JSON.stringify(early));
+});
+
+await test("P02: each arcanum level-up takes the level's new spell and its arcanum, and refuses a second arcanum", () => {
+  const steps = [];
+  for (const level of [11, 13, 15, 17]) {
+    const before = casterViewsOf(warlockSheet(level - 1, [...WARLOCK_SPELLS.slice(0, WARLOCK_KNOWN[level - 2]), ...arcanaAt(level - 1)]))[0];
+    const fresh = WARLOCK_SPELLS[WARLOCK_KNOWN[level - 2]];
+    const arcanum = arcanaAt(level).at(-1);
+    const result = levelUpSpells({
+      before,
+      level,
+      subclass: "The Fiend",
+      list: "warlock",
+      firstLevel: false,
+      abilities: warlockAbilities,
+      freeCantrips: 0,
+      spellOf: bundledSpellFacts,
+      picks: { kind: "picks", spells: [fresh, arcanum].filter(Boolean) },
+    });
+    steps.push(`${level}: ${"error" in result ? result.error : "ok"}`);
+  }
+  assert.deepEqual(steps, ["11: ok", "13: ok", "15: ok", "17: ok"]);
+  const before = casterViewsOf(warlockSheet(10, WARLOCK_SPELLS.slice(0, 10)))[0];
+  const twice = levelUpSpells({
+    before,
+    level: 11,
+    subclass: "The Fiend",
+    list: "warlock",
+    firstLevel: false,
+    abilities: warlockAbilities,
+    freeCantrips: 0,
+    spellOf: bundledSpellFacts,
+    picks: { kind: "picks", spells: ["Circle of Death", "True Seeing"], forget: "Hex" },
+  });
+  assert.match("error" in twice ? twice.error : "taken", /Mystic Arcanum/);
 });
 
 finish();

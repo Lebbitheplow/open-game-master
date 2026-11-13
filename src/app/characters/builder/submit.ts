@@ -23,6 +23,7 @@ import { multiclassGrantsFor } from "@/lib/srd/multiclass";
 import { unmetFeatMessage, type FeatJudge } from "./featPrereqs";
 import type { BackgroundOption, ClassOption, RaceOption } from "./useBuilderOptions";
 import type { BuilderDerived } from "./useBuilderDerived";
+import { spellLevelOf } from "@/lib/srd/spell-lists";
 import type { BuilderState, EquipmentItem } from "./useBuilderState";
 import { textKey } from "@/lib/language/text-logic";
 import { subclassPickFeatures } from "@/lib/srd/subclass-choice-picks";
@@ -392,7 +393,7 @@ export function spellsBlocks(
 type DeskCounts = Pick<
   BuilderDerived,
   "spellSupply" | "cantripAdvice" | "chosenCantrips" | "spellbookAdvice" | "chosenSpells" | "spellAdvice" | "chosenPrepared"
-> & { klass: Pick<ClassOption, "name">; casterLevel: number };
+> & Partial<Pick<BuilderDerived, "arcanumLevels" | "chosenArcanum">> & { klass: Pick<ClassOption, "name">; casterLevel: number };
 
 function deskBlocks(desk: DeskCounts, who: string): StepBlock[] {
   const derived = desk;
@@ -439,6 +440,14 @@ function deskBlocks(desk: DeskCounts, who: string): StepBlock[] {
     }
     if (spellsOver > 0) {
       owed.push(block("spells", `Remove ${spellsOver} ${spellsOver === 1 ? "spell" : "spells"}: the limit is ${derived.spellAdvice.count} ${derived.spellAdvice.label}.`));
+    }
+  }
+  // A warlock's Mystic Arcanum: one spell of each level reached, beside the
+  // spells known (src/lib/srd/spell-prep.ts arcanumSplit).
+  const arcanaHeld = new Set((derived.chosenArcanum ?? []).map((name) => spellLevelOf(name)));
+  for (const level of derived.arcanumLevels ?? []) {
+    if (!arcanaHeld.has(level)) {
+      owed.push(block("spells", `Pick your Mystic Arcanum: one level ${level} warlock spell.`));
     }
   }
   return owed;

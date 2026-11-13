@@ -37,6 +37,9 @@ import {
   dedupeNames,
   grantedSpellsOf,
   preparedCount,
+  arcanumSplit,
+  maxSpellLevelOf,
+  mysticArcanumLevels,
   spellbookAllowance,
   spellbookOf,
 } from "@/lib/srd/spell-prep";
@@ -70,6 +73,9 @@ export type LevelUpOptionsContext = {
   // bundled list does not carry: a content pack's Mechanist was "Unknown
   // class" here while the PATCH took its level.
   classOf?: (classId: string) => { id: string; name: string; hitDie: number } | null;
+  // A spell's level as the level-up reads it (the content pack's too), for a
+  // warlock's arcana; the bundled checklist answers without it.
+  spellLevelOf?: (name: string) => number | null;
 };
 
 type ClassRow = { id: string; subclass: string; level: number };
@@ -120,6 +126,9 @@ export type LevelUpOptions = {
       newCantrips: number;
       // Spells to learn, prepare or write in the book with this level.
       newSpells: number;
+      // A warlock's Mystic Arcanum levels still without a spell: one spell of
+      // each to name beside newSpells, never counted in it.
+      arcanum?: number[];
       style: "known" | "prepared" | "spellbook";
       mayReplaceOne: boolean;
       // A third caster (an Eldritch Knight, an Arcane Trickster) learns its
@@ -358,6 +367,11 @@ export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsCon
     const cantripsHeld = view ? dedupeNames(view.cantrips).length - context.freeCantrips : 0;
     const newCantrips = caster.cantripCap === null ? 0 : Math.max(0, caster.cantripCap + grants.extraCantrips - Math.max(0, cantripsHeld));
     let newSpells = 0;
+    // A warlock's arcana sit beside the spells known (spell-prep.ts
+    // arcanumSplit): out of the holding, and asked for on their own.
+    const arcanumView = { classId: klass.id, level: classLevelAfter };
+    const arcana = arcanumSplit(arcanumView, view ? (view.known.length ? view.known : view.prepared) : [], context.spellLevelOf);
+    const arcanumKeys = new Set(arcana.arcanum.map(textKey));
     if (caster.style === "spellbook") {
       newSpells = view && spellbookOf(view).length ? 2 : spellbookAllowance(classLevelAfter);
     } else if (caster.spellCap) {
@@ -365,7 +379,7 @@ export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsCon
       const holding = !view
         ? 0
         : caster.style === "known"
-          ? dedupeNames(view.known.length ? view.known : view.prepared).filter((name) => !granted.has(textKey(name))).length
+          ? dedupeNames(view.known.length ? view.known : view.prepared).filter((name) => !granted.has(textKey(name)) && !arcanumKeys.has(textKey(name))).length
           : preparedCount(view);
       newSpells = Math.max(0, caster.spellCap.count + grants.extraSpells - holding);
     }
@@ -384,17 +398,23 @@ export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsCon
           ),
         }
       : null;
+    const slotTop = maxSpellLevelOf({ classId: klass.id, level: classLevelAfter, subclass: subclassNow, progression });
     choices.spells = {
       list: caster.list,
-      maxSpellLevel: caster.maxLevel,
+      // The new spells' reach: the slots' (a warlock's arcana are their own).
+      maxSpellLevel: mysticArcanumLevels(arcanumView).length ? slotTop : caster.maxLevel,
       newCantrips,
       newSpells,
+      ...(arcana.open.length ? { arcanum: arcana.open } : {}),
       style: caster.style,
       mayReplaceOne: caster.style === "known" && knownBefore.length > 0,
       ...(schools ? { schools } : {}),
       note: [
         STYLE_NOTE[caster.style],
         grants.anyList ? `${grants.feature}: ${grants.anyList} of the ${grants.anyListSpells ? "spells" : "cantrips"} held may come from any class's spell list.` : "",
+        arcana.open.length
+          ? `Mystic Arcanum: also name one warlock spell of level ${arcana.open.join(", ")} in levelUpSpells, beside the new spells and not counted in them.`
+          : "",
         schools
           ? `Levelled spells come from ${schools.from.join(" and ")}; ${schools.otherSchoolPicks} more may come from any other school.`
           : "",

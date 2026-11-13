@@ -838,6 +838,22 @@ export function fillSpells(
       words.push(...add);
     }
   }
+  // A warlock's Mystic Arcanum: one spell of each level reached, from its own
+  // list, beside the spells known (src/lib/srd/spell-prep.ts arcanumSplit).
+  // The step's pool stops at the pact slots' level, so the checklist answers.
+  for (const level of derived.arcanumLevels ?? []) {
+    if (spells.some((name) => spellLevelOf(name) === level)) {
+      continue;
+    }
+    const pick = preferredSpellOrder(checklistSpellsOn(derived.spellSearchClass).filter((spell) => spell.level === level))
+      .map((spell) => spell.name)
+      .find((name) => !has(spells, name) && spellOnSavedList(name, { third, spellClass: derived.spellSearchClass }));
+    if (pick) {
+      spells = [...spells, pick];
+      patch.spells = spells;
+      words.push(pick);
+    }
+  }
   if (wizard && derived.spellAdvice) {
     const book = spells.filter((name) => !free.has(textKey(name)));
     const prepared = fields.bookPrepared.filter((name) => has(book, name));

@@ -204,6 +204,30 @@ await test("a level 3 artificer fills every prepared spell from its own list, an
   await saves(fields, "artificer at 3");
 });
 
+// SRD 5.1, Mystic Arcanum: a warlock holds one 6th level spell from 11th
+// level, a 7th from 13th, an 8th from 15th and a 9th from 17th, beside its
+// spells known (the creator spells audit, P02). The builder offered nothing
+// past the pact slots, so a warlock made at 11th level or later had no
+// arcanum at all; the fill now takes one of each, the step owes them until
+// they are taken, and the server saves the whole list.
+await test("a warlock built at 11, 13, 15, 17 and 20 holds its spells known and one arcanum of each level", async () => {
+  const { spellLevelOf } = await import("../src/lib/srd/spell-lists.ts");
+  const { spellsBlocks } = await import("../src/app/characters/builder/submit.ts");
+  for (const [level, levels] of [[11, [6]], [13, [6, 7]], [15, [6, 7, 8]], [17, [6, 7, 8, 9]], [20, [6, 7, 8, 9]]]) {
+    const { fields } = await runFill(fresh({ level, classId: "warlock" }));
+    const built = derive(fields);
+    assert.deepEqual(built.derived.arcanumLevels, levels, `warlock ${level}`);
+    assert.deepEqual(built.derived.chosenArcanum.map((name) => spellLevelOf(name)).sort(), levels, `warlock ${level}: ${fields.spells.join(", ")}`);
+    assert.equal(built.derived.chosenSpells.length, built.derived.spellAdvice.count, `warlock ${level} spells known`);
+    const owed = derive({ ...fields, spells: fields.spells.filter((name) => (spellLevelOf(name) ?? 0) < 6) });
+    assert.ok(
+      spellsBlocks(owed.derived, builder.classes.find((entry) => entry.id === "warlock")).some((block) => /Mystic Arcanum/.test(JSON.stringify(block))),
+      `warlock ${level} owes its arcanum`,
+    );
+    await saves(fields, `warlock at ${level}`);
+  }
+});
+
 await test("the shortage reads plainly for one, none, and cantrips", async () => {
   const { spellShortageLines } = await import("../src/app/characters/builder/spellSupply.ts");
   const base = { className: "artificer", cantripCap: 2, listCap: 4, listVerb: "prepare", maxSpellLevel: 2 };

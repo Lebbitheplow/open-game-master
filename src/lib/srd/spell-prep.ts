@@ -460,6 +460,63 @@ function arcanumTop(view: Pick<CasterView, "classId" | "level">): number {
   return view.level >= 17 ? 9 : view.level >= 15 ? 8 : view.level >= 13 ? 7 : view.level >= 11 ? 6 : 0;
 }
 
+// The spell levels a warlock holds one Mystic Arcanum of: 6th from 11th
+// level, 7th from 13th, 8th from 15th, 9th from 17th. Empty for anyone else.
+export function mysticArcanumLevels(view: Pick<CasterView, "classId" | "level">): number[] {
+  const top = arcanumTop(view);
+  return top ? Array.from({ length: top - 5 }, (_, index) => 6 + index) : [];
+}
+
+// Which of `names` are the warlock's arcana (SRD 5.1, Mystic Arcanum: "choose
+// one 6th-level spell from the warlock spell list as this arcanum"): the
+// first spell of each arcanum level. An arcanum is learned beside the Spells
+// Known column, not in it (the column stops at 5th level spells), so these
+// never count against it. `extra` are further spells of a level whose arcanum
+// is already taken, which no feature lets a warlock hold; `open` the arcanum
+// levels with no spell yet. Before this the level-up and the creation check
+// counted the arcanum as a spell known, so a warlock reaching 11th level
+// gave up the level's new spell to take its arcanum, and could learn two 6th
+// level spells instead of one.
+export function arcanumSplit(
+  view: Pick<CasterView, "classId" | "level">,
+  names: string[],
+  levelOf: (name: string) => number | null = spellLevelOf,
+): { arcanum: string[]; extra: string[]; open: number[] } {
+  const levels = mysticArcanumLevels(view);
+  if (!levels.length) {
+    return { arcanum: [], extra: [], open: [] };
+  }
+  const taken = new Map<number, string>();
+  const extra: string[] = [];
+  for (const name of dedupeNames(names)) {
+    const level = levelOf(name);
+    if (level === null || !levels.includes(level)) {
+      continue;
+    }
+    if (taken.has(level)) {
+      extra.push(name);
+    } else {
+      taken.set(level, name);
+    }
+  }
+  return { arcanum: [...taken.values()], extra, open: levels.filter((level) => !taken.has(level)) };
+}
+
+// The refusal for a second spell of an arcanum level, or null.
+export function arcanumExtraProblem(
+  view: Pick<CasterView, "classId" | "level">,
+  split: { arcanum: string[]; extra: string[] },
+  levelOf: (name: string) => number | null = spellLevelOf,
+): string | null {
+  const [extra] = split.extra;
+  if (!extra) {
+    return null;
+  }
+  const level = levelOf(extra);
+  const held = split.arcanum.find((name) => levelOf(name) === level);
+  return `A warlock's Mystic Arcanum is one spell of each level from 6th: ${held} is already the level ${level} arcanum, so ${extra} cannot be learned too.`;
+}
+
 // Everything the 5e tables say is wrong with the spell lists a sheet arrives
 // with: more cantrips than the class knows, more spells held than its known
 // or prepared count, a wizard's book past its allowance, a spell above the
@@ -483,6 +540,9 @@ export function spellListProblems(
     freeSpells?: string[];
     // The table's subclasses, for a workshop subclass's always-prepared spells.
     extras?: SubclassExtras;
+    // A spell's level as the server knows it (the content pack's too), for
+    // the warlock's arcana; the bundled checklist answers without it.
+    levelOf?: (name: string) => number | null;
   } = {},
 ): string[] {
   const problems: string[] = [];
@@ -512,7 +572,13 @@ export function spellListProblems(
     const held = dedupeNames([...heldSpells(view), ...view.pending]).filter((name) => !isCantripName(name) && !freeSpells.has(textKey(name)));
     const tableCap = spellCapOf(view, sheet.abilities);
     const cap = tableCap ? { ...tableCap, count: tableCap.count + grants.extraSpells } : null;
-    const counted = spellsAgainstLimit(held, granted);
+    // A warlock's arcana sit beside the Spells Known column.
+    const arcana = arcanumSplit(view, held, options.levelOf);
+    const extraArcanum = arcanumExtraProblem(view, arcana, options.levelOf);
+    if (extraArcanum) {
+      problems.push(extraArcanum);
+    }
+    const counted = spellsAgainstLimit(held, [...granted, ...arcana.arcanum]);
     if (cap && counted > cap.count) {
       problems.push(`A ${label} may hold ${cap.count} ${cap.label}; that list has ${counted}.`);
     }

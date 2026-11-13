@@ -182,7 +182,7 @@ export async function openLevelSweep({ prepare, ...options } = {}) {
       }
       body.featChoices = featChoices;
     }
-    if (choices.spells && (choices.spells.newCantrips || choices.spells.newSpells)) {
+    if (choices.spells && (choices.spells.newCantrips || choices.spells.newSpells || choices.spells.arcanum?.length)) {
       const pool = await sb.spellPool(choices.spells.list, choices.spells.maxSpellLevel);
       const casting = current.spellcasting;
       const heldSpells = new Set(
@@ -203,7 +203,15 @@ export async function openLevelSweep({ prepare, ...options } = {}) {
       const leveled = free.filter((spell) => spell.level > 0).sort((a, b) => b.level - a.level);
       const rest = leveled.slice(1);
       const spells = [...leveled.slice(0, 1), ...rest.filter((spell) => spell.level === 3), ...rest.filter((spell) => spell.level !== 3)].slice(0, choices.spells.newSpells);
-      const names = [...cantrips, ...spells].map((spell) => spell.name);
+      // A warlock's Mystic Arcanum: one spell of each open level, beside the
+      // new spells (the offer's `arcanum`).
+      const arcana = [];
+      for (const level of choices.spells.arcanum ?? []) {
+        const high = await sb.spellPool(choices.spells.list, level);
+        const pick = high.find((spell) => spell.level === level && !heldSpells.has(key(spell.name)) && !dropped.has(spell.name));
+        if (pick) arcana.push(pick);
+      }
+      const names = [...cantrips, ...spells, ...arcana].map((spell) => spell.name);
       if (names.length) body.levelUpSpells = names;
     }
     return body;

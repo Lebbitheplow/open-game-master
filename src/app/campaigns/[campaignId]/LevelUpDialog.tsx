@@ -60,7 +60,7 @@ import {
   fightingStyleSlots,
   type FightingStyleId,
 } from "@/lib/srd/feature-effects";
-import { spellStyleFor, spellbookAllowance } from "@/lib/srd/spell-prep";
+import { arcanumSplit, mysticArcanumLevels, spellStyleFor, spellbookAllowance } from "@/lib/srd/spell-prep";
 import { isThirdCaster } from "@/lib/srd/third-caster";
 import {
   abilitiesAfterLevel,
@@ -660,8 +660,20 @@ export function LevelUpDialog({
       ),
     [classChoice, effectiveSubclass, classLevelAfter, sheet.features, learnedKey, optionPicks],
   );
+  // A warlock's Mystic Arcanum: one spell of each level from 6th, learned
+  // beside the spells known and never counted in them (spell-prep.ts
+  // arcanumSplit, as the route counts it). Its picks have their own room.
+  const poolLevelOf = (name: string) =>
+    spellPool.find((spell) => textKey(spell.name) === textKey(name))?.level ?? spellLevelOf(name);
+  const arcanumView = { classId: classChoice, level: classLevelAfter };
+  const heldArcana = arcanumSplit(arcanumView, knownList, poolLevelOf);
+  const arcanumLevels = mysticArcanumLevels(arcanumView);
+  const isArcanumLevel = (level: number | null) => level !== null && arcanumLevels.includes(level);
+  const arcanumPickOf = (level: number) => spellPicks.find((name) => poolLevelOf(name) === level);
+  const regularPicks = spellPicks.filter((name) => !isArcanumLevel(poolLevelOf(name)));
+  const heldArcanumKeys = new Set(heldArcana.arcanum.map((name) => textKey(name)));
   const heldSpells = [...new Set([...knownList, ...pendingList].map((name) => textKey(name)))].filter(
-    (name) => !grantedFree.has(name),
+    (name) => !grantedFree.has(name) && !heldArcanumKeys.has(name),
   ).length;
   const bookGain = bookStyle
     ? isNewClass
@@ -743,7 +755,7 @@ export function LevelUpDialog({
   const originSent = originShown && (originOffer?.kind === "replace" ? originOffer.optionsFor?.[originShown.from] ?? [] : []).includes(originShown.to) ? originShown : null;
   // The spell known given up made room for one more pick; giving it back takes the room back.
   function dropForget() {
-    if (forgetPick && remainingPicks !== null && spellPicks.length >= remainingPicks) {
+    if (forgetPick && remainingPicks !== null && regularPicks.length >= remainingPicks) {
       setSpellPicks((current) => current.slice(0, -1));
     }
     setForgetPick("");
@@ -774,7 +786,16 @@ export function LevelUpDialog({
         ? { short: "Cantrips full", long: `That is every new cantrip for this level. Untick one to choose ${name}.` }
         : null;
     }
-    if (remainingPicks !== null && spellPicks.length >= remainingPicks) {
+    if (isArcanumLevel(level) && level !== null) {
+      const held = heldArcana.arcanum.find((entry) => poolLevelOf(entry) === level) ?? arcanumPickOf(level);
+      return held
+        ? {
+            short: "Arcanum chosen",
+            long: `Your Mystic Arcanum holds one spell of each level from 6th, and ${held} is your level ${level} arcanum.${heldArcana.open.includes(level) ? ` Untick it to choose ${name}.` : ""}`,
+          }
+        : null;
+    }
+    if (remainingPicks !== null && regularPicks.length >= remainingPicks) {
       return { short: "All new spells chosen", long: `That is every new spell for this level. Untick one to choose ${name}.` };
     }
     if (!isThirdCaster(classChoice, effectiveSubclass, progression)) {
@@ -1619,6 +1640,13 @@ export function LevelUpDialog({
                         )}
                       </li>
                     ) : null}
+                    {heldArcana.open.map((level) => (
+                      <li key={`arcanum-${level}`}>
+                        <span className="text-amber-200">Mystic Arcanum: choose one level {level} warlock spell.</span>{" "}
+                        You cast it once without a spell slot, then again after a long rest. It does not count
+                        against your spells known.
+                      </li>
+                    ))}
                     {anyGroup ? (
                       <li>
                         <span className="text-amber-200">{anyGroup.title}.</span> They have their own list,
@@ -1631,7 +1659,7 @@ export function LevelUpDialog({
                         {learnedNew.join(", ")}, free of your spells known, and can cast it as a ritual.
                       </li>
                     ) : null}
-                    {!remainingCantrips && !remainingPicks && !anyGroup ? (
+                    {!remainingCantrips && !remainingPicks && !anyGroup && !heldArcana.open.length ? (
                       <li>Nothing new to choose at this level: your spells stay as they are.</li>
                     ) : null}
                   </ul>
@@ -1653,7 +1681,7 @@ export function LevelUpDialog({
                                 onClick={() => {
                                   setSpellNote("");
                                   // Giving the swap back takes back the room it made.
-                                  if (picked && remainingPicks !== null && spellPicks.length >= remainingPicks) {
+                                  if (picked && remainingPicks !== null && regularPicks.length >= remainingPicks) {
                                     setSpellPicks((current) => current.slice(0, -1));
                                   }
                                   setForgetPick(picked ? "" : name);
@@ -1687,7 +1715,7 @@ export function LevelUpDialog({
                         ? [
                             {
                               label: bookGain !== null ? "Spellbook" : levelStyle === "known" ? "Known" : "Prepared",
-                              value: spellPicks.length,
+                              value: regularPicks.length,
                               max: remainingPicks,
                             },
                           ]

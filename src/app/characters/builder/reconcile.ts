@@ -403,7 +403,7 @@ export function reconcilePicks(
   // its own level (phase 1 of F9 builds one casting class).
   const casterAt = classes.length > 1 ? castingIndexOf(classes.map((entry) => ({ row: entry.klass, subclass: entry.subclass, level: entry.level }))) : 0;
   const caster = casterAt >= 0 ? classes[casterAt] : undefined;
-  const { maxSpellLevel, cantripCap, casts } = builderCasting(caster?.klass, caster?.subclass, caster?.level ?? level);
+  const { maxSpellLevel, arcanumLevels, cantripCap, casts } = builderCasting(caster?.klass, caster?.subclass, caster?.level ?? level);
   // The race's cantrips are not class picks: a stored sheet lists them with
   // the class's (submit.ts finalCantrips), and read back they would count
   // against the class's allowance (issue #118).
@@ -416,7 +416,8 @@ export function reconcilePicks(
   const spells = casts
     ? unique(picks.spells).filter((name) => {
         const spellLevel = spellLevelOf(name);
-        return spellLevel === null || (spellLevel > 0 && spellLevel <= maxSpellLevel);
+        // A warlock's Mystic Arcanum reaches past its slots.
+        return spellLevel === null || (spellLevel > 0 && spellLevel <= maxSpellLevel) || arcanumLevels.includes(spellLevel);
       })
     : [];
   note("spell", "spells", picks.spells, spells);

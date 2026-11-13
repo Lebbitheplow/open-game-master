@@ -12,6 +12,8 @@
 // up) or, from a client built before that, as the lists whole; both are read
 // as "the lists the player wants" and judged against the lists held.
 import {
+  arcanumExtraProblem,
+  arcanumSplit,
   cantripCapOf,
   dedupeNames,
   grantedSpellsOf,
@@ -305,6 +307,16 @@ export function levelUpSpells(input: SpellLevelUp): SpellLevelUpResult {
   }
 
   // ---- the counts ----
+  // A warlock's arcana sit beside the Spells Known column (spell-prep.ts
+  // arcanumSplit): one of each level reached, never counted in it.
+  const levelOf = (name: string) => input.spellOf(name)?.level ?? null;
+  const arcanaAfter = arcanumSplit(after, after.known.length ? after.known : after.prepared, levelOf);
+  const arcanaBefore = arcanumSplit(before, before.known.length ? before.known : before.prepared, levelOf);
+  const extraArcanum = arcanumExtraProblem(after, arcanaAfter, levelOf);
+  if (extraArcanum && arcanaAfter.extra.some((name) => !has(arcanaBefore.extra, name))) {
+    return { error: extraArcanum };
+  }
+  const notArcanum = (arcana: { arcanum: string[] }) => (name: string) => !has(arcana.arcanum, name);
   const tableCantrips = cantripCapOf(after);
   const cantripCap = tableCantrips === null ? null : tableCantrips + grants.extraCantrips;
   const cantrips = dedupeNames(after.cantrips);
@@ -354,13 +366,13 @@ export function levelUpSpells(input: SpellLevelUp): SpellLevelUpResult {
   } else if (cap) {
     const held =
       after.style === "known"
-        ? dedupeNames(after.known.length ? after.known : after.prepared).filter((name) => !isGranted(name)).length
+        ? dedupeNames(after.known.length ? after.known : after.prepared).filter((name) => !isGranted(name)).filter(notArcanum(arcanaAfter)).length
         : preparedCount(after);
     const grew =
       newSpells.length > 0 ||
       held >
         (after.style === "known"
-          ? dedupeNames(before.known.length ? before.known : before.prepared).filter((name) => !isGranted(name)).length
+          ? dedupeNames(before.known.length ? before.known : before.prepared).filter((name) => !isGranted(name)).filter(notArcanum(arcanaBefore)).length
           : preparedCount(before));
     if (grew && held > cap.count) {
       return {

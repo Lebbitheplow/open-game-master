@@ -477,6 +477,7 @@ export function judgeSpellcasting(input: SpellcastingInput): SpellcastingVerdict
           freeCantrips: [...racial.map((entry) => entry.name), ...innate, ...taught.cantrips],
           freeSpells: taught.spells,
           extras: input.subclassExtras,
+          levelOf: (name) => input.spellOf(name)?.level ?? spellLevelOf(name),
         },
       ),
     );
