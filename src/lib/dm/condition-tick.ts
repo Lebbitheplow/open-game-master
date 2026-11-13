@@ -83,19 +83,20 @@ export function tickEncounterConditions(campaign: Campaign, encounter: Encounter
   // (src/lib/dm/effects-logic.ts). One the party could not tell was there
   // ends as quietly as it began, and still counts as a change below: its end
   // can move an enemy's maximum on the tracker.
-  const expired = tickEffectRound(campaign.id, encounter.round);
+  // What belongs to a turn is counted there (startTurnConditions, and the
+  // saves at endTurnSaves): an instance whose source is in the order counts
+  // as that source's turn starts, and a holder in the order saves at the end
+  // of its own turn. The wrap counts the rest: an instance with no source in
+  // the fight, a holder the order does not hold. An active effect likewise,
+  // by the turn it began on.
+  const inOrder = new Set(encounter.order.map((entry) => orderEntryId(entry)));
+  const expired = tickEffectRound(campaign.id, (anchor) => !anchor || !inOrder.has(anchor));
   for (const effect of expired) {
     if (effect.visible) {
       lines.push(`${effect.name} wears off.`);
     }
   }
 
-  // What belongs to a turn is counted there (startTurnConditions, and the
-  // saves at endTurnSaves): an instance whose source is in the order counts
-  // as that source's turn starts, and a holder in the order saves at the end
-  // of its own turn. The wrap counts the rest: an instance with no source in
-  // the fight, a holder the order does not hold.
-  const inOrder = new Set(encounter.order.map((entry) => orderEntryId(entry)));
   const outside: HolderTick = {
     counts: (source) => !source || !inOrder.has(source),
     saves: (holderId) => !inOrder.has(holderId),
@@ -254,6 +255,13 @@ export function startTurnConditions(
   tickEnemyConditions(campaign, encounter, 1, counted, ownTurn);
   tickSheetConditions(campaign, 1, counted, { encounter, ...ownTurn });
   counted.push(...tickConcentrationClocks(campaign, 1, (casterId) => starting.has(casterId)));
+  // An active effect begun on one of these turns counts its round now: "for
+  // 1 round" from a turn lasts until that turn comes again, not to the wrap.
+  const worn = tickEffectRound(campaign.id, (anchor) => Boolean(anchor && starting.has(anchor)));
+  counted.push(...worn.filter((effect) => effect.visible).map((effect) => `${effect.name} wears off.`));
+  if (worn.length) {
+    enemiesChanged = true;
+  }
   if (counted.length) {
     endSpentConcentration(campaign, counted);
     enemiesChanged = true;
