@@ -9,6 +9,7 @@ register("./lib/register-alias.mjs", import.meta.url);
 const turns = await import("../src/lib/dm/enemy-turn-logic.ts");
 const flee = await import("../src/lib/dm/flee-logic.ts");
 const { normalizeLegendaryState } = await import("../src/lib/dm/legendary-logic.ts");
+const { enemyAttackProfile } = await import("../src/lib/dm/enemy-profile.ts");
 
 let passed = 0;
 function test(name, fn) {
@@ -147,6 +148,13 @@ test("fear is measured to the nearest square of a Huge source, not its top-left 
   assert.equal(new Set(flee.nearerSquares(width, 18, { x: 14, y: 10 }, dragon)).has(8 * width + 12), false, "a step around the dragon at the same distance was nearer");
   assert.equal(flee.fearDistance({ x: 13, y: 11 }, dragon), 1);
   assert.equal(flee.fearDistance({ x: 11, y: 11 }, dragon), 0);
+});
+
+// A block written by hand, with no parsed reach: the reach its words print.
+test("a hand-written block's \"reach 15 ft\" reaches three squares, and \"reach 10 ft\" two", () => {
+  assert.equal(enemyAttackProfile({ name: "Tail (reach 15 ft)", toHit: 6, damage: "2d8+8", type: "bludgeoning" }).reachTiles, 3);
+  assert.equal(enemyAttackProfile({ name: "Bite", toHit: 6, damage: "2d10+8", type: "piercing" }, ["Bite: reach 10 ft."]).reachTiles, 2);
+  assert.equal(enemyAttackProfile({ name: "Claw", toHit: 6, damage: "2d6+8", type: "slashing" }).reachTiles, 1);
 });
 
 console.log(`test-enemy-turn-logic: ${passed} passed`);

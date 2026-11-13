@@ -35,7 +35,9 @@ export type EnemyAttackProfile = {
 export function enemyAttackProfile(attack: EnemyAttack, traits: string[] = []): EnemyAttackProfile {
   if (!attack.mode) {
     const ranged = isRangedAttackName(attack.name);
-    const reach = /reach 1[05] ft/i.test(`${attack.name} ${traits.join(" ")}`) ? 2 : 1;
+    // The printed reach, whatever it is: "reach 15 ft" read as 10 before.
+    const printed = [...`${attack.name} ${traits.join(" ")}`.matchAll(/reach (\d+) ?ft/gi)].map((found) => Number(found[1]));
+    const reach = Math.max(1, ...printed.map((feet) => Math.floor(feet / TILE_FEET)));
     return {
       melee: !ranged,
       ranged,
