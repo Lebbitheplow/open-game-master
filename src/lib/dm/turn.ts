@@ -496,7 +496,13 @@ export function buildEncounterState(campaignId: string, sheets: CharacterSheet[]
     // Named while they stay away, so the GM can still bring them in: nothing
     // else in the state says they exist once the order has closed.
     ...(encounter.awayIds.length ? { away: sheets.filter((sheet) => encounter.awayIds.includes(sheet.id)).map((sheet) => sheet.name) } : {}),
-    turnBudget: encounter.turnBudget ? describeBudget(encounter.turnBudget) : null,
+    // A reaction is spent in reactionsUsed (turn-budget.ts markReactionUsed),
+    // never on the budget's own flag: read from the budget alone, a hero who
+    // took Shield on their own turn was told to the model as still holding
+    // their reaction.
+    turnBudget: encounter.turnBudget
+      ? describeBudget({ ...encounter.turnBudget, reactionUsed: encounter.turnBudget.reactionUsed || encounter.reactionsUsed.includes(encounter.turnBudget.ownerId) })
+      : null,
     // The printed lair options lair_action takes by number: a block's own
     // list never reaches its traits whole.
     ...(lair.length ? { lairOptions: lair.map((line, at) => `${at + 1}. ${line}`) } : {}),
