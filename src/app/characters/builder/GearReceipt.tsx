@@ -69,7 +69,10 @@ const stepClass =
 // The gear receipt (backlog F14): one table of the pack with how many of
 // each, what the kit gave free and what was paid, the price, and the coin
 // left at the foot. Weapons carry their to-hit and damage under the name.
-export default function GearReceipt({ receipt }: { receipt: ReceiptView }) {
+// `itemLabel`: the campaign's world pack's name for a piece of gear
+// (src/lib/worlds/reskin-logic.ts displayName); the row keeps its canonical
+// name for the sheet, and shows it beside the new one.
+export default function GearReceipt({ receipt, itemLabel }: { receipt: ReceiptView; itemLabel?: (name: string) => string }) {
   if (!receipt.rows.length) {
     return <p className="mt-2 text-xs text-stone-500">Nothing in the pack yet.</p>;
   }
@@ -88,11 +91,15 @@ export default function GearReceipt({ receipt }: { receipt: ReceiptView }) {
         <tbody>
           {receipt.rows.map((row) => {
             const homebrew = row.slug?.startsWith("homebrew:") ?? false;
+            const shown = itemLabel ? itemLabel(row.name) : row.name;
             return (
               <tr key={row.name} className="border-b border-stone-900 align-top last:border-0">
                 <td className="px-2 py-1.5">
                   <div className="flex items-start gap-1">
-                    <span className="min-w-0 break-words text-stone-200">{row.name}</span>
+                    <span className="min-w-0 break-words text-stone-200">
+                      {shown}
+                      {shown !== row.name ? <span className="ml-1 text-stone-500">({row.name})</span> : null}
+                    </span>
                     {homebrew ? null : (
                       <InfoButton
                         label={row.name}
