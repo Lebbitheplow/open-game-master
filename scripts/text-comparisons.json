@@ -2575,7 +2575,7 @@
     "lib/srd/weather.ts#str-case": [["key",1,"climate and genre ids"]],
     "lib/srd/weather.ts#str-list": [["key",1,"climate and genre ids"]],
     "lib/srd/worn-places.ts#str-list": [["key",1,"body places (stored ids)"]],
-    "lib/starter/pregens.ts#str-list": [["english-source",8,"ODM's bundled pregenerated characters (bundled data: SRD skill ids, tools, spell names)"]],
+    "lib/starter/pregens.ts#str-list": [["english-source",12,"ODM's bundled pregenerated characters (bundled data: SRD skill ids, tools, spell names)"]],
     "lib/story-prompt.ts#RegExp i": [["key",4,"model reasoning and channel markup"],["key",1,"a roll marker the model imitates, held back as it streams (ODM's own markup)"]],
     "lib/story-prompt.ts#[a-z]": [["key",3,"model reasoning and channel markup, and a Harmony tool recipient"]],
     "lib/story-prompt.ts#re-word": [["key",14,"model reasoning and channel markup tokens (protocol)"]],

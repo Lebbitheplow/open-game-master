@@ -6,7 +6,7 @@
 import { importWorkshopBundle } from "@/lib/db/workshop-bundle";
 import { workshopBundleSchema } from "@/lib/workshop/bundle";
 import fs from "node:fs/promises";
-import { reskinIdProblems } from "@/lib/worlds/draft-check";
+import { unknownReskinIds } from "@/lib/worlds/draft-check";
 import { contentRaceKeys } from "@/lib/worlds/draft-integrity";
 import {
   INSTALLED_DIR,
@@ -70,7 +70,7 @@ export async function installWorldPack(raw: unknown): Promise<InstallResult> {
   // A renamed race, class or background the creator does not offer would
   // vanish from the installed world (draft-check.ts says why), so the file is
   // held to the rule the workshop's export already keeps.
-  const unknown = reskinIdProblems(parsed.data, contentRaceKeys()).filter((problem) => problem.includes("not in the catalog"));
+  const unknown = unknownReskinIds(parsed.data, contentRaceKeys());
   if (unknown.length) {
     return {
       ok: false,

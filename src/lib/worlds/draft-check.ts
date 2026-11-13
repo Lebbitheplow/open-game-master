@@ -74,37 +74,45 @@ function walkStrings(value: unknown, trail: string, visit: (text: string, at: st
 // install (./install.ts), which also passes the content pack's race slugs so
 // a pack may rename a people the pack brings. A race is matched on its one
 // spelling (srdRaceId), as the creator matches it.
-export function reskinIdProblems(
-  pack: {
-    races: Array<{ id: string }>;
-    classes: Array<{ id: string; castingLabel?: string | null }>;
-    backgrounds: Array<{ id: string }>;
-    companionRaces: string[];
-  },
-  extraRaceKeys: ReadonlySet<string> = new Set(),
-): string[] {
-  const problems: string[] = [];
+type ReskinIds = {
+  races: Array<{ id: string }>;
+  classes: Array<{ id: string; castingLabel?: string | null }>;
+  backgrounds: Array<{ id: string }>;
+  companionRaces: string[];
+};
+
+// The renamed ids the creator does not offer, one line each. The server's
+// install refuses a file holding any (./install.ts) and reads this list,
+// never the wording of the problems below.
+export function unknownReskinIds(pack: ReskinIds, extraRaceKeys: ReadonlySet<string> = new Set()): string[] {
+  const unknown: string[] = [];
   const knownRace = (id: string) => Boolean(findRace(srdRaceId(id))) || extraRaceKeys.has(srdRaceId(id));
   for (const entry of pack.races) {
-    if (!knownRace(entry.id)) problems.push(`Race "${entry.id}" is not in the catalog.`);
+    if (!knownRace(entry.id)) unknown.push(`Race "${entry.id}" is not in the catalog.`);
   }
   for (const entry of pack.classes) {
-    const klass = findClass(entry.id);
-    if (!klass) {
-      problems.push(`Class "${entry.id}" is not in the catalog.`);
-    } else if (klass.spellAbility === null && entry.castingLabel) {
-      problems.push(`${klass.name} does not cast, so its casting label must stay empty.`);
-    }
+    if (!findClass(entry.id)) unknown.push(`Class "${entry.id}" is not in the catalog.`);
   }
   const backgroundIds = new Set([
     ...SRD_BACKGROUNDS.map((entry) => entry.id),
     ...CUSTOM_BACKGROUNDS.map((entry) => entry.id),
   ]);
   for (const entry of pack.backgrounds) {
-    if (!backgroundIds.has(entry.id)) problems.push(`Background "${entry.id}" is not in the catalog.`);
+    if (!backgroundIds.has(entry.id)) unknown.push(`Background "${entry.id}" is not in the catalog.`);
   }
   for (const id of pack.companionRaces) {
-    if (!knownRace(id)) problems.push(`Companion race "${id}" is not in the catalog.`);
+    if (!knownRace(id)) unknown.push(`Companion race "${id}" is not in the catalog.`);
+  }
+  return unknown;
+}
+
+export function reskinIdProblems(pack: ReskinIds, extraRaceKeys: ReadonlySet<string> = new Set()): string[] {
+  const problems = unknownReskinIds(pack, extraRaceKeys);
+  for (const entry of pack.classes) {
+    const klass = findClass(entry.id);
+    if (klass && klass.spellAbility === null && entry.castingLabel) {
+      problems.push(`${klass.name} does not cast, so its casting label must stay empty.`);
+    }
   }
   return problems;
 }
