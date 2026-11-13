@@ -639,6 +639,22 @@ Object.assign(CC, {
   },
 });
 
+Object.assign(CC, {
+  // Beaked Mask: a foe's Cloudkill (a poison gas) catches the doctor and the
+  // ally beside them; the ally takes the poison, the masked doctor nothing.
+  async cc_mask(t, run, feature) {
+    const scene = await t.stage(feature);
+    t.kit.setEnemy(scene.near.id, { stats: { ...t.kit.enemy(scene.near.id).stats, spellcasting: { dc: 14, attack: 6, ability: "int", slots: { 5: 2 }, spells: [{ name: "Cloudkill", level: 5 }] } } });
+    t.foesTurn(scene);
+    t.kit.freshRound();
+    t.world.clearDice();
+    t.world.dice(4, 4, 4, 4, 4, 1, 1, 1, 1);
+    must(await t.world.invoke("aoe_damage", { casterEnemyId: scene.near.id, spell: "Cloudkill", characterIds: [scene.holder.id, scene.ally.id] }), "the foe's Cloudkill");
+    t.world.clearDice();
+    eq(`${100 - t.hp(scene.holder.id)}/${20 - t.hp(scene.ally.id) > 0}`, "0/true", "poison the masked doctor took / the ally took some");
+  },
+});
+
 // The vermin lord's dire rat, built before the fight (Favored of the Swarm).
 async function ratPack(t, feature) {
   t.fresh();

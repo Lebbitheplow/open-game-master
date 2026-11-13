@@ -19,3 +19,15 @@ export function droneEvades(sheet: Pick<CharacterSheet, "summon">): boolean {
   const rigger = getSheetById(summon.casterId);
   return Boolean(rigger && holdsGenreFeature(rigger, "rigger", "Evasive Subroutines"));
 }
+
+// Beaked Mask (plague doctor 7): "Immune to inhaled poisons and gases": a
+// cloud of gas (a zone row's gas) that poisons, burns with poison or leaves a
+// creature retching does nothing to the masked doctor, as it is cast
+// (src/lib/dm/aoe-characters.ts) and as they meet it on the board
+// (src/lib/dm/zone-triggers.ts).
+export function maskKeepsOut(sheet: CharacterSheet, gas: boolean, type?: string, condition?: string, retching?: boolean): boolean {
+  if (!gas || !holdsGenreFeature(sheet, "plague_doctor", "Beaked Mask")) {
+    return false;
+  }
+  return type === "poison" || condition === "poisoned" || Boolean(retching);
+}

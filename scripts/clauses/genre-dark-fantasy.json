@@ -752,12 +752,12 @@
   "clauses": [
    {
     "c": "Immune to inhaled poisons and gases",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "no engine record says a poison or gas is inhaled (an apply_damage, a hazard and a condition carry no route), so the immunity cannot be told apart from poison immunity; the hook probe that ran here passes once any row answers the feature (the mask's fear advantage) and says nothing of this clause",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Beaked Mask#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "run": {
+     "k": "cc_mask"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-drones.ts maskKeepsOut, read by src/lib/dm/aoe-characters.ts (a poison gas as it is cast) and src/lib/dm/zone-triggers.ts (the gas met on the board)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Beaked Mask#0"
    },
    {
     "c": "advantage on saves against fear while masked",

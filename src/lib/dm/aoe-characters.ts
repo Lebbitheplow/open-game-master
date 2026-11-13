@@ -4,6 +4,8 @@
 // apply_damage so audit, undo and the death engine all run. Split from
 // aoe-damage.ts, which rolls the blast once and calls this with it.
 
+import { maskKeepsOut } from "@/lib/dm/genre-cc-a-drones";
+import { zoneRowFor } from "@/lib/battlemap/zones-spells";
 import { droneEvades } from "@/lib/dm/genre-cc-a-drones";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -53,6 +55,12 @@ export function aoeOnCharacters(input: {
     // Sculpt Spells: the evoker's chosen allies succeed and take nothing.
     if (plan?.sculpted.includes(sheet.id)) {
       results.push({ target: sheet.name, success: true, damage: 0, sculpted: `${plan.caster.name}'s Sculpt Spells shapes the spell around them.` });
+      continue;
+    }
+    // Beaked Mask: a poison gas the plague doctor would breathe passes them by (genre-cc-a-drones.ts).
+    const gasRow = input.spell ? zoneRowFor(input.spell) : null;
+    if (gasRow && maskKeepsOut(sheet, gasRow.gas === true, input.type ?? gasRow.trigger?.type, gasRow.trigger?.condition, gasRow.trigger?.losesAction)) {
+      results.push({ target: sheet.name, success: true, damage: 0, masked: `${sheet.name}'s beaked mask keeps out ${input.spell}.` });
       continue;
     }
     // The save a requested roll would be: conditions, a paladin's aura,
