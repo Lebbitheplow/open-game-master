@@ -420,6 +420,7 @@ if (hasPack) {
   // text, then built and seated: what the builder offered is what the sheet
   // holds.
   const { mergedBackgroundOptions } = await import("../src/lib/characters/options.ts");
+  const help = await import("../src/lib/help/index.ts");
   const { KNOWN_TOOLS } = await import("../src/lib/srd/feat-grant-text.ts");
   const packRows = listBackgrounds({ limit: 200 });
   const packOffered = mergedBackgroundOptions(packRows).filter((row) => row.documentSlug);
@@ -461,7 +462,18 @@ if (hasPack) {
       const sheet = await seatPack(option);
       const features = sheet.features.filter((feature) => feature.source === "background").map((feature) => feature.name);
       assert.deepEqual(features, [`${named} (${option.name})`.slice(0, 80)], option.id);
+      // The sheet's chip for it opens the pack row, whose text holds the
+      // feature: the bundled tables know nothing of a pack feature.
+      const chip = sheet.features.find((feature) => feature.source === "background");
+      const reference = help.backgroundFeatureReference(chip, sheet.background, sheet.class, sheet.subclass);
+      assert.deepEqual(reference, { kind: "backgrounds", slug: option.id, name: named }, `${option.id} chip`);
+      const shown = help.describeContentEntry(data) ?? "";
+      assert.ok(shown.includes(named) && (!text || shown.includes(text.slice(0, 40))), `${option.id} row text lacks its feature`);
     }
+    // A bundled background's chip carries its own text and opens nothing.
+    const acolyte = (await atTable(buildBackground("acolyte").sheet)).sheet;
+    const shelter = acolyte.features.find((feature) => feature.source === "background");
+    assert.equal(help.backgroundFeatureReference(shelter, acolyte.background, acolyte.class), null);
   });
 
   // Each tool the SRD's name for it, or a choice the builder asks: "Two of

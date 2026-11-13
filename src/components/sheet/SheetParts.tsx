@@ -9,7 +9,7 @@ import { CountPop } from "@/components/ui/Reveal";
 import { cn } from "@/lib/cn";
 import { conditionIconKey } from "@/lib/battlemap/condition-glyphs";
 import { describeConditionDuration } from "@/lib/dm/condition-logic";
-import { contentSlug, describeFeature } from "@/lib/help";
+import { backgroundFeatureReference, contentSlug, describeFeature } from "@/lib/help";
 import { useClassFeatureText } from "@/lib/classes/use-feature-text";
 import { ABILITIES } from "@/lib/schemas/sheet";
 import { formatModifier, SRD_SKILLS } from "@/lib/srd";
@@ -345,10 +345,14 @@ export function FeatureChips({
   features,
   classId,
   subclass,
+  background,
 }: {
   features: Array<{ name: string; source?: string; level?: number; classId?: string }>;
   classId: string;
   subclass?: string | null;
+  // The sheet's background id: a content-pack background's feature opens
+  // its row for the text the bundled tables lack.
+  background?: string | null;
 }) {
   // A genre class's feature text arrives on demand (issue 411).
   useClassFeatureText([classId, ...features.map((feature) => feature.classId)]);
@@ -360,6 +364,7 @@ export function FeatureChips({
         note: feature.source === "story" ? "(story)" : undefined,
         meta: feature.level ? `Level ${feature.level}` : undefined,
         text: describeFeature(classId, subclass ?? "", feature.name) ?? undefined,
+        reference: backgroundFeatureReference(feature, background, classId, subclass ?? "") ?? undefined,
       }))}
     />
   );

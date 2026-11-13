@@ -607,7 +607,7 @@ export function CharacterSheetDialog({
           ) : null}
           {sheet.features.length ? (
             <SheetBlock className="mt-4" title="Features and traits">
-              <FeatureChips features={sheet.features} classId={sheet.class} subclass={sheet.subclass} />
+              <FeatureChips features={sheet.features} classId={sheet.class} subclass={sheet.subclass} background={sheet.background} />
               <FeatureChoicePicker sheet={sheet} mine={mine} inCombat={inCombat} />
             </SheetBlock>
           ) : null}

@@ -145,7 +145,7 @@ export function SheetSections({ sheet, level = 1 }: { sheet: CreateSheetInput; l
 
       {sheet.features?.length ? (
         <SheetPanel title="Features and traits">
-          <FeatureChips features={sheet.features} classId={sheet.class} subclass={sheet.subclass} />
+          <FeatureChips features={sheet.features} classId={sheet.class} subclass={sheet.subclass} background={sheet.background} />
         </SheetPanel>
       ) : null}
 
