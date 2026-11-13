@@ -44,6 +44,7 @@ export type BlockerTarget =
   | "racialAsi"
   | "racialSkills"
   | "racialTool"
+  | "racialWeapons"
   | "racialCantrip"
   | "racialFeat"
   | "ancestry"
@@ -201,6 +202,9 @@ export function ancestryBlocks(
   }
   if (race.toolChoice && !racialTool) {
     owed.push(block("racialTool", `Pick a tool your ${race.name} knows how to use (tool proficiency).`));
+  }
+  if (race.weaponChoice && (state.racialWeapons ?? []).filter(Boolean).length < race.weaponChoice.count) {
+    owed.push(block("racialWeapons", `Pick the ${race.weaponChoice.count === 1 ? "weapon" : `${race.weaponChoice.count} weapons`} your ${race.name} trained with (weapon proficiency).`));
   }
   // Every cantrip the race offers (a homebrew species may offer three),
   // each a different spell.
@@ -831,6 +835,7 @@ export function buildBuilderResult(input: SubmitInput): BuilderResult {
         skills: picks.racialSkills.filter(Boolean),
         ...racialCantripFields(racialCantrips),
         tool: picks.racialTool,
+        weapons: race.weaponChoice ? picks.racialWeapons.filter(Boolean) : [],
         ancestry: takesDraconicAncestry(race.id) ? (findDraconicAncestry(state.racialAncestry ?? "")?.id ?? "") : "",
         variant: race.variants ? picks.racialVariant : "",
         ...(racialFeatAbility ? { featAbility: racialFeatAbility } : {}),

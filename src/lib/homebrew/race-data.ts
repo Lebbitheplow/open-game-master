@@ -97,6 +97,9 @@ export function normalizeRaceData(source: Raw, data: Raw & { desc: string }): { 
   if (armor) data.armor = armor;
   const weapons = words(source.weapons, 12);
   if (weapons) data.weapons = weapons;
+  const weaponChoice = (source.weaponChoice ?? null) as Raw | null;
+  const weaponFrom = words(weaponChoice?.from, 48);
+  if (weaponChoice && weaponFrom) data.weaponChoice = { count: clamp(weaponChoice.count, 1, 3, 1), from: weaponFrom };
   const cantrip = (source.cantripChoice ?? null) as Raw | null;
   if (cantrip && CLASS_LISTS.includes(String(cantrip.list))) {
     data.cantripChoice = { list: String(cantrip.list), count: clamp(cantrip.count, 1, 3, 1) };

@@ -199,4 +199,42 @@ test("a darakhul of shadow fey heritage is stored with its darkvision, resistanc
   assert.ok(sheet.proficiencies.skills.includes("perception"), "Supernatural Senses' Perception");
 });
 
+// The weapons a pack species' text lets the player name: asked in the
+// builder, held to the list by the server, and on the stored sheet.
+const legal = (race, built) =>
+  legalizeSheet(built.sheet, {
+    door: "library", level: 1, hpMethod: "average", startingWealth: "equipment",
+    classOf: (id) => builder.classes.find((entry) => entry.id === id) ?? null,
+    race, background: builder.backgrounds.find((entry) => entry.id === "soldier") ?? null,
+    baseline: null, abilityPool: null, wealthRoll: null, priceOf: bundledPrices, spellOf: checklistSpell, featOf: () => null,
+    subclassOffered: (classId, name) => Boolean(bundledSubclassName(classId, name)), rollDie: () => 3,
+  });
+const wizardOf = (race, fields = {}) =>
+  builder.build({
+    race, class: "fighter", background: "soldier", level: 1, scores: { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 8 },
+    chosenSkills: ["history", "perception"], stylePicks: ["defense"], bonusLanguages: ["Common"],
+    racialVariant: race.variants?.options[0]?.id ?? "", racialTool: race.toolChoice?.from[0] ?? "",
+    racialSkills: ["insight", "medicine"].slice(0, race.skillChoice?.count ?? 0),
+    // A race skill the soldier also gives is picked again in its place.
+    repeatSkills: (race.skills ?? []).filter((skill) => ["athletics", "intimidation"].includes(skill)).map((_, index) => ["religion", "investigation"][index]),
+    ...fields,
+  });
+test("a pack species that names martial weapons of the player's choice asks for them, and the sheet is trained in the ones picked", () => {
+  const pick = (id) => options.find((option) => option.id === id);
+  assert.deepEqual(["mutated", "dwarf-chassis", "delver"].map((id) => pick(id).weaponChoice?.count), [2, 2, 1]);
+  assert.ok(pick("mutated").weaponChoice.from.includes("Longsword") && !pick("mutated").weaponChoice.from.includes("Dagger"), "the martial weapons, and only those");
+  const race = pick("mutated");
+  const unpicked = wizardOf(race);
+  assert.equal(unpicked.blocker?.target, "racialWeapons", `the builder saved with the weapons unpicked: ${unpicked.blocker?.message}`);
+  const built = wizardOf(race, { racialWeapons: ["Longsword", "Warhammer"] });
+  assert.equal(built.blocker, null, built.blocker?.message);
+  const verdict = legal(race, built);
+  assert.deepEqual(verdict.problems, []);
+  assert.deepEqual(verdict.sheet.racialChoices.weapons, ["Longsword", "Warhammer"]);
+  for (const weapon of ["Longsword", "Warhammer"]) assert.ok(verdict.sheet.proficiencies.weapons.includes(weapon), `trained with the ${weapon}`);
+  // A simple weapon is not one of the list; the server says so.
+  const off = legal(race, { sheet: { ...built.sheet, racialChoices: { ...built.sheet.racialChoices, weapons: ["Dagger", "Longsword"] } } });
+  assert.ok(off.problems.some((line) => /Dagger is not a weapon/.test(line)), off.problems.join(" | "));
+});
+
 console.log(`test-species-prose: ${passed} passed`);

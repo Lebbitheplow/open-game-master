@@ -541,6 +541,9 @@ export const createSheetSchema = z.object({
       cantrip: z.string().trim().max(80).default(""),
       cantrips: z.array(z.string().trim().min(1).max(80)).max(6).default([]),
       tool: z.string().trim().max(60).default(""),
+      // The weapons a race lets the player name (a hobgoblin's two martial
+      // weapons), src/lib/srd/legality/proficiencies.ts.
+      weapons: z.array(z.string().trim().min(1).max(60)).max(4).default([]),
       // A dragonborn's draconic ancestry ("red"), src/lib/srd/racial-grants.ts.
       ancestry: z.string().trim().max(20).default(""),
       // The option of a workshop species' choice the player picked, by its

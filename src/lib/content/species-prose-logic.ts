@@ -24,6 +24,7 @@
 
 import { ALL_SKILLS, traitHeading } from "@/lib/content/mechanics";
 import { featGrantSpec, KNOWN_TOOLS } from "@/lib/srd/feat-grant-text";
+import { SRD_WEAPONS } from "@/lib/srd/weapons";
 import type { SpeciesSpell, SpeciesSpellGroup } from "@/lib/content/species-spells";
 import { checklistSpell } from "@/lib/srd/spell-lists";
 
@@ -36,6 +37,7 @@ export type SpeciesProseGrants = {
   armor: string[];
   tools: string[];
   toolChoice?: { count: number; from: string[] };
+  weaponChoice?: { count: number; from: string[] };
   spells?: SpeciesSpellGroup;
 };
 
@@ -263,6 +265,16 @@ export function speciesProseGrants(data: { vision?: unknown; traits?: unknown })
       out.skillChoice = {
         count: (out.skillChoice?.count ?? 0) + (picks ? picks.count : grant.skills),
         ...(from.length ? { from } : {}),
+      };
+    }
+    // "you are proficient with two martial weapons of your choice": a pick
+    // from that category of the SRD's weapons table.
+    const weaponPick = /\bproficien(?:cy|t) with (one|two|three) (simple |martial )?weapons? of your choice\b/.exec(text);
+    if (weaponPick) {
+      const kind = weaponPick[2]?.trim();
+      out.weaponChoice = {
+        count: (out.weaponChoice?.count ?? 0) + ({ one: 1, two: 2, three: 3 }[weaponPick[1]] ?? 1),
+        from: SRD_WEAPONS.filter((weapon) => (kind ? weapon.category === kind : weapon.category === "simple" || weapon.category === "martial")).map((weapon) => weapon.name),
       };
     }
     const toolsFrom = toolList

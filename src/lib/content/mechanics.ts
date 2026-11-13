@@ -38,6 +38,9 @@ export type RaceMechanics = {
   // Race-taught combat training (mountain dwarf armor, drow weapons).
   armor?: string[];
   weapons?: string[];
+  // Weapons the player names from a list ("two martial weapons of your
+  // choice": a hobgoblin, a Tome of Heroes derro), by their SRD names.
+  weaponChoice?: { count: number; from: string[] };
   // The size the row states ("Your size is Small."), undefined when it
   // leaves it to a subrace or says nothing; and the dwarf's "Your speed is
   // not reduced by wearing heavy armor."
@@ -474,7 +477,7 @@ export function raceMechanics(data: Record<string, unknown>): RaceMechanics {
 
 type StructuredGrants = Pick<
   RaceMechanics,
-  "skills" | "skillChoice" | "asiChoice" | "cantripChoice" | "tools" | "toolChoice" | "armor" | "weapons"
+  "skills" | "skillChoice" | "asiChoice" | "cantripChoice" | "tools" | "toolChoice" | "armor" | "weapons" | "weaponChoice"
 >;
 
 function stringList(value: unknown): string[] | undefined {
@@ -517,6 +520,11 @@ function structuredGrants(data: Record<string, unknown>): StructuredGrants {
   const weapons = stringList(data.weapons);
   if (weapons?.length) {
     out.weapons = weapons;
+  }
+  const weaponChoice = data.weaponChoice as { count?: unknown; from?: unknown } | undefined;
+  const weaponFrom = stringList(weaponChoice?.from);
+  if (weaponChoice && weaponFrom?.length && Number(weaponChoice.count) > 0) {
+    out.weaponChoice = { count: Number(weaponChoice.count), from: weaponFrom };
   }
   return out;
 }

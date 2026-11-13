@@ -33,6 +33,8 @@ export type ProficiencyInput = {
   race: RaceGrants;
   background: BackgroundGrants | null;
   racialTool: string;
+  // The weapons named from the race's weaponChoice.
+  racialWeapons?: string[];
   // Training the stored character already holds, on an edit: earned in play
   // (a second class's pick, a DM's grant) and kept.
   held?: Proficiencies | null;
@@ -110,9 +112,25 @@ export function judgeProficiencies(input: ProficiencyInput): ProficiencyVerdict 
     ...secondary.flatMap((grant) => grant.armor),
     ...(held?.armor ?? []),
   ]);
+  // The weapons a race lets the player name: each from its list, as many as
+  // it offers. Before this the pick was never asked, and a derro of the
+  // mutated caste was trained in no weapon its text promised.
+  const weaponChoice = race.weaponChoice;
+  const racialWeapons = uniqueNames((input.racialWeapons ?? []).filter(Boolean));
+  const offWeapons = racialWeapons.filter((name) => !weaponChoice?.from.some((weapon) => textKey(weapon) === textKey(name)));
+  if (offWeapons.length) {
+    problems.push(`${offWeapons.join(", ")} ${offWeapons.length === 1 ? "is not a weapon" : "are not weapons"} the ${race.name} may choose${weaponChoice ? `; pick from ${weaponChoice.from.join(", ")}` : ""}.`);
+  }
+  if (weaponChoice && racialWeapons.length > weaponChoice.count) {
+    problems.push(`The ${race.name} names ${plural(weaponChoice.count, "weapon")}; ${racialWeapons.length} were chosen.`);
+  }
+  if (weaponChoice && input.requireToolPicks && racialWeapons.length < weaponChoice.count) {
+    problems.push(`Name the ${plural(weaponChoice.count, "weapon")} the ${race.name} is trained with.`);
+  }
   const weapons = uniqueNames([
     ...(primary?.weapons ?? []),
     ...(race.weapons ?? []),
+    ...(offWeapons.length ? [] : racialWeapons.slice(0, weaponChoice?.count ?? 0)),
     ...secondary.flatMap((grant) => grant.weapons),
     ...(held?.weapons ?? []),
   ]);

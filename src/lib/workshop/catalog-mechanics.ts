@@ -207,6 +207,7 @@ function raceTableOf(option: RaceOption, traits: string, vision: string, bundled
     ...(option.skillChoice ? { skillChoice: option.skillChoice } : {}),
     ...(option.tools ? { tools: option.tools } : {}),
     ...(option.toolChoice ? { toolChoice: option.toolChoice } : {}),
+    ...(option.weaponChoice ? { weaponChoice: option.weaponChoice } : {}),
     ...(option.armor ? { armor: option.armor } : {}),
     ...(option.weapons ? { weapons: option.weapons } : {}),
     ...(option.cantripChoice ? { cantripChoice: option.cantripChoice } : {}),

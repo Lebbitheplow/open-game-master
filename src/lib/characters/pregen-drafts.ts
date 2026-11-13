@@ -162,6 +162,7 @@ function freshFields(proposal: HeroProposal, level: number, ids: { classId: stri
     racialSkills: [],
     racialCantrips: [],
     racialTool: "",
+    racialWeapons: [],
     racialAncestry: "",
     racialVariant: "",
     racialFeatAbility: "",

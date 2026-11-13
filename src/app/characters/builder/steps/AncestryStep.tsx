@@ -245,6 +245,14 @@ export function AncestryStep({
           onCantripsChange={state.setRacialCantrips}
           tool={state.racialTool}
           onToolChange={state.setRacialTool}
+          weapons={state.racialWeapons}
+          onWeaponsChange={(index, weapon) =>
+            state.setRacialWeapons((current) => {
+              const next = [...current];
+              next[index] = weapon;
+              return next;
+            })
+          }
           ancestry={state.racialAncestry}
           onAncestryChange={state.setRacialAncestry}
           variant={state.racialVariant}

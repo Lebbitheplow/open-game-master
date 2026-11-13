@@ -75,6 +75,7 @@ export async function openBuilder() {
       racialAsi: [],
       racialSkills: [],
       racialTool: "",
+      racialWeapons: [],
       racialAncestry: "",
       toolPicks: [],
       repeatSkills: [],

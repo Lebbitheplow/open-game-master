@@ -124,6 +124,7 @@ const GRANT_KEYS = [
   "toolChoice",
   "armor",
   "weapons",
+  "weaponChoice",
 ] as const;
 
 function withParent(
@@ -219,6 +220,7 @@ function withProse(mechanics: RaceMechanics, data: Record<string, unknown>): Rac
   }
   if (!merged.skillChoice && prose.skillChoice) merged.skillChoice = prose.skillChoice;
   if (!merged.toolChoice && prose.toolChoice) merged.toolChoice = prose.toolChoice;
+  if (!merged.weaponChoice && prose.weaponChoice) merged.weaponChoice = prose.weaponChoice;
   if (!merged.spells && prose.spells) merged.spells = prose.spells;
   return merged;
 }

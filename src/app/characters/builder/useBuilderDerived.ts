@@ -285,7 +285,7 @@ export function useBuilderDerived({
 }) {
   const {
     level, scores, racialAsi, asiChoices, chosenSkills, expertisePicks, bonusLanguages,
-    racialSkills, racialTool, backgroundSkills, backgroundGearPicks, hpOverride, acOverride, equipment, removedAutoNames,
+    racialSkills, racialTool, racialWeapons, backgroundSkills, backgroundGearPicks, hpOverride, acOverride, equipment, removedAutoNames,
     toolPicks, repeatSkills,
     subclass, optionPicks, spells, cantrips, bookPrepared, keepsStoredGear, asiRecorded, asiReachedLevel,
   } = state;
@@ -564,7 +564,7 @@ export function useBuilderDerived({
       // Races can teach combat training too: mountain dwarf armor, drow
       // and wood elf weapons. A class taken second adds its multiclass row.
       armor: [...new Set([...(klass?.armor ?? []), ...(race?.armor ?? []), ...grants.flatMap((grant) => grant.armor)])],
-      weapons: [...new Set([...(klass?.weapons ?? []), ...(race?.weapons ?? []), ...grants.flatMap((grant) => grant.weapons)])],
+      weapons: [...new Set([...(klass?.weapons ?? []), ...(race?.weapons ?? []), ...(race?.weaponChoice ? (racialWeapons ?? []).filter(Boolean) : []), ...grants.flatMap((grant) => grant.weapons)])],
     };
     const withFeats = applyFeatGrants({
       proficiencies,
@@ -581,7 +581,7 @@ export function useBuilderDerived({
     // as the level-up already allows.
     const own = expertisePicks.filter((skillId) => expertiseAllowed(skillId, trained.skills, classList.map((entry) => entry.id)));
     return { ...trained, expertise: [...new Set([...own, ...(trained.expertise ?? [])])] };
-  }, [proficientSkills, klass, classList, grants, classLanguages, race, background, expertisePicks, bonusLanguages, trainedTools, featNames, featDescOf, featChoices, subclassTraining]);
+  }, [proficientSkills, klass, classList, grants, classLanguages, race, racialWeapons, background, expertisePicks, bonusLanguages, trainedTools, featNames, featDescOf, featChoices, subclassTraining]);
 
   // Hit points as the server will work them out (builderHp.ts): lineage,
   // feats, Draconic Resilience and the table's method. A table that rolls

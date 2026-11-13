@@ -475,6 +475,14 @@ export function fillRound(ctx: FillContext): FillRound {
       note("racialSkills", added.map(skillName).join(", "));
     }
   }
+  if (race.weaponChoice && (fields.racialWeapons ?? []).filter(Boolean).length < race.weaponChoice.count && wants("racialWeapons")) {
+    const held = (fields.racialWeapons ?? []).filter(Boolean);
+    const added = race.weaponChoice.from.filter((weapon) => !held.includes(weapon)).slice(0, race.weaponChoice.count - held.length);
+    if (added.length) {
+      patch.racialWeapons = [...held, ...added];
+      note("racialWeapons", added.join(", "));
+    }
+  }
   if (race.toolChoice && !fields.racialTool && wants("racialTool")) {
     const pick = race.toolChoice.from.find((tool) => !tools.has(textKey(tool)) && !has(fields.toolPicks, tool));
     if (pick) {

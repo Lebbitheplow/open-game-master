@@ -51,6 +51,8 @@ export function RacialChoicesSection({
   onCantripsChange,
   tool,
   onToolChange,
+  weapons = [],
+  onWeaponsChange,
   ancestry = "",
   onAncestryChange,
   variant = "",
@@ -80,6 +82,10 @@ export function RacialChoicesSection({
   onCantripsChange: (cantrips: string[]) => void;
   tool: string;
   onToolChange: (tool: string) => void;
+  // The weapons the race lets the player name (a hobgoblin's two martial
+  // weapons), slot by slot.
+  weapons?: string[];
+  onWeaponsChange?: (index: number, weapon: string) => void;
   // A dragonborn's draconic ancestry, by id.
   ancestry?: string;
   onAncestryChange?: (ancestry: string) => void;
@@ -112,7 +118,7 @@ export function RacialChoicesSection({
   const draconic = takesDraconicAncestry(race.id);
   const racialFeats = onFeatsChange ? racialFeatCount(race.id) : 0;
   const hasChoices = Boolean(
-    race.asiChoice || race.skillChoice || race.cantripChoice || race.toolChoice || draconic || race.variants || repeated.length || racialFeats,
+    race.asiChoice || race.skillChoice || race.cantripChoice || race.toolChoice || race.weaponChoice || draconic || race.variants || repeated.length || racialFeats,
   );
   const chosen = race.variants?.options.find((option) => option.id === variant) ?? null;
   // The half-feat's choice of score, offered once the feat is picked.
@@ -383,6 +389,32 @@ export function RacialChoicesSection({
             options={[{ value: "", label: "Choose a tool..." }, ...race.toolChoice.from.map((entry) => ({ value: entry, label: entry }))]}
           />
         </label>
+      ) : null}
+
+      {race.weaponChoice && onWeaponsChange ? (
+        <div data-builder-target="racialWeapons">
+          <span className="mb-1 block text-stone-400">
+            Weapon proficiencies ({race.weaponChoice.count} of your choice)
+          </span>
+          <div className="grid grid-cols-2 gap-2">
+            {Array.from({ length: race.weaponChoice.count }, (_, index) => (
+              <Select<string>
+                key={index}
+                value={weapons[index] ?? ""}
+                onChange={(next) => onWeaponsChange(index, next)}
+                className="min-w-0"
+                label={`Weapon proficiency ${index + 1}`}
+                placeholder="Choose a weapon..."
+                options={[
+                  { value: "", label: "Choose a weapon..." },
+                  ...race.weaponChoice!.from
+                    .filter((weapon) => weapons[index] === weapon || !weapons.includes(weapon))
+                    .map((weapon) => ({ value: weapon, label: weapon })),
+                ]}
+              />
+            ))}
+          </div>
+        </div>
       ) : null}
 
       <RacialCantripPicker race={race} cantrips={cantrips} onChange={onCantripsChange} />

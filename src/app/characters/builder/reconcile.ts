@@ -40,6 +40,8 @@ export type BuilderPicks = {
   racialAsi: Array<Ability | "">;
   racialCantrips: string[];
   racialTool: string;
+  // The weapons named from the race's list (a hobgoblin's two martial).
+  racialWeapons: string[];
   // The skill picked in place of one the race and the background both give.
   repeatSkills: string[];
   backgroundSkills: string[];
@@ -169,6 +171,7 @@ export function reconcilePicks(
     racialAsi: input.racialAsi ?? [],
     racialCantrips: input.racialCantrips ?? [],
     racialTool: input.racialTool ?? "",
+    racialWeapons: input.racialWeapons ?? [],
     repeatSkills: input.repeatSkills ?? [],
     backgroundSkills: input.backgroundSkills ?? [],
     bonusLanguages: input.bonusLanguages ?? [],
@@ -291,6 +294,11 @@ export function reconcilePicks(
       ? picks.racialTool
       : "";
   note("racial tool", "racialTool", [picks.racialTool], [racialTool]);
+  // Weapons from the race's own list, as many as it names, each once.
+  const racialWeapons = race?.weaponChoice
+    ? slotted(picks.racialWeapons, race.weaponChoice.count, (weapon) => race.weaponChoice!.from.some((entry) => textKey(entry) === textKey(weapon)))
+    : [];
+  note("racial weapon", "racialWeapons", picks.racialWeapons, racialWeapons);
   // As many different cantrips as the race offers, and none from a race
   // that offers none.
   const racialCantrips = race?.cantripChoice ? unique(picks.racialCantrips).slice(0, race.cantripChoice.count) : [];
@@ -432,6 +440,7 @@ export function reconcilePicks(
       racialAsi,
       racialCantrips,
       racialTool,
+      racialWeapons,
       repeatSkills,
       backgroundSkills,
       bonusLanguages,

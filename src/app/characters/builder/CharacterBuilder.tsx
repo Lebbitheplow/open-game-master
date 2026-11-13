@@ -85,6 +85,7 @@ const STEP_OF_TARGET: Record<BlockerTarget, string> = {
   racialAsi: "ancestry",
   racialSkills: "ancestry",
   racialTool: "ancestry",
+  racialWeapons: "ancestry",
   racialCantrip: "ancestry",
   racialFeat: "ancestry",
   ancestry: "ancestry",

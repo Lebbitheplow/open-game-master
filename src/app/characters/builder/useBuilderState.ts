@@ -107,6 +107,7 @@ export type BuilderDraftFields = {
   racialSkills: string[];
   racialCantrips: string[];
   racialTool: string;
+  racialWeapons: string[];
   racialAncestry: string;
   racialVariant: string;
   racialFeatAbility: Ability | "";
@@ -280,6 +281,7 @@ export function useBuilderState({
   // be more than one holds its pick in `cantrip`.
   const [racialCantrips, setRacialCantrips] = useState<string[]>(() => racialCantripsOf(initial?.racialChoices));
   const [racialTool, setRacialTool] = useState(initial?.racialChoices?.tool ?? "");
+  const [racialWeapons, setRacialWeapons] = useState<string[]>(initial?.racialChoices?.weapons ?? []);
   // A dragonborn's draconic ancestry ("red").
   const [racialAncestry, setRacialAncestry] = useState(initial?.racialChoices?.ancestry ?? "");
   // The option of a workshop species' choice ("ashen"), checked like the
@@ -380,7 +382,7 @@ export function useBuilderState({
   // (reconcile.ts). Read from the render's values: every caller is an event
   // handler or an effect of this render.
   const picks: BuilderPicks = {
-    racialVariant, chosenSkills, racialSkills, racialAsi, racialCantrips, racialTool, repeatSkills, backgroundSkills, bonusLanguages,
+    racialVariant, chosenSkills, racialSkills, racialAsi, racialCantrips, racialTool, racialWeapons, repeatSkills, backgroundSkills, bonusLanguages,
     subclass, expertisePicks, stylePicks, optionPicks, spells, bookPrepared, cantrips,
   };
   function applyPicks(next: BuilderPicks) {
@@ -391,6 +393,7 @@ export function useBuilderState({
     setRacialAsi(next.racialAsi);
     setRacialCantrips(next.racialCantrips);
     setRacialTool(next.racialTool);
+    setRacialWeapons(next.racialWeapons);
     setBackgroundSkills(next.backgroundSkills);
     setBonusLanguages(next.bonusLanguages);
     setSubclass(next.subclass);
@@ -780,7 +783,7 @@ export function useBuilderState({
     applyChange(
       "race",
       { raceId: id },
-      { ...picks, racialVariant: "", racialAsi: [], racialSkills: [], racialCantrips: [], racialTool: "", repeatSkills: [] },
+      { ...picks, racialVariant: "", racialAsi: [], racialSkills: [], racialCantrips: [], racialTool: "", racialWeapons: [], repeatSkills: [] },
     );
     setRacialAncestry("");
     // The old race's own feats lead the list (submit.ts reads the racial
@@ -956,6 +959,7 @@ export function useBuilderState({
     racialSkills: setRacialSkills,
     racialCantrips: setRacialCantrips,
     racialTool: setRacialTool,
+    racialWeapons: setRacialWeapons,
     racialAncestry: setRacialAncestry,
     racialVariant: setRacialVariant,
     racialFeatAbility: setRacialFeatAbility,
@@ -1042,6 +1046,7 @@ export function useBuilderState({
     racialSkills,
     racialCantrips,
     racialTool,
+    racialWeapons,
     racialAncestry,
     racialVariant,
     racialFeatAbility,
@@ -1122,6 +1127,7 @@ export function useBuilderState({
     racialSkills, setRacialSkills,
     racialCantrips, setRacialCantrips,
     racialTool, setRacialTool,
+    racialWeapons, setRacialWeapons,
     racialAncestry, setRacialAncestry,
     racialVariant, chooseRacialVariant,
     racialFeatAbility, setRacialFeatAbility,
