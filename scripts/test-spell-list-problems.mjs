@@ -124,7 +124,8 @@ test("a multiclassed sheet checks each caster class at its own level", () => {
       const known = [...regular(KNOWN[level - 1]), ...arcanaAt(level).map((spellLevel) => listOf(spellLevel)[0])];
       const problems = spellListProblems(sheet("warlock", level, { ability: "cha", cantrips: cantrips.slice(0, level >= 10 ? 4 : level >= 4 ? 3 : 2), known }));
       assert.deepEqual(problems, [], `a level ${level} warlock with ${KNOWN[level - 1]} spells known and ${arcanaAt(level).length} arcana`);
-      assert.equal(classSpellGrants({ classId: "warlock", level, features: [] }).extraSpells, arcanaAt(level).length, `the arcana a level ${level} warlock holds on top of the count`);
+      assert.deepEqual(prep.mysticArcanumLevels({ classId: "warlock", level }), arcanaAt(level), `the arcana a level ${level} warlock holds on top of the count`);
+      assert.equal(classSpellGrants({ classId: "warlock", level, features: [] }).extraSpells, 0, "the arcana are no spells known: the column is not raised for them");
     }
   });
 
@@ -159,14 +160,13 @@ test("a multiclassed sheet checks each caster class at its own level", () => {
     assert.match(spellListProblems(held).join(" "), /may hold 11 spells known/, "a name of no known level counts as a spell known");
   });
 
-  const { arcanumPickRefusal } = await import("../src/lib/srd/mystic-arcanum.ts");
-  test("the level-up dialog keeps room for the arcanum and takes one of its level", () => {
-    const at11 = { classId: "warlock", level: 11, held: [1, 2, 3, 4, 5, 5, 5, 5, 5, 5], room: 2 };
-    assert.equal(arcanumPickRefusal({ ...at11, picked: [], adding: 5 }), null, "the column's new spell first");
-    assert.match(arcanumPickRefusal({ ...at11, picked: [5], adding: 4 }) ?? "", /Leave room for your Mystic Arcanum/);
-    assert.equal(arcanumPickRefusal({ ...at11, picked: [5], adding: 6 }), null, "the arcanum second");
-    assert.match(arcanumPickRefusal({ ...at11, picked: [6], adding: 6 }) ?? "", /one 6th-level spell/);
-    assert.equal(arcanumPickRefusal({ classId: "sorcerer", level: 11, held: [], picked: [], adding: 6, room: 1 }), null, "no arcanum outside the warlock");
+  const { arcanumSplit } = await import("../src/lib/srd/mystic-arcanum.ts");
+  test("the level-up dialog reads the arcana held, the one picked and the levels still open", () => {
+    const at15 = { classId: "warlock", level: 15 };
+    const held = [...regular(13), listOf(6)[0], listOf(7)[0]];
+    assert.deepEqual(arcanumSplit(at15, held), { arcanum: [listOf(6)[0], listOf(7)[0]], extra: [], open: [8] });
+    assert.deepEqual(arcanumSplit(at15, [...held, listOf(7)[1]]).extra, [listOf(7)[1]], "a second 7th is no arcanum");
+    assert.deepEqual(arcanumSplit({ classId: "sorcerer", level: 15 }, held), { arcanum: [], extra: [], open: [] }, "no arcanum outside the warlock");
   });
 }
 

@@ -33,6 +33,10 @@ type ProfileRules = {
   // Cantrips known at 3rd level, one more at 10th: two, or three with the
   // Arcane Trickster's Mage Hand or the Underfoot's Shillelagh.
   cantrips: number;
+  // The cantrip the Spellcasting feature names among them ("You learn three
+  // cantrips: mage hand and two other cantrips"), which every other feature
+  // of the subclass leans on (Mage Hand Legerdemain, Versatile Trickster).
+  cantrip?: string;
 };
 
 const PROFILES: Record<ThirdCasterProfile, ProfileRules> = {
@@ -53,6 +57,7 @@ const PROFILES: Record<ThirdCasterProfile, ProfileRules> = {
     ability: "int",
     schools: ["enchantment", "illusion"],
     cantrips: 3,
+    cantrip: "Mage Hand",
   },
   soulspy: {
     label: "Soulspy",
@@ -69,6 +74,7 @@ const PROFILES: Record<ThirdCasterProfile, ProfileRules> = {
     ability: "wis",
     schools: ["divination", "transmutation"],
     cantrips: 3,
+    cantrip: "Shillelagh",
   },
 };
 
@@ -195,6 +201,42 @@ export function thirdCasterCantrips(classId: string, level: number, setting?: st
   }
   const profile = thirdCasterProfileOf(classId, "", setting) ?? defaultThirdCasterProfile(classId);
   return PROFILES[profile].cantrips + (level >= 10 ? 1 : 0);
+}
+
+// The cantrip a third caster's Spellcasting names among its cantrips (the
+// Arcane Trickster's Mage Hand), from 3rd level, or null.
+export function thirdCasterRequiredCantrip(
+  classId: string,
+  subclass: string | undefined | null,
+  setting: string | null | undefined,
+  level: number,
+): string | null {
+  const profile = thirdCasterProfileOf(classId, subclass, setting);
+  return profile && level >= 3 ? (PROFILES[profile].cantrip ?? null) : null;
+}
+
+// What is wrong with a third caster's cantrips: a full list without the
+// cantrip its Spellcasting names (an Arcane Trickster's three without Mage
+// Hand, which left Mage Hand Legerdemain with no hand to move). Null when
+// nothing is, or while the list still has room for it.
+export function thirdCasterCantripProblem(input: {
+  classId: string;
+  subclass: string | null | undefined;
+  profile?: string | null;
+  level: number;
+  cantrips: string[];
+  cap: number | null;
+}): string | null {
+  const needed = thirdCasterRequiredCantrip(input.classId, input.subclass, input.profile, input.level);
+  if (!needed || input.cap === null || input.cantrips.some((name) => textKey(name) === textKey(needed))) {
+    return null;
+  }
+  if (input.cantrips.length < input.cap) {
+    return null;
+  }
+  const profile = thirdCasterProfileOf(input.classId, input.subclass, input.profile);
+  const who = profile ? PROFILES[profile].who : "This caster";
+  return `${who} knows ${needed} as one of its cantrips; take ${needed} in place of one of the others.`;
 }
 
 // The two schools each third caster learns its levelled spells from; any

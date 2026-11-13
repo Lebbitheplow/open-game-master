@@ -1,6 +1,5 @@
 "use client";
 
-import { arcanumLevelsFor, arcanumPickRefusal } from "@/lib/srd/mystic-arcanum";
 import { splitToolGrants } from "@/lib/srd/tool-choices";
 import {
   classFeaturesFor,
@@ -63,7 +62,8 @@ import {
   type FightingStyleId,
 } from "@/lib/srd/feature-effects";
 import { spellStyleFor, spellbookAllowance } from "@/lib/srd/spell-prep";
-import { isThirdCaster } from "@/lib/srd/third-caster";
+import { arcanumSplit, mysticArcanumLevels } from "@/lib/srd/mystic-arcanum";
+import { isThirdCaster, thirdCasterRequiredCantrip } from "@/lib/srd/third-caster";
 import {
   abilitiesAfterLevel,
   casterPreview,
@@ -674,8 +674,24 @@ export function LevelUpDialog({
       ),
     [classChoice, effectiveSubclass, classLevelAfter, sheet.features, learnedKey, optionPicks],
   );
+  // A warlock's Mystic Arcanum: one spell of each level from 6th, learned
+  // beside the spells known and never counted in them (mystic-arcanum.ts
+  // arcanumSplit, as the route counts it). Its picks have their own room.
+  // An older host counts an arcanum inside the spells known
+  // (src/lib/capabilities.ts mysticArcanum), so there it takes a pick of the
+  // column as it always did.
+  const poolLevelOf = (name: string) =>
+    spellPool.find((spell) => textKey(spell.name) === textKey(name))?.level ?? spellLevelOf(name);
+  const arcanumHeard = hostOffers(capabilities, "mysticArcanum");
+  const arcanumView = { classId: arcanumHeard ? classChoice : "", level: classLevelAfter };
+  const heldArcana = arcanumSplit(arcanumView, knownList, poolLevelOf);
+  const arcanumLevels = mysticArcanumLevels(arcanumView);
+  const isArcanumLevel = (level: number | null) => level !== null && arcanumLevels.includes(level);
+  const arcanumPickOf = (level: number) => spellPicks.find((name) => poolLevelOf(name) === level);
+  const regularPicks = spellPicks.filter((name) => !isArcanumLevel(poolLevelOf(name)));
+  const heldArcanumKeys = new Set(heldArcana.arcanum.map((name) => textKey(name)));
   const heldSpells = [...new Set([...knownList, ...pendingList].map((name) => textKey(name)))].filter(
-    (name) => !grantedFree.has(name),
+    (name) => !grantedFree.has(name) && !heldArcanumKeys.has(name),
   ).length;
   const bookGain = bookStyle
     ? isNewClass
@@ -685,13 +701,9 @@ export function LevelUpDialog({
   // A spell given up makes room for one more. Additional Magical Secrets'
   // two spells and the Book of Shadows' three cantrips sit on top of the
   // counts, as the route counts them.
-  // An older host counts a Mystic Arcanum inside the spells known
-  // (src/lib/capabilities.ts mysticArcanum): no room on top of the column.
-  const arcanumHeard = hostOffers(capabilities, "mysticArcanum");
-  const extraSpells = spellGrants.extraSpells - (arcanumHeard ? 0 : arcanumLevelsFor(classChoice, classLevelAfter).length);
   const spellRoom =
     bookGain ??
-    (allowance ? Math.max(0, allowance.count + extraSpells - heldSpells) + (forgetPick ? 1 : 0) : null);
+    (allowance ? Math.max(0, allowance.count + spellGrants.extraSpells - heldSpells) + (forgetPick ? 1 : 0) : null);
   const cantripAllowance =
     showSpells && caster.cantripCap !== null ? caster.cantripCap + spellGrants.extraCantrips : null;
   // The race's cantrips (a high elf's pick, a tiefling's Thaumaturgy) are
@@ -700,7 +712,7 @@ export function LevelUpDialog({
   const freeCantrips = freeCantripsIn(sheet, cantripList, speciesCantrips);
   const cantripRoom =
     cantripAllowance !== null
-      ? Math.max(0, cantripAllowance - Math.max(0, cantripList.length - freeCantrips))
+      ? Math.max(0, cantripAllowance - Math.max(0, cantripList.filter((name) => !grantedFree.has(textKey(name))).length - freeCantrips))
       : null;
   // The picks from any class's list (src/lib/srd/any-list-picks-logic.ts):
   // the spells already held off the class's list use up the features'
@@ -719,12 +731,6 @@ export function LevelUpDialog({
   });
   const anyLevelOf = (name: string) =>
     anyPool.find((spell) => textKey(spell.name) === textKey(name))?.level ?? spellLevelOf(name);
-  const poolLevelOf = (name: string) =>
-    spellPool.find((spell) => textKey(spell.name) === textKey(name))?.level ?? spellLevelOf(name);
-  // The arcanum levels a warlock has earned and holds no spell of yet.
-  const arcanumOpen = arcanumLevelsFor(classChoice, classLevelAfter).filter(
-    (spellLevel) => ![...knownList, ...spellPicks].some((name) => poolLevelOf(name) === spellLevel),
-  );
   // The class's name in the group's sentences ("the bard list above").
   const ownListName = (klass?.name ?? classChoice).toLowerCase();
   const rooms = spellPickRooms({
@@ -767,7 +773,7 @@ export function LevelUpDialog({
   const originSent = originShown && (originOffer?.kind === "replace" ? originOffer.optionsFor?.[originShown.from] ?? [] : []).includes(originShown.to) ? originShown : null;
   // The spell known given up made room for one more pick; giving it back takes the room back.
   function dropForget() {
-    if (forgetPick && remainingPicks !== null && spellPicks.length >= remainingPicks) {
+    if (forgetPick && remainingPicks !== null && regularPicks.length >= remainingPicks) {
       setSpellPicks((current) => current.slice(0, -1));
     }
     setForgetPick("");
@@ -794,28 +800,31 @@ export function LevelUpDialog({
       };
     }
     if (level === 0) {
-      return remainingCantrips !== null && cantripPicks.length >= remainingCantrips
-        ? { short: "Cantrips full", long: `That is every new cantrip for this level. Untick one to choose ${name}.` }
+      if (remainingCantrips !== null && cantripPicks.length >= remainingCantrips) {
+        return { short: "Cantrips full", long: `That is every new cantrip for this level. Untick one to choose ${name}.` };
+      }
+      // An Arcane Trickster's Mage Hand: the last open cantrip is kept for
+      // it (src/lib/srd/third-caster.ts thirdCasterCantripProblem).
+      const named = thirdCasterRequiredCantrip(classChoice, effectiveSubclass, progression, classLevelAfter);
+      const owesNamed =
+        named &&
+        textKey(name) !== textKey(named) &&
+        ![...cantripList, ...cantripPicks].some((entry) => textKey(entry) === textKey(named));
+      return owesNamed && remainingCantrips !== null && cantripPicks.length >= remainingCantrips - 1
+        ? { short: `${named} first`, long: `Your subclass's Spellcasting teaches ${named}: choose it as one of the new cantrips, then ${name} if there is room.` }
         : null;
     }
-    if (remainingPicks !== null && spellPicks.length >= remainingPicks) {
+    if (isArcanumLevel(level) && level !== null) {
+      const held = heldArcana.arcanum.find((entry) => poolLevelOf(entry) === level) ?? arcanumPickOf(level);
+      return held
+        ? {
+            short: "Arcanum chosen",
+            long: `Your Mystic Arcanum holds one spell of each level from 6th, and ${held} is your level ${level} arcanum.${heldArcana.open.includes(level) ? ` Untick it to choose ${name}.` : ""}`,
+          }
+        : null;
+    }
+    if (remainingPicks !== null && regularPicks.length >= remainingPicks) {
       return { short: "All new spells chosen", long: `That is every new spell for this level. Untick one to choose ${name}.` };
-    }
-    // A warlock's Mystic Arcanum: one spell of each arcanum level on top of
-    // the spells known (src/lib/srd/mystic-arcanum.ts), as the route counts.
-    const arcanum =
-      remainingPicks !== null && level !== null
-        ? arcanumPickRefusal({
-            classId: classChoice,
-            level: classLevelAfter,
-            held: knownList.map((known) => poolLevelOf(known)),
-            picked: spellPicks.map((pick) => poolLevelOf(pick)),
-            adding: level,
-            room: remainingPicks,
-          })
-        : null;
-    if (arcanum) {
-      return { short: "Mystic Arcanum", long: arcanum };
     }
     if (!isThirdCaster(classChoice, effectiveSubclass, progression)) {
       return null;
@@ -1695,14 +1704,13 @@ export function LevelUpDialog({
                         )}
                       </li>
                     ) : null}
-                    {remainingPicks && arcanumOpen.length ? (
-                      <li>
-                        <span className="text-amber-200">
-                          Mystic Arcanum: choose one spell of {arcanumOpen.map((spellLevel) => `${spellLevel}th`).join(", ")} level.
-                        </span>{" "}
-                        Your patron&apos;s secret, cast once a long rest with no slot, on top of your spells known.
+                    {heldArcana.open.map((level) => (
+                      <li key={`arcanum-${level}`}>
+                        <span className="text-amber-200">Mystic Arcanum: choose one level {level} warlock spell.</span>{" "}
+                        You cast it once without a spell slot, then again after a long rest. It does not count
+                        against your spells known.
                       </li>
-                    ) : null}
+                    ))}
                     {anyGroup ? (
                       <li>
                         <span className="text-amber-200">{anyGroup.title}.</span> They have their own list,
@@ -1715,7 +1723,7 @@ export function LevelUpDialog({
                         {learnedNew.join(", ")}, free of your spells known, and can cast it as a ritual.
                       </li>
                     ) : null}
-                    {!remainingCantrips && !remainingPicks && !anyGroup ? (
+                    {!remainingCantrips && !remainingPicks && !anyGroup && !heldArcana.open.length ? (
                       <li>Nothing new to choose at this level: your spells stay as they are.</li>
                     ) : null}
                   </ul>
@@ -1737,7 +1745,7 @@ export function LevelUpDialog({
                                 onClick={() => {
                                   setSpellNote("");
                                   // Giving the swap back takes back the room it made.
-                                  if (picked && remainingPicks !== null && spellPicks.length >= remainingPicks) {
+                                  if (picked && remainingPicks !== null && regularPicks.length >= remainingPicks) {
                                     setSpellPicks((current) => current.slice(0, -1));
                                   }
                                   setForgetPick(picked ? "" : name);
@@ -1771,7 +1779,7 @@ export function LevelUpDialog({
                         ? [
                             {
                               label: bookGain !== null ? "Spellbook" : levelStyle === "known" ? "Known" : "Prepared",
-                              value: spellPicks.length,
+                              value: regularPicks.length,
                               max: remainingPicks,
                             },
                           ]

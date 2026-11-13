@@ -10,7 +10,7 @@
 // allowance read the scores from before the Ability Score Improvement.
 //
 // Pure, no JSX, so scripts/test-enforce-ui-dm.mjs drives it.
-import { arcanumTopFor } from "@/lib/srd/mystic-arcanum";
+import { mysticArcanumTop } from "@/lib/srd/mystic-arcanum";
 import { spellPoolKeyFor } from "@/lib/classes";
 import type { AbilityScores, AsiChoice, CharacterSheet } from "@/lib/schemas/sheet";
 import { findClass, findRace } from "@/lib/srd";
@@ -212,7 +212,9 @@ export function casterPreview(input: {
   };
   const cantripCap = cantripCapOf(view);
   const spellCap = spellCapOf(view, input.abilitiesAfter);
-  const maxLevel = Math.max(maxSpellLevelOf(view), arcanumTopFor(list, input.level));
+  // A Mystic Arcanum reaches past pact slots for a class that holds one
+  // (src/lib/srd/mystic-arcanum.ts): never a setting pact caster.
+  const maxLevel = Math.max(maxSpellLevelOf(view), mysticArcanumTop(input.classId, input.level));
   // A third caster below 3rd level casts nothing yet.
   const casts = !third || input.level >= 3;
   return { casts, list, ability, style, maxLevel, cantripCap, spellCap };

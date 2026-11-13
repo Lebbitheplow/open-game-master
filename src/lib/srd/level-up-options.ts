@@ -11,7 +11,6 @@
 // decides what is allowed, the level-up does.
 //
 // Pure: the route supplies the table's settings and its subclass list.
-import { arcanumLevelsFor } from "@/lib/srd/mystic-arcanum";
 import { splitToolGrants } from "@/lib/srd/tool-choices";
 import {
   casterPreview,
@@ -28,7 +27,7 @@ import type { HpMethod } from "@/lib/srd/hit-points";
 import { MULTICLASS_CAP, canMulticlassInto, classListFor, multiclassGrantsFor } from "@/lib/srd/multiclass";
 import { openOptionSlots, optionFeatureName, optionReqProblem } from "@/lib/srd/options";
 import { openStyleSlots } from "@/lib/srd/style-slots";
-import { thirdCasterAnySchoolPicks, thirdCasterOutside, thirdCasterProfileOf, thirdCasterSchools } from "@/lib/srd/third-caster";
+import { thirdCasterAnySchoolPicks, thirdCasterOutside, thirdCasterProfileOf, thirdCasterRequiredCantrip, thirdCasterSchools } from "@/lib/srd/third-caster";
 import { checklistSpell } from "@/lib/srd/spell-lists";
 import { subclassChoiceSlots } from "@/lib/srd/subclass-choice-picks";
 import { subclassChoicePickName } from "@/lib/content/subclass-choices";
@@ -39,6 +38,10 @@ import {
   dedupeNames,
   grantedSpellsOf,
   preparedCount,
+  arcanumSplit,
+  grantedCantripsOf,
+  maxSpellLevelOf,
+  mysticArcanumLevels,
   spellbookAllowance,
   spellbookOf,
 } from "@/lib/srd/spell-prep";
@@ -72,8 +75,8 @@ export type LevelUpOptionsContext = {
   // bundled list does not carry: a content pack's Mechanist was "Unknown
   // class" here while the PATCH took its level.
   classOf?: (classId: string) => { id: string; name: string; hitDie: number } | null;
-  // A spell's level as the level-up reads it (the pack's and the table's
-  // spells too); the bundled checklist's when absent.
+  // A spell's level as the level-up reads it (the content pack's too), for a
+  // warlock's arcana; the bundled checklist answers without it.
   spellLevelOf?: (name: string) => number | null;
 };
 
@@ -128,6 +131,12 @@ export type LevelUpOptions = {
       newCantrips: number;
       // Spells to learn, prepare or write in the book with this level.
       newSpells: number;
+      // The cantrip a third caster's Spellcasting names (an Arcane
+      // Trickster's Mage Hand), when the new cantrips must include it.
+      requiredCantrip?: string;
+      // A warlock's Mystic Arcanum levels still without a spell: one spell of
+      // each to name beside newSpells, never counted in it.
+      arcanum?: number[];
       style: "known" | "prepared" | "spellbook";
       mayReplaceOne: boolean;
       // A third caster (an Eldritch Knight, an Arcane Trickster) learns its
@@ -136,11 +145,6 @@ export type LevelUpOptions = {
       // level-up enforces): `otherSchoolPicks` is how many of those are
       // still free.
       schools?: { from: string[]; otherSchoolPicks: number };
-      // A warlock's Mystic Arcanum (src/lib/srd/mystic-arcanum.ts), once it
-      // has one: the arcanum levels with no spell yet, one spell of each
-      // among newSpells; every other spell is of `otherSpellsUpTo` level or
-      // lower.
-      arcanum?: { levels: number[]; otherSpellsUpTo: number };
       note: string;
     };
   };
@@ -166,15 +170,6 @@ function notReadyReason(sheet: CharacterSheet, next: number): string | undefined
     return `Level ${next} takes ${XP_THRESHOLDS[next - 1]} experience points and ${sheet.name} has ${sheet.xp}. A level is earned in play, or granted by whoever runs the table.`;
   }
   return undefined;
-}
-
-// Mystic Arcanum's spells are counted in newSpells, one of each arcanum
-// level on top of the spells known (src/lib/srd/mystic-arcanum.ts).
-function arcanumNote(classId: string, level: number): string {
-  const levels = arcanumLevelsFor(classId, level);
-  return levels.length
-    ? `Mystic Arcanum: one warlock spell of each of level ${levels.join(", ")}, held on top of the spells known (the rest stay at 5th level or lower).`
-    : "";
 }
 
 export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsContext): LevelUpOptions | { error: string } {
@@ -383,9 +378,16 @@ export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsCon
     // Magical Secrets, the Book of Shadows: picks from any list, some on top
     // of the class's counts (src/lib/srd/class-spell-grants.ts).
     const grants = classSpellGrants({ classId: klass.id, level: classLevelAfter, subclass: subclassNow, features: sheet.features });
-    const cantripsHeld = view ? dedupeNames(view.cantrips).length - context.freeCantrips : 0;
+    // A subclass's own cantrips (the Light Domain's light) sit on top.
+    const grantedCantrips = new Set((view ? grantedCantripsOf({ ...view, level: classLevelAfter, subclass: subclassNow }) : []).map(textKey));
+    const cantripsHeld = view ? dedupeNames(view.cantrips).filter((name) => !grantedCantrips.has(textKey(name))).length - context.freeCantrips : 0;
     const newCantrips = caster.cantripCap === null ? 0 : Math.max(0, caster.cantripCap + grants.extraCantrips - Math.max(0, cantripsHeld));
     let newSpells = 0;
+    // A warlock's arcana sit beside the spells known (mystic-arcanum.ts
+    // arcanumSplit): out of the holding, and asked for on their own.
+    const arcanumView = { classId: klass.id, level: classLevelAfter };
+    const arcana = arcanumSplit(arcanumView, view ? (view.known.length ? view.known : view.prepared) : [], context.spellLevelOf);
+    const arcanumKeys = new Set(arcana.arcanum.map(textKey));
     if (caster.style === "spellbook") {
       newSpells = view && spellbookOf(view).length ? 2 : spellbookAllowance(classLevelAfter);
     } else if (caster.spellCap) {
@@ -393,7 +395,7 @@ export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsCon
       const holding = !view
         ? 0
         : caster.style === "known"
-          ? dedupeNames(view.known.length ? view.known : view.prepared).filter((name) => !granted.has(textKey(name))).length
+          ? dedupeNames(view.known.length ? view.known : view.prepared).filter((name) => !granted.has(textKey(name)) && !arcanumKeys.has(textKey(name))).length
           : preparedCount(view);
       newSpells = Math.max(0, caster.spellCap.count + grants.extraSpells - holding);
     }
@@ -412,28 +414,27 @@ export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsCon
           ),
         }
       : null;
-    const arcanumEarned = arcanumLevelsFor(klass.id, classLevelAfter);
-    const arcanum = arcanumEarned.length
-      ? {
-          levels: arcanumEarned.filter(
-            (spellLevel) => !knownBefore.some((name) => (context.spellLevelOf?.(name) ?? checklistSpell(name)?.level) === spellLevel),
-          ),
-          otherSpellsUpTo: Math.min(caster.maxLevel, Math.min(...arcanumEarned) - 1),
-        }
-      : null;
+    const slotTop = maxSpellLevelOf({ classId: klass.id, level: classLevelAfter, subclass: subclassNow, progression });
+    const named = thirdCasterRequiredCantrip(klass.id, subclassNow, progression, classLevelAfter);
+    const requiredCantrip = named && newCantrips > 0 && !(view?.cantrips ?? []).some((name) => textKey(name) === textKey(named)) ? named : null;
     choices.spells = {
       list: caster.list,
-      maxSpellLevel: caster.maxLevel,
+      // The new spells' reach: the slots' (a warlock's arcana are their own).
+      maxSpellLevel: mysticArcanumLevels(arcanumView).length ? slotTop : caster.maxLevel,
       newCantrips,
       newSpells,
+      ...(arcana.open.length ? { arcanum: arcana.open } : {}),
+      ...(requiredCantrip ? { requiredCantrip } : {}),
       style: caster.style,
       mayReplaceOne: caster.style === "known" && knownBefore.length > 0,
       ...(schools ? { schools } : {}),
-      ...(arcanum ? { arcanum } : {}),
       note: [
         STYLE_NOTE[caster.style],
         grants.anyList ? `${grants.feature}: ${grants.anyList} of the ${grants.anyListSpells ? "spells" : "cantrips"} held may come from any class's spell list.` : "",
-        arcanumNote(klass.id, classLevelAfter),
+        requiredCantrip ? `${requiredCantrip} must be one of the new cantrips: the subclass's Spellcasting teaches it.` : "",
+        arcana.open.length
+          ? `Mystic Arcanum: also name one warlock spell of level ${arcana.open.join(", ")} in levelUpSpells, beside the new spells and not counted in them.`
+          : "",
         schools
           ? `Levelled spells come from ${schools.from.join(" and ")}; ${schools.otherSchoolPicks} more may come from any other school.`
           : "",

@@ -24,7 +24,7 @@ import { openOptionSlots, optionFeatureName, slotTakes, type OptionSlot } from "
 import { subclassChoiceSlots } from "@/lib/srd/subclass-choice-picks";
 import { parseSubclassChoicePick, subclassChoicePickName } from "@/lib/content/subclass-choices";
 import { subclassPickFeatures } from "@/lib/srd/subclass-choice-picks";
-import { spellStyleFor, spellbookAllowance, type SpellStyle } from "@/lib/srd/spell-prep";
+import { arcanumSplit, spellStyleFor, spellbookAllowance, type SpellStyle } from "@/lib/srd/spell-prep";
 import {
   chooseKitOption as withKitOption,
   classKitFor,
@@ -143,6 +143,11 @@ export type CasterDesk = {
   casts: boolean;
   spellSearchClass: string;
   maxSpellLevel: number;
+  // A warlock's Mystic Arcanum levels, and the spells chosen as them: picked
+  // above the slots, one of each level, outside the spells known count.
+  arcanumLevels: number[];
+  chosenArcanum: string[];
+  requiredCantrip: string | null;
   spellWider: { spells: string[]; lists: string[] };
   cantripAdvice: number | null;
   spellAdvice: ReturnType<typeof builderSpellAdvice>;
@@ -215,7 +220,9 @@ function casterDeskOf(
           ? "prepared"
           : spellStyleFor(row.id);
   const free = new Set(subclassSpells.map(textKey));
-  const chosenSpells = lists.spells.filter((name) => !free.has(textKey(name)));
+  const chosenArcanum = arcanumSplit({ classId: row.id, level }, casting.arcanumLevels.length ? lists.spells : []).arcanum;
+  const arcanumKeys = new Set(chosenArcanum.map(textKey));
+  const chosenSpells = lists.spells.filter((name) => !free.has(textKey(name)) && !arcanumKeys.has(textKey(name)));
   const book = new Set(lists.spells.map(textKey));
   const mod = abilities && casting.ability ? abilityMod(abilities[casting.ability]) : null;
   return {
@@ -228,6 +235,9 @@ function casterDeskOf(
     casts,
     spellSearchClass: casting.list,
     maxSpellLevel: casting.maxSpellLevel,
+    arcanumLevels: casting.arcanumLevels,
+    chosenArcanum,
+    requiredCantrip: casting.requiredCantrip,
     spellWider,
     cantripAdvice: casting.cantripCap === null ? null : casting.cantripCap + spellGrants.extraCantrips,
     spellAdvice: withExtras(casts && abilities ? builderSpellAdvice(casting, row, subclass, level, abilities) : null, spellGrants),
@@ -238,7 +248,7 @@ function casterDeskOf(
     spellbookAdvice: spellStyle === "spellbook" ? spellbookAllowance(level) : null,
     racialCantrips: [],
     featSpells: { cantrips: [], spells: [] },
-    chosenCantrips: lists.cantrips,
+    chosenCantrips: lists.cantrips.filter((name) => !free.has(textKey(name))),
     chosenSpells,
     chosenPrepared: spellStyle === "spellbook" ? lists.bookPrepared.filter((name) => book.has(textKey(name))) : chosenSpells,
     spellSupply:
@@ -1090,14 +1100,22 @@ export function useBuilderDerived({
       ),
     [featNames, featDescOf, featChoices],
   );
+  // A subclass's own cantrips (the Light Domain's light) are known on top
+  // of the class's count too (src/lib/srd/spell-prep.ts grantedCantripsOf).
   const chosenCantrips = useMemo(() => {
-    const free = new Set([...racialCantrips, ...featSpells.cantrips].map((name) => textKey(name)));
+    const free = new Set([...racialCantrips, ...featSpells.cantrips, ...subclassSpells].map((name) => textKey(name)));
     return cantrips.filter((name) => !free.has(textKey(name)));
-  }, [cantrips, racialCantrips, featSpells]);
+  }, [cantrips, racialCantrips, featSpells, subclassSpells]);
+  // A warlock's arcana sit beside the spells known (spell-prep.ts arcanumSplit).
+  const arcanumLevels = casting.arcanumLevels;
+  const chosenArcanum = useMemo(
+    () => (arcanumLevels.length && casterKlass ? arcanumSplit({ classId: casterKlass.id, level: casterLevel }, spells).arcanum : []),
+    [arcanumLevels, casterKlass, casterLevel, spells],
+  );
   const chosenSpells = useMemo(() => {
-    const free = new Set(subclassSpells.map((spellName) => textKey(spellName)));
+    const free = new Set([...subclassSpells, ...chosenArcanum].map((spellName) => textKey(spellName)));
     return spells.filter((spellName) => !free.has(textKey(spellName)));
-  }, [spells, subclassSpells]);
+  }, [spells, subclassSpells, chosenArcanum]);
   const chosenPrepared = useMemo(() => {
     if (spellStyle !== "spellbook") {
       return chosenSpells;
@@ -1146,6 +1164,9 @@ export function useBuilderDerived({
             casts,
             spellSearchClass,
             maxSpellLevel,
+            arcanumLevels,
+            chosenArcanum,
+            requiredCantrip: casting.requiredCantrip,
             spellWider,
             cantripAdvice,
             spellAdvice,
@@ -1180,9 +1201,9 @@ export function useBuilderDerived({
     });
   }, [
     klass, extras, classList, leadIndex, multiclass, casterSpellLists, shownAbilities, effectiveLevel, casterKlass, casterSubclass,
-    casterLevel, casts, spellSearchClass, maxSpellLevel, spellWider, cantripAdvice, spellAdvice, starters, subclassSpells,
+    casterLevel, casts, spellSearchClass, maxSpellLevel, arcanumLevels, chosenArcanum, spellWider, cantripAdvice, spellAdvice, starters, subclassSpells,
     castingLabel, spellStyle, spellbookAdvice, racialCantrips, featSpells, chosenCantrips, chosenSpells, chosenPrepared,
-    spellSupply, casting.ability, preview, spells, bookPrepared, cantrips, spellGrants, grantedFeatures, optionPicks,
+    spellSupply, casting.ability, casting.requiredCantrip, preview, spells, bookPrepared, cantrips, spellGrants, grantedFeatures, optionPicks,
   ]);
 
   return {
@@ -1259,6 +1280,9 @@ export function useBuilderDerived({
     spellbookAdvice,
     spellSupply,
     maxSpellLevel,
+    arcanumLevels,
+    chosenArcanum,
+    requiredCantrip: casting.requiredCantrip,
     spellGrants,
   };
 }

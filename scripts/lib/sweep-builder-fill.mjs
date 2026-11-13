@@ -26,7 +26,7 @@ const src = (file) => import(new URL(`../../src/${file}`, import.meta.url).href)
 export async function openFillSweep() {
   const { owedChoices } = await src("lib/srd/owed-choices.ts");
   const { subclassLevelFor } = await src("lib/srd/features.ts");
-  const { arcanumLevelsFor } = await src("lib/srd/mystic-arcanum.ts");
+  const { mysticArcanumLevels } = await src("lib/srd/mystic-arcanum.ts");
   const { casterViewsOf } = await src("lib/srd/spell-prep.ts");
   const { spellLevelOf } = await src("lib/srd/spell-lists.ts");
 
@@ -55,7 +55,7 @@ export async function openFillSweep() {
     // A warlock's Mystic Arcanum: one spell of each arcanum level, on top of
     // the spells known (src/lib/srd/mystic-arcanum.ts).
     for (const view of sheet.spellcasting ? casterViewsOf(sheet) : []) {
-      const wanted = arcanumLevelsFor(view.classId, view.level);
+      const wanted = mysticArcanumLevels(view);
       const held = wanted.filter((spellLevel) => view.known.some((name) => spellLevelOf(name) === spellLevel));
       assert.deepEqual(held, wanted, `${label}: a level ${view.level} ${view.classId}'s arcana, one spell of each level: ${JSON.stringify(view.known)}`);
     }

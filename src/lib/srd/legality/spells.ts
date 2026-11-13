@@ -7,8 +7,8 @@
 // own list at a level its slots reach, a caster who knows spells prepares
 // none, a wizard prepares from the book, and the counts are the tables'
 // (src/lib/srd/spell-prep.ts spellListProblems).
-import { spellClassFor, spellRulesClassFor } from "@/lib/classes";
-import { arcanumTopFor } from "@/lib/srd/mystic-arcanum";
+import { spellClassFor } from "@/lib/classes";
+import { mysticArcanumTop } from "@/lib/srd/mystic-arcanum";
 import { classLabelOf, spellListLabel } from "@/lib/classes/class-spell-list";
 import { featSpellNames, withFeatSpells, type FeatSpellGrant } from "@/lib/srd/feat-spells";
 import type { AbilityScores, ClassEntry, Spellcasting } from "@/lib/schemas/sheet";
@@ -137,7 +137,7 @@ export function spellNameProblems(view: CasterView, list: string, rules: NameRul
   const racial = new Map(rules.racialCantrips.map((entry) => [textKey(entry.name), entry.list]));
   // A warlock's Mystic Arcanum reaches past its pact slots
   // (src/lib/srd/mystic-arcanum.ts), a pack spell as much as a bundled one.
-  const top = Math.max(maxSpellLevelOf(view), arcanumTopFor(spellRulesClassFor(view.classId), view.level));
+  const top = Math.max(maxSpellLevelOf(view), mysticArcanumTop(view.classId, view.level));
   // Off the list, a pick Magical Secrets or the Book of Shadows lets in, as
   // far as their number reaches (src/lib/srd/class-spell-grants.ts); the
   // held ones already off it count first.

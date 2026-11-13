@@ -26,7 +26,7 @@ import {
 } from "@/lib/srd/spell-prep";
 import { compareNames, textKey } from "@/lib/language/text-logic";
 import { classSpellGrants } from "@/lib/srd/class-spell-grants";
-import { arcanumLevelsFor } from "@/lib/srd/mystic-arcanum";
+import { mysticArcanumLevels } from "@/lib/srd/mystic-arcanum";
 import { spellLevelOf } from "@/lib/srd/spell-lists";
 
 // Where a companion's improvements go: two points to the first score of its
@@ -165,12 +165,12 @@ export function companionSpellPicks(input: CompanionSpellInput): string[] {
 
   // What a class feature holds on top of the class's counts
   // (src/lib/srd/class-spell-grants.ts): the Book of Shadows' cantrips,
-  // Additional Magical Secrets' spells, a warlock's Mystic Arcanum, one
-  // spell of each arcanum level (src/lib/srd/mystic-arcanum.ts).
+  // Additional Magical Secrets' spells; and beside them a warlock's Mystic
+  // Arcanum, one spell of each arcanum level (src/lib/srd/mystic-arcanum.ts).
   const grants = classSpellGrants(after);
   const levelOf = (name: string) =>
     input.candidates.find((spell) => textKey(spell.name) === textKey(name))?.level ?? spellLevelOf(name);
-  const arcanumLevels = arcanumLevelsFor(after.classId, input.level);
+  const arcanumLevels = mysticArcanumLevels({ classId: after.classId, level: input.level });
   const arcanumOpen = arcanumLevels.filter((spellLevel) => !heldSpells(after).some((name) => levelOf(name) === spellLevel));
   const cantripCap = cantripCapOf(after);
   const cantripRoom =
@@ -191,7 +191,7 @@ export function companionSpellPicks(input: CompanionSpellInput): string[] {
         after.style === "known"
           ? dedupeNames(heldSpells(after)).filter((name) => !granted.has(textKey(name)) && !arcanumLevels.includes(levelOf(name) ?? 0)).length
           : preparedCount(after);
-      room = cap ? Math.max(0, cap.count + grants.extraSpells - arcanumLevels.length - count) : 0;
+      room = cap ? Math.max(0, cap.count + grants.extraSpells - count) : 0;
     }
   }
   const reachable = ordered.filter((spell) => spell.level >= 1 && spell.level <= top);

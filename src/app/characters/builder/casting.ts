@@ -15,9 +15,9 @@ import { pactSlotsFor, slotTableFor } from "@/lib/srd/multiclass";
 import { abilityMod, formatModifier, spellSlotsFor } from "@/lib/srd";
 import { ABILITY_NAMES } from "@/lib/srd/legality/types";
 import { cantripCapOf, spellCapOf } from "@/lib/srd/spell-prep";
-import { thirdCasterAbility, thirdCasterList, thirdCasterProfileOf, type ThirdCasterProfile } from "@/lib/srd/third-caster";
+import { mysticArcanumLevels } from "@/lib/srd/mystic-arcanum";
+import { thirdCasterAbility, thirdCasterList, thirdCasterProfileOf, thirdCasterRequiredCantrip, type ThirdCasterProfile } from "@/lib/srd/third-caster";
 import { subclassCastingProfileFor } from "@/lib/srd/features";
-import { arcanumTopFor } from "@/lib/srd/mystic-arcanum";
 
 type CastingClass = {
   id: string;
@@ -38,6 +38,14 @@ export type BuilderCasting = {
   // list itself, but for a workshop class with a list of its own.
   rules: string;
   maxSpellLevel: number;
+  // A warlock's Mystic Arcanum levels (6th at 11th level up to 9th at 17th):
+  // one spell of each, picked beside the spells known and above the slots
+  // (src/lib/srd/mystic-arcanum.ts). Only the class's own feature: a setting
+  // class on the warlock's tables has no arcanum to pick.
+  arcanumLevels: number[];
+  // The cantrip a third caster's Spellcasting names among its own (an Arcane
+  // Trickster's Mage Hand), or null.
+  requiredCantrip: string | null;
   cantripCap: number | null;
   // A class that casts, and has something to cast at this level. A level 1
   // paladin has an ability and nothing to cast yet.
@@ -50,23 +58,16 @@ export function builderCasting(
   level: number,
 ): BuilderCasting {
   if (!klass) {
-    return { third: false, profile: null, ability: null, list: "", rules: "", maxSpellLevel: 0, cantripCap: null, casts: false };
+    return { third: false, profile: null, ability: null, list: "", rules: "", maxSpellLevel: 0, arcanumLevels: [], requiredCantrip: null, cantripCap: null, casts: false };
   }
   const profile = thirdCasterProfileOf(klass.id, subclass, subclassCastingProfileFor(klass.id, subclass ?? ""));
   const third = profile !== null;
   const ability = (profile ? thirdCasterAbility(profile) : klass.spellAbility || null) as BuilderCasting["ability"];
   const list = profile ? thirdCasterList(profile) : spellPoolKeyFor(klass.id);
   const rules = profile ? list : spellRulesClassFor(klass.id);
-  // A warlock's Mystic Arcanum reaches past its pact slots: one spell of
-  // each arcanum level, picked here with the rest (src/lib/srd/mystic-arcanum.ts).
   const maxSpellLevel =
     third || klass.casterType !== "none"
-      ? Math.max(
-          Object.keys(spellSlotsFor(klass.id, level, subclass, profile)).reduce((top, slot) => Math.max(top, Number(slot)), 0),
-          // The warlock's own feature: a setting class on the warlock's
-          // tables has no arcanum to pick.
-          third ? 0 : arcanumTopFor(klass.id, level),
-        )
+      ? Object.keys(spellSlotsFor(klass.id, level, subclass, profile)).reduce((top, slot) => Math.max(top, Number(slot)), 0)
       : 0;
   const cantripCap = !ability
     ? null
@@ -74,7 +75,9 @@ export function builderCasting(
       ? cantripCapOf({ classId: klass.id, level, subclass: subclass ?? "", progression: profile })
       : suggestedCantripCount(rules, level, klass.casterType as Parameters<typeof suggestedCantripCount>[2]);
   const casts = Boolean(ability) && (maxSpellLevel > 0 || cantripCap !== null);
-  return { third, profile, ability, list, rules, maxSpellLevel, cantripCap: casts ? cantripCap : null, casts };
+  const arcanumLevels = casts && !third ? mysticArcanumLevels({ classId: klass.id, level }) : [];
+  const requiredCantrip = casts ? thirdCasterRequiredCantrip(klass.id, subclass, profile, level) : null;
+  return { third, profile, ability, list, rules, maxSpellLevel, arcanumLevels, requiredCantrip, cantripCap: casts ? cantripCap : null, casts };
 }
 
 // How many levelled spells the class may hold at this level.

@@ -24,16 +24,16 @@ import {
   widerListOf,
   type CasterView,
 } from "@/lib/srd/spell-prep";
-import { spellRulesClassFor } from "@/lib/classes";
 import { classLabelOf, spellListLabel } from "@/lib/classes/class-spell-list";
 import type { AbilityScores } from "@/lib/schemas/sheet";
 import type { SpellFacts } from "@/lib/srd/legality/types";
-import { thirdCasterOutside, thirdCasterSchoolProblem } from "@/lib/srd/third-caster";
+import { thirdCasterCantripProblem, thirdCasterOutside, thirdCasterSchoolProblem } from "@/lib/srd/third-caster";
 import { textKey } from "@/lib/language/text-logic";
+import { isCantripName } from "@/lib/srd/spell-lists";
 import { revisedOnlySpellProblem } from "@/lib/content/edition";
 import { classSpellGrants, offListProblems } from "@/lib/srd/class-spell-grants";
 import { originSwap } from "@/lib/dm/ar-ws-origin-swap";
-import { arcanaHeld, arcanumLevelsFor, arcanumProblems, arcanumTopFor } from "@/lib/srd/mystic-arcanum";
+import { arcanumExtraProblem, arcanumSplit, mysticArcanumTop } from "@/lib/srd/mystic-arcanum";
 
 // A name no list carries: a 2024-only spell says so, anything else is unknown.
 function unknownSpell(name: string, list: string): string {
@@ -100,10 +100,9 @@ export function levelUpSpells(input: SpellLevelUp): SpellLevelUpResult {
   };
   let granted = grantedSpellsOf(after);
   const isGranted = (name: string) => has(granted, name);
-  // The Mystic Arcanum is the warlock's tables', read for whatever counts
-  // as one: the warlock, a workshop class on its list, or a pact caster with
-  // a list of its own (issue #833).
-  const top = Math.max(maxSpellLevelOf(after), arcanumTopFor(spellRulesClassFor(before.classId), input.level));
+  // The Mystic Arcanum reaches past pact slots for a class that holds one
+  // (src/lib/srd/mystic-arcanum.ts); a setting pact caster stops at 5th.
+  const top = Math.max(maxSpellLevelOf(after), mysticArcanumTop(before.classId, input.level));
 
   // ---- what the player asked for, as lists ----
   let removed: string[] = [];
@@ -186,8 +185,18 @@ export function levelUpSpells(input: SpellLevelUp): SpellLevelUpResult {
     };
   }
 
-  // The subclass's always-prepared spells arrive on their own, free.
+  // The subclass's always-prepared spells arrive on their own, free; a
+  // cantrip among them (the Light Domain's light) with the cantrips, where
+  // a cantrip is kept and cast.
   for (const name of granted) {
+    if (isCantripName(name)) {
+      if (!has(after.cantrips, name)) {
+        after.cantrips.push(name);
+      }
+      after.known = after.known.filter((entry) => textKey(entry) !== textKey(name));
+      after.prepared = after.prepared.filter((entry) => textKey(entry) !== textKey(name));
+      continue;
+    }
     const home = after.style === "known" ? after.known : after.prepared;
     if (!has([...after.known, ...after.prepared, ...after.pending], name)) {
       home.push(name);
@@ -195,7 +204,7 @@ export function levelUpSpells(input: SpellLevelUp): SpellLevelUpResult {
   }
 
   // ---- every new name: a real spell, on the list, within reach ----
-  const newCantrips = added(after.cantrips, before.cantrips);
+  const newCantrips = added(after.cantrips, before.cantrips).filter((name) => !isGranted(name));
   const beforeSpells = [...before.known, ...before.prepared, ...before.pending, ...before.spellbook];
   const newSpells = added(
     [...after.known, ...after.prepared, ...after.pending, ...after.spellbook],
@@ -298,9 +307,20 @@ export function levelUpSpells(input: SpellLevelUp): SpellLevelUpResult {
   }
 
   // ---- the counts ----
+  // A warlock's arcana sit beside the Spells Known column (mystic-arcanum.ts
+  // arcanumSplit): one of each level reached, never counted in it.
+  const levelOf = (name: string) => input.spellOf(name)?.level ?? null;
+  const arcanaAfter = arcanumSplit(after, after.known.length ? after.known : after.prepared, levelOf);
+  const arcanaBefore = arcanumSplit(before, before.known.length ? before.known : before.prepared, levelOf);
+  const extraArcanum = arcanumExtraProblem(arcanaAfter, levelOf);
+  if (extraArcanum && arcanaAfter.extra.some((name) => !has(arcanaBefore.extra, name))) {
+    return { error: extraArcanum };
+  }
+  const notArcanum = (arcana: { arcanum: string[] }) => (name: string) => !has(arcana.arcanum, name);
   const tableCantrips = cantripCapOf(after);
   const cantripCap = tableCantrips === null ? null : tableCantrips + grants.extraCantrips;
-  const cantrips = dedupeNames(after.cantrips);
+  // A subclass's own cantrips are known on top of the column.
+  const cantrips = dedupeNames(after.cantrips).filter((name) => !isGranted(name));
   if (newCantrips.length && cantripCap === null) {
     return { error: `A ${label} knows no cantrips.` };
   }
@@ -308,6 +328,23 @@ export function levelUpSpells(input: SpellLevelUp): SpellLevelUpResult {
     return {
       error: `A ${label} knows ${cantripCap} ${cantripCap === 1 ? "cantrip" : "cantrips"}; that list would have ${cantrips.length - input.freeCantrips}.`,
     };
+  }
+  // The cantrip a third caster's Spellcasting names (an Arcane Trickster's
+  // Mage Hand), once the new cantrips fill the list.
+  const namedCantrip = newCantrips.length
+    ? thirdCasterCantripProblem({
+        classId: before.classId,
+        subclass: input.subclass,
+        profile: after.progression,
+        level: input.level,
+        // A race's cantrips sit on top of the class's, so the list is full at
+        // the class's count plus theirs.
+        cantrips,
+        cap: cantripCap === null ? null : cantripCap + input.freeCantrips,
+      })
+    : null;
+  if (namedCantrip) {
+    return { error: namedCantrip };
   }
   const tableCap = spellCapOf(after, input.abilities);
   const cap = tableCap ? { ...tableCap, count: tableCap.count + grants.extraSpells } : null;
@@ -345,34 +382,20 @@ export function levelUpSpells(input: SpellLevelUp): SpellLevelUpResult {
       };
     }
   } else if (cap) {
-    const heldNames =
-      after.style === "known" ? dedupeNames(after.known.length ? after.known : after.prepared).filter((name) => !isGranted(name)) : [];
-    const held = after.style === "known" ? heldNames.length : preparedCount(after);
+    const held =
+      after.style === "known"
+        ? dedupeNames(after.known.length ? after.known : after.prepared).filter((name) => !isGranted(name)).filter(notArcanum(arcanaAfter)).length
+        : preparedCount(after);
     const grew =
       newSpells.length > 0 ||
       held >
         (after.style === "known"
-          ? dedupeNames(before.known.length ? before.known : before.prepared).filter((name) => !isGranted(name)).length
+          ? dedupeNames(before.known.length ? before.known : before.prepared).filter((name) => !isGranted(name)).filter(notArcanum(arcanaBefore)).length
           : preparedCount(before));
     if (grew && held > cap.count) {
       return {
         error: `A ${label} may hold ${cap.count} ${cap.label}; that list would have ${held}.`,
       };
-    }
-    // Mystic Arcanum's spells sit on top of the column, one of each arcanum
-    // level (src/lib/srd/mystic-arcanum.ts), and never stand in for a spell
-    // of 5th level or lower.
-    const levelled = heldNames.map((name) => ({ name, level: input.spellOf(name)?.level ?? null }));
-    const arcanumSlots = arcanumLevelsFor(before.classId, input.level).length;
-    const regular = held - arcanaHeld(before.classId, input.level, levelled);
-    if (grew && arcanumSlots && regular > cap.count - arcanumSlots) {
-      return {
-        error: `A ${label} may hold ${cap.count - arcanumSlots} ${cap.label} of 5th level or lower; that list would have ${regular}. Mystic Arcanum adds one spell of each arcanum level on top.`,
-      };
-    }
-    const [arcanum] = grew ? arcanumProblems(before.classId, input.level, levelled) : [];
-    if (arcanum) {
-      return { error: arcanum };
     }
   } else if (newSpells.length) {
     return { error: `A ${label} has no spells to learn yet.` };

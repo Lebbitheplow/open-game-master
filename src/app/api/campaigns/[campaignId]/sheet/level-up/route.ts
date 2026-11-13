@@ -69,12 +69,12 @@ export async function GET(
     // The class rows the PATCH levels by, so a pack's class is offered its
     // level as it is given it.
     classOf: (id) => classGrantsFor(id, owner),
-    freeCantrips: freeCantripCount(sheet, racialCantripChoice),
-    subclassExtras: subclassExtrasFor(owner),
-    settingClassIds: settingClassIds(context.campaign.gameSettings.genre, packClassIds(context.campaign.gameSettings)),
     // A spell's level as the PATCH reads it, the pack's and the table's
     // homebrew too (a Mystic Arcanum held, src/lib/srd/mystic-arcanum.ts).
     spellLevelOf: (name) => spellFactsFor(name, owner)?.level ?? null,
+    freeCantrips: freeCantripCount(sheet, racialCantripChoice),
+    subclassExtras: subclassExtrasFor(owner),
+    settingClassIds: settingClassIds(context.campaign.gameSettings.genre, packClassIds(context.campaign.gameSettings)),
   });
   if ("error" in options) {
     return Response.json({ error: options.error }, { status: 400 });

@@ -23,12 +23,11 @@ import { multiclassGrantsFor } from "@/lib/srd/multiclass";
 import { unmetFeatMessage, type FeatJudge } from "./featPrereqs";
 import type { BackgroundOption, ClassOption, RaceOption } from "./useBuilderOptions";
 import type { BuilderDerived } from "./useBuilderDerived";
+import { isCantripName, spellLevelOf } from "@/lib/srd/spell-lists";
 import type { BuilderState, EquipmentItem } from "./useBuilderState";
 import { textKey } from "@/lib/language/text-logic";
 import { subclassPickFeatures } from "@/lib/srd/subclass-choice-picks";
 import { featChoice } from "@/lib/schemas/sheet";
-import { arcanaHeld, arcanumLevelsFor, arcanumProblems } from "@/lib/srd/mystic-arcanum";
-import { spellLevelOf } from "@/lib/srd/spell-lists";
 import { normalizeAttraction } from "@/lib/attraction";
 
 export type BuilderResult = { level: number; sheet: CreateSheetInput };
@@ -394,7 +393,7 @@ export function spellsBlocks(
 type DeskCounts = Pick<
   BuilderDerived,
   "spellSupply" | "cantripAdvice" | "chosenCantrips" | "spellbookAdvice" | "chosenSpells" | "spellAdvice" | "chosenPrepared"
-> & { klass: Pick<ClassOption, "name"> & Partial<Pick<ClassOption, "id">>; casterLevel: number };
+> & Partial<Pick<BuilderDerived, "arcanumLevels" | "chosenArcanum" | "requiredCantrip">> & { klass: Pick<ClassOption, "name">; casterLevel: number };
 
 function deskBlocks(desk: DeskCounts, who: string): StepBlock[] {
   const derived = desk;
@@ -442,37 +441,19 @@ function deskBlocks(desk: DeskCounts, who: string): StepBlock[] {
     if (spellsOver > 0) {
       owed.push(block("spells", `Remove ${spellsOver} ${spellsOver === 1 ? "spell" : "spells"}: the limit is ${derived.spellAdvice.count} ${derived.spellAdvice.label}.`));
     }
-    owed.push(...arcanumBlocks(desk, block));
   }
-  return owed;
-}
-
-// A warlock's Mystic Arcanum (src/lib/srd/mystic-arcanum.ts): one spell of
-// each arcanum level, on top of the spells known, which the server holds to
-// 5th level or lower. The count above takes the arcana in; these say which
-// of the picks must be one.
-function arcanumBlocks(desk: DeskCounts, block: (target: BlockerTarget, message: string) => StepBlock): StepBlock[] {
-  const levels = arcanumLevelsFor(desk.klass.id ?? "", desk.casterLevel);
-  if (!levels.length || !desk.spellAdvice) {
-    return [];
+  // An Arcane Trickster's Mage Hand among the cantrips, once they are all
+  // chosen (src/lib/srd/third-caster.ts thirdCasterCantripProblem).
+  const named = derived.requiredCantrip;
+  if (named && derived.cantripAdvice !== null && derived.chosenCantrips.length >= derived.cantripAdvice && !derived.chosenCantrips.some((name) => name.toLowerCase() === named.toLowerCase())) {
+    owed.push(block("spells", `Take ${named} as one of your cantrips: your subclass's spellcasting teaches it.`));
   }
-  const levelled = desk.chosenPrepared.map((name) => ({ name, level: spellLevelOf(name) }));
-  const owed = arcanumProblems(desk.klass.id ?? "", desk.casterLevel, levelled).map((line) => block("spells", line));
-  const missing = levels.filter((spellLevel) => !levelled.some((spell) => spell.level === spellLevel));
-  // A pack spell the bundled checklist has no level for may be the arcanum:
-  // the server, which knows its level, judges it.
-  const unknown = levelled.filter((spell) => spell.level === null).length;
-  if (missing.length > unknown) {
-    owed.push(
-      block(
-        "spells",
-        `Choose your Mystic Arcanum: one warlock spell of ${missing.map((spellLevel) => `${spellLevel}th`).join(", ")} level${missing.length === 1 ? "" : "s"}, on top of your spells known.`,
-      ),
-    );
-    const regular = levelled.length - arcanaHeld(desk.klass.id ?? "", desk.casterLevel, levelled);
-    const room = desk.spellAdvice.count - levels.length;
-    if (regular > room) {
-      owed.push(block("spells", `Remove ${regular - room} ${regular - room === 1 ? "spell" : "spells"} of 5th level or lower to make room for the arcanum.`));
+  // A warlock's Mystic Arcanum: one spell of each level reached, beside the
+  // spells known (src/lib/srd/mystic-arcanum.ts arcanumSplit).
+  const arcanaHeld = new Set((derived.chosenArcanum ?? []).map((name) => spellLevelOf(name)));
+  for (const level of derived.arcanumLevels ?? []) {
+    if (!arcanaHeld.has(level)) {
+      owed.push(block("spells", `Pick your Mystic Arcanum: one level ${level} warlock spell.`));
     }
   }
   return owed;
@@ -760,7 +741,18 @@ export function buildBuilderResult(input: SubmitInput): BuilderResult {
   ).filter(
     (spell) => !spells.some((entry) => textKey(entry) === textKey(spell)),
   );
-  const finalSpells = casting.ability ? [...spells, ...grantedSpells] : spells;
+  // A subclass's own cantrips (the Light Domain's light) are filed with the
+  // cantrips, where the server counts them on top of the class's.
+  const grantedCantrips = grantedSpells.filter((spell) => isCantripName(spell));
+  const grantedLevelled = grantedSpells.filter((spell) => !isCantripName(spell));
+  if (casting.ability) {
+    for (const spell of grantedCantrips) {
+      if (!finalCantrips.some((entry) => textKey(entry) === textKey(spell))) {
+        finalCantrips.push(spell);
+      }
+    }
+  }
+  const finalSpells = casting.ability ? [...spells, ...grantedLevelled] : spells;
   const racialFeatures = casting.ability
     ? []
     : racialCantrips.map((name) => ({ name: `Racial cantrip: ${name}`, source: "story" as const }));
@@ -914,7 +906,9 @@ function otherCasterEntries(derived: BuilderDerived, classes: ClassEntry[]): Cas
     }
     const { lists } = fitSpellLists(desk.lists, { row: desk.klass, subclass: entry.subclass ?? "", level: entry.level });
     const granted = desk.subclassSpells.filter((spell) => !lists.spells.some((name) => textKey(name) === textKey(spell)));
-    const all = [...lists.spells, ...granted];
+    // Its own cantrips (a Light Domain's light) ride with the cantrips.
+    const all = [...lists.spells, ...granted.filter((spell) => !isCantripName(spell))];
+    const cantrips = [...lists.cantrips, ...granted.filter((spell) => isCantripName(spell) && !lists.cantrips.some((name) => textKey(name) === textKey(spell)))];
     const profile = builderCasting(desk.klass, entry.subclass, entry.level).profile;
     return [
       {
@@ -923,7 +917,7 @@ function otherCasterEntries(derived: BuilderDerived, classes: ClassEntry[]): Cas
         ...(profile ? { progression: profile } : {}),
         known: desk.spellStyle === "known" ? all : [],
         prepared: desk.spellStyle === "known" ? [] : desk.spellStyle === "spellbook" ? lists.bookPrepared : all,
-        cantrips: lists.cantrips,
+        cantrips,
         ...(desk.spellStyle === "spellbook" ? { spellbook: all } : {}),
       },
     ];

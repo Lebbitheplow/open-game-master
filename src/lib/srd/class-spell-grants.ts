@@ -14,9 +14,6 @@
 // - Warlock, Pact of the Chain: "You learn the find familiar spell and can
 //   cast it as a ritual. The spell doesn't count against your number of
 //   spells known."
-// - Warlock, Mystic Arcanum (11th, 13th, 15th, 17th): one spell of 6th, 7th,
-//   8th and 9th level, held beside the Spells Known column, which stops at
-//   5th-level spells.
 //
 // Before this every list check refused a bard's Fireball as "not on the bard
 // spell list", and docs/rules-coverage.md said the spells landed on the
@@ -27,7 +24,6 @@
 // Pure and import-light: the level-up route, the creation check and the
 // level-up dialog all read it.
 import { chosenOptions } from "@/lib/srd/options";
-import { arcanumLevelsFor } from "@/lib/srd/mystic-arcanum";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { subclassNamedBare } from "@/lib/srd/subclass-name";
 import { textKey } from "@/lib/language/text-logic";
@@ -105,20 +101,16 @@ export function classSpellGrants(view: GrantView): ClassSpellGrants {
       ],
     };
   }
-  if (classId === "warlock") {
-    // Mystic Arcanum's spells sit beside the Spells Known column, one of
-    // each arcanum level (src/lib/srd/mystic-arcanum.ts).
-    const arcana = arcanumLevelsFor(classId, view.level).length;
-    const boons = view.level >= 3 ? chosenOptions(features, "pact_boon").map(textKey) : [];
+  if (classId === "warlock" && view.level >= 3) {
+    const boons = chosenOptions(features, "pact_boon").map(textKey);
     const tome = boons.includes("pact of the tome");
     const chain = boons.includes("pact of the chain");
-    if (!tome && !chain && !arcana) {
+    if (!tome && !chain) {
       return NONE;
     }
     return {
       ...NONE,
       anyList: tome ? 3 : 0,
-      extraSpells: arcana,
       extraCantrips: tome ? 3 : 0,
       learned: chain ? ["Find Familiar"] : [],
       learnedFrom: chain ? "Pact of the Chain" : "",
