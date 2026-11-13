@@ -16,6 +16,7 @@ import { formatModifier, SRD_SKILLS } from "@/lib/srd";
 import { wearingIsExplicit } from "@/lib/srd/armor";
 import { oneOfKind, wornButIdle } from "@/lib/srd/wear-slots";
 import { rowName, srdNameWithBonus } from "@/lib/srd/item-row";
+import { matchWeapon } from "@/lib/srd/weapons";
 
 // The pieces of the character sheet (docs/visual-overhaul-plan.md 8b.5), one
 // implementation drawn by both the session's sheet dialog and the character
@@ -316,7 +317,8 @@ export function EquipmentChips({
     const idle = explicit ? wornButIdle(item, equipment) : null;
     if (idle) return `worn, not in effect: ${oneOfKind(idle) ?? "one of its kind"} at a time`;
     if (item.equipped && item.layered) return "worn beside another, on the GM's say";
-    return item.equipped ? "worn" : null;
+    // A weapon is held, in the words the Hand and the sheet's toggle use.
+    return item.equipped ? (matchWeapon(item) ? "in hand" : "worn") : null;
   };
   return (
     <InfoChipList

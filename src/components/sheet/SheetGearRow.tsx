@@ -139,7 +139,7 @@ export function SheetGearRow({
         onClick={() => onGear({ equipped: !worn })}
         className={cn(
           // A finger-sized target on a phone, the size of the kit's controls.
-          "motion-press min-h-10 min-w-10 shrink-0 rounded border px-1.5 py-0.5 disabled:opacity-40 sm:min-h-0 sm:min-w-0",
+          "motion-press min-h-[40px] min-w-[40px] shrink-0 rounded border px-1.5 py-0.5 disabled:opacity-40 sm:min-h-0 sm:min-w-0",
           worn
             ? "border-amber-700/70 bg-amber-950/40 text-amber-200"
             : "border-stone-700 text-stone-400",
@@ -165,7 +165,7 @@ export function SheetGearRow({
         }
         onClick={() => onGear({ attuned: !(item.attuned || item.attuning) })}
         className={cn(
-          "motion-press min-h-10 min-w-10 shrink-0 rounded border px-1.5 py-0.5 disabled:opacity-40 sm:min-h-0 sm:min-w-0",
+          "motion-press min-h-[40px] min-w-[40px] shrink-0 rounded border px-1.5 py-0.5 disabled:opacity-40 sm:min-h-0 sm:min-w-0",
           item.attuned
             ? "border-sky-800/70 bg-sky-950/40 text-sky-200"
             : "border-stone-700 text-stone-400",
