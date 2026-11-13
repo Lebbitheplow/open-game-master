@@ -729,6 +729,11 @@ test("Arcane Sword's first strike comes with its casting action, the bonus actio
   const blade = byId(deriveHand(druid, { ...FRESH_TURN, bonusUsed: true, marks: ["spell:bonus-action"] }), "attack:granted:flame-blade");
   assert.equal(blade.cost, "action");
   assert.equal(blade.dice, "4d6 fire", "1d6 more for the two slot levels above 2nd, and no modifier");
+  assert.equal(blade.glyph, "fire");
+  // A blade the storyteller set with no casting behind it (no meta) is still
+  // the spell's own strike: it wears the spell's glyph, never its painting.
+  const unmeta = byId(deriveHand({ ...druid, conditionMeta: {} }, FRESH_TURN), "attack:granted:flame-blade");
+  assert.equal(unmeta.glyph, "fire");
 });
 
 // Flame Blade: "you can use your action to make a melee spell attack with the
