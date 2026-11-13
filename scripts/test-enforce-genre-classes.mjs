@@ -196,7 +196,12 @@ await test("a setting class's counter is spent by use_resource and returns at it
   const empty = await spend("Adrenal Override");
   assert.equal(empty.ok, false, "a third use of two");
   assert.deepEqual(held().cyberpunk_adrenal_override, { max: 2, used: 2 });
-  assert.equal((await spend("Bullet Time")).ok, true);
+  // Bullet Time is a reaction, spent by use_reaction after a ranged attack
+  // (src/lib/srd/genre-counter-terms.ts): use_resource refuses it, so its use
+  // is marked here and the rests are asked what they give back.
+  assert.equal((await spend("Bullet Time")).ok, false, "a reaction counter is no plain spend");
+  const { patchSheet } = await import("../src/lib/db/sheets.ts");
+  patchSheet(hero.id, { resources: { ...held(), cyberpunk_bullet_time: { max: 3, used: 1 } } });
 
   // Adrenal Override is "1/short rest"; Bullet Time is "3/long rest".
   assert.equal((await table.invoke("take_rest", { kind: "short" })).ok, true);

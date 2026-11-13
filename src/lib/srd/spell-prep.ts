@@ -16,6 +16,7 @@ import {
 } from "@/lib/srd/third-caster";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
+import { isNamed } from "@/lib/srd/feature-names";
 import { classSpellGrants } from "@/lib/srd/class-spell-grants";
 
 // How a caster's spell list works, and the 5e (SRD 5.1) timing for changing
@@ -459,7 +460,7 @@ export function cantripCapOf(
 // tables reach past its slots. The builder's level-up preview, levelUpSpells
 // and spellListProblems all read this one rule.
 export function mysticArcanumTop(classId: string, level: number): number {
-  const held = textKey(classId) === "warlock" || classFeaturesFor(classId, "", 20).some((feature) => textKey(feature.name).startsWith("mystic arcanum"));
+  const held = textKey(classId) === "warlock" || classFeaturesFor(classId, "", 20).some((feature) => isNamed(feature.name, "Mystic Arcanum"));
   if (!held) {
     return 0;
   }

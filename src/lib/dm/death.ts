@@ -1,4 +1,5 @@
-import { recordSteadied } from "@/lib/dm/last-save";
+import { recordSteadied, recordTrigger } from "@/lib/dm/last-save";
+import { currentActor } from "@/lib/dm/acting-party";
 import { deathSaveFeat } from "@/lib/srd/feat-combat";
 import type { SystemGlyph } from "@/lib/system-glyphs";
 import { triageWake } from "@/lib/dm/genre-a-dark-fantasy-vitals";
@@ -80,6 +81,9 @@ function writeDeathState(
 function recordDeath(campaign: Campaign, sheet: CharacterSheet, cause: string, at?: number) {
   // When, in the world's time: the window a revival spell holds to.
   noteDeathMoment(campaign.id, sheet.id, at);
+  // On the fight's record too, as an enemy's death is (enemy-damage.ts), for
+  // what answers "a creature within 30 ft dies" (Anchor of the Living).
+  recordTrigger(campaign.id, { kind: "death", forcer: { id: sheet.id, name: sheet.name }, creatureType: "humanoid", killerId: currentActor()?.ref ?? null, enemy: false });
   insertCharacterEvent({
     libraryCharacterId: sheet.libraryCharacterId,
     campaignCharacterId: sheet.id,

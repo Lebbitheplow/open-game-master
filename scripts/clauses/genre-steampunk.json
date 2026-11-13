@@ -616,21 +616,21 @@
   "clauses": [
    {
     "c": "1/turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Daring Maneuver#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Daring Maneuver: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-fight-gaps.mjs: Daring Maneuver: an aeronaut's hit after a 15-foot run deals 1d6 more, once a turn; standing still, nothing",
+    "by": "src/lib/srd/authored-effects-genre-c.ts (hit_rider afterRunFt, oncePerTurn), read by src/lib/dm/genre-a-strikes.ts"
    },
    {
     "c": "add +1d6 damage to an attack made after moving at least 15 ft in a straight or swinging line",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Daring Maneuver#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-fight-gaps.mjs: Daring Maneuver: an aeronaut's hit after a 15-foot run deals 1d6 more, once a turn; standing still, nothing",
+    "by": "src/lib/srd/authored-effects-genre-c.ts (hit_rider afterRunFt, oncePerTurn), read by src/lib/dm/genre-a-strikes.ts"
    },
    {
     "c": "+1d6",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Daring Maneuver#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-fight-gaps.mjs: Daring Maneuver: an aeronaut's hit after a 15-foot run deals 1d6 more, once a turn; standing still, nothing",
+    "by": "src/lib/srd/authored-effects-genre-c.ts (hit_rider afterRunFt, oncePerTurn), read by src/lib/dm/genre-a-strikes.ts"
    }
   ]
  },
@@ -803,8 +803,9 @@
    },
    {
     "c": "+2d6",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Greater Daring#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-fight-gaps.mjs: Greater Daring: at 11th level the aeronaut's Daring Maneuver after a run deals 2d6 more",
+    "by": "src/lib/srd/authored-effects-genre-c.ts Daring Maneuver's dice by level (1d6, 2d6 from 11th)"
    }
   ]
  },
@@ -2807,16 +2808,15 @@
   "clauses": [
    {
     "c": "When you move 15+ ft straight toward a creature and hit it, it saves (STR) or is knocked prone",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Locomotive Charge#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Locomotive Charge: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-fight-gaps.mjs: Locomotive Charge: a steam knight's hit after a 15-foot run knocks the creature prone on a failed STR save; standing still, no save",
+    "by": "src/lib/srd/authored-effects-genre-c.ts (hit_save afterRunFt, dcAbility str), read by src/lib/dm/hit-save.ts"
    },
    {
     "c": "saves (STR)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Locomotive Charge#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-fight-gaps.mjs: Locomotive Charge: a steam knight's hit after a 15-foot run knocks the creature prone on a failed STR save; standing still, no save",
+    "by": "src/lib/srd/authored-effects-genre-c.ts (hit_save afterRunFt, dcAbility str), read by src/lib/dm/hit-save.ts"
    }
   ]
  },
@@ -3082,10 +3082,9 @@
    {
     "c": "Enemies within your reach treat the area as difficult terrain",
     "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Hold the Line#0:stray",
-    "k": "stray",
-    "observed": "by its name the engine also gives Hold the Line: authored row fighter::Hold the Line; use_reaction \"Hold the Line\" accepted: {\"ok\":true,\"reaction\":\"Hold the Line\",\"spent\":\"Holder's reaction is used until the start of their next turn.\",\"attack\":{\"ok\":true,\"name\":\"Goblin 1\",\"hp\":\"293/30",
-    "note": "the Cavalier fighter's feature of the same name (src/lib/srd/authored-effects-data-b.ts \"fighter::Hold the Line\") is held through heldAuthored's borrowedRow: use_reaction \"Hold the Line\" gives the steam knight the Cavalier's reaction attack that stops a creature, and nothing makes the ground within reach difficult",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Hold the Line#0:unhooked",
+    "k": "unhooked",
+    "note": "No longer borrows the Cavalier's Hold the Line (heldAuthored keeps a genre feature to its own rows); nothing makes the ground within the knight's reach difficult for enemies.",
     "kind": "rule-wrong"
    }
   ]

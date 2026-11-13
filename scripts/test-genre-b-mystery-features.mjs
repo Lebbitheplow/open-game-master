@@ -646,13 +646,19 @@ await run("The Story of the Century: the named creature's allies save (WIS) or a
   assert.ok(!kit.enemy(near.id).conditions.includes("fleeing"), "the named creature abandoned itself");
 });
 
-await run("Anchor of the Living: laid on a dying ally, it holds their spirit if they die within the minute", async () => {
+// "When a creature within 30 ft dies": a character's death is on the fight's
+// record as an enemy's is (death.ts recordDeath), so the anchor answers it;
+// a merely dying ally has not died yet, and the trigger refuses, nothing spent.
+await run("Anchor of the Living: an ally's death in the fight is what it answers; a dying ally is refused until they die", async () => {
   const hero = rig.holder(feature("spirit_medium", "Anchor of the Living", 18));
   await rig.fight(hero);
   world.patch(ally.id, { currentHp: 0, conditions: ["unconscious"] });
-  rig.must(await world.invoke("use_resource", { characterId: hero.id, resource: "Anchor of the Living", targetCharacterId: ally.id, reason: "test" }), "use_resource Anchor of the Living");
-  assert.ok(world.sheet(ally.id).conditions.includes("spirit anchored"), "the dying ally carries no anchor");
+  const early = await world.invoke("use_resource", { characterId: hero.id, resource: "Anchor of the Living", targetCharacterId: ally.id, reason: "test" });
+  assert.equal(early.ok, false, "a spirit was held before its creature died");
+  assert.equal(used(hero, "mystery_anchor_of_the_living"), 0, "a refused hold spent the use");
   killOutright(getCampaignById(world.campaignId), null, world.sheet(ally.id), "test");
+  rig.must(await world.invoke("use_resource", { characterId: hero.id, resource: "Anchor of the Living", targetCharacterId: ally.id, reason: "test" }), "use_resource Anchor of the Living");
+  assert.ok(world.sheet(ally.id).conditions.includes("spirit anchored"), "the fallen ally carries no anchor");
   assert.equal(world.sheet(ally.id).deathSaves?.dead, true, "the staged death did not take");
   setClockInstant(world.campaignId, getClock(world.campaignId).instant + 600);
   assert.equal(minutesSinceDeath(world.campaignId, ally.id), 0, "the spirit anchored as they lay dying is not freshly dead ten hours on");

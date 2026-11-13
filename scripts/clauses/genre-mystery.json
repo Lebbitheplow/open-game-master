@@ -1025,9 +1025,6 @@
   "group": "grifter",
   "level": 1,
   "sha": "361f07c1dd68",
-  "name": {
-   "stray": "the bard's Silver Tongue (College of Eloquence) is held by name"
-  },
   "clauses": [
    {
     "c": "1/short rest",
@@ -1048,15 +1045,13 @@
    },
    {
     "c": "Deception or Persuasion check",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs gap grifter::Silver Tongue#2:no_floor",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-mystery.mjs test grifter::Silver Tongue#2:no_floor",
     "k": "no_floor",
     "p": {
      "skill": "deception"
     },
-    "observed": "a 2 on the die for deception totalled 13: [{\"sides\":20,\"value\":10,\"kept\":true,\"rerolledFrom\":2}]",
-    "note": "the bard's College of Eloquence feature of the same name (src/lib/srd/authored-effects-data*.ts \"bard::Silver Tongue\", check_floor 10) runs for the grifter through heldAuthored's borrowedRow: every Deception and Persuasion d20 below 10 counts as 10, always, from 1st level, while the text gives one reroll a short rest",
-    "kind": "rule-wrong"
+    "by": "src/lib/srd/authored-effects.ts heldAuthored: a genre feature no longer borrows another class's row of the same name (the bard's Silver Tongue floor)"
    }
   ]
  },
@@ -1301,9 +1296,6 @@
   "group": "grifter",
   "level": 15,
   "sha": "63a647c25710",
-  "name": {
-   "stray": "the bard's Silver Tongue (College of Eloquence) is held by name"
-  },
   "clauses": [
    {
     "c": "Silver Tongue recharges to 3 uses per short rest",

@@ -28,7 +28,7 @@ export function cannotBeSurprised(sheet: CharacterSheet, foes: readonly LyingInW
   // The Alert feat, a Rune Knight carrying the Storm Rune, an artificer's
   // Helm of Awareness worn ("can't be surprised, provided it isn't
   // incapacitated": src/lib/srd/infusions.ts).
-  if (holdsFeat(sheet, "Alert") || holdsFeature(sheet, optionFeatureName("rune", "Storm Rune")) || infusionWorn(sheet.equipment, "Helm of Awareness")) {
+  if (holdsFeat(sheet, "Alert") || holdsFeature(sheet, optionFeatureName("rune", "Storm Rune")) || infusionWorn(sheet.equipment ?? [], "Helm of Awareness")) {
     return true;
   }
   return activeAuthored(sheet, "no_surprise").some(({ effect }) => {
