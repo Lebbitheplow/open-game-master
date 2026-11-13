@@ -279,7 +279,9 @@ export function ToolGrantPanels({
   return (
     <>
       {toolGrants.choices.map((choice, index) => {
-        const mine = toolGrants.chosen.filter((tool) => choice.from.includes(tool));
+        // The picks this choice holds: a replacement tool's list is every
+        // tool, so a pick is this panel's only where it was placed.
+        const mine = toolGrants.chosen.filter((_, at) => toolGrants.placedIn[at] === index);
         const left = toolGrants.left[index] ?? 0;
         // Whose grant it is; a class taken second names its own levels
         // (derived.toolSources, backlog F9).

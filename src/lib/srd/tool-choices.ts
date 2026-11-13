@@ -45,7 +45,55 @@ export const MUSICAL_INSTRUMENTS = [
 
 export const GAMING_SETS = ["dice set", "dragonchess set", "playing card set", "three-dragon ante set"];
 
-export type ToolChoice = { count: number; from: string[]; label: string };
+const OTHER_TOOLS = [
+  "thieves' tools", "disguise kit", "forgery kit", "herbalism kit", "navigator's tools", "poisoner's kit",
+  "vehicles (land)", "vehicles (water)", "tinker's tools",
+];
+// Every tool the SRD's equipment chapter names.
+export const KNOWN_TOOLS = [...new Set([...ARTISANS_TOOLS, ...MUSICAL_INSTRUMENTS, ...GAMING_SETS, ...OTHER_TOOLS])];
+
+// `optional`: a choice the player is owed but a stored sheet may lack (the
+// tool in place of one given twice, below): a character made before it was
+// offered still joins without it.
+// `instead`: the tools a replacement stands in for.
+export type ToolChoice = { count: number; from: string[]; label: string; optional?: boolean; instead?: string[] };
+
+export const REPLACEMENT_TOOL_LABEL = "replacement tool";
+
+// SRD 5.1, Backgrounds: "If a character would gain the same proficiency from
+// two different sources, he or she can choose a different proficiency of the
+// same kind instead." The tools the class, the background and the race each
+// name outright (a rogue's thieves' tools and a criminal's, a druid's
+// herbalism kit and a hermit's): one tool of the player's choice for each
+// name given twice, from every tool none of them names. Null when none
+// repeats. Without it the second grant was simply lost.
+export function repeatedToolChoice(...grants: Array<string[] | undefined>): ToolChoice | null {
+  const seen = new Set<string>();
+  const instead: string[] = [];
+  for (const list of grants) {
+    const named = new Map(splitToolGrants(list ?? []).fixed.map((entry) => [textKey(entry), entry.trim()] as const));
+    for (const [key, tool] of named) {
+      if (!key) {
+        continue;
+      }
+      if (seen.has(key)) {
+        instead.push(tool);
+      } else {
+        seen.add(key);
+      }
+    }
+  }
+  if (!instead.length) {
+    return null;
+  }
+  return {
+    count: instead.length,
+    from: KNOWN_TOOLS.filter((tool) => !seen.has(textKey(tool))),
+    label: REPLACEMENT_TOOL_LABEL,
+    optional: true,
+    instead,
+  };
+}
 
 const COUNTS: Record<string, number> = { one: 1, two: 2, three: 3, a: 1, any: 1 };
 
@@ -114,7 +162,7 @@ export function toolPicksOwed(choices: ToolChoice[], tools: string[]): string | 
   }
   const owed = choices
     .map((choice, index) => ({ choice, left: left[index] }))
-    .filter((entry) => entry.left > 0);
+    .filter((entry) => entry.left > 0 && !entry.choice.optional);
   return owed.length
     ? `Choose ${owed.map((entry) => `${entry.left} ${entry.choice.label}${entry.left === 1 ? "" : "s"}`).join(" and ")} to be proficient with.`
     : null;
@@ -135,7 +183,7 @@ export function toolPickProblem(choices: ToolChoice[], picks: string[]): string 
   }
   const owed = choices
     .map((choice, index) => ({ choice, left: left[index] }))
-    .filter((entry) => entry.left > 0);
+    .filter((entry) => entry.left > 0 && !entry.choice.optional);
   if (owed.length) {
     return `Choose ${owed.map((entry) => `${entry.left} more ${entry.choice.label}`).join(" and ")}.`;
   }

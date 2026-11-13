@@ -47,7 +47,7 @@ import { applyFeatGrants, featGrantSpec, type FeatGrantSpec } from "@/lib/srd/fe
 import { applySubclassTraining, grantsForHeldTraining, subclassGrants } from "@/lib/srd/subclass-training";
 import { featSpellGrants, featSpellNames } from "@/lib/srd/feat-spells";
 import { expandBackgroundGear } from "@/lib/srd/gear-choices";
-import { splitToolGrants, type ToolChoice } from "@/lib/srd/tool-choices";
+import { repeatedToolChoice, splitToolGrants, type ToolChoice } from "@/lib/srd/tool-choices";
 import { builderHitPoints } from "./builderHp";
 import { bundledSpellSupply } from "./spellSupply";
 import { classSpellGrants, type ClassSpellGrants } from "@/lib/srd/class-spell-grants";
@@ -90,24 +90,35 @@ export type TableRules = {
 // and its tool pick) fills no open grant, as the library's door counts it
 // (src/lib/srd/legality/proficiencies.ts): a dwarf's brewer's supplies are
 // not also a folk hero's artisan's tools.
+// `replacement` is the tool owed in place of one the class, background and
+// race name twice (src/lib/srd/tool-choices.ts repeatedToolChoice); it comes
+// last, so a pick fills the open grant that names it first. `placedIn` is the
+// choice each chosen tool answers, for the panel that shows it.
 export function resolveToolPicks(
   grants: string[],
   picks: string[],
   held: string[] = [],
-): { fixed: string[]; choices: ToolChoice[]; chosen: string[]; left: number[] } {
-  const { fixed, choices } = splitToolGrants(grants);
+  replacement: ToolChoice | null = null,
+): { fixed: string[]; choices: ToolChoice[]; chosen: string[]; left: number[]; placedIn: number[] } {
+  const split = splitToolGrants(grants);
+  const { fixed } = split;
   const taken = new Set([...fixed, ...held].filter(Boolean).map((tool) => textKey(tool)));
+  const choices = replacement
+    ? [...split.choices, { ...replacement, from: replacement.from.filter((tool) => !taken.has(textKey(tool))) }]
+    : split.choices;
   const left = choices.map((choice) => choice.count);
   const chosen: string[] = [];
+  const placedIn: number[] = [];
   for (const pick of picks.map((tool) => textKey(tool))) {
     const slot = choices.findIndex((choice, index) => left[index] > 0 && choice.from.some((tool) => textKey(tool) === pick));
     const tool = slot >= 0 ? choices[slot].from.find((entry) => textKey(entry) === pick) : undefined;
     if (tool !== undefined && !chosen.includes(tool) && !taken.has(pick)) {
       left[slot] -= 1;
       chosen.push(tool);
+      placedIn.push(slot);
     }
   }
-  return { fixed, choices, chosen, left };
+  return { fixed, choices, chosen, left, placedIn };
 }
 
 // A class taken after the first (backlog F9) with the row it was picked
@@ -475,6 +486,9 @@ export function useBuilderDerived({
         [...(klass?.tools ?? []), ...(background?.tools ?? []), ...grants.flatMap((grant) => grant.tools)],
         toolPicks,
         [...(race?.tools ?? []), racialTool],
+        // A tool two of them name is one of the player's choice instead (a
+        // rogue criminal's second thieves' tools), as the server allows.
+        klass && background ? repeatedToolChoice(klass.tools, background.tools, race?.tools) : null,
       ),
     [klass, background, grants, toolPicks, race, racialTool],
   );
@@ -484,8 +498,12 @@ export function useBuilderDerived({
       ...splitToolGrants(klass?.tools ?? []).choices.map(() => (klass ? `your ${klass.name} class` : "")),
       ...splitToolGrants(background?.tools ?? []).choices.map(() => (background ? `your ${background.name} background` : "")),
       ...extras.flatMap((entry, index) => splitToolGrants(grants[index]?.tools ?? []).choices.map(() => `your ${entry.klass.name} levels`)),
+      // The tool owed in place of one given twice, named.
+      ...toolGrants.choices
+        .filter((choice) => choice.instead?.length)
+        .map((choice) => `your class, background and species, which give you ${[...new Set(choice.instead)].join(" and ")} twice`),
     ],
-    [klass, background, extras, grants],
+    [klass, background, extras, grants, toolGrants],
   );
   // Every tool the character is trained with, the list the sheet carries;
   // the background's kit fills its "of your choice" lines from it.
