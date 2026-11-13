@@ -7,6 +7,7 @@ import { ALIGNMENT_CODES } from "@/lib/dm/companion-values-logic";
 import { subclassExtrasForTable } from "@/lib/db/subclass-extras";
 import { foldFieldValue } from "@/lib/dm/update-sheet-args";
 import { aiSheetFieldRefusal } from "@/lib/dm/update-sheet-ai";
+import { storyEditHp } from "@/lib/dm/update-sheet-hp-logic";
 import { getDmTurn, type DmTurn } from "@/lib/db/dm-turns";
 import { z } from "zod";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
@@ -2227,6 +2228,9 @@ function dmMutation(
       if (buffError) {
         return { result: buffError };
       }
+      // A Constitution, Tough or a hill dwarf's blood changed by the story
+      // moves the maximum for every level held (update-sheet-hp-logic.ts).
+      Object.assign(patch, storyEditHp(sheet, patch) ?? {});
       patchSheet(sheet.id, patch);
       audit(
         campaign,
