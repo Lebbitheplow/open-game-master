@@ -50,7 +50,8 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 //      second wave (a firbolg's and a genasi's magic are innate spells, and
 //      the lineage traits carry the numbers their lines state).
 //  11: the bundled kenku, changeling, lizardfolk and warforged picks name
-//      their lists (their stored readings are the bundled rows).
+//      their lists (their stored readings are the bundled rows), and a race
+//      walks at the speed its text states over the field beside it.
 export const READER_REVISION = 11;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";

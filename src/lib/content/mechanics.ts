@@ -392,7 +392,11 @@ export function raceMechanics(data: Record<string, unknown>): RaceMechanics {
   }
   const speedRaw =
     typeof data.speed === "number" ? data.speed : (data.speed as { walk?: unknown } | undefined)?.walk;
-  const parsedSpeed = Number.isFinite(Number(speedRaw)) && Number(speedRaw) > 0 ? Number(speedRaw) : 30;
+  // The speed the text states wins over the field beside it: Tome of
+  // Heroes' drow prints "Your base walking speed is 30 feet." over a field of
+  // 25, and walked 25.
+  const statedSpeed = Number(/\bwalking speed (?:is|of) (\d+) feet\b/i.exec(String(data.speed_desc ?? ""))?.[1]);
+  const parsedSpeed = statedSpeed > 0 ? statedSpeed : Number.isFinite(Number(speedRaw)) && Number(speedRaw) > 0 ? Number(speedRaw) : 30;
 
   // A 2024-rules species (the srd-2024 rows) carries its traits as objects
   // with a type, its speed among them, and no languages of its own: under

@@ -157,6 +157,19 @@ test("a pack species' picks and racial spells are what its text offers", () => {
   assert.equal(pick("purified").spells.ability, "int");
 });
 
+test("every pack species walks at the speed its text states", () => {
+  // Tome of Heroes' drow prints "Your base walking speed is 30 feet." over a
+  // speed field of 25; the text is the rule.
+  const wrong = [];
+  for (const option of options) {
+    const row = races.find((entry) => entry.slug === option.slug);
+    const parent = races.find((entry) => entry.slug === row.data.parent_slug);
+    const stated = /\bwalking speed (?:is|of) (\d+) feet\b/i.exec(String(row.data.speed_desc ?? parent?.data.speed_desc ?? ""))?.[1];
+    if (stated && option.speed !== Number(stated)) wrong.push(`${option.id}: ${option.speed} ft, its text ${stated}`);
+  }
+  assert.deepEqual(wrong, []);
+});
+
 // The server's check of a new character (sheet-legality.ts) stores what the
 // builder made of the option: the lines as racial features, the training.
 const { openBuilder } = await import("./lib/enforce-builder.mjs");
