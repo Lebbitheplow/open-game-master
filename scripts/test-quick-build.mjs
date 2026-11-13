@@ -204,6 +204,18 @@ await test("a level 3 artificer fills every prepared spell from its own list, an
   await saves(fields, "artificer at 3");
 });
 
+// The artificer's own list on the server's check (the creator spells audit,
+// P01, with the core audit's note that spellFactsFor read a short list): a
+// level 1 artificer who names Fire Bolt and Cure Wounds is saved with both.
+await test("a level 1 artificer with Fire Bolt and Cure Wounds is saved with both", async () => {
+  const { fields } = await runFill(fresh({ level: 1, classId: "artificer" }));
+  const cantrips = ["Fire Bolt", ...fields.cantrips.filter((name) => name !== "Fire Bolt")].slice(0, fields.cantrips.length);
+  const spells = ["Cure Wounds", ...fields.spells.filter((name) => name !== "Cure Wounds")].slice(0, fields.spells.length);
+  const built = await saves({ ...fields, cantrips, spells }, "artificer with Fire Bolt and Cure Wounds");
+  assert.ok(built.sheet.spellcasting.cantrips.includes("Fire Bolt"), JSON.stringify(built.sheet.spellcasting));
+  assert.ok([...built.sheet.spellcasting.prepared, ...built.sheet.spellcasting.known].includes("Cure Wounds"), JSON.stringify(built.sheet.spellcasting));
+});
+
 // SRD 5.1, Mystic Arcanum: a warlock holds one 6th level spell from 11th
 // level, a 7th from 13th, an 8th from 15th and a 9th from 17th, beside its
 // spells known (the creator spells audit, P02). The builder offered nothing

@@ -1171,6 +1171,14 @@ await test("the species feats land on the sheet and in the engines: a high elf's
   assert.deepEqual(initiate.resources.free_cast_snare, { max: 1, used: 0 });
   assert.equal(srd.spellAbilityFor(initiate, "Snare"), "int");
   assert.ok(initiate.proficiencies.tools.includes("smith's tools"));
+  // The artificer list's own Fire Bolt and Cure Wounds pass the server's
+  // check through the feat as well (the artificer list, creator spells P01).
+  const listed = await made("Artificer Initiate (Fire Bolt, Cure Wounds)", {
+    asiChoices: three("Artificer Initiate"),
+    featChoices: { "artificer initiate": { cantrips: ["Fire Bolt"], spells: ["Cure Wounds"], tools: ["smith's tools"] } },
+  });
+  assert.ok(listed.spellcasting.cantrips.includes("Fire Bolt"), JSON.stringify(listed.spellcasting));
+  assert.deepEqual(listed.resources.free_cast_cure_wounds, { max: 1, used: 0 });
 });
 
 creation.world.close();
