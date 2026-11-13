@@ -14,6 +14,7 @@
     "lib/db/core.ts"
   ],
   "sites": {
+    "lib/dm/genre-cc-a-drones.ts#str-eq": [["key",2,"a gas's damage type and condition, the engine's own vocabulary (zone rows)"]],
     "lib/dm/genre-cc-a-saves.ts#str-eq": [["key",1,"a save's against, one of the engine's own condition names (src/lib/dm/roll-about.ts SAVE_AGAINST)"]],
     "lib/dm/genre-cc-a-saves.ts#str-includes": [["key",1,"a save's against, one of the engine's own condition names (src/lib/dm/roll-about.ts SAVE_AGAINST)"]],
     "lib/dm/genre-cc-a-dark-fantasy-more.ts#str-list": [["key",1,"condition names the engine lays and reads (engine vocabulary): what a remedy cures"]],
