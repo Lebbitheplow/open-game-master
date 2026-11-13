@@ -237,6 +237,11 @@ export const SERVER_FEATURES = {
   // `thrown` dice and POST /api/campaigns/[id]/pending-rolls/[id]/after-roll.
   // An older host never parks a roll that way, so the card never draws there.
   afterRollChoice: true,
+  // The ask before a character's opportunity attack (src/lib/dm/opportunity-ask.ts):
+  // a parked roll with parkedFor "opportunity" and its `carry.ask`, answered
+  // Strike or Let it go on POST /api/campaigns/[id]/pending-rolls/[id]/opportunity.
+  // An older host never asks (it takes the swing), so the card never draws there.
+  opportunityAsk: true,
   // Watching a fight for Portent (src/lib/dm/foresight.ts): POST
   // /api/campaigns/[id]/foresight turns the stops on, and a stop's card
   // answers on pending-rolls/[id]/watch. An older host answers 404, so the
