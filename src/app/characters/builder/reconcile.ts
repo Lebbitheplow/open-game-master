@@ -312,7 +312,8 @@ export function reconcilePicks(
     ? slotted(picks.racialTraining, race.trainingChoice.count, (pick) => (ALL_SKILLS as readonly string[]).includes(pick) || KNOWN_TOOLS.includes(pick))
     : [];
   note("racial training", "racialTraining", picks.racialTraining, racialTraining);
-  const racialExpertise = race?.expertiseChoice && (ALL_SKILLS as readonly string[]).includes(picks.racialExpertise) ? picks.racialExpertise : "";
+  // A skill or a tool ("one of those skills or tools or another ... you have").
+  const racialExpertise = race?.expertiseChoice && ((ALL_SKILLS as readonly string[]).includes(picks.racialExpertise) || KNOWN_TOOLS.includes(picks.racialExpertise)) ? picks.racialExpertise : "";
   note("racial expertise", "racialExpertise", [picks.racialExpertise], [racialExpertise]);
   // As many different cantrips as the race offers, and none from a race
   // that offers none.

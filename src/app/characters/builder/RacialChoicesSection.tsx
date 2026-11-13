@@ -458,19 +458,24 @@ export function RacialChoicesSection({
       {race.expertiseChoice && onExpertiseChange ? (
         <label className="block" data-builder-target="racialExpertise">
           <span className="mb-1 block text-stone-400">
-            Expertise: a skill you are proficient in, its proficiency bonus doubled
+            Expertise: a skill or tool you are proficient in, its proficiency bonus doubled
           </span>
           <Select<string>
             value={expertise}
             onChange={onExpertiseChange}
             className="w-full"
             label="Expertise"
-            placeholder="Choose a skill..."
+            placeholder="Choose a skill or tool..."
             options={[
-              { value: "", label: "Choose a skill..." },
+              { value: "", label: "Choose a skill or tool..." },
               ...[...new Set([...grantedSkills, ...skills.filter(Boolean), ...training.filter((pick) => (ALL_SKILLS as readonly string[]).includes(pick))])].map((skill) => ({
                 value: skill,
                 label: skillName(skill),
+              })),
+              // The tools the lineage trains (Adaptable Acumen's picks, its own list).
+              ...[...new Set([...(race.tools ?? []), ...(tool ? [tool] : []), ...training.filter((pick) => KNOWN_TOOLS.includes(pick))])].map((held) => ({
+                value: held,
+                label: held.replace(/\b\w/g, (letter) => letter.toUpperCase()),
               })),
             ]}
           />
