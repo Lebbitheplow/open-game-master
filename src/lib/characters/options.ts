@@ -84,18 +84,18 @@ export type ContentRow = {
 };
 
 // A background's kit names its coin among its items ("15 gp", "a belt pouch
-// containing 10 gp"). The coin is the character's starting gold; what held
-// it stays in the pack.
+// containing 10 gp", Tal'Dorei's "a belt pouch containing 10g"). The coin is
+// the character's starting gold; what held it stays in the pack.
 export function splitPurse(kit: string[] | undefined): { equipment: string[]; purse: number } {
   let purse = 0;
   const equipment: string[] = [];
   for (const line of kit ?? []) {
-    const bare = /^\s*(\d[\d,]*)\s*gp\s*$/i.exec(line);
+    const bare = /^\s*(\d[\d,]*)\s*g(?:p|old)?\s*$/i.exec(line);
     if (bare) {
       purse += Number(bare[1].replace(/,/g, ""));
       continue;
     }
-    const held = /^(.*?)\s*(?:containing|with|holding)\s+(\d[\d,]*)\s*gp\b.*$/i.exec(line);
+    const held = /^(.*?)\s*(?:containing|with|holding)\s+(\d[\d,]*)\s*g(?:p|old)?\b.*$/i.exec(line);
     if (held) {
       purse += Number(held[2].replace(/,/g, ""));
       const container = held[1].trim().replace(/[,;]$/, "");
