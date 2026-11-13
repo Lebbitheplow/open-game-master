@@ -197,6 +197,11 @@ export const equipmentItemSchema = z.object({
   // Optional so rows written before the field keep validating; when NO item
   // on a sheet carries it, the AC engine treats everything as worn.
   equipped: z.boolean().optional(),
+  // On each weapon row whose `equipped` the engine chose and nobody has set
+  // since (src/lib/dm/held-default.ts): the player never said which weapon
+  // is out, so their first change from it costs nothing (gear-hands.ts
+  // guessedRehand). Any wear change clears it from every row (patchSheet).
+  heldGuess: z.literal(true).optional(),
   // Worn beside another item of its kind on the DM's say (SRD 5.1, Multiple
   // Items of the Same Kind: "a circlet under a helmet", "two cloaks"). Only
   // the DM or the party lead sets it; a place's limit (src/lib/srd/

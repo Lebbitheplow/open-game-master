@@ -189,6 +189,16 @@ export function getRoll(rollId: string): StoredRoll | null {
   return row ? mapRoll(row) : null;
 }
 
+// The label of a character's own latest attack roll ("Longbow vs Goblin",
+// src/lib/roll-labels.ts rollAgainst), or null: what a fight's guess at the
+// weapon in hand reads (src/lib/dm/held-default.ts).
+export function lastAttackDetail(campaignId: string, characterId: string): string | null {
+  const row = getDatabase()
+    .prepare(`SELECT detail FROM rolls WHERE campaign_id = ? AND character_id = ? AND roll_kind = 'attack' ORDER BY created_at DESC, rowid DESC LIMIT 1`)
+    .get(campaignId, characterId) as { detail: string } | undefined;
+  return row?.detail || null;
+}
+
 // Every roll since a moment, oldest first: the span of one fight.
 export function listRollsSince(campaignId: string, sinceIso: string): StoredRoll[] {
   const rows = getDatabase()

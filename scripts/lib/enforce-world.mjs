@@ -295,7 +295,8 @@ export async function openWorld(options = {}) {
       const row = db.prepare(`SELECT equipment_json FROM character_sheets WHERE id = ?`).get(id);
       const rows = row ? JSON.parse(row.equipment_json) : [];
       if (rows.some((item) => item.equipped !== undefined)) {
-        db.prepare(`UPDATE character_sheets SET equipment_json = ? WHERE id = ?`).run(JSON.stringify(rows.map((item) => { const next = { ...item }; delete next.equipped; return next; })), id);
+        // The guess's flag goes with the marks it was on (held-default.ts).
+        db.prepare(`UPDATE character_sheets SET equipment_json = ? WHERE id = ?`).run(JSON.stringify(rows.map((item) => { const next = { ...item }; delete next.equipped; delete next.heldGuess; return next; })), id);
       }
     }
   }

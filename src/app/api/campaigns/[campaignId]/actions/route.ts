@@ -27,6 +27,7 @@ import { holdsPostForTable } from "@/lib/dm/table-wait-logic";
 import { coverInEffect } from "@/lib/dm/delegation";
 import { hasHumanDm, isDmSeat } from "@/lib/dm/viewer";
 import { invokeEngine } from "@/lib/dm/invoke";
+import { handsFullForPlayer } from "@/lib/dm/gear-hands";
 import { claimNarrationSeq } from "@/lib/dm/narration-slot";
 import { enqueueDmJob } from "@/lib/dm/queue";
 import { runResumeRecap } from "@/lib/dm/recap";
@@ -351,7 +352,8 @@ export async function POST(
         if (intent && isStoredCast(intent)) {
           takeBackItemCast(campaign, sheet.id, intent.spell ?? "");
         }
-        return Response.json({ error: resolved.error }, { status: 409 });
+        // The tool's words are the storyteller's: a person reads them here.
+        return Response.json({ error: handsFullForPlayer(resolved.error) }, { status: 409 });
       }
       const line = refusedPartsLine(resolved.result);
       if (line) {

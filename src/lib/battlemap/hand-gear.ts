@@ -11,7 +11,7 @@
 // Dismounting costs half the rider's speed.
 //
 // Pure and database-free: scripts/test-hand-gear.mjs drives it.
-import { handsFullError, handsFullFor, spendInteraction, gearKindOf, inHand } from "@/lib/dm/gear-hands";
+import { guessedRehand, guessStands, handsFullError, handsFullFor, spendInteraction, gearKindOf, inHand } from "@/lib/dm/gear-hands";
 import { dualWields } from "@/lib/dm/attack-rules";
 import { hasFastHands } from "@/lib/dm/bonus-routes";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
@@ -115,6 +115,12 @@ export function gearCards(sheet: CharacterSheet, turn: HandTurn, context: HandGe
   const weapons = once(equipment.filter((item) => gearKindOf(item) === "weapon"), (item) => item.name);
   const held = weapons.filter((item) => inHand(item, equipment));
   const stowed = explicit ? weapons.filter((item) => item.equipped !== true) : [];
+  // While the hands are the engine's guess, the first draw or stow is free
+  // and a draw puts the guessed weapons in its way away (gear-hands.ts
+  // guessedRehand), as handle_item charges it.
+  const guess = guessStands(equipment);
+  const guessNote = "Free this once: nobody has said which weapon is out, so the first change from the game's pick costs nothing.";
+  const handle = guess ? { cost: "free" as const, resource: "", interaction: false } : touch;
 
   // The shield: on the arm or off it, an action either way.
   const shield = equipment.find((item) => gearKindOf(item) === "shield");
@@ -140,31 +146,31 @@ export function gearCards(sheet: CharacterSheet, turn: HandTurn, context: HandGe
   if (stowed.length) {
     // Only what a free hand can take; with none free, the card says how to
     // free one (dropping is free, putting one away is the interaction).
-    const fits = stowed.filter((item) => !handsFullFor(equipment, item).length);
-    const full: Gate = fits.length ? null : { reason: handsFullError(sheet.name, "another weapon", handsFullFor(equipment, stowed[0])), spent: false };
+    const fits = stowed.filter((item) => (guess ? guessedRehand(equipment, item) !== null : !handsFullFor(equipment, item).length));
+    const full: Gate = fits.length ? null : { reason: handsFullError(sheet.name, "another weapon", handsFullFor(equipment, stowed[0]), "drawn", "player"), spent: false };
     cards.push(
       gated(
-        card("draw", "Draw a weapon", "equip", touch.cost, `${interaction.note} A hand holds one weapon; a two-handed one takes both.`, { kind: "action", key: "use-object" }, {
-          resource: touch.resource,
-          interaction: touch.interaction,
+        card("draw", "Draw a weapon", "equip", handle.cost, `${guess ? guessNote : interaction.note} A hand holds one weapon; a two-handed one takes both.`, { kind: "action", key: "use-object" }, {
+          resource: handle.resource,
+          interaction: handle.interaction,
           choice: pick("Weapon", (fits.length ? fits : stowed).map(rowPick)),
         }),
         standing,
         full,
-        interaction.gate,
+        guess ? null : interaction.gate,
       ),
     );
   }
   if (held.length) {
     cards.push(
       gated(
-        card("stow", "Stow a weapon", "unequip", touch.cost, `${interaction.note} Sheathed or slung, it is ready to draw again.`, { kind: "action", key: "use-object" }, {
-          resource: touch.resource,
-          interaction: touch.interaction,
+        card("stow", "Stow a weapon", "unequip", handle.cost, `${guess ? guessNote : interaction.note} Sheathed or slung, it is ready to draw again.`, { kind: "action", key: "use-object" }, {
+          resource: handle.resource,
+          interaction: handle.interaction,
           choice: pick("Weapon", held.map(rowPick)),
         }),
         standing,
-        interaction.gate,
+        guess ? null : interaction.gate,
       ),
     );
     // Letting go costs nothing, and the thing lies where it fell.
@@ -280,6 +286,16 @@ export function gearCards(sheet: CharacterSheet, turn: HandTurn, context: HandGe
   return cards;
 }
 
+// What playing a packed weapon's card does while the hands are still the
+// engine's guess: the words for the card, or null when the normal draw holds.
+export function guessDrawNote(sheet: CharacterSheet, weapon: string): string | null {
+  const row = sheet.equipment.find((item) => textKey(item.name) === textKey(weapon));
+  const guessed = row && row.equipped !== true ? guessedRehand(sheet.equipment, row) : null;
+  if (!row || !guessed) return null;
+  const away = guessed.putAway.length ? `puts away ${guessed.putAway.join(" and ")} and ` : "";
+  return `Packed away: playing it ${away}takes it up, free this once, as nobody has said which weapon is out.`;
+}
+
 // Where a carried weapon is, for its attack card: in hand, or packed away
 // so the attack draws it. Nothing on a sheet that has not said what it holds,
 // nor for a name no weapon row carries (a lineage's claws, a beast's bite).
@@ -297,8 +313,11 @@ export function undrawnGate(sheet: CharacterSheet, turn: HandTurn, weapon: strin
   if (!wearingIsExplicit(sheet.equipment)) return null;
   const row = sheet.equipment.find((item) => textKey(item.name) === textKey(weapon));
   if (!row || gearKindOf(row) !== "weapon" || row.equipped === true) return null;
+  // The engine's guess at what is in hand never shuts a card: the first
+  // weapon played while it stands is taken up free (gear-hands.ts).
+  if (guessedRehand(sheet.equipment, row)) return null;
   const full = handsFullFor(sheet.equipment, row);
-  if (full.length) return { reason: handsFullError(sheet.name, row.name, full), spent: false };
+  if (full.length) return { reason: handsFullError(sheet.name, row.name, full, "drawn", "player"), spent: false };
   if (!turn.interactionUsed) return null;
   const result = spendInteraction(budgetOf(turn, sheet), { what: `drawing ${row.name}`, who: sheet.name, withAction: false });
   return result.ok ? null : { reason: result.error, spent: true };

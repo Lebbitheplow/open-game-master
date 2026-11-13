@@ -51,7 +51,7 @@ import { intimidatingPresenceCards, subclassSpendCards } from "@/lib/battlemap/h
 import { DOOR_COUNTERS, featureDoorCards } from "@/lib/battlemap/hand-feature-doors";
 import { spellHoldOf } from "@/lib/battlemap/hand-escape";
 import { squeezeSlips } from "@/lib/dm/ar-ws-revelation";
-import { gearCards, undrawnGate, wieldOf } from "@/lib/battlemap/hand-gear";
+import { gearCards, guessDrawNote, undrawnGate, wieldOf } from "@/lib/battlemap/hand-gear";
 import { grantedAttackCards } from "@/lib/battlemap/hand-granted";
 import { textKey } from "@/lib/language/text-logic";
 import { magicItemRiders } from "@/lib/srd/magic-items";
@@ -163,7 +163,7 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
     // Which weapon is out, on the card itself (held-default.ts): a player
     // could not tell, and asked for one they thought was drawn.
     const wield = natural ? undefined : wieldOf(sheet, name);
-    if (wield === "stowed") notes.push("Packed away: the attack draws it with your free object interaction.");
+    if (wield === "stowed") notes.push(guessDrawNote(sheet, name) ?? "Packed away: the attack draws it with your free object interaction.");
     if (!offHand && allowed > 1) notes.push(`Extra Attack: ${allowed} swings on this action.`);
     if (riders.sneakAttackDice > 0 && profile.sneakEligible) {
       notes.push(`Sneak Attack +${riders.sneakAttackDice}d6 once a turn when it applies.`);

@@ -1788,7 +1788,7 @@
     "lib/dm/pc-attack-options.ts#str-list": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/pc-attack-options.ts#toLowerCase": [["key",1,"condition labels (engine vocabulary)"]],
     "lib/dm/pc-attack-plan.ts#str-eq": [["key",6,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary); the unarmed strike's own name (a flurry strike)"]],
-    "lib/dm/pc-attack-plan.ts#str-includes": [["key",3,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/pc-attack-plan.ts#str-includes": [["key",4,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary); SRD weapon property id (thrown)"]],
     "lib/dm/pc-attack-plan.ts#toLowerCase": [["key",1,"condition label (engine vocabulary)"]],
     "lib/dm/pc-attack-profile.ts#str-includes": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/pc-attack-profile.ts#toLowerCase": [["key",4,"damage type; SRD weapon names as proficiency keys"]],

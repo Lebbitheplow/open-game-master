@@ -26,7 +26,7 @@ import { hasFastHands } from "@/lib/dm/bonus-routes";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { armorChangeMinutes } from "@/lib/dm/don-doff";
-import { drawRow, gearKindOf, handsFor, handsFullError, handsFullFor, holdIfFree, inHand, spendInteraction } from "@/lib/dm/gear-hands";
+import { drawRow, gearKindOf, guessedRehand, guessStands, handsFor, handsFullError, handsFullFor, holdIfFree, inHand, rehandLine, spendInteraction } from "@/lib/dm/gear-hands";
 import { lineNamed } from "@/lib/srd/item-row";
 import { srdNameFor } from "@/lib/dm/item-logic";
 import { ITEM_TAGS, listedItemTags } from "@/lib/schemas/item-tags";
@@ -205,7 +205,14 @@ function changeWear(
   // A weapon taken in hand needs a hand free for it; putting another away
   // is its own interaction, so it is never folded into the draw.
   let drawn: EquipmentItem[] | null = null;
-  if (on && kind === "weapon") {
+  // While the hands are still the engine's guess (held-default.ts), the
+  // first draw or stow is free, and a draw puts the guessed weapons in its
+  // way away with it (gear-hands.ts guessedRehand).
+  const guessed = on && kind === "weapon" ? guessedRehand(sheet.equipment, row) : null;
+  const freeByGuess = kind === "weapon" && (guessed !== null || (!on && guessStands(sheet.equipment)));
+  if (guessed) {
+    drawn = guessed.equipment;
+  } else if (on && kind === "weapon") {
     const wornBefore = sheet.equipment.some((item) => item.equipped !== undefined)
       ? null
       : implicitlyWorn(sheet.equipment, { armorName: armor.armorName, shieldName: armor.shieldName });
@@ -240,8 +247,9 @@ function changeWear(
     if (!own) {
       return refuse(`${on ? "Putting on" : "Taking off"} ${row.name} happens on ${sheet.name}'s own turn.`);
     }
-    const spent =
-      kind === "shield"
+    const spent = freeByGuess
+      ? { ok: true as const, budget: own, note: "nothing" }
+      : kind === "shield"
         ? spendAction(own, "action", "Handling a shield", sheet.name)
         : spendInteraction(own, {
             what: `${on ? "drawing" : "putting away"} ${row.name}`,
@@ -280,7 +288,9 @@ function changeWear(
   }
   return {
     ok: true,
-    applied: `${sheet.name} ${on ? (kind === "weapon" ? "draws" : "puts on") : kind === "weapon" ? "puts away" : "takes off"} ${row.name}.`,
+    applied: guessed
+      ? rehandLine(sheet.name, guessed.putAway, row.name)
+      : `${sheet.name} ${on ? (kind === "weapon" ? "draws" : "puts on") : kind === "weapon" ? "puts away" : "takes off"} ${row.name}${freeByGuess ? ", free: nobody had said which weapon was out, so the first change from the game's pick costs nothing" : ""}.`,
     ...(cost ? { cost } : {}),
     ...(dressing?.minutes ? { timePassed: dressing.lines.join(" ") } : {}),
   };
