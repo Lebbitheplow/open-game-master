@@ -75,6 +75,12 @@ export function initiativeRefills(
     next.ki = { max: ki.max, used: Math.max(0, ki.max - 4) };
     notes.push("Perfect Self: 4 ki points come back");
   }
+  // Second Chance (a halfling's feat) comes back when initiative is rolled.
+  const chance = next.feat_second_chance;
+  if (chance && chance.used > 0) {
+    next.feat_second_chance = { max: chance.max, used: 0 };
+    notes.push("Second Chance is ready again");
+  }
   // The authored subclass refills (Relentless, Ever-Ready Shot, Tireless
   // Spirit, Legion of One): src/lib/srd/authored-effects.ts.
   const authored = authoredInitiativeRefills(next, { features });

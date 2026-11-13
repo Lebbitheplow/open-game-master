@@ -17,6 +17,8 @@ import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget"
 import { chargerShove } from "@/lib/dm/ar-wbf-feat-turn";
 import { canAct, canEnemyAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
+import { holdsFeat } from "@/lib/srd/feat-effects";
+import { spendHitDice } from "@/lib/dm/hit-dice";
 import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
 import { charmedBy } from "@/lib/dm/enemy-profile";
 import { effectiveSpeed } from "@/lib/dm/condition-logic";
@@ -469,11 +471,15 @@ export function handleTakeAction(
       // Until their next turn, attacks against them have disadvantage and
       // they have advantage on DEX saves.
       addSheetCondition(campaign, sheet, DODGING, { untilTurnOf: sheet.id });
+      // Dwarven Fortitude (a dwarf's feat): a Dodge in a fight may spend one
+      // hit die to heal. Spent whenever the dwarf is hurt and has a die
+      // left, since a hurt dwarf who dodges is the case the feat is for.
+      const fortitude = inFight ? dwarvenFortitude(campaign, turn, getSheetById(sheet.id) ?? sheet) : null;
       return {
         ok: true,
         action: "Dodge",
         ...costs,
-        applied: `${sheet.name} is dodging: every attack against them rolls at disadvantage until their next turn, and they have advantage on Dexterity saves. The server applies it.`,
+        applied: `${sheet.name} is dodging: every attack against them rolls at disadvantage until their next turn, and they have advantage on Dexterity saves. The server applies it.${fortitude ? ` ${fortitude}` : ""}`,
       };
     }
     case "dash": {
@@ -591,4 +597,23 @@ export function handleTakeAction(
   };
   const outcome = resolveAction();
   return "error" in outcome ? outcome : { ...costs, ...outcome, ...(slip ? { revelationInFlesh: slip.note } : {}) };
+}
+
+// Dwarven Fortitude: one hit die spent on the Dodge, rolled and added to
+// the hit points with the Constitution modifier (src/lib/dm/hit-dice.ts, the
+// short rest's spend). Null when the feat, a wound or a die is missing.
+function dwarvenFortitude(campaign: Campaign, turn: DmTurn, sheet: CharacterSheet): string | null {
+  if (!holdsFeat(sheet, "Dwarven Fortitude") || sheet.currentHp <= 0 || sheet.currentHp >= sheet.maxHp) {
+    return null;
+  }
+  const left = (sheet.hitDice?.total ?? 0) - (sheet.hitDice?.spent ?? 0);
+  if (left <= 0) {
+    return null;
+  }
+  const out = spendHitDice({ campaign, turnId: turn.id, sheetId: sheet.id, requested: 1, songDie: null, reason: "Dwarven Fortitude", requestedBy: "dm" });
+  if ("error" in out) {
+    return null;
+  }
+  const healed = getSheetById(sheet.id);
+  return `Dwarven Fortitude: one hit die spent, ${sheet.name} is at ${healed?.currentHp ?? sheet.currentHp}/${sheet.maxHp} hit points.`;
 }

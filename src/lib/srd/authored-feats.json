@@ -326,6 +326,26 @@
       "name": "Dragon Hide",
       "prerequisite": "Dragonborn",
       "desc": "Increase your Strength, Constitution, or Charisma by 1, to a maximum of 20. Your scales harden: while you wear no armor, your Armor Class is 13 + your Dexterity modifier, and a shield still adds to it. Your claws are natural weapons: your unarmed strikes deal 1d4 slashing damage plus your Strength modifier instead of the usual damage."
+    },
+    {
+      "name": "Dwarven Fortitude",
+      "prerequisite": "Dwarf",
+      "desc": "Increase your Constitution by 1, to a maximum of 20. Whenever you take the Dodge action in combat, you can spend one Hit Die to heal yourself, rolling it and regaining that many hit points plus your Constitution modifier."
+    },
+    {
+      "name": "Fade Away",
+      "prerequisite": "Gnome",
+      "desc": "Increase your Dexterity or Intelligence by 1, to a maximum of 20. Right after you take damage, you can use your reaction to turn invisible until the end of your next turn, or until you attack or cast a spell. Once you do so, you can't again until you finish a short or long rest."
+    },
+    {
+      "name": "Dragon Fear",
+      "prerequisite": "Dragonborn",
+      "desc": "Increase your Strength, Constitution, or Charisma by 1, to a maximum of 20. Instead of exhaling destructive energy, you can spend a use of your Breath Weapon on a roar: each creature of your choice within 30 feet makes a Wisdom saving throw against 8 + your proficiency bonus + your Charisma modifier or is frightened of you for 1 minute. A frightened creature repeats the save at the end of each of its turns, ending the effect on a success."
+    },
+    {
+      "name": "Second Chance",
+      "prerequisite": "Halfling",
+      "desc": "Increase your Dexterity, Constitution, or Charisma by 1, to a maximum of 20. When a creature you can see hits you with an attack roll, you can use your reaction to make it roll that attack again, and it must use the new roll. Once you do so, you can't again until you roll initiative or finish a short or long rest."
     }
   ]
 }

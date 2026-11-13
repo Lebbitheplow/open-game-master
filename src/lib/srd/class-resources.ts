@@ -122,6 +122,9 @@ export type SaveTerms = {
   // (at least one).
   most?: number | SaveAbilityId;
   magical?: boolean;
+  // A creature that failed repeats the save at the end of each of its turns,
+  // the condition ending on a success (Dragon Fear's fright).
+  saveEnds?: boolean;
 };
 
 // The JSON form of an effect, carried on resource rows in resources.json /
@@ -189,8 +192,8 @@ export function resolveDiceFormula(
 }
 
 function saveTermsOf(fx: SaveTerms): SaveTerms {
-  const { dcAbility, type, typeFromVariant, half, rounds, rangeFt, cone, types, most, magical } = fx;
-  return Object.fromEntries(Object.entries({ dcAbility, type, typeFromVariant, half, rounds, rangeFt, cone, types, most, magical }).filter(([, value]) => value !== undefined)) as SaveTerms;
+  const { dcAbility, type, typeFromVariant, half, rounds, rangeFt, cone, types, most, magical, saveEnds } = fx;
+  return Object.fromEntries(Object.entries({ dcAbility, type, typeFromVariant, half, rounds, rangeFt, cone, types, most, magical, saveEnds }).filter(([, value]) => value !== undefined)) as SaveTerms;
 }
 
 // Lifts a JSON fx row into the executable effect shape.

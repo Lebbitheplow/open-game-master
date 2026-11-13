@@ -168,7 +168,10 @@ test("the tag follows the engines: every feat they run carries one, and every ta
   const listed = [...new Set([...tagBody.matchAll(/"([a-z][a-z' -]+)"/g)].map((match) => match[1]))];
   assert.ok(listed.length > 40, `read ${listed.length} names from the tag`);
   const bySpellText = (name) => featSpellsAnything(featSpellSpec(authoredFeatDesc(name) ?? ""));
-  const unread = listed.filter((name) => !elsewhere.includes(`"${name}"`) && !named.has(name) && !bySpellText(name)).sort();
+  // Or a counter of the authored resource table answers to it (Fade Away,
+  // Dragon Fear: src/lib/srd/authored-resources.json).
+  const counters = new Set(JSON.parse(read(new URL("srd/authored-resources.json", root))).resources.flatMap((row) => row.match ?? []).map((name) => name.toLowerCase()));
+  const unread = listed.filter((name) => !elsewhere.includes(`"${name}"`) && !named.has(name) && !bySpellText(name) && !counters.has(name)).sort();
   assert.deepEqual(unread, [], `tagged but no engine reads it: ${unread.join(", ")}`);
 });
 

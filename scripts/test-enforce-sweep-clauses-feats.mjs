@@ -98,6 +98,10 @@ P["feat.prerequisites"] = async () => {
     "Wood Elf Magic": [who({ raceId: "high_elf", raceName: "High Elf" }), who({ raceId: "wood_elf", raceName: "Wood Elf" })],
     "Drow High Magic": [who({ raceId: "wood_elf", raceName: "Wood Elf" }), who({ raceId: "drow", raceName: "Drow" })],
     "Dragon Hide": [who(), who({ raceId: "dragonborn", raceName: "Dragonborn" })],
+    "Dragon Fear": [who(), who({ raceId: "dragonborn", raceName: "Dragonborn" })],
+    "Dwarven Fortitude": [who(), who({ raceId: "hill_dwarf", raceName: "Hill Dwarf" })],
+    "Fade Away": [who(), who({ raceId: "rock_gnome", raceName: "Rock Gnome" })],
+    "Second Chance": [who(), who({ raceId: "lightfoot_halfling", raceName: "Lightfoot Halfling" })],
   };
   const wrong = [];
   for (const [feat, [without, holder]] of Object.entries(cases)) {
@@ -124,6 +128,77 @@ P["feat.squat-nimbleness.escape"] = async () => {
     thrown[label] = check ? d20Faces(check).length : JSON.stringify(t.lastRolls(3)).slice(0, 300);
   }
   assert.deepEqual(thrown, { plain: 1, nimble: 2 }, "d20s on the escape check");
+};
+
+// Fade Away: the reaction on taking damage turns the gnome invisible, and
+// its use comes back on a short rest.
+P["feat.fade-away.invisible"] = async () => {
+  const t = await rig.table();
+  const who = t.hero({ class: "fighter", level: 4, race: "rock_gnome", feats: ["Fade Away"] });
+  assert.deepEqual(t.sheet(who).resources.feat_fade_away, { max: 1, used: 0 }, "the use");
+  const [foe] = await t.fight([who]);
+  t.foesTurn(foe);
+  const hit = await t.strike(foe, who, [18, 4]);
+  assert.equal(hit.ok, true, hit.error);
+  const out = await t.use(who, "Fade Away");
+  assert.equal(out.ok, true, out.error);
+  assert.equal(t.has(who, "invisible"), true, `conditions: ${t.sheet(who).conditions.join(", ")}`);
+  assert.equal(t.used(who, "feat_fade_away"), 1);
+  const { resourceDef } = await import("../src/lib/srd/class-resources.ts");
+  assert.equal(resourceDef("feat_fade_away").recharge, "short");
+};
+
+// Dragon Fear: a use of Breath Weapon spent on the roar; a creature that
+// fails the Wisdom save is frightened, and saves again at the end of its turns.
+P["feat.dragon-fear.roar"] = async () => {
+  const t = await rig.table();
+  const who = t.hero({ class: "fighter", level: 4, race: "dragonborn", feats: ["Dragon Fear"], abilities: { cha: 16 } });
+  const [foe] = await t.fight([who]);
+  const out = await t.use(who, "Dragon Fear", { targetEnemyIds: [foe.id] }, [1, 1, 1]);
+  assert.equal(out.ok, true, out.error);
+  assert.equal(t.foeHas(foe, "frightened"), true, `the foe holds ${t.world.encounter() ? JSON.stringify(t.foeHas) : ""}`);
+  assert.equal(t.used(who, "breath_weapon"), 1, "the roar spent the Breath Weapon");
+  const meta = t.kit.enemy(foe.id).conditionMeta?.frightened;
+  assert.ok(JSON.stringify(meta ?? {}).includes("saveEnds"), `the fright saves again: ${JSON.stringify(meta)}`);
+};
+
+// Dwarven Fortitude: a hurt dwarf's Dodge spends one hit die and heals.
+P["feat.dwarven-fortitude.dodge"] = async () => {
+  const t = await rig.table();
+  const who = t.hero({ class: "fighter", level: 4, race: "hill_dwarf", feats: ["Dwarven Fortitude"] });
+  await t.fight([who]);
+  t.world.patch(who.id, { currentHp: 10 });
+  const spentBefore = t.sheet(who).hitDice?.spent ?? 0;
+  const out = await t.act(who, "dodge", {}, [6, 6, 6]);
+  assert.equal(out.ok, true, out.error);
+  assert.ok(t.sheet(who).currentHp > 10, `hit points after the Dodge: ${t.sheet(who).currentHp}`);
+  assert.equal(t.sheet(who).hitDice.spent, spentBefore + 1, "one hit die spent");
+};
+
+// Second Chance: a hit on the halfling is rolled again with the reaction,
+// and the new roll stands.
+P["feat.second-chance.reroll"] = async () => {
+  const t = await rig.table();
+  const who = t.hero({ class: "fighter", level: 4, race: "lightfoot_halfling", feats: ["Second Chance"] });
+  const [foe] = await t.fight([who]);
+  t.foesTurn(foe);
+  const before = t.sheet(who).currentHp;
+  const hit = await t.strike(foe, who, [18, 4]);
+  assert.equal(hit.ok, true, hit.error);
+  assert.ok(t.sheet(who).currentHp < before, "the staging: the dummy hit");
+  const out = await t.invoke("use_reaction", { characterId: who.id, feature: "second chance" }, [1]);
+  assert.equal(out.ok, true, out.error);
+  assert.equal(t.sheet(who).currentHp, before, "the new roll of 1 misses and the hit points come back");
+  assert.equal(t.used(who, "feat_second_chance"), 1);
+};
+
+// Second Chance's use comes back when initiative is rolled, and on a short rest.
+P["feat.second-chance.refill"] = async () => {
+  const { initiativeRefills } = await import("../src/lib/srd/resource-refills.ts");
+  const { resourceDef } = await import("../src/lib/srd/class-resources.ts");
+  const back = initiativeRefills({ feat_second_chance: { max: 1, used: 1 } }, []);
+  assert.deepEqual(back?.resources.feat_second_chance, { max: 1, used: 0 });
+  assert.equal(resourceDef("feat_second_chance").recharge, "short");
 };
 
 // Fighting Initiate: a barbarian, who has no fighting style of its own,

@@ -19,7 +19,7 @@ import { catchProblem } from "@/lib/dm/mt-srd-monk";
 import { cuttingWordsImmunity } from "@/lib/dm/mt-srd-reach";
 import { tranceFloored } from "@/lib/dm/ar-ws-trance-floor";
 import { getFoe, resolveTargetFoe } from "@/lib/dm/sheet-foe";
-import { defensiveDuelist, lucky, mageSlayer, reservesRecovery, sentinel } from "@/lib/dm/feat-reactions";
+import { defensiveDuelist, lucky, mageSlayer, reservesRecovery, sentinel, secondChance } from "@/lib/dm/feat-reactions";
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
@@ -745,6 +745,11 @@ function useReaction(
   const stride = mantleMove(ctx);
   if (stride) {
     return stride;
+  }
+  // Second Chance (a halfling's feat) rerolls the attack itself; its counter
+  // is spent there, never as a bare use_resource (feat-reactions.ts).
+  if (isNamed(feature, "second chance")) {
+    return secondChance(ctx);
   }
   // The authored subclass reactions (Spirit Shield, Spectral Defense, Storm's
   // Fury, Divine Allegiance...): src/lib/dm/authored-reactions.ts.

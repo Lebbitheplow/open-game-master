@@ -215,6 +215,8 @@ const DIES_NEAR = (feet: number, types?: string[]): TriggerSpec => ({
 const WRITTEN: Record<string, TriggerSpec> = {
   // Counters (src/lib/srd/authored-resources.json), spent through use_resource.
   sub_misty_escape: { on: [{ kind: "damaged" }], what: "damage a creature has just dealt them" },
+  // Fade Away (a gnome's feat): right after they take damage.
+  feat_fade_away: { on: [{ kind: "damaged" }], what: "damage a creature has just dealt them" },
   sub_fungal_infestation: DIES_NEAR(10, ["beast", "humanoid"]),
   sub_mantle_of_whispers: DIES_NEAR(30, ["humanoid"]),
   sub_cosmic_omen: { on: [{ kind: "roll_near", rangeFt: 30 }], what: "an attack roll or a saving throw made within 30 feet of them" },

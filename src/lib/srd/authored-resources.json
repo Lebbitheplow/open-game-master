@@ -2572,6 +2572,61 @@
    "recharge": "short",
    "guidance": "A bonus action: a minute of prophetic state, in which the knight's reaction turns an attack roll that hit them or a creature they can see within 60 feet to disadvantage (use_reaction \"Prophetic State\"), or gives advantage to an attack roll, save or check such a creature has just rolled, on its card.",
    "action": "bonus"
+  },
+  {
+   "id": "feat_fade_away",
+   "displayName": "Fade Away",
+   "match": [
+    "fade away"
+   ],
+   "uses": 1,
+   "ability": null,
+   "recharge": "short",
+   "action": "reaction",
+   "guidance": "Fade Away (a gnome's feat): a reaction right after taking damage turns them invisible until the end of their next turn, or until they attack or cast a spell; once until a short or long rest.",
+   "fx": {
+    "kind": "buff",
+    "condition": "invisible",
+    "rounds": 1
+   }
+  },
+  {
+   "id": "feat_dragon_fear",
+   "displayName": "Dragon Fear",
+   "match": [
+    "dragon fear"
+   ],
+   "uses": 0,
+   "ability": null,
+   "recharge": "short",
+   "action": "action",
+   "guidance": "Dragon Fear (a dragonborn's feat): a use of Breath Weapon spent on a roar instead of the breath. Each creature named within 30 feet makes a Wisdom save against 8 + proficiency + Charisma or is frightened of the dragonborn for a minute, repeating the save at the end of each of its turns.",
+   "fx": {
+    "kind": "enemy_save",
+    "save": "wis",
+    "condition": "frightened",
+    "dcAbility": "cha",
+    "rounds": 10,
+    "rangeFt": 30,
+    "saveEnds": true
+   },
+   "fallbackPool": {
+    "id": "breath_weapon",
+    "amount": 1
+   }
+  },
+  {
+   "id": "feat_second_chance",
+   "displayName": "Second Chance",
+   "match": [
+    "second chance"
+   ],
+   "uses": 1,
+   "ability": null,
+   "recharge": "short",
+   "action": "reaction",
+   "guidance": "Second Chance (a halfling's feat): when an attack hits them, a reaction makes the attacker roll that d20 again and use the new roll (use_reaction 'second chance': the server rerolls it). Back when initiative is rolled or after a short or long rest.",
+   "passive": true
   }
  ]
 }

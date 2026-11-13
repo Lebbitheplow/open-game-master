@@ -60,6 +60,9 @@ export type CounterSave = {
   // The most creatures one use takes (Enthralling Performance: the bard's
   // Charisma modifier).
   most?: number;
+  // The condition is saved against again at the end of each of the
+  // creature's turns, and ends on a success (Dragon Fear).
+  saveEnds?: boolean;
 };
 
 export type CounterSaveAim = { turnId?: string; targetEnemyId?: string; targetEnemyIds?: string[] };
@@ -161,7 +164,11 @@ export function resolveCounterSave(campaign: Campaign, sheet: CharacterSheet, sp
       if (immuneToCondition(fresh, spec.condition)) {
         parts.push(`cannot be ${spec.condition}`);
       } else {
-        layEnemyConditionInstance(campaign, fresh, spec.condition, { source: sheet.id, ...(spec.rounds ? { rounds: spec.rounds } : {}) });
+        layEnemyConditionInstance(campaign, fresh, spec.condition, {
+          source: sheet.id,
+          ...(spec.rounds ? { rounds: spec.rounds } : {}),
+          ...(spec.saveEnds ? { saveEnds: { ability: spec.save, dc: spec.dc } } : {}),
+        });
         parts.push(`is ${spec.condition}`);
       }
     }
