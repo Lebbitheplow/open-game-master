@@ -35,7 +35,7 @@ const { boardCatchesCast } = await import("../src/lib/dm/area-casting.ts");
 const { areaProblem } = await import("../src/lib/dm/aoe-shape.ts");
 const { getBattleMapForEncounter, getTokenByRef, moveToken } = await import("../src/lib/db/battle-maps.ts");
 
-const WIZARD = caster("wizard", "int", ["Fireball", "Burning Hands", "Lightning Bolt", "Shatter", "Ice Storm", "Web"], [], 9);
+const WIZARD = caster("wizard", "int", ["Fireball", "Burning Hands", "Lightning Bolt", "Shatter", "Ice Storm", "Web", "Thunderwave"], [], 9);
 const DRUID = caster("druid", "wis", ["Entangle", "Wall of Fire"], [], 9);
 const slots = (world, id, level) => world.sheet(id).spellcasting.slots[String(level)].used;
 
@@ -118,6 +118,21 @@ await test("A Large creature's 30-foot cone reaches a hero 30 feet from its near
   assert.equal(fits({ shape: "sphere", feet: 10, self: true }), null, "a hero 10 feet from the beast's side was out of its 10-foot burst");
   stand(12, 5);
   assert.notEqual(fits({ shape: "sphere", feet: 10, self: true }), null, "a hero 15 feet off was in a 10-foot burst");
+});
+
+// Thunderwave (SRD 5.1): "Self (15-foot cube)", a cube "originating from
+// you": three squares out from the caster's side, the caster outside it. The
+// Hand's aim lays it so (area-shape.ts blastTemplate); the named-creature
+// check laid it from the caster's own square, two squares deep, and refused
+// a goblin 15 feet off.
+await test("Thunderwave's 15-foot cube from its caster holds a creature 15 feet away and refuses one 20 feet away.", async () => {
+  const { world, sheets: [mage], enemies: [goblin] } = await board([WIZARD], { 0: { x: 5, y: 4 }, e0: { x: 8, y: 4 } });
+  const encounterId = world.encounter().id;
+  const map = getBattleMapForEncounter(encounterId);
+  const fits = () => areaProblem({ encounterId, casterId: mage.id, casterName: mage.name, label: "Thunderwave", area: { shape: "cube", feet: 15, self: true }, rangeFeet: null, creatures: [{ id: goblin.id, name: "Goblin" }] });
+  assert.equal(fits(), null, "a goblin 15 feet from the caster was out of the cube");
+  moveToken(getTokenByRef(map.id, goblin.id).id, 9, 4, 0);
+  assert.notEqual(fits(), null, "a goblin 20 feet off was in a 15-foot cube");
 });
 
 await test("An effect whose ids name nobody is refused with the creatures there are, and harms nobody.", async () => {

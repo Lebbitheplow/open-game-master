@@ -89,8 +89,20 @@ export function areaProblem(input: {
   // A burst around a creature larger than a square spreads from its whole
   // space: every square within reach of any square it fills.
   const around = input.area.self && shape === "sphere" && casterSpace.length > 1 ? casterSpace : null;
+  // A cube from its caster (Thunderwave) sits against the caster's side, the
+  // caster outside it, as the Hand's aim lays it (area-shape.ts
+  // blastTemplate). Laid from the caster's own square it reached two
+  // squares out, and a creature 15 feet off was refused.
+  const fromSide = input.area.self && shape === "cube";
   const holds = (origin: XY, target: XY) => {
-    const cells = new Set((around ?? [origin]).flatMap((from) => templateTiles(map, { shape, origin: from, target: around ? from : target, sizeFeet: input.area.feet })));
+    const laid = (from: XY) =>
+      fromSide
+        ? (() => {
+            const spec = blastTemplate(input.area, { caster: from, toward: target });
+            return spec ? templateTiles(map, spec) : [];
+          })()
+        : templateTiles(map, { shape, origin: from, target: around ? from : target, sizeFeet: input.area.feet });
+    const cells = new Set((around ?? [origin]).flatMap(laid));
     return placed.every((creature) => creature.cells.some((cell) => cells.has(cell)));
   };
   const reach = Math.max(1, Math.round(input.area.feet / FEET_PER_TILE));
