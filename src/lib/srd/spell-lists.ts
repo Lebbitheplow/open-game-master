@@ -12,7 +12,7 @@ import { spellOnListKey } from "@/lib/classes/class-spell-list";
 // checklist does not name stays wherever it was written, which is exactly
 // how it behaved before the split: it is still castable, just not moved.
 
-type ManifestSpell = { n: string; l: number; a?: string[] };
+type ManifestSpell = { n: string; l: number; a?: string[]; s?: string };
 
 const CANTRIP_NAMES = new Set(
   (spellManifest as { spells: ManifestSpell[] }).spells
@@ -129,11 +129,11 @@ export function checklistSpell(
 // A workshop class's id names its own list, or the one it borrows
 // (src/lib/classes/class-spell-list.ts), so a companion or a quick build of
 // one chooses from the list its sheet is checked against (issue #833).
-export function checklistSpellsOn(classSlug: string): Array<{ name: string; level: number }> {
+export function checklistSpellsOn(classSlug: string): Array<{ name: string; level: number; school?: string }> {
   const wanted = classSlug.trim().toLowerCase();
   return (spellManifest as { spells: Array<ManifestSpell & { c?: string }> }).spells
     .filter((spell) => classesOf(spell).includes(wanted) || spellOnListKey(wanted, { name: spell.n, classes: classesOf(spell) }))
-    .map((spell) => ({ name: spell.n, level: spell.l }));
+    .map((spell) => ({ name: spell.n, level: spell.l, ...(spell.s ? { school: spell.s } : {}) }));
 }
 
 type SpellLists = { known: string[]; prepared: string[]; cantrips?: string[] };

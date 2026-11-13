@@ -65,6 +65,7 @@ import { auraMenaceAsk } from "@/lib/dm/aura-menace";
 import { awayFromFear, enemyMoveTraits, fearSourceAt, standUpCost, standUpIfProne } from "@/lib/dm/enemy-approach";
 import { enemyMoveBudget } from "@/lib/dm/enemy-speed";
 import { movementLeft, spendEnemyDisengage } from "@/lib/dm/enemy-actions";
+import { picketHolds } from "@/lib/dm/genre-b-mystery-enforcer";
 import { forgetEnemyTurns, enemyTurnEntry, speedWords } from "@/lib/dm/enemy-turn-logic";
 import { nearerSquares } from "@/lib/dm/flee-logic";
 import { aggressiveSteps, approachSteps } from "@/lib/dm/enemy-aggressive";
@@ -73,6 +74,7 @@ import { declaredThisTurn, walkHeld } from "@/lib/dm/player-word";
 import { featureTeleportFeet } from "@/lib/dm/feature-teleport";
 import { featureLandingRefusal } from "@/lib/dm/mt-mr-spends";
 import { goesBetweenShadows, shadowsRefusal } from "@/lib/dm/ar-ws-shadow-light";
+import { horrorTeleportRefusal } from "@/lib/dm/genre-a-horror-wards";
 import { distancesFrom, payForTeleport, stillAt, teleportRangeFeet, walkCharacter } from "@/lib/dm/token-rules";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -358,6 +360,12 @@ export function handleTeleportToken(
   const landing = spender && args.spell && featureFeet !== null ? featureLandingRefusal(campaign.id, spender, args.spell, { x: args.x, y: args.y }) : null;
   if (landing) {
     return landing;
+  }
+  // The horror classes' rules on a teleport (Warden of the Threshold, Walk
+  // Between's "a space you can see": src/lib/dm/genre-a-horror-wards.ts).
+  const warded = horrorTeleportRefusal(campaign.id, map, token, { x: args.x, y: args.y }, args.spell);
+  if (warded) {
+    return warded;
   }
   // A legendary action that bought the jump (a sphinx's or a solar's
   // Teleport) gives its reach and has paid for it.
@@ -837,6 +845,8 @@ export function handleMoveToken(
           landing,
           walkedPart(path, landing),
           Boolean(disengaged),
+          // Picket Stance strikes a walker that Disengaged (genre-b-mystery-enforcer.ts).
+          picketHolds,
         )
       : { notes: [] as string[] };
   const opportunity = struck.notes;
@@ -888,7 +898,6 @@ export function handleMoveToken(
   if (resolved.kind === "enemy" && resolved.enemy) {
     markSqueezing(campaign.id, resolved.enemy.id, squeezedAt(map.terrain, map.width, map.height, occupied, landing, moverFootprint));
   }
-
   // The spell areas walked (or pushed) into: their saves and damage (zone-triggers.ts).
   const zoneEffects = zonesAfterMove(campaign, encounter.id, resolved.token, origin, walked, { careful });
   // Who it came near, on record for what answers a creature moving up (move-near.ts).

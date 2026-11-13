@@ -426,15 +426,23 @@ export function signature(scene, tried) {
     if (change.table === "encounter_enemies") return change.key === scene.near.id ? "near" : change.key === scene.far.id ? "far" : "enemy?";
     return change.table;
   };
-  const part = (list) => list.map((change) => `${who(change)}.${change.column}${change.path ? `.${change.path}` : ""}=${brief(change.after)}`).sort().join("; ");
   const names = new Map([[scene.holder.id, "<holder>"], [scene.ally.id, "<ally>"], [scene.fallen.id, "<fallen>"], [scene.near.id, "<near>"], [scene.far.id, "<far>"]]);
-  return `${tried.ok ? "ok" : tried.kind} | counters: ${part(read.counters)} | cost: ${part(read.cost)} | effects: ${part(read.effects)} | rolls ${read.rolls}`
-    .replace(/\d{4}-\d\d-\d\dT[\d:.]+Z/g, "<time>")
-    // A summoned creature's companion user is named for a random id
-    // (db/users.ts createCompanionUser): two runs of the same spend differ
-    // there and nowhere else, as two ids do.
-    .replace(/companion-([a-z0-9_]+)-[0-9a-f]{1,8}/g, "companion-$1-<id>")
-    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, (id) => names.get(id) ?? "<id>");
+  const normal = (text) =>
+    text
+      .replace(/\d{4}-\d\d-\d\dT[\d:.]+Z/g, "<time>")
+      // A summoned creature's companion user is named for a random id
+      // (db/users.ts createCompanionUser): two runs of the same spend differ
+      // there and nowhere else, as two ids do.
+      .replace(/companion-([a-z0-9_]+)-[0-9a-f]{1,8}/g, "companion-$1-<id>")
+      .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, (id) => names.get(id) ?? "<id>");
+  // Each change is made plain before the sort: sorted on its random ids, two
+  // summoned rows (Legend of the Pack's beast and scout) came in either order,
+  // and the same spend read as two different ones about half the time.
+  // The value too, before brief() cuts it: a cut through an id left a part
+  // of it that no pattern above reads.
+  const plain = (value) => (value === undefined ? undefined : normal(typeof value === "string" ? value : JSON.stringify(value) ?? "undefined"));
+  const part = (list) => list.map((change) => normal(`${who(change)}.${change.column}${change.path ? `.${change.path}` : ""}=${brief(plain(change.after))}`)).sort().join("; ");
+  return normal(`${tried.ok ? "ok" : tried.kind} | counters: ${part(read.counters)} | cost: ${part(read.cost)} | effects: ${part(read.effects)} | rolls ${read.rolls}`);
 }
 
 export { ABILITIES, LOG_TABLES, assert, readJson, SRC };

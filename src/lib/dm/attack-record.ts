@@ -6,6 +6,7 @@
 // never the plan, so it reaches both paths or neither.
 
 import { conditionMeleeCritRange } from "@/lib/srd/condition-effects";
+import { programCritRange } from "@/lib/dm/genre-a-cyberpunk-programs";
 import type { PendingAttack } from "@/lib/db/dm-turns";
 import type { Advantage } from "@/lib/dice";
 import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
@@ -163,7 +164,14 @@ export function attackRecord(plan: AttackPlan, strike: { critExtraDice: number; 
   const critExtraDice = strike.critExtraDice + (typeFeat === "Piercer" ? 1 : 0);
   // A condition's melee critical range (Invincible Conqueror's 19) rides
   // melee weapon attacks only.
-  const critRange = Math.min(plan.weaponAttack ? riders.critRange : 20, markCritRange(plan.marks.applies), plan.weaponAttack && !plan.atRange ? conditionMeleeCritRange(sheet.conditions) : 20);
+  // A cyberpunk caster's program critical range (Flatline Protocol) rides
+  // spell attacks (genre-a-cyberpunk-programs.ts).
+  const critRange = Math.min(
+    plan.weaponAttack ? riders.critRange : 20,
+    markCritRange(plan.marks.applies),
+    plan.weaponAttack && !plan.atRange ? conditionMeleeCritRange(sheet.conditions) : 20,
+    plan.kind === "spell" ? programCritRange(sheet, enemy) : 20,
+  );
   const critGear = gearCritRiders(profile, enemy.stats.type);
   const typedRiders = liveTypedRiders(plan.typedRiders, plan.droppedRiders);
   const ignoreBy = plan.elementalAdept ? "Elemental Adept" : poisonerIgnoresResistance(sheet, profile.damageType) ? "Poisoner" : null;

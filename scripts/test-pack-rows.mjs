@@ -29,6 +29,7 @@ const { builderMaxHp } = await import("../src/app/characters/builder/abilityDice
 const { suggestedStartingHp } = await import("../src/lib/srd/index.ts");
 const { populateFeaturesForClasses, racialTraitsFor } = await import("../src/lib/srd/features.ts");
 const { createSheetSchema } = await import("../src/lib/schemas/sheet.ts");
+const { splitToolGrants } = await import("../src/lib/srd/tool-choices.ts");
 
 let passed = 0;
 function test(name, fn) {
@@ -73,7 +74,7 @@ test("a pack background's languages, tools and gear carry through, v1 prose and 
   const occultist = background("occultist");
   assert.equal(occultist.languages, 2);
   assert.deepEqual(occultist.knownLanguages, []);
-  assert.deepEqual(occultist.tools, ["Thieves' tools"]);
+  assert.deepEqual(occultist.tools, ["thieves' tools"]);
   assert.deepEqual(occultist.equipment, [
     "A book of obscure lore holding clues to an occult location",
     "a bottle of black ink",
@@ -86,8 +87,8 @@ test("a pack background's languages, tools and gear carry through, v1 prose and 
   const cultist = background("cultist");
   assert.equal(cultist.languages, 1);
   assert.deepEqual(cultist.equipment, ["Holy symbol (amulet or reliquary)", "common clothes", "robes", "5 torches"]);
-  assert.deepEqual(background("deep-hunter").tools, ["Leatherworker’s tools"]);
-  assert.deepEqual(background("freebooter").tools, ["Navigator's tools", "vehicles (water)"]);
+  assert.deepEqual(background("deep-hunter").tools, ["leatherworker's tools"]);
+  assert.deepEqual(background("freebooter").tools, ["navigator's tools", "vehicles (water)"]);
   const scoundrel = background("scoundrel");
   assert.deepEqual(scoundrel.tools, ["One type of gaming set", "thieves' tools"]);
   assert.equal(scoundrel.equipment[0], "A bag of 1,000 ball bearings");
@@ -115,7 +116,7 @@ test("negatives grant nothing, choices stay one entry, named languages are known
 test("the builder's background options carry the pack rows' grants", () => {
   const options = mergedBackgroundOptions(rows.backgrounds.map((row) => ({ ...row, source: "open5e" })));
   const occultist = options.find((option) => option.id === "occultist");
-  assert.deepEqual(occultist.tools, ["Thieves' tools"]);
+  assert.deepEqual(occultist.tools, ["thieves' tools"]);
   assert.equal(occultist.languages, 2);
   assert.equal(occultist.equipment.length, 7);
   assert.deepEqual(options.find((option) => option.id === "forest-dweller").knownLanguages, ["Sylvan"]);
@@ -148,8 +149,8 @@ test("'Any' ability increases become the builder's asiChoice pickers", () => {
   assert.deepEqual(race("dwarf-chassis").asiChoice, { count: 2, amount: 1 });
   assert.deepEqual(race("humanhalf-elf-heritage").asi, { con: 1 });
   assert.deepEqual(race("humanhalf-elf-heritage").asiChoice, { count: 1, amount: 2 });
-  assert.deepEqual(race("shade").asi, { cha: 1 });
-  assert.deepEqual(race("shade").asiChoice, { count: 1, amount: 1 });
+  assert.deepEqual(race("shade-human-origin").asi, { cha: 1 });
+  assert.deepEqual(race("shade-human-origin").asiChoice, { count: 1, amount: 1 });
 });
 
 test("only wotc-srd and odm-expanded rows defer to the bundled race; a srd-2024 species is not offered unless a stored character names it", () => {
@@ -183,7 +184,14 @@ test("a v2 class gets its saves, armor, weapons, tools and skills", () => {
   const mechanist = classMechanics("mechanist", find(rows.v2Classes, "mechanist").data);
   assert.deepEqual(mechanist.saves, ["con", "int"]);
   assert.deepEqual(mechanist.armor, ["Light armor", "medium armor", "shields"]);
-  assert.deepEqual(mechanist.tools, ["Tinker tools and two additional tools your choice"]);
+  // The pick in the tool sentence is a pick of two (src/lib/srd/tool-choices.ts),
+  // which was stored as one proficiency named by the sentence.
+  assert.deepEqual(mechanist.tools, ["tinker's tools", "two additional tools your choice"]);
+  const split = splitToolGrants(mechanist.tools);
+  assert.deepEqual(split.fixed, ["tinker's tools"]);
+  assert.equal(split.choices.length, 1);
+  assert.equal(split.choices[0].count, 2);
+  assert.ok(split.choices[0].from.includes("smith's tools") && split.choices[0].from.includes("thieves' tools"));
   assert.deepEqual(mechanist.skillChoices, {
     count: 2,
     from: ["arcana", "history", "investigation", "perception", "sleight_of_hand"],
@@ -198,6 +206,48 @@ test("a pack class's Max HP comes from its own hit die", () => {
   // The same number the server rule gives a bundled class.
   assert.equal(builderMaxHp(10, "human", 14, 5), suggestedStartingHp("fighter", "human", 14, 5));
 });
+
+// A pack's own class (Black Flag's Mechanist) had no feature table, so it
+// was stored with no class feature at any level, no subclass step and no
+// Multiattack (src/lib/classes/pack-class-registry.ts). The row here is
+// shaped as Open5e's v2 class rows are, in ODM's own words.
+{
+  const { packClassTableFrom, registerPackClasses, extraAttacksIn } = await import("../src/lib/classes/pack-class-registry.ts");
+  const { classFeaturesFor, subclassLevelFor } = await import("../src/lib/srd/features.ts");
+  const { registerPackClassFeature, effectsFor } = await import("../src/lib/srd/feature-effects.ts");
+  const { classFeatureDescription } = await import("../src/lib/classes/feature-text.ts");
+  const row = {
+    features: [
+      { name: "Proficiencies", desc: "**Armor:** Light armor", levels: [] },
+      { name: "Proficiency Bonus", desc: "[Column data]", levels: [] },
+      { name: "Gadget Sense", desc: "You can tell what a device does by handling it.", levels: [1] },
+      { name: "Tinker Subclass", desc: "Choose the tradition your inventions follow.", levels: [3] },
+      { name: "Improvement", desc: "Raise your scores.", levels: [4, 8, 12, 16, 19] },
+      { name: "Multiattack", desc: "On your turn, you can make two attacks when you take the Attack action.", levels: [5] },
+      { name: "Overclock", desc: "Push a device past its limits once per rest.", levels: [9, 13] },
+    ],
+  };
+
+  test("a pack class's own features arrive at the levels its row lists, its subclass at the level that asks for one", () => {
+    const table = packClassTableFrom("tinker-test", row);
+    assert.deepEqual(table.levels, { 1: ["Gadget Sense"], 3: ["Tinker Subclass"], 5: ["Multiattack"], 9: ["Overclock"] });
+    assert.equal(table.subclassLevel, 3);
+    registerPackClasses([table]);
+    assert.deepEqual(classFeaturesFor("tinker-test", "", 4).map((feature) => feature.name), ["Gadget Sense", "Tinker Subclass"]);
+    assert.deepEqual(classFeaturesFor("tinker-test", "", 20).map((feature) => feature.name), ["Gadget Sense", "Tinker Subclass", "Multiattack", "Overclock"]);
+    assert.equal(subclassLevelFor("tinker-test"), 3);
+    assert.equal(classFeatureDescription("tinker-test", "Overclock"), "Push a device past its limits once per rest.");
+  });
+
+  test("a pack class's Multiattack is an Extra Attack for that class alone", () => {
+    assert.equal(extraAttacksIn(row.features[5].desc), 1);
+    assert.equal(extraAttacksIn("Push a device past its limits once per rest."), 0);
+    registerPackClassFeature("tinker-test", "Multiattack", row.features[5].desc, 1);
+    const attacks = (klass) => effectsFor({ class: klass, features: [{ name: "Multiattack" }] }).filter((entry) => entry.effect.kind === "extra_attack");
+    assert.deepEqual(attacks("tinker-test").map((entry) => entry.effect.attacks), [1]);
+    assert.deepEqual(attacks("ranger"), [], "a Hunter's Multiattack is a pick, never an extra attack");
+  });
+}
 
 test("Dwarven Toughness applies under every Hill Dwarf id", () => {
   for (const id of ["hill_dwarf", "hill-dwarf", "odm-hill-dwarf"]) {
@@ -233,18 +283,24 @@ test("backgroundChoices is optional and bounded", () => {
   assert.equal(field.safeParse({ skills: ["x".repeat(41)] }).success, false);
 });
 
+// After each row's headings come the lines its prose states, in the bundled
+// lineages' words (src/lib/content/species-prose-logic.ts,
+// scripts/test-species-prose.mjs): a parent's after the parent's headings.
 test("trait names: headings only, and a subrace drops its parent's choice heading", () => {
-  assert.deepEqual(race("catfolk").traitNames, ["Cat's Claws", "Hunter's Senses"]);
+  assert.deepEqual(race("catfolk").traitNames, ["Cat's Claws", "Hunter's Senses", "Claws (1d4 slashing unarmed strike)"]);
   assert.deepEqual(race("human-chassis").traitNames, [
-    "Construct Resilience", "Construct Vitality", "Living Construct", "Adaptable Acumen", "Inspired Ingenuity",
+    "Construct Resilience", "Construct Vitality", "Living Construct", "Poison Resistance", "Disease Immunity",
+    "Saves with advantage against poisoned", "Adaptable Acumen", "Inspired Ingenuity",
   ]);
   assert.deepEqual(race("acid-cap").traitNames, [
-    "Fungoid Form", "Hardy Survivor", "Acid Cap Resistance", "Acid Spores", "Clan Athlete",
+    "Fungoid Form", "Hardy Survivor", "Poison Resistance", "Disease Immunity", "Saves with advantage against poison",
+    "Acid Cap Resistance", "Acid Spores", "Clan Athlete",
   ]);
   assert.deepEqual(race("mutated").traitNames, [
-    "Eldritch Resilience", "Sunlight Sensitivity", "Athletic Training", "Otherworldly Influence",
+    "Eldritch Resilience", "Sunlight Sensitivity", "Saves with advantage against spells (Constitution)", "Athletic Training", "Otherworldly Influence",
   ]);
-  assert.ok(race("shade").traitNames.includes("Living Origin"));
+  // A shade is offered once per Living Origin, the choice made.
+  assert.ok(race("shade-dwarf-origin").traitNames.includes("Living Origin (Dwarf)"));
   assert.deepEqual(raceMechanics(find(rows.races, "elf").data).traitNames, ["Keen Senses", "Fey Ancestry", "Trance"]);
 });
 
@@ -266,13 +322,14 @@ test("a pack-only race saves its trait names, and a level-up regrant keeps them"
     background: { id: "artisan", name: "Artisan", ...background("artisan") },
   });
   const raceFeatures = result.sheet.features.filter((feature) => feature.source === "race");
-  assert.deepEqual(raceFeatures.map((feature) => feature.name), ["Cat's Claws", "Hunter's Senses"]);
+  const CATFOLK = ["Cat's Claws", "Hunter's Senses", "Claws (1d4 slashing unarmed strike)"];
+  assert.deepEqual(raceFeatures.map((feature) => feature.name), CATFOLK);
   assert.deepEqual(result.sheet.backgroundChoices, { skills: ["insight"], gear: [] });
 
   const regranted = populateFeaturesForClasses(result.sheet.features, [{ id: "fighter", subclass: "", level: 2 }], "catfolk");
   assert.deepEqual(
     regranted.filter((feature) => feature.source === "race").map((feature) => feature.name),
-    ["Cat's Claws", "Hunter's Senses"],
+    CATFOLK,
   );
   // A bundled race's traits still come from the bundled data alone.
   const hillDwarf = populateFeaturesForClasses(

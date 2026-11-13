@@ -49,7 +49,23 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 //  10: the species traits read by the race reader changed with the gap sweep's
 //      second wave (a firbolg's and a genasi's magic are innate spells, and
 //      the lineage traits carry the numbers their lines state).
-export const READER_REVISION = 10;
+//  11: the cc1113 creator audit. A v2 class row's tool sentence splits its
+//      pick from the tool it names (Black Flag's Mechanist), a v2 archetype
+//      row whose text has no feature headings reads its feature list (Black
+//      Flag's Metallurgist, Open5e's Abjurationist), a pack archetype's
+//      printed spell table is read (a domain's, an oath's, a circle's
+//      spells, a patron's expanded list), the bundled kenku, changeling,
+//      lizardfolk and warforged picks name their lists (their stored
+//      readings are the bundled rows), and a race walks at the speed its
+//      text states over the field beside it.
+//      The background reader names a tool by the SRD's name for it
+//      ("Herbalist kit" is the herbalism kit, "Cartographers' tools" the
+//      cartographer's tools): a Desert Runner was proficient in no tool the
+//      table knows. The bundled satyr, centaur, hobgoblin and rabbitfolk
+//      carry the trait lines their moments are played by (Mirthful Leaps,
+//      Charge, Saving Face, Lucky Footwork), the shifter its subtype pick, and
+//      a pack option's reaction burst (Tainted Blood) reads as a line.
+export const READER_REVISION = 11;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";
 

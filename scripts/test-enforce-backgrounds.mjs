@@ -30,7 +30,7 @@ const { world, atTable } = await openCreation();
 const builder = await openBuilder();
 const srd = await import("../src/lib/srd/index.ts");
 const { CUSTOM_BACKGROUNDS } = await import("../src/lib/backgrounds/index.ts");
-const { backgroundMechanics } = await import("../src/lib/content/mechanics.ts");
+const { backgroundField, backgroundMechanics } = await import("../src/lib/content/mechanics.ts");
 const { listBackgrounds } = await import("../src/lib/content/index.ts");
 const { contentPackInstalled } = await import("../src/lib/content/db.ts");
 // CI has no content pack; what needs a pack row asks first.
@@ -39,6 +39,7 @@ const { builderMaxHp } = await import("../src/app/characters/builder/abilityDice
 const { defaultArmor, suggestArmor } = await import("../src/lib/srd/armor.ts");
 const { classKitFor, startingKitFor } = await import("../src/lib/srd/starting-kit.ts");
 const { resolveBackgroundGear } = await import("../src/lib/srd/adventuring-gear.ts");
+const { expandBackgroundGear } = await import("../src/lib/srd/gear-choices.ts");
 
 // SRD 5.1 (Acolyte) and the 2014 Player's Handbook: skills, how many tools,
 // how many languages of choice, the purse in gold pieces, the feature.
@@ -56,6 +57,14 @@ const BACKGROUNDS = {
   sailor: { skills: ["athletics", "perception"], tools: 2, languages: 0, gold: 10, feature: "Ship's Passage" },
   soldier: { skills: ["athletics", "intimidation"], tools: 2, languages: 0, gold: 10, feature: "Military Rank" },
   urchin: { skills: ["sleight_of_hand", "stealth"], tools: 2, languages: 0, gold: 10, feature: "City Secrets" },
+  // The 2014 book's variants of five of them, the concepts a player looks
+  // for by name: the noble's Knight, the sailor's Pirate, the criminal's Spy,
+  // the entertainer's Gladiator and the guild artisan's Guild Merchant.
+  knight: { skills: ["history", "persuasion"], tools: 1, languages: 1, gold: 25, feature: "Retainers" },
+  pirate: { skills: ["athletics", "perception"], tools: 2, languages: 0, gold: 10, feature: "Bad Reputation" },
+  spy: { skills: ["deception", "stealth"], tools: 2, languages: 0, gold: 15, feature: "Criminal Contact" },
+  gladiator: { skills: ["acrobatics", "performance"], tools: 2, languages: 0, gold: 15, feature: "By Popular Demand" },
+  guild_merchant: { skills: ["insight", "persuasion"], tools: 1, languages: 1, gold: 15, feature: "Guild Membership" },
 };
 const ACOLYTE_KIT = ["holy symbol", "prayer book", "5 sticks of incense", "vestments", "common clothes"];
 const GRANT_KEYS = ["id", "name", "skills", "feature", "featureDesc", "tools", "languages", "equipment", "blurb", "genres"];
@@ -156,9 +165,16 @@ await test("the stored sheet carries the background: skills, tools, languages, k
     assert.equal(profs.languages.length, 2 + background.languages, `${background.id} languages`);
     // The kit arrives as catalog items, the way the class kit does: a pack
     // opened, "common clothes" as "Clothes, Common" (issue #113).
+    // A kind line ("musical instrument", "artisan's tools", "gaming set") is
+    // the tool of that kind the character took the proficiency in, never an
+    // item named for the kind.
     const kit = sheet.equipment.map((item) => item.name);
-    for (const item of resolveBackgroundGear(background.equipment).filter((entry) => !/ gp$/.test(entry))) {
+    const expanded = expandBackgroundGear(resolveBackgroundGear(background.equipment), { tools: profs.tools, backgroundTools: background.tools, picks: [] });
+    for (const item of expanded.names.filter((entry) => !/ gp$/.test(entry))) {
       assert.ok(kit.includes(item), `${background.id} kit lacks ${item}`);
+    }
+    for (const name of kit) {
+      assert.ok(!/^(?:musical instrument|artisan's tools|gaming set)$/i.test(name), `${background.id} carries "${name}"`);
     }
     // The server grants the feature itself, once.
     const features = sheet.features.filter((feature) => feature.source === "background");
@@ -416,6 +432,110 @@ await test("Each level gained adds the hit die's value plus the Constitution mod
 });
 
 if (hasPack) {
+  // Every content-pack background the builder offers, read from its own
+  // text, then built and seated: what the builder offered is what the sheet
+  // holds.
+  const { mergedBackgroundOptions } = await import("../src/lib/characters/options.ts");
+  const help = await import("../src/lib/help/index.ts");
+  const { KNOWN_TOOLS } = await import("../src/lib/srd/feat-grant-text.ts");
+  const packRows = listBackgrounds({ limit: 200 });
+  const packOffered = mergedBackgroundOptions(packRows).filter((row) => row.documentSlug);
+  const knownTools = new Set(KNOWN_TOOLS);
+  const seatPack = async (option) => {
+    const backgroundSkills = option.skillChoice ? option.skillChoice.from.filter((skill) => !option.skills.includes(skill)).slice(0, option.skillChoice.count) : [];
+    const classSkills = ["acrobatics", "history", "insight", "perception", "survival", "athletics"]
+      .filter((skill) => !option.skills.includes(skill) && !backgroundSkills.includes(skill))
+      .slice(0, 2);
+    const built = builder.build({
+      race: "human",
+      class: "fighter",
+      background: option,
+      chosenSkills: classSkills,
+      stylePicks: ["defense"],
+      bonusLanguages: ["Elvish", "Dwarvish", "Giant", "Gnomish", "Orc"].slice(0, 1 + (option.languages ?? 0)),
+      backgroundSkills,
+    });
+    assert.equal(built.blocker, null, `${option.id}: ${built.blocker?.message}`);
+    const seated = await atTable(built.sheet);
+    assert.equal(seated.status, 201, `${option.id}: ${seated.error}`);
+    return seated.sheet;
+  };
+
+  // The feature a row names: a v1 row's `feature` field, a v2 row's benefit
+  // of type "feature" (Level Up's Adventurer's Guide and its kin).
+  await test("Every content-pack background grants the feature its text names, with the feature's text, through the builder and at the table.", async () => {
+    assert.ok(packOffered.length > 30, `${packOffered.length} pack backgrounds`);
+    for (const option of packOffered) {
+      const data = packRows.find((row) => row.slug === option.id).data;
+      const v2 = Array.isArray(data.benefits) ? data.benefits.find((benefit) => benefit.type === "feature") : null;
+      const named = String(data.feature ?? v2?.name ?? "").trim();
+      assert.ok(named, `${option.id} names no feature in its text`);
+      assert.equal(option.feature, named, `${option.id} feature`);
+      // Four Level Up rows (Farmer, Guildmember, Marauder, Trader) name a
+      // feature the pack carries no text for; every other row's text arrives.
+      const text = String(data.feature_desc ?? v2?.desc ?? "").trim();
+      assert.equal(option.featureDesc ?? "", text, `${option.id} feature text`);
+      const sheet = await seatPack(option);
+      const features = sheet.features.filter((feature) => feature.source === "background").map((feature) => feature.name);
+      assert.deepEqual(features, [`${named} (${option.name})`.slice(0, 80)], option.id);
+      // The sheet's chip for it opens the pack row, whose text holds the
+      // feature: the bundled tables know nothing of a pack feature.
+      const chip = sheet.features.find((feature) => feature.source === "background");
+      const reference = help.backgroundFeatureReference(chip, sheet.background, sheet.class, sheet.subclass);
+      assert.deepEqual(reference, { kind: "backgrounds", slug: option.id, name: named }, `${option.id} chip`);
+      const shown = help.describeContentEntry(data) ?? "";
+      assert.ok(shown.includes(named) && (!text || shown.includes(text.slice(0, 40))), `${option.id} row text lacks its feature`);
+    }
+    // A bundled background's chip carries its own text and opens nothing.
+    const acolyte = (await atTable(buildBackground("acolyte").sheet)).sheet;
+    const shelter = acolyte.features.find((feature) => feature.source === "background");
+    assert.equal(help.backgroundFeatureReference(shelter, acolyte.background, acolyte.class), null);
+  });
+
+  // Each tool the SRD's name for it, or a choice the builder asks: "Two of
+  // your choice" is two picks, not a proficiency in the sentence.
+  await test("Every content-pack background's tools are real tools, a named one under the SRD's name and an open one asked, through the builder and at the table.", async () => {
+    for (const option of packOffered) {
+      const { fixed, choices } = tools.splitToolGrants(option.tools ?? []);
+      for (const tool of fixed) {
+        assert.ok(knownTools.has(tool), `${option.id} grants "${tool}", which is no tool's name`);
+      }
+      for (const choice of choices) {
+        assert.ok(choice.count > 0 && choice.from.length >= choice.count, `${option.id} choice ${choice.label}`);
+      }
+      const seated = await seatPack(option);
+      const held = seated.proficiencies.tools;
+      // A language the text names outright (a Forest Dweller's Sylvan, a
+      // Crime Syndicate Member's Thieves' Cant) is on the sheet too.
+      for (const language of option.knownLanguages ?? []) {
+        assert.ok(seated.proficiencies.languages.some((known) => known.toLowerCase().replace(/[’']/g, "") === language.toLowerCase().replace(/[’']/g, "")), `${option.id} lacks ${language}: ${seated.proficiencies.languages}`);
+      }
+      for (const tool of fixed) {
+        assert.ok(held.includes(tool), `${option.id} sheet lacks ${tool}: ${held}`);
+      }
+      assert.equal(held.length, fixed.length + choices.reduce((sum, choice) => sum + choice.count, 0), `${option.id} tools: ${held}`);
+      for (const tool of held) {
+        assert.ok(knownTools.has(tool), `${option.id} sheet holds "${tool}"`);
+      }
+    }
+  });
+
+  // The kit as inventory: a tool line ("One set of artisan's tools") is a
+  // tool, and the purse is the coin the text names, however it writes the
+  // unit ("a belt pouch containing 10g", Tal'Dorei's spelling).
+  await test("Every content-pack background's kit arrives as items, a tool line as a tool, and the coin its text names as gold, through the builder and at the table.", async () => {
+    for (const option of packOffered) {
+      const data = packRows.find((row) => row.slug === option.id).data;
+      const sheet = await seatPack(option);
+      const names = sheet.equipment.map((item) => item.name);
+      for (const name of names) {
+        assert.ok(!/artisan'?s'? tools|musical instrument|gaming set|of your choice/i.test(name), `${option.id} carries the line "${name}", not a tool`);
+      }
+      const coin = /(\d[\d,]*)\s*g(?:p|old)?\b/i.exec(backgroundField(data, "equipment"));
+      assert.equal(sheet.gold, coin ? Number(coin[1].replace(/,/g, "")) : 0, `${option.id} gold`);
+    }
+  });
+
   await test("Every background gives two skill proficiencies: a pack row that grants none is not offered.", () => {
     const short = listBackgrounds({ limit: 200 })
       .filter((row) => {

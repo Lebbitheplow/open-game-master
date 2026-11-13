@@ -1,4 +1,7 @@
 import { breathAugment } from "@/lib/dm/mt-mr-dragon";
+import { genreCounterHeal, genreStimTemp } from "@/lib/dm/genre-a-heals";
+import { healDiceFloor } from "@/lib/dm/genre-a-cyberpunk-programs";
+import { recoverSlotLevels, regainedLine } from "@/lib/dm/genre-a-slots";
 import type { Campaign } from "@/lib/db/campaigns";
 import { shadowInvisibility, shadowLightProblem } from "@/lib/dm/one-with-shadows";
 import { getSheetById } from "@/lib/db/sheets";
@@ -9,7 +12,7 @@ import { computeSheetDerived } from "@/lib/srd";
 import { ELEMENTAL_WILD_SHAPE_COST, elementalWildShape, wildShapeUse, type WildShapeAsk } from "@/lib/dm/wild-shape-use";
 import { RAGE_FIRST, withoutRageFirst } from "@/lib/dm/mt-srd-barbarian";
 import { targetReachProblem } from "@/lib/dm/mt-srd-reach";
-import { heldUnlimitedState, isUnlimited, matchResource, RAGING, recoveringPrefix, resourceLevel, type ResourceDef, type SaveAbilityId, type SaveTerms } from "@/lib/srd/class-resources";
+import { heldUnlimitedState, isUnlimited, matchResource, RAGING, recoveringPrefix, resourceLevel, type ResourceDef, type SaveAbilityId, type SaveTerms, sheetCatalog } from "@/lib/srd/class-resources";
 import { counterGate, counterSaveDc, otherPrice } from "@/lib/srd/counter-rules";
 import { rallyMark, rallyRefusal } from "@/lib/dm/ar-wbf-feat-rally";
 import { treatsRefusal } from "@/lib/dm/ar-wbf-feat-treats";
@@ -356,6 +359,7 @@ function rollCounterSave(
     rangeFt: reachFt ?? effect.rangeFt,
     ...(effect.cone ? { cone: true } : {}),
     types: effect.types,
+    ...(effect.pushFeet ? { pushFeet: effect.pushFeet } : {}),
     ...(most ? { most } : {}),
     magical: effect.magical ?? def.id !== "breath_weapon",
     ...(effect.saveEnds ? { saveEnds: true } : {}),
@@ -422,7 +426,7 @@ export function computeUseResource(
   more: { square?: Square; slotLevel?: number } = {},
 ): Outcome | ToolError {
   const square = more.square;
-  const def = matchResource(resourceName);
+  const def = matchResource(resourceName, sheetCatalog(sheet));
   const state = def ? (sheet.resources[def.id] ?? heldUnlimitedState(def, sheet) ?? undefined) : undefined;
   if (!def || !state) {
     const available = Object.keys(sheet.resources);
@@ -643,6 +647,20 @@ export function computeUseResource(
     }
   }
 
+  // The genre healers' reach, the ally they may be spent on, and what rides
+  // the use beyond its hit points (src/lib/dm/genre-a-heals.ts).
+  const genreHeal = genreCounterHeal(campaign, def.id, def.displayName, sheet, target);
+  if (genreHeal && "error" in genreHeal) {
+    return genreHeal;
+  }
+  if (genreHeal && Object.keys(genreHeal.patch).length) {
+    if (target.id === sheet.id) Object.assign(outcome.patch, genreHeal.patch);
+    else outcome.patchTarget = { characterId: target.id, patch: genreHeal.patch };
+  }
+  if (genreHeal?.notes.length) {
+    outcome.result.riders = genreHeal.notes.join(" ");
+  }
+
   const derived = computeSheetDerived(sheet);
   // Multiclass: an effect's level-scaled dice read the owning class's level
   // (Second Wind heals 1d10 + FIGHTER level), not the summed character level.
@@ -701,10 +719,18 @@ export function computeUseResource(
       if (target.deathSaves?.dead) {
         return { error: `${target.name} is DEAD; ${def.displayName} cannot help.`, refused: "rules" };
       }
-      const expression = def.effect.dice(fxLevel, derived.abilityMods);
+      // Perfected Formula: each healing die counts as at least half its faces
+      // (genre-a-cyberpunk-programs.ts healDiceFloor).
+      const expression = healDiceFloor(sheet, def.effect.dice(fxLevel, derived.abilityMods));
       const total = rollHealing(campaign, sheet, healingOn(def.displayName, sheet, target), expression);
       outcome.healTarget = { characterId: target.id, amount: Math.max(1, total) };
       outcome.result.healingRolled = total;
+      const temp = genreStimTemp(campaign, def.id, sheet);
+      if (temp !== null && temp > target.tempHp) {
+        if (target.id === sheet.id) outcome.patch.tempHp = temp;
+        else outcome.patchTarget = { characterId: target.id, patch: { ...outcome.patchTarget?.patch, tempHp: temp } };
+        outcome.result.tempHp = `Extraction: ${temp} temporary hit points to ${target.name}`;
+      }
       return outcome;
     }
     case "temp_hp": {
@@ -943,6 +969,18 @@ export function computeUseResource(
       return wildShapeUse(sheet, outcome, def.displayName, asked, elemental);
     }
     case "recover_slots": {
+      // Overmind, The Tomb Provides: the spend gives the slots back itself
+      // (src/lib/dm/genre-a-slots.ts), or is refused with nothing spent.
+      if (def.effect.now) {
+        const budget = def.effect.levels(fxLevel, derived.abilityMods);
+        const back = sheet.spellcasting ? recoverSlotLevels(sheet.spellcasting.slots, budget, { maxLevel: def.effect.maxLevel, most: def.effect.most }) : null;
+        if (!back?.regained.length || !sheet.spellcasting) {
+          return { error: `${sheet.name} has no spent spell slot ${def.displayName} can give back with ${budget} slot level${budget === 1 ? "" : "s"}. Nothing was spent.`, refused: "rules" };
+        }
+        outcome.patch.spellcasting = { ...sheet.spellcasting, slots: back.slots };
+        outcome.result.regained = `${sheet.name} regains spell slots: ${regainedLine(back.regained)}.`;
+        return outcome;
+      }
       // Spent through take_rest, which reads the counter and returns the
       // slots; spending it by hand here would burn the use for nothing.
       return {

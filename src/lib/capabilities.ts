@@ -91,6 +91,10 @@ export const SERVER_FEATURES = {
   // sheet in play): the `hopes` field an older host drops while answering
   // the save as done.
   storyHopes: true,
+  // A character's personality (trait, ideal, bond, flaw) in the builder's
+  // Identity step and on the sheet in play: the `persona` field an older
+  // host drops while answering the save as done.
+  persona: true,
   // "Add a second class" in the builder (backlog F9): a class list on a new
   // character, which an older host folds into one class.
   builderMulticlass: true,
@@ -300,6 +304,13 @@ export const SERVER_FEATURES = {
   // card beyond the tentacle's 10 feet. An older host sends none and the
   // card is dealt as before, the engine judging the reach.
   ownZoneFeet: true,
+  // A warlock's Mystic Arcanum held on top of the spells known
+  // (src/lib/srd/mystic-arcanum.ts): an older host counts the arcanum
+  // inside the column and refuses the level-up dialog's extra pick.
+  mysticArcanum: true,
+  // PATCH sheet's `levelUpTools`, the tool a new class's grant leaves to the
+  // player (a bard's instrument); an older host drops it unread.
+  multiclassTools: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 

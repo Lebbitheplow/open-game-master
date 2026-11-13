@@ -1,6 +1,8 @@
 "use client";
 
 import { EmptyState } from "@/components/EmptyState";
+import { PersonaLines } from "@/app/characters/builder/PersonalityFields";
+import { personaOrNothing } from "@/lib/backgrounds/persona-logic";
 import { BookOpen } from "lucide-react";
 import type { ReactNode } from "react";
 import { GameTerm } from "@/components/ui/GameTerm";
@@ -145,7 +147,7 @@ export function SheetSections({ sheet, level = 1 }: { sheet: CreateSheetInput; l
 
       {sheet.features?.length ? (
         <SheetPanel title="Features and traits">
-          <FeatureChips features={sheet.features} classId={sheet.class} subclass={sheet.subclass} />
+          <FeatureChips features={sheet.features} classId={sheet.class} subclass={sheet.subclass} background={sheet.background} />
         </SheetPanel>
       ) : null}
 
@@ -160,6 +162,12 @@ export function SheetSections({ sheet, level = 1 }: { sheet: CreateSheetInput; l
           <p className="whitespace-pre-wrap font-serif text-sm leading-relaxed text-stone-300">
             {sheet.backstory}
           </p>
+        </SheetPanel>
+      ) : null}
+
+      {sheet.persona && personaOrNothing(sheet.persona) ? (
+        <SheetPanel title="Personality">
+          <PersonaLines persona={sheet.persona} />
         </SheetPanel>
       ) : null}
 

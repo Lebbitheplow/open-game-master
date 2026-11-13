@@ -207,6 +207,12 @@ function raceTableOf(option: RaceOption, traits: string, vision: string, bundled
     ...(option.skillChoice ? { skillChoice: option.skillChoice } : {}),
     ...(option.tools ? { tools: option.tools } : {}),
     ...(option.toolChoice ? { toolChoice: option.toolChoice } : {}),
+    ...(option.weaponChoice ? { weaponChoice: option.weaponChoice } : {}),
+    ...(option.trainingChoice ? { trainingChoice: option.trainingChoice } : {}),
+    ...(option.expertiseChoice ? { expertiseChoice: option.expertiseChoice } : {}),
+    // A pack species' one pick (Mental Fortitude) and its Living Origin.
+    ...(option.variants ? { variants: option.variants } : {}),
+    ...(option.livingOrigin ? { livingOrigin: true } : {}),
     ...(option.armor ? { armor: option.armor } : {}),
     ...(option.weapons ? { weapons: option.weapons } : {}),
     ...(option.cantripChoice ? { cantripChoice: option.cantripChoice } : {}),
@@ -244,6 +250,9 @@ export function backgroundMechanicsOf(row: Row & { slug?: string; documentSlug?:
     },
     feature: option.feature ?? String(row.data.feature ?? ""),
     feature_desc: option.featureDesc ?? String(row.data.feature_desc ?? ""),
+    // Its suggested trait, ideal, bond and flaw tables, so the copy offers
+    // the same personality lines (src/lib/backgrounds/persona-logic.ts).
+    ...(option.persona ? { suggested_characteristics: String(row.data.suggested_characteristics ?? "") } : {}),
   };
 }
 

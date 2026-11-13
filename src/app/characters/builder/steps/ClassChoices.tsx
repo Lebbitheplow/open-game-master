@@ -12,7 +12,7 @@ import type { BuilderState } from "../useBuilderState";
 import { PickPill, StepPanel } from "./shared";
 import { textKey } from "@/lib/language/text-logic";
 import { splitToolGrants } from "@/lib/srd/tool-choices";
-import { remainingWords } from "@/lib/srd/options";
+import { optionFeatureName, remainingWords } from "@/lib/srd/options";
 import { subclassChoiceSummary } from "@/lib/content/subclass-choices";
 import { featChoice } from "@/lib/schemas/sheet";
 import FeatChoicesFields, { knownTraining } from "../FeatChoicesFields";
@@ -166,17 +166,22 @@ export function ClassChoices({
               const selected = slot.chosen.some(
                 (chosenName) => textKey(chosenName) === textKey(option.n),
               );
+              // Not open yet (a level the class has not reached): shown, and
+              // closed, as the level-up shows it. One already chosen can
+              // still be let go.
+              const notYet = selected ? undefined : derived.optionUnmet?.[optionFeatureName(slot.kind, option.n)];
               return (
-                <div key={option.n} className={cn(optionCard(selected), "flex items-start gap-1")}>
+                <div key={option.n} className={cn(optionCard(selected), "flex items-start gap-1", notYet && "opacity-60")}>
                   <button
                     type="button"
                     aria-pressed={selected}
+                    disabled={Boolean(notYet)}
                     onClick={() => actions.toggleOption(slot, option.n)}
-                    className="grow text-left"
+                    className="grow text-left disabled:cursor-not-allowed"
                   >
                     <span className="block text-xs">{option.n}</span>
                     <span className="block text-sm text-stone-500">
-                      {option.req ? `Requires ${option.req}. ` : ""}
+                      {notYet ? `Not yet: ${notYet} ` : option.req ? `Requires ${option.req}. ` : ""}
                       {option.d}
                     </span>
                   </button>

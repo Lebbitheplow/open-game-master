@@ -89,12 +89,17 @@ export function normalizeRaceData(source: Raw, data: Raw & { desc: string }): { 
   const tools = words(source.tools, 6);
   if (tools) data.tools = tools;
   const toolChoice = (source.toolChoice ?? null) as Raw | null;
-  const toolFrom = words(toolChoice?.from, 12);
+  // Every tool, for a pick the rules leave open (a warforged's Specialized
+  // Design): forty or so names.
+  const toolFrom = words(toolChoice?.from, 48);
   if (toolChoice && toolFrom) data.toolChoice = { count: clamp(toolChoice.count, 1, 3, 1), from: toolFrom };
   const armor = words(source.armor, 6);
   if (armor) data.armor = armor;
   const weapons = words(source.weapons, 12);
   if (weapons) data.weapons = weapons;
+  const weaponChoice = (source.weaponChoice ?? null) as Raw | null;
+  const weaponFrom = words(weaponChoice?.from, 48);
+  if (weaponChoice && weaponFrom) data.weaponChoice = { count: clamp(weaponChoice.count, 1, 3, 1), from: weaponFrom };
   const cantrip = (source.cantripChoice ?? null) as Raw | null;
   if (cantrip && CLASS_LISTS.includes(String(cantrip.list))) {
     data.cantripChoice = { list: String(cantrip.list), count: clamp(cantrip.count, 1, 3, 1) };
@@ -106,6 +111,14 @@ export function normalizeRaceData(source: Raw, data: Raw & { desc: string }): { 
     return spells;
   }
   if (spells.group) data.spells = spells.group;
+  // A copied human chassis's Adaptable Acumen: picks of skills or tools, and
+  // expertise in one skill.
+  const training = clamp((source.trainingChoice as Raw | undefined)?.count, 0, 4, 0);
+  if (training) data.trainingChoice = { count: training };
+  const expertise = clamp(source.expertiseChoice, 0, 2, 0);
+  if (expertise) data.expertiseChoice = expertise;
+  // A copied shade's Living Origin (src/lib/content/race-options.ts).
+  if (source.livingOrigin === true) data.livingOrigin = true;
   const variants = checkSpeciesVariants(source.variants);
   if ("error" in variants) {
     return variants;

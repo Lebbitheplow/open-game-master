@@ -51,6 +51,11 @@ const RACE_FAMILY: Record<string, string> = {
   mountain_dwarf: "mountain-dwarf",
   high_elf: "elf",
   wood_elf: "wood-elf",
+  // The bundled subraces with no plate of their own wear their people's.
+  eladrin: "elf",
+  sea_elf: "elf",
+  duergar: "dwarf",
+
   drow: "drow",
   lightfoot_halfling: "halfling",
   stout_halfling: "stout-halfling",
@@ -174,6 +179,12 @@ const RACE_FAMILY: Record<string, string> = {
 };
 
 // Every race id with a plate of its own, for the test that walks them.
+// The bundled lineages with no plate painted yet. Another people's face
+// would show the wrong creature on a token (docs/art/creature-art-guidance.md,
+// token-readability.md), so until the art pass paints them each draws the
+// neutral adventurer plate (characterPlaceholder), as any race without art.
+export const LINEAGES_AWAITING_ART = ["triton", "serpentfolk", "kobold", "aarakocra", "hobgoblin", "satyr", "fairy", "owlfolk", "centaur", "rabbitfolk", "shifter"] as const;
+
 export function raceFamilyIds(): string[] {
   return Object.keys(RACE_FAMILY);
 }

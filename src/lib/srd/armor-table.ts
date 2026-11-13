@@ -46,6 +46,10 @@ export const SRD_ARMOR: SrdArmor[] = [
   { name: "Splint", category: "heavy", baseAc: 17, dexCap: 0, strengthRequirement: 15, stealthDisadvantage: true, weightLb: 60 },
   { name: "Plate", category: "heavy", baseAc: 18, dexCap: 0, strengthRequirement: 15, stealthDisadvantage: true, weightLb: 65 },
   { name: "Shield", category: "shield", baseAc: 2, weightLb: 6 },
+  // Not SRD 5.1: the spiked suit a Path of the Battlerager barbarian fights
+  // in (src/lib/srd/subclasses.json, odm-expanded), a medium armor as heavy
+  // as scale mail and as noisy.
+  { name: "Spiked Armor", category: "medium", baseAc: 14, dexCap: 2, stealthDisadvantage: true, weightLb: 45 },
   // Setting-specific equivalents for the custom genre classes, so a
   // cyberpunk runner in a armorweave vest gets real AC instead of nothing.
   { name: "Armorweave Vest", category: "light", baseAc: 12, weightLb: 6, genres: ["cyberpunk"] },

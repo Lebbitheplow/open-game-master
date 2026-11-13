@@ -3,7 +3,10 @@
 // and the run-up decide the distance, each foot costs a foot of movement,
 // the squares under the jump are not walked, and a landing in difficult
 // terrain takes a DC 10 Acrobatics check or the jumper lands prone. Leaving
-// a reach by jumping still draws the opportunity attack.
+// a reach by jumping still draws the opportunity attack. A jump die
+// (Mirthful Leaps) is rolled only for a jump the reach alone falls short of,
+// and only once the jump could be made at all: a die too small lands the
+// jumper where it reaches, on the same line.
 
 import type { Campaign } from "@/lib/db/campaigns";
 import { getTokenByRef, listTokens, moveToken, type BattleMap } from "@/lib/db/battle-maps";
@@ -13,7 +16,9 @@ import { listEnemies } from "@/lib/db/encounters";
 import { publishPersisted } from "@/lib/events";
 import { footprintLookup, occupiedTiles } from "@/lib/battlemap/view";
 import type { BattleToken, XY } from "@/lib/battlemap/types";
-import { planLongJump } from "@/lib/srd/jump";
+import { landingWithin, longJumpFeet, planLongJump } from "@/lib/srd/jump";
+import { chebyshev } from "@/lib/battlemap/types";
+import { rollOwnDice } from "@/lib/dm/character-roll";
 import { jumpReach, windStepOn } from "@/lib/dm/jump-reach";
 import { runUpTiles } from "@/lib/srd/feat-moves";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
@@ -53,24 +58,49 @@ export function jumpMove(input: {
   // the Wind's doubling for the turn: the reach the board view shows, from
   // the same helper (jump-reach.ts).
   const reach = jumpReach(sheet, runningStart, !scene && windStepOn(encounter, sheet.id));
-  const plan = planLongJump({
-    terrain: map.terrain,
-    width: map.width,
-    height: map.height,
-    occupied,
-    from: token,
-    to,
-    strength: reach.strength,
-    extraFeet: reach.extraFeet,
-    runningStart,
-    budgetTiles: input.budgetTiles,
-    name: sheet.name,
-  });
+  const planTo = (target: XY, dieFeet: number) =>
+    planLongJump({
+      terrain: map.terrain,
+      width: map.width,
+      height: map.height,
+      occupied,
+      from: token,
+      to: target,
+      strength: reach.strength,
+      extraFeet: reach.extraFeet,
+      dieFeet,
+      runningStart,
+      budgetTiles: input.budgetTiles,
+      name: sheet.name,
+    });
+  const bare = longJumpFeet(reach.strength, runningStart) + reach.extraFeet;
+  const wanted = chebyshev(token.x, token.y, to.x, to.y) * 5;
+  let plan = planTo(to, 0);
+  let landing = to;
+  let leapNote: string | null = null;
+  if (!plan.ok && reach.leapDie && wanted > bare) {
+    // Possible at all with the die at its best: then it is rolled.
+    const best = planTo(to, reach.leapDie);
+    if (!best.ok) {
+      return { error: best.error, status: 400 };
+    }
+    const rolled = Math.max(0, rollOwnDice(campaign, sheet, `${sheet.name}: Mirthful Leaps`, `1d${reach.leapDie}`).total);
+    const covers = bare + rolled;
+    if (covers < wanted) {
+      const short = landingWithin(token, to, covers);
+      if (!short) {
+        return { error: `Mirthful Leaps rolled ${rolled}: ${sheet.name}'s jump covers ${covers} feet, not a whole square. They stay where they are.`, status: 400 };
+      }
+      landing = short;
+    }
+    plan = planTo(landing, rolled);
+    leapNote = `Mirthful Leaps: +${rolled} feet${landing !== to ? `, so the jump comes down ${covers} feet on` : ""}`;
+  }
   if (!plan.ok) {
     return { error: plan.error, status: 400 };
   }
   const from = { x: token.x, y: token.y };
-  moveToken(token.id, to.x, to.y, scene ? 0 : token.movedThisRound + plan.cost);
+  moveToken(token.id, landing.x, landing.y, scene ? 0 : token.movedThisRound + plan.cost);
   const letGo = releaseGrapplesOutOfReach(campaign);
   let landed = "on their feet";
   if (plan.landsInDifficult) {
@@ -89,8 +119,8 @@ export function jumpMove(input: {
   publishBattleMapUpdate(campaign.id);
   const opportunity = scene
     ? { notes: [], downed: false }
-    : resolveOpportunityAttacks(campaign, sheet.id, from, to, input.disengaged, plan.path);
-  const zoneEffects = scene || opportunity.downedAt ? [] : zonesAfterMove(campaign, encounter.id, { kind: "pc", refId: sheet.id }, from, [to]);
+    : resolveOpportunityAttacks(campaign, sheet.id, from, landing, input.disengaged, plan.path);
+  const zoneEffects = scene || opportunity.downedAt ? [] : zonesAfterMove(campaign, encounter.id, { kind: "pc", refId: sheet.id }, from, [landing]);
   if (opportunity.downedAt) {
     const moved = getTokenByRef(map.id, sheet.id);
     moveToken(token.id, opportunity.downedAt.x, opportunity.downedAt.y, moved?.movedThisRound ?? token.movedThisRound);
@@ -98,9 +128,9 @@ export function jumpMove(input: {
   }
   return {
     ok: true,
-    jump: { feet: plan.feet, highJumpFeet: reach.highFeet, landed },
+    jump: { feet: plan.feet, highJumpFeet: reach.highFeet, landed: leapNote ? `${landed} (${leapNote})` : landed },
     opportunity,
     zoneEffects,
-    lasting: plan.landsInDifficult || letGo.length > 0,
+    lasting: plan.landsInDifficult || letGo.length > 0 || leapNote !== null,
   };
 }

@@ -78,6 +78,7 @@ const darkvisionFeet = (row) => {
 function picksFor(row) {
   const picks = {};
   if (row.toolChoice) picks.racialTool = row.toolChoice.from[0];
+  if (row.weaponChoice) picks.racialWeapons = row.weaponChoice.from.slice(0, row.weaponChoice.count);
   // Never one the fighter's picks or the soldier's training already hold.
   const taken = ["acrobatics", "animal_handling", "athletics", "intimidation"];
   if (row.skillChoice) picks.racialSkills = (row.skillChoice.from ?? ["arcana", "history", "religion"]).filter((skill) => !taken.includes(skill)).slice(0, row.skillChoice.count);
@@ -88,6 +89,8 @@ function picksFor(row) {
   if (row.asiChoice) picks.racialAsi = ["int", "wis", "dex"].filter((ability) => !row.asi?.[ability]).slice(0, row.asiChoice.count);
   if (row.cantripChoice) picks.racialCantrips = ["Fire Bolt"].slice(0, row.cantripChoice.count);
   if (row.ancestryChoice) picks.racialAncestry = "red";
+  // A pick among packages (a shifter's subtype): the first.
+  if (row.variants) picks.racialVariant = row.variants.options[0].id;
   return Object.keys(picks).length ? picks : null;
 }
 
@@ -119,6 +122,7 @@ for (const row of RACES) {
       const sheet = made(row.id, picks);
       const wrong = {
         tool: picks.racialTool ? missing([picks.racialTool], sheet.proficiencies.tools) : [],
+        weapons: picks.racialWeapons ? missing(picks.racialWeapons, sheet.proficiencies.weapons) : [],
         skills: missing(picks.racialSkills, sheet.proficiencies.skills),
         languages: missing(picks.bonusLanguages, sheet.proficiencies.languages),
         asi: (picks.racialAsi ?? []).filter((ability) => sheet.abilities[ability] !== SCORES[ability] + row.asiChoice.amount),
@@ -212,6 +216,14 @@ const NAMES = [
   "species.hill_dwarf.choices", "species.mountain_dwarf.choices", "species.high_elf.choices", "species.human.choices", "species.dragonborn.choices",
   "species.half_elf.choices", "species.kenku.choices", "species.changeling.choices", "species.warforged.choices", "species.lizardfolk.choices", "species.orc.choices",
   "species.variant_human.choices", "species.dragonborn.breath", "species.dragonborn.ancestry-resistance",
+  "species.eladrin.grants", "species.sea_elf.grants", "species.duergar.grants",
+  "species.eladrin.darkvision", "species.sea_elf.darkvision", "species.duergar.darkvision", "species.duergar.choices",
+  "species.triton.grants", "species.serpentfolk.grants", "species.kobold.grants", "species.aarakocra.grants",
+  "species.triton.darkvision", "species.serpentfolk.darkvision", "species.kobold.darkvision",
+  "species.hobgoblin.grants", "species.satyr.grants", "species.fairy.grants", "species.owlfolk.grants",
+  "species.hobgoblin.darkvision", "species.owlfolk.darkvision", "species.hobgoblin.choices", "species.satyr.choices",
+  "species.centaur.grants", "species.rabbitfolk.grants", "species.shifter.grants", "species.shifter.darkvision",
+  "species.centaur.choices", "species.shifter.choices",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
 

@@ -8,6 +8,7 @@
 // none, a wizard prepares from the book, and the counts are the tables'
 // (src/lib/srd/spell-prep.ts spellListProblems).
 import { spellClassFor } from "@/lib/classes";
+import { mysticArcanumTop } from "@/lib/srd/mystic-arcanum";
 import { classLabelOf, spellListLabel } from "@/lib/classes/class-spell-list";
 import { featSpellNames, withFeatSpells, type FeatSpellGrant } from "@/lib/srd/feat-spells";
 import type { AbilityScores, ClassEntry, Spellcasting } from "@/lib/schemas/sheet";
@@ -134,7 +135,9 @@ export function spellNameProblems(view: CasterView, list: string, rules: NameRul
   const problems: string[] = [];
   const granted = new Set(grantedSpellsOf(view).map(textKey));
   const racial = new Map(rules.racialCantrips.map((entry) => [textKey(entry.name), entry.list]));
-  const top = maxSpellLevelOf(view);
+  // A warlock's Mystic Arcanum reaches past its pact slots
+  // (src/lib/srd/mystic-arcanum.ts), a pack spell as much as a bundled one.
+  const top = Math.max(maxSpellLevelOf(view), mysticArcanumTop(view.classId, view.level));
   // Off the list, a pick Magical Secrets or the Book of Shadows lets in, as
   // far as their number reaches (src/lib/srd/class-spell-grants.ts); the
   // held ones already off it count first.
@@ -477,6 +480,8 @@ export function judgeSpellcasting(input: SpellcastingInput): SpellcastingVerdict
           freeCantrips: [...racial.map((entry) => entry.name), ...innate, ...taught.cantrips],
           freeSpells: taught.spells,
           extras: input.subclassExtras,
+          // A pack spell's level, for a Mystic Arcanum the checklist does not name.
+          spellLevelOf: (name) => input.spellOf(name)?.level ?? null,
         },
       ),
     );

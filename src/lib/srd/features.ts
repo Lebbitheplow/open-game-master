@@ -5,6 +5,7 @@ import racesJson from "@/lib/srd/races.json";
 import classesJson from "@/lib/srd/classes.json";
 import { CUSTOM_CLASS_FEATURES, findCustomClass } from "@/lib/classes";
 import { workshopClassDef } from "@/lib/classes/workshop-registry";
+import { packClassTable } from "@/lib/classes/pack-class-registry";
 import type { SheetFeature } from "@/lib/schemas/sheet";
 import { chosenFightingStyles, featStyleSlotFeatures, fittingFightingStyles } from "@/lib/srd/feature-effects";
 import { findOptionByFeatureName, isOptionName, optionCost, optionSlotsFor } from "@/lib/srd/options";
@@ -175,7 +176,15 @@ const CLASS_FEATURES: Record<string, ClassFeatureTable> = {
 // A class's table: the bundled or setting one, or a workshop class's,
 // registered at run time (src/lib/classes/index.ts registerWorkshopClasses).
 function featureTableOf(classId: string): ClassFeatureTable | undefined {
-  return CLASS_FEATURES[classId] ?? workshopClassDef(classId)?.features;
+  return CLASS_FEATURES[classId] ?? workshopClassDef(classId)?.features ?? packFeatureTable(classId);
+}
+
+// A content pack's own class (src/lib/classes/pack-class-registry.ts): its
+// features by level; its subclasses are the pack's archetypes, read as
+// extras like any other prose subclass.
+function packFeatureTable(classId: string): ClassFeatureTable | undefined {
+  const pack = packClassTable(classId);
+  return pack ? { subclassLevel: pack.subclassLevel, levels: pack.levels, subclasses: [] } : undefined;
 }
 
 function clampLevel(level: number) {
@@ -204,6 +213,10 @@ export function subclassGate(classId: string, level: number): { pickLevel: numbe
 const EXPERTISE_GRANTS: Record<string, number[]> = {
   rogue: [1, 6],
   bard: [3, 10],
+  // The genre classes whose tables grant "Expertise" at 2nd level and
+  // "Expertise (2 more skills)" at 10th (src/lib/classes/mystery-features.json).
+  detective: [2, 10],
+  grifter: [2, 10],
 };
 
 // A rogue's Expertise may take thieves' tools in place of a skill (SRD 5.1,
@@ -304,6 +317,8 @@ function extraTableNamed(classId: string, stored: string, extras?: SubclassExtra
     // A workshop subclass's additions to its class's list, read where a
     // patron's are (subclassExpandedSpellsFor, issue #833).
     ...(found.expanded ? { expanded: found.expanded } : {}),
+    // A pack subclass's spells by the option picked (Animal Lords' affinity).
+    ...(found.choiceSpells ? { choiceSpells: found.choiceSpells } : {}),
   };
 }
 
@@ -477,7 +492,17 @@ export function subclassSpellListsFor(classId: string, subclass: string, extras?
   return (subclassTableOf(classId, subclass, extras)?.spellLists ?? []).map((entry) => textKey(entry));
 }
 
-const RACES = (racesJson as { races: Array<{ id: string; traits: string[] }> }).races;
+const RACES = (racesJson as { races: Array<{ id: string; traits: string[]; variants?: { label: string; options: Array<{ name: string; lines?: string[] }> } }> }).races;
+
+// The race features a bundled race's pick writes (a shifter's subtype:
+// src/lib/content/species-variants.ts variantFeatureNames), by any of its
+// options: the record "Shifter subtype (Beasthide)" and the option's lines.
+// Only the player's pick wrote them, so the regrant keeps the ones held.
+function bundledVariantNames(raceId: string): Set<string> {
+  const race = RACES.find((entry) => entry.id === srdRaceId(raceId));
+  const group = race?.variants;
+  return new Set(group ? group.options.flatMap((option) => [`${group.label} (${option.name})`, ...(option.lines ?? [])]).map((name) => textKey(name)) : []);
+}
 
 // Race ids arrive as SRD ids (half_elf), content-pack slugs (half-elf) or
 // the pack's own copies of the bundled rows (odm-half-elf); all three find
@@ -549,6 +574,7 @@ export function populateFeaturesForClasses(
   // A race the bundled data doesn't describe (a content-pack Catfolk) has its
   // trait names written by the builder; they are the only copy there is.
   const keepsRaceNames = racialTraits.length === 0;
+  const picked = bundledVariantNames(raceId);
   const grantedNames = new Set(granted.map((feature) => textKey(feature.name)));
   const kept = pruneChoiceFeatures(
     existing.filter(
@@ -560,7 +586,9 @@ export function populateFeaturesForClasses(
           (feature.source === "race" && keepsRaceNames) ||
           // A dragonborn's chosen ancestry is a race feature only the
           // player's pick names; the regrant keeps it.
-          (feature.source === "race" && takesDraconicAncestry(raceId) && ancestryOf([feature]) !== null)) &&
+          (feature.source === "race" && takesDraconicAncestry(raceId) && ancestryOf([feature]) !== null) ||
+          // A bundled race's own pick (a shifter's subtype) likewise.
+          (feature.source === "race" && picked.has(textKey(feature.name)))) &&
         !grantedNames.has(textKey(feature.name)),
     ),
     classes,

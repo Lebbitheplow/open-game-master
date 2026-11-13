@@ -117,6 +117,24 @@ export function describeFeature(classId: string, subclass: string, name: string)
   return stripLeadingLabel(found, name);
 }
 
+// Where a sheet's feature chip finds text the bundled tables do not hold: a
+// content-pack background's feature ("Servant's Invisibility (Court
+// Servant)") is written on the pack's background row, so the chip opens that
+// row, which shows the background and its feature. Null when the bundled
+// text answers, or the feature is not the background's.
+export function backgroundFeatureReference(
+  feature: { name: string; source?: string },
+  background: string | null | undefined,
+  classId = "",
+  subclass = "",
+): { kind: "backgrounds"; slug: string; name: string } | null {
+  const slug = (background ?? "").trim();
+  if (feature.source !== "background" || !slug || describeFeature(classId, subclass, feature.name)) {
+    return null;
+  }
+  return { kind: "backgrounds", slug, name: baseName(feature.name) };
+}
+
 // The bundled lineage lines. Racial traits are written to describe themselves
 // ("Darkvision 60 ft", "Powerful Build (count as one size larger for
 // carrying)"), so the trait list IS the description. A pack slug or the

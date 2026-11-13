@@ -4,7 +4,9 @@
 // module describes. Nothing is spent here and nothing is rolled: every
 // return is either a refusal or a profile.
 
+import { activeAuthored } from "@/lib/srd/authored-effects";
 import { isPactWeapon } from "@/lib/srd/pact-weapon";
+import { genreStrike } from "@/lib/srd/genre-b-combat";
 import { sheetSpellAuthors } from "@/lib/dm/spell-authors";
 import { brawlerUnarmed } from "@/lib/srd/feat-combat";
 import { getMounts } from "@/lib/db/mounts";
@@ -36,6 +38,7 @@ import { longLimbedFeet } from "@/lib/srd/mt-species-traits";
 import { authoredInfusion } from "@/lib/srd/authored-mt-fb";
 import { beastFormRefusal } from "@/lib/dm/mt-fb-beast";
 import { racialNaturalWeapon } from "@/lib/srd/racial-weapons";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import { allSpellNames } from "@/lib/srd/spell-lists";
 import { matchWeapon, SPECIAL_WEAPONS } from "@/lib/srd/weapons";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -120,6 +123,12 @@ export function buildAttackProfile(
   const shapedAttacks = shapeAttacks(sheet.wildShape);
   // A lineage's bite or claws (src/lib/srd/racial-weapons.ts).
   const racial = !granted && !natural && !args.spell?.trim() && !sheet.wildShape ? racialNaturalWeapon(sheet.features, weaponName, sheet.feats) : null;
+  // A lineage weapon its trait keeps to a form ("Fangs (while shifted, 1d6
+  // piercing unarmed strike)", a longtooth shifter's) strikes only in it.
+  const formLine = racial ? sheet.features.find((feature) => feature.name.trim().toLowerCase().startsWith(`${racial.feature.toLowerCase()} (while shifted`)) : null;
+  if (formLine && !sheet.conditions.some((entry) => isConditionNamed(entry, "shifted"))) {
+    return { error: `${sheet.name}'s ${racial!.feature.toLowerCase()} strike only while shifted, and they are not: use_resource Shifting first. Nothing was rolled.`, refused: "rules" };
+  }
   if (granted) {
     const grantedMeta = (sheet.conditionMeta as ConditionMetaMap)[granted.condition];
     // The spell the attack comes from: the one the casting recorded on the
@@ -336,15 +345,15 @@ export function buildAttackProfile(
     }
     // The bonus-action second blade keeps its modifier and rolls its own die.
     const srd = args.offHand && natural.second ? { ...natural.srd, damage: `${natural.second} ${natural.weapon.type}` } : natural.srd;
-    // A weapon whose feature names its ability (Armor Model: Intelligence)
-    // rolls with it, whatever its kind would use.
+    // A weapon whose feature names its ability (Armor Model: Intelligence,
+    // Chimeric Limb: Charisma) rolls with it, whatever its kind would use.
     const own = natural.weapon.ability;
     const swingDerived = own ? { ...derived, abilityMods: { ...derived.abilityMods, str: derived.abilityMods[own], dex: derived.abilityMods[own] } } : derived;
     profile = weaponAttackProfile(swingDerived, [...sheet.proficiencies.weapons, "simple", srd.name.toLowerCase()], { displayName: srd.name, srd, unarmed: false, carried: true }, {
       riders,
       martialArts: false,
     });
-    profile = { ...profile, proficient: true, riderNotes: [...profile.riderNotes, `${natural.feature}: ${srd.damage}`] };
+    profile = { ...profile, proficient: true, ...(natural.weapon.magical ? { magicWeapon: true } : {}), riderNotes: [...profile.riderNotes, `${natural.feature}: ${srd.damage}`] };
     kind = "weapon";
   } else if (shapedAttacks?.length && sheet.wildShape) {
     // Transformed: the form's natural attacks replace the sheet's weapons,
@@ -423,6 +432,7 @@ export function buildAttackProfile(
         kensei: kenseiStance(sheet),
         unarmedForm: unarmedForm(sheet, derived.abilityMods),
         brawler: brawlerUnarmed(sheet),
+        strike: genreStrike(sheet),
         // Bracers of Archery's longbow training and +2 damage.
         worn: magicItemRiders(sheet.equipment, sheet).weaponRiders,
         twoHanded,
@@ -436,6 +446,13 @@ export function buildAttackProfile(
       material,
     });
     profile = swing(hands.twoHanded);
+    // Blessed Ammunition: a witch hunter's ranged attacks count as silvered
+    // and magical, whatever the weapon (authored ranged_material).
+    for (const { effect } of activeAuthored(sheet, "ranged_material")) {
+      if (profile.ranged) {
+        profile = { ...profile, material: { ...(profile.material ?? {}), ...(effect.silvered ? { silvered: true } : {}) }, ...(effect.magical ? { magicWeapon: true } : {}) };
+      }
+    }
     // A torch's 1 fire is for a melee attack with it; thrown past its reach
     // it is any object (src/lib/srd/gear-weapons.ts).
     if (profile.gearWeapon && !profile.ranged && thrownAtRange(profile, target.apart)) {

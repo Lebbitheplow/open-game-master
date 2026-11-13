@@ -77,6 +77,20 @@ const ICON_ALIASES: Record<string, { kind: IconKind; slug: string }> = {
   "family/option-spell-mastery-1": { kind: "feature", slug: "spell-mastery" },
   "family/option-spell-mastery-2": { kind: "feature", slug: "spell-mastery" },
   "family/option-signature-spell": { kind: "feature", slug: "signature-spells" },
+  // The once-made subclass choices the creator audit added (cc1113): the
+  // painting of what each choice is for, no new art.
+  "family/option-totem-spirit": { kind: "feature", slug: "spirit-totem" },
+  "family/option-totem-aspect": { kind: "feature", slug: "spirit-totem" },
+  "family/option-totem-attunement": { kind: "feature", slug: "spirit-totem" },
+  "family/option-storm-environment": { kind: "feature", slug: "storm-aura" },
+  "family/option-giant-cantrip": { kind: "feature", slug: "giants-might" },
+  "family/option-arcane-archer-cantrip": { kind: "feature", slug: "arcane-shot" },
+  "family/option-divine-affinity": { kind: "feature", slug: "divine-allegiance" },
+  "family/option-genie-kind": { kind: "feature", slug: "elemental-gift" },
+  "family/option-animal-lord": { kind: "feature", slug: "bonded-beast" },
+  "family/option-legerdemain-cantrip": { kind: "spell", slug: "minor-illusion" },
+  "family/option-legerdemain-spell": { kind: "spell", slug: "disguise-self" },
+  "family/option-legerdemain-spell-2": { kind: "spell", slug: "invisibility" },
   // A Draconic sorcerer's three spends (issue #833): wings for the wings,
   // fear for the aura, warding against an element for the resistance.
   "feature/dragon-wings": { kind: "feature", slug: "wings-unfurled" },
@@ -117,6 +131,20 @@ const ICON_ALIASES: Record<string, { kind: IconKind; slug: string }> = {
   "feature/alter-memories": { kind: "spell", slug: "modify-memory" },
   // Controlled Chaos's pick of two surges wears its kin's: Tides of Chaos.
   "feature/controlled-chaos": { kind: "feature", slug: "tides-of-chaos" },
+  // The species' and their feats' cards (the cc1113 creator audit) wear
+  // their kin's paintings until they have their own: a rabbitfolk's hop the
+  // jump, a shifter's form the druid's change, a gnome's Fade Away the
+  // vanishing, a dragonborn's roar the fear it casts, and the hunter's party
+  // wardings (Stake and Salt) the warding spell.
+  "feature/rabbit-hop": { kind: "spell", slug: "jump" },
+  "feature/shifting": { kind: "feature", slug: "wild-shape" },
+  "feature/fade-away": { kind: "spell", slug: "invisibility" },
+  "feature/dragon-fear": { kind: "spell", slug: "fear" },
+  "feature/stake-and-salt": { kind: "spell", slug: "protection-from-evil-and-good" },
+  // A half-orc's Orcish Fury the rage it rides, a derro's Tainted Blood the
+  // necrotic burst around the caster.
+  "feature/orcish-fury": { kind: "feature", slug: "rage" },
+  "feature/tainted-blood": { kind: "spell", slug: "arms-of-hadar" },
 };
 
 export function iconPath(kind: IconKind, key: string): string {

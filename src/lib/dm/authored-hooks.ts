@@ -23,8 +23,13 @@
 
 import { defenderDodging } from "@/lib/dm/defender-dodge";
 import { darkVeil } from "@/lib/dm/ar-ws-lunar-empowerment";
+import { enemyNotActed } from "@/lib/dm/genre-a-strikes";
+import { darkFantasyAttackEdge } from "@/lib/dm/genre-a-dark-fantasy-edges";
+import { darkFantasyOnHit } from "@/lib/dm/genre-a-dark-fantasy-hits";
+import { horrorAfterEnemyHit, horrorAttackSituation } from "@/lib/dm/genre-a-horror-hits";
+import { endHorrorMarks } from "@/lib/dm/genre-a-horror-marks";
 import { fightMarked, markFight } from "@/lib/dm/turn-marks";
-import { textKey } from "@/lib/language/text-logic";
+import { textKey, words } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { UNWAVERING_STRIKE } from "@/lib/dm/feature-bonus-attacks";
 import { untilTurnEnd } from "@/lib/dm/turn-end";
@@ -51,9 +56,15 @@ import { hitSavesOnHit } from "@/lib/dm/hit-save";
 import { effectiveMaxHp, isIncapacitated, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { withinFeet } from "@/lib/dm/authored-saves";
+import { besideDownedAlly } from "@/lib/dm/genre-a-cyberpunk-defenses";
+import { genreBOnKill } from "@/lib/dm/genre-b-kills";
+import { packOnHit, packTactics } from "@/lib/dm/genre-b-post-apocalyptic-pack";
+import { spendRetaliateMark } from "@/lib/dm/genre-b-steampunk-ends";
 import { vowedFoe } from "@/lib/srd/vow-of-enmity";
 import { edgeQuarry, ENTROPIC_EDGE, entropicQuarry, HAWK_EDGE } from "@/lib/dm/reaction-kinds";
 import { naturalWeaponOnHit } from "@/lib/dm/authored-attacks";
+import { weaponNamed } from "@/lib/srd/weapons";
+import { authoredNaturalWeapon } from "@/lib/srd/authored-effects-more";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
@@ -152,7 +163,13 @@ export function authoredIncomingAttack(input: {
     }
   }
   for (const { effect, held } of activeAuthored(target, "attacked_disadv")) {
-    if (effect.from.some((kind) => type.includes(kind))) {
+    if (effect.besideDowned) {
+      const fallen = besideDownedAlly(input.campaignId, input.encounterId, target);
+      if (fallen) {
+        sources.push("disadvantage");
+        notes.push(`${held.feature}: ${target.name} stands over ${fallen.name}, so the attack is at disadvantage`);
+      }
+    } else if (!effect.rangeFt && effect.from.some((kind) => type.includes(kind))) {
       sources.push("disadvantage");
       notes.push(`${held.feature}: a ${type} attacks ${target.name} at disadvantage`);
     }
@@ -191,6 +208,16 @@ export function authoredIncomingAttack(input: {
     sources.push("disadvantage");
     notes.push(`${lit}: it attacks ${target.name} at disadvantage`);
   }
+  // An area the holder stands in (Dawnlight's light): the creature's every
+  // attack within it, on the holder or anyone else.
+  for (const holder of fielded(input.campaignId)) {
+    for (const { effect, held } of activeAuthored(holder, "attacked_disadv")) {
+      if (effect.rangeFt && effect.from.some((kind) => type.includes(kind)) && withinFeet(input.encounterId, holder.id, attacker.id, effect.rangeFt)) {
+        sources.push("disadvantage");
+        notes.push(`${held.feature}: a ${type} within ${effect.rangeFt} feet of ${holder.name} attacks at disadvantage`);
+      }
+    }
+  }
   // Totemic Attunement (Bear): a creature within 5 feet of the raging
   // barbarian attacks anyone else at disadvantage.
   for (const guardian of fielded(input.campaignId)) {
@@ -217,13 +244,15 @@ export function authoredIncomingAttack(input: {
 export function authoredAfterHit(
   campaign: Campaign,
   // `taken`: what the character took of it past their defenses.
-  input: { encounter: Encounter; attacker: EncounterEnemy; target: CharacterSheet; dealt: number; taken?: number; ranged?: boolean },
+  input: { encounter: Encounter; attacker: EncounterEnemy; target: CharacterSheet; dealt: number; taken?: number; ranged?: boolean; attackName?: string },
 ): string[] {
   const lines: string[] = [];
   if (input.dealt <= 0) {
     return lines;
   }
   const target = getSheetById(input.target.id) ?? input.target;
+  // No Witnesses Left's record of who downed an ally (genre-a-horror-hits.ts).
+  horrorAfterEnemyHit(campaign, input.attacker, target);
   // Unwavering Mark: a marked creature that damages anyone else opens its
   // marker's bonus attack against it on their next turn
   // (src/lib/dm/feature-bonus-attacks.ts).
@@ -252,12 +281,20 @@ export function authoredAfterHit(
     if (spurned.includes(held.feature) || (effect.melee && input.ranged)) {
       continue;
     }
+    // Only a hit with an attack of this kind, by the stat block's attack name
+    // (Toxic Blood: "a creature that hits you with a bite").
+    if (effect.attacks && !effect.attacks.some((kind) => words(textKey(input.attackName ?? "")).includes(kind))) {
+      continue;
+    }
     const amount =
       effect.formula === "half_dealt"
         ? Math.floor((input.taken ?? input.dealt) / 2)
         : Number(rollCard(campaign, null, target.id, "damage", rollAgainst(held.feature, live.displayName), resolveFormula(effect.formula, held.level, modsOf(target)), sheetAttacker(target)).total);
     if (amount > 0) {
       lines.push(hurtEnemy(campaign, input.encounter, live, amount, effect.type, held.feature));
+    }
+    if (effect.spends) {
+      spendRetaliateMark(campaign, target.id, effect.spends);
     }
   }
   // Flames of Phlegethos: a creature that hits the wreathed tiefling with a
@@ -288,15 +325,16 @@ export function authoredAttackSituation(input: {
   const spent: string[] = [];
   let autoCrit: string | null = null;
   const type = textKey(enemy.stats.type ?? "");
+  // Pack Tactics Training, Apex Pair (src/lib/dm/genre-b-post-apocalyptic-pack.ts).
+  const pack = packTactics(input.campaignId, encounter.id, sheet, enemy);
+  if (pack) {
+    sources.push("advantage");
+    notes.push(pack);
+  }
   for (const { effect, held } of activeAuthored(sheet, "attack_adv")) {
     let applies = false;
     if (effect.vs === "not_acted") {
-      const at = encounter.orderReady
-        ? encounter.order.findIndex((entry) => entry.kind === "enemy" && entry.enemyId === enemy.id)
-        : -1;
-      applies =
-        encounter.round <= 1 &&
-        (encounter.surprisedIds.includes(enemy.id) || (at >= 0 && at > encounter.turnIndex));
+      applies = enemyNotActed(encounter, enemy.id);
     } else if (effect.vs === "frightened_by_self") {
       const condition = enemy.conditions.find((entry) => textKey(entry) === "frightened");
       applies = Boolean(condition && metaOf(enemy, condition)?.source === sheet.id);
@@ -332,6 +370,20 @@ export function authoredAttackSituation(input: {
     sources.push("advantage");
     notes.push("Spirit Totem (Hawk): advantage, spent by this attack");
     spent.push(sheet.conditions.find((entry) => textKey(entry) === HAWK_EDGE)!);
+  }
+  // Judgment Shot (src/lib/dm/genre-a-dark-fantasy-edges.ts).
+  const edge = darkFantasyAttackEdge(sheet, enemy, input.melee);
+  if (edge) {
+    autoCrit = edge.feature;
+    notes.push(edge.note);
+    spent.push(edge.spent);
+  }
+  // The Stake Remembers (src/lib/dm/genre-a-horror-hits.ts).
+  const stake = horrorAttackSituation(sheet, enemy);
+  if (stake) {
+    autoCrit = stake.autoCrit;
+    notes.push(stake.note);
+    spent.push(stake.spent);
   }
   for (const { held } of activeAuthored(sheet, "auto_crit")) {
     if (encounter.surprisedIds.includes(enemy.id)) {
@@ -371,6 +423,8 @@ export function authoredOnHit(
   const encounter = getActiveEncounter(campaign.id) ?? input.encounter;
   // Form of the Beast's bite (src/lib/dm/authored-attacks.ts).
   lines.push(...naturalWeaponOnHit(campaign, encounter, sheet, input.weaponName));
+  // Rose Thorn Oath (src/lib/dm/genre-a-dark-fantasy-hits.ts).
+  lines.push(...darkFantasyOnHit(campaign, encounter, sheet, input));
   // Emissary of Redemption: attacking a creature sets the feature aside
   // against that creature alone, until the paladin's long rest.
   const struck = getEnemy(input.enemy.id);
@@ -408,6 +462,8 @@ export function authoredOnHit(
       lines.push(...hitSavesOnHit(campaign, encounter, sheet, enemy));
     }
   }
+  // A packmaster and their beast: One Blood's wound, the takedown, the monstrous beast's fear.
+  lines.push(...packOnHit(campaign, encounter, sheet, input.enemy));
   if (input.dead) {
     lines.push(...authoredOnKill(campaign, encounter, input.enemy, sheet.id, input.melee ?? false, input.spell));
   }
@@ -424,6 +480,10 @@ function markEnemy(encounter: Encounter, sheet: CharacterSheet, target: Encounte
     }
     // A mark of one weapon (the thunder gauntlets) is laid by that weapon alone.
     if (effect.weapon && textKey(effect.weapon) !== textKey(weaponName ?? "")) {
+      continue;
+    }
+    // An improvised weapon is a thing no SRD weapon row names (a chair leg).
+    if (effect.improvised && (!weaponName || weaponNamed(weaponName) || authoredNaturalWeapon(sheet, weaponName))) {
       continue;
     }
     if (effect.firstRoundOnly && encounter.round > 1) {
@@ -556,6 +616,9 @@ export function authoredOnKill(
       lines.push(`Hexblade's Curse: ${enemy.displayName} dies cursed, and ${holder.name} regains ${given} hit points.`);
     }
   }
+  lines.push(...endHorrorMarks(campaign, fielded(campaign.id), enemy));
+  // Message Sent, Skull Takers (src/lib/dm/genre-b-kills.ts).
+  lines.push(...genreBOnKill(campaign, encounter, enemy, killerId));
   return lines;
 }
 

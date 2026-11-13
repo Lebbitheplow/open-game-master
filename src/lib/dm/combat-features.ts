@@ -163,7 +163,10 @@ const DAY_ROUNDS = 14400;
 
 function intimidatingPresence(campaign: Campaign, stale: CharacterSheet, targetEnemyId: string | undefined): ToolResult {
   const sheet = getSheetById(stale.id) ?? stale;
-  if (!holdsFeature(sheet, "intimidating presence") && !(classLevelOf(sheet, "barbarian") >= 10 && subclassNamed(sheet.subclass ?? "", "Path of the Berserker"))) {
+  // The Berserker's action, held by a barbarian: an enforcer's Intimidating
+  // Presence (src/lib/classes/mystery-features.json) is a doubled
+  // Intimidation and no action, and ran this for a 1st-level enforcer.
+  if (classLevelOf(sheet, "barbarian") <= 0 || (!holdsFeature(sheet, "intimidating presence") && !(classLevelOf(sheet, "barbarian") >= 10 && subclassNamed(sheet.subclass ?? "", "Path of the Berserker")))) {
     return { error: `${sheet.name} does not have Intimidating Presence (a Berserker's 10th level feature).`, refused: "rules" };
   }
   const encounter = getActiveEncounter(campaign.id);

@@ -37,8 +37,8 @@
   "clauses": [
    {
     "c": "Improvised weapons count as proficient simple weapons dealing 1d6, or 1d8 two-handed",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Improvised Weapon Mastery#0:rider",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::Improvised Weapon Mastery#0:rider",
     "k": "rider",
     "p": {
      "dice": "1d6",
@@ -47,12 +47,13 @@
       "weapon": "chair leg"
      }
     },
-    "observed": "a hit rolls 1d4+3 with Improvised Weapon Mastery (1d4+3 without it), and the text makes it 1d6"
+    "observed": "a hit rolls 1d4+3 with Improvised Weapon Mastery (1d4+3 without it), and the text makes it 1d6",
+    "by": "src/lib/srd/genre-b-combat.ts, read by src/lib/dm/attack-damage-riders.ts (riders) and src/lib/dm/attack-logic.ts (a strike's die)"
    },
    {
     "c": "1d8",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Improvised Weapon Mastery#1:rider",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::Improvised Weapon Mastery#1:rider",
     "k": "rider",
     "p": {
      "dice": "1d8",
@@ -62,7 +63,8 @@
       "twoHanded": true
      }
     },
-    "observed": "a hit rolls 1d4+3 with Improvised Weapon Mastery (1d4+3 without it), and the text makes it 1d8"
+    "observed": "a hit rolls 1d4+3 with Improvised Weapon Mastery (1d4+3 without it), and the text makes it 1d8",
+    "by": "src/lib/srd/genre-b-combat.ts, read by src/lib/dm/attack-damage-riders.ts (riders) and src/lib/dm/attack-logic.ts (a strike's die)"
    }
   ]
  },
@@ -74,11 +76,9 @@
   "clauses": [
    {
     "c": "Carry capacity doubles",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Packrat#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Packrat: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Packrat: a scavenger carries twice the weight",
+    "by": "src/lib/srd/genre-b-post-apocalyptic.ts carryDoubled, read by src/lib/srd/encumbrance.ts encumbranceFor; \"you always have basic supplies\" is the clause beside it, the GM's"
    },
    {
     "c": "you always have basic supplies (rope, tape, wire, a light source)",
@@ -189,8 +189,8 @@
   "clauses": [
    {
     "c": "Advantage on saves against radiation, poison, and disease",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Waste-Wise#0:save_adv",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::Waste-Wise#0:save_adv",
     "k": "save_adv",
     "p": {
      "against": [
@@ -198,7 +198,8 @@
       "disease"
      ]
     },
-    "observed": "a save against poisoned threw 1 d20 with Waste-Wise (1 without it)"
+    "observed": "a save against poisoned threw 1 d20 with Waste-Wise (1 without it)",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    }
   ]
  },
@@ -240,22 +241,21 @@
   "clauses": [
    {
     "c": "Your improvised and simple weapons deal +1d6 damage and count as magical",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Junkyard Strikes#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Junkyard Strikes: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Junkyard Strikes: a simple weapon deals +1d6 and counts as magical against a resistance to nonmagical blows",
+    "by": "src/lib/srd/genre-b-combat.ts genreBRiders (+1d6) and genreWornRiders (simple weapons magical, read by src/lib/srd/magic-items.ts magicItemRiders at every door), genreStrike improvisedMagical for an improvised weapon (src/lib/dm/attack-logic.ts)"
    },
    {
     "c": "+1d6",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Junkyard Strikes#1:rider",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::Junkyard Strikes#1:rider",
     "k": "rider",
     "p": {
      "dice": "1d6",
      "gear": "simple"
     },
-    "observed": "a hit rolls 1d4+3 with Junkyard Strikes (1d4+3 without it), and the text makes it 1d6"
+    "observed": "a hit rolls 1d4+3 with Junkyard Strikes (1d4+3 without it), and the text makes it 1d6",
+    "by": "src/lib/srd/genre-b-combat.ts, read by src/lib/dm/attack-damage-riders.ts (riders) and src/lib/dm/attack-logic.ts (a strike's die)"
    }
   ]
  },
@@ -280,10 +280,10 @@
    },
    {
     "c": "escape grapples and restraints with advantage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Escape Artist#1:escape_adv",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::Escape Artist#1:escape_adv",
     "k": "escape_adv",
-    "observed": "the escape threw 2 d20 with Escape Artist and 2 without it"
+    "by": "src/lib/srd/genre-b-combat.ts genreEscapeAdvantage, read by src/lib/dm/grapple.ts characterEscape; a restraint's escape is the GM's check"
    }
   ]
  },
@@ -430,26 +430,28 @@
   "clauses": [
    {
     "c": "1/turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Tetanus Edge#0:unhooked",
-    "k": "unhooked",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::Tetanus Edge#3:rider",
     "observed": "nothing in the engine answers to Tetanus Edge: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "sev": "medium",
+    "by": "src/lib/srd/genre-b-combat.ts, read by src/lib/dm/attack-damage-riders.ts (riders) and src/lib/dm/attack-logic.ts (a strike's die) (oncePerTurn)"
    },
    {
     "c": "your improvised weapons deal +1d4 poison and the target cannot regain HP until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Tetanus Edge#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Tetanus Edge: an improvised weapon's hit leaves the creature unable to regain hit points until the scavenger's next turn; a longsword's does not",
+    "by": "src/lib/srd/genre-b-combat.ts genreBRiders (+1d4 poison, once a turn) and src/lib/srd/authored-effects-genre-b.ts Tetanus Edge (mark tetanus, no_regain, improvised), laid by src/lib/dm/authored-hooks.ts markEnemy; src/lib/dm/vitals-logic.ts regainBlockedBy"
    },
    {
     "c": "until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Tetanus Edge#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Tetanus Edge: an improvised weapon's hit leaves the creature unable to regain hit points until the scavenger's next turn; a longsword's does not",
+    "by": "src/lib/dm/authored-hooks.ts markEnemy (untilTurnOf the scavenger)"
    },
    {
     "c": "+1d4 poison",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Tetanus Edge#3:rider",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::Tetanus Edge#3:rider",
     "k": "rider",
     "p": {
      "dice": "1d4",
@@ -458,7 +460,8 @@
       "weapon": "rusty pipe"
      }
     },
-    "observed": "a hit rolls 1d4+3 with Tetanus Edge (1d4+3 without it), and the text makes it 1d4"
+    "observed": "a hit rolls 1d4+3 with Tetanus Edge (1d4+3 without it), and the text makes it 1d4",
+    "by": "src/lib/srd/genre-b-combat.ts, read by src/lib/dm/attack-damage-riders.ts (riders) and src/lib/dm/attack-logic.ts (a strike's die)"
    }
   ]
  },
@@ -494,15 +497,15 @@
    },
    {
     "c": "15-ft cube",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Collapse Instinct#2:fx",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::Collapse Instinct#2:fx",
     "k": "fx",
     "p": {
      "id": "post_apocalyptic_collapse_instinct",
      "resolve": "far",
      "feet": 15
     },
-    "observed": "a creature 15 ft and more away was caught: [\"restrained\"]"
+    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
    },
    {
     "c": "save (DEX)",
@@ -521,15 +524,15 @@
    },
    {
     "c": "4d6 bludgeoning",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Collapse Instinct#4:fx",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test scavenger::Collapse Instinct#4:fx",
     "k": "fx",
     "p": {
      "id": "post_apocalyptic_collapse_instinct",
      "dice": "4d6",
      "type": "bludgeoning"
     },
-    "observed": "the spend hands back no bludgeoning damage type ({\"ok\":true,\"resource\":\"Collapse Instinct\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, trigger or predict a structural collapse: creatures in a 15-ft cube save (DEX) or take 4d6 bludgeoning and are re)"
+    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
    }
   ]
  },
@@ -569,18 +572,15 @@
   "clauses": [
    {
     "c": "You may attack recklessly: advantage on melee attacks this turn, but attacks against you have advantage until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Death or Glory#0:reckless",
-    "k": "reckless",
-    "observed": "a reckless attack: Holder has no Reckless Attack (a barbarian's feature from 2nd level). They can make the attack without it."
+    "is": "held",
+    "probe": "scripts/test-genre-fight-gaps.mjs: Death or Glory: a road warrior attacks recklessly with advantage, on any melee attack, and attacks against them have advantage until their next turn",
+    "by": "src/lib/dm/genre-death-or-glory.ts, read by src/lib/dm/pc-attack-options.ts (pc_attack reckless) and the death or glory condition row (src/lib/srd/genre-b-post-apocalyptic-conditions.ts)"
    },
    {
     "c": "until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Death or Glory#1:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Death or Glory: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-fight-gaps.mjs: Death or Glory: a road warrior attacks recklessly with advantage, on any melee attack, and attacks against them have advantage until their next turn",
+    "by": "src/lib/dm/genre-death-or-glory.ts, read by src/lib/dm/pc-attack-options.ts (pc_attack reckless) and the death or glory condition row (src/lib/srd/genre-b-post-apocalyptic-conditions.ts)"
    }
   ]
  },
@@ -604,8 +604,9 @@
    },
    {
     "c": "reduce all damage you take this round by your CON modifier",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_hardened#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Hardened: at level 1 every blow this round loses 3, the CON modifier once",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Hardened spend (the hardened condition for the round) and src/lib/srd/genre-b-combat.ts genreDamageCut, taken off every blow by src/lib/dm/pc-damage.ts before resistance"
    }
   ]
  },
@@ -617,11 +618,9 @@
   "clauses": [
    {
     "c": "Advantage on checks to drive, ride, or repair vehicles",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Wheelman#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Wheelman: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Wheelman: advantage on a check about what its text names, and only then",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED check_adv about vehicles (src/lib/dm/roll-about.ts CHECK_ABOUT, src/lib/srd/authored-effects.ts authoredRollRiders)"
    },
    {
     "c": "attacking from a moving vehicle carries no penalty",
@@ -676,33 +675,34 @@
   "clauses": [
    {
     "c": "Advantage on saves against fear",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Fear No Rust#0:save_adv",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test road_warrior::Fear No Rust#0:save_adv",
     "k": "save_adv",
     "p": {
      "against": [
       "frightened"
      ]
     },
-    "observed": "a save against frightened threw 1 d20 with Fear No Rust (1 without it)"
+    "observed": "a save against frightened threw 1 d20 with Fear No Rust (1 without it)",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    },
    {
     "c": "allies within 10 ft add +1d4 to fear saves while you fight on",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Fear No Rust#1:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Fear No Rust: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Fear No Rust: an ally within 10 ft adds +1d4 to a save against fear, and one 50 ft off does not",
+    "by": "src/lib/dm/genre-b-auras.ts AURAS, read by src/lib/dm/forced-save.ts rollExtrasFor (saves, through src/lib/dm/genre-b-aura-logic.ts in rolls.ts) and src/lib/dm/ac-effects.ts acWithEffects (AC)"
    },
    {
     "c": "within 10 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Fear No Rust#1:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Fear No Rust: an ally within 10 ft adds +1d4 to a save against fear, and one 50 ft off does not",
+    "by": "src/lib/dm/genre-b-auras.ts AURAS, read by src/lib/dm/forced-save.ts rollExtrasFor (saves, through src/lib/dm/genre-b-aura-logic.ts in rolls.ts) and src/lib/dm/ac-effects.ts acWithEffects (AC)"
    },
    {
     "c": "+1d4",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Fear No Rust#1:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Fear No Rust: an ally within 10 ft adds +1d4 to a save against fear, and one 50 ft off does not",
+    "by": "src/lib/dm/genre-b-auras.ts AURAS, read by src/lib/dm/forced-save.ts rollExtrasFor (saves, through src/lib/dm/genre-b-aura-logic.ts in rolls.ts) and src/lib/dm/ac-effects.ts acWithEffects (AC)"
    }
   ]
  },
@@ -714,16 +714,15 @@
   "clauses": [
    {
     "c": "When you move 20+ ft straight toward a target and hit with a melee attack, deal +2d6 and shove it 10 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Ram Speed#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Ram Speed: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-fight-gaps.mjs: Ram Speed: a road warrior's melee hit after a 20-foot run straight at the creature deals 2d6 more and shoves it 10 feet; standing still, neither",
+    "by": "src/lib/srd/authored-effects-genre-c.ts (hit_rider afterRunFt, read by src/lib/dm/genre-a-strikes.ts; run_push, read by src/lib/dm/genre-run-hits.ts), on the run src/lib/dm/mt-fb-charge.ts records"
    },
    {
     "c": "+2d6",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Ram Speed#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-fight-gaps.mjs: Ram Speed: a road warrior's melee hit after a 20-foot run straight at the creature deals 2d6 more and shoves it 10 feet; standing still, neither",
+    "by": "src/lib/srd/authored-effects-genre-c.ts (hit_rider afterRunFt, read by src/lib/dm/genre-a-strikes.ts; run_push, read by src/lib/dm/genre-run-hits.ts), on the run src/lib/dm/mt-fb-charge.ts records"
    }
   ]
  },
@@ -735,8 +734,8 @@
   "clauses": [
    {
     "c": "Resistance to bludgeoning damage from nonmagical attacks",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Scar Tissue#0:resist",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test road_warrior::Scar Tissue#0:resist",
     "k": "resist",
     "p": {
      "types": [
@@ -744,7 +743,8 @@
      ],
      "nonmagical": true
     },
-    "observed": "20 bludgeoning damage took 20 hit points with Scar Tissue (20 without it), and the text makes it 10"
+    "observed": "20 bludgeoning damage took 20 hit points with Scar Tissue (20 without it), and the text makes it 10",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    }
   ]
  },
@@ -756,8 +756,9 @@
   "clauses": [
    {
     "c": "Hardened has 2 uses and reduces damage by twice your CON modifier",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_hardened#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Hardened: at level 10 every blow this round loses 6, the CON modifier twice",
+    "by": "src/lib/srd/genre-b-combat.ts genreDamageCut (twice the CON modifier with Hardened (2 uses)); the two uses are the upgrade line's name (scripts/generate-class-resources.mjs namedUses)"
    },
    {
     "c": "Hardened has 2 uses",
@@ -804,23 +805,24 @@
   "clauses": [
    {
     "c": "While below half HP, your melee attacks deal +1d8 damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Blood and Chrome#0:unhooked",
-    "k": "unhooked",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test road_warrior::Blood and Chrome#1:rider",
     "observed": "nothing in the engine answers to Blood and Chrome: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "sev": "medium",
+    "by": "src/lib/srd/genre-b-combat.ts, read by src/lib/dm/attack-damage-riders.ts (riders) and src/lib/dm/attack-logic.ts (a strike's die)"
    },
    {
     "c": "+1d8",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Blood and Chrome#1:rider",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test road_warrior::Blood and Chrome#1:rider",
     "k": "rider",
     "p": {
      "dice": "1d8",
      "gear": "simple",
      "belowHalf": true
     },
-    "observed": "a hit rolls 1d4+3 with Blood and Chrome (1d4+3 without it), and the text makes it 1d8"
+    "observed": "a hit rolls 1d4+3 with Blood and Chrome (1d4+3 without it), and the text makes it 1d8",
+    "by": "src/lib/srd/genre-b-combat.ts, read by src/lib/dm/attack-damage-riders.ts (riders) and src/lib/dm/attack-logic.ts (a strike's die)"
    }
   ]
  },
@@ -862,21 +864,20 @@
   "clauses": [
    {
     "c": "Your speed cannot be reduced and you cannot be knocked prone while conscious",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Unstoppable#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Unstoppable: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Unstoppable: a slowed road warrior moves at their whole speed, and a grapple still holds them",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Unstoppable (prone immunity) and src/lib/srd/genre-b-post-apocalyptic.ts speedCannotBeReduced, read by src/lib/battlemap/view.ts pcMoveBudget: a slowing condition or exhaustion takes nothing off a conscious road warrior's speed (src/lib/srd/condition-effects.ts conditionSpeed, whole); a grapple or a restraint still holds them"
    },
    {
     "c": "you cannot be knocked prone while conscious",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Unstoppable#1:immune_cond",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test road_warrior::Unstoppable#1:immune_cond",
     "k": "immune_cond",
     "p": {
      "condition": "prone"
     },
-    "observed": "set_condition laid prone on the holder of Unstoppable"
+    "observed": "set_condition laid prone on the holder of Unstoppable",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    }
   ]
  },
@@ -918,16 +919,15 @@
   "clauses": [
    {
     "c": "Allies within 30 ft gain +1 to attack rolls while they can see you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Warlord of the Wastes#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Warlord of the Wastes: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Warlord of the Wastes: an ally within 30 ft who can see the road warrior gains +1 to attack rolls, not one who cannot",
+    "by": "src/lib/dm/genre-b-auras.ts AURAS Warlord of the Wastes (attack +1, sight), added to the swing by src/lib/dm/pc-attack-damage.ts genreBAuraAttack"
    },
    {
     "c": "within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Warlord of the Wastes#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Warlord of the Wastes: an ally within 30 ft who can see the road warrior gains +1 to attack rolls, not one who cannot",
+    "by": "src/lib/dm/genre-b-auras.ts AURAS Warlord of the Wastes (30 feet)"
    }
   ]
  },
@@ -939,11 +939,9 @@
   "clauses": [
    {
     "c": "Death or Glory no longer grants enemies advantage against you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Ride Eternal#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Ride Eternal: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-fight-gaps.mjs: Ride Eternal: Death or Glory still gives the road warrior advantage, and grants the enemy nothing",
+    "by": "src/lib/dm/genre-death-or-glory.ts recklessConditionFor (the death or glory (ride eternal) condition opens nothing)"
    }
   ]
  },
@@ -997,26 +995,27 @@
   "clauses": [
    {
     "c": "When you drop a creature, enemies within 15 ft save (WIS) or are frightened of you until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Skull Takers#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Skull Takers: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Skull Takers: enemies within 15 ft of the road warrior save or are frightened; one 65 ft off is not",
+    "by": "src/lib/dm/genre-b-kills.ts genreBOnKill, from src/lib/dm/authored-hooks.ts authoredOnKill (DC 8 + proficiency + the best modifier, src/lib/srd/counter-rules.ts counterSaveDc)"
    },
    {
     "c": "within 15 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Skull Takers#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Skull Takers: enemies within 15 ft of the road warrior save or are frightened; one 65 ft off is not",
+    "by": "src/lib/dm/genre-b-kills.ts genreBOnKill, from src/lib/dm/authored-hooks.ts authoredOnKill (DC 8 + proficiency + the best modifier, src/lib/srd/counter-rules.ts counterSaveDc)"
    },
    {
     "c": "until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Skull Takers#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Skull Takers: enemies within 15 ft of the road warrior save or are frightened; one 65 ft off is not",
+    "by": "src/lib/dm/genre-b-kills.ts genreBOnKill, from src/lib/dm/authored-hooks.ts authoredOnKill (DC 8 + proficiency + the best modifier, src/lib/srd/counter-rules.ts counterSaveDc)"
    },
    {
     "c": "save (WIS)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Skull Takers#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Skull Takers: enemies within 15 ft of the road warrior save or are frightened; one 65 ft off is not",
+    "by": "src/lib/dm/genre-b-kills.ts genreBOnKill, from src/lib/dm/authored-hooks.ts authoredOnKill (DC 8 + proficiency + the best modifier, src/lib/srd/counter-rules.ts counterSaveDc)"
    }
   ]
  },
@@ -1102,14 +1101,15 @@
   "clauses": [
    {
     "c": "While unarmored, AC equals 13 + DEX modifier",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Adaptive Hide#0:ac",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test aberrant::Adaptive Hide#0:ac",
     "k": "ac",
     "p": {
      "equals": 16,
      "gear": "none"
     },
-    "observed": "AC is 13 (Unarmored 10, DEX +3), and the text makes it 16"
+    "observed": "AC is 13 (Unarmored 10, DEX +3), and the text makes it 16",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    }
   ]
  },
@@ -1133,8 +1133,9 @@
    },
    {
     "c": "after taking elemental damage, gain resistance to that type until you rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_rapid_adaptation#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Rapid Adaptation: the first elemental blow leaves resistance to its type until a long rest, spent by the blow and never by a bare call",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-blows.ts paDamaged, asked by src/lib/dm/pc-damage.ts as a blow takes hit points: the rapid adaptation condition (paramResistance) until a long rest, the counter passive (src/lib/srd/genre-b-counter-terms.ts)"
    }
   ]
  },
@@ -1146,11 +1147,9 @@
   "clauses": [
    {
     "c": "Darkvision 60 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Predator Senses#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Predator Senses: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Predator Senses: darkvision 60 ft",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED darkvision (src/lib/srd/authored-effects-more.ts authoredDarkvisionFeet)"
    },
    {
     "c": "advantage on Perception checks using smell",
@@ -1197,8 +1196,9 @@
   "clauses": [
    {
     "c": "Spend a hit die as a bonus action to heal",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_regenerative_strain#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Regenerative Strain: a hit die spent as a bonus action heals; with none left it is refused, nothing spent",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Regenerative Strain (kind hit_die), src/lib/dm/genre-b-cure.ts genreHitDie through src/lib/dm/hit-dice.ts spendHitDice"
    },
    {
     "c": "CHA-mod uses per long rest",
@@ -1222,8 +1222,8 @@
   "clauses": [
    {
     "c": "Immune to poison and disease",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Toxic Blood#0:resist",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test aberrant::Toxic Blood#0:resist",
     "k": "resist",
     "p": {
      "types": [
@@ -1231,20 +1231,20 @@
      ],
      "immune": true
     },
-    "observed": "20 poison damage took 20 hit points with Toxic Blood (20 without it), and the text makes it 0"
+    "observed": "20 poison damage took 20 hit points with Toxic Blood (20 without it), and the text makes it 0",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    },
    {
     "c": "a creature that hits you with a bite takes 2d6 poison",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Toxic Blood#1:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Toxic Blood: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Toxic Blood: a creature that hits the aberrant with a bite takes 2d6 poison, one that clubs them nothing",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Toxic Blood (retaliate 2d6 poison, attacks: bite), src/lib/dm/authored-hooks.ts authoredAfterHit with the attack's name from src/lib/dm/enemy-attack.ts"
    },
    {
     "c": "2d6 poison",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Toxic Blood#1:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Toxic Blood: a creature that hits the aberrant with a bite takes 2d6 poison, one that clubs them nothing",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Toxic Blood (2d6 poison)"
    }
   ]
  },
@@ -1256,14 +1256,15 @@
   "clauses": [
    {
     "c": "Advantage on Stealth",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Chameleon Skin#0:skill",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test aberrant::Chameleon Skin#0:skill",
     "k": "skill",
     "p": {
      "skill": "stealth",
      "advantage": true
     },
-    "observed": "a stealth check threw 1 d20 with Chameleon Skin (1 without it)"
+    "observed": "a stealth check threw 1 d20 with Chameleon Skin (1 without it)",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    },
    {
     "c": "1/rest",
@@ -1279,8 +1280,9 @@
    },
    {
     "c": "turn near-invisible until you attack or cast",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_chameleon_skin#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Chameleon Skin: the aberrant turns invisible until they attack",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Chameleon Skin (the invisible condition for up to an hour), ended by an attack or a cast through src/lib/dm/attack-marks.ts endInvisibilityOnCast"
    }
   ]
  },
@@ -1324,8 +1326,9 @@
    },
    {
     "c": "regain expended slot levels equal to your CHA modifier when you drop below half HP",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_hardened_mutation#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Hardened Mutation: the blow that takes the aberrant below half their hit points gives back slot levels equal to the CHA modifier, once a long rest",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-blows.ts paDamaged (the blow that crosses half their hit points regains slot levels through src/lib/srd/slot-levels.ts regainSlotLevels), the counter passive"
    }
   ]
  },
@@ -1337,11 +1340,9 @@
   "clauses": [
    {
     "c": "Resistance to two damage types of your choice, chosen each dawn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Apex Genome#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Apex Genome: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Apex Genome: two damage types of the aberrant's choice are resisted, a third replacing the older",
+    "by": "src/lib/srd/authored-effects-genre-b-post-apocalyptic.ts Apex Genome (a spend whose variant names the type) and src/lib/dm/genre-b-post-apocalyptic-spends.ts genome: the apex genome condition (src/lib/srd/genre-b-post-apocalyptic-conditions.ts, paramResistance), two at a time, until a long rest"
    }
   ]
  },
@@ -1353,11 +1354,9 @@
   "clauses": [
    {
     "c": "Your mutations ignore resistance to their damage type",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Perfected Instability#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Perfected Instability: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Perfected Instability: the aberrant's spells ignore resistance to their type",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Perfected Instability (ignore_resist, every type, spells only), read by src/lib/dm/authored-saves.ts authoredIgnoresResistance from enemy-damage.ts / enemy-defenses.ts with the blow's spell flag"
    }
   ]
  },
@@ -1381,13 +1380,15 @@
    },
    {
     "c": "for 1 minute your mutations of 3rd level or lower cost no slots and your Adaptive Hide grants +2 more AC",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_the_next_step#SPENT_FOR_NOTHING"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Living Dynamo: for a minute every spell of 3rd level or lower costs no slot",
+    "by": "src/lib/srd/authored-effects-genre-b.ts slotless-cast spend (src/lib/dm/genre-b-free-cast.ts MARKS, read by src/lib/dm/cast-guard.ts before it plans a slot)"
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_the_next_step#SPENT_FOR_NOTHING"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Living Dynamo: for a minute every spell of 3rd level or lower costs no slot",
+    "by": "src/lib/srd/authored-effects-genre-b.ts slotless-cast spend (src/lib/dm/genre-b-free-cast.ts MARKS, read by src/lib/dm/cast-guard.ts before it plans a slot)"
    }
   ]
  },
@@ -1399,25 +1400,15 @@
   "clauses": [
    {
     "c": "A claw, tendril, or bone blade: a natural weapon dealing 1d8 + CHA slashing, and you can cast mutations through it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Chimeric Limb#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Chimeric Limb: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Chimeric Limb: a natural weapon of 1d8 + CHA slashing that pc_attack swings",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Chimeric Limb (natural_weapon, ability cha), src/lib/srd/authored-effects-more.ts authoredNaturalWeapon, src/lib/dm/pc-attack-profile.ts (the weapon's own ability); a mutation cast through it is the spell's own reach"
    },
    {
     "c": "1d8 + CHA slashing",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Chimeric Limb#1:rider",
-    "k": "rider",
-    "p": {
-     "dice": "1d8",
-     "gear": "none",
-     "args": {
-      "weapon": "Chimeric Limb"
-     }
-    },
-    "observed": "a hit rolls refused (Holder carries no weapon called \"Chimeric Limb\". Use one of: unarmed strike. An object they pick up and swing is sent by) with Chimeric Limb (refused (Holder carries no weapon called \"Chimeric Limb\". Use one of: unarmed strike. An object they pick up and swing is sent by) withou"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Chimeric Limb: a natural weapon of 1d8 + CHA slashing that pc_attack swings",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Chimeric Limb (1d8 slashing, swung with CHA)"
    }
   ]
  },
@@ -1429,23 +1420,22 @@
   "clauses": [
    {
     "c": "Rapid Adaptation has 2 uses and can also grant a climb or swim speed for an hour",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Second Adaptation#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Second Adaptation: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Second Adaptation: a use of Rapid Adaptation gives a swimming or a climbing speed for an hour",
+    "by": "src/lib/srd/genre-b-counter-terms.ts (2 uses), src/lib/srd/authored-effects-genre-b-post-apocalyptic.ts Second Adaptation (climb or swim, a use of Rapid Adaptation's counter) and src/lib/srd/genre-b-post-apocalyptic.ts adaptedSpeeds, read by src/lib/battlemap/passage.ts pcMoveTraits"
    },
    {
     "c": "Rapid Adaptation has 2 uses",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Second Adaptation#1:uses",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test aberrant::Second Adaptation#1:uses",
     "k": "uses",
     "p": {
      "id": "post_apocalyptic_rapid_adaptation",
      "n": 2,
      "rest": "long"
     },
-    "observed": "post_apocalyptic_rapid_adaptation holds 1 use(s) at level 6, and the text gives 2"
+    "observed": "post_apocalyptic_rapid_adaptation holds 1 use(s) at level 6, and the text gives 2",
+    "by": "src/lib/srd/genre-b-counter-terms.ts, laid over the generated row by src/lib/srd/class-resources.ts CUSTOM_RESOURCE_DEFS"
    }
   ]
  },
@@ -1470,23 +1460,21 @@
    {
     "c": "reaction",
     "is": "held",
-    "by": "src/lib/classes/resources.json action, charged by src/lib/dm/resource-tools.ts",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test aberrant::Splintered Form#1:action_cost",
-    "k": "action_cost",
-    "p": {
-     "id": "post_apocalyptic_splintered_form",
-     "cost": "reaction"
-    }
+    "by": "the reaction on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-reactions.ts); use_resource is refused toward it (src/lib/srd/trigger-table.ts reactionSpending)",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:post_apocalyptic_splintered_form",
+    "note": "The use costs the reaction through use_reaction; a use_resource spend of its own is refused toward it."
    },
    {
     "c": "when hit",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_splintered_form#TRIGGER_UNCHECKED"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:post_apocalyptic_splintered_form",
+    "by": "the reaction on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-reactions.ts); use_resource is refused toward it (src/lib/srd/trigger-table.ts reactionSpending)"
    },
    {
     "c": "split into a swarm shape until your next turn, taking half damage from the attack and moving through gaps freely",
     "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_splintered_form#GUIDANCE_ONLY"
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_splintered_form#GUIDANCE_ONLY",
+    "note": "The half damage is built (use_reaction reduce half); moving through gaps until the next turn is not."
    },
    {
     "c": "until your next turn",
@@ -1503,21 +1491,21 @@
   "clauses": [
    {
     "c": "Your Chimeric Limb deals 2d8, counts as magical, and grants 10-ft reach",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Perfect Chimera#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Perfect Chimera: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Perfect Chimera: the limb deals 2d8, reaches 10 ft and is magical against a resistance to nonmagical slashing",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Perfect Chimera (natural_weapon remakes the Chimeric Limb: 2d8, reach, magical), src/lib/dm/pc-attack-profile.ts magicWeapon"
    },
    {
     "c": "10-ft reach",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Perfect Chimera#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Perfect Chimera: the limb deals 2d8, reaches 10 ft and is magical against a resistance to nonmagical slashing",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Perfect Chimera (reach: 10 feet)"
    },
    {
     "c": "2d8",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Perfect Chimera#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Perfect Chimera: the limb deals 2d8, reaches 10 ft and is magical against a resistance to nonmagical slashing",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Perfect Chimera (2d8)"
    }
   ]
  },
@@ -1554,13 +1542,15 @@
    },
    {
     "c": "whack a machine or construct: restore 1d8 + INT HP to it or clear one malfunction",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:post_apocalyptic_percussive_maintenance#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:post_apocalyptic_percussive_maintenance",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts, resolved by src/lib/dm/authored-spends.ts (flames, heal only); a malfunction cleared is the GM's"
    },
    {
     "c": "1d8 + INT",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:post_apocalyptic_percussive_maintenance#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:post_apocalyptic_percussive_maintenance",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts, resolved by src/lib/dm/authored-spends.ts (flames, heal only); a malfunction cleared is the GM's"
    }
   ]
  },
@@ -1623,13 +1613,13 @@
    },
    {
     "c": "cast a 1st-level tech effect without expending a slot",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Power Cell Cache#1:spend_moves",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Power Cell Cache#1:spend_moves",
     "k": "spend_moves",
     "p": {
      "id": "post_apocalyptic_power_cell_cache"
     },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Power Cell Cache\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, cast a 1st-level tech effect without expending a slot.\"}"
+    "by": "src/lib/srd/authored-effects-genre-b.ts slotless-cast spend (src/lib/dm/genre-b-free-cast.ts MARKS, read by src/lib/dm/cast-guard.ts before it plans a slot)"
    }
   ]
  },
@@ -1665,27 +1655,27 @@
    },
    {
     "c": "within 15 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::EMP Coil#2:fx",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::EMP Coil#2:fx",
     "k": "fx",
     "p": {
      "id": "post_apocalyptic_emp_coil",
      "resolve": "far",
      "feet": 15
     },
-    "observed": "a creature 15 ft and more away was caught: [\"stunned\"]"
+    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
    },
    {
     "c": "until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::EMP Coil#3:fx",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::EMP Coil#3:fx",
     "k": "fx",
     "p": {
      "id": "post_apocalyptic_emp_coil",
      "resolve": "rounds",
      "rounds": 1
     },
-    "observed": "the condition's record is {\"source\":\"62fa2122-d63f-4001-962a-fe8f577b8c4e\",\"saveEnds\":{\"ability\":\"con\",\"dc\":14}}, and the text says 1 round(s)"
+    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
    },
    {
     "c": "save (CON)",
@@ -1708,26 +1698,28 @@
   "clauses": [
    {
     "c": "+1 AC",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Scrap Armor Weave#0:ac",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Scrap Armor Weave#0:ac",
     "k": "ac",
     "p": {
      "delta": 1,
      "gear": "armor"
     },
-    "observed": "AC is 15 with Scrap Armor Weave and 15 without it"
+    "observed": "AC is 15 with Scrap Armor Weave and 15 without it",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    },
    {
     "c": "resistance to lightning damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Scrap Armor Weave#1:resist",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Scrap Armor Weave#1:resist",
     "k": "resist",
     "p": {
      "types": [
       "lightning"
      ]
     },
-    "observed": "20 lightning damage took 20 hit points with Scrap Armor Weave (20 without it), and the text makes it 10"
+    "observed": "20 lightning damage took 20 hit points with Scrap Armor Weave (20 without it), and the text makes it 10",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    }
   ]
  },
@@ -1752,21 +1744,22 @@
   "clauses": [
    {
     "c": "1/turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Overcharged Rounds#0:unhooked",
-    "k": "unhooked",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Overcharged Rounds#2:rider",
     "observed": "nothing in the engine answers to Overcharged Rounds: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "sev": "medium",
+    "by": "src/lib/srd/genre-b-combat.ts, read by src/lib/dm/attack-damage-riders.ts (riders) and src/lib/dm/attack-logic.ts (a strike's die) (oncePerTurn)"
    },
    {
     "c": "a firearm hit deals +1d8 lightning",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Overcharged Rounds#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Overcharged Rounds#2:rider",
+    "by": "src/lib/srd/genre-b-combat.ts, read by src/lib/dm/attack-damage-riders.ts (riders) and src/lib/dm/attack-logic.ts (a strike's die) (a firearm by its SRD row's category)"
    },
    {
     "c": "+1d8 lightning",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Overcharged Rounds#2:rider",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Overcharged Rounds#2:rider",
     "k": "rider",
     "p": {
      "dice": "1d8",
@@ -1775,7 +1768,8 @@
       "weapon": "Pistol"
      }
     },
-    "observed": "a hit rolls 1d10+3 with Overcharged Rounds (1d10+3 without it), and the text makes it 1d8"
+    "observed": "a hit rolls 1d10+3 with Overcharged Rounds (1d10+3 without it), and the text makes it 1d8",
+    "by": "src/lib/srd/genre-b-combat.ts, read by src/lib/dm/attack-damage-riders.ts (riders) and src/lib/dm/attack-logic.ts (a strike's die)"
    }
   ]
  },
@@ -1820,18 +1814,21 @@
    },
    {
     "c": "project a 10-ft energy dome for 1 minute: allies inside gain +2 AC and resistance to ranged weapon damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_salvaged_shield_node#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Salvaged Shield Node: an ally in the dome resists a ranged weapon's damage, and a melee blow lands whole",
+    "by": "the spend's condition (src/lib/srd/authored-effects-genre-b.ts, +2 AC in src/lib/srd/genre-b-conditions.ts) and src/lib/dm/genre-b-post-apocalyptic-blows.ts paBlowResists: a ranged attack that is no spell's is resisted (src/lib/dm/enemy-attack.ts, the blow's flags)"
    },
    {
     "c": "10-ft energy dome",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_salvaged_shield_node#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:post_apocalyptic_salvaged_shield_node",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-spends.ts) and the condition's row in src/lib/srd/genre-b-conditions.ts"
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_salvaged_shield_node#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:post_apocalyptic_salvaged_shield_node",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-spends.ts) and the condition's row in src/lib/srd/genre-b-conditions.ts"
    }
   ]
  },
@@ -1843,11 +1840,10 @@
   "clauses": [
    {
     "c": "Power Cell Cache works for tech effects up to 3rd level",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Power Cell Cache (3rd)#0:unhooked",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Power Cell Cache (3rd)#0:unhooked",
     "k": "unhooked",
-    "observed": "nothing in the engine answers to Power Cell Cache (3rd): no typed effect, no authored row, no typed counter (its counter: post_apocalyptic_power_cell_cache:narrative)",
-    "sev": "medium"
+    "by": "src/lib/srd/authored-effects-genre-b.ts slotless-cast spend (src/lib/dm/genre-b-free-cast.ts MARKS, read by src/lib/dm/cast-guard.ts before it plans a slot)"
    }
   ]
  },
@@ -1859,16 +1855,15 @@
   "clauses": [
    {
     "c": "Constructs and automated defenses must save (WIS) to target you over other creatures",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Machine Empathy#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Machine Empathy: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Machine Empathy: a construct that attacks the salvage tech first saves (WIS) or loses the attack; a humanoid just attacks",
+    "by": "src/lib/srd/authored-effects-genre-b-post-apocalyptic.ts Machine Empathy (ward_vs construct, WIS), rolled by src/lib/dm/authored-hooks.ts authoredIncomingAttack against the salvage tech's spell save DC: the construct that fails loses the attack"
    },
    {
     "c": "save (WIS)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Machine Empathy#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Machine Empathy: a construct that attacks the salvage tech first saves (WIS) or loses the attack; a humanoid just attacks",
+    "by": "src/lib/srd/authored-effects-genre-b-post-apocalyptic.ts Machine Empathy (ward_vs construct, WIS), rolled by src/lib/dm/authored-hooks.ts authoredIncomingAttack against the salvage tech's spell save DC: the construct that fails loses the attack"
    }
   ]
  },
@@ -1885,13 +1880,13 @@
    },
    {
     "c": "cast it 1/long rest without a slot",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Prototype Rig#1:spend_moves",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Prototype Rig#1:spend_moves",
     "k": "spend_moves",
     "p": {
      "id": "post_apocalyptic_prototype_rig"
     },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Prototype Rig\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"Choose one 5th-level tech effect; cast it 1/long rest without a slot.\"}"
+    "by": "src/lib/srd/authored-effects-genre-b.ts slotless-cast spend (src/lib/dm/genre-b-free-cast.ts MARKS, read by src/lib/dm/cast-guard.ts before it plans a slot)"
    },
    {
     "c": "1/long rest",
@@ -1957,18 +1952,19 @@
    },
    {
     "c": "for 1 minute your tech effects of 4th level or lower cost no slots",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Reactor Heart#1:spend_moves",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Reactor Heart#1:spend_moves",
     "k": "spend_moves",
     "p": {
      "id": "post_apocalyptic_reactor_heart"
     },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Reactor Heart\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, for 1 minute your tech effects of 4th level or lower cost no slots; y"
+    "by": "src/lib/srd/authored-effects-genre-b.ts slotless-cast spend (src/lib/dm/genre-b-free-cast.ts MARKS, read by src/lib/dm/cast-guard.ts before it plans a slot)"
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Reactor Heart#1:spend_moves"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Living Dynamo: for a minute every spell of 3rd level or lower costs no slot",
+    "by": "src/lib/srd/authored-effects-genre-b.ts slotless-cast spend (src/lib/dm/genre-b-free-cast.ts MARKS, read by src/lib/dm/cast-guard.ts before it plans a slot)"
    },
    {
     "c": "you glow visibly",
@@ -1984,21 +1980,21 @@
   "clauses": [
    {
     "c": "1/turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Blessed Isotope#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Blessed Isotope: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Blessed Isotope: a damaging spell deals +3 radiant once a turn, and the second spell of the turn does not",
+    "by": "src/lib/dm/genre-b-spell-hits.ts genreBSpellLanded (ONCE_A_TURN), from src/lib/dm/cast-at-enemy-damage.ts landSpellDamage and src/lib/dm/attack-blow.ts"
    },
    {
     "c": "a damaging tech effect deals +1d6 radiant as the core flares",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Blessed Isotope#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Blessed Isotope: a damaging spell deals +3 radiant once a turn, and the second spell of the turn does not",
+    "by": "src/lib/dm/genre-b-spell-hits.ts genreBSpellLanded (ONCE_A_TURN), from src/lib/dm/cast-at-enemy-damage.ts landSpellDamage and src/lib/dm/attack-blow.ts"
    },
    {
     "c": "+1d6 radiant",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Blessed Isotope#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Blessed Isotope: a damaging spell deals +3 radiant once a turn, and the second spell of the turn does not",
+    "by": "src/lib/dm/genre-b-spell-hits.ts genreBSpellLanded (ONCE_A_TURN), from src/lib/dm/cast-at-enemy-damage.ts landSpellDamage and src/lib/dm/attack-blow.ts"
    }
   ]
  },
@@ -2010,11 +2006,9 @@
   "clauses": [
    {
     "c": "You sense radiation precisely and are resistant to its effects",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Geiger Sense#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Geiger Sense: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Geiger Sense and Meltdown Ward: radiant and necrotic damage is resisted, then taken not at all",
+    "by": "src/lib/srd/authored-effects-genre-b-post-apocalyptic.ts Geiger Sense (resist radiant and necrotic, radiation's damage on the SRD engine; sensing it is the GM's to tell)"
    }
   ]
  },
@@ -2050,27 +2044,27 @@
    },
    {
     "c": "10-ft flare",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Halo of the Core#2:fx",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Halo of the Core#2:fx",
     "k": "fx",
     "p": {
      "id": "post_apocalyptic_halo_of_the_core",
      "resolve": "far",
      "feet": 10
     },
-    "observed": "a creature 10 ft and more away was caught: [\"blinded\"]"
+    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
    },
    {
     "c": "until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Halo of the Core#3:fx",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Halo of the Core#3:fx",
     "k": "fx",
     "p": {
      "id": "post_apocalyptic_halo_of_the_core",
      "resolve": "rounds",
      "rounds": 1
     },
-    "observed": "the condition's record is {\"source\":\"31875fe1-d92a-4c42-9400-d27d147b676f\",\"saveEnds\":{\"ability\":\"con\",\"dc\":14}}, and the text says 1 round(s)"
+    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
    },
    {
     "c": "save (CON)",
@@ -2093,11 +2087,9 @@
   "clauses": [
    {
     "c": "Immunity to radiant and necrotic damage from tech and radiation sources",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Meltdown Ward#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Meltdown Ward: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Geiger Sense and Meltdown Ward: radiant and necrotic damage is resisted, then taken not at all",
+    "by": "src/lib/srd/authored-effects-genre-b-post-apocalyptic.ts Meltdown Ward (immune_damage radiant and necrotic; in this genre a tech effect is what a spell is, so no blow of those types is left outside \"tech and radiation sources\")"
    }
   ]
  },
@@ -2121,13 +2113,15 @@
    },
    {
     "c": "unleash the core: a 30-ft radius burst dealing 8d6 radiant (CON save halves)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_second_sun#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Second Sun: the burst reaches 30 ft and spares the salvage tech's allies; scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Second Sun#3:fx",
+    "by": "src/lib/dm/counter-saves.ts resolveCounterSave (the counter's rangeFt 30 from src/lib/classes/resources.json, and only the holder's foes: an ally named is refused, nothing spent)"
    },
    {
     "c": "30-ft radius",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_second_sun#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Second Sun: the burst reaches 30 ft and spares the salvage tech's allies; scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Second Sun#3:fx",
+    "by": "src/lib/dm/counter-saves.ts resolveCounterSave (the counter's rangeFt 30 from src/lib/classes/resources.json, and only the holder's foes: an ally named is refused, nothing spent)"
    },
    {
     "c": "(CON save halves)",
@@ -2146,20 +2140,21 @@
    },
    {
     "c": "8d6 radiant",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Second Sun#4:fx",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Second Sun#4:fx",
     "k": "fx",
     "p": {
      "id": "post_apocalyptic_second_sun",
      "dice": "8d6",
      "type": "radiant"
     },
-    "observed": "the spend hands back no radiant damage type ({\"ok\":true,\"resource\":\"Second Sun\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, unleash the core: a 30-ft radius burst dealing 8d6 radiant (CON save halves); allies are spared.\",\"resolveWith\":)"
+    "by": "src/lib/classes/resources.json fx (reach, rounds and damage type read from the text by scripts/generate-class-resources.mjs saveTermsFromText), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave"
    },
    {
     "c": "allies are spared",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_second_sun#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Second Sun: the burst reaches 30 ft and spares the salvage tech's allies; scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test salvage_tech::Second Sun#3:fx",
+    "by": "src/lib/dm/counter-saves.ts resolveCounterSave (the counter's rangeFt 30 from src/lib/classes/resources.json, and only the holder's foes: an ally named is refused, nothing spent)"
    }
   ]
  },
@@ -2195,23 +2190,21 @@
    {
     "c": "Bonus action",
     "is": "held",
-    "by": "src/lib/classes/resources.json action, charged by src/lib/dm/resource-tools.ts",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test waste_preacher::Flock's Shepherd#0:action_cost",
-    "k": "action_cost",
-    "p": {
-     "id": "post_apocalyptic_flock_s_shepherd",
-     "cost": "bonus"
-    }
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts, resolved by src/lib/dm/authored-spends.ts",
+    "probe": "scripts/test-genre-b-features.mjs Flock's Shepherd",
+    "note": "\"one ally\": a spend that names none is refused, so the ledger's bare action_cost spend is; the case in the focused test names the ally."
    },
    {
     "c": "one ally within 30 ft gains temp HP equal to your level + WIS mod",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_flock_s_shepherd#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:post_apocalyptic_flock_s_shepherd; scripts/test-genre-b-features.mjs Flock's Shepherd",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts, resolved by src/lib/dm/authored-spends.ts"
    },
    {
     "c": "within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_flock_s_shepherd#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Flock's Shepherd: an ally beyond 30 ft is refused with nothing spent, and Congregation shelters a second ally",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-spends.ts shepherd (an ally beyond 30 feet on the board is refused, nothing spent)"
    },
    {
     "c": "WIS-mod uses per long rest",
@@ -2247,13 +2240,15 @@
    },
    {
     "c": "an audible sermon gives allies within 30 ft advantage on their next save against fear or despair",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_testify#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Testify: allies within 30 ft roll their next save against fear with advantage, which spends it; another save does not",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-spends.ts testify (the testified condition on allies within 30 feet who can hear), read by src/lib/dm/genre-b-auras.ts genreBSaveAuras and spent by the save against being frightened (src/lib/dm/genre-b-aura-logic.ts, src/lib/dm/rolls.ts); despair is no condition a save names"
    },
    {
     "c": "within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_testify#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Testify: allies within 30 ft roll their next save against fear with advantage, which spends it; another save does not",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-spends.ts testify (the testified condition on allies within 30 feet who can hear), read by src/lib/dm/genre-b-auras.ts genreBSaveAuras and spent by the save against being frightened (src/lib/dm/genre-b-aura-logic.ts, src/lib/dm/rolls.ts); despair is no condition a save names"
    }
   ]
  },
@@ -2290,11 +2285,9 @@
   "clauses": [
    {
     "c": "Your healing sermons add your WIS modifier again to HP restored",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Lay On the Word#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Lay On the Word: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Lay On the Word: a preacher's healing adds the WIS modifier again",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Lay On the Word (spell_rider, healing, the WIS modifier), read by src/lib/dm/heal-bonus.ts healAdditions"
    }
   ]
  },
@@ -2334,18 +2327,15 @@
    },
    {
     "c": "end one fear, charm, or curse effect on a creature within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Deliverance#1:spend_moves",
-    "k": "spend_moves",
-    "p": {
-     "id": "post_apocalyptic_deliverance"
-    },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Deliverance\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, end one fear, charm, or curse effect on a creature within 30 ft.\"}"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Deliverance: ends fear on an ally within 30 ft; one 50 ft off, or one carrying nothing, is refused with nothing spent",
+    "by": "src/lib/srd/authored-effects-genre-b.ts cure spend (src/lib/dm/genre-b-cure.ts, through src/lib/dm/authored-spend-effects.ts resolveSpendEffect); a curse is the condition the GM laid by that name"
    },
    {
     "c": "within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Deliverance#1:spend_moves"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Deliverance: ends fear on an ally within 30 ft; one 50 ft off, or one carrying nothing, is refused with nothing spent",
+    "by": "src/lib/srd/authored-effects-genre-b.ts cure spend (src/lib/dm/genre-b-cure.ts, through src/lib/dm/authored-spend-effects.ts resolveSpendEffect); a curse is the condition the GM laid by that name"
    }
   ]
  },
@@ -2357,21 +2347,21 @@
   "clauses": [
    {
     "c": "1/turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Judgment#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Judgment: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Judgment: a damaging spell deals +3 radiant once a turn, and the second spell of the turn does not",
+    "by": "src/lib/dm/genre-b-spell-hits.ts genreBSpellLanded (ONCE_A_TURN: the first creature of the casting), from src/lib/dm/cast-at-enemy-damage.ts landSpellDamage and src/lib/dm/attack-blow.ts"
    },
    {
     "c": "a damaging sermon deals +1d8 radiant to one target",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Judgment#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Judgment: a damaging spell deals +3 radiant once a turn, and the second spell of the turn does not",
+    "by": "src/lib/dm/genre-b-spell-hits.ts genreBSpellLanded (ONCE_A_TURN: the first creature of the casting), from src/lib/dm/cast-at-enemy-damage.ts landSpellDamage and src/lib/dm/attack-blow.ts"
    },
    {
     "c": "+1d8 radiant",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Judgment#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Judgment: a damaging spell deals +3 radiant once a turn, and the second spell of the turn does not",
+    "by": "src/lib/dm/genre-b-spell-hits.ts genreBSpellLanded (ONCE_A_TURN: the first creature of the casting), from src/lib/dm/cast-at-enemy-damage.ts landSpellDamage and src/lib/dm/attack-blow.ts"
    }
   ]
  },
@@ -2383,8 +2373,9 @@
   "clauses": [
    {
     "c": "Flock's Shepherd can target two allies at once",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_flock_s_shepherd#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Flock's Shepherd: an ally beyond 30 ft is refused with nothing spent, and Congregation shelters a second ally",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-spends.ts shepherd: use_resource names one character, so the second is the ally within 30 feet with the fewest temporary hit points"
    }
   ]
  },
@@ -2396,40 +2387,41 @@
   "clauses": [
    {
     "c": "You and allies within 10 ft have resistance to necrotic damage and advantage against fear",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Walk Through the Valley#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Walk Through the Valley: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Walk Through the Valley: allies within 10 ft resist necrotic and save against fear with advantage",
+    "by": "src/lib/dm/genre-b-auras.ts AURAS, read by src/lib/dm/forced-save.ts rollExtrasFor (saves, through src/lib/dm/genre-b-aura-logic.ts in rolls.ts) and src/lib/dm/ac-effects.ts acWithEffects (AC); the allies' necrotic resistance is the aura_resist row (src/lib/srd/authored-effects-genre-b.ts, read by src/lib/dm/authored-saves.ts authoredAuraResistances)"
    },
    {
     "c": "within 10 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Walk Through the Valley#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Walk Through the Valley: allies within 10 ft resist necrotic and save against fear with advantage",
+    "by": "src/lib/dm/genre-b-auras.ts AURAS, read by src/lib/dm/forced-save.ts rollExtrasFor (saves, through src/lib/dm/genre-b-aura-logic.ts in rolls.ts) and src/lib/dm/ac-effects.ts acWithEffects (AC); the allies' necrotic resistance is the aura_resist row (src/lib/srd/authored-effects-genre-b.ts, read by src/lib/dm/authored-saves.ts authoredAuraResistances)"
    },
    {
     "c": "resistance to necrotic damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Walk Through the Valley#2:resist",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test waste_preacher::Walk Through the Valley#2:resist",
     "k": "resist",
     "p": {
      "types": [
       "necrotic"
      ]
     },
-    "observed": "20 necrotic damage took 20 hit points with Walk Through the Valley (20 without it), and the text makes it 10"
+    "observed": "20 necrotic damage took 20 hit points with Walk Through the Valley (20 without it), and the text makes it 10",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    },
    {
     "c": "advantage against fear",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Walk Through the Valley#3:save_adv",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test waste_preacher::Walk Through the Valley#3:save_adv",
     "k": "save_adv",
     "p": {
      "against": [
       "frightened"
      ]
     },
-    "observed": "a save against frightened threw 1 d20 with Walk Through the Valley (1 without it)"
+    "observed": "a save against frightened threw 1 d20 with Walk Through the Valley (1 without it)",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED (registered in src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED), read by the authored layer's readers"
    }
   ]
  },
@@ -2466,11 +2458,9 @@
   "clauses": [
    {
     "c": "Concentration on your sermons cannot be broken by damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::The Word Made Iron#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to The Word Made Iron: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs The Word Made Iron: damage never breaks the preacher's concentration on any spell",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED concentration_guard anySpell (src/lib/srd/authored-effects-more.ts authoredConcentrationGuard, read by src/lib/dm/concentration.ts)"
    }
   ]
  },
@@ -2494,31 +2484,15 @@
    },
    {
     "c": "deliver the full sermon: allies within 60 ft regain 5d8 HP and are freed of fear, charm, and exhaustion by one level",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Revelation#1:fx_heal",
-    "k": "fx_heal",
-    "p": {
-     "id": "post_apocalyptic_revelation",
-     "count": 5,
-     "all": true
-    },
-    "observed": "one spend healed the ally 15 and the holder 0: the text heals every ally in reach",
-    "note": "the generator typed \"allies ... regain 5d8 HP\" as heal_target: one creature per spend, and nothing ends fear, charm or a level of exhaustion"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Revelation: every ally within 60 ft regains 5d8, sheds fear and charm, and loses a level of exhaustion",
+    "by": "src/lib/srd/authored-effects-genre-b.ts cure spend (src/lib/dm/genre-b-cure.ts, through src/lib/dm/authored-spend-effects.ts resolveSpendEffect) with heal (src/lib/dm/authored-heal-area.ts healArea) and exhaustion"
    },
    {
     "c": "within 60 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Revelation#2:fx_heal",
-    "k": "fx_heal",
-    "p": {
-     "id": "post_apocalyptic_revelation",
-     "count": 5,
-     "allyAt": [
-      18,
-      3
-     ]
-    },
-    "observed": "the heal reached an ally 65 feet away (15 hit points)"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Revelation: every ally within 60 ft regains 5d8, sheds fear and charm, and loses a level of exhaustion",
+    "by": "src/lib/srd/authored-effects-genre-b.ts cure spend (src/lib/dm/genre-b-cure.ts, through src/lib/dm/authored-spend-effects.ts resolveSpendEffect) with heal (src/lib/dm/authored-heal-area.ts healArea) and exhaustion"
    },
    {
     "c": "5d8",
@@ -2553,23 +2527,27 @@
    },
    {
     "c": "your raised hand sheds sunlight in a 30-ft radius for 10 minutes",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_dawnlight#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:post_apocalyptic_dawnlight",
+    "by": "the spend in src/lib/srd/authored-effects-genre-b.ts (the dawnlight condition for 100 rounds)"
    },
    {
     "c": "30-ft radius",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_dawnlight#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Dawnlight: an undead within the 30-ft light attacks an ally at disadvantage, a humanoid does not",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Dawnlight (attacked_disadv rangeFt 30, read for every fielded holder by src/lib/dm/authored-hooks.ts authoredIncomingAttack) and the 30-foot aura src/lib/battlemap/zones-genre-b.ts dawnlight"
    },
    {
     "c": "for 10 minutes",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_dawnlight#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:post_apocalyptic_dawnlight",
+    "by": "the spend in src/lib/srd/authored-effects-genre-b.ts (the dawnlight condition for 100 rounds)"
    },
    {
     "c": "undead and mutants in it have disadvantage on attacks",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_dawnlight#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs Dawnlight: an undead within the 30-ft light attacks an ally at disadvantage, a humanoid does not",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Dawnlight (attacked_disadv from undead and monstrosity, a mutant on the SRD engine, within 30 feet of the preacher whoever is attacked), src/lib/dm/authored-hooks.ts authoredIncomingAttack"
    }
   ]
  },
@@ -2581,16 +2559,15 @@
   "clauses": [
    {
     "c": "When you heal a creature below half HP, it also gains +1 to attack rolls until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Baptism of Ash#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Baptism of Ash: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Baptism of Ash: a creature healed from below half has +1 to attack rolls until the preacher's next turn",
+    "by": "src/lib/dm/genre-b-spell-hits.ts genreBHealed, from src/lib/dm/heal-spell.ts (the baptism of ash condition, +1 to attack rolls in src/lib/srd/genre-b-conditions.ts, until the preacher's next turn)"
    },
    {
     "c": "until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Baptism of Ash#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Baptism of Ash: a creature healed from below half has +1 to attack rolls until the preacher's next turn",
+    "by": "src/lib/dm/genre-b-spell-hits.ts genreBHealed, from src/lib/dm/heal-spell.ts (the baptism of ash condition, +1 to attack rolls in src/lib/srd/genre-b-conditions.ts, until the preacher's next turn)"
    }
   ]
  },
@@ -2614,13 +2591,15 @@
    },
    {
     "c": "when an ally within 30 ft drops to 0 HP, they instead drop to WIS-mod x 5 HP",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_stand_at_the_dawn#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Stand at the Dawn: an ally within 30 ft who drops to 0 drops to WIS mod x 5 instead, once; one 50 ft off falls",
+    "by": "src/lib/dm/genre-b-drops.ts genreDropHold (the preacher conscious, on the ally's side, within 30 ft through src/lib/dm/genre-b-auras.ts nearbyHolders), read by src/lib/dm/pc-damage.ts"
    },
    {
     "c": "within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_stand_at_the_dawn#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Stand at the Dawn: an ally within 30 ft who drops to 0 drops to WIS mod x 5 instead, once; one 50 ft off falls",
+    "by": "src/lib/dm/genre-b-drops.ts genreDropHold (the preacher conscious, on the ally's side, within 30 ft through src/lib/dm/genre-b-auras.ts nearbyHolders), read by src/lib/dm/pc-damage.ts"
    }
   ]
  },
@@ -2632,16 +2611,15 @@
   "clauses": [
    {
     "c": "Your Dawnlight damages: hostile undead and aberrations take 2d8 radiant entering or starting their turn in it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::The Last Dawn Rises#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to The Last Dawn Rises: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs The Last Dawn Rises: a hostile undead starting its turn in the Dawnlight takes 2d8 radiant, a humanoid nothing",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Dawnlight (zone upgrade: the preacher with The Last Dawn Rises lays the last dawn), src/lib/battlemap/zones-genre-b.ts the last dawn (enter and start, hostile, types undead and aberration), src/lib/dm/zone-triggers.ts touches"
    },
    {
     "c": "2d8 radiant",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::The Last Dawn Rises#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-4.mjs The Last Dawn Rises: a hostile undead starting its turn in the Dawnlight takes 2d8 radiant, a humanoid nothing",
+    "by": "src/lib/battlemap/zones-genre-b.ts the last dawn (2d8 radiant)"
    }
   ]
  },
@@ -2653,16 +2631,15 @@
   "clauses": [
    {
     "c": "A loyal wasteland beast fights beside you (AC 13 + your proficiency, HP 5 x level, attack 1d8 + WIS, obeys your commands)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Bonded Beast#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Bonded Beast: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Bonded Beast: a beast of AC 13 + proficiency and 5 hit points a level whose bite is 1d8 + WIS; in a fight none is bonded beside one already there, nor after one fell",
+    "by": "src/lib/srd/authored-effects-genre-b-post-apocalyptic.ts Bonded Beast (spend kind pack, call bonded) and src/lib/dm/genre-b-post-apocalyptic-beast.ts bondedForms: an ally on the board made as the steel defender is (WAVE2 D5: a companion is a summoned creature with the text's stats), AC 13 + proficiency, 5 hit points a level, a bite of 1d8 + WIS with the packmaster's proficiency"
    },
    {
     "c": "1d8 + WIS",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Bonded Beast#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Bonded Beast: a beast of AC 13 + proficiency and 5 hit points a level whose bite is 1d8 + WIS; in a fight none is bonded beside one already there, nor after one fell",
+    "by": "src/lib/srd/authored-effects-genre-b-post-apocalyptic.ts Bonded Beast (spend kind pack, call bonded) and src/lib/dm/genre-b-post-apocalyptic-beast.ts bondedForms: an ally on the board made as the steel defender is (WAVE2 D5: a companion is a summoned creature with the text's stats), AC 13 + proficiency, 5 hit points a level, a bite of 1d8 + WIS with the packmaster's proficiency"
    }
   ]
  },
@@ -2674,16 +2651,15 @@
   "clauses": [
    {
     "c": "You and your beast have advantage on attacks against a creature the other is adjacent to",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Pack Tactics Training#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Pack Tactics Training: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Pack Tactics Training: the packmaster and the beast each attack with advantage a creature the other is adjacent to, and not one it is not",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-pack.ts packTactics, asked by src/lib/dm/authored-hooks.ts authoredAttackSituation for the packmaster's attack and the beast's; adjacent is within 5 feet"
    },
    {
     "c": "adjacent",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Pack Tactics Training#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Pack Tactics Training: the packmaster and the beast each attack with advantage a creature the other is adjacent to, and not one it is not",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-pack.ts packTactics, asked by src/lib/dm/authored-hooks.ts authoredAttackSituation for the packmaster's attack and the beast's; adjacent is within 5 feet"
    }
   ]
  },
@@ -2766,12 +2742,16 @@
   "sha": "97f2e8b77ed2",
   "clauses": [
    {
-    "c": "You and your beast track with advantage and cannot be surprised by beasts or mutants",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Scent the Wind#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Scent the Wind: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "c": "You and your beast track with advantage",
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Scent the Wind: advantage on a check about what its text names, and only then",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED check_adv about tracking (src/lib/srd/authored-effects.ts authoredRollRiders)"
+   },
+   {
+    "c": "cannot be surprised by beasts or mutants",
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Scent the Wind: a beast or a mutant (a monstrosity) cannot surprise the packmaster; a goblin can",
+    "by": "src/lib/dm/genre-b-surprise.ts canSurprise (a mutant is a monstrosity), read by src/lib/dm/encounter-open.ts decideAmbush"
    }
   ]
  },
@@ -2783,11 +2763,9 @@
   "clauses": [
    {
     "c": "Your healing bonds may target your beast at double effect",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Mended Hide#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Mended Hide: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Mended Hide: a healing spell the packmaster casts on their beast heals twice as much, on an ally the same as ever",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-beast.ts mendedHide, doubled in src/lib/dm/heal-spell.ts castHealingSpell"
    }
   ]
  },
@@ -2795,7 +2773,7 @@
   "source": "src/lib/classes/post-apocalyptic-features.json",
   "group": "packmaster",
   "level": 9,
-  "sha": "09e58b906213",
+  "sha": "37feb3bf67ec",
   "clauses": [
    {
     "c": "1/long rest",
@@ -2810,19 +2788,22 @@
     }
    },
    {
-    "c": "summon 1d4 local beasts to aid you for 10 minutes",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:post_apocalyptic_call_the_wild#GUIDANCE_ONLY"
+    "c": "summon 1d4 local beasts (wolf stats) to aid you for 10 minutes",
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Call the Wild: 1d4 wolves answer for 10 minutes, 2d4 with The Pack Provides, which also gives the call back on a short rest once a day",
+    "by": "src/lib/srd/authored-effects-genre-b-post-apocalyptic.ts Call the Wild (spend kind pack, call wild) and src/lib/dm/genre-b-post-apocalyptic-beast.ts callTheWild: 1d4 SRD wolves (the stats the text now names) as allies for 100 rounds"
    },
    {
     "c": "for 10 minutes",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:post_apocalyptic_call_the_wild#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Call the Wild: 1d4 wolves answer for 10 minutes, 2d4 with The Pack Provides, which also gives the call back on a short rest once a day",
+    "by": "src/lib/srd/authored-effects-genre-b-post-apocalyptic.ts Call the Wild (spend kind pack, call wild) and src/lib/dm/genre-b-post-apocalyptic-beast.ts callTheWild: 1d4 SRD wolves (the stats the text now names) as allies for 100 rounds"
    },
    {
     "c": "1d4",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:post_apocalyptic_call_the_wild#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Call the Wild: 1d4 wolves answer for 10 minutes, 2d4 with The Pack Provides, which also gives the call back on a short rest once a day",
+    "by": "src/lib/srd/authored-effects-genre-b-post-apocalyptic.ts Call the Wild (spend kind pack, call wild) and src/lib/dm/genre-b-post-apocalyptic-beast.ts callTheWild: 1d4 SRD wolves (the stats the text now names) as allies for 100 rounds"
    }
   ]
  },
@@ -2846,28 +2827,27 @@
    },
    {
     "c": "hostile beasts and mutants within 30 ft save (WIS) or cower (no move toward you) for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Alpha's Roar#1:spend_moves",
-    "k": "spend_moves",
-    "p": {
-     "id": "post_apocalyptic_alpha_s_roar"
-    },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Alpha's Roar\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, hostile beasts and mutants within 30 ft save (WIS) or cower (no move toward yo"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Alpha's Roar: beasts and mutants within 30 ft save (WIS) or cower for a minute, never walking nearer",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Alpha's Roar (save_area: WIS against the packmaster's DC, 30 ft, beasts and monstrosities: a mutant is a monstrosity on the SRD engine), the cowering condition (src/lib/srd/genre-b-conditions.ts) whose source src/lib/dm/enemy-approach.ts fearSourceAt keeps the creature's walk from coming nearer"
    },
    {
     "c": "within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Alpha's Roar#1:spend_moves"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Alpha's Roar: beasts and mutants within 30 ft save (WIS) or cower for a minute, never walking nearer",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Alpha's Roar (save_area: WIS against the packmaster's DC, 30 ft, beasts and monstrosities: a mutant is a monstrosity on the SRD engine), the cowering condition (src/lib/srd/genre-b-conditions.ts) whose source src/lib/dm/enemy-approach.ts fearSourceAt keeps the creature's walk from coming nearer"
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Alpha's Roar#1:spend_moves"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Alpha's Roar: beasts and mutants within 30 ft save (WIS) or cower for a minute, never walking nearer",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Alpha's Roar (save_area: WIS against the packmaster's DC, 30 ft, beasts and monstrosities: a mutant is a monstrosity on the SRD engine), the cowering condition (src/lib/srd/genre-b-conditions.ts) whose source src/lib/dm/enemy-approach.ts fearSourceAt keeps the creature's walk from coming nearer"
    },
    {
     "c": "save (WIS)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Alpha's Roar#1:spend_moves"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs Alpha's Roar: beasts and mutants within 30 ft save (WIS) or cower for a minute, never walking nearer",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Alpha's Roar (save_area: WIS against the packmaster's DC, 30 ft, beasts and monstrosities: a mutant is a monstrosity on the SRD engine), the cowering condition (src/lib/srd/genre-b-conditions.ts) whose source src/lib/dm/enemy-approach.ts fearSourceAt keeps the creature's walk from coming nearer"
    }
   ]
  },
@@ -2879,16 +2859,15 @@
   "clauses": [
    {
     "c": "Your beast's attacks deal 2d8 + WIS, count as magical, and it gains +2 AC",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::War Beast#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to War Beast: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs War Beast and Twin Bond: the beast bites for 2d8 + WIS as magic with +2 AC, and a second beast of AC 12 + proficiency and 2 hit points a level is bonded",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-beast.ts bondedForms (War Beast: a 2d8 + WIS bite, the Magic Weapons trait src/lib/dm/summon-rules.ts summonAttackProfile reads, +2 AC)"
    },
    {
     "c": "2d8 + WIS",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::War Beast#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs War Beast and Twin Bond: the beast bites for 2d8 + WIS as magic with +2 AC, and a second beast of AC 12 + proficiency and 2 hit points a level is bonded",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-beast.ts bondedForms (War Beast: a 2d8 + WIS bite, the Magic Weapons trait src/lib/dm/summon-rules.ts summonAttackProfile reads, +2 AC)"
    }
   ]
  },
@@ -2896,15 +2875,13 @@
   "source": "src/lib/classes/post-apocalyptic-features.json",
   "group": "packmaster",
   "level": 13,
-  "sha": "4d1793e08c4b",
+  "sha": "1652c959bfdd",
   "clauses": [
    {
-    "c": "Bond a second, smaller beast (scout stats)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Twin Bond#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Twin Bond: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "c": "Bond a second, smaller beast (AC 12 + your proficiency, HP 2 x level, attack 1d4 + WIS, speed 50 ft)",
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs War Beast and Twin Bond: the beast bites for 2d8 + WIS as magic with +2 AC, and a second beast of AC 12 + proficiency and 2 hit points a level is bonded",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-beast.ts bondedForms (the Bonded Scout, with the numbers written into the text: AC 12 + proficiency, 2 hit points a level, 1d4 + WIS, 50 ft)"
    },
    {
     "c": "see through either beast's senses within 1 mile",
@@ -2921,8 +2898,9 @@
   "clauses": [
    {
     "c": "When your beast would drop to 0 HP, 1/long rest it drops to 1 instead",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_pack_endurance#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Pack Endurance: the blow that would drop the beast leaves it at 1 once a long rest, and a bare spend is refused",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-beast.ts packBeastHold, asked by src/lib/dm/pc-damage.ts before a summoned creature at 0 disappears; the counter is passive (src/lib/srd/genre-b-counter-terms.ts), so a bare spend is refused"
    },
    {
     "c": "1/long rest",
@@ -2938,8 +2916,9 @@
    },
    {
     "c": "the same holds for you while it lives",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_pack_endurance#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Pack Endurance: the packmaster too drops to 1 while the beast lives, and falls when it does not",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-beast.ts packmasterHold through src/lib/dm/genre-b-drops.ts genreDropHold: the same one use, while a bonded beast lives"
    }
   ]
  },
@@ -2951,16 +2930,15 @@
   "clauses": [
    {
     "c": "When you and your beast hit the same target in a turn, it saves (STR) or is knocked prone and grappled",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Coordinated Takedown#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Coordinated Takedown: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Coordinated Takedown: once the packmaster and the beast have both hit a creature in the round it saves (STR) or is knocked prone and grappled",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-pack.ts packOnHit (src/lib/dm/authored-hooks.ts authoredOnHit): the second of the pair to hit a creature in the round they share forces a STR save against 8 + proficiency + WIS, prone and grappled by the beast on a failure"
    },
    {
     "c": "saves (STR)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Coordinated Takedown#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Coordinated Takedown: once the packmaster and the beast have both hit a creature in the round it saves (STR) or is knocked prone and grappled",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-pack.ts packOnHit (src/lib/dm/authored-hooks.ts authoredOnHit): the second of the pair to hit a creature in the round they share forces a STR save against 8 + proficiency + WIS, prone and grappled by the beast on a failure"
    }
   ]
  },
@@ -2977,11 +2955,9 @@
    },
    {
     "c": "advantage on all WIS checks involving them",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Lord of the Green#1:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Lord of the Green: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-2.mjs Lord of the Green: advantage on a check about what its text names, and only then",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_AUTHORED check_adv creatures beast and plant (src/lib/srd/authored-effects.ts authoredRollRiders, which now reads the check's creature)"
    }
   ]
  },
@@ -2993,26 +2969,27 @@
   "clauses": [
    {
     "c": "Call the Wild summons 2d4 beasts and recharges on a short rest 1/day",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:post_apocalyptic_the_pack_provides#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Call the Wild: 1d4 wolves answer for 10 minutes, 2d4 with The Pack Provides, which also gives the call back on a short rest once a day",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-beast.ts callTheWild (2d4 with The Pack Provides) and src/lib/srd/genre-b-post-apocalyptic.ts packProvides (a short rest gives the call back and spends The Pack Provides' own counter, the day's)"
    },
    {
     "c": "2d4",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:post_apocalyptic_the_pack_provides#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Call the Wild: 1d4 wolves answer for 10 minutes, 2d4 with The Pack Provides, which also gives the call back on a short rest once a day",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-beast.ts callTheWild (2d4 with The Pack Provides) and src/lib/srd/genre-b-post-apocalyptic.ts packProvides (a short rest gives the call back and spends The Pack Provides' own counter, the day's)"
    },
    {
     "c": "recharges on a short rest 1/day",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::The Pack Provides#2:uses",
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test packmaster::The Pack Provides#2:uses",
     "k": "uses",
     "p": {
      "id": "post_apocalyptic_call_the_wild",
      "n": 1,
      "rest": "short"
     },
-    "observed": "post_apocalyptic_call_the_wild did not come back on a short rest (left used 1)",
-    "note": "the upgrade line was read as a feature of its own: the sheet gains a second counter, post_apocalyptic_the_pack_provides (1 a long rest), whose spend does nothing, and the feature it upgrades keeps its count"
+    "by": "src/lib/srd/genre-b-post-apocalyptic.ts packProvides, laid over the short rest refill by src/lib/dm/rest-logic.ts shortRestResourcePatch"
    }
   ]
  },
@@ -3024,16 +3001,15 @@
   "clauses": [
    {
     "c": "While within 30 ft of your beast, you both resist all damage from creatures neither of you has yet wounded this fight",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::One Blood#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to One Blood: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs One Blood: within 30 ft of the beast the packmaster resists a creature neither has wounded, and not once one of them has hit it",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-pack.ts oneBloodResists through src/lib/dm/genre-b-post-apocalyptic-blows.ts paBlowResists (src/lib/dm/enemy-attack.ts, the blow's flags): an attack by a creature neither has hit this fight is resisted while packmaster and beast are within 30 feet; a blow with no creature named as its dealer (an area through aoe_damage) is not read"
    },
    {
     "c": "within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::One Blood#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs One Blood: within 30 ft of the beast the packmaster resists a creature neither has wounded, and not once one of them has hit it",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-pack.ts oneBloodResists through src/lib/dm/genre-b-post-apocalyptic-blows.ts paBlowResists (src/lib/dm/enemy-attack.ts, the blow's flags): an attack by a creature neither has hit this fight is resisted while packmaster and beast are within 30 feet; a blow with no creature named as its dealer (an area through aoe_damage) is not read"
    }
   ]
  },
@@ -3057,13 +3033,15 @@
    },
    {
     "c": "you and your beast each gain +2 to damage rolls for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_shared_fury#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Shared Fury: the beast's bite gains the +2 as the packmaster's blow does",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-beast.ts sharedFury (the shared fury condition on the packmaster and each bonded beast for 10 rounds)"
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_shared_fury#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs test counter:post_apocalyptic_shared_fury",
+    "by": "the spend on its counter in src/lib/srd/authored-effects-genre-b.ts (src/lib/dm/authored-spends.ts) and the condition's row in src/lib/srd/genre-b-conditions.ts"
    }
   ]
  },
@@ -3088,21 +3066,21 @@
   "clauses": [
    {
     "c": "Reaction",
-    "is": "gap",
-    "probe": "not run: the reaction answers damage to the packmaster's beast, and the engine gives a packmaster no beast to stage (Bonded Beast has no hook: see packmaster::Bonded Beast)",
-    "read_only": true
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Blood Bond: the packmaster's reaction splits a hit on their beast between them, and is refused for any other ally",
+    "by": "src/lib/srd/authored-effects-genre.ts Blood Bond (take_for_ally, 30 ft, split, ownSummon) in src/lib/dm/authored-reactions.ts: only a creature the packmaster made"
    },
    {
     "c": "when your beast within 30 ft takes damage, split it evenly between you",
-    "is": "gap",
-    "probe": "not run: the reaction answers damage to the packmaster's beast, and the engine gives a packmaster no beast to stage (Bonded Beast has no hook: see packmaster::Bonded Beast)",
-    "read_only": true
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Blood Bond: the packmaster's reaction splits a hit on their beast between them, and is refused for any other ally",
+    "by": "src/lib/srd/authored-effects-genre.ts Blood Bond (take_for_ally, 30 ft, split, ownSummon) in src/lib/dm/authored-reactions.ts: only a creature the packmaster made"
    },
    {
     "c": "within 30 ft",
-    "is": "gap",
-    "probe": "not run: the reaction answers damage to the packmaster's beast, and the engine gives a packmaster no beast to stage (Bonded Beast has no hook: see packmaster::Bonded Beast)",
-    "read_only": true
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Blood Bond: the packmaster's reaction splits a hit on their beast between them, and is refused for any other ally",
+    "by": "src/lib/srd/authored-effects-genre.ts Blood Bond (take_for_ally, 30 ft, split, ownSummon) in src/lib/dm/authored-reactions.ts: only a creature the packmaster made"
    }
   ]
  },
@@ -3114,16 +3092,15 @@
   "clauses": [
    {
     "c": "Your Pack Tactics Training advantage extends to all allies adjacent to your beast",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Apex Pair#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Apex Pair: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Apex Pair: an ally adjacent to the beast attacks with advantage a creature the beast is adjacent to",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-pack.ts packTactics (an ally within 5 feet of the beast, against a creature the beast is within 5 feet of)"
    },
    {
     "c": "adjacent",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Apex Pair#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Apex Pair: an ally adjacent to the beast attacks with advantage a creature the beast is adjacent to",
+    "by": "src/lib/dm/genre-b-post-apocalyptic-pack.ts packTactics (an ally within 5 feet of the beast, against a creature the beast is within 5 feet of)"
    }
   ]
  },
@@ -3147,46 +3124,34 @@
    },
    {
     "c": "your beast grows monstrous for 1 minute: double HP, +10 ft speed, attacks deal +2d8 and frighten (WIS save)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_legend_of_the_pack#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Legend of the Pack: the beast's hit points double, its bite deals +2d8 and a creature it hits saves (WIS) or is frightened; once the beast fell in the fight it is refused, nothing spent",
+    "by": "src/lib/srd/authored-effects-genre-b-post-apocalyptic.ts Legend of the Pack (spend kind pack, call legend), src/lib/dm/genre-b-post-apocalyptic-beast.ts legend and legendEnded (hit points doubled for the minute), src/lib/srd/genre-b-post-apocalyptic-conditions.ts legend_of_the_pack (+2d8, +10 ft) and src/lib/dm/genre-b-post-apocalyptic-pack.ts packOnHit (WIS save or frightened of the beast)"
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_legend_of_the_pack#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Legend of the Pack: the beast's hit points double, its bite deals +2d8 and a creature it hits saves (WIS) or is frightened; once the beast fell in the fight it is refused, nothing spent",
+    "by": "src/lib/srd/authored-effects-genre-b-post-apocalyptic.ts Legend of the Pack (spend kind pack, call legend), src/lib/dm/genre-b-post-apocalyptic-beast.ts legend and legendEnded (hit points doubled for the minute), src/lib/srd/genre-b-post-apocalyptic-conditions.ts legend_of_the_pack (+2d8, +10 ft) and src/lib/dm/genre-b-post-apocalyptic-pack.ts packOnHit (WIS save or frightened of the beast)"
    },
    {
     "c": "(WIS save)",
     "is": "held",
-    "by": "src/lib/classes/resources.json fx (src/lib/srd/class-resources.ts effectFromFx), rolled in the spend by src/lib/dm/counter-saves.ts resolveCounterSave",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs test packmaster::Legend of the Pack#3:fx",
-    "k": "fx",
-    "p": {
-     "id": "post_apocalyptic_legend_of_the_pack",
-     "save": "wis",
-     "made": {
-      "dice": "2d8",
-      "takes": "none"
-     }
-    }
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Legend of the Pack: the beast's hit points double, its bite deals +2d8 and a creature it hits saves (WIS) or is frightened; once the beast fell in the fight it is refused, nothing spent",
+    "by": "src/lib/srd/authored-effects-genre-b-post-apocalyptic.ts Legend of the Pack (spend kind pack, call legend), src/lib/dm/genre-b-post-apocalyptic-beast.ts legend and legendEnded (hit points doubled for the minute), src/lib/srd/genre-b-post-apocalyptic-conditions.ts legend_of_the_pack (+2d8, +10 ft) and src/lib/dm/genre-b-post-apocalyptic-pack.ts packOnHit (WIS save or frightened of the beast)"
    },
    {
     "c": "+2d8",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_legend_of_the_pack#HANDS_BACK"
+    "is": "held",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Legend of the Pack: the beast's hit points double, its bite deals +2d8 and a creature it hits saves (WIS) or is frightened; once the beast fell in the fight it is refused, nothing spent",
+    "by": "src/lib/srd/authored-effects-genre-b-post-apocalyptic.ts Legend of the Pack (spend kind pack, call legend), src/lib/dm/genre-b-post-apocalyptic-beast.ts legend and legendEnded (hit points doubled for the minute), src/lib/srd/genre-b-post-apocalyptic-conditions.ts legend_of_the_pack (+2d8, +10 ft) and src/lib/dm/genre-b-post-apocalyptic-pack.ts packOnHit (WIS save or frightened of the beast)"
    },
    {
     "c": "frighten (WIS save)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap packmaster::Legend of the Pack#5:fx",
-    "k": "fx",
-    "p": {
-     "id": "post_apocalyptic_legend_of_the_pack",
-     "condition": "frightened"
-    },
-    "observed": "the spend hands back condition undefined, and the text's is frightened ({\"ok\":true,\"resource\":\"Legend of the Pack\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on a long rest\",\"effect\":\"1/long rest, your beast grows monstrous for 1 minute: double HP, +10 ft speed, attacks deal +2d8 )",
-    "note": "the generator joined the text's two effects: the spend hands aoe_damage a WIS save against 2d8 damage, where the 2d8 rides the beast's attacks and the save is against being frightened",
-    "kind": "rule-wrong"
+    "is": "held",
+    "kind": "rule-wrong",
+    "probe": "scripts/test-genre-b-post-apocalyptic.mjs Legend of the Pack: the beast's hit points double, its bite deals +2d8 and a creature it hits saves (WIS) or is frightened; once the beast fell in the fight it is refused, nothing spent",
+    "by": "src/lib/srd/authored-effects-genre-b-post-apocalyptic.ts Legend of the Pack (spend kind pack, call legend), src/lib/dm/genre-b-post-apocalyptic-beast.ts legend and legendEnded (hit points doubled for the minute), src/lib/srd/genre-b-post-apocalyptic-conditions.ts legend_of_the_pack (+2d8, +10 ft) and src/lib/dm/genre-b-post-apocalyptic-pack.ts packOnHit (WIS save or frightened of the beast)"
    }
   ]
  }

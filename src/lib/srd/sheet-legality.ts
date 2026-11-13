@@ -68,8 +68,8 @@ import { judgeStartingGear, wealthCeilingGold } from "@/lib/srd/starting-wealth"
 import { abilityProblems, baseSpans } from "@/lib/srd/legality/abilities";
 import { applyHalfFeats, halfFeatPicks, halfFeatPoints } from "@/lib/srd/legality/half-feats";
 import { judgeFeats, judgeFeatures } from "@/lib/srd/legality/features";
-import { findOptionByFeatureName, pickInSpellbook } from "@/lib/srd/options";
-import { sheetSpellbook } from "@/lib/srd/owed-picks-logic";
+import { findOptionByFeatureName, openOptionSlots, optionReqProblem, pickInSpellbook, requiredPickProblem } from "@/lib/srd/options";
+import { sheetCantrips, sheetSpellbook } from "@/lib/srd/owed-picks-logic";
 import { subclassChoicePickProblems, withHeldPickIds } from "@/lib/srd/subclass-choice-picks";
 import { SUBCLASS_CHOICE_RECORD } from "@/lib/content/subclass-choices";
 import { judgeProficiencies } from "@/lib/srd/legality/proficiencies";
@@ -563,6 +563,9 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
     race,
     background,
     racialTool: input.racialChoices?.tool ?? "",
+    racialWeapons: input.racialChoices?.weapons ?? [],
+    racialTraining: input.racialChoices?.training ?? [],
+    racialExpertise: input.racialChoices?.expertise ?? "",
     // What the stored character holds stays with it while it is the same
     // class, race and background; an edit that changes one of them picks
     // again from what the new one offers.
@@ -745,6 +748,7 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
   // one the stored character holds stays, as the regrant keeps it.
   if (!policy.trustsHeld) {
     const book = sheetSpellbook({ spellcasting: input.spellcasting ?? null });
+    const cantrips = sheetCantrips({ spellcasting: input.spellcasting ?? null });
     const heldNames = new Set((held?.features ?? []).map((feature) => textKey(feature.name)));
     const classFeatures = styleSlotFeatures(classes, context.subclassExtras, feats.feats);
     const classStyles = fightingStyleChoices(classFeatures);
@@ -754,6 +758,21 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
       const option = feature.source === "choice" ? findOptionByFeatureName(feature.name) : null;
       if (option && !pickInSpellbook(option, book)) {
         problems.push(`${option.n} is not in the spellbook; ${feature.name.split(":")[0]} names a spell written there.`);
+      }
+      // A new pick's prerequisite (a class level, a pact boon, a cantrip), as
+      // the level-up and the owed picks hold it: a 3rd-level Four Elements
+      // monk was stored with Breath of Winter, a 17th-level discipline. One
+      // the stored character holds stays, as the regrant keeps it.
+      const unmet =
+        option && !heldNames.has(textKey(feature.name))
+          ? optionReqProblem(option, {
+              classLevel: (id) => classes.find((entry) => textKey(entry.id) === textKey(id))?.level ?? 0,
+              features: featured.features,
+              cantrips,
+            })
+          : null;
+      if (unmet) {
+        problems.push(unmet);
       }
       const [style] = feature.source === "choice" ? chosenFightingStyles([feature]) : [];
       // A style with no slot to take (a wizard's, a fighter's third) is
@@ -765,6 +784,23 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
         } else {
           placedStyles.push(style);
         }
+      }
+    }
+  }
+  // A kind whose picks must hold one option (a Four Elements monk's
+  // Elemental Attunement beside the other discipline), judged when the save
+  // makes a pick of that kind.
+  if (!policy.trustsHeld) {
+    const heldPicks = new Set((held?.features ?? []).filter((feature) => feature.source === "choice").map((feature) => textKey(feature.name)));
+    const newKinds = new Set(
+      featured.features
+        .filter((feature) => feature.source === "choice" && !heldPicks.has(textKey(feature.name)))
+        .flatMap((feature) => findOptionByFeatureName(feature.name)?.k ?? []),
+    );
+    for (const entry of classes) {
+      for (const slot of openOptionSlots({ classId: entry.id, subclass: entry.subclass ?? "", level: entry.level, features: featured.features })) {
+        const missing = newKinds.has(slot.kind) ? requiredPickProblem(slot) : null;
+        if (missing) problems.push(missing);
       }
     }
   }
@@ -914,6 +950,9 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
       skills: input.racialChoices?.skills ?? [],
       ...racialCantripFields(racialPicks),
       tool: race.toolChoice ? (input.racialChoices?.tool ?? "") : "",
+      weapons: race.weaponChoice ? (input.racialChoices?.weapons ?? []).slice(0, race.weaponChoice.count) : [],
+      training: race.trainingChoice ? (input.racialChoices?.training ?? []).slice(0, race.trainingChoice.count) : [],
+      expertise: race.expertiseChoice ? (input.racialChoices?.expertise ?? "") : "",
       ancestry: ancestry?.id ?? "",
       variant: speciesChoice.variant,
       ...(speciesChoice.grants ? { variantGrants: speciesChoice.grants } : {}),

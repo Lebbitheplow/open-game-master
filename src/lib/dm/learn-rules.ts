@@ -13,7 +13,7 @@ import type { SubclassExtras } from "@/lib/srd/subclass-tables";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { subclassSpellsFor } from "@/lib/srd/features";
 import type { SpellFacts } from "@/lib/srd/spell-facts";
-import { cantripCapOf, casterListOf, casterViewsOf, maxSpellLevelOf, spellOnCasterList, type CasterView } from "@/lib/srd/spell-prep";
+import { cantripCapOf, casterListOf, casterViewsOf, grantedCantripsOf, maxSpellLevelOf, mysticArcanumLevels, spellOnCasterList, type CasterView } from "@/lib/srd/spell-prep";
 import { spellListLabel } from "@/lib/classes/class-spell-list";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
@@ -50,14 +50,17 @@ export function learnProblem(sheet: Learner, spell: string, facts: SpellFacts | 
   if (facts.level === 0) {
     const room = views.some((view) => {
       const cap = cantripCapOf(view);
-      return cap !== null && view.cantrips.length < cap;
+      // A subclass's own cantrips (the Light Domain's light) sit on top.
+      const granted = new Set(grantedCantripsOf(view).map(textKey));
+      return cap !== null && view.cantrips.filter((name) => !granted.has(textKey(name))).length < cap;
     });
     if (!room) {
       return { error: `${sheet.name} already knows as many cantrips as their class allows at this level; ${facts.name} cannot be added until the Cantrips Known column grows.`, refused: "rules" };
     }
     return null;
   }
-  const top = Math.max(0, ...views.map((view) => maxSpellLevelOf(view)));
+  // A warlock's Mystic Arcanum reaches past its pact slots.
+  const top = Math.max(0, ...views.map((view) => Math.max(maxSpellLevelOf(view), ...mysticArcanumLevels(view))));
   if (facts.level > top) {
     return { error: `${facts.name} is a level ${facts.level} spell and ${sheet.name} has slots up to level ${top}; it can be learned once they can cast spells of that level.`, refused: "rules" };
   }

@@ -23,6 +23,7 @@ const { effectsFor } = await import("../src/lib/srd/feature-effects.ts");
 const { matchResource, populateResources, RESOURCE_DEFS } = await import(
   "../src/lib/srd/class-resources.ts"
 );
+const { DROP_HOLD_COUNTERS, INITIATIVE_COUNTERS } = await import("../src/lib/srd/genre-a-counter-terms.ts");
 const AUTHORED_ROWS = (await import("../src/lib/srd/authored-effects.ts")).authoredRows();
 const { COUNTER_REACTION_IDS } = await import("../src/lib/dm/reaction-kinds.ts");
 const { BONUS_ATTACK_COUNTERS } = await import("../src/lib/dm/feature-bonus-attacks.ts");
@@ -388,9 +389,10 @@ test("every racial trait is enforced, a resource, or acknowledged", () => {
     "Claws (1d4 slashing unarmed strike)", "Bite (1d6 piercing unarmed strike)",
     "Expert Forgery (advantage on checks to duplicate writing and craftwork)",
     "Mimicry (reproduce any sound you have heard)",
-    "Kenku Training (two skills of your choice)",
-    "Changeling Instincts (two social or insight skills of your choice)",
-    "Two skills from a survival list (Cunning Artisan)",
+    "Kenku Training (two skills from Acrobatics, Deception, Sleight of Hand, Stealth)",
+    "Changeling Instincts (two skills from Deception, Insight, Intimidation, Persuasion)",
+    "Hunter's Lore (two skills from Animal Handling, Nature, Perception, Stealth, Survival)",
+    "Cunning Artisan (on a short rest, shape a shield, a club, a javelin or darts from the bone and hide of a slain creature)",
     "One skill and one tool of your choice (Specialized Design)",
     "Natural Armor (AC 17, unmodified by Dexterity)", "Natural Armor (AC 13 + DEX)",
     "Shell Defense (withdraw for +4 AC and save advantage, at the cost of movement and actions)",
@@ -432,6 +434,52 @@ test("every racial trait is enforced, a resource, or acknowledged", () => {
     "Call to the Wave (shape water, then create or destroy water 1/long rest from 3rd level)",
     "Mingle with the Wind (levitate 1/long rest from 3rd level)",
     "Merge with Stone (pass without trace 1/long rest from 3rd level)",
+    // The lineages added by the 2026-11 creator audit. Each line is run by
+    // the engine and held by a probe the species clause ledger names
+    // (scripts/clauses/species.json): flight and natural weapons on the board
+    // and in pc_attack, the save and immunity readers of trait-rules.ts, Pack
+    // Tactics in the attack situation, picks at creation, spells cast by
+    // nature; the bundled subraces' and the GM's own lines likewise.
+    "Fey Step (misty step, 1/short rest)",
+    "Sea Elf Training (spear, trident, light crossbow, net)",
+    "Friend of the Sea (share simple ideas with beasts that have a swimming speed)",
+    "Duergar Resilience (adv. vs illusions, charmed and paralyzed)",
+    "Duergar Magic (enlarge/reduce on yourself from 3rd level, invisibility on yourself from 5th, 1/long rest each)",
+    "Cold Resistance",
+    "Control Air and Water (fog cloud, then gust of wind from 3rd level and water breathing from 5th, 1/long rest each)",
+    "Emissary of the Sea (share simple ideas with beasts that breathe water)",
+    "Magic Resistance (adv. on saves against spells and other magic)",
+    "Poison Immunity (immune to poison damage and the poisoned condition)",
+    "Serpent Magic (poison spray cantrip, then suggestion from 3rd level, 1/long rest)",
+    "Pack Tactics (advantage on an attack against a creature an ally stands within 5 feet of)",
+    "Flight (flying speed of 50 ft, not while wearing medium or heavy armor)",
+    "Flight (flying speed of 30 ft, not while wearing medium or heavy armor)",
+    "Talons (1d4 slashing unarmed strike)",
+    "Martial Training (light armor and two martial weapons of your choice)",
+    "Ram (1d4 bludgeoning unarmed strike)",
+    "Reveler (Performance and Persuasion proficiency, and one musical instrument of your choice)",
+    "Fairy Magic (druidcraft cantrip, then faerie fire from 3rd level and enlarge/reduce from 5th, 1/long rest each)",
+    "Stealth proficiency (Silent Feathers)",
+    "Hooves (1d4 bludgeoning unarmed strike)",
+    "Equine Build (count as one size larger for carrying)",
+    "Survivor (one skill from Animal Handling, Medicine, Nature, Survival)",
+    "Perception proficiency (Leporine Senses)",
+    "Bestial Instincts (one skill from Acrobatics, Athletics, Intimidation, Survival)",
+    // The jump die the board's jump door rolls (src/lib/dm/jump-move.ts).
+    "Mirthful Leaps (roll a d8 and add that many feet to each long or high jump)",
+    // The bonus-action hooves pc_attack opens after a charge (feature-bonus-attacks.ts).
+    "Charge (after a 30-foot run straight at a creature and a melee weapon hit on it, a Hooves attack on it as a bonus action)",
+    // A choice on the card a roll waits on (src/lib/dm/lineage-after-roll.ts).
+    "Saving Face (once a short rest, after a miss or a failed check or save, +1 to the roll for each ally you see within 30 feet, up to +5)",
+    "Lucky Footwork (on a failed Dexterity save, use your reaction to add 1d4; not while prone or at speed 0)",
+    // A shifter's subtype lines, picked in the builder: the form Shifting lays
+    // (mt-species-spends.ts), the fangs, the step and the denied advantage.
+    "Shifter subtype (Beasthide)", "Shifter subtype (Longtooth)", "Shifter subtype (Swiftstride)", "Shifter subtype (Wildhunt)",
+    "Beasthide (shifted: an extra 1d6 temporary hit points and 1 more AC)",
+    "Longtooth (shifted: a Fangs attack as a bonus action)",
+    "Fangs (while shifted, 1d6 piercing unarmed strike)",
+    "Swiftstride (shifted: 10 more feet of speed, and a 10-foot step as a reaction)",
+    "Wildhunt (shifted: advantage on Wisdom checks; attacks on you lose advantage)",
   ]);
   const uncovered = [];
   for (const race of races) {
@@ -497,7 +545,11 @@ test("a counter with mechanical wording carries a typed effect or is deliberatel
       // Rolled and applied by src/lib/dm/reaction-counters.ts, or spent by
       // the bonus attack they buy (feature-bonus-attacks.ts) (issue 233).
       !COUNTER_REACTION_IDS.includes(def.id) &&
-      !BONUS_ATTACK_COUNTERS.includes(def.id),
+      !BONUS_ATTACK_COUNTERS.includes(def.id) &&
+      // Held at the hit point drop (src/lib/dm/genre-drop-holds.ts).
+      !DROP_HOLD_COUNTERS.includes(def.id) &&
+      // Given as initiative is rolled (src/lib/dm/genre-a-horror-initiative.ts).
+      !INITIATIVE_COUNTERS.includes(def.id),
   ).map((def) => def.id);
   assert.deepEqual(
     offenders,

@@ -392,12 +392,17 @@ const raceParent = (slug) => raceRows.find((row) => row.slug === slug) ?? null;
 
 // A copy of a published species, renamed and stored, as the builder and the
 // creation check offer it.
-function copiedSpecies(row) {
+function copiedSpecies(row, option = null) {
   const table = raceMechanicsOf({ ...row, source: "open5e" }, raceParent);
   if (!table) return null;
   const draft = draftFromCatalog("race", { ...row, table });
   const stored = normalizeHomebrewData("race", JSON.parse(JSON.stringify(draft.data)), "Copy");
-  return packRaceOptions([{ slug: "homebrew:copy", name: "Copy", documentSlug: "homebrew", document: "Homebrew", data: stored.data }], ["homebrew:copy"])[0] ?? null;
+  const copyRow = { slug: "homebrew:copy", name: "Copy", documentSlug: "homebrew", document: "Homebrew", data: stored.data };
+  // A shade is offered once per Living Origin, and so is its copy.
+  const origin = option && option.id.startsWith(`${option.slug}-`) && option.id.endsWith("-origin") ? option.id.slice(option.slug.length) : null;
+  return origin
+    ? (packRaceOptions([copyRow]).find((entry) => entry.id === `homebrew:copy${origin}`) ?? null)
+    : (packRaceOptions([copyRow], ["homebrew:copy"])[0] ?? null);
 }
 
 // What the option says, less what names it; a size the row leaves unstated
@@ -425,7 +430,7 @@ test("every published species copied into the workshop grants the same, and the 
   let copied = 0;
   for (const option of published) {
     const row = raceRows.find((entry) => entry.slug === option.slug);
-    const copy = copiedSpecies(row);
+    const copy = copiedSpecies(row, option);
     if (!copy) {
       changed.push(`${option.name}: not offered`);
       continue;
@@ -443,7 +448,9 @@ test("every published species copied into the workshop grants the same, and the 
     }
     const rules = speciesRulesOf(copy);
     const engines = JSON.stringify(engineSpecies("homebrew:copy", rules));
-    const original = JSON.stringify(engineSpecies(option.id, { size: option.size, heavyArmorSpeed: option.heavyArmorSpeed, traitNames: option.traitNames }));
+    // The published row as the server reads it (src/lib/characters/species-rules.ts):
+    // a pack species' spells read from its text ride with it.
+    const original = JSON.stringify(engineSpecies(option.id, speciesRulesOf(option)));
     if (engines !== original) changed.push(`${option.name} at the table: ${original} -> ${engines}`);
   }
   assert.ok(copied >= 9, `only ${copied} species copied`);

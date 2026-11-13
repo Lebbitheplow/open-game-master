@@ -5,12 +5,15 @@
 // rests refill by recharge type. Pure and dependency-light so test scripts
 // import it directly.
 
+import { genreBCounterTerms } from "@/lib/srd/genre-b-counter-terms";
 import { COMBAT_RESOURCE_DEFS } from "@/lib/srd/combat-rows";
 import customResourcesJson from "@/lib/classes/resources.json";
 import authoredResourcesJson from "@/lib/srd/authored-resources.json";
+import { GENRE_COUNTER_TERMS, GENRE_EXTRA_COUNTERS } from "@/lib/srd/genre-counter-terms";
 import { innateSpellCounters, racialCounterRest, racialCounterSpell, RACIAL_COUNTER_PREFIX, speciesSpellsReadable } from "@/lib/srd/racial-grants";
 import { INVOCATION_COUNTER_PREFIX, invocationCounters, invocationOfCounter } from "@/lib/srd/granted-casts";
 import { freeCastOf, freeCastResourceId, freeCastRestOf, freeCastSpellOf, isFreeCastResource } from "@/lib/srd/feat-spells";
+import { legerdemainCounterId, legerdemainSpellsHeld } from "@/lib/srd/mt-fb-casts";
 import { LATE_RESOURCE_DEFS } from "@/lib/srd/class-resources-late";
 import { UNLIMITED_USES } from "@/lib/srd/resource-limits";
 import { tableFeat } from "@/lib/srd/feat-effects";
@@ -95,14 +98,19 @@ export type ResourceEffect =
   // Swaps in a beast form with its own hit point pool.
   | { kind: "wild_shape" }
   // Returns expended spell slots on a short rest (Arcane/Natural Recovery),
-  // up to a total of `levels` slot levels.
-  | { kind: "recover_slots"; levels: (level: number) => number }
+  // up to a total of `levels` slot levels; `most` slots at most, of
+  // `maxLevel` or lower (src/lib/dm/genre-a-slots.ts recoverSlotLevels).
+  // `now`: given back by the use_resource spend itself, not by a rest
+  // (Overmind: "regain expended slot levels equal to your CHA modifier").
+  | { kind: "recover_slots"; levels: (level: number, abilityMods?: Record<string, number>) => number; most?: number; maxLevel?: number; now?: boolean }
   // No server-enforceable payload; guidance only.
   | { kind: "narrative" };
 
 // What a save a counter forces is held to beyond its ability, read by the
 // spend that rolls it (src/lib/dm/counter-saves.ts) and the Hand's card.
 export type SaveTerms = {
+  // A creature that fails is pushed this far from the holder (Steamvent Burst).
+  pushFeet?: number;
   // The DC: "spell" is the spell save DC, an ability 8 + proficiency + its
   // modifier. Absent, the area features' 8 + proficiency + Constitution and
   // the others' best modifier, as before.
@@ -192,8 +200,8 @@ export function resolveDiceFormula(
 }
 
 function saveTermsOf(fx: SaveTerms): SaveTerms {
-  const { dcAbility, type, typeFromVariant, half, rounds, rangeFt, cone, types, most, magical, saveEnds } = fx;
-  return Object.fromEntries(Object.entries({ dcAbility, type, typeFromVariant, half, rounds, rangeFt, cone, types, most, magical, saveEnds }).filter(([, value]) => value !== undefined)) as SaveTerms;
+  const { dcAbility, type, typeFromVariant, half, rounds, rangeFt, cone, types, most, magical, saveEnds, pushFeet } = fx;
+  return Object.fromEntries(Object.entries({ dcAbility, type, typeFromVariant, half, rounds, rangeFt, cone, types, most, magical, saveEnds, pushFeet }).filter(([, value]) => value !== undefined)) as SaveTerms;
 }
 
 // Lifts a JSON fx row into the executable effect shape.
@@ -329,6 +337,9 @@ export type ResourceDef = {
   // Inspiration comes back on a short rest from bard 5, Font of
   // Inspiration). Overrides `recharge` for rests that know the sheet.
   rechargeFor?: (level: number) => Recharge;
+  // The use is one additional action on the holder's turn, as Action Surge's
+  // (src/lib/dm/resource-turn.ts grantActionSurge): Adrenal Override.
+  extraAction?: boolean;
   // Never refilled by a rest: the DM gives it back (Inspiration).
   noRefill?: boolean;
   // What a rest leaves held, in place of a refill (Power Surge: "After a long
@@ -739,7 +750,7 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
 // catalogs by scripts/generate-class-resources.mjs. Each is a plain
 // limited-use narrative feature: the server spends the use and hands the
 // model the SRD-style guidance line, exactly like Ki or Action Surge.
-type CustomResourceRow = {
+export type CustomResourceRow = {
   id: string;
   displayName: string;
   match: string[];
@@ -757,9 +768,12 @@ type CustomResourceRow = {
   action?: ResourceAction;
 };
 
-const CUSTOM_RESOURCE_DEFS: ResourceDef[] = (
-  customResourcesJson as { resources: CustomResourceRow[] }
-).resources.map((row) => ({
+const CUSTOM_RESOURCE_DEFS: ResourceDef[] = [
+  ...(customResourcesJson as { resources: CustomResourceRow[] }).resources,
+  // Limits the prose states in words the generator does not read ("1/week",
+  // "one favor per day"), written per genre package (genre-counter-terms.ts).
+  ...GENRE_EXTRA_COUNTERS,
+].map((row) => ({
   id: row.id,
   match: row.match,
   // A genre counter belongs to the feature of exactly that name, granted by
@@ -778,6 +792,12 @@ const CUSTOM_RESOURCE_DEFS: ResourceDef[] = (
   guidance: row.guidance,
   upgrades: row.upgrades,
   ...(row.action ? { action: row.action } : {}),
+  // What the prose cannot carry: a trigger the server spends it on, a cost,
+  // a recharge by level (src/lib/srd/genre-counter-terms.ts).
+  ...GENRE_COUNTER_TERMS[row.id],
+  // What later features of the mystery, post-apocalyptic and steampunk
+  // catalogs say of the counter (src/lib/srd/genre-b-counter-terms.ts).
+  ...genreBCounterTerms(row),
 }));
 
 // The limited-use features of the authored subclass layer. Same row shape as
@@ -1104,7 +1124,13 @@ const unquoted = (text: string) => text.replace(/['‘’ʼ´`]/g, "");
 // the use_resource tool with model-supplied names. A word of a name is none:
 // "channel" is no Channel Divinity, Persistent Rage no Rage, and the tool
 // lists the sheet's own.
-export function matchResource(term: string): ResourceDef | null {
+//
+// `catalog`: the classes whose features the caller means (a sheet's classes,
+// sheetCatalog). Two catalogs may name a feature alike (the dirgesinger's and
+// the apostate's The Rite Completed); a name alone cannot tell them apart, so
+// a row granted only by other classes is passed over for the catalog's own.
+// Every caller that holds a sheet passes it.
+export function matchResource(term: string, catalog?: readonly string[]): ResourceDef | null {
   const wanted = textKey(term);
   if (!wanted) {
     return null;
@@ -1114,10 +1140,17 @@ export function matchResource(term: string): ResourceDef | null {
   if (/^(?:racial_|free_cast_|invocation_)[a-z0-9_]+$/.test(term.trim())) {
     return resourceDef(term.trim());
   }
+  const mine = catalog?.length ? new Set(catalog.map(textKey)) : null;
+  const fits = (def: ResourceDef) => !mine || !def.grantedBy?.length || def.grantedBy.some((classId) => mine.has(textKey(classId)));
   const named = (written: string) =>
-    RESOURCE_DEFS.find((def) => isNamed(written, def.displayName)) ??
-    RESOURCE_DEFS.find((def) => def.match.some((name) => isNamed(unquoted(written), unquoted(name))));
+    RESOURCE_DEFS.find((def) => fits(def) && isNamed(written, def.displayName)) ??
+    RESOURCE_DEFS.find((def) => fits(def) && def.match.some((name) => isNamed(unquoted(written), unquoted(name))));
   return RESOURCE_DEFS.find((def) => textKey(def.id) === wanted) ?? named(term) ?? named(familyOf(term)) ?? null;
+}
+
+// The catalog a sheet's counters come from: its classes, for matchResource.
+export function sheetCatalog(sheet: { class?: string | null; classes?: Array<{ id: string }> | null }): string[] {
+  return sheet.classes?.length ? sheet.classes.map((entry) => entry.id) : sheet.class ? [sheet.class] : [];
 }
 
 // The level a resource counter scales by, and the class it came from.
@@ -1310,6 +1343,12 @@ export function populateResources(
       const id = freeCastResourceId(free.spell, free.rest);
       out[id] = { max: 1, used: Math.min(existing?.[id]?.used ?? 0, 1) };
     }
+  }
+  // A Smuggler's Legerdemain spell, cast once a long rest without a slot
+  // (src/lib/srd/mt-fb-casts.ts), on the free cast's own counter.
+  for (const spell of legerdemainSpellsHeld(features)) {
+    const id = legerdemainCounterId(spell);
+    out[id] = { max: 1, used: Math.min(existing?.[id]?.used ?? 0, 1) };
   }
   // An invocation that casts its spell once a long rest (granted-casts.ts).
   for (const counter of invocationCounters(features)) {

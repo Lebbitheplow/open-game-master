@@ -17,6 +17,10 @@
 // Pure: no database, so a test and the Hand import it directly.
 import { textKey } from "@/lib/language/text-logic";
 import { authoredRows } from "@/lib/srd/authored-effects";
+import { GENRE_AUTHORED } from "@/lib/srd/authored-effects-genre";
+import { GENRE_B_TRIGGERS } from "@/lib/srd/authored-effects-genre-b";
+import { GENRE_B_MYSTERY_TRIGGERS } from "@/lib/srd/authored-effects-genre-b-mystery";
+import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 
 // One thing that happened, as both the engine and the Hand read it.
 //   hit, miss    an attack on `characterId` by `creatureId`
@@ -36,6 +40,8 @@ import { authoredRows } from "@/lib/srd/authored-effects";
 //   moved_near   `creatureId` moved to within `feet` of `characterId`, from `fromFeet`
 //   heal_roll    `creatureId` rolled a spell's healing dice for `characterId`
 //   teleport     `creatureId` teleported (an enemy, with `enemy`)
+//   damaged      `creatureId` damaged `characterId` through neither a hit nor a
+//                save of record (a breath weapon, an aura)
 export type TriggerEventKind =
   | "hit"
   | "miss"
@@ -54,7 +60,8 @@ export type TriggerEventKind =
   | "inspired_success"
   | "moved_near"
   | "heal_roll"
-  | "teleport";
+  | "teleport"
+  | "damaged";
 
 export type TriggerEvent = {
   id: string;
@@ -260,6 +267,9 @@ const WRITTEN: Record<string, TriggerSpec> = {
   // Authored spends that wait for a trigger (src/lib/dm/authored-spends.ts).
   "master of hexes": { on: [{ kind: "death", marked: "hexblade's curse" }], what: "the death of the creature under their Hexblade's Curse" },
   "empowered healing": { on: [{ kind: "heal_roll", rangeFt: 5 }], what: "healing dice they or a creature within 5 feet of them rolled for a spell this turn" },
+  // The mystery, post-apocalyptic and steampunk counters (authored-effects-genre-b.ts).
+  ...GENRE_B_TRIGGERS,
+  ...GENRE_B_MYSTERY_TRIGGERS,
 };
 
 // Raging Storm's environments each wait for their own thing.
@@ -289,7 +299,9 @@ export const TRIGGERED_COUNTERS: readonly string[] = Object.keys(TABLE).filter((
 // the trigger and applies the effect. A shared pool (ki, Bardic Inspiration)
 // is spent by many things and is never one reaction's.
 export function reactionSpending(defId: string): string | null {
-  const rows = authoredRows();
+  // The genre classes' rows (authored-effects-genre.ts) draw on their own
+  // counters the same way: Deductive Counter's use is its reaction's.
+  const rows: Array<{ entry: AuthoredEntry }> = [...authoredRows(), ...GENRE_AUTHORED];
   if (rows.some((row) => (row.entry.spends ?? []).some((spend) => spend.pool?.id === defId))) return null;
   for (const row of rows) {
     if (row.entry.counter !== defId) continue;
@@ -318,7 +330,7 @@ function opens(on: TriggerOn, event: TriggerEvent, ctx: TriggerContext): boolean
   const self = (id: string) => id === ctx.holderId;
   switch (on.kind) {
     case "damaged":
-      return self(event.characterId) && Boolean(event.creatureId) && Boolean(event.damaged) && (event.kind === "hit" || event.kind === "save") && (!on.spell || Boolean(event.spell)) && reach(event.creatureId, on.rangeFt);
+      return self(event.characterId) && Boolean(event.creatureId) && Boolean(event.damaged) && (event.kind === "hit" || event.kind === "save" || event.kind === "damaged") && (!on.spell || Boolean(event.spell)) && reach(event.creatureId, on.rangeFt);
     case "missed":
       return event.kind === "miss" && self(event.characterId) && (!on.melee || Boolean(event.melee));
     case "hit_seen":

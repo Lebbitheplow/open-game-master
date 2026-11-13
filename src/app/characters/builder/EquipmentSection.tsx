@@ -95,7 +95,11 @@ export default function EquipmentSection({
   onRemove,
   purse,
   kit,
+  itemLabel = (name: string) => name,
 }: {
+  // The world pack's name for a piece of gear (GearReceipt.tsx); the list
+  // and the sheet keep the canonical one.
+  itemLabel?: (name: string) => string;
   // The class kit's choices (KitChoicesSection), for a new character.
   kit?: ReactNode;
   equipment: Array<{ name: string; qty: number; slug?: string }>;
@@ -131,7 +135,7 @@ export default function EquipmentSection({
                   onClick={() => onAdd({ name: entry.name })}
                   className="py-1 hover:text-amber-100"
                 >
-                  + {entry.name}
+                  + {itemLabel(entry.name)}
                   <span className="ml-1 text-amber-200/50">{entry.note}</span>
                 </button>
                 <InfoButton
@@ -203,13 +207,13 @@ export default function EquipmentSection({
         metaOf={(entry) => entry.rarity || priceText(entry.cost ?? "")}
       />
       {purse.receipt ? (
-        <GearReceipt receipt={purse.receipt} />
+        <GearReceipt receipt={purse.receipt} itemLabel={itemLabel} />
       ) : (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {equipment.map((item) => (
             <Chip
               key={item.name}
-              label={item.qty > 1 ? `${item.name} x${item.qty}` : item.name}
+              label={item.qty > 1 ? `${itemLabel(item.name)} x${item.qty}` : itemLabel(item.name)}
               homebrew={item.slug?.startsWith("homebrew:") ?? false}
               info={
                 item.slug?.startsWith("homebrew:")

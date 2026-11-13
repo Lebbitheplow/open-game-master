@@ -1,5 +1,7 @@
+import { legendEnded } from "@/lib/dm/genre-b-post-apocalyptic-beast";
 import { settleFrenzies } from "@/lib/dm/frenzy";
 import { endRageBound } from "@/lib/dm/rage-bound";
+import { settleFullThrottle } from "@/lib/dm/genre-b-steampunk-ends";
 import { type Campaign } from "@/lib/db/campaigns";
 import type { TurnBudget } from "@/lib/dm/action-budget";
 import {
@@ -111,6 +113,8 @@ export function tickEncounterConditions(campaign: Campaign, encounter: Encounter
   lines.push(...settleFrenzies(campaign));
   // And what lasted until a rage now over (rage-bound.ts).
   lines.push(...endRageBound(campaign.id).lines);
+  // Full Throttle that has ended burns its knight (genre-b-steampunk-ends.ts).
+  lines.push(...settleFullThrottle(campaign));
 
   if (lines.length || expired.length) {
     publishPersisted(campaign.id, "encounter_updated", {
@@ -148,6 +152,8 @@ export function tickClockConditions(campaign: Campaign, minutes: number, started
   // stretch runs: one that wakes on its last round has had no time to get up.
   const downFor = new Map(listSheets(campaign.id).map((sheet) => [sheet.id, roundsSenseless(sheet)]));
   tickSheetConditions(campaign, rounds, lines, { endTurnBound: true });
+  // Full Throttle that the stretch ended burns its knight (genre-b-steampunk-ends.ts).
+  lines.push(...settleFullThrottle(campaign));
   rollEffectSaves(campaign, null, () => true, lines);
   // A concentration spell lasts no longer than its duration on the road
   // either (src/lib/dm/concentration-clock.ts).
@@ -626,6 +632,11 @@ function tickSheetConditions(
     // turn starts: it takes effect now (long-casting.ts), once the tick is
     // written below.
     const finishing = tick.expired.some((name) => name.toLowerCase() === CASTING) ? castingOf(sheet) : null;
+    // Legend of the Pack's minute ran out: the beast's doubled hit points go.
+    const shrunk = legendEnded(campaign, sheet, tick.expired);
+    if (shrunk) {
+      lines.push(shrunk);
+    }
     for (const name of tick.expired) {
       if (finishing && name.toLowerCase() === CASTING) {
         continue;

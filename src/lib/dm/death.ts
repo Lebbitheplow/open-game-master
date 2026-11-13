@@ -1,6 +1,8 @@
-import { recordSteadied } from "@/lib/dm/last-save";
+import { recordSteadied, recordTrigger } from "@/lib/dm/last-save";
+import { currentActor } from "@/lib/dm/acting-party";
 import { deathSaveFeat } from "@/lib/srd/feat-combat";
 import type { SystemGlyph } from "@/lib/system-glyphs";
+import { triageWake } from "@/lib/dm/genre-a-dark-fantasy-vitals";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
@@ -13,6 +15,7 @@ import { publishPersisted, publishWithSeq } from "@/lib/events";
 import type { CharacterSheet, DeathSaves, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import { conditionDeathSaveAdvantage } from "@/lib/srd/condition-effect-queries";
+import { horrorDeathSaveAdvantage } from "@/lib/srd/genre-a-horror-holds";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
@@ -78,6 +81,9 @@ function writeDeathState(
 function recordDeath(campaign: Campaign, sheet: CharacterSheet, cause: string, at?: number) {
   // When, in the world's time: the window a revival spell holds to.
   noteDeathMoment(campaign.id, sheet.id, at);
+  // On the fight's record too, as an enemy's death is (enemy-damage.ts), for
+  // what answers "a creature within 30 ft dies" (Anchor of the Living).
+  recordTrigger(campaign.id, { kind: "death", forcer: { id: sheet.id, name: sheet.name }, creatureType: "humanoid", killerId: currentActor()?.ref ?? null, enemy: false });
   insertCharacterEvent({
     libraryCharacterId: sheet.libraryCharacterId,
     campaignCharacterId: sheet.id,
@@ -300,11 +306,15 @@ export function wakeStable(campaign: Campaign, characterId: string): string | nu
   if (!sheet || !track?.stable || track.dead || sheet.currentHp > 0) {
     return null;
   }
+  // Triage's patient wakes with the d4's hit points (genre-a-dark-fantasy-vitals.ts).
+  const woken = wakeConditions(sheet);
+  const triage = triageWake(sheet, woken);
+  const hp = Math.min(Math.max(1, sheet.maxHp), triage?.hp ?? 1);
   writeDeathState(campaign, null, sheet, null, "death_state", "stable, and the hours have passed", {
-    currentHp: 1,
-    ...wakeConditions(sheet),
+    currentHp: hp,
+    ...(triage ? { conditions: triage.conditions, conditionMeta: triage.conditionMeta } : woken),
   });
-  return `${sheet.name} comes round with 1 hit point.`;
+  return `${sheet.name} comes round with ${hp} hit point${hp === 1 ? "" : "s"}.`;
 }
 
 // A feature that answers a death save in its place (Searing Vengeance,
@@ -350,7 +360,8 @@ export function rollDeathSave(campaign: Campaign, characterId: string, turnId: s
   // Diehard: advantage on death saves; Survivor: on the first of a fall
   // (src/lib/srd/feat-combat.ts).
   const feat = deathSaveFeat(sheet, track);
-  const claim = hope ?? feat;
+  // Death's Old Acquaintance (survivor): advantage on death saves.
+  const claim = hope ?? feat ?? horrorDeathSaveAdvantage(sheet);
   const waits = heldDieWaits(sheet, 10);
   const resolved = resolveRollExpression(
     {

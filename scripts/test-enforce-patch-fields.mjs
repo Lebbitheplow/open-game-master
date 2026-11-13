@@ -291,6 +291,23 @@ const ROWS = {
       assert.ok(!sneak.after().proficiencies.skills.includes("arcana"), "arcana is not a rogue skill");
     },
   },
+  levelUpTools: {
+    rule: "A tool a new class's grant leaves to the player (a bard's one musical instrument) is one the grant offers, and a class that leaves none takes no pick.",
+    severity: "medium",
+    note: "",
+    attempt: async () => {
+      const singer = { ...FIGHTER, abilities: { str: 16, con: 14, cha: 14 } };
+      const wrong = await earned(singer);
+      assert.equal((await wrong.send({ levelUpClass: "bard", levelUpTools: ["thieves' tools"] })).status, 400, "thieves' tools are no musical instrument");
+      assert.equal(wrong.after().level, 1);
+      const right = await earned(singer);
+      const taken = await right.send({ levelUpClass: "bard", levelUpTools: ["lute"] });
+      assert.equal(taken.status, 200, JSON.stringify(taken.json));
+      assert.ok(right.after().proficiencies.tools.includes("lute"), JSON.stringify(right.after().proficiencies.tools));
+      const brute = await earned();
+      assert.equal((await brute.send({ levelUpClass: "barbarian", levelUpTools: ["lute"] })).status, 400, "a barbarian leaves no tool to choose");
+    },
+  },
   levelUpForget: {
     rule: "On gaining a level a sorcerer may replace one spell they know, and it must be one they know.",
     severity: "medium",
@@ -378,7 +395,7 @@ const ROWS = {
   },
 };
 
-const COSMETIC = ["portrait", "notes", "backstory", "hopes"];
+const COSMETIC = ["portrait", "notes", "backstory", "hopes", "persona"];
 
 await test("every key of the player's patch schema has a row here", () => {
   for (const key of Object.keys(patchSheetSchema.shape)) {

@@ -100,6 +100,16 @@ export const SRD_EFFECT_ROWS: Record<string, SpellMech> = {
     noDamage: true,
     note: "No save: a creature with 150 hit points or fewer is stunned; it makes a CON save at the end of each of its turns.",
   },
+  // ODM's restatement of Xanathar's spell (authored-spells.json): no save at
+  // all, by hit points as Power Word Stun, and charm immunity turns it away.
+  "power word pain": {
+    resolution: "save",
+    save: "con",
+    condition: { name: "racked with pain", saveEnds: true, hpAtMost: 100 },
+    immuneIfImmuneTo: "charmed",
+    noDamage: true,
+    note: "No save: a creature with 100 hit points or fewer is racked with pain; it makes a CON save at the end of each of its turns, and must pass a CON save to cast a spell while it lasts.",
+  },
   "irresistible dance": {
     resolution: "save",
     save: "wis",

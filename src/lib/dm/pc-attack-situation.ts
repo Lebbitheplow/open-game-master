@@ -7,8 +7,7 @@
 
 import { attackRollExtras } from "@/lib/dm/attack-roll-extras";
 import { bondRider } from "@/lib/dm/emboldening-bond";
-import { liftsSmallHeavyPenalty } from "@/lib/srd/feat-combat";
-import { shootsFreelyInMelee } from "@/lib/srd/feat-combat";
+import { liftsSmallHeavyPenalty, shootsFreelyInMelee } from "@/lib/srd/feat-combat";
 import type { Campaign } from "@/lib/db/campaigns";
 import { inDirectSunlight } from "@/lib/dm/sunlight";
 import { hasSunlightSensitivity } from "@/lib/srd/trait-rules";
@@ -20,6 +19,7 @@ import { thrownAtRange } from "@/lib/dm/attack-rules";
 import { attackSightVerdict } from "@/lib/dm/attack-sight";
 import {
   characterFlanks,
+  characterHasPackmate,
   characterShootsInMelee,
   creatureCover,
   tilesBetween,
@@ -46,6 +46,7 @@ import { tokenFootprint } from "@/lib/dm/board-reach";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 import { heldHelp } from "@/lib/dm/help-logic";
+import { holdsFeature } from "@/lib/srd/feature-names";
 import { authoredAttackSituation } from "@/lib/dm/authored-hooks";
 import { featUsable } from "@/lib/srd/feat-use";
 import { effectiveAbilities } from "@/lib/srd/magic-items";
@@ -198,6 +199,13 @@ export function attackSituation(input: {
   if (flanking) {
     conditionContext.notes.push("flanking: advantage");
   }
+  // Pack Tactics (a kobold): advantage on an attack roll against a creature
+  // with an ally of the attacker, not incapacitated, within 5 feet of it.
+  // Any attack roll, a spell's too; before this it was a name on the sheet.
+  const packTactics = holdsFeature(sheet, "pack tactics") && characterHasPackmate(encounter.id, sheet.id, enemy.id);
+  if (packTactics) {
+    conditionContext.notes.push("Pack Tactics: an ally beside the target, advantage");
+  }
   // A held Help: advantage on this attack, which spends it.
   // Only a Help given against this enemy (src/lib/dm/help-logic.ts).
   const helped = heldHelp(sheet, { enemyId: enemy.id });
@@ -240,7 +248,7 @@ export function attackSituation(input: {
   // Effect conditions on the attacker's own roll: Bless's +1d4, Bane's
   // -1d4, True Strike's one-shot advantage, a mote's inspiration die
   // (attack-roll-extras.ts, which the Hand's cards print from too).
-  const attackRiders = attackRollExtras(sheet, bondRider(campaign.id, sheet));
+  const attackRiders = attackRollExtras(sheet, bondRider(campaign.id, sheet), kind === "weapon" ? profile : undefined);
   // A mark an authored feature leaves for one attack (Entropic Ward's).
   attackRiders.spent.push(...authored.spent);
   conditionContext.notes.push(...attackRiders.notes, ...input.onHitNotes);
@@ -319,6 +327,7 @@ export function attackSituation(input: {
     ...(input.attackEffect.disadvantage ? ["disadvantage" as const] : []),
     ...(helped ? ["advantage" as const] : []),
     ...(flanking ? ["advantage" as const] : []),
+    ...(packTactics ? ["advantage" as const] : []),
     ...(input.recklessAdvantage ? ["advantage" as const] : []),
     ...(input.inspired ? ["advantage" as const] : []),
     ...light.sources,

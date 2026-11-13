@@ -10,11 +10,20 @@ import { rerollHealing } from "@/lib/dm/ar-ws-empowered-healing";
 import { pickChaos, wildSurge } from "@/lib/dm/ar-ws-wild-surge";
 import { moonlightEnds, toggleLight } from "@/lib/dm/ar-ws-lunar-empowerment";
 import { markMantleStride } from "@/lib/dm/ar-wbf-bard-mantle";
+import { resolveCyberSpend } from "@/lib/dm/genre-a-cyberpunk-spends";
+import { regainSlotLevels } from "@/lib/srd/slot-levels";
+import { genreCure, genreDraught, genreHitDie } from "@/lib/dm/genre-b-cure";
+import { layGenreZone } from "@/lib/dm/genre-b-zones";
+import { mysterySpend } from "@/lib/dm/genre-b-mystery-spends";
+import { packSpend } from "@/lib/dm/genre-b-post-apocalyptic-beast";
+import { wastesSpend } from "@/lib/dm/genre-b-post-apocalyptic-spends";
+import { steampunkSpend } from "@/lib/dm/genre-b-steampunk-spends";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { spellHurt } from "@/lib/dm/spell-damage-logic";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import { layEnemyConditionInstance } from "@/lib/dm/enemy-condition-lay";
 import { extendsHeld, layWithExtras, markMet, saveEffectRefusal } from "@/lib/dm/authored-save-effect-extras";
+import { horrorSaveArea, horrorSpend } from "@/lib/dm/genre-a-horror-spends";
 import { foesOfSheet, resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { chosenTargets } from "@/lib/dm/chosen-targets";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -27,6 +36,7 @@ import { computeSheetDerived } from "@/lib/srd";
 import { hasCondition, heldAuthored, resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
 import type { Ability, SpendDoes } from "@/lib/srd/authored-effects-types";
 import { STORM_AURA } from "@/lib/srd/authored-effects-data";
+import { optionKindOpenedBy } from "@/lib/srd/options";
 import { incapacitatedBy, likelierSave, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { healArea } from "@/lib/dm/authored-heal-area";
 import { canRegain, regainHitPoints } from "@/lib/dm/regain";
@@ -50,6 +60,8 @@ import { createItem } from "@/lib/dm/authored-spend-arcane";
 import { summonHound } from "@/lib/dm/ar-ws-hound";
 import { jumpToSquare } from "@/lib/dm/ar-ws-shadow-walk";
 import { companionGoes, companionOf, healOne, healRefusal, layLunarWard, veil } from "@/lib/dm/ar-ws-lunar-phenomenon";
+import { summonGenreCompanion } from "@/lib/dm/genre-a-summons";
+import { horrorMarkCondition } from "@/lib/dm/genre-a-horror-marks";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { diceFor, rollOwnDice } from "@/lib/dm/character-roll";
@@ -81,6 +93,8 @@ import { martialSpend } from "@/lib/dm/authored-spend-martial";
 import { mrSpend } from "@/lib/dm/mt-mr-spends";
 import { beguilingBroken } from "@/lib/dm/mt-fb-arrow-riders";
 import { cleanse, forcedStrike, forcedStrikePlan, meleeHitRefusal, pushFoe, sizeRefusal, throwFoe } from "@/lib/dm/mt-fb-spend";
+import { playDarkFantasy } from "@/lib/dm/genre-a-dark-fantasy-spends";
+import { layCastMark } from "@/lib/dm/genre-a-horror-casts";
 
 const DAMAGE_WORDS = new Set(["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"]);
 
@@ -268,6 +282,12 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
       if (does.changeAt === "level" && ctx.held.choice && textKey(ctx.held.choice) !== textKey(option)) {
         return { error: `${sheet.name}'s ${ctx.held.feature} is ${ctx.held.choice}, and it changes only when they gain a ${ctx.held.classId} level: the level-up offers the change. Nothing was spent.`, refused: "rules" };
       }
+      // A choice made once, when the feature arrived (a totem, a Divine
+      // Soul's affinity, a genie's kind: a pick-list of src/lib/srd/
+      // options.ts, which the builder and the level-up ask), stays made.
+      if (!does.feature && !does.changeAt && ctx.held.choice && textKey(ctx.held.choice) !== textKey(option) && optionKindOpenedBy(ctx.held.feature)) {
+        return { error: `${sheet.name}'s ${ctx.held.feature} is ${ctx.held.choice}, chosen when the feature was gained, and it does not change. Nothing was spent.`, refused: "rules" };
+      }
       // The feature's own option already chosen changes nothing, and in a
       // fight would take its bonus action for it (Elemental Cleaver).
       if (!does.feature && ctx.held.choice && textKey(ctx.held.choice) === textKey(option)) {
@@ -282,7 +302,7 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
       return { patch: { features, ...changeSpent(sheet, does), ...moonlightEnds(ctx, owner.feature, option) }, result: { chosen: `${owner.feature}: ${option}. The server applies its effects from now on.` } };
     }
     case "buff": {
-      const condition = conditionName(ctx, does);
+      let condition = conditionName(ctx, does);
       if (typeof condition !== "string") {
         return condition;
       }
@@ -396,6 +416,8 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
         if (unseen) {
           return { error: `${sheet.name} cannot see ${quarry.displayName} (${unseen}), and ${ctx.spend.name} takes a creature they can see. Nothing was spent.`, refused: "rules" };
         }
+        // Extinction: a second Quarry is a mark of its own (genre-a-horror-marks.ts).
+        condition = horrorMarkCondition(sheet, condition, quarry.id);
       }
       let patch: FullPatchSheetInput | undefined;
       // An ally other than the holder has returned above, so "ally" here is the
@@ -406,9 +428,13 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
         const cleared = removeConditions(sheet.conditions, sheet.conditionMeta, otherOutcomes(does, condition));
         // One form at a time: a constellation taken again replaces the one it
         // finds (it was added beside it, two forms at once).
-        const kept = cleared.conditions.filter((entry) => textKey(entry) !== textKey(condition) && !(does.replaces && hasCondition({ conditions: [entry] }, does.replaces)));
+        // `debt`: the untimed mark the condition leaves behind when it ends
+        // (Full Throttle's boiler strain, genre-b-steampunk-ends.ts).
+        const kept = cleared.conditions.filter(
+          (entry) => textKey(entry) !== textKey(condition) && !(does.replaces && hasCondition({ conditions: [entry] }, does.replaces)) && !(does.debt && isConditionNamed(entry, does.debt)),
+        );
         patch = {
-          conditions: [...kept, condition],
+          conditions: [...kept, condition, ...(does.debt ? [does.debt] : [])],
           conditionMeta: {
             ...cleared.meta,
             [condition]: {
@@ -451,6 +477,11 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
       const area = does.zone ? placeSpellZone(campaign, { spell: does.zone, caster: { kind: "pc", id: sheet.id, name: sheet.name } }) : null;
       if (area) {
         lines.push(area);
+      }
+      // A genre buff's area stands on its holder (no rangeFt), which never
+      // refuses (genre-b-zones.ts: Dawnlight's light).
+      if (does.genreZone) {
+        lines.push(...(layGenreZone({ campaign, sheet, name: ctx.spend.name }, does.genreZone) as string[]));
       }
       return { patch, result: { applied: lines } };
     }
@@ -562,7 +593,8 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
       return { result };
     }
     case "save_area":
-      return saveArea(ctx, does);
+      // Rite of Repulsion's later features ride its area (genre-a-horror-spends.ts).
+      return horrorSaveArea(ctx, does, saveArea);
     case "reroll_heal":
       return rerollHealing(ctx);
     case "reroll_save":
@@ -595,6 +627,8 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
       return healArea(ctx, does);
     case "note":
       return { result: { applied: does.text } };
+    case "mystery":
+      return mysterySpend(ctx, does.effect);
     case "aoe_report": {
       // Rolled in the spend on the creatures the call names, half on a save
       // (src/lib/dm/counter-saves.ts): it handed these numbers back for an
@@ -669,7 +703,14 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
       const rolled = damageDice(ctx, enemy, dice);
       const first = answer?.alsoFirst ? getEnemy(answer.firstId) : null;
       const alsoFirst = first && first.status === "alive" ? { first: { name: first.displayName, ...damageEnemy(ctx, first, rolled, does.type) } } : {};
-      return { result: { rolled: `${dice}: ${rolled}`, ...damageEnemy(ctx, enemy, rolled, does.type), ...alsoFirst } };
+      const dealt = damageEnemy(ctx, enemy, rolled, does.type);
+      // Arc Coil: "the target cannot take reactions until its next turn".
+      const struck = getEnemy(enemy.id);
+      if (does.until && struck && struck.currentHp > 0 && !immuneToCondition(struck, does.until)) {
+        layEnemyConditionInstance(ctx.campaign, struck, does.until, { source: sheet.id, untilTurnOf: struck.id });
+        return { result: { rolled: `${dice}: ${rolled}`, ...dealt, ...alsoFirst, applied: `${struck.displayName} is ${does.until} until its next turn.` } };
+      }
+      return { result: { rolled: `${dice}: ${rolled}`, ...dealt, ...alsoFirst } };
     }
     case "flourish": {
       const enemy = targetEnemy(ctx);
@@ -801,6 +842,14 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
       return pickChaos(ctx);
     case "damage_ward":
       return layWard(ctx, does);
+    case "cyber_spend":
+      return resolveCyberSpend({ campaign: ctx.campaign, sheet, label: ctx.spend.name, args: ctx.args }, does.what, (next) => resolveSpendEffect(ctx, next));
+    case "genre_summon":
+      return summonGenreCompanion(ctx.campaign, sheet, does.companion, ctx.held.level);
+    case "cast_mark":
+      return layCastMark(ctx, does);
+    case "horror_spend":
+      return horrorSpend(ctx, does.play);
     // Bolstering Magic's slot (src/lib/dm/authored-spend-counters.ts).
     case "regain_slot":
       return regainSlot(ctx, does);
@@ -883,6 +932,44 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
       }
       const enemy = targetEnemy(ctx);
       return "error" in enemy ? enemy : stripMemory(ctx, does, enemy, dc);
+    }
+    case "dark_fantasy":
+      return playDarkFantasy(ctx, does.play);
+    // Break the Delusion, Deliverance, Revelation (src/lib/dm/genre-b-cure.ts):
+    // the hit points first, which refuse with nobody to heal.
+    case "cure": {
+      const healed = does.heal ? healArea(ctx, { kind: "heal_area", formula: does.heal, rangeFt: does.rangeFt }) : null;
+      if (healed && "error" in healed) {
+        return healed;
+      }
+      const cured = genreCure(ctx, does);
+      return "error" in cured ? cured : { result: { ...(healed?.result ?? {}), ...cured.result } };
+    }
+    case "draught":
+      return genreDraught(ctx, does);
+    case "steampunk":
+      return steampunkSpend(ctx, does);
+    case "hit_die":
+      return genreHitDie(ctx);
+    case "pack":
+      return packSpend({ campaign, turn: ctx.turn, sheet, level: ctx.held.level }, does.call);
+    case "wastes":
+      return wastesSpend(ctx, does.call);
+    case "zone": {
+      const laid = layGenreZone({ campaign, sheet, name: ctx.spend.name, targetEnemyId: ctx.args.targetEnemyId }, does);
+      return Array.isArray(laid) ? { result: { applied: laid } } : laid;
+    }
+    case "regain_slot_levels": {
+      const slots = sheet.spellcasting?.slots;
+      const levels = Math.max(1, Number(formula(ctx, does.levels)) || 0);
+      const back = slots ? regainSlotLevels(slots, levels) : null;
+      if (!slots || !sheet.spellcasting || !back?.regained.length) {
+        return { error: `${sheet.name} has no expended spell slot of ${levels} level${levels === 1 ? "" : "s"} or lower for ${ctx.spend.name} to restore. Nothing was spent.`, refused: "rules" };
+      }
+      return {
+        patch: { spellcasting: { ...sheet.spellcasting, slots: back.slots } },
+        result: { applied: [`${sheet.name} regains ${back.regained.map((level) => `a level ${level} slot`).join(", ")} (${levels} slot level${levels === 1 ? "" : "s"}).`] },
+      };
     }
   }
 }
@@ -1032,7 +1119,8 @@ function saveAreaSaves(ctx: SpendContext, does: Extract<SpendDoes, { kind: "save
       } else {
         layEnemyConditionInstance(campaign, fresh(), does.condition, {
           source: sheet.id,
-          ...(does.untilItsTurnEnds ? { untilTurnEndOf: enemy.id } : does.untilNextTurnEnds ? { untilTurnEndOf: sheet.id } : does.rounds ? { rounds: does.rounds } : {}),
+          ...(does.untilItsTurnEnds ? { untilTurnEndOf: enemy.id } : does.untilNextTurn ? { untilTurnOf: sheet.id } : does.untilNextTurnEnds ? { untilTurnEndOf: sheet.id } : does.rounds ? { rounds: does.rounds } : {}),
+          ...(does.saveEnds ? { saveEnds: { ability: does.save, dc } } : {}),
           ...(does.endsOnDamage ? { endsOnDamage: true } : {}),
           ...(does.leashFeet ? { leashFeet: does.leashFeet } : {}),
         });

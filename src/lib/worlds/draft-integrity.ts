@@ -13,6 +13,7 @@ import { normalizeCreatureType } from "@/lib/bestiary/creature-type";
 import type { WorldPack } from "@/lib/worlds/types";
 import { textKey } from "@/lib/language/text-logic";
 import { PLAYED_DOCUMENTS_SQL } from "@/lib/content/edition";
+import { srdRaceId } from "@/lib/srd/race-id";
 
 export type IntegrityReport = {
   problems: string[];
@@ -63,4 +64,17 @@ export function checkPackIntegrity(pack: WorldPack): IntegrityReport {
   }
 
   return { problems, checked: true };
+}
+
+// The content pack's peoples, by their one spelling (srdRaceId), which a
+// pack may rename beside the bundled races: with the pack installed the
+// creator offers them. Empty without the pack, when only the bundled races
+// are offered.
+export function contentRaceKeys(): Set<string> {
+  const db = getContentDb();
+  if (!db) {
+    return new Set();
+  }
+  const rows = db.prepare(`SELECT slug FROM races WHERE ${PLAYED_DOCUMENTS_SQL}`).all() as Array<{ slug: string }>;
+  return new Set(rows.map((row) => srdRaceId(row.slug)));
 }

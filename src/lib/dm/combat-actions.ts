@@ -8,7 +8,7 @@ import { helpReachTiles } from "@/lib/srd/feat-combat";
 import { holdsRow } from "@/lib/dm/mt-mr-turn";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, listEnemies, patchEnemyConditions } from "@/lib/db/encounters";
-import { getSheetById } from "@/lib/db/sheets";
+import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { sizeForRace } from "@/lib/srd";
 import { sizeRank, watchfulPassivePerception } from "@/lib/bestiary/enemy-numbers";
@@ -19,8 +19,12 @@ import { incapacitatedBy } from "@/lib/dm/condition-logic";
 import { tilesBetween, wallBetween } from "@/lib/dm/attack-spatial";
 import { hideRefusal } from "@/lib/dm/hide-traits";
 import { contestShift, rollCharacterCheck } from "@/lib/dm/contest-roll";
+import { spendVanish, VANISH } from "@/lib/srd/genre-b-mystery";
+import { nemesisClaim } from "@/lib/dm/genre-b-mystery-dossier";
 import { rollCard } from "@/lib/dm/roll-card";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
+import { grappleSpikeDamage } from "@/lib/dm/battlerager";
+import { hurtEnemy } from "@/lib/dm/spell-aura";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { hostileTo } from "@/lib/dm/combatant";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
@@ -71,7 +75,18 @@ export function hide(
   if (seen) {
     return seen;
   }
+  // Vanish let a watched grifter hide: that Hide costs a use, which the
+  // bonus-action route has charged or this does (src/lib/srd/genre-b-mystery.ts).
+  const vanished = hideRefusal(campaign, encounter.id, sheet, { plain: true }) !== null;
+  const vanishUsed = sheet.resources?.[VANISH]?.used ?? 0;
   spend();
+  if (vanished) {
+    const paid = spendVanish((getSheetById(sheet.id) ?? sheet).resources, vanishUsed);
+    if (paid) {
+      patchSheet(sheet.id, { resources: paid });
+    }
+    costs.vanish = "Vanish: hidden in plain sight, for one of its uses.";
+  }
   // A Stealth check like any other (src/lib/dm/contest-roll.ts): noisy
   // armor, Reliable Talent, a held inspiration die, Guidance.
   const stealth = rollCharacterCheck(campaign, sheet, { skill: "stealth" }, `${sheet.name}: Stealth to hide`);
@@ -233,7 +248,7 @@ export function contest(
   // (src/lib/dm/contest-roll.ts), against the target's better of Athletics
   // (STR) and Acrobatics (DEX). Ties go to the defender.
   const rollContest = (die: { die: string; label: string } | undefined): { text: string; won: boolean } => {
-    const checked = rollCharacterCheck(campaign, sheet, { skill: "athletics" }, `${sheet.name}: Athletics to ${action} ${enemy.displayName}`);
+    const checked = rollCharacterCheck(campaign, sheet, { skill: "athletics", ...(nemesisClaim(campaign.id, sheet, enemy) ? { advantage: "advantage" as const } : {}) }, `${sheet.name}: Athletics to ${action} ${enemy.displayName}`);
     if (checked.rollId) {
       turn.rollIds.push(checked.rollId);
     }
@@ -314,6 +329,12 @@ export function contest(
     },
   );
   publishEncounter(campaign.id);
+  // Battlerager Armor: a grapple won while raging in spiked armor drives the
+  // spikes in, 3 piercing (src/lib/dm/battlerager.ts).
+  const spikes = condition === "grappled" ? grappleSpikeDamage(sheet) : 0;
+  const spiked = spikes
+    ? hurtEnemy(campaign, encounter, listEnemies(encounter.id).find((entry) => entry.id === enemy.id) ?? enemy, spikes, "piercing", "Battlerager Armor")
+    : "";
   // A flyer knocked prone or grappled to a speed of 0 falls (token-state.ts).
   const fell = landTheFlightless(campaign, encounter.id);
   return {
@@ -323,6 +344,7 @@ export function contest(
     contest: contested,
     success: true,
     ...(fell.length ? { fell: fell.join(" ") } : {}),
+    ...(spiked ? { spikes: spiked } : {}),
     applied: `${enemy.displayName} is ${condition}. The server applied the condition and its mechanics.${
       condition === "grappled" ? " It can try to escape with its action (take_action escape with its enemyId)." : ""
     }`,

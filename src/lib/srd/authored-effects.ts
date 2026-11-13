@@ -27,7 +27,8 @@ import { AUTHORED_DATA_A2 } from "@/lib/srd/authored-effects-data-b";
 import { AUTHORED_DATA_B } from "@/lib/srd/authored-effects-data2";
 import { AUTHORED_DATA_B2 } from "@/lib/srd/authored-effects-data3";
 import { AUTHORED_DATA_C } from "@/lib/srd/authored-effects-data4";
-import { GENRE_AUTHORED } from "@/lib/srd/authored-effects-genre";
+import { GENRE_AUTHORED, type GenreRow } from "@/lib/srd/authored-effects-genre";
+import genreFeatureNames from "@/lib/classes/feature-names.json";
 import type {
   Ability,
   AuthoredEffect,
@@ -52,6 +53,7 @@ import { AUTHORED_DATA_W2_AR_WS } from "@/lib/srd/authored-effects-w2-ar-ws";
 import { AUTHORED_DATA_W2_AR_WS_SORCERER } from "@/lib/srd/authored-effects-w2-ar-ws-sorcerer";
 import { textKey } from "@/lib/language/text-logic";
 import { choiceIn, isConditionNamed } from "@/lib/srd/feature-names";
+import { genreGateHolds } from "@/lib/srd/genre-a-gates";
 import type { CheckAbout } from "@/lib/dm/roll-about";
 import { keyFits, type RollKey } from "@/lib/srd/roll-keys";
 
@@ -103,6 +105,8 @@ export type AuthoredSheet = {
   conditionMeta?: unknown;
   equipment?: Array<{ name: string; equipped?: boolean; gear?: { armor?: { category?: string } } }>;
   concentratingOn?: string | null;
+  currentHp?: number;
+  maxHp?: number;
 };
 
 export type HeldAuthored = Row & { choice: string | null; level: number; name: string };
@@ -167,7 +171,10 @@ export function heldAuthored(sheet: AuthoredSheet): HeldAuthored[] {
     // A class feature its own class's table does not carry: borrowed from
     // another class's subclass, it runs as there, by the level of the class
     // that holds it.
-    if (!found && feature.classId && feature.source === "class") {
+    // A genre class's feature is its own catalog's: the exorcist's Voice of
+    // Authority is not the Order Domain's, and borrowed it dealt a reaction
+    // attack its text never grants (scripts/lib/sweep-clauses-genre-a-borrowed.mjs).
+    if (!found && feature.classId && feature.source === "class" && !GENRE_CLASS_IDS.has(textKey(feature.classId))) {
       const exact = borrowedRow(full);
       const row = exact ?? (chosen ? borrowedRow(textKey(chosen[1])) : undefined);
       if (row) {
@@ -181,10 +188,15 @@ export function heldAuthored(sheet: AuthoredSheet): HeldAuthored[] {
       }
     }
     // A genre class's feature, found by its name (authored-effects-genre.ts).
-    const genre = found ? undefined : GENRE_BY_NAME.get(full);
-    if (genre && (!genre.classes || genre.classes.some((id) => candidates.includes(textKey(id))))) {
+    const genre = found ? undefined : genreRowFor(full, candidates);
+    // Or its pick ("Combat Wetware (Smartlink)"), only for a row that is a
+    // pick: "Daemon Cache (2 programs)" is a feature of its own, not an option.
+    const picked = found || genre || !chosen ? undefined : genreRowFor(textKey(chosen[1]), candidates);
+    const genreChoice = picked?.entry.spends?.some((spend) => spend.does.kind === "choose") ? picked : undefined;
+    if (genre ?? genreChoice) {
       const classId = candidates[0] ?? "";
-      out.push({ key: `genre::${full}`, classId, feature: genre.feature, entry: genre.entry, name: feature.name, choice: null, level: classLevel(sheet, classId) });
+      const held = (genre ?? genreChoice)!;
+      out.push({ key: `genre::${textKey(held.feature)}`, classId, feature: held.feature, entry: held.entry, name: feature.name, choice: genre ? null : textKey(chosen![2]), level: classLevel(sheet, classId) });
     }
   }
   // A pick the builder, the level-up or the sheet's owed picks wrote beside
@@ -203,7 +215,21 @@ export function heldAuthored(sheet: AuthoredSheet): HeldAuthored[] {
   return out;
 }
 
-const GENRE_BY_NAME = new Map(GENRE_AUTHORED.map((row) => [textKey(row.feature), row]));
+// Several genre classes may share a feature's name and mean different things
+// by it (the dirgesinger's and the apostate's The Rite Completed): a row that
+// names the holder's class wins, then a row that names none.
+const GENRE_BY_NAME = new Map<string, GenreRow[]>();
+for (const row of GENRE_AUTHORED) {
+  const name = textKey(row.feature);
+  GENRE_BY_NAME.set(name, [...(GENRE_BY_NAME.get(name) ?? []), row]);
+}
+
+function genreRowFor(name: string, classIds: string[]): GenreRow | undefined {
+  const rows = GENRE_BY_NAME.get(name) ?? [];
+  return rows.find((row) => row.classes?.some((id) => classIds.includes(textKey(id)))) ?? rows.find((row) => !row.classes);
+}
+
+const GENRE_CLASS_IDS = new Set(Object.keys((genreFeatureNames as { classes: Record<string, unknown> }).classes).map(textKey));
 
 // The condition by its whole name, with a bracket note ("spirit totem
 // (bear)") or as the family of a "Family: Choice" name ("starry form:
@@ -226,6 +252,14 @@ export function wearsHeavy(sheet: AuthoredSheet): boolean {
   );
 }
 
+// A suit of this name on (Battlerager Armor's spiked armor), however the
+// sheet spells it ("Spiked Armor", "spiked armour").
+export function wearsArmorNamed(sheet: Pick<AuthoredSheet, "equipment">, name: string): boolean {
+  const items = sheet.equipment ?? [];
+  const wanted = textKey(name);
+  return items.some((item) => isWorn(item, items) && textKey(matchArmor(item)?.name ?? item.name ?? "") === wanted);
+}
+
 // Any body armor on, light to heavy (a shield is not worn on the body):
 // Dragon Wings cannot come through it (SRD 5.1). The sheet's fly speed, the
 // board's and the spend read this one answer (issue #833 review).
@@ -234,6 +268,15 @@ export function wearsBodyArmor(sheet: Pick<AuthoredSheet, "equipment">): boolean
   return items.some((item) => {
     const category = item.gear?.armor?.category ?? matchArmor(item)?.category;
     return isWorn(item, items) && (category === "light" || category === "medium" || category === "heavy");
+  });
+}
+
+// Medium or heavy armor worn: an aarakocra's wings carry them in neither.
+export function wearsMediumOrHeavyArmor(sheet: Pick<AuthoredSheet, "equipment">): boolean {
+  const items = sheet.equipment ?? [];
+  return items.some((item) => {
+    const category = item.gear?.armor?.category ?? matchArmor(item)?.category;
+    return isWorn(item, items) && (category === "medium" || category === "heavy");
   });
 }
 
@@ -250,7 +293,13 @@ export function gateHolds(gate: Gate | undefined, sheet: AuthoredSheet, held: He
   if (gate.unarmored && wearsBodyArmor(sheet)) {
     return false;
   }
+  if (gate.wornArmor && !wearsArmorNamed(sheet, gate.wornArmor)) {
+    return false;
+  }
   if (gate.concentrating && !sheet.concentratingOn) {
+    return false;
+  }
+  if (gate.belowHalf && !(typeof sheet.currentHp === "number" && typeof sheet.maxHp === "number" && sheet.currentHp * 2 < sheet.maxHp)) {
     return false;
   }
   if (gate.condition && !hasCondition(sheet, gate.condition)) {
@@ -269,6 +318,18 @@ export function gateHolds(gate: Gate | undefined, sheet: AuthoredSheet, held: He
     return false;
   }
   if (gate.pet && !(sheet.pets ?? []).some((pet) => pet.kind === gate.pet && pet.hp > 0)) {
+    return false;
+  }
+  if (gate.belowHalf && !((sheet.currentHp ?? 0) < (sheet.maxHp ?? 0) / 2)) {
+    return false;
+  }
+  if (gate.notHeavy && wearsHeavy(sheet)) {
+    return false;
+  }
+  if (gate.lightOrMedium && !(wearsBodyArmor(sheet) && !wearsHeavy(sheet))) {
+    return false;
+  }
+  if (!genreGateHolds(gate, sheet)) {
     return false;
   }
   if (gate.choiceOf) {
@@ -381,9 +442,15 @@ export function authoredSaveTraits(sheet: AuthoredSheet): Array<RollKey & { note
 // ability and what the check is about.
 export function authoredCheckTraits(sheet: AuthoredSheet): Array<RollKey & { note: string }> {
   return activeAuthored(sheet, "check_adv").flatMap(({ effect, held }) => [
-    ...(effect.skills ? [{ roll: "check" as const, skills: effect.skills }] : []),
+    ...(effect.skills ? [{ roll: "check" as const, skills: effect.skills, ...(effect.about ? { about: effect.about } : {}) }] : []),
     ...(effect.abilities ? [{ roll: "check" as const, abilities: effect.abilities, ...(effect.about ? { about: effect.about } : {}) }] : []),
-  ].map((key) => ({ ...key, note: `${held.feature}: advantage` })));
+  ].map((key) => ({ ...key, ...(effect.creatures ? { creatures: effect.creatures } : {}), note: `${held.feature}: advantage` })));
+}
+
+// The skills a held feature doubles the proficiency bonus of
+// (srd/index.ts reads it as expertise in a skill the sheet is proficient in).
+export function authoredExpertise(sheet: AuthoredSheet): string[] {
+  return activeAuthored(sheet, "skill_expertise").flatMap(({ effect }) => effect.skills);
 }
 
 export function authoredSaveProficiencies(sheet: AuthoredSheet): Ability[] {
@@ -517,7 +584,8 @@ const HELD_CHECKS: Array<{ condition: string; skills: string[]; label: string }>
 
 export function authoredRollRiders(
   sheet: AuthoredSheet,
-  input: { kind: "check" | "save" | "initiative"; ability?: string; skill?: string; about?: CheckAbout },
+  // `creature`: a check about a creature of a type (Lord of the Green's beasts and plants).
+  input: { kind: "check" | "save" | "initiative"; ability?: string; skill?: string; about?: CheckAbout; creature?: string },
 ): { advantage: string[]; spent: string[] } {
   const advantage: string[] = [];
   const spent: string[] = [];
@@ -538,7 +606,9 @@ export function authoredRollRiders(
         advantage.push(`${held.label}: advantage`);
       }
     }
-    const roll = { roll: "check" as const, skill, ability: input.ability, about: input.about };
+    // The key's skills are ids ("sleight_of_hand"), which textKey above spells
+    // with spaces: a two-word skill's advantage was never read.
+    const roll = { roll: "check" as const, skill: input.skill, ability: input.ability, about: input.about, creature: input.creature };
     for (const note of new Set(authoredCheckTraits(sheet).filter((key) => keyFits(key, roll)).map((key) => key.note))) {
       advantage.push(note);
     }
@@ -558,8 +628,9 @@ export function authoredInitiativeRefills(
   for (const { effect, held } of activeAuthored(sheet, "init_refill")) {
     const state = next[effect.resource];
     if (state && state.used >= state.max && state.max > 0) {
-      next[effect.resource] = { max: state.max, used: state.max - 1 };
-      notes.push(`${held.feature}: one use comes back`);
+      const back = effect.amount === "all" ? state.max : Math.min(state.max, effect.amount ?? 1);
+      next[effect.resource] = { max: state.max, used: state.max - back };
+      notes.push(`${held.feature}: ${back === 1 ? "one use comes" : effect.amount === "all" ? "every use comes" : `${back} uses come`} back`);
     }
   }
   return notes.length ? { resources: next, notes } : null;

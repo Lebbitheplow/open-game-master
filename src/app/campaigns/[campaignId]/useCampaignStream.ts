@@ -54,6 +54,7 @@ import { registerBrowserTableFeats } from "@/lib/srd/feat-effects";
 import type { TableBreak } from "@/lib/dm/table-break-logic";
 import { sessionHoldFrom, type SessionHold } from "@/lib/dm/session-hold-logic";
 import { registerWorkshopClasses } from "@/lib/classes/workshop-registry";
+import { registerPackClasses, type PackClassTable } from "@/lib/classes/pack-class-registry";
 import { revealIsNews, STAGE_HEARD_MAX } from "@/lib/dice/roll-stage-logic";
 import type { WorkshopClass } from "@/lib/homebrew/class-data";
 
@@ -1456,6 +1457,8 @@ export function useCampaignStream(campaignId: string) {
       }
       // The table's workshop classes (src/lib/classes/workshop-registry.ts).
       registerWorkshopClasses((data.classes ?? []) as WorkshopClass[]);
+      // And the pack classes its sheets hold (src/lib/classes/pack-class-registry.ts).
+      registerPackClasses((data.packClasses ?? []) as PackClassTable[]);
       // The table's whole list: a feat its DM forgot leaves with it.
       registerBrowserTableFeats(data.feats ?? {}, campaignId, { replace: true });
       dispatch({

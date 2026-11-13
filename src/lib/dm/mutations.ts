@@ -61,7 +61,7 @@ import { projectionAfterSpend } from "@/lib/dm/spirit-projection";
 import { planCounterReaction } from "@/lib/dm/reaction-counters";
 import { channelOptions, channelOptionsHeld, optionCost } from "@/lib/dm/option-costs";
 import { BONUS_ATTACK_COUNTERS } from "@/lib/dm/feature-bonus-attacks";
-import { matchResource } from "@/lib/srd/class-resources";
+import { matchResource, sheetCatalog } from "@/lib/srd/class-resources";
 import { prepareUseItem } from "@/lib/dm/object-actions";
 import { chargedItemUse, paidItemCast } from "@/lib/dm/item-use";
 import { releaseStoredSpell, storeSpell } from "@/lib/dm/spell-storing";
@@ -110,7 +110,7 @@ import { spellRulesClassFor } from "@/lib/classes";
 import { planHealFx } from "@/lib/battlemap/fx-plan";
 import { publishFx, tokenPosition } from "@/lib/dm/fx";
 import { checklistClassSpell, isCantripName, spellsAgainstLimit } from "@/lib/srd/spell-lists";
-import { casterViewsOf, spellCapOf, spellbookOf, withCasterViews } from "@/lib/srd/spell-prep";
+import { arcanumSplit, casterViewsOf, mysticArcanumLevels, spellCapOf, spellbookOf, withCasterViews } from "@/lib/srd/spell-prep";
 import { subclassSpellsFor } from "@/lib/srd/features";
 import { waypointProperty } from "@/lib/dm/waypoint-logic";
 import { badArguments, invalidArguments, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
@@ -1487,7 +1487,7 @@ function dmMutation(
       // A reaction counter that acts on the hit that triggered it, or on
       // dropping to 0 (src/lib/dm/reaction-counters.ts): its trigger is
       // checked before anything is spent, its effect applied after.
-      const counter = matchResource(resourceName);
+      const counter = matchResource(resourceName, sheetCatalog(sheet));
       const reacting = counter
         ? planCounterReaction({ campaign, turnId, sheet: getSheetById(sheet.id) ?? sheet, defId: counter.id, targetCharacterId: args.targetCharacterId, targetEnemyId: args.targetEnemyId, variant: args.variant, sheets, sheetsById })
         : null;
@@ -2032,6 +2032,24 @@ function dmMutation(
         // spells known (src/lib/srd/spell-prep.ts spellCapOf), where the
         // fighter's own count is none at all.
         const learnerViews = casterViewsOf(sheet, subclassExtrasForTable(campaign.id, sheet.userId));
+        // A warlock's Mystic Arcanum sits beside the spells known: an open
+        // arcanum level takes its spell whatever the count, a taken one takes
+        // no second, and the arcana held are left out of the count
+        // (src/lib/srd/spell-prep.ts arcanumSplit).
+        const learnLevelOf = (name: string) => spellFactsFor(name, spellAuthorsFor(campaign))?.level ?? null;
+        const arcanumFor = (classId: string, level: number, list: string[]) => {
+          const split = arcanumSplit({ classId, level }, list, learnLevelOf);
+          const levels = mysticArcanumLevels({ classId, level });
+          const asArcanum = Boolean(facts && split.open.includes(facts.level));
+          const taken = Boolean(facts && levels.includes(facts.level) && !asArcanum);
+          return { held: split.arcanum, asArcanum, taken };
+        };
+        const arcanumTaken = (name: string, level: number) => ({
+          result: {
+            error: `${sheet.name}'s Mystic Arcanum holds one spell of each level from 6th, and the level ${level} one is already chosen, so ${name} cannot be learned.`,
+            refused: "rules" as const,
+          },
+        });
         if (casters.length) {
           const classLevels = Object.fromEntries(
             (sheet.classes ?? []).map((entry) => [entry.id.toLowerCase(), entry.level]),
@@ -2046,11 +2064,15 @@ function dmMutation(
             const classEntry = (sheet.classes ?? []).find(
               (entry) => entry.id.toLowerCase() === caster.classId.toLowerCase(),
             );
+            const arcana = arcanumFor(caster.classId, level, caster.known.length ? caster.known : caster.prepared);
+            if (arcana.taken && facts) {
+              return arcanumTaken(facts.name, facts.level);
+            }
             const held = spellsAgainstLimit(
               caster.known.length ? caster.known : caster.prepared,
-              subclassSpellsFor(caster.classId, classEntry?.subclass ?? "", level, subclassExtrasForTable(campaign.id, sheet.userId), sheet.features),
+              [...subclassSpellsFor(caster.classId, classEntry?.subclass ?? "", level, subclassExtrasForTable(campaign.id, sheet.userId), sheet.features), ...arcana.held],
             );
-            if (!cap || held < cap.count) {
+            if (!cap || arcana.asArcanum || held < cap.count) {
               targetCaster = caster;
               break;
             }
@@ -2067,11 +2089,15 @@ function dmMutation(
           const ceiling = learnerViews[0]
             ? spellCapOf(learnerViews[0], sheet.abilities)
             : suggestedSpellCount(spellRulesClassFor(sheet.class), sheet.level, abilityMod(sheet.abilities[sheet.spellcasting.ability]));
+          const arcana = arcanumFor(sheet.class, sheet.level, intoKnown ? known : prepared);
+          if (arcana.taken && facts) {
+            return arcanumTaken(facts.name, facts.level);
+          }
           const current = spellsAgainstLimit(
             intoKnown ? known : prepared,
-            subclassSpellsFor(sheet.class, sheet.subclass, sheet.level, subclassExtrasForTable(campaign.id, sheet.userId), sheet.features),
+            [...subclassSpellsFor(sheet.class, sheet.subclass, sheet.level, subclassExtrasForTable(campaign.id, sheet.userId), sheet.features), ...arcana.held],
           );
-          if (ceiling && current >= ceiling.count) {
+          if (ceiling && !arcana.asArcanum && current >= ceiling.count) {
             return {
               result: {
                 error: `${sheet.name} already has ${current} ${ceiling.label}, the most a level ${sheet.level} ${classWords(sheet.class)} may hold. They must give one up first: ask the player which, then call learn_spell with action=remove for the spell they drop.`,

@@ -111,6 +111,7 @@ import { conversationNote, type Conversation } from "@/lib/dm/conversation-logic
 import { ADVANTAGE_SOURCES } from "@/lib/dm/pc-attack-options";
 import { PLACE_DIRECTIONS, PLACE_DISTANCES } from "@/lib/overworld/places";
 import { heroFell } from "@/lib/characters/fallen-logic";
+import { personaLine } from "@/lib/backgrounds/persona-logic";
 
 // The rolls the moment shows have landed and been told (issue 931): under a
 // bare "Recent rolls" the model told last round's 6 damage on the hero again
@@ -901,6 +902,13 @@ export function describeSheet(
     // #429: the first 400 characters of 2,000 used to be all the DM saw).
     lines.push(`  Backstory: ${options.compact ? cutForRoom(sheet.backstory, COMPACT_TEXT_CHARS.backstory) : sheet.backstory}`);
   }
+  const personality = personaLine(sheet.persona);
+  if (personality) {
+    // The trait, ideal, bond and flaw the player chose: how the character
+    // talks, what moves them and what trips them up, for the GM to play
+    // their NPCs against and to give the flaw its moments.
+    lines.push(`  Personality: ${options.compact ? cutForRoom(personality, COMPACT_TEXT_CHARS.persona) : personality}`);
+  }
   if (sheet.hopes) {
     // What the player would love to see happen (a romance, a rival, a
     // redemption), said out of character: a direction to steer toward when
@@ -912,7 +920,7 @@ export function describeSheet(
 
 // What a compact call keeps of the text the table wrote for the DM, and
 // what each notes list carries whole before its notes keep only their start.
-const COMPACT_TEXT_CHARS = { backstory: 400, hopes: 200, note: 300 } as const;
+const COMPACT_TEXT_CHARS = { backstory: 400, persona: 300, hopes: 200, note: 300 } as const;
 const NOTES_SHARE_CHARS = 4_000;
 
 // The start of a text cut at a word, saying it was cut, so the model never
@@ -1576,7 +1584,7 @@ export const requestRollTool = {
         expression: {
           type: "string",
           description:
-            "damage and custom only: the dice expression ('2d6+3'). Never an enemy's attack or damage (enemy_attack rolls those) and never a party character's attack (pc_attack).",
+            "damage and custom only: the dice expression ('2d6+3'). Never an enemy's roll (enemy_attack) or a party character's attack (pc_attack).",
         },
         damageType: {
           type: "string",
@@ -1603,7 +1611,7 @@ export const requestRollTool = {
         targetEnemyId: {
           type: "string",
           description:
-            "damage only, in combat, from someone with no sheet: the enemy struck, exact enemyId from GAME STATE. Someone with no sheet is an NPC ally never recruited. The server applies the total and reports it; never follow up with apply_damage. A party character's damage goes through pc_attack or the spell tools and is refused here.",
+            "damage only, in combat, from someone with no sheet: the enemy struck, exact enemyId from GAME STATE. Someone with no sheet is an NPC ally never recruited. The server applies the total; never follow up with apply_damage. A party character's damage goes through pc_attack or the spell tools, never here.",
         },
         reason: {
           type: "string",

@@ -12,6 +12,7 @@ import type { AoeSpellPlan } from "@/lib/dm/aoe-spell";
 import { partsTaken, partsTotal, type DamagePart } from "@/lib/dm/aoe-parts";
 import type { EnemyUse } from "@/lib/dm/enemy-casting";
 import { rollCharacterSave } from "@/lib/dm/forced-save";
+import { recordDamage } from "@/lib/dm/last-save";
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { handleSetCondition } from "@/lib/dm/set-condition";
@@ -21,6 +22,8 @@ import type { spellConditionMeta } from "@/lib/dm/spell-effects";
 import { defenseRiders } from "@/lib/srd/feature-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { saveAgainst } from "@/lib/dm/roll-about";
+import { spellSchoolFor } from "@/lib/content";
+import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { areaOnMount } from "@/lib/dm/mount-area";
 
 export function aoeOnCharacters(input: {
@@ -74,6 +77,8 @@ export function aoeOnCharacters(input: {
         damageType: input.type,
         magical: Boolean(input.spell),
         spellBy: input.spell && enemyUse ? enemyUse.enemy.stats.type : undefined,
+        // The spell's school (a duergar's resilience against illusions).
+        school: input.spell ? spellSchoolFor(input.spell, spellAuthorsFor(campaign)) : null,
       }),
       enemyUse?.enemy ?? null,
       null,
@@ -174,6 +179,13 @@ export function aoeOnCharacters(input: {
       if (applied.note) {
         row.note = applied.note;
       }
+    }
+    // The creature's damage is kept for the reactions that answer "a creature
+    // damages you" (last-save.ts recordDamage): a dragon's breath left no
+    // record, so Feedback Loop and Hellish Rebuke had nothing to answer.
+    const landed = typeof row.damageApplied === "number" ? row.damageApplied : damageTaken;
+    if (enemyUse?.enemy && landed > 0) {
+      recordDamage(campaign.id, sheet.id, { id: enemyUse.enemy.id, name: enemyUse.enemy.displayName }, landed, input.type ?? landing.map((part) => part.type ?? "").filter(Boolean).join(" and "), Boolean(input.spell));
     }
     // What a failed save leaves beyond the damage and the condition
     // (Thunderwave's push, Stinking Cloud's lost action, Divine Word's

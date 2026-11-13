@@ -28,7 +28,7 @@
    "b": "phb",
    "l": 0,
    "s": "conjuration",
-   "c": "sorcerer,wizard",
+   "c": "artificer,sorcerer,wizard",
    "v": "VS",
    "d": 60
   },
@@ -47,7 +47,7 @@
    "b": "phb",
    "l": 2,
    "s": "abjuration",
-   "c": "cleric,paladin",
+   "c": "artificer,cleric,paladin",
    "v": "VSM",
    "d": 30
   },
@@ -56,7 +56,7 @@
    "b": "phb",
    "l": 1,
    "s": "abjuration",
-   "c": "ranger,wizard",
+   "c": "artificer,ranger,wizard",
    "r": true,
    "t": 1,
    "v": "VSM",
@@ -67,7 +67,7 @@
    "b": "phb",
    "l": 2,
    "s": "transmutation",
-   "c": "sorcerer,wizard",
+   "c": "artificer,sorcerer,wizard",
    "k": true,
    "v": "VS",
    "d": "self"
@@ -116,7 +116,7 @@
    "b": "phb",
    "l": 5,
    "s": "transmutation",
-   "c": "bard,sorcerer,wizard",
+   "c": "artificer,bard,sorcerer,wizard",
    "k": true,
    "v": "VS",
    "d": 120
@@ -156,7 +156,7 @@
    "b": "phb",
    "l": 4,
    "s": "divination",
-   "c": "wizard",
+   "c": "artificer,wizard",
    "k": true,
    "v": "VSM",
    "d": 30
@@ -173,7 +173,7 @@
    "b": "phb",
    "l": 2,
    "s": "abjuration",
-   "c": "wizard",
+   "c": "artificer,wizard",
    "v": "VSM",
    "g": 25,
    "x": true,
@@ -409,7 +409,7 @@
    "b": "phb",
    "l": 3,
    "s": "transmutation",
-   "c": "sorcerer,wizard",
+   "c": "artificer,sorcerer,wizard",
    "v": "VS",
    "d": "self"
   },
@@ -418,7 +418,7 @@
    "b": "phb",
    "l": 2,
    "s": "illusion",
-   "c": "sorcerer,wizard",
+   "c": "artificer,sorcerer,wizard",
    "k": true,
    "v": "V",
    "d": "self"
@@ -487,16 +487,16 @@
   {
    "n": "Catapult",
    "b": "xge",
-   "l": 6,
+   "l": 1,
    "s": "transmutation",
-   "c": "sorcerer,warlock,wizard"
+   "c": "artificer,sorcerer,wizard"
   },
   {
    "n": "Catnap",
    "b": "xge",
    "l": 3,
    "s": "enchantment",
-   "c": "bard,sorcerer,wizard"
+   "c": "artificer,bard,sorcerer,wizard"
   },
   {
    "n": "Cause Fear",
@@ -818,7 +818,7 @@
    "b": "phb",
    "l": 2,
    "s": "evocation",
-   "c": "cleric,wizard",
+   "c": "artificer,cleric,wizard",
    "v": "VSM",
    "g": 50,
    "x": true,
@@ -888,7 +888,7 @@
    "b": "phb",
    "l": 3,
    "s": "conjuration",
-   "c": "cleric,paladin",
+   "c": "artificer,cleric,paladin",
    "v": "VS",
    "d": 30
   },
@@ -924,7 +924,7 @@
    "b": "phb",
    "l": 5,
    "s": "illusion",
-   "c": "sorcerer,wizard",
+   "c": "artificer,sorcerer,wizard",
    "t": 1,
    "v": "VSM",
    "d": 30
@@ -955,7 +955,7 @@
    "b": "phb",
    "l": 1,
    "s": "evocation",
-   "c": "bard,cleric,druid,paladin,ranger",
+   "c": "artificer,bard,cleric,druid,paladin,ranger",
    "v": "VS",
    "d": "touch"
   },
@@ -964,7 +964,7 @@
    "b": "phb",
    "l": 0,
    "s": "evocation",
-   "c": "bard,sorcerer,wizard",
+   "c": "artificer,bard,sorcerer,wizard",
    "k": true,
    "v": "VSM",
    "d": 120
@@ -998,7 +998,7 @@
    "b": "phb",
    "l": 2,
    "s": "transmutation",
-   "c": "druid,ranger,sorcerer,wizard",
+   "c": "artificer,druid,ranger,sorcerer,wizard",
    "v": "VSM",
    "d": "touch"
   },
@@ -1068,7 +1068,7 @@
    "b": "phb",
    "l": 1,
    "s": "divination",
-   "c": "bard,cleric,druid,paladin,ranger,sorcerer,wizard",
+   "c": "artificer,bard,cleric,druid,paladin,ranger,sorcerer,wizard",
    "r": true,
    "k": true,
    "v": "VS",
@@ -1109,7 +1109,7 @@
    "b": "phb",
    "l": 1,
    "s": "illusion",
-   "c": "bard,sorcerer,wizard",
+   "c": "artificer,bard,sorcerer,wizard",
    "v": "VS",
    "d": "self"
   },
@@ -1137,7 +1137,7 @@
    "b": "phb",
    "l": 3,
    "s": "abjuration",
-   "c": "bard,cleric,druid,paladin,sorcerer,warlock,wizard",
+   "c": "artificer,bard,cleric,druid,paladin,sorcerer,warlock,wizard",
    "v": "VS",
    "d": 120
   },
@@ -1318,7 +1318,7 @@
    "b": "xge",
    "l": 4,
    "s": "transmutation",
-   "c": "druid,warlock,wizard"
+   "c": "artificer,druid,warlock,wizard"
   },
   {
    "n": "Elemental Weapon",
@@ -1346,7 +1346,7 @@
    "b": "phb",
    "l": 2,
    "s": "transmutation",
-   "c": "bard,cleric,druid,sorcerer",
+   "c": "artificer,bard,cleric,druid,sorcerer",
    "k": true,
    "v": "VSM",
    "d": "touch"
@@ -1356,7 +1356,7 @@
    "b": "phb",
    "l": 2,
    "s": "transmutation",
-   "c": "sorcerer,wizard",
+   "c": "artificer,sorcerer,wizard",
    "k": true,
    "v": "VSM",
    "d": 30
@@ -1421,7 +1421,7 @@
    "b": "phb",
    "l": 1,
    "s": "transmutation",
-   "c": "sorcerer,warlock,wizard",
+   "c": "artificer,sorcerer,warlock,wizard",
    "k": true,
    "t": "bonus",
    "v": "VS",
@@ -1442,7 +1442,7 @@
    "b": "phb",
    "l": 4,
    "s": "transmutation",
-   "c": "wizard",
+   "c": "artificer,wizard",
    "t": 10,
    "v": "VS",
    "d": 120
@@ -1452,7 +1452,7 @@
    "b": "phb",
    "l": 1,
    "s": "evocation",
-   "c": "bard,druid",
+   "c": "artificer,bard,druid",
    "k": true,
    "v": "V",
    "d": 60
@@ -1462,7 +1462,7 @@
    "b": "phb",
    "l": 1,
    "s": "necromancy",
-   "c": "sorcerer,wizard",
+   "c": "artificer,sorcerer,wizard",
    "v": "VSM",
    "d": "self"
   },
@@ -1488,7 +1488,7 @@
    "b": "phb",
    "l": 1,
    "s": "transmutation",
-   "c": "bard,sorcerer,wizard",
+   "c": "artificer,bard,sorcerer,wizard",
    "t": "reaction",
    "v": "VM",
    "d": 60
@@ -1574,7 +1574,7 @@
    "b": "phb",
    "l": 0,
    "s": "evocation",
-   "c": "sorcerer,wizard",
+   "c": "artificer,sorcerer,wizard",
    "v": "VS",
    "d": 120
   },
@@ -1620,7 +1620,7 @@
    "b": "xge",
    "l": 3,
    "s": "transmutation",
-   "c": "druid,ranger,sorcerer,wizard"
+   "c": "artificer,druid,ranger,sorcerer,wizard"
   },
   {
    "n": "Flame Blade",
@@ -1667,7 +1667,7 @@
    "b": "phb",
    "l": 3,
    "s": "transmutation",
-   "c": "sorcerer,warlock,wizard",
+   "c": "artificer,sorcerer,warlock,wizard",
    "k": true,
    "v": "VSM",
    "d": "touch"
@@ -1726,7 +1726,7 @@
    "b": "phb",
    "l": 4,
    "s": "abjuration",
-   "c": "bard,cleric,druid,ranger",
+   "c": "artificer,bard,cleric,druid,ranger",
    "v": "VSM",
    "d": "touch"
   },
@@ -1740,9 +1740,9 @@
   {
    "n": "Frostbite",
    "b": "xge",
-   "l": 5,
+   "l": 0,
    "s": "evocation",
-   "c": "sorcerer,warlock,wizard"
+   "c": "artificer,druid,sorcerer,warlock,wizard"
   },
   {
    "n": "Speedy Courier",
@@ -1854,7 +1854,7 @@
    "b": "phb",
    "l": 3,
    "s": "abjuration",
-   "c": "bard,cleric,wizard",
+   "c": "artificer,bard,cleric,wizard",
    "t": 60,
    "v": "VSM",
    "g": 200,
@@ -1896,7 +1896,7 @@
    "b": "phb",
    "l": 1,
    "s": "conjuration",
-   "c": "wizard",
+   "c": "artificer,wizard",
    "v": "VSM",
    "d": 60
   },
@@ -1915,7 +1915,7 @@
    "b": "phb",
    "l": 5,
    "s": "abjuration",
-   "c": "bard,cleric,druid",
+   "c": "artificer,bard,cleric,druid",
    "v": "VSM",
    "g": 100,
    "x": true,
@@ -1960,7 +1960,7 @@
    "b": "phb",
    "l": 0,
    "s": "divination",
-   "c": "cleric,druid",
+   "c": "artificer,cleric,druid",
    "k": true,
    "v": "VS",
    "d": "touch"
@@ -2034,7 +2034,7 @@
    "b": "phb",
    "l": 3,
    "s": "transmutation",
-   "c": "sorcerer,wizard",
+   "c": "artificer,sorcerer,wizard",
    "k": true,
    "v": "VSM",
    "d": 30
@@ -2070,7 +2070,7 @@
    "b": "phb",
    "l": 2,
    "s": "transmutation",
-   "c": "bard,druid",
+   "c": "artificer,bard,druid",
    "k": true,
    "v": "VSM",
    "d": 60
@@ -2201,7 +2201,7 @@
    "b": "phb",
    "l": 1,
    "s": "divination",
-   "c": "bard,wizard",
+   "c": "artificer,bard,wizard",
    "r": true,
    "t": 1,
    "v": "VSM",
@@ -2336,7 +2336,7 @@
    "b": "phb",
    "l": 2,
    "s": "illusion",
-   "c": "bard,sorcerer,warlock,wizard",
+   "c": "artificer,bard,sorcerer,warlock,wizard",
    "k": true,
    "v": "VSM",
    "d": "touch"
@@ -2346,7 +2346,7 @@
    "b": "phb",
    "l": 1,
    "s": "transmutation",
-   "c": "druid,ranger,sorcerer,wizard",
+   "c": "artificer,druid,ranger,sorcerer,wizard",
    "v": "VSM",
    "d": "touch"
   },
@@ -2386,7 +2386,7 @@
    ],
    "l": 4,
    "s": "conjuration",
-   "c": "wizard",
+   "c": "artificer,wizard",
    "v": "VSM",
    "g": 5050,
    "d": "touch"
@@ -2410,7 +2410,7 @@
    "b": "phb",
    "l": 2,
    "s": "abjuration",
-   "c": "bard,cleric,druid,paladin,ranger",
+   "c": "artificer,bard,cleric,druid,paladin,ranger",
    "v": "VS",
    "d": "touch"
   },
@@ -2419,7 +2419,7 @@
    "b": "phb",
    "l": 2,
    "s": "transmutation",
-   "c": "sorcerer,wizard",
+   "c": "artificer,sorcerer,wizard",
    "k": true,
    "v": "VSM",
    "d": 60
@@ -2436,7 +2436,7 @@
    "b": "phb",
    "l": 0,
    "s": "evocation",
-   "c": "bard,cleric,sorcerer,wizard",
+   "c": "artificer,bard,cleric,sorcerer,wizard",
    "v": "VM",
    "d": "touch"
   },
@@ -2498,7 +2498,7 @@
    "b": "phb",
    "l": 1,
    "s": "transmutation",
-   "c": "bard,druid,ranger,wizard",
+   "c": "artificer,bard,druid,ranger,wizard",
    "v": "VSM",
    "d": "touch"
   },
@@ -2530,7 +2530,7 @@
    "b": "phb",
    "l": 0,
    "s": "conjuration",
-   "c": "bard,sorcerer,warlock,wizard",
+   "c": "artificer,bard,sorcerer,warlock,wizard",
    "v": "VS",
    "d": 30
   },
@@ -2571,7 +2571,7 @@
    "b": "phb",
    "l": 2,
    "s": "illusion",
-   "c": "bard,wizard",
+   "c": "artificer,bard,wizard",
    "r": true,
    "t": 1,
    "v": "VSM",
@@ -2591,7 +2591,7 @@
    "b": "phb",
    "l": 2,
    "s": "transmutation",
-   "c": "paladin,wizard",
+   "c": "artificer,paladin,wizard",
    "k": true,
    "t": "bonus",
    "v": "VS",
@@ -2715,7 +2715,7 @@
    "b": "phb",
    "l": 0,
    "s": "transmutation",
-   "c": "bard,cleric,druid,sorcerer,wizard",
+   "c": "artificer,bard,cleric,druid,sorcerer,wizard",
    "t": 1,
    "v": "VSM",
    "d": "touch"
@@ -2732,7 +2732,7 @@
    "b": "phb",
    "l": 0,
    "s": "transmutation",
-   "c": "bard,sorcerer,wizard",
+   "c": "artificer,bard,sorcerer,wizard",
    "v": "VSM",
    "d": 120
   },
@@ -2858,7 +2858,7 @@
    ],
    "l": 4,
    "s": "conjuration",
-   "c": "wizard",
+   "c": "artificer,wizard",
    "v": "VSM",
    "d": 30
   },
@@ -2884,7 +2884,7 @@
    ],
    "l": 4,
    "s": "abjuration",
-   "c": "wizard",
+   "c": "artificer,wizard",
    "t": 10,
    "v": "VSM",
    "d": 120
@@ -2974,7 +2974,7 @@
    ],
    "l": 4,
    "s": "evocation",
-   "c": "wizard",
+   "c": "artificer,wizard",
    "k": true,
    "v": "VSM",
    "d": 30
@@ -3085,7 +3085,7 @@
    "b": "phb",
    "l": 0,
    "s": "conjuration",
-   "c": "druid,sorcerer,warlock,wizard",
+   "c": "artificer,druid,sorcerer,warlock,wizard",
    "v": "VS",
    "d": 10
   },
@@ -3118,9 +3118,9 @@
   {
    "n": "Power Word Pain",
    "b": "xge",
-   "l": 4,
+   "l": 7,
    "s": "enchantment",
-   "c": "cleric,sorcerer,warlock,wizard"
+   "c": "sorcerer,warlock,wizard"
   },
   {
    "n": "Power Word Stun",
@@ -3146,7 +3146,7 @@
    "b": "phb",
    "l": 0,
    "s": "transmutation",
-   "c": "bard,sorcerer,warlock,wizard",
+   "c": "artificer,bard,sorcerer,warlock,wizard",
    "v": "VS",
    "d": 10
   },
@@ -3217,7 +3217,7 @@
    "b": "phb",
    "l": 3,
    "s": "abjuration",
-   "c": "cleric,druid,ranger,sorcerer,wizard",
+   "c": "artificer,cleric,druid,ranger,sorcerer,wizard",
    "k": true,
    "v": "VS",
    "d": "touch"
@@ -3237,7 +3237,7 @@
    "b": "phb",
    "l": 2,
    "s": "abjuration",
-   "c": "cleric,druid,paladin,ranger",
+   "c": "artificer,cleric,druid,paladin,ranger",
    "v": "VS",
    "d": "touch"
   },
@@ -3267,7 +3267,7 @@
    "b": "phb",
    "l": 1,
    "s": "transmutation",
-   "c": "cleric,druid,paladin",
+   "c": "artificer,cleric,druid,paladin",
    "r": true,
    "v": "VS",
    "d": 10
@@ -3277,7 +3277,7 @@
    "b": "xge",
    "l": 2,
    "s": "transmutation",
-   "c": "bard,sorcerer,wizard"
+   "c": "artificer,bard,sorcerer,wizard"
   },
   {
    "n": "Raise Dead",
@@ -3336,7 +3336,7 @@
    "b": "phb",
    "l": 0,
    "s": "evocation",
-   "c": "sorcerer,wizard",
+   "c": "artificer,sorcerer,wizard",
    "v": "VS",
    "d": 60
   },
@@ -3390,7 +3390,7 @@
    "b": "phb",
    "l": 0,
    "s": "abjuration",
-   "c": "cleric,druid",
+   "c": "artificer,cleric,druid",
    "k": true,
    "v": "VSM",
    "d": "touch"
@@ -3422,7 +3422,7 @@
    "b": "phb",
    "l": 3,
    "s": "necromancy",
-   "c": "cleric,paladin",
+   "c": "artificer,cleric,paladin",
    "v": "VSM",
    "g": 300,
    "x": true,
@@ -3443,7 +3443,7 @@
    "b": "phb",
    "l": 2,
    "s": "transmutation",
-   "c": "wizard",
+   "c": "artificer,wizard",
    "v": "VSM",
    "d": "touch"
   },
@@ -3461,7 +3461,7 @@
    "b": "phb",
    "l": 1,
    "s": "abjuration",
-   "c": "cleric",
+   "c": "artificer,cleric",
    "t": "bonus",
    "v": "VSM",
    "d": 30
@@ -3513,7 +3513,7 @@
    "b": "phb",
    "l": 2,
    "s": "divination",
-   "c": "bard,sorcerer,wizard",
+   "c": "artificer,bard,sorcerer,wizard",
    "v": "VSM",
    "d": "self"
   },
@@ -3623,7 +3623,7 @@
    "b": "phb",
    "l": 0,
    "s": "evocation",
-   "c": "sorcerer,wizard",
+   "c": "artificer,sorcerer,wizard",
    "v": "VS",
    "d": "touch"
   },
@@ -3746,7 +3746,7 @@
    "b": "phb",
    "l": 0,
    "s": "necromancy",
-   "c": "cleric",
+   "c": "artificer,cleric",
    "v": "VS",
    "d": "touch"
   },
@@ -3783,7 +3783,7 @@
    "b": "phb",
    "l": 2,
    "s": "transmutation",
-   "c": "sorcerer,warlock,wizard",
+   "c": "artificer,sorcerer,warlock,wizard",
    "k": true,
    "v": "VSM",
    "d": "touch"
@@ -3861,7 +3861,7 @@
    "b": "phb",
    "l": 4,
    "s": "transmutation",
-   "c": "cleric,druid,wizard",
+   "c": "artificer,cleric,druid,wizard",
    "v": "VSM",
    "d": "touch"
   },
@@ -3870,7 +3870,7 @@
    "b": "phb",
    "l": 4,
    "s": "abjuration",
-   "c": "druid,ranger,sorcerer,wizard",
+   "c": "artificer,druid,ranger,sorcerer,wizard",
    "k": true,
    "v": "VSM",
    "g": 100,
@@ -4198,9 +4198,9 @@
   {
    "n": "Thunderclap",
    "b": "xge",
-   "l": 3,
+   "l": 0,
    "s": "evocation",
-   "c": "cleric,sorcerer,wizard"
+   "c": "artificer,bard,druid,sorcerer,warlock,wizard"
   },
   {
    "n": "Thunderous Smite",
@@ -4432,7 +4432,7 @@
    "b": "phb",
    "l": 5,
    "s": "evocation",
-   "c": "druid,sorcerer,wizard",
+   "c": "artificer,druid,sorcerer,wizard",
    "k": true,
    "v": "VSM",
    "d": 120
@@ -4476,7 +4476,7 @@
    "b": "phb",
    "l": 3,
    "s": "transmutation",
-   "c": "druid,ranger,sorcerer,wizard",
+   "c": "artificer,druid,ranger,sorcerer,wizard",
    "r": true,
    "v": "VSM",
    "d": 30
@@ -4486,7 +4486,7 @@
    "b": "phb",
    "l": 3,
    "s": "transmutation",
-   "c": "cleric,druid,ranger,sorcerer",
+   "c": "artificer,cleric,druid,ranger,sorcerer",
    "r": true,
    "v": "VSM",
    "d": 30
@@ -4503,7 +4503,7 @@
    "b": "phb",
    "l": 2,
    "s": "conjuration",
-   "c": "sorcerer,wizard",
+   "c": "artificer,sorcerer,wizard",
    "k": true,
    "v": "VSM",
    "d": 60

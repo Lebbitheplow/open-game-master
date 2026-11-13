@@ -124,6 +124,24 @@ await test("Changing a workshop species' size in the workshop changes it at the 
   assert.equal(sizeForRace(smallkin.id), "Medium");
 });
 
+// Every door writes a species' walking speed onto the sheet (sheet-legality
+// takes the race's), and its size and spells already follow an edit. Its
+// speed did not: a DM who fixed a species' 25 feet to 35 left every hero
+// already at the table at 25 until their next level.
+await test("Changing a workshop species' speed in the workshop changes it for the heroes at the table.", async () => {
+  const swiftkin = await brew("Swiftkin", { asi: [{ attributes: ["Dexterity"], value: 2 }], speed: { walk: 25 }, size: "Medium", languages: ["Common"], traits: "" });
+  become(swiftkin);
+  assert.equal(world.sheet(hero.id).speed, 25);
+  world.signIn(world.owner);
+  const response = await homebrewEntry.PATCH(
+    new Request("http://test/", { method: "PATCH", body: JSON.stringify({ data: { ...swiftkin.data, speed: { walk: 35 } } }) }),
+    { params: Promise.resolve({ id: swiftkin.entryId }) },
+  );
+  assert.equal(response.status, 200, JSON.stringify(await response.json()));
+  assert.equal(world.sheet(hero.id).speed, 35);
+  assert.equal(speedFor(world.sheet(hero.id)), 35);
+});
+
 await test("A workshop copy of the Dwarf keeps its speed in heavy armor too heavy for its Strength; a copy of the Human loses 10 feet.", async () => {
   const plate = [{ name: "Plate Armor", qty: 1, equipped: true }];
   const dwarf = become(stonefolk, { str: 10, equipment: plate });

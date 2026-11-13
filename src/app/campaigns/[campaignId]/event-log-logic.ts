@@ -25,8 +25,10 @@ export type FeedItem =
 
 // Rows the trail keeps for the engine's own reading, which change no sheet:
 // the moment of a death (src/lib/dm/revival.ts), which a revival spell
-// times its window from. The death itself is its death_state row.
-export const BOOKKEEPING_KINDS: ReadonlySet<string> = new Set(["death_moment"]);
+// times its window from. The death itself is its death_state row. And a
+// spirit medium's Anchor of the Living holding a dead ally's spirit
+// (src/lib/dm/genre-b-mystery-anchor.ts), which the revival reads.
+export const BOOKKEEPING_KINDS: ReadonlySet<string> = new Set(["death_moment", "spirit_anchor"]);
 
 // Newest first: the sheet changes, the milestones and the time the turns
 // moved on, with each run of one turn's quiet ticks (src/lib/
@@ -343,6 +345,8 @@ export function describeKnownEntry(entry: { kind: string; delta: Delta }, name: 
       return deathState(name, delta);
     case "death_moment":
       return `The moment ${name} died is written down`;
+    case "spirit_anchor":
+      return `${name}'s spirit is held by Anchor of the Living`;
     case "stabilize": {
       const healer = word(delta.healer);
       const woke = amount(delta.currentHp) === 1;

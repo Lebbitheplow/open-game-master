@@ -244,8 +244,12 @@ export function flyingSpeedOf(input: {
   worn?: number;
   // Wearing body armor: Dragon Wings cannot come through it (SRD 5.1).
   armored?: boolean;
+  // Wearing medium or heavy armor: a lineage's flight that says "not while
+  // wearing medium or heavy armor" (an aarakocra's) is grounded.
+  bulkyArmor?: boolean;
 }): number | null {
-  const own = ownFlyingSpeed(input);
+  const grounded = (feature: { name: string }) => Boolean(input.bulkyArmor) && /not while wearing medium or heavy armou?r/i.test(feature.name);
+  const own = ownFlyingSpeed({ ...input, features: (input.features ?? []).filter((feature) => !grounded(feature)) });
   return input.worn ? Math.max(own ?? 0, input.worn) : own;
 }
 

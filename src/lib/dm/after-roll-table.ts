@@ -515,6 +515,56 @@ export const AFTER_ROLL_ROWS = [
     otherLabel: "Prophetic State: {name} rolls with advantage",
     otherNote: "Use your reaction (the Storm Rune's prophetic state): this {what} has advantage, one more d20 and the higher kept.",
   },
+  {
+    // Saving Face (hobgoblin, src/lib/srd/races.json): once a short rest, a
+    // missed attack or a failed check or save gains +1 for each ally the
+    // hobgoblin sees within 30 feet, +5 at most, offered where that carries
+    // it (lineage-after-roll-logic.ts). {amount}: the bonus.
+    id: "saving_face",
+    feature: "Saving Face",
+    cost: "own",
+    counter: "race_saving_face",
+    reaction: false,
+    kinds: ["check", "save", "attack"],
+    whose: "own",
+    effect: "own",
+    module: "lineage-after-roll.ts",
+    when: "short",
+    label: "Saving Face: {amount}",
+    note: "Spend Saving Face (once a short rest): {amount} to this {what}, one for each ally you see within 30 feet.",
+  },
+  {
+    // Lucky Footwork (rabbitfolk): a failed Dexterity save gains 1d4 for the
+    // reaction, not while prone or at speed 0 (lineage-after-roll-logic.ts).
+    id: "lucky_footwork",
+    feature: "Lucky Footwork",
+    cost: "own",
+    reaction: true,
+    kinds: ["save"],
+    whose: "own",
+    effect: "own",
+    module: "lineage-after-roll.ts",
+    when: "short",
+    label: "Lucky Footwork: add 1d4",
+    note: "Use your reaction: roll 1d4 and add it to this Dexterity save.",
+  },
+  {
+    // Inspired Ingenuity (a gearforged's human chassis, a Tome of Heroes
+    // pack row): a check's d20 of 9 or lower becomes a 10 for the reaction,
+    // once a short rest (lineage-after-roll-logic.ts).
+    id: "inspired_ingenuity",
+    feature: "Inspired Ingenuity",
+    cost: "own",
+    counter: "race_inspired_ingenuity",
+    reaction: true,
+    kinds: ["check"],
+    whose: "own",
+    effect: "own",
+    module: "lineage-after-roll.ts",
+    when: "short",
+    label: "Inspired Ingenuity: make the d20 a 10",
+    note: "Use your reaction and Inspired Ingenuity (once a short rest): the d20 of this check counts as a 10.",
+  },
 ] as const satisfies readonly AfterRollRow[];
 
 export type AfterRollId = (typeof AFTER_ROLL_ROWS)[number]["id"];

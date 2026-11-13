@@ -1,5 +1,5 @@
 {
-  "_license": "Acolyte and the feature descriptions derive from the SRD 5.1, (c) Wizards of the Coast LLC, CC-BY-4.0. Other entries are generic skill pairings for convenience.",
+  "_license": "Acolyte and the feature descriptions derive from the SRD 5.1, (c) Wizards of the Coast LLC, CC-BY-4.0. Other entries are generic skill pairings for convenience. Knight, Pirate, Spy, Gladiator and Guild Merchant are the 2014 variants of Noble, Sailor, Criminal, Entertainer and Guild Artisan, restated in ODM's words.",
   "backgrounds": [
     {
       "id": "acolyte",
@@ -286,6 +286,115 @@
       ],
       "blurb": "You grew up alone on the streets, and you know the city's hidden ways better than anyone.",
       "featureDesc": "You know the secret patterns and flow to cities and can find passages through the urban sprawl that others would miss. When you are not in combat, you and companions you lead can travel between any two locations in a city twice as fast as your speed would normally allow."
+    },
+    {
+      "id": "knight",
+      "name": "Knight",
+      "skills": [
+        "history",
+        "persuasion"
+      ],
+      "feature": "Retainers",
+      "tools": [
+        "one gaming set"
+      ],
+      "languages": 1,
+      "equipment": [
+        "fine clothes",
+        "signet ring",
+        "scroll of pedigree",
+        "25 gp"
+      ],
+      "blurb": "You were raised to the knighthood of a noble house, sworn to a lord and to an order's code.",
+      "featureDesc": "Three retainers loyal to your family attend you: commoners who carry messages, keep your horse and gear and run errands for you. They are not soldiers; they will not fight for you, follow you into plain danger or stay if you mistreat them or send them into harm."
+    },
+    {
+      "id": "pirate",
+      "name": "Pirate",
+      "skills": [
+        "athletics",
+        "perception"
+      ],
+      "feature": "Bad Reputation",
+      "tools": [
+        "navigator's tools",
+        "vehicles (water)"
+      ],
+      "languages": 0,
+      "equipment": [
+        "belaying pin (club)",
+        "50 ft silk rope",
+        "lucky charm",
+        "common clothes",
+        "10 gp"
+      ],
+      "blurb": "You sailed under a black flag, and the ports still remember your crew's name.",
+      "featureDesc": "Your reputation as a pirate travels ahead of you. In any civilized settlement you can get away with minor crimes, such as refusing to pay for food at a tavern or breaking down a door at a local shop, because most people will not dare report you to the authorities."
+    },
+    {
+      "id": "spy",
+      "name": "Spy",
+      "skills": [
+        "deception",
+        "stealth"
+      ],
+      "feature": "Criminal Contact",
+      "tools": [
+        "thieves' tools",
+        "one gaming set"
+      ],
+      "languages": 0,
+      "equipment": [
+        "crowbar",
+        "dark common clothes with hood",
+        "15 gp"
+      ],
+      "blurb": "You gathered secrets for a crown, a guild or a cause, and you still answer to a handler.",
+      "featureDesc": "You have a reliable and trustworthy contact in the criminal underworld. You know how to get messages to and from them, even over great distances, through the local messengers, corrupt caravan masters and seedy sailors who carry them."
+    },
+    {
+      "id": "gladiator",
+      "name": "Gladiator",
+      "skills": [
+        "acrobatics",
+        "performance"
+      ],
+      "feature": "By Popular Demand",
+      "tools": [
+        "disguise kit",
+        "one musical instrument"
+      ],
+      "languages": 0,
+      "equipment": [
+        "trident or net",
+        "costume",
+        "favor of an admirer",
+        "15 gp"
+      ],
+      "blurb": "You fought for the crowd's roar in the arena, and the crowd still knows your name.",
+      "featureDesc": "You can always find a place to perform, usually an inn or tavern but sometimes a circus, a theater or a noble's court. In return you receive free lodging and food of a modest standard for as long as you perform each night, and your performance makes you a local figure whom strangers tend to like."
+    },
+    {
+      "id": "guild_merchant",
+      "name": "Guild Merchant",
+      "skills": [
+        "insight",
+        "persuasion"
+      ],
+      "feature": "Guild Membership",
+      "tools": [
+        "navigator's tools"
+      ],
+      "languages": 1,
+      "equipment": [
+        "letter of introduction from your guild",
+        "traveler's clothes",
+        "mule",
+        "cart",
+        "15 gp"
+      ],
+      "blurb": "You are a guild's trader rather than its crafter, moving goods between cities on the guild's name.",
+      "featureDesc": "Your guild will provide you with lodging and food if necessary and pay for your funeral if needed. In some cities a guildhall offers a central place to meet other members. Guilds wield political power: if you are accused of a crime, your guild will support you if a good case can be made, and it can help you gain access to powerful people. Membership costs 5 gp a month in dues."
     }
   ]
 }

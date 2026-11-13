@@ -19,7 +19,7 @@ import {
   authoredSaveProficiencies,
 } from "@/lib/srd/authored-effects";
 import { holdsFeature } from "@/lib/srd/feature-names";
-import type { SaveAgainst } from "@/lib/dm/roll-about";
+import { listedAgainst, type SaveAgainst } from "@/lib/dm/roll-about";
 import { keyFits, type RollKey } from "@/lib/srd/roll-keys";
 import { textKey } from "@/lib/language/text-logic";
 import { subclassNamed } from "@/lib/srd/subclass-name";
@@ -99,6 +99,18 @@ export function heldSaveTraits(sheet: TraitSheet): SaveTrait[] {
   if (hasCondition(sheet, "antitoxin")) {
     out.push({ roll: "save", against: ["poison", "poisoned"], note: "Antitoxin: advantage on saves against poison" });
   }
+  // Duergar Resilience: advantage on saves against being charmed or
+  // paralyzed, and against an illusion spell (the school the engine that
+  // knows the spell names: roll-about.ts saveAgainst).
+  if (holdsFeature(sheet, "duergar resilience")) {
+    out.push({ roll: "save", against: ["charmed", "paralyzed"], note: "Duergar Resilience: advantage on saves against being charmed or paralyzed" });
+    out.push({ roll: "save", schools: ["illusion"], note: "Duergar Resilience: advantage on saves against illusions" });
+  }
+  // Magic Resistance (a serpentfolk): advantage on every save against a
+  // spell or other magical effect.
+  if (holdsFeature(sheet, "magic resistance")) {
+    out.push({ roll: "save", magical: true, note: "Magic Resistance: advantage on saves against spells and other magical effects" });
+  }
   if (holdsFeature(sheet, "gnome cunning")) {
     out.push({ roll: "save", abilities: ["int", "wis", "cha"], magical: true, note: "Gnome Cunning: advantage on INT, WIS and CHA saves against magic" });
   }
@@ -121,7 +133,43 @@ export function heldSaveTraits(sheet: TraitSheet): SaveTrait[] {
   for (const item of sheet.equipment?.length ? magicItemRiders(sheet.equipment, sheet).spellSaveAdvantage : []) {
     out.push({ roll: "save", magical: true, note: `${item}: advantage on saves against spells` });
   }
-  return [...out, ...authoredSaveTraits(sheet)];
+  return [...out, ...lineageSaveLines(sheet), ...authoredSaveTraits(sheet)];
+}
+
+// The save advantages a content pack's species states in prose, as
+// src/lib/content/species-prose-logic.ts writes them on the sheet: "Saves
+// with advantage against charmed, poisoned" (a darakhul's Undead
+// Resilience), "Saves with advantage against spells (Constitution)" (a
+// derro's Eldritch Resilience). Before, those species held only the trait's
+// name, and no save they rolled had advantage.
+const SAVE_LINE = /^saves with advantage against (?!spells\b)(.+)$/i;
+const SPELL_SAVE_LINE = /^saves with advantage against spells \(([^)]+)\)$/i;
+const ABILITY_OF: Record<string, Ability> = {
+  strength: "str", dexterity: "dex", constitution: "con", intelligence: "int", wisdom: "wis", charisma: "cha",
+};
+function lineageSaveLines(sheet: TraitSheet): SaveTrait[] {
+  const out: SaveTrait[] = [];
+  for (const feature of sheet.features ?? []) {
+    const name = feature.name.trim();
+    const spells = SPELL_SAVE_LINE.exec(name);
+    if (spells) {
+      const abilities = spells[1].split(/,\s*/).map((word) => ABILITY_OF[word.trim().toLowerCase()]).filter(Boolean);
+      out.push({ roll: "save", abilities, magical: true, note: `${name}: advantage on ${abilities.map((ability) => ability.toUpperCase()).join(", ")} saves against spells` });
+      continue;
+    }
+    const plain = SAVE_LINE.exec(name);
+    if (plain) {
+      const against = plain[1].split(/,\s*/).flatMap((word) => {
+        const value = word.trim().toLowerCase();
+        return value === "poison" ? ["poison", "poisoned"] : [value];
+      });
+      const known = against.map(listedAgainst).filter((value): value is NonNullable<typeof value> => Boolean(value));
+      if (known.length) {
+        out.push({ roll: "save", against: known, note: `${name}: advantage on these saves` });
+      }
+    }
+  }
+  return out;
 }
 
 // Advantage a trait gives on one save, with the line that says why, keyed to
@@ -250,6 +298,15 @@ export function featureConditionImmunities(sheet: TraitSheet): {
     add("poisoned", "Constructed Resilience");
     add("diseased", "Constructed Resilience");
   }
+  // Poison Immunity (a serpentfolk): never poisoned.
+  if (holdsFeature(sheet, "poison immunity")) {
+    add("poisoned", "Poison Immunity");
+  }
+  // A content pack species' "you are immune to disease" (Undead Resilience,
+  // Fungoid Form), as src/lib/content/species-prose-logic.ts writes it.
+  if (holdsFeature(sheet, "disease immunity")) {
+    add("diseased", "Disease Immunity");
+  }
   const magicalSleep = holdsFeature(sheet, "fey ancestry")
     ? "Fey Ancestry"
     : holdsFeature(sheet, "constructed resilience")
@@ -298,7 +355,7 @@ export function auraConditionImmunities(sheet: TraitSheet): Array<{ condition: s
 // Damage types a feature makes the character immune to (Purity of Body,
 // Nature's Ward: poison).
 export function featureDamageImmunities(sheet: TraitSheet): string[] {
-  const own = holdsFeature(sheet, "purity of body", "nature's ward", "constructed resilience") ? ["poison"] : [];
+  const own = holdsFeature(sheet, "purity of body", "nature's ward", "constructed resilience", "poison immunity") ? ["poison"] : [];
   return [...own, ...authoredDamageImmunities(sheet)];
 }
 
