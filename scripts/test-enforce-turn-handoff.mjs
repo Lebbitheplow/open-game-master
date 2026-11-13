@@ -126,6 +126,29 @@ await test("A narration that hands the turn on ends it after the narration, thou
   assert.equal(current(), kara.id, "the table was told it is Kara's turn and the pointer stayed on Avery");
 });
 
+// Extra Attack is part of the Attack action the player took: the prose
+// telling the turn over after one swing is not the player ending it, and the
+// fighter's second attack went with it (issue 761's kin).
+await test("A narration that hands the turn on ends nothing while the Attack action has a swing of Extra Attack left", async () => {
+  const goblin = await stage();
+  world.patch(avery.id, { level: 5 });
+  try {
+    world.dice(15, 4);
+    await playerTurn(
+      "I attack the goblin.",
+      [
+        reply({ calls: [call("pc_attack", { characterId: avery.id, targetEnemyId: goblin.id, weapon: "Longsword" })] }),
+        reply({ text: "Avery's blade bites into the goblin. It is now Kara's turn." }),
+      ],
+      [[{ kind: "turn_over", quote: "It is now Kara's turn." }], [{ kind: "turn_over", quote: "It is now Kara's turn." }]],
+    );
+    assert.equal(current(), avery.id, "the second attack of Extra Attack was lost to the narration");
+    assert.equal(world.encounter().turnBudget?.attacksMade, 1, "one swing made");
+  } finally {
+    world.patch(avery.id, { level: 3 });
+  }
+});
+
 await test("A narration that asks what they do next ends nothing", async () => {
   await stage();
   await playerTurn("I feint at the goblin.", [reply({ text: "Avery feints, and the goblin flinches back. What does Avery do with the rest of the turn?" })], [[]]);

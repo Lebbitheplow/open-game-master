@@ -17,6 +17,8 @@ import {
 import { claimKindsFor, withoutSentences, type ClaimKind, type NarrationClaim, type PartRead } from "@/lib/dm/claims-logic";
 import { hasQuotedLine, type SpokenLine } from "@/lib/dm/speech";
 import { askedThisTurn, guardGate, liveStateFor, readClaims, turnOverFor } from "@/lib/dm/claims";
+import { getActiveEncounter } from "@/lib/db/encounters";
+import { budgetApplies, paidSwingsLeft } from "@/lib/dm/action-budget";
 import { exchangeWords } from "@/lib/dm/story-moves";
 import type { GuardKind, GuardOutcome, GuardReport } from "@/lib/narrator-quality";
 
@@ -103,13 +105,22 @@ async function readNarration(
   if (answerAwaited) {
     console.warn(`[dm-turn] turn ${turn.id}: the narration reads as handing the turn on, but the turn asked its player for an answer; the turn stays theirs.`);
   }
+  // A turn whose Attack action is under way, with Extra Attack's swings (or
+  // paid Flurry strikes) still to make, is not over because the prose says
+  // so: a level 5 fighter's one swing was narrated as their whole turn and
+  // the second attack was lost (issue 761's kin). Their player ends it, or
+  // their own words do (turn.ts readTurnEndInWords).
+  const swingsLeft = handedOn !== null && !answerAwaited ? swingsPaidFor(campaign.id, handedOn) : 0;
+  if (swingsLeft > 0) {
+    console.warn(`[dm-turn] turn ${turn.id}: the narration reads as handing the turn on with ${swingsLeft} paid attack(s) still to make; the turn stays theirs.`);
+  }
   return {
     contradictions: ruleClaims(
       claims.filter((claim) => kinds.includes(claim.kind) && claim.kind !== "deed"),
       outcomes,
     ),
     lines: claims.flatMap((claim) => (claim.kind === "speaker" ? [{ line: claim.line, speaker: claim.speaker }] : [])),
-    handedOn: answerAwaited ? null : handedOn,
+    handedOn: answerAwaited || swingsLeft > 0 ? null : handedOn,
     // A deed is no contradiction: the turn notes the ones nothing recorded
     // (src/lib/dm/deed-claims.ts).
     deeds: claims.flatMap((claim) => (claim.kind === "deed" ? [claim] : [])),
@@ -117,6 +128,13 @@ async function readNarration(
     bonds: claims.flatMap((claim) => (claim.kind === "bond" ? [claim] : [])),
     unread: failedRead && kinds.length > 0,
   };
+}
+
+// The swings the character's live turn has paid for and not made.
+function swingsPaidFor(campaignId: string, characterId: string): number {
+  const encounter = getActiveEncounter(campaignId);
+  const budget = encounter?.turnBudget ?? null;
+  return encounter && budgetApplies(budget, characterId, encounter.round) ? paidSwingsLeft(budget) : 0;
 }
 
 // What the server did with a spell the prose cast for nothing (castSlotless):
