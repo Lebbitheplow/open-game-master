@@ -433,3 +433,46 @@ export function settleAttuning(sheet: CharacterSheet): FullPatchSheetInput | nul
   }
   return { equipment: pack };
 }
+
+// Which spent slots Arcane Recovery or Natural Recovery gives back: a total
+// of at most `budget` slot levels, none 6th or higher (SRD 5.1). The choice
+// is the player's; made for them, it is the most value: the most slot levels
+// the budget holds, and among plans worth the same, the higher slots. It
+// once went lowest first, so a 5th-level wizard with a 1st, a 2nd and a 3rd
+// spent always got the 1st and the 2nd back and never the 3rd. Levels in the
+// order they come back (highest first); empty when nothing fits, and then
+// the use is kept for a rest that can spend it.
+export function slotRecoveryPlan(slots: Record<string, { max: number; used: number }>, budget: number): number[] {
+  const spent = [1, 2, 3, 4, 5].map((level) => Math.max(0, slots[String(level)]?.used ?? 0));
+  let best: number[] = [];
+  const score = (plan: number[]) => plan.reduce((sum, level) => sum + level, 0);
+  const better = (plan: number[]) => {
+    const [a, b] = [score(plan), score(best)];
+    if (a !== b) {
+      return a > b;
+    }
+    // Same levels: the higher slots, compared highest first.
+    for (let index = 0; index < Math.max(plan.length, best.length); index += 1) {
+      if ((plan[index] ?? 0) !== (best[index] ?? 0)) {
+        return (plan[index] ?? 0) > (best[index] ?? 0);
+      }
+    }
+    return false;
+  };
+  // Every count of each level that fits, from the 5th down: a handful of
+  // slots against a budget of at most 10, so the search stays tiny.
+  const walk = (level: number, left: number, plan: number[]) => {
+    if (level < 1) {
+      if (better(plan)) {
+        best = plan;
+      }
+      return;
+    }
+    const most = Math.min(spent[level - 1], Math.floor(left / level));
+    for (let count = most; count >= 0; count -= 1) {
+      walk(level - 1, left - count * level, [...plan, ...new Array(count).fill(level)]);
+    }
+  };
+  walk(5, Math.max(0, budget), []);
+  return best;
+}
