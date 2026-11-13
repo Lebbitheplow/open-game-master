@@ -40,9 +40,9 @@ test("a quote with no name near it stays the narrator's", () => {
 });
 
 test("one line's name never borrows into the next, and curly quotes count", () => {
-  const segments = attributeSpeech('“We ride at dawn,” said Marla. “Fine.”', cast);
+  const segments = attributeSpeech('“We ride at dawn,” said Marla.\n\n“Fine.”', cast);
   const speech = segments.filter((segment) => segment.kind === "speech");
-  assert.equal(speech.length, 1, "Marla's name was spent on the first line; the second stays the narrator's");
+  assert.equal(speech.length, 1, "Marla's name was spent on the first line; the reply on a new paragraph stays the narrator's");
   assert.equal(speech[0].speaker.name, "Marla");
   const apart = attributeSpeech('“We ride at dawn,” said Marla. Twelve long words then pass between the speakers before anyone else says anything more. “Fine.”', cast);
   assert.equal(apart.filter((segment) => segment.kind === "speech").length, 1);
@@ -93,8 +93,49 @@ test("a line the tag splits in two stays one speaker's, a reply does not", () =>
     ["Marla", "Marla"],
     "the next name along does not take the second half of her sentence",
   );
-  const reply = attributeSpeech('"We ride at dawn," said Marla. "Fine."', cast);
-  assert.equal(reply.filter((segment) => segment.kind === "speech").length, 1);
+  const reply = attributeSpeech('"We ride at dawn," said Marla.\n\n"Fine."', cast);
+  assert.equal(reply.filter((segment) => segment.kind === "speech").length, 1, "a line on a new paragraph may be anyone's reply");
+});
+
+// Issue 943: a new speaker takes a new paragraph, so a line that carries on
+// in the same paragraph after the tag is still the speaker's, whether the tag
+// opens on the name, on "he" or on the verb.
+test("a line after its speaker's tag in the same paragraph stays theirs", () => {
+  const table = [
+    { kind: "npc", id: "t", name: "Tobin", gender: "Male" },
+    { kind: "npc", id: "m", name: "Marla", gender: "Female" },
+  ];
+  const lines = (text) =>
+    attributeSpeech(text, table)
+      .filter((segment) => segment.kind === "speech")
+      .map((segment) => `${segment.speaker.name}: ${segment.text.slice(0, 14)}`);
+  const reported = [
+    "Tobin stumbles back, his face draining of color. He doesn't scream, doesn't cry out, just stares.",
+    "",
+    '"You... you killed him," he whispers, his voice trembling. "He was just following orders. He didn\'t even fight back."',
+  ].join("\n");
+  assert.deepEqual(lines(reported), ["Tobin: You... you kil", "Tobin: He was just fo"], "the reported passage");
+  assert.deepEqual(lines('"We ride at dawn," said Marla. "Fine."'), ["Marla: We ride at daw", "Marla: Fine."]);
+  assert.deepEqual(lines('"We ride at dawn," Marla says. "Fine."'), ["Marla: We ride at daw", "Marla: Fine."], "as it already was");
+  // The cards fold the two halves into one, the tag kept inside (issue #917).
+  const cards = speech.cardsOf(attributeSpeech(reported, table));
+  assert.deepEqual(
+    cards.filter((card) => card.kind === "speech").map((card) => card.parts.map((part) => part.kind)),
+    [["words", "tag", "words"]],
+  );
+  // What still stops it: the next line's own tag naming someone else, a
+  // pronoun the speaker does not answer to, and a sentence about somebody
+  // else in between.
+  assert.deepEqual(lines('"We ride at dawn," said Marla. "Fine," Tobin grunts.'), ["Marla: We ride at daw", "Tobin: Fine,"]);
+  assert.deepEqual(lines('"We ride at dawn," said Marla. "Fine," he grunts.'), ["Marla: We ride at daw"]);
+  assert.deepEqual(lines('"We ride at dawn," said Marla. The fire pops. "Fine."'), ["Marla: We ride at daw"]);
+  assert.deepEqual(lines('"We ride at dawn," said Marla. "Fine." Tobin shrugs.'), ["Marla: We ride at daw"], "an action after the line may be the speaker's");
+  assert.deepEqual(
+    lines('"Hold the gate," says Marla. "Aye," says Tobin. "Who?"'),
+    ["Marla: Hold the gate,", "Tobin: Aye,"],
+    "a paragraph that already holds two voices proves nothing about the third line",
+  );
+  assert.deepEqual(lines('"Hold the gate." "Aye," says Tobin. "Now?"'), ["Tobin: Aye,"], "nor does one with somebody's unattributed line in it");
 });
 
 // A name beside a line is not its speaker: the sentence before a line is

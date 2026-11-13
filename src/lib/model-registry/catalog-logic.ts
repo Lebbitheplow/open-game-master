@@ -400,6 +400,10 @@ export function assessModel(input: {
   // The weights' size on disk against what this machine can hold
   // (src/lib/model-registry/hardware.ts), for a model that runs here.
   memory?: { sizeGb: number; budgetGb: number } | null;
+  // The window the server itself lists for this model (its context_length),
+  // which outranks the catalog's: a catalog row is one host's limit for the
+  // weights, and another host may serve them wider or narrower.
+  contextTokens?: number;
 }): ModelVerdict {
   const warnings: string[] = [];
   let fit: ModelFit = "ok";
@@ -457,15 +461,21 @@ export function assessModel(input: {
         noTools("Takes no tool calls.");
       }
     }
-    if (catalog.contextTokens && role === "story") {
+    const window = input.contextTokens || catalog.contextTokens;
+    if (window && role === "story") {
       // The storyteller's own minimums (src/lib/story-window.ts). Too small
       // to narrate rules a hosted model out; a local row is a loose match
       // for the weights, so it only warns.
-      const verdict = storyWindowVerdict(catalog.contextTokens);
+      const verdict = storyWindowVerdict(window);
       if (verdict.level === "short" && !input.local) unfit(verdict.text);
       else if (verdict.text) warn(verdict.text);
-    } else if (catalog.contextTokens && catalog.contextTokens < SMALL_CONTEXT_TOKENS) {
-      warn(`A ${formatTokens(catalog.contextTokens)} window is small for a campaign; the table will forget recent turns often.`);
+    } else if (window && window < SMALL_CONTEXT_TOKENS) {
+      // The helper never holds the story: a call too big for its window goes
+      // to the storyteller instead (src/lib/dm/model.ts), so a small window
+      // costs the storyteller's time, not the table's memory. It said "the
+      // table will forget recent turns often", and read the catalog's 33K for
+      // a helper its own server listed at 262K (issue 943's report).
+      warn(`A ${formatTokens(window)} window is small for the helper; its longer jobs (summaries, lore checks) will go to the storyteller instead.`);
     }
   }
   return { fit, warnings, summary: describeCatalogModel(catalog, { local: input.local }) };

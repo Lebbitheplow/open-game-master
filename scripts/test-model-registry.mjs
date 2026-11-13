@@ -165,6 +165,15 @@ try {
     assert.match(noTools.warnings[0], /Takes no tool calls/);
     const utility = logic.assessModel({ role: "utility", id: "sao10k/l3-lunaris-8b", catalog: providers.openrouter.models["sao10k/l3-lunaris-8b"], listed: true });
     assert.equal(utility.fit, "warn", "the utility role only warns about tools");
+    // Issue 943's report: the catalog's one exact row for a helper said 32K,
+    // the helper's own server listed 262K, and the warning read the catalog.
+    const narrow = { ...providers.openrouter.models["sao10k/l3-lunaris-8b"], toolCall: true, contextTokens: 32_768 };
+    const helper = (contextTokens) => logic.assessModel({ role: "utility", id: "qwen3.5-4b", catalog: narrow, listed: true, ...(contextTokens ? { contextTokens } : {}) });
+    assert.deepEqual(helper(262_144).warnings, [], "the server's own window outranks the catalog's");
+    assert.match(helper().warnings.join(" "), /small for the helper; its longer jobs .* go to the storyteller/, "a helper's small window costs the storyteller time");
+    assert.doesNotMatch(helper().warnings.join(" "), /forget recent turns/, "the helper never holds the story");
+    const tight = logic.assessModel({ role: "story", id: "x", catalog: { ...narrow, contextTokens: 262_144 }, listed: true, contextTokens: 8_192 });
+    assert.equal(tight.fit, "unfit", "a storyteller served narrower than its catalog row is judged by what it is served at");
     const local = logic.assessModel({ role: "story", id: "gpt-4", catalog: providers.openai.models["gpt-4"], listed: true, local: true });
     assert.equal(local.fit, "warn", "a local row is a loose match for the weights, so a short window only warns");
     assert.equal(local.warnings.length, 1, "weights on the admin's disk are nobody's to retire");

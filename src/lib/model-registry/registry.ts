@@ -92,7 +92,7 @@ function row(
     listed,
     selected: sameId(input.provider, found.id, input.selected),
     catalog,
-    verdict: assessModel({ role: input.role, id: found.id, catalog: judged, listed, local, tools: found.tools ?? null, memory }),
+    verdict: assessModel({ role: input.role, id: found.id, catalog: judged, listed, local, tools: found.tools ?? null, memory, contextTokens: found.contextTokens }),
     tested: input.provider === "harness" ? null : probeRecordFor(input.baseUrl, found.id),
     contextTokens: found.contextTokens || catalog?.contextTokens || 0,
     note: found.note ?? "",

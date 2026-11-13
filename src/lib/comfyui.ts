@@ -250,11 +250,36 @@ export function comfyMissingModelMessage(body: string): string | null {
       const has = others ? `it has ${others} other${others === 1 ? "" : "s"}` : `its ${input.folder} folder is empty`;
       return (
         `ComfyUI has no ${input.what} named "${name}" (${has}). ` +
-        `Put the file in ComfyUI's ${input.folder} folder, or pick another model in Admin > Image generation.`
+        `Put the file in ComfyUI's ${input.folder} folder, or pick another model in Admin > Images.`
       );
     }
   }
   return null;
+}
+
+// The checkpoints ComfyUI lists, as it names them, or null when it did not
+// say: unreachable, or an answer not shaped as its list. Only a list it gave
+// refuses a picture; a ComfyUI that did not answer is left to the submission
+// to report.
+async function listedCheckpoints(url: string): Promise<string[] | null> {
+  const { node, input } = FOLDER_LOADER.checkpoints;
+  const timeout = timeoutSignal(STATUS_TIMEOUT_MS);
+  try {
+    const response = await comfyFetch(`${url}/object_info/${node}`, { cache: "no-store", signal: timeout.signal });
+    if (!response.ok) {
+      await response.body?.cancel().catch(() => {});
+      return null;
+    }
+    const json = await readJson<unknown>(response);
+    return json && typeof json === "object" && node in json ? readComfyFiles(json, node, input) : null;
+  } catch (error) {
+    if (error instanceof ComfyRefusal) {
+      throw error;
+    }
+    return null;
+  } finally {
+    timeout.clear();
+  }
 }
 
 type HistoryEntry = {
@@ -321,6 +346,14 @@ export async function generateComfyImage(options: {
     files = report.files;
   }
   if (!presetModel) {
+    // As for a catalog model, a checkpoint this ComfyUI does not have is
+    // named here: it went as sent and came back as ComfyUI's 400 ("ckpt_name:
+    // 'sd_xl_base_1.0.safetensors' not in []", issue 943's report), shown raw
+    // on every map and scene picture of the campaign.
+    const listed = await listedCheckpoints(url);
+    if (listed && !listed.includes(checkpoint)) {
+      throw new Error(`ComfyUI has no checkpoint named ${checkpoint}. Add it to ComfyUI's models/checkpoints folder, or pick another model in Admin > Images.`);
+    }
     model = checkpointModel(checkpoint) ?? ANY_CHECKPOINT;
     files = { [(model.graph.load as { checkpoint: string }).checkpoint]: checkpoint };
   }

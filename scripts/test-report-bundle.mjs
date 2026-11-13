@@ -165,6 +165,17 @@ await test("The page's own errors are kept cut to size, without the address's qu
   for (let index = 0; index < 30; index += 1) ring = bundle.keepPageError(ring, bundle.cleanPageError({ message: `e${index}` }));
   assert.equal(ring.length, bundle.PAGE_ERROR_LIMIT);
   assert.equal(ring.at(-1).message, "e29");
+  // Issue 943's report: twenty ResizeObserver notices and nothing else.
+  let noisy = bundle.keepPageError([], bundle.cleanPageError({ message: "TypeError: real", where: "/campaigns/x" }));
+  for (let index = 0; index < 25; index += 1) {
+    noisy = bundle.keepPageError(noisy, bundle.cleanPageError({ message: "ResizeObserver loop completed with undelivered notifications.", where: "/campaigns/x" }));
+    noisy = bundle.keepPageError(noisy, bundle.cleanPageError({ message: "ResizeObserver loop limit exceeded", where: "/campaigns/x" }));
+  }
+  assert.deepEqual(noisy.map((entry) => entry.message), ["TypeError: real"], "the browser's layout notice is not an error");
+  for (let index = 0; index < 40; index += 1) noisy = bundle.keepPageError(noisy, bundle.cleanPageError({ message: "TypeError: loop", where: "/campaigns/x" }));
+  assert.deepEqual(noisy.map((entry) => [entry.message, entry.times]), [["TypeError: real", undefined], ["TypeError: loop", 40]], "an error thrown in a loop is one entry, counted");
+  assert.equal(bundle.cleanPageError({ message: "x", times: 40 }).times, 40, "the count survives the browser's storage");
+  assert.equal(bundle.cleanPageError({ message: "x", times: "40" }).times, undefined);
   const base = bundle.buildReportBundle({ sources: { setup }, parts: new Set(["setup"]), viewer: PLAYER, reporterUserId: "me", secrets: [] });
   assert.equal(bundle.withPageErrors(base, ring, false).pageErrors, undefined, "unticked errors went in");
   const withErrors = bundle.withPageErrors(base, [...ring, null, "junk", { message: "Bearer abcdefghijklmnop" }], true);
