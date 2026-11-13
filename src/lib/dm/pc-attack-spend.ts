@@ -5,6 +5,8 @@
 // the attack's profile and options are known. The budget is a copy; nothing
 // is stored until pc-attack.ts stores it.
 
+import { weaponNamed } from "@/lib/srd/weapons";
+import { reloadsFreely } from "@/lib/srd/genre-b-steampunk-moves";
 import { markAttackedWith } from "@/lib/dm/mt-srd-ranger";
 import { MELEE_ATTACKED, SECOND_BONUS_ATTACK } from "@/lib/dm/feature-bonus-attacks";
 import { holdsFeat } from "@/lib/srd/feat-effects";
@@ -99,7 +101,8 @@ export function spendAttackEconomy(input: {
     const usesAttackAction =
       !grantedBonusAction && !input.grantedWholeAction && !bonusSwing && !args.offHand && !options.bonusAttack && !options.hordeBreaker && kind !== "spell" && !multiattack;
     if (usesAttackAction) {
-      const loading = loadingProblem({ who: sheet.name, profile, budget, feats: sheet.feats, campaignId: sheet.campaignId });
+      // Powder Discipline: a firearm reloads without costing the attack (genre-b-steampunk-moves.ts).
+      const loading = reloadsFreely(sheet, weaponNamed(profile.base ?? "")) ? null : loadingProblem({ who: sheet.name, profile, budget, feats: sheet.feats, campaignId: sheet.campaignId });
       // A new action (Action Surge, Haste) reloads; only a swing that would
       // ride the action already fired from is refused.
       if (loading && attacksLeft(budget) > 0 && budget.attacksMade > 0) {

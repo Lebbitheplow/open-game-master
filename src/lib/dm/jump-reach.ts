@@ -26,6 +26,7 @@ import { authoredJump, jumpStrength } from "@/lib/srd/authored-mt-fb";
 import { authoredJumpFeet } from "@/lib/srd/carry-jump-effects";
 import { conditionJumpMultiplier } from "@/lib/srd/condition-effect-queries";
 import { holdsFeature } from "@/lib/srd/feature-names";
+import { springHeelsFactor } from "@/lib/srd/genre-b-steampunk-moves";
 import { highJumpFeet, longJumpFeet } from "@/lib/srd/jump";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -73,7 +74,8 @@ export function jumpReach(sheet: CharacterSheet, runningStart: boolean, windStep
   const score = computeAbilityScore(sheet, "str");
   // The Jump spell triples the distance (condition-effects-last.ts), and
   // Step of the Wind doubles it for the turn.
-  const leap = conditionJumpMultiplier(sheet.conditions) * (windStep ? 2 : 1);
+  // Spring Heels triples it (genre-b-steampunk-moves.ts).
+  const leap = conditionJumpMultiplier(sheet.conditions) * (windStep ? 2 : 1) * springHeelsFactor(sheet);
   const extra = runningJumpFeet(sheet, runningStart);
   // Feet a feature adds to any jump, standing too (Totem Spirit's tiger).
   const totem = authoredJump(sheet);

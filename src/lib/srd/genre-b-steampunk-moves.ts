@@ -47,3 +47,24 @@ export function steampunkStride(sheet: StrideHolder): { anyGround: boolean; clim
 export function frameSpeedWhole(sheet: StrideHolder): boolean {
   return holds(sheet, "steam_knight", "Juggernaut Frame");
 }
+
+// Boiler Plate (steam knight 1): "Your tuned armor grants +1 AC and immunity
+// to being pushed while conscious". Read where every push of a token is made
+// (src/lib/dm/map-tools.ts pushTokenAway): an armored knight above 0 hit
+// points stays where they stand. A pull is no push, and is not refused.
+export function pushImmune(sheet: StrideHolder & { currentHp: number }): boolean {
+  return sheet.currentHp > 0 && holds(sheet, "steam_knight", "Boiler Plate") && armored(sheet);
+}
+
+// Spring Heels (gadgeteer 7): "Your jump distance triples". Read by
+// src/lib/dm/jump-reach.ts jumpReach beside the Jump spell's multiplier.
+export function springHeelsFactor(sheet: StrideHolder): number {
+  return holds(sheet, "gadgeteer", "Spring Heels") ? 3 : 1;
+}
+
+// Powder Discipline (aeronaut 7, Sky Corsair): "reloading never costs you an
+// attack": a firearm's loading property does not stop a second shot of the
+// Attack action (src/lib/dm/pc-attack-spend.ts reads it).
+export function reloadsFreely(sheet: StrideHolder, weapon: { category?: string } | null | undefined): boolean {
+  return weapon?.category === "firearm" && holds(sheet, "aeronaut", "Powder Discipline");
+}

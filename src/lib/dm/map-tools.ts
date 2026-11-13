@@ -1,3 +1,4 @@
+import { pushImmune } from "@/lib/srd/genre-b-steampunk-moves";
 import { readiedHeld } from "@/lib/dm/readied-kinds";
 import { carriedLight, lightPlacement } from "@/lib/dm/light-timers";
 import { getClock } from "@/lib/db/clock";
@@ -959,6 +960,12 @@ export function pushTokenAway(
   const target = map ? getTokenByRef(map.id, targetRef) : null;
   if (!map || !pusher || !target) {
     return { moved: false, reason: "there is no battle map to move it on" };
+  }
+  // Boiler Plate: an armored, conscious steam knight is not pushed
+  // (src/lib/srd/genre-b-steampunk-moves.ts).
+  const pushed = target.kind === "pc" ? getSheetById(target.refId) : null;
+  if (pushed && pushImmune(pushed)) {
+    return { moved: false, reason: `${pushed.name}'s Boiler Plate holds them in place: they cannot be pushed while conscious` };
   }
   const at = {
     x: target.x + Math.sign(target.x - pusher.x),

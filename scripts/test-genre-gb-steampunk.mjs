@@ -223,5 +223,55 @@ await run("Bulwark Advance: a creature's ranged attack at an ally behind the kni
   assert.equal(await shot(), base, "an ally out of the line had cover");
 });
 
+// ---- GB06: Boiler Plate's footing, Spring Heels, Powder Discipline's reload ----
+
+await run("Boiler Plate: an armored, conscious steam knight is not pushed; unarmored, at 0 hit points or without the feature, they are", async () => {
+  const row = feature("steam_knight", "Boiler Plate", 1);
+  const hero = rig.holder(row, { gear: "armor" });
+  const { near } = await rig.fight(hero);
+  const { pushTokenAway } = await load("lib/dm/map-tools.ts");
+  const shove = () => {
+    kit.openField();
+    kit.place(hero.id, 5, 2);
+    kit.place(near.id, 4, 2);
+    const out = pushTokenAway(world.campaign(), world.encounter().id, near.id, hero.id);
+    return { moved: out.moved, at: [kit.token(hero.id).x, kit.token(hero.id).y], reason: out.reason };
+  };
+  const { on, off } = await rig.both(hero, row, async () => shove());
+  assert.equal(on.moved, false, `the armored knight was pushed to ${on.at}`);
+  assert.match(on.reason, /Boiler Plate/);
+  assert.deepEqual(off.at, [6, 2], `without Boiler Plate the knight stands at ${off.at}`);
+  world.patch(hero.id, { equipment: [{ name: "Longsword", qty: 1, equipped: true }] });
+  assert.equal(shove().moved, true, "an unarmored knight was not pushed");
+  world.patch(hero.id, { equipment: [{ name: "Longsword", qty: 1, equipped: true }, { name: "Chain Shirt", qty: 1, equipped: true }], currentHp: 0 });
+  assert.equal(shove().moved, true, "an unconscious knight was not pushed");
+});
+
+await run("Spring Heels: a gadgeteer's long and high jumps triple", async () => {
+  const row = feature("gadgeteer", "Spring Heels", 7);
+  const hero = rig.holder(row);
+  const { jumpReach } = await load("lib/dm/jump-reach.ts");
+  const { on, off } = await rig.both(hero, row, async () => jumpReach(world.sheet(hero.id), true));
+  assert.equal(on.longFeet, off.longFeet * 3, `a running long jump covers ${on.longFeet} feet with Spring Heels and ${off.longFeet} without`);
+  assert.equal(on.highFeet, off.highFeet * 3, `a running high jump reaches ${on.highFeet} feet with Spring Heels and ${off.highFeet} without`);
+});
+
+await run("Powder Discipline: a Sky Corsair fires a loading firearm with every attack of the Attack action, where without it the second shot is refused", async () => {
+  const row = feature("aeronaut", "Powder Discipline", 7);
+  const hero = rig.holder(row, { gear: "firearm" });
+  const { near } = await rig.fight(hero);
+  kit.place(near.id, 9, 2);
+  const twoShots = async () => {
+    rig.myTurn(hero);
+    const first = await kit.swing(hero.id, near.id, [15, 3, 3, 3], { weapon: "Pistol" });
+    if (!first.ok) throw new Error(`the first shot: ${first.error}`);
+    const second = await kit.swing(hero.id, near.id, [15, 3, 3, 3], { weapon: "Pistol" });
+    return second.ok ? "fired" : String(second.error);
+  };
+  const { on, off } = await rig.both(hero, row, twoShots);
+  assert.equal(on, "fired", `the second shot with Powder Discipline: ${on}`);
+  assert.match(off, /load/i, `without it the second shot: ${off}`);
+});
+
 rig.world.close();
 finish();
