@@ -77,6 +77,8 @@ export function grantedAttackCards(sheet: CharacterSheet, turn: HandTurn, allowe
     seen.add(textKey(attack.name));
     const meta = metaOf[condition];
     const spell = meta?.spell ?? attack.name;
+    const named = namedSpellGlyph(spell);
+    const glyph = meta?.spell || named !== "unknown" ? named : null;
     // A spell an item cast strikes with the numbers it was cast with.
     const fromItemCast = runningItemSpell(sheet, spell);
     const dice = grantedAttackDice(attack, sheet.level, meta?.slotLevel ?? fromItemCast?.level ?? null);
@@ -98,8 +100,11 @@ export function grantedAttackCards(sheet: CharacterSheet, turn: HandTurn, allowe
       resource: "",
       condition: "",
       icon: { kind: "spell", key: meta?.spell ?? attack.name, family: null },
-      // The spell that grants it wears its glyph here too (issue 845).
-      ...(meta?.spell ? { glyph: namedSpellGlyph(meta.spell), targetWords: "1 creature" } : {}),
+      // The spell that grants it wears its glyph here too (issue 845), also
+      // when the condition was set with no casting behind it (a storyteller's
+      // set_condition leaves no meta) but the strike is a spell's own: its
+      // icon is that spell's painting, which no spell is drawn with now.
+      ...(glyph ? { glyph, targetWords: "1 creature" } : {}),
       target: "enemy",
       toHit,
       damage,

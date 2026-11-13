@@ -10,6 +10,7 @@ import type { HandAttackOption, HandAttackOptionId, HandCard } from "@/lib/battl
 import { handReady, shareList, type HandAim, type PreviewRow } from "@/lib/battlemap/hand-play";
 import type { HandShare } from "@/lib/battlemap/hand-intent";
 import { describePick, hasPick, pickHint, type AreaPick } from "@/lib/battlemap/hand-area";
+import { cardFullText } from "@/lib/battlemap/hand-full-text-logic";
 import { HandPreviewRows, typeLabel, typeTone } from "@/app/campaigns/[campaignId]/HandCardFace";
 import { HandSummonPick } from "@/app/campaigns/[campaignId]/HandSummonPick";
 
@@ -171,13 +172,8 @@ function HandOptionChip({
 // Closed until asked for: Wish's runs to pages, and it would push the Play
 // button off a phone.
 export function HandFullText({ card }: { card: HandCard }) {
-  // A spell's notes carry the card's own rules line, written just above.
-  const rules = card.rules?.trim();
-  const text = (card.description ?? "")
-    .split(/\n{2,}/)
-    .map((part) => part.trim())
-    .filter((part) => part && part !== rules)
-    .join("\n\n");
+  // Less the rules line written just above (hand-full-text-logic.ts).
+  const text = cardFullText(card);
   if (!text) return null;
   return (
     <details

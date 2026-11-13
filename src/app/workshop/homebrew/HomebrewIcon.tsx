@@ -37,7 +37,7 @@ export function homebrewIcon(kind: string, name: string, data: Record<string, un
     return { kind: "item", key: name, family: ITEM_FAMILIES[String(data.itemKind ?? "gear")] ?? "item-gear" };
   }
   if (kind === "spell") {
-    return spellGlyphIcon(name, typeof data.runsAs === "string" ? data.runsAs : null);
+    return spellGlyphIcon(name, typeof data.runsAs === "string" ? data.runsAs : null, data.mech);
   }
   if (kind === "feat") {
     return { kind: "feat", key: name };

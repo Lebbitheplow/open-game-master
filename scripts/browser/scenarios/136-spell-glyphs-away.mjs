@@ -1,10 +1,13 @@
 // Issue 845, away from the Hand: a spell wears the glyph its card wears
 // wherever else it is drawn, the party panel's concentration chip, the
-// sheet's spellbook and the workshop's homebrew list, and no per-spell
+// sheet's spellbook, the workshop's homebrew list and the research desk's
+// results, and no per-spell
 // painting is asked for. Sister Ama holds Spirit Guardians at the quiet
 // table (radiant), and her book holds Bless (a boon) and Cure Wounds
 // (healing). A workshop spell wears the glyph of the spell it runs as, and
-// one that runs as nothing wears the unknown glyph. Night and day.
+// one that runs as nothing wears the unknown glyph; one with a mechanics
+// block of its own wears what that block deals, as its card does. Night
+// and day.
 import { check, eventually, untilStill } from "../lib.mjs";
 
 // The website serves icons under /assets/icons, the app shell under /game/icons.
@@ -97,8 +100,12 @@ export default {
       };
       const runs = `Frostfire Orb ${stamp}`;
       const bare = `Quiet Hum ${stamp}`;
+      // A copy of Fireball the table rewrote to deal cold: its card reads
+      // its own block first, so its row does too.
+      const block = `Rime Ball ${stamp}`;
       await spell(runs, { runsAs: "Ice Storm" });
       await spell(bare, {});
+      await spell(block, { runsAs: "Fireball", mech: { resolution: "save", save: "dex", halfOnSave: true, damageType: "cold" } });
       await t.open(`/workshop/${workshopId}?system=homebrew`);
       const kinds = page.locator(`${root}[data-tour="homebrew-kinds"]`).locator("visible=true").first();
       await eventually(() => kinds.isVisible(), { timeoutMs: 30_000, label: "the kinds of homebrew" });
@@ -106,11 +113,14 @@ export default {
       const row = (name) => page.locator(`${root}li, ${root}[role="listitem"]`).filter({ hasText: name }).locator("visible=true").first();
       await eventually(() => row(runs).count(), { timeoutMs: 20_000, label: `${runs} in the list` });
       await eventually(() => row(bare).count(), { timeoutMs: 20_000, label: `${bare} in the list` });
+      await eventually(() => row(block).count(), { timeoutMs: 20_000, label: `${block} in the list` });
       await untilStill(page);
       const runsArt = await images(row(runs));
       const bareArt = await images(row(bare));
+      const blockArt = await images(row(block));
       check(runsArt.length === 1 && glyphOf(runsArt[0].src) === "cold" && runsArt[0].drawn, `a spell run as Ice Storm wears its cold glyph, alone (${runsArt.map((img) => img.src).join(", ")})`);
       check(bareArt.length === 1 && glyphOf(bareArt[0].src) === "unknown" && bareArt[0].drawn, `a spell run as nothing wears the unknown glyph, alone (${bareArt.map((img) => img.src).join(", ")})`);
+      check(blockArt.length === 1 && glyphOf(blockArt[0].src) === "cold" && blockArt[0].drawn, `a Fireball rewritten to deal cold wears cold, as its card does (${blockArt.map((img) => img.src).join(", ")})`);
       for (const theme of ["dark", "light"]) {
         await page.evaluate((value) => (document.documentElement.dataset.theme = value), theme);
         await untilStill(page);
@@ -123,6 +133,27 @@ export default {
         await api.delete(`${base}/api/homebrew/${id}?purge=1`).catch(() => undefined);
       }
       if (workshopId) await api.delete(`${base}/api/workshops/${workshopId}`).catch(() => undefined);
+    }
+
+    // ---- the research desk's spell results ----
+    // They drew the per-spell painting too, so the same spell had two faces.
+    await t.open(`/reference`);
+    const spellsTab = page.locator(`${root}[role="tab"]`).filter({ hasText: /^\s*Spells\s*$/ }).locator("visible=true").first();
+    await eventually(() => spellsTab.count(), { timeoutMs: 30_000, label: "the research desk's Spells tab" });
+    await t.tap(spellsTab);
+    const search = page.locator(`${root}input[aria-label="Search"]`).locator("visible=true").first();
+    await search.fill("Fireball");
+    const result = page.locator(`${root}li`).filter({ hasText: "Fireball" }).filter({ hasNotText: "Delayed" }).locator("visible=true").first();
+    const found = await eventually(() => result.count(), { timeoutMs: 15_000, label: "Fireball among the spells" }).then(() => true, () => false);
+    if (found) {
+      await untilStill(page);
+      // The school badge beside the name keeps its school mark.
+      const art = (await images(result)).filter((img) => !img.src.includes("/icons/family/"));
+      check(art.length === 1 && glyphOf(art[0].src) === "fire" && art[0].drawn, `the research desk's Fireball wears the fire glyph, alone (${art.map((img) => img.src).join(", ")})`);
+      await t.shot("reference");
+    } else {
+      // A server with no content pack lists no spells here to draw.
+      check(!(await page.locator(`${root}li img[src*="/icons/spell/"]`).count()), "no spell result draws a painting");
     }
 
     check(asked.length === 0, `no per-spell painting is asked for (${asked.slice(0, 5).join(", ")})`);

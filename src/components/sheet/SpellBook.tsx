@@ -425,7 +425,7 @@ export function SpellBook({
                   className="flex w-full min-w-0 items-center gap-2 text-left disabled:cursor-default"
                 >
                   <span className="relative shrink-0">
-                    <GameIcon icon={spellGlyphIcon(tile.name, typeof tile.data?.runsAs === "string" ? tile.data.runsAs : null)} size="size-9" />
+                    <GameIcon icon={spellGlyphIcon(tile.name, typeof tile.data?.runsAs === "string" ? tile.data.runsAs : null, tile.data?.mech)} size="size-9" />
                     <StateMark state={tile.state} />
                   </span>
                   <span className="min-w-0">
