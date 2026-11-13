@@ -102,9 +102,12 @@ await run("Ram Speed: a road warrior's melee hit after a 20-foot run straight at
 
 await run("Locomotive Charge: a steam knight's hit after a 15-foot run knocks the creature prone on a failed STR save; standing still, no save", async () => {
   const hero = rig.holder(feature("steam_knight", "Locomotive Charge", 7));
-  const still = await strike(hero, false, [15, 4, 2]);
+  // The hit (15), the longsword (4), Piston Strike's d6 (2) and, after a run,
+  // the creature's STR save (1). Without the save's face the save was thrown
+  // unseeded, and the creature held about half the time.
+  const still = await strike(hero, false, [15, 4, 2, 1]);
   assert.ok(!still.far.conditions.includes("prone"), "a hit with no run knocked the creature prone");
-  const ran = await strike(hero, true, [15, 4, 2]);
+  const ran = await strike(hero, true, [15, 4, 2, 1]);
   assert.ok(ran.far.conditions.includes("prone"), `${JSON.stringify(ran.swing).slice(0, 1500)} the charged creature carries ${JSON.stringify(ran.far.conditions)}, not prone`);
 });
 
