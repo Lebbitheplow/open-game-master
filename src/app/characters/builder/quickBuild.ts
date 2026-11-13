@@ -409,7 +409,7 @@ export function fillRound(ctx: FillContext): FillRound {
   const tools = new Set((derived.training.tools ?? []).map((tool) => textKey(tool)));
   // A pick that is not the class's own spares the class's list while the
   // class still has picks to make (skillOrderSparingClass).
-  const classSkills = klass && srdClass(klass) ? klass.skillChoices : undefined;
+  const classSkills = klass?.skillChoices?.count ? klass.skillChoices : undefined;
   const freeSkillOrder = (held: ReadonlySet<string>, from: readonly string[] = ALL_SKILLS) =>
     skillOrderSparingClass(skillOrder(ctx, held, from), held, classSkills, (patch.chosenSkills ?? fields.chosenSkills).filter(Boolean).length);
 
@@ -524,8 +524,13 @@ export function fillRound(ctx: FillContext): FillRound {
     }
   }
 
-  // The class's picks.
-  if (wants("classSkills") && srdClass(klass) && fields.chosenSkills.length < klass.skillChoices.count) {
+  // The class's picks. A setting class's count is its own table's, not
+  // the SRD's, so the save leaves it to the player (submit.ts srdClass); a
+  // hero built for them still takes it. Filled for core classes alone, a
+  // drafted netrunner or detective carried no class skills at all, and a
+  // detective from 10th level could not be drafted, its four expertise
+  // picks having two skills to double.
+  if (wants("classSkills") && klass.skillChoices?.count && fields.chosenSkills.length < klass.skillChoices.count) {
     const lean = QUIZ_OUTSIDE.find((entry) => entry.id === ctx.answers?.outside)?.skills ?? [];
     const granted = new Set([...proficient].filter((skill) => !fields.chosenSkills.includes(skill)));
     const leaning = lean.filter((skill) => klass!.skillChoices.from.includes(skill) && !granted.has(skill) && !fields.chosenSkills.includes(skill));

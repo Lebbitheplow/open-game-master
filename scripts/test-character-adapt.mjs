@@ -327,4 +327,52 @@ test("a barbarian 20 at a level 20 table, or one that already holds Primal Champ
   assert.deepEqual(adaptSheetToLevel(barbarian(19, champion), 19, 20).abilities, barbarian(19).abilities);
 });
 
+// A sheet the library stores lists no class features (the door writes them
+// at read time), only the background's and the improvements' count, and the
+// door writes Primal Champion's points onto a barbarian 20's scores. Read off
+// the feature list alone, such a barbarian joining a level 20 table gained
+// the points twice (Constitution 23 became 24), and one joining below 20
+// kept them and was refused for Strength 24.
+const libraryForm = [{ name: "Shelter of the Faithful (Acolyte)", source: "background" }];
+
+test("a library barbarian 20 joining below 20 gives the points back, and at 20 gains nothing twice", () => {
+  const stored = barbarian(20, libraryForm);
+  stored.abilities = { ...stored.abilities, str: 24, con: 23 };
+  const lower = adaptSheetToLevel(stored, 20, 15);
+  assert.equal(lower.abilities.str, 20);
+  assert.equal(lower.abilities.con, 19);
+  const same = adaptSheetToLevel(stored, 20, 20);
+  assert.equal(same.abilities.str, 24);
+  assert.equal(same.abilities.con, 23, "Primal Champion was added a second time");
+});
+
+test("a library barbarian 19 joining a level 20 table still gains Primal Champion once", () => {
+  const nineteen = barbarian(19, libraryForm);
+  nineteen.abilities = { ...nineteen.abilities, str: 18, con: 16 };
+  const adapted = adaptSheetToLevel(nineteen, 19, 20);
+  assert.equal(adapted.abilities.str, 22);
+  assert.equal(adapted.abilities.con, 20);
+});
+
+// Draconic Resilience: a hit point per sorcerer level, which the door counts
+// (featureHitPoints). The hit points worked out for the new level left it
+// out, so a draconic sorcerer joining a level 1 table was refused for one hit
+// point short, and one joining any other level came in a point per level
+// short of what the rules give.
+test("a draconic sorcerer's hit points at the new level keep Draconic Resilience's point per level", () => {
+  const sorcerer = sheet({
+    class: "sorcerer",
+    subclass: "Draconic Bloodline",
+    abilities: { str: 8, dex: 14, con: 14, int: 10, wis: 12, cha: 17 },
+    features: libraryForm,
+    maxHp: 11 * 4 + 6 + 2 + 11 * 2 + 11,
+  });
+  // Level 1: 6 + 2 (Constitution) + 1.
+  assert.equal(adaptSheetToLevel(sorcerer, 11, 1).maxHp, 9);
+  // Level 5: 9 + 4 x (4 + 2 + 1).
+  assert.equal(adaptSheetToLevel(sorcerer, 11, 5).maxHp, 37);
+  // Any other sorcerer has no such point.
+  assert.equal(adaptSheetToLevel({ ...sorcerer, subclass: "Wild Magic" }, 11, 1).maxHp, 8);
+});
+
 console.log(`character adapt: ${passed} assertions passed.`);
