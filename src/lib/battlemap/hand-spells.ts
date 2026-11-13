@@ -9,7 +9,7 @@ import { pointsForCard } from "@/lib/dm/ar-ws-points-offer";
 import { holdsCantripAttack } from "@/lib/dm/ar-ws-cantrip-attack";
 import { deflectionCastProblem } from "@/lib/dm/ar-ws-deflection-mark";
 import { bonusCastOf, castComponents, casterStateProblem, grantCastsFree, grantedCastOf, materialPlan, silenceRefusal, slotPlan, turnCharge } from "@/lib/dm/cast-rules";
-import { healAdditions, healModifier } from "@/lib/dm/heal-bonus";
+import { castingAbilityMod, healAdditions, healModifier } from "@/lib/dm/heal-bonus";
 import { spellAttackLines, toHitWords } from "@/lib/battlemap/hand-attack-lines";
 import { freeCastResourceId, isFreeCastResource } from "@/lib/srd/feat-spells";
 import { RACIAL_COUNTER_PREFIX } from "@/lib/srd/racial-grants";
@@ -309,7 +309,7 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
       dc: stored ? stored.entry.saveDc ?? null : spellSaveDcFor(sheet, name),
       proficiencyBonus: derived.proficiencyBonus,
       noModifier: mech.healNoModifier,
-      abilityMod: stored && !stored.item ? stored.entry.abilityMod ?? 0 : undefined,
+      abilityMod: stored ? (!stored.item ? stored.entry.abilityMod ?? 0 : undefined) : castingAbilityMod(sheet, name, derived.abilityMods),
     });
     damage = healing ? addFlat([healing, ...added.dice].join("+"), modifier + added.flat) : null;
   }
