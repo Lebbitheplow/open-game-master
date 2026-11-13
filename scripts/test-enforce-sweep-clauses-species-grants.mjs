@@ -214,6 +214,8 @@ const NAMES = [
   "species.variant_human.choices", "species.dragonborn.breath", "species.dragonborn.ancestry-resistance",
   "species.eladrin.grants", "species.sea_elf.grants", "species.duergar.grants",
   "species.eladrin.darkvision", "species.sea_elf.darkvision", "species.duergar.darkvision", "species.duergar.choices",
+  "species.triton.grants", "species.serpentfolk.grants", "species.kobold.grants", "species.aarakocra.grants",
+  "species.triton.darkvision", "species.serpentfolk.darkvision", "species.kobold.darkvision",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
 

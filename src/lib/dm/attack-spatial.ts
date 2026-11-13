@@ -146,6 +146,18 @@ export function characterFlanks(
 }
 
 
+// Pack Tactics (a kobold): an ally of the attacker, up and able, within 5
+// feet of the target. The attacker and the target are not counted.
+export function characterHasPackmate(encounterId: string, characterId: string, enemyId: string): boolean {
+  const map = getBattleMapForEncounter(encounterId);
+  const target = map ? getTokenByRef(map.id, enemyId) : null;
+  if (!map || !target) {
+    return false;
+  }
+  const mine = sideOf(sidesOf(encounterId), "sheet", characterId);
+  return hostileWithinFiveFeet(spotOf(target), threatSpots(encounterId, map.id, mine, [characterId, enemyId]));
+}
+
 // And for an enemy's melee attack on a creature of the other side.
 export function enemyFlanks(encounterId: string, enemyId: string, characterId: string): boolean {
   const map = getBattleMapForEncounter(encounterId);

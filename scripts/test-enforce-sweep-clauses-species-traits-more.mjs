@@ -212,6 +212,68 @@ for (const row of RACES) {
       if (/climb speed/i.test(natural[0])) await speedsOf(t);
     });
   }
+  // Magic Resistance: advantage on every save against magic, of any ability.
+  if (holds(row, "magic resistance")) {
+    probe("magic-resistance", async () => {
+      const t = await rig.table();
+      const who = t.hero(of());
+      const faces = {};
+      for (const ability of ["str", "dex", "wis"]) faces[ability] = (await t.roll(who, { kind: "saving_throw", ability, dc: 10, magical: true }, [15, 3])).faces.length;
+      faces.mundane = (await t.roll(who, { kind: "saving_throw", ability: "dex", dc: 10, magical: false }, [15, 3])).faces.length;
+      same(faces, { str: 2, dex: 2, wis: 2, mundane: 1 }, `${row.name}: d20s on saves against magic, and on a Dexterity save against none`);
+    });
+  }
+  // Poison Immunity: the poisoned condition never lands.
+  if (holds(row, "poison immunity")) {
+    probe("poison-immunity", async () => {
+      const t = await rig.table();
+      const who = t.hero(of());
+      const other = t.hero(plain());
+      const mine = await t.condition(who, "poisoned", { rounds: 3, reason: "a viper's bite" });
+      const theirs = await t.condition(other, "poisoned", { rounds: 3, reason: "a viper's bite" });
+      same([mine.ok, t.has(who, "poisoned"), theirs.ok, t.has(other, "poisoned")], [false, false, true, true], `${row.name}: poisoned, beside a human (${mine.error ?? ""})`);
+    });
+  }
+  // Pack Tactics: advantage on an attack against a creature with an ally of
+  // the attacker within 5 feet of it, and none without one.
+  if (holds(row, "pack tactics")) {
+    probe("pack-tactics", async () => {
+      const t = await rig.table();
+      const who = t.hero(of({ equipment: [{ name: "Shortsword", equipped: true }] }));
+      const ally = t.hero(plain());
+      const [foe] = await t.fight([who, ally]);
+      // Under a roof: a kobold's Sunlight Sensitivity is its own probe.
+      const { getDatabase } = await import("../src/lib/db/core.ts");
+      getDatabase().prepare("UPDATE battle_maps SET outdoors = 0 WHERE id = ?").run(t.kit.map().id);
+      const d20s = async () => {
+        t.kit.freshTurn();
+        const swing = await t.swing(who, foe, [15, 3, 4], { weapon: "Shortsword" });
+        return swing.toHit?.breakdown.terms.find((term) => term.sides === 20)?.dice.length;
+      };
+      const alone = await d20s();
+      // The ally steps to the foe's far side, (7,5).
+      t.kit.place(ally.id, 7, 5);
+      const beside = await d20s();
+      same([alone, beside], [1, 2], `${row.name}: d20s on a strike with no ally at the foe's side, then with one`);
+    });
+  }
+  // Flight: a flying speed of its own, grounded in medium or heavy armor.
+  if (holds(row, "flight (flying speed")) {
+    probe("flight", async () => {
+      const { flightOf } = await import("../src/lib/dm/token-state.ts");
+      const t = await rig.table();
+      const who = t.hero(of());
+      const other = t.hero(plain());
+      await t.fight([who, other]);
+      const encounter = t.world.encounter().id;
+      const bare = flightOf(encounter, t.kit.token(who.id));
+      t.patch(who, { equipment: [{ name: "Leather", equipped: true }] });
+      const light = flightOf(encounter, t.kit.token(who.id));
+      t.patch(who, { equipment: [{ name: "Chain Mail", equipped: true }] });
+      const heavy = flightOf(encounter, t.kit.token(who.id));
+      same([bare, light, heavy, flightOf(encounter, t.kit.token(other.id))], [50, 50, null, null], `${row.name}: flying speed bare, in leather, in chain mail, and a human's`);
+    });
+  }
   if (holds(row, "expert forgery")) {
     probe("forgery", async () => {
       const t = await rig.table();
@@ -442,6 +504,9 @@ const NAMES = [
   "species.orc.aggressive", "species.orc.powerful-build",
   "species.rock_gnome.tinker",
   "species.sea_elf.speeds", "species.sea_elf.breath",
+  "species.triton.speeds", "species.triton.breath",
+  "species.serpentfolk.magic-resistance", "species.serpentfolk.poison-immunity",
+  "species.kobold.pack-tactics", "species.aarakocra.flight", "species.aarakocra.natural-weapon",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
 

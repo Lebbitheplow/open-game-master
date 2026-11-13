@@ -100,6 +100,11 @@ export function heldSaveTraits(sheet: TraitSheet): SaveTrait[] {
   if (holdsFeature(sheet, "duergar resilience")) {
     out.push({ roll: "save", against: ["charmed", "paralyzed"], note: "Duergar Resilience: advantage on saves against being charmed or paralyzed" });
   }
+  // Magic Resistance (a serpentfolk): advantage on every save against a
+  // spell or other magical effect.
+  if (holdsFeature(sheet, "magic resistance")) {
+    out.push({ roll: "save", magical: true, note: "Magic Resistance: advantage on saves against spells and other magical effects" });
+  }
   if (holdsFeature(sheet, "gnome cunning")) {
     out.push({ roll: "save", abilities: ["int", "wis", "cha"], magical: true, note: "Gnome Cunning: advantage on INT, WIS and CHA saves against magic" });
   }
@@ -287,6 +292,10 @@ export function featureConditionImmunities(sheet: TraitSheet): {
     add("poisoned", "Constructed Resilience");
     add("diseased", "Constructed Resilience");
   }
+  // Poison Immunity (a serpentfolk): never poisoned.
+  if (holdsFeature(sheet, "poison immunity")) {
+    add("poisoned", "Poison Immunity");
+  }
   // A content pack species' "you are immune to disease" (Undead Resilience,
   // Fungoid Form), as src/lib/content/species-prose-logic.ts writes it.
   if (holdsFeature(sheet, "disease immunity")) {
@@ -340,7 +349,7 @@ export function auraConditionImmunities(sheet: TraitSheet): Array<{ condition: s
 // Damage types a feature makes the character immune to (Purity of Body,
 // Nature's Ward: poison).
 export function featureDamageImmunities(sheet: TraitSheet): string[] {
-  const own = holdsFeature(sheet, "purity of body", "nature's ward", "constructed resilience") ? ["poison"] : [];
+  const own = holdsFeature(sheet, "purity of body", "nature's ward", "constructed resilience", "poison immunity") ? ["poison"] : [];
   return [...own, ...authoredDamageImmunities(sheet)];
 }
 

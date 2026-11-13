@@ -1083,6 +1083,123 @@
           "survival"
         ]
       }
+    },
+    {
+      "id": "triton",
+      "name": "Triton",
+      "speed": 30,
+      "size": "Medium",
+      "asi": {
+        "str": 1,
+        "con": 1,
+        "cha": 1
+      },
+      "traits": [
+        "Darkvision 60 ft",
+        "30 ft swim speed",
+        "Amphibious (breathe air and water)",
+        "Cold Resistance",
+        "Control Air and Water (fog cloud, then gust of wind from 3rd level and water breathing from 5th, 1/long rest each)",
+        "Emissary of the Sea (share simple ideas with beasts that breathe water)"
+      ],
+      "languages": [
+        "Common",
+        "Primordial"
+      ],
+      "innateSpells": {
+        "trait": "Control Air and Water",
+        "ability": "cha",
+        "spells": [
+          {
+            "name": "Fog Cloud",
+            "level": 1,
+            "per": "long"
+          },
+          {
+            "name": "Gust of Wind",
+            "level": 3,
+            "per": "long"
+          },
+          {
+            "name": "Water Breathing",
+            "level": 5,
+            "per": "long"
+          }
+        ]
+      }
+    },
+    {
+      "id": "serpentfolk",
+      "name": "Serpentfolk",
+      "speed": 30,
+      "size": "Medium",
+      "asi": {
+        "cha": 2,
+        "int": 1
+      },
+      "traits": [
+        "Darkvision 60 ft",
+        "Magic Resistance (adv. on saves against spells and other magic)",
+        "Poison Immunity (immune to poison damage and the poisoned condition)",
+        "Serpent Magic (poison spray cantrip, then suggestion from 3rd level, 1/long rest)"
+      ],
+      "languages": [
+        "Common",
+        "Abyssal",
+        "Draconic"
+      ],
+      "innateSpells": {
+        "trait": "Serpent Magic",
+        "ability": "cha",
+        "spells": [
+          {
+            "name": "Poison Spray",
+            "level": 1
+          },
+          {
+            "name": "Suggestion",
+            "level": 3,
+            "per": "long"
+          }
+        ]
+      }
+    },
+    {
+      "id": "kobold",
+      "name": "Kobold",
+      "speed": 30,
+      "size": "Small",
+      "asi": {
+        "dex": 2,
+        "int": 1
+      },
+      "traits": [
+        "Darkvision 60 ft",
+        "Pack Tactics (advantage on an attack against a creature an ally stands within 5 feet of)",
+        "Sunlight Sensitivity (disadvantage on attacks and sight-based Perception in direct sunlight)"
+      ],
+      "languages": [
+        "Common",
+        "Draconic"
+      ]
+    },
+    {
+      "id": "aarakocra",
+      "name": "Aarakocra",
+      "speed": 25,
+      "size": "Medium",
+      "asi": {
+        "dex": 2,
+        "wis": 1
+      },
+      "traits": [
+        "Flight (flying speed of 50 ft, not while wearing medium or heavy armor)",
+        "Talons (1d4 slashing unarmed strike)"
+      ],
+      "languages": [
+        "Common",
+        "Auran"
+      ]
     }
   ],
   "_license_authored": "The lineages below the SRD nine are original content for Open Game Master: their trait lines are written from scratch to state the mechanics. No publisher's descriptive text is reproduced."

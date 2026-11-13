@@ -55,6 +55,13 @@ const RACE_FAMILY: Record<string, string> = {
   eladrin: "elf",
   sea_elf: "elf",
   duergar: "dwarf",
+  // Until these have plates of their own, the nearest people's face reads
+  // truer than a human's: a bird's, a sea-touched genasi's, a reptile's, a
+  // dragon's.
+  aarakocra: "kenku",
+  triton: "genasi-water",
+  serpentfolk: "lizardfolk",
+  kobold: "dragonborn",
   drow: "drow",
   lightfoot_halfling: "halfling",
   stout_halfling: "stout-halfling",

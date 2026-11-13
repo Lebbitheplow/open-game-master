@@ -245,6 +245,7 @@ const NAMES = [
   "species.half_orc.relentless", "species.half_orc.savage",
   "species.eladrin.sleep", "species.eladrin.trance", "species.eladrin.innate", "species.sea_elf.sleep", "species.sea_elf.trance",
   "species.duergar.stonecunning", "species.duergar.innate", "species.duergar.sunlight", "species.duergar.duergar-resilience",
+  "species.triton.innate", "species.serpentfolk.innate", "species.kobold.sunlight",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
 assert.ok(rowOf("human"), "races.json lost the human");

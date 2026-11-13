@@ -2342,5 +2342,240 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.orc.choices"
    }
   ]
+ },
+ "species::triton": {
+  "source": "src/lib/srd/races.json",
+  "group": "species",
+  "level": null,
+  "sha": "a225e10c999f",
+  "clauses": [
+   {
+    "c": "\"speed\":30",
+    "is": "held",
+    "by": "builder race option speed -> sheet.speed -> srd/index.ts speedFor",
+    "probe": "scripts/test-enforce-sweep-clauses-species.mjs: species.triton.speed"
+   },
+   {
+    "c": "\"size\":\"Medium\"",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.triton.grants"
+   },
+   {
+    "c": "\"asi\":{\"str\":1,\"con\":1,\"cha\":1}",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.triton.grants"
+   },
+   {
+    "c": "Darkvision 60 ft",
+    "is": "held",
+    "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.triton.darkvision"
+   },
+   {
+    "c": "30 ft swim speed",
+    "is": "held",
+    "by": "src/lib/battlemap/types.ts swimsFrom, read by the board's walking cost (moveTraitsFrom)",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.triton.speeds"
+   },
+   {
+    "c": "Amphibious (breathe air and water)",
+    "is": "held",
+    "by": "src/lib/srd/mt-species-traits.ts breathOf, read by apply_hazard's drowning (src/lib/dm/hazard-tools.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.triton.breath"
+   },
+   {
+    "c": "Cold Resistance",
+    "is": "held",
+    "by": "damage resistance (cold) read from the lineage",
+    "probe": "scripts/test-enforce-sweep-clauses-species.mjs: species.triton.resistance"
+   },
+   {
+    "c": "Control Air and Water (fog cloud, then gust of wind from 3rd level and water breathing from 5th, 1/long rest each)",
+    "is": "held",
+    "by": "src/lib/srd/racial-grants.ts innateSpellsFor and innateSpellCounters (the row's innateSpells), cast by use_spell_slot without a slot",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits.mjs: species.triton.innate"
+   },
+   {
+    "c": "Emissary of the Sea (share simple ideas with beasts that breathe water)",
+    "is": "left",
+    "why": "The GM's: sharing simple ideas with a beast of the water states no number, save, condition, damage, healing, movement or refusal for the engine to hold; what the beast understands and does is the story's."
+   },
+   {
+    "c": "\"languages\":[\"Common\",\"Primordial\"]",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.triton.grants"
+   },
+   {
+    "c": "\"innateSpells\":{\"trait\":\"Control Air and Water\",\"ability\":\"cha\",\"spells\":[{\"name\":\"Fog Cloud\",\"level\":1,\"per\":\"long\"},{\"name\":\"Gust of Wind\",\"level\":3,\"per\":\"long\"},{\"name\":\"Water Breathing\",\"level\":5,\"per\":\"long\"}]}",
+    "is": "held",
+    "by": "src/lib/srd/racial-grants.ts innateSpellsFor and innateSpellCounters (the row's innateSpells), cast by use_spell_slot without a slot",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits.mjs: species.triton.innate"
+   }
+  ]
+ },
+ "species::serpentfolk": {
+  "source": "src/lib/srd/races.json",
+  "group": "species",
+  "level": null,
+  "sha": "2ac090fa430f",
+  "clauses": [
+   {
+    "c": "\"speed\":30",
+    "is": "held",
+    "by": "builder race option speed -> sheet.speed -> srd/index.ts speedFor",
+    "probe": "scripts/test-enforce-sweep-clauses-species.mjs: species.serpentfolk.speed"
+   },
+   {
+    "c": "\"size\":\"Medium\"",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.serpentfolk.grants"
+   },
+   {
+    "c": "\"asi\":{\"cha\":2,\"int\":1}",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.serpentfolk.grants"
+   },
+   {
+    "c": "Darkvision 60 ft",
+    "is": "held",
+    "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.serpentfolk.darkvision"
+   },
+   {
+    "c": "Magic Resistance (adv. on saves against spells and other magic)",
+    "is": "held",
+    "by": "src/lib/srd/trait-rules.ts heldSaveTraits (Magic Resistance), read by request_roll from the save's `magical`",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.serpentfolk.magic-resistance"
+   },
+   {
+    "c": "immune to poison damage",
+    "is": "held",
+    "by": "src/lib/srd/trait-rules.ts featureDamageImmunities (Poison Immunity), read by apply_damage",
+    "probe": "scripts/test-enforce-sweep-clauses-species.mjs: species.serpentfolk.resistance"
+   },
+   {
+    "c": "the poisoned condition",
+    "is": "held",
+    "by": "src/lib/srd/trait-rules.ts featureConditionImmunities (Poison Immunity), read by set_condition",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.serpentfolk.poison-immunity"
+   },
+   {
+    "c": "Serpent Magic (poison spray cantrip, then suggestion from 3rd level, 1/long rest)",
+    "is": "held",
+    "by": "src/lib/srd/racial-grants.ts innateSpellsFor and innateSpellCounters (the row's innateSpells), cast by use_spell_slot without a slot",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits.mjs: species.serpentfolk.innate"
+   },
+   {
+    "c": "\"languages\":[\"Common\",\"Abyssal\",\"Draconic\"]",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.serpentfolk.grants"
+   },
+   {
+    "c": "\"innateSpells\":{\"trait\":\"Serpent Magic\",\"ability\":\"cha\",\"spells\":[{\"name\":\"Poison Spray\",\"level\":1},{\"name\":\"Suggestion\",\"level\":3,\"per\":\"long\"}]}",
+    "is": "held",
+    "by": "src/lib/srd/racial-grants.ts innateSpellsFor and innateSpellCounters (the row's innateSpells), cast by use_spell_slot without a slot",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits.mjs: species.serpentfolk.innate"
+   }
+  ]
+ },
+ "species::kobold": {
+  "source": "src/lib/srd/races.json",
+  "group": "species",
+  "level": null,
+  "sha": "272a322e11c8",
+  "clauses": [
+   {
+    "c": "\"speed\":30",
+    "is": "held",
+    "by": "builder race option speed -> sheet.speed -> srd/index.ts speedFor",
+    "probe": "scripts/test-enforce-sweep-clauses-species.mjs: species.kobold.speed"
+   },
+   {
+    "c": "\"size\":\"Small\"",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.kobold.grants"
+   },
+   {
+    "c": "\"asi\":{\"dex\":2,\"int\":1}",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.kobold.grants"
+   },
+   {
+    "c": "Darkvision 60 ft",
+    "is": "held",
+    "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.kobold.darkvision"
+   },
+   {
+    "c": "Pack Tactics (advantage on an attack against a creature an ally stands within 5 feet of)",
+    "is": "held",
+    "by": "src/lib/dm/pc-attack-situation.ts (Pack Tactics) with src/lib/dm/attack-spatial.ts characterHasPackmate, read by pc_attack",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.kobold.pack-tactics"
+   },
+   {
+    "c": "Sunlight Sensitivity (disadvantage on attacks and sight-based Perception in direct sunlight)",
+    "is": "held",
+    "by": "src/lib/srd/trait-rules.ts hasSunlightSensitivity with src/lib/dm/sunlight.ts inDirectSunlight (pc-attack-situation.ts, rolls.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits.mjs: species.kobold.sunlight"
+   },
+   {
+    "c": "\"languages\":[\"Common\",\"Draconic\"]",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.kobold.grants"
+   }
+  ]
+ },
+ "species::aarakocra": {
+  "source": "src/lib/srd/races.json",
+  "group": "species",
+  "level": null,
+  "sha": "d52f376d69f6",
+  "clauses": [
+   {
+    "c": "\"speed\":25",
+    "is": "held",
+    "by": "builder race option speed -> sheet.speed -> srd/index.ts speedFor",
+    "probe": "scripts/test-enforce-sweep-clauses-species.mjs: species.aarakocra.speed"
+   },
+   {
+    "c": "\"size\":\"Medium\"",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.aarakocra.grants"
+   },
+   {
+    "c": "\"asi\":{\"dex\":2,\"wis\":1}",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.aarakocra.grants"
+   },
+   {
+    "c": "Flight (flying speed of 50 ft, not while wearing medium or heavy armor)",
+    "is": "held",
+    "by": "src/lib/battlemap/types.ts flyingSpeedOf (bulkyArmor), read by src/lib/dm/token-state.ts flightOf and the board's flying move",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.aarakocra.flight"
+   },
+   {
+    "c": "Talons (1d4 slashing unarmed strike)",
+    "is": "held",
+    "by": "src/lib/srd/racial-weapons.ts racialNaturalWeapon, read by pc_attack",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.aarakocra.natural-weapon"
+   },
+   {
+    "c": "\"languages\":[\"Common\",\"Auran\"]",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.aarakocra.grants"
+   }
+  ]
  }
 }

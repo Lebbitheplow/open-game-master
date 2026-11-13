@@ -237,6 +237,15 @@ export function wearsBodyArmor(sheet: Pick<AuthoredSheet, "equipment">): boolean
   });
 }
 
+// Medium or heavy armor worn: an aarakocra's wings carry them in neither.
+export function wearsMediumOrHeavyArmor(sheet: Pick<AuthoredSheet, "equipment">): boolean {
+  const items = sheet.equipment ?? [];
+  return items.some((item) => {
+    const category = item.gear?.armor?.category ?? matchArmor(item)?.category;
+    return isWorn(item, items) && (category === "medium" || category === "heavy");
+  });
+}
+
 export function gateHolds(gate: Gate | undefined, sheet: AuthoredSheet, held: HeldAuthored): boolean {
   if (!gate) {
     return true;
