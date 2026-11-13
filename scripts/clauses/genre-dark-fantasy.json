@@ -1440,15 +1440,12 @@
   "clauses": [
    {
     "c": "Sepulchral Aura reaches 10 ft and also halves enemy healing within it",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
     "run": {
-     "k": "hook"
+     "k": "cc_dominion"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Sepulchral Dominion#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-dark-fantasy-wards.ts (the aura's 10 feet) and src/lib/dm/genre-cc-a-dark-fantasy-more.ts dominionHalves, read by src/lib/dm/legendary-tools.ts as an enemy regenerates",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Sepulchral Dominion#0"
    }
   ]
  },

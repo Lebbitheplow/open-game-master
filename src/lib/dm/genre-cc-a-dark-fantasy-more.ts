@@ -62,3 +62,15 @@ export function controlledDosage(campaign: Campaign, caster: CharacterSheet, tar
   }
   return `Controlled Dosage: the remedy also cures ${patient.name} of ${cured}`;
 }
+
+// Sepulchral Dominion (grave knight 13): "Sepulchral Aura reaches 10 ft and
+// also halves enemy healing within it": an enemy within 10 feet of such a
+// knight regains half (rounded down) of what it would. The reach is
+// src/lib/dm/genre-a-dark-fantasy-wards.ts's; the halving is read where an
+// enemy regains hit points (its Regeneration, src/lib/dm/legendary-tools.ts).
+export function dominionHalves(campaignId: string, encounterId: string, enemyId: string, amount: number): { amount: number; note: string | null } {
+  const knight = listSheets(campaignId)
+    .map((entry) => getSheetById(entry.id) ?? entry)
+    .find((sheet) => sheet.currentHp > 0 && holdsGenreFeature(sheet, "grave_knight", "Sepulchral Dominion") && withinFeet(encounterId, sheet.id, enemyId, 10));
+  return knight ? { amount: Math.floor(amount / 2), note: `${knight.name}'s Sepulchral Dominion halves it` } : { amount, note: null };
+}
