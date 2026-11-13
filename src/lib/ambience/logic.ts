@@ -114,6 +114,23 @@ export function applyAuto(
   return { state: next, changed: !sameAmbience(state, next) };
 }
 
+// The music a fight puts on. Only these come off when it ends.
+export const FIGHT_MUSIC = new Set(["battle", "boss"]);
+
+// The guess for a fight starting or ending, for applyAuto (which leaves held
+// layers alone). `ground` is the fight's own ground when it names one; at
+// the end, `placeMusic` is the music the place itself plays.
+export function combatGuess(
+  current: AmbienceState,
+  options: { fighting: boolean; deadly?: boolean; ground?: string | null; placeMusic?: string | null },
+): { bed?: string | null; music?: string | null } {
+  if (options.fighting) {
+    const ground = options.ground ? cueOfLayer(options.ground, "bed") : null;
+    return { music: options.deadly ? "boss" : "battle", ...(ground ? { bed: ground } : {}) };
+  }
+  return current.music && FIGHT_MUSIC.has(current.music) ? { music: options.placeMusic || null } : {};
+}
+
 // ---- describing it ----
 
 // One line for the table note and for the tool result the model reads back.

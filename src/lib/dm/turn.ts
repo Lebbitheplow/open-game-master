@@ -3824,6 +3824,9 @@ export function handleLocationCall(
   // where a new place lands on the region map.
   const madeIds: string[] = [];
   let setOutFrom: string | null = null;
+  // The sound of the place the party walked out of, so it does not follow
+  // them to a place with no kind of its own (#929).
+  let leftBed: string | null = null;
   let split = "";
   if (toolName === "move_party") {
     const name = typeof args.name === "string" ? args.name.trim() : "";
@@ -3843,6 +3846,7 @@ export function handleLocationCall(
     }
     setOutFrom = previous?.id ?? null;
     movedToNewLocation = !previous || previous.id !== location.id;
+    leftBed = movedToNewLocation ? previous?.ambience?.bed || null : null;
     returnedTo =
       movedToNewLocation &&
       onRecord?.id === location.id &&
@@ -3923,7 +3927,7 @@ export function handleLocationCall(
   // the sound controls still gets a cave that sounds like one; a held layer
   // and a table with scene following switched off are both left alone
   // inside the helper.
-  followSceneAmbience(campaign, location.ambience?.bed || null);
+  followSceneAmbience(campaign, location.ambience?.bed || null, leftBed);
 
   // Render when the area has no map yet, or when an update materially
   // changed the recorded layout.

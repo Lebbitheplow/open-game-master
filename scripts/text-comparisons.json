@@ -893,7 +893,7 @@
     "lib/ambience/library.ts#localeCompare": [["key",1,"file extension, cue ids"]],
     "lib/ambience/library.ts#str-list": [["key",1,"ambience layer ids"]],
     "lib/ambience/library.ts#toLowerCase": [["key",1,"file extension, cue ids"]],
-    "lib/ambience/logic.ts#str-list": [["key",2,"ambience layer ids"]],
+    "lib/ambience/logic.ts#str-list": [["key",3,"ambience layer ids and the fight music cue ids"]],
     "lib/ambience/logic.ts#toLowerCase": [["display",2,"ambience labels in a sentence"]],
     "lib/ambience/pack.ts#str-startsWith": [["english-source",3,"the ambience pack's own license strings (bundled data)"]],
     "lib/ambience/pack.ts#toLowerCase": [["key",1,"licence id"]],

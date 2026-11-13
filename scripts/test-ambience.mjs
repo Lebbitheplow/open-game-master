@@ -5,11 +5,12 @@ import { register } from "node:module";
 
 register("./lib/register-alias.mjs", import.meta.url);
 
-const { AMBIENCE_CUES, BED_CUES, MUSIC_CUES, STING_CUES, cueById, cueIds, cueOptions } =
+const { AMBIENCE_CUES, BED_CUES, MUSIC_CUES, STING_CUES, bedUnderMusic, cueById, cueIds, cueOptions } =
   await import("../src/lib/ambience/catalog.ts");
 const {
   EMPTY_AMBIENCE,
   applyAuto,
+  combatGuess,
   describeAmbience,
   normalizeAmbience,
   sameAmbience,
@@ -544,6 +545,86 @@ await (async () => {
   assert.ok(fake.made.every((audio) => audio.volume === 0), "zero master volume silences active stings");
   player.dispose();
   assert.equal(fake.released.length, 3);
+  passed += 1;
+})();
+
+// #929: a fight's music leads. The room drops under it, and a room whose
+// recording has a tune of its own (the tavern's lute) goes quiet, eased,
+// never cut; when the fight ends the room comes back.
+test("a fight's music lowers the bed, silences a bed with a tune, and leaves other music alone", () => {
+  assert.equal(bedUnderMusic("cave", null), 1);
+  assert.equal(bedUnderMusic("cave", "battle"), cueById("battle").bedUnder);
+  assert.ok(cueById("battle").bedUnder < 1 && cueById("boss").bedUnder < 1);
+  assert.equal(bedUnderMusic("tavern", "battle"), 0, "two tunes at once is what #929 heard");
+  assert.equal(bedUnderMusic("tavern", "boss"), 0);
+  assert.equal(bedUnderMusic("tavern", "calm"), 1, "a GM who put calm music over the tavern chose both");
+});
+
+test("a fight takes its own ground as the bed, and its end takes off only the fight's music", () => {
+  const tavern = { ...EMPTY_AMBIENCE, bed: "tavern" };
+  assert.deepEqual(combatGuess(tavern, { fighting: true, ground: "forest" }), { music: "battle", bed: "forest" });
+  assert.deepEqual(combatGuess(tavern, { fighting: true, deadly: true }), { music: "boss" }, "no ground: the bed stays");
+  assert.deepEqual(combatGuess(tavern, { fighting: true, ground: "storm-ish" }), { music: "battle" }, "a ground that is not a bed is ignored");
+  const held = { ...tavern, held: ["bed"] };
+  assert.equal(applyAuto(held, combatGuess(held, { fighting: true, ground: "forest" })).state.bed, "tavern", "a held bed stays held");
+  const fighting = { ...tavern, music: "battle" };
+  assert.deepEqual(combatGuess(fighting, { fighting: false }), { music: null });
+  assert.deepEqual(combatGuess(fighting, { fighting: false, placeMusic: "calm" }), { music: "calm" }, "back to the place's own music");
+  assert.deepEqual(combatGuess({ ...tavern, music: "dread" }, { fighting: false }), {}, "the GM's own music stays after the fight");
+});
+
+await (async () => {
+  const { player, fake, advance } = makePlayer();
+  player.setTracks({ tavern: ["/ambience/tavern.mp3"], cave: ["/ambience/cave.mp3"], battle: ["/ambience/battle.mp3"] });
+  player.setLevels({ master: 1, bed: 1, music: 1, muted: false, ducked: false });
+  player.setUnlocked(true);
+  player.setScene("tavern", null);
+  await flush();
+  advance(CROSSFADE_MS);
+  const near = (a, b) => Math.abs(a - b) < 1e-9;
+  const [tavern] = fake.made;
+  assert.ok(near(tavern.volume, cueById("tavern").gain));
+  player.setScene("tavern", "battle");
+  await flush();
+  advance(CROSSFADE_MS / 2);
+  assert.ok(tavern.volume > 0 && tavern.volume < cueById("tavern").gain, "the tavern eases down, not cut");
+  advance(CROSSFADE_MS);
+  assert.equal(tavern.volume, 0, "and is silent under the battle");
+  const battle = fake.made[1];
+  assert.ok(near(battle.volume, cueById("battle").gain));
+  // The fight ends: the battle fades (it used to stop dead), the room returns.
+  player.setScene("tavern", null);
+  advance(CROSSFADE_MS / 2);
+  assert.ok(battle.volume > 0 && battle.volume < cueById("battle").gain, "the battle fades out");
+  assert.ok(tavern.volume > 0 && tavern.volume < cueById("tavern").gain, "the tavern fades back in");
+  advance(CROSSFADE_MS);
+  assert.ok(near(tavern.volume, cueById("tavern").gain));
+  assert.ok(fake.released.includes(battle));
+  // An ordinary bed stays under the fight at the music's level.
+  player.setScene("cave", "battle");
+  await flush();
+  advance(CROSSFADE_MS * 2);
+  const cave = fake.made.find((audio) => audio.src.endsWith("cave.mp3"));
+  assert.ok(near(cave.volume, cueById("cave").gain * cueById("battle").bedUnder));
+  player.dispose();
+  passed += 1;
+})();
+
+await (async () => {
+  // A voice fading out keeps its own level: the tavern going to a louder or
+  // quieter cave falls from the tavern's trim, not the cave's.
+  const { player, fake, advance } = makePlayer();
+  player.setTracks({ tavern: ["/ambience/tavern.mp3"], forest: ["/ambience/forest.mp3"] });
+  player.setLevels({ master: 1, bed: 1, music: 1, muted: false, ducked: false });
+  player.setUnlocked(true);
+  player.setScene("tavern", null);
+  await flush();
+  advance(CROSSFADE_MS);
+  player.setScene("forest", null);
+  await flush();
+  advance(CROSSFADE_MS / 2);
+  assert.ok(Math.abs(fake.made[0].volume - cueById("tavern").gain / 2) < 1e-9, "half way down from the tavern's own level");
+  player.dispose();
   passed += 1;
 })();
 
