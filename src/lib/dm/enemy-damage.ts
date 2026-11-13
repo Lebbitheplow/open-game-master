@@ -4,7 +4,7 @@ import { recordTrigger } from "@/lib/dm/last-save";
 import { currentActor } from "@/lib/dm/acting-party";
 import { thunderboltPush } from "@/lib/dm/thunderbolt-strike";
 import { disarmFightEvents } from "@/lib/db/fight-events";
-import { endFightEffects } from "@/lib/db/active-effects";
+import { endFightEffects, endFoeEffects } from "@/lib/db/active-effects";
 import { getFloor, setFloor, type Campaign } from "@/lib/db/campaigns";
 import { burnWebUnder } from "@/lib/dm/zone-cast";
 import { lightOil } from "@/lib/dm/gear-zones";
@@ -263,6 +263,8 @@ export function finishEncounter(
 export function settleFightState(campaign: Campaign, encounterId: string): { itemsLeft: string[]; swallowedOut: string | null } {
   // An effect set "until the fight ends" ends now (active-effects.ts).
   endFightEffects(campaign.id);
+  // And what was laid on its foes (active-effects.ts endFoeEffects).
+  endFoeEffects(campaign.id, listEnemies(encounterId).map((enemy) => enemy.id));
   // A frenzy outliving its rage costs its level of exhaustion (frenzy.ts).
   settleFrenzies(campaign);
   // Whoever is still inside a creature that swallowed them comes out, prone

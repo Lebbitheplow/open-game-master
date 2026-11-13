@@ -32,5 +32,21 @@ await test("A Constitution the story raises moves the hit point maximum for ever
   assert.equal(world.sheet(hero.id).maxHp, 50);
 });
 
+await test("What was laid on a fight's foes ends with the fight; what a hero carries runs on", async () => {
+  // A curse with no end of its own on a goblin stayed on the effects list
+  // after the goblin died and the fight closed, read to the storyteller on
+  // every later turn as "someone" at -2 AC.
+  const { listEffects } = await import("../src/lib/db/active-effects.ts");
+  const { patchEnemyHp } = await import("../src/lib/db/encounters.ts");
+  const hero = world.addHero({ class: "fighter", level: 5, maxHp: 44 });
+  await world.beginFight([{ monster: "goblin", count: 1 }]);
+  const [goblin] = world.enemies();
+  assert.equal((await world.invoke("set_effect", { enemyId: goblin.id, name: "Shrine's Curse", modifiers: [{ field: "ac", mode: "add", value: -2 }] })).ok, true);
+  assert.equal((await world.invoke("set_effect", { characterId: hero.id, name: "Goblin's Hex", modifiers: [{ field: "attack", mode: "disadvantage" }], duration: "rounds", remaining: 10 })).ok, true);
+  patchEnemyHp(goblin.id, 0, "dead");
+  assert.equal((await world.invoke("end_encounter", { outcome: "victory" })).ok, true);
+  assert.deepEqual(listEffects(world.campaignId).map((effect) => effect.name), ["Goblin's Hex"]);
+});
+
 world.close();
 finish();
