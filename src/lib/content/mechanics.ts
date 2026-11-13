@@ -552,6 +552,19 @@ function v2ProficiencyFields(data: Record<string, unknown>): Record<string, stri
   return fields;
 }
 
+// A class's tools as entries the builder can ask for: a v2 row writes its
+// pick into the same sentence as the tool it names ("Tinker tools and two
+// additional tools your choice", Black Flag's Mechanist), which was stored as
+// one proficiency named by that sentence. The choice is split off and the
+// tool is spelled as the SRD spells it.
+function classTools(value: unknown): string[] {
+  return proficiencyList(value)
+    .flatMap((entry) => (/\bchoice\b/i.test(entry) ? entry.split(/\s+and\s+/i) : [entry]))
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => (/^tinker(?:'s|s)? tools$/i.test(entry) ? "tinker's tools" : entry));
+}
+
 const FULL_CASTERS = new Set(["bard", "cleric", "druid", "sorcerer", "wizard"]);
 const HALF_CASTERS = new Set(["paladin", "ranger"]);
 
@@ -602,7 +615,7 @@ export function classMechanics(slug: string, row: Record<string, unknown>): Clas
     skillChoices: { count, from: from.length ? from : [...ALL_SKILLS] },
     armor: proficiencyList(data.prof_armor),
     weapons: proficiencyList(data.prof_weapons),
-    tools: proficiencyList(data.prof_tools),
+    tools: classTools(data.prof_tools),
     spellAbility: spellAbility && casterType !== "none" ? spellAbility : spellAbility,
     casterType,
   };

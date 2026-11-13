@@ -29,6 +29,7 @@ const { builderMaxHp } = await import("../src/app/characters/builder/abilityDice
 const { suggestedStartingHp } = await import("../src/lib/srd/index.ts");
 const { populateFeaturesForClasses, racialTraitsFor } = await import("../src/lib/srd/features.ts");
 const { createSheetSchema } = await import("../src/lib/schemas/sheet.ts");
+const { splitToolGrants } = await import("../src/lib/srd/tool-choices.ts");
 
 let passed = 0;
 function test(name, fn) {
@@ -183,7 +184,14 @@ test("a v2 class gets its saves, armor, weapons, tools and skills", () => {
   const mechanist = classMechanics("mechanist", find(rows.v2Classes, "mechanist").data);
   assert.deepEqual(mechanist.saves, ["con", "int"]);
   assert.deepEqual(mechanist.armor, ["Light armor", "medium armor", "shields"]);
-  assert.deepEqual(mechanist.tools, ["Tinker tools and two additional tools your choice"]);
+  // The pick in the tool sentence is a pick of two (src/lib/srd/tool-choices.ts),
+  // which was stored as one proficiency named by the sentence.
+  assert.deepEqual(mechanist.tools, ["tinker's tools", "two additional tools your choice"]);
+  const split = splitToolGrants(mechanist.tools);
+  assert.deepEqual(split.fixed, ["tinker's tools"]);
+  assert.equal(split.choices.length, 1);
+  assert.equal(split.choices[0].count, 2);
+  assert.ok(split.choices[0].from.includes("smith's tools") && split.choices[0].from.includes("thieves' tools"));
   assert.deepEqual(mechanist.skillChoices, {
     count: 2,
     from: ["arcana", "history", "investigation", "perception", "sleight_of_hand"],
