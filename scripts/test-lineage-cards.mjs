@@ -30,6 +30,7 @@ const {
   wrapIndex,
 } = await import("../src/app/characters/builder/lineage.ts");
 const { SRD_RACES, SRD_CLASSES } = await import("../src/lib/srd/index.ts");
+const { LINEAGES_AWAITING_ART } = await import("../src/lib/placeholders.ts");
 const { CUSTOM_CLASSES } = await import("../src/lib/classes/index.ts");
 
 const publicDir = path.resolve(import.meta.dirname, "../public");
@@ -115,8 +116,8 @@ function hillDwarfLike() {
   return SRD_RACES.find((race) => race.id === "hill_dwarf");
 }
 
-test("all 32 bundled races parse to a body or a locked row, no exceptions", () => {
-  assert.equal(SRD_RACES.length, 32);
+test("all 46 bundled races parse to a body or a locked row, no exceptions", () => {
+  assert.equal(SRD_RACES.length, 46);
   for (const race of SRD_RACES) {
     const lines = traitLines(race);
     assert.ok(lines.length > 0, `${race.id} has trait lines`);
@@ -202,11 +203,15 @@ test("a list with groups keeps its leading group whole; a single list folds by c
 
 // ---- the plates ----
 
-test("every bundled race resolves to its own family plate, in all three genders", () => {
+test("every bundled race resolves to its own family plate, in all three genders; one awaiting art draws the neutral adventurer, never another people's face", () => {
   for (const race of SRD_RACES) {
     for (const gender of ["", "Male", "Female"]) {
       const art = lineageArt(race.id, race.name, gender);
-      assert.match(art, /\/character-race\//, race.id);
+      if (LINEAGES_AWAITING_ART.includes(race.id)) {
+        assert.match(art, /\/placeholders\/character\/[a-z]+\.webp$/, `${race.id} awaits its plate: ${art}`);
+      } else {
+        assert.match(art, /\/character-race\//, race.id);
+      }
       assert.ok(exists(art), `${art} exists`);
     }
   }

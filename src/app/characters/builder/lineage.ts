@@ -5,7 +5,7 @@
 // (docs/visual-overhaul-plan.md 7.3 and 7.5).
 
 import { GENDERS } from "@/lib/gender";
-import { characterPlaceholder, normalizeGender, raceFamily } from "@/lib/placeholders";
+import { characterPlaceholder, LINEAGES_AWAITING_ART, normalizeGender, raceFamily } from "@/lib/placeholders";
 import type { Ability } from "@/lib/schemas/sheet";
 import { canonicalRaceId, srdRaceFor } from "@/lib/content/race-options";
 import { textKey } from "@/lib/language/text-logic";
@@ -134,6 +134,11 @@ const FAMILY_WORDS: Array<[RegExp, string]> = [
 ];
 
 export function lineageFamily(raceId: string, name = ""): string | null {
+  // A lineage awaiting its own plate draws the neutral adventurer, never a
+  // kin's face its name holds a word of (a hobgoblin is no goblin).
+  if ((LINEAGES_AWAITING_ART as readonly string[]).includes(canonicalRaceId(raceId))) {
+    return null;
+  }
   const direct = raceFamily(canonicalRaceId(raceId));
   if (direct) {
     return direct;

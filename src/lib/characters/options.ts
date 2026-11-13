@@ -133,6 +133,9 @@ export function srdRaceOptions(): RaceOption[] {
     toolChoice: race.toolChoice,
     armor: race.armor,
     weapons: race.weapons,
+    weaponChoice: race.weaponChoice,
+    trainingChoice: race.trainingChoice,
+    expertiseChoice: race.expertiseChoice,
     note: race.traits.join(" · "),
   }));
 }

@@ -56,6 +56,7 @@ import { combatRiders, fightingStyleFeatureName } from "@/lib/srd/feature-effect
 import type { BackgroundOption, ClassOption, RaceOption } from "./useBuilderOptions";
 import type { BuilderState, EquipmentItem as BuilderItem } from "./useBuilderState";
 import { textKey } from "@/lib/language/text-logic";
+import { ALL_SKILLS } from "@/lib/content/mechanics";
 
 // The derivation memoises each value with React's useMemo while the wizard
 // renders. Not marked "use client", so the server can run the same body
@@ -296,7 +297,7 @@ export function useBuilderDerived({
 }) {
   const {
     level, scores, racialAsi, asiChoices, chosenSkills, expertisePicks, bonusLanguages,
-    racialSkills, racialTool, backgroundSkills, backgroundGearPicks, hpOverride, acOverride, equipment, removedAutoNames,
+    racialSkills, racialTool, racialWeapons, racialTraining, racialExpertise, backgroundSkills, backgroundGearPicks, hpOverride, acOverride, equipment, removedAutoNames,
     toolPicks, repeatSkills,
     subclass, optionPicks, spells, cantrips, bookPrepared, keepsStoredGear, asiRecorded, asiReachedLevel,
   } = state;
@@ -470,12 +471,14 @@ export function useBuilderDerived({
         ...backgroundSkills.filter(Boolean),
         ...(race?.skills ?? []),
         ...racialSkills.filter(Boolean),
+        // Adaptable Acumen's picks that are skills.
+        ...(race?.trainingChoice ? (racialTraining ?? []).filter((pick) => (ALL_SKILLS as readonly string[]).includes(pick)) : []),
         ...repeatSkills.filter(Boolean),
         // The skill a class taken second let the player pick.
         ...extras.flatMap((entry) => entry.skills.filter(Boolean)),
       ]),
     ],
-    [chosenSkills, background, backgroundSkills, race, racialSkills, repeatSkills, extras],
+    [chosenSkills, background, backgroundSkills, race, racialSkills, racialTraining, repeatSkills, extras],
   );
 
   // The class's, the background's, then each class taken second's: a
@@ -503,10 +506,17 @@ export function useBuilderDerived({
   const trainedTools = useMemo(
     () => [
       ...new Set(
-        [...toolGrants.fixed, ...(race?.tools ?? []), racialTool, ...toolGrants.chosen].filter(Boolean),
+        [
+          ...toolGrants.fixed,
+          ...(race?.tools ?? []),
+          racialTool,
+          // Adaptable Acumen's picks that are tools.
+          ...(race?.trainingChoice ? (racialTraining ?? []).filter((pick) => !(ALL_SKILLS as readonly string[]).includes(pick)) : []),
+          ...toolGrants.chosen,
+        ].filter(Boolean),
       ),
     ],
-    [toolGrants, race, racialTool],
+    [toolGrants, race, racialTool, racialTraining],
   );
   // The background's kit with its choice lines answered (issue #127): a
   // tool line from the training above, an either-or line from the pick
@@ -575,7 +585,7 @@ export function useBuilderDerived({
       // Races can teach combat training too: mountain dwarf armor, drow
       // and wood elf weapons. A class taken second adds its multiclass row.
       armor: [...new Set([...(klass?.armor ?? []), ...(race?.armor ?? []), ...grants.flatMap((grant) => grant.armor)])],
-      weapons: [...new Set([...(klass?.weapons ?? []), ...(race?.weapons ?? []), ...grants.flatMap((grant) => grant.weapons)])],
+      weapons: [...new Set([...(klass?.weapons ?? []), ...(race?.weapons ?? []), ...(race?.weaponChoice ? (racialWeapons ?? []).filter(Boolean) : []), ...grants.flatMap((grant) => grant.weapons)])],
     };
     const withFeats = applyFeatGrants({
       proficiencies,
@@ -590,9 +600,11 @@ export function useBuilderDerived({
     // of them (SRD 5.1, Bard and Rogue: "choose two of your skill
     // proficiencies"), a Lore bard's subclass skills and a feat's among them,
     // as the level-up already allows.
-    const own = expertisePicks.filter((skillId) => expertiseAllowed(skillId, trained.skills, classList.map((entry) => entry.id)));
+    // And the race's own (a human chassis's Adaptable Acumen), on a skill held.
+    const racial = race?.expertiseChoice && racialExpertise && trained.skills.includes(racialExpertise) ? [racialExpertise] : [];
+    const own = [...expertisePicks.filter((skillId) => expertiseAllowed(skillId, trained.skills, classList.map((entry) => entry.id))), ...racial];
     return { ...trained, expertise: [...new Set([...own, ...(trained.expertise ?? [])])] };
-  }, [proficientSkills, klass, classList, grants, classLanguages, race, background, expertisePicks, bonusLanguages, trainedTools, featNames, featDescOf, featChoices, subclassTraining]);
+  }, [proficientSkills, klass, classList, grants, classLanguages, race, racialWeapons, racialExpertise, background, expertisePicks, bonusLanguages, trainedTools, featNames, featDescOf, featChoices, subclassTraining]);
 
   // Hit points as the server will work them out (builderHp.ts): lineage,
   // feats, Draconic Resilience and the table's method. A table that rolls

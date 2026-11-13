@@ -25,6 +25,7 @@ import {
   type RaceGrants,
 } from "@/lib/srd/legality/types";
 import { textKey } from "@/lib/language/text-logic";
+import { KNOWN_TOOLS } from "@/lib/srd/feat-grant-text";
 
 export type ProficiencyInput = {
   sent: Proficiencies;
@@ -33,6 +34,12 @@ export type ProficiencyInput = {
   race: RaceGrants;
   background: BackgroundGrants | null;
   racialTool: string;
+  // The weapons named from the race's weaponChoice.
+  racialWeapons?: string[];
+  // Skills or tools named from the race's trainingChoice, and the skill its
+  // expertiseChoice doubles.
+  racialTraining?: string[];
+  racialExpertise?: string;
   // Training the stored character already holds, on an edit: earned in play
   // (a second class's pick, a DM's grant) and kept.
   held?: Proficiencies | null;
@@ -110,9 +117,25 @@ export function judgeProficiencies(input: ProficiencyInput): ProficiencyVerdict 
     ...secondary.flatMap((grant) => grant.armor),
     ...(held?.armor ?? []),
   ]);
+  // The weapons a race lets the player name: each from its list, as many as
+  // it offers. Before this the pick was never asked, and a derro of the
+  // mutated caste was trained in no weapon its text promised.
+  const weaponChoice = race.weaponChoice;
+  const racialWeapons = uniqueNames((input.racialWeapons ?? []).filter(Boolean));
+  const offWeapons = racialWeapons.filter((name) => !weaponChoice?.from.some((weapon) => textKey(weapon) === textKey(name)));
+  if (offWeapons.length) {
+    problems.push(`${offWeapons.join(", ")} ${offWeapons.length === 1 ? "is not a weapon" : "are not weapons"} the ${race.name} may choose${weaponChoice ? `; pick from ${weaponChoice.from.join(", ")}` : ""}.`);
+  }
+  if (weaponChoice && racialWeapons.length > weaponChoice.count) {
+    problems.push(`The ${race.name} names ${plural(weaponChoice.count, "weapon")}; ${racialWeapons.length} were chosen.`);
+  }
+  if (weaponChoice && input.requireToolPicks && racialWeapons.length < weaponChoice.count) {
+    problems.push(`Name the ${plural(weaponChoice.count, "weapon")} the ${race.name} is trained with.`);
+  }
   const weapons = uniqueNames([
     ...(primary?.weapons ?? []),
     ...(race.weapons ?? []),
+    ...(offWeapons.length ? [] : racialWeapons.slice(0, weaponChoice?.count ?? 0)),
     ...secondary.flatMap((grant) => grant.weapons),
     ...(held?.weapons ?? []),
   ]);
@@ -135,7 +158,17 @@ export function judgeProficiencies(input: ProficiencyInput): ProficiencyVerdict 
     ...(background?.tools ?? []),
     ...secondary.flatMap((grant) => grant.tools),
   ]);
-  const fixedTools = uniqueNames([...granted.fixed, ...(race.tools ?? []), racialTool].filter(Boolean));
+  // Adaptable Acumen: skills or tools in any mix, as many as the race names.
+  const trainingPicks = race.trainingChoice ? uniqueNames((input.racialTraining ?? []).filter(Boolean)).slice(0, race.trainingChoice.count) : [];
+  const trainedToolPicks = trainingPicks.filter((pick) => KNOWN_TOOLS.some((tool) => textKey(tool) === textKey(pick)));
+  const unknownPicks = trainingPicks.filter((pick) => !trainedToolPicks.includes(pick) && !findSkill(lower(pick)));
+  if (unknownPicks.length) {
+    problems.push(`${unknownPicks.join(", ")}: neither a skill nor a tool the ${race.name} may be trained in.`);
+  }
+  if (race.trainingChoice && input.requireToolPicks && trainingPicks.length < race.trainingChoice.count) {
+    problems.push(`Name the ${race.trainingChoice.count} skills or tools the ${race.name} is trained in.`);
+  }
+  const fixedTools = uniqueNames([...granted.fixed, ...(race.tools ?? []), racialTool, ...trainedToolPicks].filter(Boolean));
   const heldTools = new Set((held?.tools ?? []).map(toolKey));
   const fixedToolKeys = new Set(fixedTools.map(toolKey));
   // A grant's own words ("one type of gaming set"), fitted or whole.
@@ -193,6 +226,7 @@ export function judgeProficiencies(input: ProficiencyInput): ProficiencyVerdict 
       ...(background?.tools ?? []).filter(answered),
       ...(race.tools ?? []),
       racialTool,
+      ...trainedToolPicks,
       ...secondary.flatMap((grant) => grant.tools).filter(answered),
       ...chosenTools,
       ...(held?.tools ?? []).filter(answered),
@@ -231,6 +265,10 @@ export function judgeProficiencies(input: ProficiencyInput): ProficiencyVerdict 
   if (race.skillChoice) {
     const from = race.skillChoice.from ?? [];
     slots.push({ label: race.name, count: race.skillChoice.count, from: from.length ? new Set(from.map(lower)) : null });
+  }
+  const trainedSkillCount = trainingPicks.length - trainedToolPicks.length - unknownPicks.length;
+  if (trainedSkillCount > 0) {
+    slots.push({ label: race.name, count: trainedSkillCount, from: null });
   }
   // The same skill from the background and the race: the player chooses
   // another in its place (SRD 5.1, Backgrounds).
@@ -274,10 +312,11 @@ export function judgeProficiencies(input: ProficiencyInput): ProficiencyVerdict 
       `Expertise doubles a proficiency the character has; ${unproficient.join(", ")} ${unproficient.length === 1 ? "is" : "are"} not among their skills.`,
     );
   }
+  // A race's own expertise (Adaptable Acumen) adds to the class's.
   const expertiseSlots = input.classes.reduce(
     (sum, entry) => sum + expertiseSlotsFor(entry.id, entry.level),
     0,
-  );
+  ) + (race.expertiseChoice ?? 0);
   const expertisePicks = expertise.filter((skill) => !heldExpertise.has(skill));
   if (expertisePicks.length > Math.max(0, expertiseSlots - heldExpertise.size)) {
     problems.push(

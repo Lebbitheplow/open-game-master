@@ -14,6 +14,8 @@ import { subclassGrants } from "@/lib/srd/subclass-training";
 import { bonusLanguageCount, type BlockerTarget } from "./submit";
 import type { BackgroundOption, ClassOption, RaceOption } from "./useBuilderOptions";
 import { textKey } from "@/lib/language/text-logic";
+import { ALL_SKILLS } from "@/lib/content/mechanics";
+import { KNOWN_TOOLS } from "@/lib/srd/feat-grant-text";
 
 // Every pick the player makes in the builder depends on an earlier choice:
 // class skills on the class, and on what the background and race already
@@ -40,6 +42,12 @@ export type BuilderPicks = {
   racialAsi: Array<Ability | "">;
   racialCantrips: string[];
   racialTool: string;
+  // The weapons named from the race's list (a hobgoblin's two martial).
+  racialWeapons: string[];
+  // Skills or tools named from the race's trainingChoice, and the skill its
+  // expertiseChoice doubles (a human chassis's Adaptable Acumen).
+  racialTraining: string[];
+  racialExpertise: string;
   // The skill picked in place of one the race and the background both give.
   repeatSkills: string[];
   backgroundSkills: string[];
@@ -169,6 +177,9 @@ export function reconcilePicks(
     racialAsi: input.racialAsi ?? [],
     racialCantrips: input.racialCantrips ?? [],
     racialTool: input.racialTool ?? "",
+    racialWeapons: input.racialWeapons ?? [],
+    racialTraining: input.racialTraining ?? [],
+    racialExpertise: input.racialExpertise ?? "",
     repeatSkills: input.repeatSkills ?? [],
     backgroundSkills: input.backgroundSkills ?? [],
     bonusLanguages: input.bonusLanguages ?? [],
@@ -291,6 +302,18 @@ export function reconcilePicks(
       ? picks.racialTool
       : "";
   note("racial tool", "racialTool", [picks.racialTool], [racialTool]);
+  // Weapons from the race's own list, as many as it names, each once.
+  const racialWeapons = race?.weaponChoice
+    ? slotted(picks.racialWeapons, race.weaponChoice.count, (weapon) => race.weaponChoice!.from.some((entry) => textKey(entry) === textKey(weapon)))
+    : [];
+  note("racial weapon", "racialWeapons", picks.racialWeapons, racialWeapons);
+  // A skill (by id) or a tool, as many as the race names, each once.
+  const racialTraining = race?.trainingChoice
+    ? slotted(picks.racialTraining, race.trainingChoice.count, (pick) => (ALL_SKILLS as readonly string[]).includes(pick) || KNOWN_TOOLS.includes(pick))
+    : [];
+  note("racial training", "racialTraining", picks.racialTraining, racialTraining);
+  const racialExpertise = race?.expertiseChoice && (ALL_SKILLS as readonly string[]).includes(picks.racialExpertise) ? picks.racialExpertise : "";
+  note("racial expertise", "racialExpertise", [picks.racialExpertise], [racialExpertise]);
   // As many different cantrips as the race offers, and none from a race
   // that offers none.
   const racialCantrips = race?.cantripChoice ? unique(picks.racialCantrips).slice(0, race.cantripChoice.count) : [];
@@ -433,6 +456,9 @@ export function reconcilePicks(
       racialAsi,
       racialCantrips,
       racialTool,
+      racialWeapons,
+      racialTraining,
+      racialExpertise,
       repeatSkills,
       backgroundSkills,
       bonusLanguages,

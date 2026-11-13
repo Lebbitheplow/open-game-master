@@ -38,6 +38,13 @@ export type SpeciesVariantOption = {
   breath?: SpeciesBreath;
   // Spells the option gives (src/lib/content/species-spells.ts, issue #833).
   spells?: SpeciesSpellGroup;
+  // Trait lines in the bundled lineages' words the option writes on the
+  // sheet, which the engines read by name: a content pack species' choice
+  // read from its text ("Tentacle (1d4 bludgeoning unarmed strike)",
+  // "Saves with advantage against spells (Wisdom)",
+  // src/lib/content/species-prose-logic.ts). Never taken from an author's
+  // form: a workshop option's grants are the fields above.
+  lines?: string[];
 };
 
 export type SpeciesVariantGroup = { label: string; options: SpeciesVariantOption[] };
@@ -59,6 +66,8 @@ export const VARIANT_LIMITS = {
   languages: 2,
   tool: 60,
   language: 40,
+  lines: 4,
+  line: 80,
 } as const;
 
 // The two shapes the SRD's breaths take (the Dragonborn's table).
@@ -239,6 +248,15 @@ function checkOption(
   const spells = checkSpeciesSpells(row.spells, where);
   if ("error" in spells) return spells;
   if (spells.group) option.spells = spells.group;
+
+  // A copied pack species' option keeps the trait lines its text was read
+  // into; an author could as well type them into the species' traits.
+  const lines = textList(row.lines, "lines", where);
+  if ("error" in lines) return lines;
+  if (lines.list.length > L.lines || lines.list.some((line) => line.length > L.line)) {
+    return { error: `${where} writes ${lines.list.length} trait lines; an option writes ${L.lines} at most, each of ${L.line} characters.` };
+  }
+  if (lines.list.length) option.lines = lines.list;
 
   ids.add(id);
   names.add(textKey(name));
@@ -430,6 +448,7 @@ export function variantFeatureNames(label: string, option: SpeciesVariantOption,
     ...(option.breath
       ? [variantBreathFeatureName({ damageType: option.breath.damageType, area: BREATH_AREAS[option.breath.shape], save: option.breath.save })]
       : []),
+    ...(option.lines ?? []),
   ];
   const out: string[] = [];
   for (const name of names) {
@@ -464,6 +483,7 @@ export function variantSummary(option: SpeciesVariantOption, baseAsi?: Partial<R
   if (option.tools?.length) parts.push(`proficient with ${listed(option.tools)}`);
   if (option.languages?.length) parts.push(`speaks ${listed(option.languages)}`);
   if (option.spells?.spells.length) parts.push(`spells: ${speciesSpellsSummary(option.spells)}`);
+  if (option.lines?.length) parts.push(option.lines.join("; "));
   return parts.length ? parts.join("; ") : "nothing beyond its words";
 }
 
@@ -478,6 +498,7 @@ export function variantShort(option: SpeciesVariantOption): string {
     ...(option.tools ?? []),
     ...(option.languages ?? []),
     ...(option.spells?.spells ?? []).map((row) => row.spell),
+    ...(option.lines ?? []).map((line) => line.replace(/\s*\(.*$/, "")),
   ];
   return parts.join(", ") || "its words only";
 }

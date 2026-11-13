@@ -26,6 +26,7 @@ import type { BuilderDerived } from "./useBuilderDerived";
 import { isCantripName, spellLevelOf } from "@/lib/srd/spell-lists";
 import type { BuilderState, EquipmentItem } from "./useBuilderState";
 import { textKey } from "@/lib/language/text-logic";
+import { ALL_SKILLS } from "@/lib/content/mechanics";
 import { subclassPickFeatures } from "@/lib/srd/subclass-choice-picks";
 import { featChoice } from "@/lib/schemas/sheet";
 import { normalizeAttraction } from "@/lib/attraction";
@@ -45,6 +46,9 @@ export type BlockerTarget =
   | "racialAsi"
   | "racialSkills"
   | "racialTool"
+  | "racialWeapons"
+  | "racialTraining"
+  | "racialExpertise"
   | "racialCantrip"
   | "racialFeat"
   | "ancestry"
@@ -202,6 +206,15 @@ export function ancestryBlocks(
   }
   if (race.toolChoice && !racialTool) {
     owed.push(block("racialTool", `Pick a tool your ${race.name} knows how to use (tool proficiency).`));
+  }
+  if (race.trainingChoice && (state.racialTraining ?? []).filter(Boolean).length < race.trainingChoice.count) {
+    owed.push(block("racialTraining", `Pick the ${race.trainingChoice.count} skills or tools your ${race.name} trained in.`));
+  }
+  if (race.expertiseChoice && !state.racialExpertise) {
+    owed.push(block("racialExpertise", `Pick the skill your ${race.name} doubles its proficiency in (expertise).`));
+  }
+  if (race.weaponChoice && (state.racialWeapons ?? []).filter(Boolean).length < race.weaponChoice.count) {
+    owed.push(block("racialWeapons", `Pick the ${race.weaponChoice.count === 1 ? "weapon" : `${race.weaponChoice.count} weapons`} your ${race.name} trained with (weapon proficiency).`));
   }
   // Every cantrip the race offers (a homebrew species may offer three),
   // each a different spell.
@@ -696,6 +709,8 @@ export function buildBuilderResult(input: SubmitInput): BuilderResult {
       ...picks.backgroundSkills.filter(Boolean),
       ...(race.skills ?? []),
       ...picks.racialSkills.filter(Boolean),
+      // Adaptable Acumen's picks that are skills (its tools ride the preview).
+      ...(race.trainingChoice ? picks.racialTraining.filter((pick) => (ALL_SKILLS as readonly string[]).includes(pick)) : []),
       ...picks.repeatSkills.filter(Boolean),
       ...extraSkills,
     ]),
@@ -705,9 +720,13 @@ export function buildBuilderResult(input: SubmitInput): BuilderResult {
     skills,
     // A subclass's or feat's skill may take the class's expertise too; the
     // server adds those skills back with their grants.
-    expertise: picks.expertisePicks.filter((skill) =>
-      expertiseAllowed(skill, [...skills, ...(derived.expertiseSkills ?? [])], multiclass ? classes.map((entry) => entry.id) : [klass.id]),
-    ),
+    expertise: [
+      ...picks.expertisePicks.filter((skill) =>
+        expertiseAllowed(skill, [...skills, ...(derived.expertiseSkills ?? [])], multiclass ? classes.map((entry) => entry.id) : [klass.id]),
+      ),
+      // The race's own expertise (Adaptable Acumen), on a skill held.
+      ...(race.expertiseChoice && picks.racialExpertise && skills.includes(picks.racialExpertise) ? [picks.racialExpertise] : []),
+    ],
     languages: [
       ...new Set([
         ...(race.languages ?? []),
@@ -857,6 +876,9 @@ export function buildBuilderResult(input: SubmitInput): BuilderResult {
         skills: picks.racialSkills.filter(Boolean),
         ...racialCantripFields(racialCantrips),
         tool: picks.racialTool,
+        weapons: race.weaponChoice ? picks.racialWeapons.filter(Boolean) : [],
+        training: race.trainingChoice ? picks.racialTraining.filter(Boolean) : [],
+        expertise: race.expertiseChoice ? picks.racialExpertise : "",
         ancestry: takesDraconicAncestry(race.id) ? (findDraconicAncestry(state.racialAncestry ?? "")?.id ?? "") : "",
         variant: race.variants ? picks.racialVariant : "",
         ...(racialFeatAbility ? { featAbility: racialFeatAbility } : {}),

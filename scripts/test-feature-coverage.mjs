@@ -388,9 +388,10 @@ test("every racial trait is enforced, a resource, or acknowledged", () => {
     "Claws (1d4 slashing unarmed strike)", "Bite (1d6 piercing unarmed strike)",
     "Expert Forgery (advantage on checks to duplicate writing and craftwork)",
     "Mimicry (reproduce any sound you have heard)",
-    "Kenku Training (two skills of your choice)",
-    "Changeling Instincts (two social or insight skills of your choice)",
-    "Two skills from a survival list (Cunning Artisan)",
+    "Kenku Training (two skills from Acrobatics, Deception, Sleight of Hand, Stealth)",
+    "Changeling Instincts (two skills from Deception, Insight, Intimidation, Persuasion)",
+    "Hunter's Lore (two skills from Animal Handling, Nature, Perception, Stealth, Survival)",
+    "Cunning Artisan (on a short rest, shape a shield, a club, a javelin or darts from the bone and hide of a slain creature)",
     "One skill and one tool of your choice (Specialized Design)",
     "Natural Armor (AC 17, unmodified by Dexterity)", "Natural Armor (AC 13 + DEX)",
     "Shell Defense (withdraw for +4 AC and save advantage, at the cost of movement and actions)",
@@ -432,6 +433,37 @@ test("every racial trait is enforced, a resource, or acknowledged", () => {
     "Call to the Wave (shape water, then create or destroy water 1/long rest from 3rd level)",
     "Mingle with the Wind (levitate 1/long rest from 3rd level)",
     "Merge with Stone (pass without trace 1/long rest from 3rd level)",
+    // The lineages added by the 2026-11 creator audit. Each line is run by
+    // the engine and held by a probe the species clause ledger names
+    // (scripts/clauses/species.json): flight and natural weapons on the board
+    // and in pc_attack, the save and immunity readers of trait-rules.ts, Pack
+    // Tactics in the attack situation, picks at creation, spells cast by
+    // nature; the bundled subraces' and the GM's own lines likewise.
+    "Fey Step (misty step, 1/short rest)",
+    "Sea Elf Training (spear, trident, light crossbow, net)",
+    "Friend of the Sea (share simple ideas with beasts that have a swimming speed)",
+    "Duergar Resilience (adv. vs illusions, charmed and paralyzed)",
+    "Duergar Magic (enlarge/reduce on yourself from 3rd level, invisibility on yourself from 5th, 1/long rest each)",
+    "Cold Resistance",
+    "Control Air and Water (fog cloud, then gust of wind from 3rd level and water breathing from 5th, 1/long rest each)",
+    "Emissary of the Sea (share simple ideas with beasts that breathe water)",
+    "Magic Resistance (adv. on saves against spells and other magic)",
+    "Poison Immunity (immune to poison damage and the poisoned condition)",
+    "Serpent Magic (poison spray cantrip, then suggestion from 3rd level, 1/long rest)",
+    "Pack Tactics (advantage on an attack against a creature an ally stands within 5 feet of)",
+    "Flight (flying speed of 50 ft, not while wearing medium or heavy armor)",
+    "Flight (flying speed of 30 ft, not while wearing medium or heavy armor)",
+    "Talons (1d4 slashing unarmed strike)",
+    "Martial Training (light armor and two martial weapons of your choice)",
+    "Ram (1d4 bludgeoning unarmed strike)",
+    "Reveler (Performance and Persuasion proficiency, and one musical instrument of your choice)",
+    "Fairy Magic (druidcraft cantrip, then faerie fire from 3rd level and enlarge/reduce from 5th, 1/long rest each)",
+    "Stealth proficiency (Silent Feathers)",
+    "Hooves (1d4 bludgeoning unarmed strike)",
+    "Equine Build (count as one size larger for carrying)",
+    "Survivor (one skill from Animal Handling, Medicine, Nature, Survival)",
+    "Perception proficiency (Leporine Senses)",
+    "Bestial Instincts (one skill from Acrobatics, Athletics, Intimidation, Survival)",
   ]);
   const uncovered = [];
   for (const race of races) {

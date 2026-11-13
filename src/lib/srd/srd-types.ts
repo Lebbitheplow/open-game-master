@@ -52,6 +52,12 @@ export type SrdRace = {
   // armor, drow and wood elf weapons).
   armor?: string[];
   weapons?: string[];
+  // Weapons the player names (a hobgoblin's two martial weapons), from the list.
+  weaponChoice?: { count: number; from: string[] };
+  // Skills or tools in any mix, of the player's choice (a gearforged human
+  // chassis's Adaptable Acumen), and expertise in one skill held.
+  trainingChoice?: { count: number };
+  expertiseChoice?: number;
 };
 export type SrdBackground = {
   id: string;

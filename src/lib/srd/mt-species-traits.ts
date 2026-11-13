@@ -38,7 +38,8 @@ const SIZES = ["Tiny", "Small", "Medium", "Large", "Huge", "Gargantuan"];
 // "Powerful Build (count as one size larger for carrying)": the size the
 // carrying capacity and the push, drag and lift limit are worked from.
 export function carrySize(size: string | undefined, sheet: Held | null | undefined): string | undefined {
-  if (!holdsFeature({ features: sheet?.features ?? [] }, "powerful build")) {
+  // A centaur's Equine Build carries as one size larger too.
+  if (!holdsFeature({ features: sheet?.features ?? [] }, "powerful build", "equine build")) {
     return size;
   }
   const at = SIZES.findIndex((entry) => entry.toLowerCase() === (size ?? "Medium").trim().toLowerCase());

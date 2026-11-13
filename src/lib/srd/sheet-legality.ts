@@ -563,6 +563,9 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
     race,
     background,
     racialTool: input.racialChoices?.tool ?? "",
+    racialWeapons: input.racialChoices?.weapons ?? [],
+    racialTraining: input.racialChoices?.training ?? [],
+    racialExpertise: input.racialChoices?.expertise ?? "",
     // What the stored character holds stays with it while it is the same
     // class, race and background; an edit that changes one of them picks
     // again from what the new one offers.
@@ -947,6 +950,9 @@ export function legalizeSheet(input: CreateSheetInput, context: LegalityContext)
       skills: input.racialChoices?.skills ?? [],
       ...racialCantripFields(racialPicks),
       tool: race.toolChoice ? (input.racialChoices?.tool ?? "") : "",
+      weapons: race.weaponChoice ? (input.racialChoices?.weapons ?? []).slice(0, race.weaponChoice.count) : [],
+      training: race.trainingChoice ? (input.racialChoices?.training ?? []).slice(0, race.trainingChoice.count) : [],
+      expertise: race.expertiseChoice ? (input.racialChoices?.expertise ?? "") : "",
       ancestry: ancestry?.id ?? "",
       variant: speciesChoice.variant,
       ...(speciesChoice.grants ? { variantGrants: speciesChoice.grants } : {}),

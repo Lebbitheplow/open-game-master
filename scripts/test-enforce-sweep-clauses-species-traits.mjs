@@ -82,7 +82,20 @@ for (const row of RACES) {
   // its trait line): the cantrip at will from 1st level, each levelled spell
   // once a long rest from the level its row names, with no slot.
   if (row.innateSpells && !/genasi|firbolg/.test(row.id)) {
-    P[`species.${row.id}.innate`] = () => castsByNature(rig, row);
+    // An eladrin's Fey Step comes back on a short rest.
+    P[`species.${row.id}.innate`] = () => castsByNature(rig, row, { rest: row.innateSpells.spells.some((spell) => spell.rest === "short") ? "short" : "long" });
+  }
+
+  // Duergar Resilience: advantage on saves against being charmed or
+  // paralyzed (and against illusions, which a save names no word for: the
+  // GM's).
+  if (holds(row, "duergar resilience")) {
+    P[`species.${row.id}.duergar-resilience`] = async () => {
+      const t = await rig.table();
+      const who = t.hero(of());
+      const faces = async (args) => (await t.roll(who, { kind: "saving_throw", ability: "wis", dc: 10, ...args }, [15, 3])).faces.length;
+      same([await faces({ against: "charmed" }), await faces({ against: "paralyzed" }), await faces({})], [2, 2, 1], `${row.name}: d20s on a save against a charm, against paralysis, and on a plain save`);
+    };
   }
 
   if (holds(row, "sunlight sensitivity")) {
@@ -230,6 +243,9 @@ const NAMES = [
   "species.lightfoot_halfling.nimbleness", "species.stout_halfling.nimbleness", "species.lightfoot_halfling.stealthy",
   "species.rock_gnome.cunning", "species.forest_gnome.cunning", "species.deep_gnome.cunning", "species.rock_gnome.lore", "species.deep_gnome.camouflage",
   "species.half_orc.relentless", "species.half_orc.savage",
+  "species.eladrin.sleep", "species.eladrin.trance", "species.eladrin.innate", "species.sea_elf.sleep", "species.sea_elf.trance",
+  "species.duergar.stonecunning", "species.duergar.innate", "species.duergar.sunlight", "species.duergar.duergar-resilience",
+  "species.triton.innate", "species.serpentfolk.innate", "species.kobold.sunlight", "species.fairy.innate",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
 assert.ok(rowOf("human"), "races.json lost the human");

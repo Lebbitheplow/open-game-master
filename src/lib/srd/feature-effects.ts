@@ -232,7 +232,15 @@ export const FEATURE_EFFECTS: FeatureDef[] = ([
   },
   {
     // The warforged lineage's built-in plating, applied by the AC engine.
-    match: ["integrated protection"],
+    // A rabbitfolk's Hare-Trigger: the proficiency bonus added to initiative.
+    match: ["hare-trigger"],
+    effects: [{ kind: "initiative_proficiency" }],
+    guidance: "Hare-Trigger: the proficiency bonus is added to initiative rolls. The server adds it.",
+  },
+  {
+    // And a Tome of Heroes derro's Tenebrous Flesh, "a +1 bonus to your
+    // Armor Class" (src/lib/content/species-prose-logic.ts).
+    match: ["integrated protection", "tenebrous flesh"],
     effects: [{ kind: "ac_bonus", amount: 1 }],
     guidance: "Integrated Protection: +1 AC from armor built into the warforged's body.",
   },
@@ -771,6 +779,8 @@ export function guidanceFor(input: {
 export type CombatRiders = {
   acBonus: number;
   acBonusRequiresArmor: boolean;
+  // The part of acBonus that holds only in armor (the Defense style).
+  acBonusArmored: number;
   rangedAttackBonus: number;
   meleeAttackBonus: number;
   oneHandedMeleeDamageBonus: number;
@@ -835,6 +845,7 @@ export function combatRiders(sheet: {
   const riders: CombatRiders = {
     acBonus: 0,
     acBonusRequiresArmor: false,
+    acBonusArmored: 0,
     rangedAttackBonus: 0,
     meleeAttackBonus: 0,
     oneHandedMeleeDamageBonus: 0,
@@ -863,6 +874,9 @@ export function combatRiders(sheet: {
       case "ac_bonus":
         riders.acBonus += effect.amount;
         riders.acBonusRequiresArmor = riders.acBonusRequiresArmor || Boolean(effect.requiresArmor);
+        if (effect.requiresArmor) {
+          riders.acBonusArmored += effect.amount;
+        }
         break;
       case "attack_bonus":
         if (effect.when === "ranged") {

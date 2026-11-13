@@ -2572,6 +2572,38 @@
    "recharge": "short",
    "guidance": "A bonus action: a minute of prophetic state, in which the knight's reaction turns an attack roll that hit them or a creature they can see within 60 feet to disadvantage (use_reaction \"Prophetic State\"), or gives advantage to an attack roll, save or check such a creature has just rolled, on its card.",
    "action": "bonus"
+  },
+  {
+   "id": "race_rabbit_hop",
+   "displayName": "Rabbit Hop",
+   "match": [
+    "rabbit hop"
+   ],
+   "uses": 2,
+   "ability": null,
+   "proficiency": 1,
+   "recharge": "long",
+   "action": "bonus",
+   "guidance": "A bonus action: the rabbitfolk leaps up to 5 feet times their proficiency bonus without provoking opportunity attacks, if their speed is above 0. Uses equal to the proficiency bonus, back on a long rest."
+  },
+  {
+   "id": "race_shifting",
+   "displayName": "Shifting",
+   "match": [
+    "shifting"
+   ],
+   "uses": 2,
+   "ability": null,
+   "proficiency": 1,
+   "recharge": "long",
+   "action": "bonus",
+   "guidance": "A bonus action: the shifter takes on a more bestial look for 1 minute and gains temporary hit points equal to twice their proficiency bonus. Uses equal to the proficiency bonus, back on a long rest. The server lays the form and the hit points.",
+   "fx": {
+    "kind": "buff",
+    "condition": "shifted",
+    "rounds": 10,
+    "tempHp": "prof+prof"
+   }
   }
  ]
 }

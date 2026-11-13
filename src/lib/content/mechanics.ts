@@ -38,6 +38,13 @@ export type RaceMechanics = {
   // Race-taught combat training (mountain dwarf armor, drow weapons).
   armor?: string[];
   weapons?: string[];
+  // Weapons the player names from a list ("two martial weapons of your
+  // choice": a hobgoblin, a Tome of Heroes derro), by their SRD names.
+  weaponChoice?: { count: number; from: string[] };
+  // Skills or tools in any mix, the player's choice ("two skills or tools of
+  // your choice": a gearforged human chassis), and expertise in a skill held.
+  trainingChoice?: { count: number };
+  expertiseChoice?: number;
   // The size the row states ("Your size is Small."), undefined when it
   // leaves it to a subrace or says nothing; and the dwarf's "Your speed is
   // not reduced by wearing heavy armor."
@@ -48,6 +55,10 @@ export type RaceMechanics = {
   variants?: SpeciesVariantGroup;
   // A workshop species' own spells (issue #833), src/lib/content/species-spells.ts.
   spells?: SpeciesSpellGroup;
+  // A pack species whose text sends the player to another race for its
+  // size, speed and a language (a shade's Living Origin): race-options.ts
+  // offers one option per origin.
+  livingOrigin?: boolean;
 };
 
 export const RACE_SIZES = ["Tiny", "Small", "Medium", "Large"] as const;
@@ -392,7 +403,11 @@ export function raceMechanics(data: Record<string, unknown>): RaceMechanics {
   }
   const speedRaw =
     typeof data.speed === "number" ? data.speed : (data.speed as { walk?: unknown } | undefined)?.walk;
-  const parsedSpeed = Number.isFinite(Number(speedRaw)) && Number(speedRaw) > 0 ? Number(speedRaw) : 30;
+  // The speed the text states wins over the field beside it: Tome of
+  // Heroes' drow prints "Your base walking speed is 30 feet." over a field of
+  // 25, and walked 25.
+  const statedSpeed = Number(/\bwalking speed (?:is|of) (\d+) feet\b/i.exec(String(data.speed_desc ?? ""))?.[1]);
+  const parsedSpeed = statedSpeed > 0 ? statedSpeed : Number.isFinite(Number(speedRaw)) && Number(speedRaw) > 0 ? Number(speedRaw) : 30;
 
   // A 2024-rules species (the srd-2024 rows) carries its traits as objects
   // with a type, its speed among them, and no languages of its own: under
@@ -470,7 +485,7 @@ export function raceMechanics(data: Record<string, unknown>): RaceMechanics {
 
 type StructuredGrants = Pick<
   RaceMechanics,
-  "skills" | "skillChoice" | "asiChoice" | "cantripChoice" | "tools" | "toolChoice" | "armor" | "weapons"
+  "skills" | "skillChoice" | "asiChoice" | "cantripChoice" | "tools" | "toolChoice" | "armor" | "weapons" | "weaponChoice" | "livingOrigin" | "trainingChoice" | "expertiseChoice"
 >;
 
 function stringList(value: unknown): string[] | undefined {
@@ -513,6 +528,21 @@ function structuredGrants(data: Record<string, unknown>): StructuredGrants {
   const weapons = stringList(data.weapons);
   if (weapons?.length) {
     out.weapons = weapons;
+  }
+  if (data.livingOrigin === true) {
+    out.livingOrigin = true;
+  }
+  const training = data.trainingChoice as { count?: unknown } | undefined;
+  if (training && Number(training.count) > 0) {
+    out.trainingChoice = { count: Math.min(4, Number(training.count)) };
+  }
+  if (Number(data.expertiseChoice) > 0) {
+    out.expertiseChoice = Math.min(2, Number(data.expertiseChoice));
+  }
+  const weaponChoice = data.weaponChoice as { count?: unknown; from?: unknown } | undefined;
+  const weaponFrom = stringList(weaponChoice?.from);
+  if (weaponChoice && weaponFrom?.length && Number(weaponChoice.count) > 0) {
+    out.weaponChoice = { count: Number(weaponChoice.count), from: weaponFrom };
   }
   return out;
 }
