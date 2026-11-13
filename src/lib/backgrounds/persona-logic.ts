@@ -76,13 +76,24 @@ export function parseSuggestedCharacteristics(text: string): PersonaLists | null
   return PERSONA_KEYS.some((key) => lists[key].length) ? lists : null;
 }
 
+// The 2014 variant backgrounds suggest what the backgrounds they vary do.
+const VARIANT_OF: Record<string, string> = {
+  knight: "noble",
+  pirate: "sailor",
+  spy: "criminal",
+  gladiator: "entertainer",
+  guild_merchant: "guild_artisan",
+};
+
 // What the builder offers for each line: the background's own lists where
 // it has them, the general list for any line it does not. `fromBackground`
 // says whether the picker may name the background as their source.
 export function personaSuggestionsFor(
   background: { id: string; persona?: PersonaLists | null } | null | undefined,
 ): { lists: PersonaLists; fromBackground: boolean } {
-  const own = background ? (BUNDLED_PERSONA[background.id] ?? background.persona ?? null) : null;
+  const own = background
+    ? (BUNDLED_PERSONA[background.id] ?? BUNDLED_PERSONA[VARIANT_OF[background.id] ?? ""] ?? background.persona ?? null)
+    : null;
   if (!own) {
     return { lists: GENERAL_PERSONA, fromBackground: false };
   }

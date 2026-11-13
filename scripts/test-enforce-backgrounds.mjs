@@ -57,6 +57,14 @@ const BACKGROUNDS = {
   sailor: { skills: ["athletics", "perception"], tools: 2, languages: 0, gold: 10, feature: "Ship's Passage" },
   soldier: { skills: ["athletics", "intimidation"], tools: 2, languages: 0, gold: 10, feature: "Military Rank" },
   urchin: { skills: ["sleight_of_hand", "stealth"], tools: 2, languages: 0, gold: 10, feature: "City Secrets" },
+  // The 2014 book's variants of five of them, the concepts a player looks
+  // for by name: the noble's Knight, the sailor's Pirate, the criminal's Spy,
+  // the entertainer's Gladiator and the guild artisan's Guild Merchant.
+  knight: { skills: ["history", "persuasion"], tools: 1, languages: 1, gold: 25, feature: "Retainers" },
+  pirate: { skills: ["athletics", "perception"], tools: 2, languages: 0, gold: 10, feature: "Bad Reputation" },
+  spy: { skills: ["deception", "stealth"], tools: 2, languages: 0, gold: 15, feature: "Criminal Contact" },
+  gladiator: { skills: ["acrobatics", "performance"], tools: 2, languages: 0, gold: 15, feature: "By Popular Demand" },
+  guild_merchant: { skills: ["insight", "persuasion"], tools: 1, languages: 1, gold: 15, feature: "Guild Membership" },
 };
 const ACOLYTE_KIT = ["holy symbol", "prayer book", "5 sticks of incense", "vestments", "common clothes"];
 const GRANT_KEYS = ["id", "name", "skills", "feature", "featureDesc", "tools", "languages", "equipment", "blurb", "genres"];
