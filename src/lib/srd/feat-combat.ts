@@ -530,6 +530,35 @@ export function floorDamageDice(expression: string): string {
     .join("");
 }
 
+// Flames of Phlegethos (a tiefling's feat): a spell's fire damage dice roll
+// any 1 again, and the caster is wreathed in flames until the end of their
+// next turn (src/lib/dm/affinity-cast.ts), burning a creature that hits
+// them in melee (authored-hooks.ts authoredAfterHit).
+export const FLAMES_OF_PHLEGETHOS = "flames of phlegethos";
+export function flamesOfPhlegethosApplies(sheet: FeatHolder, damageType: string | null | undefined): boolean {
+  return (damageType ?? "").trim().toLowerCase() === "fire" && holdsFeat(sheet, "Flames of Phlegethos");
+}
+
+// The dice expression with every 1 rolled again once ("8d6+2" to
+// "8d6r1+2"); a term that already rerolls keeps its own threshold, and a
+// floor stays after it, as the grammar writes them.
+export function rerollOnesDice(expression: string): string {
+  return expression
+    .split(/(?=[+-])/)
+    .map((term) => {
+      const match = /^([+-]?\d{1,3}d\d{1,3}(?:k[hl]\d{1,3})?)(r\d{1,3})?(f\d{1,3})?$/i.exec(term.trim());
+      return match ? `${match[1]}${match[2] ?? "r1"}${match[3] ?? ""}` : term;
+    })
+    .join("");
+}
+
+// Orcish Fury (a half-orc's feat): its counter, spent on a weapon hit for one
+// more of the weapon's damage dice (after-roll-table.ts orcish_fury), and the
+// mark Relentless Endurance leaves when it holds the half-orc up, which opens
+// the reaction's one weapon attack (feat-reactions.ts orcishFury).
+export const ORCISH_FURY = "feat_orcish_fury";
+export const ORCISH_FURY_STRIKE = "orcish fury strike";
+
 // ---- reactions and traps ----
 
 export function hasMageSlayer(sheet: FeatHolder): boolean {
@@ -600,7 +629,7 @@ export function featEngineTag(feat: string, campaignId?: string): string | null 
   // Inspiring Leader's temporary hit points and Metamagic Adept's sorcery
   // points are counters the server spends and applies (class-resources.ts).
   if (["inspiring leader", "metamagic adept", "fade away", "dragon fear"].includes(name)) return "[use_resource]";
-  if (["defensive duelist", "mage slayer", "sentinel", "second chance"].includes(name)) return "[use_reaction]";
+  if (["defensive duelist", "mage slayer", "sentinel", "second chance", "orcish fury"].includes(name)) return "[use_reaction]";
   if (["polearm master", "crossbow expert", "charger"].includes(name)) return "[pc_attack feature]";
   if (name === "stunning sniper") return "[pc_attack stunShot]";
   if (["tavern brawler", "shield master"].includes(name)) return "[take_action bonus]";
@@ -617,6 +646,11 @@ export function featEngineTag(feat: string, campaignId?: string): string | null 
     // grapple escape, Infernal Constitution's resistances and save, Dragon
     // Hide's scales and claws, Dwarven Fortitude's Dodge.
     "squat nimbleness", "infernal constitution", "dragon hide", "dwarven fortitude",
+    // Flames of Phlegethos's fire dice, wreath and burn (pc-attack-plan.ts,
+    // cast-at-enemy-damage.ts, aoe-damage.ts, affinity-cast.ts, authored-hooks.ts).
+    "flames of phlegethos",
+    // Bountiful Luck: the ally's card of a natural 1 offers it (bountiful-luck.ts).
+    "bountiful luck",
   ].includes(name)) return "[server]";
   if (["fey touched", "shadow touched", "magic initiate", "ritual caster", "telepathic", "telekinetic", "fey teleportation", "wood elf magic", "drow high magic", "artificer initiate"].includes(name)) return "[cast tools]";
   return null;

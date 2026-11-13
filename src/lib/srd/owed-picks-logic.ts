@@ -35,6 +35,8 @@ import {
   slotTakes,
   type OptionSlot,
 } from "@/lib/srd/options";
+import { bonusLanguagesOwed, LANGUAGES_TO_CHOOSE } from "@/lib/srd/owed-languages";
+import { featGrantSpec } from "@/lib/srd/feat-grant-text";
 import { applySubclassTraining, autoSubclassPicks, grantsForHeldTraining, subclassGrants, withSubclassChoiceRecords, type SubclassGrant } from "@/lib/srd/subclass-training";
 import { textKey } from "@/lib/language/text-logic";
 import { dedupeNames, spellbookOf } from "@/lib/srd/spell-prep";
@@ -137,6 +139,13 @@ export function owedPickSlots(stated: OwedSheet, context: OwedContext = {}): Owe
   const training = grantsForHeldTraining(subclassGrants(classes, context.extras), sheet.proficiencies).filter(
     (grant) => grant.optional && featPicksOwed(grant.name, grant.spec, featChoice(sheet.featChoices ?? {}, grant.name)) !== null,
   );
+  // The languages the species and background leave to the player and the
+  // sheet never recorded (owed-languages.ts): a pick of its own, made with
+  // the same picker, held to the count.
+  const languagesOwed = bonusLanguagesOwed(stated);
+  if (languagesOwed > 0) {
+    training.push({ name: LANGUAGES_TO_CHOOSE, classId: classes[0]?.id ?? sheet.class, subclass: "", level: 1, optional: true, spec: { ...featGrantSpec(""), languages: languagesOwed } });
+  }
   const choices = subclassChoiceSlots(classes, sheet.features, context.extras).filter((slot) => !slot.chosen);
   return { options, choices, styles: { count: styleCount, choices: styleChoices }, training };
 }
@@ -291,6 +300,26 @@ export function applyOwedPicks(sheet: OwedSheet, request: OwedPicksRequest, cont
     const owed = owedPickSlots(sheet, context).training;
     let merged: FeatChoices = { ...(choiceRecords ?? sheet.featChoices ?? {}) };
     const grants: SubclassGrant[] = [];
+    // The species' and background's languages are written to the sheet as
+    // the builder writes them, with no record of a pick: an edit reads them
+    // as the player's chosen languages again.
+    const free = keys.find((key) => textKey(key) === textKey(LANGUAGES_TO_CHOOSE));
+    if (free) {
+      const grant = owed.find((entry) => textKey(entry.name) === textKey(LANGUAGES_TO_CHOOSE));
+      const picked = [...new Set((featChoice(choices, free) ?? choices[free])?.languages ?? [])].map((name) => name.trim()).filter(Boolean);
+      const held = new Set((trainedBy ?? sheet.proficiencies).languages.map(textKey));
+      if (!grant) {
+        return { ok: false, error: "No language of the player's choice is owed: the species and background's are all named." };
+      }
+      if (!picked.length || picked.length > grant.spec.languages || picked.some((name) => held.has(textKey(name)))) {
+        return { ok: false, error: `Name up to ${grant.spec.languages} language${grant.spec.languages === 1 ? "" : "s"} the character does not speak yet.` };
+      }
+      const base = trainedBy ?? sheet.proficiencies;
+      trainedBy = { ...base, languages: [...base.languages, ...picked] };
+      made.push(...picked);
+      keys.splice(keys.indexOf(free), 1);
+      delete choices[free];
+    }
     for (const key of keys) {
       const grant = owed.find((entry) => textKey(entry.name) === textKey(key));
       if (!grant) {

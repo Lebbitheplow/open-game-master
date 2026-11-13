@@ -51,6 +51,7 @@ import { swingFacts } from "@/lib/dm/mt-mr-offers";
 import { fateChoicesFor, spendFateAfterRoll } from "@/lib/dm/fate-turn";
 import { isFatePower } from "@/lib/dm/fate-turn-logic";
 import { propheticChoicesFor, spendPropheticState } from "@/lib/dm/mt-fb-runes";
+import { bountifulLuckChoicesFor, spendBountifulLuck } from "@/lib/dm/bountiful-luck";
 
 // Whether this character's rolls can wait on their player. A companion rolls
 // for the party, and a die whose mote bursts at the throw is left as it was. A
@@ -103,7 +104,7 @@ export function optionsForPending(
     const bought: AfterRollId[] = record.luck ? ["lucky"] : [];
     const ac = recordTargetAc(pending.campaignId, record);
     const critRange = record.critRange ?? 20;
-    const own = done.kept ? [] : afterAttackOptions(sheet, { outcome, ac, critRange, spent: [...spent, ...bought], reactionFree, melee: record.melee === true && record.ranged !== true, wrathDice: rollsWrathDice(record.damageExpression, record.damageType, record.riders), swing: swingFacts(pending.campaignId, sheet, record) });
+    const own = done.kept ? [] : afterAttackOptions(sheet, { outcome, ac, critRange, spent: [...spent, ...bought], reactionFree, melee: record.melee === true && record.ranged !== true, weapon: record.weaponAttack === true, wrathDice: rollsWrathDice(record.damageExpression, record.damageType, record.riders), swing: swingFacts(pending.campaignId, sheet, record) });
     const allies = allyChoicesFor(pending.campaignId, sheet, { kind: "attack", outcome, ac, critRange, weapon: record.weaponAttack === true }, done);
     return [...own, ...allies];
   }
@@ -121,7 +122,8 @@ export function optionsForPending(
 // spend Flash of Genius on their own roll), Violent Attraction on a weapon's
 // hit; then the rows of their own: Convergent Future and Bend Luck
 // (fate-turn.ts), a Rune Knight's prophetic state (mt-fb-runes.ts), the
-// roller's own among them. A helper on the bench (one character fielded per
+// roller's own among them, and a halfling's Bountiful Luck on a natural 1
+// (bountiful-luck.ts). A helper on the bench (one character fielded per
 // player) answers nobody.
 export function allyChoicesFor(
   campaignId: string,
@@ -160,7 +162,7 @@ export function allyChoicesFor(
       if (option) helps.push(option);
     }
   }
-  return [...shifts, ...helps, ...fateChoicesFor(campaignId, sheet, roll, others, !done.kept), ...propheticChoicesFor(campaignId, sheet, roll, others, !done.kept)];
+  return [...shifts, ...helps, ...fateChoicesFor(campaignId, sheet, roll, others, !done.kept), ...propheticChoicesFor(campaignId, sheet, roll, others, !done.kept), ...bountifulLuckChoicesFor(campaignId, sheet, roll, others)];
 }
 
 // The roll's d20s thrown again, one fresh die for each it threw, obeying what
@@ -230,7 +232,7 @@ export function spendAfterRoll(
   // when the caller knows it: an Eloquence bard's die that leaves the roll
   // short of it is kept (ar-wbf-bard-dice-logic.ts).
   target: number | null = null,
-): { outcome: RollResult; choosing: boolean; touchOfDeath?: number; destructiveWrath?: boolean; combatInspiration?: boolean; helperHit?: string } | null {
+): { outcome: RollResult; choosing: boolean; touchOfDeath?: number; destructiveWrath?: boolean; combatInspiration?: boolean; orcishFury?: boolean; helperHit?: string } | null {
   const row = afterRollRow(id);
   const giver = payer ?? sheet;
   const die = (sides: number) => ({ sides, value: rollExpression(`1d${sides}`).total, kept: true });
@@ -238,6 +240,9 @@ export function spendAfterRoll(
   // modules; the monk's and rogue's go through the route's mrSpendAfterRoll.
   if (id === "prophetic_state") {
     return spendPropheticState(campaign, sheet, outcome, payer);
+  }
+  if (id === "bountiful_luck") {
+    return spendBountifulLuck(campaign, sheet, outcome, payer);
   }
   if (isFatePower(id)) {
     return spendFateAfterRoll(campaign, sheet, id, outcome, payer, target);
@@ -254,6 +259,10 @@ export function spendAfterRoll(
     // can still turn the roll as it lands, and a use spent here was lost then.
     if (row.whose === "other") {
       return payer && payer.id !== sheet.id && canReactNow(campaign.id, payer) && holdsRow(payer, row) ? { outcome, choosing: false, helperHit: payer.id } : null;
+    }
+    // Orcish Fury's use, as Touch of Death's, is paid when the hit lands.
+    if (row.amount?.kind === "weapon_die") {
+      return holdsRow(sheet, row) ? { outcome, choosing: false, orcishFury: true } : null;
     }
     const state = sheet.resources?.[CHANNEL_DIVINITY];
     if (!state || state.max - state.used < 1) return null;

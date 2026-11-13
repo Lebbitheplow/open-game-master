@@ -50,14 +50,16 @@ export type AfterRollEffect = "extra_d20" | "add_die" | "add_dice" | "add_flat" 
 // How much an add_* or hit_damage row adds. `ability`: the holder's modifier
 // for it. `held`: the size of the die held on the sheet. `level`: 5 + twice
 // the class level (Touch of Death). `max`: lightning and thunder at their
-// maximum (Destructive Wrath).
+// maximum (Destructive Wrath). `weapon_die`: one more of the weapon's own
+// damage dice, of its type (Orcish Fury).
 export type AfterRollAmount =
   | { kind: "flat"; value: number }
   | { kind: "dice"; count: number; sides: number; type?: string }
   | { kind: "ability"; ability: "int" }
   | { kind: "held"; condition: "bardic inspiration" | "dark one's own luck"; fallback?: string }
   | { kind: "level"; className: string; base: number; per: number; type: string }
-  | { kind: "max" };
+  | { kind: "max" }
+  | { kind: "weapon_die" };
 
 // When it is offered: on a roll that falls short of its target (a miss, a
 // failed check or save, or one with no known target), or on a hit.
@@ -313,6 +315,25 @@ export const AFTER_ROLL_ROWS = [
     note: "Spend a use of Channel Divinity: this hit's lightning and thunder dice are dealt at their maximum instead of rolled.",
   },
   {
+    // Orcish Fury (a half-orc's feat): once until a short or long rest, a
+    // weapon hit rolls one of the weapon's damage dice once more, paid when
+    // the hit stands (attack-swing.ts).
+    id: "orcish_fury",
+    feature: "Orcish Fury",
+    cost: "counter",
+    counter: "feat_orcish_fury",
+    reaction: false,
+    kinds: ["attack"],
+    whose: "own",
+    effect: "hit_damage",
+    amount: { kind: "weapon_die" },
+    when: "hit",
+    hitBy: "weapon",
+    cardOnly: true,
+    label: "Orcish Fury: add a weapon die",
+    note: "Spend your use of Orcish Fury: this hit rolls one of the weapon's damage dice once more and adds it.",
+  },
+  {
     // Violent Attraction (Graviturgy 10): when a creature in sight within 60
     // feet hits with a weapon attack, a reaction adds 1d10 to its damage.
     // Offered on an ally's hit; the falling-damage half has no event to ride.
@@ -455,6 +476,24 @@ export const AFTER_ROLL_ROWS = [
     },
     label: "Bend Luck: add 1d4 to {name}'s roll",
     note: "Use your reaction and 2 sorcery points: roll 1d4 and add it to this {what}.",
+  },
+  {
+    // Bountiful Luck (a halfling's feat): an ally in sight within 30 feet
+    // rolls a 1 on the d20, and the halfling's reaction lets them roll it
+    // again; their own Lucky then waits out their next turn (bountiful-luck.ts).
+    id: "bountiful_luck",
+    feature: "Bountiful Luck",
+    cost: "own",
+    reaction: true,
+    kinds: ["check", "save", "attack"],
+    whose: "other",
+    rangeFt: 30,
+    sight: true,
+    effect: "own",
+    module: "bountiful-luck.ts",
+    when: "short",
+    label: "Bountiful Luck: {name} rolls the 1 again",
+    note: "Use your reaction: {name} rolls that d20 again and must use the new roll. Your own Lucky does nothing until the end of your next turn.",
   },
   {
     // The Storm Rune's prophetic state (Rune Knight 7): a reaction gives a
@@ -640,6 +679,7 @@ export function amountWords(row: AfterRollRow, input: { held?: string | null; mo
   if (amount.kind === "dice") return `${amount.count}d${amount.sides}`;
   if (amount.kind === "ability") return String(input.modifier ?? 0);
   if (amount.kind === "held") return input.held ?? "";
+  if (amount.kind === "weapon_die") return "a weapon die";
   return "";
 }
 

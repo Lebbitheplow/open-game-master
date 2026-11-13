@@ -98,9 +98,9 @@ test("refillResources: long refills all, short only short-recharge", () => {
 test("every def has match terms and positive max at level 5", () => {
   for (const def of RESOURCE_DEFS) {
     assert.ok(def.match.length > 0, def.id);
-    // A row paid only from another pool (Dragon Fear spends a Breath Weapon
-    // use) holds no uses of its own.
-    assert.ok(def.maxFor(5, mods) >= 1 || Boolean(def.fallbackPool), def.id);
+    // A feature with no uses of its own spends another pool's (Dragon Fear
+    // spends Breath Weapon's: fallbackPool).
+    assert.ok(def.maxFor(5, mods) >= 1 || (def.fallbackPool && def.maxFor(5, mods) === 0), def.id);
   }
 });
 

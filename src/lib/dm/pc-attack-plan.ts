@@ -11,7 +11,7 @@ import { luckPointsLeft } from "@/lib/srd/class-resources";
 import { ownTurnOf } from "@/lib/dm/held-turn";
 import { mergeAdvantage } from "@/lib/dm/condition-logic";
 import { mountedAdvantage } from "@/lib/dm/ar-wbf-feat-doors";
-import { coverFeatName, damageShakesConcentration, elementalAdeptApplies, floorDamageDice, hasSkulker, polearmButtDamage, powerAttackFeat, shotIgnoresCover, shotIgnoresLongRange, spellIgnoresCover, stunningSniperApplies } from "@/lib/srd/feat-combat";
+import { coverFeatName, damageShakesConcentration, elementalAdeptApplies, flamesOfPhlegethosApplies, floorDamageDice, rerollOnesDice, hasSkulker, polearmButtDamage, powerAttackFeat, shotIgnoresCover, shotIgnoresLongRange, spellIgnoresCover, stunningSniperApplies } from "@/lib/srd/feat-combat";
 import { underwaterRangeMiss } from "@/lib/dm/underwater";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -379,6 +379,12 @@ export function planPcAttack(input: {
   // Mage Slayer's melee hit, or any damage from a Spellbreaker, shakes the
   // target's concentration (enemy-damage.ts).
   const mageSlayer = damageShakesConcentration(sheet, { weaponAttack, melee: !atRange, withinFiveFeet: geometry.withinFiveFeet }) !== null;
+  // Flames of Phlegethos: a fire spell's 1s on its damage dice are rolled
+  // again, before Elemental Adept's floor reads them.
+  if (kind === "spell" && flamesOfPhlegethosApplies(sheet, profile.damageType)) {
+    profile = { ...profile, damageExpression: rerollOnesDice(profile.damageExpression) };
+    featNotes.push("Flames of Phlegethos: every 1 on the fire damage dice is rolled again");
+  }
   if (elementalAdept || adeptOthers.length) {
     profile = { ...profile, damageExpression: floorDamageDice(profile.damageExpression) };
     featNotes.push(`Elemental Adept: ${[...(elementalAdept ? [profile.damageType] : []), ...adeptOthers].join(" and ")} ignores resistance and every 1 on the dice is a 2`);

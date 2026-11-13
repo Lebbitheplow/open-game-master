@@ -102,6 +102,9 @@ P["feat.prerequisites"] = async () => {
     "Dwarven Fortitude": [who(), who({ raceId: "hill_dwarf", raceName: "Hill Dwarf" })],
     "Fade Away": [who(), who({ raceId: "rock_gnome", raceName: "Rock Gnome" })],
     "Second Chance": [who(), who({ raceId: "lightfoot_halfling", raceName: "Lightfoot Halfling" })],
+    "Flames of Phlegethos": [who(), who({ raceId: "tiefling", raceName: "Tiefling" })],
+    "Orcish Fury": [who(), who({ raceId: "half_orc", raceName: "Half-Orc" })],
+    "Bountiful Luck": [who(), who({ raceId: "lightfoot_halfling", raceName: "Lightfoot Halfling" })],
   };
   const wrong = [];
   for (const [feat, [without, holder]] of Object.entries(cases)) {
@@ -406,5 +409,13 @@ const WBF_PROBES = [
   "feat.mounted-combatant.advantage", "feat.mounted-combatant.redirect", "feat.eldritch-adept.replace",
 ];
 assert.deepEqual(WBF_PROBES.filter((id) => !P[id]), [], "probes the wbf modules no longer write");
+
+// The species feats whose effects ride the fight's doors, written out for
+// the same reason: feat.flames-of-phlegethos.reroll, feat.flames-of-phlegethos.wreathe,
+// feat.flames-of-phlegethos.burn, feat.orcish-fury.die, feat.orcish-fury.rest,
+// feat.orcish-fury.strike, feat.bountiful-luck.reroll, feat.bountiful-luck.lucky.
+const { speciesProbes, SPECIES_PROBES } = await import("./lib/sweep-clauses-feats-species.mjs");
+speciesProbes(rig, P);
+assert.deepEqual(SPECIES_PROBES.filter((id) => !P[id]), [], "probes the species module no longer writes");
 
 await runOrSurvey("scripts/test-enforce-sweep-clauses-feats.mjs", P);

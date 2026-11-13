@@ -2659,6 +2659,18 @@
    "action": "reaction",
    "guidance": "Second Chance (a halfling's feat): when an attack hits them, a reaction makes the attacker roll that d20 again and use the new roll (use_reaction 'second chance': the server rerolls it). Back when initiative is rolled or after a short or long rest.",
    "passive": true
+  },
+  {
+   "id": "feat_orcish_fury",
+   "displayName": "Orcish Fury",
+   "match": [
+    "orcish fury"
+   ],
+   "uses": 1,
+   "ability": null,
+   "recharge": "short",
+   "action": "none",
+   "guidance": "Orcish Fury (a half-orc's feat): once until a short or long rest, a weapon hit rolls one of the weapon's damage dice once more as extra damage. A player's weapon hit waits on a card that offers it, so do not spend it for them there; spend it here only for a hit that cannot wait, and add the die yourself. The reaction attack right after Relentless Endurance is use_reaction 'orcish fury' with targetEnemyId, and costs no use."
   }
  ]
 }

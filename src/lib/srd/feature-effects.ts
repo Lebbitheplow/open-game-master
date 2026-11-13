@@ -1254,11 +1254,17 @@ export function halfProficiencyCovers(
 // throw is rerolled once and the new face must be used. Detected from the
 // racial trait ("Lucky (reroll nat 1 on d20)") the builder grants, kept
 // distinct from the "Lucky" feat (luck points, different mechanic) by its
-// race source.
+// race source. Set aside while the halfling's Bountiful Luck has been lent
+// (bountiful-luck.ts lays the mark until the end of their next turn).
+export const BOUNTIFUL_LUCK_LENT = "bountiful luck lent";
 export function hasHalflingLuck(sheet: {
   features?: Array<{ name: string; source?: string }>;
+  conditions?: readonly string[];
 }): boolean {
-  return (sheet.features ?? []).some((feature) => feature.source === "race" && isNamed(feature.name, "Lucky"));
+  return (
+    (sheet.features ?? []).some((feature) => feature.source === "race" && isNamed(feature.name, "Lucky")) &&
+    !(sheet.conditions ?? []).some((condition) => condition.trim().toLowerCase() === BOUNTIFUL_LUCK_LENT)
+  );
 }
 
 // Brave (Halfling racial trait): advantage on saving throws against being

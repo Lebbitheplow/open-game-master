@@ -46,7 +46,7 @@ import { BOW_HIT, isBow } from "@/lib/srd/mt-fb-arcane-shot";
 import { authoredNaturalWeapon } from "@/lib/srd/authored-effects-more";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { planAttackFx, type RollVisibility } from "@/lib/battlemap/fx-plan";
-import { GREAT_WEAPON_MASTER_READY, BRUTAL_ATTACK_USED, brutalAttackApplies, PIERCER_USED, SAVAGE_ATTACKER_USED, savageAttackerApplies } from "@/lib/srd/feat-combat";
+import { GREAT_WEAPON_MASTER_READY, BRUTAL_ATTACK_USED, brutalAttackApplies, ORCISH_FURY, PIERCER_USED, SAVAGE_ATTACKER_USED, savageAttackerApplies } from "@/lib/srd/feat-combat";
 import { holdsFeat } from "@/lib/srd/feat-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { hasCondition } from "@/lib/srd/authored-effects";
@@ -350,6 +350,13 @@ export function hitSwing(scene: SwingScene, record: AttackRecord, judged: Judged
     expression = `${expression}+${record.touchOfDeath}`;
     riders.push({ dice: "", type: "necrotic", flat: record.touchOfDeath });
     notes.push(`Touch of Death: +${record.touchOfDeath} necrotic damage`);
+  }
+  // Orcish Fury, chosen on the same card and paid the same way: one more of
+  // the weapon's own damage dice, of its type. Dice, so a critical doubles it.
+  const furySides = record.orcishFury ? /\d*d(\d+)/.exec(record.damageExpression)?.[1] : undefined;
+  if (furySides && spendFeatureUse(campaign, sheet.id, ORCISH_FURY, "Orcish Fury", "player")) {
+    expression = `${expression}+1d${furySides}`;
+    notes.push(`Orcish Fury: +1d${furySides} damage`);
   }
   // Combat Inspiration, chosen on the same card and paid the same way: the
   // die the attacker holds joins the damage dice.

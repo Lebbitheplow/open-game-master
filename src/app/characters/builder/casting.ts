@@ -8,7 +8,7 @@
 // (U:UB1). A third caster casts with Intelligence from the wizard's list and
 // knows its spells; its counts and slots come from the engine's own tables
 // (src/lib/srd/third-caster.ts through spell-prep.ts and spellSlotsFor).
-import { spellPoolKeyFor, spellRulesClassFor } from "@/lib/classes";
+import { cantripRulesClassFor, spellPoolKeyFor, spellRulesClassFor } from "@/lib/classes";
 import { suggestedCantripCount, suggestedSpellCount } from "@/lib/content/mechanics";
 import type { AbilityScores, ClassEntry } from "@/lib/schemas/sheet";
 import { pactSlotsFor, slotTableFor } from "@/lib/srd/multiclass";
@@ -73,7 +73,7 @@ export function builderCasting(
     ? null
     : third
       ? cantripCapOf({ classId: klass.id, level, subclass: subclass ?? "", progression: profile })
-      : suggestedCantripCount(rules, level, klass.casterType as Parameters<typeof suggestedCantripCount>[2]);
+      : suggestedCantripCount(profile ? rules : cantripRulesClassFor(klass.id), level, klass.casterType as Parameters<typeof suggestedCantripCount>[2]);
   const casts = Boolean(ability) && (maxSpellLevel > 0 || cantripCap !== null);
   const arcanumLevels = casts && !third ? mysticArcanumLevels({ classId: klass.id, level }) : [];
   const requiredCantrip = casts ? thirdCasterRequiredCantrip(klass.id, subclass, profile, level) : null;

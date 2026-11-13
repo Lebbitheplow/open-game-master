@@ -1842,5 +1842,123 @@
     "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.second-chance.refill"
    }
   ]
+ },
+ "feat::Flames of Phlegethos": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "eeba739d7ca4",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Tiefling",
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
+   },
+   {
+    "c": "Increase your Intelligence or Charisma by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "When you roll fire damage for a spell you cast, any 1 on its fire damage dice is rolled again, and the new roll is used.",
+    "is": "held",
+    "by": "src/lib/srd/feat-combat.ts rerollOnesDice on the fire dice of a spell attack (pc-attack-plan.ts), cast_at_enemy (cast-at-enemy-damage.ts) and aoe_damage (aoe-damage.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.flames-of-phlegethos.reroll"
+   },
+   {
+    "c": "Whenever you cast a spell that deals fire damage, flames wreathe you until the end of your next turn.",
+    "is": "held",
+    "by": "src/lib/dm/affinity-cast.ts markFlamesCast: the 'flames of phlegethos' mark until the end of the caster's next turn, laid by the three spell damage doors",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.flames-of-phlegethos.wreathe"
+   },
+   {
+    "c": "They don't harm you or anything you carry, they shed bright light for 30 feet and dim light for 30 feet more,",
+    "is": "flavor"
+   },
+   {
+    "c": "and a creature within 5 feet of you that hits you with a melee attack takes 1d4 fire damage.",
+    "is": "held",
+    "by": "src/lib/dm/authored-hooks.ts authoredAfterHit: a melee hit on the wreathed caster rolls 1d4 fire at the attacker",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.flames-of-phlegethos.burn"
+   }
+  ]
+ },
+ "feat::Orcish Fury": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "a3dc635c5828",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Half-orc",
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
+   },
+   {
+    "c": "Increase your Strength or Constitution by 1, to a maximum of 20.",
+    "is": "held",
+    "by": "half-feat score +1, capped at 20",
+    "probe": "scripts/test-enforce-feats.mjs: A half-feat taken when the character is made raises its score by 1, never past 20, as at a level-up: the score chosen where the feat offers a choice, with Resilient's saving "
+   },
+   {
+    "c": "When you hit with a weapon attack, you can roll one of the weapon's damage dice one more time and add it to the damage, of the weapon's own type.",
+    "is": "held",
+    "by": "src/lib/dm/after-roll-table.ts orcish_fury: the weapon hit's card offers it, and attack-swing.ts adds one more of the weapon's dice when the hit lands",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.orcish-fury.die"
+   },
+   {
+    "c": "Once you do so, you can't again until you finish a short or long rest.",
+    "is": "held",
+    "by": "the feat_orcish_fury counter (one use, back on a short rest); a spent counter takes it off the card",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.orcish-fury.rest"
+   },
+   {
+    "c": "Right after you use your Relentless Endurance, you can use your reaction to make one weapon attack.",
+    "is": "held",
+    "by": "src/lib/dm/pc-damage.ts marks the half-orc when Relentless Endurance holds; feat-reactions.ts orcishFury (use_reaction 'orcish fury') swings through pc_attack",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.orcish-fury.strike"
+   }
+  ]
+ },
+ "feat::Bountiful Luck": {
+  "source": "src/lib/srd/authored-feats.json",
+  "group": "feat",
+  "level": null,
+  "sha": "7755e07d19af",
+  "clauses": [
+   {
+    "c": "Prerequisite:",
+    "is": "flavor"
+   },
+   {
+    "c": "Halfling",
+    "is": "held",
+    "by": "src/lib/srd/legality/features.ts checkPrerequisite (the builder's pickers and the server's feat check)",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.prerequisites"
+   },
+   {
+    "c": "When an ally you can see within 30 feet of you rolls a 1 on the d20 of an attack roll, an ability check or a saving throw, you can use your reaction to let them roll that die again, and they must use the new roll.",
+    "is": "held",
+    "by": "src/lib/dm/bountiful-luck.ts: the ally's card of a natural 1 offers the halfling's reaction (after-roll.ts allyChoicesFor), and the kept 1 is rolled again",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.bountiful-luck.reroll"
+   },
+   {
+    "c": "Once you do so, your own Lucky trait does nothing until the end of your next turn.",
+    "is": "held",
+    "by": "bountiful-luck.ts lays 'bountiful luck lent' until the end of the halfling's next turn; feature-effects.ts hasHalflingLuck reads it",
+    "probe": "scripts/test-enforce-sweep-clauses-feats.mjs: feat.bountiful-luck.lucky"
+   }
+  ]
  }
 }

@@ -42,7 +42,7 @@ import { rollHeroName } from "./heroNames";
 import { EASY_CLASSES, PLAYSTYLES, fillClassSkills, type PlaystyleId } from "./playstyles";
 import { TARGET_WORDS } from "./owed";
 import { spellOnSavedList } from "./spellSupply";
-import { bonusLanguageCount, srdClass, type BlockerTarget } from "./submit";
+import { bonusLanguageCount, classSkillsRequired, srdClass, type BlockerTarget } from "./submit";
 import type { BuilderDerived } from "./useBuilderDerived";
 import type { BackgroundOption, ClassOption, RaceOption } from "./useBuilderOptions";
 import type { BuilderDraftFields } from "./useBuilderState";
@@ -547,9 +547,9 @@ export function fillRound(ctx: FillContext): FillRound {
     }
   }
 
-  // The class's picks. A setting class's count is its own table's, not
-  // the SRD's, so the save leaves it to the player (submit.ts srdClass); a
-  // hero built for them still takes it. Filled for core classes alone, a
+  // The class's picks, for every class with a count: the save asks them of
+  // a core or setting class (submit.ts classSkillsRequired), and a hero
+  // built for a workshop class still takes them. Filled for core classes alone, a
   // drafted netrunner or detective carried no class skills at all, and a
   // detective from 10th level could not be drafted, its four expertise
   // picks having two skills to double.
