@@ -338,9 +338,12 @@
    },
    {
     "c": "+2 to the save",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages"
+    "run": {
+     "k": "cc_ice_save"
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts ICE Pick (ac_vs_hit orSave 2), resolved by src/lib/dm/ar-ws-deflection.ts deflectSaveHalf and src/lib/dm/save-turned.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::ICE Pick#2"
    }
   ]
  },

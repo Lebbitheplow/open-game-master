@@ -586,6 +586,23 @@ Object.assign(CC, {
   },
 });
 
+Object.assign(CC, {
+  // ICE Pick's save half: a foe's Burning Hands (DC 14) that the netrunner
+  // fails on a 12 (+2 DEX) is turned to a success by the +2.
+  async cc_ice_save(t, run, feature) {
+    const scene = await t.stage(feature);
+    t.kit.setEnemy(scene.near.id, { stats: { ...t.kit.enemy(scene.near.id).stats, spellcasting: { dc: 14, attack: 6, ability: "int", slots: { 1: 4 }, spells: [{ name: "Burning Hands", level: 1 }] } } });
+    t.foesTurn(scene);
+    t.kit.freshRound();
+    t.world.clearDice();
+    t.world.dice(4, 4, 4, 10);
+    must(await t.world.invoke("aoe_damage", { casterEnemyId: scene.near.id, spell: "Burning Hands", characterIds: [scene.holder.id] }), "the foe's Burning Hands");
+    t.world.clearDice();
+    const out = await t.world.invoke("use_reaction", { characterId: scene.holder.id, feature: "ICE Pick", variant: "save" });
+    eq(`${out.ok}/${out.result?.save}`, "true/success", `ICE Pick on the save failed by 2 (${out.error ?? "turned"}) / the save after the +2`);
+  },
+});
+
 // The vermin lord's dire rat, built before the fight (Favored of the Swarm).
 async function ratPack(t, feature) {
   t.fresh();
