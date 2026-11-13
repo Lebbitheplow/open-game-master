@@ -153,7 +153,7 @@ import { characterAwaitingPlayer, characterHeld, prepareWordFor } from "@/lib/dm
 import { hitIdOf, openHits } from "@/lib/dm/last-hit";
 import { aiPlaysSheet } from "@/lib/dm/companion-command";
 import { enemiesDue, enemiesOwedTurn, personRunsTable } from "@/lib/dm/enemies-due";
-import { noteTurnHead, settleTurnWarmup, turnHeadKey, warmNextTurn } from "@/lib/dm/turn-warmup";
+import { narratorKeepsPromptStart, noteTurnHead, scheduleNextTurnCheck, settleTurnWarmup, turnHeadKey, warmNextTurn } from "@/lib/dm/turn-warmup";
 import { directContextFor } from "@/lib/dm/direct-context";
 import { castCarded, castDeclared, castRolled, castToolHint, namedCreature, slotlessCastCall, storedCastHint, unpaidCastPrompt, type CastCreature } from "@/lib/dm/slotless-cast-logic";
 import { storerHolding } from "@/lib/srd/spell-storing";
@@ -4185,8 +4185,14 @@ function finalize(context: TurnContext, turn: DmTurn, failed: string, spoken: re
   toolsSentByTurn.delete(turn.id);
   // A fight begun or ended, or a companion who joined, changes the next
   // turn's first message: the narrator reads it now, while the table reads.
+  warmNextTurnFor(campaignId);
+}
+
+// The next turn's first call as the table stands now, sent ahead when the
+// narrator does not hold it (src/lib/dm/turn-warmup.ts).
+function warmNextTurnFor(campaignId: string) {
   const after = getCampaignById(campaignId);
-  if (after) {
+  if (after && narratorKeepsPromptStart(after.settings)) {
     const tuning = dmTurnTuning(after);
     warmNextTurn(campaignId, {
       tools: dmTurnTools(after, Boolean(getActiveEncounter(campaignId)), after.settings.imageGenerationEnabled && after.settings.autoImages, tuning.leanTools),
@@ -4195,3 +4201,13 @@ function finalize(context: TurnContext, turn: DmTurn, failed: string, spoken: re
     });
   }
 }
+
+// Between turns too (scheduleNextTurnCheck, issue 942). A turn running or
+// parked on dice is left alone: its first message is already sent, and its
+// end checks again.
+globalThis.__odmTurnHeadHook = (campaignId: string) =>
+  scheduleNextTurnCheck(campaignId, () => {
+    if (getDmStatus(campaignId) === "idle") {
+      warmNextTurnFor(campaignId);
+    }
+  });

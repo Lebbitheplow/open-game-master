@@ -91,14 +91,48 @@ export async function settleTurnWarmup(campaignId: string, key: string): Promise
 }
 
 // Only a local OpenAI-compatible narrator (llama.cpp and its kind) keeps a
-// prompt's start this way.
+// prompt's start this way. Exported so a check between turns costs nothing
+// at a table whose narrator does not (turn.ts).
+export function narratorKeepsPromptStart(settings: StorySettings): boolean {
+  return settings.textProvider === "custom" && Boolean(settings.customModel.trim()) && endpointKind(settings.customBaseUrl) === "local";
+}
+
 function warmable(settings: StorySettings, next: NextTurnCall): boolean {
-  return (
-    settings.textProvider === "custom" &&
-    Boolean(settings.customModel.trim()) &&
-    endpointKind(settings.customBaseUrl) === "local" &&
-    !next.wordsDecide
-  );
+  return narratorKeepsPromptStart(settings) && !next.wordsDecide;
+}
+
+// A turn's end is not the only time the next turn's first message changes.
+// Between turns a player opens their hero to advances, the lead shortens the
+// narration or saves a prepared fight, and each one rewrites the rules or the
+// tool list (issue 942: a hero opened to advances added the relationship
+// rules' line and relationship_scheme, and the next turn read 54K tokens
+// again, six minutes on a 16 GB card, before its first word). So any change
+// the table hears of while no turn runs, and anyone sitting down at the
+// table, checks again shortly after; a check whose first message the
+// narrator already holds sends nothing.
+const SETTLE_MS = 1_500;
+
+declare global {
+  var __odmTurnHeadChecks: Map<string, ReturnType<typeof setTimeout>> | undefined;
+}
+
+export function scheduleNextTurnCheck(campaignId: string, check: () => void): void {
+  if (serverEnv("DM_TURN_WARMUP") === "0") {
+    return;
+  }
+  // One check waits at a time and later changes ride it, since it reads the
+  // table as it stands when it runs: a stream of typing notices must not
+  // push it back past the player's send.
+  const timers = (globalThis.__odmTurnHeadChecks ??= new Map());
+  if (timers.has(campaignId)) {
+    return;
+  }
+  const timer = setTimeout(() => {
+    timers.delete(campaignId);
+    check();
+  }, SETTLE_MS);
+  timer.unref?.();
+  timers.set(campaignId, timer);
 }
 
 // After a turn: sends the next turn's first message ahead when the narrator

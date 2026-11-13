@@ -95,6 +95,7 @@ const REGISTRY = {
   "tool-profiles.ts:GROUPED": { kind: PLUMBING, what: "built at load" },
   "turn-warmup.ts:__odmTurnHeads": { kind: PLUMBING, what: "prompt warm-ups" },
   "turn-warmup.ts:__odmTurnWarmups": { kind: PLUMBING, what: "prompt warm-ups" },
+  "turn-warmup.ts:__odmTurnHeadChecks": { kind: PLUMBING, what: "prompt warm-ups: the check waiting after a change between turns" },
   "turn.ts:CARDS_OUT": { kind: PLUMBING, what: "one call's scratch" },
   "held-call.ts:PARKED": { kind: PLUMBING, what: "one call's scratch: which answers are a held call's park" },
   "held-call.ts:WATCHED": { kind: PLUMBING, what: "one call's scratch: the watch stop a held call's answer opened" },
