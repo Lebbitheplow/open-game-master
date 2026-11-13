@@ -82,8 +82,27 @@ export function areaProblem(input: {
     return null;
   }
   const shape: TemplateShape = input.area.shape === "cylinder" ? "sphere" : input.area.shape;
+  // The caster's space: a Large dragon fills four squares, a Huge one nine.
+  const casterSpace = caster
+    ? footprintTiles({ x: caster.x, y: caster.y }, footprintForSize(caster.kind === "enemy" ? getEnemy(caster.refId)?.stats.size : undefined))
+    : [];
+  // A burst around a creature larger than a square spreads from its whole
+  // space: every square within reach of any square it fills.
+  const around = input.area.self && shape === "sphere" && casterSpace.length > 1 ? casterSpace : null;
+  // A cube from its caster (Thunderwave) sits against the caster's side, the
+  // caster outside it, as the Hand's aim lays it (area-shape.ts
+  // blastTemplate). Laid from the caster's own square it reached two
+  // squares out, and a creature 15 feet off was refused.
+  const fromSide = input.area.self && shape === "cube";
   const holds = (origin: XY, target: XY) => {
-    const cells = new Set(templateTiles(map, { shape, origin, target, sizeFeet: input.area.feet }));
+    const laid = (from: XY) =>
+      fromSide
+        ? (() => {
+            const spec = blastTemplate(input.area, { caster: from, toward: target });
+            return spec ? templateTiles(map, spec) : [];
+          })()
+        : templateTiles(map, { shape, origin: from, target: around ? from : target, sizeFeet: input.area.feet });
+    const cells = new Set((around ?? [origin]).flatMap(laid));
     return placed.every((creature) => creature.cells.some((cell) => cells.has(cell)));
   };
   const reach = Math.max(1, Math.round(input.area.feet / FEET_PER_TILE));
@@ -100,7 +119,11 @@ export function areaProblem(input: {
   // A Self area starts at the caster; any other at a point within range.
   let origins: XY[];
   if (input.area.self && caster) {
-    origins = [{ x: caster.x, y: caster.y }];
+    // A breath or a cone from a creature larger than a square starts at the
+    // edge of its space, not its top-left square: a Huge dragon's 60-foot
+    // cone breathed east from that corner lost the two squares of its own
+    // body and fell 10 feet short of a hero standing 60 feet off.
+    origins = around ? [{ x: caster.x, y: caster.y }] : casterSpace;
   } else if (input.at) {
     if (caster && input.rangeFeet !== null && chebyshev(caster.x, caster.y, input.at.x, input.at.y) * FEET_PER_TILE > input.rangeFeet) {
       return { error: `${input.label}'s point of origin (${input.at.x}, ${input.at.y}) is beyond its ${input.rangeFeet}-foot range from ${input.casterName}. Nothing was spent.`, retry: true };

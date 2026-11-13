@@ -258,7 +258,10 @@ export function standUpTiles(sheet: AuthoredSheet, speedTiles: number): number {
   if (!found && standsCheaply(sheet as { feats?: string[]; features?: Array<{ name: string }> })) {
     return 1;
   }
-  return found ? Math.max(0, Math.round(found.effect.feet / 5)) : Math.floor(speedTiles / 2);
+  // Half the speed rounds up in squares: a 25-foot walker spends 12.5 feet
+  // standing and has 12.5 left, two squares, not the three a floor left them
+  // (SRD 5.1, Being Prone: "costs an amount of movement equal to half your speed").
+  return found ? Math.max(0, Math.round(found.effect.feet / 5)) : Math.ceil(speedTiles / 2);
 }
 
 // The feet a turn with the Attack action adds to the holder's walking speed
