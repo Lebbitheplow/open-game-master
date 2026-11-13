@@ -22,7 +22,7 @@ import { getBattleMapForEncounter, removeTokenByRef } from "@/lib/db/battle-maps
 import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events";
 import { closeFallenFoes } from "@/lib/dm/party-bonds";
 import { healthState } from "@/lib/bestiary/health";
-import { ammoCount, recoveredAmmo, withAmmoCount } from "@/lib/srd/ammunition";
+import { ammoCount, recoveredAmmo, searchesTheField, withAmmoCount } from "@/lib/srd/ammunition";
 import { clearSpellConditionsByName } from "@/lib/dm/concentration";
 import { spellEffectsOnEnemyDamage } from "@/lib/dm/spell-effects";
 import { enemyDamageMath, fightOverLine } from "@/lib/dm/encounter-logic";
@@ -147,7 +147,7 @@ export function finishEncounter(
   // (PHB). Only ever non-empty when the `ammunition` variant rule is on, so
   // a table that never asked for it pays nothing here.
   const ammoRecovered: Record<string, number> = {};
-  for (const [key, entry] of Object.entries(encounter.ammoSpent)) {
+  for (const [key, entry] of searchesTheField(outcome) ? Object.entries(encounter.ammoSpent) : []) {
     const back = recoveredAmmo(typeof entry === "object" ? entry.spent : entry);
     if (back <= 0) {
       continue;
