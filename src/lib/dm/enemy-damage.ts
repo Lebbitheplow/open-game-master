@@ -39,6 +39,7 @@ import { absorbs } from "@/lib/dm/monster-traits";
 import { fallsRegenerating, regeneratingDown } from "@/lib/dm/regeneration";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { settleFrenzies } from "@/lib/dm/frenzy";
+import { endTurnBoundAtFightEnd } from "@/lib/dm/condition-tick";
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { planDeathFx } from "@/lib/battlemap/fx-plan";
@@ -263,6 +264,8 @@ export function finishEncounter(
 export function settleFightState(campaign: Campaign, encounterId: string): { itemsLeft: string[]; swallowedOut: string | null } {
   // An effect set "until the fight ends" ends now (active-effects.ts).
   endFightEffects(campaign.id);
+  // What waited on a turn of this fight ends with it (condition-tick.ts).
+  endTurnBoundAtFightEnd(campaign);
   // A frenzy outliving its rage costs its level of exhaustion (frenzy.ts).
   settleFrenzies(campaign);
   // Whoever is still inside a creature that swallowed them comes out, prone

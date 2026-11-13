@@ -202,6 +202,36 @@ export function tickClockConditions(campaign: Campaign, minutes: number, started
   return deathSaves;
 }
 
+// The fight is over: what lasted until the start or the end of somebody's
+// next turn (Dodge, Shield, a readied action, Haste's lethargy, a Guiding
+// Bolt's mark) has no turn left to wait for, as on the clock
+// (tickClockConditions). Left on the sheet it ran on until the clock next
+// moved, and into the next fight: a hero who dodged in the last round was
+// still dodging when an ambush came (audit 2026-11-13, T03).
+export function endTurnBoundAtFightEnd(campaign: Campaign): void {
+  for (const stale of listSheets(campaign.id)) {
+    const sheet = getSheetById(stale.id) ?? stale;
+    if (!sheet.conditions.length) {
+      continue;
+    }
+    const tick = tickConditions(sheet.conditions, sheet.conditionMeta, 0, { endTurnBound: true, saves: false });
+    if (!tick.expired.length && JSON.stringify(tick.meta) === JSON.stringify(sheet.conditionMeta)) {
+      continue;
+    }
+    // A readied spell never released is lost, and its concentration with it
+    // (readied-spell.ts), as when the turn it waited for starts.
+    const lostSpell = tick.expired.some((name) => name.toLowerCase() === "readied") ? readiedSpellOf(sheet)?.spell : undefined;
+    if (lostSpell && textKey(sheet.concentratingOn ?? "") === textKey(lostSpell)) {
+      breakConcentration(campaign, null, sheet.id, "the readied spell was never released");
+    }
+    patchSheetAudited(campaign.id, sheet.id, { conditions: tick.conditions, conditionMeta: tick.meta }, {
+      kind: "condition_clock",
+      reason: tick.expired.length ? `no longer ${tick.expired.join(" or ")} as the fight ends` : "a hold that lasted until a turn ended with the fight",
+      delta: { ended: tick.expired, added: [] },
+    });
+  }
+}
+
 // The rounds a creature stays senseless from now: none awake, its
 // unconscious's own count (a stable creature's 1d4 hours, a Sleep spell's
 // minute), the longest 1d4 hours for a stable creature with no count kept,
