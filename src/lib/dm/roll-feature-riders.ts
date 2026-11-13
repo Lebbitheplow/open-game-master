@@ -6,6 +6,7 @@
 // One's Own Luck die, Peerless Skill, and Inspiration spent for advantage.
 // Split from rolls.ts, which folds these into the expression. Pure.
 
+import { inspirationDie } from "@/lib/dm/genre-cc-a-saves";
 import { horrorSourcedSaves } from "@/lib/srd/genre-a-horror-holds";
 import { lentFor, type LentRoll } from "@/lib/srd/genre-a-lent";
 import type { Advantage } from "@/lib/dice";
@@ -245,7 +246,7 @@ export function rollFeatureRiders(
       ...(inspired ? ["advantage" as const] : []),
       ...(lent.advantage.length ? ["advantage" as const] : []),
     ],
-    dice: `${inspiration ? (moteCheck ? `+2${inspiration.die}kh1` : `+1${inspiration.die}`) : ""}${peerlessDie}${lent.dice}`,
+    dice: `${inspiration ? (moteCheck ? `+2${inspiration.die}kh1` : inspirationDie(sheet, inspiration.condition, inspiration.die)) : ""}${peerlessDie}${lent.dice}`,
     checkBonus: itemChecks.bonus + traitChecks.bonus + checkMod.bonus + authoredChecks.bonus,
     inspirationCondition: inspiration?.condition,
     peerless,

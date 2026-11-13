@@ -623,6 +623,22 @@ Object.assign(CC, {
   },
 });
 
+Object.assign(CC, {
+  // The Final Movement: the ally spends the dirgesinger's d12 on a check; it
+  // rolls 12, 12 and 5, and the check carries the 29.
+  async cc_explode(t, run, feature) {
+    const { listRecentRolls } = await load("lib/db/rolls.ts");
+    const scene = await t.stage(feature);
+    must(await t.world.invoke("use_resource", { characterId: scene.holder.id, resource: "Requiem Inspiration", targetCharacterId: scene.ally.id }), "Requiem Inspiration");
+    t.world.clearDice();
+    t.world.dice(12, 12, 5, 10, 10);
+    must(await t.world.invoke("request_roll", { characterId: scene.ally.id, kind: "ability_check", ability: "str", dc: 10, reason: "a probe", visibility: "dm" }), "the check");
+    t.world.clearDice();
+    const expression = listRecentRolls(t.world.campaignId, 3).at(-1)?.expression ?? "";
+    eq(/\+29\b/.test(expression), true, `the exploded die in the check (${expression})`);
+  },
+});
+
 // The vermin lord's dire rat, built before the fight (Favored of the Swarm).
 async function ratPack(t, feature) {
   t.fresh();

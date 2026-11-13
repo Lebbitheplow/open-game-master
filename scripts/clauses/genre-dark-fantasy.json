@@ -2747,19 +2747,21 @@
    },
    {
     "c": "your inspiration dice explode",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
-    "probe": "none of its own: no exploding die in the inspiration roll; the hook probe now answers for clause #0",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "run": {
+     "k": "cc_explode"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-saves.ts inspirationDie, read by src/lib/dm/roll-feature-riders.ts as a check or save spends a Requiem die the holder gave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::The Final Movement#1"
    },
    {
     "c": "max rolls add another die",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
-    "same_probe_as": 1
+    "run": {
+     "k": "cc_explode"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-saves.ts inspirationDie (each maximum adds another die)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::The Final Movement#2"
    }
   ]
  },

@@ -8,7 +8,7 @@
 // request_roll (src/lib/dm/invoke-roll.ts), group_check and aoe_damage call
 // in here; cast_at_player and cast_at_enemy are meant to.
 
-import { ashenHymnSources } from "@/lib/dm/genre-cc-a-saves";
+import { ashenHymnSources, explodedDie } from "@/lib/dm/genre-cc-a-saves";
 import { beguilingBroken } from "@/lib/dm/mt-fb-arrow-riders";
 import { takeCounteredSave } from "@/lib/dm/slayers-counter-mark";
 import { spiritTotemRollAdvantage } from "@/lib/dm/spirit-totem";
@@ -202,7 +202,9 @@ export function settleHeldDie(campaignId: string, sheetId: string, outcome: Roll
       continue;
     }
     const bard = held === heldBardicDie && sheet ? bardOfHeldDie(sheet) : null;
-    settled = withBonusDie(settled, { sides: sidesOf(die.die), value: rollExpression(`1${die.die}`).total, kept: true });
+    // The Final Movement: a Requiem die its dirgesinger gave explodes (genre-cc-a-saves.ts).
+    const exploded = held === heldBardicDie ? explodedDie(sheet, die.condition, die.die) : null;
+    settled = withBonusDie(settled, { sides: sidesOf(die.die), value: exploded ?? rollExpression(`1${die.die}`).total, kept: true });
     // Unfailing Inspiration: a die that left the roll short is kept.
     if (!sheet || !unfailingDieKept(sheet, die.condition, settled.total, dc)) {
       spendRollCarriers(campaignId, sheetId, die.condition);
