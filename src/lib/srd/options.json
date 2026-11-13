@@ -28,6 +28,9 @@
     "divine_affinity": { "label": "Divine Magic affinity", "prefix": "Divine Magic: ", "grantedBy": "Divine Magic", "stored": true },
     "genie_kind": { "label": "Genie kind", "prefix": "Genie's Vessel: ", "grantedBy": "Genie's Vessel", "stored": true },
     "animal_lord": { "label": "Animal Lord", "prefix": "Animal Lord: ", "grantedBy": "Animal Lord", "stored": true },
+    "legerdemain_cantrip": { "label": "Smuggler's Legerdemain cantrip", "prefix": "Legerdemain Cantrip: ", "grantedBy": "Smuggler's Legerdemain", "stored": true, "spellLevel": 0, "spellList": "wizard", "schools": ["illusion", "transmutation"], "anyBook": true },
+    "legerdemain_spell": { "label": "Smuggler's Legerdemain spell", "prefix": "Legerdemain Spell: ", "grantedBy": "Smuggler's Legerdemain", "stored": true, "spellLevel": 1, "spellList": "wizard", "schools": ["illusion", "transmutation"], "anyBook": true, "swapAtLevel": "rogue" },
+    "legerdemain_spell_2": { "label": "Improved Smuggler's Legerdemain spell", "prefix": "Improved Legerdemain: ", "grantedBy": "Improved Smuggler's Legerdemain", "stored": true, "spellLevel": 2, "spellList": "wizard", "schools": ["illusion", "transmutation"], "anyBook": true, "swapAtLevel": "rogue" },
     "spell_mastery_1": { "label": "Spell Mastery: 1st-level spell", "prefix": "Spell Mastery: ", "grantedBy": "Spell Mastery", "stored": true, "split": true, "spellLevel": 1, "spellList": "wizard" },
     "spell_mastery_2": { "label": "Spell Mastery: 2nd-level spell", "prefix": "Spell Mastery: ", "grantedBy": "Spell Mastery", "stored": true, "split": true, "spellLevel": 2, "spellList": "wizard" },
     "signature_spell": { "label": "Signature Spells", "prefix": "Signature Spells: ", "grantedBy": "Signature Spells", "stored": true, "split": true, "spellLevel": 3, "spellList": "wizard" }

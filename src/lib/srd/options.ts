@@ -50,7 +50,10 @@ export type OptionKind =
   | "arcane_archer_cantrip"
   | "divine_affinity"
   | "genie_kind"
-  | "animal_lord";
+  | "animal_lord"
+  | "legerdemain_cantrip"
+  | "legerdemain_spell"
+  | "legerdemain_spell_2";
 
 export type OptionDef = {
   k: OptionKind;
@@ -78,6 +81,13 @@ type KindMeta = {
   // in the spellbook where it is known (Spell Mastery, Signature Spells).
   spellLevel?: number;
   spellList?: string;
+  // Only the list's spells of these schools (a Smuggler's illusion or
+  // transmutation magic), and from the whole list rather than a spellbook.
+  schools?: string[];
+  anyBook?: boolean;
+  // A pick that may be traded for another of its list when the character
+  // gains a level in this class (a Smuggler's Legerdemain spell).
+  swapAtLevel?: string;
   // Other feature names the engines read this kind's picks from ("Favored
   // Enemy Improvement: orcs", check-traits.ts), counted toward its slots.
   families?: string[];
@@ -98,6 +108,11 @@ const SPELL_PICK_TEXT: Partial<Record<OptionKind, string>> = {
     "Spell Mastery: while it is prepared, cast it at 2nd level without spending a spell slot, as often as you like.",
   signature_spell:
     "Signature Spell: always prepared and not counted against your prepared spells; once between short or long rests, cast it at 3rd level without a slot.",
+  legerdemain_cantrip: "Smuggler's Legerdemain: a cantrip you cast at will, with Intelligence.",
+  legerdemain_spell:
+    "Smuggler's Legerdemain: cast it once without a slot, back after a long rest, or with a slot of its level or higher; Intelligence is its ability. It may be swapped for another when you gain a rogue level.",
+  legerdemain_spell_2:
+    "Improved Smuggler's Legerdemain: cast it once without a slot, back after a long rest, or with a slot of 2nd level or higher; Intelligence is its ability.",
 };
 
 const spellOptions = new Map<OptionKind, OptionDef[]>();
@@ -110,6 +125,7 @@ function spellOptionsOf(kind: OptionKind): OptionDef[] {
   if (!list) {
     list = checklistSpellsOn(meta.spellList)
       .filter((spell) => spell.level === meta.spellLevel)
+      .filter((spell) => !meta.schools?.length || meta.schools.includes((spell.school ?? "").toLowerCase()))
       .map((spell) => ({ k: kind, n: spell.name, d: SPELL_PICK_TEXT[kind] ?? "" }));
     spellOptions.set(kind, list);
   }
@@ -364,6 +380,13 @@ const GRANTS: Grant[] = [
   // (src/lib/srd/subclass-tables.ts proseSpellTables). Without it the
   // patron's air, earth and water spells reached no one.
   { kind: "animal_lord", classId: "warlock", subclass: "Animal Lords", steps: [[1, 1]] },
+  // Tome of Heroes' Smuggler rogue: two wizard illusion or transmutation
+  // cantrips at 3rd level, a 1st-level spell of them at 7th and a 2nd-level
+  // one at 13th (src/lib/srd/mt-fb-casts.ts casts them). Its text was read
+  // for its tools alone, so a Smuggler learned no magic.
+  { kind: "legerdemain_cantrip", classId: "rogue", subclass: "Smuggler", steps: [[3, 2]] },
+  { kind: "legerdemain_spell", classId: "rogue", subclass: "Smuggler", steps: [[7, 1]] },
+  { kind: "legerdemain_spell_2", classId: "rogue", subclass: "Smuggler", steps: [[13, 1]] },
   {
     kind: "discipline",
     classId: "monk",
@@ -477,7 +500,7 @@ function optionsFor(kind: OptionKind, spellbook: readonly string[] | undefined):
   const options = optionsOfKind(kind);
   // A known book filters even when it is empty (no spell to master yet), as
   // the route, the level-up and the save judge it (pickInSpellbook).
-  if (KINDS[kind].spellLevel === undefined || spellbook === undefined) {
+  if (KINDS[kind].spellLevel === undefined || KINDS[kind].anyBook || spellbook === undefined) {
     return options;
   }
   const book = new Set(spellbook.map(textKey));
@@ -535,11 +558,19 @@ export function requiredPickProblem(slot: Pick<OptionSlot, "kind" | "label" | "c
   return `${slot.label}: ${required} is one of the picks, learned with the first; choose it in place of another.`;
 }
 
+// The kinds whose picks a level of this class may trade for others of
+// their list, with the label the level-up shows.
+export function kindsSwappedAtLevel(classId: string): Array<{ kind: OptionKind; label: string }> {
+  return (Object.entries(KINDS) as Array<[OptionKind, KindMeta]>)
+    .filter(([, meta]) => meta.swapAtLevel && textKey(meta.swapAtLevel) === textKey(classId))
+    .map(([kind, meta]) => ({ kind, label: meta.label }));
+}
+
 // Whether a pick of this option may be made from this spellbook: a spell
 // kind's option must be written in it (SRD 5.1, Spell Mastery: "a spell in
 // your spellbook"). True for every other kind, and when the book is unknown.
 export function pickInSpellbook(option: OptionDef, spellbook: readonly string[] | undefined): boolean {
-  if (KINDS[option.k]?.spellLevel === undefined || spellbook === undefined) {
+  if (KINDS[option.k]?.spellLevel === undefined || KINDS[option.k]?.anyBook || spellbook === undefined) {
     return true;
   }
   return spellbook.some((name) => textKey(name) === textKey(option.n));
@@ -555,7 +586,7 @@ export function optionKindOpenedBy(feature: string): OptionKind | null {
 // Whether a kind picks spells from the spellbook (Spell Mastery, Signature
 // Spells), so a caller that fills picks waits for the book.
 export function picksFromSpellbook(kind: OptionKind): boolean {
-  return KINDS[kind]?.spellLevel !== undefined;
+  return KINDS[kind]?.spellLevel !== undefined && !KINDS[kind]?.anyBook;
 }
 
 // What an option's prerequisite ("level 5, Pact of the Blade", "Eldritch

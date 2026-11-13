@@ -88,6 +88,9 @@ const ICON_ALIASES: Record<string, { kind: IconKind; slug: string }> = {
   "family/option-divine-affinity": { kind: "feature", slug: "divine-allegiance" },
   "family/option-genie-kind": { kind: "feature", slug: "elemental-gift" },
   "family/option-animal-lord": { kind: "feature", slug: "bonded-beast" },
+  "family/option-legerdemain-cantrip": { kind: "spell", slug: "minor-illusion" },
+  "family/option-legerdemain-spell": { kind: "spell", slug: "disguise-self" },
+  "family/option-legerdemain-spell-2": { kind: "spell", slug: "invisibility" },
   // A Draconic sorcerer's three spends (issue #833): wings for the wings,
   // fear for the aura, warding against an element for the resistance.
   "feature/dragon-wings": { kind: "feature", slug: "wings-unfurled" },

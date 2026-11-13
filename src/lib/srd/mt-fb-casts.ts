@@ -24,7 +24,30 @@ export type FeatureCast = {
   slot: "free";
   ability?: Ability;
   ritualOnly?: boolean;
+  // A cast once a rest without a slot, a slot of the caster's own paying
+  // for the rest (a Smuggler's Legerdemain spell): its counter and rest.
+  counter?: string;
+  rest?: "long" | "short";
+  slotsToo?: boolean;
 };
+
+// The spells a Smuggler rogue picked with Smuggler's Legerdemain (src/lib/
+// srd/options.ts legerdemain kinds): the cantrips at will, each spell once
+// a long rest without a slot, all cast with Intelligence.
+const LEGERDEMAIN_CANTRIP = "Legerdemain Cantrip";
+const LEGERDEMAIN_SPELLS = ["Legerdemain Spell", "Improved Legerdemain"];
+
+// The counter of a Legerdemain spell's free cast: the one a feat's free
+// cast of the same spell keeps (src/lib/srd/feat-spells.ts), so the
+// counters read it by the spell.
+export function legerdemainCounterId(spell: string): string {
+  return `free_cast_${textKey(spell).replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")}`;
+}
+
+// The Legerdemain spells a sheet holds, for the counters.
+export function legerdemainSpellsHeld(features: ReadonlyArray<{ name: string }>): string[] {
+  return features.flatMap((feature) => LEGERDEMAIN_SPELLS.map((family) => choiceIn(feature.name, family)).find(Boolean) ?? []);
+}
 
 const RITUALS: Array<{ feature: string; spells: string[] }> = [
   { feature: "Spirit Seeker", spells: ["Beast Sense", "Speak with Animals"] },
@@ -57,6 +80,13 @@ export function featureCastsHeld(features: ReadonlyArray<{ name: string; source?
         out.push({ source: row.feature, spell: cantrip, slot: "free", ability: row.ability });
       }
     }
+  }
+  for (const feature of features) {
+    const cantrip = choiceIn(feature.name, LEGERDEMAIN_CANTRIP);
+    if (cantrip) out.push({ source: "Smuggler's Legerdemain", spell: cantrip, slot: "free", ability: "int" });
+  }
+  for (const spell of legerdemainSpellsHeld(features)) {
+    out.push({ source: "Smuggler's Legerdemain", spell, slot: "free", ability: "int", counter: legerdemainCounterId(spell), rest: "long", slotsToo: true });
   }
   return out;
 }

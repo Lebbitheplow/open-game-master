@@ -119,5 +119,52 @@ await test("A07 The builder's spell step offers the spells a picked patron optio
   assert.deepEqual(problems, []);
 });
 
+await test("A08 A Smuggler rogue (Tome of Heroes) picks two wizard illusion or transmutation cantrips at 3rd level, a 1st-level one at 7th and a 2nd-level one at 13th; the builder asks, the save keeps them, and the engine casts them, the spells once a long rest without a slot.", async () => {
+  const { spellHeldProblem, grantedCastOf } = await import("../src/lib/dm/cast-rules.ts");
+  const { populateResources } = await import("../src/lib/srd/class-resources.ts");
+  const { bundledSpellSchool } = await import("../src/lib/srd/spell-facts.ts");
+  const { classFeaturesFor } = await import("../src/lib/srd/features.ts");
+  const { packSubclassExtras } = await import("../src/lib/content/archetype-tables.ts");
+  const extras = packSubclassExtras();
+  const problems = [];
+  const slotsAt = (level, picks = []) =>
+    openOptionSlots({ classId: "rogue", subclass: "Smuggler", level, features: [...classFeaturesFor("rogue", "Smuggler", level, extras), ...picks.map((name) => ({ name, source: "choice" }))] });
+  const totals = (level) => Object.fromEntries(slotsAt(level).filter((slot) => /legerdemain/i.test(slot.label)).map((slot) => [slot.label, slot.total]));
+  const at3 = totals(3), at7 = totals(7), at13 = totals(13);
+  if (Object.values(at3).join() !== "2") problems.push(`at 3rd level: ${JSON.stringify(at3)}`);
+  if (Object.values(at7).join() !== "2,1") problems.push(`at 7th level: ${JSON.stringify(at7)}`);
+  if (Object.values(at13).join() !== "2,1,1") problems.push(`at 13th level: ${JSON.stringify(at13)}`);
+  for (const slot of slotsAt(13).filter((entry) => /legerdemain/i.test(entry.label))) {
+    const off = slot.options.filter((option) => !["illusion", "transmutation"].includes(bundledSpellSchool(option.n) ?? ""));
+    if (off.length) problems.push(`${slot.label} offers ${off.map((option) => option.n).join(", ")}`);
+    if (slot.options.length < 2) problems.push(`${slot.label} offers ${slot.options.length} spells`);
+  }
+  // The builder fills them, and the library keeps them.
+  const { fields } = await sweep.library.fill(sweep.library.fresh({ level: 7, classId: "rogue", subclass: "Smuggler" }));
+  const legerdemain = fields.optionPicks.filter((name) => /^Legerdemain/.test(name));
+  if (legerdemain.length !== 3) problems.push(`the fill made ${legerdemain.join(", ") || "no Legerdemain picks"}`);
+  const stored = await door.library(sweep.library.derive(fields));
+  if (!stored.ok) problems.push(`the save refused: ${stored.error}`);
+  const kept = (stored.sheet?.features ?? []).filter((feature) => /^Legerdemain/.test(feature.name)).map((feature) => feature.name);
+  if (kept.length !== 3) problems.push(`the stored sheet keeps ${kept.join(", ")}`);
+  // The engine casts what was picked.
+  const sheet = { name: "Smuggler", class: "rogue", subclass: "Smuggler", level: 7, classes: [], features: [...classFeaturesFor("rogue", "Smuggler", 7, extras), { name: "Legerdemain Cantrip: Minor Illusion", source: "choice" }, { name: "Legerdemain Spell: Disguise Self", source: "choice" }], spellcasting: null, resources: {} };
+  for (const spell of ["Minor Illusion", "Disguise Self"]) {
+    if (spellHeldProblem({ ...sheet, spellcasting: { ability: "int", cantrips: [], known: [], prepared: [], slots: {}, slotsUsed: {} } }, spell, null, { extras })) problems.push(`${spell} cannot be cast`);
+  }
+  const grant = grantedCastOf(sheet, "Disguise Self", null, extras);
+  if (!grant?.counter) problems.push(`Disguise Self casts with no counter: ${JSON.stringify(grant)}`);
+  const counters = populateResources(sheet.features, 7, {}, undefined, [{ id: "rogue", level: 7 }]);
+  if (grant?.counter && counters[grant.counter]?.max !== 1) problems.push(`no once-a-rest counter for Disguise Self: ${JSON.stringify(counters)}`);
+  // A rogue level trades the 1st-level spell for another of the list.
+  const { levelUpChangeOffers, applyLevelUpChanges } = await import("../src/lib/srd/level-up-changes.ts");
+  const facts = { classLevel: () => 8, cantrips: [] };
+  const offer = levelUpChangeOffers(sheet, "rogue", facts).find((entry) => entry.froms?.includes("Legerdemain Spell: Disguise Self"));
+  if (!offer?.options.includes("Legerdemain Spell: Silent Image")) problems.push(`the rogue level offers no trade: ${JSON.stringify(offer?.options?.slice(0, 5))}`);
+  const traded = applyLevelUpChanges(sheet, "rogue", [{ from: "Legerdemain Spell: Disguise Self", to: "Legerdemain Spell: Silent Image" }], facts);
+  if (!traded.features?.some((feature) => feature.name === "Legerdemain Spell: Silent Image")) problems.push(`the trade was not made: ${traded.error}`);
+  assert.deepEqual(problems, []);
+});
+
 sweep.close();
 finish();

@@ -8,7 +8,7 @@
 
 import { heldAuthored, type AuthoredSheet } from "@/lib/srd/authored-effects";
 import { holdsFeat } from "@/lib/srd/feat-effects";
-import { chosenOptions, optionFeatureName, optionKindOpenedBy, optionReqProblem, optionsOfKind } from "@/lib/srd/options";
+import { chosenOptions, kindsSwappedAtLevel, optionFeatureName, optionKindOpenedBy, optionReqProblem, optionsOfKind } from "@/lib/srd/options";
 import { choiceIn } from "@/lib/srd/feature-names";
 import { textKey } from "@/lib/language/text-logic";
 
@@ -66,6 +66,21 @@ export function levelUpChangeOffers(sheet: ChangeSheet, classId: string, facts: 
       froms: invocations.map((name) => optionFeatureName(INVOCATION, name)),
       options: open.map((option) => optionFeatureName(INVOCATION, option.n)),
       shown: Object.fromEntries(names.map((name) => [optionFeatureName(INVOCATION, name), name])),
+    });
+  }
+  // A pick its rule lets a level of this class trade (a Smuggler's
+  // Legerdemain spell: "whenever you gain a level in this class").
+  for (const { kind, label } of kindsSwappedAtLevel(classId)) {
+    const held = chosenOptions(sheet.features, kind);
+    if (!held.length) continue;
+    const keep = new Set(held.map(textKey));
+    const open = optionsOfKind(kind).filter((option) => !keep.has(textKey(option.n)));
+    offers.push({
+      kind: "replace",
+      label,
+      froms: held.map((name) => optionFeatureName(kind, name)),
+      options: open.map((option) => optionFeatureName(kind, option.n)),
+      shown: Object.fromEntries([...held, ...open.map((option) => option.n)].map((name) => [optionFeatureName(kind, name), name])),
     });
   }
   return offers;
