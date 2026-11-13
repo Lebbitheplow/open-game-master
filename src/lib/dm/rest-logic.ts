@@ -50,15 +50,18 @@ function recoverPools(pools: HitDicePool[], count: number): HitDicePool[] {
 // it again (ar-wbf-feat-rally.ts). Both rest patches call this; the short
 // rest once cleared neither, so a kit never tended twice in a day of short
 // rests. Empty when the sheet carries no such mark.
-const REST_MARKS = [TENDED, RALLIED];
+// Read when a rest runs, never at load: stabilize.ts reaches this module
+// again through the genre packmaster's rules (genre-b-post-apocalyptic.ts),
+// and a list built at load found TENDED not yet set.
+const restMarks = () => [TENDED, RALLIED];
 function restMarksCleared(
   conditions: string[],
   meta: CharacterSheet["conditionMeta"],
 ): Pick<FullPatchSheetInput, "conditions" | "conditionMeta"> {
-  if (!conditions.some((condition) => REST_MARKS.includes(condition.toLowerCase()))) {
+  if (!conditions.some((condition) => restMarks().includes(condition.toLowerCase()))) {
     return {};
   }
-  const cleared = removeConditions(conditions, meta, REST_MARKS);
+  const cleared = removeConditions(conditions, meta, restMarks());
   return { conditions: cleared.conditions, conditionMeta: cleared.meta };
 }
 
