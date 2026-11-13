@@ -73,5 +73,36 @@ await test("GAME STATE gives the hit point maximum the hero really has, as the s
   assert.match(describeSheet(world.sheet(hero.id), "a player", false), /\n  HP 15\/15 \|/);
 });
 
+await test("A level the GM sets at the console brings its hit points by the table's method, and a level taken back takes them back", async () => {
+  // A milestone level set through update_sheet brought hit dice, features
+  // and slots, and left the maximum where it was: a 6th-level fighter with
+  // 5th-level hit points. Each level gained adds the die (the table's
+  // average, the server's roll, or the maximum) plus the Constitution
+  // modifier, as the level-up does.
+  const hero = world.addHero({ class: "fighter", level: 5, maxHp: 44, abilities: { con: 14 } });
+  world.patch(hero.id, { currentHp: 30 });
+  const up = await world.invoke("update_sheet", { characterId: hero.id, level: 6, reason: "a milestone" });
+  assert.equal(up.ok, true, up.error);
+  // Average: d10 gives 6, CON +2.
+  assert.deepEqual([world.sheet(hero.id).level, world.sheet(hero.id).maxHp, world.sheet(hero.id).currentHp], [6, 52, 38]);
+  const down = await world.invoke("update_sheet", { characterId: hero.id, level: 5, reason: "the milestone was a mistake" });
+  assert.equal(down.ok, true, down.error);
+  assert.deepEqual([world.sheet(hero.id).level, world.sheet(hero.id).maxHp, world.sheet(hero.id).currentHp], [5, 44, 38]);
+  // The console that names a maximum is taken at its word.
+  const named = await world.invoke("update_sheet", { characterId: hero.id, level: 6, maxHp: 60, reason: "fixing the sheet" });
+  assert.equal(named.ok, true, named.error);
+  assert.equal(world.sheet(hero.id).maxHp, 60);
+
+  for (const [hpMethod, faces, gained] of [["max", [], 12], ["rolled", [3], 5]]) {
+    const table = await openWorld({ gameSettings: { hpMethod } });
+    const fighter = table.addHero({ class: "fighter", level: 5, maxHp: 44, abilities: { con: 14 } });
+    table.dice(...faces);
+    const leveled = await table.invoke("update_sheet", { characterId: fighter.id, level: 6, reason: "a milestone" });
+    table.clearDice();
+    assert.equal(leveled.ok, true, leveled.error);
+    assert.equal(table.sheet(fighter.id).maxHp, 44 + gained, hpMethod);
+  }
+});
+
 world.close();
 finish();

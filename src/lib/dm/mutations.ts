@@ -8,6 +8,7 @@ import { subclassExtrasForTable } from "@/lib/db/subclass-extras";
 import { foldFieldValue } from "@/lib/dm/update-sheet-args";
 import { aiSheetFieldRefusal } from "@/lib/dm/update-sheet-ai";
 import { storyEditHp } from "@/lib/dm/update-sheet-hp-logic";
+import { defaultRng } from "@/lib/dice";
 import { getDmTurn, type DmTurn } from "@/lib/db/dm-turns";
 import { z } from "zod";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
@@ -2229,8 +2230,9 @@ function dmMutation(
         return { result: buffError };
       }
       // A Constitution, Tough or a hill dwarf's blood changed by the story
-      // moves the maximum for every level held (update-sheet-hp-logic.ts).
-      Object.assign(patch, storyEditHp(sheet, patch) ?? {});
+      // moves the maximum for every level held, and a level the GM sets
+      // brings its hit points by the table's method (update-sheet-hp-logic.ts).
+      Object.assign(patch, storyEditHp(sheet, patch, { hpMethod: campaign.gameSettings.hpMethod, rollDie: defaultRng }) ?? {});
       patchSheet(sheet.id, patch);
       audit(
         campaign,
