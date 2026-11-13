@@ -2644,7 +2644,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "7494b92acb5b",
+  "sha": "526990d2ff44",
   "clauses": [
    {
     "c": "\"speed\":35",
@@ -2705,6 +2705,12 @@
     "is": "held",
     "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.satyr.choices"
+   },
+   {
+    "c": "Mirthful Leaps (roll a d8 and add that many feet to each long or high jump)",
+    "is": "held",
+    "by": "src/lib/dm/jump-reach.ts jumpReach (leapDie), rolled by src/lib/dm/jump-move.ts jumpMove and added after the reach (src/lib/srd/jump.ts planLongJump)",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.satyr.mirthful-leaps"
    }
   ]
  },

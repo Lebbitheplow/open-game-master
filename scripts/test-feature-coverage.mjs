@@ -464,6 +464,8 @@ test("every racial trait is enforced, a resource, or acknowledged", () => {
     "Survivor (one skill from Animal Handling, Medicine, Nature, Survival)",
     "Perception proficiency (Leporine Senses)",
     "Bestial Instincts (one skill from Acrobatics, Athletics, Intimidation, Survival)",
+    // The jump die the board's jump door rolls (src/lib/dm/jump-move.ts).
+    "Mirthful Leaps (roll a d8 and add that many feet to each long or high jump)",
   ]);
   const uncovered = [];
   for (const race of races) {
