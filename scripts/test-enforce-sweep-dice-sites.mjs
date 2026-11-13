@@ -517,6 +517,7 @@ const SITES = {
   "lib/dm/enemy-attack.ts#handleEnemyAttack": "F", "lib/dm/enemy-fall.ts#enemyFalls": "F", "lib/dm/enemy-hit-rows.ts#resolveRowOnHit": "F",
   "lib/dm/enemy-hit.ts#resolveOnHit": "F", "lib/dm/enemy-strike.ts#enemyStrikesEnemy": "F",
   "lib/dm/feat-reactions.ts#lucky": "H the Lucky feat's d20 against an attacker", "lib/dm/feat-reactions.ts#reservesRecovery": "D a hit die",
+  "lib/dm/feat-reactions.ts#secondChance": "F the attacker's d20 that a halfling's Second Chance makes it roll again",
   "lib/dm/forced-save.ts#rollCharacterSave": "H", "lib/dm/forced-save.ts#rollEnemySave": "F", "lib/dm/forced-save.ts#settleHeldDie": "D a held Bardic die",
   "lib/dm/foresight-more.ts#damageCeiling": "F no die: the most a blow could deal, to read whether it could drop the hero before the watch stop",
   "lib/dm/foretold-logic.ts#rollForetold": "H Portent's two d20s at the long rest",
