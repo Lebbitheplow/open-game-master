@@ -21,6 +21,7 @@ import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import {
   ROUNDS_PER_MINUTE,
   effectiveMaxHp,
+  incapacitatedBy,
   instanceIdentity,
   instancesOf,
   likelierSave,
@@ -269,33 +270,30 @@ export function startTurnConditions(
   // take their turns (src/lib/dm/held-turn.ts): what lasts until the start
   // of their turn holds until those enemies have acted.
   held: string[] = [],
-) {
+): { lostTurns: string[] } {
   if (!combatantIds.length) {
-    return;
+    return { lostTurns: [] };
   }
   endTurnRage(campaign, encounter, combatantIds[0], endedTurn);
   startTurnFeatures(campaign, combatantIds);
-  const starting = new Set(combatantIds);
   let enemiesChanged = endTurnStartHolds(campaign, encounter.id, new Set(combatantIds.filter((id) => !held.includes(id))));
   // A count that belongs to these turns runs down now: "for 1 minute" from
   // a caster's (or a monster's) turn ends ten of its turns later, where it
-  // began (SRD 5.1); a concentration spell's clock with them.
-  const counted: string[] = [];
-  const ownTurn: HolderTick = { counts: (source) => Boolean(source && starting.has(source)), saves: () => false };
-  tickEnemyConditions(campaign, encounter, 1, counted, ownTurn);
-  tickSheetConditions(campaign, 1, counted, { encounter, ...ownTurn });
-  counted.push(...tickConcentrationClocks(campaign, 1, (casterId) => starting.has(casterId)));
-  // An active effect begun on one of these turns counts its round now: "for
-  // 1 round" from a turn lasts until that turn comes again, not to the wrap.
-  const worn = tickEffectRound(campaign.id, (anchor) => Boolean(anchor && starting.has(anchor)));
-  counted.push(...worn.filter((effect) => effect.visible).map((effect) => `${effect.name} wears off.`));
-  if (worn.length) {
-    enemiesChanged = true;
-  }
-  if (counted.length) {
-    endSpentConcentration(campaign, counted);
-    enemiesChanged = true;
-    noteAtTable(campaign.id, counted);
+  // began (SRD 5.1); a concentration spell's clock with them. The turns
+  // walked past start before the one landed on, so theirs count first, and an
+  // enemy among them that cannot act as its turn comes has lost that turn
+  // (audit 2026-11-13, T04): counted together, "stunned for 1 round" from the
+  // character landed on ran out as that character's turn began, before the
+  // enemy walked past it had played the turn it was meant to cost, and the
+  // enemy acted. A held landing (held-turn.ts) counts once its turn begins.
+  const landing = combatantIds[combatantIds.length - 1];
+  const before = combatantIds.slice(0, -1);
+  enemiesChanged = countTurnStarts(campaign, encounter, before) || enemiesChanged;
+  const lostTurns = listEnemies(encounter.id)
+    .filter((enemy) => before.includes(enemy.id) && enemy.status === "alive" && incapacitatedBy(enemy.conditions))
+    .map((enemy) => enemy.id);
+  if (!held.includes(landing)) {
+    enemiesChanged = countTurnStarts(campaign, encounter, [landing]) || enemiesChanged;
   }
   // Running spells act at the start of a turn: Spirit Guardians around its
   // caster, Phantasmal Killer's dread, Heroism's temporary hit points
@@ -314,6 +312,33 @@ export function startTurnConditions(
   if (spellLines.length) {
     noteAtTable(campaign.id, spellLines);
   }
+  return { lostTurns };
+}
+
+// The counts that belong to these combatants' turns run down a round: the
+// conditions they are the source of (or whose count began on their turn),
+// their concentration clocks, and the active effects begun on their turns.
+// Returns whether anything changed. Exported for the held turn that begins
+// later (held-turn.ts startHeldTurn).
+export function countTurnStarts(campaign: Campaign, encounter: Encounter, ids: string[]): boolean {
+  if (!ids.length) {
+    return false;
+  }
+  const starting = new Set(ids);
+  const counted: string[] = [];
+  const ownTurn: HolderTick = { counts: (source) => Boolean(source && starting.has(source)), saves: () => false };
+  tickEnemyConditions(campaign, encounter, 1, counted, ownTurn);
+  tickSheetConditions(campaign, 1, counted, { encounter, ...ownTurn });
+  counted.push(...tickConcentrationClocks(campaign, 1, (casterId) => starting.has(casterId)));
+  // An active effect begun on one of these turns counts its round now: "for
+  // 1 round" from a turn lasts until that turn comes again, not to the wrap.
+  const worn = tickEffectRound(campaign.id, (anchor) => Boolean(anchor && starting.has(anchor)));
+  counted.push(...worn.filter((effect) => effect.visible).map((effect) => `${effect.name} wears off.`));
+  if (counted.length) {
+    endSpentConcentration(campaign, counted);
+    noteAtTable(campaign.id, counted);
+  }
+  return counted.length > 0 || worn.length > 0;
 }
 
 // Whatever lasted "until the start of the next turn" of these combatants

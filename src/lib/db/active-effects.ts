@@ -5,7 +5,7 @@ import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { allocateSeq } from "@/lib/db/campaigns";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { currentTurnId } from "@/lib/dm/job-control";
-import { getActiveEncounter, orderEntryId, shiftEnemyMaxHp } from "@/lib/db/encounters";
+import { getActiveEncounter, shiftEnemyMaxHp, turnCounterFor } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, listHiddenRefIds } from "@/lib/db/battle-maps";
 import { publishPersisted } from "@/lib/events";
 import { ROUNDS_PER_MINUTE } from "@/lib/dm/condition-logic";
@@ -191,9 +191,7 @@ type EffectInput = {
 // Whose turn it is in the fight under way, which an effect begun now is
 // counted by (effects-logic.ts tickRound). None outside a fight.
 function turnAnchor(campaignId: string): string | null {
-  const encounter = getActiveEncounter(campaignId);
-  const entry = encounter?.order[encounter.turnIndex];
-  return entry ? orderEntryId(entry) : null;
+  return turnCounterFor(campaignId) ?? null;
 }
 
 // The row alone. Its callers run it inside followingMaxHp, so the stored

@@ -38,6 +38,12 @@ export type ConditionMeta = {
   // takes it (src/lib/dm/turn-end.ts).
   untilTurnEndOf?: string;
   turnBegun?: boolean;
+  // In a fight, whose turn a count with no combatant for its source began
+  // on: its rounds are counted as that turn comes round again, as a
+  // source's are (tickConditions `counts`). Without it a sourceless
+  // "stunned for 1 round" was counted at the round's wrap, and ran out
+  // before the turn it was meant to cost (audit 2026-11-13, T04).
+  countsOn?: string;
   // Re-save at each round wrap; success ends the condition.
   // `or`: a second ability the creature may roll instead, choosing again at
   // each save (Nature's Wrath: Strength or Dexterity; see likelierSave).
@@ -748,7 +754,7 @@ export function tickConditions(
         }
         continue;
       }
-      const counting = typeof instance.rounds === "number" && (options?.counts ? options.counts(instance.source) : true);
+      const counting = typeof instance.rounds === "number" && (options?.counts ? options.counts(instance.countsOn ?? instance.source) : true);
       if (counting) {
         const left = (instance.rounds as number) - by;
         if (left <= 0) {

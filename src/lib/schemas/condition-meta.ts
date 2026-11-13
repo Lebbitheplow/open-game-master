@@ -32,6 +32,8 @@ const conditionInstanceSchema = z.object({
     // started (src/lib/dm/turn-end.ts).
     untilTurnEndOf: z.string().trim().min(1).max(80).optional(),
     turnBegun: z.boolean().optional(),
+    // Whose turn counts a sourceless count down in a fight (condition-logic.ts).
+    countsOn: z.string().trim().min(1).max(80).optional(),
     // Flesh to Stone's count of saves (src/lib/dm/spell-turn-end.ts).
     tally: z.object({ passed: z.number().int().min(0).max(3), failed: z.number().int().min(0).max(3) }).optional(),
     saveEnds: z
