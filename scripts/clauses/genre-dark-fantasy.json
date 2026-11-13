@@ -365,15 +365,12 @@
   "clauses": [
    {
     "c": "Your critical hits against branded creatures prevent regeneration and revival for 24 hours",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "cc_sanctioned"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Sanctioned Execution#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-dark-fantasy.ts darkFantasyCritMarks (regeneration stopped for 24 hours, read by src/lib/dm/regeneration-turn.ts and legendary-tools.ts; the sanctioned execution mark, src/lib/srd/genre-cc-a-conditions.ts), read by src/lib/dm/attack-blow.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Sanctioned Execution#0"
    }
   ]
  },
@@ -534,15 +531,12 @@
   "clauses": [
    {
     "c": "Allies within 20 ft deal +1d4 radiant with weapon attacks against your branded quarry",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "cc_silver_tide"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Silver Tide#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-dark-fantasy.ts silverTideRider, read by src/lib/dm/pc-attack-plan.ts (the attack's damage dice and typed riders)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Silver Tide#0"
    }
   ]
  },
@@ -1551,19 +1545,21 @@
    },
    {
     "c": "critical hits also frighten",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
-    "probe": "none of its own: no critical-hit trigger lays a condition; the hook probe now answers for clause #0",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "run": {
+     "k": "cc_crit_fright"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-dark-fantasy.ts darkFantasyCritMarks, read by src/lib/dm/attack-blow.ts as the blow lands",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Champion of the Quiet Court#1"
    },
    {
     "c": "WIS save negates",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
-    "same_probe_as": 1
+    "run": {
+     "k": "cc_crit_fright"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-dark-fantasy.ts darkFantasyCritMarks (the WIS save against the knight's spell save DC, src/lib/dm/forced-save.ts rollEnemySave)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Champion of the Quiet Court#2"
    }
   ]
  },

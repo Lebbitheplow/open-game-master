@@ -5,6 +5,7 @@
 // (pc-attack-resolve.ts); real dice reach it when the player's damage roll
 // lands (pc-attack-parked.ts).
 
+import { darkFantasyCritMarks } from "@/lib/dm/genre-cc-a-dark-fantasy";
 import { ballistaPush } from "@/lib/dm/cannon-board-dra";
 import { runPush } from "@/lib/dm/genre-run-hits";
 import { empoweredLine } from "@/lib/dm/mt-srd-metamagic";
@@ -209,6 +210,11 @@ export function landSwingBlow(
     if (apex) {
       notes.push(apex);
     }
+  }
+  // Sanctioned Execution and Champion of the Quiet Court's critical hits
+  // (src/lib/dm/genre-cc-a-dark-fantasy.ts): the execution holds on a blow that kills.
+  if (!over) {
+    notes.push(...darkFantasyCritMarks(scene, record, crit, dead));
   }
   // What the hit leaves on the target: Stunning Sniper's stun, Slasher's
   // hamstring and Crusher's shove once a turn, and their critical hits'

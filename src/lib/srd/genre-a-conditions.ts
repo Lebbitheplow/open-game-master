@@ -5,6 +5,7 @@
 import type { ConditionEffectRow } from "@/lib/srd/condition-effect-types";
 import { DARK_FANTASY_CONDITIONS } from "@/lib/srd/genre-a-dark-fantasy-conditions";
 import { GENRE_A_HORROR_CONDITIONS } from "@/lib/srd/genre-a-horror-conditions";
+import { GENRE_CC_A_CONDITIONS } from "@/lib/srd/genre-cc-a-conditions";
 
 export const GENRE_A_CONDITIONS: ConditionEffectRow[] = [
   { id: "static_shield", match: ["static shield"], summary: "Static Shield: +2 AC until the start of the esper's next turn.", acBonus: 2 },
@@ -36,4 +37,6 @@ export const GENRE_A_CONDITIONS: ConditionEffectRow[] = [
   ...DARK_FANTASY_CONDITIONS,
   // The horror classes' own (src/lib/srd/genre-a-horror-conditions.ts).
   ...GENRE_A_HORROR_CONDITIONS,
+  // The creator audit's second genre pass (src/lib/srd/genre-cc-a-conditions.ts).
+  ...GENRE_CC_A_CONDITIONS,
 ];

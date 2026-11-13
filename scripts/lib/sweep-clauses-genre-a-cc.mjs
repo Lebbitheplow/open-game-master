@@ -74,6 +74,69 @@ export const CC = {
   },
 
   cc_check_about: (t, run, feature) => CYBER.check_about(t, run, feature),
+
+  // "Allies within 20 ft deal +1d4 radiant with weapon attacks against your
+  // branded quarry": the hunter brands the near foe; the ally beside them
+  // swings at it and deals radiant beside its own damage, and none once the
+  // hunter stands 70 feet off.
+  async cc_silver_tide(t, run, feature) {
+    const scene = await t.stage(feature);
+    must(await t.world.invoke("use_resource", { characterId: scene.holder.id, resource: "Hunter's Brand", targetEnemyId: scene.near.id }), "Hunter's Brand");
+    const d4s = async () => {
+      t.kit.freshTurn();
+      t.kit.giveTurn(scene.ally.id);
+      t.kit.place(scene.ally.id, 4, 6);
+      t.world.clearDice();
+      t.world.diceLog();
+      const out = await t.kit.swing(scene.ally.id, scene.near.id, [15, 3, 3, 3, 3, 3, 3]);
+      t.world.clearDice();
+      must(out, "the ally's swing");
+      if (out.result.hit === false) throw new Error("the ally's swing missed");
+      return (out.result.damageByType ?? []).filter((part) => /radiant/.test(part)).length;
+    };
+    eq(await d4s(), 1, "radiant parts of the ally's hit on the branded foe, the hunter beside them");
+    t.kit.place(scene.holder.id, 18, 18);
+    eq(await d4s(), 0, "radiant parts of the ally's hit on the branded foe, the hunter 70 feet off");
+  },
+
+  // "critical hits also frighten (WIS save negates)": a critical hit on the
+  // near foe, its save a 1, leaves it frightened of the knight; a plain hit
+  // does not.
+  async cc_crit_fright(t, run, feature) {
+    const scene = await t.stage(feature);
+    const swing = async (face) => {
+      t.kit.freshTurn();
+      t.kit.giveTurn(scene.holder.id);
+      const out = must(await t.kit.swing(scene.holder.id, scene.near.id, [face, 3, 3, 3, 3, 3, 3, 3, 3, 1, 1]), "the swing");
+      return out;
+    };
+    await swing(15);
+    eq(foeConditions(t, scene.near.id).includes("frightened"), false, "frightened after a plain hit");
+    await swing(20);
+    eq(foeConditions(t, scene.near.id).includes("frightened"), true, "frightened after a critical hit and a failed WIS save");
+  },
+
+  // "Your critical hits against branded creatures prevent regeneration and
+  // revival for 24 hours": a critical hit on the branded near foe stops its
+  // Regeneration for a day; one on the unbranded far foe does not.
+  async cc_sanctioned(t, run, feature) {
+    const scene = await t.stage(feature);
+    must(await t.world.invoke("use_resource", { characterId: scene.holder.id, resource: "Hunter's Brand", targetEnemyId: scene.near.id }), "Hunter's Brand");
+    const crit = async (foe) => {
+      t.kit.freshTurn();
+      t.kit.giveTurn(scene.holder.id);
+      t.kit.place(foe.id, 5, 6);
+      must(await t.kit.swing(scene.holder.id, foe.id, [20, 3, 3, 3, 3, 3, 3, 3, 3]), "the critical hit");
+      const enemy = t.kit.enemy(foe.id);
+      const meta = enemy.conditionMeta?.["regeneration stopped"] ?? null;
+      return { stopped: enemy.conditions.includes("regeneration stopped"), day: (meta?.rounds ?? 0) >= 14400, marked: foeConditions(t, foe.id).includes("sanctioned execution") };
+    };
+    const branded = await crit(scene.near);
+    eq(`${branded.stopped}/${branded.day}/${branded.marked}`, "true/true/true", "Regeneration stopped / for a day / the mark, after a critical hit on the branded foe");
+    t.kit.place(scene.near.id, 9, 9);
+    const plain = await crit(scene.far);
+    eq(`${plain.stopped}/${plain.marked}`, "false/false", "Regeneration stopped / the mark, after a critical hit on an unbranded foe");
+  },
 };
 
 export { conditionsOf, foeConditions, stripFeature, TRAINED };
