@@ -1,6 +1,7 @@
 import { settleDroppedOnFightEnd } from "@/lib/db/dropped-items";
 import { layFlamesOnDeath } from "@/lib/dm/cauterizing-flames";
 import { recordTrigger } from "@/lib/dm/last-save";
+import { darkFantasyOnDeath } from "@/lib/dm/genre-a-dark-fantasy-deaths";
 import { currentActor } from "@/lib/dm/acting-party";
 import { thunderboltPush } from "@/lib/dm/thunderbolt-strike";
 import { disarmFightEvents } from "@/lib/db/fight-events";
@@ -8,13 +9,12 @@ import { endFightEffects } from "@/lib/db/active-effects";
 import { getFloor, setFloor, type Campaign } from "@/lib/db/campaigns";
 import { burnWebUnder } from "@/lib/dm/zone-cast";
 import { lightOil } from "@/lib/dm/gear-zones";
-import { endEncounter, getActiveEncounter, getEnemy, listEnemies, patchEnemyHp, setEnemyConcentration, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { endEncounter, getActiveEncounter, getEnemy, listEnemies, patchEnemyHp, setEnemyConcentration, type Encounter, type EncounterEnemy, patchEnemyConditions } from "@/lib/db/encounters";
 import { activePublicEncounter } from "@/lib/db/encounter-view";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { settleDying } from "@/lib/dm/death";
 import { dyingLeftAlone, isDying, MOST_SAVES_TO_SETTLE } from "@/lib/dm/death-logic";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { patchEnemyConditions } from "@/lib/db/encounters";
 import { restoreOwnForm } from "@/lib/db/enemy-form";
 import { recordEncounterSummary } from "@/lib/dm/encounter-summary-store";
 import { atTheFight } from "@/lib/dm/fight-away-logic";
@@ -617,6 +617,10 @@ export function applyEnemyDamage(
     recordTrigger(campaign.id, { kind: "death", forcer: { id: enemy.id, name: enemy.displayName }, creatureType: String(enemy.stats.type ?? ""), killerId: currentActor()?.ref ?? null, ...(diedAt ? { square: diedAt } : {}) });
     // A Wildfire druid near it gains a spectral flame in its space (cauterizing-flames.ts).
     layFlamesOnDeath(campaign.id, { id: enemy.id, size: typeof enemy.stats.size === "string" ? enemy.stats.size : null });
+    const darkFantasy = darkFantasyOnDeath(campaign, enemy.id);
+    if (darkFantasy.length) {
+      base.markEnded = darkFantasy;
+    }
     const corpse = freeFromCorpse(campaign, updated);
     if (corpse) {
       base.swallowedFreed = corpse;

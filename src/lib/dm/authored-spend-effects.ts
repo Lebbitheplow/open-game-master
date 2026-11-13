@@ -83,6 +83,7 @@ import { martialSpend } from "@/lib/dm/authored-spend-martial";
 import { mrSpend } from "@/lib/dm/mt-mr-spends";
 import { beguilingBroken } from "@/lib/dm/mt-fb-arrow-riders";
 import { cleanse, forcedStrike, forcedStrikePlan, meleeHitRefusal, pushFoe, sizeRefusal, throwFoe } from "@/lib/dm/mt-fb-spend";
+import { playDarkFantasy } from "@/lib/dm/genre-a-dark-fantasy-spends";
 
 const DAMAGE_WORDS = new Set(["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"]);
 
@@ -890,6 +891,8 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
       const enemy = targetEnemy(ctx);
       return "error" in enemy ? enemy : stripMemory(ctx, does, enemy, dc);
     }
+    case "dark_fantasy":
+      return playDarkFantasy(ctx, does.play);
   }
 }
 
@@ -1038,7 +1041,8 @@ function saveAreaSaves(ctx: SpendContext, does: Extract<SpendDoes, { kind: "save
       } else {
         layEnemyConditionInstance(campaign, fresh(), does.condition, {
           source: sheet.id,
-          ...(does.untilItsTurnEnds ? { untilTurnEndOf: enemy.id } : does.untilNextTurnEnds ? { untilTurnEndOf: sheet.id } : does.rounds ? { rounds: does.rounds } : {}),
+          ...(does.untilItsTurnEnds ? { untilTurnEndOf: enemy.id } : does.untilNextTurn ? { untilTurnOf: sheet.id } : does.untilNextTurnEnds ? { untilTurnEndOf: sheet.id } : does.rounds ? { rounds: does.rounds } : {}),
+          ...(does.saveEnds ? { saveEnds: { ability: does.save, dc } } : {}),
           ...(does.endsOnDamage ? { endsOnDamage: true } : {}),
           ...(does.leashFeet ? { leashFeet: does.leashFeet } : {}),
         });

@@ -2,6 +2,7 @@ import { concentrationFeat } from "@/lib/srd/feat-combat";
 import { bladesongConcentrationBonus } from "@/lib/dm/ar-ws-bladesong";
 import { concentrationAdvantage } from "@/lib/dm/genre-a-cyberpunk-defenses";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import { litanyHolds } from "@/lib/dm/genre-a-dark-fantasy-wards";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import {
   getActiveEncounter,
@@ -389,6 +390,11 @@ export function concentrationDamageHook(
   const guarded = authoredConcentrationGuard(fresh, spellEngineName(spell, spellAuthorsFor(campaign)));
   if (guarded) {
     return { concentration: { spell, held: true, guarded: `${guarded.feature}: damage cannot break it` } };
+  }
+  // The Litany Unbroken (src/lib/dm/genre-a-dark-fantasy-wards.ts).
+  const litany = litanyHolds(fresh, damage);
+  if (litany) {
+    return { concentration: { spell, held: true, guarded: litany } };
   }
   const dc = Math.max(10, Math.floor(damage / 2));
   // It is a saving throw like any other, rolled by the one builder every

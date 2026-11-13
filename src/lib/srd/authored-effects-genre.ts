@@ -31,7 +31,9 @@ export const GENRE_AUTHORED: GenreRow[] = [
   },
   {
     feature: "Hunter's Brand",
-    entry: { subclass: "genre", spends: [{ name: "Hunter's Brand", action: "bonus", does: { kind: "buff", condition: "hunter's brand", rounds: 600, quarry: true } }] },
+    // "brand a creature you can see", and with Twin Brand two at once
+    // (src/lib/dm/genre-a-dark-fantasy-spends.ts).
+    entry: { subclass: "genre", spends: [{ name: "Hunter's Brand", action: "bonus", does: { kind: "dark_fantasy", play: "brand" } }] },
   },
   {
     feature: "Quarry",

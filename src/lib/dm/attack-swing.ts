@@ -8,6 +8,7 @@ import { markDefenderCommanded } from "@/lib/dm/defender-dodge";
 import { empoweredRoll } from "@/lib/dm/mt-srd-metamagic";
 import { SPELL_HIT } from "@/lib/dm/genre-a-cyberpunk-spends";
 import { getSheetById } from "@/lib/db/sheets";
+import { finalVerdictDice } from "@/lib/dm/genre-a-dark-fantasy-hits";
 import { spendWrath, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { attackWrathDice, holdsDestructiveWrath } from "@/lib/dm/destructive-wrath-logic";
 import { NET_HOLD } from "@/lib/dm/net-hold";
@@ -397,7 +398,12 @@ export function hitSwing(scene: SwingScene, record: AttackRecord, judged: Judged
     }
     notes.push(WRATH_NOTE);
   }
-  const asked = wrath?.expression ?? rolled;
+  // Final Verdict (src/lib/dm/genre-a-dark-fantasy-hits.ts).
+  const verdict = finalVerdictDice(getSheetById(sheet.id) ?? sheet, getFoe(enemy.id) ?? enemy, record, wrath?.expression ?? rolled, wrath?.riders ?? riders, crit);
+  if (verdict) {
+    notes.push(verdict.note);
+  }
+  const asked = verdict?.expression ?? wrath?.expression ?? rolled;
   return {
     ask: {
       expression: asked,

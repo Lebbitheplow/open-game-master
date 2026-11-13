@@ -47,6 +47,7 @@ import { inFightOf } from "@/lib/battlemap/hand-counters";
 import { TRIGGERED_COUNTERS } from "@/lib/srd/trigger-table";
 import { dealtByTrigger } from "@/lib/battlemap/hand-react-triggers";
 import { taleAimsAt } from "@/lib/srd/spirit-tales-table";
+import { DARK_FANTASY_AIM } from "@/lib/srd/genre-a-dark-fantasy-plays";
 
 type SpendDoes = AuthoredSpend["does"];
 
@@ -90,6 +91,7 @@ function targetOf(does: SpendDoes): HandTarget {
   if (does.kind === "damage_ward") return "ally";
   // The charmed creature whose memory Alter Memories reaches (ar-ws-alter-memories.ts).
   if (does.kind === "strip_memory") return "enemy";
+  if (does.kind === "dark_fantasy") return DARK_FANTASY_AIM[does.play];
   return "none";
 }
 

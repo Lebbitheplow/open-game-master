@@ -24,6 +24,8 @@
 import { defenderDodging } from "@/lib/dm/defender-dodge";
 import { darkVeil } from "@/lib/dm/ar-ws-lunar-empowerment";
 import { enemyNotActed } from "@/lib/dm/genre-a-strikes";
+import { darkFantasyAttackEdge } from "@/lib/dm/genre-a-dark-fantasy-edges";
+import { darkFantasyOnHit } from "@/lib/dm/genre-a-dark-fantasy-hits";
 import { fightMarked, markFight } from "@/lib/dm/turn-marks";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -326,6 +328,13 @@ export function authoredAttackSituation(input: {
     notes.push("Spirit Totem (Hawk): advantage, spent by this attack");
     spent.push(sheet.conditions.find((entry) => textKey(entry) === HAWK_EDGE)!);
   }
+  // Judgment Shot (src/lib/dm/genre-a-dark-fantasy-edges.ts).
+  const edge = darkFantasyAttackEdge(sheet, enemy, input.melee);
+  if (edge) {
+    autoCrit = edge.feature;
+    notes.push(edge.note);
+    spent.push(edge.spent);
+  }
   for (const { held } of activeAuthored(sheet, "auto_crit")) {
     if (encounter.surprisedIds.includes(enemy.id)) {
       autoCrit = held.feature;
@@ -364,6 +373,8 @@ export function authoredOnHit(
   const encounter = getActiveEncounter(campaign.id) ?? input.encounter;
   // Form of the Beast's bite (src/lib/dm/authored-attacks.ts).
   lines.push(...naturalWeaponOnHit(campaign, encounter, sheet, input.weaponName));
+  // Rose Thorn Oath (src/lib/dm/genre-a-dark-fantasy-hits.ts).
+  lines.push(...darkFantasyOnHit(campaign, encounter, sheet, input));
   // Emissary of Redemption: attacking a creature sets the feature aside
   // against that creature alone, until the paladin's long rest.
   const struck = getEnemy(input.enemy.id);

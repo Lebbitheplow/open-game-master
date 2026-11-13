@@ -1,6 +1,7 @@
 import { recordSteadied } from "@/lib/dm/last-save";
 import { deathSaveFeat } from "@/lib/srd/feat-combat";
 import type { SystemGlyph } from "@/lib/system-glyphs";
+import { triageWake } from "@/lib/dm/genre-a-dark-fantasy-vitals";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
@@ -300,11 +301,15 @@ export function wakeStable(campaign: Campaign, characterId: string): string | nu
   if (!sheet || !track?.stable || track.dead || sheet.currentHp > 0) {
     return null;
   }
+  // Triage's patient wakes with the d4's hit points (genre-a-dark-fantasy-vitals.ts).
+  const woken = wakeConditions(sheet);
+  const triage = triageWake(sheet, woken);
+  const hp = Math.min(Math.max(1, sheet.maxHp), triage?.hp ?? 1);
   writeDeathState(campaign, null, sheet, null, "death_state", "stable, and the hours have passed", {
-    currentHp: 1,
-    ...wakeConditions(sheet),
+    currentHp: hp,
+    ...(triage ? { conditions: triage.conditions, conditionMeta: triage.conditionMeta } : woken),
   });
-  return `${sheet.name} comes round with 1 hit point.`;
+  return `${sheet.name} comes round with ${hp} hit point${hp === 1 ? "" : "s"}.`;
 }
 
 // A feature that answers a death save in its place (Searing Vengeance,

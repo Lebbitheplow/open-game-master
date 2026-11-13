@@ -4,6 +4,7 @@
 
 import type { CheckAbout, SaveAgainstValue } from "@/lib/dm/roll-about";
 import type { ItemTag } from "@/lib/schemas/item-tags";
+import type { DarkFantasyPlay } from "@/lib/srd/genre-a-dark-fantasy-plays";
 
 export type Ability = "str" | "dex" | "con" | "int" | "wis" | "cha";
 
@@ -673,6 +674,11 @@ export type SpendDoes =
       rounds?: number;
       // Until the end of the holder's next turn, not a count of rounds.
       untilNextTurnEnds?: boolean;
+      // Until the start of the holder's next turn (Grave Grip: "until your next
+      // turn"), or until the creature saves at the end of one of its turns
+      // (Murder of Crows: "CON save each turn").
+      untilNextTurn?: boolean;
+      saveEnds?: boolean;
       endsOnDamage?: boolean;
       // Held while the holder stands within this many feet and is neither down
       // nor incapacitated, with no count of rounds (src/lib/dm/condition-leash.ts).
@@ -907,7 +913,10 @@ export type SpendDoes =
   | { kind: "eldritch_cannon"; condition: string; rounds: number }
   // A monk's or a rogue's subclass spend wave 2 built, resolved by its id in
   // src/lib/dm/mt-mr-spends.ts. `aims`: who the Hand's card is aimed at.
-  | { kind: "mr"; id: MrSpendId; aims?: "enemy" | "ally"; rangeFt?: number };
+  | { kind: "mr"; id: MrSpendId; aims?: "enemy" | "ally"; rangeFt?: number }
+  // A dark fantasy class's spend whose text no shape above holds
+  // (src/lib/dm/genre-a-dark-fantasy-spends.ts).
+  | { kind: "dark_fantasy"; play: DarkFantasyPlay };
 
 export type MrSpendId = "hand_of_healing" | "flurry_healing" | "hand_of_harm" | "deft_strike" | "cloak_of_shadows" | "question_spirit" | "psychic_teleport" | "rend_mind" | "wings_unfurled" | "wyrm_frighten" | "wyrm_ward";
 
@@ -1072,6 +1081,9 @@ export type ReactionDoes =
       // `pushFeet`: on a failed save the creature is moved that far straight
       // away from the holder, on the board (Storm's Fury: src/lib/dm/ar-ws-storm-fury.ts).
       save?: { ability: Ability; dcAbility: Ability | "spell"; half?: boolean; onFail?: string; damageRegardless?: boolean; pushFeet?: number };
+      // Only a hit by a creature of these types (Flashfire Litany: "when a
+      // fiend or undead hits you").
+      vsTypes?: string[];
     }
   // The damage a hit dealt another creature, back at whoever dealt it, on a
   // save for half (Rebuke the Violent). `rangeFt`: how near the attacker is.

@@ -21,6 +21,7 @@ import { deflectionAftermath, deflectionFirst } from "@/lib/dm/ar-ws-deflection"
 import { pullStraightToward, pushStraightAway } from "@/lib/dm/ar-ws-storm-fury";
 import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { feetFromOwnZone } from "@/lib/dm/zone-reach";
+import { creatureTypeOf } from "@/lib/bestiary/creature-type";
 import { maximumOf } from "@/lib/dm/heal-spell";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { getActiveEncounter, getEnemy, patchEnemyConditions, type EncounterEnemy } from "@/lib/db/encounters";
@@ -852,6 +853,13 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       }
       if (does.melee && (!record || record.ranged || !record.swings.some((swing) => swing.hit))) {
         return noHit(ctx.sheet.name, reaction.name, "a melee attack that hit them");
+      }
+      // Flashfire Litany: the open hit, by a creature of the types named.
+      if (does.vsTypes && (!record || record.attacker.id !== enemy.id || !record.swings.some((swing) => swing.hit))) {
+        return noHit(ctx.sheet.name, reaction.name, `a hit by a ${does.vsTypes.join(" or ")}`);
+      }
+      if (does.vsTypes && !does.vsTypes.includes(creatureTypeOf(enemy.stats))) {
+        return { error: `${enemy.displayName} is no ${does.vsTypes.join(" or ")}; ${reaction.name} answers only theirs. Nothing was spent.`, refused: "rules" };
       }
       // An answer to a save reaches the creature that forced it wherever it
       // is; its reach is the one who saved (savedAgainst).

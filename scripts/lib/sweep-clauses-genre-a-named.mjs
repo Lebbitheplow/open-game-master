@@ -235,7 +235,10 @@ export const NAMED = {
       return;
     }
     must(out, run.feature);
-    if (run.ally !== undefined) eq(t.hp(scene.ally.id), run.ally === "prof+cha" ? 20 - Math.max(0, (run.die ?? 4) + 2 - (mod("cha") + prof(feature.level))) : run.ally, "the ally's hit points after the reaction");
+    // `aura`: what the holder's own aura already took off the blow (a grave
+    // knight's Sepulchral Aura: "Enemies within 5 ft deal 1 less damage with
+    // weapon attacks"), the foe standing beside them.
+    if (run.ally !== undefined) eq(t.hp(scene.ally.id), run.ally === "prof+cha" ? 20 - Math.max(0, (run.die ?? 4) + 2 - (run.aura ?? 0) - (mod("cha") + prof(feature.level))) : run.ally, "the ally's hit points after the reaction");
     if (run.holder !== undefined) eq(100 - t.hp(scene.holder.id), run.holder, "hit points the holder lost");
   },
 

@@ -16,6 +16,7 @@ const HELD_AT_THE_DROP = (feature: string, what: string): CounterTerms => ({
 export const DROP_HOLD_COUNTERS = [
   "horror_won_t_die_here", "horror_the_one_who_lives", "dark_fantasy_martyr_s_endurance", "dark_fantasy_deathless_vigor",
   "horror_the_last_candle", "cyberpunk_one_more_dawn", "horror_final_benediction",
+  "dark_fantasy_the_last_rose", "dark_fantasy_the_flock_remembers",
 ];
 
 // A reaction the authored row plays (use_reaction answers the open hit record);
@@ -38,6 +39,7 @@ export const GENRE_A_COUNTER_TERMS: Record<string, CounterTerms> = {
   cyberpunk_bullet_time: BY_REACTION("Bullet Time", "+3 AC against one ranged attack the street samurai can see, which may turn it into a miss."),
   cyberpunk_overwatch: BY_REACTION("Overwatch", "the attack that hit an ally the netrunner can see is rolled again at disadvantage."),
   horror_blood_ward: BY_REACTION("Blood Ward", "when the apostate is hit, they resist that hit's damage."),
+  dark_fantasy_flashfire_litany: BY_REACTION("Flashfire Litany", "when a fiend or undead hits the witch hunter, it takes 3d8 radiant damage (half on a Constitution save)."),
   horror_pain_tolerance: BY_REACTION("Pain Tolerance", "the damage of one hit against the survivor is halved."),
   horror_won_t_die_here: HELD_AT_THE_DROP("Won't Die Here", "once a day, when the survivor drops to 0 hit points but is not killed outright, they drop to 1 instead (from 20th level twice a day, each use also restoring five times their Constitution modifier)."),
   horror_the_one_who_lives: HELD_AT_THE_DROP("The One Who Lives", "Won't Die Here's second use of the day; each use also restores five times the Constitution modifier in hit points."),
@@ -92,6 +94,8 @@ export const GENRE_A_COUNTER_TERMS: Record<string, CounterTerms> = {
   horror_apocrypha: { passive: true, guidance: "Apocrypha: the occultist's 6th level warlock spell, cast once a long rest without a slot. Cast it with the spell's own tool: the server pays with this use; no call spends it." },
   horror_seventh_seal: { passive: true, guidance: "Seventh Seal: the occultist's 7th level warlock spell, cast once a long rest without a slot. Cast it with the spell's own tool: the server pays with this use; no call spends it." },
   cyberpunk_one_more_dawn: HELD_AT_THE_DROP("One More Dawn", "once a long rest, an ally within 30 feet of the trauma doc who would drop to 0 hit points (not killed outright) drops to 1 instead."),
+  dark_fantasy_the_last_rose: HELD_AT_THE_DROP("The Last Rose", "once a long rest, when an ally within 30 feet of the grave knight drops to 0 hit points (not killed outright), they drop to 1 instead, and the knight's next attack is a critical hit if it hits."),
+  dark_fantasy_the_flock_remembers: HELD_AT_THE_DROP("The Flock Remembers", "once a long rest, when the plague doctor drops to 0 hit points (not killed outright), the flock carries them 60 feet to safety and they are stable."),
   horror_final_benediction: HELD_AT_THE_DROP("Final Benediction", "once a long rest, when an ally within 30 feet of the exorcist drops to 0 hit points (not killed outright), they drop instead to five times the exorcist's Wisdom modifier."),
 };
 
