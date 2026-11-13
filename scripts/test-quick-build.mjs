@@ -174,52 +174,33 @@ await test("every class fills to a legal character at levels 1, 3, 8 and 12", as
   }
 });
 
-// Without the content pack the server judges spells by the bundled
-// checklist (src/lib/characters/catalog.ts spellFactsFor), which carries
-// three 1st-level artificer spells; a level 3 artificer may prepare four.
-// The server holds a caster to at most its count, so three save; the
-// builder asks for no more than exist, and says why on the spell step.
-await test("a level 3 artificer takes the three spells there are, is told why, and saves", async () => {
-  const { spellShortageLines } = await import("../src/app/characters/builder/spellSupply.ts");
+// The artificer's list is its book's whole list on every server: the bundled
+// checklist names the artificer on each of its spells (the creator spells
+// audit, P01), so a level 3 artificer fills every prepared spell its table
+// gives from the list the step offers, with the content pack or without it,
+// and the step says nothing is missing.
+await test("a level 3 artificer fills every prepared spell from its own list, and saves", async () => {
+  const { spellShortageLines, spellSupplyOf } = await import("../src/app/characters/builder/spellSupply.ts");
   const { fields } = await runFill(fresh({ level: 3, classId: "artificer" }));
   const built = derive(fields);
   const count = built.derived.spellAdvice.count;
   assert.ok(count > 3, `a level 3 artificer prepares ${count}`);
-  assert.equal(built.derived.spellSupply.spells, 3);
-  if (hasPack) {
-    // The content pack's artificer list is long enough: the fill takes the
-    // whole count from it, every pick on the list the step offers, and the
-    // step (which counts that list) says nothing is missing.
-    const { spellSupplyOf } = await import("../src/app/characters/builder/spellSupply.ts");
-    const pool = await spellPool("artificer", built.derived.maxSpellLevel);
-    const onList = new Set(pool.map((spell) => spell.name));
-    assert.equal(fields.spells.length, count);
+  assert.ok(built.derived.spellSupply.spells >= count, `the bundled list holds ${built.derived.spellSupply.spells}`);
+  const pool = hasPack ? await spellPool("artificer", built.derived.maxSpellLevel) : null;
+  const onList = new Set((pool ?? []).map((spell) => spell.name));
+  assert.equal(fields.spells.length, count);
+  if (pool) {
     assert.deepEqual(fields.spells.filter((name) => !onList.has(name)), []);
-    const shown = spellShortageLines({
-      className: "artificer",
-      supply: spellSupplyOf(pool, built.derived.maxSpellLevel, []),
-      cantripCap: built.derived.cantripAdvice,
-      listCap: count,
-      listVerb: "prepare",
-      maxSpellLevel: built.derived.maxSpellLevel,
-    });
-    assert.deepEqual(shown, []);
-    await saves(fields, "artificer at 3, with the pack");
-    return;
   }
-  assert.deepEqual([...fields.spells].sort(), ["Absorb Elements", "Caustic Brew", "Snare"]);
-  const lines = spellShortageLines({
+  const shown = spellShortageLines({
     className: "artificer",
-    supply: built.derived.spellSupply,
+    supply: pool ? spellSupplyOf(pool, built.derived.maxSpellLevel, []) : built.derived.spellSupply,
     cantripCap: built.derived.cantripAdvice,
-    listCap: built.derived.spellAdvice.count,
+    listCap: count,
     listVerb: "prepare",
     maxSpellLevel: built.derived.maxSpellLevel,
   });
-  assert.deepEqual(lines, [
-    `This server's spell list has only 3 artificer spells, and you may prepare ${count}. Take all 3; the ${count - 3 === 1 ? "missing one does" : `${count - 3} missing ones do`} not stop you saving.`,
-    "Whoever runs this server can add more by installing the content pack.",
-  ]);
+  assert.deepEqual(shown, []);
   await saves(fields, "artificer at 3");
 });
 
@@ -256,14 +237,20 @@ await test("the spell step's fill offers only spells the server takes, for every
   }
 });
 
-await test("the artificer's suggestions the bundled list refuses are neither starred nor filled", async () => {
+// The artificer's suggested cantrips and spells are on its list now (the
+// creator spells audit, P01), with the pool and without it; a spell the list
+// does not carry is still neither starred nor filled.
+await test("the artificer's suggestions are on the list the save takes, and an off-list spell is not", async () => {
   const { spellOnSavedList } = await import("../src/app/characters/builder/spellSupply.ts");
   const rule = { third: false, spellClass: "artificer", spellPool: await spellPool("artificer", 1) };
-  for (const name of ["Guidance", "Mending", "Cure Wounds", "Faerie Fire"]) {
+  for (const name of ["Guidance", "Mending", "Cure Wounds", "Faerie Fire", "Absorb Elements"]) {
+    assert.equal(spellOnSavedList(name, rule), true, name);
+    assert.equal(spellOnSavedList(name, { ...rule, spellPool: undefined }), true, `${name} without the pool`);
+  }
+  for (const name of ["Eldritch Blast", "Magic Missile"]) {
     assert.equal(spellOnSavedList(name, rule), false, name);
     assert.equal(spellOnSavedList(name, { ...rule, spellPool: undefined }), false, `${name} without the pool`);
   }
-  assert.equal(spellOnSavedList("Absorb Elements", rule), true);
   // The step reads the same rule for its stars, its tiles and its button.
   const fs = await import("node:fs");
   const step = fs.readFileSync(new URL("../src/app/characters/builder/steps/SpellsGearStep.tsx", import.meta.url), "utf8").replace(/\r\n/g, "\n");

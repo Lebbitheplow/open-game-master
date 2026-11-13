@@ -1036,6 +1036,7 @@
       "level": 2,
       "school": "transmutation",
       "classes": [
+        "artificer",
         "bard",
         "sorcerer",
         "wizard"
@@ -1284,6 +1285,7 @@
       "level": 3,
       "school": "enchantment",
       "classes": [
+        "artificer",
         "bard",
         "sorcerer",
         "wizard"
@@ -1417,6 +1419,7 @@
       "level": 3,
       "school": "transmutation",
       "classes": [
+        "artificer",
         "druid",
         "ranger",
         "sorcerer",
@@ -1792,6 +1795,7 @@
       "level": 4,
       "school": "transmutation",
       "classes": [
+        "artificer",
         "druid",
         "warlock",
         "wizard"

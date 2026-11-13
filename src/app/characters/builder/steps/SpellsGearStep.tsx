@@ -319,9 +319,9 @@ export function SpellsSection({
         name,
       ].map(schoolOf),
     });
-  // Only the starters the save takes for this class: the bundled list puts
-  // none of the artificer's suggested cantrips on its list, and a star on
-  // one led to a refusal at the save.
+  // Only the starters the save takes for this class: a star on a spell the
+  // list lacks (the artificer's, before the checklist carried its whole
+  // list) led to a refusal at the save.
   const listRule = { third: klass.casterType === "none", spellClass: spellSearchClass, spellPool: loading ? undefined : pool };
   const starterCantrips = (starters?.cantrips ?? []).filter((entry) => spellOnSavedList(entry.n, listRule));
   const starterSpells = (starters?.spells ?? []).filter((entry) => spellOnSavedList(entry.n, listRule));
