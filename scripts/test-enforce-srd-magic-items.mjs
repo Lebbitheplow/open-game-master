@@ -456,6 +456,14 @@ await test("ITM-03: An item's bonus to spell attack rolls and spell save DC is t
   // The numbers a cast reads are the same ones.
   assert.equal(spellAttackFor({ ...WIZARD, equipment: [{ name: "Robe of the Archmagi", qty: 1, equipped: true, attuned: true }] }, "Fire Bolt"), bare.spellAttack + 2);
   assert.equal(spellSaveDcFor({ ...WIZARD, equipment: [{ name: "Robe of the Archmagi", qty: 1, equipped: true, attuned: true }] }, "Fireball"), bare.spellSaveDc + 2);
+  // A tiefling's Hellish Rebuke is cast with Charisma (SRD 5.1, Infernal
+  // Legacy), and the robe's +2 is to every spell's DC and attack: the
+  // racial spell read its own ability and left the robe off.
+  const TIEFLING = { ...WIZARD, race: "tiefling", abilities: { ...WIZARD.abilities, cha: 16 } };
+  const robed = { ...TIEFLING, equipment: [{ name: "Robe of the Archmagi", qty: 1, equipped: true, attuned: true }] };
+  assert.equal(spellSaveDcFor(TIEFLING, "Hellish Rebuke"), 8 + 3 + 3, "the racial spell is cast with Charisma");
+  assert.equal(spellSaveDcFor(robed, "Hellish Rebuke"), 8 + 3 + 3 + 2);
+  assert.equal(spellAttackFor(robed, "Hellish Rebuke"), 3 + 3 + 2);
 });
 
 await test("ITM-04: Mantle of Spell Resistance (mantle-of-spell-resistance): 'You have advantage on saving throws against spells while you wear this cloak'; likewise Robe of the Archmagi, Scarab of Protection and Staff of the Magi", async () => {
