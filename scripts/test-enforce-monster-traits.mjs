@@ -122,7 +122,7 @@ await test("Regeneration counts from the hit points the troll has after what hur
   const guardians = { "spirit guardians": { spell: "Spirit Guardians", source: tank.id, slotLevel: 3 } };
   world.patch(tank.id, { conditions: ["spirit guardians"], conditionMeta: guardians });
   try {
-    for (const [from, left] of [[50, 36], [20, 0]]) {
+    for (const [from, left] of [[50, 36], [20, 10]]) {
       kit.setEnemy(troll.id, { currentHp: from, conditions: [], conditionMeta: {} });
       kit.place(troll.id, 5, 6);
       while (kit.current()?.characterId !== other.id) {
@@ -133,13 +133,49 @@ await test("Regeneration counts from the hit points the troll has after what hur
       world.dice(1, 8, 8, 8);
       assert.equal(kit.endTurn(other.userId), true);
       world.clearDice();
-      // From 20 the guardians drop it; what happens at 0 is the down path's,
-      // but never the 30 the stale row's 20 regenerated to.
-      assert.ok(left ? kit.enemy(troll.id).currentHp === left : kit.enemy(troll.id).currentHp <= 10, `from ${from}: 24 radiant, then at most 10 regenerated (${kit.enemy(troll.id).currentHp})`);
+      // From 20 the guardians drop it: down, not dead (radiant does not stop
+      // Regeneration), and it rises with its 10.
+      assert.equal(kit.enemy(troll.id).currentHp, left, `from ${from}: 24 radiant, then 10 regenerated`);
+      assert.equal(kit.enemy(troll.id).status, "alive");
     }
   } finally {
     world.patch(tank.id, { conditions: [], conditionMeta: {} });
   }
+});
+
+// Damage from a running spell (Spirit Guardians, a zone, Acid Arrow's second
+// burn) went through a shortcut of its own (spell-aura.ts hurtEnemy) that
+// killed at 0 outright: no Undead Fortitude, and a troll it dropped was dead
+// rather than down. It now lands through the enemy damage path.
+const acidMark = (enemy, slotLevel = 2) =>
+  kit.setEnemy(enemy.id, { conditions: ["acid arrow"], conditionMeta: { "acid arrow": { untilTurnEndOf: enemy.id, turnBegun: true, spell: "Acid Arrow", source: tank.id, slotLevel } } });
+
+await test("A running spell's damage that drops a zombie meets its Undead Fortitude (Acid Arrow's second burn).", async () => {
+  const [zombie] = await stage(ZOMBIE);
+  kit.setEnemy(zombie.id, { currentHp: 5 });
+  acidMark(zombie);
+  // 2d4 acid = 8, then the CON save (DC 13) on a 20.
+  world.clearDice();
+  world.dice(4, 4, 20);
+  assert.equal(kit.endTurn(kit.current().userId), true);
+  world.clearDice();
+  assert.equal(kit.enemy(zombie.id).status, "alive", "the burn killed it with no Undead Fortitude");
+  assert.equal(kit.enemy(zombie.id).currentHp, 1);
+});
+
+await test("A troll a running spell drops is down, not dead, and its acid keeps it from rising.", async () => {
+  const [troll] = await stage(TROLL);
+  kit.setEnemy(troll.id, { currentHp: 5 });
+  acidMark(troll);
+  world.clearDice();
+  world.dice(4, 4);
+  assert.equal(kit.endTurn(kit.current().userId), true);
+  world.clearDice();
+  assert.equal(kit.enemy(troll.id).status, "alive", "the burn killed the troll outright");
+  assert.equal(kit.enemy(troll.id).currentHp, 0);
+  // Its next turn starts with the acid since its last: it dies then.
+  nextRound();
+  assert.equal(kit.enemy(troll.id).status, "dead");
 });
 
 await test("Sunlight Sensitivity: a creature with the trait attacks at disadvantage in direct sunlight.", async () => {
