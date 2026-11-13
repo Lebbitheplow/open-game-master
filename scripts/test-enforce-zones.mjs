@@ -140,6 +140,31 @@ await test("Web: a creature that enters the webs during its turn makes a DEX sav
   assert.ok(enemyOf(world, goblin.id).conditions.includes("restrained"), "the web did not hold it");
 });
 
+// A walk a Sentinel's opportunity attack stops ends on the square the swing
+// was taken on (move_token resolves the swing before it moves the token):
+// the squares beyond it were never walked, so the area there asks nothing.
+// The token used to go the whole way first, into the tentacles, with
+// movement to spare.
+await test("A walk a Sentinel's hit stops ends where the swing was taken: the area further on is never entered.", async () => {
+  const { world, sheets: [wizard, warden], enemies: [goblin] } = await board([caster("wizard", "int", ["Black Tentacles"]), { ...FIGHTER, feats: ["Sentinel"] }], { 0: { x: 2, y: 8 }, 1: { x: 17, y: 3 }, e0: { x: 18, y: 2 } });
+  const cast = await world.invoke("use_spell_slot", { characterId: wizard.id, spell: "Black Tentacles", level: 4, atX: 12, atY: 2 });
+  assert.equal(cast.ok, true, cast.error);
+  world.dice(15, 4, 1, 6, 6, 6);
+  const out = await stride(world, goblin.id, 13, 2);
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.match(String(out.result.opportunityAttacks), /Sentinel/, JSON.stringify(out.result));
+  const at = tokenOf(world, goblin.id);
+  assert.ok(Math.max(Math.abs(at.x - 17), Math.abs(at.y - 3)) <= 1, `the stopped goblin walked on out of the warden's reach to (${at.x},${at.y})`);
+  assert.match(out.result.at, new RegExp(`^\\(${at.x},${at.y}\\)$`));
+  assert.match(out.result.note, /stopped at .+ where the opportunity attack was taken/);
+  assert.match(out.result.movementLeft, /: 0 ft/);
+  const now = enemyOf(world, goblin.id);
+  assert.ok(!now.conditions.includes("restrained"), "the tentacles it never reached held it");
+  assert.equal(now.currentHp, 90 - (4 + 3), "the tentacles it never reached hurt it");
+  void warden;
+});
+
 await test("Spirit Guardians: a hostile creature entering the area for the first time on a turn makes a WIS save against 3d8 radiant.", async () => {
   const { world, sheets: [cleric], enemies: [goblin] } = await board([caster("cleric", "wis", ["Spirit Guardians"])], { 0: { x: 5, y: 2 }, e0: { x: 12, y: 2 } });
   const cast = await world.invoke("cast_buff", { characterId: cleric.id, spell: "Spirit Guardians", level: 3 });
