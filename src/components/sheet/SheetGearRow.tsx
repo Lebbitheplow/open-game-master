@@ -2,9 +2,9 @@
 
 import { GameIcon } from "@/components/ui/GameIcon";
 import { cn } from "@/lib/cn";
-import { changeWears, gearWornState, isWornGear, itemStatus } from "@/components/sheet/sheet-state";
+import { WIELD_LABEL, changeWears, gearWornState, isWeaponRow, isWornGear, itemStatus } from "@/components/sheet/sheet-state";
 import { armorChangeMinutes } from "@/lib/dm/don-doff";
-import { matchArmor } from "@/lib/srd/armor";
+import { guessStands, matchArmor } from "@/lib/srd/armor";
 import { matchMagicItem } from "@/lib/srd/magic-items";
 import { swapQuestion, wearConflict, type WearConflict } from "@/lib/srd/wear-slots";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
@@ -56,6 +56,22 @@ export function SheetGearRow({
   const armorLocked = inCombat && isArmor && !isShield;
   // A shield takes the action, on the character's own turn.
   const shieldLocked = inCombat && isShield && !myTurn;
+  // A weapon reads "In hand" or "Packed", as the Hand's cards do, so a
+  // player can say which is out before a fight (held-default.ts). In one,
+  // drawing or stowing it is the turn's free object interaction, on their
+  // own turn; while nobody has said, the first change is free.
+  const isWeapon = !isArmor && isWeaponRow(item);
+  const weaponLocked = inCombat && isWeapon && !myTurn;
+  const weaponHint = !isWeapon
+    ? undefined
+    : weaponLocked
+      ? "Drawing or stowing a weapon happens on your own turn; it is not your turn."
+      : guessStands(sheet.equipment)
+        ? "Nobody has said which weapon is out yet, so the first change is free."
+        : inCombat
+          ? "Drawing or stowing a weapon takes your free object interaction, on your own turn."
+          : undefined;
+  const wearLabel = isWeapon ? WIELD_LABEL[worn ? "in-hand" : "stowed"] : worn ? "worn" : "wear";
   const status = itemStatus(sheet, item);
   // Only an item that asks for attunement offers it; plain
   // armor and "+1" gear work without one, and the server
@@ -101,12 +117,15 @@ export function SheetGearRow({
       {isWornGear(item) ? (
       <button
         type="button"
-        disabled={busy || armorLocked || shieldLocked || dead}
+        disabled={busy || armorLocked || shieldLocked || weaponLocked || dead}
         aria-busy={busy}
+        aria-label={isWeapon ? `${item.name}: ${wearLabel}. ${worn ? "Pack it away" : "Take it in hand"}.` : undefined}
         title={
           dead
             ? `${sheet.name} is dead and cannot change what they wear or are attuned to.`
-            : !inCombat
+            : weaponHint
+              ? weaponHint
+              : !inCombat
               ? // What the route will charge the clock (don-doff.ts), before the press.
                 armorChangeMinutes(sheet.equipment, { [item.name]: { equipped: !worn } }).lines.join(" ") || undefined
               : !isArmor
@@ -119,13 +138,14 @@ export function SheetGearRow({
         }
         onClick={() => onGear({ equipped: !worn })}
         className={cn(
-          "motion-press shrink-0 rounded border px-1.5 py-0.5",
+          // A finger-sized target on a phone, the size of the kit's controls.
+          "motion-press min-h-10 min-w-10 shrink-0 rounded border px-1.5 py-0.5 disabled:opacity-40 sm:min-h-0 sm:min-w-0",
           worn
             ? "border-amber-700/70 bg-amber-950/40 text-amber-200"
             : "border-stone-700 text-stone-400",
         )}
       >
-        {worn ? "worn" : "wear"}
+        <span key={wearLabel} className="motion-pop inline-block">{wearLabel}</span>
       </button>
       ) : null}
       {attunable ? (
@@ -145,7 +165,7 @@ export function SheetGearRow({
         }
         onClick={() => onGear({ attuned: !(item.attuned || item.attuning) })}
         className={cn(
-          "motion-press shrink-0 rounded border px-1.5 py-0.5 disabled:opacity-40",
+          "motion-press min-h-10 min-w-10 shrink-0 rounded border px-1.5 py-0.5 disabled:opacity-40 sm:min-h-0 sm:min-w-0",
           item.attuned
             ? "border-sky-800/70 bg-sky-950/40 text-sky-200"
             : "border-stone-700 text-stone-400",

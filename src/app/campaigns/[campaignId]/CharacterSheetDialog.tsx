@@ -119,8 +119,9 @@ export function CharacterSheetDialog({
   const derived = computeSheetDerived(sheet);
   const armor = acBreakdownFor(sheet);
   const attunedCount = sheet.equipment.filter((item) => item.attuned).length;
-  // Only gear worth a toggle: armor, shields, magic and anything with a
-  // place on the body (src/components/sheet/sheet-state.ts wearableGear).
+  // Only gear worth a toggle: armor, shields, magic, weapons (In hand or
+  // Packed) and anything with a place on the body
+  // (src/components/sheet/sheet-state.ts wearableGear).
   const wearable = wearableGear(sheet.equipment);
   const magic = magicItemRiders(sheet.equipment, sheet);
   // Carried weight is always worth showing once the pack has weights on it;
@@ -196,10 +197,11 @@ export function CharacterSheetDialog({
         setPendingWear({ name: conflict.item, conflict, change: { equipped: true } });
       } else if (!response.ok) {
         setRefusal({ text: typeof data?.error === "string" ? data.error : "That change was refused.", at });
-      } else if (typeof data?.timePassed === "string") {
+      } else if (typeof data?.timePassed === "string" || typeof data?.note === "string") {
         // Out of a fight armor takes minutes to put on or take off, and the
-        // route moved the table's clock by them (src/lib/dm/don-doff.ts).
-        setTimeNote(data.timePassed);
+        // route moved the table's clock by them (src/lib/dm/don-doff.ts); a
+        // first weapon change from the game's pick says what it put away.
+        setTimeNote([data.note, data.timePassed].filter((line) => typeof line === "string").join(" "));
       }
     } catch {
       setRefusal({ text: "The change did not reach the server.", at });

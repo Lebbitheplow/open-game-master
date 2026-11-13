@@ -8,6 +8,7 @@ import { cardArtwork } from "@/lib/battlemap/card-art";
 import type { HandCard, HandCardType, HandCost } from "@/lib/battlemap/hand";
 import { previewRows, type HandAim, type PreviewRow } from "@/lib/battlemap/hand-play";
 import { spellGlyphLabel, spellGlyphSrc, targetLines, type SpellGlyph } from "@/lib/battlemap/spell-glyph-logic";
+import { WIELD_LABEL as SHEET_WIELD_LABEL } from "@/components/sheet/sheet-state";
 
 // One card of the Hand and the outcome preview that floats over it. Styles
 // are in src/app/styles/hand.css; the tilt, the sheen and the art parallax
@@ -50,10 +51,8 @@ const COST_SHORT: Record<HandCost, string> = {
 // is one button whose label is all it hears.
 // A weapon card's place (HandCard.wield), in the words the More sheet and the
 // weapon picker use too.
-export const WIELD_LABEL: Record<NonNullable<HandCard["wield"]>, string> = {
-  "in-hand": "In hand",
-  stowed: "Packed",
-};
+// The words live with the sheet's own toggle, which says the same.
+export const WIELD_LABEL: Record<NonNullable<HandCard["wield"]>, string> = SHEET_WIELD_LABEL;
 const WIELD_SPOKEN: Record<NonNullable<HandCard["wield"]>, string> = {
   "in-hand": "in hand",
   stowed: "packed away",
