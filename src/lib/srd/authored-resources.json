@@ -2620,7 +2620,7 @@
    "proficiency": 1,
    "recharge": "long",
    "action": "bonus",
-   "guidance": "A bonus action: the rabbitfolk leaps up to 5 feet times their proficiency bonus without provoking opportunity attacks, if their speed is above 0. Uses equal to the proficiency bonus, back on a long rest."
+   "guidance": "A bonus action: the rabbitfolk leaps to the square named (x and y), up to 5 feet times their proficiency bonus in a straight line, drawing no opportunity attacks and spending none of the turn's movement, if their speed is above 0. Uses equal to the proficiency bonus, back on a long rest. The server moves the token."
   },
   {
    "id": "race_shifting",

@@ -16,6 +16,12 @@
 //     end of a turn on which they moved 0 feet (mt-species-turns.ts).
 //   - Celestial Revelation (aasimar): the form named, a bonus action, a
 //     minute; Necrotic Shroud's saves as it comes down.
+//   - Rabbit Hop (rabbitfolk): a bonus action leaps the rabbitfolk to the
+//     square named, up to 5 feet times the proficiency bonus in a straight
+//     line, drawing no opportunity attack and spending none of the turn's
+//     movement, while their speed is above 0. With no square named (a Hand
+//     card) the use is paid and the leap waits on move_token, as a feature's
+//     teleport does (feature-teleport.ts).
 //   - Tainted Blood (a mutated derro's Otherworldly Influence, read from its
 //     pack text by species-prose-logic.ts): a reaction to piercing or
 //     slashing damage just taken, once a short rest; the derro and each
@@ -39,7 +45,7 @@ import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { getDmTurn } from "@/lib/db/dm-turns";
-import { computeSheetDerived } from "@/lib/srd";
+import { computeSheetDerived, speedFor } from "@/lib/srd";
 import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { textKey } from "@/lib/language/text-logic";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
@@ -49,8 +55,16 @@ import { freshLastHit, writeLastHit, type LastHit } from "@/lib/dm/last-hit";
 import { canReactNow } from "@/lib/dm/chronal-shift";
 import { markReactionUsed } from "@/lib/dm/turn-budget";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
+import { getBattleMapForEncounter, getTokenByRef, listTokens, moveToken } from "@/lib/db/battle-maps";
+import { footprintLookup, occupiedTiles } from "@/lib/battlemap/view";
+import { planLongJump } from "@/lib/srd/jump";
+import { conditionSpeed } from "@/lib/srd/condition-effects";
+import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
+import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
+import { creditFeatureTeleport } from "@/lib/dm/feature-teleport";
 
-export type SpeciesSpendArgs = { variant?: string };
+// `x`, `y`: the square a leap lands on (Rabbit Hop).
+export type SpeciesSpendArgs = { variant?: string; x?: number; y?: number };
 
 export function speciesTraitSpend(
   campaign: Campaign,
@@ -69,6 +83,7 @@ export function speciesTraitSpend(
   // A rock gnome's clockwork devices (rock-gnome-tinker.ts).
   if (name === "tinker" && holdsTinker(sheet)) return tinker(campaign, sheet, args.variant);
   if (name === "tainted blood" && sheet.resources?.[TAINTED_BLOOD]) return taintedBlood(campaign, turnId, sheet);
+  if (name === "rabbit hop" && sheet.resources?.[RABBIT_HOP]) return rabbitHop(campaign, sheet, args);
   const form = shiftFormOf(sheet);
   if (name === "shifting" && form && sheet.resources?.[SHIFTING_COUNTER]) return shifting(campaign, sheet, form);
   return null;
@@ -378,5 +393,83 @@ function taintedBlood(campaign: Campaign, turnId: string, sheet: CharacterSheet)
     left: `${state.max - state.used - 1}/${state.max}`,
     refills: "on a short or long rest",
     applied: [`${sheet.name}'s blood sprays from the wound: ${amount} necrotic damage to ${struck.join(", ")}.`],
+  };
+}
+
+// ---- Rabbit Hop ----
+
+const RABBIT_HOP = "race_rabbit_hop";
+
+function rabbitHop(campaign: Campaign, sheet: CharacterSheet, args: SpeciesSpendArgs): ToolResult {
+  const state = sheet.resources[RABBIT_HOP];
+  if (state.used >= state.max) {
+    return { error: `${sheet.name} has no use of Rabbit Hop left until a long rest. Nothing was spent.`, refused: "rules" };
+  }
+  const encounter = getActiveEncounter(campaign.id);
+  const map = encounter ? getBattleMapForEncounter(encounter.id) : null;
+  const token = map ? getTokenByRef(map.id, sheet.id) : null;
+  if (conditionSpeed(sheet.conditions, speedFor(sheet)) <= 0) {
+    return { error: `${sheet.name}'s speed is 0, and Rabbit Hop needs a speed above 0. Nothing was spent.`, refused: "rules" };
+  }
+  const feet = 5 * computeSheetDerived(sheet).proficiencyBonus;
+  if (!encounter || !map || !token || args.x === undefined || args.y === undefined) {
+    const price = priceTheAction(sheet, encounter, "Rabbit Hop", "bonus");
+    if ("error" in price) {
+      return toolError(price);
+    }
+    price.commit();
+    patchSheet(sheet.id, { resources: { ...sheet.resources, [RABBIT_HOP]: { max: state.max, used: state.used + 1 } } });
+    creditFeatureTeleport(sheet.id, "Rabbit Hop", feet);
+    publishSheet(campaign, sheet.id);
+    return {
+      ok: true,
+      resource: "Rabbit Hop",
+      cost: "their bonus action",
+      left: `${state.max - state.used - 1}/${state.max}`,
+      refills: "on a long rest",
+      applied: [
+        token
+          ? `${sheet.name} leaps up to ${feet} feet, drawing no opportunity attacks: move their token with move_token, teleport true, spell "Rabbit Hop" and casterCharacterId ${sheet.id} (or spend it with x and y next time).`
+          : `${sheet.name} leaps up to ${feet} feet; with no battle map, narrate where they land.`,
+      ],
+    };
+  }
+  const enemiesById = new Map(listEnemies(encounter.id).map((enemy) => [enemy.id, enemy]));
+  // A straight leap of `feet`, over the squares under it, as a jump goes
+  // (src/lib/srd/jump.ts), with none of the turn's movement spent.
+  const plan = planLongJump({
+    terrain: map.terrain,
+    width: map.width,
+    height: map.height,
+    occupied: occupiedTiles(map, listTokens(map.id), token, footprintLookup(enemiesById)),
+    from: token,
+    to: { x: args.x, y: args.y },
+    strength: 0,
+    extraFeet: feet,
+    runningStart: true,
+    budgetTiles: Number.MAX_SAFE_INTEGER,
+    name: sheet.name,
+  });
+  if (!plan.ok) {
+    return { error: `Rabbit Hop leaps up to ${feet} feet in a straight line: ${plan.error} Nothing was spent.`, retry: true };
+  }
+  const price = priceTheAction(sheet, encounter, "Rabbit Hop", "bonus");
+  if ("error" in price) {
+    return toolError(price);
+  }
+  price.commit();
+  patchSheet(sheet.id, { resources: { ...sheet.resources, [RABBIT_HOP]: { max: state.max, used: state.used + 1 } } });
+  // The leap draws no opportunity attack, and is not the turn's movement.
+  moveToken(token.id, args.x, args.y, token.movedThisRound);
+  releaseGrapplesOutOfReach(campaign);
+  publishBattleMapUpdate(campaign.id);
+  publishSheet(campaign, sheet.id);
+  return {
+    ok: true,
+    resource: "Rabbit Hop",
+    cost: "their bonus action",
+    left: `${state.max - state.used - 1}/${state.max}`,
+    refills: "on a long rest",
+    applied: [`${sheet.name} leaps ${plan.feet} feet to (${args.x},${args.y}), drawing no opportunity attacks.`],
   };
 }

@@ -2928,7 +2928,7 @@
    {
     "c": "Rabbit Hop (a bonus-action leap of 5 feet times your proficiency bonus, as many times a long rest as your proficiency bonus)",
     "is": "held",
-    "by": "src/lib/srd/authored-resources.json race_rabbit_hop (proficiency-bonus uses, long rest), spent by use_resource",
+    "by": "src/lib/srd/authored-resources.json race_rabbit_hop (proficiency-bonus uses, long rest), spent by use_resource through src/lib/dm/mt-species-spends.ts rabbitHop (the leap to the square named, 5 feet times the proficiency bonus, no opportunity attack)",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.rabbitfolk.rabbit-hop"
    },
    {
