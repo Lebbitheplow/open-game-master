@@ -216,6 +216,24 @@ await test("Reliable Talent: a 9 or lower counts as 10 on a proficient check onl
   assert.equal(save.result.total, 3 + abilityMod(16) + pb);
 });
 
+// SRD 5.1, Reliable Talent: "Whenever you make an ability check that lets you
+// add your proficiency bonus". A check with a tool the rogue is trained in is
+// one: a thieves' tools check on a 2 stayed a 2.
+await test("Reliable Talent: a check with a tool the rogue is trained in counts a 9 or lower as 10", async () => {
+  reset();
+  const pb = proficiencyBonus(11);
+  const before = world.sheet(rogue.id).proficiencies;
+  world.patch(rogue.id, { proficiencies: { ...before, tools: ["Thieves' Tools"] } });
+  try {
+    const trained = await ask(rogue, { kind: "ability_check", ability: "dex", tool: "Thieves' Tools" }, [2]);
+    assert.equal(trained.result.total, 10 + abilityMod(16) + pb, JSON.stringify(trained.result.conditionEffects));
+    const untrained = await ask(rogue, { kind: "ability_check", ability: "dex", tool: "Navigator's Tools" }, [2]);
+    assert.equal(untrained.result.total, 2 + abilityMod(16));
+  } finally {
+    world.patch(rogue.id, { proficiencies: before });
+  }
+});
+
 await test("a lasting effect is added to a raw ability check and a saving throw", async () => {
   reset();
   const set = await world.invoke("set_effect", {

@@ -615,9 +615,12 @@ function resolveUnfloored(
     const derived = computeSheetDerived(sheet);
     // Reliable Talent: a proficient check treats a d20 face of 9 or lower
     // as a 10, via the dice engine's floor suffix.
+    // A skill a feature trains (Beguiling Influence) or lends (Knowledge of
+    // the Ages) adds the bonus too, as the derived skill's parts say.
     const proficientSkill =
       sheet.proficiencies.skills.includes(skill.id) ||
-      (sheet.proficiencies.expertise ?? []).includes(skill.id);
+      (sheet.proficiencies.expertise ?? []).includes(skill.id) ||
+      (derived.parts.skills[skill.id] ?? []).some((part) => part.label === "proficiency" || part.label === "expertise");
     const reliable =
       proficientSkill &&
       Boolean(
@@ -763,17 +766,24 @@ function resolveUnfloored(
       args.kind === "ability_check" && args.ability === "str"
         ? strengthCheckFloor(sheet, computeAbilityScore(sheet, "str"), modifier)
         : null;
+    // Reliable Talent: "Whenever you make an ability check that lets you add
+    // your proficiency bonus" (SRD 5.1, Rogue), a tool the rogue is trained
+    // with among them. Only skill checks read it, so a rogue's thieves'
+    // tools check on a 2 stayed a 2.
+    const reliable = Boolean(tool) && Boolean((defense as { reliableTalent?: boolean }).reliableTalent);
+    const floor = Math.max(reliable ? 10 : 0, mightFloor ?? 0);
     const abilityNotes = [
       ...(conditionNotes ?? []),
       ...(halfBonus && !tool ? [`half proficiency on ability checks: +${halfBonus}`] : []),
       ...(tool ? [tool.note] : []),
+      ...(reliable ? ["Reliable Talent: a d20 face below 10 counts as 10"] : []),
       ...(auraBonus && extras?.saveNote ? [extras.saveNote] : []),
       ...(extras?.effectNote ? [extras.effectNote] : []),
       ...(mightFloor ? ["Indomitable Might: the check totals at least their Strength score"] : []),
     ];
     const luckyBase = withLuck(d20Expression(modifier, advantage)).replace(
       /^(\d+d20(?:k[hl]\d+)?)/,
-      `$1${lucky ? "r1" : ""}${mightFloor ? `f${mightFloor}` : ""}`,
+      `$1${lucky ? "r1" : ""}${floor > 1 ? `f${floor}` : ""}`,
     );
     return {
       expression: `${luckyBase}${bonusDie}`,
