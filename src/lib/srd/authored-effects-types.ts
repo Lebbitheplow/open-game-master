@@ -998,6 +998,8 @@ export type SpendDoes =
   // Court's procession, Anchor of the Living's hold).
   // `target`: what its Hand card is aimed at (src/lib/battlemap/hand-subclass.ts).
   | { kind: "mystery"; effect: string; target?: "enemy" | "ally" }
+  // The creator audit's second genre pass (src/lib/dm/genre-cc-a-spends.ts).
+  | { kind: "genre_cc"; play: "crown" | "rat_tide" }
   // An area on the board (src/lib/dm/genre-b-zones.ts): Gear Swarm, Dissolving Mist.
   | ({ kind: "zone" } & GenreZoneSpec)
   // The steampunk classes' own spends (src/lib/srd/genre-b-steampunk-types.ts,

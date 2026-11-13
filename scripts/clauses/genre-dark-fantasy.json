@@ -842,21 +842,37 @@
    },
    {
     "c": "a 20-ft radius circle for 10 minutes",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_quarantine_ring#HANDS_BACK",
-    "recorded_as": "spends-hands-back-counter-dark-fantasy-quarantine-ring"
+    "run": {
+     "k": "cc_zone",
+     "res": "Quarantine Ring",
+     "spell": "Quarantine Ring",
+     "rounds": 100,
+     "edgeFt": 20
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts Quarantine Ring (a zone spend), the area src/lib/battlemap/zones-genre-cc-a.ts quarantine ring (a 20-foot sphere on the doctor for 100 rounds), laid by src/lib/dm/genre-b-zones.ts layGenreZone",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Quarantine Ring#1"
    },
    {
     "c": "enemies treat it as difficult terrain and take 2d6 poison entering",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_quarantine_ring#HANDS_BACK",
-    "same_probe_as": 1
+    "run": {
+     "k": "cc_zone_slow",
+     "res": "Quarantine Ring",
+     "spell": "Quarantine Ring"
+    },
+    "is": "held",
+    "by": "src/lib/battlemap/zones-genre-cc-a.ts quarantine ring (halvesHostile, read by src/lib/battlemap/zones.ts zoneStepCost; the trigger on entering, 2d6 poison, read by src/lib/dm/zone-triggers.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Quarantine Ring#2"
    },
    {
     "c": "CON save halves",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_quarantine_ring#HANDS_BACK",
-    "same_probe_as": 2
+    "run": {
+     "k": "cc_zone_enter",
+     "res": "Quarantine Ring"
+    },
+    "is": "held",
+    "by": "src/lib/battlemap/zones-genre-cc-a.ts quarantine ring trigger (CON save, half on a success), run by src/lib/dm/zone-triggers.ts as an enemy enters",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Quarantine Ring#3"
    }
   ]
  },
@@ -1696,33 +1712,35 @@
    {
     "c": "a 20-ft radius garden of black roses for 1 minute",
     "run": {
-     "k": "garden",
-     "part": "zone"
+     "k": "cc_zone",
+     "res": "Garden of Grief",
+     "spell": "Garden of Grief",
+     "rounds": 10,
+     "edgeFt": 20
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Garden of Grief#1",
-    "observed": "one heal of 1d6 and nothing that lasts: no zone, no effect on the holder, nothing to tick each turn for a minute",
-    "where": "src/lib/classes/resources.json dark_fantasy_garden_of_grief (a one-time heal fx) and src/lib/dm/resource-tools.ts: no zone, no tick, no slow",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts Garden of Grief (a zone spend), the area src/lib/battlemap/zones-genre-cc-a.ts garden of grief (a 20-foot sphere on the knight for 10 rounds)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Garden of Grief#1"
    },
    {
     "c": "allies in it regain 1d6 HP per turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "follows clause #1 (gap grave_knight::Garden of Grief#1), which fails: the spend heals once and leaves nothing that lasts; with nothing on the table there is no state this clause could be read on",
-    "same_probe_as": 1
+    "run": {
+     "k": "cc_garden_heal"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-turns.ts gardenHeals, called as each turn starts (src/lib/dm/condition-tick.ts startTurnConditions)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Garden of Grief#2"
    },
    {
     "c": "enemies are slowed",
     "run": {
-     "k": "garden",
-     "part": "slow"
+     "k": "cc_zone_slow",
+     "res": "Garden of Grief",
+     "spell": "Garden of Grief"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Garden of Grief#3",
-    "observed": "no enemy in the garden is slowed",
-    "where": "src/lib/classes/resources.json dark_fantasy_garden_of_grief (a one-time heal fx) and src/lib/dm/resource-tools.ts: no zone, no tick, no slow",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/battlemap/zones-genre-cc-a.ts garden of grief (halvesHostile, read by src/lib/battlemap/zones.ts zoneStepCost)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Garden of Grief#3"
    }
   ]
  },
@@ -2963,21 +2981,39 @@
    },
    {
     "c": "a swarm floods a 15-ft cube",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_rat_tide#HANDS_BACK",
-    "recorded_as": "spends-hands-back-counter-dark-fantasy-rat-tide"
+    "run": {
+     "k": "cc_zone",
+     "res": "Rat Tide",
+     "spell": "Rat Tide",
+     "rounds": 10,
+     "cells": 9,
+     "at": true,
+     "place": [
+      11,
+      5
+     ]
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-spends.ts ratTide, laying src/lib/battlemap/zones-genre-cc-a.ts rat tide (a 15-foot cube) through src/lib/dm/genre-b-zones.ts layGenreZone",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Rat Tide#1"
    },
    {
     "c": "difficult terrain, and creatures inside save (DEX) or take 2d6 piercing and are distracted",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_rat_tide#HANDS_BACK",
-    "same_probe_as": 1
+    "run": {
+     "k": "cc_rat_tide"
+    },
+    "is": "held",
+    "by": "src/lib/battlemap/zones-genre-cc-a.ts rat tide (difficult terrain; DEX save or 2d6 piercing and distracted by rats, caught when laid and on entering), run by src/lib/dm/zone-triggers.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Rat Tide#2"
    },
    {
     "c": "disadvantage on their next attack",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_rat_tide#HANDS_BACK",
-    "same_probe_as": 2
+    "run": {
+     "k": "cc_rat_tide"
+    },
+    "is": "held",
+    "by": "src/lib/srd/genre-cc-a-conditions.ts distracted by rats (attackDisadvantage, consumedBy attack)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Rat Tide#3"
    }
   ]
  },
@@ -3110,12 +3146,12 @@
    },
    {
     "c": "also applies to creatures adjacent to your swarm",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "probe": "none of its own: the swarm is no creature on the board; the hook probe now answers for clause #0",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "run": {
+     "k": "cc_gutter_swarm"
+    },
+    "is": "held",
+    "by": "src/lib/dm/pc-attack-damage.ts (Gutter Fighting's not-acted test also holds beside the swarm, src/lib/dm/genre-cc-a-turns.ts besideSwarm)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Greater Gutter Fighting#1"
    }
   ]
  },
@@ -3190,9 +3226,21 @@
    },
    {
     "c": "its cube grows to 20 ft",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the hook probe passes only on the Rat Tide counter (src/lib/classes/resources.json dark_fantasy_rat_tide: uses and an enemy_save fx of 2d6 with no area); no row carries the cube's size, and an area pick over the board was not staged"
+    "run": {
+     "k": "cc_zone",
+     "res": "Rat Tide",
+     "spell": "Rat Tide",
+     "rounds": 10,
+     "cells": 16,
+     "at": true,
+     "place": [
+      11,
+      5
+     ]
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-spends.ts ratTide (upgrade: Rat Tide (2 uses) lays rat tide (20 ft), src/lib/battlemap/zones-genre-cc-a.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Rat Tide (2 uses)#1"
    }
   ]
  },
@@ -3204,15 +3252,12 @@
   "clauses": [
    {
     "c": "While your swarm is active, enemies within 10 ft of it cannot take reactions",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "cc_teeth"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::The Walls Have Teeth#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-turns.ts refreshTeeth (the walls have teeth, noReactions, src/lib/srd/genre-cc-a-conditions.ts), run as the swarm is laid and as each turn starts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::The Walls Have Teeth#0"
    }
   ]
  },
@@ -3319,15 +3364,12 @@
   "clauses": [
    {
     "c": "You and your companion have advantage on attacks against a creature the other is adjacent to",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
     "run": {
-     "k": "hook"
+     "k": "cc_pack_hunting"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Pack Hunting#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-vermin.ts packHunting, read by src/lib/dm/authored-hooks.ts authoredAttackSituation",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Pack Hunting#0"
    }
   ]
  },
@@ -3346,17 +3388,21 @@
    },
    {
     "c": "HP 5 x level, bite 2d6 + DEX, and its bite forces a CON save against a weakening bite",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
-    "same_probe_as": 0
+    "run": {
+     "k": "cc_grey_tide"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-a-summons.ts direRatForm (the grown bite's CON save, an onHit the summoned creature's attack reads)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Grey Tide Rising#1"
    },
    {
     "c": "disadvantage on STR checks 1 minute",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
-    "same_probe_as": 1
+    "run": {
+     "k": "cc_grey_tide"
+    },
+    "is": "held",
+    "by": "src/lib/srd/genre-cc-a-conditions.ts weakening bite (disadvantage on STR checks), laid for 10 rounds",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Grey Tide Rising#2"
    }
   ]
  },
@@ -3380,16 +3426,21 @@
    },
    {
     "c": "for 1 minute every enemy within 30 ft is swarmed",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs ruling counter:dark_fantasy_the_crown_descends#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-dark-fantasy-the-crown-descends",
-    "ruling": "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\""
+    "run": {
+     "k": "cc_crown"
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts The Crown Descends, resolved by src/lib/dm/genre-cc-a-spends.ts crown (swarmed on every enemy within 30 feet for 10 rounds)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::The Crown Descends#1"
    },
    {
     "c": "half speed, no reactions, and 1d6 piercing at the start of each of its turns",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs ruling counter:dark_fantasy_the_crown_descends#GUIDANCE_ONLY",
-    "same_probe_as": 1
+    "run": {
+     "k": "cc_crown"
+    },
+    "is": "held",
+    "by": "src/lib/srd/genre-cc-a-conditions.ts swarmed (speedMultiplier 0.5, noReactions), and its 1d6 piercing as each of the creature's turns starts (src/lib/dm/genre-cc-a-turns.ts crownBites)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::The Crown Descends#2"
    }
   ]
  }
