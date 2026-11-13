@@ -131,6 +131,16 @@ const ICON_ALIASES: Record<string, { kind: IconKind; slug: string }> = {
   "feature/alter-memories": { kind: "spell", slug: "modify-memory" },
   // Controlled Chaos's pick of two surges wears its kin's: Tides of Chaos.
   "feature/controlled-chaos": { kind: "feature", slug: "tides-of-chaos" },
+  // The species' and their feats' cards (the cc1113 creator audit) wear
+  // their kin's paintings until they have their own: a rabbitfolk's hop the
+  // jump, a shifter's form the druid's change, a gnome's Fade Away the
+  // vanishing, a dragonborn's roar the fear it casts, and the hunter's party
+  // wardings (Stake and Salt) the warding spell.
+  "feature/rabbit-hop": { kind: "spell", slug: "jump" },
+  "feature/shifting": { kind: "feature", slug: "wild-shape" },
+  "feature/fade-away": { kind: "spell", slug: "invisibility" },
+  "feature/dragon-fear": { kind: "spell", slug: "fear" },
+  "feature/stake-and-salt": { kind: "spell", slug: "protection-from-evil-and-good" },
 };
 
 export function iconPath(kind: IconKind, key: string): string {
