@@ -105,5 +105,19 @@ await test(
   },
 );
 
+await test("A07 The builder's spell step offers the spells a picked patron option adds: a Genie warlock's kind, an Animal Lords warlock's lord.", async () => {
+  const problems = [];
+  for (const [subclass, kind, option, spell] of [
+    ["The Genie", "genie_kind", "Efreeti", "Burning Hands"],
+    ["Animal Lords", "animal_lord", "Toad King", "Fog Cloud"],
+  ]) {
+    const { fields } = await sweep.library.fill(sweep.library.fresh({ level: 1, classId: "warlock", subclass }));
+    const optionPicks = [...fields.optionPicks.filter((name) => !name.startsWith(optionFeatureName(kind, ""))), optionFeatureName(kind, option)];
+    const { derived } = sweep.library.derive({ ...fields, optionPicks });
+    if (!(derived.spellWider?.spells ?? []).includes(spell)) problems.push(`${subclass} (${option}): the builder offers ${JSON.stringify(derived.spellWider?.spells)}`);
+  }
+  assert.deepEqual(problems, []);
+});
+
 sweep.close();
 finish();

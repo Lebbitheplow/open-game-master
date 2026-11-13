@@ -304,6 +304,8 @@ function extraTableNamed(classId: string, stored: string, extras?: SubclassExtra
     // A workshop subclass's additions to its class's list, read where a
     // patron's are (subclassExpandedSpellsFor, issue #833).
     ...(found.expanded ? { expanded: found.expanded } : {}),
+    // A pack subclass's spells by the option picked (Animal Lords' affinity).
+    ...(found.choiceSpells ? { choiceSpells: found.choiceSpells } : {}),
   };
 }
 

@@ -34,6 +34,10 @@ export type ExtraSubclass = {
   // third-caster.ts). Read only for a class that casts nothing of its own
   // (src/lib/srd/features.ts subclassCastingProfileFor).
   castingProfile?: ThirdCasterProfile;
+  // Spells that hang off an option the player picks (Tome of Heroes'
+  // Animal Lords: the air, earth or water column of the lord's affinity),
+  // read as the bundled tables' choiceSpells are (src/lib/srd/features.ts).
+  choiceSpells?: { feature: string; expanded?: boolean; options: Record<string, Record<string, string[]>> };
   // What its player picks at a class level: a bloodline, an element (src/lib/
   // content/subclass-choices.ts, issue #833). A workshop subclass's only.
   choices?: SubclassChoice[];
@@ -134,30 +138,64 @@ function spellCellNames(cell: string): string[] {
 // tables are a choice too (the Circle of the Land's terrains), and give
 // none. A third caster's slots table ("Cantrips Known") is no spell list.
 // Without this a pack domain, oath or patron granted none of its spells.
-export function proseSpellTables(desc: string): { spells?: Record<string, string[]>; expanded?: Record<string, string[]> } {
+export function proseSpellTables(desc: string): {
+  spells?: Record<string, string[]>;
+  expanded?: Record<string, string[]>;
+  choiceSpells?: ExtraSubclass["choiceSpells"];
+} {
   const lines = String(desc ?? "").split("\n");
-  const found: Array<{ byspell: boolean; levels: Record<string, string[]> }> = [];
+  const found: Array<{ byspell: boolean; levels: Record<string, string[]>; columns: Record<string, Record<string, string[]>> }> = [];
+  const cells = (line: string) => line.trim().replace(/^\|/, "").replace(/\|\s*$/, "").split("|").map((cell) => cell.trim());
+  // A table that sorts named options by an affinity ("| Animal Lord |
+  // Affinity | ... |", "| Bat King | Air | ... |"): the pick the affinity
+  // columns of the spell table hang off.
+  let affinity: { feature: string; of: Record<string, string> } | null = null;
   for (let at = 0; at < lines.length; at += 1) {
-    const cells = (line: string) => line.trim().replace(/^\|/, "").replace(/\|\s*$/, "").split("|").map((cell) => cell.trim());
     if (!/^\s*\|/.test(lines[at]) || !/^\s*\|[\s|:-]+$/.test(lines[at + 1] ?? "")) continue;
     const head = cells(lines[at]);
+    const sorts = head.findIndex((cell, index) => index > 0 && /^affinity$/i.test(cell));
+    if (sorts > 0 && head[0]) {
+      const of: Record<string, string> = {};
+      for (let row = at + 2; row < lines.length && /^\s*\|/.test(lines[row]); row += 1) {
+        const line = cells(lines[row]);
+        if (line[0] && line[sorts]) of[line[0]] = line[sorts];
+      }
+      affinity = { feature: head[0], of };
+      continue;
+    }
     if (!/\blevel\b/i.test(head[0] ?? "") || head.some((cell) => /known|slots|max\.? cr/i.test(cell))) continue;
     const column = head.findIndex((cell, index) => index > 0 && /\bspells\b/i.test(cell));
     if (column < 0) continue;
     const byspell = /^spell level$/i.test(head[0]);
     const levels: Record<string, string[]> = {};
+    // Further spell columns named for an affinity ("Air Spells").
+    const extra = head.flatMap((cell, index) => {
+      const named = /^(\w+) spells$/i.exec(cell);
+      return index > column && named ? [{ index, key: named[1].toLowerCase() }] : [];
+    });
+    const columns: Record<string, Record<string, string[]>> = {};
     for (let row = at + 2; row < lines.length && /^\s*\|/.test(lines[row]); row += 1) {
       const line = cells(lines[row]);
       const ordinal = /^(\d{1,2})/.exec(line[0] ?? "");
-      const names = spellCellNames(line[column] ?? "");
-      if (!ordinal || !names.length) continue;
+      if (!ordinal) continue;
       const level = byspell ? Number(ordinal[1]) * 2 - 1 : Number(ordinal[1]);
-      if (level >= 1 && level <= 20) (levels[String(level)] ??= []).push(...names);
+      if (level < 1 || level > 20) continue;
+      const names = spellCellNames(line[column] ?? "");
+      if (names.length) (levels[String(level)] ??= []).push(...names);
+      for (const { index, key } of extra) {
+        const more = spellCellNames(line[index] ?? "");
+        if (more.length) ((columns[key] ??= {})[String(level)] ??= []).push(...more);
+      }
     }
-    if (Object.keys(levels).length) found.push({ byspell, levels });
+    if (Object.keys(levels).length) found.push({ byspell, levels, columns });
   }
   if (found.length !== 1) return {};
-  return found[0].byspell ? { expanded: found[0].levels } : { spells: found[0].levels };
+  const [table] = found;
+  const options = affinity
+    ? Object.fromEntries(Object.entries(affinity.of).flatMap(([name, kind]) => (table.columns[kind.toLowerCase()] ? [[name, table.columns[kind.toLowerCase()]]] : [])))
+    : {};
+  const choiceSpells = affinity && Object.keys(options).length ? { choiceSpells: { feature: affinity.feature, expanded: table.byspell, options } } : {};
+  return { ...(table.byspell ? { expanded: table.levels } : { spells: table.levels }), ...choiceSpells };
 }
 
 function homebrewLevels(raw: unknown): Record<string, SubclassFeatureRow[]> {
@@ -241,7 +279,7 @@ export function extraSubclassOf(row: Row, defaultLevel = 3): ExtraSubclass | nul
   const expanded = homebrew ? spellLevels(row.data.expanded) : printed.expanded;
   const castingProfile = homebrew ? castingProfileOf(row.data, levels) : (thirdCasterProfileForPackSubclass(row.name) ?? undefined);
   const choices = homebrew ? storedSubclassChoices(row.data.choices) : [];
-  if (!Object.keys(levels).length && !spells && !expanded && !choices.length) {
+  if (!Object.keys(levels).length && !spells && !expanded && !choices.length && !printed.choiceSpells) {
     if (!castingProfile) return null;
   }
   return {
@@ -251,6 +289,7 @@ export function extraSubclassOf(row: Row, defaultLevel = 3): ExtraSubclass | nul
     ...(expanded ? { expanded } : {}),
     ...(castingProfile ? { castingProfile } : {}),
     ...(choices.length ? { choices } : {}),
+    ...(printed.choiceSpells ? { choiceSpells: printed.choiceSpells } : {}),
     source: homebrew ? "homebrew" : "pack",
   };
 }

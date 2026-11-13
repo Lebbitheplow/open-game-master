@@ -559,5 +559,22 @@ await test("A04 A content-pack subclass feature that teaches a named cantrip (\"
   assert.deepEqual(problems, []);
 });
 
+await test("A07 An Animal Lords warlock picks its lord, and the air, earth or water spells of that lord's affinity join its expanded list beside the lords' own.", () => {
+  if (!hasPack) return;
+  const extras = packSubclassExtras();
+  const features = classFeaturesFor("warlock", "Animal Lords", 1, extras);
+  const slot = openOptionSlots({ classId: "warlock", subclass: "Animal Lords", level: 1, features }).find((open) => open.label === "Animal Lord");
+  assert.ok(slot, "no lord is asked of an Animal Lords warlock");
+  assert.equal(slot.total, 1);
+  assert.ok(slot.options.some((option) => option.n === "Toad King"));
+  const lord = (name, level) => subclassExpandedSpellsFor("warlock", "Animal Lords", level, extras, [...features, { name: optionFeatureName(slot.kind, name), source: "choice" }]).map(textKey);
+  assert.ok(lord("Bat King", 1).includes(textKey("Thunderwave")), "an air lord's 1st-level spell");
+  assert.ok(lord("Bat King", 1).includes(textKey("Speak with Animals")), "the lords' own spell");
+  assert.ok(!lord("Bat King", 1).includes(textKey("Fog Cloud")), "a water lord's spell on an air lord's list");
+  assert.ok(lord("Toad King", 1).includes(textKey("Fog Cloud")));
+  assert.ok(!lord("Toad King", 2).includes(textKey("Misty Step")) && lord("Toad King", 3).includes(textKey("Misty Step")), "2nd-level spells from warlock 3");
+  assert.ok(lord("Brother Ox", 5).includes(textKey("Phantom Seed")));
+});
+
 world.close();
 finish();

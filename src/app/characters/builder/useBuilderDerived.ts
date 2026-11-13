@@ -203,7 +203,8 @@ function casterDeskOf(
   // `features` holds the picks: a workshop choice's option spells (issue #833).
   const subclassSpells = casts ? withLearned(subclassSpellsFor(row.id, subclass, level, undefined, features), spellGrants) : [];
   const spellWider = casts
-    ? { spells: subclassExpandedSpellsFor(row.id, subclass, level), lists: subclassSpellListsFor(row.id, subclass) }
+    ? // The picks too: a genie's kind and an animal lord add their own spells.
+      { spells: subclassExpandedSpellsFor(row.id, subclass, level, undefined, features), lists: subclassSpellListsFor(row.id, subclass) }
     : { spells: [], lists: [] };
   const spellStyle: SpellStyle | null = !casts
     ? null
@@ -1002,9 +1003,10 @@ export function useBuilderDerived({
   const spellWider = useMemo(
     () =>
       casterKlass && casting.casts
-        ? { spells: subclassExpandedSpellsFor(casterKlass.id, casterSubclass, casterLevel), lists: subclassSpellListsFor(casterKlass.id, casterSubclass) }
+        ? // The picks too: a genie's kind and an animal lord add their own spells.
+          { spells: subclassExpandedSpellsFor(casterKlass.id, casterSubclass, casterLevel, undefined, pickFeatures), lists: subclassSpellListsFor(casterKlass.id, casterSubclass) }
         : { spells: [], lists: [] },
-    [casterKlass, casterSubclass, casterLevel, casting.casts],
+    [casterKlass, casterSubclass, casterLevel, casting.casts, pickFeatures],
   );
   // A class that casts, and has something to cast at this level. A level 1
   // paladin or ranger has a spellcasting ability and no spells, no cantrips

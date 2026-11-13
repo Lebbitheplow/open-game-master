@@ -49,7 +49,8 @@ export type OptionKind =
   | "giant_cantrip"
   | "arcane_archer_cantrip"
   | "divine_affinity"
-  | "genie_kind";
+  | "genie_kind"
+  | "animal_lord";
 
 export type OptionDef = {
   k: OptionKind;
@@ -358,6 +359,11 @@ const GRANTS: Grant[] = [
   { kind: "arcane_archer_cantrip", classId: "fighter", subclass: "Arcane Archer", opens: ["Arcane Archer Lore"], steps: [[3, 1]] },
   { kind: "divine_affinity", classId: "sorcerer", subclass: "Divine Soul", opens: ["Divine Magic"], opensInClass: true, steps: [[1, 1]] },
   { kind: "genie_kind", classId: "warlock", subclass: "The Genie", opens: ["Genie's Vessel"], steps: [[1, 1]] },
+  // Tome of Heroes' Animal Lords (a content-pack patron): the lord, whose
+  // affinity's column of the patron's spell table joins the warlock's list
+  // (src/lib/srd/subclass-tables.ts proseSpellTables). Without it the
+  // patron's air, earth and water spells reached no one.
+  { kind: "animal_lord", classId: "warlock", subclass: "Animal Lords", steps: [[1, 1]] },
   {
     kind: "discipline",
     classId: "monk",

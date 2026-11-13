@@ -27,6 +27,7 @@
     "arcane_archer_cantrip": { "label": "Arcane Archer Lore cantrip", "prefix": "Arcane Archer Lore: ", "grantedBy": "Arcane Archer Lore", "stored": true },
     "divine_affinity": { "label": "Divine Magic affinity", "prefix": "Divine Magic: ", "grantedBy": "Divine Magic", "stored": true },
     "genie_kind": { "label": "Genie kind", "prefix": "Genie's Vessel: ", "grantedBy": "Genie's Vessel", "stored": true },
+    "animal_lord": { "label": "Animal Lord", "prefix": "Animal Lord: ", "grantedBy": "Animal Lord", "stored": true },
     "spell_mastery_1": { "label": "Spell Mastery: 1st-level spell", "prefix": "Spell Mastery: ", "grantedBy": "Spell Mastery", "stored": true, "split": true, "spellLevel": 1, "spellList": "wizard" },
     "spell_mastery_2": { "label": "Spell Mastery: 2nd-level spell", "prefix": "Spell Mastery: ", "grantedBy": "Spell Mastery", "stored": true, "split": true, "spellLevel": 2, "spellList": "wizard" },
     "signature_spell": { "label": "Signature Spells", "prefix": "Signature Spells: ", "grantedBy": "Signature Spells", "stored": true, "split": true, "spellLevel": 3, "spellList": "wizard" }
@@ -268,6 +269,15 @@
     { "k": "genie_kind", "n": "Dao", "d": "An earth genie: Genie's Wrath deals bludgeoning damage, Elemental Gift resists bludgeoning, and Sanctuary, Spike Growth, Meld into Stone, Stone Shape and Wall of Stone join the spells you may learn." },
     { "k": "genie_kind", "n": "Djinni", "d": "An air genie: Genie's Wrath deals thunder damage, Elemental Gift resists thunder, and Thunderwave, Gust of Wind, Wind Wall, Greater Invisibility and Seeming join the spells you may learn." },
     { "k": "genie_kind", "n": "Efreeti", "d": "A fire genie: Genie's Wrath deals fire damage, Elemental Gift resists fire, and Burning Hands, Scorching Ray, Fireball, Fire Shield and Flame Strike join the spells you may learn." },
-    { "k": "genie_kind", "n": "Marid", "d": "A water genie: Genie's Wrath deals cold damage, Elemental Gift resists cold, and Fog Cloud, Blur, Sleet Storm, Control Water and Cone of Cold join the spells you may learn." }
+    { "k": "genie_kind", "n": "Marid", "d": "A water genie: Genie's Wrath deals cold damage, Elemental Gift resists cold, and Fog Cloud, Blur, Sleet Storm, Control Water and Cone of Cold join the spells you may learn." },
+    { "k": "animal_lord", "n": "Bat King", "d": "Your patron rules bats, a lord of air: its air spells join the spells you may learn beside every animal lord's own." },
+    { "k": "animal_lord", "n": "Brother Ox", "d": "Your patron rules hoofed beasts, a lord of earth: its earth spells join the spells you may learn beside every animal lord's own." },
+    { "k": "animal_lord", "n": "Lord of Vultures", "d": "Your patron rules vultures and other birds of prey, a lord of air: its air spells join the spells you may learn beside every animal lord's own." },
+    { "k": "animal_lord", "n": "Mouse King", "d": "Your patron rules rodents, a lord of earth: its earth spells join the spells you may learn beside every animal lord's own." },
+    { "k": "animal_lord", "n": "Queen of Birds", "d": "Your patron rules birds, a lord of air: its air spells join the spells you may learn beside every animal lord's own." },
+    { "k": "animal_lord", "n": "Queen of Cats", "d": "Your patron rules cats, a lord of earth: its earth spells join the spells you may learn beside every animal lord's own." },
+    { "k": "animal_lord", "n": "Queen of Serpents", "d": "Your patron rules reptiles, a lord of earth: its earth spells join the spells you may learn beside every animal lord's own." },
+    { "k": "animal_lord", "n": "Queen of Scorpions", "d": "Your patron rules spiders, scorpions and their kin, a lord of earth: its earth spells join the spells you may learn beside every animal lord's own." },
+    { "k": "animal_lord", "n": "Toad King", "d": "Your patron rules toads, frogs and their kin, a lord of water: its water spells join the spells you may learn beside every animal lord's own." }
   ]
 }
