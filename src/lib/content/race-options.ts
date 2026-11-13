@@ -100,6 +100,9 @@ export type PackRaceOption = {
   documentSlug: string;
   // The book it comes from, by title.
   source: string;
+  // The row's slug and its parent's: what a race prerequisite reads
+  // (src/lib/srd/race-id.ts speciesLineage).
+  lineage?: string[];
 } & RaceMechanics;
 
 // The id the builder and the sheet use for a pack row. A stored character
@@ -264,6 +267,7 @@ export function packRaceOptions(rows: RaceRow[], keepIds: Iterable<string> = [])
       slug: row.slug,
       documentSlug: row.documentSlug,
       source: row.document ?? row.documentSlug,
+      lineage: [row.slug, ...(parent ? [parent.slug] : [])],
     };
   });
 }
@@ -273,7 +277,7 @@ export function packRaceOptions(rows: RaceRow[], keepIds: Iterable<string> = [])
 // (src/lib/characters/species-rules.ts) and the builder's
 // (useBuilderOptions.ts) both build it here, so the browser and the server
 // read a workshop species' spells, and each option's, alike (issue #833).
-export function speciesRulesOf(option: Pick<RaceMechanics, "size" | "heavyArmorSpeed" | "traitNames" | "spells" | "variants">): SpeciesRules {
+export function speciesRulesOf(option: Pick<RaceMechanics, "size" | "heavyArmorSpeed" | "traitNames" | "spells" | "variants"> & { lineage?: string[] }): SpeciesRules {
   const variantSpells = Object.fromEntries(
     (option.variants?.options ?? []).flatMap((entry) =>
       entry.spells ? [[entry.id, { ...entry.spells, from: variantRecordName(option.variants!.label, entry) }]] : [],
@@ -285,5 +289,6 @@ export function speciesRulesOf(option: Pick<RaceMechanics, "size" | "heavyArmorS
     traitNames: option.traitNames,
     ...(option.spells ? { spells: option.spells } : {}),
     ...(Object.keys(variantSpells).length ? { variantSpells } : {}),
+    ...(option.lineage?.length ? { lineage: option.lineage } : {}),
   };
 }
