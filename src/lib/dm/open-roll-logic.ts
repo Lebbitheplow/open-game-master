@@ -39,7 +39,26 @@ export function toHitRollWithPlayer<T extends OpenRoll>(open: readonly T[], char
   );
 }
 
-const attackWords = (roll: OpenRoll) => (roll.attack ? `${roll.attack.attacker}'s ${roll.attack.weapon} attack` : "An attack");
+// The attack's d20, or the damage dice of its hit, still with the player.
+// A hit's damage is part of the attack (SRD 5.1, Making an Attack: "roll
+// damage" is its last step): with the damage card open, the player's End
+// Turn went through and the goblin the blow would have killed took its turn
+// before the damage landed. The lead's skip still asks only for the d20
+// (pending-roll-land.ts keepRollsLeftBehind): a hit's damage lands whenever
+// it is entered.
+export function attackRollWithPlayer<T extends OpenRoll>(open: readonly T[], characterId: string, fight?: { createdAt: string; round: number }): T | null {
+  const damage = open.find(
+    (entry) =>
+      entry.characterId === characterId &&
+      entry.kind === "damage" &&
+      entry.attack !== null &&
+      (!fight || (entry.createdAt >= fight.createdAt && (entry.attack.round === undefined || entry.attack.round === fight.round))),
+  );
+  return toHitRollWithPlayer(open, characterId, fight) ?? damage ?? null;
+}
+
+const attackWords = (roll: OpenRoll) =>
+  roll.attack ? `${roll.attack.attacker}'s ${roll.attack.weapon} ${roll.kind === "damage" ? "damage" : "attack"}` : roll.kind === "damage" ? "A hit's damage" : "An attack";
 
 // The End Turn button's refusal, to the player holding the card.
 export function endTurnWaitsLine(roll: OpenRoll): string {
@@ -65,12 +84,15 @@ export function attackCardWaitsLine(roll: OpenRoll): string {
 // landed, and a second call for it would be refused by the attack it spent.
 export function attackWaitsToolLine(name: string, roll: OpenRoll): string {
   const weapon = roll.attack?.weapon ? `${roll.attack.weapon} ` : "";
+  if (roll.kind === "damage") {
+    return `${name}'s ${weapon}hit is still waiting on its player's damage dice; the damage has not landed. Nothing was spent. Do not narrate the damage or call pc_attack again yet: the turn resumes once it lands, and any further attack is made after that.`;
+  }
   return `${name}'s ${weapon}attack is still waiting on its player's ${roll.thrown ? "choice" : "dice"}; it has not landed. Nothing was spent. Do not call pc_attack for it again or narrate it resolved: the turn resumes once it lands, and any further attack is made after that.`;
 }
 
 // The same, to whoever called end_turn.
 export function endTurnToolLine(name: string, roll: OpenRoll): string {
-  return `${name}'s attack roll waits on their player's ${roll.thrown ? "choice" : "dice"}. End the turn once it lands. Nothing was changed.`;
+  return `${name}'s ${roll.kind === "damage" ? "damage roll" : "attack roll"} waits on their player's ${roll.thrown ? "choice" : "dice"}. End the turn once it lands. Nothing was changed.`;
 }
 
 // A roll that landed on nothing, its turn being over, while the story went on

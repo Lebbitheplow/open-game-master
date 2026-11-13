@@ -45,7 +45,7 @@ import { feralInstinctOpening } from "@/lib/dm/mt-srd-barbarian";
 import { getRoll, insertRoll } from "@/lib/db/rolls";
 import { getLatestDmMessage, insertCampaignMessage, listRecentMessages } from "@/lib/db/messages";
 import { closeStandInTurn, getDmTurn, listOpenPendingRolls, listPendingForTurn, openStandInTurn, saveDmTurn, setPendingAttack, type DmTurn } from "@/lib/db/dm-turns";
-import { endTurnToolLine, endTurnWaitsLine, toHitRollWithPlayer } from "@/lib/dm/open-roll-logic";
+import { endTurnToolLine, endTurnWaitsLine, attackRollWithPlayer } from "@/lib/dm/open-roll-logic";
 import { rollExpression } from "@/lib/dice";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
@@ -1219,7 +1219,7 @@ function handleEndTurn(
   // now, the swing would never land, and what they chose would be spent on
   // nothing. The resumed turn ends it once the roll lands.
   // Nor would one whose dice the player has yet to enter (open-roll-logic.ts).
-  const withPlayer = toHitRollWithPlayer(listOpenPendingRolls(campaign.id), sheet.id, encounter);
+  const withPlayer = attackRollWithPlayer(listOpenPendingRolls(campaign.id), sheet.id, encounter);
   if (withPlayer) {
     return { error: endTurnToolLine(sheet.name, withPlayer), retry: true };
   }
@@ -2446,7 +2446,7 @@ function advanceAfterNarration(campaign: Campaign, turn?: DmTurn) {
   // narration that handed the turn on, or their own words ending it, waits
   // for it as End Turn and end_turn do. A turn told while the card was open
   // (another player posted) moved the pointer here, and the swing was lost.
-  if (resolved && !stuck && toHitRollWithPlayer(listOpenPendingRolls(campaign.id), current.characterId, encounter)) {
+  if (resolved && !stuck && attackRollWithPlayer(listOpenPendingRolls(campaign.id), current.characterId, encounter)) {
     return;
   }
   if (!resolved && !stuck) {
@@ -2926,7 +2926,7 @@ function endOwnTurnNow(campaignId: string, userId: string): boolean | "held" {
   }
   // Their attack's d20 is still with them: ended now, the swing would never
   // land (open-roll-logic.ts). endTurnRefusal says which card to answer.
-  if (toHitRollWithPlayer(listOpenPendingRolls(campaignId), current.characterId, encounter)) {
+  if (attackRollWithPlayer(listOpenPendingRolls(campaignId), current.characterId, encounter)) {
     return false;
   }
   // A watcher who could answer a save this move rolls: the move waits on
@@ -2988,7 +2988,7 @@ export function endTurnRefusal(campaignId: string, userId: string): string {
     return dominated;
   }
   if (encounter && campaign && current?.kind === "pc" && turnUserId(campaign, current) === userId) {
-    const withPlayer = toHitRollWithPlayer(listOpenPendingRolls(campaignId), current.characterId, encounter);
+    const withPlayer = attackRollWithPlayer(listOpenPendingRolls(campaignId), current.characterId, encounter);
     if (withPlayer && !enemiesOwedTurn(encounter).length) {
       return endTurnWaitsLine(withPlayer);
     }

@@ -282,6 +282,36 @@ await test("Dice the player has yet to enter hold the turn the same way, at the 
   }
 });
 
+// A hit's damage is the attack's last step (SRD 5.1, Making an Attack). With
+// the damage card still in the player's hand, End Turn went through and the
+// goblin took its turn before the blow that might have killed it landed.
+await test("Damage dice the player has yet to enter hold the turn too, at the button and at end_turn; entered, the turn ends.", async () => {
+  const enemy = await stage(NONE);
+  kit.setEnemy(enemy.id, { ac: 5 });
+  const userId = world.sheet(hero.id).userId;
+  setMemberRealDice(world.campaignId, userId, true);
+  try {
+    await world.invoke("pc_attack", { characterId: hero.id, targetEnemyId: enemy.id });
+    const [toHit] = open();
+    world.signIn({ id: userId });
+    assert.equal((await call(route.pending, "POST", { dice: [18] }, { campaignId: world.campaignId, pendingRollId: toHit.id })).status, 200);
+    const [damage] = open();
+    assert.equal(damage?.kind, "damage", "the hit asks for its damage");
+    assert.equal(kit.endTurn(userId), false, "End Turn waited for the damage");
+    assert.match(tools.endTurnRefusal(world.campaignId, userId), /Longsword damage is waiting on your roll\. Roll it, then end the turn\./);
+    const ended = await world.invoke("end_turn", { characterId: hero.id });
+    assert.equal(ended.ok, false);
+    assert.match(ended.error, /damage roll waits on their player's dice/);
+    assert.equal(kit.current().characterId, hero.id);
+    world.signIn({ id: userId });
+    assert.equal((await call(route.pending, "POST", { dice: [5] }, { campaignId: world.campaignId, pendingRollId: damage.id })).status, 200);
+    assert.equal(hp(enemy), 400 - 8, "the damage landed on the hero's turn");
+    assert.equal(kit.endTurn(userId), true);
+  } finally {
+    setMemberRealDice(world.campaignId, userId, false);
+  }
+});
+
 // The third door: a GM turn told while the card is open (another player
 // posted) whose narration hands the turn on, or the player's own words that
 // end it, moved the pointer after the narration with no look at the roll.
