@@ -32,20 +32,13 @@ import { releaseGrapplesHeldBy } from "@/lib/dm/set-condition";
 import { isMassiveDamage } from "@/lib/dm/death-logic";
 import { masteryOfDeathHold } from "@/lib/dm/mastery-of-death";
 import { concentrationDamageHook } from "@/lib/dm/concentration";
-import {
-  damageAdjust,
-  effectiveMaxHp,
-  pcImmunities,
-  pcResistances,
-  removeConditions,
-} from "@/lib/dm/condition-logic";
+import { damageAdjust, effectiveMaxHp, pcImmunities, pcResistances, removeConditions, wearsHeavyArmor, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { rollFeatureSave } from "@/lib/dm/contest-roll";
 import { genreDropHold } from "@/lib/dm/genre-drop-holds";
 import { genreBelowHalf } from "@/lib/dm/genre-a-slots";
 import { holdsFeature } from "@/lib/srd/trait-rules";
 import { PRONE } from "@/lib/dm/vitals-logic";
 import { authoredAuraResistances } from "@/lib/dm/authored-saves";
-import { wearsHeavyArmor, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { heavyArmorMasterReduction } from "@/lib/srd/feat-effects";
 import { textKey } from "@/lib/language/text-logic";
 import { silencedImmunity } from "@/lib/dm/zone-rules";
@@ -58,6 +51,7 @@ import { afflictionStress } from "@/lib/dm/afflictions";
 import { endIncapacitationHeld } from "@/lib/dm/ar-wbf-warlock-marks";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { BURNING_OIL_DAMAGE, COVERED_IN_OIL, oilCatches } from "@/lib/srd/gear-weapons";
+import { soleSurvivorResistances } from "@/lib/dm/genre-a-horror-party";
 
 export type PcDamageInput = {
   // What was rolled or sent, before resistance.
@@ -149,7 +143,7 @@ export function blowDefenses(campaignId: string, sheet: CharacterSheet, input: B
   const shape = sheet.wildShape;
   const ignored = (input.ignoreResistanceTo ?? "").split(",").map((type) => type.trim()).filter(Boolean);
   const resistedLine = [
-    [pcResistances(sheet, { magical: input.magical === true, spell: input.spell === true, except: input.exceptFeatures, noCreature: input.noCreature === true }), ...authoredAuraResistances(campaignId, sheet, { spell: input.spell === true }), summonResistances(sheet), immersedResistance(campaignId, sheet.id), ...(input.resists ?? [])].filter(Boolean).join(", "),
+    [pcResistances(sheet, { magical: input.magical === true, spell: input.spell === true, except: input.exceptFeatures, noCreature: input.noCreature === true }), ...authoredAuraResistances(campaignId, sheet, { spell: input.spell === true }), summonResistances(sheet), immersedResistance(campaignId, sheet.id), soleSurvivorResistances(campaignId, sheet), ...(input.resists ?? [])].filter(Boolean).join(", "),
     shape?.resist ?? "",
   ].filter(Boolean).join("; ");
   const resisted = ignored.reduce((line, type) => line.replace(new RegExp(`\\b${type}\\b`, "gi"), ""), resistedLine);

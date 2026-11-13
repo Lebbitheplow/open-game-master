@@ -215,7 +215,7 @@ test("the passive defs are the ones something else spends", () => {
   // (src/lib/dm/genre-drop-holds.ts), the reactions use_reaction plays, and
   // the slot recoveries take_rest, the damage path and the cast guard spend
   // (src/lib/dm/genre-a-slots.ts).
-  assert.deepEqual(passive.filter((id) => /^(cyberpunk|dark_fantasy|horror)_/.test(id)), ["cyberpunk_bullet_time", "cyberpunk_nanite_reserve", "cyberpunk_one_more_dawn", "cyberpunk_overwatch", "cyberpunk_the_net_remembers", "dark_fantasy_deathless_vigor", "dark_fantasy_martyr_s_endurance", "horror_apocrypha", "horror_blood_ward", "horror_final_benediction", "horror_pain_tolerance", "horror_seventh_seal", "horror_the_debt_comes_due", "horror_the_last_candle", "horror_the_one_who_lives", "horror_unfinished_ritual", "horror_won_t_die_here", "cyberpunk_autodoc_implant"]);
+  assert.deepEqual(passive.filter((id) => /^(cyberpunk|dark_fantasy|horror)_/.test(id)), ["cyberpunk_bullet_time", "cyberpunk_nanite_reserve", "cyberpunk_one_more_dawn", "cyberpunk_overwatch", "cyberpunk_the_net_remembers", "dark_fantasy_deathless_vigor", "dark_fantasy_martyr_s_endurance", "horror_apocrypha", "horror_bitter_endurance", "horror_blood_ward", "horror_final_benediction", "horror_pain_tolerance", "horror_predictive_model", "horror_seventh_seal", "horror_the_debt_comes_due", "horror_the_last_candle", "horror_the_one_who_lives", "horror_unfinished_ritual", "horror_won_t_die_here", "cyberpunk_autodoc_implant"]);
 });
 
 test("Relentless Endurance spends once, then refuses", () => {

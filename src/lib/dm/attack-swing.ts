@@ -7,6 +7,7 @@
 import { markDefenderCommanded } from "@/lib/dm/defender-dodge";
 import { empoweredRoll } from "@/lib/dm/mt-srd-metamagic";
 import { SPELL_HIT } from "@/lib/dm/genre-a-cyberpunk-spends";
+import { horrorCritMaximum } from "@/lib/dm/genre-a-horror-hits";
 import { getSheetById } from "@/lib/db/sheets";
 import { finalVerdictDice } from "@/lib/dm/genre-a-dark-fantasy-hits";
 import { spendWrath, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
@@ -45,9 +46,8 @@ import { BOW_HIT, isBow } from "@/lib/srd/mt-fb-arcane-shot";
 import { authoredNaturalWeapon } from "@/lib/srd/authored-effects-more";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { planAttackFx, type RollVisibility } from "@/lib/battlemap/fx-plan";
-import { GREAT_WEAPON_MASTER_READY } from "@/lib/srd/feat-combat";
+import { GREAT_WEAPON_MASTER_READY, BRUTAL_ATTACK_USED, brutalAttackApplies, PIERCER_USED, SAVAGE_ATTACKER_USED, savageAttackerApplies } from "@/lib/srd/feat-combat";
 import { holdsFeat } from "@/lib/srd/feat-effects";
-import { BRUTAL_ATTACK_USED, brutalAttackApplies, PIERCER_USED, SAVAGE_ATTACKER_USED, savageAttackerApplies } from "@/lib/srd/feat-combat";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { hasCondition } from "@/lib/srd/authored-effects";
 
@@ -403,12 +403,19 @@ export function hitSwing(scene: SwingScene, record: AttackRecord, judged: Judged
   if (verdict) {
     notes.push(verdict.note);
   }
-  const asked = verdict?.expression ?? wrath?.expression ?? rolled;
+  // Deathblow: a critical on the slayer's Quarry at its maximum (genre-a-horror-hits.ts).
+  const deathblow = crit && !stunShot && !wrath && !verdict
+    ? horrorCritMaximum(sheet, enemy.id, rolled, riders, (dice) => critDamageExpression(dice, 0, { powerfulCritical: variant.powerfulCritical, multiplyNumeric: variant.criticalDamageMods }))
+    : null;
+  if (deathblow) {
+    notes.push(deathblow.note);
+  }
+  const asked = deathblow?.expression ?? verdict?.expression ?? wrath?.expression ?? rolled;
   return {
     ask: {
       expression: asked,
-      riders: wrath?.riders ?? riders,
-      ...(wrath?.noDice ? { noDice: true } : {}),
+      riders: deathblow?.riders ?? wrath?.riders ?? riders,
+      ...(wrath?.noDice || deathblow ? { noDice: true } : {}),
       crit,
       stunShot,
       feats: spendDamageFeats(scene, record, asked),

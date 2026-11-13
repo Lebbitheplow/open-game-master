@@ -65,6 +65,7 @@ import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { bondRider, bondStamped } from "@/lib/dm/emboldening-bond";
 import { BOND_SPEND } from "@/lib/dm/emboldening-bond-logic";
 import { magicalStrengthSave } from "@/lib/dm/infusion-charges";
+import { horrorCultSave } from "@/lib/srd/genre-a-horror-holds";
 
 // Everything resolveRollExpression cannot read for itself, for one roll of
 // one character: the aura over them (saves only), the lasting effects on
@@ -365,7 +366,7 @@ export function rollCharacterSave(
   // Diehard: advantage against what would exhaust them.
   const diehard = diehardSaveAdvantage(sheet, resists?.against);
   // Land's Stride: advantage against Entangle and its kind (mt-srd-druid.ts).
-  const claimed = claim ?? (diehard ? { advantage: "advantage" as const, reason: "Diehard: advantage against exhaustion" } : landsStrideClaim(sheet, detail));
+  const claimed = claim ?? horrorCultSave(sheet, resists, from) ?? (diehard ? { advantage: "advantage" as const, reason: "Diehard: advantage against exhaustion" } : landsStrideClaim(sheet, detail));
   const waits = heldDieWaits(sheet, dc);
   const resolved = resolveRollExpression(
     {

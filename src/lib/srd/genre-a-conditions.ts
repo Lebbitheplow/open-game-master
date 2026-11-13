@@ -4,6 +4,7 @@
 // the readers hold for as long as the feature lasts.
 import type { ConditionEffectRow } from "@/lib/srd/condition-effect-types";
 import { DARK_FANTASY_CONDITIONS } from "@/lib/srd/genre-a-dark-fantasy-conditions";
+import { GENRE_A_HORROR_CONDITIONS } from "@/lib/srd/genre-a-horror-conditions";
 
 export const GENRE_A_CONDITIONS: ConditionEffectRow[] = [
   { id: "static_shield", match: ["static shield"], summary: "Static Shield: +2 AC until the start of the esper's next turn.", acBonus: 2 },
@@ -23,6 +24,8 @@ export const GENRE_A_CONDITIONS: ConditionEffectRow[] = [
   { id: "singularity", match: ["singularity"], summary: "Singularity: the esper's next psionic of 5th level or lower this turn costs no slot and may strike a second target." },
   { id: "author_of_the_unwritten", match: ["author of the unwritten"], summary: "Author of the Unwritten: the occultist's next warlock spell of 5th level or lower this turn costs no slot and may strike a second target." },
   { id: "the_grave_chorus", match: ["the grave chorus"], summary: "The Grave Chorus: for a minute each dirge the dirgesinger casts may strike one additional target." },
+  { id: "bleeding_power", match: ["bleeding power"], summary: "Bleeding Power: the apostate's next stigmata this turn (1st level; up to 3rd with Deeper Scars) costs no slot." },
+  { id: "their_power_your_hands", match: ["their power, your hands"], summary: "Their Power, Your Hands: the apostate's next stigmata of 5th level or lower this turn costs no slot and deals its maximum damage." },
   { id: "beyond_the_veil", match: ["beyond the veil"], summary: "Beyond the Veil: for a minute they see invisible creatures and into the Ethereal Plane, and strike what stands there.", seesInvisible: true },
   // The cyberpunk round's marks (src/lib/srd/authored-effects-genre-a-cyberpunk.ts).
   { id: "daemon_swarm", match: ["daemon swarm"], summary: "Daemon Swarm: the netrunner's next single-target damaging program this turn strikes up to three creatures, one casting." },
@@ -31,4 +34,6 @@ export const GENRE_A_CONDITIONS: ConditionEffectRow[] = [
   { id: "self_repaired", match: ["self-repaired"], summary: "Self-Repair Protocol: this drone has been mended since the rigger's last rest." },
   { id: "deathless_champion", match: ["deathless champion"], summary: "Deathless Champion: for a minute the grave knight cannot drop below 1 hit point." },
   ...DARK_FANTASY_CONDITIONS,
+  // The horror classes' own (src/lib/srd/genre-a-horror-conditions.ts).
+  ...GENRE_A_HORROR_CONDITIONS,
 ];

@@ -24,7 +24,7 @@ import { drawRow, gearKindOf, guessedRehand, handsFor, handsFullError, rehandLin
 import { aiPlaysSheet } from "@/lib/dm/companion-command";
 import { askPlayerWords, noteHandsFullAsk } from "@/lib/dm/hands-full-ask";
 import { wearingIsExplicit } from "@/lib/srd/armor";
-import type { EquipmentItem } from "@/lib/schemas/sheet";
+import type { EquipmentItem, CharacterSheet } from "@/lib/schemas/sheet";
 import { planMarks, type MarkPlan } from "@/lib/dm/attack-marks";
 import type { TypedRider } from "@/lib/dm/damage-parts";
 import { itemRidersAgainst } from "@/lib/dm/gear-attack";
@@ -67,10 +67,12 @@ import { spendAmmo } from "@/lib/srd/ammunition";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { conditionsSpentAgainst } from "@/lib/srd/condition-effect-queries";
 import type { ConditionRollRiders } from "@/lib/srd/condition-effects";
-import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { toolError, type ToolError } from "@/lib/dm/tool-errors";
 import { spentSlotRefusal } from "@/lib/dm/cast-rules";
 import { infusionWorn, makesOwnAmmunition } from "@/lib/srd/infusions";
+import { genreCastsAtMaximum } from "@/lib/dm/genre-a-casts";
+import { maximumOf } from "@/lib/dm/heal-spell";
+import { bundledSpellFacts } from "@/lib/srd/spell-facts";
 
 // A Battle Master maneuver riding the swing.
 export type ManeuverPick = {
@@ -380,6 +382,14 @@ export function planPcAttack(input: {
   if (elementalAdept || adeptOthers.length) {
     profile = { ...profile, damageExpression: floorDamageDice(profile.damageExpression) };
     featNotes.push(`Elemental Adept: ${[...(elementalAdept ? [profile.damageType] : []), ...adeptOthers].join(" and ")} ignores resistance and every 1 on the dice is a 2`);
+  }
+  // Their Power, Your Hands: the stigmata it pays for at its maximum (genre-a-casts.ts).
+  // A cast no slot pays for names no slot level: the spell's own level.
+  const castLevel = spell.spellSlotLevel ?? (args.spell ? bundledSpellFacts(args.spell)?.level : undefined);
+  const genreMaximum = kind === "spell" && castLevel ? genreCastsAtMaximum(sheet, castLevel) : null;
+  if (genreMaximum) {
+    profile = { ...profile, damageExpression: String(maximumOf(profile.damageExpression)) };
+    featNotes.push(`${genreMaximum}: the spell deals its maximum damage`);
   }
 
   // A Battle Master maneuver riding this swing. The pick and the pool are

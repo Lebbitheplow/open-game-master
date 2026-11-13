@@ -447,6 +447,12 @@ export type AuthoredEffect = Base &
         oncePerTurn?: boolean;
         vsTypes?: string[];
         vsNotActed?: boolean;
+        // Only a hit on the creature this mark of the holder's names
+        // (Improved Quarry: "Quarry damage rises to +2d6").
+        vsMark?: string;
+        // Only a hit on a creature that carries this condition (No Witnesses
+        // Left: the record of the creature that downed an ally).
+        vsCondition?: string;
         weapons?: string[];
       }
     // A bonus to the holder's attack rolls, all or only melee or ranged ones.
@@ -811,6 +817,14 @@ export type SpendDoes =
   | { kind: "genre_summon"; companion: "drones" | "dire_rat" | "rat_pack" }
   // A cyberpunk counter's own spend (src/lib/dm/genre-a-cyberpunk-spends.ts).
   | { kind: "cyber_spend"; what: "ghost_protocol" | "lazarus" | "whirl" | "synaptic" | "grease" }
+  // A mark on the holder that pays for their next spell it fits with no slot
+  // (src/lib/dm/genre-a-casts.ts), stepped with the class level, and the
+  // backlash the holder takes as it is laid, which nothing reduces
+  // (src/lib/dm/genre-a-horror-casts.ts): Bleeding Power.
+  | { kind: "cast_mark"; condition: Array<[number, string]>; rounds: number; backlash?: Array<[number, string]> }
+  // A horror class's counter, played by src/lib/dm/genre-a-horror-spends.ts
+  // (`play` names it there). `aim`: what its Hand card is aimed at.
+  | { kind: "horror_spend"; play: string; aim?: "enemy" | "ally" }
   // Nothing the engine moves: the spend pays its cost and the text says
   // what happens (Spirit Totem's move, the cannon's ballista option).
   | { kind: "note"; text: string }

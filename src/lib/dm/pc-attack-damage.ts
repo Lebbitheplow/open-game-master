@@ -7,7 +7,8 @@
 // Nothing here refuses the attack.
 
 import { textKey } from "@/lib/language/text-logic";
-import { authoredNaturalWeapon } from "@/lib/srd/authored-effects-more";
+import { authoredNaturalWeapon, authoredSneakBonus } from "@/lib/srd/authored-effects-more";
+import { horrorSampled } from "@/lib/dm/genre-a-horror-hits";
 import { pactWeaponAttack } from "@/lib/srd/pact-weapon";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { poisonerIgnoresResistance } from "@/lib/srd/feat-combat";
@@ -19,7 +20,6 @@ import type { BlowSource } from "@/lib/dm/damage-logic";
 import { effectOutcome } from "@/lib/dm/effect-tools";
 import { getActiveEncounter, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { authoredSneakEdge } from "@/lib/dm/authored-hooks";
-import { authoredSneakBonus } from "@/lib/srd/authored-effects-more";
 import { getSheetById } from "@/lib/db/sheets";
 import { summonStrikesAsMagic } from "@/lib/dm/mighty-summoner";
 import { applyEnemyDamage, applySheetFoeBlow } from "@/lib/dm/enemy-damage";
@@ -33,6 +33,7 @@ import type { AttackKind } from "@/lib/dm/pc-attack-profile";
 import type { OnHitSpends } from "@/lib/dm/pc-attack-riders";
 import { attackDamageRiders, type FeatureRider } from "@/lib/dm/attack-damage-riders";
 import { enemyNotActed } from "@/lib/dm/genre-a-strikes";
+import { horrorMagicalAgainst } from "@/lib/srd/genre-a-horror-holds";
 import { cursedAgainst } from "@/lib/srd/magic-items";
 import { conditionStrikesMagical } from "@/lib/srd/condition-effect-queries";
 import { effectsFor, type CombatRiders } from "@/lib/srd/feature-effects";
@@ -302,8 +303,10 @@ export function strikeDamage(plan: AttackPlan) {
 
 // A spell, a magic weapon and strikes that count as magical pass
 // resistance to nonmagical attacks.
-export function strikesAsMagic(plan: Pick<AttackPlan, "kind" | "profile" | "riders" | "sheet">): boolean {
+export function strikesAsMagic(plan: Pick<AttackPlan, "kind" | "profile" | "riders" | "sheet"> & { enemy?: { stats?: { type?: string }; conditions?: string[] } }): boolean {
   return (
+    // Ectoplasmic Sample: the party's attacks on the sampled spirit (genre-a-horror-hits.ts).
+    horrorSampled(plan.enemy) ||
     plan.kind === "spell" ||
     plan.kind === "granted" ||
     plan.profile.magicBonus > 0 ||
@@ -314,7 +317,9 @@ export function strikesAsMagic(plan: Pick<AttackPlan, "kind" | "profile" | "ride
     pactWeaponAttack(plan.sheet, plan.kind, plan.profile) ||
     magicalStrikeApplies(plan) ||
     // Mighty Summoner: a Shepherd's summoned beast or fey (mighty-summoner.ts).
-    summonStrikesAsMagic(plan.sheet)
+    summonStrikesAsMagic(plan.sheet) ||
+    // Consecrated Tools: magical against fiends and undead (genre-a-horror-holds.ts).
+    (plan.kind === "weapon" && horrorMagicalAgainst(plan.sheet, plan.enemy?.stats?.type))
   );
 }
 

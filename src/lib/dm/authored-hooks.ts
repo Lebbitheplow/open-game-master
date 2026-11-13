@@ -26,6 +26,8 @@ import { darkVeil } from "@/lib/dm/ar-ws-lunar-empowerment";
 import { enemyNotActed } from "@/lib/dm/genre-a-strikes";
 import { darkFantasyAttackEdge } from "@/lib/dm/genre-a-dark-fantasy-edges";
 import { darkFantasyOnHit } from "@/lib/dm/genre-a-dark-fantasy-hits";
+import { horrorAfterEnemyHit, horrorAttackSituation } from "@/lib/dm/genre-a-horror-hits";
+import { endHorrorMarks } from "@/lib/dm/genre-a-horror-marks";
 import { fightMarked, markFight } from "@/lib/dm/turn-marks";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -233,6 +235,8 @@ export function authoredAfterHit(
     return lines;
   }
   const target = getSheetById(input.target.id) ?? input.target;
+  // No Witnesses Left's record of who downed an ally (genre-a-horror-hits.ts).
+  horrorAfterEnemyHit(campaign, input.attacker, target);
   // Unwavering Mark: a marked creature that damages anyone else opens its
   // marker's bonus attack against it on their next turn
   // (src/lib/dm/feature-bonus-attacks.ts).
@@ -334,6 +338,13 @@ export function authoredAttackSituation(input: {
     autoCrit = edge.feature;
     notes.push(edge.note);
     spent.push(edge.spent);
+  }
+  // The Stake Remembers (src/lib/dm/genre-a-horror-hits.ts).
+  const stake = horrorAttackSituation(sheet, enemy);
+  if (stake) {
+    autoCrit = stake.autoCrit;
+    notes.push(stake.note);
+    spent.push(stake.spent);
   }
   for (const { held } of activeAuthored(sheet, "auto_crit")) {
     if (encounter.surprisedIds.includes(enemy.id)) {
@@ -560,6 +571,7 @@ export function authoredOnKill(
       lines.push(`Hexblade's Curse: ${enemy.displayName} dies cursed, and ${holder.name} regains ${given} hit points.`);
     }
   }
+  lines.push(...endHorrorMarks(campaign, fielded(campaign.id), enemy));
   return lines;
 }
 

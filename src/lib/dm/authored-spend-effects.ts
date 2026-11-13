@@ -16,6 +16,7 @@ import { spellHurt } from "@/lib/dm/spell-damage-logic";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import { layEnemyConditionInstance } from "@/lib/dm/enemy-condition-lay";
 import { extendsHeld, layWithExtras, markMet, saveEffectRefusal } from "@/lib/dm/authored-save-effect-extras";
+import { horrorSaveArea, horrorSpend } from "@/lib/dm/genre-a-horror-spends";
 import { foesOfSheet, resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { chosenTargets } from "@/lib/dm/chosen-targets";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -52,6 +53,7 @@ import { summonHound } from "@/lib/dm/ar-ws-hound";
 import { jumpToSquare } from "@/lib/dm/ar-ws-shadow-walk";
 import { companionGoes, companionOf, healOne, healRefusal, layLunarWard, veil } from "@/lib/dm/ar-ws-lunar-phenomenon";
 import { summonGenreCompanion } from "@/lib/dm/genre-a-summons";
+import { horrorMarkCondition } from "@/lib/dm/genre-a-horror-marks";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { diceFor, rollOwnDice } from "@/lib/dm/character-roll";
@@ -84,6 +86,7 @@ import { mrSpend } from "@/lib/dm/mt-mr-spends";
 import { beguilingBroken } from "@/lib/dm/mt-fb-arrow-riders";
 import { cleanse, forcedStrike, forcedStrikePlan, meleeHitRefusal, pushFoe, sizeRefusal, throwFoe } from "@/lib/dm/mt-fb-spend";
 import { playDarkFantasy } from "@/lib/dm/genre-a-dark-fantasy-spends";
+import { layCastMark } from "@/lib/dm/genre-a-horror-casts";
 
 const DAMAGE_WORDS = new Set(["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"]);
 
@@ -285,7 +288,7 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
       return { patch: { features, ...changeSpent(sheet, does), ...moonlightEnds(ctx, owner.feature, option) }, result: { chosen: `${owner.feature}: ${option}. The server applies its effects from now on.` } };
     }
     case "buff": {
-      const condition = conditionName(ctx, does);
+      let condition = conditionName(ctx, does);
       if (typeof condition !== "string") {
         return condition;
       }
@@ -399,6 +402,8 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
         if (unseen) {
           return { error: `${sheet.name} cannot see ${quarry.displayName} (${unseen}), and ${ctx.spend.name} takes a creature they can see. Nothing was spent.`, refused: "rules" };
         }
+        // Extinction: a second Quarry is a mark of its own (genre-a-horror-marks.ts).
+        condition = horrorMarkCondition(sheet, condition, quarry.id);
       }
       let patch: FullPatchSheetInput | undefined;
       // An ally other than the holder has returned above, so "ally" here is the
@@ -565,7 +570,8 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
       return { result };
     }
     case "save_area":
-      return saveArea(ctx, does);
+      // Rite of Repulsion's later features ride its area (genre-a-horror-spends.ts).
+      return horrorSaveArea(ctx, does, saveArea);
     case "reroll_heal":
       return rerollHealing(ctx);
     case "reroll_save":
@@ -808,6 +814,10 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
       return resolveCyberSpend({ campaign: ctx.campaign, sheet, label: ctx.spend.name, args: ctx.args }, does.what, (next) => resolveSpendEffect(ctx, next));
     case "genre_summon":
       return summonGenreCompanion(ctx.campaign, sheet, does.companion, ctx.held.level);
+    case "cast_mark":
+      return layCastMark(ctx, does);
+    case "horror_spend":
+      return horrorSpend(ctx, does.play);
     // Bolstering Magic's slot (src/lib/dm/authored-spend-counters.ts).
     case "regain_slot":
       return regainSlot(ctx, does);

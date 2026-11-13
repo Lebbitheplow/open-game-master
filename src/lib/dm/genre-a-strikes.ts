@@ -16,6 +16,7 @@ import type { CombatRiders } from "@/lib/srd/feature-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { Encounter } from "@/lib/db/encounters";
 import { textKey } from "@/lib/language/text-logic";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 
 type Rider = CombatRiders["damageRiders"][number];
 
@@ -24,6 +25,12 @@ export type StrikeTarget = {
   type?: string;
   // It has not taken a turn in this fight yet, or is surprised.
   notActed?: boolean;
+  // The holder's marks whose creature this is (attack-marks.ts planMarks).
+  // Absent: the caller did not plan marks, and a vsMark rider holds while
+  // its mark is held.
+  marked?: ReadonlySet<string>;
+  // The conditions the creature carries, for a vsCondition rider.
+  conditions?: readonly string[];
 };
 
 const mods = (sheet: Pick<CharacterSheet, "abilities">) =>
@@ -66,6 +73,8 @@ export function genreStrikeRiders(
     if (effect.weapons && !effect.weapons.some((name) => weapon.has(textKey(name)))) continue;
     if (effect.vsTypes && !(type && effect.vsTypes.some((kind) => type.includes(kind)))) continue;
     if (effect.vsNotActed && !target?.notActed) continue;
+    if (effect.vsMark && !markRides(sheet, effect.vsMark, target)) continue;
+    if (effect.vsCondition && !target?.conditions?.some((entry) => isConditionNamed(entry, effect.vsCondition!))) continue;
     out.push({
       feature: held.feature,
       dice: resolveFormula(effect.dice, held.level, mods(sheet)),
@@ -75,6 +84,14 @@ export function genreStrikeRiders(
     });
   }
   return out;
+}
+
+// A vsMark rider rides a hit on a target the mark names: with no target (the
+// Hand before one is picked) it is left out.
+function markRides(sheet: CharacterSheet, mark: string, target: StrikeTarget | undefined): boolean {
+  if (!target) return false;
+  const held = sheet.conditions.filter((entry) => isConditionNamed(entry, mark));
+  return target.marked ? held.some((entry) => target.marked!.has(entry)) : held.length > 0;
 }
 
 // What the rows add to this attack's roll, each with the feature that adds it.

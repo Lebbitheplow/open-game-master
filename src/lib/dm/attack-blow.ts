@@ -7,6 +7,7 @@
 
 import { ballistaPush } from "@/lib/dm/cannon-board-dra";
 import { empoweredLine } from "@/lib/dm/mt-srd-metamagic";
+import { horrorOnHit } from "@/lib/dm/genre-a-horror-hits";
 import { allocateSeq } from "@/lib/db/campaigns";
 import { getActiveEncounter, patchEnemyConditions } from "@/lib/db/encounters";
 import { publishWithSeq } from "@/lib/events";
@@ -257,8 +258,11 @@ export function landSwingBlow(
   if (banished) {
     authored.push(banished);
   }
-  if (authored.length) {
-    out.subclassFeatures = authored;
+  // The horror classes' hits (Called Shot, Piercing the Heart, Ectoplasmic
+  // Sample: src/lib/dm/genre-a-horror-hits.ts).
+  const horror = over ? [] : horrorOnHit(campaign, { sheet, enemy, crit, dead, weapon: record.weaponAttack ?? !record.spell });
+  if (authored.length || horror.length) {
+    out.subclassFeatures = [...authored, ...horror];
   }
   // Vampiric Touch: the caster regains half the necrotic damage dealt
   // (spell-attack-riders.ts). The spell's condition landed with the hit.

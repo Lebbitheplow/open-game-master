@@ -86,6 +86,8 @@ export const GENRE_A_CAPSTONES: GenreRow[] = [
       name: "Rite of Repulsion",
       pool: { id: "horror_rite_of_repulsion" },
       action: "action",
+      // What Binding Words, Voice of Authority and Greater Rite add to it:
+      // src/lib/dm/genre-a-horror-spends.ts horrorSaveArea.
       does: { kind: "save_area", save: "wis", dcAbility: "wis", rangeFt: 30, types: ["fiend", "undead"], condition: "turned", rounds: 10, onFail: "must move away from the exorcist for a minute" },
     }],
   }),

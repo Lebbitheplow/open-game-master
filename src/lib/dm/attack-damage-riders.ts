@@ -101,7 +101,7 @@ export function attackDamageRiders(input: {
           ...heldConditionRiders(sheet),
           ...lineageRiders(sheet, { surprised: input.surprised }),
           ...graveTouchedDie(sheet, profile),
-          ...genreStrikeRiders(sheet, profile, input.enemy ? { type: input.enemy.stats?.type, notActed: input.notActed } : undefined),
+          ...genreStrikeRiders(sheet, profile, input.enemy ? { type: input.enemy.stats?.type, notActed: input.notActed, marked, conditions: input.enemy.conditions } : undefined),
         ]
           // Read as feature riders: a lineage's rider names no weapon of its own.
           .filter((rider: FeatureRider) => {

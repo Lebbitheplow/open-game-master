@@ -13,6 +13,11 @@ const HELD_AT_THE_DROP = (feature: string, what: string): CounterTerms => ({
 
 // The counters src/lib/dm/genre-drop-holds.ts spends, which state their hit
 // points and execute them there, not at use_resource.
+// The counters given as their holder rolls initiative, the use spent with them
+// (src/lib/dm/genre-a-horror-initiative.ts). scripts/test-feature-coverage.mjs
+// reads the list beside the drop holds'.
+export const INITIATIVE_COUNTERS = ["horror_bitter_endurance"];
+
 export const DROP_HOLD_COUNTERS = [
   "horror_won_t_die_here", "horror_the_one_who_lives", "dark_fantasy_martyr_s_endurance", "dark_fantasy_deathless_vigor",
   "horror_the_last_candle", "cyberpunk_one_more_dawn", "horror_final_benediction",
@@ -41,6 +46,11 @@ export const GENRE_A_COUNTER_TERMS: Record<string, CounterTerms> = {
   horror_blood_ward: BY_REACTION("Blood Ward", "when the apostate is hit, they resist that hit's damage."),
   dark_fantasy_flashfire_litany: BY_REACTION("Flashfire Litany", "when a fiend or undead hits the witch hunter, it takes 3d8 radiant damage (half on a Constitution save)."),
   horror_pain_tolerance: BY_REACTION("Pain Tolerance", "the damage of one hit against the survivor is halved."),
+  horror_bitter_endurance: {
+    passive: true,
+    guidance: "Bitter Endurance: once a long rest, as the survivor rolls initiative they gain temporary hit points equal to twice their level. The server gives them and spends the use as the fight starts; no call spends it.",
+  },
+  horror_predictive_model: BY_REACTION("Predictive Model", "the attack of a creature the parapsychologist measured is made with disadvantage."),
   horror_won_t_die_here: HELD_AT_THE_DROP("Won't Die Here", "once a day, when the survivor drops to 0 hit points but is not killed outright, they drop to 1 instead (from 20th level twice a day, each use also restoring five times their Constitution modifier)."),
   horror_the_one_who_lives: HELD_AT_THE_DROP("The One Who Lives", "Won't Die Here's second use of the day; each use also restores five times the Constitution modifier in hit points."),
   dark_fantasy_martyr_s_endurance: {

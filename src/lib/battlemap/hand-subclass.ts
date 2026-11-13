@@ -92,6 +92,8 @@ function targetOf(does: SpendDoes): HandTarget {
   // The charmed creature whose memory Alter Memories reaches (ar-ws-alter-memories.ts).
   if (does.kind === "strip_memory") return "enemy";
   if (does.kind === "dark_fantasy") return DARK_FANTASY_AIM[does.play];
+  // A horror counter says what it is aimed at (genre-a-horror-spends.ts).
+  if (does.kind === "horror_spend") return does.aim ?? "none";
   return "none";
 }
 

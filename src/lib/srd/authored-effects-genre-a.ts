@@ -14,6 +14,7 @@ import type { GenreRow } from "@/lib/srd/authored-effects-genre";
 import { GENRE_A_CAPSTONES } from "@/lib/srd/authored-effects-genre-a-capstones";
 import { GENRE_A_CYBERPUNK } from "@/lib/srd/authored-effects-genre-a-cyberpunk";
 import { GENRE_A_DARK_FANTASY } from "@/lib/srd/authored-effects-genre-a-dark-fantasy";
+import { GENRE_A_HORROR } from "@/lib/srd/authored-effects-genre-a-horror";
 
 const row = (classId: string, feature: string, effects: AuthoredEffect[], more: Partial<AuthoredEntry> = {}): GenreRow => ({
   feature,
@@ -209,4 +210,4 @@ const AURAS: GenreRow[] = [
   row("exorcist", "Unguttering Flame", [{ kind: "aura_resist", rangeFt: 10, types: ["necrotic"], gate: VIGIL }]),
 ];
 
-export const GENRE_A_AUTHORED: GenreRow[] = [...PASSIVES, ...SPENDS, ...STRIKES, ...AURAS, ...GENRE_A_CAPSTONES, ...GENRE_A_CYBERPUNK, ...GENRE_A_DARK_FANTASY];
+export const GENRE_A_AUTHORED: GenreRow[] = [...PASSIVES, ...SPENDS, ...STRIKES, ...AURAS, ...GENRE_A_CAPSTONES, ...GENRE_A_CYBERPUNK, ...GENRE_A_DARK_FANTASY, ...GENRE_A_HORROR];

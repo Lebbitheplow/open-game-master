@@ -48,11 +48,9 @@
     "run": {
      "k": "magical"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap exorcist::Consecrated Tools#0",
-    "observed": "damage to a creature that resists nonmagical weapons: the engine gives 4, the text 8",
-    "where": "src/lib/dm/pc-attack-damage.ts (the magical-weapon test against resistance): the feature is not read",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: exorcist::Consecrated Tools#0",
+    "by": "src/lib/srd/genre-a-horror-holds.ts horrorMagicalAgainst, read by src/lib/dm/pc-attack-damage.ts strikesAsMagic for a weapon attack on a fiend or undead"
    }
   ]
  },
@@ -195,9 +193,10 @@
    },
    {
     "c": "a spirit or fiend that fails against your Rite of Repulsion is also restrained for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_binding_words#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-binding-words"
+    "is": "held",
+    "probe": "scripts/test-genre-a-horror.mjs",
+    "recorded_as": "spends-guidance-only-counter-horror-binding-words",
+    "by": "src/lib/dm/genre-a-horror-spends.ts horrorSaveArea: the spend readies the words (a mark for a minute), and the next Rite of Repulsion restrains for a minute the first creature it takes hold of and clears the mark"
    }
   ]
  },
@@ -209,9 +208,9 @@
   "clauses": [
    {
     "c": "Your Rite of Repulsion affects creatures immune to being frightened",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the hook probe passes only on the cleric's Voice of Authority reaction the exorcist borrows by name (borrowed:exorcist::Voice of Authority); Rite of Repulsion itself is a guidance-only spend (exorcist::Rite of Repulsion#1), so whom it affects cannot be staged"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-horror-spends.ts horrorSaveArea: before the feature a creature immune to frightened is left out of the rite, with it the rite takes it",
+    "probe": "scripts/test-genre-a-horror.mjs"
    }
   ]
  },
@@ -227,15 +226,12 @@
    },
    {
     "c": "affected creatures take 2d8 radiant when it takes hold",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
+    "is": "held",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap exorcist::Greater Rite#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: exorcist::Greater Rite#1",
+    "by": "src/lib/dm/genre-a-horror-spends.ts horrorSaveArea: 2d8 radiant, one roll, on each creature that fails the rites save; scripts/test-genre-a-horror.mjs plays the numbers"
    }
   ]
  },
@@ -563,11 +559,9 @@
      "skill": "arcana",
      "want": "double"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Forbidden Lore#0",
-    "observed": "the arcana check on a 10 with doubled proficiency: the engine gives 17, the text 19",
-    "where": "src/lib/srd/trait-rules.ts check keys (src/lib/dm/roll-about.ts CHECK_ABOUT has no circumstance for it) and src/lib/dm/roll-riders.ts",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: occultist::Forbidden Lore#0",
+    "by": "src/lib/srd/genre-a-horror-holds.ts horrorCheckRider (expertise on Arcana and Religion), read by src/lib/dm/rolls.ts"
    }
   ]
  },
@@ -692,15 +686,15 @@
    },
    {
     "c": "see through the eyes of a creature you can see for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_borrowed_eyes#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-borrowed-eyes"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs counter:horror_borrowed_eyes; scripts/test-genre-a-horror.mjs: Borrowed Eyes",
+    "by": "src/lib/srd/authored-effects-genre-a-horror.ts save_effect on a creature the occultist can see (sight), the link for 10 rounds"
    },
    {
     "c": "WIS save negates",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_borrowed_eyes#GUIDANCE_ONLY",
-    "same_probe_as": 1
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs counter:horror_borrowed_eyes; scripts/test-genre-a-horror.mjs: Borrowed Eyes",
+    "by": "the save_effect's WIS save against the occultist's spell DC: a made save lays nothing"
    }
   ]
  },
@@ -713,18 +707,20 @@
    {
     "c": "Advantage on saves against madness, charm, and fear from aberrations and fiends",
     "run": {
-     "k": "save_adv",
+     "k": "save_adv_from",
      "ability": "wis",
      "against": [
       "charmed",
       "frightened"
+     ],
+     "from": [
+      "aberration",
+      "fiend"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Ink-Stained Mind#0",
-    "observed": "d20s thrown for the wis save against charmed: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: occultist::Ink-Stained Mind#0",
+    "by": "src/lib/srd/genre-a-horror-holds.ts horrorSourcedSaves, read by src/lib/dm/roll-feature-riders.ts with the casters type or the type of the creature forcing the save (src/lib/dm/forced-save.ts); madness is no SRD condition"
    }
   ]
  },
@@ -978,15 +974,12 @@
   "clauses": [
    {
     "c": "See invisible and ethereal creatures within 30 ft",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
+    "is": "held",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Veilsight#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: occultist::Veilsight#0",
+    "by": "src/lib/srd/genre-a-horror-holds.ts horrorVeilTiles, read by src/lib/dm/attack-light.ts characterSenses as truesight out to 30 feet, the one sense of the SRD engine that sees the invisible and the ethereal (it also sees through magical darkness; the engine holds no narrower sense)"
    }
   ]
  },
@@ -1101,9 +1094,9 @@
    },
    {
     "c": "to a space you can see",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the teleport credit holds (occultist::Walk Between#2), and it is a number of feet only; a destination out of the holder's sight was not staged"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-horror-wards.ts horrorTeleportRefusal: a square with no line of sight from the occultists own is refused",
+    "probe": "scripts/test-genre-a-horror.mjs"
    }
   ]
  },
@@ -1115,15 +1108,12 @@
   "clauses": [
    {
     "c": "Creatures cannot teleport into or out of a 30-ft radius around you unless you allow it",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
+    "is": "held",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Warden of the Threshold#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: occultist::Warden of the Threshold#0",
+    "by": "src/lib/dm/genre-a-horror-wards.ts horrorTeleportRefusal, asked by src/lib/dm/map-tools.ts handleTeleportToken: a creature not on the wardens side is refused a teleport that crosses the 30-foot radius either way; the wardens side is what they allow"
    }
   ]
  },
@@ -1331,15 +1321,12 @@
    },
    {
     "c": "also ends one condition on you",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
+    "is": "held",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::Nine Lives#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: survivor::Nine Lives#1",
+    "by": "src/lib/srd/genre-a-horror-holds.ts horrorDropEnds, read by src/lib/dm/genre-drop-holds.ts as Wont Die Here keeps the survivor up: the worst condition on them ends (no moment to choose at the drop)"
    }
   ]
  },
@@ -1386,11 +1373,9 @@
      "n": 2,
      "hp": 40
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::Desperate Strength#1",
-    "observed": "the athletics check on a 10: the engine gives 18, the text 20",
-    "where": "src/lib/srd/trait-rules.ts check keys (src/lib/dm/roll-about.ts CHECK_ABOUT has no circumstance for it) and src/lib/dm/roll-riders.ts",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: survivor::Desperate Strength#1",
+    "by": "src/lib/srd/genre-a-horror-holds.ts horrorCheckRider (+2 on STR and DEX checks below half), read by src/lib/dm/rolls.ts for skill and ability checks"
    }
   ]
  },
@@ -1440,11 +1425,9 @@
       "frightened"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::Seen Worse#0",
-    "observed": "frightened was laid on a character the text makes immune to it",
-    "where": "src/lib/srd/trait-rules.ts condition immunities, read by set_condition: no immunity for the feature",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: survivor::Seen Worse#0",
+    "by": "src/lib/dm/genre-a-horror-board.ts horrorConditionImmunity, read by src/lib/dm/set-condition.ts conditionImmunity: an ally awake and not blinded with line of sight; the control is in scripts/test-genre-a-horror.mjs"
    }
   ]
  },
@@ -1477,11 +1460,9 @@
     "run": {
      "k": "death_adv"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::Death's Old Acquaintance#0",
-    "observed": "d20s thrown for the death save: the engine gives 1, the text 2",
-    "where": "src/lib/dm/death.ts rollDeathSave: no advantage for the feature",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: survivor::Death's Old Acquaintance#0",
+    "by": "src/lib/srd/genre-a-horror-holds.ts horrorDeathSaveAdvantage, read by src/lib/dm/death.ts rollDeathSave"
    },
    {
     "c": "stabilizing you takes no check",
@@ -1491,11 +1472,9 @@
      "face": 1,
      "want": "auto"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::Death's Old Acquaintance#1",
-    "observed": "a 1 on the Medicine check still stabilizes: {\"ok\":true,\"stabilized\":false,\"rolled\":4,\"dc\":10,\"note\":\"Ally Near's Medicine check (4) misses DC 10. Holder is still dying; their action is spent.\"}: the engine gives false, the text true",
-    "where": "src/lib/dm/stabilize.ts and src/lib/dm/death.ts rollStableTimer (1d4 hours for everybody)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: survivor::Death's Old Acquaintance#1",
+    "by": "src/lib/srd/genre-a-horror-holds.ts horrorStabilizesWithoutCheck, read by src/lib/dm/stabilize.ts handleStabilize (the action is spent, no Medicine check)"
    }
   ]
  },
@@ -1523,11 +1502,9 @@
      "k": "spend_moves",
      "id": "horror_terminal_focus"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::Terminal Focus#1",
-    "observed": "spending horror_terminal_focus moved its counter and the turn's cost and nothing else; the result was its guidance: 1/long rest, take two full turns in the first round of combat.",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: survivor::Terminal Focus#1",
+    "by": "src/lib/dm/genre-a-horror-spends.ts terminalFocus: on the survivors own turn in round 1 the turns budget and reaction are given back under the mark of the second turn, which follows the first"
    }
   ]
  },
@@ -1570,24 +1547,19 @@
      "n": 1,
      "alone": 1
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::Alone in the Dark#0",
-    "observed": "the armor class the club swung against: the engine gives 12, the text 13",
-    "where": "src/lib/srd/index.ts effectiveAcFor and src/lib/srd/feature-effects.ts ac_bonus: no conditional entry for the feature",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: survivor::Alone in the Dark#0",
+    "by": "src/lib/dm/genre-a-horror-board.ts horrorAcBonus, read by src/lib/dm/ac-effects.ts acWithEffects: no ally of the party within 10 feet on the fights board"
    },
    {
     "c": "advantage on Stealth",
     "run": {
-     "k": "check",
-     "skill": "stealth",
-     "want": "adv"
+     "k": "check_alone",
+     "skill": "stealth"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::Alone in the Dark#1",
-    "observed": "d20s thrown for the stealth check: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts check keys (src/lib/dm/roll-about.ts CHECK_ABOUT has no circumstance for it) and src/lib/dm/roll-riders.ts",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: survivor::Alone in the Dark#1",
+    "by": "src/lib/dm/genre-a-horror-board.ts horrorLentRolls, lent to the holders own Stealth check by src/lib/dm/genre-a-auras.ts lentRolls; off the board the party stands together and the GM gives the advantage"
    }
   ]
  },
@@ -1624,15 +1596,17 @@
    },
    {
     "c": "gain temp HP equal to twice your level",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_bitter_endurance#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-bitter-endurance"
+    "is": "held",
+    "probe": "scripts/test-genre-a-horror.mjs",
+    "recorded_as": "spends-guidance-only-counter-horror-bitter-endurance",
+    "by": "src/lib/dm/genre-a-horror-initiative.ts horrorAtInitiative: temporary hit points of twice the character level, the use spent"
    },
    {
     "c": "when combat starts",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_bitter_endurance#TRIGGER_AS_CARD",
-    "recorded_as": "spends-trigger-as-card-counter-horror-bitter-endurance"
+    "is": "held",
+    "probe": "scripts/test-genre-a-horror.mjs",
+    "recorded_as": "spends-trigger-as-card-counter-horror-bitter-endurance",
+    "by": "src/lib/dm/genre-a-horror-initiative.ts horrorAtInitiative, called by src/lib/dm/feature-hooks.ts applyInitiativeRefills as the survivor rolls initiative; the counter is passive to use_resource"
    }
   ]
  },
@@ -1644,15 +1618,12 @@
   "clauses": [
    {
     "c": "Your attacks deal +1d8 damage against creatures that have downed an ally this fight",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
+    "is": "held",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::No Witnesses Left#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: survivor::No Witnesses Left#0",
+    "by": "src/lib/dm/genre-a-horror-hits.ts horrorAfterEnemyHit records the creature whose attack leaves a character at 0 (authored-hooks.ts authoredAfterHit), and the hit_rider row (vsCondition) rides the survivors hits on it (src/lib/dm/genre-a-strikes.ts)"
    }
   ]
  },
@@ -1669,11 +1640,9 @@
      "type": "slashing",
      "sole": 1
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::Sole Survivor#0",
-    "observed": "hit points lost to 10 slashing: the engine gives 10, the text 5",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS and src/lib/srd/authored-effects-genre.ts: no conditional resistance for the feature; src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: survivor::Sole Survivor#0",
+    "by": "src/lib/dm/genre-a-horror-party.ts: soleSurvivorResistances in src/lib/dm/pc-damage.ts blowDefenses (every type) and soleSurvivorSpeed in src/lib/battlemap/view.ts (double speed), read live from the party"
    }
   ]
  },
@@ -1834,11 +1803,9 @@
      "k": "mark_ends",
      "res": "Quarry"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap slayer::Quarry#3",
-    "observed": "the mark is still held after the marked creature died",
-    "where": "src/lib/srd/authored-conditions.ts quarry buff on the holder: not cleared when the marked creature dies",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: slayer::Quarry#3",
+    "by": "src/lib/dm/genre-a-horror-marks.ts endHorrorMarks, called by src/lib/dm/authored-hooks.ts authoredOnKill: every Quarry mark on the dead creature ends"
    }
   ]
  },
@@ -1901,11 +1868,9 @@
      "dice": 2,
      "sides": 6
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap slayer::Improved Quarry#0",
-    "observed": "what the mark adds to a hit (11 marked, 8 unmarked): the engine gives 3, the text 6",
-    "where": "src/lib/srd/authored-effects-genre.ts (the quarry buff) and its rider in src/lib/srd/authored-conditions.ts: no upgrade for the feature",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: slayer::Improved Quarry#0",
+    "by": "src/lib/srd/authored-effects-genre-a-horror.ts QUARRY_LADDER on the Quarry row (hit_rider 1d6, vsMark quarry, from class level 11), read by src/lib/dm/genre-a-strikes.ts"
    },
    {
     "c": "marking is free when a creature harms an ally",
@@ -1942,21 +1907,19 @@
    {
     "c": "declare a called shot",
     "run": {
-     "k": "spend_moves",
-     "id": "horror_called_shot"
+     "k": "spend_variant",
+     "id": "horror_called_shot",
+     "variant": "sense"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap slayer::Called Shot#1",
-    "observed": "spending horror_called_shot moved its counter and the turn's cost and nothing else; the result was its guidance: 1/short rest, declare a called shot: on hit, the target also loses one movement mode, attack, or sense until your next t",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: slayer::Called Shot#1",
+    "by": "the Called Shot spend (src/lib/srd/authored-effects-genre-a-horror.ts): the variant names movement, attack or sense and lays the shots mark for the turn"
    },
    {
     "c": "on hit, the target also loses one movement mode, attack, or sense until your next turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "follows clause #1 (gap slayer::Called Shot#1), which fails: the spend moves its counter and the turn's cost and nothing else; with nothing on the table there is no state this clause could be read on",
-    "same_probe_as": 1
+    "is": "held",
+    "by": "src/lib/dm/genre-a-horror-hits.ts horrorOnHit, asked by src/lib/dm/attack-blow.ts landSwingBlow: the next weapon hit spends the mark and leaves the creature at speed 0, with disadvantage on attack rolls (the nearest the engine holds to one attack lost) or blinded, until the start of the slayers next turn",
+    "probe": "scripts/test-genre-a-horror.mjs"
    }
   ]
  },
@@ -1996,15 +1959,12 @@
   "clauses": [
    {
     "c": "Your critical hits against your Quarry deal maximum damage",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
+    "is": "held",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap slayer::Deathblow#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: slayer::Deathblow#0",
+    "by": "src/lib/dm/genre-a-horror-hits.ts horrorCritMaximum, asked by src/lib/dm/attack-swing.ts hitSwing: a critical on a creature a Quarry mark names deals every die at its maximum; scripts/test-genre-a-horror.mjs plays the numbers"
    }
   ]
  },
@@ -2080,11 +2040,9 @@
      "k": "two_marks",
      "res": "Quarry"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap slayer::Extinction#1",
-    "observed": "both marked creatures take the rider (damage rolls 1d8+4 and 1d8+4+1d6)",
-    "where": "src/lib/dm/resource-tools.ts (the quarry buff keeps one creature): a second mark replaces the first",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: slayer::Extinction#1",
+    "by": "src/lib/dm/genre-a-horror-marks.ts horrorMarkCondition, asked by the Quarry spend (src/lib/dm/authored-spend-effects.ts): a second living creature takes the mark \"quarry (second)\""
    }
   ]
  },
@@ -2125,13 +2083,12 @@
     "run": {
      "k": "check",
      "skill": "history",
-     "want": "adv"
+     "want": "adv",
+     "creature": "undead"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap slayer::Vampiric Scholar#0",
-    "observed": "d20s thrown for the history check: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts check keys (src/lib/dm/roll-about.ts CHECK_ABOUT has no circumstance for it) and src/lib/dm/roll-riders.ts",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: slayer::Vampiric Scholar#0",
+    "by": "src/lib/srd/authored-effects-genre-a-horror.ts check_adv on the lore skills about undead and shapechangers (a humanoid is the control)"
    }
   ]
  },
@@ -2139,26 +2096,22 @@
   "source": "src/lib/classes/horror-features.json",
   "group": "Lodge of the Silver Stake",
   "level": 7,
-  "sha": "2ad72df19f1f",
+  "sha": "42586bdc4c03",
   "clauses": [
    {
     "c": "Your critical hits against undead or shapechangers stun them until the end of your next turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
+    "is": "held",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap slayer::Piercing the Heart#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: slayer::Piercing the Heart#0",
+    "by": "src/lib/dm/genre-a-horror-hits.ts horrorOnHit: a weapon critical on an undead or a shapechanger stuns it until the end of the slayers next turn (Stunning Strikes stun)"
    },
    {
     "c": "CON save negates",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
-    "same_probe_as": 0
+    "is": "held",
+    "by": "src/lib/dm/genre-a-horror-hits.ts horrorOnHit: a CON save against DC 8 + proficiency bonus + the higher of STR and DEX, the number written into the text (WAVE2 D5)",
+    "probe": "scripts/test-genre-a-horror.mjs"
    }
   ]
  },
@@ -2202,9 +2155,10 @@
    },
    {
     "c": "an attack against a creature at half HP or lower becomes an automatic critical if it hits",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_the_stake_remembers#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-the-stake-remembers"
+    "is": "held",
+    "probe": "scripts/test-genre-a-horror.mjs",
+    "recorded_as": "spends-guidance-only-counter-horror-the-stake-remembers",
+    "by": "src/lib/dm/genre-a-horror-hits.ts horrorAttackSituation, asked by src/lib/dm/authored-hooks.ts authoredAttackSituation: the spends mark makes the next attack on a creature at half its hit points or lower a critical if it hits, and that attack spends it"
    }
   ]
  },
@@ -2399,13 +2353,12 @@
     "run": {
      "k": "check",
      "skill": "arcana",
-     "want": "adv"
+     "want": "adv",
+     "creature": "fiend"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap parapsychologist::Documented Phenomena#0",
-    "observed": "d20s thrown for the arcana check: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts check keys (src/lib/dm/roll-about.ts CHECK_ABOUT has no circumstance for it) and src/lib/dm/roll-riders.ts",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: parapsychologist::Documented Phenomena#0",
+    "by": "src/lib/srd/authored-effects-genre-a-horror.ts check_adv on the identifying skills about the supernatural types (a humanoid is the control); whether it was measured before is the GM's"
    }
   ]
  },
@@ -2455,9 +2408,9 @@
    },
    {
     "c": "after a creature you have measured attacks, impose disadvantage on that attack",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_predictive_model#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-predictive-model"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs counter:horror_predictive_model; scripts/test-enforce-sweep-spends-reactions.mjs",
+    "by": "src/lib/srd/authored-effects-genre-a-horror.ts reaction disadv_vs_hit on the open attack record (sees the attacker), its counter passive to use_resource (genre-a-counter-terms.ts)"
    }
   ]
  },
@@ -2489,15 +2442,12 @@
   "clauses": [
    {
     "c": "Your apparatus spells ignore resistance to psychic and force damage",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
+    "is": "held",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap parapsychologist::Resonance Lock#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: parapsychologist::Resonance Lock#0",
+    "by": "the ignore_resist row (psychic, force) in src/lib/srd/authored-effects-genre-a-horror.ts, read by src/lib/dm/authored-saves.ts authoredIgnoresResistance"
    }
   ]
  },
@@ -2548,15 +2498,16 @@
    },
    {
     "c": "force an invisible, ethereal, or shapechanged creature within 60 ft into its true visible form for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_observer_effect#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-observer-effect"
+    "is": "held",
+    "probe": "scripts/test-genre-a-horror.mjs",
+    "recorded_as": "spends-guidance-only-counter-horror-observer-effect",
+    "by": "src/lib/dm/genre-a-horror-spends.ts observerEffect: a creature within 60 feet that fails loses invisible, hidden and ethereal and is observed for a minute; a shapechangers form is the GMs to return"
    },
    {
     "c": "CHA save negates",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_observer_effect#GUIDANCE_ONLY",
-    "same_probe_as": 1
+    "is": "held",
+    "probe": "scripts/test-genre-a-horror.mjs",
+    "by": "src/lib/dm/genre-a-horror-spends.ts observerEffect: a CHA save against the spell save DC, through the save_effect engine"
    }
   ]
  },
@@ -2645,15 +2596,12 @@
   "clauses": [
    {
     "c": "After damaging a spirit, your party's attacks against it count as magical for 1 minute",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
+    "is": "held",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap parapsychologist::Ectoplasmic Sample#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: parapsychologist::Ectoplasmic Sample#0",
+    "by": "src/lib/dm/genre-a-horror-hits.ts horrorOnHit lays the sample on an undead an attack of the parapsychologists hits, and horrorSampled is read by src/lib/dm/pc-attack-damage.ts strikesAsMagic; damage a save spell deals takes no sample"
    }
   ]
  },
@@ -2764,16 +2712,15 @@
    },
    {
     "c": "cast a 1st-level stigmata without a slot",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs ruling counter:horror_bleeding_power#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-bleeding-power",
-    "ruling": "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\""
+    "is": "held",
+    "probe": "scripts/test-genre-a-horror.mjs: Bleeding Power",
+    "by": "the spend lays its cast mark (src/lib/dm/genre-a-horror-casts.ts layCastMark), and the next 1st-level spell costs no slot (src/lib/dm/genre-a-casts.ts)"
    },
    {
     "c": "take 1d4 necrotic that cannot be reduced",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs ruling counter:horror_bleeding_power#GUIDANCE_ONLY",
-    "same_probe_as": 1
+    "is": "held",
+    "probe": "scripts/test-genre-a-horror.mjs: Bleeding Power",
+    "by": "src/lib/dm/genre-a-horror-casts.ts layCastMark: the 1d4 backlash, typeless through applyPcDamage, past the apostate's necrotic resistance"
    }
   ]
  },
@@ -2888,22 +2835,18 @@
   "clauses": [
    {
     "c": "Bleeding Power can cast up to 3rd-level stigmata",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
+    "is": "held",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap apostate::Deeper Scars#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-genre-a-horror.mjs: Bleeding Power",
+    "by": "the 11th-level step of the Bleeding Power mark, \"bleeding power (deeper scars)\" (src/lib/dm/genre-a-casts.ts, maxLevel 3)"
    },
    {
     "c": "the backlash is 2d4 necrotic",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "same_probe_as": 0
+    "is": "held",
+    "by": "the 11th-level step of the Bleeding Power backlash, 2d4 (src/lib/srd/authored-effects-genre-a-horror.ts, src/lib/dm/genre-a-horror-casts.ts)",
+    "probe": "scripts/test-genre-a-horror.mjs: Bleeding Power"
    }
   ]
  },
@@ -2916,15 +2859,17 @@
    {
     "c": "Advantage on saves against spells cast by fiends, cultists, and aberrations",
     "run": {
-     "k": "save_adv",
+     "k": "save_adv_from",
      "ability": "wis",
-     "magical": true
+     "magical": true,
+     "from": [
+      "fiend",
+      "aberration"
+     ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap apostate::Turncoat's Insight#0",
-    "observed": "d20s thrown for the wis save against a spell: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: apostate::Turncoat's Insight#0",
+    "by": "src/lib/srd/genre-a-horror-holds.ts horrorSourcedSaves (fiends and aberrations) and horrorCultSave (a cultists stat block, asked by src/lib/dm/forced-save.ts)"
    }
   ]
  },
@@ -2995,16 +2940,15 @@
    {
     "c": "Immune to charm and possession by fiends and aberrations",
     "run": {
-     "k": "cond_immune",
+     "k": "cond_immune_from",
      "conditions": [
       "charmed"
-     ]
+     ],
+     "from": "fiend"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap apostate::Apostasy Complete#0",
-    "observed": "charmed was laid on a character the text makes immune to it",
-    "where": "src/lib/srd/trait-rules.ts condition immunities, read by set_condition: no immunity for the feature",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: apostate::Apostasy Complete#0",
+    "by": "src/lib/dm/genre-a-horror-board.ts horrorConditionImmunity, read by src/lib/dm/set-condition.ts conditionImmunity with the creature laying the charm; possession is the charm a fiends power lays"
    }
   ]
  },
@@ -3032,11 +2976,9 @@
      "k": "spend_moves",
      "id": "horror_their_power_your_hands"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap apostate::Their Power, Your Hands#1",
-    "observed": "spending horror_their_power_your_hands moved its counter and the turn's cost and nothing else; the result was its guidance: 1/long rest, cast one stigmata of 5th level or lower without a slot at its maximum effect.",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs: apostate::Their Power, Your Hands#1",
+    "by": "the spend's mark (src/lib/srd/authored-effects-genre-a-horror.ts) pays the next spell of 5th level or lower (src/lib/dm/genre-a-casts.ts GENRE_A_CASTS) at its maximum: genreCastsAtMaximum in pc-attack-plan.ts, cast-at-enemy.ts and aoe-spell.ts; scripts/test-genre-a-horror.mjs casts Inflict Wounds and Blight"
    }
   ]
  },
