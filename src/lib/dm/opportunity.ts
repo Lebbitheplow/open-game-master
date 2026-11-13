@@ -51,14 +51,15 @@ import { opportunityReactionKey } from "@/lib/srd/authored-effects-more";
 import { conditionsOf } from "@/lib/dm/vitals-logic";
 import { attackSenses, characterSenses, enemySenses, fearAsRolled, lightOnAttack, sensesReaching } from "@/lib/dm/attack-light";
 import { opportunityWeapon } from "@/lib/dm/enemy-profile";
-import { opportunitySight, pcOpportunitySwing, withOpportunityTurn } from "@/lib/dm/opportunity-strike";
+import { enemyOpportunityRiders, opportunitySight, pcOpportunitySwing, withOpportunityTurn } from "@/lib/dm/opportunity-strike";
+import { holdsFeat } from "@/lib/srd/feat-effects";
 import { warCasterOpportunity } from "@/lib/dm/ar-wbf-feat-warcaster";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { blowByType, resolveOnHit, scaledParts } from "@/lib/dm/enemy-hit";
 import { effectOutcome } from "@/lib/dm/effect-tools";
 import { hasTrait } from "@/lib/dm/monster-abilities";
-import { enfeebledBlow, spellRetort } from "@/lib/dm/spell-retort";
+import { enfeebledBlow, spellRetort, spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { activeAuthored } from "@/lib/srd/authored-effects";
 import { enemySpeedTiles } from "@/lib/dm/enemy-speed";
@@ -222,8 +223,10 @@ export function resolveOpportunityAttacks(
       adjacent: reach <= 1,
       requested: "none",
       targetSeesAttacker: sight?.targetSees !== false,
+      targetAlert: holdsFeat(sheet, "Alert"),
     });
     const light = lightOnAttack(sight, { attacker: enemy.displayName, target: sheet.name });
+    const own = enemyOpportunityRiders(campaign.id, enemy);
     // Escape the Horde (a Hunter ranger's Defensive Tactics): opportunity
     // attacks against them are made at disadvantage.
     const escapes = holdsFeature(sheet, "Escape the Horde");
@@ -240,11 +243,13 @@ export function resolveOpportunityAttacks(
       ...(eagle ? ["disadvantage" as const] : []),
       ...(attackEffect.advantage ? ["advantage" as const] : []),
       ...(attackEffect.disadvantage ? ["disadvantage" as const] : []),
+      ...own.sources,
     ]);
     const targetAc = acWithEffects(campaign.id, sheet);
-    const hitOutcome = rollExpression(d20Expression(attack.toHit + attackEffect.bonus, advantage), undefined, {
+    const hitOutcome = rollExpression(`${d20Expression(attack.toHit + attackEffect.bonus, advantage)}${own.riders.diceSuffix}`, undefined, {
       purpose: { roller: "enemy", kind: "attack", who: enemy.displayName },
     });
+    spendEnemyRiders(enemy, own.riders);
     const hitRoll = insertRoll({
       campaignId: campaign.id,
       characterId: null,

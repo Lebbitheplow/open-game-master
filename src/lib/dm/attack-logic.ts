@@ -24,6 +24,7 @@ import { rageApplies, type WeaponMaterial } from "@/lib/dm/damage-logic";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
 import type { SheetDerived } from "@/lib/srd";
 import { textKey } from "@/lib/language/text-logic";
+import { holdsFeature } from "@/lib/srd/feature-names";
 import { gearWeaponFor, type GearWeapon } from "@/lib/srd/gear-weapons";
 
 // Pure attack math for the pc_attack engine: which weapon a character swings,
@@ -651,11 +652,16 @@ export function ragingMeleeBonus(
     level: number;
     classes?: Array<{ id: string; level: number }>;
     equipment?: Array<{ name: string; equipped?: boolean }>;
+    features?: Array<{ name: string }>;
   },
   profile: Pick<AttackProfile, "ranged" | "ability">,
+  // The ranged attack is a melee weapon thrown with Strength: Path of the
+  // Giant's Crushing Throw (Giant's Havoc) adds the bonus to it as well.
+  options: { thrownAtRange?: boolean } = {},
 ): number {
   // Rage gives nothing to a barbarian in heavy armor (rageApplies).
-  if (!rageApplies(sheet) || profile.ranged || profile.ability !== "str") {
+  const crushingThrow = options.thrownAtRange === true && holdsFeature(sheet, "Giant's Havoc");
+  if (!rageApplies(sheet) || (profile.ranged && !crushingThrow) || profile.ability !== "str") {
     return 0;
   }
   // Multiclass: the bonus reads the BARBARIAN level, not the character's.

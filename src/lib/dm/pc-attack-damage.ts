@@ -58,6 +58,8 @@ export function foldDamageRiders(input: {
   marked?: Set<string>;
   // Surprised, in the first round (attack-damage-riders.ts).
   surprised?: boolean;
+  // Thrown past its reach (attack-damage-riders.ts).
+  atRange?: boolean;
 }) {
   const { campaignId, sheet } = input;
   let profile = input.profile;

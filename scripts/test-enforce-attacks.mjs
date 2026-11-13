@@ -286,6 +286,27 @@ await test("A lasting effect on Armor Class changes the number an attack has to 
   assert.equal(swing.result.vsAc, 15, `the attack was rolled against AC ${swing.result.vsAc}`);
 });
 
+// SRD 5.1, Rage: "When you make a melee weapon attack using Strength, you
+// gain a bonus to the damage roll." A handaxe thrown at a creature 20 feet
+// off is a ranged weapon attack (SRD 5.1, Thrown); swung beside it, a melee
+// one. The thrown handaxe took the bonus as the swing did.
+await test("Rage's damage rides a thrown weapon swung in melee, not one thrown at range", async () => {
+  const table = await duel({}, { class: "barbarian", level: 3, equipment: [{ name: "Handaxe", qty: 2 }] });
+  const { world, kit, hero } = table;
+  const raging = () => world.patch(hero.id, { conditions: ["raging"], conditionMeta: { raging: { rounds: 10 } } });
+  let enemy = await table.stage();
+  raging();
+  const swung = await kit.swing(hero.id, enemy.id, [15, 4], { weapon: "Handaxe" });
+  assert.equal(swung.damage.total, 4 + abilityMod(16) + 2, "swung beside it");
+  enemy = await table.stage();
+  raging();
+  kit.place(enemy.id, 5, 9);
+  const thrown = await kit.swing(hero.id, enemy.id, [15, 4], { weapon: "Handaxe" });
+  assert.equal(thrown.ok, true, thrown.error);
+  assert.equal(thrown.damage.total, 4 + abilityMod(16), `thrown 20 feet: ${thrown.damage.expression}`);
+  await table.kit.endFight();
+});
+
 await plain.kit.endFight();
 plain.world.close();
 finish();

@@ -116,6 +116,27 @@ await test("Conquering Presence frightens everyone in reach, with a save each tu
   assert.equal(used(conquest), 1);
 });
 
+// A Channel Divinity's save is against "your paladin spell save DC", read
+// with Charisma whatever else the sheet casts with. A paladin who took wizard
+// levels first, their sheet casting with Intelligence, frightened at DC 12
+// for Intelligence 10 where their Charisma made it 15.
+await test("A multiclass paladin's Conquering Presence is saved against at their paladin DC, read with Charisma.", async () => {
+  const before = world.sheet(conquest.id);
+  world.patch(conquest.id, {
+    abilities: { ...before.abilities, int: 10 },
+    spellcasting: { ability: "int", slots: { 1: { max: 2, used: 0 } }, known: [], prepared: [], cantrips: [] },
+  });
+  try {
+    const [a] = await stage(conquest, ["beast", "humanoid", "beast"]);
+    const out = await channel(conquest, "conquering presence", [13, 13]);
+    assert.equal(out.ok, true, out.error);
+    assert.ok(foe(a.id).conditions.includes("frightened"), "a 13 made the save at the wizard's DC");
+    assert.equal(foe(a.id).conditionMeta.frightened.saveEnds.dc, 15);
+  } finally {
+    world.patch(conquest.id, { abilities: before.abilities, spellcasting: before.spellcasting });
+  }
+});
+
 await test("Dreadful Aspect frightens for a minute, saved against only far from the paladin; a save made lands nothing.", async () => {
   const [a, b] = await stage(oathbreaker, ["beast", "humanoid", "beast"]);
   const out = await channel(oathbreaker, "dreadful aspect", [2, 20]);
