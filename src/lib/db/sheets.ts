@@ -9,7 +9,9 @@ import { endedByFallingUnconscious, endedByLosingWeapon, fellUnconscious, rageSu
 import { keptFromDrain } from "@/lib/dm/ar-ws-inured";
 import { populateFeaturesForClasses } from "@/lib/srd/features";
 import { populateResources } from "@/lib/srd/class-resources";
-import { XP_THRESHOLDS, deriveAc } from "@/lib/srd";
+import { XP_THRESHOLDS, acBreakdownFor, deriveAc, type AcSource } from "@/lib/srd";
+import { defaultHeld } from "@/lib/dm/held-default";
+import { wearingIsExplicit } from "@/lib/srd/armor";
 import { settleLevelChange, withoutDuplicateClasses } from "@/lib/srd/level-change";
 import { normalizeSpellcasting } from "@/lib/srd/spell-lists";
 import { settleAttunement, type Wearer } from "@/lib/srd/magic-items";
@@ -26,6 +28,7 @@ import {
   keyedFeatChoices,
   type CharacterSheet,
   type CreateSheetInput,
+  type EquipmentItem,
   type FullPatchSheetInput,
 } from "@/lib/schemas/sheet";
 import { textKey } from "@/lib/language/text-logic";
@@ -400,13 +403,52 @@ function capAttunement(
   return settleAttunement(equipment.map((item) => withStartingCharges(item, (expression) => rollExpression(expression).total)), wearer);
 }
 
+// A new sheet says what it wears and holds (src/lib/dm/held-default.ts):
+// the marks are worked out on the pack as the rules read it (homebrew rows
+// with their blocks) and kept on the rows as stored. The armor and shield it
+// marks are the ones the armor class already counted, so the AC is the same.
+function withDefaultHeld(
+  stored: EquipmentItem[],
+  read: EquipmentItem[],
+  source: Omit<AcSource, "equipment"> & { proficiencies: { armor: string[]; weapons?: string[] } },
+): EquipmentItem[] {
+  if (read.length !== stored.length) {
+    return stored;
+  }
+  const armor = acBreakdownFor({ ...source, equipment: read });
+  const held = defaultHeld(read, armor, source.proficiencies.weapons ?? [], Boolean(source.spellcasting));
+  return held ? stored.map((item, at) => ({ ...item, equipped: held[at]?.equipped ?? false })) : stored;
+}
+
+// Every sheet in a campaign that never said what it holds is given the
+// default (src/lib/dm/held-default.ts); its armor class is unchanged. The
+// sheets that changed, for the caller to announce.
+export function settleHeldGear(campaignId: string): CharacterSheet[] {
+  const changed: CharacterSheet[] = [];
+  for (const sheet of listSheets(campaignId)) {
+    if (sheet.isCompanion || wearingIsExplicit(sheet.equipment)) {
+      continue;
+    }
+    const row = getDatabase().prepare(`SELECT equipment_json FROM character_sheets WHERE id = ?`).get(sheet.id) as { equipment_json: string } | undefined;
+    const stored = parseJson<EquipmentItem[]>(row?.equipment_json ?? "[]", []);
+    const equipment = withDefaultHeld(stored, sheet.equipment, sheet);
+    const updated = equipment === stored ? null : patchSheet(sheet.id, { equipment });
+    if (updated) {
+      changed.push(updated);
+    }
+  }
+  return changed;
+}
+
 export function createSheet(
   campaignId: string,
   userId: string,
   level: number,
   input: CreateSheetInput,
   libraryCharacterId?: string | null,
-  options: { xp?: number } = {},
+  // `companion`: a companion the storyteller plays, which keeps the old
+  // reading of its gear (src/lib/dm/held-default.ts).
+  options: { xp?: number; companion?: boolean } = {},
 ): CharacterSheet {
   const db = getDatabase();
   const id = crypto.randomUUID();
@@ -456,7 +498,19 @@ export function createSheet(
   const acOverride = input.acOverride ?? true;
   // Homebrew armour is read with its mechanics, so a sheet created in it
   // stores its armor class at once.
-  const equipment = capAttunement(input.equipment ?? [], { ...input, level });
+  const carried = capAttunement(input.equipment ?? [], { ...input, level });
+  const equipment = options.companion ? carried : withDefaultHeld(carried, hydrateHomebrewGear(userId, carried, { campaignId }), {
+    class: input.class,
+    level,
+    classes: classList.length > 1 ? classList : undefined,
+    abilities: input.abilities,
+    proficiencies: input.proficiencies,
+    features,
+    race: input.race,
+    alignment: input.alignment,
+    spellcasting: input.spellcasting,
+    campaignId,
+  });
   const ac = acOverride
     ? input.ac
     : deriveAc({

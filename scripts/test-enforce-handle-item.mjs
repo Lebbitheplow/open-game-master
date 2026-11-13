@@ -14,13 +14,16 @@ import { suite } from "./lib/enforce-harness.mjs";
 import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 
 const { test, finish } = suite("test-enforce-handle-item");
-const world = await openWorld({ gameSettings: { ttsEnabled: false } });
+// The default every sheet gets (held-default.ts) is part of what is tested here.
+const world = await openWorld({ gameSettings: { ttsEnabled: false }, heldDefault: true });
 const kit = await combatKit(world);
 const { getDatabase } = await import("../src/lib/db/core.ts");
 const { listDroppedItems } = await import("../src/lib/db/dropped-items.ts");
 const { buildPlayerMapView } = await import("../src/lib/battlemap/view.ts");
 const { describeGround } = await import("../src/lib/dm/gear-tool.ts");
 const { intentRefusal } = await import("../src/lib/dm/intent-check.ts");
+const { planPcAttack } = await import("../src/lib/dm/pc-attack-plan.ts");
+const { handleItemCall } = await import("../src/lib/dm/gear-tool.ts");
 
 const GEAR = () => [
   { name: "Chain Mail", qty: 1, equipped: true },
@@ -377,6 +380,61 @@ await test("The sheet's own equip toggle charges the same in a fight: a draw is 
   assert.notEqual(full.status, 200);
   assert.match(full.json.error, /hands are full/);
   assert.equal(row(fighter, "Dagger").equipped, false);
+});
+
+// ---- which weapon is out, and whose choice a full hand is ----
+// A player asked to swing a quarterstaff they thought was drawn; the sheet
+// never said what was held, and the storyteller stowed the sling for them.
+
+await test("A new character says what it holds: the armor the AC counts and one trained weapon in hand, the rest packed", async () => {
+  const fresh = world.addHero({
+    name: "Wren", class: "fighter", level: 1, proficiencies: TRAINED, maxHp: 20,
+    equipment: [{ name: "Chain Mail", qty: 1 }, { name: "Greataxe", qty: 1 }, { name: "Handaxe", qty: 2 }, { name: "Rope", qty: 1 }],
+  });
+  const rows = world.sheet(fresh.id).equipment;
+  const held = rows.filter((item) => item.equipped === true).map((item) => item.name);
+  assert.deepEqual(held, ["Chain Mail", "Greataxe"]);
+  assert.ok(rows.every((item) => item.equipped !== undefined), "every row says");
+});
+
+await test("A sheet saved before that says it as a fight starts, and its armor class does not move", async () => {
+  await kit.endFight();
+  world.patch(ally.id, { equipment: [{ name: "Leather Armor", qty: 1 }, { name: "Rapier", qty: 1 }, { name: "Shortbow", qty: 1 }] });
+  assert.ok(world.sheet(ally.id).equipment.every((item) => item.equipped === undefined), "a sheet that has not said");
+  const ac = world.sheet(ally.id).ac;
+  await kit.fight(1);
+  const rows = world.sheet(ally.id).equipment;
+  assert.deepEqual(rows.filter((item) => item.equipped === true).map((item) => item.name), ["Leather Armor", "Rapier"]);
+  assert.equal(world.sheet(ally.id).ac, ac);
+  world.patch(ally.id, { equipment: ALLY_GEAR() });
+});
+
+await test("An attack refused for full hands says the choice is the player's, and the storyteller cannot then drop or stow for them that turn", async () => {
+  await freshFight();
+  world.patch(fighter.id, { equipment: GEAR().map((item) => (item.name === "Shield" ? { ...item, equipped: true } : item)) });
+  const enemy = world.enemies()[0];
+  kit.place(enemy.id, 3, 2);
+  const turn = { id: `ask-${Date.now()}`, actor: "ai" };
+  const sheets = world.sheets();
+  const plan = planPcAttack({
+    campaign: world.campaign(), turn, encounter: world.encounter(), sheet: world.sheet(fighter.id),
+    args: { characterId: fighter.id, targetEnemyId: enemy.id, weapon: "Handaxe" }, sheets, sheetsById: new Map(sheets.map((sheet) => [sheet.id, sheet])),
+  });
+  assert.ok(plan.refused, "refused");
+  assert.match(plan.refused.error, /hands are full/);
+  assert.match(plan.refused.error, /Kara's player's choice: ask them whether to drop one or put one away/);
+  // Mira's turn, so Kara is not the one awaiting her player's word.
+  kit.giveTurn(ally.id);
+  const call = (action, item, by = turn) => handleItemCall(world.campaign(), JSON.stringify({ action, characterId: fighter.id, item }), sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])), by);
+  for (const action of ["drop", "unequip"]) {
+    const out = call(action, "Shield");
+    assert.equal(out.ok, undefined, JSON.stringify(out));
+    assert.match(out.error, /Ask them and wait for their answer; nothing was dropped or spent/);
+  }
+  assert.equal(row(fighter, "Shield").equipped, true);
+  // Another storyteller turn (the player's answer) is not held to it.
+  const next = call("drop", "Shield", { id: `${turn.id}-next`, actor: "ai" });
+  assert.doesNotMatch(next.error ?? "", /player's choice/);
 });
 
 finish();

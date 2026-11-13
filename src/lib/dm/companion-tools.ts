@@ -573,7 +573,7 @@ export function finalizeNewCompanion(
   formerSheetIds: readonly string[] = [],
 ): { sheet: CharacterSheet; hadEncounter: boolean } {
   const botUser = createCompanionUser(input.name);
-  const created = createSheet(campaign.id, botUser.id, level, input, libraryCharacterId);
+  const created = createSheet(campaign.id, botUser.id, level, input, libraryCharacterId, { companion: true });
   const marked = markSheetAsCompanion(created.id, kind, personality) ?? created;
   // At a one-player table the AI runs, a party companion follows that player
   // in fights (src/lib/dm/companion-command.ts).

@@ -280,6 +280,16 @@ export function gearCards(sheet: CharacterSheet, turn: HandTurn, context: HandGe
   return cards;
 }
 
+// Where a carried weapon is, for its attack card: in hand, or packed away
+// so the attack draws it. Nothing on a sheet that has not said what it holds,
+// nor for a name no weapon row carries (a lineage's claws, a beast's bite).
+export function wieldOf(sheet: CharacterSheet, weapon: string): "in-hand" | "stowed" | undefined {
+  if (!wearingIsExplicit(sheet.equipment)) return undefined;
+  const row = sheet.equipment.find((item) => textKey(item.name) === textKey(weapon));
+  if (!row || gearKindOf(row) !== "weapon") return undefined;
+  return row.equipped === true ? "in-hand" : "stowed";
+}
+
 // The Attack action draws the weapon it swings with when a hand is free and
 // the interaction is too (pc-attack-plan.ts); otherwise a stowed weapon is
 // not swung this turn, in the engine's own words.

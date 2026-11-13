@@ -115,6 +115,10 @@ export type HandCard = {
   resource: string;
   // The condition applied, or "Concentration".
   condition: string;
+  // A carried weapon's place on a sheet that says what it holds: in hand, or
+  // packed away so the attack draws it with the turn's free object
+  // interaction (src/lib/dm/gear-hands.ts). Absent on every other card.
+  wield?: "in-hand" | "stowed";
   icon: IconRef;
   // A spell card's glyph and the words beside it (issue 845,
   // spell-glyph-logic.ts): what the spell mainly does, and the area or the
