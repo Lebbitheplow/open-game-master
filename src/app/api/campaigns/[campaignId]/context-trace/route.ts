@@ -1,5 +1,5 @@
 import { capsFor, isErrorResponse, requireStoryAuthority } from "@/lib/campaign-api";
-import { getLatestDmTurnId, getDmTurn } from "@/lib/db/dm-turns";
+import { getLatestTracedDmTurnId, getDmTurn } from "@/lib/db/dm-turns";
 import { traceForViewer } from "@/lib/dm/context-budget";
 
 export const runtime = "nodejs";
@@ -26,7 +26,9 @@ export async function GET(
     return context;
   }
 
-  const turnId = getLatestDmTurnId(campaignId);
+  // The last prompt actually sent: a newer turn that never assembled one has
+  // nothing to show, and is not "what the DM was sent last turn".
+  const turnId = getLatestTracedDmTurnId(campaignId);
   const turn = turnId ? getDmTurn(turnId) : null;
   // A campaign that has not taken a turn yet is not an error; the panel shows
   // an empty state rather than a failure.

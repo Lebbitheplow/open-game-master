@@ -237,6 +237,19 @@ export function getLatestDmTurnId(campaignId: string): string | null {
   return row?.id ?? null;
 }
 
+// The newest turn that sent the storyteller a prompt, for the lead's Context
+// panel (context-trace route). A turn that stopped before one was assembled
+// (the narrator down after an update, a fake or missing backend) keeps no
+// trace, and answering with it emptied the panel of what was last sent.
+export function getLatestTracedDmTurnId(campaignId: string): string | null {
+  const row = getDatabase()
+    .prepare(
+      `SELECT id FROM dm_turns WHERE campaign_id = ? AND context_trace_json IS NOT NULL ORDER BY created_at DESC, rowid DESC LIMIT 1`,
+    )
+    .get(campaignId) as { id: string } | undefined;
+  return row?.id ?? null;
+}
+
 // The campaign's last `limit` turns, oldest first: what the admin's report
 // bundle times and records (src/lib/report-bundle-server.ts).
 export function listRecentDmTurns(campaignId: string, limit: number): DmTurn[] {
