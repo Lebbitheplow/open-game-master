@@ -212,6 +212,7 @@ await test("a dead or fled enemy cannot act", async () => {
   const killed = await world.invoke("damage_enemy", { enemyId: dead.id, amount: 40 });
   assert.equal(killed.ok, true, killed.error);
   assert.equal(kit.enemy(dead.id).status, "dead");
+  kit.enemyTurn(fled.id);
   const ran = await world.invoke("enemy_flees", { enemyId: fled.id });
   assert.equal(ran.ok, true, ran.error);
   assert.equal(kit.enemy(fled.id).status, "fled");

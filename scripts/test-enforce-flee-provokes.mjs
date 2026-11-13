@@ -11,10 +11,12 @@ import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { combatKit, DUMMY, TRAINED } from "./lib/enforce-combat.mjs";
 import { call } from "./lib/enforce-campaign.mjs";
+import { aiEngine } from "./lib/enforce-narrator.mjs";
 
 const { test, finish } = suite("test-enforce-flee-provokes");
-const world = await openWorld({ campaign: { maxPlayers: 4 }, gameSettings: { dicePolicy: "real_allowed" } });
+const world = await openWorld({ campaign: { maxPlayers: 4 }, gameSettings: { dicePolicy: "real_allowed", dmMode: "human" } });
 const kit = await combatKit(world);
+const ai = await aiEngine(world);
 const { setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
 const { listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
 const pendingRoute = await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]");
@@ -43,7 +45,11 @@ async function stage(count = 1, patch = {}) {
   return enemies.map((enemy) => kit.enemy(enemy.id));
 }
 
-const flee = (enemy) => world.invoke("enemy_flees", { enemyId: enemy.id, reason: "its nerve breaks" });
+// On its own turn: a creature flees only then while initiative runs.
+const flee = (enemy) => {
+  kit.enemyTurn(enemy.id);
+  return world.invoke("enemy_flees", { enemyId: enemy.id, reason: "its nerve breaks" });
+};
 const reacted = (sheet) => world.encounter().reactionsUsed.some((key) => key.includes(sheet.id));
 
 await test("An enemy fleeing from beside a character takes their opportunity attack as it goes, and still escapes if it lives.", async () => {
@@ -152,7 +158,7 @@ await test("A Sentinel's stop lasts the rest of the turn it lands in: once that 
   kit.dice(15, 3);
   const out = await flee(gnoll);
   assert.equal(out.result.stopped, gnoll.displayName, JSON.stringify(out.result));
-  assert.equal(kit.current().characterId, hero.id, "it was stopped on Kara's turn");
+  // Its turn handed on with Kara's, as the lead's End Turn does.
   assert.equal(kit.endTurn(world.sheet(hero.id).userId), true);
   assert.equal(kit.enemy(gnoll.id).conditions.includes("stopped"), false, "the stop outlived the turn it was laid in");
   kit.dice(2);
@@ -164,6 +170,7 @@ await test("A Sentinel's stop lasts the rest of the turn it lands in: once that 
 await test("One that teleports away draws nothing, from beside a character with their reaction ready.", async () => {
   const [mage] = await stage(2);
   kit.place(hero.id, 6, 7);
+  kit.enemyTurn(mage.id);
   const out = await world.invoke("enemy_flees", { enemyId: mage.id, teleport: true, reason: "Misty Step" });
   assert.equal(out.ok, true, out.error);
   assert.equal(out.result.fled, mage.displayName);
@@ -178,6 +185,7 @@ await test("Speed 0 holds a walk out and not a teleport: grappled, it cannot run
   assert.equal(run.refused, "rules");
   assert.match(run.error, /speed is 0 \(grappled\): it cannot run from the fight\. .+ \(teleport: true\)\./);
   assert.equal(kit.enemy(mage.id).status, "alive");
+  kit.enemyTurn(mage.id);
   const gone = await world.invoke("enemy_flees", { enemyId: mage.id, teleport: true });
   assert.equal(gone.ok, true, gone.error);
   assert.equal(gone.result.fled, mage.displayName);
@@ -185,9 +193,58 @@ await test("Speed 0 holds a walk out and not a teleport: grappled, it cannot run
 
 await test("A teleport is still held by what stops a creature acting: paralyzed, it goes nowhere.", async () => {
   const [mage] = await stage(2, { conditions: ["paralyzed"] });
+  kit.enemyTurn(mage.id);
   const out = await world.invoke("enemy_flees", { enemyId: mage.id, teleport: true });
   assert.equal(out.refused, "rules");
   assert.equal(kit.enemy(mage.id).status, "alive");
+});
+
+// SRD 5.1, Movement and Position: "On your turn, you can move". A creature
+// leaves the fight on its own turn, at the console as for the AI: run off on
+// a character's turn it spent that character's reaction there, and could
+// leave from under an attack whose d20 was still with its player.
+await test("While initiative runs a creature flees only on its own turn: before it the call is refused, says when its turn comes, and spends nobody's reaction.", async () => {
+  const [gnoll] = await stage(2);
+  kit.place(hero.id, 6, 7);
+  assert.equal(kit.current().characterId, hero.id, "a character's turn");
+  const early = await world.invoke("enemy_flees", { enemyId: gnoll.id, reason: "its nerve breaks" });
+  assert.equal(early.ok, false, JSON.stringify(early));
+  assert.equal(early.retry, true, "the console's refusal says to retry");
+  assert.match(early.error, /turn has not come yet this round: it is Kara's turn\. It can flee on its own turn, after .+'s;/);
+  assert.equal(kit.enemy(gnoll.id).status, "alive");
+  assert.equal(reacted(hero), false, "a reaction was spent on a flee refused");
+  // The console's own request, as its "An enemy flees" form sends it: the
+  // refusal comes back as the error the form shows (DmActionForm.tsx).
+  world.signIn(world.owner);
+  const handler = await world.route("campaigns/[campaignId]/dm/invoke");
+  const response = await handler.POST(
+    new Request("http://test/", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: "enemy_flees", args: { enemyId: gnoll.id, teleport: false } }) }),
+    { params: Promise.resolve({ campaignId: world.campaignId }) },
+  );
+  const body = await response.json();
+  assert.equal(response.status, 409, JSON.stringify(body));
+  assert.match(String(body.error), /turn has not come yet this round: it is Kara's turn\. It can flee on its own turn/);
+  assert.equal(kit.enemy(gnoll.id).status, "alive");
+  // The AI hears move_token's words.
+  ai.fresh();
+  const asked = await ai.invoke("enemy_flees", { enemyId: gnoll.id });
+  assert.equal(asked.ok, false, JSON.stringify(asked));
+  const walked = await ai.invoke("move_token", { token: gnoll.id, x: 2, y: 7 });
+  assert.equal(asked.error, walked.error, "enemy_flees and move_token answered the AI differently");
+  // Its own turn comes: it goes, and draws the swing.
+  kit.dice(2);
+  const out = await flee(gnoll);
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.fled, gnoll.displayName, JSON.stringify(out.result));
+  assert.equal(reacted(hero), true);
+});
+
+await test("With no initiative order yet, nothing holds it to a turn.", async () => {
+  const [gnoll] = await stage(2);
+  kit.saveEncounter({ ...world.encounter(), orderReady: false });
+  const out = await world.invoke("enemy_flees", { enemyId: gnoll.id });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.fled, gnoll.displayName);
 });
 
 // A seat on physical dice rolls the swing its reaction makes (character-roll.ts,

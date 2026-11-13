@@ -205,6 +205,16 @@ export async function combatKit(world) {
     return world.encounter();
   }
 
+  // Hands an enemy its turn, as end_turn's hand-off does: it is due, and
+  // what only happens on its own turn (moving, fleeing) is open to it
+  // (enemy-turn-order.ts). The pointer stays where it is, as it does while
+  // the enemies before the next character take their turns.
+  function enemyTurn(enemyId) {
+    const encounter = world.encounter();
+    encounters.saveEncounter({ ...encounter, legendary: { ...encounter.legendary, due: [enemyId] } });
+    return world.encounter();
+  }
+
   // A new turn for whoever holds the floor: what the last one spent is
   // forgotten, as it is when the round comes back to them.
   function freshTurn() {
@@ -284,6 +294,7 @@ export async function combatKit(world) {
     endTurn,
     handOnEnemies,
     giveTurn,
+    enemyTurn,
     freshTurn,
     freshRound,
     endFight,

@@ -21,7 +21,20 @@ export function enemyTurnRefusal(
   enemy: Pick<EncounterEnemy, "id" | "displayName" | "status">,
   turn: Pick<DmTurn, "id" | "actor">,
 ): (ToolError & { stop?: AttackStop }) | null {
-  if (turn.actor !== "ai" || !encounter || !encounter.orderReady || encounter.kind === "scene") {
+  if (turn.actor !== "ai") {
+    return null;
+  }
+  return offTurnRefusal(encounter, enemy, turn);
+}
+
+// The same rule without the console's free hand, and the words it gives.
+function offTurnRefusal(
+  encounter: Encounter | null,
+  enemy: Pick<EncounterEnemy, "id" | "displayName" | "status">,
+  turn: Pick<DmTurn, "id" | "actor">,
+  ownTurnWords?: (current: string, before: string | null) => string,
+): (ToolError & { stop?: AttackStop }) | null {
+  if (!encounter || !encounter.orderReady || encounter.kind === "scene") {
     return null;
   }
   // The dead are told they are dead before they are told whose turn it is
@@ -48,7 +61,35 @@ export function enemyTurnRefusal(
   // Tagged so a line for the table says so (turn-lines-logic.ts): a person's
   // "run the monsters" read "does not attack this turn" with no reason
   // (issue #666).
+  if (ownTurnWords) {
+    return { error: ownTurnWords(current?.name ?? "another combatant", slot > 0 ? (encounter.order[slot - 1]?.name ?? null) : null), retry: true, stop: "turn" };
+  }
   return { error: `${enemy.displayName}'s turn has not come yet this round: it is ${current?.name ?? "another combatant"}'s turn. An enemy acts when end_turn hands it to you; off its turn it only reacts (opportunity attacks are automatic) or takes a legendary action.`, retry: true, stop: "turn" };
+}
+
+// enemy_flees: a creature leaves the fight with its own movement (or its own
+// spell), on its own turn (SRD 5.1, Movement and Position: "on your turn,
+// you can move"). Unlike every other correction this holds at the console
+// as well: since fleeing draws opportunity attacks, a goblin run off on a
+// character's turn spent that character's reaction there and could leave
+// from under an attack whose d20 was still with its player. The AI hears
+// move_token's words; a person is told where in the order its turn comes.
+// A creature the pointer rests on is on its turn.
+export function enemyFleeTurnRefusal(
+  encounter: Encounter | null,
+  enemy: Pick<EncounterEnemy, "id" | "displayName" | "status">,
+  turn: Pick<DmTurn, "id" | "actor">,
+): (ToolError & { stop?: AttackStop }) | null {
+  if (turn.actor === "ai") {
+    return enemyTurnRefusal(encounter, enemy, turn);
+  }
+  const resting = encounter?.order[encounter.turnIndex];
+  if (resting?.kind === "enemy" && resting.enemyId === enemy.id) {
+    return null;
+  }
+  return offTurnRefusal(encounter, enemy, turn, (current, before) =>
+    `${enemy.displayName}'s turn has not come yet this round: it is ${current}'s turn. It can flee on its own turn, ${before ? `after ${before}'s` : "at the top of the order"}; off its turn it only reacts (opportunity attacks are automatic) or takes a legendary action.`,
+  );
 }
 
 // The same, read from a tool call's arguments (enemyId for enemy_attack,

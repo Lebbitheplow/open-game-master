@@ -212,6 +212,7 @@ await test("Reinforcements: one back from an earlier fight carries its state, on
   kit.setEnemy(earlier.id, { currentHp: 7 });
   await world.invoke("end_encounter", { outcome: "truce" });
   const [a, b] = await stage(2);
+  kit.enemyTurn(b.id);
   const fled = await world.invoke("enemy_flees", { enemyId: b.id });
   assert.equal(fled.ok, true, fled.error);
   const rejoin = await ai("add_enemies", { enemies: [{ monster: "goblin", returning: b.id }] });
@@ -235,6 +236,7 @@ await test("A foe lying knocked out cannot flee, and when the last one standing 
   await knockOut(down);
   const refused = await world.invoke("enemy_flees", { enemyId: down.id });
   assert.equal(refused.refused, "rules");
+  kit.enemyTurn(runner.id);
   const ran = await world.invoke("enemy_flees", { enemyId: runner.id });
   assert.equal(ran.ok, true, ran.error);
   assert.equal(world.encounter(), null, "a knocked-out foe held the fight open");
