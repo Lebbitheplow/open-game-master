@@ -466,6 +466,8 @@ test("every racial trait is enforced, a resource, or acknowledged", () => {
     "Bestial Instincts (one skill from Acrobatics, Athletics, Intimidation, Survival)",
     // The jump die the board's jump door rolls (src/lib/dm/jump-move.ts).
     "Mirthful Leaps (roll a d8 and add that many feet to each long or high jump)",
+    // The bonus-action hooves pc_attack opens after a charge (feature-bonus-attacks.ts).
+    "Charge (after a 30-foot run straight at a creature and a melee weapon hit on it, a Hooves attack on it as a bonus action)",
   ]);
   const uncovered = [];
   for (const race of races) {

@@ -10,7 +10,7 @@ import fs from "node:fs";
 import "./lib/enforce-world.mjs";
 import { runOrSurvey } from "./lib/sweep-clauses-srd-survey.mjs";
 import { assert, clauseRig } from "./lib/sweep-clauses-srd-rig.mjs";
-import { plain, same } from "./lib/sweep-clauses-species-rig.mjs";
+import { plain, same, walkTo } from "./lib/sweep-clauses-species-rig.mjs";
 
 const rig = await clauseRig();
 const RACES = JSON.parse(fs.readFileSync(new URL("../src/lib/srd/races.json", import.meta.url), "utf8")).races;
@@ -34,7 +34,8 @@ const at = (t, who) => {
 
 const P = {};
 for (const row of RACES) {
-  const of = (build = {}) => ({ class: "fighter", level: 5, race: row.id, equipment: [], ...build });
+  // The walking speed the builder stores on the sheet with the lineage.
+  const of = (build = {}) => ({ class: "fighter", level: 5, race: row.id, speed: row.speed, equipment: [], ...build });
   const probe = (name, fn) => {
     P[`species.${row.id}.${name}`] = fn;
   };
@@ -74,12 +75,33 @@ for (const row of RACES) {
       same([first, second, human.status, ...at(t, other)], [[200, 5, 7], [200, 5, 8], 400, 5, 5], `${row.name}: a 10-foot standing jump on a d8 of 5, a 15-foot one on a d8 of 1 (lands 5 feet on), and a human's 10-foot standing jump (${JSON.stringify(leap.body.error ?? short.body.error ?? "")})`);
     });
   }
+  // Charge: a run of 30 feet straight at a creature, a melee weapon hit on
+  // it, then the hooves as a bonus action; with no run first, no hooves.
+  if (holds(row, "charge (")) {
+    probe("charge", async () => {
+      const t = await rig.table();
+      const who = t.hero(of({ equipment: [{ name: "Longsword", equipped: true }] }));
+      const [foe] = await t.fight([who]);
+      t.kit.openField();
+      t.kit.place(who.id, 2, 10);
+      t.kit.place(foe.id, 10, 10);
+      const run = await walkTo(t, who, 9, 10);
+      const blade = await t.swing(who, foe, [15, 4], { weapon: "Longsword" });
+      const hooves = await t.swing(who, foe, [15, 2], { weapon: "Hooves", bonusAttack: "feature" });
+      const charged = [run.status, blade.ok, hooves.ok, t.budget()?.bonusUsed];
+      t.freshTurn();
+      t.kit.place(who.id, 9, 10);
+      const still = await t.swing(who, foe, [15, 4], { weapon: "Longsword" });
+      const refused = await t.swing(who, foe, [15, 2], { weapon: "Hooves", bonusAttack: "feature" });
+      same([charged, still.ok, refused.ok], [[200, true, true, true], true, false], `${row.name}: hooves after a 35-foot run and a longsword hit, then after a hit with no run (${run.body.error ?? ""} ${hooves.error ?? ""})`);
+    });
+  }
 }
 
 // The probes above by name, for the ledger's probe check (it finds a probe
 // by its name in this file); the run holds the table to the list.
 const NAMES = [
-  "species.satyr.mirthful-leaps",
+  "species.satyr.mirthful-leaps", "species.centaur.charge",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
 

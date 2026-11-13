@@ -1360,6 +1360,7 @@
       },
       "traits": [
         "Hooves (1d4 bludgeoning unarmed strike)",
+        "Charge (after a 30-foot run straight at a creature and a melee weapon hit on it, a Hooves attack on it as a bonus action)",
         "Equine Build (count as one size larger for carrying)",
         "Survivor (one skill from Animal Handling, Medicine, Nature, Survival)"
       ],

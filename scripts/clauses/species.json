@@ -2824,7 +2824,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "b1815ab05df7",
+  "sha": "739cd5f5dfd8",
   "clauses": [
    {
     "c": "\"speed\":40",
@@ -2873,6 +2873,12 @@
     "is": "held",
     "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.centaur.choices"
+   },
+   {
+    "c": "Charge (after a 30-foot run straight at a creature and a melee weapon hit on it, a Hooves attack on it as a bonus action)",
+    "is": "held",
+    "by": "src/lib/dm/feature-bonus-attacks.ts featureBonusAttack (Charge: the run kept by src/lib/dm/mt-fb-charge.ts and the turn's weapon hit), read by pc_attack's bonus attack",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.centaur.charge"
    }
   ]
  },
