@@ -19,13 +19,19 @@ export const PACK_CLASS_AUTHORED: GenreRow[] = [
   },
   {
     // Juggernaut (Mechanist 11): "While wearing the armor from your Mystic
-    // Metal feature, you have proficiency in the Athletics skill". Read off
-    // the transformed suit's mark: in any other suit, or none, it is not there.
+    // Metal feature, you have proficiency in the Athletics skill, and you have
+    // advantage on any check made to initiate a grapple or shove, or to
+    // perform any weapon option that requires a STR check." Read off the
+    // transformed suit's mark: in any other suit, or none, none of it holds.
     feature: "Juggernaut",
     classes: ["mechanist"],
     entry: {
       subclass: "Metallurgist",
-      effects: [{ kind: "skill_prof", skills: ["athletics"], while: "while wearing the armor from Mystic Metal", gate: { transmutedArmor: "Mystic Metal" } }],
+      effects: [
+        { kind: "skill_prof", skills: ["athletics"], while: "while wearing the armor from Mystic Metal", gate: { transmutedArmor: "Mystic Metal" } },
+        { kind: "check_adv", skills: ["athletics"], about: "grapple_shove", gate: { transmutedArmor: "Mystic Metal" } },
+        { kind: "check_adv", abilities: ["str"], about: "weapon_option", gate: { transmutedArmor: "Mystic Metal" } },
+      ],
     },
   },
 ];

@@ -45,6 +45,11 @@ export const CHECK_ABOUT = [
   "gathering_information",
   // Blackmail Files (fixer): against someone whose secret the roller knows.
   "known_secret",
+  // Juggernaut (Black Flag): the check to grapple or shove a creature (the
+  // server names it on take_action's contest).
+  "grapple_shove",
+  // Juggernaut: a weapon option's Strength check (Black Flag's weapon options).
+  "weapon_option",
 ] as const;
 export type CheckAbout = (typeof CHECK_ABOUT)[number];
 

@@ -248,7 +248,8 @@ export function contest(
   // (src/lib/dm/contest-roll.ts), against the target's better of Athletics
   // (STR) and Acrobatics (DEX). Ties go to the defender.
   const rollContest = (die: { die: string; label: string } | undefined): { text: string; won: boolean } => {
-    const checked = rollCharacterCheck(campaign, sheet, { skill: "athletics", ...(nemesisClaim(campaign.id, sheet, enemy) ? { advantage: "advantage" as const } : {}) }, `${sheet.name}: Athletics to ${action} ${enemy.displayName}`);
+    // About a grapple or a shove, for what is keyed to one (Juggernaut).
+    const checked = rollCharacterCheck(campaign, sheet, { skill: "athletics", about: "grapple_shove", ...(nemesisClaim(campaign.id, sheet, enemy) ? { advantage: "advantage" as const } : {}) }, `${sheet.name}: Athletics to ${action} ${enemy.displayName}`);
     if (checked.rollId) {
       turn.rollIds.push(checked.rollId);
     }

@@ -349,7 +349,7 @@ await test("The Metallurgist's Athletics holds while its armor is worn, and only
 // and Juggernaut reads the mark.
 if (hasPack) {
   await test("Mystic Metal marks the suit it transforms, and Juggernaut reads that suit.", async () => {
-    const { clauseRig } = await import("./lib/sweep-clauses-srd-rig.mjs");
+    const { clauseRig, d20Faces } = await import("./lib/sweep-clauses-srd-rig.mjs");
     const t = await (await clauseRig()).table();
     const who = t.hero({
       class: "mechanist",
@@ -370,6 +370,22 @@ if (hasPack) {
     assert.equal(moved.ok, true, moved.error);
     assert.deepEqual(marked(), ["Scale Mail"], "a second use moves the transformation");
     assert.equal(athletics(), 3, "the chain mail worn is no longer the transformed suit");
+    // Juggernaut's other half: advantage on a check to grapple or shove, and
+    // on a weapon option's Strength check, in the transformed suit only.
+    const d20s = async (equipment) => {
+      t.patch(who, { equipment });
+      const [foe] = await t.fight([who]);
+      const grapple = await t.act(who, "grapple", { targetEnemyId: foe.id }, [12, 12, 5, 5]);
+      assert.equal(grapple.ok, true, grapple.error);
+      const check = t.lastRolls(6).find((roll) => /athletics to grapple/i.test(String(roll.detail ?? "")));
+      const option = await t.roll(who, { kind: "ability_check", ability: "str", dc: 30, about: "weapon_option" }, [6, 6]);
+      return { grapple: check ? d20Faces(check).length : "no roll", option: option.ok ? option.faces.length : option.error };
+    };
+    const suit = t.sheet(who).equipment;
+    const inMystic = suit.map((item) => ({ ...item, equipped: item.name === "Scale Mail" }));
+    const inPlain = suit.map((item) => ({ ...item, equipped: item.name === "Chain Mail" }));
+    assert.deepEqual(await d20s(inMystic), { grapple: 2, option: 2 }, "in the mystic metal suit");
+    assert.deepEqual(await d20s(inPlain), { grapple: 1, option: 1 }, "in another suit");
     await t.fight([who]);
     const busy = await t.use(who, "Mystic Metal", { variant: "Chain Mail" });
     assert.notEqual(busy.ok, true, "an hour of focus is not taken in a fight");
