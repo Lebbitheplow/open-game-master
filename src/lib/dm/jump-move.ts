@@ -32,7 +32,9 @@ export type JumpOutcome =
   | { error: string; status: number }
   // `lasting`: the leap rolled a check or let a grapple go, so it cannot be
   // taken back (src/lib/battlemap/move-undo.ts).
-  | { ok: true; jump: { feet: number; highJumpFeet: number; landed: string }; opportunity: OpportunityOutcome; zoneEffects: string[]; lasting: boolean };
+  // `highJumpDie`: the die a high jump adds feet from as well (Mirthful
+  // Leaps: "each long or high jump"), when the jumper holds one.
+  | { ok: true; jump: { feet: number; highJumpFeet: number; highJumpDie?: number; landed: string }; opportunity: OpportunityOutcome; zoneEffects: string[]; lasting: boolean };
 
 export function jumpMove(input: {
   campaign: Campaign;
@@ -78,6 +80,8 @@ export function jumpMove(input: {
   let plan = planTo(to, 0);
   let landing = to;
   let leapNote: string | null = null;
+  // The die this leap rolled, which its high jump gets too.
+  let leapRolled = 0;
   if (!plan.ok && reach.leapDie && wanted > bare) {
     // Possible at all with the die at its best: then it is rolled.
     const best = planTo(to, reach.leapDie);
@@ -85,6 +89,7 @@ export function jumpMove(input: {
       return { error: best.error, status: 400 };
     }
     const rolled = Math.max(0, rollOwnDice(campaign, sheet, `${sheet.name}: Mirthful Leaps`, `1d${reach.leapDie}`).total);
+    leapRolled = rolled;
     const covers = bare + rolled;
     if (covers < wanted) {
       const short = landingWithin(token, to, covers);
@@ -128,7 +133,10 @@ export function jumpMove(input: {
   }
   return {
     ok: true,
-    jump: { feet: plan.feet, highJumpFeet: reach.highFeet, landed: leapNote ? `${landed} (${leapNote})` : landed },
+    // Mirthful Leaps adds its d8 to "each long or high jump": the high jump
+    // this leap reports carries the die it rolled, and the die is named for
+    // a high jump made apart from it.
+    jump: { feet: plan.feet, highJumpFeet: reach.highFeet + leapRolled, ...(reach.leapDie ? { highJumpDie: reach.leapDie } : {}), landed: leapNote ? `${landed} (${leapNote})` : landed },
     opportunity,
     zoneEffects,
     lasting: plan.landsInDifficult || letGo.length > 0 || leapNote !== null,

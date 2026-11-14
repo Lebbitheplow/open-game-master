@@ -72,7 +72,12 @@ for (const row of RACES) {
       t.world.dice(5);
       const human = await moveTo(t, other, { x: 5, y: 7, jump: true });
       t.world.clearDice();
-      same([first, second, human.status, ...at(t, other)], [[200, 5, 7], [200, 5, 8], 400, 5, 5], `${row.name}: a 10-foot standing jump on a d8 of 5, a 15-foot one on a d8 of 1 (lands 5 feet on), and a human's 10-foot standing jump (${JSON.stringify(leap.body.error ?? short.body.error ?? "")})`);
+      // "Each long or high jump": the high jump (3 feet from a standing
+      // start at Strength 16) takes the die as well, the 5 rolled for this
+      // leap and 1d8 more said for one not yet made; a human's has none.
+      const { moveNotesFrom } = await import("../src/lib/battlemap/board-move.ts");
+      const high = [leap.body.jump?.highJumpFeet, leap.body.jump?.highJumpDie, /plus 1d8/.test(moveNotesFrom(leap.body)[0]?.text ?? "")];
+      same([first, second, human.status, ...at(t, other), high], [[200, 5, 7], [200, 5, 8], 400, 5, 5, [8, 8, true]], `${row.name}: a 10-foot standing jump on a d8 of 5, a 15-foot one on a d8 of 1 (lands 5 feet on), a human's 10-foot standing jump, and the high jump the first leap reports (${JSON.stringify(leap.body.error ?? short.body.error ?? "")} ${JSON.stringify(leap.body.jump ?? null)})`);
     });
   }
   // Charge: a run of 30 feet straight at a creature, a melee weapon hit on
