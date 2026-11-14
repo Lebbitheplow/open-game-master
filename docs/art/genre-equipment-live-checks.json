@@ -1,0 +1,66 @@
+{
+  "date": "2026-11-14",
+  "serverCommit": "a391bcdcc064f1202bccb241792b1f3c2af09dc2",
+  "clientCommit": "5d6bb1f0a489e1bdf784898d258fba511774994c",
+  "clientBuildAdaptation": "Windows file-URL imports in the isolated build script; runtime sources unchanged.",
+  "web": {
+    "records": [
+      {
+        "viewport": "desktop",
+        "theme": "dark",
+        "images": 56,
+        "file": "genre-equipment-web-desktop-dark.png"
+      },
+      {
+        "viewport": "desktop",
+        "theme": "light",
+        "images": 56,
+        "file": "genre-equipment-web-desktop-light.png"
+      },
+      {
+        "viewport": "phone",
+        "theme": "dark",
+        "images": 56,
+        "file": "genre-equipment-web-phone-dark.png"
+      },
+      {
+        "viewport": "phone",
+        "theme": "light",
+        "images": 56,
+        "file": "genre-equipment-web-phone-light.png"
+      }
+    ],
+    "pageErrors": [],
+    "scope": "Production website in Chromium with synthetic local table"
+  },
+  "app": {
+    "records": [
+      {
+        "viewport": "desktop",
+        "theme": "dark",
+        "images": 56,
+        "file": "genre-equipment-app-desktop-dark.png"
+      },
+      {
+        "viewport": "desktop",
+        "theme": "light",
+        "images": 56,
+        "file": "genre-equipment-app-desktop-light.png"
+      },
+      {
+        "viewport": "phone",
+        "theme": "dark",
+        "images": 56,
+        "file": "genre-equipment-app-phone-dark.png"
+      },
+      {
+        "viewport": "phone",
+        "theme": "light",
+        "images": 56,
+        "file": "genre-equipment-app-phone-light.png"
+      }
+    ],
+    "pageErrors": [],
+    "scope": "Client app shell in Chromium with synthetic local table"
+  }
+}

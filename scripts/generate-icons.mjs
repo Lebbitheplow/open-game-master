@@ -189,7 +189,7 @@ for (const e of ALL) {
   icons.push({
     id: e.id, group: e.group, key: e.key, label: e.label,
     src: `/assets/icons/${e.group}/${e.id.slice(e.group.length + 1)}.webp`, bytes: statSync(file).size,
-    ...(e.externalArt ? { generator: "image_gen", width: 256, height: 128, genre: e.genre } : { seed: seedOf(e) }),
+    ...(e.externalArt ? { generator: "image_gen", width: e.width ?? 256, height: e.height ?? 128, genre: e.genre } : { seed: seedOf(e) }),
     ...(e.school ? { school: e.school, level: e.level } : {}), ...(e.kind ? { kind: e.kind } : {}), ...(e.classId ? { classId: e.classId } : {}),
   });
 }

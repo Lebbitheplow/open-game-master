@@ -1,0 +1,258 @@
+[
+  {
+    "id": "pistol",
+    "cardId": "weapon-pistol",
+    "label": "Pistol",
+    "kind": "weapon",
+    "subject": "a compact unbranded semi-automatic pistol, dark blued steel slide and textured black grip, side profile, no futuristic attachments",
+    "genre": "shared"
+  },
+  {
+    "id": "revolver",
+    "cardId": "weapon-revolver",
+    "label": "Revolver",
+    "kind": "weapon",
+    "subject": "a period six-shot revolver, visibly distinct cylinder, blued steel and walnut grip, side profile, restrained sepia highlights",
+    "genre": "mystery"
+  },
+  {
+    "id": "sawed-off-scattergun",
+    "cardId": "weapon-sawed-off-scattergun",
+    "label": "Sawed-off Scattergun",
+    "kind": "weapon",
+    "subject": "a compact sawed-off double-barrel shotgun, visibly short twin barrels, short walnut shoulder stock and worn blued steel, full side profile",
+    "genre": "horror"
+  },
+  {
+    "id": "hunting-rifle",
+    "cardId": "weapon-hunting-rifle",
+    "label": "Hunting Rifle",
+    "kind": "weapon",
+    "subject": "a long bolt-action hunting rifle, full walnut shoulder stock, long steel barrel and small conventional scope, complete side profile",
+    "genre": "shared"
+  },
+  {
+    "id": "musket",
+    "cardId": "weapon-musket",
+    "label": "Musket",
+    "kind": "weapon",
+    "subject": "a long antique flintlock musket, slender full wooden stock, very long iron barrel, visible external flintlock, restrained brass fittings, full side profile",
+    "genre": "steampunk"
+  },
+  {
+    "id": "hand-cannon",
+    "cardId": "weapon-hand-cannon",
+    "label": "Hand Cannon",
+    "kind": "weapon",
+    "subject": "a single-handed antique hand cannon, thick short wide-bore barrel, chunky wooden pistol grip, iron and aged brass, original steampunk design, side profile",
+    "genre": "steampunk"
+  },
+  {
+    "id": "monoblade",
+    "cardId": "weapon-monoblade",
+    "label": "Monoblade",
+    "kind": "weapon",
+    "subject": "a sleek futuristic single-edged steel sword with fine cyan cutting edge and compact black grip",
+    "genre": "cyberpunk"
+  },
+  {
+    "id": "chainblade",
+    "cardId": "weapon-chainblade",
+    "label": "Chainblade",
+    "kind": "weapon",
+    "subject": "an original industrial two-handed chainblade, long straight toothed cutting bar, exposed continuous cutting chain, compact motor housing and two clearly separated hand grips, steel and worn ochre, no franchise symbols",
+    "genre": "post_apocalyptic"
+  },
+  {
+    "id": "shock-baton",
+    "cardId": "weapon-shock-baton",
+    "label": "Shock Baton",
+    "kind": "weapon",
+    "subject": "a compact single-handed electric baton with insulated black grip, sturdy metal shaft and two visible tip electrodes carrying one small blue arc",
+    "genre": "shared"
+  },
+  {
+    "id": "vibroknife",
+    "cardId": "weapon-vibroknife",
+    "label": "Vibroknife",
+    "kind": "weapon",
+    "subject": "a compact futuristic knife, short broad steel blade only one and a half times grip length, ribbed black grip and small cyan power indicator, physically solid blade not a light sword",
+    "genre": "cyberpunk"
+  },
+  {
+    "id": "ripper-gauntlet",
+    "cardId": "weapon-ripper-gauntlet",
+    "label": "Ripper Gauntlet",
+    "kind": "weapon",
+    "subject": "one empty armored mechanical glove, four short parallel retractable steel claws attached above the knuckles, dark steel plates and black leather palm, no wearer or severed body parts",
+    "genre": "cyberpunk"
+  },
+  {
+    "id": "heavy-spanner",
+    "cardId": "weapon-heavy-spanner",
+    "label": "Heavy Spanner",
+    "kind": "weapon",
+    "subject": "one oversized heavy industrial open-ended spanner, massive open jaw and long thick iron handle with worn leather grip, aged brass adjustment wheel, believable wrench",
+    "genre": "steampunk"
+  },
+  {
+    "id": "sword-cane",
+    "cardId": "weapon-sword-cane",
+    "label": "Sword Cane",
+    "kind": "weapon",
+    "subject": "one period sword cane with its slender straight steel blade partly withdrawn from a black walking-cane sheath, curved dark wood handle, sheath and blade aligned and clearly separate, minimal silver collar",
+    "genre": "mystery"
+  },
+  {
+    "id": "machete",
+    "cardId": "weapon-machete",
+    "label": "Machete",
+    "kind": "weapon",
+    "subject": "one practical broad single-edged machete with a slightly forward weighted tip, worn steel blade and short wrapped wooden handle, utilitarian survivor equipment",
+    "genre": "post_apocalyptic"
+  },
+  {
+    "id": "crowbar",
+    "cardId": "weapon-crowbar",
+    "label": "Crowbar",
+    "kind": "weapon",
+    "subject": "one long worn red-painted steel crowbar, clearly hooked forked claw at one end and flattened chisel at the other, believable uninterrupted bent metal bar",
+    "genre": "post_apocalyptic"
+  },
+  {
+    "id": "silvered-stake",
+    "cardId": "weapon-silvered-stake",
+    "label": "Silvered Stake",
+    "kind": "weapon",
+    "subject": "one short sharpened wooden vampire-hunting stake with a polished silver sleeve covering its pointed end, rough oak grain and leather grip wrapping, no crossguard, unmistakably a stake rather than a dagger",
+    "genre": "horror"
+  },
+  {
+    "id": "censer-mace",
+    "cardId": "weapon-censer-mace",
+    "label": "Censer Mace",
+    "kind": "weapon",
+    "subject": "one rigid short-handled mace whose attached metal head is a perforated round incense censer, warm ember glow visible through apertures and one subtle wisp of smoke, antique bronze and dark wood, no chain",
+    "genre": "horror"
+  },
+  {
+    "id": "hurled-vial",
+    "cardId": "weapon-hurled-vial",
+    "label": "Hurled Vial",
+    "kind": "weapon",
+    "subject": "one small throwable sealed glass vial containing vivid green caustic liquid, strong rounded glass body, thick cork and protective leather band, intact and static",
+    "genre": "shared"
+  },
+  {
+    "id": "armorweave-vest",
+    "cardId": "armor-armorweave-vest",
+    "label": "Armorweave Vest",
+    "kind": "armor",
+    "subject": "one empty sleeveless futuristic armorweave vest, supple black ballistic fabric with visible fine woven texture, slim flexible silhouette and subtle cyan seam accents, front three-quarter view",
+    "genre": "cyberpunk"
+  },
+  {
+    "id": "kevlar-vest",
+    "cardId": "armor-kevlar-vest",
+    "label": "Kevlar Vest",
+    "kind": "armor",
+    "subject": "one empty practical olive ballistic vest with thick soft fabric panels, adjustable shoulder straps, side buckles and quilted panel seams, no hard external plates, front three-quarter view",
+    "genre": "shared"
+  },
+  {
+    "id": "riot-plating",
+    "cardId": "armor-riot-plating",
+    "label": "Riot Plating",
+    "kind": "armor",
+    "subject": "one empty heavy riot armor torso with rigid dark steel chest and broad articulated shoulder plates, stout neck guard and layered abdominal plates, visibly heavier than a soft vest, front three-quarter view",
+    "genre": "shared"
+  },
+  {
+    "id": "brass-carapace",
+    "cardId": "armor-brass-carapace",
+    "label": "Brass Carapace",
+    "kind": "armor",
+    "subject": "one empty steampunk breastplate of curved riveted brass segments, copper joints and dark leather harness, restrained teal patina, front three-quarter view",
+    "genre": "steampunk"
+  },
+  {
+    "id": "scrap-plate",
+    "cardId": "armor-scrap-plate",
+    "label": "Scrap Plate",
+    "kind": "armor",
+    "subject": "one empty scavenged armor torso assembled from mismatched rusted steel plates bolted to worn leather, asymmetrical shoulder guards, visibly repaired and practical, front three-quarter view",
+    "genre": "post_apocalyptic"
+  },
+  {
+    "id": "ballistic-shield",
+    "cardId": "armor-ballistic-shield",
+    "label": "Ballistic Shield",
+    "kind": "armor",
+    "subject": "one tall modern rectangular ballistic shield of dark composite material, small horizontal reinforced viewport near the top, beveled corners, scuffed surface, upright three-quarter view, no lettering",
+    "genre": "shared"
+  },
+  {
+    "id": "hacking-rig",
+    "cardId": "gear-hacking-rig",
+    "label": "Hacking Rig",
+    "kind": "gear",
+    "subject": "one compact portable cyberpunk hacking terminal opened like a clamshell, physical keyboard, small cyan display with abstract unlabeled circuit shapes, neatly attached short connector cable, dark steel case",
+    "genre": "cyberpunk"
+  },
+  {
+    "id": "drone-controls",
+    "cardId": "gear-drone-controls",
+    "label": "Drone Controls",
+    "kind": "gear",
+    "subject": "one handheld drone controller with two thumb joysticks, folded-out small cyan telemetry screen and two short aerials, rugged black casing, no drone present, no text on screen",
+    "genre": "cyberpunk"
+  },
+  {
+    "id": "medics-kit",
+    "cardId": "gear-medics-kit",
+    "label": "Medic's Kit",
+    "kind": "gear",
+    "subject": "one open compact red-brown medical satchel with neatly arranged white bandage rolls, metal scissors and sealed medicine bottles, small plain white cross patch, believable readable medical equipment",
+    "genre": "shared"
+  },
+  {
+    "id": "field-instruments",
+    "cardId": "gear-field-instruments",
+    "label": "Field Instruments",
+    "kind": "gear",
+    "subject": "one portable paranormal field instrument with large analog needle gauge, attached short sensor probe and cable coiled beside it, aged dark case and pale green indicator, no writing or digits",
+    "genre": "horror"
+  },
+  {
+    "id": "investigators-kit",
+    "cardId": "gear-investigators-kit",
+    "label": "Investigator's Kit",
+    "kind": "gear",
+    "subject": "one open leather detective case holding a large magnifying glass, blank pocket notebook, small fingerprint brush and unlabeled evidence envelope, sepia noir materials, organized compact arrangement",
+    "genre": "mystery"
+  },
+  {
+    "id": "photographers-kit",
+    "cardId": "gear-photographers-kit",
+    "label": "Photographer's Kit",
+    "kind": "gear",
+    "subject": "one vintage folding bellows camera with circular brass lens and folded leather carrying case behind it, dark wood and black leather, compact readable silhouette",
+    "genre": "mystery"
+  },
+  {
+    "id": "seance-kit",
+    "cardId": "gear-seance-kit",
+    "label": "Seance Kit",
+    "kind": "gear",
+    "subject": "one compact occult kit arranged on folded deep violet cloth: a clear crystal ball on a small dark wood stand, one short lit candle and a simple brass pendulum, no letters or spirit board",
+    "genre": "mystery"
+  },
+  {
+    "id": "bullets",
+    "cardId": "gear-bullets",
+    "label": "Bullets",
+    "kind": "gear",
+    "subject": "a small open ammunition pouch with exactly five clearly visible brass cartridges, two standing beside the pouch, copper bullet tips, restrained gunmetal and brown leather",
+    "genre": "shared"
+  }
+]
