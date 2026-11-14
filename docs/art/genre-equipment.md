@@ -37,6 +37,18 @@ the actual `HandCardFace`, using application CSS at desktop and phone widths.
 These are static component previews, not authenticated campaign or native
 client screenshots.
 
+The `genre-equipment-web-*.png` and `genre-equipment-app-*.png` screenshots
+also check the equipment section of a real character sheet, using a synthetic
+local table. Both the production website and compiled client app shell passed
+at desktop and phone widths in light and dark themes. All 56 equipment images
+on the sheet (including repeated worn-gear rows) loaded in every view, with no
+page errors. See `genre-equipment-live-checks.json` for the source commits and
+capture list. The app shell ran in Chromium; this was not a physical-device test.
+
+The isolated client build needed Windows file-URL imports in its build script.
+Its runtime sources were unchanged. The synthetic database, credentials and
+server logs are not part of this art change.
+
 Run the focused checks from the repository root:
 
 ```sh
