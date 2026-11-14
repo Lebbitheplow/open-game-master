@@ -111,6 +111,7 @@ import { conversationNote, type Conversation } from "@/lib/dm/conversation-logic
 import { ADVANTAGE_SOURCES } from "@/lib/dm/pc-attack-options";
 import { PLACE_DIRECTIONS, PLACE_DISTANCES } from "@/lib/overworld/places";
 import { heroFell } from "@/lib/characters/fallen-logic";
+import { NPC_MINDS_RULES } from "@/lib/dm/npc-mind-tools";
 
 // The rolls the moment shows have landed and been told (issue 931): under a
 // bare "Recent rolls" the model told last round's 6 damage on the hero again
@@ -1929,6 +1930,10 @@ function turnRuleParts(state: TurnRuleState): {
   let rulesCarrySecret = false;
   if (mode !== "off" && (!compactRules || compactRules.groups.has("companions") || state.sheets.some((sheet) => sheet.isCompanion))) {
     settingsRules.push(companionRules(state.campaign, mode));
+  }
+  // Each NPC answers from their own mind (src/lib/dm/npc-mind.ts).
+  if (state.campaign.gameSettings.npcMinds) {
+    settingsRules.push(NPC_MINDS_RULES);
   }
   if (
     state.campaign.gameSettings.relationships !== "off" &&

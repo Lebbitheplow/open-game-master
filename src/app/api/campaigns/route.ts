@@ -99,6 +99,11 @@ export async function POST(request: Request) {
   // starts it on only where the server can read aloud, the rule the
   // new-campaign dialog applies for itself before it sends (issue 275).
   const gameSettings = { ...parsed.data.gameSettings };
+  // A new table's NPCs think for themselves (src/lib/dm/npc-mind.ts); only
+  // tables made before them keep the single narrator.
+  if (gameSettings.npcMinds === undefined) {
+    gameSettings.npcMinds = true;
+  }
   if (gameSettings.ttsEnabled === undefined) {
     gameSettings.ttsEnabled = await narrationAvailable();
   }

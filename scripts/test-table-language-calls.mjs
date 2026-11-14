@@ -212,6 +212,9 @@ const CLASSIFIED = {
   "src/lib/dm/turn.ts": { prose: 4, machine: 0 },
   "src/lib/dm/player-word-read.ts": { prose: 0, machine: 1 },
   "src/lib/dm/continue-scene.ts": { prose: 1, machine: 0 },
+  // An NPC mind's answer (src/lib/dm/npc-mind.ts): its speech is voiced to
+  // the table, so it carries the directive through withLanguage.
+  "src/lib/dm/npc-mind.ts": { prose: 1, machine: 0 },
   "src/lib/dm/renarrate.ts": { prose: 1, machine: 0 },
   "src/lib/dm/narration-guard.ts": { prose: 1, machine: 0 },
   // A delegated monster turn's narration (buildDmSystem) and its decision,

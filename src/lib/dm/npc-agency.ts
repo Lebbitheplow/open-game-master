@@ -28,7 +28,10 @@ import { textKey } from "@/lib/language/text-logic";
 export function advanceNpcAgency(
   campaignId: string,
   chapterTranscript: string,
-  options: { rounds?: number; tickPressureCounters?: boolean } = {},
+  // `mindsDecide`: first-tier NPCs whose own minds pursue their goals off
+  // screen (src/lib/dm/npc-mind.ts runOffscreenMinds); their goals advance
+  // there, on the same dice, only when the mind acted.
+  options: { rounds?: number; tickPressureCounters?: boolean; mindsDecide?: ReadonlySet<string> } = {},
 ) {
   const rounds = Math.max(1, Math.min(5, options.rounds ?? 1));
   const npcs = listNpcs(campaignId);
@@ -61,7 +64,7 @@ export function advanceNpcAgency(
         ? npc.agency.pressure
         : tickPressure(npc.agency.pressure, transcript.includes(textKey(npc.name)));
 
-    for (let round = 0; round < rounds && goals.session; round += 1) {
+    for (let round = 0; round < rounds && goals.session && !options.mindsDecide?.has(npc.id); round += 1) {
       const result = advanceSessionGoal(
         goals.session,
         npc.agency.personality,

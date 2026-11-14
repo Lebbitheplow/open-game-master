@@ -1,0 +1,612 @@
+import { z } from "zod";
+import type { Campaign } from "@/lib/db/campaigns";
+import { getClock } from "@/lib/db/clock";
+import { getNpcById, listNpcs, patchNpcAgency, type Npc } from "@/lib/db/npcs";
+import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { listSheets, getSheetById } from "@/lib/db/sheets";
+import { listRelationships } from "@/lib/db/relationships";
+import { getCurrentLocation, listLocations } from "@/lib/db/locations";
+import { recordExtractedFacts } from "@/lib/db/facts";
+import {
+  addNpcMemories,
+  getNpcInspiration,
+  lastOffscreenInstants,
+  listNpcMemories,
+  getNpcAway,
+  getNpcTier,
+  listNpcProposals,
+  recordNpcProposal,
+  setNpcAway,
+  setNpcInspiration,
+} from "@/lib/db/npc-minds";
+import { requestUtilityMessage } from "@/lib/dm/model";
+import { resolveTextTimeoutMs } from "@/lib/model-client";
+import { stripReasoningArtifacts } from "@/lib/story-prompt";
+import { withLanguage } from "@/lib/dm/table-language-logic";
+import { currentTurnId } from "@/lib/dm/job-control";
+import { resolveMonster } from "@/lib/bestiary";
+import { spellAuthorsFor } from "@/lib/dm/spell-authors";
+import { advanceSessionGoal, agencyFragment } from "@/lib/dm/npc-logic";
+import { rollExpression } from "@/lib/dice";
+import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
+import { clipText, textKey } from "@/lib/language/text-logic";
+import {
+  MIND_SYSTEM,
+  attemptOutcome,
+  awayRosterNote,
+  backgroundOpen,
+  catchUpSteps,
+  memoriesFor,
+  mentalScoresOf,
+  offscreenCandidates,
+  parseProposal,
+  recipientsOf,
+  renderMindPrompt,
+  unlearnedNames,
+  overheard,
+  rosterNote,
+  tierOf,
+  type NpcAway,
+  type NpcTier,
+  type MindPerson,
+  type NpcMemory,
+  type NpcProposal,
+} from "@/lib/dm/npc-mind-logic";
+
+// The NPC minds (docs/specs/ogm-npc-isolation-design.md): each named NPC and
+// companion answers from its own register, through a model call that never
+// sees the GM's prompt, the world's facts or another mind. The narrator
+// asks (npc_speak), voices the answer, and the engine still decides what
+// happens. On for the campaigns created with them (gameSettings.npcMinds).
+//
+// A mind that fails (a timeout, a reply that is not an answer) is reported
+// and leaves nothing behind: no words are written for it and nothing it
+// "would have" said is remembered. What it perceived before asking stays,
+// since that happened.
+
+export function npcMindsOn(campaign: Pick<Campaign, "gameSettings">): boolean {
+  return Boolean(campaign.gameSettings.npcMinds);
+}
+
+// First tier: a party companion, or an NPC the adventure's maker named so.
+export function tierOfNpc(npc: Npc): NpcTier {
+  const sheet = npc.companionSheetId ? getSheetById(npc.companionSheetId) : null;
+  return tierOf({ tier: getNpcTier(npc.id), companionKind: sheet?.companionKind ?? null });
+}
+
+// The first-tier NPCs whose own minds pursue their goals off screen: the
+// generic goal dice skip them (src/lib/dm/world-tick.ts).
+export function offscreenMindIds(campaign: Campaign): Set<string> {
+  if (!npcMindsOn(campaign)) {
+    return new Set();
+  }
+  return new Set(listNpcs(campaign.id).filter((npc) => !npc.archived && !npc.companionSheetId && tierOfNpc(npc) === "primary").map((npc) => npc.id));
+}
+
+// What the narrator's roster says of each tracked NPC, by name.
+export function mindRosterNotes(campaign: Campaign): Map<string, string> {
+  const heroes = listSheets(campaign.id).filter((sheet) => !sheet.isCompanion).map((sheet) => sheet.name);
+  const now = nowInstant(campaign.id);
+  const notes = new Map<string, string>();
+  const npcs = listNpcs(campaign.id);
+  const apart = npcs.flatMap((npc) => {
+    const away = getNpcAway(npc.id);
+    return away ? [{ name: npc.name, away }] : [];
+  });
+  for (const npc of npcs) {
+    const memories = memoriesFor(npc.id, listNpcMemories(campaign.id, npc.id), now);
+    const lines = [rosterNote(tierOfNpc(npc), memories, heroes)];
+    const own = apart.find((entry) => entry.name === npc.name);
+    if (own) {
+      lines.push(awayRosterNote(own.away));
+    }
+    // Someone from where a companion was left: the story touching them is
+    // the story touching the companion.
+    for (const entry of apart) {
+      if (entry.name !== npc.name && npc.location && textKey(npc.location) === textKey(entry.away.place)) {
+        lines.push(`${entry.name} was left at ${entry.away.place}: before voicing ${npc.name} about it, call npc_speak for ${entry.name} with away: true`);
+      }
+    }
+    notes.set(npc.name, lines.join("; "));
+  }
+  return notes;
+}
+
+// The companions who stay behind when the party splits (src/lib/dm/
+// party-split.ts): each mind is apart from now, where the party left it.
+export function markLeftBehind(campaign: Campaign, staying: readonly CharacterSheet[], place: string): string[] {
+  if (!npcMindsOn(campaign) || !place) {
+    return [];
+  }
+  const now = nowInstant(campaign.id);
+  const npcs = listNpcs(campaign.id);
+  const marked: string[] = [];
+  for (const sheet of staying) {
+    const npc = npcs.find((entry) => entry.companionSheetId === sheet.id);
+    if (npc && tierOfNpc(npc) === "primary") {
+      setNpcAway(npc.id, { place, since: now });
+      marked.push(npc.name);
+    }
+  }
+  return marked;
+}
+
+// The party arriving where companions were left: the narrator is told to
+// bring them back through their own minds, which catch up first.
+export function awayArrivalNote(campaign: Campaign, place: string): string {
+  if (!npcMindsOn(campaign) || !place) {
+    return "";
+  }
+  const here = listNpcs(campaign.id).filter((npc) => textKey(getNpcAway(npc.id)?.place ?? "") === textKey(place));
+  if (!here.length) {
+    return "";
+  }
+  return `${here.map((npc) => npc.name).join(", ")} stayed behind here. Before narrating them, call npc_speak for each without away: they catch up on what they did meanwhile and rejoin the party.`;
+}
+
+const MIND_TIMEOUT_MS = () => resolveTextTimeoutMs(undefined, "NPC_MIND_TIMEOUT_MS", 120_000);
+
+function nowInstant(campaignId: string): number {
+  return getClock(campaignId).instant;
+}
+
+// The heroes at the table, as a stranger sees them.
+function heroesOf(campaignId: string): Array<MindPerson & { companion: boolean }> {
+  return listSheets(campaignId).map((sheet) => ({
+    name: sheet.name,
+    description: [sheet.race, sheet.class].filter(Boolean).join(" ") || "an adventurer",
+    companion: Boolean(sheet.isCompanion),
+  }));
+}
+
+// What a mind is before play touches it: an author's tie to the party
+// (known_before) and, for a companion, the company it travels with. Written
+// once, the first time the mind is asked, and never again: a past laid
+// later would be invented to suit the story.
+function seedBackground(campaign: Campaign, npc: Npc, memories: NpcMemory[]): NpcMemory[] {
+  if (memories.length || listNpcProposals(campaign.id, npc.id).length) {
+    return memories;
+  }
+  const heroes = heroesOf(campaign.id).filter((hero) => textKey(hero.name) !== textKey(npc.name));
+  const lines: string[] = [];
+  if (npc.knownBefore) {
+    lines.push(`You already know these people: ${heroes.map((hero) => hero.name).join(", ")}. How: ${npc.knownBefore.how}`);
+  }
+  if (npc.companionSheetId && heroes.length) {
+    lines.push(`You travel with this company: ${heroes.map((hero) => `${hero.name} (${hero.description})`).join(", ")}.`);
+  }
+  for (const line of lines) {
+    addNpcMemories(campaign.id, [npc.id], { kind: "knowledge", sourceKind: "background", sourceName: "", content: line, learnedAt: 0 });
+  }
+  return lines.length ? listNpcMemories(campaign.id, npc.id) : memories;
+}
+
+function scoresFor(campaign: Campaign, npc: Npc) {
+  const sheet = npc.companionSheetId ? getSheetById(npc.companionSheetId) : null;
+  if (sheet) {
+    return mentalScoresOf(sheet.abilities);
+  }
+  if (npc.statBlock) {
+    try {
+      const monster = resolveMonster(npc.statBlock, campaign.gameSettings, { userIds: spellAuthorsFor(campaign) });
+      return mentalScoresOf(monster?.stats);
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
+// Who they are, as the narrator's own records say: no facts about the
+// world, only the person.
+function identityOf(npc: Npc): string[] {
+  const sheet = npc.companionSheetId ? getSheetById(npc.companionSheetId) : null;
+  return [
+    [npc.race, npc.role].filter(Boolean).length ? `You are ${[npc.race, npc.role].filter(Boolean).join(", ")}.` : "",
+    sheet ? `You are a ${sheet.race} ${sheet.class}. ${clipText(sheet.personality ?? "", 300)}` : "",
+    npc.trait ? `What people notice about you: ${clipText(npc.trait, 200)}` : "",
+    agencyFragment(npc.agency) ? `Your temperament and aims: ${agencyFragment(npc.agency)}` : "",
+    npc.agency.goals.scene ? `What you want right now: ${npc.agency.goals.scene}` : "",
+    npc.location ? `You are usually found at ${npc.location}.` : "",
+    `Your attitude toward the heroes in general: ${npc.attitude}.`,
+  ];
+}
+
+// The relationship meter with each hero, and what it remembers of them:
+// how a betrayal it lived changes it, traced from the table's own records.
+function bondsOf(campaign: Campaign, npc: Npc, memories: NpcMemory[]): string[] {
+  return listRelationships(campaign.id)
+    .filter((relationship) => textKey(relationship.subjectName) === textKey(npc.name) && relationship.status !== "ended")
+    .filter((relationship) => memories.some((memory) => memory.sourceKind !== "self" && textKey(memory.content).includes(textKey(relationship.characterName))))
+    .map((relationship) => {
+      const recent = relationship.memories.slice(-2).map((memory) => memory.text).join("; ");
+      return `${relationship.characterName}: standing ${relationship.approval} (from -100 hatred to 100 devotion)${recent ? `; you remember: ${clipText(recent, 200)}` : ""}`;
+    });
+}
+
+type AskOutcome =
+  | { ok: true; proposal: NpcProposal; memories: NpcMemory[]; latencyMs: number; inputTokens: number; outputTokens: number }
+  | { ok: false; error: string; latencyMs: number };
+
+async function askMind(
+  campaign: Campaign,
+  npc: Npc,
+  perceives: string,
+  present: MindPerson[],
+  offscreen: boolean,
+): Promise<AskOutcome> {
+  const memories = memoriesFor(npc.id, listNpcMemories(campaign.id, npc.id), nowInstant(campaign.id));
+  const prompt = renderMindPrompt({
+    name: npc.name,
+    identity: identityOf(npc),
+    inspiration: getNpcInspiration(npc.id),
+    scores: scoresFor(campaign, npc),
+    memories,
+    present,
+    bonds: bondsOf(campaign, npc, memories),
+    perceives,
+    offscreen,
+  });
+  const started = Date.now();
+  let result;
+  try {
+    result = await requestUtilityMessage(
+      campaign.settings,
+      [
+        { role: "system", content: withLanguage(MIND_SYSTEM, campaign.gameSettings.tableLanguage) },
+        { role: "user", content: prompt },
+      ],
+      { meta: { task: offscreen ? "npc_mind_offscreen" : "npc_mind" }, timeoutMs: MIND_TIMEOUT_MS() },
+    );
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "the model call failed", latencyMs: Date.now() - started };
+  }
+  const latencyMs = Date.now() - started;
+  if (result.error) {
+    return { ok: false, error: `the model did not answer (${result.error.status})`, latencyMs };
+  }
+  const parsed = parseProposal(stripReasoningArtifacts(String(result.message?.content ?? "")));
+  if (!parsed.ok) {
+    return { ok: false, error: parsed.error, latencyMs };
+  }
+  return {
+    ok: true,
+    proposal: parsed.proposal,
+    memories,
+    latencyMs,
+    inputTokens: result.usage?.inputTokens ?? 0,
+    outputTokens: result.usage?.outputTokens ?? 0,
+  };
+}
+
+// Every name the world holds that a mind could use without having learned
+// it: people, heroes, places.
+function worldNames(campaignId: string): string[] {
+  return [
+    ...listNpcs(campaignId).map((npc) => npc.name),
+    ...listSheets(campaignId).map((sheet) => sheet.name),
+    ...listLocations(campaignId).map((location) => location.name),
+  ];
+}
+
+const speakSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  perceives: z.string().trim().min(1).max(2000),
+  alsoPresent: z.array(z.string().trim().min(1).max(120)).max(12).optional(),
+  away: z.boolean().optional(),
+  place: z.string().trim().max(120).optional(),
+});
+
+// npc_speak: the moment goes to everyone present, then the addressed mind
+// answers from what it knows.
+export async function handleNpcSpeak(campaign: Campaign, rawArguments: string): Promise<ToolResult> {
+  let args: z.infer<typeof speakSchema>;
+  try {
+    args = speakSchema.parse(JSON.parse(rawArguments || "{}"));
+  } catch (error) {
+    return badArguments("Invalid arguments: npc_speak needs the NPC's name and what they perceive.", error, rawArguments);
+  }
+  const cast = listNpcs(campaign.id);
+  const { ids, unknown } = recipientsOf(args.name, args.alsoPresent ?? [], cast);
+  // The addressed name comes first: unresolved, ids[0] would be a bystander.
+  const addressedFound = !unknown.some((name) => textKey(name) === textKey(args.name));
+  const npc = addressedFound ? cast.find((entry) => entry.id === ids[0]) : undefined;
+  if (!npc) {
+    return { error: `No tracked NPC is called "${args.name}". Register them with set_npc first.`, retry: true };
+  }
+  // A second-tier NPC has no mind of their own: the narrator voices them.
+  if (tierOfNpc(npc) !== "primary") {
+    return {
+      error: `${npc.name} is a second-tier NPC: voice them yourself from their personality and what the roster says they learned. Record what they learn with npc_inform.`,
+      refused: "rules",
+    };
+  }
+  const turnId = currentTurnId() ?? "";
+  const now = nowInstant(campaign.id);
+  seedBackground(campaign, npc, listNpcMemories(campaign.id, npc.id));
+  // Apart from the party (left behind, or a cut to them): first the time
+  // since they were last played, then this moment where they are. Called
+  // without away, a mind that was apart is back with the party.
+  const apart = Boolean(args.away);
+  let away = getNpcAway(npc.id);
+  if (apart && !away) {
+    away = { place: args.place || npc.location || "", since: now };
+    setNpcAway(npc.id, away);
+  }
+  let whileApart: string[] = [];
+  if (away) {
+    const done = await catchUp(campaign, npc, away, turnId);
+    if (!done.ok) {
+      return {
+        error: `${npc.name}'s own mind did not answer while catching up on their time apart (${done.error}). Do not write what they did or say: say only that there is no news of them yet. The table can retry the turn.`,
+        refused: "limit",
+      };
+    }
+    whileApart = done.lines;
+    setNpcAway(npc.id, apart ? { place: args.place || away.place, since: now } : null);
+  }
+  const actor = getNpcById(npc.id) ?? npc;
+  // Only those really with them hear it: a mind apart from the scene is not
+  // a listener in it.
+  const others = cast.filter((entry) => ids.includes(entry.id) && entry.id !== npc.id && (apart || !getNpcAway(entry.id)));
+  addNpcMemories(campaign.id, [npc.id, ...others.map((entry) => entry.id)], { kind: "knowledge", sourceKind: "perceived", sourceName: "", content: args.perceives, learnedAt: now }, turnId);
+  const present: MindPerson[] = [
+    ...(apart ? [] : heroesOf(campaign.id).filter((hero) => textKey(hero.name) !== textKey(npc.name))),
+    ...others.map((entry) => ({ name: entry.name, description: clipText(entry.role || entry.trait || "a person", 80) })),
+  ];
+  const where = apart ? `You are at ${args.place || away?.place || "a place of your own"}, apart from the party.\n` : "";
+  const outcome = await askMind(campaign, actor, `${where}${args.perceives}`, present, false);
+  if (!outcome.ok) {
+    recordNpcProposal(campaign.id, { npcId: npc.id, turnId, mode: "scene", status: "failed", speech: "", intent: "", error: outcome.error, flags: [], latencyMs: outcome.latencyMs, inputTokens: 0, outputTokens: 0 });
+    return {
+      error: `${npc.name}'s own mind did not answer (${outcome.error}). Do not write words or a decision for them: say only that they do not answer yet. The table can retry the turn.`,
+      refused: "limit",
+    };
+  }
+  const { proposal } = outcome;
+  const flags = proposal.speech ? unlearnedNames(proposal.speech, npc.name, worldNames(campaign.id), outcome.memories) : [];
+  if (proposal.speech) {
+    addNpcMemories(campaign.id, [npc.id], { kind: proposal.lie ? "lie" : "said", sourceKind: "self", sourceName: "", content: proposal.speech, learnedAt: now }, turnId);
+    for (const other of others) {
+      addNpcMemories(campaign.id, [other.id], { ...overheard(npc.name, proposal.speech, listNpcMemories(campaign.id, other.id)), learnedAt: now }, turnId);
+    }
+  }
+  if (proposal.conclusion) {
+    addNpcMemories(campaign.id, [npc.id], { kind: "hypothesis", sourceKind: "self", sourceName: "", content: proposal.conclusion, learnedAt: now }, turnId);
+  }
+  recordNpcProposal(campaign.id, {
+    npcId: npc.id,
+    turnId,
+    mode: "scene",
+    status: "committed",
+    speech: proposal.speech,
+    intent: proposal.intent,
+    error: "",
+    flags,
+    latencyMs: outcome.latencyMs,
+    inputTokens: outcome.inputTokens,
+    outputTokens: outcome.outputTokens,
+  });
+  return {
+    ok: true,
+    npc: npc.name,
+    says: proposal.speech,
+    intends: proposal.intent,
+    ...(whileApart.length ? { whileApart, apartNote: APART_NOTE } : {}),
+    ...(apart ? { apartAt: args.place || away?.place || "" } : away ? { rejoined: true } : {}),
+    ...(unknown.length ? { notTracked: unknown } : {}),
+    ...(flags.length
+      ? { unlearned: flags, flagNote: `${npc.name} named ${flags.join(", ")} without having learned it: treat it as their guess or lie, never as a fact of the world.` }
+      : {}),
+    narrate:
+      "Voice their words as given and show their intent. The intent is only an attempt: resolve it through the engine's tools when it needs a roll or changes anything. Add nothing they know beyond their words.",
+  };
+}
+
+const informSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  source: z.string().trim().min(1).max(120),
+  news: z.string().trim().min(1).max(1000),
+  witnessed: z.boolean().optional(),
+});
+
+// npc_inform: news reaching a mind that was not there, from a named source,
+// as of now. What it is told is a belief: the source may be wrong or lying.
+export async function handleNpcInform(campaign: Campaign, rawArguments: string): Promise<ToolResult> {
+  let args: z.infer<typeof informSchema>;
+  try {
+    args = informSchema.parse(JSON.parse(rawArguments || "{}"));
+  } catch (error) {
+    return badArguments("Invalid arguments: npc_inform needs the NPC's name, the source and the news.", error, rawArguments);
+  }
+  const cast = listNpcs(campaign.id);
+  const { ids } = recipientsOf(args.name, [], cast);
+  const npc = cast.find((entry) => entry.id === ids[0]);
+  if (!npc) {
+    return { error: `No tracked NPC is called "${args.name}". Register them with set_npc first.`, retry: true };
+  }
+  // Someone from where a companion was left: the companion's time apart is
+  // played first, so what they did there is already so when this news lands.
+  const turnId = currentTurnId() ?? "";
+  const touched: Array<{ name: string; did: string[] }> = [];
+  for (const companion of npc.location ? cast : []) {
+    const away = companion.id === npc.id ? null : getNpcAway(companion.id);
+    if (!away || textKey(away.place) !== textKey(npc.location)) {
+      continue;
+    }
+    seedBackground(campaign, companion, listNpcMemories(campaign.id, companion.id));
+    const done = await catchUp(campaign, companion, away, turnId);
+    if (!done.ok) {
+      return {
+        error: `${companion.name}, apart at ${away.place}, did not answer while catching up (${done.error}). Record nothing about them yet; the table can retry the turn.`,
+        refused: "limit",
+      };
+    }
+    if (done.lines.length) {
+      touched.push({ name: companion.name, did: done.lines });
+    }
+  }
+  seedBackground(campaign, npc, listNpcMemories(campaign.id, npc.id));
+  addNpcMemories(
+    campaign.id,
+    [npc.id],
+    args.witnessed
+      ? { kind: "knowledge", sourceKind: "perceived", sourceName: "", content: args.news, learnedAt: nowInstant(campaign.id) }
+      : { kind: "belief", sourceKind: "told", sourceName: args.source, content: args.news, learnedAt: nowInstant(campaign.id) },
+    turnId,
+  );
+  return {
+    ok: true,
+    npc: npc.name,
+    learned: args.witnessed ? "seen first hand" : `told by ${args.source}, as of now`,
+    ...(touched.length ? { whileApart: touched, apartNote: APART_NOTE } : {}),
+  };
+}
+
+const pastSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  inspiration: z.string().trim().max(200).optional(),
+  past: z.array(z.string().trim().min(1).max(400)).max(8).optional(),
+});
+
+// npc_past: who someone was before play, laid down before they first act.
+// Refused once they have lived anything, so a companion cannot suddenly
+// have written letters to a victim the party is investigating.
+export function handleNpcPast(campaign: Campaign, rawArguments: string): ToolResult {
+  let args: z.infer<typeof pastSchema>;
+  try {
+    args = pastSchema.parse(JSON.parse(rawArguments || "{}"));
+  } catch (error) {
+    return badArguments("Invalid arguments: npc_past needs the NPC's name and their past or inspiration.", error, rawArguments);
+  }
+  const cast = listNpcs(campaign.id);
+  const { ids } = recipientsOf(args.name, [], cast);
+  const npc = cast.find((entry) => entry.id === ids[0]);
+  if (!npc) {
+    return { error: `No tracked NPC is called "${args.name}". Register them with set_npc first.`, retry: true };
+  }
+  const memories = listNpcMemories(campaign.id, npc.id);
+  if (args.past?.length && !backgroundOpen(memories, listNpcProposals(campaign.id, npc.id).length)) {
+    return {
+      error: `${npc.name} has already lived part of the story: their past can no longer be added to. Only what is already established can come out now.`,
+      refused: "rules",
+    };
+  }
+  if (args.inspiration !== undefined) {
+    setNpcInspiration(npc.id, args.inspiration);
+  }
+  for (const line of args.past ?? []) {
+    addNpcMemories(campaign.id, [npc.id], { kind: "knowledge", sourceKind: "background", sourceName: "", content: line, learnedAt: 0 }, currentTurnId() ?? "");
+  }
+  return { ok: true, npc: npc.name, past: args.past?.length ?? 0, inspiration: args.inspiration ?? getNpcInspiration(npc.id) };
+}
+
+// How many minds act off-screen each time the world's time moves on.
+export const OFFSCREEN_BUDGET = 2;
+
+// The mind only proposes; the engine rolls how far its goal gets, on the
+// dice every goal advances on (src/lib/dm/npc-agency.ts). A goal reached is
+// a GM-only fact.
+function pursueGoal(npc: Npc, d20: number): Array<{ category: "npc"; subject: string; fact: string }> {
+  const goal = npc.agency.goals.session;
+  if (!goal) {
+    return [];
+  }
+  const result = advanceSessionGoal(goal, npc.agency.personality, d20);
+  patchNpcAgency(npc.id, { goals: { ...npc.agency.goals, session: result.completed ? undefined : result.goal } });
+  return result.completed
+    ? [{ category: "npc", subject: npc.name, fact: `Off-screen, ${npc.name} achieved what they were working toward: ${goal.text}.` }]
+    : [];
+}
+
+type CatchUp = { ok: true; lines: string[] } | { ok: false; error: string };
+
+// A mind apart from the party lives the time since it was last played, in a
+// few steps (npc-mind-logic.ts catchUpSteps), when the story touches it
+// again: its own mind proposes each step from what it knows where it is,
+// the engine's d20 says how it went, and the mind remembers it. Each step is
+// kept as it is played, so a failure resumes after the last one kept.
+async function catchUp(campaign: Campaign, npc: Npc, away: NpcAway, turnId: string): Promise<CatchUp> {
+  const lines: string[] = [];
+  let current = npc;
+  let from = away.since;
+  for (const until of catchUpSteps(away.since, nowInstant(campaign.id))) {
+    const hours = Math.max(1, Math.round((until - from) / 60));
+    const goal = current.agency.goals.session?.text ?? current.agency.goals.ambition ?? current.agency.goals.scene ?? "";
+    const place = away.place || "where the party left you";
+    const outcome = await askMind(campaign, current, `You are at ${place}, apart from your companions. About ${hours} hours pass.${goal ? ` You are pursuing: ${goal}.` : ""}`, [], true);
+    if (!outcome.ok || !outcome.proposal.intent) {
+      const error = outcome.ok ? "no intent" : outcome.error;
+      recordNpcProposal(campaign.id, { npcId: npc.id, turnId, mode: "offscreen", status: "failed", speech: "", intent: "", error, flags: [], latencyMs: outcome.latencyMs, inputTokens: 0, outputTokens: 0 });
+      return { ok: false, error };
+    }
+    const intent = clipText(outcome.proposal.intent, 200);
+    const d20 = rollExpression("1d20").total;
+    const result = attemptOutcome(d20);
+    addNpcMemories(campaign.id, [npc.id], { kind: "did", sourceKind: "self", sourceName: "", content: `${intent} (it ${result})`, learnedAt: until }, turnId);
+    recordExtractedFacts(
+      campaign.id,
+      [{ category: "npc", subject: npc.name, fact: `While apart at ${place}, ${npc.name} tried to ${intent}; it ${result}.` }, ...pursueGoal(current, d20)],
+      "simulation",
+      { knownBy: "dm" },
+    );
+    recordNpcProposal(campaign.id, { npcId: npc.id, turnId, mode: "offscreen", status: "committed", speech: outcome.proposal.speech, intent: outcome.proposal.intent, error: "", flags: [], latencyMs: outcome.latencyMs, inputTokens: outcome.inputTokens, outputTokens: outcome.outputTokens });
+    setNpcAway(npc.id, { place: away.place, since: until });
+    lines.push(`${intent} (d20 ${d20}: it ${result})`);
+    from = until;
+    current = getNpcById(npc.id) ?? current;
+  }
+  return { ok: true, lines };
+}
+
+const APART_NOTE =
+  "What they did while apart, played on the engine's dice before this moment: apply any consequence for others (someone hurt, something taken) with your usual tools before narrating; anyone who saw it knows only what they saw.";
+
+// Time passed away from the scene: the NPCs with something to pursue each
+// decide their next step from what they know. The step becomes a GM-only
+// world fact the narrator may surface as a rumour, and a memory of the mind;
+// how far it gets is still the goal engine's dice (npc-agency.ts). A mind
+// that fails is recorded and skipped; nothing else waits on it.
+export async function runOffscreenMinds(campaign: Campaign, budget = OFFSCREEN_BUDGET): Promise<number> {
+  if (!npcMindsOn(campaign)) {
+    return 0;
+  }
+  const here = getCurrentLocation(campaign.id)?.name ?? "";
+  const last = lastOffscreenInstants(campaign.id);
+  // Only the first tier thinks off-screen; a companion travels with the party.
+  const npcs = listNpcs(campaign.id).filter((npc) => !npc.archived && !npc.companionSheetId && tierOfNpc(npc) === "primary");
+  const picked = offscreenCandidates(
+    npcs.map((npc) => ({
+      id: npc.id,
+      name: npc.name,
+      location: npc.location,
+      goal: npc.agency.goals.session?.text ?? npc.agency.goals.ambition ?? npc.agency.goals.scene ?? "",
+      lastActedAt: last.get(npc.id) ?? -1,
+    })),
+    here,
+    budget,
+  );
+  let acted = 0;
+  for (const choice of picked) {
+    const npc = npcs.find((entry) => entry.id === choice.id);
+    if (!npc) {
+      continue;
+    }
+    seedBackground(campaign, npc, listNpcMemories(campaign.id, npc.id));
+    const outcome = await askMind(campaign, npc, `Some time has passed. You are pursuing: ${choice.goal}.`, [], true);
+    const now = nowInstant(campaign.id);
+    if (!outcome.ok || !outcome.proposal.intent) {
+      recordNpcProposal(campaign.id, { npcId: npc.id, turnId: "", mode: "offscreen", status: "failed", speech: "", intent: "", error: outcome.ok ? "no intent" : outcome.error, flags: [], latencyMs: outcome.latencyMs, inputTokens: 0, outputTokens: 0 });
+      continue;
+    }
+    addNpcMemories(campaign.id, [npc.id], { kind: "did", sourceKind: "self", sourceName: "", content: outcome.proposal.intent, learnedAt: now });
+    const facts = [
+      { category: "npc" as const, subject: npc.name, fact: `Off-screen, ${npc.name} sets out to ${clipText(outcome.proposal.intent, 200)}` },
+      ...pursueGoal(npc, rollExpression("1d20").total),
+    ];
+    recordExtractedFacts(campaign.id, facts, "simulation", { knownBy: "dm" });
+    recordNpcProposal(campaign.id, { npcId: npc.id, turnId: "", mode: "offscreen", status: "committed", speech: outcome.proposal.speech, intent: outcome.proposal.intent, error: "", flags: [], latencyMs: outcome.latencyMs, inputTokens: outcome.inputTokens, outputTokens: outcome.outputTokens });
+    acted += 1;
+  }
+  return acted;
+}

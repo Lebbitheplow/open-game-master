@@ -141,6 +141,11 @@ export function campaignPayload(draft: CampaignDraft, { solo, aiNarrates }: Pick
       // default, nothing is decided by it before the first scene, and it
       // matters only once a lasting companion travels with the party, so it
       // lives in the campaign's Bonds settings (AGENTS.md settings rule 2).
+      //
+      // `npcMinds`: not a choice. The server turns it on for every table it
+      // creates (src/app/api/campaigns/route.ts), so first-tier characters
+      // answer from their own minds; only tables made before it keep the
+      // single narrator, whose NPCs' knowledge was never recorded.
     },
   };
 }

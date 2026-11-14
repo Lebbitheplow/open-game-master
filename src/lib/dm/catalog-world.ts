@@ -438,6 +438,42 @@ export const SOCIAL_ADJUDICATIONS: CatalogEntry[] = [
     ],
   },
   {
+    name: "npc_speak",
+    label: "Ask an NPC's mind",
+    category: "social",
+    summary: "The NPC answers from what they have perceived or been told, not from what the GM knows.",
+    fields: [
+      { name: "name", label: "NPC", kind: "text", required: true },
+      { name: "perceives", label: "What they see and hear", kind: "longtext", required: true, maxLength: 2000 },
+      { name: "alsoPresent", label: "Others present", kind: "list", help: "Other NPCs who hear it too." },
+      { name: "away", label: "Apart from the party", kind: "boolean", help: "Cut to them where they are: they first live the time apart." },
+      { name: "place", label: "Where they are", kind: "text", help: "With apart: where, if the roster does not say." },
+    ],
+  },
+  {
+    name: "npc_inform",
+    label: "Tell an NPC the news",
+    category: "social",
+    summary: "News reaches someone who was not there, from a named source; they believe it, true or not.",
+    fields: [
+      { name: "name", label: "NPC", kind: "text", required: true },
+      { name: "source", label: "Told by", kind: "text", required: true },
+      { name: "news", label: "News", kind: "longtext", required: true, maxLength: 1000 },
+      { name: "witnessed", label: "They saw it themselves", kind: "boolean" },
+    ],
+  },
+  {
+    name: "npc_past",
+    label: "An NPC's past",
+    category: "social",
+    summary: "Who they were before play and whose manner inspires them; closed once they have acted.",
+    fields: [
+      { name: "name", label: "NPC", kind: "text", required: true },
+      { name: "inspiration", label: "Inspired by", kind: "text", maxLength: 200 },
+      { name: "past", label: "Their past", kind: "list" },
+    ],
+  },
+  {
     name: "npc_reaction",
     label: "Reaction roll",
     category: "social",

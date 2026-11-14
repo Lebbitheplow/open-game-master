@@ -894,6 +894,53 @@ function ensureSchema(db: SqliteDatabase) {
     CREATE INDEX IF NOT EXISTS idx_world_facts
       ON world_facts(campaign_id, status, category);
 
+    -- What one NPC knows, believes, suspects, said or did, and from whom
+    -- (src/lib/dm/npc-mind-logic.ts, docs/specs/ogm-npc-isolation-design.md).
+    -- Kept apart from world_facts, the world's truth: an NPC told a lie
+    -- believes it here while the world stays as it was. learned_at is the
+    -- game clock's instant, so news reaches a mind when it is delivered, not
+    -- when it happened. Journaled like every play table, so a reverted turn
+    -- takes back what that turn taught.
+    CREATE TABLE IF NOT EXISTS npc_memories (
+      id TEXT PRIMARY KEY,
+      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+      npc_id TEXT NOT NULL,
+      kind TEXT NOT NULL
+        CHECK (kind IN ('knowledge','belief','hypothesis','said','lie','did')),
+      source_kind TEXT NOT NULL
+        CHECK (source_kind IN ('background','perceived','told','self')),
+      source_name TEXT NOT NULL DEFAULT '',
+      content TEXT NOT NULL,
+      learned_at INTEGER NOT NULL DEFAULT 0,
+      turn_id TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_npc_memories
+      ON npc_memories(campaign_id, npc_id, created_at);
+
+    -- Each time a mind was asked to answer, and how it went: proposed and
+    -- committed answers, and failures (a timeout, an invalid reply) that
+    -- left no words and no memories behind. Flags are names it used without
+    -- having learned them. The latency and tokens are what minds cost.
+    CREATE TABLE IF NOT EXISTS npc_proposals (
+      id TEXT PRIMARY KEY,
+      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+      npc_id TEXT NOT NULL,
+      turn_id TEXT NOT NULL DEFAULT '',
+      mode TEXT NOT NULL DEFAULT 'scene' CHECK (mode IN ('scene','offscreen')),
+      status TEXT NOT NULL CHECK (status IN ('committed','failed')),
+      speech TEXT NOT NULL DEFAULT '',
+      intent TEXT NOT NULL DEFAULT '',
+      error TEXT NOT NULL DEFAULT '',
+      flags_json TEXT NOT NULL DEFAULT '[]',
+      latency_ms INTEGER NOT NULL DEFAULT 0,
+      input_tokens INTEGER NOT NULL DEFAULT 0,
+      output_tokens INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_npc_proposals
+      ON npc_proposals(campaign_id, npc_id, created_at);
+
     -- Semantic memory index: verbatim transcript spans ("scenes") from
     -- closed chapters with local embeddings (384-dim Float32 BLOBs),
     -- built at chapter close by src/lib/dm/memory-index.ts. Two-phase
@@ -3125,6 +3172,17 @@ function ensureSchema(db: SqliteDatabase) {
   // 731, src/lib/dm/known-before-logic.ts): {grade, how}, or '' for anyone
   // the party meets in play. A module carries it to the tables made from it.
   addColumns("npcs", [["known_before_json", `TEXT NOT NULL DEFAULT ''`]]);
+  // A cultural figure whose manner an NPC mind borrows (src/lib/dm/npc-mind.ts):
+  // temperament and voice only, never that figure's lore. '' for most.
+  addColumns("npcs", [["inspiration", `TEXT NOT NULL DEFAULT ''`]]);
+  // An NPC of the first tier is played by their own mind and takes turns
+  // like a player; the second tier is voiced by the narrator from a light
+  // register (src/lib/dm/npc-mind.ts). A party companion is always first.
+  addColumns("npcs", [["tier", `TEXT NOT NULL DEFAULT 'secondary'`]]);
+  // A first-tier mind apart from the party (a companion left behind): where,
+  // and the instant its life is played up to (src/lib/dm/npc-mind.ts
+  // catchUp). '' while it is with the party.
+  addColumns("npcs", [["away_json", `TEXT NOT NULL DEFAULT ''`]]);
   // When the party first dealt with an NPC (src/lib/db/npcs.ts Npc.metAt),
   // which a reaction roll reads: it is for strangers. The rows already
   // played get it once, from what play recorded about them.
