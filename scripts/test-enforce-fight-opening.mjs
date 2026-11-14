@@ -180,6 +180,35 @@ await test("A fight begun mid-turn with the player up keeps the turn's tool list
   await kit.endFight();
 });
 
+// The mirror: a fight that ends mid-turn leaves the calls after it to tell the
+// aftermath, and a new list there made the server read the whole prompt again
+// (41K tokens, 122 seconds on a BC-250, 2026-11-14). They keep the fight's
+// list; the next turn starts with the no-fight one.
+await test("A fight won mid-turn keeps the fight's tool list for the aftermath; the next turn starts with the no-fight list.", async () => {
+  await settleQueue(world.campaignId);
+  await kit.endFight();
+  const { getActiveEncounter } = await import("../src/lib/db/encounters.ts");
+  const names = (request) => (request.tools ?? []).map((tool) => tool.function?.name);
+  await kit.fight(1, { heroFaces: { [alden.id]: 20 } });
+  const [enemy] = world.enemies();
+  kit.setEnemy(enemy.id, { currentHp: 1 });
+  kit.place(alden.id, 5, 5);
+  kit.place(enemy.id, 5, 6);
+  const swing = call("pc_attack", { characterId: alden.id, targetEnemyId: enemy.id, weapon: "Longsword" });
+  model.script([reply({ calls: [swing] }), reply({ text: "Alden's longsword drops the goblin, and the barn falls quiet." })]);
+  world.dice(15, 4);
+  await model.turn(world, "I swing at it.", alden.id, alden.userId);
+  world.clearDice();
+  assert.ok(!getActiveEncounter(world.campaignId), "the blow did not end the fight");
+  assert.ok(names(model.requests[0]).includes("enemy_attack"), "the turn did not begin with the fight's tools");
+  assert.deepEqual(names(model.requests[1]), names(model.requests[0]), "the aftermath was sent another tool list");
+  await settleQueue(world.campaignId);
+
+  model.script([reply({ text: "Dust settles over the hay." })]);
+  await model.turn(world, "I look around the barn.", alden.id, alden.userId);
+  assert.ok(!names(model.requests[0]).includes("enemy_attack"), "the turn after the fight still had the fight's tools");
+});
+
 // The turn after a fight begins starts with the fight's rules and tools, a
 // first message the narrator has not read: it is sent ahead as the turn
 // ends (src/lib/dm/turn-warmup.ts), and the next turn starts with exactly it.
