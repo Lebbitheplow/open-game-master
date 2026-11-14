@@ -1735,6 +1735,30 @@ function keepsToolsThroughFightStart(encounter: Encounter, sheets: readonly Char
   return up?.kind === "pc" && !sheets.find((sheet) => sheet.id === up.characterId)?.isCompanion;
 }
 
+// The list a call keeps from the turn's last one when the fight began or
+// ended between them, or null for the list the table's state offers now.
+// A fight that ends mid-turn (the last enemy down, the rest fled) leaves the
+// calls after it to tell the aftermath, and the no-fight list there was the
+// same full re-read: 41K tokens and 122 seconds on a BC-250, 2026-11-14,
+// before the next turn read the no-fight start again. So the turn keeps
+// the fight's list to its end. Nothing is lost by it: a call runs any tool
+// in the catalogue by name (runnable), the fight's tools refuse themselves
+// with no fight running, and the next turn starts with the no-fight rules
+// and tools, sent ahead while the table reads (src/lib/dm/turn-warmup.ts).
+function keptToolList(
+  sent: { tools: unknown[]; noFight: boolean } | null,
+  encounter: Encounter | null,
+  sheets: readonly CharacterSheet[],
+): unknown[] | null {
+  if (!sent) {
+    return null;
+  }
+  if (sent.noFight) {
+    return encounter && keepsToolsThroughFightStart(encounter, sheets) ? sent.tools : null;
+  }
+  return encounter ? null : sent.tools;
+}
+
 function compactToolsThatFit(
   campaign: Campaign,
   turn: DmTurn,
@@ -1992,7 +2016,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
   // calls anyway (see narrateAfterToolLeak).
   let finalCallLeaked = false;
   // The tool list this turn's calls were last sent, and whether it was the
-  // list for no fight (keepsToolsThroughFightStart).
+  // list for no fight (keptToolList).
   let sentTools = null as { tools: unknown[]; noFight: boolean } | null;
   // The cards the players played since the DM last spoke, when their actions
   // came from the Hand as an attack or a cast, and whether the one corrective
@@ -2043,14 +2067,11 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     // A stopped turn makes no further call: it unwinds into its halted
     // notice (advance) with whatever it already applied kept.
     assertJobLive();
-    // Rebuilt each iteration (see dmTurnTools), save the one case
-    // keepsToolsThroughFightStart covers.
+    // Rebuilt each iteration (see dmTurnTools), save the cases keptToolList
+    // covers.
     const encounterNow = getActiveEncounter(campaignId);
     const inEncounter = Boolean(encounterNow);
-    const keptTools: unknown[] | null =
-      !compact && sentTools?.noFight && encounterNow && keepsToolsThroughFightStart(encounterNow, sheets)
-        ? sentTools.tools
-        : null;
+    const keptTools = compact ? null : keptToolList(sentTools, encounterNow, sheets);
     const fitted: { tools: unknown[]; fits: boolean } = keptTools
       ? { tools: keptTools, fits: true }
       : compact
@@ -2065,7 +2086,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     const finalCall = turn.callIndex === MAX_MODEL_CALLS - 1 || toolsClosed;
     const tools = toolsClosed ? [] : fitted.tools;
     if (!toolsClosed) {
-      sentTools = { tools, noFight: keptTools ? true : !inEncounter };
+      sentTools = { tools, noFight: keptTools && sentTools ? sentTools.noFight : !inEncounter };
       toolsSentByTurn.set(turn.id, tools);
     }
     const resolvesCard = direct.length > 0 && turn.callIndex === 0;
