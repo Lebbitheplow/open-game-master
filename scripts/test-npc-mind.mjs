@@ -389,6 +389,46 @@ await test("the story's key characters get their own minds through npc_past firs
   assert.match(NPC_MINDS_RULES, /npc_past with their past and firstTier: true/);
 });
 
+await test("a mind played from a mind seat answers the same isolated question, and silence falls to the server's mind", async () => {
+  const { createUser } = await import("../src/lib/db/users.ts");
+  const seats = await import("../src/lib/db/mind-seats.ts");
+  const seatRelay = await import("../src/lib/dm/mind-seat-relay.ts");
+  const holder = createUser(`seat-holder-${Date.now()}`, "x");
+  npc("Prisoner Ulm", { trait: "a chained prisoner" });
+  const seat = seats.createMindSeat(world.campaignId);
+  assert.equal(seats.listMindSeats(world.campaignId).find((entry) => entry.id === seat.id).npcId, "", "a new seat names no one");
+  assert.ok("seat" in seats.claimMindSeat(seat.code.toLowerCase(), holder.id));
+  assert.ok("error" in seats.claimMindSeat(seat.code, createUser(`seat-thief-${Date.now()}`, "x").id), "a held seat is not taken");
+
+  // The holder answers: the speech is theirs, no model is asked.
+  const asked = mindRequests().length;
+  const spoken = speak({ name: "Prisoner Ulm", perceives: "Brakk asks what you did." });
+  const [question] = await seatRelay.waitForQuestions(holder.id, 2000);
+  assert.equal(question.character, "Prisoner Ulm");
+  assert.match(question.prompt, /Brakk asks what you did/);
+  assert.match(question.instructions, /staying alive/);
+  assert.equal(seatRelay.answerQuestion(createUser(`seat-other-${Date.now()}`, "x").id, question.requestId, { speech: "x", intent: "", conclusion: "", lie: false }), false, "only the holder answers");
+  assert.equal(seatRelay.answerQuestion(holder.id, question.requestId, { speech: "Nothing they can prove.", intent: "", conclusion: "", lie: true }), true);
+  const result = await spoken;
+  assert.equal(result.says, "Nothing they can prove.");
+  assert.equal(mindRequests().length, asked, "the server's mind was not asked");
+  assert.equal(seats.listMindSeats(world.campaignId).find((entry) => entry.id === seat.id).npcId, getNpcByName(world.campaignId, "Prisoner Ulm").id);
+
+  // Silence: the server's mind answers that one.
+  process.env.MIND_SEAT_TIMEOUT_SEC = "0.2";
+  model.script([answer({ speech: "I am only a tinker." })]);
+  const late = await speak({ name: "Prisoner Ulm", perceives: "Brakk asks again." });
+  assert.equal(late.says, "I am only a tinker.");
+  delete process.env.MIND_SEAT_TIMEOUT_SEC;
+
+  // Taken back: the server's mind plays them from now on.
+  seats.releaseMindSeat(world.campaignId, seat.id);
+  model.script([answer({ speech: "Leave me be." })]);
+  assert.equal((await speak({ name: "Prisoner Ulm", perceives: "Brakk stares." })).says, "Leave me be.");
+  assert.deepEqual(seatRelay.questionsFor(holder.id), []);
+  minds.setNpcTier(getNpcByName(world.campaignId, "Prisoner Ulm").id, "secondary");
+});
+
 // ---- Ticket 07: companions ------------------------------------------------
 
 await test("a companion's mind knows its company from the start and is bound by its sheet (A4, A7)", async () => {

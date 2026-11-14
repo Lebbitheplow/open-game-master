@@ -22,6 +22,8 @@ import {
   setNpcTier,
 } from "@/lib/db/npc-minds";
 import { requestUtilityMessage } from "@/lib/dm/model";
+import { seatForMind } from "@/lib/db/mind-seats";
+import { askSeatHolder } from "@/lib/dm/mind-seat-relay";
 import { resolveTextTimeoutMs } from "@/lib/model-client";
 import { stripReasoningArtifacts } from "@/lib/story-prompt";
 import { withLanguage } from "@/lib/dm/table-language-logic";
@@ -267,13 +269,26 @@ async function askMind(
     perceives,
     offscreen,
   });
+  const instructions = withLanguage(MIND_SYSTEM, campaign.gameSettings.tableLanguage);
   const started = Date.now();
+  // Someone playing this mind from a mind seat answers the same isolated
+  // question, under the same checks; silence or a reply that says nothing
+  // falls to the server's mind, for this answer only. Lives off screen stay
+  // the server's: they advance between turns, where no one waits.
+  const seat = offscreen ? null : seatForMind(campaign.id, npc.id);
+  if (seat) {
+    const answer = await askSeatHolder({ userId: seat.userId, campaignId: campaign.id, seatId: seat.id, character: npc.name, instructions, prompt });
+    const parsed = answer ? parseProposal(JSON.stringify(answer)) : null;
+    if (parsed?.ok) {
+      return { ok: true, proposal: parsed.proposal, memories, latencyMs: Date.now() - started, inputTokens: 0, outputTokens: 0 };
+    }
+  }
   let result;
   try {
     result = await requestUtilityMessage(
       campaign.settings,
       [
-        { role: "system", content: withLanguage(MIND_SYSTEM, campaign.gameSettings.tableLanguage) },
+        { role: "system", content: instructions },
         { role: "user", content: prompt },
       ],
       { meta: { task: offscreen ? "npc_mind_offscreen" : "npc_mind" }, timeoutMs: MIND_TIMEOUT_MS(), mindChoice: mindCallChoice(campaign.settings, getNpcMindModel(npc.id)) },

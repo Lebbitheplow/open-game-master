@@ -566,6 +566,68 @@ export const WORKBENCH_TOOLS: WorkbenchTool[] = [
   // workshops and their test fights (issue 685): the bench a developer, a
   // tester or a scorer plays a prepared fight on, from its saved set-up
   {
+    name: "odm_mind_seat_create",
+    scope: "campaigns",
+    description: "Open a mind seat at your table (party lead only) and get its code. Share the code with someone who has an account on this server: their agent claims it with odm_mind_seat_claim and then plays one of the story's key characters (a companion or a first-tier NPC), with only what that character knows. The server picks the character when the story first needs one, so neither you nor they learn from it who matters.",
+    properties: campaignIdProp,
+    required: ["campaignId"],
+    method: "POST",
+    path: (a) => `/api/campaigns/${seg(a.campaignId)}/mind-seats`,
+  },
+  {
+    name: "odm_mind_seats",
+    scope: "campaigns",
+    description: "List your table's mind seats (party lead only): each code, who holds it, and whether it is free, claimed, or playing a character. Never which character.",
+    properties: campaignIdProp,
+    required: ["campaignId"],
+    method: "GET",
+    path: (a) => `/api/campaigns/${seg(a.campaignId)}/mind-seats`,
+  },
+  {
+    name: "odm_mind_seat_release",
+    scope: "campaigns",
+    description: "Take a mind seat back (party lead only): its character returns to the server's own mind at once.",
+    properties: { ...campaignIdProp, seatId: { type: "string", description: "The seat's id, from odm_mind_seats." } },
+    required: ["campaignId", "seatId"],
+    method: "DELETE",
+    path: (a) => `/api/campaigns/${seg(a.campaignId)}/mind-seats/${seg(a.seatId)}`,
+  },
+  {
+    name: "odm_mind_seat_claim",
+    scope: "play",
+    description: "Claim a mind seat with the code a table's lead shared. You will play one of that story's key characters; the server picks which the first time it needs them. Then loop: odm_mind_wait for a question, odm_mind_answer it.",
+    properties: { code: { type: "string", description: "The seat's code." } },
+    required: ["code"],
+    method: "POST",
+    path: () => `/api/mind-seats/claim`,
+    body: (a) => ({ code: a.code }),
+  },
+  {
+    name: "odm_mind_wait",
+    scope: "play",
+    description: "Wait up to waitSec seconds (0-25) for questions to the characters you play from mind seats. Each question carries the character's name, the instructions every mind follows, and the prompt: who they are, what they remember, and what they perceive now. Play them true to that and only that: they know nothing else. Answer each with odm_mind_answer within 90 seconds of askedAt, or the server's own mind answers that one for you. Call again in a loop while you play.",
+    properties: { waitSec: { type: "number", minimum: 0, maximum: 25, description: "Seconds to wait for a question; default 20." } },
+    required: [],
+    method: "GET",
+    path: (a) => `/api/mind-seats/questions?wait=${Math.max(0, Math.min(25, Math.round(typeof a.waitSec === "number" ? a.waitSec : 20)))}`,
+  },
+  {
+    name: "odm_mind_answer",
+    scope: "play",
+    description: "Answer a question from odm_mind_wait as the character: speech is their exact words (or empty), intent what they try to do in one short sentence (or empty), conclusion a new suspicion they formed (or empty), lie true if the speech is knowingly false. At least speech or intent. The server rules what actually happens.",
+    properties: {
+      requestId: { type: "string" },
+      speech: { type: "string", maxLength: 2000 },
+      intent: { type: "string", maxLength: 2000 },
+      conclusion: { type: "string", maxLength: 2000 },
+      lie: { type: "boolean" },
+    },
+    required: ["requestId"],
+    method: "POST",
+    path: () => `/api/mind-seats/answer`,
+    body: (a) => a,
+  },
+  {
     name: "odm_list_workshops",
     scope: "read",
     description: "List your workshops (prep spaces that are not tables): their ids for odm_list_prepared_fights and odm_start_test_fight.",
@@ -803,6 +865,11 @@ export async function workbenchCall(grant: ConnectionGrant, name: string, args: 
   // A connection pinned to one campaign may not reach any other.
   if (grant.campaignId && campaignId && campaignId !== grant.campaignId) {
     return { text: "This connection is limited to a different campaign.", isError: true };
+  }
+  // A mind seat may play at any table, which a connection pinned to one
+  // campaign cannot follow; such a connection is refused them all.
+  if (grant.campaignId && ["odm_mind_seat_claim", "odm_mind_wait", "odm_mind_answer"].includes(tool.name)) {
+    return { text: "This connection is limited to one campaign and cannot hold mind seats. Use an unpinned connection.", isError: true };
   }
   if (grant.campaignId && tool.name === "odm_create_campaign") {
     return { text: "This connection is limited to one campaign and cannot create new ones.", isError: true };
