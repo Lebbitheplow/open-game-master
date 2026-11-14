@@ -109,6 +109,15 @@ Nomi al tavolo: **Personaggi** (primo grado) e **Comparse** (secondo grado); nel
   creazione dell'avventura. Il dato `npcs.tier = 'primary'` permette anche PNG di primo grado
   non compagni (es. il nemico principale), ma l'interfaccia per marcarli alla creazione
   non esiste ancora: oggi nel gioco reale il primo grado sono i compagni di party.
+- **Turno garantito in scena** (applicato dal server): il server non vede chi sta dove,
+  quindi "in scena" si eredita di turno in turno. Una mente di primo grado che ha agito
+  (detto o fatto qualcosa) nel turno GM precedente è ancora in scena e deve avere il suo
+  turno anche in questo. Se il narratore chiude il turno senza `npc_speak` né `npc_inform`
+  per lei, il server lo rimanda indietro una volta (`mindsAwaitingTurn` in `npc-mind.ts`,
+  nota `sceneMindsPrompt`): `npc_speak` con solo ciò che il personaggio ha potuto vedere e
+  sentire da dove si trova, oppure `npc_inform` se ha lasciato la scena. Una notizia non è
+  un'azione, quindi dopo `npc_inform` il personaggio esce di scena finché la storia non lo
+  interpella di nuovo. Un compagno in combattimento usa il proprio turno di combattimento (§11).
 - **Secondo grado**: tutti gli altri (oste, fabbro, viandante, alleati `guest`). Li
   interpreta il narratore dalla loro personalità e da un registro leggero: cosa hanno
   appreso, da chi, e quali nomi degli eroi conoscono. `npc_speak` li rifiuta senza

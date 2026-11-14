@@ -16,6 +16,7 @@ import {
   getNpcMindModel,
   getNpcTier,
   listNpcProposals,
+  npcsActedInTurn,
   recordNpcProposal,
   setNpcAway,
   setNpcInspiration,
@@ -38,6 +39,7 @@ import { describeSheet } from "@/lib/dm/prompt";
 import { aiPlaysSheet } from "@/lib/dm/companion-command";
 import { ownTurnOf } from "@/lib/dm/held-turn";
 import { getActiveEncounter, listEnemies } from "@/lib/db/encounters";
+import { listRecentDmTurns } from "@/lib/db/dm-turns";
 import { getBattleMapForEncounter, listTokens } from "@/lib/db/battle-maps";
 import { chebyshev } from "@/lib/battlemap/types";
 import { acBreakdownFor } from "@/lib/srd";
@@ -50,6 +52,7 @@ import {
   backgroundOpen,
   catchUpSteps,
   memoriesFor,
+  mindsOwedTurn,
   mentalScoresOf,
   offscreenCandidates,
   parseProposal,
@@ -99,6 +102,44 @@ export function offscreenMindIds(campaign: Campaign): Set<string> {
     return new Set();
   }
   return new Set(listNpcs(campaign.id).filter((npc) => !npc.archived && !npc.companionSheetId && tierOfNpc(npc) === "primary").map((npc) => npc.id));
+}
+
+// The first-tier minds owed a turn in DM turn `turnId` and not yet given one:
+// on stage because they acted in the previous turn, and named by no
+// npc_speak or npc_inform among `calls` (npc-mind-logic.ts mindsOwedTurn).
+export function mindsAwaitingTurn(
+  campaign: Campaign,
+  turnId: string,
+  calls: ReadonlyArray<{ name: string; args: Record<string, unknown> }>,
+): Npc[] {
+  if (!npcMindsOn(campaign) || !turnId) {
+    return [];
+  }
+  const previous = listRecentDmTurns(campaign.id, 4).filter((turn) => turn.id !== turnId && !turn.revertedAt).at(-1);
+  const acted = npcsActedInTurn(campaign.id, previous?.id ?? "");
+  if (!acted.size) {
+    return [];
+  }
+  const cast = listNpcs(campaign.id);
+  const touched = new Set(
+    calls
+      .filter((call) => call.name === "npc_speak" || call.name === "npc_inform")
+      .flatMap((call) => recipientsOf(String(call.args.name ?? ""), [], cast).ids),
+  );
+  const inFight = Boolean(getActiveEncounter(campaign.id));
+  const owed = mindsOwedTurn(
+    cast.map((npc) => ({
+      id: npc.id,
+      name: npc.name,
+      tier: tierOfNpc(npc),
+      archived: Boolean(npc.archived),
+      away: Boolean(getNpcAway(npc.id)),
+      companionInFight: inFight && Boolean(npc.companionSheetId),
+      actedLastTurn: acted.has(npc.id),
+    })),
+    touched,
+  );
+  return owed.flatMap((entry) => cast.filter((npc) => npc.id === entry.id));
 }
 
 // What the narrator's roster says of each tracked NPC, by name.

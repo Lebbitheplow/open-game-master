@@ -32,6 +32,18 @@ export function addNpcMemories(
   return npcIds.length;
 }
 
+// The NPCs whose own minds acted (said or did something) in DM turn
+// `turnId`: who was on stage then (src/lib/dm/npc-mind.ts mindsOwedTurn).
+export function npcsActedInTurn(campaignId: string, turnId: string): Set<string> {
+  if (!turnId) {
+    return new Set();
+  }
+  const rows = getDatabase()
+    .prepare(`SELECT DISTINCT npc_id FROM npc_memories WHERE campaign_id = ? AND turn_id = ? AND source_kind = 'self'`)
+    .all(campaignId, turnId) as Array<{ npc_id: string }>;
+  return new Set(rows.map((row) => row.npc_id));
+}
+
 export function listNpcMemories(campaignId: string, npcId: string): NpcMemory[] {
   const rows = getDatabase()
     .prepare(

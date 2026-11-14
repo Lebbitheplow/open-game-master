@@ -494,3 +494,48 @@ export function renderFightView(view: { round: number; foes: FightSeen[]; allies
     .filter(Boolean)
     .join("\n");
 }
+// ---- A first-tier mind's turn in the scene (design §9) ----
+//
+// A first-tier character is played like a player at the table: whenever it
+// is in the scene it gets a turn after the players and before the outcome.
+// The server cannot see who stands where, so "in the scene" is carried from
+// turn to turn: a mind that acted in the previous DM turn is still on stage
+// and is owed a turn in this one. The narrator answers with npc_speak (the
+// mind perceives the turn from where it stands and chooses), or with
+// npc_inform when the character has left the scene: news alone is no act,
+// so the chain ends there until the story addresses them again. A companion
+// in a fight is left to its own fight turn (ticket 08).
+export type SceneMindCandidate = {
+  id: string;
+  name: string;
+  tier: NpcTier;
+  archived: boolean;
+  away: boolean;
+  companionInFight: boolean;
+  actedLastTurn: boolean;
+};
+
+export function mindsOwedTurn(candidates: readonly SceneMindCandidate[], touchedIds: ReadonlySet<string>): SceneMindCandidate[] {
+  return candidates.filter(
+    (entry) =>
+      entry.tier === "primary" &&
+      !entry.archived &&
+      !entry.away &&
+      !entry.companionInFight &&
+      entry.actedLastTurn &&
+      !touchedIds.has(entry.id),
+  );
+}
+
+// The note that sends the narrator back once when a turn closed without the
+// owed minds' turns.
+export function sceneMindsPrompt(names: readonly string[]): string {
+  const who = names.join(", ");
+  return [
+    `[Table note] ${who} ${names.length === 1 ? "is" : "are"} a first-tier character in this scene and had no turn of their own in it.`,
+    "Like a player at the table, each acts after the players and before the outcome.",
+    "Call npc_speak for each now. In perceives, tell them only what they could see and hear of this turn from where they are: sounds, shouts, who left and who came back, what was said within earshot. Nothing from beyond their sight and hearing, and nothing of anyone's thoughts.",
+    "Their mind may speak, act, ask or keep silent; then narrate what they say and carry out what they intend with the engine's tools.",
+    "If one of them is no longer in the scene at all, call npc_inform for them instead with what, if anything, reached them.",
+  ].join(" ");
+}

@@ -759,5 +759,69 @@ await test("system: a short investigation with an absent NPC, a late messenger a
   assert.match(mindText(mindRequests()[0]), /it may be false/);
 });
 
+// ---- A first-tier mind's turn in the scene (design §9) -------------------
+
+await test("on stage means it acted last turn: owed a turn now unless asked, informed, away, archived or fighting as a companion", () => {
+  const base = { tier: "primary", archived: false, away: false, companionInFight: false, actedLastTurn: true };
+  const cands = [
+    { ...base, id: "a", name: "Aldo" },
+    { ...base, id: "b", name: "Bea", actedLastTurn: false },
+    { ...base, id: "c", name: "Cora", tier: "secondary" },
+    { ...base, id: "d", name: "Dino", away: true },
+    { ...base, id: "e", name: "Ezio", archived: true },
+    { ...base, id: "f", name: "Fabio", companionInFight: true },
+    { ...base, id: "g", name: "Gino" },
+  ];
+  assert.deepEqual(logic.mindsOwedTurn(cands, new Set(["g"])).map((entry) => entry.name), ["Aldo"]);
+  const note = logic.sceneMindsPrompt(["Aldo"]);
+  assert.match(note, /npc_speak/);
+  assert.match(note, /only what they could see and hear/);
+  assert.match(note, /npc_inform/);
+});
+
+await test("a mind on stage is not forgotten: a turn without its turn sends the narrator back once, and npc_inform takes it off stage", async () => {
+  const { listNpcs } = await import("../src/lib/db/npcs.ts");
+  const others = listNpcs(world.campaignId).filter((entry) => mind.tierOfNpc(entry) === "primary");
+  for (const other of others) {
+    minds.setNpcTier(other.id, "secondary");
+  }
+  npc("Prisoner Hale", { trait: "chained on the cart" });
+  const nudges = () => model.requests.filter((request) => String(request.messages?.at(-1)?.content ?? "").includes("had no turn of their own")).length;
+  try {
+    model.script([
+      reply({ calls: [call("npc_speak", { name: "Prisoner Hale", perceives: "Aria looks at you on the cart." })] }),
+      answer({ speech: "Rain again.", intent: "" }),
+      reply({ text: '"Rain again," Hale mutters.' }),
+    ]);
+    await model.turn(world, "I glance at the prisoner.", aria.id);
+    assert.equal(nudges(), 0, "asked in its turn: no nudge");
+    model.script([
+      reply({ text: "Arrows hiss from the ridge; Aria runs up the slope and fights the archer far from the cart." }),
+      reply({ calls: [call("npc_speak", { name: "Prisoner Hale", perceives: "Far up the slope: shouts, then silence. Aria comes back down." })] }),
+      answer({ speech: "Did you get him?", intent: "lean towards the edge of the cart" }),
+      reply({ text: 'From the cart, Hale calls out: "Did you get him?"' }),
+    ]);
+    const dm = await model.turn(world, "I charge the archer on the ridge.", aria.id);
+    assert.equal(nudges(), 1, "the narrator was sent back once for the forgotten mind");
+    assert.match(dm.content, /Arrows hiss/, "the narration before the nudge stays");
+    assert.match(dm.content, /Did you get him/, "the mind's own turn follows it");
+    assert.ok(memories("Prisoner Hale").some((entry) => entry.sourceKind === "perceived" && /shouts, then silence/.test(entry.content)));
+    model.script([
+      reply({ calls: [call("npc_inform", { name: "Prisoner Hale", source: "own eyes", news: "The cart rolls on without Aria.", witnessed: true })] }),
+      reply({ text: "Aria leaves the escort behind and walks into the town." }),
+    ]);
+    await model.turn(world, "I leave the escort and walk into town.", aria.id);
+    assert.equal(nudges(), 0, "npc_inform gave the turn: no nudge");
+    model.script([reply({ text: "The market is loud and smells of fish." })]);
+    await model.turn(world, "I look around the market.", aria.id);
+    assert.equal(nudges(), 0, "off stage after the news: no nudge");
+  } finally {
+    minds.setNpcTier(getNpcByName(world.campaignId, "Prisoner Hale").id, "secondary");
+    for (const other of others) {
+      minds.setNpcTier(other.id, "primary");
+    }
+  }
+});
+
 model.close();
 finish();
