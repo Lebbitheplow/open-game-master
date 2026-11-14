@@ -2748,9 +2748,9 @@
   "clauses": [
    {
     "c": "Advantage on initiative when cultists or their summonings are present",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the initiative probe reads the sheet's initiative roll outside a fight, so it cannot put cultists in the fight; Read the Room's unconditional \"Advantage on initiative\" fails that probe (survivor::Read the Room#0), and a fight against cultists was not staged for this one"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Hunted Instincts: an apostate rolls initiative with advantage while a cultist is in the fight, and not against goblins or without the feature",
+    "by": "src/lib/dm/genre-gh-hunted.ts huntedInstinctsAdvantage (a cultist or cult fanatic, or a creature marked summoned, among the fight's enemies), read by src/lib/dm/forced-save.ts rollExtrasFor"
    },
    {
     "c": "you cannot be surprised by them",
