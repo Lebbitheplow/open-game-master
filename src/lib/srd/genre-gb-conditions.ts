@@ -29,7 +29,16 @@ export const ARC_LAMP = "arc lamp";
 // warrior may move and make one attack (src/lib/dm/genre-gb-road-rage.ts).
 export const ROAD_RAGE = "road rage";
 
+// The alchemist's and machinist's formula marks (src/lib/dm/genre-gb-alchemy.ts
+// says what reads each); the names are that module's.
+const ACID_FORMULA = "acid formula";
+const CATALYST_REROLL = "catalyst reroll";
+
 export const GENRE_GB_CONDITION_EFFECTS: ConditionEffectRow[] = [
+  { id: "acid_formula", match: [ACID_FORMULA], summary: "Corrosive Focus: this turn the alchemist's spells deal acid damage in place of their own type." },
+  { id: "catalyst_reroll", match: [CATALYST_REROLL], summary: "Stone of the Magnum Opus: the next spell's damage dice are thrown twice and the better total kept." },
+  { id: "the_great_work", match: ["the great work"], summary: "The Great Work: the spell just cast with no slot deals its dice at their maximum." },
+  { id: "magnum_opus", match: ["magnum opus"], summary: "Magnum Opus: constructs fail their saves against the spell just cast with no slot." },
   { id: "grapnel_line", match: [GRAPNEL], summary: "Grapnel (gadget): for a round, climbing costs its holder no extra movement." },
   { id: "ear_trumpet", match: [EAR_TRUMPET], summary: "Ear trumpet (gadget): advantage on Perception checks for a minute." },
   { id: "skeleton_key", match: [SKELETON_KEY], summary: "Skeleton key (gadget): advantage on Dexterity checks for a round." },

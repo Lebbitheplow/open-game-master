@@ -27,6 +27,7 @@ import { curseBurn } from "@/lib/dm/spell-retort";
 import { programSpellLanded } from "@/lib/dm/genre-a-cyberpunk-spell-hits";
 import { spellDamageRiders } from "@/lib/srd/spell-damage-riders";
 import { genreBSpellAtMaximum, genreBSpellLanded } from "@/lib/dm/genre-b-spell-hits";
+import { catalystRerolls, spendCatalystReroll } from "@/lib/dm/genre-gb-alchemy";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // Rolls and lands the damage, writing what happened onto `base`; returns the
@@ -128,7 +129,16 @@ export function landSpellDamage(input: {
   if (burst) {
     base.spellBombardment = burst.note;
   }
-  const shares = shared ?? typedShares(burst?.outcome ?? outcome, parts);
+  // Stone of the Magnum Opus: the Catalyst Stone thrown as a reroll of all
+  // the formula's dice, the better total kept (genre-gb-alchemy.ts).
+  let landed = burst?.outcome ?? outcome;
+  if (landed && catalystRerolls(holder)) {
+    spendCatalystReroll(holder);
+    const again = rollCard(campaign, turn, sheet.id, "damage", rollAgainst(spellName, enemy.displayName), typedRollExpression(parts), { kind: "sheet", id: sheet.id, name: sheet.name });
+    base.catalystStone = `Stone of the Magnum Opus: the dice thrown again, ${landed.total} then ${again.total}; ${again.total > landed.total ? "the second" : "the first"} kept.`;
+    landed = again.total > landed.total ? again : landed;
+  }
+  const shares = shared ?? typedShares(landed, parts);
   const rolledTotal = shares.reduce((sum, share) => sum + share, 0);
   const total = rolledTotal + riders.flat + riders.flatSecond;
   const halves = halfOnSave || riders.potentCantrip;

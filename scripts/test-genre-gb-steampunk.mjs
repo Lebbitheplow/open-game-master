@@ -296,5 +296,89 @@ await run("Greater Daring: an aeronaut's ranged shot from the air carries Daring
   assert.ok(!again.includes("2d6"), `a second shot from the air in the same turn rolled ${again}, the die again`);
 });
 
+// ---- GB15: Corrosive Focus's acid, Stone of the Magnum Opus, The Great Work, Magnum Opus ----
+
+const encountersDb = await load("lib/db/encounters.ts");
+function formulae(hero, ability = "int") {
+  world.patch(hero.id, {
+    equipment: [...world.sheet(hero.id).equipment, { name: "Component Pouch", qty: 1 }],
+    spellcasting: { ability, slots: { 6: { max: 1, used: 0 } }, prepared: ["Disintegrate"], known: [], cantrips: ["Acid Splash"] },
+  });
+}
+async function castAt(hero, enemy, spell, faces, saveAbility = "dex") {
+  clearDice();
+  dice(...faces);
+  const out = rig.must(await world.invoke("cast_at_enemy", { characterId: hero.id, targetEnemyId: enemy.id, spell, saveAbility }), `cast_at_enemy ${spell}`);
+  clearDice();
+  return out;
+}
+const lost = (enemy) => 300 - kit.enemy(enemy.id).currentHp;
+const play = async (hero, name) => rig.must(await world.invoke("use_resource", { characterId: hero.id, resource: name, reason: "test" }), name);
+function actionBack() {
+  const encounter = world.encounter();
+  encountersDb.saveEncounter({ ...encounter, turnBudget: { ...encounter.turnBudget, actionUsed: false, castThisAction: false, castLeveledBonus: false, castLeveled: false } });
+}
+
+await run("Corrosive Focus: the free card turns the alchemist's formula to acid for the turn, so a fire-immune creature takes it, and a weapon's fire stays fire", async () => {
+  const row = feature("alchemist", "Corrosive Focus", 2);
+  const hero = rig.holder(row);
+  const { near } = await rig.fight(hero);
+  kit.setEnemy(near.id, { stats: { immune: "fire", resist: "" } });
+  const meet = (spell) => meetEnemyPart(world.campaignId, foe(near), 20, "fire", { spell }).amount;
+  assert.equal(meet(true), 0, "a fire formula got through the immunity before the card");
+  await rig.must(await world.invoke("use_resource", { characterId: hero.id, resource: "Corrosive Focus", reason: "test" }), "Corrosive Focus");
+  assert.equal(meet(true), 20, "the formula did not meet the creature as acid");
+  assert.equal(meet(false), 0, "a weapon's fire met it as acid too");
+  const off = await rig.without(hero, row, () => meet(true));
+  assert.equal(off, 0, "without the feature the mark still turned the type");
+});
+
+await run("Stone of the Magnum Opus: the stone's reroll card throws the formula's dice twice and keeps the better, from the stone's uses", async () => {
+  const row = feature("alchemist", "Stone of the Magnum Opus", 15);
+  const hero = rig.holder(row);
+  formulae(hero);
+  world.patch(hero.id, { features: world.sheet(hero.id).features.filter((entry) => entry.name !== "Corrosive Focus") });
+  const { near } = await rig.fight(hero);
+  await play(hero, "Catalyst Stone (reroll)");
+  assert.equal(world.sheet(hero.id).resources.steampunk_catalyst_stone.used, 1, "the reroll did not spend a stone use");
+  // Acid Splash at 15th: 3d6. The save a 1, then 1s, then 6s.
+  const out = await castAt(hero, near, "Acid Splash", [1, 1, 1, 1, 6, 6, 6]);
+  assert.equal(lost(near), 18, `the rerolled splash took ${lost(near)} (${JSON.stringify(out).slice(0, 300)})`);
+  assert.ok(!world.sheet(hero.id).conditions.includes("catalyst reroll"), "the roll did not spend the reroll");
+});
+
+await run("The Great Work: the formula its slotless mark pays for deals its dice at their maximum, and the next spell is rolled", async () => {
+  const row = feature("alchemist", "The Great Work", 20);
+  const hero = rig.holder(row);
+  formulae(hero);
+  world.patch(hero.id, { features: world.sheet(hero.id).features.filter((entry) => entry.name !== "Corrosive Focus") });
+  const { near } = await rig.fight(hero);
+  await play(hero, "The Great Work");
+  await castAt(hero, near, "Disintegrate", [1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]);
+  // 10d6 + 40 at their maximum.
+  assert.equal(lost(near), 100, `the great work's Disintegrate took ${lost(near)}`);
+  kit.setEnemy(near.id, { currentHp: 300 });
+  actionBack();
+  await castAt(hero, near, "Acid Splash", [1, 3, 3, 3, 3]);
+  assert.equal(lost(near), 12, `the next spell, Acid Splash at 20th on 3s, took ${lost(near)}`);
+});
+
+await run("Magnum Opus: a construct fails its save against the spell the slotless mark pays for, and a creature of another kind saves", async () => {
+  const row = feature("machinist", "Magnum Opus", 20);
+  const hero = rig.holder(row);
+  formulae(hero);
+  const { near } = await rig.fight(hero);
+  kit.setEnemy(near.id, { stats: { type: "construct" } });
+  await play(hero, "Magnum Opus");
+  await castAt(hero, near, "Disintegrate", [20, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]);
+  // 10d6 + 40 on 3s is 70 (a machinist's own rider may add to it).
+  assert.ok(lost(near) >= 70, `the construct, saving on a 20, took ${lost(near)}`);
+  kit.setEnemy(near.id, { currentHp: 300, stats: { type: "humanoid" } });
+  actionBack();
+  world.patch(hero.id, { spellcasting: { ...world.sheet(hero.id).spellcasting, slots: { 6: { max: 1, used: 0 } } } });
+  await castAt(hero, near, "Disintegrate", [20, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]);
+  assert.ok(lost(near) < 10, `a humanoid saving on a 20 took ${lost(near)}`);
+});
+
 rig.world.close();
 finish();

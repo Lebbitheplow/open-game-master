@@ -114,5 +114,21 @@ await run("Chain Deployment: a second, different gadget rides the bonus action t
   assert.equal(off.second, false, "without Chain Deployment the second gadget rode the spent bonus action");
 });
 
+// ---- GB15: Third Gadget's saves ----
+
+await run("Third Gadget: the Arc Lamp's flash makes one creature within 30 feet save on CON against 8 + proficiency + INT or be blinded, from the lamp's uses", async () => {
+  const hero = gadgeteer(6, ["Arc Lamp", "Grapnel", "Ear Trumpet"]);
+  const { near } = await rig.fight(hero);
+  const { clearDice, dice } = await import("./lib/enforce-world.mjs");
+  clearDice();
+  dice(5);
+  const out = rig.must(await use(hero, "Arc Lamp Flash", { targetEnemyId: near.id }), "Arc Lamp Flash");
+  clearDice();
+  // Proficiency 3 at 6th, INT 3 (the rig's scores): DC 14.
+  assert.ok(JSON.stringify(out).includes("14"), `the flash's save: ${JSON.stringify(out).slice(0, 300)}`);
+  assert.ok(rig.kit.enemy(near.id).conditions.some((entry) => entry.startsWith("blinded")), `the creature's conditions: ${rig.kit.enemy(near.id).conditions}`);
+  assert.equal(world.sheet(hero.id).resources.steampunk_gadget_arc_lamp.used, 1, "the flash did not spend a lamp use");
+});
+
 rig.world.close();
 finish();

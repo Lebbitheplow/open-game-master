@@ -3,6 +3,7 @@ import { damageAdjust, resistsAllDamage } from "@/lib/dm/condition-logic";
 import { petrifiedImmunities, type BlowSource, type WeaponMaterial } from "@/lib/dm/damage-logic";
 import { authoredIgnoresResistance } from "@/lib/dm/authored-saves";
 import { authoredSoftensImmunity, softenedLines } from "@/lib/dm/genre-b-steampunk-defenses";
+import { formulaDamageType } from "@/lib/dm/genre-gb-alchemy";
 import { absorbs } from "@/lib/dm/monster-traits";
 import { resistLineFor } from "@/lib/dm/underwater";
 import { silencedImmunity } from "@/lib/dm/zone-rules";
@@ -62,9 +63,12 @@ export function meetEnemyPart(
   campaignId: string,
   enemy: EncounterEnemy,
   amount: number,
-  damageType: string | undefined,
+  typed: string | undefined,
   flags: EnemyPartFlags = {},
 ): { amount: number; note: string | null; absorbed: number } {
+  // Corrosive Focus: the acting alchemist's formula meets the creature as acid
+  // (genre-gb-alchemy.ts).
+  const damageType = formulaDamageType(campaignId, typed, flags.spell === true);
   if (absorbs(enemy.stats, damageType)) {
     return { amount: 0, note: `absorbs the ${damageType}`, absorbed: Math.max(0, Math.floor(amount)) };
   }

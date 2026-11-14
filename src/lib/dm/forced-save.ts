@@ -8,6 +8,7 @@
 // request_roll (src/lib/dm/invoke-roll.ts), group_check and aoe_damage call
 // in here; cast_at_player and cast_at_enemy are meant to.
 
+import { magnumOpusBinds } from "@/lib/dm/genre-gb-alchemy";
 import { ruinsInitiative } from "@/lib/dm/genre-gb-ruins";
 import { beguilingBroken } from "@/lib/dm/mt-fb-arrow-riders";
 import { takeCounteredSave } from "@/lib/dm/slayers-counter-mark";
@@ -579,6 +580,13 @@ export function rollEnemySave(
     }
     noteFailedSave(campaignId, enemy.id, options.record?.detail ?? `${ability.toUpperCase()} save`);
     return { success: false, total: null, autoFailed: true, notes: derivation.notes };
+  }
+  // Magnum Opus: a construct cannot resist the machinist's capstone cast
+  // (genre-gb-alchemy.ts). Legendary Resistance is resisting too.
+  const opus = magnumOpusBinds(campaignId, enemy, options.magical === true);
+  if (opus) {
+    noteFailedSave(campaignId, enemy.id, options.record?.detail ?? `${ability.toUpperCase()} save`);
+    return { success: false, total: null, autoFailed: true, notes: [opus] };
   }
   const effect = effectOutcome(campaignId, { kind: "enemy", id: enemy.id }, "save");
   // A spell a character left on the creature (Bane's d4 off, Bless's d4 on)

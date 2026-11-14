@@ -65,7 +65,17 @@ export const GENRE_GB_AUTHORED: GenreRow[] = [
   // (src/lib/srd/genre-b-steampunk-attacks.ts freeSpendKey).
   gadget("Grapnel", { kind: "buff", condition: GRAPNEL, rounds: 1 }),
   gadget("Smoke Bomb", { kind: "zone", lays: "smoke bomb", rangeFt: 30, upgrade: { feature: "Smoke Discipline", lays: "disciplined smoke", seesThrough: true } }),
-  gadget("Arc Lamp", { kind: "light", brightFt: 30, dimFt: 30, condition: ARC_LAMP }),
+  // Third Gadget (6th): "gadget saves against your effects use 8 +
+  // proficiency + INT". The lamp's flash is the gadget a creature saves
+  // against: thrown open at one creature within 30 feet that can see it, a
+  // CON save or blinded until the end of its next turn, from the same uses.
+  withSpend(gadget("Arc Lamp", { kind: "light", brightFt: 30, dimFt: 30, condition: ARC_LAMP }), {
+    name: "Arc Lamp Flash",
+    pool: { id: "steampunk_gadget_arc_lamp" },
+    action: "bonus",
+    oncePerTurn: true,
+    does: { kind: "save_effect", save: "con", dcAbility: "int", rangeFt: 30, condition: "blinded", rounds: 1 },
+  }),
   gadget("Ear Trumpet", { kind: "buff", condition: EAR_TRUMPET, rounds: 10 }, [{ kind: "check_adv", skills: ["perception"], gate: { condition: EAR_TRUMPET } }]),
   gadget("Skeleton Key", { kind: "buff", condition: SKELETON_KEY, rounds: 1 }, [{ kind: "check_adv", abilities: ["dex"], gate: { condition: SKELETON_KEY } }]),
   gadget("Pocket Shield", { kind: "buff", condition: POCKET_SHIELD, rounds: 1 }, [{ kind: "ac", amount: 2, gate: { condition: POCKET_SHIELD } }]),
@@ -79,7 +89,22 @@ export const GENRE_GB_AUTHORED: GenreRow[] = [
     counter: "post_apocalyptic_road_rage",
     reactions: [{ name: "Road Rage", pool: { id: "post_apocalyptic_road_rage" }, gate: { condition: ROAD_RAGE }, does: { kind: "attack", rangeFt: 5, weaponRange: true } }],
   }),
+
+  // ---- the alchemist's formulae (src/lib/dm/genre-gb-alchemy.ts) ----
+  // Corrosive Focus: "you may change any formula's damage type to acid": a
+  // free card, the choice the text gives, for the turn.
+  row("Corrosive Focus", ["alchemist"], { spends: [{ name: "Corrosive Focus", action: "none", does: { kind: "buff", condition: "acid formula", rounds: 1 } }] }),
+  // Stone of the Magnum Opus: "Catalyst Stone can instead reroll all of a
+  // formula's dice, keeping the better total": the stone's other card, from
+  // its uses.
+  row("Stone of the Magnum Opus", ["alchemist"], {
+    spends: [{ name: "Catalyst Stone (reroll)", pool: { id: "steampunk_catalyst_stone" }, action: "none", does: { kind: "buff", condition: "catalyst reroll", rounds: 10 } }],
+  }),
 ];
+
+function withSpend(base: GenreRow, spend: NonNullable<AuthoredEntry["spends"]>[number]): GenreRow {
+  return { ...base, entry: { ...base.entry, spends: [...(base.entry.spends ?? []), spend] } };
+}
 
 function gadget(name: string, does: SpendDoes, effects: AuthoredEffect[] = []): GenreRow {
   const counter = `steampunk_gadget_${name.toLowerCase().replace(/ /g, "_")}`;

@@ -430,8 +430,9 @@
    },
    {
     "c": "constructs and machines cannot resist it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Magnum Opus#1:spend_moves"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Magnum Opus: a construct fails its save against the spell the slotless mark pays for, and a creature of another kind saves",
+    "by": "src/lib/dm/genre-gb-alchemy.ts capstoneMarks (src/lib/dm/cast-guard.ts) and magnumOpusBinds (src/lib/dm/forced-save.ts rollEnemySave)"
    }
   ]
  },
@@ -1365,11 +1366,9 @@
   "clauses": [
    {
     "c": "Catalyst Stone can instead reroll all of a formula's dice, keeping the better total",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Stone of the Magnum Opus#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Stone of the Magnum Opus: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Stone of the Magnum Opus: the stone's reroll card throws the formula's dice twice and keeps the better, from the stone's uses",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Stone of the Magnum Opus (Catalyst Stone (reroll) from the stone's pool), src/lib/dm/genre-gb-alchemy.ts catalystRerolls from src/lib/dm/cast-at-enemy-damage.ts"
    }
   ]
  },
@@ -1454,8 +1453,9 @@
    },
    {
     "c": "its dice are maximized",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::The Great Work#1:spend_moves"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs The Great Work: the formula its slotless mark pays for deals its dice at their maximum, and the next spell is rolled",
+    "by": "src/lib/dm/genre-gb-alchemy.ts capstoneMarks (from src/lib/dm/cast-guard.ts as the 7th-level slotless mark is spent) and greatWorkAtMaximum (src/lib/dm/genre-b-spell-hits.ts genreBSpellAtMaximum)"
    }
   ]
  },
@@ -1485,8 +1485,9 @@
    },
    {
     "c": "you may change any formula's damage type to acid",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Corrosive Focus#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Corrosive Focus: the free card turns the alchemist's formula to acid for the turn, so a fire-immune creature takes it, and a weapon's fire stays fire",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Corrosive Focus (the free card, acid formula), src/lib/dm/genre-gb-alchemy.ts formulaDamageType from src/lib/dm/enemy-defenses.ts meetEnemyPart"
    }
   ]
  },
@@ -1751,8 +1752,9 @@
    },
    {
     "c": "gadget saves against your effects use 8 + proficiency + INT",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Third Gadget#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-gadgets.mjs Third Gadget: the Arc Lamp's flash makes one creature within 30 feet save on CON against 8 + proficiency + INT or be blinded, from the lamp's uses",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Arc Lamp Flash (save_effect, dcAbility int), src/lib/srd/options.json the lamp's line"
    }
   ]
  },

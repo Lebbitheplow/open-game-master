@@ -32,6 +32,7 @@
 //
 // A rider never strikes the caster's own side: Volatile Chain "may" splash, so
 // it takes an enemy beside the target or nobody.
+import { greatWorkAtMaximum } from "@/lib/dm/genre-gb-alchemy";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, getEnemy, listEnemies, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
@@ -91,7 +92,8 @@ function spendMark(sheet: CharacterSheet, mark: string): CharacterSheet {
 // Overcharge: "a damaging art rolls maximum dice". Read before the dice roll.
 export function genreBSpellAtMaximum(sheet: CharacterSheet): boolean {
   const fresh = getSheetById(sheet.id) ?? sheet;
-  return holdsGenreFeature(fresh, "aether_channeler", "Overcharge") && holdsMark(fresh, OVERCHARGE_MARK);
+  // The Great Work: "its dice are maximized" (genre-gb-alchemy.ts).
+  return (holdsGenreFeature(fresh, "aether_channeler", "Overcharge") && holdsMark(fresh, OVERCHARGE_MARK)) || greatWorkAtMaximum(fresh);
 }
 
 // The turn's once-a-turn key for this caster's rider, claimed now; false when
