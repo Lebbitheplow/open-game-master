@@ -268,6 +268,8 @@ export const MIND_SYSTEM = [
   "You may suspect, guess, be wrong, keep secrets, or lie; a guess stays a guess.",
   "Stay within the abilities described for you; your inspiration shapes your manner, never your knowledge or powers.",
   "You only propose: the Game Master and the rules decide what actually happens.",
+  // Every character's first goal, under whatever else they want.
+  "Above all your goals stands one: staying alive. Wealth, power, love, revenge or duty are worth pursuing only while you live to have them. Weigh every risk against your life: in danger you may retreat, hide, flee, surrender, bargain, beg, lie or betray. You risk your life only when your nature truly demands it (a fanatic's faith, a parent shielding a child, a debt of honour), and even then you look for a way to come out alive.",
   'Answer with ONE JSON object and nothing else: {"speech": "your exact words, or empty", "intent": "what you try to do, in one short sentence, or empty", "conclusion": "a new suspicion you formed, or empty", "lie": true if your speech is knowingly false, else false}.',
 ].join("\n");
 
@@ -472,11 +474,19 @@ function handsLine(hands: FightHands | undefined): string {
 }
 
 // The fight as the companion sees it from where it stands.
-export function renderFightView(view: { round: number; foes: FightSeen[]; allies: FightSeen[]; hands?: FightHands }): string {
+// `self`: the companion's own state, which it knows exactly; staying alive
+// comes first, so it has to know how close to death it is.
+export type FightSelf = { hp: number; maxHp: number; conditions: string[] };
+
+export function renderFightView(view: { round: number; foes: FightSeen[]; allies: FightSeen[]; hands?: FightHands; self?: FightSelf }): string {
   const line = (seen: FightSeen) =>
     `- ${seen.name}: ${seen.health}${seen.conditions.length ? `, ${seen.conditions.join(", ")}` : ""}${seen.feet === null ? "" : `, ${seen.feet} ft from you`}`;
+  const self = view.self;
   return [
     `It is your turn in the fight (round ${view.round}). Choose what you do with it from your sheet: movement, an action, perhaps a bonus action. Name the target and the weapon or spell.`,
+    self
+      ? `You: ${self.hp} of ${self.maxHp} hit points (${healthWord(self.hp, self.maxHp)})${self.conditions.length ? `, ${self.conditions.join(", ")}` : ""}. Staying alive comes first: if this fight is likely to kill you, fall back, disengage, heal, or flee rather than die for nothing.`
+      : "",
     view.foes.length ? `Foes you see:\n${view.foes.map(line).join("\n")}` : "You see no foe standing.",
     view.allies.length ? `Your side:\n${view.allies.map(line).join("\n")}` : "",
     handsLine(view.hands),

@@ -177,3 +177,25 @@ esistenti non sono autorizzate. Nessuna API, schema DB, modello o framework scel
 Il ticket 02 può usare questo contratto per una proposta tecnica con una prima slice
 end-to-end e test causali. Non ripetere le domande già confermate; riportare soltanto
 nuove decisioni materiali eventualmente emerse. Nessun runner avviato.
+
+## Sopravvivere prima di tutto
+Ogni personaggio ha il proprio carattere e i propri scopi (ricchezza, potere, amore, vendetta,
+dovere), ma sopra tutti sta uno scopo comune: **restare vivo**. Gli altri scopi valgono solo
+finché si è vivi per goderne.
+- **Menti dei personaggi** (`MIND_SYSTEM` in `src/lib/dm/npc-mind-logic.ts`): pesano ogni
+  rischio contro la propria vita; in pericolo possono ritirarsi, nascondersi, fuggire,
+  arrendersi, trattare, implorare, mentire o tradire. Rischiano la vita solo quando la loro
+  natura lo esige davvero (fanatismo, un genitore che protegge un figlio, un debito d'onore),
+  e anche allora cercano una via d'uscita.
+- **Compagni in combattimento** (`renderFightView`): vedono i propri punti ferita esatti e
+  le proprie condizioni, con il richiamo a ripiegare, disimpegnarsi, curarsi o fuggire
+  invece di morire per niente.
+- **Master** (`NPC_MINDS_RULES`): interpreta così anche nemici e NPC di secondo livello. Una
+  creatura pensante gravemente ferita, in inferiorità o chiaramente perdente si ritira,
+  si arrende, tratta o fugge (`enemy_flees`, `end_encounter`). Combattono fino alla fine
+  solo i senza mente, i costretti, chi è messo all'angolo o chi ha una natura che lo esige
+  (uno zelota, un guardiano legato al suo posto).
+
+Vale solo per le campagne con le menti NPC attive (`gameSettings.npcMinds`, cioè le nuove).
+Il motore non impone un tiro di morale: decidono le menti e il Master, mentre l'esito resta
+alle regole.

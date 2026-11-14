@@ -157,7 +157,7 @@ function sentences(text) {
 
 // What the model reads and the player never sees: tool definitions, prompts
 // and the claims a narration is read for. A table line is short.
-const MODEL_ONLY = /(tool-defs|prompt|claims-logic|-guide|instructions)/;
+const MODEL_ONLY = /(tool-defs|prompt|claims-logic|-guide|instructions|npc-mind)/;
 const MAX_LINE = 240;
 
 export function serverFiles() {
