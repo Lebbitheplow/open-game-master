@@ -70,7 +70,7 @@ const ONE_SHOT_DIRECTIVES: Record<
     label: "Combat",
     blurb: "An immediate physical threat, here and now.",
     directive:
-      "Introduce an immediate physical threat that engages the party within this scene. Scale it to the party's current means: dangerous enough to demand a response, resolvable within one to three scenes. Make the stakes clear up front, so it is obvious what winning, losing, or fleeing would each cost.",
+      "Introduce an immediate physical threat that engages the party within this scene. Scale it to the party's current means: dangerous enough to demand a response, resolvable within one to three scenes. Make the stakes clear up front, so it is obvious what winning, losing, or fleeing would each cost. When foes attack, start the fight with start_encounter in this same reply, so they stand on the board and initiative is rolled, rather than resolving the ambush with checks.",
   },
   location: {
     label: "Place",

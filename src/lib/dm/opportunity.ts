@@ -51,16 +51,21 @@ import { opportunityReactionKey } from "@/lib/srd/authored-effects-more";
 import { conditionsOf } from "@/lib/dm/vitals-logic";
 import { attackSenses, characterSenses, enemySenses, fearAsRolled, lightOnAttack, sensesReaching } from "@/lib/dm/attack-light";
 import { opportunityWeapon } from "@/lib/dm/enemy-profile";
-import { opportunitySight, pcOpportunitySwing, withOpportunityTurn } from "@/lib/dm/opportunity-strike";
+import { enemyOpportunityRiders, opportunitySight, pcOpportunitySwing, withOpportunityTurn } from "@/lib/dm/opportunity-strike";
+import { holdsFeat } from "@/lib/srd/feat-effects";
 import { warCasterOpportunity } from "@/lib/dm/ar-wbf-feat-warcaster";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { blowByType, resolveOnHit, scaledParts } from "@/lib/dm/enemy-hit";
 import { effectOutcome } from "@/lib/dm/effect-tools";
 import { hasTrait } from "@/lib/dm/monster-abilities";
-import { enfeebledBlow, spellRetort } from "@/lib/dm/spell-retort";
+import { enfeebledBlow, spellRetort, spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { activeAuthored } from "@/lib/srd/authored-effects";
+import { enemySpeedTiles } from "@/lib/dm/enemy-speed";
+import { opportunityAnswer } from "@/lib/dm/opportunity-ask";
+import { letGoNote, timedOutNote, type OpportunityTrigger } from "@/lib/dm/opportunity-ask-logic";
+import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // Opportunity attacks: walking out of an enemy's reach is not free. Before
 // this, a player could stroll away from a troll with no consequence at all,
@@ -221,8 +226,10 @@ export function resolveOpportunityAttacks(
       adjacent: reach <= 1,
       requested: "none",
       targetSeesAttacker: sight?.targetSees !== false,
+      targetAlert: holdsFeat(sheet, "Alert"),
     });
     const light = lightOnAttack(sight, { attacker: enemy.displayName, target: sheet.name });
+    const own = enemyOpportunityRiders(campaign.id, enemy);
     // Escape the Horde (a Hunter ranger's Defensive Tactics): opportunity
     // attacks against them are made at disadvantage.
     const escapes = holdsFeature(sheet, "Escape the Horde");
@@ -239,11 +246,13 @@ export function resolveOpportunityAttacks(
       ...(eagle ? ["disadvantage" as const] : []),
       ...(attackEffect.advantage ? ["advantage" as const] : []),
       ...(attackEffect.disadvantage ? ["disadvantage" as const] : []),
+      ...own.sources,
     ]);
-    const targetAc = acWithEffects(campaign.id, sheet);
-    const hitOutcome = rollExpression(d20Expression(attack.toHit + attackEffect.bonus, advantage), undefined, {
+    const targetAc = acWithEffects(campaign.id, sheet, enemy);
+    const hitOutcome = rollExpression(`${d20Expression(attack.toHit + attackEffect.bonus, advantage)}${own.riders.diceSuffix}`, undefined, {
       purpose: { roller: "enemy", kind: "attack", who: enemy.displayName },
     });
+    spendEnemyRiders(enemy, own.riders);
     const hitRoll = insertRoll({
       campaignId: campaign.id,
       characterId: null,
@@ -425,20 +434,41 @@ export function resolvePcOpportunityAttacks(
   // (src/lib/srd/feat-moves.ts). Every caller passes it rather than skipping
   // this door, or the Sentinel is skipped with everyone else.
   disengaged = false,
+  // Who strikes a walker that Disengaged besides a Sentinel: Picket Stance
+  // answers it all the same (src/lib/dm/genre-b-mystery-enforcer.ts).
+  alsoStrikesDisengaged?: (sheet: CharacterSheet) => boolean,
 ): string[] {
+  return resolvePcOpportunityWalk(campaign, enemyId, from, to, path, disengaged, alsoStrikesDisengaged).notes;
+}
+
+// The same swings, and where the walk ends when one of them ends it: a hit
+// that leaves the walker's speed at 0 (Sentinel, Hold the Line) or drops it.
+// The swings are taken in the order the walk meets them, so a character
+// whose reach the walker never gets to once stopped makes none, and
+// `stoppedAt` is the square the stopping swing was taken on (the last one
+// inside the reach it was leaving). move_token lands the walker there.
+export function resolvePcOpportunityWalk(
+  campaign: Campaign,
+  enemyId: string,
+  from: XY,
+  to: XY,
+  path?: XY[],
+  disengaged = false,
+  alsoStrikesDisengaged?: (sheet: CharacterSheet) => boolean,
+): { notes: string[]; stoppedAt?: XY } {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
-    return [];
+    return { notes: [] };
   }
   const map = getBattleMapForEncounter(encounter.id);
   if (!map) {
-    return [];
+    return { notes: [] };
   }
   // SRD 5.1, Opportunity Attacks: "when a hostile creature that you can see
   // moves out of your reach". A creature the GM keeps off the board is one
   // no character sees, so it provokes nothing; the GM shows it to let it.
   if (hiddenNow(encounter.id).has(enemyId)) {
-    return [];
+    return { notes: [] };
   }
   const steps = [from, ...(path?.length ? path : [to])];
   const notes: string[] = [];
@@ -446,26 +476,25 @@ export function resolvePcOpportunityAttacks(
   const moverFootprint = footprintForSize(getFoe(enemyId)?.stats.size);
   const moverKind = getEnemy(enemyId) ? "enemy" : "sheet";
   const moverSide = sideOf(encounter, moverKind, enemyId);
+  // Whether the walk can go no further: dropped, or its speed at 0.
+  const walkEnds = () => {
+    const foe = getFoe(enemyId);
+    if (!foe || foe.status !== "alive" || (isSheetFoe(foe) && foe.currentHp <= 0)) {
+      return true;
+    }
+    return !isSheetFoe(foe) && enemySpeedTiles(foe) === 0;
+  };
+  const endedBefore = walkEnds();
 
+  // Who has the walker in reach somewhere on the walk, and the square it is
+  // on as they swing, in the order the walk meets those squares.
+  const reaches: Array<{ id: string; resolved: NonNullable<ReturnType<typeof meleeWeaponFor>>; token: XY; reachTiles: number; moverAt: XY; step: number; trigger: OpportunityTrigger }> = [];
   for (const stale of listSheets(campaign.id)) {
-
     const sheet = getSheetById(stale.id) ?? stale;
     if (sheet.id === enemyId || sideOf(encounter, "sheet", sheet.id, sheet) === moverSide) {
       continue;
     }
-    if (disengaged && !strikesTheDisengaged(sheet)) {
-      continue;
-    }
-    if (
-      !canAct({ sheet, encounter, kind: "reaction" }).ok ||
-      conditionBlocksReactions(sheet.conditions)
-    ) {
-      continue;
-    }
-    // Vigilant Defender: a reaction for each other creature's turn
-    // (src/lib/srd/authored-effects-more.ts).
-    const reactionKey = opportunityReactionKey(sheet, sheet.id, enemyId);
-    if (encounter.reactionsUsed.includes(reactionKey)) {
+    if (disengaged && !strikesTheDisengaged(sheet) && !alsoStrikesDisengaged?.(sheet)) {
       continue;
     }
     const token = getTokenByRef(map.id, sheet.id);
@@ -497,11 +526,42 @@ export function resolvePcOpportunityAttacks(
     // Where the walker is as the swing is made: the tile it left the reach
     // from, the one it entered the polearm's reach at, the one it stepped to
     // inside the reach, or the one it left the echo's side from.
-    const moverAt = leavesReachAt(steps, token, profile.reachTiles, 1, moverFootprint) ?? entering ?? within ?? fromEcho;
+    const leaving = leavesReachAt(steps, token, profile.reachTiles, 1, moverFootprint);
+    const moverAt = leaving ?? entering ?? within ?? fromEcho;
     if (!moverAt) {
       continue;
     }
+    // Which of them it is, in the words the player is asked in (opportunity-ask-logic.ts).
+    const trigger: OpportunityTrigger = leaving ? "leaves" : entering ? "enters" : within ? "within" : "echo";
+    const step = steps.findIndex((entry) => entry.x === moverAt.x && entry.y === moverAt.y);
+    reaches.push({ id: sheet.id, resolved, token, reachTiles: profile.reachTiles, moverAt, step: step < 0 ? steps.length : step, trigger });
+  }
+  reaches.sort((a, b) => a.step - b.step);
 
+  let stoppedAt: XY | undefined;
+  let stopStep = Infinity;
+  for (const reach of reaches) {
+    // Stopped, it never reaches the squares further on.
+    if (reach.step > stopStep) {
+      break;
+    }
+    const sheet = getSheetById(reach.id);
+    if (!sheet) {
+      continue;
+    }
+    if (
+      !canAct({ sheet, encounter, kind: "reaction" }).ok ||
+      conditionBlocksReactions(sheet.conditions)
+    ) {
+      continue;
+    }
+    // Vigilant Defender: a reaction for each other creature's turn
+    // (src/lib/srd/authored-effects-more.ts).
+    const reactionKey = opportunityReactionKey(sheet, sheet.id, enemyId);
+    if (encounter.reactionsUsed.includes(reactionKey)) {
+      continue;
+    }
+    const { moverAt, resolved } = reach;
     const enemy = getFoe(enemyId);
     if (!enemy || enemy.status !== "alive" || (isSheetFoe(enemy) && enemy.currentHp <= 0)) {
       break;
@@ -514,14 +574,31 @@ export function resolvePcOpportunityAttacks(
     if (sight && !sight.attackerSees) {
       continue;
     }
+    const stops = () => {
+      if (!stoppedAt && !endedBefore && walkEnds()) {
+        stoppedAt = moverAt;
+        stopStep = reach.step;
+      }
+    };
     // War Caster: the spell they named is cast in the swing's place, null
     // when the weapon swings after all (src/lib/dm/ar-wbf-feat-warcaster.ts).
-    const cast = warCasterOpportunity({ campaign, encounter, sheet, enemy, at: leavesReachAt(steps, token, profile.reachTiles, 1, moverFootprint), reactionKey });
+    const cast = warCasterOpportunity({ campaign, encounter, sheet, enemy, at: leavesReachAt(steps, reach.token, reach.reachTiles, 1, moverFootprint), reactionKey });
     if (cast) {
       notes.push(cast.note);
+      stops();
       if (cast.dropped) {
         break;
       }
+      continue;
+    }
+    // The swing is theirs to take or let go (opportunity-ask.ts): a player at
+    // the table is asked here, after every check that could rule it out, so
+    // the card never asks about a swing that could not be made. Let go, it
+    // spends nothing and the walk goes on.
+    const walker = shownName(encounter.id, enemy.id, enemy.displayName);
+    const answer = opportunityAnswer(campaign, sheet, { walkerId: enemyId, walker, weapon: resolved.displayName, trigger: reach.trigger });
+    if (answer && !answer.strike) {
+      notes.push(letGoNote(sheet.name, walker));
       continue;
     }
     encounter.reactionsUsed = [...encounter.reactionsUsed, reactionKey];
@@ -541,11 +618,12 @@ export function resolvePcOpportunityAttacks(
       sheet,
       enemy,
       resolved,
-      adjacent: profile.reachTiles <= 1,
+      adjacent: reach.reachTiles <= 1,
       targetConditions: withLiveDodge(enemy.conditions),
       moverAt,
     });
-    notes.push(note);
+    notes.push(answer?.timedOut ? timedOutNote(sheet.name, note) : note);
+    stops();
     if (dropped) {
       break;
     }
@@ -555,9 +633,10 @@ export function resolvePcOpportunityAttacks(
     tableNote(campaign, note);
   }
   // A creature the party dominates walking away from its old allies: they
-  // strike it as it goes (opportunity-sides.ts posts its own lines).
+  // strike it as it goes (opportunity-sides.ts posts its own lines), over
+  // the squares it walked.
   if (moverKind === "enemy" && !disengaged) {
-    notes.push(...enemiesStrikeWalker(campaign.id, enemyId, steps, moverFootprint));
+    notes.push(...enemiesStrikeWalker(campaign.id, enemyId, Number.isFinite(stopStep) ? steps.slice(0, stopStep + 1) : steps, moverFootprint));
   }
-  return notes;
+  return { notes, ...(stoppedAt ? { stoppedAt } : {}) };
 }

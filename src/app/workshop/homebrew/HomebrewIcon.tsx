@@ -2,12 +2,14 @@
 
 import { GameIcon } from "@/components/ui/GameIcon";
 import type { IconRef } from "@/lib/icons";
+import { spellGlyphIcon } from "@/lib/battlemap/spell-glyph-table";
 import type { EditorKind } from "@/app/workshop/homebrew/types";
 
-// The painted face of a piece of homebrew. An item or a spell named after
-// something in the books gets that painting; anything else falls back to its
-// family (a weapon, an evocation), and a kind with no family at all shows the
-// homebrew glyph underneath, so every row has a face.
+// The painted face of a piece of homebrew. A spell wears the glyph of the
+// spell it is named after or runs as, as its card does (issue 845), else the
+// unknown glyph. An item named after something in the books gets that
+// painting, else its family's (a weapon, armor), and a kind with no family
+// at all shows the homebrew glyph underneath, so every row has a face.
 
 export const KIND_GLYPHS: Record<EditorKind, string> = {
   item: "tab-loot",
@@ -35,8 +37,7 @@ export function homebrewIcon(kind: string, name: string, data: Record<string, un
     return { kind: "item", key: name, family: ITEM_FAMILIES[String(data.itemKind ?? "gear")] ?? "item-gear" };
   }
   if (kind === "spell") {
-    const school = String(data.school ?? "").toLowerCase();
-    return { kind: "spell", key: name, family: school ? `spell-${school}` : null };
+    return spellGlyphIcon(name, typeof data.runsAs === "string" ? data.runsAs : null, data.mech);
   }
   if (kind === "feat") {
     return { kind: "feat", key: name };
@@ -54,7 +55,10 @@ export function HomebrewPlate({ kind, name, data }: { kind: string; name: string
   const icon = homebrewIcon(kind, name, data);
   return (
     <span className="relative grid size-12 shrink-0 place-items-center rounded-lg border border-amber-500/25 bg-stone-950/70">
-      <GameIcon icon={{ kind: "glyph", key: KIND_GLYPHS[kind as EditorKind] ?? "system-homebrew" }} size="size-9" />
+      {/* A spell's glyph always ships and is drawn on clear ground, so nothing sits under it. */}
+      {icon?.kind === "glyph" && kind === "spell" ? null : (
+        <GameIcon icon={{ kind: "glyph", key: KIND_GLYPHS[kind as EditorKind] ?? "system-homebrew" }} size="size-9" />
+      )}
       {icon ? <GameIcon icon={icon} size="size-9" className="absolute" /> : null}
     </span>
   );

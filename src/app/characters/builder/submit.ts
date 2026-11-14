@@ -23,11 +23,15 @@ import { multiclassGrantsFor } from "@/lib/srd/multiclass";
 import { unmetFeatMessage, type FeatJudge } from "./featPrereqs";
 import type { BackgroundOption, ClassOption, RaceOption } from "./useBuilderOptions";
 import type { BuilderDerived } from "./useBuilderDerived";
+import { isCantripName, spellLevelOf } from "@/lib/srd/spell-lists";
+import { arcanumName } from "@/lib/srd/mystic-arcanum";
 import type { BuilderState, EquipmentItem } from "./useBuilderState";
 import { textKey } from "@/lib/language/text-logic";
+import { ALL_SKILLS } from "@/lib/content/mechanics";
 import { subclassPickFeatures } from "@/lib/srd/subclass-choice-picks";
 import { featChoice } from "@/lib/schemas/sheet";
 import { normalizeAttraction } from "@/lib/attraction";
+import { personaOrNothing } from "@/lib/backgrounds/persona-logic";
 
 export type BuilderResult = { level: number; sheet: CreateSheetInput };
 
@@ -44,6 +48,9 @@ export type BlockerTarget =
   | "racialAsi"
   | "racialSkills"
   | "racialTool"
+  | "racialWeapons"
+  | "racialTraining"
+  | "racialExpertise"
   | "racialCantrip"
   | "racialFeat"
   | "ancestry"
@@ -202,6 +209,15 @@ export function ancestryBlocks(
   if (race.toolChoice && !racialTool) {
     owed.push(block("racialTool", `Pick a tool your ${race.name} knows how to use (tool proficiency).`));
   }
+  if (race.trainingChoice && (state.racialTraining ?? []).filter(Boolean).length < race.trainingChoice.count) {
+    owed.push(block("racialTraining", `Pick the ${race.trainingChoice.count} skills or tools your ${race.name} trained in.`));
+  }
+  if (race.expertiseChoice && !state.racialExpertise) {
+    owed.push(block("racialExpertise", `Pick the skill or tool your ${race.name} doubles its proficiency in (expertise).`));
+  }
+  if (race.weaponChoice && (state.racialWeapons ?? []).filter(Boolean).length < race.weaponChoice.count) {
+    owed.push(block("racialWeapons", `Pick the ${race.weaponChoice.count === 1 ? "weapon" : `${race.weaponChoice.count} weapons`} your ${race.name} trained with (weapon proficiency).`));
+  }
   // Every cantrip the race offers (a homebrew species may offer three),
   // each a different spell.
   const cantripChoice = race.cantripChoice;
@@ -261,6 +277,13 @@ export function srdClass(klass: ClassOption): boolean {
   return !klass.genres && SRD_CLASSES.some((entry) => entry.id === klass.id);
 }
 
+// Whether the class's skill count is owed at the class step: a core class's,
+// and a setting class's, whose own row names its skills as a core class's
+// does. Only a content pack's class, read from prose, is a suggestion.
+export function classSkillsRequired(klass: ClassOption): boolean {
+  return srdClass(klass) || Boolean(klass.genres);
+}
+
 // The class step's own picks: skills, the subclass once the level calls for
 // one, fighting styles and expertise. Every one of these used to be a
 // suggestion a player could scroll past; a character built without them
@@ -277,7 +300,7 @@ export function callingBlocks(
     return [];
   }
   const owed: StepBlock[] = [];
-  const strict = srdClass(klass);
+  const strict = classSkillsRequired(klass);
   const skillsLeft = klass.skillChoices.count - state.chosenSkills.length;
   if (strict && skillsLeft > 0) {
     owed.push(block("classSkills", `Pick ${skillsLeft} more ${skillsLeft === 1 ? "skill" : "skills"} your training taught you (class skills).`));
@@ -392,7 +415,7 @@ export function spellsBlocks(
 type DeskCounts = Pick<
   BuilderDerived,
   "spellSupply" | "cantripAdvice" | "chosenCantrips" | "spellbookAdvice" | "chosenSpells" | "spellAdvice" | "chosenPrepared"
-> & { klass: Pick<ClassOption, "name">; casterLevel: number };
+> & Partial<Pick<BuilderDerived, "arcanumLevels" | "chosenArcanum" | "requiredCantrip">> & { klass: Pick<ClassOption, "name" | "id">; casterLevel: number };
 
 function deskBlocks(desk: DeskCounts, who: string): StepBlock[] {
   const derived = desk;
@@ -439,6 +462,20 @@ function deskBlocks(desk: DeskCounts, who: string): StepBlock[] {
     }
     if (spellsOver > 0) {
       owed.push(block("spells", `Remove ${spellsOver} ${spellsOver === 1 ? "spell" : "spells"}: the limit is ${derived.spellAdvice.count} ${derived.spellAdvice.label}.`));
+    }
+  }
+  // An Arcane Trickster's Mage Hand among the cantrips, once they are all
+  // chosen (src/lib/srd/third-caster.ts thirdCasterCantripProblem).
+  const named = derived.requiredCantrip;
+  if (named && derived.cantripAdvice !== null && derived.chosenCantrips.length >= derived.cantripAdvice && !derived.chosenCantrips.some((name) => name.toLowerCase() === named.toLowerCase())) {
+    owed.push(block("spells", `Take ${named} as one of your cantrips: your subclass's spellcasting teaches it.`));
+  }
+  // A warlock's Mystic Arcanum: one spell of each level reached, beside the
+  // spells known (src/lib/srd/mystic-arcanum.ts arcanumSplit).
+  const arcanaHeld = new Set((derived.chosenArcanum ?? []).map((name) => spellLevelOf(name)));
+  for (const level of derived.arcanumLevels ?? []) {
+    if (!arcanaHeld.has(level)) {
+      owed.push(block("spells", `Pick your ${arcanumName(klass.id, level)} spell: one level ${level} warlock spell.`));
     }
   }
   return owed;
@@ -609,6 +646,11 @@ function reconcileContextOf(input: SubmitInput, race: RaceOption | undefined): R
     level: input.derived.effectiveLevel,
     extras: input.derived.extras ?? [],
     pickIds: input.state.pickIds,
+    // A feat's fighting style slot (Fighting Initiate) keeps its style.
+    feats: [
+      ...(input.state.feats ?? []),
+      ...(input.derived.activeAsiChoices ?? []).flatMap((choice) => (choice?.mode === "feat" ? [choice.feat] : [])),
+    ],
   };
 }
 
@@ -681,6 +723,8 @@ export function buildBuilderResult(input: SubmitInput): BuilderResult {
       ...picks.backgroundSkills.filter(Boolean),
       ...(race.skills ?? []),
       ...picks.racialSkills.filter(Boolean),
+      // Adaptable Acumen's picks that are skills (its tools ride the preview).
+      ...(race.trainingChoice ? picks.racialTraining.filter((pick) => (ALL_SKILLS as readonly string[]).includes(pick)) : []),
       ...picks.repeatSkills.filter(Boolean),
       ...extraSkills,
     ]),
@@ -690,9 +734,13 @@ export function buildBuilderResult(input: SubmitInput): BuilderResult {
     skills,
     // A subclass's or feat's skill may take the class's expertise too; the
     // server adds those skills back with their grants.
-    expertise: picks.expertisePicks.filter((skill) =>
-      expertiseAllowed(skill, [...skills, ...(derived.expertiseSkills ?? [])], multiclass ? classes.map((entry) => entry.id) : [klass.id]),
-    ),
+    expertise: [
+      ...picks.expertisePicks.filter((skill) =>
+        expertiseAllowed(skill, [...skills, ...(derived.expertiseSkills ?? [])], multiclass ? classes.map((entry) => entry.id) : [klass.id]),
+      ),
+      // The race's own expertise (Adaptable Acumen), on a skill or a tool held.
+      ...(race.expertiseChoice && picks.racialExpertise && (skills.includes(picks.racialExpertise) || (preview.proficiencies.tools ?? []).includes(picks.racialExpertise)) ? [picks.racialExpertise] : []),
+    ],
     languages: [
       ...new Set([
         ...(race.languages ?? []),
@@ -726,7 +774,18 @@ export function buildBuilderResult(input: SubmitInput): BuilderResult {
   ).filter(
     (spell) => !spells.some((entry) => textKey(entry) === textKey(spell)),
   );
-  const finalSpells = casting.ability ? [...spells, ...grantedSpells] : spells;
+  // A subclass's own cantrips (the Light Domain's light) are filed with the
+  // cantrips, where the server counts them on top of the class's.
+  const grantedCantrips = grantedSpells.filter((spell) => isCantripName(spell));
+  const grantedLevelled = grantedSpells.filter((spell) => !isCantripName(spell));
+  if (casting.ability) {
+    for (const spell of grantedCantrips) {
+      if (!finalCantrips.some((entry) => textKey(entry) === textKey(spell))) {
+        finalCantrips.push(spell);
+      }
+    }
+  }
+  const finalSpells = casting.ability ? [...spells, ...grantedLevelled] : spells;
   const racialFeatures = casting.ability
     ? []
     : racialCantrips.map((name) => ({ name: `Racial cantrip: ${name}`, source: "story" as const }));
@@ -831,6 +890,9 @@ export function buildBuilderResult(input: SubmitInput): BuilderResult {
         skills: picks.racialSkills.filter(Boolean),
         ...racialCantripFields(racialCantrips),
         tool: picks.racialTool,
+        weapons: race.weaponChoice ? picks.racialWeapons.filter(Boolean) : [],
+        training: race.trainingChoice ? picks.racialTraining.filter(Boolean) : [],
+        expertise: race.expertiseChoice ? picks.racialExpertise : "",
         ancestry: takesDraconicAncestry(race.id) ? (findDraconicAncestry(state.racialAncestry ?? "")?.id ?? "") : "",
         variant: race.variants ? picks.racialVariant : "",
         ...(racialFeatAbility ? { featAbility: racialFeatAbility } : {}),
@@ -859,6 +921,8 @@ export function buildBuilderResult(input: SubmitInput): BuilderResult {
         : null,
       notes: "",
       backstory: state.backstory.trim(),
+      // Trait, ideal, bond and flaw; a blank panel sends none.
+      persona: personaOrNothing(state.persona),
       // A state written before the field (a saved draft, a test's double)
       // has none.
       hopes: (state.hopes ?? "").trim(),
@@ -880,7 +944,9 @@ function otherCasterEntries(derived: BuilderDerived, classes: ClassEntry[]): Cas
     }
     const { lists } = fitSpellLists(desk.lists, { row: desk.klass, subclass: entry.subclass ?? "", level: entry.level });
     const granted = desk.subclassSpells.filter((spell) => !lists.spells.some((name) => textKey(name) === textKey(spell)));
-    const all = [...lists.spells, ...granted];
+    // Its own cantrips (a Light Domain's light) ride with the cantrips.
+    const all = [...lists.spells, ...granted.filter((spell) => !isCantripName(spell))];
+    const cantrips = [...lists.cantrips, ...granted.filter((spell) => isCantripName(spell) && !lists.cantrips.some((name) => textKey(name) === textKey(spell)))];
     const profile = builderCasting(desk.klass, entry.subclass, entry.level).profile;
     return [
       {
@@ -889,7 +955,7 @@ function otherCasterEntries(derived: BuilderDerived, classes: ClassEntry[]): Cas
         ...(profile ? { progression: profile } : {}),
         known: desk.spellStyle === "known" ? all : [],
         prepared: desk.spellStyle === "known" ? [] : desk.spellStyle === "spellbook" ? lists.bookPrepared : all,
-        cantrips: lists.cantrips,
+        cantrips,
         ...(desk.spellStyle === "spellbook" ? { spellbook: all } : {}),
       },
     ];

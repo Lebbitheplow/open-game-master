@@ -17,7 +17,7 @@ import {
   type HandUnit,
 } from "@/lib/battlemap/hand-groups";
 import { costLabel, previewRows, type HandAim } from "@/lib/battlemap/hand-play";
-import { HandPreviewRows, typeLabel } from "@/app/campaigns/[campaignId]/HandCardFace";
+import { HandPreviewRows, typeLabel, WIELD_LABEL } from "@/app/campaigns/[campaignId]/HandCardFace";
 import { HandFindTools } from "@/app/campaigns/[campaignId]/HandGroups";
 
 // The cards past the ninth (docs/visual-overhaul-plan.md 5.2): the same
@@ -229,9 +229,9 @@ function MoreRow({
           </span>
           {facts ? <span className="block font-mono text-[11px] text-stone-400">{facts}</span> : null}
           {card.rules ? <span className="mt-1 block text-xs leading-snug text-stone-300">{card.rules}</span> : null}
-          {card.resource || card.condition ? (
+          {card.resource || card.condition || card.wield ? (
             <span className="mt-0.5 block text-[11px] text-stone-500">
-              {[card.resource, card.condition].filter(Boolean).join(" · ")}
+              {[card.wield ? WIELD_LABEL[card.wield] : "", card.resource, card.condition].filter(Boolean).join(" · ")}
             </span>
           ) : null}
           {rows.length ? (

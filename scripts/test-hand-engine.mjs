@@ -169,6 +169,29 @@ test("the Hand is the character the seat plays, not the first one made (issue #1
   assert.equal(turnFromEncounter(encounter, playingSheet(sheets, "u1", ""), { myTurn: true }).myTurn, false);
 });
 
+// The engine counts swings the sheet alone cannot see (Thirsting Blade on a
+// pact weapon, a beast form's Multiattack, Dread Ambusher's first round): the
+// Hand greyed the second swing as "already made all 1 of their attacks"
+// while pc_attack allowed it.
+test("the Hand's attack card follows the engine's count of the Attack action's swings", () => {
+  const kael = sheet({ id: "s1", level: 1, equipment: [item("Longsword")] });
+  const encounter = {
+    round: 1, orderReady: true,
+    acting: { id: "s1", name: "Kael" },
+    surprised: { acting: [], reacting: [] },
+    reactionsUsed: [],
+    turn: { ownerId: "s1", actionUsed: true, bonusUsed: false, reactionUsed: false, attacksMade: 1, attacksAllowed: 2 },
+  };
+  const turn = turnFromEncounter(encounter, kael, { myTurn: false });
+  assert.equal(turn.attacksAllowed, 2);
+  const sword = deriveHand(kael, turn).find((card) => card.type === "attack" && /longsword/i.test(card.name));
+  assert.ok(sword, "no Longsword card");
+  assert.ok(!sword.disabled, `the engine's second swing was shut: ${sword.disabled}`);
+  assert.equal(hudGates(kael, turn).attack, null);
+  const spent = turnFromEncounter({ ...encounter, turn: { ...encounter.turn, attacksMade: 2 } }, kael, { myTurn: false });
+  assert.ok(deriveHand(kael, spent).find((card) => card.type === "attack" && /longsword/i.test(card.name))?.disabled);
+});
+
 test("the Hand's turn and pips are the engine's count, and a spent reaction comes from reactionsUsed", () => {
 
   const encounter = {

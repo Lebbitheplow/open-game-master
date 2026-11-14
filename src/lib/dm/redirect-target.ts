@@ -108,8 +108,14 @@ function closestTaker(ask: RedirectAsk, named: Combatant | null): Combatant | To
 }
 
 // The AC the turned attack meets, and whether its roll still hits: a
-// critical hits whatever it meets.
-export function blowLandsOn(campaignId: string, taker: Combatant, swing: Pick<SwingRecord, "total" | "crit">): { ac: number; lands: boolean } {
-  const ac = taker.kind === "enemy" ? enemyAcWithEffects(campaignId, taker.enemy) : acWithEffects(campaignId, taker.sheet);
+// critical hits whatever it meets. `attacker`: the creature whose attack it
+// is, for a ward against its type (ac-effects.ts wardedAc).
+export function blowLandsOn(
+  campaignId: string,
+  taker: Combatant,
+  swing: Pick<SwingRecord, "total" | "crit">,
+  attacker?: { stats?: { type?: string | null } } | null,
+): { ac: number; lands: boolean } {
+  const ac = taker.kind === "enemy" ? enemyAcWithEffects(campaignId, taker.enemy) : acWithEffects(campaignId, taker.sheet, attacker);
   return { ac, lands: swing.crit || swing.total >= ac };
 }

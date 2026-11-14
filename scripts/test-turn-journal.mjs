@@ -170,6 +170,7 @@ if (!child) {
 
   await test("a turn that ended a fight with another fight on since is refused, saying why, and changes nothing", async () => {
     const { world, kit, hero, e1, e2 } = await stage("fight");
+    kit.enemyTurn(e2.id);
     await world.invoke("enemy_flees", { enemyId: e2.id, reason: "routed" });
     kit.setEnemy(e1.id, { currentHp: 1 });
     const blow = await world.invoke("apply_damage", { enemyId: e1.id, amount: 70, type: "fire" });

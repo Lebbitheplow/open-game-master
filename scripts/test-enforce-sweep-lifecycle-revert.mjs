@@ -68,6 +68,7 @@ const RECIPES = {
       variant: "kills the last foe",
       stage: "fight",
       before: async (c) => {
+        c.kit.enemyTurn(c.e2.id);
         await must(c, "enemy_flees", { enemyId: c.e2.id, reason: "routed" });
         c.kit.setEnemy(c.e1.id, { currentHp: 1 });
         c.kit.giveTurn(c.hero.id);
@@ -91,7 +92,8 @@ const RECIPES = {
     { variant: "mage armor", stage: "calm", args: (c) => ({ characterId: c.mage.id, spell: "Mage Armor", targetCharacterIds: [c.mage.id], level: 1 }) },
   ],
   aoe_damage: one("fight", (c) => ({ casterCharacterId: c.mage.id, spell: "Fireball", level: 3, enemyIds: [c.e1.id, c.e2.id] }), { before: (c) => c.kit.giveTurn(c.mage.id), dice: [1, 1, 3, 3, 3, 3, 3, 3, 3, 3] }),
-  enemy_flees: one("fight", (c) => ({ enemyId: c.e2.id, reason: "routed" })),
+  // On its own turn (enemy-turn-order.ts enemyFleeTurnRefusal).
+  enemy_flees: one("fight", (c) => ({ enemyId: c.e2.id, reason: "routed" }), { before: (c) => c.kit.enemyTurn(c.e2.id) }),
   take_action: [
     { variant: "dodge", stage: "fight", args: (c) => ({ characterId: c.hero.id, action: "dodge" }) },
     { variant: "ready", stage: "fight", args: (c) => ({ characterId: c.hero.id, action: "ready", trigger: "the goblin moves", readied: "attack", targetEnemyId: c.e1.id }) },
@@ -128,7 +130,10 @@ const RECIPES = {
     {
       variant: "kills the last foe",
       stage: "fight",
-      before: (c) => must(c, "enemy_flees", { enemyId: c.e2.id, reason: "routed" }),
+      before: (c) => {
+        c.kit.enemyTurn(c.e2.id);
+        return must(c, "enemy_flees", { enemyId: c.e2.id, reason: "routed" });
+      },
       args: (c) => ({ enemyId: c.e1.id, amount: 70, type: "fire" }),
     },
     {

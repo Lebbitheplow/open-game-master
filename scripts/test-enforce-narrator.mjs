@@ -359,7 +359,7 @@ await test("The gear rules match the gear engine: damage_object remembers damage
   assert.match(text, /A charged item \(a wand, a staff\) goes through use_item with the spell it casts named in spell/);
   assert.match(text, /the server spends no slot for it and uses the item's save DC and attack bonus/);
   assert.match(text, /the server refuses a scroll the reader cannot read \(and the scroll is kept\) and rolls the check for one above their level/);
-  assert.match(text, /a player at the table chooses and rolls their own hit dice from their sheet/);
+  assert.match(text, /a player at the table chooses their own hit dice, on their sheet or by telling you a number you pass on with take_rest short spend/);
   assert.match(text, /Attuning to a magic item takes a short rest/);
   // One purchase call is every trade now, at a shop or not (issue #471).
   assert.match(text, /every purchase, sale, or trade goes through ONE purchase call/);
@@ -761,6 +761,26 @@ await test("In a fight, a reply that ends the turn on a blow no tool rolled is h
   const text = message?.content.replace(/\[roll:[^\]]*\]\s*/g, "").trim() ?? "";
   assert.doesNotMatch(text, /bites into the goblin/, "the unrolled blow reached the table");
   assert.match(text, /goes wide/);
+});
+
+// Issue 931: the model wrote the guard hitting the hero with no call, told
+// from the round before; the blow on one of the party was never a claim.
+await test("In a fight, a blow on one of the party that no enemy call rolled is held back, and the model is sent to enemy_attack, not pc_attack.", async () => {
+  const enemy = await karaUp();
+  model.script([
+    reply({ text: "The goblin's club cracks into you for 6 damage." }),
+    reply({ text: "Kara watches the goblin circle, its club low." }),
+  ]);
+  model.claims([[{ kind: "hit", target: kara.id, quote: "The goblin's club cracks into you for 6 damage." }], []]);
+  const message = await model.turn(world, "I hold my ground.", kara.id);
+  const asked = model.readerRequests[0]?.messages.at(-1)?.content ?? "";
+  assert.match(asked, /"kara" for Kara/, "the hero is listed as a creature a blow can land on");
+  const sent = JSON.stringify(model.requests[1]?.messages ?? []);
+  assert.match(sent, /resolves an enemy's attack on the party that no tool rolled this turn/);
+  assert.match(sent, /Call enemy_attack for the enemy end_turn handed you/);
+  assert.equal(world.sheet(kara.id).currentHp, world.sheet(kara.id).maxHp, "no hit points changed");
+  assert.doesNotMatch(message?.content ?? "", /cracks into you/, "the unrolled blow reached the table");
+  assert.ok(kit.enemy(enemy.id), "the fight still runs");
 });
 
 // Beside another call the turn goes on, so the prose stays until the guard

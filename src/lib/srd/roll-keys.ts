@@ -31,6 +31,9 @@ export type RollKey = {
   // Named by the engines that know a spell's caster, never asked (Holy
   // Nimbus).
   casterTypes?: readonly CreatureType[];
+  // The schools of the spell resisted, named by the engines that know the
+  // spell, never asked (Duergar Resilience: illusion).
+  schools?: readonly string[];
 };
 
 // One roll as the keys read it, its fields as the call named them ('none'
@@ -47,6 +50,7 @@ export type KeyedRoll = {
   against?: string;
   magical?: boolean;
   casterType?: string;
+  school?: string;
 };
 
 export type RollGap = { field: "about" | "creature" | "terrain" | "by" | "against" | "magical"; values: string[] };
@@ -68,6 +72,9 @@ function keyGaps(key: RollKey, roll: KeyedRoll): RollGap[] | null {
   }
   const casterType = roll.casterType;
   if (key.casterTypes && !(casterType && key.casterTypes.some((type) => type === casterType))) {
+    return null;
+  }
+  if (key.schools && !(roll.school && key.schools.includes(roll.school))) {
     return null;
   }
   const gaps: RollGap[] = [];

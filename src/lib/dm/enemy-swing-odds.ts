@@ -29,6 +29,7 @@ import type { underwaterSwing } from "@/lib/dm/underwater";
 import { conditionsOf, PRONE, UNCONSCIOUS } from "@/lib/dm/vitals-logic";
 import type { ConditionRollRiders } from "@/lib/srd/condition-effects";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { WILDHUNT_SHIFT } from "@/lib/srd/authored-conditions-mt-species";
 import { holdsFeat } from "@/lib/srd/feat-effects";
 
 // The Clockwork Soul's trance (authored-resources.json sub_trance_of_order).
@@ -138,7 +139,18 @@ export function enemySwingOdds(input: {
   const liveTarget = live;
   // Trance of Order (Clockwork Soul): "attacks against you cannot have
   // advantage" while the trance holds, as Elusive's.
-  const elusive = (hasFeatureNamed(liveTarget, /^elusive$/i) && !isIncapacitated(upright ?? liveTarget.conditions)) || liveTarget.conditions.some((entry) => isConditionNamed(entry, TRANCE_OF_ORDER));
+  // A wildhunt shifter's form likewise ("attacks on you lose advantage",
+  // src/lib/srd/authored-conditions-mt-species.ts).
+  // Wildhunt: "no creature within 30 feet of you can make an attack roll with
+  // advantage against you, unless you're incapacitated".
+  const wildhunt =
+    liveTarget.conditions.some((entry) => isConditionNamed(entry, WILDHUNT_SHIFT)) &&
+    (distance === null || distance * 5 <= 30) &&
+    !isIncapacitated(upright ?? liveTarget.conditions);
+  const elusive =
+    (hasFeatureNamed(liveTarget, /^elusive$/i) && !isIncapacitated(upright ?? liveTarget.conditions)) ||
+    liveTarget.conditions.some((entry) => isConditionNamed(entry, TRANCE_OF_ORDER)) ||
+    wildhunt;
   // Authored subclass features (Among the Dead, Fungal Body, a guardian's mark): authored-hooks.ts.
   const authored = authoredIncomingAttack({ campaignId: campaign.id, encounterId, attacker: standing, target: liveTarget });
   const sources: Advantage[] = [
@@ -179,7 +191,7 @@ export function enemySwingOdds(input: {
     ...(chilled ? ["Chill Touch: an undead attacks its caster at disadvantage"] : []),
     ...(goadedAway(standing, target.id) ? ["goaded: disadvantage on attacks at anyone but the one who goaded it"] : []),
     ...(underwater?.note ? [underwater.note] : []),
-    ...(elusive && sources.includes("advantage") ? [`Elusive: no attack roll against ${target.name} has advantage`] : []),
+    ...(elusive && sources.includes("advantage") ? [`${wildhunt ? "Wildhunt" : "Elusive"}: no attack roll against ${target.name} has advantage`] : []),
     ...(input.defended ? [`Multiattack Defense: +4 AC against ${standing.displayName}'s later attacks this turn`] : []),
     ...authored.notes,
   ];

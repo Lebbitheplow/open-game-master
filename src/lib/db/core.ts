@@ -1732,6 +1732,10 @@ function ensureSchema(db: SqliteDatabase) {
     // notes only by the owner and a DM seat at the table. Per table: an edit
     // here never syncs to the library.
     ["hopes", `TEXT NOT NULL DEFAULT ''`],
+    // The character's trait, ideal, bond and flaw (src/lib/schemas/sheet.ts
+    // personaSchema) as JSON; '' = none given. Party-visible like the
+    // backstory, and synced back to the library with it.
+    ["persona_json", `TEXT NOT NULL DEFAULT ''`],
   ]);
 
   if (sheetsNeedAcOverride) {
@@ -2056,6 +2060,10 @@ function ensureSchema(db: SqliteDatabase) {
     // Guardians): radius in feet and a tone for the ring the board draws.
     // Null for the ordinary effect that touches one creature.
     ["aura_json", `TEXT`],
+    // Whose turn it was in the fight when it began, and the rounds counted
+    // toward its next minute (src/lib/dm/effects-logic.ts tickRound).
+    ["anchor_id", `TEXT`],
+    ["anchor_rounds", `INTEGER NOT NULL DEFAULT 0`],
   ]);
 
   addColumns("encounters", [

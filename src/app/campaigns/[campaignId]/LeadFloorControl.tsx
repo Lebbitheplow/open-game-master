@@ -13,6 +13,7 @@ import type { PublicEncounter } from "@/lib/db/encounter-view";
 import { extraTurnTag, litOrderRows, orderRowKey } from "@/lib/battlemap/initiative-rows";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { heroFell } from "@/lib/characters/fallen-logic";
+import { floorExpectOf } from "@/lib/dm/floor-expect-logic";
 
 // Who may speak right now, from the lead's desk. The same route the DM
 // console's FloorControl and the composer banners call, with the one thing
@@ -99,7 +100,9 @@ export function LeadFloorControl({
       const response = await fetch(`/api/campaigns/${campaignId}/floor`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        // The floor this screen showed: pressed on a turn that has since
+        // passed, the skip would land on the next one (floor-expect-logic.ts).
+        body: JSON.stringify({ ...body, expect: floorExpectOf(floor) }),
       });
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };

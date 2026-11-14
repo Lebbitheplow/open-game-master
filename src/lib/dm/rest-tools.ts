@@ -1,5 +1,6 @@
 import { sanctuaryShortRest, type VesselRest } from "@/lib/dm/genie-vessel";
 import { OMEN_WORDS } from "@/lib/dm/before-roll-logic";
+import { foretoldWords } from "@/lib/dm/foretold-logic";
 import { hearsSong } from "@/lib/dm/mt-srd-bard";
 import { breakConcentration } from "@/lib/dm/concentration";
 import { holdsDestructiveWrath, spendWrath } from "@/lib/dm/destructive-wrath";
@@ -25,9 +26,10 @@ import { tickWorldTimeskip } from "@/lib/dm/world-tick";
 import { departureNote, departureOpenings } from "@/lib/dm/departure";
 import { pactMoment } from "@/lib/dm/pacts";
 import { readUneaseTells } from "@/lib/dm/conscience-voice";
-import { advanceClock, getClock, openShortRestWindow, recordLongRests, setTravelPace } from "@/lib/db/clock";
+import { advanceClock, getClock, inShortRestWindow, openShortRestWindow, recordLongRests, setTravelPace } from "@/lib/db/clock";
 import { getDmTurn } from "@/lib/db/dm-turns";
-import { partyChefDie, partySongOfRestDie, playerChoosesHitDice, spendHitDice } from "@/lib/dm/hit-dice";
+import { claimWindowRestDice, partyChefDie, partySongOfRestDie, playerChoosesHitDice, spendHitDice, windowRestDice } from "@/lib/dm/hit-dice";
+import { declaredThisTurn } from "@/lib/dm/player-word";
 import { goingWithout } from "@/lib/dm/supplies";
 import { MEAL_PROPERTY, MEAL_REFUSAL, mealArg, mealRefused } from "@/lib/dm/supplies-logic";
 import { afflictedRestPatch, afflictionsAfterLongRest } from "@/lib/dm/afflictions";
@@ -47,6 +49,8 @@ import { soulTrinketAtRestEnd } from "@/lib/dm/mt-mr-trinkets";
 import { tranquilityAfterLongRest } from "@/lib/dm/srd-defenses";
 import { argumentsRefusal, type ToolResult } from "@/lib/dm/tool-errors";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
+import { recoverSlotLevels, regainedLine } from "@/lib/dm/genre-a-slots";
+import { talkingCure } from "@/lib/dm/genre-b-mystery-rest";
 
 // The rest engine: short rests spend hit dice with real server rolls, long
 // rests restore HP, slots, and half the hit dice. Every sheet write is
@@ -71,7 +75,7 @@ export const takeRestTool: ToolDef = {
         spend: {
           type: "array",
           description:
-            "Short rest: hit dice for a character with no player present. The server otherwise spends toward half HP for them. A connected player chooses their own hit dice on their sheet after the rest; the server rolls them.",
+            "Short rest: hit dice for a character with no player present. The server otherwise spends toward half HP for them. A connected player chooses their own: on their sheet after the rest, or, when they tell you a number, send take_rest short again with spend for them: inside the rest just taken it spends those dice with no more time passing, and their own dice roll them.",
           items: {
             type: "object",
             properties: {
@@ -180,6 +184,48 @@ function tableNote(campaign: Campaign, content: string, glyph: SystemGlyph) {
   publishWithSeq(campaign.id, seq, "message_added", { message });
 }
 
+// Hit dice spent inside the short rest just taken, for characters whose
+// players are still choosing (the window take_rest opened). No clock moves
+// and nothing refills again: it is the same rest. The count is the player's
+// (SRD 5.1, Short Rest), so the AI passes on only one its player said this
+// turn; the GM at the console spends as they are told. Their own dice roll
+// them (mayWait), with the song's and the meal's die the rest still owes.
+function spendInRestWindow(
+  campaign: Campaign,
+  turnId: string,
+  spends: Array<{ dice: number; sheet: CharacterSheet }>,
+  reason: string,
+): ToolResult {
+  if (getDmTurn(turnId)?.actor !== "human_dm") {
+    const unasked = spends.filter(({ sheet }) => !declaredThisTurn(campaign.id, sheet.id)).map(({ sheet }) => sheet.name);
+    if (unasked.length) {
+      return {
+        error: `${unasked.join(", ")} did not say this turn how many hit dice to spend. Ask them and wait, or let them spend on their own sheet. Nothing was spent and no time passed.`,
+        retry: true,
+      };
+    }
+  }
+  const results: Array<Record<string, unknown>> = [];
+  for (const { dice, sheet: stale } of spends) {
+    const sheet = getSheetById(stale.id) ?? stale;
+    const extra = windowRestDice(campaign.id, sheet);
+    const spent = spendHitDice({ campaign, turnId, sheetId: sheet.id, requested: dice, ...extra, reason, requestedBy: "dm", mayWait: true });
+    if ("error" in spent) {
+      results.push({ name: sheet.name, note: spent.error });
+      continue;
+    }
+    claimWindowRestDice(campaign.id, sheet.id, extra);
+    results.push({ name: spent.name, diceSpent: spent.diceSpent, healed: spent.healed, hp: spent.hp });
+  }
+  return {
+    ok: true,
+    kind: "short",
+    inTheRestJustTaken: true,
+    results,
+    note: "Spent inside the short rest just taken: no more time passed and nothing else came back. Narrate each one's healing exactly as reported.",
+  };
+}
+
 export function handleTakeRest(
   campaign: Campaign,
   turnId: string,
@@ -203,6 +249,16 @@ export function handleTakeRest(
   }
   const reason = (args.reason ?? `${args.kind} rest`).slice(0, 200);
   const variant = campaign.gameSettings.variantRules.restVariant;
+  // A spend for characters still choosing in the short rest just taken
+  // (#932): their dice from that rest, with no more time passing. It used to
+  // rest a second hour, drop the spend as the player's to make, and leave
+  // the GM nothing but a d20 check to heal them with.
+  if (args.kind === "short" && args.spend?.length) {
+    const spends = args.spend.map((entry) => ({ dice: entry.dice, sheet: resolveSheetRef(entry.characterId, sheets, sheetsById) }));
+    if (spends.every(({ sheet }) => sheet && inShortRestWindow(campaign.id, sheet.id))) {
+      return spendInRestWindow(campaign, turnId, spends as Array<{ dice: number; sheet: CharacterSheet }>, reason);
+    }
+  }
   // A short rest while a Genie's Sanctuary Vessel holds someone is the
   // vessel's: ten minutes, for those inside (genie-vessel.ts).
   if (args.kind === "short" && !vessel) {
@@ -299,6 +355,7 @@ export function handleTakeRest(
   if (args.kind === "long") {
     const rested: string[] = [];
     const omens: string[] = [];
+    const portents: string[] = [];
     for (const id of resting) {
       // Asleep, nobody concentrates (SRD 5.1: an unconscious creature is
       // incapacitated, and incapacitation ends concentration): the spell
@@ -331,6 +388,11 @@ export function handleTakeRest(
       if (restPatch.omen) {
         omens.push(`${sheet.name}'s Cosmic Omen reads ${OMEN_WORDS[restPatch.omen]}`);
       }
+      // Portent's new numbers, said in the same line: unsaid, the table only
+      // found them on the sheet, and the storyteller not at all.
+      if (restPatch.foretold?.length) {
+        portents.push(`${sheet.name}'s Portent foretells ${foretoldWords(restPatch.foretold)}`);
+      }
     }
     recordLongRests(campaign.id, resting, endsAt);
     // The saves a disease asks at the end of a long rest.
@@ -349,7 +411,7 @@ export function handleTakeRest(
       campaign,
       `The party takes a long rest (${restedFor})${nowReads ? `. It is now ${nowReads}` : ""}.${
         unaffected.length ? ` No benefit from it for ${unaffected.join("; ")}.` : ""
-      }${omens.length ? ` ${omens.join("; ")}.` : ""}`,
+      }${[...omens, ...portents].length ? ` ${[...omens, ...portents].join("; ")}.` : ""}`,
       "rest-long",
     );
     // A night passing is a timeskip: the off-screen world moves too (world
@@ -373,6 +435,7 @@ export function handleTakeRest(
       ...(leaving.length ? { companionsLeft: leaving } : {}),
       ...(unaffected.length ? { unaffected: unaffected.join("; ") } : {}),
       ...(omens.length ? { omens } : {}),
+      ...(portents.length ? { portents } : {}),
       ...(deathSaves.length ? { deathSaves } : {}),
       restedFor,
       ...(nowReads ? { now: nowReads } : {}),
@@ -407,6 +470,8 @@ export function handleTakeRest(
         continue;
       }
       if (chooses(sheet.id) && !humanDm) {
+        // Theirs to choose; once this rest has opened their window, the
+        // number they say goes in a second call (spendInRestWindow).
         leftToPlayers.push(sheet.name);
         continue;
       }
@@ -476,7 +541,8 @@ export function handleTakeRest(
   // Arcane Recovery / Natural Recovery: a wizard or druid gets slots back on
   // a short rest, once per day, spending the tracked use.
   const recovered = applySlotRecovery(campaign, turnId, sheets, reason);
-  const resilience = authoredRestTempHp(campaign, sheets.map((sheet) => sheet.id));
+  // Talking Cure: an alienist counsels a companion through the rest (genre-b-mystery-rest.ts).
+  const resilience = [...authoredRestTempHp(campaign, sheets.map((sheet) => sheet.id)), ...talkingCure(campaign, turnId, sheets.map((sheet) => sheet.id))];
 
   tableNote(
     campaign,
@@ -493,11 +559,11 @@ export function handleTakeRest(
     ...(waiting.length
       ? {
           choosing: waiting.map((sheet) => sheet.name),
-          choosingNote: `${waiting.map((sheet) => sheet.name).join(", ")} choose${waiting.length === 1 ? "s" : ""} how many hit dice to spend on their own sheet; the server rolls each one. Wait for their rolls before narrating their healing.`,
+          choosingNote: `${waiting.map((sheet) => sheet.name).join(", ")} choose${waiting.length === 1 ? "s" : ""} how many hit dice to spend: on their own sheet, or tell you a number, and then you send take_rest kind short with spend for them, which spends them inside this rest with no more time passing. Never request_roll a hit die. Wait for the spend's result before narrating their healing.`,
         }
       : {}),
     ...(leftToPlayers.length
-      ? { notSpent: `${leftToPlayers.join(", ")}: the player chooses their own hit dice, so the spend list was not used for them.` }
+      ? { notSpent: `${leftToPlayers.join(", ")}: the player chooses their own hit dice, so the spend list was not used for them. Once they say how many, send take_rest kind short with spend again: it spends them inside this rest.` }
       : {}),
     ...(refilled.length ? { resourcesRefilled: refilled } : {}),
     // Only for a rest where somebody spent a Hit Die: the song adds to that.
@@ -561,34 +627,31 @@ function applySlotRecovery(
     if (!sheet?.spellcasting || sheet.deathSaves?.dead) {
       continue;
     }
-    for (const id of ["arcane_recovery", "natural_recovery"]) {
-      const state = sheet.resources?.[id];
+    // Every counter whose effect returns slots on a short rest: Arcane and
+    // Natural Recovery, The Net Remembers, Nanite Reserve (genre-a-slots.ts).
+    let live = sheet;
+    for (const id of Object.keys(sheet.resources ?? {})) {
+      const state = live.resources?.[id];
       const def = resourceDef(id);
-      if (!state || state.used >= state.max || !def || def.effect.kind !== "recover_slots") {
+      if (!state || state.used >= state.max || !def || def.effect.kind !== "recover_slots" || def.effect.now || !live.spellcasting) {
         continue;
       }
       // Multiclass: Arcane/Natural Recovery reads the wizard/druid levels.
-      let budget = def.effect.levels(resourceLevel(def, sheet));
-      const slots = { ...sheet.spellcasting.slots };
-      const regained: string[] = [];
-      for (const level of [1, 2, 3, 4, 5]) {
-        const slot = slots[String(level)];
-        while (slot && slot.used > 0 && budget >= level) {
-          slots[String(level)] = { max: slot.max, used: slot.used - 1 };
-          slot.used -= 1;
-          budget -= level;
-          regained.push(`level ${level}`);
-        }
-      }
-      if (!regained.length) {
+      const budget = def.effect.levels(resourceLevel(def, live), computeSheetDerived(live).abilityMods);
+      const back = recoverSlotLevels(live.spellcasting.slots, budget, { maxLevel: def.effect.maxLevel, most: def.effect.most });
+      if (!back.regained.length) {
         continue;
       }
+      // A counter that comes back on a short rest (Psi Font's "on a short
+      // rest", every one) is given back by the very rest that spends it.
+      const everyRest = (def.rechargeFor?.(resourceLevel(def, live)) ?? def.recharge) === "short";
       const patch = {
-        spellcasting: { ...sheet.spellcasting, slots },
-        resources: { ...sheet.resources, [id]: { max: state.max, used: state.used + 1 } },
+        spellcasting: { ...live.spellcasting, slots: back.slots },
+        resources: { ...live.resources, [id]: { max: state.max, used: everyRest ? state.used : state.used + 1 } },
       };
-      auditRest(campaign, turnId, sheet, "rest_short", patch, reason);
-      recovered.push(`${sheet.name} (${def.displayName}): ${regained.join(", ")}`);
+      auditRest(campaign, turnId, live, "rest_short", patch, reason);
+      live = getSheetById(live.id) ?? live;
+      recovered.push(`${sheet.name} (${def.displayName}): ${regainedLine(back.regained)}`);
     }
   }
   return recovered;

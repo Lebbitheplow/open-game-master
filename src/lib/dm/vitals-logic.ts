@@ -13,6 +13,8 @@ import {
 } from "@/lib/dm/condition-logic";
 import type { DeathTrack } from "@/lib/dm/death-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { MUMMY_ROT } from "@/lib/dm/mummy-rot-logic";
+import { LANCED } from "@/lib/srd/genre-a-dark-fantasy-conditions";
 import { textKey } from "@/lib/language/text-logic";
 
 export const UNCONSCIOUS = "unconscious";
@@ -21,6 +23,12 @@ export const PRONE = "prone";
 // their feet for the extra turn the reaction gives; the fall comes when that
 // turn ends (src/lib/dm/reaction-counters.ts, turn-end.ts).
 export const HOLDING_ON = "strength before death";
+// Witnessed (road warrior 17): "when you drop to 0 HP, keep fighting: you
+// remain conscious at 0 for 1 minute, then fall". Laid in place of
+// unconscious and prone at the drop (src/lib/dm/death.ts), stable for the
+// minute; as it runs out at 0 hit points the warrior falls, dying
+// (src/lib/dm/condition-tick.ts).
+export const WITNESSED = "witnessed";
 // Rage Beyond Death (Path of the Zealot 14): at 0 hit points and on their feet
 // while the rage lasts (src/lib/dm/mt-fb-rage-death-logic.ts lays it as they
 // drop; it ends with the rage, src/lib/dm/rage-bound.ts).
@@ -69,7 +77,7 @@ export function conditionsOf(sheet: {
 // Up at 0 hit points: for Strength before Death's extra turn, or raging on
 // under Rage Beyond Death.
 export function holdsOn(sheet: { conditions: string[]; deathSaves?: { dead: boolean } | null }): boolean {
-  return !sheet.deathSaves?.dead && sheet.conditions.some((entry) => [HOLDING_ON, RAGING_ON].includes(entry.trim().toLowerCase()));
+  return !sheet.deathSaves?.dead && sheet.conditions.some((entry) => [HOLDING_ON, RAGING_ON, WITNESSED].includes(entry.trim().toLowerCase()));
 }
 
 // Hit points are back: the creature wakes and is still on the ground.
@@ -113,13 +121,28 @@ export const NEGATIVE_ENERGY = "negative energy";
 // What keeps a creature from regaining hit points now, or null: Chill
 // Touch's grip until its caster's next turn, negative energy, or no air at
 // 0 hit points.
+export const TETANUS = "tetanus";
+
 export function regainBlockedBy(sheet: { conditions: string[]; currentHp: number }): string | null {
   const held = sheet.conditions.map((entry) => entry.trim().toLowerCase());
   if (held.includes("chill touch")) {
     return "chill touch";
   }
+  // Tetanus Edge (scavenger): "the target cannot regain HP until your next
+  // turn", the mark its hit lays (src/lib/dm/authored-hooks.ts markEnemy).
+  if (held.includes(TETANUS)) {
+    return TETANUS;
+  }
   if (held.includes(NEGATIVE_ENERGY)) {
     return NEGATIVE_ENERGY;
+  }
+  // "The cursed target can't regain hit points" (mummy-rot-logic.ts).
+  if (held.includes(MUMMY_ROT)) {
+    return "mummy rot";
+  }
+  // Lance the Wound (src/lib/dm/genre-a-dark-fantasy-spends.ts).
+  if (held.includes(LANCED)) {
+    return LANCED;
   }
   return sheet.currentHp <= 0 && held.includes(SUFFOCATING) ? SUFFOCATING : null;
 }

@@ -382,7 +382,7 @@ test("the game state stands first and its turn-to-turn part follows one heading,
     assert.equal(count(block, part), 1, part);
     assert.ok(standing.includes(part), `standing: ${part}`);
   }
-  for (const part of ["Active combat, round 2", "Recent rolls:", "WORLD LORE:", "HOUSE RULES:", "DIRECTOR NOTES", "WORLD: Old Maren", "SHOP:", "Private messages from players", "=== END GAME STATE ==="]) {
+  for (const part of ["Active combat, round 2", "Recent rolls (already resolved and on the table; never narrate one again as new):", "WORLD LORE:", "HOUSE RULES:", "DIRECTOR NOTES", "WORLD: Old Maren", "SHOP:", "Private messages from players", "=== END GAME STATE ==="]) {
     assert.equal(count(block, part), 1, part);
     assert.ok(moment.includes(part), `moment: ${part}`);
   }

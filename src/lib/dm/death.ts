@@ -1,6 +1,12 @@
-import { recordSteadied } from "@/lib/dm/last-save";
+import { roadRageWakes } from "@/lib/dm/genre-gb-road-rage";
+import { WITNESSED } from "@/lib/dm/vitals-logic";
+import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { holdsGenreFeature } from "@/lib/srd/genre-b-combat";
+import { recordSteadied, recordTrigger } from "@/lib/dm/last-save";
+import { currentActor } from "@/lib/dm/acting-party";
 import { deathSaveFeat } from "@/lib/srd/feat-combat";
 import type { SystemGlyph } from "@/lib/system-glyphs";
+import { triageWake } from "@/lib/dm/genre-a-dark-fantasy-vitals";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
@@ -13,6 +19,7 @@ import { publishPersisted, publishWithSeq } from "@/lib/events";
 import type { CharacterSheet, DeathSaves, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import { conditionDeathSaveAdvantage } from "@/lib/srd/condition-effect-queries";
+import { horrorDeathSaveAdvantage } from "@/lib/srd/genre-a-horror-holds";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import { heldDieWaits, rollExtrasFor, settleHeldDie, spendRollCarriers } from "@/lib/dm/forced-save";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
@@ -78,6 +85,9 @@ function writeDeathState(
 function recordDeath(campaign: Campaign, sheet: CharacterSheet, cause: string, at?: number) {
   // When, in the world's time: the window a revival spell holds to.
   noteDeathMoment(campaign.id, sheet.id, at);
+  // On the fight's record too, as an enemy's death is (enemy-damage.ts), for
+  // what answers "a creature within 30 ft dies" (Anchor of the Living).
+  recordTrigger(campaign.id, { kind: "death", forcer: { id: sheet.id, name: sheet.name }, creatureType: "humanoid", killerId: currentActor()?.ref ?? null, enemy: false });
   insertCharacterEvent({
     libraryCharacterId: sheet.libraryCharacterId,
     campaignCharacterId: sheet.id,
@@ -209,6 +219,24 @@ export function applyDamageDeathHook(
       tableNote(campaign, `${fresh.name} is killed outright by massive damage.`, "cue-death");
       return { dead: true, note: `${fresh.name} is killed INSTANTLY (massive damage). This death is real; narrate it.` };
     }
+    // Road Rage: a road warrior within 30 feet answers the drop (genre-gb-road-rage.ts).
+    const raged = roadRageWakes(campaign, fresh);
+    if (raged.length) {
+      tableNote(campaign, raged.join(" "), "cue-death");
+    }
+    // Witnessed: a road warrior with the day's use keeps fighting at 0 for a
+    // minute, the use spent, stable while it lasts (vitals-logic.ts WITNESSED).
+    const witnessed = !ragesBeyondDeath(fresh) ? witnessedUse(fresh) : null;
+    if (witnessed) {
+      writeDeathState(campaign, turnId, { ...fresh, resources: witnessed }, { ...freshDeathTrack(), stable: true }, "death_state", "dropped to 0 HP, Witnessed", {
+        conditions: [...fresh.conditions.filter((entry) => entry !== WITNESSED), WITNESSED],
+        conditionMeta: { ...((fresh.conditionMeta as ConditionMetaMap | undefined) ?? {}), [WITNESSED]: { rounds: 10, source: "Witnessed" } },
+      });
+      patchSheet(fresh.id, { resources: witnessed });
+      return {
+        note: `${fresh.name} is at 0 HP and Witnessed keeps them fighting: conscious and on their feet for 1 minute (10 rounds), making no death saves; when the minute ends, still at 0, they fall unconscious and dying. Healing any amount ends it.`,
+      };
+    }
     // A raging zealot stays on their feet (Rage Beyond Death), dying all the same.
     const ragingOn = ragesBeyondDeath(fresh);
     writeDeathState(
@@ -233,6 +261,17 @@ export function applyDamageDeathHook(
   }
   return {};
 }
+
+// Witnessed's use, spent: the resources after it, or null when the warrior
+// holds no use of it.
+function witnessedUse(sheet: CharacterSheet): CharacterSheet["resources"] | null {
+  const pool = sheet.resources?.[WITNESSED_POOL];
+  if (!pool || pool.used >= pool.max || !holdsGenreFeature(sheet, "road_warrior", "Witnessed")) {
+    return null;
+  }
+  return { ...sheet.resources, [WITNESSED_POOL]: { ...pool, used: pool.used + 1 } };
+}
+const WITNESSED_POOL = "post_apocalyptic_witnessed";
 
 // Called from heal after HP is restored: any healing ends the dying state.
 export function healDeathHook(
@@ -300,11 +339,15 @@ export function wakeStable(campaign: Campaign, characterId: string): string | nu
   if (!sheet || !track?.stable || track.dead || sheet.currentHp > 0) {
     return null;
   }
+  // Triage's patient wakes with the d4's hit points (genre-a-dark-fantasy-vitals.ts).
+  const woken = wakeConditions(sheet);
+  const triage = triageWake(sheet, woken);
+  const hp = Math.min(Math.max(1, sheet.maxHp), triage?.hp ?? 1);
   writeDeathState(campaign, null, sheet, null, "death_state", "stable, and the hours have passed", {
-    currentHp: 1,
-    ...wakeConditions(sheet),
+    currentHp: hp,
+    ...(triage ? { conditions: triage.conditions, conditionMeta: triage.conditionMeta } : woken),
   });
-  return `${sheet.name} comes round with 1 hit point.`;
+  return `${sheet.name} comes round with ${hp} hit point${hp === 1 ? "" : "s"}.`;
 }
 
 // A feature that answers a death save in its place (Searing Vengeance,
@@ -350,7 +393,8 @@ export function rollDeathSave(campaign: Campaign, characterId: string, turnId: s
   // Diehard: advantage on death saves; Survivor: on the first of a fall
   // (src/lib/srd/feat-combat.ts).
   const feat = deathSaveFeat(sheet, track);
-  const claim = hope ?? feat;
+  // Death's Old Acquaintance (survivor): advantage on death saves.
+  const claim = hope ?? feat ?? horrorDeathSaveAdvantage(sheet);
   const waits = heldDieWaits(sheet, 10);
   const resolved = resolveRollExpression(
     {

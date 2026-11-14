@@ -496,6 +496,23 @@ await test("The human DM's damage_enemy needs no source", async () => {
   assert.equal(kit.enemy(enemy.id).currentHp, 33);
 });
 
+// Issue 931: the hero leads the order and the guard closes the round. Told
+// "the guard acts before Jason ... It is now Jason's turn (round 3)", the
+// model had the guard go first in round 3.
+await test("An end_turn that hands over the last enemy of the round says it closes that round and the next begins with the hero, not that it acts before them.", async () => {
+  const [enemy] = await stage(1, { [scout.id]: 19, [watcher.id]: 15 }, 1);
+  kit.giveTurn(watcher.id);
+  const round = world.encounter().round;
+  const turn = mk.aiTurn();
+  world.say("player", "That's my turn.", watcher);
+  const ended = await mk.ai(turn, "end_turn", { characterId: watcher.id });
+  assert.equal(ended.ok, true, ended.error);
+  assert.equal(ended.result.round, round, "the round the enemy acts in");
+  assert.equal(ended.result.nextRound, round + 1, "the round that begins after it");
+  assert.ok(ended.result.note.startsWith(`Watcher's turn is over. ${enemy.displayName} takes its turn now, the last of round ${round}; then round ${round + 1} begins with Scout. `), ended.result.note);
+  assert.doesNotMatch(ended.result.note, /acts before Scout|It is now Scout's turn/);
+});
+
 await kit.endFight();
 world.close();
 finish();

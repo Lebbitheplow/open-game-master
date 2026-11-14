@@ -20,7 +20,7 @@ import {
 } from "@/lib/srd/treasure";
 import type { ObjectMaterial, ObjectSize } from "@/lib/srd/objects";
 import { damageObject } from "@/lib/dm/object-damage";
-import { forcedMarchSaveDc, forcedMarchSpan, NORMAL_TRAVEL_HOURS, paceEffect, travelLeg, type TravelPace } from "@/lib/srd/travel";
+import { CONVEYANCES, forcedMarchSaveDc, forcedMarchSpan, NORMAL_TRAVEL_HOURS, paceEffect, sailsThroughTheNight, travelLeg, vesselMph, type TravelPace } from "@/lib/srd/travel";
 import { tickWorldTimeskip } from "@/lib/dm/world-tick";
 import { pactMoment } from "@/lib/dm/pacts";
 import { readUneaseTells } from "@/lib/dm/conscience-voice";
@@ -176,7 +176,7 @@ export const worldTools: ToolDef[] = [
     function: {
       name: "travel",
       description:
-        "Resolve overland travel: a journey of several days in one call (days), or one stretch of marching (hours or miles). Each day is the pace's 8 hours and the night's camp, a rest through take_rest's rules. Hours marched past 8 in a day are a forced march. Snow or a storm slows the march further; fast travellers take -5 passive Perception; only a slow pace allows stealth, so Stealth checks are refused while the party marches at a normal or fast pace; a failed forced-march save costs a level of exhaustion. It moves no one on the map: when the leg ends somewhere the story names, that place is a move_party call.",
+        "Resolve overland travel: a journey of several days in one call (days), or one stretch of marching (hours or miles). Each day is the pace's 8 hours and the night's camp, a rest through take_rest's rules. Hours marched past 8 in a day are a forced march; hours riding aboard a wagon, carriage or ship (aboard) are not. Snow or a storm slows the march further; fast travellers take -5 passive Perception; only a slow pace allows stealth, so Stealth checks are refused while the party marches at a normal or fast pace; a failed forced-march save costs a level of exhaustion. It moves no one on the map: when the leg ends somewhere the story names, that place is a move_party call.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -187,7 +187,7 @@ export const worldTools: ToolDef[] = [
             maximum: MAX_TRAVEL_DAYS,
             description: "A journey of this many days: each day 8 hours on the road, each night in camp. Give this, hours or miles.",
           },
-          hours: { type: "integer", description: "One stretch of marching, in hours; the server counts it with the hours already marched that day." },
+          hours: { type: "integer", description: "One stretch of marching, in hours on the road only. The server counts it with the hours already marched that day; a halt on the way is take_rest or pass_time between two legs." },
           miles: {
             type: "number",
             description: "Miles to cover instead of hours, one day's leg of 24 hours at most. The server works out the hours the pace, the ground and the weather need.",
@@ -202,6 +202,11 @@ export const worldTools: ToolDef[] = [
             type: "string",
             enum: ["fast", "normal", "slow"],
             description: "Travel pace. Default: 'normal'.",
+          },
+          aboard: {
+            type: "string",
+            enum: [...CONVEYANCES],
+            description: "What the travellers ride in, when they are not on foot or horseback. Riders aboard are not marching: no forced march. A boat or ship makes its own speed whatever the pace; the bigger ships sail through the night on a journey of days.",
           },
           characterIds: {
             type: "array",
@@ -527,6 +532,7 @@ const travelSchema = z.object({
   terrain: z.enum(["normal", "difficult"]).optional(),
   land: z.enum(NATURAL_TERRAINS).optional(),
   pace: z.enum(["fast", "normal", "slow"]).optional(),
+  aboard: z.enum(CONVEYANCES).optional(),
   characterIds: z.array(z.string()).optional(),
   water: z.enum(["plenty", "half", "none"]).optional(),
   meal: mealArg.optional(),
@@ -676,27 +682,38 @@ function travelDays(
 ): ToolResult {
   const variant = campaign.gameSettings.variantRules.restVariant;
   const night = restMinutes("long", variant) <= CAMP_MINUTES ? "long" : "short";
+  // A ship crewed to stand watches sails on through the evening and the
+  // night (src/lib/srd/travel.ts sailsThroughTheNight): each day is under way
+  // for the hours the night's rest leaves, and the rest is taken aboard while
+  // she sails on. A walked day, a wagon's or a rowboat's is 8 hours.
+  const sailing = sailsThroughTheNight(args.aboard);
+  const restHours = restMinutes(night, variant) / 60;
+  const dayHours = sailing ? Math.max(NORMAL_TRAVEL_HOURS, Math.floor(24 - restHours)) : NORMAL_TRAVEL_HOURS;
+  const nightMiles = sailing ? Math.round((vesselMph(args.aboard) ?? 0) * restHours * 2) / 2 : 0;
   const legs: ToolResult[] = [];
   const nights: ToolResult[] = [];
   for (let count = 1; count <= args.days; count += 1) {
     // The meal is the journey's first: it covers one dawn, not one a day.
-    const leg = travelStretch(campaign, turn, { ...args, hours: NORMAL_TRAVEL_HOURS, meal: count === 1 ? args.meal : undefined }, travellers, sheets, sheetsById);
+    const leg = travelStretch(campaign, turn, { ...args, hours: dayHours, meal: count === 1 ? args.meal : undefined }, travellers, sheets, sheetsById);
     legs.push(leg);
     if (typeof leg.error === "string" || count === args.days) {
       break;
     }
     // The evening in camp, then the night's rest to the next morning. The
-    // world and the sky move with the evening as with pass_time.
-    const dusk = getClock(campaign.id);
-    const evening = advanceClock(campaign.id, CAMP_MINUTES - restMinutes(night, variant), "minutes");
-    if ("error" in evening) {
-      break;
+    // world and the sky move with the evening as with pass_time. A ship
+    // under sail spent the evening in the day's leg.
+    if (!sailing) {
+      const dusk = getClock(campaign.id);
+      const evening = advanceClock(campaign.id, CAMP_MINUTES - restMinutes(night, variant), "minutes");
+      if ("error" in evening) {
+        break;
+      }
+      tickWorldTimeskip(campaign.id, Math.floor(evening.minutes / (4 * 60)));
+      refreshSky(campaign.id, { before: dusk, minutes: evening.minutes });
     }
-    tickWorldTimeskip(campaign.id, Math.floor(evening.minutes / (4 * 60)));
-    refreshSky(campaign.id, { before: dusk, minutes: evening.minutes });
     // Only the travellers camp: whoever stayed behind rests on their own.
-    const rest = handleTakeRest(campaign, turn.id, JSON.stringify({ kind: night, reason: "the night's camp" }), travellers, sheetsById);
-    nights.push(rest);
+    const rest = handleTakeRest(campaign, turn.id, JSON.stringify({ kind: night, reason: sailing ? "the night aboard" : "the night's camp" }), travellers, sheetsById);
+    nights.push(sailing && typeof rest.error !== "string" ? { ...rest, sailedOn: nightMiles } : rest);
     if (typeof rest.error === "string") {
       break;
     }
@@ -707,6 +724,8 @@ function travelDays(
   }
   const travelled = legs.filter((leg) => typeof leg.error !== "string").length;
   const stopped = [...legs, ...nights].find((result) => typeof result.error === "string");
+  // "1 night", never "1 nights".
+  const nightsTold = nights.length === 1 ? "1 night" : `${nights.length} nights, each`;
   return {
     ok: true,
     days: travelled,
@@ -715,7 +734,9 @@ function travelDays(
     note:
       typeof stopped?.error === "string"
         ? `The journey stopped after ${travelled} of ${args.days} days: ${stopped.error} Narrate what was travelled.`
-        : `${args.days} days on the road, ${nights.length} nights in camp with a ${night} rest each. Narrate the journey from the legs and the nights.`,
+        : sailing
+          ? `${args.days} days aboard the ${args.aboard}, under way day and night: ${nightsTold} with a ${night} rest aboard while she sailed on ${nightMiles} miles more. Narrate the voyage from the legs and the nights.`
+          : `${args.days} days on the road, ${nightsTold} in camp with a ${night} rest. Narrate the journey from the legs and the nights.`,
   };
 }
 
@@ -728,19 +749,25 @@ function travelStretch(
   sheets: CharacterSheet[],
   sheetsById: Map<string, CharacterSheet>,
 ): ToolResult {
-  const pace: TravelPace = args.pace ?? "normal";
+  // Aboard a vessel the party makes her speed, with no fast-pace penalty
+  // and no slow-pace stealth (SRD 5.1, Mounts and Vehicles): her pace is a
+  // normal one's effects, and no ground or Elk changes it. A wagon or a
+  // carriage chooses a pace as normal and crosses the ground as walkers do.
+  const mph = vesselMph(args.aboard);
+  const pace: TravelPace = mph ? "normal" : (args.pace ?? "normal");
   const effect = paceEffect(pace);
-  let terrain = args.terrain ?? "normal";
+  let terrain = mph ? "normal" : (args.terrain ?? "normal");
   // Miles or hours: whichever is given sets the other (SRD 5.1, Travel
   // Pace), at the weather the party sets out in.
   const before = getClock(campaign.id);
-  const weatherFactor = before.weather ? weatherTravelFactor(before.weather) : 1;
-  // The Elk's aspect doubles the party's pace (authored "travel").
-  const paceFactor = authoredPaceFactor(travellers);
-  let leg = travelLeg({ pace, terrain, hours: args.hours, miles: args.miles, weatherFactor, paceFactor });
+  const weatherFactor = !mph && before.weather ? weatherTravelFactor(before.weather) : 1;
+  // The Elk's aspect doubles the pace of a party mounted or on foot
+  // (authored "travel"), not a vehicle's.
+  const paceFactor = args.aboard ? 1 : authoredPaceFactor(travellers);
+  let leg = travelLeg({ pace, terrain, hours: args.hours, miles: args.miles, weatherFactor, paceFactor, ...(mph ? { mph } : {}) });
   // A ranger's favored terrain: its difficult ground does not slow the group
   // on a leg of an hour or more (mt-srd-ranger.ts, Natural Explorer).
-  const guide = "error" in leg ? null : naturalExplorerGuide(travellers, args.land, terrain, leg.hours);
+  const guide = "error" in leg || mph ? null : naturalExplorerGuide(travellers, args.land, terrain, leg.hours);
   if (guide) {
     terrain = "normal";
     leg = travelLeg({ pace, terrain, hours: args.hours, miles: args.miles, weatherFactor, paceFactor });
@@ -764,15 +791,17 @@ function travelStretch(
   const now = "error" in moved ? "" : describeInstant(moved.clock.calendar, moved.clock.instant);
   // The hours past 8 this leg adds to each traveller's day (SRD 5.1, Forced
   // March), counted with the legs they marched before it that day: a hero
-  // who joined at noon has not marched the morning.
+  // who joined at noon has not marched the morning. A leg ridden aboard a
+  // vehicle adds none: before this a wagon boarded after a day's walk rolled
+  // its riders' Constitution saves from the ninth hour, as if they walked it.
   const end = "error" in moved ? before.instant + leg.minutes : moved.clock.instant;
   const marchers = travellers.map((sheet) => ({
     sheet,
-    span: forcedMarchSpan((before.marched ?? []).filter((earlier) => earlier.ids.includes(sheet.id)), end, legHours, before.longRests?.[sheet.id]),
+    span: args.aboard ? { from: 1, to: 0 } : forcedMarchSpan((before.marched ?? []).filter((earlier) => earlier.ids.includes(sheet.id)), end, legHours, before.longRests?.[sheet.id]),
   }));
   const forced = marchers.reduce((longest, { span }) => (span.to > longest.to ? span : longest), { from: 1, to: 0 });
   const extra = Math.max(0, forced.to - forced.from + 1);
-  recordMarch(campaign.id, end, leg.minutes, travellers.map((sheet) => sheet.id));
+  recordMarch(campaign.id, end, leg.minutes, travellers.map((sheet) => sheet.id), Boolean(args.aboard));
   // A leg of four hours or more rolls the sky; the sky then has its say on
   // the march: snow and storm halve the ground covered, and frigid or hot
   // air is the extreme cold or heat hazard for every traveller.
@@ -793,7 +822,7 @@ function travelStretch(
     weatherNotes.push(guide);
   }
   if (sky?.weather) {
-    const factor = weatherTravelFactor(sky.weather);
+    const factor = mph ? 1 : weatherTravelFactor(sky.weather);
     if (factor < 1) {
       weatherNotes.push(
         `${sky.weather.sky === "snow" ? "Snow underfoot" : "The weather"} slows the march: the party covers about ${Math.round(factor * 100)} percent of the usual distance.`,
@@ -844,8 +873,9 @@ function travelStretch(
   // pace is -5 to passive Perception) until a rest or pass_time ends the
   // march (src/lib/db/clock.ts).
   setTravelPace(campaign.id, pace);
-  const paceNote =
-    pace === "fast"
+  const paceNote = mph
+    ? `Aboard the ${args.aboard}: she makes her own ${mph} mph, with no fast-pace penalty to Perception and no slow-pace stealth (Stealth checks are refused until the voyage ends).`
+    : pace === "fast"
       ? "A fast pace means -5 to passive Perception: the party is likelier to be surprised. check_notice applies it by itself until the party rests or stops."
       : pace === "slow"
         ? "A slow pace lets the party travel stealthily if they wish."
@@ -857,12 +887,13 @@ function travelStretch(
     return {
       ok: true,
       pace,
+      ...(args.aboard ? { aboard: args.aboard } : {}),
       hours: legHours,
       forcedMarch: false,
       passivePerceptionMod: effect.passivePerceptionMod,
       ...(now ? { now } : {}),
       ...weatherOutcome,
-      note: `A day within 8 hours of marching; no exhaustion. ${paceNote}${weatherNotes.length ? ` ${weatherNotes.join(" ")}` : ""}`,
+      note: `${args.aboard ? `Riding aboard the ${args.aboard} is not marching: these hours add nothing to a forced march.` : "A day within 8 hours of marching; no exhaustion."} ${paceNote}${weatherNotes.length ? ` ${weatherNotes.join(" ")}` : ""}`,
     };
   }
 

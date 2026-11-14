@@ -1,20 +1,20 @@
 import { settleDroppedOnFightEnd } from "@/lib/db/dropped-items";
 import { layFlamesOnDeath } from "@/lib/dm/cauterizing-flames";
 import { recordTrigger } from "@/lib/dm/last-save";
+import { darkFantasyOnDeath } from "@/lib/dm/genre-a-dark-fantasy-deaths";
 import { currentActor } from "@/lib/dm/acting-party";
 import { thunderboltPush } from "@/lib/dm/thunderbolt-strike";
 import { disarmFightEvents } from "@/lib/db/fight-events";
-import { endFightEffects } from "@/lib/db/active-effects";
+import { endFightEffects, endFoeEffects } from "@/lib/db/active-effects";
 import { getFloor, setFloor, type Campaign } from "@/lib/db/campaigns";
 import { burnWebUnder } from "@/lib/dm/zone-cast";
 import { lightOil } from "@/lib/dm/gear-zones";
-import { endEncounter, getActiveEncounter, getEnemy, listEnemies, patchEnemyHp, setEnemyConcentration, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { endEncounter, getActiveEncounter, getEnemy, listEnemies, patchEnemyHp, setEnemyConcentration, type Encounter, type EncounterEnemy, patchEnemyConditions } from "@/lib/db/encounters";
 import { activePublicEncounter } from "@/lib/db/encounter-view";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { settleDying } from "@/lib/dm/death";
 import { dyingLeftAlone, isDying, MOST_SAVES_TO_SETTLE } from "@/lib/dm/death-logic";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { patchEnemyConditions } from "@/lib/db/encounters";
 import { restoreOwnForm } from "@/lib/db/enemy-form";
 import { recordEncounterSummary } from "@/lib/dm/encounter-summary-store";
 import { atTheFight } from "@/lib/dm/fight-away-logic";
@@ -22,7 +22,7 @@ import { getBattleMapForEncounter, removeTokenByRef } from "@/lib/db/battle-maps
 import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events";
 import { closeFallenFoes } from "@/lib/dm/party-bonds";
 import { healthState } from "@/lib/bestiary/health";
-import { ammoCount, recoveredAmmo, withAmmoCount } from "@/lib/srd/ammunition";
+import { ammoCount, recoveredAmmo, searchesTheField, withAmmoCount } from "@/lib/srd/ammunition";
 import { clearSpellConditionsByName } from "@/lib/dm/concentration";
 import { spellEffectsOnEnemyDamage } from "@/lib/dm/spell-effects";
 import { enemyDamageMath, fightOverLine } from "@/lib/dm/encounter-logic";
@@ -39,6 +39,8 @@ import { absorbs } from "@/lib/dm/monster-traits";
 import { fallsRegenerating, regeneratingDown } from "@/lib/dm/regeneration";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { settleFrenzies } from "@/lib/dm/frenzy";
+import { endTurnBoundAtFightEnd } from "@/lib/dm/condition-tick";
+import { settleFullThrottle } from "@/lib/dm/genre-b-steampunk-ends";
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { planDeathFx } from "@/lib/battlemap/fx-plan";
@@ -146,7 +148,7 @@ export function finishEncounter(
   // (PHB). Only ever non-empty when the `ammunition` variant rule is on, so
   // a table that never asked for it pays nothing here.
   const ammoRecovered: Record<string, number> = {};
-  for (const [key, entry] of Object.entries(encounter.ammoSpent)) {
+  for (const [key, entry] of searchesTheField(outcome) ? Object.entries(encounter.ammoSpent) : []) {
     const back = recoveredAmmo(typeof entry === "object" ? entry.spent : entry);
     if (back <= 0) {
       continue;
@@ -263,8 +265,14 @@ export function finishEncounter(
 export function settleFightState(campaign: Campaign, encounterId: string): { itemsLeft: string[]; swallowedOut: string | null } {
   // An effect set "until the fight ends" ends now (active-effects.ts).
   endFightEffects(campaign.id);
+  // And what was laid on its foes (active-effects.ts endFoeEffects).
+  endFoeEffects(campaign.id, listEnemies(encounterId).map((enemy) => enemy.id));
+  // What waited on a turn of this fight ends with it (condition-tick.ts).
+  endTurnBoundAtFightEnd(campaign);
   // A frenzy outliving its rage costs its level of exhaustion (frenzy.ts).
   settleFrenzies(campaign);
+  // Full Throttle that ended with the fight burns its knight (genre-b-steampunk-ends.ts).
+  settleFullThrottle(campaign);
   // Whoever is still inside a creature that swallowed them comes out, prone
   // (swallow.ts swallowFightEnd).
   const swallowedOut = swallowFightEnd(campaign, encounterId);
@@ -424,7 +432,7 @@ export function applyEnemyDamage(
   if (isSheetFoe(enemy)) {
     const { magical, spell, silvered, adamantine, goodWielder, crit, nonlethal, death, holdVictory } = options ?? {};
     // Elemental Adept, Poisoner or Inescapable Destruction hold on a character too.
-    const ignores = damageType && (options?.ignoreResistance || authoredIgnoresResistance(campaign.id, damageType)) ? damageType : undefined;
+    const ignores = damageType && (options?.ignoreResistance || authoredIgnoresResistance(campaign.id, damageType, Boolean(options?.spell))) ? damageType : undefined;
     const blow = { amount, type: damageType ?? undefined, magical, spell, silvered, adamantine, goodWielder, ignoreResistanceTo: ignores, crit, nonlethal, death };
     return applySheetFoeBlow(campaign, turn, encounter, enemy, blow, sheets, sheetsById, holdVictory === true);
   }
@@ -446,7 +454,7 @@ export function applyEnemyDamage(
   // Inescapable Destruction (the acting Death cleric's necrotic), Elemental
   // Adept or Poisoner set the type's resistance aside; under water the block
   // resists fire, inside Silence it is immune to thunder (enemy-defenses.ts).
-  const lines = enemyDefenseLines(campaign.id, enemy, damageType, options?.ignoreResistance ? (options.ignoreResistanceBy ?? "Elemental Adept") : null);
+  const lines = enemyDefenseLines(campaign.id, enemy, damageType, options?.ignoreResistance ? (options.ignoreResistanceBy ?? "Elemental Adept") : null, Boolean(options?.spell));
   // Lightning, Fire or Acid Absorption (the golems): the damage heals it
   // instead (src/lib/dm/monster-traits.ts).
   if (!options?.death && absorbs(enemy.stats, damageType) && enemy.status === "alive") {
@@ -617,6 +625,10 @@ export function applyEnemyDamage(
     recordTrigger(campaign.id, { kind: "death", forcer: { id: enemy.id, name: enemy.displayName }, creatureType: String(enemy.stats.type ?? ""), killerId: currentActor()?.ref ?? null, ...(diedAt ? { square: diedAt } : {}) });
     // A Wildfire druid near it gains a spectral flame in its space (cauterizing-flames.ts).
     layFlamesOnDeath(campaign.id, { id: enemy.id, size: typeof enemy.stats.size === "string" ? enemy.stats.size : null });
+    const darkFantasy = darkFantasyOnDeath(campaign, enemy.id);
+    if (darkFantasy.length) {
+      base.markEnded = darkFantasy;
+    }
     const corpse = freeFromCorpse(campaign, updated);
     if (corpse) {
       base.swallowedFreed = corpse;

@@ -197,7 +197,7 @@ const TABLE: Record<string, TableEntry> = {
     expertise: ["persuasion"],
     skillOtherwise: { skill: "persuasion", from: ["animal_handling", "insight", "intimidation", "performance"] },
   },
-  "barbarian|path of the giant|giant's power": { languages: ["Giant"] },
+  "barbarian|path of the giant|giant's power": { languages: ["Giant"], languageOtherwise: "Giant" },
   "druid|circle of the shepherd|speech of the woods": { languages: ["Sylvan"] },
   "sorcerer|storm sorcery|wind speaker": { languages: ["Primordial"] },
   // SRD 5.1, Dragon Ancestor: "You can speak, read, and write Draconic."
@@ -465,6 +465,15 @@ export function grantsForHeldTraining(
           languages: spec.languages + heldLanguages.length,
         };
       }
+    }
+    // SRD 5.1, Backgrounds: "If a character would gain the same proficiency
+    // from two different sources, he or she can choose a different
+    // proficiency of the same kind instead." A pick whose list is held
+    // already (a Peace cleric whose class, background and race gave Insight,
+    // Performance and Persuasion) is a pick of any skill; the pick was owed
+    // with nothing left to choose.
+    if (spec.skills > 0 && spec.skillsFrom.length && spec.skillsFrom.filter((skill) => !skills.has(textKey(skill))).length < spec.skills) {
+      spec = { ...spec, skillsFrom: [] };
     }
     return spec === grant.spec ? grant : { ...rest, spec };
   });

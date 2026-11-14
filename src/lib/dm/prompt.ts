@@ -10,9 +10,9 @@ import { sceneIds } from "@/lib/ambience/catalog";
 import type { CampaignMessage } from "@/lib/db/messages";
 import type { StoredRoll } from "@/lib/db/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { ADVENTURE_BEGINS_NOTE, LEAD_NOTE_PREFIX, OPENING_SCENE_CUE, type CampaignMember } from "@/lib/campaign-types";
+import { ADVENTURE_BEGINS_NOTE, haltedTurnPrefix, LEAD_NOTE_PREFIX, OPENING_SCENE_CUE, type CampaignMember } from "@/lib/campaign-types";
 import { heldRollUserIds } from "@/lib/dice/held-rolls";
-import { computeSheetDerived, findClass, findSkill, formatModifier, sizeForRace, spellAbilityFor, spellSaveDcFor, speedFor, SRD_SKILLS } from "@/lib/srd";
+import { computeSheetDerived, findClass, findSkill, formatModifier, sheetSize, spellAbilityFor, spellSaveDcFor, speedFor, SRD_SKILLS } from "@/lib/srd";
 import { innateSpellsFor } from "@/lib/srd/racial-grants";
 import { attackSummary } from "@/lib/srd/creature-attacks";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
@@ -25,6 +25,7 @@ import { selectedCharacter } from "@/lib/player-characters";
 // custom feature (src/lib/classes/feature-text.ts).
 import "@/lib/classes/feature-text-all";
 import { resourceDef } from "@/lib/srd/class-resources";
+import { foretoldStateLine } from "@/lib/dm/foretold-logic";
 import { featEngineTag } from "@/lib/srd/feat-combat";
 import { featFactsFor } from "@/lib/characters/catalog";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
@@ -34,7 +35,7 @@ import { subclassExtrasForTable } from "@/lib/db/subclass-extras";
 import { authoredFeatureTags } from "@/lib/srd/authored-effects";
 import { rollKeyCue } from "@/lib/srd/roll-keys";
 import { heldRollKeys } from "@/lib/dm/roll-feature-riders";
-import { describeConditionDuration, describeExhaustion } from "@/lib/dm/condition-logic";
+import { describeConditionDuration, describeExhaustion, effectiveMaxHp } from "@/lib/dm/condition-logic";
 import { describeConditionEffects } from "@/lib/srd/condition-effects";
 import { presetFor, packFor } from "@/lib/worlds/preset";
 import { nameRegisterHint } from "@/lib/genres";
@@ -83,6 +84,7 @@ import {
   estimateTokens,
   fitHistory,
   historyAllowanceTokens,
+  historyGapNote,
   responseReserveTokens,
   usableTokens,
   type BlockKind,
@@ -109,6 +111,12 @@ import { conversationNote, type Conversation } from "@/lib/dm/conversation-logic
 import { ADVANTAGE_SOURCES } from "@/lib/dm/pc-attack-options";
 import { PLACE_DIRECTIONS, PLACE_DISTANCES } from "@/lib/overworld/places";
 import { heroFell } from "@/lib/characters/fallen-logic";
+import { personaLine } from "@/lib/backgrounds/persona-logic";
+
+// The rolls the moment shows have landed and been told (issue 931): under a
+// bare "Recent rolls" the model told last round's 6 damage on the hero again
+// as the enemy's new blow.
+export const RECENT_ROLLS_HEADING = "Recent rolls (already resolved and on the table; never narrate one again as new):";
 
 export { DM_SYSTEM, dmSystemText, ENCOUNTER_RULES, encounterRulesText } from "@/lib/dm/prompt-rules";
 
@@ -205,7 +213,9 @@ export type DmEncounterState = {
   // what to do.
   // `round`: the round the current character's turn is in, the next one
   // when the enemies due close this one.
-  enemiesDue?: { before: string; enemies: Array<{ enemyId: string; name: string }>; round: number };
+  // `endsRound`: the enemies are the last of that round, and `before` opens
+  // the next (`round`), rather than acting first in it.
+  enemiesDue?: { before: string; enemies: Array<{ enemyId: string; name: string }>; round: number; endsRound?: number };
   // The hits a reaction may still answer, by character (turn.ts
   // openHitsForState); `ai` marks a companion nobody commands, whose
   // reactions are the AI's. Absent when none are open.
@@ -689,7 +699,7 @@ export function describeSheet(
         strength: sheet.abilities.str,
         equipment: sheet.equipment ?? [],
         coins: purseCoins({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
-        size: sizeForRace(sheet.race),
+        size: sheetSize(sheet),
         // The capacity the pack is refused by (Peerless Athlete doubles it).
         carryFactor: authoredCarryFactor(sheet),
         wearer: sheet,
@@ -698,9 +708,12 @@ export function describeSheet(
   const loadLine = load
     ? `  Carrying ${load.carriedLb} lb of a ${load.capacityLb} lb capacity${load.unweighed ? ` (${load.unweighed} item${load.unweighed === 1 ? "" : "s"} of unknown weight, so the total is a floor)` : ""}${load.note ? `: ${load.note}` : ""}${load.overCapacity ? ". OVER CAPACITY: they cannot pick up anything more." : ""}`
     : null;
+  // The maximum the hero really has (exhaustion 4 halves it, an Amulet of
+  // Health raises it), as the sheet and heal read it: the stored one told the
+  // storyteller a halved hero at full health was badly hurt.
   const lines = [
-    `- ${sheet.name} (${sizeForRace(sheet.race)} ${raceWords(sheet)} ${classLabel}) characterId=${sheet.id} played by ${playedBy}${realDice ? " (rolls PHYSICAL dice)" : ""}`,
-    `  HP ${sheet.currentHp}/${sheet.maxHp}${sheet.tempHp ? ` (+${sheet.tempHp} temp)` : ""}${deathNote} | AC ${sheet.ac} | Speed ${speedFor(sheet, { encumbrance: options.encumbrance })} | Passive Perception ${derived.passivePerception} | Initiative ${formatModifier(derived.initiative)} | Hit Dice ${hitDiceLabel}`,
+    `- ${sheet.name} (${sheetSize(sheet)} ${raceWords(sheet)} ${classLabel}) characterId=${sheet.id} played by ${playedBy}${realDice ? " (rolls PHYSICAL dice)" : ""}`,
+    `  HP ${sheet.currentHp}/${effectiveMaxHp(sheet)}${sheet.tempHp ? ` (+${sheet.tempHp} temp)` : ""}${deathNote} | AC ${sheet.ac} | Speed ${speedFor(sheet, { encumbrance: options.encumbrance })} | Passive Perception ${derived.passivePerception} | Initiative ${formatModifier(derived.initiative)} | Hit Dice ${hitDiceLabel}`,
     `  ${abilities} | Save proficiencies: ${sheet.proficiencies.saves.map((save) => save.toUpperCase()).join(", ") || "none"}`,
     `  Skill proficiencies: ${proficientSkills || "none"}`,
     `  Languages (complete list; they cannot speak, read, or understand any other language): ${sheet.proficiencies.languages.join(", ") || "Common only"} | Tool proficiencies: ${sheet.proficiencies.tools.join(", ") || "none"} | Armor training: ${sheet.proficiencies.armor.join(", ") || "none"} | Weapon training: ${sheet.proficiencies.weapons.join(", ") || "none"}`,
@@ -742,6 +755,10 @@ export function describeSheet(
     lines.push(
       `  Resources (limited uses; spend with use_resource BEFORE narrating the feature): ${parts.join(", ")}`,
     );
+  }
+  const foretold = foretoldStateLine(sheet);
+  if (foretold) {
+    lines.push(foretold);
   }
   for (const pet of sheet.pets ?? []) {
     const attacks = pet.attacks.length
@@ -888,6 +905,13 @@ export function describeSheet(
     // #429: the first 400 characters of 2,000 used to be all the DM saw).
     lines.push(`  Backstory: ${options.compact ? cutForRoom(sheet.backstory, COMPACT_TEXT_CHARS.backstory) : sheet.backstory}`);
   }
+  const personality = personaLine(sheet.persona);
+  if (personality) {
+    // The trait, ideal, bond and flaw the player chose: how the character
+    // talks, what moves them and what trips them up, for the GM to play
+    // their NPCs against and to give the flaw its moments.
+    lines.push(`  Personality: ${options.compact ? cutForRoom(personality, COMPACT_TEXT_CHARS.persona) : personality}`);
+  }
   if (sheet.hopes) {
     // What the player would love to see happen (a romance, a rival, a
     // redemption), said out of character: a direction to steer toward when
@@ -899,7 +923,7 @@ export function describeSheet(
 
 // What a compact call keeps of the text the table wrote for the DM, and
 // what each notes list carries whole before its notes keep only their start.
-const COMPACT_TEXT_CHARS = { backstory: 400, hopes: 200, note: 300 } as const;
+const COMPACT_TEXT_CHARS = { backstory: 400, persona: 300, hopes: 200, note: 300 } as const;
 const NOTES_SHARE_CHARS = 4_000;
 
 // The start of a text cut at a word, saying it was cut, so the model never
@@ -1137,11 +1161,13 @@ export function buildGameStateBlock(state: DmGameState): string {
       // Their turns come first: asking the current character's player now
       // would leave them to the backstop.
       if (encounter.enemiesDue) {
-        const { before, enemies, round } = encounter.enemiesDue;
+        const { before, enemies, round, endsRound } = encounter.enemiesDue;
         const due = enemies.map((enemy) => `${enemy.name} [enemyId=${enemy.enemyId}]`);
         const one = due.length === 1;
         lines.push(
-          `${due.join(" and ")} ${one ? "acts" : "act"} before ${before}; the turn passed ${one ? "it" : "them"} outside your turn. ${ENEMY_TURNS_CUE} ${before}'s turn comes after ${one ? "its" : "theirs"}: a new turn in round ${round}, its action, bonus action and movement unspent.`,
+          endsRound
+            ? `${due.join(" and ")} ${one ? "takes its turn" : "take their turns"} now, the last of round ${endsRound}; the turn passed ${one ? "it" : "them"} outside your turn. ${ENEMY_TURNS_CUE} Then round ${round} begins with ${before}: a new turn, its action, bonus action and movement unspent.`
+            : `${due.join(" and ")} ${one ? "acts" : "act"} before ${before}; the turn passed ${one ? "it" : "them"} outside your turn. ${ENEMY_TURNS_CUE} ${before}'s turn comes after ${one ? "its" : "theirs"}: a new turn in round ${round}, its action, bonus action and movement unspent.`,
         );
       } else if (encounter.awaitingPlayer) {
         const name = encounter.awaitingPlayer;
@@ -1443,7 +1469,7 @@ export function buildGameStateBlock(state: DmGameState): string {
       .join("\n")}`,
   );
   if (rollLines.length) {
-    moment.push(`Recent rolls:\n${rollLines.join("\n")}`);
+    moment.push(`${RECENT_ROLLS_HEADING}\n${rollLines.join("\n")}`);
   }
   if (state.pins?.length) {
     // Unconditional and unfiltered by design: the table asked for these to be
@@ -1516,7 +1542,7 @@ export const requestRollTool = {
   function: {
     name: "request_roll",
     description:
-      "Ask the server to roll dice for an uncertain outcome; it resolves the character's modifier from their sheet.",
+      "Roll dice for an uncertain outcome; the server takes the modifier from the sheet.",
     parameters: {
       type: "object",
       additionalProperties: false,
@@ -1551,7 +1577,7 @@ export const requestRollTool = {
           type: "string",
           enum: ["very_easy", "easy", "moderate", "hard", "very_hard", "nearly_impossible"],
           description:
-            "How hard the task is. The server turns it into the DC (5, 10, 15, 20, 25 or 30, in order). Prefer this over dc. Omit for damage or initiative.",
+            "How hard the task is; the server makes it the DC (5 to 30). Prefer it to dc. Omit for damage or initiative.",
         },
         dc: {
           type: "integer",
@@ -1561,12 +1587,12 @@ export const requestRollTool = {
         expression: {
           type: "string",
           description:
-            "damage and custom only: the dice expression ('2d6+3'). Never an enemy's attack or damage (enemy_attack rolls those) and never a party character's attack (pc_attack).",
+            "damage and custom only: the dice ('2d6+3'). Never an enemy's roll (enemy_attack) or a party attack (pc_attack).",
         },
         damageType: {
           type: "string",
           description:
-            "damage only: the damage type (fire, slashing), for resistances, immunities and vulnerabilities.",
+            "damage only: the damage type (fire, slashing), for resistance, immunity, vulnerability.",
         },
         advantage: {
           type: "string",
@@ -1583,12 +1609,12 @@ export const requestRollTool = {
         advantageReason: {
           type: "string",
           description:
-            "The circumstance behind it, in a few words. Without one, the server sets the claim aside.",
+            "The circumstance, in a few words; without one the server sets the claim aside.",
         },
         targetEnemyId: {
           type: "string",
           description:
-            "damage only, in combat, from someone with no sheet: the enemy struck, exact enemyId from GAME STATE. Someone with no sheet is an NPC ally never recruited. The server applies the total and reports it; never follow up with apply_damage. A party character's damage goes through pc_attack or the spell tools and is refused here.",
+            "damage only, in combat, by an NPC with no sheet: the enemy struck (enemyId). Exact enemyId from GAME STATE; the server applies the total, no apply_damage after. A party character's damage goes through pc_attack or the spell tools.",
         },
         reason: {
           type: "string",
@@ -1599,16 +1625,16 @@ export const requestRollTool = {
           type: "string",
           enum: [...SAVE_AGAINST, NONE],
           description:
-            "saving_throw only: what the save resists (a condition, a damage type, disease, dismount) or 'none'. dismount is being thrown from a mount. The server applies the traits keyed to it (Brave, Fey Ancestry, Countercharm).",
+            "saving_throw only: what it resists (a condition, damage type, disease, dismount) or 'none'. Traits keyed to it apply (Brave, Fey Ancestry).",
         },
         magical: {
           type: "boolean",
-          description: "saving_throw only: the effect is a spell or other magic (Gnome Cunning, Spell Resistance).",
+          description: "saving_throw only: a spell or other magic (Gnome Cunning, Spell Resistance).",
         },
         casterType: {
           type: "string",
           enum: [...CREATURE_TYPES],
-          description: "saving_throw against a spell: the caster's creature type, when known (Holy Nimbus).",
+          description: "saving_throw against a spell: its caster's creature type (Holy Nimbus).",
         },
         tool: {
           type: "string",
@@ -1964,7 +1990,11 @@ export function buildDmMessages(
     return state.ruleContext?.brief ? said.replace(/\[roll:[0-9a-f-]{36}\]\s*/g, "") : said;
   };
 
-  const rendered = history.map((message) => {
+  // A halted turn's notice ("The GM ran into a problem: ...") is for the
+  // table, not the story: a turn started over by Retry read it as a table
+  // note and could narrate the server's trouble into the scene.
+  const told = history.filter((message) => !(message.authorType === "system" && haltedTurnPrefix(message.content)));
+  const rendered = told.map((message) => {
     const name = message.characterId
       ? sheetsById.get(message.characterId)?.name ?? "Unknown"
       : "Unknown";
@@ -1987,9 +2017,9 @@ export function buildDmMessages(
     // parsing the sentence (src/lib/dm/intent-logic.ts).
     const card =
       message.authorType === "player" && message.intent
-        ? `\n${describeIntent(message.intent, message.characterId, { resolved: (state.engineCardIds?.has(message.id) ?? false) || Boolean(message.cardResolvedAt) })}`
+        ? `\n${describeIntent(message.intent, message.characterId, { resolved: (state.engineCardIds?.has(message.id) ?? false) || Boolean(message.cardResolvedAt), returned: Boolean(message.cardReturned) })}`
         : "";
-    return { message, id: message.id, seq: message.seq, text: `${content}${card}` };
+    return { message, id: message.id, seq: message.seq, text: `${content}${card}`, gm: message.authorType === "dm" };
   });
   const uncovered = cutCoveredHistory(rendered, state.summaryCoveredSeq ?? null);
 
@@ -2011,6 +2041,10 @@ export function buildDmMessages(
   const historyAllowance = historyAllowanceTokens(state.contextLimitTokens, fixedTokens);
   const fitted = fitHistory(uncovered.kept, historyAllowance);
   const keptText = new Map(fitted.kept.map((entry) => [entry.id, entry.text]));
+  // Lines no summary covers that were left out: said at the head of the
+  // transcript, ahead of the lines the per-call fit may drop, so the gap
+  // reads as a gap and not as the summary's last scene running on.
+  const gapNote = historyGapNote(fitted.dropped, state.summaryCoveredSeq != null);
   const historyMessages: ChatMessage[] = uncovered.kept
     .filter((entry) => keptText.has(entry.id))
     .map((entry) => ({
@@ -2049,6 +2083,7 @@ export function buildDmMessages(
     promptTokens:
       estimateTokens(systemParts.join("\n\n")) +
       fitted.tokens +
+      estimateTokens(gapNote) +
       estimateTokens(state.directorBlock ?? "") +
       toolTokens,
     blocks: [
@@ -2130,7 +2165,7 @@ export function buildDmMessages(
       {
         id: "history",
         kind: "history" as BlockKind,
-        tokens: fitted.tokens,
+        tokens: fitted.tokens + estimateTokens(gapNote),
         included: true,
         reason:
           uncovered.cut || fitted.dropped || fitted.clipped
@@ -2191,10 +2226,11 @@ export function buildDmMessages(
   // with the moment, after the transcript (src/lib/dm/narration-tidy-logic.ts).
   const sameClosing = repeatedClosing(history.filter((message) => message.authorType === "dm").map((message) => message.content));
   const variety = sameClosing ? closingVarietyNote(sameClosing) : "";
-  const historyStart = table ? 2 : 1;
+  const historyStart = (table ? 2 : 1) + (gapNote ? 1 : 0);
   const messages: ChatMessage[] = [
     { role: "system", content: rules },
     ...(table ? [{ role: "user" as const, content: table }] : []),
+    ...(gapNote ? [{ role: "user" as const, content: gapNote }] : []),
     ...historyMessages,
     // The state, then the instruction to take the turn, so the newest player
     // line is still what the model resolves (src/lib/prompt-boundary.ts).

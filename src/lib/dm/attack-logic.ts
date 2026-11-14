@@ -24,6 +24,7 @@ import { rageApplies, type WeaponMaterial } from "@/lib/dm/damage-logic";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
 import type { SheetDerived } from "@/lib/srd";
 import { textKey } from "@/lib/language/text-logic";
+import { holdsFeature } from "@/lib/srd/feature-names";
 import { gearWeaponFor, type GearWeapon } from "@/lib/srd/gear-weapons";
 
 // Pure attack math for the pc_attack engine: which weapon a character swings,
@@ -350,6 +351,10 @@ export type AttackStance = {
   martialArts?: boolean;
   // Tavern Brawler: the unarmed strike deals 1d4 (src/lib/srd/feat-combat.ts).
   brawler?: boolean;
+  // A genre feature's own die for the unarmed strike or an improvised weapon
+  // (src/lib/srd/genre-b-combat.ts genreStrike: Heavy Hands, Improvised Weapon
+  // Mastery, which also counts the improvised weapon proficient).
+  strike?: { unarmed?: string; improvised?: string; improvisedTwoHanded?: string; improvisedProficient?: boolean; improvisedMagical?: boolean };
   // What worn items add to attacks with some weapons (Bracers of Archery) or
   // with the unarmed strike (UNARMED_STRIKE_KEY), from
   // src/lib/srd/magic-items.ts magicItemRiders(...).weaponRiders.
@@ -452,7 +457,11 @@ export function weaponAttackProfile(
     const fistRiders = resolved.unarmed ? (stance.worn ?? []).filter((rider) => rider.weapons.includes(UNARMED_STRIKE_KEY) && !rider.ranged) : [];
     const fist = wornRiderTotals(fistRiders);
     notes.push(...fist.notes);
-    const ownDice = martial ? `1${martial}` : resolved.unarmed ? (stance.brawler ? "1d4" : "1") : "1d4";
+    const strike = stance.strike ?? {};
+    const improvisedDie = (stance.twoHanded ? strike.improvisedTwoHanded : undefined) ?? strike.improvised;
+    const fistDie = strike.unarmed ?? (stance.brawler ? "1d4" : "1");
+    const ownDice = martial ? `1${martial}` : resolved.unarmed ? fistDie : (improvisedDie ?? "1d4");
+    const improvisedTrained = !resolved.unarmed && Boolean(strike.improvisedProficient);
     // An item's die stands in when it beats the strike's own, as the Martial
     // Arts die does for a weapon's (martialDice).
     const form = fistRiders.find((rider) => rider.unarmed)?.unarmed ?? null;
@@ -474,7 +483,7 @@ export function weaponAttackProfile(
     }
     return {
       weapon: resolved.displayName,
-      toHit: mod + fist.attack + (resolved.unarmed ? derived.proficiencyBonus : 0),
+      toHit: mod + fist.attack + (resolved.unarmed || improvisedTrained ? derived.proficiencyBonus : 0),
       damageExpression: withModifier(dice, offHandModifier(mod, stance) + fist.damage),
       damageType,
       ranged: false,
@@ -486,7 +495,7 @@ export function weaponAttackProfile(
       // "An improvised thrown weapon has a normal range of 20 feet and a
       // long range of 60 feet."
       ...(form?.thrown ? { longRangeTiles: Math.round(form.thrown.longRangeFt / 5) } : resolved.unarmed ? {} : { longRangeTiles: 12 }),
-      proficient: resolved.unarmed,
+      proficient: resolved.unarmed || improvisedTrained,
       improvised: !resolved.unarmed,
       ability: useDex ? "dex" : "str",
       magicBonus: 0,
@@ -495,7 +504,8 @@ export function weaponAttackProfile(
       heavy: false,
       ...(resolved.unarmed ? { unarmed: true } : {}),
       ...(martial ? { martialArts: true } : {}),
-      ...(fist.attack > 0 ? { magicWeapon: true } : {}),
+      // Junkyard Strikes: the improvised weapon "counts as magical".
+      ...(fist.attack > 0 || (!resolved.unarmed && strike.improvisedMagical) ? { magicWeapon: true } : {}),
       riderNotes: notes,
     };
   }
@@ -601,7 +611,7 @@ export function weaponAttackProfile(
     ...(monkWeapon ? { martialArts: true } : {}),
     riderNotes: notes,
     ...gearParts.fields,
-    ...(magicBonus > 0 || wornTotals.attack > 0 || (kensei && stance.kensei?.magical) ? { magicWeapon: true } : {}),
+    ...(magicBonus > 0 || wornTotals.attack > 0 || (kensei && stance.kensei?.magical) || wornRiders.some((rider) => rider.magical) ? { magicWeapon: true } : {}),
   };
 }
 
@@ -651,11 +661,16 @@ export function ragingMeleeBonus(
     level: number;
     classes?: Array<{ id: string; level: number }>;
     equipment?: Array<{ name: string; equipped?: boolean }>;
+    features?: Array<{ name: string }>;
   },
   profile: Pick<AttackProfile, "ranged" | "ability">,
+  // The ranged attack is a melee weapon thrown with Strength: Path of the
+  // Giant's Crushing Throw (Giant's Havoc) adds the bonus to it as well.
+  options: { thrownAtRange?: boolean } = {},
 ): number {
   // Rage gives nothing to a barbarian in heavy armor (rageApplies).
-  if (!rageApplies(sheet) || profile.ranged || profile.ability !== "str") {
+  const crushingThrow = options.thrownAtRange === true && holdsFeature(sheet, "Giant's Havoc");
+  if (!rageApplies(sheet) || (profile.ranged && !crushingThrow) || profile.ability !== "str") {
     return 0;
   }
   // Multiclass: the bonus reads the BARBARIAN level, not the character's.

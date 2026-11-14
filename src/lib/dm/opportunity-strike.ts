@@ -22,7 +22,7 @@ import { attackerUnseen, tryParry } from "@/lib/dm/enemy-reactions";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import type { XY } from "@/lib/battlemap/types";
 import { closeStandInTurn, openStandInTurn, type DmTurn } from "@/lib/db/dm-turns";
-import { patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { orderEntryId, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { insertRoll, markRollApplied } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
@@ -43,17 +43,22 @@ import {
 import { critDamageExpression, ordinaryOfCritical } from "@/lib/dm/encounter-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
-import { shillelaghSwing } from "@/lib/dm/attack-features";
+import { hexWarriorSwing, shillelaghSwing } from "@/lib/dm/attack-features";
+import { otherHandArmed } from "@/lib/dm/attack-rules";
+import { wearsUntrainedArmor } from "@/lib/srd/armor";
+import { liftsSmallHeavyPenalty } from "@/lib/srd/feat-combat";
 import { gearCritRiders, itemRidersAgainst } from "@/lib/dm/gear-attack";
 import { foldDamageRiders, landBlow, strikesAsMagic, withSneakAttack } from "@/lib/dm/pc-attack-damage";
 import { clearHitSpent } from "@/lib/dm/pc-attack-riders";
-import { computeSheetDerived } from "@/lib/srd";
+import { acBreakdownFor, computeSheetDerived, sizeForRace } from "@/lib/srd";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
 import { conditionsSpentAgainst } from "@/lib/srd/condition-effect-queries";
-import { combatRiders } from "@/lib/srd/feature-effects";
+import { combatRiders, hasHalflingLuck } from "@/lib/srd/feature-effects";
 import { magicItemRiders } from "@/lib/srd/magic-items";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { markOpportunityHit } from "@/lib/dm/authored-reactions-more";
+import { enemyExhaustion, hasTrait } from "@/lib/dm/monster-abilities";
+import { inDirectSunlight } from "@/lib/dm/sunlight";
 
 // A turn for the swing's rolls and audit rows, closed as soon as it is used
 // so nothing waits on it.
@@ -97,6 +102,21 @@ export function opportunitySight(input: {
 // character of the other side (issue 503). Returns the table line. A swing
 // at a character leaves the record its reactions answer, as an enemy's
 // attack does (last-hit.ts): Shield, Uncanny Dodge, Riposte on a miss.
+// Whose turn a swing lands in, for what holds only for what is left of that
+// turn (Sentinel's stop): the walker's own when it is taking it (handed over, or held
+// for it), otherwise the one the pointer is on. Written as begun, so that
+// turn's end takes it (turn-end.ts). It was written as the walker's NEXT
+// turn: a goblin a Sentinel stopped on its way out stood still through its
+// whole next turn too, and could not flee on it either.
+function turnUnderWay(encounter: Encounter, walkerId: string): string {
+  const legendary = encounter.legendary;
+  if ((legendary.due ?? []).includes(walkerId) || (legendary.handoff?.enemyIds ?? []).includes(walkerId)) {
+    return walkerId;
+  }
+  const entry = encounter.orderReady ? encounter.order[encounter.turnIndex] : undefined;
+  return entry ? orderEntryId(entry) : walkerId;
+}
+
 export function pcOpportunitySwing(input: {
   campaign: Campaign;
   encounter: Encounter;
@@ -114,11 +134,15 @@ export function pcOpportunitySwing(input: {
   const derived = computeSheetDerived(sheet);
   const riders = combatRiders(sheet);
   const shillelagh = shillelaghSwing(sheet, resolved, derived);
-  let profile = weaponAttackProfile(shillelagh?.derived ?? derived, sheet.proficiencies.weapons, shillelagh?.resolved ?? resolved, {
+  // Hex Warrior's Charisma, as on the turn's swing (pc-attack-profile.ts).
+  const hexed = shillelagh ? null : hexWarriorSwing(sheet, resolved, derived);
+  let profile = weaponAttackProfile(shillelagh?.derived ?? hexed?.derived ?? derived, sheet.proficiencies.weapons, shillelagh?.resolved ?? resolved, {
     riders,
     martialArts: martialArtsApplies(sheet),
     // A worn item's bonus rides the reaction's swing as it does the turn's.
     worn: magicItemRiders(sheet.equipment, sheet).weaponRiders,
+    // Dueling wants the other hand empty of weapons, here as on the turn.
+    otherWeaponInHand: otherHandArmed({ equipment: sheet.equipment, weapon: resolved.displayName, shieldName: acBreakdownFor(sheet).shieldName }),
   });
   if (shillelagh) {
     profile = { ...profile, magicWeapon: true };
@@ -156,8 +180,15 @@ export function pcOpportunitySwing(input: {
   });
   const light = lightOnAttack(sight, { attacker: sheet.name, target: enemy.displayName });
   const attackRiders = conditionRollRiders(sheet.conditions, "attack");
+  // What the attacker's own body and gear do to any attack roll of theirs,
+  // as pc-attack-situation.ts reads them for the turn's swing: armor worn
+  // untrained, and a heavy weapon in Small hands, each disadvantage (SRD 5.1,
+  // Armor; Weapons, Heavy). The reaction's swing skipped both.
+  const untrained = wearsUntrainedArmor(sheet);
+  const smallWithHeavy = profile.heavy && sizeForRace(sheet.race) === "Small" && !liftsSmallHeavyPenalty(sheet);
   const advantage: Advantage = mergeAdvantage([
     ...context.sources,
+    ...(untrained || smallWithHeavy ? ["disadvantage" as const] : []),
     exhaustionRollState(sheet.exhaustion ?? 0, "attack").advantage,
     ...light.sources,
     ...attackRiders.advantageSources,
@@ -183,7 +214,9 @@ export function pcOpportunitySwing(input: {
   // as a pc_attack's does.
   const hitOutcome = rollCharacterD20(campaign, sheet, {
     kind: "attack",
-    expression: `${d20Expression(profile.toHit, advantage)}${attackRiders.diceSuffix}`,
+    // A halfling's Lucky rerolls a natural 1 on any attack roll (SRD 5.1,
+    // Halfling), this one too.
+    expression: `${d20Expression(profile.toHit, advantage).replace(/^(\d+d20(?:k[hl]\d+)?)/, hasHalflingLuck(sheet) ? "$1r1" : "$1")}${attackRiders.diceSuffix}`,
     detail: rollAgainst(`${profile.weapon} (opportunity attack)`, enemy.displayName),
     advantage,
     attack: { ac: targetAc, critRange: riders.critRange ?? 20, melee: true },
@@ -210,11 +243,11 @@ export function pcOpportunitySwing(input: {
   // Relentless Avenger answers the hit (src/lib/dm/authored-reactions-more.ts).
   if (adjudicated.hit) {
     markOpportunityHit(campaign, sheet);
-    // Sentinel: the creature's speed is 0 for the rest of its turn.
+    // Sentinel: the creature's speed is 0 for the rest of the turn.
     if (hasSentinel(sheet)) {
       const fresh = getFoe(enemy.id);
       if (fresh && !fresh.conditions.includes("stopped")) {
-        patchEnemyConditions(fresh.id, [...fresh.conditions, "stopped"], { ...fresh.conditionMeta, stopped: { source: sheet.id, untilTurnEndOf: enemy.id } });
+        patchEnemyConditions(fresh.id, [...fresh.conditions, "stopped"], { ...fresh.conditionMeta, stopped: { source: sheet.id, untilTurnEndOf: turnUnderWay(encounter, fresh.id), turnBegun: true } });
         notes.push("Sentinel: its speed is 0 for the rest of the turn");
       }
     }
@@ -347,4 +380,24 @@ function spendAttackCarriers(campaign: Campaign, sheet: CharacterSheet, enemy: E
       publishEncounter(campaign.id);
     }
   }
+}
+
+// What an enemy's own state does to its opportunity attack on a character,
+// as enemy_attack reads it (enemy-swing-odds.ts, enemy-attack.ts): a spell
+// on it (Bane's d4 off the roll, Bless's on), exhaustion 3 or more, and
+// Sunlight Sensitivity in direct sunlight. The reaction's swing read only
+// the conditions, so a Baned goblin's swing at a fleeing hero rolled whole.
+export function enemyOpportunityRiders(campaignId: string, enemy: EncounterEnemy) {
+  const riders = conditionRollRiders(enemy.conditions, "attack");
+  const worn = enemyExhaustion(enemy.conditions) >= 3;
+  const sunlit = hasTrait(enemy.stats, "sunlightSensitivity") && inDirectSunlight(campaignId);
+  return {
+    riders,
+    sources: [...riders.advantageSources, ...(worn || sunlit ? ["disadvantage" as const] : [])],
+    notes: [
+      ...riders.notes,
+      ...(worn ? [`exhaustion ${enemyExhaustion(enemy.conditions)}: disadvantage on attack rolls`] : []),
+      ...(sunlit ? ["Sunlight Sensitivity: disadvantage in direct sunlight"] : []),
+    ],
+  };
 }

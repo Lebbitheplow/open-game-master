@@ -13,9 +13,12 @@
 // the target's AC and everything the dice decide stay with the DM's tool
 // call, which the model still makes.
 import type { Campaign } from "@/lib/db/campaigns";
-import { getActiveEncounter } from "@/lib/db/encounters";
+import { fightNow, getActiveEncounter } from "@/lib/db/encounters";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { canAct, type ActKind } from "@/lib/dm/can-act";
+import { actingCombatantId, canAct, type ActKind } from "@/lib/dm/can-act";
+import { ownTurnOf } from "@/lib/dm/held-turn";
+import { listOpenPendingRolls } from "@/lib/db/dm-turns";
+import { attackCardWaitsLine, attackRollWithPlayer } from "@/lib/dm/open-roll-logic";
 import { reactionRefusal } from "@/lib/dm/reaction-gate";
 import { spendsNoReaction } from "@/lib/dm/reaction-kinds";
 import { reactsForAnother, timingOfUseReaction } from "@/lib/dm/reaction-tools";
@@ -40,8 +43,16 @@ import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { reassertsControl, summonMixPlan, summonPlan, summonSpellFor } from "@/lib/srd/summon-spells";
 import { familiarKindOf, isFindFamiliar } from "@/lib/srd/familiar-forms";
 import { buildPet } from "@/lib/dm/pet-build";
+import type { CardMoment } from "@/lib/dm/direct-card-logic";
 
 const NO_HOOKS = { record: () => {}, publish: () => {} };
+
+// Where the fight stands now, as a card is stamped with it when played and
+// asked again when a turn reads it (direct-card-logic.ts cardStillDue).
+export function cardMoment(campaignId: string): CardMoment {
+  const encounter = getActiveEncounter(campaignId);
+  return encounter ? { encounterId: encounter.id, round: encounter.round, actingId: actingCombatantId(encounter) } : { encounterId: null, round: 0, actingId: null };
+}
 
 function kindOf(intent: MessageIntent): ActKind {
   switch (intent.card) {
@@ -199,6 +210,15 @@ export function intentRefusal(
     const able = canAct({ sheet, encounter, kind: kindOf(intent) });
     if (!able.ok) {
       return able.error;
+    }
+    // A swing on their turn still waiting on its dice (issue 931): an attack
+    // card played now (the off-hand swing too) reached pc_attack, which the
+    // spent attack refused, and the GM told the first swing as resolved. The
+    // card waits until the roll is in, as End Turn does (open-roll-logic.ts).
+    const swings = intent.card === "attack" || intent.card === "rider";
+    const waiting = swings && encounter && ownTurnOf(encounter, sheet.id) ? attackRollWithPlayer(listOpenPendingRolls(campaign.id), sheet.id, fightNow(encounter)) : null;
+    if (waiting) {
+      return attackCardWaitsLine(waiting);
     }
   }
   // A reaction (Uncanny Dodge, Shield) needs the reaction the fight still

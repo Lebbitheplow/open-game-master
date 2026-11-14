@@ -57,6 +57,7 @@ const REGISTRY = {
   // the database keeps their marks now (src/lib/dm/turn-marks.ts). ----
   // ---- game state, the loss written down in the file ----
   "feature-teleport.ts:credits": { kind: "ruling", what: "\"A restart forgets them; the move is then refused as an unpaid teleport, and nothing was moved for free.\"" },
+  "hands-full-ask.ts:asked": { kind: "ruling", what: "\"A restart forgets which characters' full hands wait on their player; the storyteller turn it was noted in ends with the restart, so nothing waits on it.\"" },
   "manual-ticks.ts:ticks": { kind: "ruling", what: "\"A restart forgets them, which costs only the old behaviour (the cast spends).\"" },
   // ---- plumbing ----
   "call-tracker.ts:__odmUtilityCalls": { kind: PLUMBING, what: "model calls in flight" },
@@ -95,6 +96,7 @@ const REGISTRY = {
   "tool-profiles.ts:GROUPED": { kind: PLUMBING, what: "built at load" },
   "turn-warmup.ts:__odmTurnHeads": { kind: PLUMBING, what: "prompt warm-ups" },
   "turn-warmup.ts:__odmTurnWarmups": { kind: PLUMBING, what: "prompt warm-ups" },
+  "turn-warmup.ts:__odmTurnHeadChecks": { kind: PLUMBING, what: "prompt warm-ups: the check waiting after a change between turns" },
   "turn.ts:CARDS_OUT": { kind: PLUMBING, what: "one call's scratch" },
   "held-call.ts:PARKED": { kind: PLUMBING, what: "one call's scratch: which answers are a held call's park" },
   "held-call.ts:WATCHED": { kind: PLUMBING, what: "one call's scratch: the watch stop a held call's answer opened" },

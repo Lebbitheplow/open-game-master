@@ -16,7 +16,7 @@ import { spendAction, type SpendResult, type TurnBudget } from "@/lib/dm/action-
 import { weaponOf } from "@/lib/dm/attack-logic";
 import { magicWeaponOfRow } from "@/lib/dm/gear-attack";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
-import { armorOfRow, isWorn, wearingIsExplicit } from "@/lib/srd/armor";
+import { armorOfRow, guessStands, isWorn, wearingIsExplicit } from "@/lib/srd/armor";
 import { wearSlotOf } from "@/lib/srd/wear-slots";
 import { matchWeapon, type SrdWeapon } from "@/lib/srd/weapons";
 import { textKey } from "@/lib/language/text-logic";
@@ -75,10 +75,76 @@ export function handsFullFor(equipment: readonly EquipmentItem[], row: Equipment
   return used + handsFor(row) > 2 ? others.map((item) => item.name) : [];
 }
 
+// Whether the engine's guess at what is in hand still stands (armor.ts).
+export { guessStands };
+
+// The free first change from the engine's guess. Its pick came from list
+// order, not from the player, so a weapon they take up while it stands is
+// drawn as part of the same act and the guessed weapons in the way are put
+// away with it (last chosen first, only as many as the hands need), with no
+// object interaction spent on either. A shield stays: the armor class
+// counted it, and taking it off is an action. Null when the guess is gone,
+// the row is not a weapon, or the shield alone leaves no room. The pack
+// comes back with every guess mark off, so the normal rule holds after.
+export function guessedRehand(
+  equipment: readonly EquipmentItem[],
+  row: EquipmentItem,
+): { equipment: EquipmentItem[]; putAway: string[] } | null {
+  const at = equipment.indexOf(row);
+  if (at < 0 || !guessStands(equipment) || gearKindOf(row) !== "weapon") {
+    return null;
+  }
+  const next: EquipmentItem[] = equipment.map((item, index) => {
+    const { heldGuess: _guess, ...rest } = item;
+    void _guess;
+    return index === at ? { ...rest, equipped: true } : rest;
+  });
+  const guessed = equipment
+    .map((item, index) => ({ item, index }))
+    .filter(({ item, index }) => index !== at && item.heldGuess === true && item.equipped === true && gearKindOf(item) === "weapon");
+  const putAway: string[] = [];
+  while (handsFullFor(next, next[at]).length) {
+    const last = guessed.pop();
+    if (!last) {
+      return null;
+    }
+    next[last.index] = { ...next[last.index], equipped: false };
+    putAway.unshift(last.item.name);
+  }
+  return { equipment: next, putAway };
+}
+
+// What the free first change did, in the result's words.
+export function rehandLine(who: string, putAway: readonly string[], taken: string): string {
+  const away = putAway.length ? `puts away ${putAway.join(" and ")} and ` : "";
+  return `${who} ${away}takes up ${taken}, free: nobody had said which weapon was out, so the first change from the game's pick costs nothing.`;
+}
+
+// The ways out of full hands, for each reader: the storyteller is told the
+// tool that drops, a player never sees a tool's name (the Hand's card, the
+// sheet's refusal, a card the GM's seat played).
+const WAYS_OUT: Record<"storyteller" | "player", string> = {
+  storyteller: "Dropping one is free (handle_item drop); putting one away takes the object interaction.",
+  player: "Dropping one is free; putting one away takes your object interaction this turn.",
+};
+
 // The refusal for a draw with no hand free, with the ways out: dropping
 // costs nothing, putting one away is the object interaction.
-export function handsFullError(who: string, what: string, full: readonly string[], verb: "drawn" | "strapped on" = "drawn"): string {
-  return `${who}'s hands are full (${full.join(" and ")}), so ${what} cannot be ${verb} yet. Dropping one is free (handle_item drop); putting one away takes the object interaction.`;
+export function handsFullError(
+  who: string,
+  what: string,
+  full: readonly string[],
+  verb: "drawn" | "strapped on" = "drawn",
+  reader: keyof typeof WAYS_OUT = "storyteller",
+): string {
+  return `${who}'s hands are full (${full.join(" and ")}), so ${what} cannot be ${verb} yet. ${WAYS_OUT[reader]}`;
+}
+
+// A tool's refusal shown to a person rather than the storyteller (a card the
+// GM's seat played resolves through the tools): the hands-full ways out in
+// a player's words.
+export function handsFullForPlayer(text: string): string {
+  return text.split(WAYS_OUT.storyteller).join(WAYS_OUT.player);
 }
 
 // Takes a weapon in hand: the row marked equipped. A hand must be free for

@@ -41,8 +41,8 @@ export function missedAttackOn(campaignId: string, characterId: string, key: str
 
 // Whether the roll that missed the wizard lands on the creature it turns
 // onto: a natural 1 misses anyone (SRD 5.1, Rolling 1 or 20).
-function meets(campaignId: string, taker: Combatant, swing: SwingRecord): { ac: number; lands: boolean } {
-  const against = blowLandsOn(campaignId, taker, swing);
+function meets(campaignId: string, taker: Combatant, swing: SwingRecord, record: LastHit): { ac: number; lands: boolean } {
+  const against = blowLandsOn(campaignId, taker, swing, attackOf(record, swing).attacker);
   return { ac: against.ac, lands: swing.natural !== 1 && against.lands };
 }
 
@@ -59,7 +59,7 @@ function attackOf(record: LastHit, swing: SwingRecord) {
 // server does not hold has none on record.
 export function turnedMissRefusal(campaignId: string, record: LastHit, index: number, taker: Combatant, feature: string): ToolError | null {
   const swing = record.swings[index];
-  if (!meets(campaignId, taker, swing).lands || attackOf(record, swing).attack) {
+  if (!meets(campaignId, taker, swing, record).lands || attackOf(record, swing).attack) {
     return null;
   }
   return { error: `${record.attacker.name}'s ${swing.attack ?? record.attack} missed, and turned onto ${taker.name} it would hit: the server has no damage on record for that attack to roll, so ${feature} cannot turn it. Nothing was spent.`, refused: "rules" };
@@ -72,7 +72,7 @@ export function landTurnedMiss(ctx: Ctx, encounter: Encounter, found: { record: 
   const swing = record.swings[index];
   // Nothing of the miss changes for the wizard; the record keeps the answer.
   settle(ctx, record, record.swings, key);
-  const against = meets(ctx.campaign.id, taker, swing);
+  const against = meets(ctx.campaign.id, taker, swing, record);
   const { attacker, attack } = attackOf(record, swing);
   if (!against.lands || !attack) {
     return { applied: `The attack turns onto ${taker.name} and misses them too (${swing.total} against AC ${against.ac}).` };

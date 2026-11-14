@@ -1,7 +1,9 @@
 import { openDatabase, type SqliteDatabase } from "@/lib/db/driver";
-import { EDITION_2024_DOCUMENTS, PACK_REVISION } from "@/lib/content/edition";
+import { EDITION_2024_DOCUMENTS, PACK_REVISION, PLAYED_DOCUMENTS_SQL } from "@/lib/content/edition";
 import { packFeatText } from "@/lib/srd/feat-text";
-import { registerFeatRules } from "@/lib/srd/feature-effects";
+import { registerFeatRules, registerPackClassFeature } from "@/lib/srd/feature-effects";
+import { extraAttacksIn, packClassTableFrom, registerPackClasses, type PackClassTable } from "@/lib/classes/pack-class-registry";
+import { textKey } from "@/lib/language/text-logic";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
@@ -39,7 +41,37 @@ export function getContentDb(): SqliteDatabase | null {
     );
   }
   registerPackFeats(db);
+  registerPackClassRows(db);
   return db;
+}
+
+// The pack's own classes (Black Flag's Mechanist) as feature tables the
+// engines grant by level, and what their features' words say the engine can
+// hold (src/lib/classes/pack-class-registry.ts). A class ODM carries a table
+// for keeps its own: the registry is read after the bundled tables.
+function registerPackClassRows(db: SqliteDatabase): void {
+  try {
+    const rows = db.prepare(`SELECT slug, data_json FROM classes WHERE ${PLAYED_DOCUMENTS_SQL}`).all() as Array<{ slug: string; data_json: string }>;
+    const tables: PackClassTable[] = [];
+    for (const row of rows) {
+      try {
+        const table = packClassTableFrom(row.slug, JSON.parse(row.data_json) as Record<string, unknown>);
+        if (!table) continue;
+        tables.push(table);
+        for (const names of Object.values(table.levels)) {
+          for (const name of names) {
+            const desc = table.text[textKey(name)] ?? "";
+            registerPackClassFeature(table.id, name, desc, extraAttacksIn(desc));
+          }
+        }
+      } catch {
+        // A row that does not parse grants nothing here.
+      }
+    }
+    registerPackClasses(tables, { replace: true });
+  } catch {
+    // An older pack without a classes table serves no classes either.
+  }
 }
 
 function packRevisionOf(db: SqliteDatabase): number {

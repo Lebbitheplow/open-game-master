@@ -1,4 +1,5 @@
 import { armsWatchRow } from "@/lib/dm/after-roll-table";
+import { tokenFootprint } from "@/lib/dm/board-reach";
 import { emptyTurnLine, type EmptyTurnPlayer } from "@/lib/dm/empty-turn";
 import { noteToolCallHealth } from "@/lib/tool-call-health";
 import { foesAboutBlock } from "@/lib/dm/foe-return";
@@ -114,7 +115,7 @@ import {
   salvageXmlToolCalls,
   unknownSheetRef,
 } from "@/lib/dm/rolls";
-import { stripToolText, withoutRollMarkers, withoutServerLines } from "@/lib/dm/tool-text";
+import { ARC_MARKER, stripToolText, withoutRollMarkers, withoutServerLines } from "@/lib/dm/tool-text";
 import {
   collectExchanges,
   earlierFigures,
@@ -122,16 +123,19 @@ import {
   fightAnnounced,
   initiativeStartsFight,
   unpaidCast,
-  unrolledBlow,
+  unrolledBlowAt,
   unrolledBlowPrompt,
+  unrolledEnemyBlowPrompt,
   unrolledFigure,
   unrolledDamagePrompt,
 } from "@/lib/dm/engine-boundary";
 import { withoutAsides, type PartRead } from "@/lib/dm/claims-logic";
 import {
   createOrphanCloserFilter,
+  arcBookkeepingPrompt,
+  REPEAT_LOOKBACK,
   REPEATED_NARRATION_PROMPT,
-  repeatsNarration,
+  repeatsEarlierNarration,
   tableNarrationParts,
   withoutOrphanClosers,
 } from "@/lib/dm/narration-tidy-logic";
@@ -153,13 +157,15 @@ import { characterAwaitingPlayer, characterHeld, prepareWordFor } from "@/lib/dm
 import { hitIdOf, openHits } from "@/lib/dm/last-hit";
 import { aiPlaysSheet } from "@/lib/dm/companion-command";
 import { enemiesDue, enemiesOwedTurn, personRunsTable } from "@/lib/dm/enemies-due";
-import { noteTurnHead, settleTurnWarmup, turnHeadKey, warmNextTurn } from "@/lib/dm/turn-warmup";
+import { narratorKeepsPromptStart, noteTurnHead, scheduleNextTurnCheck, settleTurnWarmup, turnHeadKey, warmNextTurn } from "@/lib/dm/turn-warmup";
 import { directContextFor } from "@/lib/dm/direct-context";
 import { castCarded, castDeclared, castRolled, castToolHint, namedCreature, slotlessCastCall, storedCastHint, unpaidCastPrompt, type CastCreature } from "@/lib/dm/slotless-cast-logic";
 import { storerHolding } from "@/lib/srd/spell-storing";
 import type { SlotlessCast } from "@/lib/dm/narration-guard";
 import { takeBackItemCast } from "@/lib/dm/item-use";
 import { DIRECT_CALL_ID_PREFIX, directCardCalls, drawStopsCast, intentAnswered, intentCorrection, intentNeedsTool, isStoredCast, returnedCardNote, returnReason, unresolvedCards, type MessageIntent, type PlayedCard, type TurnCall } from "@/lib/dm/intent-logic";
+import { cardStillDue } from "@/lib/dm/direct-card-logic";
+import { cardMoment } from "@/lib/dm/intent-check";
 import type { SpellMech } from "@/lib/srd/spell-mech-types";
 import { handleCompleteBeat } from "@/lib/dm/arc";
 import { markActiveBeat, settleEarlyTicks, tickWaypointsFromCalls } from "@/lib/dm/waypoint-tick";
@@ -219,7 +225,7 @@ import { takeDirectorArm } from "@/lib/db/director-arms";
 import { listPins } from "@/lib/db/pins";
 import { isStageEnabled } from "@/lib/dm/stages";
 import { renderVariantRules } from "@/lib/dm/rules-logic";
-import { storyContextTokens } from "@/lib/model-client";
+import { storyContextTokens, storyEndpointUnreachable, storyWindowAssumed } from "@/lib/model-client";
 import { restoreMentionedNpcs } from "@/lib/dm/npc-archive";
 import { handleRecallStory } from "@/lib/dm/recall";
 import { handleSearchLore, searchLoreTool } from "@/lib/dm/lore-search";
@@ -227,7 +233,7 @@ import { handleReadCard, readCardTool } from "@/lib/dm/prep-card-tool";
 import { countPrepCards } from "@/lib/db/prep-cards";
 import { handleWriteCampaignNote, writeCampaignNoteTool } from "@/lib/dm/note-tools";
 import { buildTurnRetrieval, probeStoryWindow } from "@/lib/dm/context-retrieval";
-import { estimateTokens, promptWindowTokens, type ContextTrace } from "@/lib/dm/context-budget";
+import { compactionEvicted, estimateTokens, promptWindowTokens, type ContextTrace } from "@/lib/dm/context-budget";
 import { maybeProposeItemChange, offerLinesForPrompt } from "@/lib/dm/proposal-intercept";
 import { maybeCloseChapter } from "@/lib/dm/chapter-close";
 import {
@@ -491,7 +497,13 @@ export function buildEncounterState(campaignId: string, sheets: CharacterSheet[]
     // Named while they stay away, so the GM can still bring them in: nothing
     // else in the state says they exist once the order has closed.
     ...(encounter.awayIds.length ? { away: sheets.filter((sheet) => encounter.awayIds.includes(sheet.id)).map((sheet) => sheet.name) } : {}),
-    turnBudget: encounter.turnBudget ? describeBudget(encounter.turnBudget) : null,
+    // A reaction is spent in reactionsUsed (turn-budget.ts markReactionUsed),
+    // never on the budget's own flag: read from the budget alone, a hero who
+    // took Shield on their own turn was told to the model as still holding
+    // their reaction.
+    turnBudget: encounter.turnBudget
+      ? describeBudget({ ...encounter.turnBudget, reactionUsed: encounter.turnBudget.reactionUsed || encounter.reactionsUsed.includes(encounter.turnBudget.ownerId) })
+      : null,
     // The printed lair options lair_action takes by number: a block's own
     // list never reaches its traits whole.
     ...(lair.length ? { lairOptions: lair.map((line, at) => `${at + 1}. ${line}`) } : {}),
@@ -505,8 +517,10 @@ export function buildEncounterState(campaignId: string, sheets: CharacterSheet[]
             before: encounter.order[encounter.turnIndex].name,
             enemies: due.map((enemy) => ({ enemyId: enemy.id, name: enemy.displayName })),
             // Enemies before the end of the order act in this round, which
-            // turns over once they have (issue 713).
+            // turns over once they have (issue 713): they close it, and the
+            // one they come before opens the next (issue 931).
             round: encounter.round + (encounter.legendary.rest?.wrap ? 1 : 0),
+            ...(encounter.legendary.rest?.wrap ? { endsRound: encounter.round } : {}),
           },
         }
       : {}),
@@ -633,7 +647,7 @@ function buildMapText(encounterId: string, sheets: CharacterSheet[]): string | n
     }
   }
   // The drawn board, so the model sees the doors, with the shut ones named.
-  return serializeMapForPrompt({ ...map, terrain: map.drawnTerrain }, listTokens(map.id), statuses);
+  return serializeMapForPrompt({ ...map, terrain: map.drawnTerrain }, listTokens(map.id), statuses, tokenFootprint);
 }
 
 function loadContext(campaign: Campaign): TurnContext {
@@ -648,7 +662,17 @@ function loadContext(campaign: Campaign): TurnContext {
   };
 }
 
-export async function startDmTurn(campaignId: string) {
+// What a turn started over by Retry carries from the prompt it replaces
+// (src/lib/dm/retry-turn.ts): the director's one-turn steer, which that
+// prompt already took, so it is neither lost nor taken twice.
+export type CarriedTurn = { directorBlock?: string };
+
+// The halt for a narrator that is not up yet (issue #925): the turn waits
+// for it rather than packing its prompt against a window nobody reported.
+export const NARRATOR_NOT_ANSWERING =
+  "the narrator's server is not answering yet (it may still be loading). Press Retry once it is up.";
+
+export async function startDmTurn(campaignId: string, carried: CarriedTurn = {}) {
   const campaign = getCampaignById(campaignId);
   if (!campaign || campaign.status !== "active") {
     // A turn asked of a table that is not playing (back in the lobby, ended)
@@ -688,7 +712,7 @@ export async function startDmTurn(campaignId: string) {
   setJobStage("setting_scene");
   let opened: { context: TurnContext; turn: DmTurn } | null;
   try {
-    opened = await openTurn(campaign, history, pendingWhispers, opening);
+    opened = await openTurn(campaign, history, pendingWhispers, opening, carried);
   } catch (error) {
     haltOpeningTurn(campaignId, opening, error);
     return;
@@ -711,8 +735,25 @@ async function openTurn(
   history: CampaignMessage[],
   pendingWhispers: ReturnType<typeof listPendingPlayerWhispers>,
   opening: OpeningTurn,
+  carried: CarriedTurn = {},
 ): Promise<{ context: TurnContext; turn: DmTurn } | null> {
   const campaignId = campaign.id;
+  // The window decides the tool profile and every budget below, so the
+  // endpoint is asked for it first: the first turn after a restart (or with
+  // retrieval switched off) planned against the assumed default otherwise.
+  // Asked before anything of the turn is spent (a companion's leaving, the
+  // initiative stragglers), since a narrator that is not up stops it here.
+  await probeStoryWindow(campaign.settings);
+  // Issue #925: the app's own llama-server was still starting, the prompt
+  // was packed against the 16K stand-in on a 64K server, and the GM told a
+  // scene an hour old. Nothing listening and no window ever reported: the
+  // turn is halted unbuilt, its notice offers Retry, and the Retry starts
+  // over from the transcript once the server is up. A server that answers
+  // without a window (not llama.cpp) still plays on the stand-in.
+  if (storyWindowAssumed(campaign.settings) && storyEndpointUnreachable(campaign.settings)) {
+    console.warn(`[dm-turn] campaign ${campaignId}: the narrator's server did not answer; the turn waits for it instead of guessing its window.`);
+    throw new DmJobStopped(NARRATOR_NOT_ANSWERING);
+  }
   // Table talk put to the DM and nothing else since it last spoke: the turn
   // is an out-of-character answer, which spends nothing a real turn would
   // (src/lib/dm/ooc-question.ts).
@@ -728,6 +769,11 @@ async function openTurn(
   // context is read, so the prompt sees the party as it now stands.
   const leavingNotes = oocOnly ? [] : settleCompanionLeaving(campaign);
   const context = loadContext(campaign);
+  // Asked before the opening rolls anyone's initiative, which may move the
+  // pointer: what the fight was when the turn began is what a card is held to.
+  if (!oocOnly) {
+    returnStaleCards(campaignId, history);
+  }
   // Combat can never wedge on missing initiative: when nothing is pending,
   // stragglers are auto-rolled before the prompt is built.
   if (!oocOnly) {
@@ -771,11 +817,8 @@ async function openTurn(
   const stages = campaign.gameSettings.stages;
   // The tool definitions ride on every call of this turn and were never
   // budgeted (issue #120), so they come off the window before any block is
-  // packed, here and in the retrieval budget.
-  // The window decides the tool profile and every budget below, so the
-  // endpoint is asked for it first: the first turn after a restart (or with
-  // retrieval switched off) planned against the assumed default otherwise.
-  await probeStoryWindow(campaign.settings);
+  // packed, here and in the retrieval budget. The window was asked for at
+  // the top of the turn.
   const toolTokens = dmTurnToolTokens(campaign);
   opening.stage = "searching_lore";
   setJobStage("searching_lore");
@@ -789,9 +832,11 @@ async function openTurn(
   // before the conversation is persisted below, which is what makes a retry
   // correct: retry-turn.ts replays that stored conversation, so the directive
   // is still in the prompt it re-runs, neither lost nor applied twice.
-  const directorArm = oocOnly ? null : takeDirectorArm(campaignId);
+  // A turn Retry started over carries the steer its first prompt took, and
+  // leaves any steer armed since for the turn after.
+  const directorArm = oocOnly || carried.directorBlock !== undefined ? null : takeDirectorArm(campaignId);
   // A Romance cue armed before romance went off is dropped (issue 501).
-  const directorBlock = buildDirectorBlock(directorArm, campaign.gameSettings);
+  const directorBlock = carried.directorBlock ?? buildDirectorBlock(directorArm, campaign.gameSettings);
   if (directorArm) {
     // Clear the armed badge for every client now that the steer is spent.
     publishPersisted(campaignId, "director_armed", {
@@ -1066,8 +1111,11 @@ async function openTurn(
   // buildDmMessages fills this in on the state object it was handed, so the
   // trace is carried onto the turn row rather than recomputed. What the turn
   // changed for the model rides with it, for the Context panel.
+  // The window rides too, so Retry can tell a prompt packed against a guess
+  // (retry-turn-logic.ts promptOutgrown) and compaction never trusts one.
+  const window = { tokens: storyContextTokens(campaign.settings), assumed: storyWindowAssumed(campaign.settings) };
   turn.contextTrace = promptState.contextTrace
-    ? { ...promptState.contextTrace, profile: profileTrace, ...(prefix ? { prefix } : {}), ...(tuning.notes.length ? { tuning: tuning.notes } : {}) }
+    ? { ...promptState.contextTrace, window, profile: profileTrace, ...(prefix ? { prefix } : {}), ...(tuning.notes.length ? { tuning: tuning.notes } : {}) }
     : null;
   // Remember which player whispers this turn's prompt carries; finalize()
   // marks them answered only when the turn succeeds.
@@ -1958,14 +2006,16 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
   // first step, with no model call to choose the tool (directCards), on a
   // turn that has run nothing yet.
   const direct = turn.callIndex > 0 || calledToolNames(turn.conversation).length ? [] : directCards(context);
-  // The last turn's narration said again with no tool is sent back once.
+  // A recent turn's narration said again with no tool is sent back once.
+  // Held against the GM's newest passages, not the last alone: a copy of one
+  // four replies back read as the story jumping backwards (issue 942).
   let repeatNudged = false;
-  let lastNarration: string | null = null;
-  const previousNarration = () =>
-    (lastNarration ??=
-      listRecentMessages(campaignId, 12)
-        .filter((message) => message.authorType === "dm")
-        .at(-1)?.content ?? "");
+  let earlier: string[] | null = null;
+  const earlierNarrations = () => (earlier ??= recentGmNarrations(campaignId));
+  // Whether the last call's prose, the only narration it could give, was an
+  // earlier passage again: nothing of it is kept, and the narration is asked
+  // for once more (narrateAfterToolLeak).
+  let finalRepeated = false;
   // Whether an empty reply was already asked again, and whether the call
   // that ended the loop came back empty (see narrateAfterToolLeak).
   let emptyRetried = false;
@@ -1973,6 +2023,9 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
   // One shot at a reply that was only the model's plan, not narration (the
   // reader's aside claims: src/lib/dm/claims-logic.ts).
   let planNudged = false;
+  // One shot at a reply that wrote the story arc's bookkeeping instead of
+  // making the calls it stands for (arcBookkeepingPrompt, issue 941).
+  let arcNudged = false;
   // What the current call streamed to the draft, and how many narration
   // parts the turn held before it. Settled once the call's text is kept or
   // withheld for good: before the next call (a correction sends the model
@@ -2244,8 +2297,14 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     const planOnly = Boolean(prose) && !narration;
     const planBesideCalls = planOnly && toolCalls.length > 0 && !finalCall;
     // On the last call the tools never run (toolChoice "none"; a leaked call
-    // is dropped), so its prose is the only narration there will be.
-    if (narration && (!calledOutcomeTool || finalCall)) {
+    // is dropped), so its prose is the only narration there will be, unless
+    // it is an earlier passage said again (issue 942): that is asked for
+    // anew below rather than posted as this turn's story.
+    const finalRepeat = finalCall && Boolean(narration) && repeatsEarlierNarration(narration, earlierNarrations());
+    if (finalRepeat) {
+      finalRepeated = true;
+    }
+    if (narration && !finalRepeat && (!calledOutcomeTool || finalCall)) {
       turn.narrationParts.push(narration);
       if (read) {
         partReads.set(narration, read);
@@ -2566,12 +2625,26 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
         !toolCalls.length &&
         narration &&
         turn.narrationParts[turn.narrationParts.length - 1] === narration &&
-        repeatsNarration(narration, previousNarration())
+        repeatsEarlierNarration(narration, earlierNarrations())
       ) {
         repeatNudged = true;
         turn.narrationParts.pop();
         turn.conversation.push({ role: "assistant", content: visibleText || "", ...carried });
         turn.conversation.push({ role: "user", content: REPEATED_NARRATION_PROMPT });
+        saveDmTurn(turn);
+        continue;
+      }
+      // A reply that ticked a waypoint or closed the beat in words ("[waypoint=3]",
+      // "The [NOW] beat is complete.") made none of the calls those stand
+      // for: the journal it handed over never reached the sheet and the step
+      // stayed open (issue 941). The markers were cut from the narration;
+      // the reply is held back and the model sent once to make the calls and
+      // narrate the moment.
+      if (!finalCall && !arcNudged && !toolCalls.length && narration && turn.narrationParts[turn.narrationParts.length - 1] === narration && ARC_MARKER.test(prose)) {
+        arcNudged = true;
+        turn.narrationParts.pop();
+        turn.conversation.push({ role: "assistant", content: visibleText || "", ...carried });
+        turn.conversation.push({ role: "user", content: arcBookkeepingPrompt(prose) });
         saveDmTurn(turn);
         continue;
       }
@@ -2626,7 +2699,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       // the model is sent to the tool for the attack the player declared.
       const blow =
         !finalCall && !attackNudged && read && narration && turn.narrationParts[turn.narrationParts.length - 1] === narration
-          ? unrolledBlow(claims, read.outcomes)
+          ? unrolledBlowAt(claims, read.outcomes)
           : null;
       if (blow) {
         attackNudged = true;
@@ -2638,7 +2711,10 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
           tool_calls: echoedToolCalls,
         });
         answerRanAbove(fightOwnsFloor(campaignId), false);
-        turn.conversation.push({ role: "user", content: unrolledBlowPrompt(blow) });
+        // A blow on one of the party is an enemy's: its tool is
+        // enemy_attack, which the hand-off end_turn made lets through
+        // (enemy-turn-order.ts), not the player's attack (issue 931).
+        turn.conversation.push({ role: "user", content: blow.onParty ? unrolledEnemyBlowPrompt(blow.quote) : unrolledBlowPrompt(blow.quote) });
         saveDmTurn(turn);
         continue;
       }
@@ -2874,9 +2950,9 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
   if (
     !failed &&
     !turn.narrationParts.length &&
-    (finalCallLeaked || (lastReplyEmpty && !turn.playerWhisperIds.length))
+    (finalCallLeaked || finalRepeated || (lastReplyEmpty && !turn.playerWhisperIds.length))
   ) {
-    failed = await narrateAfterToolLeak(context, turn);
+    failed = await narrateAfterToolLeak(context, turn, finalRepeated);
   }
   // A card no call carried out, the correction included, did not happen: it
   // goes back to its player, and the guard keeps the story from telling it
@@ -2941,7 +3017,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     setJobStage("closing_chapter");
     await maybeCloseChapter(campaignId, { beatCompleted, beatGated, beatClaimed });
     if (isStageEnabled(context.campaign.gameSettings.stages, "compaction")) {
-      compactHistoryInBackground(campaignId, undefined, Date.now(), { evicted: turn.contextTrace?.historyEvicted ?? 0 });
+      compactHistoryInBackground(campaignId, undefined, Date.now(), { evicted: compactionEvicted(turn.contextTrace) });
     }
     // The world-simulation heartbeat: pure dice, sparks land in the NEXT
     // turn's prompt, so background clocks never trigger model calls. A turn
@@ -3258,7 +3334,7 @@ function playedCard(context: TurnContext, message: CampaignMessage & { intent: M
 // plays it again nor chases it.
 function cardsPlayed(context: TurnContext): PlayedCard[] {
   return playerLinesSinceDm(context.campaign.id).flatMap((message) =>
-    message.intent && !message.cardResolvedAt && intentNeedsTool(message.intent) ? [playedCard(context, { ...message, intent: message.intent })] : [],
+    message.intent && !message.cardResolvedAt && !message.cardReturned && intentNeedsTool(message.intent) ? [playedCard(context, { ...message, intent: message.intent })] : [],
   );
 }
 
@@ -3288,7 +3364,7 @@ function cardsToSettle(context: TurnContext, turn: DmTurn): PlayedCard[] {
   const direct = directlyPlayed(turn.conversation);
   const began = Date.parse(turn.createdAt);
   return playerLinesSinceDm(context.campaign.id).flatMap((message) => {
-    if (!message.intent || message.cardResolvedAt || Date.parse(message.createdAt) > began) {
+    if (!message.intent || message.cardResolvedAt || message.cardReturned || Date.parse(message.createdAt) > began) {
       return [];
     }
     return intentNeedsTool(message.intent) || direct.has(cardCallKey(message.id)) ? [playedCard(context, { ...message, intent: message.intent })] : [];
@@ -3377,12 +3453,36 @@ type DirectCard = { messageId: string; index: number; name: string; args: Record
 function directCards(context: TurnContext): DirectCard[] {
   const authors = spellAuthorsFor(context.campaign);
   return playerLinesSinceDm(context.campaign.id).flatMap((message) => {
-    if (!message.intent || !message.characterId || message.cardResolvedAt) {
+    if (!message.intent || !message.characterId || message.cardResolvedAt || message.cardReturned) {
       return [];
     }
     const calls = directCardCalls(message.intent, message.characterId, directContextFor(context.campaign.id, message.intent, authors, message.characterId));
     return (calls ?? []).map((call, index) => ({ messageId: message.id, index, ...call }));
   });
+}
+
+// The cards a stopped turn left behind that the fight has since moved past
+// (issue 931): read as the player lines since the GM last spoke, a round-1
+// off-hand card was rolled in round 2 after the lead skipped its turn. They go
+// back to their players before the turn reads them, on the line the table
+// sees and in the history the prompt is built from, so nothing plays them.
+const STALE_CARD_REASON = "The fight moved on before the GM answered it, so it was not played and nothing was spent. Play it again if it still fits.";
+function returnStaleCards(campaignId: string, history: CampaignMessage[]): void {
+  const now = cardMoment(campaignId);
+  for (const message of playerLinesSinceDm(campaignId)) {
+    if (!message.intent || message.cardResolvedAt || message.cardReturned || cardStillDue(message.intent, now)) {
+      continue;
+    }
+    const updated = markCardReturned(message.id, STALE_CARD_REASON);
+    if (!updated) {
+      continue;
+    }
+    publishPersisted(campaignId, "message_updated", { message: updated });
+    const at = history.findIndex((entry) => entry.id === message.id);
+    if (at >= 0) {
+      history[at] = updated;
+    }
+  }
 }
 
 // The reply the turn loop reads for the direct cards, shaped as the model's
@@ -3478,6 +3578,23 @@ async function answerOutOfCharacter(
 // call answers a turn whose last reply came back empty after its one retry.
 const TOOLS_CLOSED_PROMPT =
   "[System] Tools are closed for this turn: nothing you call now will run. Narrate the moment to the table in prose, from what has already resolved, and do not describe the outcome of anything that did not. If you need something from a player, ask it in the narration.";
+// Added when the reply this call stands in for was an earlier passage said
+// again (issue 942): told so, the model narrates the new moment.
+const TOOLS_CLOSED_REPEAT_NOTE =
+  " Your last reply repeated one of your earlier narrations word for word: this is a new moment, so tell only what is new since the player's latest action, and never repeat an earlier passage.";
+// What the table reads when the rescue too was an earlier passage: the turn
+// stops with nothing posted and can be retried, rather than telling the
+// table a scene it already played (issue 942).
+const REPEATED_RESCUE_FAILURE = "The Game Master repeated an earlier passage instead of narrating this turn, so it was stopped. Retry the turn.";
+
+// The GM's newest passages, oldest first, that a reply is held against
+// (narration-tidy-logic.ts repeatsEarlierNarration).
+function recentGmNarrations(campaignId: string): string[] {
+  return listRecentMessages(campaignId, REPEAT_LOOKBACK * 4)
+    .filter((message) => message.authorType === "dm")
+    .slice(-REPEAT_LOOKBACK)
+    .map((message) => message.content);
+}
 
 // Sent once a turn when a reply was only a plan. It was streamed, so it
 // does not claim the players never saw it, and it leaves the table's tone
@@ -3491,7 +3608,7 @@ function planCorrection(toolsClosed: boolean): string {
   }, ending on what they decide next. Never describe your own next steps to the table.`;
 }
 
-async function narrateAfterToolLeak(context: TurnContext, turn: DmTurn) {
+async function narrateAfterToolLeak(context: TurnContext, turn: DmTurn, repeated = false) {
   const { campaign, sheets } = context;
   const campaignId = campaign.id;
   const filter = createStreamingArtifactFilter();
@@ -3504,7 +3621,7 @@ async function narrateAfterToolLeak(context: TurnContext, turn: DmTurn) {
     publishEphemeral(campaignId, "dm_delta", { text });
   });
   const ask = (tools: unknown[]) =>
-    requestDmMessage(campaign.settings, [...turn.conversation, { role: "user", content: TOOLS_CLOSED_PROMPT }], {
+    requestDmMessage(campaign.settings, [...turn.conversation, { role: "user", content: `${TOOLS_CLOSED_PROMPT}${repeated ? TOOLS_CLOSED_REPEAT_NOTE : ""}` }], {
       tools,
       toolChoice: "none",
       harness: { campaignId, turn: true },
@@ -3544,12 +3661,24 @@ async function narrateAfterToolLeak(context: TurnContext, turn: DmTurn) {
   // Read for the narrator's asides like the final call: a reply that was
   // only a plan keeps nothing, and finalize writes the empty-turn line
   // rather than the plan. There is no second rescue.
-  const narration = prose ? withoutOrphanClosers(withoutAsides(prose, await readAsides(campaign, sheets, turn, prose), campaign.gameSettings.tableLanguage)) : "";
+  const read = prose ? withoutOrphanClosers(withoutAsides(prose, await readAsides(campaign, sheets, turn, prose), campaign.gameSettings.tableLanguage)) : "";
+  // An earlier passage said again is no narration of this turn (issue 942).
+  const again = Boolean(read) && repeatsEarlierNarration(read, recentGmNarrations(campaignId));
+  const narration = again ? "" : read;
   if (narration) {
     turn.narrationParts.push(narration);
   }
   saveDmTurn(turn);
   resetDraftIfWithheld(campaignId, turn, shown, shownFrom);
+  // A copy of an earlier passage is asked for once more, told so; a second
+  // copy stops the turn for a retry.
+  if (again && !repeated) {
+    return narrateAfterToolLeak(context, turn, true);
+  }
+  if (again) {
+    console.warn(`[dm-turn] the tools-closed narration repeated one of the last ${REPEAT_LOOKBACK} GM passages; the turn stops for a retry.`);
+    return REPEATED_RESCUE_FAILURE;
+  }
   // Other rescue errors retain the existing empty-turn fallback. A stopped
   // repetition is different: the model produced a harmful partial stream,
   // so finalize must leave this turn failed and available for retry. (A
@@ -3795,6 +3924,9 @@ export function handleLocationCall(
   // where a new place lands on the region map.
   const madeIds: string[] = [];
   let setOutFrom: string | null = null;
+  // The sound of the place the party walked out of, so it does not follow
+  // them to a place with no kind of its own (#929).
+  let leftBed: string | null = null;
   let split = "";
   if (toolName === "move_party") {
     const name = typeof args.name === "string" ? args.name.trim() : "";
@@ -3814,6 +3946,7 @@ export function handleLocationCall(
     }
     setOutFrom = previous?.id ?? null;
     movedToNewLocation = !previous || previous.id !== location.id;
+    leftBed = movedToNewLocation ? previous?.ambience?.bed || null : null;
     returnedTo =
       movedToNewLocation &&
       onRecord?.id === location.id &&
@@ -3894,7 +4027,7 @@ export function handleLocationCall(
   // the sound controls still gets a cave that sounds like one; a held layer
   // and a table with scene following switched off are both left alone
   // inside the helper.
-  followSceneAmbience(campaign, location.ambience?.bed || null);
+  followSceneAmbience(campaign, location.ambience?.bed || null, leftBed);
 
   // Render when the area has no map yet, or when an update materially
   // changed the recorded layout.
@@ -4185,8 +4318,14 @@ function finalize(context: TurnContext, turn: DmTurn, failed: string, spoken: re
   toolsSentByTurn.delete(turn.id);
   // A fight begun or ended, or a companion who joined, changes the next
   // turn's first message: the narrator reads it now, while the table reads.
+  warmNextTurnFor(campaignId);
+}
+
+// The next turn's first call as the table stands now, sent ahead when the
+// narrator does not hold it (src/lib/dm/turn-warmup.ts).
+function warmNextTurnFor(campaignId: string) {
   const after = getCampaignById(campaignId);
-  if (after) {
+  if (after && narratorKeepsPromptStart(after.settings)) {
     const tuning = dmTurnTuning(after);
     warmNextTurn(campaignId, {
       tools: dmTurnTools(after, Boolean(getActiveEncounter(campaignId)), after.settings.imageGenerationEnabled && after.settings.autoImages, tuning.leanTools),
@@ -4195,3 +4334,13 @@ function finalize(context: TurnContext, turn: DmTurn, failed: string, spoken: re
     });
   }
 }
+
+// Between turns too (scheduleNextTurnCheck, issue 942). A turn running or
+// parked on dice is left alone: its first message is already sent, and its
+// end checks again.
+globalThis.__odmTurnHeadHook = (campaignId: string) =>
+  scheduleNextTurnCheck(campaignId, () => {
+    if (getDmStatus(campaignId) === "idle") {
+      warmNextTurnFor(campaignId);
+    }
+  });

@@ -23,6 +23,8 @@ import {
   MAX_GUIDANCE_LENGTH,
   MAX_VARIANTS,
   RENARRATE_DIRECTIVE,
+  TOLD_WITHOUT_HISTORY,
+  toldWithoutHistory,
 } from "../src/lib/dm/renarrate-logic.ts";
 
 let passed = 0;
@@ -33,6 +35,21 @@ function test(name, fn) {
 
 const ROLL_A = "11111111-1111-4111-8111-111111111111";
 const ROLL_B = "22222222-2222-4222-8222-222222222222";
+
+// Issue #925: a reroll replays the stored prompt, so a turn told against a
+// guessed window that left the scene out would miss it on every take.
+test("a turn told without its history on a guessed window is refused a reroll, and only that turn", () => {
+  const starved = { window: { tokens: 16_384, assumed: true }, historyEvicted: 62 };
+  const known = { tokens: 65_536, assumed: false };
+  assert.equal(toldWithoutHistory(starved, known), true);
+  assert.equal(toldWithoutHistory({ ...starved, historyEvicted: 0 }, known), false, "nothing was left out");
+  assert.equal(toldWithoutHistory(starved, { tokens: 16_384, assumed: true }), false, "still a guess");
+  assert.equal(toldWithoutHistory(starved, { tokens: 16_384, assumed: false }), false, "the guess was right");
+  assert.equal(toldWithoutHistory({ ...starved, window: { tokens: 16_384, assumed: false } }, known), false, "a known window's cut is the window's");
+  assert.equal(toldWithoutHistory({ historyEvicted: 62 }, known), false, "a turn from before the window was kept");
+  assert.equal(toldWithoutHistory(null, known), false);
+  assert.match(TOLD_WITHOUT_HISTORY, /Revert this turn/);
+});
 
 test("guidance is collapsed, trimmed, and clamped", () => {
   assert.equal(clampGuidance("  darker\n  and\tcolder  "), "darker and colder");

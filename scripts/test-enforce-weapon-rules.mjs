@@ -297,6 +297,24 @@ await test("Half the ammunition spent in a battle is recovered afterwards, howev
   assert.equal(quiver?.name, "Arrows (18)", `four shots from "Arrows (20)" left "${quiver?.name}" after the fight`);
 });
 
+await test("A party that flees the battle searches no battlefield: the arrows it loosed stay where they fell (SRD 5.1, Ammunition).", async () => {
+  // "At the end of the battle, you can recover half your expended
+  // ammunition by taking a minute to search the battlefield." Half came back
+  // whoever held the field, a rout included.
+  await range.arena({ first: holder.id });
+  range.stand(archer.id, 4);
+  carry([{ name: "Longbow", qty: 1 }, { name: "Arrows (20)", qty: 1 }]);
+  for (let shot = 0; shot < 4; shot += 1) {
+    await range.swing(archer.id, { weapon: "Longbow" }, 2);
+  }
+  counted.clearDice();
+  const fled = await counted.invoke("end_encounter", { outcome: "party_fled" });
+  assert.equal(fled.ok, true, fled.error);
+  assert.equal(fled.result.ammoRecovered, undefined, JSON.stringify(fled.result.ammoRecovered));
+  const quiver = counted.sheet(archer.id).equipment.find((item) => item.name.startsWith("Arrows"));
+  assert.equal(quiver?.name, "Arrows (16)", `four shots and a rout left "${quiver?.name}"`);
+});
+
 await test("A quiver spent to its last arrow comes back as the line it was, its row with it, at every table; nothing else on the sheet is refilled.", async () => {
   for (const name of ["Frecce", "Flèches", "Flechas", "Pfeile", "Quiver arrows"]) {
     await range.arena({ first: holder.id });

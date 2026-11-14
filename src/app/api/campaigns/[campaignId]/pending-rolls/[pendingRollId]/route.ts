@@ -15,6 +15,7 @@ import { afterRollDeadline, armAfterRollKeep } from "@/lib/dm/after-roll-timer";
 import { throwDamage } from "@/lib/dm/attack-blow";
 import type { DamageAsk } from "@/lib/dm/attack-record";
 import { landedBody, landPendingRoll } from "@/lib/dm/pending-roll-land";
+import { answerOpportunityAsk } from "@/lib/dm/opportunity-ask-timer";
 import { publishPersisted } from "@/lib/events";
 
 export const runtime = "nodejs";
@@ -83,6 +84,14 @@ export async function POST(
   const canForceFallback = steersStory(context);
   if (isFallback ? !isRoller && !canForceFallback : !isRoller) {
     return Response.json({ error: "This is not your roll." }, { status: 403 });
+  }
+
+  // The ask before an opportunity attack holds no dice. A screen that knows
+  // nothing of it draws it as a roll, and whatever it sends is a Strike, the
+  // swing the clock would take (opportunity-ask-timer.ts).
+  if (pending.parkedFor === "opportunity") {
+    const struck = await answerOpportunityAsk(context.campaign, pending, { strike: true });
+    return struck ? Response.json(landedBody(struck)) : Response.json({ error: "That roll was already resolved." }, { status: 409 });
   }
 
   // The dice are already thrown and wait on the player's choice. A card from

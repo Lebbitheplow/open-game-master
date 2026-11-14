@@ -9,11 +9,11 @@
 //   - The reroll of the last failed save (Fanatical Focus, as Indomitable
 //     does): a success lifts what that failure laid on them.
 
+import { classSaveDc } from "@/lib/dm/command-undead";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { getActiveEncounter, getEnemy, patchEnemyConditions, patchEnemyHp } from "@/lib/db/encounters";
 import { listRecentRolls } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
-import { computeSheetDerived } from "@/lib/srd";
 import { swarmKnocksProne } from "@/lib/srd/authored-effects-more";
 import { resolveFormula } from "@/lib/srd/authored-effects";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
@@ -71,8 +71,9 @@ export function swarmPush(ctx: SpendContext, does: Extract<SpendDoes, { kind: "s
     return { error: `${ctx.sheet.name}'s swarm already dealt its damage to ${other?.displayName ?? "another creature"} this turn, and it acts once a turn. Nothing was spent.`, refused: "rules" };
   }
   const refund = swarmDieBack(ctx, enemy);
-  const derived = computeSheetDerived(ctx.sheet);
-  const dc = derived.spellSaveDc ?? 8 + derived.proficiencyBonus + derived.abilityMods.wis;
+  // The class's own spell save DC (command-undead.ts classSaveDc): a
+  // multiclass sheet's first casting ability is another class's.
+  const dc = classSaveDc(ctx.sheet, "wis");
   const save = rollEnemySave(ctx.campaign.id, enemy, "str", dc, {
     magical: true,
     record: { turn: ctx.turn ?? undefined, detail: `${enemy.displayName}: STR save against ${ctx.spend.name}` },

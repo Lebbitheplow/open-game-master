@@ -575,7 +575,10 @@ await test("A reaction typed by the hero up next, hit in the enemies' pass, is m
   assert.equal(typed.status, 202, JSON.stringify(typed.body));
   const [line] = listRecentMessages(world.campaignId, 1);
   assert.equal(line.characterId, poppy.id);
-  assert.deepEqual(line.intent, { card: "reaction" }, "marked as a reaction, as a card is");
+  // Stamped with where the fight stood, as every card is (issue 931).
+  const { declared, ...marked } = line.intent;
+  assert.deepEqual(marked, { card: "reaction" }, "marked as a reaction, as a card is");
+  assert.equal(declared?.encounterId, encounter.id, "stamped with the fight it was typed in");
   assert.equal(declaredThisTurn(world.campaignId, poppy.id), false, "a reaction is no word on her turn");
   assert.equal(characterAwaitingPlayer(world.campaignId)?.id, poppy.id, "the AI still waits on Poppy's player for her turn");
   // The narrator reads it as her words to answer with use_reaction; nothing

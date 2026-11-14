@@ -25,6 +25,10 @@ const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
 const { listRecentAudit } = await import("../src/lib/db/sheet-audit.ts");
 const { revertAuditEntry } = await import("../src/lib/sheet-undo.ts");
 const { longRestPatch } = await import("../src/lib/dm/rest-logic.ts");
+const { foretoldWords } = await import("../src/lib/dm/foretold-logic.ts");
+const { describeSheet } = await import("../src/lib/dm/prompt.ts");
+const { listAllMessages } = await import("../src/lib/db/messages.ts");
+const { advanceClock } = await import("../src/lib/db/clock.ts");
 
 const world = await openWorld({ campaign: { maxPlayers: 20 } });
 const who = await seats(world);
@@ -84,6 +88,35 @@ await test("The take_rest tool stores them on the sheet.", async () => {
   wizard({ foretold: [] });
   await world.invoke("take_rest", { kind: "long" });
   assert.equal(world.sheet(who.sheet.id).foretold.length, 2);
+});
+
+// A player who asked the storyteller for new numbers after a rest got some
+// made up in prose, and the roll card then offered last night's: the rest
+// never said its numbers, and GAME STATE never showed them.
+await test("The rest says the new numbers to the table and the storyteller, and GAME STATE shows the ones held.", async () => {
+  wizard({ foretold: [] });
+  advanceClock(world.campaignId, 25, "hours");
+  const out = await world.invoke("take_rest", { kind: "long" });
+  const numbers = world.sheet(who.sheet.id).foretold;
+  const said = `${world.sheet(who.sheet.id).name}'s Portent foretells ${foretoldWords(numbers)}`;
+  assert.deepEqual(out.result.portents, [said], JSON.stringify(out));
+  const line = listAllMessages(world.campaignId).filter((message) => message.glyph === "rest-long").at(-1);
+  assert.ok(line?.content.includes(said), line?.content);
+  const state = describeSheet(world.sheet(who.sheet.id), "player", false);
+  assert.match(state, new RegExp(`Portent: foretold ${foretoldWords(numbers)}, rolled at their last long rest`));
+  assert.match(state, /Only a long rest \(take_rest\) rolls new ones; never invent them/);
+  wizard({ resources: { sub_portent: { max: 2, used: 2 } }, foretold: [] });
+  assert.match(describeSheet(world.sheet(who.sheet.id), "player", false), /Portent: no foretold numbers left/);
+  wizard({ resources: {}, foretold: [] });
+  assert.doesNotMatch(describeSheet(world.sheet(who.sheet.id), "player", false), /Portent:/);
+});
+
+await test("A long rest within 24 hours of the last one keeps the old numbers and says none.", async () => {
+  wizard();
+  const out = await world.invoke("take_rest", { kind: "long" });
+  assert.deepEqual(world.sheet(who.sheet.id).foretold, [17, 3]);
+  assert.equal(out.result.portents, undefined);
+  assert.match(out.result.unaffected ?? "", /less than 24 hours ago/);
 });
 
 await test("A check waits unthrown while a number is held, and a number replaces the d20 and keeps the modifier.", async () => {
@@ -305,6 +338,14 @@ const toggle = (on, user = seerUser) => {
 const arm = (patch = {}) => {
   fightWorld.patch(seer.id, { currentHp: 30, maxHp: 30, conditions: [], resources: { sub_portent: { max: 2, used: 0 } }, foretold: [17, 3], ...patch });
   fightWorld.patch(target.id, { currentHp: 60, maxHp: 60, ac: 16 });
+};
+// Where the two goblins stood when the fight was set: the area tests aim at
+// these squares, and an earlier test's enemy turn may have walked one off
+// them (a walk-up attack moves the attacker), which left the storm on empty
+// ground with nothing to stop for.
+const standGoblins = () => {
+  kit.place(goblin.id, 6, 5);
+  kit.place(goblin2.id, 5, 6);
 };
 const hitRolls = () => listRecentRolls(fightWorld.campaignId, 100).filter((roll) => roll.kind === "attack");
 
@@ -839,6 +880,12 @@ await test("Magic Missile's darts, and a spell at a creature already down, hold 
   const order = fightWorld.encounter();
   saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === target.id), turnBudget: null });
   const hp = [goblin, goblin2].map((enemy) => fightWorld.enemies().find((entry) => entry.id === enemy.id).currentHp);
+  const maxHp = [goblin, goblin2].map((enemy) => fightWorld.enemies().find((entry) => entry.id === enemy.id).maxHp);
+  // The darts land for real, and a goblin the earlier tests left on a few
+  // hit points would die and leave the board: marking it alive again after
+  // does not put its token back, so the area tests below found no goblin.
+  kit.setEnemy(goblin.id, { currentHp: 300, maxHp: 300 });
+  kit.setEnemy(goblin2.id, { currentHp: 300, maxHp: 300 });
   fightWorld.patch(target.id, { spellcasting: { ability: "wis", cantrips: ["Sacred Flame"], known: [], prepared: ["Magic Missile"], slots: { 1: { max: 1, used: 0 } } } });
   fightModel.script([
     reply({ calls: [modelCall("cast_at_enemy", { characterId: target.id, targets: [{ targetEnemyId: goblin.id, darts: 2 }, { targetEnemyId: goblin2.id, darts: 1 }], spell: "Magic Missile", level: 1 })] }),
@@ -859,6 +906,8 @@ await test("Magic Missile's darts, and a spell at a creature already down, hold 
   } finally {
     patchEnemyHp(goblin.id, hp[0], "alive");
     patchEnemyHp(goblin2.id, hp[1], "alive");
+    kit.setEnemy(goblin.id, { currentHp: hp[0], maxHp: maxHp[0] });
+    kit.setEnemy(goblin2.id, { currentHp: hp[1], maxHp: maxHp[1] });
   }
 });
 
@@ -869,6 +918,7 @@ await test("Magic Missile's darts, and a spell at a creature already down, hold 
 await test("Grease laid on a square with nobody named stops for the save of the creature standing in it, and the number lands there.", async () => {
   await passBackstops();
   arm();
+  standGoblins();
   const order = fightWorld.encounter();
   saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === target.id), turnBudget: null });
   const kept = fightWorld.sheet(target.id).equipment;
@@ -897,10 +947,16 @@ await test("Grease laid on a square with nobody named stops for the save of the 
 await test("Ice Storm laid on a square with nobody named asks whose save, of the creatures standing in its storm.", async () => {
   await passBackstops();
   arm();
+  standGoblins();
   const order = fightWorld.encounter();
   saveEncounter({ ...order, turnIndex: order.order.findIndex((entry) => entry.characterId === target.id), turnBudget: null });
   const kept = fightWorld.sheet(target.id).equipment;
   const hp = [goblin, goblin2].map((enemy) => fightWorld.enemies().find((entry) => entry.id === enemy.id).currentHp);
+  const maxHp = [goblin, goblin2].map((enemy) => fightWorld.enemies().find((entry) => entry.id === enemy.id).maxHp);
+  // The storm is let roll below, and its 2d8 + 4d6 could drop both goblins,
+  // which ends the fight and every test after it: they stand it out.
+  kit.setEnemy(goblin.id, { currentHp: 300, maxHp: 300 });
+  kit.setEnemy(goblin2.id, { currentHp: 300, maxHp: 300 });
   fightWorld.patch(target.id, { concentratingOn: null, equipment: [...kept, { name: "Component Pouch", qty: 1 }], spellcasting: { ability: "wis", cantrips: [], known: [], prepared: ["Ice Storm"], slots: { 4: { max: 1, used: 0 } } } });
   // Kara stands well clear of her own storm, as does the watcher.
   kit.place(target.id, 0, 9);
@@ -913,9 +969,8 @@ await test("Ice Storm laid on a square with nobody named asks whose save, of the
   assert.equal((await answer(stop.id, { pass: true })).status, 200);
   await settleQueue(fightWorld.campaignId);
   assert.deepEqual(fightWorld.sheet(seer.id).foretold, [17, 3], "let it roll spends nothing");
-  const { patchEnemyHp } = await import("../src/lib/db/encounters.ts");
-  patchEnemyHp(goblin.id, hp[0], "alive");
-  patchEnemyHp(goblin2.id, hp[1], "alive");
+  kit.setEnemy(goblin.id, { currentHp: hp[0], maxHp: maxHp[0] });
+  kit.setEnemy(goblin2.id, { currentHp: hp[1], maxHp: maxHp[1] });
   kit.place(target.id, 5, 5);
   fightWorld.patch(target.id, { equipment: kept });
 });

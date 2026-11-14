@@ -6,6 +6,7 @@
 // src/lib/dm/pc-attack-options.ts, spendAttack and spendAction in
 // src/lib/dm/action-budget.ts), so a refusal on a card is the sentence
 // pc_attack would give. Pure; scripts/test-hand-engine.mjs drives it.
+import { holdsDeathOrGlory } from "@/lib/dm/genre-death-or-glory";
 import { racialNaturalWeapon } from "@/lib/srd/racial-weapons";
 import { spendAttack } from "@/lib/dm/action-budget";
 import { hasOpenHandTechnique, hurlProblem, OPEN_HAND_NOT_FLURRY } from "@/lib/dm/attack-choice-rules";
@@ -143,11 +144,16 @@ export function attackOptionsFor(
       options.push({ ...option, group: "openHand", disabled: flurry ? null : OPEN_HAND_NOT_FLURRY.error });
     }
   }
-  if (holds(sheet, "reckless attack") && melee) {
+  // A road warrior's Death or Glory is the same option, on any melee attack
+  // (src/lib/dm/genre-death-or-glory.ts).
+  const glory = !holds(sheet, "reckless attack") && holdsDeathOrGlory(sheet);
+  if ((holds(sheet, "reckless attack") || glory) && melee) {
     options.push({
       id: "reckless",
-      label: "Reckless",
-      note: "Advantage on your Strength melee attacks this turn; attacks against you have advantage until your next turn.",
+      label: glory ? "Death or Glory" : "Reckless",
+      note: glory
+        ? `Advantage on your melee attacks this turn${holds(sheet, "ride eternal") ? "" : "; attacks against you have advantage until your next turn"}.`
+        : "Advantage on your Strength melee attacks this turn; attacks against you have advantage until your next turn.",
       disabled: optionRefusal(sheet, turn, profile, derived, { reckless: true }),
     });
   }
@@ -181,6 +187,8 @@ export function bonusStrikeCards(
   turn: HandTurn,
   riders: CombatRiders,
   carried: Carried[],
+  // What an ally's aura adds to the roll here (HandBoardFacts.attackAura).
+  aura?: { bonus: number; features: string[] } | null,
 ): HandCard[] {
   const derived = computeSheetDerived(sheet);
   const profs = sheet.proficiencies.weapons;
@@ -217,7 +225,7 @@ export function bonusStrikeCards(
     // action's cards read them (hand-attack-lines.ts): a raging Frenzy card
     // left the Rage bonus out.
     const line = attackDamageLine({ sheet, turn, profile, riders, kind: "weapon" });
-    const rolled = attackRollLine(sheet, profile.toHit);
+    const rolled = attackRollLine(sheet, profile.toHit, aura, profile);
     const notes = [...line.notes, ...rolled.notes];
     const card: HandCard = {
       id: `attack:${textKey(weapon)}:${bonusAttack.replace(/\s+/g, "-")}${key ? `:${key}` : ""}`,
@@ -307,7 +315,7 @@ export function bonusStrikeCards(
     own.push({ feature: "Unwavering Mark", weapon: melee ?? null, rules: "Against your marked creature that struck someone else: a melee attack with advantage and +half your fighter level damage." });
   }
   if (holds(sheet, "hungry jaws")) {
-    const bite = racialNaturalWeapon(sheet.features, "bite");
+    const bite = racialNaturalWeapon(sheet.features, "bite", sheet.feats);
     if (bite) own.push({ feature: "Hungry Jaws", weapon: { name: bite.srd.name, srd: bite.srd } as Carried, rules: "A bite as a bonus action; on a hit you gain your Constitution modifier in temporary hit points." });
   }
   if (holds(sheet, "pistol and blade")) {

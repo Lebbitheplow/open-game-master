@@ -672,5 +672,152 @@ await test("A Spiritual Weapon card laid on a square is cast there, and its stri
   assert.match(JSON.stringify(struck), /strikes from \(8,6\)/);
 });
 
+// ---- issue 931: a swing still with its player, and cards a stopped turn left ----
+
+const { call: callRoute } = await import("./lib/enforce-campaign.mjs");
+const { setFloor, setMemberRealDice, updateGameSettings } = await import("../src/lib/db/campaigns.ts");
+const { initiativeFloorFor } = await import("../src/lib/dm/encounter-tools.ts");
+// The floor on whoever holds the turn, as the pointer's move sets it.
+const floorOnTurn = () => setFloor(world.campaignId, initiativeFloorFor(world.campaignId));
+const { listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
+const { saveEncounter } = await import("../src/lib/db/encounters.ts");
+const { insertCampaignMessage } = await import("../src/lib/db/messages.ts");
+const { allocateSeq } = await import("../src/lib/db/campaigns.ts");
+const { cardStillDue } = await import("../src/lib/dm/direct-card-logic.ts");
+const { attackWaitsToolLine, attackCardWaitsLine } = await import("../src/lib/dm/open-roll-logic.ts");
+const actionsRoute = await world.route("campaigns/[campaignId]/actions");
+const pendingRoute = await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]");
+const openRolls = () => listOpenPendingRolls(world.campaignId);
+const postCard = (sheet, content, intent) => {
+  world.signIn({ id: sheet.userId });
+  return callRoute(actionsRoute, "POST", { content, characterId: sheet.id, intent }, { campaignId: world.campaignId });
+};
+const playerLines = () => listRecentMessages(world.campaignId, 40).filter((message) => message.authorType === "player");
+
+await test("The words for a swing still waiting on its player name the attack and say nothing landed and nothing was spent.", () => {
+  const roll = { characterId: "k", kind: "attack", attack: { attacker: "Jason", weapon: "Scimitar" }, thrown: null, createdAt: "" };
+  assert.equal(
+    attackWaitsToolLine("Jason", roll),
+    "Jason's Scimitar attack is still waiting on its player's dice; it has not landed. Nothing was spent. Do not call pc_attack for it again or narrate it resolved: the turn resumes once it lands, and any further attack is made after that.",
+  );
+  assert.match(attackWaitsToolLine("Jason", { ...roll, thrown: {} }), /waiting on its player's choice/);
+  assert.equal(attackCardWaitsLine(roll), "Jason's Scimitar attack is waiting on your roll. Roll it first.");
+  assert.equal(attackCardWaitsLine({ ...roll, thrown: {} }), "Jason's Scimitar attack is waiting on your choice. Change the roll or keep it first.");
+});
+
+await test("A card is still due in the fight, round and turn it was played on, and in no other; an unstamped card is due as before.", () => {
+  const at = { encounterId: "e1", round: 2, actingId: "jason" };
+  assert.equal(cardStillDue({ declared: at }, at), true, "a retry of the same turn");
+  assert.equal(cardStillDue({}, { encounterId: "e1", round: 3, actingId: "guard" }), true, "an older row");
+  assert.equal(cardStillDue({ declared: at }, { ...at, round: 3 }), false, "a later round");
+  assert.equal(cardStillDue({ declared: at }, { ...at, actingId: "guard" }), false, "a skipped turn");
+  assert.equal(cardStillDue({ declared: at }, { encounterId: null, round: 0, actingId: null }), false, "the fight is over");
+  assert.equal(cardStillDue({ declared: { encounterId: null, round: 0, actingId: null } }, { encounterId: null, round: 0, actingId: null }), true, "between fights");
+  assert.equal(cardStillDue({ declared: { encounterId: null, round: 0, actingId: null } }, at), false, "played before the fight it would land in");
+});
+
+await test("An attack card played while the turn's swing waits on its player's dice is answered 409 before anything is posted, and pc_attack is told the roll waits, with nothing spent.", async () => {
+  const enemy = await stage();
+  floorOnTurn();
+  updateGameSettings(world.campaignId, { dicePolicy: "real_allowed" });
+  setMemberRealDice(world.campaignId, kara.userId, true);
+  try {
+    const parked = await world.invoke("pc_attack", { characterId: kara.id, targetEnemyId: enemy.id, weapon: "Longsword" });
+    assert.equal(parked.ok, true, parked.error);
+    const [toHit] = openRolls();
+    assert.ok(toHit && toHit.kind === "attack" && toHit.thrown === null, "the d20 is with the player");
+    const budget = JSON.stringify(world.encounter().turnBudget);
+    const lines = playerLines().length;
+    const card = await postCard(kara, "Kara attacks with her longsword.", { card: "attack", weapon: "Longsword", targetKind: "enemy", targetId: enemy.id, targetName: enemy.displayName });
+    assert.equal(card.status, 409, JSON.stringify(card.json));
+    assert.equal(card.json.error, "Kara's Longsword attack is waiting on your roll. Roll it first.");
+    const offHand = await postCard(kara, "Kara strikes with her off hand.", { card: "attack", weapon: "Longsword", offHand: true, targetKind: "enemy", targetId: enemy.id, targetName: enemy.displayName });
+    assert.equal(offHand.status, 409, "the off-hand swing waits the same way");
+    assert.equal(playerLines().length, lines, "nothing was posted");
+    const again = await world.invoke("pc_attack", { characterId: kara.id, targetEnemyId: enemy.id, weapon: "Longsword" });
+    assert.equal(again.ok, false);
+    assert.match(again.error, /Kara's Longsword attack is still waiting on its player's dice; it has not landed\. Nothing was spent\./);
+    assert.doesNotMatch(again.error, /already made/, "not the spent attack's refusal");
+    assert.equal(JSON.stringify(world.encounter().turnBudget), budget, "the turn's budget is as it was");
+    assert.equal(openRolls().length, 1, "the one roll still waits");
+    world.signIn({ id: kara.userId });
+    const entered = await callRoute(pendingRoute, "POST", { dice: [2] }, { campaignId: world.campaignId, pendingRollId: toHit.id });
+    assert.equal(entered.status, 200, JSON.stringify(entered.json));
+    assert.equal(openRolls().length, 0);
+  } finally {
+    setMemberRealDice(world.campaignId, kara.userId, false);
+    updateGameSettings(world.campaignId, { dicePolicy: "digital_only" });
+  }
+});
+
+// A line as the actions route stores it, stamped where the fight stood.
+function cardLine(sheet, content, intent, declared) {
+  return insertCampaignMessage({
+    campaignId: world.campaignId,
+    seq: allocateSeq(world.campaignId),
+    authorType: "player",
+    userId: sheet.userId,
+    characterId: sheet.id,
+    content,
+    intent: { ...intent, declared },
+  });
+}
+
+await test("A card a stopped turn left is given back, not rolled, once the round has moved on.", async () => {
+  const enemy = await stage();
+  const fight = world.encounter();
+  const left = cardLine(kara, "Kara strikes with her off hand.", { card: "attack", offHand: true, targetKind: "enemy", targetId: enemy.id, targetName: enemy.displayName }, { encounterId: fight.id, round: fight.round, actingId: kara.id });
+  saveEncounter({ ...world.encounter(), round: fight.round + 1, turnBudget: null });
+  model.script([reply({ text: "Kara circles the goblin." })]);
+  await model.turn(world, "I watch the goblin.", kara.id, kara.userId);
+  assert.equal(toolCalls(model.requests[0]).length, 0, JSON.stringify(toolCalls(model.requests[0])));
+  assert.equal(world.enemies().find((entry) => entry.id === enemy.id).currentHp, 200, "nothing struck the goblin");
+  const back = listRecentMessages(world.campaignId, 40).find((message) => message.id === left.id);
+  assert.match(back.cardReturned ?? "", /fight moved on/);
+  const transcript = model.requests[0].messages.map((message) => (typeof message.content === "string" ? message.content : "")).join("\n");
+  assert.match(transcript, /off-hand attack[^\n]*went back to the player's hand unplayed/);
+});
+
+await test("A card played on a turn the lead skipped is given back on the turn the skip woke; one played on this turn is still rolled.", async () => {
+  const enemy = await stage();
+  const fight = world.encounter();
+  const left = cardLine(kara, "Kara attacks the goblin.", { card: "attack", targetKind: "enemy", targetId: enemy.id, targetName: enemy.displayName }, { encounterId: fight.id, round: fight.round, actingId: kara.id });
+  kit.giveTurn(iris.id);
+  model.script([reply({ text: "Iris steadies her breath." })]);
+  await model.turn(world, "I wait.", iris.id, iris.userId);
+  assert.equal(toolCalls(model.requests[0]).length, 0, "Kara's swing was not rolled on Iris's turn");
+  assert.match(listRecentMessages(world.campaignId, 40).find((message) => message.id === left.id).cardReturned ?? "", /fight moved on/);
+
+  const now = kit.giveTurn(kara.id);
+  model.script([reply({ text: "Kara's blade bites." })]);
+  await model.turn(world, "Kara attacks the goblin.", kara.id, kara.userId, {
+    intent: { card: "attack", targetKind: "enemy", targetId: enemy.id, targetName: enemy.displayName, declared: { encounterId: now.id, round: now.round, actingId: kara.id } },
+  });
+  assert.equal(firstCall(model.requests[0])?.name, "pc_attack", "a card of this turn is the engine's, as a retry of its turn needs");
+  assert.equal(lastPlayerLine().cardReturned, undefined);
+});
+
+await test("The actions route stamps a card with where the fight stands, over anything the client sent.", async () => {
+  const enemy = await stage();
+  floorOnTurn();
+  model.script([reply({ text: "Kara's blade bites." })]);
+  const fight = world.encounter();
+  const posted = await postCard(kara, "Kara attacks the goblin.", {
+    card: "attack",
+    targetKind: "enemy",
+    targetId: enemy.id,
+    targetName: enemy.displayName,
+    declared: { encounterId: "elsewhere", round: 99, actingId: "nobody" },
+  });
+  assert.equal(posted.status, 202, JSON.stringify(posted.json));
+  const stored = listRecentMessages(world.campaignId, 40).find((message) => message.id === posted.json.messageId);
+  assert.deepEqual(stored.intent.declared, { encounterId: fight.id, round: fight.round, actingId: kara.id });
+  const { dmQueueDepth } = await import("../src/lib/dm/queue.ts");
+  const until = Date.now() + 30_000;
+  while (dmQueueDepth(world.campaignId) > 0 && Date.now() < until) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+});
+
 model.close();
 await finish();

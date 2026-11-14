@@ -211,7 +211,7 @@ export function fieldReturning(campaign: Campaign, npcId: string, name: string):
     return null;
   }
   const bot = createCompanionUser(name);
-  const created = createSheet(campaign.id, bot.id, back.level, admitted.sheet);
+  const created = createSheet(campaign.id, bot.id, back.level, admitted.sheet, undefined, { companion: true });
   const personality = (back.departed.sheet as { personality?: unknown }).personality;
   const marked = markSheetAsCompanion(created.id, "party", typeof personality === "string" ? personality : "") ?? created;
   const wear = back.gone.wear;

@@ -76,6 +76,68 @@
       ]
     },
     {
+      "id": "duergar",
+      "name": "Dwarf (Duergar)",
+      "speed": 25,
+      "size": "Medium",
+      "asi": {
+        "con": 2,
+        "str": 1
+      },
+      "traits": [
+        "Superior Darkvision 120 ft",
+        "Dwarven Resilience (adv. vs poison)",
+        "Dwarven Combat Training (battleaxe, handaxe, light hammer, warhammer)",
+        "Stonecunning",
+        "Duergar Resilience (adv. vs illusions, charmed and paralyzed)",
+        "Duergar Magic (enlarge on yourself from 3rd level, invisibility on yourself from 5th, 1/long rest each, no material components)",
+        "Sunlight Sensitivity (disadvantage on attacks and sight-based Perception in direct sunlight)"
+      ],
+      "languages": [
+        "Common",
+        "Dwarvish",
+        "Undercommon"
+      ],
+      "toolChoice": {
+        "count": 1,
+        "from": [
+          "smith's tools",
+          "brewer's supplies",
+          "mason's tools"
+        ]
+      },
+      "weapons": [
+        "battleaxes",
+        "handaxes",
+        "light hammers",
+        "warhammers"
+      ],
+      "innateSpells": {
+        "trait": "Duergar Magic",
+        "ability": "int",
+        "spells": [
+          {
+            "name": "Enlarge/Reduce",
+            "level": 3,
+            "per": "long",
+            "self": true,
+            "noMaterial": true,
+            "only": {
+              "variant": "enlarged",
+              "words": "to enlarge themselves"
+            }
+          },
+          {
+            "name": "Invisibility",
+            "level": 5,
+            "per": "long",
+            "self": true,
+            "noMaterial": true
+          }
+        ]
+      }
+    },
+    {
       "id": "high_elf",
       "name": "Elf (High)",
       "speed": 30,
@@ -191,6 +253,75 @@
           }
         ]
       }
+    },
+    {
+      "id": "eladrin",
+      "name": "Elf (Eladrin)",
+      "speed": 30,
+      "size": "Medium",
+      "asi": {
+        "dex": 2,
+        "cha": 1
+      },
+      "traits": [
+        "Darkvision 60 ft",
+        "Fey Ancestry (adv. vs charm, immune to magical sleep)",
+        "Trance",
+        "Perception proficiency (Keen Senses)",
+        "Fey Step (misty step, 1/short rest)"
+      ],
+      "languages": [
+        "Common",
+        "Elvish"
+      ],
+      "skills": [
+        "perception"
+      ],
+      "innateSpells": {
+        "trait": "Fey Step",
+        "ability": "cha",
+        "spells": [
+          {
+            "name": "Misty Step",
+            "level": 1,
+            "rest": "short"
+          }
+        ]
+      }
+    },
+    {
+      "id": "sea_elf",
+      "name": "Elf (Sea)",
+      "speed": 30,
+      "size": "Medium",
+      "asi": {
+        "dex": 2,
+        "con": 1
+      },
+      "traits": [
+        "Darkvision 60 ft",
+        "Fey Ancestry (adv. vs charm, immune to magical sleep)",
+        "Trance",
+        "Perception proficiency (Keen Senses)",
+        "Sea Elf Training (spear, trident, light crossbow, net)",
+        "30 ft swim speed",
+        "Amphibious (breathe air and water)",
+        "Friend of the Sea (share simple ideas with beasts that have a swimming speed)"
+      ],
+      "languages": [
+        "Common",
+        "Elvish",
+        "Aquan"
+      ],
+      "skills": [
+        "perception"
+      ],
+      "weapons": [
+        "spears",
+        "tridents",
+        "light crossbows",
+        "nets"
+      ]
     },
     {
       "id": "lightfoot_halfling",
@@ -585,14 +716,20 @@
       "traits": [
         "Expert Forgery (advantage on checks to duplicate writing and craftwork)",
         "Mimicry (reproduce any sound you have heard)",
-        "Kenku Training (two skills of your choice)"
+        "Kenku Training (two skills from Acrobatics, Deception, Sleight of Hand, Stealth)"
       ],
       "languages": [
         "Common",
         "Auran"
       ],
       "skillChoice": {
-        "count": 2
+        "count": 2,
+        "from": [
+          "acrobatics",
+          "deception",
+          "sleight_of_hand",
+          "stealth"
+        ]
       }
     },
     {
@@ -759,13 +896,19 @@
       },
       "traits": [
         "Shapechanger (alter your appearance as an action, no action economy cost to revert)",
-        "Changeling Instincts (two social or insight skills of your choice)"
+        "Changeling Instincts (two skills from Deception, Insight, Intimidation, Persuasion)"
       ],
       "languages": [
         "Common"
       ],
       "skillChoice": {
-        "count": 2
+        "count": 2,
+        "from": [
+          "deception",
+          "insight",
+          "intimidation",
+          "persuasion"
+        ]
       }
     },
     {
@@ -792,10 +935,45 @@
       "toolChoice": {
         "count": 1,
         "from": [
+          "alchemist's supplies",
+          "brewer's supplies",
+          "calligrapher's supplies",
+          "carpenter's tools",
+          "cartographer's tools",
+          "cobbler's tools",
+          "cook's utensils",
+          "glassblower's tools",
+          "jeweler's tools",
+          "leatherworker's tools",
+          "mason's tools",
+          "painter's supplies",
+          "potter's tools",
           "smith's tools",
           "tinker's tools",
+          "weaver's tools",
+          "woodcarver's tools",
+          "bagpipes",
+          "drum",
+          "dulcimer",
+          "flute",
+          "lute",
+          "lyre",
+          "horn",
+          "pan flute",
+          "shawm",
+          "viol",
+          "dice set",
+          "dragonchess set",
+          "playing card set",
+          "three-dragon ante set",
           "thieves' tools",
-          "carpenter's tools"
+          "disguise kit",
+          "forgery kit",
+          "herbalism kit",
+          "navigator's tools",
+          "poisoner's kit",
+          "vehicles (land)",
+          "vehicles (water)"
         ]
       }
     },
@@ -857,14 +1035,22 @@
         "Hold Breath (up to 15 minutes)",
         "30 ft swim speed",
         "Hungry Jaws (a bonus-action bite granting temporary hit points, 1/short rest)",
-        "Two skills from a survival list (Cunning Artisan)"
+        "Hunter's Lore (two skills from Animal Handling, Nature, Perception, Stealth, Survival)",
+        "Cunning Artisan (on a short rest, shape a shield, a club, a javelin or darts from the bone and hide of a slain creature)"
       ],
       "languages": [
         "Common",
         "Draconic"
       ],
       "skillChoice": {
-        "count": 2
+        "count": 2,
+        "from": [
+          "animal_handling",
+          "nature",
+          "perception",
+          "stealth",
+          "survival"
+        ]
       }
     },
     {
@@ -896,6 +1082,499 @@
           "nature",
           "perception",
           "survival"
+        ]
+      }
+    },
+    {
+      "id": "triton",
+      "name": "Triton",
+      "speed": 30,
+      "size": "Medium",
+      "asi": {
+        "str": 1,
+        "con": 1,
+        "cha": 1
+      },
+      "traits": [
+        "30 ft swim speed",
+        "Amphibious (breathe air and water)",
+        "Cold Resistance",
+        "Control Air and Water (fog cloud, then gust of wind from 3rd level and wall of water from 5th, 1/long rest each)",
+        "Emissary of the Sea (share simple ideas with beasts that breathe water)"
+      ],
+      "languages": [
+        "Common",
+        "Primordial"
+      ],
+      "innateSpells": {
+        "trait": "Control Air and Water",
+        "ability": "cha",
+        "spells": [
+          {
+            "name": "Fog Cloud",
+            "level": 1,
+            "per": "long"
+          },
+          {
+            "name": "Gust of Wind",
+            "level": 3,
+            "per": "long"
+          },
+          {
+            "name": "Wall of Water",
+            "level": 5,
+            "per": "long",
+            "circle": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "serpentfolk",
+      "name": "Serpentfolk",
+      "speed": 30,
+      "size": "Medium",
+      "asi": {
+        "cha": 2,
+        "int": 1
+      },
+      "traits": [
+        "Darkvision 60 ft",
+        "Magic Resistance (adv. on saves against spells and other magic)",
+        "Poison Immunity (immune to poison damage and the poisoned condition)",
+        "Serpent Magic (poison spray cantrip and animal friendship at will on snakes only, then suggestion from 3rd level, 1/long rest)"
+      ],
+      "languages": [
+        "Common",
+        "Abyssal",
+        "Draconic"
+      ],
+      "innateSpells": {
+        "trait": "Serpent Magic",
+        "ability": "cha",
+        "spells": [
+          {
+            "name": "Poison Spray",
+            "level": 1
+          },
+          {
+            "name": "Animal Friendship",
+            "level": 1,
+            "atWill": true,
+            "only": {
+              "onlyOn": [
+                "poisonous-snake",
+                "constrictor-snake",
+                "giant-poisonous-snake",
+                "giant-constrictor-snake",
+                "flying-snake"
+              ],
+              "words": "on a snake"
+            }
+          },
+          {
+            "name": "Suggestion",
+            "level": 3,
+            "per": "long"
+          }
+        ]
+      }
+    },
+    {
+      "id": "kobold",
+      "name": "Kobold",
+      "speed": 30,
+      "size": "Small",
+      "asi": {
+        "dex": 2,
+        "str": -2
+      },
+      "traits": [
+        "Darkvision 60 ft",
+        "Grovel, Cower, and Beg (an action: until the end of your next turn, allies' attacks on foes within 10 ft of you have advantage, 1/short rest)",
+        "Pack Tactics (advantage on an attack against a creature an ally stands within 5 feet of)",
+        "Sunlight Sensitivity (disadvantage on attacks and sight-based Perception in direct sunlight)"
+      ],
+      "languages": [
+        "Common",
+        "Draconic"
+      ]
+    },
+    {
+      "id": "aarakocra",
+      "name": "Aarakocra",
+      "speed": 25,
+      "size": "Medium",
+      "asi": {
+        "dex": 2,
+        "wis": 1
+      },
+      "traits": [
+        "Flight (flying speed of 50 ft, not while wearing medium or heavy armor)",
+        "Talons (1d4 slashing unarmed strike)"
+      ],
+      "languages": [
+        "Common",
+        "Aarakocra",
+        "Auran"
+      ]
+    },
+    {
+      "id": "hobgoblin",
+      "name": "Hobgoblin",
+      "speed": 30,
+      "size": "Medium",
+      "asi": {
+        "con": 2,
+        "int": 1
+      },
+      "traits": [
+        "Darkvision 60 ft",
+        "Martial Training (light armor and two martial weapons of your choice)",
+        "Saving Face (once a short rest, after a miss or a failed check or save, +1 to the roll for each ally you see within 30 feet, up to +5)"
+      ],
+      "languages": [
+        "Common",
+        "Goblin"
+      ],
+      "armor": [
+        "light"
+      ],
+      "weaponChoice": {
+        "count": 2,
+        "from": [
+          "Battleaxe",
+          "Flail",
+          "Glaive",
+          "Greataxe",
+          "Greatsword",
+          "Halberd",
+          "Lance",
+          "Longsword",
+          "Maul",
+          "Morningstar",
+          "Pike",
+          "Rapier",
+          "Scimitar",
+          "Shortsword",
+          "Trident",
+          "War Pick",
+          "Warhammer",
+          "Whip",
+          "Blowgun",
+          "Hand Crossbow",
+          "Heavy Crossbow",
+          "Longbow",
+          "Net"
+        ]
+      }
+    },
+    {
+      "id": "satyr",
+      "name": "Satyr",
+      "speed": 35,
+      "size": "Medium",
+      "asi": {
+        "cha": 2,
+        "dex": 1
+      },
+      "traits": [
+        "Fey (your creature type is fey, not humanoid)",
+        "Ram (1d4 bludgeoning unarmed strike)",
+        "Magic Resistance (adv. on saves against spells and other magic)",
+        "Reveler (Performance and Persuasion proficiency, and one musical instrument of your choice)",
+        "Mirthful Leaps (roll a d8 and add that many feet to each long or high jump)"
+      ],
+      "languages": [
+        "Common",
+        "Sylvan"
+      ],
+      "skills": [
+        "performance",
+        "persuasion"
+      ],
+      "toolChoice": {
+        "count": 1,
+        "from": [
+          "bagpipes",
+          "drum",
+          "dulcimer",
+          "flute",
+          "lute",
+          "lyre",
+          "horn",
+          "pan flute",
+          "shawm",
+          "viol"
+        ]
+      },
+      "type": "fey"
+    },
+    {
+      "id": "fairy",
+      "name": "Fairy",
+      "speed": 30,
+      "size": "Small",
+      "asi": {},
+      "asiChoice": {
+        "count": 2,
+        "amount": 1,
+        "amounts": [
+          2,
+          1
+        ]
+      },
+      "traits": [
+        "Fey (your creature type is fey, not humanoid)",
+        "Flight (flying speed equal to your walking speed, not while wearing medium or heavy armor)",
+        "Fairy Magic (druidcraft cantrip, then faerie fire from 3rd level and enlarge/reduce from 5th, each free once a long rest or cast with your spell slots, using Intelligence, Wisdom or Charisma as you pick)"
+      ],
+      "languages": [
+        "Common"
+      ],
+      "bonusLanguages": 1,
+      "innateSpells": {
+        "trait": "Fairy Magic",
+        "ability": "cha",
+        "abilityChoice": [
+          "int",
+          "wis",
+          "cha"
+        ],
+        "spells": [
+          {
+            "name": "Druidcraft",
+            "level": 1
+          },
+          {
+            "name": "Faerie Fire",
+            "level": 3,
+            "per": "long",
+            "slots": true
+          },
+          {
+            "name": "Enlarge/Reduce",
+            "level": 5,
+            "per": "long",
+            "slots": true
+          }
+        ]
+      },
+      "type": "fey",
+      "variants": {
+        "label": "Fairy Magic ability",
+        "options": [
+          {
+            "id": "int",
+            "name": "Intelligence",
+            "lines": []
+          },
+          {
+            "id": "wis",
+            "name": "Wisdom",
+            "lines": []
+          },
+          {
+            "id": "cha",
+            "name": "Charisma",
+            "lines": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "owlfolk",
+      "name": "Owlfolk",
+      "speed": 30,
+      "size": "Medium",
+      "asi": {},
+      "asiChoice": {
+        "count": 2,
+        "amount": 1,
+        "amounts": [
+          2,
+          1
+        ]
+      },
+      "traits": [
+        "Superior Darkvision 120 ft",
+        "Flight (flying speed equal to your walking speed, not while wearing medium or heavy armor)",
+        "Stealth proficiency (Silent Feathers)"
+      ],
+      "languages": [
+        "Common"
+      ],
+      "bonusLanguages": 1,
+      "skills": [
+        "stealth"
+      ],
+      "variants": {
+        "label": "Size",
+        "options": [
+          {
+            "id": "medium",
+            "name": "Medium",
+            "lines": []
+          },
+          {
+            "id": "small",
+            "name": "Small",
+            "lines": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "centaur",
+      "name": "Centaur",
+      "speed": 40,
+      "size": "Medium",
+      "asi": {
+        "str": 2,
+        "wis": 1
+      },
+      "traits": [
+        "Fey (your creature type is fey, not humanoid)",
+        "Hooves (1d4 bludgeoning unarmed strike)",
+        "Charge (after a 30-foot run straight at a creature and a melee weapon hit on it, a Hooves attack on it as a bonus action)",
+        "Equine Build (count as one size larger for carrying and for the weight you can push or drag, and each foot of climbing costs 4 extra feet)",
+        "Survivor (one skill from Animal Handling, Medicine, Nature, Survival)"
+      ],
+      "languages": [
+        "Common",
+        "Sylvan"
+      ],
+      "skillChoice": {
+        "count": 1,
+        "from": [
+          "animal_handling",
+          "medicine",
+          "nature",
+          "survival"
+        ]
+      },
+      "type": "fey"
+    },
+    {
+      "id": "rabbitfolk",
+      "name": "Rabbitfolk",
+      "speed": 30,
+      "size": "Medium",
+      "asi": {},
+      "asiChoice": {
+        "count": 2,
+        "amount": 1,
+        "amounts": [
+          2,
+          1
+        ]
+      },
+      "traits": [
+        "Hare-Trigger (add your proficiency bonus to initiative)",
+        "Perception proficiency (Leporine Senses)",
+        "Rabbit Hop (a bonus-action leap of 5 feet times your proficiency bonus, as many times a long rest as your proficiency bonus)",
+        "Lucky Footwork (on a failed Dexterity save, use your reaction to add 1d4; not while prone or at speed 0)"
+      ],
+      "languages": [
+        "Common"
+      ],
+      "bonusLanguages": 1,
+      "skills": [
+        "perception"
+      ],
+      "variants": {
+        "label": "Size",
+        "options": [
+          {
+            "id": "medium",
+            "name": "Medium",
+            "lines": []
+          },
+          {
+            "id": "small",
+            "name": "Small",
+            "lines": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "shifter",
+      "name": "Shifter",
+      "speed": 30,
+      "size": "Medium",
+      "asi": {},
+      "traits": [
+        "Darkvision 60 ft",
+        "Perception proficiency (Keen Senses)",
+        "Shifting (a bonus action for 1 minute of temporary hit points equal to your level plus your Constitution modifier, once a short rest)"
+      ],
+      "languages": [
+        "Common"
+      ],
+      "skills": [
+        "perception"
+      ],
+      "variants": {
+        "label": "Shifter subtype",
+        "options": [
+          {
+            "id": "beasthide",
+            "name": "Beasthide",
+            "asi": {
+              "con": 2,
+              "str": 1
+            },
+            "skills": [
+              "athletics"
+            ],
+            "lines": [
+              "Beasthide (shifted: an extra 1d6 temporary hit points and 1 more AC)"
+            ]
+          },
+          {
+            "id": "longtooth",
+            "name": "Longtooth",
+            "asi": {
+              "str": 2,
+              "dex": 1
+            },
+            "skills": [
+              "intimidation"
+            ],
+            "lines": [
+              "Longtooth (shifted: a Fangs attack as a bonus action)",
+              "Fangs (while shifted, 1d6 piercing unarmed strike)"
+            ]
+          },
+          {
+            "id": "swiftstride",
+            "name": "Swiftstride",
+            "asi": {
+              "dex": 2,
+              "cha": 1
+            },
+            "skills": [
+              "acrobatics"
+            ],
+            "lines": [
+              "Swiftstride (shifted: 10 more feet of speed, and a 10-foot step as a reaction)"
+            ]
+          },
+          {
+            "id": "wildhunt",
+            "name": "Wildhunt",
+            "asi": {
+              "wis": 2,
+              "dex": 1
+            },
+            "skills": [
+              "survival"
+            ],
+            "lines": [
+              "Wildhunt (shifted: advantage on Wisdom checks; no attack within 30 ft has it)"
+            ]
+          }
         ]
       }
     }

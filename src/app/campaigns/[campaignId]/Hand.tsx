@@ -9,8 +9,8 @@ import { cn } from "@/lib/cn";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { askConcentrationSwap, isConcentrationQuestion } from "@/components/concentration-prompt";
 import type { ConcentrationSwap } from "@/lib/dm/concentration-confirm-logic";
-import { HandAimBar, type HandTargetChip } from "@/app/campaigns/[campaignId]/HandAimBar";
-import { HandCardFace, HandPlayedCard } from "@/app/campaigns/[campaignId]/HandCardFace";
+import { HandAimBar, HandReadPanel, type HandTargetChip } from "@/app/campaigns/[campaignId]/HandAimBar";
+import { HandCardFace, HandPlayedCard, WIELD_LABEL } from "@/app/campaigns/[campaignId]/HandCardFace";
 import { HandArrange } from "@/app/campaigns/[campaignId]/HandArrange";
 import { HandMoreSheet } from "@/app/campaigns/[campaignId]/HandMoreSheet";
 import { HandGroupFace, HandGroupView, fanStep } from "@/app/campaigns/[campaignId]/HandGroups";
@@ -360,6 +360,8 @@ function HandInner({
   const sectionRef = useRef<HTMLElement>(null);
 
   const [pickedId, setPickedId] = useState<string | null>(null);
+  // A card that cannot be played now, opened to be read (HandReadPanel).
+  const [readId, setReadId] = useState<string | null>(null);
   const [targetId, setTargetId] = useState<string | null>(null);
   const [riderIds, setRiderIds] = useState<string[]>([]);
   const [played, setPlayed] = useState<{ card: HandCard; seq: number } | null>(null);
@@ -391,6 +393,8 @@ function HandInner({
 
   // A card that stopped being playable (the turn moved on) drops out of aim.
   const picked = cards.find((card) => card.id === pickedId && !card.disabled) ?? null;
+  // Read only while it stays unplayable: once the turn comes, a press aims it.
+  const reading = picked ? null : cards.find((card) => card.id === readId && card.disabled) ?? null;
   const riders = useMemo(
     () => cards.filter((card) => riderIds.includes(card.id) && !card.disabled),
     [cards, riderIds],
@@ -535,8 +539,12 @@ function HandInner({
     (card: HandCard, native = false) => {
       if (card.disabled) {
         say(card.disabled);
+        // Not while another card is aimed: its bar keeps the place, and the
+        // panel would only open unasked once that card is let go.
+        if (!native && !picked) setReadId(card.id);
         return;
       }
+      setReadId(null);
       setNoticeEntry(null);
       setBoardNative(native);
       setMoreOpen(false);
@@ -552,8 +560,22 @@ function HandInner({
       resetChoices();
       setPickedId((current) => (!native && current === card.id ? null : card.id));
     },
-    [say, resetChoices],
+    [say, resetChoices, picked],
   );
+
+  // The read panel closed (its Close, or Escape): the keyboard goes back to
+  // the card that opened it, as letting an aimed card go does.
+  const closeRead = useCallback(() => {
+    const id = readId;
+    setReadId(null);
+    if (!id) return;
+    window.requestAnimationFrame(() => {
+      const card = [...(sectionRef.current?.querySelectorAll<HTMLElement>("[data-card-id]") ?? [])].find(
+        (element) => element.dataset.cardId === id,
+      );
+      card?.focus({ preventScroll: true });
+    });
+  }, [readId]);
 
   const toComposer = useCallback(
     (text: string) => {
@@ -684,7 +706,7 @@ function HandInner({
     if (boardSwap) return { title: `Replace ${boardSwap.current}?`, lines: [`Casting ${boardSwap.next} ends concentration on ${boardSwap.current} and its effects. Keep it to spend nothing.`], controls: [{ id: "hand-confirm", label: `Cast ${boardSwap.next}`, disabled: null }, { id: "hand-keep", label: `Keep ${boardSwap.current}`, disabled: null }, close] };
     if (boardChoices) {
       const matches = cards.filter(card => card.intent.card === (boardChoices === "attack" ? "attack" : "spell"));
-      return { title: boardChoices === "attack" ? "Choose a weapon" : "Choose a spell", lines: ["Choose the action, then its target and options. Nothing is sent until you play it.", ...(!matches.length ? ["No matching cards are available yet; spell details may still be loading."] : []), ...(notice ? [notice] : [])], controls: [{ id: "hand-card", label: boardChoices === "attack" ? "Weapon" : "Spell", disabled: null, options: matches.map(card => ({ value: card.id, label: `${card.name} · ${card.cost}${card.resource ? ` · ${card.resource}` : ""}${card.dice ? ` · ${card.dice}` : ""}`, disabled: card.disabled })) }, close] };
+      return { title: boardChoices === "attack" ? "Choose a weapon" : "Choose a spell", lines: ["Choose the action, then its target and options. Nothing is sent until you play it.", ...(!matches.length ? ["No matching cards are available yet; spell details may still be loading."] : []), ...(notice ? [notice] : [])], controls: [{ id: "hand-card", label: boardChoices === "attack" ? "Weapon" : "Spell", disabled: null, options: matches.map(card => ({ value: card.id, label: `${card.name}${card.wield ? ` · ${WIELD_LABEL[card.wield]}` : ""} · ${card.cost}${card.resource ? ` · ${card.resource}` : ""}${card.dice ? ` · ${card.dice}` : ""}`, disabled: card.disabled })) }, close] };
     }
     if (!picked) return null;
     const option = (value: string, label: string, disabled: string | null = null) => ({ value, label, disabled });
@@ -869,6 +891,9 @@ function HandInner({
         if (picked) {
           event.stopPropagation();
           releaseAim();
+        } else if (reading && !boardNative) {
+          event.stopPropagation();
+          closeRead();
         } else if (openGroup) {
           event.stopPropagation();
           backToHand();
@@ -1075,6 +1100,8 @@ function HandInner({
               onEdit={() => toComposer(sentence)}
               onCommit={() => void commit()}
             />
+          ) : reading && !boardNative ? (
+            <HandReadPanel card={reading} onClose={closeRead} />
           ) : riders.length ? (
             <p className="mt-1 animate-fade-up text-xs text-amber-200/80">
               {riders.map((rider) => rider.name).join(", ")} will ride your next attack card. Press it again to take it off.

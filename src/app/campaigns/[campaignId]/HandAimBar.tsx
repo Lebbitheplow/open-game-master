@@ -10,6 +10,7 @@ import type { HandAttackOption, HandAttackOptionId, HandCard } from "@/lib/battl
 import { handReady, shareList, type HandAim, type PreviewRow } from "@/lib/battlemap/hand-play";
 import type { HandShare } from "@/lib/battlemap/hand-intent";
 import { describePick, hasPick, pickHint, type AreaPick } from "@/lib/battlemap/hand-area";
+import { cardFullText } from "@/lib/battlemap/hand-full-text-logic";
 import { HandPreviewRows, typeLabel, typeTone } from "@/app/campaigns/[campaignId]/HandCardFace";
 import { HandSummonPick } from "@/app/campaigns/[campaignId]/HandSummonPick";
 
@@ -166,6 +167,65 @@ function HandOptionChip({
   );
 }
 
+// A card's whole text (a spell's description and what changes at higher
+// levels, a feature's notes), which no card showed outside the board panel.
+// Closed until asked for: Wish's runs to pages, and it would push the Play
+// button off a phone.
+export function HandFullText({ card }: { card: HandCard }) {
+  // Less the rules line written just above (hand-full-text-logic.ts).
+  const text = cardFullText(card);
+  if (!text) return null;
+  return (
+    <details
+      className="hand-full-text mt-1.5"
+      // On a short phone the Hand scrolls (hand.css), and the text opened
+      // below its fold: the Hand is scrolled to bring the opener to its top.
+      // Only the Hand, so a desktop page never jumps.
+      onToggle={(event) => {
+        const details = event.currentTarget;
+        if (!details.open) return;
+        window.requestAnimationFrame(() => {
+          const hand = details.closest<HTMLElement>(".hand");
+          if (!hand || hand.scrollHeight <= hand.clientHeight + 1) return;
+          const below = details.getBoundingClientRect().bottom - hand.getBoundingClientRect().bottom;
+          if (below > 0) hand.scrollTop += Math.min(below, details.getBoundingClientRect().top - hand.getBoundingClientRect().top - 8);
+        });
+      }}
+    >
+      <summary className="hand-full-text-toggle inline-flex min-h-10 cursor-pointer items-center rounded-md px-1 text-xs uppercase tracking-wider text-amber-200/80 hover:text-amber-100 sm:min-h-8">
+        Full text
+      </summary>
+      <p className="hand-full-text-body mt-1 max-h-60 overflow-y-auto whitespace-pre-line font-serif text-sm leading-snug text-stone-300">{text}</p>
+    </details>
+  );
+}
+
+// A card that cannot be played now (another's turn, nothing left to spend)
+// opened nothing: the press only said why, so a phone, which has no hover,
+// could not read what the card does. It opens this instead, under the rail,
+// which stays: the reason is still said on the Hand's notice line below it.
+export function HandReadPanel({ card, onClose }: { card: HandCard; onClose: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    ref.current?.scrollIntoView({ block: "nearest" });
+  }, [card.id]);
+  return (
+    <div ref={ref} className="hand-aim hand-read mt-1 rounded-xl border border-stone-600/60 bg-stone-950/80 p-2.5 shadow-elev-1" role="region" aria-label={`${card.name}, cannot be played now`}>
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="hand-type-chip" style={{ "--chip-tone": typeTone(card.type) } as CSSProperties}>
+          {typeLabel(card.type)}
+        </span>
+        <span className="min-w-0 truncate font-display text-sm font-semibold text-amber-100">{card.name}</span>
+        <button type="button" onClick={onClose} className={cn(ui.btnSmall, "ml-auto min-h-10 shrink-0")}>
+          <X className="size-4" /> Close
+        </button>
+      </div>
+      {card.rules ? <p className="hand-aim-rules mt-1.5 font-serif text-sm leading-snug text-stone-300">{card.rules}</p> : null}
+      <HandFullText card={card} />
+    </div>
+  );
+}
+
 // The raised card's bar: who it lands on, what it will do, the exact sentence
 // that will be sent, and the gold button named after the card. This is the
 // phone's two-tap confirm and the desktop's aim step in one, because a sent
@@ -286,6 +346,7 @@ export function HandAimBar({
           card, was nowhere to be read in full: picking a card is where it
           is read, as nothing is sent until it is played. */}
       {card.rules ? <p className="hand-aim-rules mt-1.5 font-serif text-sm leading-snug text-stone-300">{card.rules}</p> : null}
+      <HandFullText card={card} />
 
       {needsTarget ? (
         <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Targets">

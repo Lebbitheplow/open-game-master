@@ -8,18 +8,21 @@
 import type { SrdWeapon } from "@/lib/srd/weapons";
 import { textKey } from "@/lib/language/text-logic";
 import { pluralForms } from "@/lib/srd/name-forms";
+import { featTraitLines } from "@/lib/srd/mt-species-traits";
 
 const TRAIT = /^(.+?)\s*\((?:[^()]*?,\s*)?(\d+d\d+)\s+([a-z]+)\s+unarmed strike\)\s*$/i;
 
 export type RacialWeapon = { feature: string; srd: SrdWeapon };
 
 // The lineage weapon a written name is, whole ("claws", "Cat's Claws").
-export function racialNaturalWeapon(features: Array<{ name: string }>, name: string): RacialWeapon | null {
+// `feats`: a feat's natural weapon too (Dragon Hide's claws,
+// mt-species-traits.ts featTraitLines).
+export function racialNaturalWeapon(features: Array<{ name: string }>, name: string, feats?: ReadonlyArray<string> | null): RacialWeapon | null {
   const wanted = textKey(name);
   if (!wanted) {
     return null;
   }
-  for (const feature of features) {
+  for (const feature of [...features, ...featTraitLines(feats).map((line) => ({ name: line }))]) {
     const found = TRAIT.exec(feature.name.trim());
     if (!found) {
       continue;

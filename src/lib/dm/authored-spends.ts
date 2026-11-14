@@ -8,6 +8,7 @@
 // Called from the use_resource arm of src/lib/dm/mutations.ts before the
 // generic path. Must not import mutations.ts (which imports it).
 
+import { improvedQuarryFree } from "@/lib/dm/genre-gh-quarry";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getDmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter } from "@/lib/db/encounters";
@@ -16,7 +17,7 @@ import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { authoredSpendFor, gateHolds, hasCondition, heldAuthored, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
-import { matchResource, resourceDef, resourceName as counterName } from "@/lib/srd/class-resources";
+import { matchResource, resourceDef, resourceName as counterName, sheetCatalog } from "@/lib/srd/class-resources";
 import { holdsFeature, isNamed, nameChoice } from "@/lib/srd/feature-names";
 import type { SpendAction, SpendDoes } from "@/lib/srd/authored-effects-types";
 import { canAct } from "@/lib/dm/can-act";
@@ -29,6 +30,7 @@ import { curseHealTakenBack, curseMoveRefusal } from "@/lib/dm/master-of-hexes";
 import { attacksAllowedFor, budgetFor, prepareReaction, storeBudget } from "@/lib/dm/turn-budget";
 import { resolveSpendEffect, type SpendContext } from "@/lib/dm/authored-spend-effects";
 import { choiceChange } from "@/lib/dm/ar-ws-stone";
+import { freeSpendThisTurn } from "@/lib/dm/genre-b-steampunk-turn";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { namedOption, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
@@ -175,7 +177,7 @@ function pickVariant(does: SpendDoes, variant: string | undefined, spend: Author
 // an option with a choice of its own (Knowledge of the Ages' skill) can name
 // the option in the resource and the choice in the variant.
 function poolOptionSpend(sheet: CharacterSheet, resourceName: string, variant: string | undefined) {
-  const pool = matchResource(resourceName);
+  const pool = matchResource(resourceName, sheetCatalog(sheet));
   for (const option of [variant, nameChoice(resourceName)]) {
     const found = option && pool ? authoredSpendFor(sheet, option) : null;
     // The pool named pays for it, at once or once the option's own free use is
@@ -200,7 +202,12 @@ export function authoredFeatureSpend(
   // A counter's id names the same spend as the feature's name. Without this a
   // call by id (sub_elder_champion) fell to the generic path, which spends the
   // use and applies nothing.
-  const direct = authoredSpendFor(sheet, resourceDef(resourceName)?.displayName ?? resourceName);
+  const byName = authoredSpendFor(sheet, resourceDef(resourceName)?.displayName ?? resourceName);
+  // A variant naming another spend of the same pool picks that spend
+  // ("Grapnel Line" with variant "Grapnel Trip", "Arc Lamp" with "Arc Lamp
+  // Flash"). Before this the pool's own spend ran and the variant was dropped.
+  const sibling = byName?.spend.pool?.id && args.variant ? authoredSpendFor(sheet, args.variant) : null;
+  const direct = sibling && sibling.spend.name !== byName?.spend.name && sibling.spend.pool?.id === byName?.spend.pool?.id ? sibling : byName;
   const found = direct ?? poolOptionSpend(sheet, resourceName, args.variant);
   if (!found) {
     return null;
@@ -380,7 +387,12 @@ export function authoredFeatureSpend(
     return uncast;
   }
   const onceKey = spend.oncePerTurn ? (spend.onceKey ?? `authored:${textKey(spend.name)}`) : swapping ? `authored:${textKey(spend.name)} swap` : null;
-  const charge = prepareCost(campaign, sheet, picked.action, spend.name, onceKey, picked.afterWeaponHit ?? spend.afterWeaponHit, spend.afterSpellDamage);
+  // A spend a feature makes free once a turn (The Engine Eternal's Head of
+  // Steam, src/lib/dm/genre-b-steampunk-turn.ts): no cost, and its own mark.
+  // Improved Quarry: a Quarry on the creature that just harmed an ally is free
+  // (src/lib/dm/genre-gh-quarry.ts).
+  const free = freeSpendThisTurn(sheet, spend.name, encounter) ?? improvedQuarryFree(campaign.id, sheet, spend.name, args.targetEnemyId, inFight ? encounter : null);
+  const charge = prepareCost(campaign, sheet, free ? "none" : picked.action, spend.name, free ?? onceKey, picked.afterWeaponHit ?? spend.afterWeaponHit, spend.afterSpellDamage);
   if ("error" in charge) {
     return charge;
   }

@@ -27,6 +27,7 @@ import { holdsPostForTable } from "@/lib/dm/table-wait-logic";
 import { coverInEffect } from "@/lib/dm/delegation";
 import { hasHumanDm, isDmSeat } from "@/lib/dm/viewer";
 import { invokeEngine } from "@/lib/dm/invoke";
+import { handsFullForPlayer } from "@/lib/dm/gear-hands";
 import { claimNarrationSeq } from "@/lib/dm/narration-slot";
 import { enqueueDmJob } from "@/lib/dm/queue";
 import { runResumeRecap } from "@/lib/dm/recap";
@@ -39,7 +40,7 @@ import { refusedPartsLine } from "@/lib/dm/action-parts-logic";
 import { directContextFor } from "@/lib/dm/direct-context";
 import { addressesDm } from "@/lib/dm/ooc-question";
 import { spokenLine } from "@/lib/dm/speech";
-import { intentRefusal } from "@/lib/dm/intent-check";
+import { cardMoment, intentRefusal } from "@/lib/dm/intent-check";
 import { concentrationSwapFor } from "@/lib/dm/concentration-confirm";
 import { inCoordination } from "@/lib/dm/coordination";
 import { confirmsSwap, swapQuestion } from "@/lib/dm/concentration-confirm-logic";
@@ -351,7 +352,8 @@ export async function POST(
         if (intent && isStoredCast(intent)) {
           takeBackItemCast(campaign, sheet.id, intent.spell ?? "");
         }
-        return Response.json({ error: resolved.error }, { status: 409 });
+        // The tool's words are the storyteller's: a person reads them here.
+        return Response.json({ error: handsFullForPlayer(resolved.error) }, { status: 409 });
       }
       const line = refusedPartsLine(resolved.result);
       if (line) {
@@ -417,7 +419,10 @@ export async function POST(
     userId: user.id,
     characterId: sheet.id,
     content,
-    intent,
+    // Stamped with where the fight stands, whatever the client sent: a turn
+    // that reads the card later gives it back once the fight has moved past
+    // it (issue 931, direct-card-logic.ts cardStillDue).
+    intent: intent ? { ...intent, declared: cardMoment(campaignId) } : intent,
   });
   publishWithSeq(campaignId, seq, "message_added", { message });
 

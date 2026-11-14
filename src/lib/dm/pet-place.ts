@@ -22,6 +22,15 @@ export function petAttackFeet(attack: Pick<SummonAttack, "reach" | "range" | "lo
   return attack.range ? (attack.longRange ?? attack.range) : (attack.reach ?? 5);
 }
 
+// How far a creature stands from the pet (from its owner's place), in
+// feet, or null off the board: whether its swing is made within 5 feet.
+export function petFeetTo(encounterId: string, owner: Pick<CharacterSheet, "id">, targetId: string): number | null {
+  const map = getBattleMapForEncounter(encounterId);
+  const from = map ? getTokenByRef(map.id, petPlaceOf(owner)) : null;
+  const to = map ? getTokenByRef(map.id, targetId) : null;
+  return from && to ? tilesApart(from, to) * 5 : null;
+}
+
 // The refusal for a pet's attack at a creature beyond its reach from where
 // it stands (its owner's place), or null. With no board, or a creature with
 // no token, nothing is measured and the GM judges it.

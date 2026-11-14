@@ -212,7 +212,8 @@ export default function CatalogBrowser({
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
-        className="flex items-center gap-1 text-xs text-amber-300 underline-offset-2 hover:underline"
+        // A finger's height on a phone (AGENTS.md).
+        className="flex items-center gap-1 text-xs text-amber-300 underline-offset-2 hover:underline pointer-coarse:min-h-10"
       >
         <ChevronDown className={cn("size-3.5 transition-transform", !open && "-rotate-90")} />
         {buttonLabel}

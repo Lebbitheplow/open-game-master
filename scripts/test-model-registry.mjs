@@ -165,6 +165,15 @@ try {
     assert.match(noTools.warnings[0], /Takes no tool calls/);
     const utility = logic.assessModel({ role: "utility", id: "sao10k/l3-lunaris-8b", catalog: providers.openrouter.models["sao10k/l3-lunaris-8b"], listed: true });
     assert.equal(utility.fit, "warn", "the utility role only warns about tools");
+    // Issue 943's report: the catalog's one exact row for a helper said 32K,
+    // the helper's own server listed 262K, and the warning read the catalog.
+    const narrow = { ...providers.openrouter.models["sao10k/l3-lunaris-8b"], toolCall: true, contextTokens: 32_768 };
+    const helper = (contextTokens) => logic.assessModel({ role: "utility", id: "qwen3.5-4b", catalog: narrow, listed: true, ...(contextTokens ? { contextTokens } : {}) });
+    assert.deepEqual(helper(262_144).warnings, [], "the server's own window outranks the catalog's");
+    assert.match(helper().warnings.join(" "), /small for the helper; its longer jobs .* go to the storyteller/, "a helper's small window costs the storyteller time");
+    assert.doesNotMatch(helper().warnings.join(" "), /forget recent turns/, "the helper never holds the story");
+    const tight = logic.assessModel({ role: "story", id: "x", catalog: { ...narrow, contextTokens: 262_144 }, listed: true, contextTokens: 8_192 });
+    assert.equal(tight.fit, "unfit", "a storyteller served narrower than its catalog row is judged by what it is served at");
     const local = logic.assessModel({ role: "story", id: "gpt-4", catalog: providers.openai.models["gpt-4"], listed: true, local: true });
     assert.equal(local.fit, "warn", "a local row is a loose match for the weights, so a short window only warns");
     assert.equal(local.warnings.length, 1, "weights on the admin's disk are nobody's to retire");
@@ -540,6 +549,28 @@ try {
     const down = await requestCustomMessage("http://127.0.0.1:9/v1", "", "", [{ role: "user", content: "hi" }], {});
     assert.equal(down.error?.status, 502);
     assert.match((await down.error.json()).error, /Could not reach the backend at http:\/\/127\.0\.0\.1:9\/v1 to list its models/);
+  });
+
+  // Issue #925: a helper served at 262,144 tokens was reported as "a 33K
+  // window is small for a campaign", the catalog row's size, while the same
+  // report showed the server's 262,144.
+  await test("a model is judged by the window its server reports, not the catalog row's", async () => {
+    const wide = http.createServer((request, response) => {
+      response.setHeader("content-type", "application/json");
+      response.end(request.url === "/v1/models" ? JSON.stringify({ data: [{ id: "gpt-4", context_length: 262_144 }] }) : "{}");
+    });
+    await new Promise((resolve) => wide.listen(0, "127.0.0.1", resolve));
+    try {
+      const choices = await modelChoices({ role: "utility", provider: "custom", baseUrl: `http://127.0.0.1:${wide.address().port}/v1`, selected: "gpt-4" });
+      const helper = choices.models.find((model) => model.id === "gpt-4");
+      assert.equal(helper.contextTokens, 262_144);
+      assert.equal(helper.catalog?.contextTokens, 8192, "the catalog row itself is unchanged");
+      assert.ok(!helper.verdict.warnings.some((warning) => /window is small/.test(warning)), helper.verdict.warnings.join(" | "));
+      const plain = logic.assessModel({ role: "utility", id: "gpt-4", catalog: helper.catalog, listed: true });
+      assert.ok(plain.warnings.some((warning) => /8K window is small for the helper/.test(warning)), "the catalog's own size still warns where the server says nothing");
+    } finally {
+      wide.close();
+    }
   });
 
   await test("the wizard's list is kept to the models that can narrate, led by the catalog's pick, with no name in code", () => {

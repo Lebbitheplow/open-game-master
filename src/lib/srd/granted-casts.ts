@@ -139,6 +139,9 @@ export function grantedCastsOf(sheet: GrantSheet): GrantedCast[] {
       ...(innate.castAt > 0 ? { castAt: innate.castAt } : {}),
       ...(innate.ability ? { ability: innate.ability } : {}),
       ...(innate.slotsToo ? { slotsToo: true } : {}),
+      ...(innate.selfOnly ? { selfOnly: true } : {}),
+      ...(innate.noMaterial ? { noMaterial: true } : {}),
+      ...(innate.freeLimit ? { freeLimit: innate.freeLimit } : {}),
     });
   }
   // A subclass counter whose use is the spell (Star Map's guiding bolt,

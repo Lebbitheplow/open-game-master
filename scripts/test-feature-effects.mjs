@@ -175,7 +175,10 @@ test("guidance comes back for a feature the model asks about", () => {
 test("every entry in the table is well formed", () => {
   for (const def of FEATURE_EFFECTS) {
     assert.ok(def.match.length > 0);
-    assert.ok(def.effects.length > 0);
+    // A class's own row with no effects stands in front of another feature
+    // of the same name (an aether channeler's Heart of the Storm before Storm
+    // Sorcery's), its rules in an authored row; it still says what it does.
+    assert.ok(def.effects.length > 0 || (def.classes?.length && def.guidance), `${def.match[0]} has no effects`);
     for (const term of def.match) {
       // Match terms are compared against lowercased names, so they must be
       // lowercase themselves or they can never match.

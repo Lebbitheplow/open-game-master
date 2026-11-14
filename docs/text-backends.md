@@ -123,9 +123,12 @@ The app handles this per request, so you do not configure it on the server:
 Left uncapped, a reasoning-enabled decision call can occasionally spiral for minutes
 on a hard turn. Cap the reasoning budget on the server to roughly 1024-2048 tokens
 (llama-server's `--reasoning-budget`, or the equivalent key in the preset INI).
-Expect the tradeoff: tool-decision calls run about 50-100s and a full turn about
-1.5-3 minutes on a single local GPU. Combat and multi-tool turns sit at the longer
-end.
+Expect the tradeoff: before 0.30.2, tool-decision calls ran about 50-100s and a full
+turn about 1.5-3 minutes on a single local GPU, combat and multi-tool turns at the
+longer end. Since 0.30.2 every call of a turn keeps the same prompt start (see the
+prompt cache below) and gpt-oss is asked for low effort on every call, which about
+halves a turn: gpt-oss-20b on the BC-250 played the town smoke at about 50 seconds a
+turn instead of 100, and fight turns went from a median of 87 seconds to 38.
 
 A small model (below) gets a budget from the app as well, for servers that have
 none: once its thinking passes about 6,000 characters (some 1,500 tokens), the
@@ -220,6 +223,9 @@ repeated passage); an invented blow is a hit the narration lands that no tool ro
 |---|---|---|---|---|
 | gpt-oss-20b, AMD BC-250 | 2 runs: 5 missed, 0 slips | 2 runs: 0, 0 | 4 runs: 6 missed, 0 slips | 90 to 160 |
 | Qwen3.6-35B-A3B Q8, Framework Desktop (the default) | 2 runs: 0, 1 | (not rerun) | 5 runs: 2 missed, 0 slips | 135 to 205 |
+
+The seconds a turn above were measured before 0.30.2 (2026-10-20); 0.30.2 about
+halved them on a local narrator (see Reasoning budget and latency).
 
 The Framework Desktop is an AMD Ryzen AI Max+ 395 with 128 GB shared by its
 Radeon 8060S graphics; its real play on the default model took a median of 90

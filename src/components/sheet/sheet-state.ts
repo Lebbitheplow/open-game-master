@@ -260,13 +260,25 @@ export function isWornGear(item: Pick<EquipmentItem, "name" | "slug" | "srdName"
   return tags.some((tag) => HELD_FOCI.includes(tag));
 }
 
+// Where a weapon is, in the words the Hand's cards, its More sheet, its
+// weapon picker and the sheet's own toggle all use (HandCard.wield).
+export const WIELD_LABEL: Record<"in-hand" | "stowed", string> = { "in-hand": "In hand", stowed: "Packed" };
+
+// Whether a row is a weapon the hands hold, by the same table the attack
+// reads (a homebrew block, the SRD by name).
+export function isWeaponRow(item: EquipmentItem): boolean {
+  return Boolean(item.gear?.weapon) || matchWeapon(item) !== null;
+}
+
 // The rows the sheet offers the wear toggle on: armor and shields, gear whose
-// name declares a magic bonus, the magic items, and anything with a place on
-// the body (a Cloak of Elvenkind only the check riders know, a workshop
-// cloak), so an item's place decides it as much as its magic does.
+// name declares a magic bonus, the magic items, anything with a place on the
+// body (a Cloak of Elvenkind only the check riders know, a workshop cloak),
+// so an item's place decides it as much as its magic does, and every weapon,
+// so a player can say which is in hand before a fight (held-default.ts).
 export function wearableGear(equipment: EquipmentItem[]): EquipmentItem[] {
   return equipment.filter(
     (item) =>
+      isWeaponRow(item) ||
       matchArmor(item) !== null ||
       magicItemBonus(item.name) > 0 ||
       matchMagicItem(item) !== null ||

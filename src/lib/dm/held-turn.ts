@@ -29,7 +29,7 @@ import { getActiveEncounter, listEnemies, orderEntryId, saveEncounter, turnKey, 
 import { getDmTurn } from "@/lib/db/dm-turns";
 import { activePublicEncounter } from "@/lib/db/encounter-view";
 import { publishPersisted } from "@/lib/events";
-import { endTurnStartHolds, turnHoldKeys } from "@/lib/dm/condition-tick";
+import { countTurnStarts, endTurnStartHolds, turnHoldKeys } from "@/lib/dm/condition-tick";
 import { beginTurns } from "@/lib/dm/turn-end";
 import { lateFor } from "@/lib/dm/last-hit";
 import { PET_REACTION_PREFIX, VIGILANT_PREFIX } from "@/lib/srd/authored-effects-more";
@@ -71,6 +71,10 @@ export function startHeldTurn(campaign: Campaign, encounter: Encounter): string 
   delete encounter.legendary.turnStart;
   encounter.reactionsUsed = withoutReactionsOf(encounter.reactionsUsed, id);
   endTurnStartHolds(campaign, encounter.id, new Set([id]));
+  // The counts that belong to this turn run down now it has begun, after the
+  // enemies before it have acted: a "frightened for 1 round" this character
+  // laid on one of them held through its turn (condition-tick.ts).
+  countTurnStarts(campaign, encounter, [id]);
   // What was laid in the meantime to last until the end of this turn (a
   // mummy lord's Blinding Dust before it) waits on this turn's end.
   beginTurns(campaign, encounter.id, [id]);
@@ -239,6 +243,10 @@ export function lateReaction(campaign: Campaign, id: string): boolean {
   encounter.reactionsUsed = withoutReactionsOf(encounter.reactionsUsed, id);
   saveEncounter(encounter);
   endTurnStartHolds(campaign, encounter.id, new Set([id]));
+  // The counts that belong to this turn run down now it has begun, after the
+  // enemies before it have acted: a "frightened for 1 round" this character
+  // laid on one of them held through its turn (condition-tick.ts).
+  countTurnStarts(campaign, encounter, [id]);
   publishPersisted(campaign.id, "encounter_updated", { encounter: activePublicEncounter(campaign.id) });
   return true;
 }

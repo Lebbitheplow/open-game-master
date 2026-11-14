@@ -22,6 +22,11 @@ const { SRD_WEAPONS } = await import("../src/lib/srd/weapons.ts");
 const { SRD_ARMOR } = await import("../src/lib/srd/armor.ts");
 const { normalizeCreatureType } = await import("../src/lib/bestiary/statblock.ts");
 const { packArtSlots, MAX_PACK_ART_BYTES } = await import("../src/lib/worlds/art.ts");
+const { applyIdReskins, applyClassReskins, packRecommends, displayName } = await import("../src/lib/worlds/reskin-logic.ts");
+const { srdRaceOptions, srdClassOptions, srdBackgroundOptions, packClassOptions, mergedBackgroundOptions } = await import(
+  "../src/lib/characters/options.ts"
+);
+const { classFeaturesFor } = await import("../src/lib/srd/features.ts");
 
 const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
 // Only the BUNDLED directory is checked here. Installed packs live in the
@@ -143,6 +148,58 @@ test("every reskinned race, class and background id resolves", () => {
     }
     for (const raceId of pack.companionRaces) {
       assert.ok(findRace(raceId), `${file}: companionRaces entry ${raceId} does not exist`);
+    }
+  }
+});
+
+// The reskin is a label over an option the creator really offers: a pack id
+// that matches no option's id is ignored by applyIdReskins, so the renamed
+// option would show under its canonical name and drop out of the pack's
+// recommended group. Checked here against the bundled lists (no content
+// pack); the content pack's lists are checked below, where its rows carry
+// kebab-case slugs (hill-dwarf) beside the pack's snake_case ids.
+function assertReskinsLand(file, pack, lists, where) {
+  const races = applyIdReskins(lists.races, pack.races, "races");
+  const classes = applyClassReskins(lists.classes, pack);
+  const backgrounds = applyIdReskins(lists.backgrounds, pack.backgrounds);
+  for (const [key, options] of [["races", races], ["classes", classes], ["backgrounds", backgrounds]]) {
+    for (const entry of pack[key]) {
+      const landed = options.filter((option) => option.packName === entry.name);
+      assert.ok(landed.length > 0, `${file}: ${key} reskin ${entry.id} (${entry.name}) lands on no option the creator offers ${where}`);
+      for (const option of landed) {
+        assert.ok(packRecommends(pack, key, option.id), `${file}: ${option.id} is renamed but not in the pack's recommended group ${where}`);
+      }
+    }
+  }
+}
+
+test("every race, class and background reskin lands on an option the creator offers (no content pack)", () => {
+  for (const { file, pack } of packs) {
+    assertReskinsLand(file, pack, { races: srdRaceOptions(), classes: srdClassOptions(), backgrounds: srdBackgroundOptions() }, "without the content pack");
+  }
+});
+
+// A feature reskin renames a class feature the Calling step lists. Several
+// are listed with a die or a use count ("Bardic Inspiration (d6)", "Channel
+// Divinity (1/rest)"), and each of those is the same feature, so each wears
+// the pack's name.
+test("every feature reskin renames a feature the creator lists", () => {
+  const listed = new Set();
+  for (const klass of srdClassOptions()) {
+    for (const feature of classFeaturesFor(klass.id, "", 20)) listed.add(feature.name);
+  }
+  for (const { file, pack } of packs) {
+    for (const entry of pack.features) {
+      const base = entry.from.toLowerCase();
+      const named = [...listed].filter((name) => {
+        const lower = name.toLowerCase();
+        return lower === base || lower.startsWith(`${base} (`) || lower.startsWith(`${base}:`);
+      });
+      assert.ok(named.length > 0, `${file}: feature "${entry.from}" is not a feature any class lists`);
+      for (const name of named) {
+        assert.notEqual(displayName(pack, "features", name), name, `${file}: "${name}" does not wear the pack's name ${entry.name}`);
+        assert.ok(displayName(pack, "features", name).startsWith(entry.name), `${file}: "${name}" shows as ${displayName(pack, "features", name)}`);
+      }
     }
   }
 });
@@ -302,6 +359,22 @@ if (fs.existsSync(contentDbPath)) {
   for (const armor of SRD_ARMOR) {
     itemNames.add(armor.name.toLowerCase());
   }
+
+  process.env.CONTENT_DB_PATH = contentDbPath;
+  const { listRaces, listClasses, listBackgrounds } = await import("../src/lib/content/index.ts");
+  const { packRaceOptions } = await import("../src/lib/content/race-options.ts");
+  test("every race, class and background reskin lands on an option the creator offers (content pack)", () => {
+    const base = { q: "", userIds: [] };
+    const lists = {
+      races: packRaceOptions(listRaces({ ...base, limit: 200, includeSubraces: true })),
+      classes: packClassOptions(listClasses({ ...base, limit: 100 })),
+      backgrounds: mergedBackgroundOptions(listBackgrounds({ ...base, limit: 200 })),
+    };
+    assert.ok(lists.races.length > 40, "the content pack's races did not load");
+    for (const { file, pack } of packs) {
+      assertReskinsLand(file, pack, lists, "with the content pack");
+    }
+  });
 
   test("every monster slug exists in the content pack with a matching CR", () => {
     for (const { file, pack } of packs) {

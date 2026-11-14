@@ -12,12 +12,12 @@
 // noteSaveDamage) and the conditions its caster laid on the rogue taken off.
 // Before this the use and the reaction were spent and nothing happened.
 
+import { classSaveDc } from "@/lib/dm/command-undead";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getDmTurn } from "@/lib/db/dm-turns";
 import { getEnemy, patchEnemyConditions } from "@/lib/db/encounters";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
-import { computeSheetDerived } from "@/lib/srd";
 import { effectiveMaxHp, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { openSaves, openTriggers } from "@/lib/dm/last-save";
@@ -54,8 +54,9 @@ export function planSpellThief(campaign: Campaign, turnId: string, rogue: Charac
   }
   return {
     apply: () => {
-      const derived = computeSheetDerived(rogue);
-      const dc = derived.spellSaveDc ?? 8 + derived.proficiencyBonus + derived.abilityMods.int;
+      // The class's own spell save DC (command-undead.ts classSaveDc): a
+  // multiclass sheet's first casting ability is another class's.
+  const dc = classSaveDc(rogue, "int");
       const ability = castingAbility(caster.stats as never);
       const save = rollEnemySave(campaign.id, caster, ability, dc, { magical: true, record: { turn: getDmTurn(turnId) ?? undefined, detail: `${caster.displayName}: ${LABEL[ability]} save against ${rogue.name}'s Spell Thief` } });
       const spell = cast.spell ?? "the spell";

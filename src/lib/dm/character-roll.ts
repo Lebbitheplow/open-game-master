@@ -37,6 +37,7 @@ import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { heldCallTurn, inHeldCall, parkHeldCall, takeDecided, tapeMark } from "@/lib/dm/held-call";
 import { noteShift, shiftArmedFor, takeSaveHelp, takeShift } from "@/lib/dm/chronal-shift";
 import { takeFate } from "@/lib/dm/fate-turn";
+import { takeLineage } from "@/lib/dm/lineage-watch";
 import { tranceFloored } from "@/lib/dm/ar-ws-trance-floor";
 import { publishWithSeq } from "@/lib/events";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -100,7 +101,7 @@ function choicesFor(campaign: Campaign, sheet: CharacterSheet, roll: CharacterRo
   const dc = typeof roll.dc === "number" ? roll.dc : null;
   return [
     ...afterRollOptions(sheet, { kind: roll.kind, outcome, dc, reactionFree, check: { skill: roll.kind === "skill_check" ? roll.detail : null } }),
-    ...allyChoicesFor(campaign.id, sheet, { kind: roll.kind, outcome, dc }),
+    ...allyChoicesFor(campaign.id, sheet, { kind: roll.kind, outcome, dc, detail: roll.detail }),
   ];
 }
 
@@ -203,7 +204,7 @@ function rollAtDoor(campaign: Campaign, stale: CharacterSheet, asked: CharacterR
   }
   const settle = (outcome: RollResult) =>
     roll.settle ? roll.settle(outcome) : roll.settleHeldDie && typeof roll.dc === "number" && heldDieWaits(sheet, roll.dc) ? settleHeldDie(campaign.id, sheet.id, outcome, roll.dc) : outcome;
-  return thrownHere(answerArmed(campaign.id, sheet.name, tag, roll.dc, settle(thrown), () => settle(throwOnce())));
+  return thrownHere(answerArmed(campaign.id, sheet.name, tag, roll.dc, settle(thrown), () => settle(throwOnce()), roll.detail));
 }
 
 // The other dice of a character's own that a call rolls: the healing or the
@@ -273,7 +274,7 @@ const ROLLED_AGAIN: Partial<Record<RollTag["kind"], string>> = { save: "save", c
 // Shift rolls a save or check with a DC again and the new roll stands, and
 // Flash of Genius or Favored by the Gods adds to one that fails. A roll
 // nobody armed anything for comes back as it was.
-function answerArmed(campaignId: string, who: string, tag: RollTag | undefined, dc: number | null | undefined, landed: RollResult, again: () => RollResult): RollResult {
+function answerArmed(campaignId: string, who: string, tag: RollTag | undefined, dc: number | null | undefined, landed: RollResult, again: () => RollResult, detail?: string): RollResult {
   const words = tag ? ROLLED_AGAIN[tag.kind] : undefined;
   if (!tag || !words || typeof dc !== "number") {
     return landed;
@@ -286,5 +287,8 @@ function answerArmed(campaignId: string, who: string, tag: RollTag | undefined, 
   }
   // Convergent Future or Bend Luck set on it at the stop (fate-turn.ts).
   outcome = takeFate(campaignId, tag, who, outcome, dc)?.outcome ?? outcome;
+  // Saving Face, Lucky Footwork, Inspired Ingenuity or Bountiful Luck set on
+  // it at the stop (lineage-watch.ts).
+  outcome = takeLineage(campaignId, tag, who, outcome, { dc }, detail)?.outcome ?? outcome;
   return takeSaveHelp(campaignId, tag, who, outcome, dc)?.outcome ?? outcome;
 }

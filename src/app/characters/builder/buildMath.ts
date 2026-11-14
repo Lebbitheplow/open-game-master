@@ -290,7 +290,7 @@ export function knownSoFarRows({
         name: string;
         speed: number;
         asi?: Partial<Record<Ability, number>>;
-        asiChoice?: { count: number; amount: number };
+        asiChoice?: { count: number; amount: number; amounts?: number[] };
         variants?: SpeciesVariantGroup;
       }
     | undefined;
@@ -305,9 +305,18 @@ export function knownSoFarRows({
   const choice = race?.asiChoice;
   if (choice && choice.amount > 0) {
     const placed = ABILITIES.reduce((sum, ability) => sum + Math.max(0, (racialBonus[ability] ?? 0) - (race?.asi?.[ability] ?? 0)), 0);
-    const owed = choice.count - Math.round(placed / choice.amount);
-    if (owed > 0) {
-      bonuses.push(`+${choice.amount} to ${COUNT_WORDS[owed] ?? owed} ${bonuses.length ? "more " : ""}of your choice`);
+    if (choice.amounts) {
+      // Picks of their own amounts (a fairy's +2 then +1), placed in order.
+      let left = placed;
+      const open = choice.amounts.filter((amount) => (left >= amount ? ((left -= amount), false) : true));
+      if (open.length) {
+        bonuses.push(`${open.map((amount) => `+${amount}`).join(" and ")} to ${COUNT_WORDS[open.length] ?? open.length} ${bonuses.length ? "more " : ""}of your choice`);
+      }
+    } else {
+      const owed = choice.count - Math.round(placed / choice.amount);
+      if (owed > 0) {
+        bonuses.push(`+${choice.amount} to ${COUNT_WORDS[owed] ?? owed} ${bonuses.length ? "more " : ""}of your choice`);
+      }
     }
   }
   const variant = race?.variants ? pickedVariant(race) : null;

@@ -42,7 +42,9 @@ await test("The model's move_party with a scene off the list still moves the par
   );
   assert.equal(moved.error, undefined, String(moved.error));
   assert.equal(getCurrentLocation(world.campaignId)?.name, "Il Villaggio");
-  assert.equal(getAmbience(world.campaignId).bed, "crypt");
+  // The crypt's drip does not follow the party into the village (#929); with
+  // no kind for the village there is no bed to play instead.
+  assert.notEqual(getAmbience(world.campaignId).bed, "crypt");
   assert.match(String(moved.note), /the sounds are: .*town/);
   // Back to the crypt, which keeps its own kind, for the checks below.
   const back = await world.invoke("move_party", { name: "La Cripta di Vael" });
@@ -88,6 +90,36 @@ await test("A fight on other ground than the place's is drawn as that ground.", 
   assert.equal(map?.theme, "forest");
   assert.equal(map?.ambient, "bright");
   assert.equal(getCurrentLocation(world.campaignId)?.ambience?.bed, "crypt", "the place keeps its own kind");
+  // #929: the room hears the ground the fight is on, with the fight's music.
+  assert.equal(getAmbience(world.campaignId).bed, "forest");
+  assert.equal(getAmbience(world.campaignId).music, "battle");
+  const over = await world.invoke("end_encounter", { outcome: "victory" });
+  assert.ok(over.ok, over.error);
+  assert.equal(getAmbience(world.campaignId).music, null, "the fight's music comes off");
+});
+
+await test("A held bed stays through a fight, and music the GM picks mid-fight outlasts it.", async () => {
+  const set = await world.invoke("set_ambience", { bed: "tavern", hold: true });
+  assert.ok(set.ok, set.error);
+  await world.beginFight([{ monster: "goblin", count: 1 }], { scene: "forest" });
+  assert.equal(getAmbience(world.campaignId).bed, "tavern", "a held bed is the table's decision");
+  assert.equal(getAmbience(world.campaignId).music, "battle");
+  const dread = await world.invoke("set_ambience", { music: "dread" });
+  assert.ok(dread.ok, dread.error);
+  const over = await world.invoke("end_encounter", { outcome: "victory" });
+  assert.ok(over.ok, over.error);
+  assert.equal(getAmbience(world.campaignId).music, "dread", "only the fight's own music comes off");
+  const unset = await world.invoke("set_ambience", { bed: "crypt", music: "none" });
+  assert.ok(unset.ok, unset.error);
+});
+
+await test("Leaving a place for one with no kind leaves its sound behind (#929).", async () => {
+  const inn = await world.invoke("move_party", { name: "The Oak Tavern", scene: "tavern" });
+  assert.ok(inn.ok, inn.error);
+  assert.equal(getAmbience(world.campaignId).bed, "tavern");
+  const road = await world.invoke("move_party", { name: "The North Road" });
+  assert.ok(road.ok, road.error);
+  assert.notEqual(getAmbience(world.campaignId).bed, "tavern", "the tavern does not follow the party up the road");
 });
 
 world.close();

@@ -115,8 +115,8 @@ function hillDwarfLike() {
   return SRD_RACES.find((race) => race.id === "hill_dwarf");
 }
 
-test("all 32 bundled races parse to a body or a locked row, no exceptions", () => {
-  assert.equal(SRD_RACES.length, 32);
+test("all 46 bundled races parse to a body or a locked row, no exceptions", () => {
+  assert.equal(SRD_RACES.length, 46);
   for (const race of SRD_RACES) {
     const lines = traitLines(race);
     assert.ok(lines.length > 0, `${race.id} has trait lines`);
@@ -207,6 +207,29 @@ test("every bundled race resolves to its own family plate, in all three genders"
     for (const gender of ["", "Male", "Female"]) {
       const art = lineageArt(race.id, race.name, gender);
       assert.match(art, /\/character-race\//, race.id);
+      assert.ok(exists(art), `${art} exists`);
+    }
+  }
+});
+
+// The eleven lineages painted 2026-11-13 (docs/art/species-portraits-2026-11-13.json)
+// each show their own people, by id and by a pack row's name alone, never a
+// kin's face: a hobgoblin is no goblin, an aarakocra no kenku, a kobold no
+// dragonborn, a serpentfolk no lizardfolk, a triton no water genasi.
+const PAINTED_2026_11_13 = [
+  "triton", "serpentfolk", "kobold", "aarakocra", "hobgoblin", "satyr",
+  "fairy", "owlfolk", "centaur", "rabbitfolk", "shifter",
+];
+
+test("the eleven lineages painted 2026-11-13 each draw their own plate in all three genders", () => {
+  for (const id of PAINTED_2026_11_13) {
+    assert.ok(SRD_RACES.some((race) => race.id === id), `${id} is a bundled race`);
+    assert.equal(lineageFamily(id), id, id);
+    const name = id[0].toUpperCase() + id.slice(1);
+    assert.equal(lineageFamily("x", name), id, `by name ${name}`);
+    for (const [gender, look] of [["Male", "masculine"], ["Female", "feminine"], ["Nonbinary", "neutral"]]) {
+      const art = lineageArt(id, name, gender);
+      assert.equal(art, `/assets/placeholders/character-race/${id}-${look}.webp`, `${id}/${gender}`);
       assert.ok(exists(art), `${art} exists`);
     }
   }

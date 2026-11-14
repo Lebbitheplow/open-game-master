@@ -207,6 +207,8 @@ export type PageError = {
   // The page's path, with no query or fragment.
   where: string;
   stack?: string;
+  // How many times in a row it came, when more than once.
+  times?: number;
 };
 
 export type ReportBundle = {
@@ -458,7 +460,7 @@ export function buildReportBundle(input: {
 
 // One error as the page keeps it: cut to size, keys and tokens cut out, and
 // the page's path without its query or fragment.
-export function cleanPageError(raw: { kind?: unknown; message?: unknown; stack?: unknown; where?: unknown; at?: unknown }): PageError {
+export function cleanPageError(raw: { kind?: unknown; message?: unknown; stack?: unknown; where?: unknown; at?: unknown; times?: unknown }): PageError {
   // The path alone, and through the cutter too: inside the apps it can be a
   // file's path in the person's home folder.
   const where = typeof raw.where === "string" ? cleanText(raw.where.split(/[?#]/)[0].slice(0, 300), []) : "";
@@ -469,11 +471,27 @@ export function cleanPageError(raw: { kind?: unknown; message?: unknown; stack?:
     message: cut(cleanText(typeof raw.message === "string" ? raw.message : String(raw.message ?? ""), []), MAX_ERROR_TEXT),
     where,
     ...(stack ? { stack } : {}),
+    ...(typeof raw.times === "number" && Number.isInteger(raw.times) && raw.times > 1 ? { times: Math.min(raw.times, 1_000_000) } : {}),
   };
 }
 
-// The ring: the newest `limit` errors, oldest first.
+// The browser's notices that are not errors: ResizeObserver reports a layout
+// it will finish on the next frame through window.onerror, and in a burst. A
+// report from the desktop app held twenty of them and nothing else (issue
+// 943's), with any real error before them pushed out of the ring.
+const NOT_ERRORS = /^ResizeObserver loop (?:completed with undelivered notifications|limit exceeded)/;
+
+// The ring: the newest `limit` errors, oldest first. The same error straight
+// again is counted on the one entry rather than kept again, so one error
+// thrown in a loop cannot push every other out.
 export function keepPageError(list: readonly PageError[], entry: PageError, limit = PAGE_ERROR_LIMIT): PageError[] {
+  if (NOT_ERRORS.test(entry.message)) {
+    return [...list];
+  }
+  const last = list.at(-1);
+  if (last && last.kind === entry.kind && last.message === entry.message && last.where === entry.where) {
+    return [...list.slice(0, -1), { ...entry, times: Math.min((last.times ?? 1) + 1, 1_000_000) }];
+  }
   return [...list, entry].slice(-limit);
 }
 

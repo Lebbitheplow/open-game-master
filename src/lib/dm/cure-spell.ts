@@ -3,8 +3,8 @@
 // can be cast on: the slot (and a consumed component) is spent and nothing
 // ends, as the rules have it.
 //   Lesser Restoration: one of blinded, deafened, paralyzed, poisoned.
-//   Greater Restoration: one level of exhaustion, or charmed, petrified, or
-//     one curse.
+//   Greater Restoration: one level of exhaustion, or charmed, petrified,
+//     one curse, or one reduction to the hit point maximum.
 //   Remove Curse: every curse (Bestow Curse's "cursed (...)" among them).
 // This module imports mutations (for the slot spend) through its caller's
 // cast function and must never be imported by it.
@@ -16,7 +16,7 @@ import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { spellFactsFor, type ResolvedSpellMech } from "@/lib/content";
-import { removeConditions } from "@/lib/dm/condition-logic";
+import { MAX_HP_DRAIN, removeConditions } from "@/lib/dm/condition-logic";
 import { castToNoEffect, spellReachProblem, spellWardOn } from "@/lib/dm/cast-reach";
 import { exhaustionPatch } from "@/lib/dm/vitals-logic";
 import { afflictionConditionsFor } from "@/lib/dm/afflictions";
@@ -27,6 +27,10 @@ import { isConditionNamed } from "@/lib/srd/feature-names";
 type Cast = (args: Record<string, unknown>) => ToolResult;
 
 const isCurse = (name: string) => isConditionNamed(name, "cursed");
+// Greater Restoration's reduced maximum, held as "max hp reduced (-N)" (a
+// Life Drain, Harm): ending it gives the points back to the maximum through
+// patchSheet's riders, and heals nothing.
+const DRAINED = "max hp reduced";
 
 // What the spell would end on this sheet: the conditions, and whether a
 // level of exhaustion goes. Empty when there is nothing it can end.
@@ -46,7 +50,7 @@ export function curePlan(
       ? (sheet.exhaustion ?? 0) > 0
         ? ["exhaustion"]
         : []
-      : sheet.conditions.filter((name) => (entry === "cursed" ? isCurse(name) : name.toLowerCase() === entry));
+      : sheet.conditions.filter((name) => (entry === "cursed" ? isCurse(name) : entry === DRAINED ? MAX_HP_DRAIN.test(name.trim()) : name.toLowerCase() === entry));
   const offered = cures.conditions.filter((entry) => !word || entry === word || (entry === "cursed" && isCurse(word)));
   const held = offered.map(heldFor).filter((found) => found.length);
   const chosen = cures.all ? held.flat() : (held[0] ?? []).slice(0, 1);

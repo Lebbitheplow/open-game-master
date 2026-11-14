@@ -96,6 +96,7 @@ async function post(world, route, body, params = {}) {
 // ---- a table a person runs ----
 
 const person = await openWorld({ gameSettings: { dmMode: "human" } });
+const encountersDb = await import("../src/lib/db/encounters.ts");
 const kit = await combatKit(person);
 const hero = person.addHero({ user: person.addUser(), class: "fighter", level: 5, maxHp: 300 });
 
@@ -492,6 +493,14 @@ await test("at an AI table the storyteller's prepared fight opens with its start
   assert.match(String(answer?.result.fightEvents ?? ""), /bloodied/);
 });
 
+// A creature flees on its own turn (enemy-turn-order.ts enemyFleeTurnRefusal):
+// handed over, as the hero's end_turn hands the enemies after them.
+const handTurn = (enemyId) => {
+  const { saveEncounter } = encountersDb;
+  const encounter = ai.encounter();
+  saveEncounter({ ...encounter, legendary: { ...encounter.legendary, due: [enemyId] } });
+};
+
 await test("the server playing the enemies at the close of its turn brings round 3's reinforcement, once", async () => {
   ensureInitiativeProgress(ai.campaign());
   assert.equal(ai.encounter().orderReady, true);
@@ -510,6 +519,7 @@ await test("the server playing the enemies at the close of its turn brings round
 
 await test("a creature falling in the model's own call fires its event, told in that call's result and in GAME STATE after", async () => {
   const slots = slotsOf(ai);
+  handTurn(slots[1]);
   model.script([reply({ calls: [call("enemy_flees", { enemyId: slots[1] })] }), reply({ text: "The goblin splashes away." })]);
   await model.turn(ai, "I shout at the goblins to run.", aiHero.id);
   assert.notEqual(getEnemy(slots[1]).status, "alive", "the goblin never left the fight");
@@ -554,6 +564,7 @@ await test("at an AI table the model's own call fells the gatekeeper, the portcu
   assert.equal(blocker, undefined, `${blocker?.name} stands under the gate`);
   placeToken(getTokenByRef(board.id, slots[1]).id, 6, 4);
   const watch = watchBoard(ai, gate.terrain);
+  handTurn(slots[0]);
   model.script([reply({ calls: [call("enemy_flees", { enemyId: slots[0] })] }), reply({ text: "The goblin bolts, and the portcullis crashes down." })]);
   await model.turn(ai, "I roar at the gatekeeper.", aiHero.id);
   watch.stop();

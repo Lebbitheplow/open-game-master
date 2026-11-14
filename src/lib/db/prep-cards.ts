@@ -93,6 +93,9 @@ export function upsertPrepCards(campaignId: string, cards: PrepCardInput[]): num
     }
   });
   write(cards);
+  // A first card puts read_card on the narrator's tool list (issue 942,
+  // src/lib/dm/turn-warmup.ts scheduleNextTurnCheck).
+  globalThis.__odmTurnHeadHook?.(campaignId);
   return cards.length;
 }
 

@@ -15,6 +15,7 @@ import { textKey, words } from "../language/text-logic.ts";
 import type { TableLanguage } from "../schemas/game-settings-options.ts";
 import { DEED_KINDS, type DeedKind } from "./companion-values-logic.ts";
 import { BOND_MOVES, bondClaim, bondKindLine, type BondClaim } from "./story-moves-logic.ts";
+import { ARC_MARKER } from "./tool-text.ts";
 
 export const CLAIM_KINDS = ["hit", "miss", "dies", "downed", "amount", "cast", "fight_start", "roll_ask", "aside", "speaker", "turn_over", "deed", "bond"] as const;
 export type ClaimKind = (typeof CLAIM_KINDS)[number];
@@ -263,9 +264,10 @@ SKILL is one of: ${skillIds.join(", ")}.
 Rules:
 ${
     bonds
-      ? `- A passage headed "Player's words" holds what each player wrote this turn, after their character's name: it is read only for turn_over and bond, and there what the player says or does toward someone is a move their character makes now. Every other kind comes from the narration alone. In the narration, "you" is the party character whose player wrote.`
+      ? `- A passage headed "Player's words" holds what each player wrote this turn, after their character's name: it is read only for turn_over and bond, and there what the player says or does toward someone is a move their character makes now. Every other kind comes from the narration alone.`
       : `- A passage headed "Player's words" is asked only for turn_over: there the player's own word that their turn ends is the claim.`
   }
+- In the narration, "you" is a party character: the one whose player wrote, or the only one when the party has one ("the guard's blade bites into you" is a hit on them). When the passage does not make clear which, leave a claim on "you" out.
 - A claim only for what the narrator states as a fact happening now. Never for:
   - anything inside quoted dialogue, numbers included${bonds ? " (a bond excepted: a move or an answer made in words counts)" : ""};
   - what a character reports, boasts, swears or claims ("the innkeeper insists the boar was slain" is no death);
@@ -378,6 +380,10 @@ export type ClaimContext = {
   creatureRefs: ReadonlySet<string>;
   // Party character id to name.
   party: ReadonlyMap<string, string>;
+  // In a running fight, a party fighter's ref (their sheet id, or the key the
+  // guard gives them as a creature) to that key: a blow on one of the party
+  // is checked like a blow on an enemy (issue 931).
+  partyKeys?: ReadonlyMap<string, string>;
   // Every leveled spell the spell data knows, normalized (cantrips cost
   // nothing, so a cast of one proves nothing).
   leveledSpells: ReadonlySet<string>;
@@ -446,8 +452,13 @@ export function checkClaims(raw: readonly unknown[], context: ClaimContext): Nar
         // A blow on a creature the turn attacked is checked against the roll;
         // one on a creature of the fight that no tool touched is a blow the
         // prose alone resolved (engine-boundary.ts unrolledBlow).
-        if (context.attackRefs.has(claim.target) || context.creatureRefs.has(claim.target)) {
-          kept.push(claim);
+        // A blow on one of the party is filed under the key their creature
+        // ref carries, whichever of their refs the reader copied.
+        {
+          const target = context.partyKeys?.get(claim.target) ?? claim.target;
+          if (context.attackRefs.has(target) || context.creatureRefs.has(target) || context.partyKeys?.has(target)) {
+            kept.push({ ...claim, target });
+          }
         }
         break;
       case "dies":
@@ -592,11 +603,12 @@ export function withoutSentences(text: string, quotes: readonly string[]): strin
 // its own input format echoed back ("Bram | attempt to ask the merchant..."),
 // a table note copied out, and sentences about tool calls and corrections
 // ("I will correct this by calling the necessary tool to resolve the attack
-// properly"). The phrasings are English, read only at an English table; the
+// properly"), and about the story arc in plain words ("The current beat is
+// complete.", issue 941). The phrasings are English, read only at an English table; the
 // reader's asides cover every language. A sentence holding a quotation is
 // speech and is never taken.
 const ENGLISH_META_SENTENCE =
-  /\btool[ -]?calls?\b|\b(?:the|this|a) tool'?s? (?:output|result)s?\b|\bcalling the (?:necessary |right |appropriate |correct )?tools?\b|\bnarrate the results?\b|\bunwarranted assumption\b|\bmy (?:previous|last|earlier) (?:response|reply|narration|message)\b/i;
+  /\btool[ -]?calls?\b|\b(?:the|this|a) tool'?s? (?:output|result)s?\b|\bcalling the (?:necessary |right |appropriate |correct )?tools?\b|\bnarrate the results?\b|\bunwarranted assumption\b|\bmy (?:previous|last|earlier) (?:response|reply|narration|message)\b|\bstory beats?\b|\b(?:the|this) (?:current |active |next )?beat is (?:now )?(?:complete|completed|done|finished)\b/i;
 const ECHOED_LINE = /^[ \t]*(?:\[[^\]\n]{1,80}\|\s*attempt\][^\n]*|[^\n|[\]]{1,60}\s\|\s*attempt\b[^\n]*|\[Table note\][^\n]*)$/gim;
 // The board squares a small model (Qwen3.5 9B) copied into the story,
 // "(7,13)": the board shows them; the prose never needs them. The turn order
@@ -607,7 +619,9 @@ const GRID_SQUARE = /\(\s*\d{1,3}\s*,\s*\d{1,3}\s*\)/;
 export function metaQuotes(text: string, language: TableLanguage): string[] {
   const quotes = [...text.matchAll(ECHOED_LINE)].map((match) => match[0].trim());
   for (const match of text.matchAll(/[^.!?\n]+[.!?]*/g)) {
-    if (((language === "english" && ENGLISH_META_SENTENCE.test(match[0])) || GRID_SQUARE.test(match[0])) && !/["\u201c\u201d\u00ab\u00bb]/.test(match[0])) {
+    // The story arc's markers go at every table, quoted or not: no one in a
+    // story says "[NOW]" (tool-text.ts ARC_MARKER, issue 941).
+    if (ARC_MARKER.test(match[0]) || (((language === "english" && ENGLISH_META_SENTENCE.test(match[0])) || GRID_SQUARE.test(match[0])) && !/["\u201c\u201d\u00ab\u00bb]/.test(match[0]))) {
       quotes.push(match[0].trim());
     }
   }

@@ -212,6 +212,76 @@ export async function comfyStatus(rawUrl: string | undefined): Promise<ComfyStat
   }
 }
 
+// The loader inputs that name a model file, and the folder ComfyUI reads it
+// from, for a rejection a player can act on.
+const MODEL_INPUTS: Record<string, { what: string; folder: string }> = {
+  ckpt_name: { what: "checkpoint", folder: "models/checkpoints" },
+  unet_name: { what: "diffusion model", folder: "models/diffusion_models" },
+  clip_name: { what: "text encoder", folder: "models/text_encoders" },
+  clip_name1: { what: "text encoder", folder: "models/text_encoders" },
+  clip_name2: { what: "text encoder", folder: "models/text_encoders" },
+  vae_name: { what: "VAE", folder: "models/vae" },
+  lora_name: { what: "LoRA", folder: "models/loras" },
+};
+
+// ComfyUI's answer when a workflow names a model file it does not have is
+// "ckpt_name: 'x' not in []", which tells a player nothing (#929's report:
+// the app's own ComfyUI had no checkpoint at all, and every map failed with
+// that line). Null when the rejection is about something else.
+export function comfyMissingModelMessage(body: string): string | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return null;
+  }
+  const nodes = (parsed as { node_errors?: unknown })?.node_errors;
+  if (!nodes || typeof nodes !== "object") return null;
+  for (const node of Object.values(nodes as Record<string, unknown>)) {
+    const errors = (node as { errors?: unknown })?.errors;
+    if (!Array.isArray(errors)) continue;
+    for (const error of errors) {
+      const { type, extra_info: info } = (error ?? {}) as { type?: unknown; extra_info?: Record<string, unknown> };
+      const input = typeof info?.input_name === "string" ? MODEL_INPUTS[info.input_name] : undefined;
+      if (type !== "value_not_in_list" || !input) continue;
+      const name = typeof info?.received_value === "string" ? info.received_value : "";
+      const config = Array.isArray(info?.input_config) ? info.input_config[0] : undefined;
+      const others = Array.isArray(config) ? config.length : 0;
+      const has = others ? `it has ${others} other${others === 1 ? "" : "s"}` : `its ${input.folder} folder is empty`;
+      return (
+        `ComfyUI has no ${input.what} named "${name}" (${has}). ` +
+        `Put the file in ComfyUI's ${input.folder} folder, or pick another model in Admin > Images.`
+      );
+    }
+  }
+  return null;
+}
+
+// The checkpoints ComfyUI lists, as it names them, or null when it did not
+// say: unreachable, or an answer not shaped as its list. Only a list it gave
+// refuses a picture; a ComfyUI that did not answer is left to the submission
+// to report.
+async function listedCheckpoints(url: string): Promise<string[] | null> {
+  const { node, input } = FOLDER_LOADER.checkpoints;
+  const timeout = timeoutSignal(STATUS_TIMEOUT_MS);
+  try {
+    const response = await comfyFetch(`${url}/object_info/${node}`, { cache: "no-store", signal: timeout.signal });
+    if (!response.ok) {
+      await response.body?.cancel().catch(() => {});
+      return null;
+    }
+    const json = await readJson<unknown>(response);
+    return json && typeof json === "object" && node in json ? readComfyFiles(json, node, input) : null;
+  } catch (error) {
+    if (error instanceof ComfyRefusal) {
+      throw error;
+    }
+    return null;
+  } finally {
+    timeout.clear();
+  }
+}
+
 type HistoryEntry = {
   status?: { completed?: boolean; status_str?: string; messages?: unknown[] };
   outputs?: Record<string, { images?: Array<{ filename?: string; subfolder?: string; type?: string }> }>;
@@ -276,6 +346,14 @@ export async function generateComfyImage(options: {
     files = report.files;
   }
   if (!presetModel) {
+    // As for a catalog model, a checkpoint this ComfyUI does not have is
+    // named here: it went as sent and came back as ComfyUI's 400 ("ckpt_name:
+    // 'sd_xl_base_1.0.safetensors' not in []", issue 943's report), shown raw
+    // on every map and scene picture of the campaign.
+    const listed = await listedCheckpoints(url);
+    if (listed && !listed.includes(checkpoint)) {
+      throw new Error(`ComfyUI has no checkpoint named ${checkpoint}. Add it to ComfyUI's models/checkpoints folder, or pick another model in Admin > Images.`);
+    }
     model = checkpointModel(checkpoint) ?? ANY_CHECKPOINT;
     files = { [(model.graph.load as { checkpoint: string }).checkpoint]: checkpoint };
   }
@@ -297,8 +375,8 @@ export async function generateComfyImage(options: {
       signal: submitTimeout.signal,
     });
     if (!submitted.ok) {
-      const detail = (await readCapped(submitted, MAX_COMFY_JSON_BYTES)).toString("utf8").slice(0, 500);
-      throw new Error(`ComfyUI rejected the workflow (${submitted.status}): ${detail}`);
+      const body = (await readCapped(submitted, MAX_COMFY_JSON_BYTES)).toString("utf8");
+      throw new Error(comfyMissingModelMessage(body) ?? `ComfyUI rejected the workflow (${submitted.status}): ${body.slice(0, 500)}`);
     }
     const payload = await readJson<{ prompt_id?: string }>(submitted);
     promptId = payload.prompt_id || "";

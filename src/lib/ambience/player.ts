@@ -1,4 +1,4 @@
-import { cueById } from "@/lib/ambience/catalog";
+import { bedUnderMusic, cueById } from "@/lib/ambience/catalog";
 
 // The table's sound, as a machine: two looping layers and a pool of
 // one-shots, with every rule about how they fade in, hand over and sit under
@@ -74,6 +74,9 @@ type Voice = {
   audio: AudioLike;
   url: string;
   playPending: boolean;
+  // The cue's own trim, kept with the voice: one fading out after a change
+  // of cue goes down from its own level, not the incoming cue's.
+  gain: number;
   // The fade this voice is on: 0..1, with where it is going and when it
   // started, so a slider dragged mid-fade is obeyed on the next tick.
   fade: number;
@@ -111,6 +114,9 @@ export class AmbiencePlayer {
   private stings: { audio: AudioLike; gain: number }[] = [];
   private listeners = new Set<() => void>();
   private disposed = false;
+  // How loud the bed sits under the music (bedUnderMusic), eased over a
+  // crossfade so a fight starting or ending moves the room, never cuts it.
+  private under = { from: 1, to: 1, start: 0 };
 
   constructor(deps: PlayerDeps) {
     this.deps = deps;
@@ -310,6 +316,7 @@ export class AmbiencePlayer {
     }
     layer.cueId = resolved;
     layer.urls = urls;
+    this.aimUnder();
     // A fresh cue starts on whichever take comes up, so two tables in the
     // same tavern are not in lockstep and a long session hears them all.
     layer.index = urls.length ? Math.floor(Math.random() * urls.length) : 0;
@@ -343,6 +350,7 @@ export class AmbiencePlayer {
       audio,
       url,
       playPending: false,
+      gain: cueById(layer.cueId)?.gain ?? 0.5,
       fade: 0,
       fadeFrom: 0,
       fadeTo: 1,
@@ -420,16 +428,34 @@ export class AmbiencePlayer {
     const progress = clamp((now - voice.fadeStart) / CROSSFADE_MS);
     voice.fade = voice.fadeFrom + (voice.fadeTo - voice.fadeFrom) * progress;
     const layer = voice === this.layers.bed.current || this.layers.bed.retiring.includes(voice) ? this.layers.bed : this.layers.music;
-    voice.audio.volume = clamp(voice.fade * this.target(layer));
+    voice.audio.volume = clamp(voice.fade * this.target(layer, voice, now));
   }
 
-  // What one layer should be playing at, before any fade.
-  private target(layer: Layer): number {
-    if (this.levels.muted || !layer.cueId) {
+  // What one voice should be playing at, before its fade. A voice fading
+  // out keeps its level: zeroing it here once its layer went silent made
+  // the fight's music stop dead at the end instead of fading.
+  private target(layer: Layer, voice: Voice, now: number): number {
+    if (this.levels.muted) {
       return 0;
     }
-    const gain = cueById(layer.cueId)?.gain ?? 0.5;
-    return clamp(this.levels.master * this.levels[layer.name] * gain * (this.levels.ducked ? DUCK : 1));
+    const under = layer.name === "bed" ? this.underAt(now) : 1;
+    return clamp(this.levels.master * this.levels[layer.name] * voice.gain * under * (this.levels.ducked ? DUCK : 1));
+  }
+
+  private underAt(now: number): number {
+    const progress = clamp((now - this.under.start) / CROSSFADE_MS);
+    return this.under.from + (this.under.to - this.under.from) * progress;
+  }
+
+  // The bed's level under the music changes with either layer's cue; it
+  // eases from wherever it is now.
+  private aimUnder() {
+    const to = bedUnderMusic(this.layers.bed.cueId, this.layers.music.cueId);
+    if (to === this.under.to) {
+      return;
+    }
+    const now = this.deps.now();
+    this.under = { from: this.underAt(now), to, start: now };
   }
 
   private applyVolumes() {

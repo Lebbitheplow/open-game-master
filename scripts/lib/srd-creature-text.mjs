@@ -140,6 +140,12 @@ function readOnHit(hit, damageWords) {
 // field, or when the fields hold its rule and the clause itself went to the
 // manual notes for the rest; false when no field holds it.
 function readClause(sentence, onHit, manual) {
+  // Mummy rot's terms (its barred healing, its daily 3d6, its death and its
+  // cure) are the engine's, held by the curse the save lays
+  // (src/lib/dm/mummy-rot-logic.ts).
+  if (onHit.condition === "cursed (mummy rot)" && /\b(?:the cursed target|the curse (?:reduces|lasts))\b/i.test(sentence)) {
+    return true;
+  }
   const save = /^(?:if the target is (?:a creature(?: other than (?:an? )?([a-z ]+?))?|an? (Tiny|Small|Medium|Large|Huge) or smaller creature), it|the target|it) must (?:make|make on|succeed on) a DC (\d+) (\w+) saving throw(.*)$/i.exec(sentence);
   if (save) {
     const read = {};
@@ -218,6 +224,10 @@ function readSaveOutcome(text, onHit) {
       onHit.condition = take[5].toLowerCase();
       onHit.rounds = roundsOf(take[6], take[7]);
     }
+    return true;
+  }
+  if (/^or be cursed with mummy rot$/i.test(text)) {
+    onHit.condition = "cursed (mummy rot)";
     return true;
   }
   if (/^or be knocked prone$/i.test(text)) {

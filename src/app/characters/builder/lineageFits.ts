@@ -11,7 +11,7 @@ import { compareNames } from "@/lib/language/text-logic";
 export type LineageFit = { kind: "any" } | { kind: "classes"; names: string[] };
 
 export function lineageFits(
-  entry: { asi: Partial<Record<Ability, number>>; asiChoice?: { count: number; amount: number } },
+  entry: { asi: Partial<Record<Ability, number>>; asiChoice?: { count: number; amount: number; amounts?: number[] } },
   limit = 4,
 ): LineageFit | null {
   const raised = Object.values(entry.asi).filter((bonus) => (bonus ?? 0) > 0).length;

@@ -58,8 +58,8 @@
       "why": "the public encounter's current entry: shows whose place the pointer is at (a screen, a name in a sentence), asking nothing of the turn"
     },
     "lib/db/encounters.ts": {
-      "count": 1,
-      "why": "turnKey: the pointer's own mechanics: advancing it, splicing the order, the turn's key"
+      "count": 2,
+      "why": "turnKey: the pointer's own mechanics: advancing it, splicing the order, the turn's key; turnCounterFor: whose turn counts a duration begun now, the pointer's own place, asking nothing of whose turn it is"
     },
     "lib/dm/attack-record.ts": {
       "count": 1,
@@ -90,8 +90,8 @@
       "why": "a legendary creature's onPointer reading: the pointer never rests on an enemy"
     },
     "lib/dm/enemy-turn-order.ts": {
-      "count": 1,
-      "why": "names whose turn it is in an enemy's refusal"
+      "count": 2,
+      "why": "names whose turn it is in an enemy's refusal; a person's enemy_flees lets the creature the pointer rests on go, and every pass, hand-over and legendary case is offTurnRefusal's"
     },
     "lib/dm/foresight-more.ts": {
       "count": 1,
@@ -113,6 +113,10 @@
       "count": 4,
       "why": "locking and walking the order: the pointer's own mechanics: advancing it, splicing the order, the turn's key"
     },
+    "lib/dm/intent-check.ts": {
+      "count": 1,
+      "why": "cardMoment stamps a played card with whose turn the pointer is on, and a later turn compares the two (issue 931): the pointer's own position, not whether it is anyone's own turn"
+    },
     "lib/dm/last-hit.ts": {
       "count": 1,
       "why": "lateFor asks turnStart and the pass itself"
@@ -128,6 +132,10 @@
     "lib/dm/mount-tools.ts": {
       "count": 1,
       "why": "names whose turn it is in the refusal; the turn itself is asked of ownTurnOf"
+    },
+    "lib/dm/opportunity-strike.ts": {
+      "count": 1,
+      "why": "the turn a Sentinel or Hold the Line stop lasts for: the turn under way where the pointer rests (the pointer's own mechanics), so that turn's end takes it"
     },
     "lib/dm/pc-attack-gate.ts": {
       "count": 2,

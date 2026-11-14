@@ -141,6 +141,28 @@ export function selfBuffCall(intent: MessageIntent, characterId: string, context
     : null;
 }
 
+// Where the fight stood when a card was played, and where it stands now: no
+// fight (encounterId null), or its round and whose turn it is.
+export type CardMoment = { encounterId: string | null; round: number; actingId: string | null };
+
+// Whether a card is still the move it was when its player played it (issue
+// 931). A turn the lead stopped leaves its cards waiting, and the next turn
+// resolved them wherever the fight had got to: a round-1 off-hand swing was
+// rolled in round 2 after the lead skipped the turn it was played on. A card
+// played in this fight, this round, on this turn is still due, as a retry of
+// the turn it was played for needs it to be; any other is given back. A card
+// from before the stamp (an older row) is taken as due, as it always was.
+export function cardStillDue(card: Pick<MessageIntent, "declared">, now: CardMoment): boolean {
+  const at = card.declared;
+  if (!at) {
+    return true;
+  }
+  if (at.encounterId !== now.encounterId) {
+    return false;
+  }
+  return at.encounterId === null || (at.round === now.round && at.actingId === now.actingId);
+}
+
 // pc_attack's arguments for the riders attached to an attack card, or null
 // when one is beyond it: a smite with no slot named (a card from an older
 // screen), a maneuver not named ("Maneuver", the card dealt when the sheet

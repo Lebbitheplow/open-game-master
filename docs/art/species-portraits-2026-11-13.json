@@ -1,0 +1,489 @@
+{
+  "recordedOn": "2026-11-13",
+  "author": "Smoebo",
+  "credit": "Provided by Smoebo for Open Game Master, 2026-11-13.",
+  "source": "Painted outside the repository's ComfyUI job list and supplied as 33 finished 256x256 WebP files with a contact sheet. The delivery did not include the generation tool, prompts or full-size originals, so data/placeholder-src holds none and scripts/generate-placeholders.mjs --reencode skips these plates. The scripts/placeholder-set.mjs entries describe the subjects for the silhouette generator and are not the prompts these paintings came from.",
+  "missing": [
+    "generation tool",
+    "generation prompts",
+    "full-size originals and their hashes"
+  ],
+  "encoding": "As supplied: cwebp -q 70 -sharp_yuv, 256x256. The three centaur plates were re-encoded once after a crop (entries carry the edit).",
+  "subjectBasis": "Lineage names from ODM's bundled races (src/lib/srd/races.json): kobold, hobgoblin, satyr and centaur are SRD 5.1 monsters; the rest are ODM's generic-named lineages with restated mechanics. Every plate is an original painting; none reproduces a published illustration. Serpentfolk was checked against the yuan-ti on the SRD 5.1 OGL Product Identity list (see species notes).",
+  "review": "Every plate inspected at full size and in a round crop at 96px and 40px on dark and light surrounds, 2026-11-13. Ten of the eleven pass as supplied; the centaur plates were re-cropped. The previews are species-portraits-2026-11-13.webp: one row per species (96px dark, 40px dark, 40px light for each gender), then the centaur plates as supplied and as shipped.",
+  "addedBytes": 320192,
+  "species": {
+    "triton": {
+      "subjectBasis": "Original sea-folk humanoid: blue-green skin, finned ears, a scaled mantle. ODM's triton lineage row (generic name, mechanics restated). Not on the watch list.",
+      "readability": "Pass. The bubble and coral backgrounds of the masculine and feminine plates are busy, but the face is large, central and its blue skin carries at 40px on both surrounds."
+    },
+    "serpentfolk": {
+      "subjectBasis": "Original snake-scaled humanoid head with a ridged crown and slit eyes. The lineage restates the yuan-ti pureblood's mechanics under a generic name; yuan-ti is on the SRD 5.1 OGL Product Identity list, so the plates were checked for that design: no cobra hood, no snake-headed arms, no serpent lower body, no yuan-ti iconography. Reads as generic folklore serpent-folk.",
+      "readability": "Pass. The head fills the frame; the feminine and neutral plates are darker but the ridged scaled head keeps its silhouette at 40px."
+    },
+    "kobold": {
+      "subjectBasis": "SRD 5.1 monster (Kobold stat block): a small draconic humanoid with a snout and short horns.",
+      "readability": "Pass. The masculine plate is the lowest-contrast of the set (rust on dark amber), but the horned snout reads at 40px on both surrounds; the feminine and neutral read clearly."
+    },
+    "aarakocra": {
+      "subjectBasis": "Original raptor-headed bird-folk (eagle, falcon, osprey), not drawn from a published aarakocra illustration. ODM's aarakocra lineage row.",
+      "readability": "Pass. The strongest of the set: beak and head shape read at any size."
+    },
+    "hobgoblin": {
+      "subjectBasis": "SRD 5.1 monster (Hobgoblin stat block): red-orange skin, long pointed ears, small tusks, banded armour.",
+      "readability": "Pass. Red faces and ear points carry at 40px."
+    },
+    "satyr": {
+      "subjectBasis": "SRD 5.1 monster (Satyr stat block): curling goat horns, pointed ears, pipes or a flute. Bust framing, so the horns carry the species rather than the legs.",
+      "readability": "Pass. The horns are small at 40px but the face reads; horns are clear at 96px."
+    },
+    "fairy": {
+      "subjectBasis": "Generic folklore fairy: translucent insect wings, pointed ears, a slight build. ODM's fairy lineage row.",
+      "readability": "Pass. The wings frame the face and stay visible at 40px."
+    },
+    "owlfolk": {
+      "subjectBasis": "Generic owl-headed folk (great horned owl, barn owl, snowy owl). ODM's owlfolk lineage row.",
+      "readability": "Pass. Facial discs and eyes read at any size."
+    },
+    "centaur": {
+      "subjectBasis": "SRD 5.1 monster (Centaur stat block): a person's torso on a horse's body, bow and quiver.",
+      "readability": "Fail as provided: full-body figures, the face about 4px tall at 40px. Re-cropped toward the head and torso (see edit); the face is about 1.45x larger and reads at 40px, and the horse's back still shows along the bottom of the square card. In the round token the horse is mostly outside the circle; no circle crop of this composition can hold both a readable face and the horse body (they are about 160px apart in the 256px file)."
+    },
+    "rabbitfolk": {
+      "subjectBasis": "Generic rabbit- and hare-headed folk. ODM's rabbitfolk lineage row.",
+      "readability": "Pass. The upright ears read at any size."
+    },
+    "shifter": {
+      "subjectBasis": "Generic feral-featured humanoid: beast ears, a wild mane, fangs, a fur mantle. ODM's shifter lineage row.",
+      "readability": "Pass. Faces read at 40px; the ears and mane are clear at 96px."
+    }
+  },
+  "entries": [
+    {
+      "key": "character-race/triton-masculine",
+      "path": "public/assets/placeholders/character-race/triton-masculine.webp",
+      "change": "added",
+      "sha256": "137a5d5dd28ebea1a26fee1ca80886181fbf585452cb57e922aefbb43da53dea",
+      "bytes": 14490,
+      "width": 256,
+      "height": 256,
+      "subject": "Triton",
+      "raceKeys": "triton"
+    },
+    {
+      "key": "character-race/triton-feminine",
+      "path": "public/assets/placeholders/character-race/triton-feminine.webp",
+      "change": "added",
+      "sha256": "2c49f69922852e288e0354094b21501dde39a74b6a633efa2b3d545250128634",
+      "bytes": 15278,
+      "width": 256,
+      "height": 256,
+      "subject": "Triton",
+      "raceKeys": "triton"
+    },
+    {
+      "key": "character-race/triton-neutral",
+      "path": "public/assets/placeholders/character-race/triton-neutral.webp",
+      "change": "added",
+      "sha256": "ae6cabc9f02f45214f5e69d21b902548e0cdcebffe195684715b733644ab05ea",
+      "bytes": 9558,
+      "width": 256,
+      "height": 256,
+      "subject": "Triton",
+      "raceKeys": "triton"
+    },
+    {
+      "key": "character-race/serpentfolk-masculine",
+      "path": "public/assets/placeholders/character-race/serpentfolk-masculine.webp",
+      "change": "added",
+      "sha256": "623c2b057977f71c89c882b771765585ba0299818b60d1000d6a884317556ff7",
+      "bytes": 12314,
+      "width": 256,
+      "height": 256,
+      "subject": "Serpentfolk",
+      "raceKeys": "serpentfolk"
+    },
+    {
+      "key": "character-race/serpentfolk-feminine",
+      "path": "public/assets/placeholders/character-race/serpentfolk-feminine.webp",
+      "change": "added",
+      "sha256": "5cd1c64098a5beae5cce45be77194ef4dce734ffcbf5d44e8b2c20dd4d37fe78",
+      "bytes": 8470,
+      "width": 256,
+      "height": 256,
+      "subject": "Serpentfolk",
+      "raceKeys": "serpentfolk"
+    },
+    {
+      "key": "character-race/serpentfolk-neutral",
+      "path": "public/assets/placeholders/character-race/serpentfolk-neutral.webp",
+      "change": "added",
+      "sha256": "24b1b8cd82d3fafdb9ccc8af21f82509c466f0074b1b984d488c27217d3a1d71",
+      "bytes": 6974,
+      "width": 256,
+      "height": 256,
+      "subject": "Serpentfolk",
+      "raceKeys": "serpentfolk"
+    },
+    {
+      "key": "character-race/kobold-masculine",
+      "path": "public/assets/placeholders/character-race/kobold-masculine.webp",
+      "change": "added",
+      "sha256": "5579d61820ce44757f6543291b1f8d3826cf0485edac80f42f536510a93b75a5",
+      "bytes": 9916,
+      "width": 256,
+      "height": 256,
+      "subject": "Kobold",
+      "raceKeys": "kobold"
+    },
+    {
+      "key": "character-race/kobold-feminine",
+      "path": "public/assets/placeholders/character-race/kobold-feminine.webp",
+      "change": "added",
+      "sha256": "8e699f44590639f2e4cb801e002d83e60ad80507208de4c414af3aa6cd510e4b",
+      "bytes": 10302,
+      "width": 256,
+      "height": 256,
+      "subject": "Kobold",
+      "raceKeys": "kobold"
+    },
+    {
+      "key": "character-race/kobold-neutral",
+      "path": "public/assets/placeholders/character-race/kobold-neutral.webp",
+      "change": "added",
+      "sha256": "06dd9acdee33ecebdb8b8f76814a26536cd273e2e227b100fb771d28beb54859",
+      "bytes": 9890,
+      "width": 256,
+      "height": 256,
+      "subject": "Kobold",
+      "raceKeys": "kobold"
+    },
+    {
+      "key": "character-race/aarakocra-masculine",
+      "path": "public/assets/placeholders/character-race/aarakocra-masculine.webp",
+      "change": "added",
+      "sha256": "ed2ed6bedf5dfe525236a33e27725331275b5e2e5fd7f373e25866f7a9aa288a",
+      "bytes": 8190,
+      "width": 256,
+      "height": 256,
+      "subject": "Aarakocra",
+      "raceKeys": "aarakocra"
+    },
+    {
+      "key": "character-race/aarakocra-feminine",
+      "path": "public/assets/placeholders/character-race/aarakocra-feminine.webp",
+      "change": "added",
+      "sha256": "3f6b534abd8619f5d25733d2b7a23b19c9e9bb59d02cd21ec133e169215ec307",
+      "bytes": 11064,
+      "width": 256,
+      "height": 256,
+      "subject": "Aarakocra",
+      "raceKeys": "aarakocra"
+    },
+    {
+      "key": "character-race/aarakocra-neutral",
+      "path": "public/assets/placeholders/character-race/aarakocra-neutral.webp",
+      "change": "added",
+      "sha256": "f989c063b829618f70ca2a0f43a4e5193f8bb5918d9837e1e92e814aa753a117",
+      "bytes": 8728,
+      "width": 256,
+      "height": 256,
+      "subject": "Aarakocra",
+      "raceKeys": "aarakocra"
+    },
+    {
+      "key": "character-race/hobgoblin-masculine",
+      "path": "public/assets/placeholders/character-race/hobgoblin-masculine.webp",
+      "change": "added",
+      "sha256": "f5bae315f79e262c387ec1280342d082004e1095559ab5be9b6d0247228d228d",
+      "bytes": 9146,
+      "width": 256,
+      "height": 256,
+      "subject": "Hobgoblin",
+      "raceKeys": "hobgoblin"
+    },
+    {
+      "key": "character-race/hobgoblin-feminine",
+      "path": "public/assets/placeholders/character-race/hobgoblin-feminine.webp",
+      "change": "added",
+      "sha256": "6c669d9a8b2f07b7f3cbedc3964c116eca339983af0c05d05ec84fa656d6f941",
+      "bytes": 8348,
+      "width": 256,
+      "height": 256,
+      "subject": "Hobgoblin",
+      "raceKeys": "hobgoblin"
+    },
+    {
+      "key": "character-race/hobgoblin-neutral",
+      "path": "public/assets/placeholders/character-race/hobgoblin-neutral.webp",
+      "change": "added",
+      "sha256": "1548791d775b42da23582d92d1ba0b62c30d0496711983c4d4ffbcbb414099f3",
+      "bytes": 5496,
+      "width": 256,
+      "height": 256,
+      "subject": "Hobgoblin",
+      "raceKeys": "hobgoblin"
+    },
+    {
+      "key": "character-race/satyr-masculine",
+      "path": "public/assets/placeholders/character-race/satyr-masculine.webp",
+      "change": "added",
+      "sha256": "408fb0e026d147bc8749eb6f7e841a2a15ea0413c8fe7a12a9c9484473b4b307",
+      "bytes": 13158,
+      "width": 256,
+      "height": 256,
+      "subject": "Satyr",
+      "raceKeys": "satyr"
+    },
+    {
+      "key": "character-race/satyr-feminine",
+      "path": "public/assets/placeholders/character-race/satyr-feminine.webp",
+      "change": "added",
+      "sha256": "ac20cfb1391a9f993b38689f0e56131be30ab4f2061b180618c96c402867ba14",
+      "bytes": 11538,
+      "width": 256,
+      "height": 256,
+      "subject": "Satyr",
+      "raceKeys": "satyr"
+    },
+    {
+      "key": "character-race/satyr-neutral",
+      "path": "public/assets/placeholders/character-race/satyr-neutral.webp",
+      "change": "added",
+      "sha256": "5fa7f2bcfc7cc687fca6c22265f02f30e4acc5ec43a49d5f8ab68c4ab5a7066c",
+      "bytes": 12374,
+      "width": 256,
+      "height": 256,
+      "subject": "Satyr",
+      "raceKeys": "satyr"
+    },
+    {
+      "key": "character-race/fairy-masculine",
+      "path": "public/assets/placeholders/character-race/fairy-masculine.webp",
+      "change": "added",
+      "sha256": "2bf690ad8686e85bfa4a7f451e9e1974b937d53e92e6333b75129a38751c39c5",
+      "bytes": 12494,
+      "width": 256,
+      "height": 256,
+      "subject": "Fairy",
+      "raceKeys": "fairy"
+    },
+    {
+      "key": "character-race/fairy-feminine",
+      "path": "public/assets/placeholders/character-race/fairy-feminine.webp",
+      "change": "added",
+      "sha256": "5f74b15d6ae57b0c89e99d5598c0b5aa98ffdc4dc3a1aea78a984ad92df76a3a",
+      "bytes": 9370,
+      "width": 256,
+      "height": 256,
+      "subject": "Fairy",
+      "raceKeys": "fairy"
+    },
+    {
+      "key": "character-race/fairy-neutral",
+      "path": "public/assets/placeholders/character-race/fairy-neutral.webp",
+      "change": "added",
+      "sha256": "77e81a6709890fb0c67c84dfe377bad30d066fa998aec3433a22653572884d7d",
+      "bytes": 12642,
+      "width": 256,
+      "height": 256,
+      "subject": "Fairy",
+      "raceKeys": "fairy"
+    },
+    {
+      "key": "character-race/owlfolk-masculine",
+      "path": "public/assets/placeholders/character-race/owlfolk-masculine.webp",
+      "change": "added",
+      "sha256": "9a9caec2ac8cf4c0f7ed81198c5463139537ab74751dfc8ecfa8364e62c7cd69",
+      "bytes": 9734,
+      "width": 256,
+      "height": 256,
+      "subject": "Owlfolk",
+      "raceKeys": "owlfolk"
+    },
+    {
+      "key": "character-race/owlfolk-feminine",
+      "path": "public/assets/placeholders/character-race/owlfolk-feminine.webp",
+      "change": "added",
+      "sha256": "d3760dcc409555553ff8f9f3761c1e7129659b6b2a029db5545ebb6fe44c11cb",
+      "bytes": 8306,
+      "width": 256,
+      "height": 256,
+      "subject": "Owlfolk",
+      "raceKeys": "owlfolk"
+    },
+    {
+      "key": "character-race/owlfolk-neutral",
+      "path": "public/assets/placeholders/character-race/owlfolk-neutral.webp",
+      "change": "added",
+      "sha256": "6e1f137da09d74c9ac4a843fa1f47de6f8fb351e99db165ac4d6a3b210162435",
+      "bytes": 11620,
+      "width": 256,
+      "height": 256,
+      "subject": "Owlfolk",
+      "raceKeys": "owlfolk"
+    },
+    {
+      "key": "character-race/centaur-masculine",
+      "path": "public/assets/placeholders/character-race/centaur-masculine.webp",
+      "change": "added",
+      "sha256": "ddc045237303de0f20e4d00353016a4f8cd81b539ae1fe90e42ad28b93d806aa",
+      "bytes": 4506,
+      "width": 256,
+      "height": 256,
+      "subject": "Centaur",
+      "raceKeys": "centaur",
+      "provided": {
+        "sha256": "b011e8021fbdfdf3c274557b96f58908cce9f27b505d36ec72643cc115c4954c",
+        "bytes": 5178
+      },
+      "edit": {
+        "date": "2026-11-13",
+        "reason": "token readability: the full-body figure was too small at 40px",
+        "crop": {
+          "x": 22,
+          "y": 0,
+          "size": 176,
+          "of": "the provided 256x256 file"
+        },
+        "resize": "Lanczos to 256x256 (Pillow)",
+        "encoding": {
+          "tool": "sharp 0.35.5 (libwebp 1.6.0)",
+          "quality": 70,
+          "smartSubsample": true,
+          "effort": 4
+        }
+      }
+    },
+    {
+      "key": "character-race/centaur-feminine",
+      "path": "public/assets/placeholders/character-race/centaur-feminine.webp",
+      "change": "added",
+      "sha256": "d99304f69f43620c8b85eea874edc846b7607a5e21ffd382977d915e00da711d",
+      "bytes": 4772,
+      "width": 256,
+      "height": 256,
+      "subject": "Centaur",
+      "raceKeys": "centaur",
+      "provided": {
+        "sha256": "e35edd2f715dc0969b8b27098407070c20ac0b93861b04a9b365dc42fd8452bc",
+        "bytes": 5830
+      },
+      "edit": {
+        "date": "2026-11-13",
+        "reason": "token readability: the full-body figure was too small at 40px",
+        "crop": {
+          "x": 36,
+          "y": 0,
+          "size": 176,
+          "of": "the provided 256x256 file"
+        },
+        "resize": "Lanczos to 256x256 (Pillow)",
+        "encoding": {
+          "tool": "sharp 0.35.5 (libwebp 1.6.0)",
+          "quality": 70,
+          "smartSubsample": true,
+          "effort": 4
+        }
+      }
+    },
+    {
+      "key": "character-race/centaur-neutral",
+      "path": "public/assets/placeholders/character-race/centaur-neutral.webp",
+      "change": "added",
+      "sha256": "258b926375f7cffd897661821ba4e09ac888a7f1b0801b8f40b919de73ba773c",
+      "bytes": 3380,
+      "width": 256,
+      "height": 256,
+      "subject": "Centaur",
+      "raceKeys": "centaur",
+      "provided": {
+        "sha256": "117f0021430908c4ddede935b5d50a4bd7e51ede2fac637f0ee256b858663389",
+        "bytes": 4354
+      },
+      "edit": {
+        "date": "2026-11-13",
+        "reason": "token readability: the full-body figure was too small at 40px",
+        "crop": {
+          "x": 42,
+          "y": 4,
+          "size": 180,
+          "of": "the provided 256x256 file"
+        },
+        "resize": "Lanczos to 256x256 (Pillow)",
+        "encoding": {
+          "tool": "sharp 0.35.5 (libwebp 1.6.0)",
+          "quality": 70,
+          "smartSubsample": true,
+          "effort": 4
+        }
+      }
+    },
+    {
+      "key": "character-race/rabbitfolk-masculine",
+      "path": "public/assets/placeholders/character-race/rabbitfolk-masculine.webp",
+      "change": "added",
+      "sha256": "8c416b4e6bc8a84868fa2a1d24ee3b106054013dcaa0c9d5bde0ecdf77d594bf",
+      "bytes": 9552,
+      "width": 256,
+      "height": 256,
+      "subject": "Rabbitfolk",
+      "raceKeys": "rabbitfolk"
+    },
+    {
+      "key": "character-race/rabbitfolk-feminine",
+      "path": "public/assets/placeholders/character-race/rabbitfolk-feminine.webp",
+      "change": "added",
+      "sha256": "05d377a12ee9efea1bd4a5e4132dbc83874eddf06e8340ef887270c8f71e726c",
+      "bytes": 7370,
+      "width": 256,
+      "height": 256,
+      "subject": "Rabbitfolk",
+      "raceKeys": "rabbitfolk"
+    },
+    {
+      "key": "character-race/rabbitfolk-neutral",
+      "path": "public/assets/placeholders/character-race/rabbitfolk-neutral.webp",
+      "change": "added",
+      "sha256": "53ae4b1b07cc3faf5e72dcf81ee7182a53a92c26803e7a6fdb1aff88bc289787",
+      "bytes": 10948,
+      "width": 256,
+      "height": 256,
+      "subject": "Rabbitfolk",
+      "raceKeys": "rabbitfolk"
+    },
+    {
+      "key": "character-race/shifter-masculine",
+      "path": "public/assets/placeholders/character-race/shifter-masculine.webp",
+      "change": "added",
+      "sha256": "4c89955d1ba8a9f715d8941cddb543846deab4bb19c0185f2bc26e56e8d9513a",
+      "bytes": 9778,
+      "width": 256,
+      "height": 256,
+      "subject": "Shifter",
+      "raceKeys": "shifter"
+    },
+    {
+      "key": "character-race/shifter-feminine",
+      "path": "public/assets/placeholders/character-race/shifter-feminine.webp",
+      "change": "added",
+      "sha256": "73d1321f59ddc5c19424ba994c3bad43dc01720cf34d48bf7ace4771537becc9",
+      "bytes": 9858,
+      "width": 256,
+      "height": 256,
+      "subject": "Shifter",
+      "raceKeys": "shifter"
+    },
+    {
+      "key": "character-race/shifter-neutral",
+      "path": "public/assets/placeholders/character-race/shifter-neutral.webp",
+      "change": "added",
+      "sha256": "df4d6abdf16f3dc9ddff292be06aa40cfbcb49a4363c8e9be4af354ea310bd6c",
+      "bytes": 10628,
+      "width": 256,
+      "height": 256,
+      "subject": "Shifter",
+      "raceKeys": "shifter"
+    }
+  ]
+}

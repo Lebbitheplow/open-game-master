@@ -13,6 +13,7 @@ import { getDatabase, parseJson } from "@/lib/db/core";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getClock } from "@/lib/db/clock";
 import { insertSheetAudit, markReverted } from "@/lib/db/sheet-audit";
+import { spiritHeld } from "@/lib/dm/genre-b-mystery-anchor";
 
 const KIND = "death_moment";
 
@@ -94,6 +95,11 @@ export function minutesSinceDeath(campaignId: string, characterId: string): numb
   const moment = lastMoment(characterId);
   if (!moment) {
     return null;
+  }
+  // Anchor of the Living holds the spirit: "as if freshly dead" for a day
+  // (src/lib/dm/genre-b-mystery-anchor.ts).
+  if (spiritHeld(campaignId, characterId, moment.instant)) {
+    return 0;
   }
   let minutes = Math.max(0, getClock(campaignId).instant - moment.instant);
   const encounter = getActiveEncounter(campaignId);

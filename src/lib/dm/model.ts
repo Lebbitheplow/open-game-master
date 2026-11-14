@@ -12,6 +12,7 @@ import {
   type ChatRequestOptions,
   type UpstreamResult,
   probeCustomContextWindow,
+  endpointUnreachable,
 } from "@/lib/model-client";
 import { requestHarnessMessage } from "@/lib/harness/bridge";
 import { harnessConfig, harnessContextTokens } from "@/lib/harness/status";
@@ -267,7 +268,13 @@ async function attempt(
       // as before any of this was measured. A server that really is this
       // small refuses it, and that refusal teaches the real window
       // (model-client.ts contextOverflowWindow).
-      console.warn(`[model] ${task}: ${fit.reason} The window is assumed (the endpoint reports none), so the request goes out anyway; set OPENAI_COMPAT_CONTEXT to the server's real window.`);
+      // A server that did not answer the probe at all has a window nobody
+      // asked yet: telling the operator to set one by hand was the wrong
+      // advice for an app whose own llama-server was still starting (#925).
+      const why = route.provider === "custom" && endpointUnreachable(route.baseUrl, route.model)
+        ? "The window is assumed because the server did not answer when asked for it (it may still be starting), so the request goes out anyway."
+        : "The window is assumed (the endpoint reports none), so the request goes out anyway; set OPENAI_COMPAT_CONTEXT to the server's real window.";
+      console.warn(`[model] ${task}: ${fit.reason} ${why}`);
       sent = fit.messages as ChatMessage[];
       sizing = {
         windowTokens: route.windowTokens,

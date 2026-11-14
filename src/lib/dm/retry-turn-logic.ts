@@ -191,3 +191,63 @@ export function danglingToolCallIds(conversation: readonly RetryChatMessage[]): 
   }
   return dangling;
 }
+
+// The turn as its prompt was built: the window it was packed against
+// (ContextTrace.window) and where its own calls start (shape.promptMessages).
+export type BuiltTurnSnapshot = {
+  callIndex: number;
+  narrationParts: readonly string[];
+  conversation: readonly RetryChatMessage[];
+  contextTrace?: {
+    window?: { tokens: number; assumed: boolean };
+    shape?: { promptMessages: number };
+  } | null;
+};
+
+// Whether Retry should build the turn's prompt afresh instead of replaying
+// it (issue #925). A prompt packed against the 16K stand-in while the
+// narrator was down kept 1 of 95 lines; replaying it once the server was up
+// at 64K narrated a scene an hour old, since the per-call fit can drop lines
+// but never add them back. Rebuilding is safe only when nothing of the turn
+// happened yet: no call the model answered, nothing narrated, no assistant
+// message or tool result past the prompt (a card the engine resolved is
+// both). Then the transcript says everything the prompt did. The window must
+// also have grown: a guess now known, or a known window now larger. A row
+// from before the window was kept is replayed as before.
+export function promptOutgrown(
+  turn: BuiltTurnSnapshot,
+  now: { tokens: number; assumed: boolean },
+): boolean {
+  const built = turn.contextTrace?.window;
+  const promptMessages = turn.contextTrace?.shape?.promptMessages ?? 0;
+  if (!built || !promptMessages || now.assumed) {
+    return false;
+  }
+  if (turn.callIndex > 0 || turn.narrationParts.length > 0) {
+    return false;
+  }
+  const acted = turn.conversation
+    .slice(promptMessages)
+    .some((message) => message?.role === "assistant" || message?.role === "tool");
+  if (acted) {
+    return false;
+  }
+  return built.assumed || now.tokens > built.tokens;
+}
+
+// The director's one-turn steer a rebuilt prompt must carry again: it was
+// taken when the prompt was first built (turn.ts takeDirectorArm), so the
+// new build would otherwise lose it. It is the prompt's last message, as
+// buildDmMessages places it, when the trace says one rode.
+export function carriedDirectorBlock(
+  turn: Pick<BuiltTurnSnapshot, "conversation"> & {
+    contextTrace?: { blocks?: readonly { id: string }[]; shape?: { promptMessages: number } } | null;
+  },
+): string | undefined {
+  const promptMessages = turn.contextTrace?.shape?.promptMessages ?? 0;
+  if (!promptMessages || !turn.contextTrace?.blocks?.some((block) => block.id === "director")) {
+    return undefined;
+  }
+  const last = turn.conversation[promptMessages - 1];
+  return last?.role === "user" && typeof last.content === "string" && last.content ? last.content : undefined;
+}

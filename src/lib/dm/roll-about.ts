@@ -41,6 +41,31 @@ export const CHECK_ABOUT = [
   "forgery",
   // Ear for Deceit: telling whether a creature is lying.
   "lies",
+  // Ear to the Ground (fixer): asking around, gathering information.
+  "gathering_information",
+  // Blackmail Files (fixer): against someone whose secret the roller knows.
+  "known_secret",
+  // Juggernaut (Black Flag): the check to grapple or shove a creature (the
+  // server names it on take_action's contest).
+  "grapple_shove",
+  // Juggernaut: a weapon option's Strength check (Black Flag's weapon options).
+  "weapon_option",
+  // Silent Salvage (scavenger): moving through ruins or wreckage.
+  "ruins",
+  // Trap Eye (scavenger): spotting a trap, an ambush or unstable ground.
+  "traps",
+  // Predator Senses (aberrant): perceiving by smell.
+  "smell",
+  // Sky Legs (aeronaut): climbing, balancing, keeping one's footing.
+  "footing",
+  // Corsair's Swagger (aeronaut): dealings aboard a ship or in a port.
+  "ships",
+  // Automatic Writing (parapsychologist): searching a place where someone died violently.
+  "violent_death",
+  // Funerary Grace (grave knight): with mourners and those who serve death.
+  "death_rites",
+  // Guild Dues (plague doctor): sourcing rare reagents, poisons or cadavers.
+  "rare_reagents",
 ] as const;
 export type CheckAbout = (typeof CHECK_ABOUT)[number];
 
@@ -66,29 +91,31 @@ export const CHECK_KEY_PROPERTIES = {
     type: "string",
     enum: [...CHECK_ABOUT, NONE],
     description:
-      "The circumstance a check is about, or 'none': the server applies the features keyed to it.",
+      "Its subject, or 'none'; features keyed to it apply.",
   },
   creature: {
     type: "string",
     description:
-      "A check about a creature: its singular rules type or humanoid race ('undead', 'orc'), or 'none'.",
+      "A creature it is about: type or humanoid race ('undead', 'orc'), or 'none'.",
   },
   terrain: {
     type: "string",
     enum: [...NATURAL_TERRAINS, NONE],
-    description: "A check made in one of these terrains, for Natural Explorer, or 'none'.",
+    description: "Its terrain (Natural Explorer), or 'none'.",
   },
   by: {
     type: "string",
     enum: [...CHECK_SENSES, NONE],
-    description: "A check that needs sight or hearing, or 'none': a blinded or deafened character fails it.",
+    description: "The sense it needs (blind or deaf fails), or 'none'.",
   },
 };
 
 // What a save can resist: a condition, a damage type, a disease, or being
 // thrown from a mount (Born to the Saddle). Whether it is magic, and the
 // type of a spell's caster, are fields of their own (SaveAgainst).
-export const SAVE_AGAINST = [...CONDITION_VALUES, ...DAMAGE_TYPE_VALUES, "disease", "dismount"] as const;
+// "curse": a curse laid on the creature (Anathema Ward); "aging", "drain"
+// (of life or hit point maximum) and "possession" (Wight-Iron Will).
+export const SAVE_AGAINST = [...CONDITION_VALUES, ...DAMAGE_TYPE_VALUES, "disease", "dismount", "curse", "aging", "drain", "possession"] as const;
 export type SaveAgainstValue = (typeof SAVE_AGAINST)[number];
 
 // What one save resists, as the save-keyed traits read it.
@@ -103,6 +130,9 @@ export type SaveAgainst = {
   // it from the creature it knows (forced-save.ts rollCharacterSave); a save
   // with no known source has none.
   sourceType?: string;
+  // The school of the spell forcing the save, lower case ("illusion": a
+  // duergar's resilience), named by the engine that knows the spell.
+  school?: string;
 };
 
 // An engine's own condition or damage type as a save's `against`, or none
@@ -115,11 +145,13 @@ export function listedAgainst(value: string | undefined): SaveAgainstValue | und
 // damage it lays (the condition first: a poisoned spell's save is against
 // being poisoned), whether it is magic, and a spell caster's stat-block type
 // (Holy Nimbus: advantage against spells cast by fiends or undead).
-export function saveAgainst(parts: { condition?: string; damageType?: string; magical?: boolean; spellBy?: string }): SaveAgainst {
+// `school`: the spell's school, when the engine knows the spell.
+export function saveAgainst(parts: { condition?: string; damageType?: string; magical?: boolean; spellBy?: string; school?: string | null }): SaveAgainst {
   const casterType = parts.spellBy ? normalizeCreatureType(parts.spellBy) : null;
   return {
     against: listedAgainst(parts.condition) ?? listedAgainst(parts.damageType),
     ...(parts.magical || casterType ? { magical: true } : {}),
     ...(casterType ? { casterType } : {}),
+    ...(parts.school ? { school: parts.school.toLowerCase() } : {}),
   };
 }

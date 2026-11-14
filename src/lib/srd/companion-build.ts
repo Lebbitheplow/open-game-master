@@ -25,6 +25,9 @@ import {
   type CasterView,
 } from "@/lib/srd/spell-prep";
 import { compareNames, textKey } from "@/lib/language/text-logic";
+import { classSpellGrants } from "@/lib/srd/class-spell-grants";
+import { mysticArcanumLevels } from "@/lib/srd/mystic-arcanum";
+import { spellLevelOf } from "@/lib/srd/spell-lists";
 
 // Where a companion's improvements go: two points to the first score of its
 // class's priority that has room for both, and when the best it can do is a
@@ -160,11 +163,20 @@ export function companionSpellPicks(input: CompanionSpellInput): string[] {
     ...preferredSpellOrder(open.filter((spell) => !wanted.includes(textKey(spell.name)))),
   ];
 
+  // What a class feature holds on top of the class's counts
+  // (src/lib/srd/class-spell-grants.ts): the Book of Shadows' cantrips,
+  // Additional Magical Secrets' spells; and beside them a warlock's Mystic
+  // Arcanum, one spell of each arcanum level (src/lib/srd/mystic-arcanum.ts).
+  const grants = classSpellGrants(after);
+  const levelOf = (name: string) =>
+    input.candidates.find((spell) => textKey(spell.name) === textKey(name))?.level ?? spellLevelOf(name);
+  const arcanumLevels = mysticArcanumLevels({ classId: after.classId, level: input.level });
+  const arcanumOpen = arcanumLevels.filter((spellLevel) => !heldSpells(after).some((name) => levelOf(name) === spellLevel));
   const cantripCap = cantripCapOf(after);
   const cantripRoom =
     cantripCap === null
       ? 0
-      : Math.max(0, cantripCap + input.freeCantrips - dedupeNames(after.cantrips).length);
+      : Math.max(0, cantripCap + grants.extraCantrips + input.freeCantrips - dedupeNames(after.cantrips).length);
   const cantrips = ordered.filter((spell) => spell.level === 0).slice(0, cantripRoom);
 
   let room = 0;
@@ -177,12 +189,14 @@ export function companionSpellPicks(input: CompanionSpellInput): string[] {
       const cap = spellCapOf(after, input.abilities);
       const count =
         after.style === "known"
-          ? dedupeNames(heldSpells(after)).filter((name) => !granted.has(textKey(name))).length
+          ? dedupeNames(heldSpells(after)).filter((name) => !granted.has(textKey(name)) && !arcanumLevels.includes(levelOf(name) ?? 0)).length
           : preparedCount(after);
-      room = cap ? Math.max(0, cap.count - count) : 0;
+      room = cap ? Math.max(0, cap.count + grants.extraSpells - count) : 0;
     }
   }
   const reachable = ordered.filter((spell) => spell.level >= 1 && spell.level <= top);
+  // The arcana first, one of each open level, the asked-for one leading.
+  const arcana = arcanumOpen.flatMap((spellLevel) => ordered.find((spell) => spell.level === spellLevel) ?? []);
   const asked = reachable.filter((spell) => wanted.includes(textKey(spell.name))).slice(0, room);
   const rest = reachable.filter((spell) => !asked.includes(spell));
   const spells = [...asked];
@@ -209,7 +223,7 @@ export function companionSpellPicks(input: CompanionSpellInput): string[] {
       }
     }
   }
-  return [...cantrips, ...spells].map((spell) => spell.name);
+  return [...cantrips, ...arcana, ...spells].map((spell) => spell.name);
 }
 
 const SRD_SKILLS = skillsJson.skills as Array<{ id: string; name: string; ability: string }>;

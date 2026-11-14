@@ -136,7 +136,7 @@ const row = (id, tool, stage, args, setup, say) => rows.push({ id, tool, stage, 
 // A creature's own act: the AI's door gives a creature its turn only through
 // end_turn's hand-off, so these rows go by the console's door, and the turn
 // loop's suite (test-enforce-sweep-dice-turn.mjs) plays them as the AI does.
-const CONSOLE_ONLY = new Set(["opportunity.enemy_walks_off", "cast_at_player.enemy", "aoe_damage.enemy_breath", "enemy_attack.rider_save"]);
+const CONSOLE_ONLY = new Set(["opportunity.enemy_walks_off", "opportunity.enemy_flees", "cast_at_player.enemy", "aoe_damage.enemy_breath", "enemy_attack.rider_save"]);
 // A name no earlier row used: a scene, a shop and a person outlive the row
 // that made them.
 let made = 0;
@@ -176,6 +176,8 @@ row("pc_attack.spell", "pc_attack", "fight", (c) => ({ characterId: c.heroId, ta
 row("cast_at_enemy.save_spell", "cast_at_enemy", "fight", (c) => ({ characterId: c.heroId, targetEnemyId: c.enemyId, spell: "Sacred Flame" }));
 row("damage_object.weapon", "damage_object", "out", (c) => ({ name: "a door", material: "wood", size: "medium", characterId: c.heroId, weapon: "Longsword", reason: "breaking in" }));
 row("opportunity.enemy_walks_off", "move_token", "fight-enemy-turn", (c) => ({ token: c.enemyId, x: 5, y: 12, reason: "it runs" }));
+// A creature fleeing the fight draws the same swing as its walk (enemy_flees, PR #930).
+row("opportunity.enemy_flees", "enemy_flees", "fight-enemy-turn", (c) => ({ enemyId: c.enemyId, reason: "it runs" }));
 row("use_reaction.opportunity_attack", "use_reaction", "fight-ally-first", (c) => ({ characterId: c.heroId, feature: "Opportunity attack", targetEnemyId: c.enemyId, reason: "it turned its back" }));
 
 // Saves something forces on the seat.
@@ -427,7 +429,7 @@ await test("every untagged d20 the rows met comes from a site this suite has cla
 const NO_ROW = {
   // Fights, creatures and the board: the creature's dice, or none.
   add_enemies: "adds creatures; their initiative is the GM's die",
-  enemy_flees: "a creature leaves", legendary_action: "a creature's action", declare_intent: "a creature's intent",
+  legendary_action: "a creature's action", declare_intent: "a creature's intent",
   legendary_resist: "a creature's resistance", lair_action: "the lair's action", set_movement: "the board's movement budget",
   end_encounter: "ends the fight",
   // Player spells and features whose d20, if any, is the creature's save.
@@ -492,10 +494,17 @@ const SITES = {
   "lib/dice/tray-rules.ts#trayExpressionProblem": "F reads an expression",
   "lib/dm/action-common.ts#rollEnemyContest": "F the creature's side of a contest",
   "lib/dm/advance-tick.ts#tickAdvances": "F d100",
+  "lib/dm/mummy-rot.ts#mummyRotClock": "F the curse's daily 3d6 off the hit point maximum (test-enforce-mummy-rot.mjs): the disease's dice, not a throw of the cursed",
   "lib/dm/after-roll.ts#rerollD20s": "H an extra d20 on the after-the-roll card (Lucky, Chronal Shift)",
   "lib/dm/after-roll.ts#spendAfterRoll": "H the die or d20 a choice on the after-the-roll card adds",
   "lib/dm/mt-fb-runes.ts#spendPropheticState": "H the d20 the Storm Rune's prophetic state adds on the after-the-roll card",
   "lib/dm/aoe-damage.ts#handleAoeDamage": "D area damage",
+  "lib/dm/pending-roll-land.ts#settleSkippedStages": "D a hit's owed damage, thrown as the Roll digitally fallback when the lead skips the turn (test-enforce-after-roll-attacks.mjs)",
+  // The dirgesinger's inspiration die exploding on its highest face (The
+  // Final Movement, genre-cc-a-saves.ts): the die rides a d20 already thrown.
+  "lib/dm/genre-cc-a-saves.ts#explodedDie": "D an inspiration die rolled again on its highest face (The Final Movement)",
+  "lib/dm/genre-gb-aeronaut.ts#grapnelAce": "F the creature's Strength against Grapnel Ace's trip or disarm",
+  "lib/dm/genre-gh-horror-plays.ts#riteOfSeverance": "F the possessing entity's Wisdom against the Rite of Severance",
   "lib/dm/mt-mr-offers.ts#dieOf": "H the Psionic Energy die a choice on the after-the-roll card adds (Homing Strikes, Psi-Bolstered Knack)",
   "lib/dm/mt-mr-offers.ts#rerolled": "H a d20 thrown again from the after-the-roll card (Unerring Accuracy, Draconic Presence)",
   "lib/dm/ar-ws-bombardment.ts#spellBombardment": "D a spell's exploded damage die (Spell Bombardment), where the area roll's own card carries it",
@@ -515,6 +524,9 @@ const SITES = {
   "lib/dm/enemy-attack.ts#handleEnemyAttack": "F", "lib/dm/enemy-fall.ts#enemyFalls": "F", "lib/dm/enemy-hit-rows.ts#resolveRowOnHit": "F",
   "lib/dm/enemy-hit.ts#resolveOnHit": "F", "lib/dm/enemy-strike.ts#enemyStrikesEnemy": "F",
   "lib/dm/feat-reactions.ts#lucky": "H the Lucky feat's d20 against an attacker", "lib/dm/feat-reactions.ts#reservesRecovery": "D a hit die",
+  "lib/dm/feat-reactions.ts#secondChance": "F the attacker's d20 that a halfling's Second Chance makes it roll again",
+  "lib/dm/bountiful-luck.ts#withOneRolledAgain": "H an ally's natural 1 rolled again from the after-the-roll card (Bountiful Luck)",
+  "lib/dm/lineage-after-roll.ts#spendLineageAfterRoll": "D Lucky Footwork's d4 added to a failed Dexterity save",
   "lib/dm/forced-save.ts#rollCharacterSave": "H", "lib/dm/forced-save.ts#rollEnemySave": "F", "lib/dm/forced-save.ts#settleHeldDie": "D a held Bardic die",
   "lib/dm/foresight-more.ts#damageCeiling": "F no die: the most a blow could deal, to read whether it could drop the hero before the watch stop",
   "lib/dm/foretold-logic.ts#rollForetold": "H Portent's two d20s at the long rest",
@@ -546,6 +558,7 @@ const UNREACHED = {
   "lib/dm/mt-mr-offers.ts#rerolled": "thrown from the after-the-roll card: test-enforce-sweep-clauses-martial-monk.mjs (unerring-accuracy, draconic-presence)",
   "lib/dm/encounter-tools.ts#ensureInitiativeProgress": "skips held seats by its own filter (encounter-tools.ts: !held.has(sheet.userId)); test-real-dice-initiative.mjs holds it",
   "lib/dm/feat-reactions.ts#lucky": "needs the Lucky feat and an open hit on the seat",
+  "lib/dm/bountiful-luck.ts#withOneRolledAgain": "thrown from the after-the-roll card: test-enforce-sweep-clauses-feats.mjs (feat.bountiful-luck.reroll)",
   "lib/dm/foretold-logic.ts#rollForetold": "needs a Divination wizard's long rest",
   "lib/dm/forced-save.ts#rollCharacterSave": "the server's own throw of a forced save, which a seat on physical dice never reaches now (character-roll.ts parks it, as cast_at_player.hazard shows); test-enforce-sweep-dice-afterroll.mjs reaches it on the server's dice",
   "lib/dm/item-charges.ts#spendChargesMath": "needs a wand's last charge",

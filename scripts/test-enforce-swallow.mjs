@@ -496,6 +496,7 @@ await test("A swallower that flees leaves her behind, prone where it stood, and 
   world.dice(19, 1, 1, 1, 1);
   await bite(foe, kara);
   world.clearDice();
+  kit.enemyTurn(foe.id);
   const fled = await world.invoke("enemy_flees", { enemyId: foe.id });
   assert.equal(fled.ok, true, JSON.stringify(fled));
   assert.ok(world.encounter(), "the goblin holds the fight open");

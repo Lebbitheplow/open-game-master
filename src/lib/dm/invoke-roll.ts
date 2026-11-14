@@ -17,6 +17,7 @@ import { afterRollOptions, canWaitOnRoll } from "@/lib/dm/after-roll-logic";
 import { allyChoicesFor, reactionFreeFor, rollsCanWait } from "@/lib/dm/after-roll";
 import { noteShift, takeShift } from "@/lib/dm/chronal-shift";
 import { takeFate } from "@/lib/dm/fate-turn";
+import { takeLineage } from "@/lib/dm/lineage-watch";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { claimedAdvantage } from "@/lib/dm/pc-attack-options";
@@ -37,6 +38,7 @@ import { autoApplyDamageRoll } from "@/lib/dm/enemy-damage";
 import { heldInitiative, recordInitiativeRoll } from "@/lib/dm/encounter-tools";
 import { applyInitiativeRefills } from "@/lib/dm/feature-hooks";
 import {
+  customRollIsCheck,
   resolveRollExpression,
   resolveSheetRef,
   rollArgsSchema,
@@ -52,6 +54,9 @@ import { afterRollDeadline, armAfterRollKeep } from "@/lib/dm/after-roll-timer";
 import { badArguments, invalidArguments, toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { swayUnasked } from "@/lib/dm/player-word";
 import { swaySkill } from "@/lib/dm/player-word-logic";
+
+// A roll the model names as a hit die (#932).
+const HIT_DIE = /\bhit[\s-]*di(?:e|ce)\b/i;
 
 export function handleRequestRoll(
   campaign: Campaign,
@@ -83,6 +88,16 @@ export function handleRequestRoll(
     return invalidArguments(needs, parsed.error, raw);
   }
   let args: RollArgs = parsed.data;
+  // A hit die is spent, not rolled as a check: a request_roll for one rolled
+  // a d20 and healed nobody, and the narration healed the player anyway
+  // (#932). Asked before anything is rolled.
+  if (model && HIT_DIE.test(`${args.reason ?? ""} ${args.skill ?? ""} ${args.expression ?? ""}`)) {
+    return {
+      error:
+        "Hit dice are spent through take_rest, never request_roll: send take_rest kind short with spend [{characterId, dice}]. Inside the short rest just taken it spends them with no more time passing, and a player's own dice roll them. Nothing was rolled.",
+      retry: true,
+    };
+  }
   args = {
     ...args,
     dc: rollDcFor(args, raw, strictnessShift(campaign.gameSettings.gm?.strictness ?? "standard")),
@@ -150,6 +165,17 @@ export function handleRequestRoll(
       error: model
         ? `${sheet.name}'s damage on an enemy comes from pc_attack (or the spell tools), which roll the hit first and apply the damage themselves; request_roll does not apply a party character's damage to an enemy.`
         : `${sheet.name}'s damage on an enemy comes from Player attacks or a cast form, which roll the hit first; a bare damage roll does not land on an enemy.`,
+      retry: true,
+    };
+  }
+
+  // The AI's custom d20 for a party character is a check, a save or an
+  // attack with a modifier it made up (customRollIsCheck, issue 942): sent
+  // back to the kind that reads the sheet. A person at the console rolls
+  // what they rule.
+  if (model && sheet && customRollIsCheck(args)) {
+    return {
+      error: `A d20 for ${sheet.name} is a check, a save or an attack, and the server rolls it from their sheet: send kind ability_check or saving_throw with the ability, skill_check with the skill, or pc_attack for a swing, with no expression. Nothing was rolled.`,
       retry: true,
     };
   }
@@ -288,6 +314,8 @@ export function handleRequestRoll(
     // Convergent Future or Bend Luck set on it at the stop (fate-turn.ts).
     if (sheet && typeof args.dc === "number" && canWaitOnRoll(args.kind)) {
       outcome = takeFate(campaignId, purpose, sheet.name, outcome, args.dc)?.outcome ?? outcome;
+      // Saving Face, Lucky Footwork, Inspired Ingenuity or Bountiful Luck (lineage-watch.ts).
+      outcome = takeLineage(campaignId, purpose, sheet.name, outcome, { dc: args.dc }, resolved.detail)?.outcome ?? outcome;
     }
     // The server threw it: the dice wait on the player when something they
     // hold could change the result, or a wizard beside them could make them
@@ -296,7 +324,7 @@ export function handleRequestRoll(
       // A luck point spent before the throw (luck: true) was this roll's one.
       ? [
           ...afterRollOptions(fresh, { kind: args.kind, outcome, dc: args.dc ?? null, spent: resolved.spendInspiration?.split("|").includes(LUCK_SPEND) ? ["lucky"] : [], reactionFree: reactionFreeFor(campaignId, fresh.id), check: { skill: args.kind === "skill_check" ? resolved.detail : null, tool: args.tool } }),
-          ...allyChoicesFor(campaignId, fresh, { kind: args.kind, outcome, dc: args.dc ?? null }),
+          ...allyChoicesFor(campaignId, fresh, { kind: args.kind, outcome, dc: args.dc ?? null, detail: resolved.detail }),
         ]
       : [];
     if (sheet && options.length) {

@@ -236,8 +236,12 @@ await test("The AI's own end_turn: it is told the enemies act first and the next
   world.say("player", "That's my turn.", world.sheet(hero("Tamsin").id));
   const ended = await invokeEngine(world.campaign(), { kind: "ai", turnId: turn.id }, { name: "end_turn", args: { characterId: hero("Tamsin").id } });
   assert.equal(ended.ok, true, ended.error);
-  assert.match(ended.result.note, /Goblin 1 and Thug 1 and Thug 2 act before Vyrrath Stormclaw\..* It is now Vyrrath Stormclaw's turn \(round 3\)\.$/);
-  assert.equal(ended.result.round, 3, "the round the next turn is in");
+  // They close round 2, and Vyrrath opens round 3 (issue 931: "act before"
+  // had the enemies go first in the new round).
+  assert.match(ended.result.note, /Goblin 1 and Thug 1 and Thug 2 take their turns now, the last of round 2; then round 3 begins with Vyrrath Stormclaw\./);
+  assert.doesNotMatch(ended.result.note, /act before Vyrrath/);
+  assert.equal(ended.result.round, 2, "the round the enemies act in");
+  assert.equal(ended.result.nextRound, 3, "the round the next turn is in");
   assert.equal(savesOf(world, hero("Vesper").id).length, 0, "no save while the model still has the enemies to play");
   assert.equal(world.encounter().round, 2);
   world.dice(10);

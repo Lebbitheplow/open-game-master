@@ -9,7 +9,12 @@ import { endedByFallingUnconscious, endedByLosingWeapon, fellUnconscious, rageSu
 import { keptFromDrain } from "@/lib/dm/ar-ws-inured";
 import { populateFeaturesForClasses } from "@/lib/srd/features";
 import { populateResources } from "@/lib/srd/class-resources";
-import { XP_THRESHOLDS, deriveAc } from "@/lib/srd";
+import { XP_THRESHOLDS, acBreakdownFor, deriveAc, type AcSource } from "@/lib/srd";
+import { defaultHeld, keepHeldGuess, unguessed, wearGained } from "@/lib/dm/held-default";
+import { guessStands } from "@/lib/dm/gear-hands";
+import { lastAttackDetail } from "@/lib/db/rolls";
+import { rollAgainst } from "@/lib/roll-labels";
+import { wearingIsExplicit } from "@/lib/srd/armor";
 import { settleLevelChange, withoutDuplicateClasses } from "@/lib/srd/level-change";
 import { normalizeSpellcasting } from "@/lib/srd/spell-lists";
 import { settleAttunement, type Wearer } from "@/lib/srd/magic-items";
@@ -24,8 +29,10 @@ import { featsAsRun } from "@/lib/srd/feat-effects";
 import { serverSpeciesName, serverSpeciesRules } from "@/lib/characters/species-rules";
 import {
   keyedFeatChoices,
+  personaSchema,
   type CharacterSheet,
   type CreateSheetInput,
+  type EquipmentItem,
   type FullPatchSheetInput,
 } from "@/lib/schemas/sheet";
 import { textKey } from "@/lib/language/text-logic";
@@ -90,6 +97,7 @@ type SheetRow = {
   notes: string;
   backstory: string | null;
   hopes?: string | null;
+  persona_json?: string | null;
   is_companion: number | null;
   companion_kind: string | null;
   commanded_by?: string | null;
@@ -192,6 +200,7 @@ function mapSheet(row: SheetRow): CharacterSheet {
     portrait: parseJson<CharacterSheet["portrait"]>(row.portrait_json, null),
     notes: row.notes,
     backstory: row.backstory ?? "",
+    ...personaOf(row.persona_json),
     hopes: row.hopes ?? "",
     isCompanion: row.is_companion === 1,
     companionKind:
@@ -242,7 +251,7 @@ const SHEET_COLUMNS = `
   classes_json, hit_dice_pools_json,
   proficiencies_json, equipment_json, gold, copper, feats_json, features_json,
   spellcasting_json, conditions_json, condition_meta_json, resources_json, wild_shape_json, pets_json, summon_json, foretold_json, omen, watching_encounter_id, exhaustion, death_saves_json, concentrating_on, concentration_rounds,
-  portrait_json, notes, backstory, hopes, is_companion, companion_kind, commanded_by, personality, hand_layout_json, feat_choices_json,
+  portrait_json, notes, backstory, hopes, persona_json, is_companion, companion_kind, commanded_by, personality, hand_layout_json, feat_choices_json,
   attraction_json, open_to_advances, open_to_pacts, former_sheet_ids_json, created_at, updated_at
 `;
 
@@ -343,6 +352,17 @@ export function setSheetSummon(sheetId: string, summon: CharacterSheet["summon"]
   return getSheetById(sheetId);
 }
 
+// The personality as stored: '' when none of the four lines holds anything,
+// so a blank panel and a sheet from before the field read alike.
+function personaJson(persona: CharacterSheet["persona"]): string {
+  return persona && (persona.trait || persona.ideal || persona.bond || persona.flaw) ? JSON.stringify(persona) : "";
+}
+
+function personaOf(raw: string | null | undefined): Pick<CharacterSheet, "persona"> {
+  const parsed = raw ? personaSchema.safeParse(parseJson<unknown>(raw, null)) : null;
+  return parsed?.success ? { persona: parsed.data } : {};
+}
+
 // Backgrounds grant a named feature ("Shelter of the Faithful"). It is added
 // once at creation with source "background", which populateFeatures keeps
 // across level-ups and boot resyncs.
@@ -400,13 +420,74 @@ function capAttunement(
   return settleAttunement(equipment.map((item) => withStartingCharges(item, (expression) => rollExpression(expression).total)), wearer);
 }
 
+// A new sheet says what it wears and holds (src/lib/dm/held-default.ts):
+// the marks are worked out on the pack as the rules read it (homebrew rows
+// with their blocks) and kept on the rows as stored. The armor and shield it
+// marks are the ones the armor class already counted, so the AC is the same.
+// Each weapon row it decides carries the guess's mark (`heldGuess`).
+function withDefaultHeld(
+  stored: EquipmentItem[],
+  read: EquipmentItem[],
+  source: Omit<AcSource, "equipment"> & { proficiencies: { armor: string[]; weapons?: string[] } },
+  preferred: string | null = null,
+): EquipmentItem[] {
+  if (read.length !== stored.length) {
+    return stored;
+  }
+  const armor = acBreakdownFor({ ...source, equipment: read });
+  const held = defaultHeld(read, armor, source.proficiencies.weapons ?? [], Boolean(source.spellcasting), preferred);
+  return held
+    ? stored.map((item, at) => {
+        const { heldGuess: _guess, ...rest } = item;
+        void _guess;
+        return { ...rest, equipped: held[at]?.equipped ?? false, ...(held[at]?.heldGuess ? { heldGuess: true as const } : {}) };
+      })
+    : stored;
+}
+
+// The weapon row a character's own latest attack roll was made with, when
+// one is stored and they still carry it (src/lib/db/rolls.ts).
+function lastAttackedWith(sheet: CharacterSheet): string | null {
+  const detail = lastAttackDetail(sheet.campaignId, sheet.id);
+  if (!detail) {
+    return null;
+  }
+  return sheet.equipment.find((item) => detail.startsWith(rollAgainst(item.name, "")))?.name ?? null;
+}
+
+// Every sheet in a campaign that never said what it holds, or whose marks
+// are still the engine's guess, is given the default as a fight begins
+// (src/lib/dm/held-default.ts): the weapon its last attack roll used when
+// one is stored, else the first that fits. Its armor class is unchanged.
+// The sheets that changed, for the caller to announce.
+export function settleHeldGear(campaignId: string): CharacterSheet[] {
+  const changed: CharacterSheet[] = [];
+  for (const sheet of listSheets(campaignId)) {
+    const guessed = guessStands(sheet.equipment);
+    if (sheet.isCompanion || (wearingIsExplicit(sheet.equipment) && !guessed)) {
+      continue;
+    }
+    const row = getDatabase().prepare(`SELECT equipment_json FROM character_sheets WHERE id = ?`).get(sheet.id) as { equipment_json: string } | undefined;
+    const stored = parseJson<EquipmentItem[]>(row?.equipment_json ?? "[]", []);
+    const equipment = withDefaultHeld(stored, guessed ? unguessed(sheet.equipment) : sheet.equipment, sheet, lastAttackedWith(sheet));
+    const same = equipment === stored || (guessed && equipment.every((item, at) => item.equipped === stored[at]?.equipped));
+    const updated = same ? null : patchSheet(sheet.id, { equipment }, { guessing: true });
+    if (updated) {
+      changed.push(updated);
+    }
+  }
+  return changed;
+}
+
 export function createSheet(
   campaignId: string,
   userId: string,
   level: number,
   input: CreateSheetInput,
   libraryCharacterId?: string | null,
-  options: { xp?: number } = {},
+  // `companion`: a companion the storyteller plays, which keeps the old
+  // reading of its gear (src/lib/dm/held-default.ts).
+  options: { xp?: number; companion?: boolean } = {},
 ): CharacterSheet {
   const db = getDatabase();
   const id = crypto.randomUUID();
@@ -456,7 +537,19 @@ export function createSheet(
   const acOverride = input.acOverride ?? true;
   // Homebrew armour is read with its mechanics, so a sheet created in it
   // stores its armor class at once.
-  const equipment = capAttunement(input.equipment ?? [], { ...input, level });
+  const carried = capAttunement(input.equipment ?? [], { ...input, level });
+  const equipment = options.companion ? carried : withDefaultHeld(carried, hydrateHomebrewGear(userId, carried, { campaignId }), {
+    class: input.class,
+    level,
+    classes: classList.length > 1 ? classList : undefined,
+    abilities: input.abilities,
+    proficiencies: input.proficiencies,
+    features,
+    race: input.race,
+    alignment: input.alignment,
+    spellcasting: input.spellcasting,
+    campaignId,
+  });
   const ac = acOverride
     ? input.ac
     : deriveAc({
@@ -480,9 +573,9 @@ export function createSheet(
         level, xp, abilities_json, max_hp, current_hp, temp_hp, ac, ac_override, speed,
         hit_dice_json, classes_json, hit_dice_pools_json, proficiencies_json, equipment_json, gold, copper, feats_json,
         features_json, resources_json, spellcasting_json, conditions_json, portrait_json,
-        notes, backstory, hopes, feat_choices_json, attraction_json, created_at, updated_at
+        notes, backstory, hopes, persona_json, feat_choices_json, attraction_json, created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
   ).run(
     id,
@@ -530,6 +623,7 @@ export function createSheet(
     // Older library sheet_json blobs predate the field.
     input.backstory ?? "",
     input.hopes ?? "",
+    personaJson(input.persona),
     featChoicesJson(input.featChoices),
     // Older library sheet_json blobs and companion drafts predate the field.
     attractionJson(input.attraction),
@@ -726,7 +820,9 @@ export function patchSheet(
   input: FullPatchSheetInput,
   // An undo putting back what a change took (src/lib/sheet-undo.ts): the hit
   // points it returns were never lost, so nothing ends on their regain.
-  options: { restoring?: boolean } = {},
+  // `guessing`: the engine's own guess at what is in hand, which keeps its
+  // marks (src/lib/dm/held-default.ts keepHeldGuess).
+  options: { restoring?: boolean; guessing?: boolean } = {},
 ): CharacterSheet | null {
   const existing = getSheetById(sheetId);
   if (!existing) {
@@ -866,6 +962,7 @@ export function patchSheet(
     portrait: patch.portrait !== undefined ? patch.portrait : existing.portrait,
     notes: patch.notes ?? existing.notes,
     backstory: patch.backstory ?? existing.backstory,
+    persona: patch.persona ?? existing.persona,
     hopes: patch.hopes ?? existing.hopes ?? "",
     featChoices: patch.featChoices ?? existing.featChoices,
   };
@@ -994,7 +1091,15 @@ export function patchSheet(
   // the number here rather than waiting for someone to retype it.
   // Attunement is judged against the sheet as it now stands (class, race,
   // alignment, spellcasting may have changed with the same patch).
-  next.equipment = capAttunement(next.equipment, next);
+  // A mark set by anyone ends the engine's guess at what is in hand, on
+  // every path that writes the pack (src/lib/dm/held-default.ts). An undo
+  // puts back the pack as it was, guess and all.
+  // Gear gained unmarked arrives as wearGained says (a cloak worn, a sword
+  // packed); an undo puts the pack back exactly as it was.
+  const gained = options.restoring
+    ? next.equipment
+    : wearGained(existing.equipment, next.equipment, hydrateHomebrewGear(existing.userId, next.equipment, { campaignId: existing.campaignId }));
+  next.equipment = capAttunement(keepHeldGuess(existing.equipment, gained, options.guessing || options.restoring), next);
   if (!next.acOverride) {
     next.ac = deriveAc({
       class: next.class,
@@ -1012,6 +1117,9 @@ export function patchSheet(
       conditions: next.conditions,
       // Durable Magic's +2 holds while a spell is concentrated on.
       concentratingOn: next.concentratingOn,
+      // A bonus while below half hit points (Skin Like Scripture) moves with them.
+      currentHp: next.currentHp,
+      maxHp: next.maxHp,
     });
   }
 
@@ -1026,7 +1134,7 @@ export function patchSheet(
           spellcasting_json = ?, wild_shape_json = ?, pets_json = ?, foretold_json = ?, omen = ?, exhaustion = ?, death_saves_json = ?, concentrating_on = ?, concentration_rounds = ?,
           feats_json = ?, features_json = ?, subclass = ?,
           classes_json = ?, hit_dice_pools_json = ?,
-          portrait_json = ?, notes = ?, backstory = ?, hopes = ?, feat_choices_json = ?, updated_at = ?
+          portrait_json = ?, notes = ?, backstory = ?, hopes = ?, persona_json = ?, feat_choices_json = ?, updated_at = ?
         WHERE id = ?
       `,
     )
@@ -1073,6 +1181,7 @@ export function patchSheet(
       next.notes,
       next.backstory,
       next.hopes ?? "",
+      personaJson(next.persona),
       featChoicesJson(next.featChoices),
       nowIso(),
       sheetId,

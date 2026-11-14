@@ -3,6 +3,7 @@
 // re-exports them; type-only, so any module may import them.
 
 import type { Ability } from "@/lib/schemas/sheet";
+import type { SpeciesVariantGroup } from "@/lib/content/species-variants";
 
 export type SrdSkill = { id: string; name: string; ability: Ability };
 export type SrdClass = {
@@ -35,7 +36,11 @@ export type SrdRace = {
   speed: number;
   size: string;
   asi: Partial<Record<Ability, number>>;
-  asiChoice?: { count: number; amount: number };
+  // `amounts`: each pick's own amount, in order (a fairy's +2 then +1:
+  // src/lib/srd/race-asi.ts).
+  asiChoice?: { count: number; amount: number; amounts?: number[] };
+  // The creature type, when it is not humanoid (a satyr's fey).
+  type?: string;
   traits: string[];
   languages: string[];
   // Extra languages of the player's choice (SRD: human, half-elf, high elf).
@@ -52,6 +57,15 @@ export type SrdRace = {
   // armor, drow and wood elf weapons).
   armor?: string[];
   weapons?: string[];
+  // Weapons the player names (a hobgoblin's two martial weapons), from the list.
+  weaponChoice?: { count: number; from: string[] };
+  // Skills or tools in any mix, of the player's choice (a gearforged human
+  // chassis's Adaptable Acumen), and expertise in one skill held.
+  trainingChoice?: { count: number };
+  expertiseChoice?: number;
+  // A pick among packages, each writing its own lines on the sheet (a
+  // shifter's subtype: src/lib/content/species-variants.ts).
+  variants?: SpeciesVariantGroup;
 };
 export type SrdBackground = {
   id: string;

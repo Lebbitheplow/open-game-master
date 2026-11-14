@@ -62,14 +62,52 @@ function paceHours(pace: TravelPace, miles: number): number {
   return NORMAL_TRAVEL_HOURS + (miles - speed.milesPerDay) / speed.milesPerHour;
 }
 
+// What a party can ride in instead of walking (SRD 5.1, Mounts and
+// Vehicles): the drawn vehicles of the Tack, Harness, and Drawn Vehicles
+// table, then the Waterborne Vehicles. Riders aboard are carried, not
+// marching: the Forced March paragraph is the party pushing on past the
+// Travel Pace table's 8-hour day, and a ship "might be able to travel for up
+// to 24 hours per day" with nobody aboard tiring for it. A wagon still keeps
+// its pace's effects, since "characters in wagons, carriages, or other land
+// vehicles choose a pace as normal".
+export const CONVEYANCES = ["wagon", "carriage", "cart", "chariot", "sled", "rowboat", "keelboat", "longship", "sailing ship", "galley", "warship"] as const;
+export type Conveyance = (typeof CONVEYANCES)[number];
+
+// Each vessel's speed in miles an hour, from the Waterborne Vehicles table,
+// and whether she sails on through the night: "Depending on the vessel and
+// the size of the crew, ships might be able to travel for up to 24 hours per
+// day." The ships crewed in their tens can stand watches; a rowboat or a
+// keelboat, one hand at the oar or the pole, puts in at dusk.
+const VESSELS: Partial<Record<Conveyance, { mph: number; allNight: boolean }>> = {
+  rowboat: { mph: 1.5, allNight: false },
+  keelboat: { mph: 1, allNight: false },
+  longship: { mph: 3, allNight: true },
+  "sailing ship": { mph: 2, allNight: true },
+  galley: { mph: 4, allNight: true },
+  warship: { mph: 2.5, allNight: true },
+};
+
+// The vessel's speed, or null for a land vehicle. "Characters in a waterborne
+// vessel are limited to the speed of the vessel, and they don't suffer
+// penalties for a fast pace or gain benefits from a slow pace."
+export function vesselMph(conveyance: Conveyance | undefined): number | null {
+  return (conveyance && VESSELS[conveyance]?.mph) || null;
+}
+
+// Whether a vessel sails on through the night (VESSELS above).
+export function sailsThroughTheNight(conveyance: Conveyance | undefined): boolean {
+  return Boolean(conveyance && VESSELS[conveyance]?.allNight);
+}
+
 // The number of forced-march hours in a day of the given length.
 export function forcedMarchHours(totalHours: number): number {
   return Math.max(0, Math.round(Number(totalHours) || 0) - NORMAL_TRAVEL_HOURS);
 }
 
-// One stretch of marching the clock keeps: when it ended, how long it was in
-// minutes, and who marched it (src/lib/dm/march-state.ts).
-export type MarchLeg = { end: number; minutes: number; ids: string[] };
+// One stretch of travel the clock keeps: when it ended, how long it was in
+// minutes, and who travelled it (src/lib/dm/march-state.ts). `carried`: they
+// rode it aboard a vehicle, so it is time on the road but no hour marched.
+export type MarchLeg = { end: number; minutes: number; ids: string[]; carried?: true };
 
 const DAY_MINUTES = 24 * 60;
 
@@ -80,7 +118,8 @@ const DAY_MINUTES = 24 * 60;
 // the 24 hours before the leg ends, or less when their last long rest ended
 // inside them (`restedAt`): two back-to-back 8-hour legs are 16 hours in a
 // day, as one 16-hour leg is, and a night's rest gives the next day's march
-// its own 8. `earlier` holds the legs they marched. `from` and `to` number
+// its own 8. `earlier` holds the legs they travelled; a leg they rode aboard
+// a vehicle adds no hour marched (CONVEYANCES above). `from` and `to` number
 // the hours past 8 this leg adds (from 1 for the ninth), none when `to` is
 // below `from`.
 export function forcedMarchSpan(earlier: readonly MarchLeg[], end: number, legHours: number, restedAt?: number): { from: number; to: number } {
@@ -88,6 +127,8 @@ export function forcedMarchSpan(earlier: readonly MarchLeg[], end: number, legHo
   // stretches ends the day before it, whether or not a long rest was taken
   // or granted in it: a night camped with pass_time, or a rest refused by
   // the one-in-24-hours rule, left the next morning's 8 hours a forced march.
+  // Hours ridden aboard a wagon are no such stop: a day walked, ridden and
+  // walked again is still one day.
   let stopped = Number.NEGATIVE_INFINITY;
   let cursor = end - legHours * 60;
   for (const leg of [...earlier].sort((a, b) => b.end - a.end)) {
@@ -98,7 +139,7 @@ export function forcedMarchSpan(earlier: readonly MarchLeg[], end: number, legHo
     cursor = Math.min(cursor, leg.end - leg.minutes);
   }
   const start = Math.max(end - DAY_MINUTES, restedAt ?? end - DAY_MINUTES, stopped);
-  const before = earlier.reduce((sum, leg) => sum + Math.max(0, Math.min(leg.end, end) - Math.max(leg.end - leg.minutes, start)), 0) / 60;
+  const before = earlier.reduce((sum, leg) => sum + (leg.carried ? 0 : Math.max(0, Math.min(leg.end, end) - Math.max(leg.end - leg.minutes, start))), 0) / 60;
   return { from: forcedMarchHours(before) + 1, to: forcedMarchHours(before + legHours) };
 }
 
@@ -133,7 +174,8 @@ export function milesCovered(input: {
 
 // One leg of travel from what the DM gave: hours (the miles follow) or miles
 // (the hours follow, in whole minutes). A leg is one day's travel, 24 hours
-// at most; a longer journey is travelled a day at a time.
+// at most; a longer journey is travelled a day at a time. `mph`: a vessel's
+// own speed (vesselMph), which no pace, ground or Elk changes.
 export function travelLeg(input: {
   pace: TravelPace;
   terrain?: "normal" | "difficult";
@@ -141,7 +183,21 @@ export function travelLeg(input: {
   miles?: number;
   weatherFactor?: number;
   paceFactor?: number;
+  mph?: number;
 }): { hours: number; minutes: number; miles: number } | ToolError {
+  if (input.mph) {
+    if (input.miles !== undefined && input.miles > 0) {
+      const minutes = Math.ceil((input.miles / input.mph) * 60);
+      if (minutes > 24 * 60) {
+        return { error: `${input.miles} miles at the vessel's ${input.mph} mph takes ${Math.ceil(minutes / 60)} hours, more than one day's leg. A voyage of several days is days.`, retry: true };
+      }
+      return { hours: Math.ceil(minutes / 60), minutes, miles: input.miles };
+    }
+    if (input.hours === undefined) {
+      return { error: "travel needs the hours travelled or the miles to cover.", retry: true };
+    }
+    return { hours: input.hours, minutes: input.hours * 60, miles: Math.round(input.mph * input.hours * 2) / 2 };
+  }
   if (input.miles !== undefined && input.miles > 0) {
     const factor = (input.terrain === "difficult" ? 0.5 : 1) * (input.weatherFactor ?? 1) * (input.paceFactor ?? 1);
     const minutes = Math.ceil(paceHours(input.pace, input.miles / factor) * 60);

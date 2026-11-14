@@ -178,6 +178,22 @@ export function HitDiceSpend({
   const [asked, setAsked] = useState(0);
   const check = useCallback(() => setAsked((count) => count + 1), []);
 
+  // A sheet left open across a rest: asked again when the sheet changes (a
+  // short rest refills its resources) and when the player comes back to the
+  // window, so the button shows once the rest has opened (#932).
+  useEffect(() => {
+    if (!asks) return;
+    const again = () => {
+      if (document.visibilityState === "visible") check();
+    };
+    window.addEventListener("focus", again);
+    document.addEventListener("visibilitychange", again);
+    return () => {
+      window.removeEventListener("focus", again);
+      document.removeEventListener("visibilitychange", again);
+    };
+  }, [asks, check]);
+
   // Asked when the sheet opens and whenever the dice change (a spend, a rest).
   useEffect(() => {
     if (!asks) return;
@@ -200,7 +216,7 @@ export function HitDiceSpend({
     return () => {
       live = false;
     };
-  }, [asks, sheet.campaignId, sheet.id, left, asked]);
+  }, [asks, sheet.campaignId, sheet.id, sheet.updatedAt, left, asked]);
 
   // `faces`: the player's own dice, one for each die of the roll. Without
   // them the server rolls.

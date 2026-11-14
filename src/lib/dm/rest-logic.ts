@@ -1,8 +1,10 @@
+import { scrapOnAnyRest } from "@/lib/dm/genre-gb-ruins";
+import { packProvides } from "@/lib/srd/genre-b-post-apocalyptic";
 import { easeOrdeal } from "@/lib/dm/ordeal";
 import { PORTENT, rollForetold } from "@/lib/dm/foretold-logic";
 import { COSMIC_OMEN, omenOfFace, OMEN_SIDES } from "@/lib/dm/before-roll-logic";
 import { rollExpression } from "@/lib/dice";
-import { effectiveMaxHp, pruneMeta, removeConditionInstances, removeConditions } from "@/lib/dm/condition-logic";
+import { effectiveMaxHp, maxHpRiders, pruneMeta, removeConditionInstances, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import type { RollResult } from "@/lib/dice";
 import { RAGING, recoveringPrefix, resourceDef } from "@/lib/srd/class-resources";
 import { TENDED } from "@/lib/dm/stabilize";
@@ -49,15 +51,18 @@ function recoverPools(pools: HitDicePool[], count: number): HitDicePool[] {
 // it again (ar-wbf-feat-rally.ts). Both rest patches call this; the short
 // rest once cleared neither, so a kit never tended twice in a day of short
 // rests. Empty when the sheet carries no such mark.
-const REST_MARKS = [TENDED, RALLIED];
+// Read when a rest runs, never at load: stabilize.ts reaches this module
+// again through the genre packmaster's rules (genre-b-post-apocalyptic.ts),
+// and a list built at load found TENDED not yet set.
+const restMarks = () => [TENDED, RALLIED];
 function restMarksCleared(
   conditions: string[],
   meta: CharacterSheet["conditionMeta"],
 ): Pick<FullPatchSheetInput, "conditions" | "conditionMeta"> {
-  if (!conditions.some((condition) => REST_MARKS.includes(condition.toLowerCase()))) {
+  if (!conditions.some((condition) => restMarks().includes(condition.toLowerCase()))) {
     return {};
   }
-  const cleared = removeConditions(conditions, meta, REST_MARKS);
+  const cleared = removeConditions(conditions, meta, restMarks());
   return { conditions: cleared.conditions, conditionMeta: cleared.meta };
 }
 
@@ -221,6 +226,15 @@ export function longRestPatch(
       patch.resources = { ...patch.resources, [id]: { ...held } };
     }
   }
+  // "Regains all lost hit points" up to the maximum the rest itself leaves: a
+  // Life Drain that ends with this rest gives its points back to the maximum
+  // (patchSheet moves maxHp with the rider), and the current hit points come
+  // up with it. Read from the maximum as the hero lay down, a drained hero
+  // woke short by exactly what the drain had taken.
+  const ridersBefore = maxHpRiders(sheet.conditions, sheet.conditionMeta as ConditionMetaMap);
+  const ridersAfter = maxHpRiders(patch.conditions ?? sheet.conditions, (patch.conditionMeta ?? sheet.conditionMeta) as ConditionMetaMap);
+  const restedMax = sheet.maxHp + (ridersAfter.bonus - ridersBefore.bonus) - (ridersAfter.drain - ridersBefore.drain);
+  patch.currentHp = effectiveMaxHp({ ...sheet, maxHp: restedMax, exhaustion: exhaustionAfter });
   return patch;
 }
 
@@ -249,7 +263,12 @@ export function slotsRefillOnShortRest(
 // write.
 export function shortRestResourcePatch(sheet: CharacterSheet): FullPatchSheetInput | null {
   // With the sheet, a counter's refill reads its level (Font of Inspiration).
-  const next = refillResources(sheet.resources, "short", sheet);
+  // The Pack Provides gives a spent Call the Wild back once a day
+  // (src/lib/srd/genre-b-post-apocalyptic.ts).
+  const refilled = refillResources(sheet.resources, "short", sheet);
+  const provided = packProvides(sheet, refilled) ?? refilled;
+  // One With the Ruins: Scrap Sense recharges on any rest (genre-gb-ruins.ts).
+  const next = scrapOnAnyRest(sheet, provided) ?? provided;
   const changed = Object.entries(next).some(
     ([id, state]) => state.used !== sheet.resources?.[id]?.used,
   );
@@ -423,4 +442,47 @@ export function settleAttuning(sheet: CharacterSheet): FullPatchSheetInput | nul
     pack = pack.map((entry, at) => (at === index ? (allowed ? { ...rest, attuned: true } : rest) : entry));
   }
   return { equipment: pack };
+}
+
+// Which spent slots Arcane Recovery or Natural Recovery gives back: a total
+// of at most `budget` slot levels, none 6th or higher (SRD 5.1). The choice
+// is the player's; made for them, it is the most value: the most slot levels
+// the budget holds, and among plans worth the same, the higher slots. It
+// once went lowest first, so a 5th-level wizard with a 1st, a 2nd and a 3rd
+// spent always got the 1st and the 2nd back and never the 3rd. Levels in the
+// order they come back (highest first); empty when nothing fits, and then
+// the use is kept for a rest that can spend it.
+export function slotRecoveryPlan(slots: Record<string, { max: number; used: number }>, budget: number): number[] {
+  const spent = [1, 2, 3, 4, 5].map((level) => Math.max(0, slots[String(level)]?.used ?? 0));
+  let best: number[] = [];
+  const score = (plan: number[]) => plan.reduce((sum, level) => sum + level, 0);
+  const better = (plan: number[]) => {
+    const [a, b] = [score(plan), score(best)];
+    if (a !== b) {
+      return a > b;
+    }
+    // Same levels: the higher slots, compared highest first.
+    for (let index = 0; index < Math.max(plan.length, best.length); index += 1) {
+      if ((plan[index] ?? 0) !== (best[index] ?? 0)) {
+        return (plan[index] ?? 0) > (best[index] ?? 0);
+      }
+    }
+    return false;
+  };
+  // Every count of each level that fits, from the 5th down: a handful of
+  // slots against a budget of at most 10, so the search stays tiny.
+  const walk = (level: number, left: number, plan: number[]) => {
+    if (level < 1) {
+      if (better(plan)) {
+        best = plan;
+      }
+      return;
+    }
+    const most = Math.min(spent[level - 1], Math.floor(left / level));
+    for (let count = most; count >= 0; count -= 1) {
+      walk(level - 1, left - count * level, [...plan, ...new Array(count).fill(level)]);
+    }
+  };
+  walk(5, Math.max(0, budget), []);
+  return best;
 }

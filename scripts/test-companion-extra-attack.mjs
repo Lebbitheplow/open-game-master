@@ -48,7 +48,8 @@ async function table({ level = 5, commanded = false, equipment = [{ name: "Longs
     proficiencies: TRAINED,
     equipment,
     hitDice: { die: "d10", total: level, spent: 0 },
-  });
+    // Made as the companion tools make one (companion-tools.ts).
+  }, undefined, { companion: true });
   markSheetAsCompanion(made.id, "party", "steady");
   setCompanionCommander(made.id, commanded ? world.owner.id : null);
   await kit.fight(1, { heroFaces: { [kara.id]: 19, [made.id]: 15 }, enemyFace: 1 });

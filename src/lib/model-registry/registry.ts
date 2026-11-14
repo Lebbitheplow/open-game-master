@@ -81,13 +81,18 @@ function row(
   const catalog = findCatalogModel(modelCatalog().providers, found.id, input.providerHint);
   const local = input.provider === "local";
   const memory = local && input.machine && found.sizeGb ? { sizeGb: found.sizeGb, budgetGb: memoryBudgetGb(input.machine) } : null;
+  // The server's own word on the window outranks the catalog row's, as in
+  // fitListedModels (catalog.ts): the row is the model's usual size, the
+  // server says what it was launched with. A helper served at 262,144 was
+  // reported as "a 33K window is small for a campaign" (issue #925).
+  const judged = catalog && found.contextTokens ? { ...catalog, contextTokens: found.contextTokens } : catalog;
   return {
     id: found.id,
     label: found.label || found.id,
     listed,
     selected: sameId(input.provider, found.id, input.selected),
     catalog,
-    verdict: assessModel({ role: input.role, id: found.id, catalog, listed, local, tools: found.tools ?? null, memory }),
+    verdict: assessModel({ role: input.role, id: found.id, catalog: judged, listed, local, tools: found.tools ?? null, memory, contextTokens: found.contextTokens }),
     tested: input.provider === "harness" ? null : probeRecordFor(input.baseUrl, found.id),
     contextTokens: found.contextTokens || catalog?.contextTokens || 0,
     note: found.note ?? "",

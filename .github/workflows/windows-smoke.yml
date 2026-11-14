@@ -50,11 +50,13 @@ jobs:
 
   # The suite took 30 of its 45 minutes in one job by 0.30.0; the runners
   # share its files instead, each running its share a few at a time
-  # (vitest.config.mts).
+  # (vitest.config.mts). A share takes 18 to 20 minutes on a usual runner; a
+  # slow one ran out its 30 on 0.35.0 with every test still passing, so the
+  # limit leaves room for a slow runner and still stops a hung test.
   tests:
     name: windows tests (${{ matrix.shard }}/3)
     runs-on: windows-2025-vs2026
-    timeout-minutes: 30
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:

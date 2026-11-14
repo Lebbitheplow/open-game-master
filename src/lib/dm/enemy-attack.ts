@@ -8,7 +8,9 @@
 // on the other side (a creature the party dominates) is struck stat block
 // against stat block (src/lib/dm/enemy-strike.ts).
 
+import { parleyHolds } from "@/lib/dm/genre-cc-a-fixer";
 import { endRageBound } from "@/lib/dm/rage-bound";
+import { paBlowResists } from "@/lib/dm/genre-b-post-apocalyptic-blows";
 import { hostileTo, resolveCombatant } from "@/lib/dm/combatant";
 import { enemyStrikesEnemy } from "@/lib/dm/enemy-strike";
 import { lashOutTarget } from "@/lib/dm/confusion";
@@ -38,6 +40,7 @@ import type { EnemyAttack } from "@/lib/bestiary/statblock";
 import { planAttackFx } from "@/lib/battlemap/fx-plan";
 import { acWithEffects } from "@/lib/dm/ac-effects";
 import { coverFor } from "@/lib/dm/attack-spatial";
+import { bulwarkCoverRaise } from "@/lib/dm/genre-b-steampunk-cover";
 import { canEnemyAct, markEnemyActed, markEnemyBonus } from "@/lib/dm/can-act";
 import { enemyStrikesEcho } from "@/lib/dm/mt-fb-echo";
 import { enemyStrikesBody } from "@/lib/dm/spirit-projection";
@@ -67,6 +70,7 @@ import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
 import { sanctuaryWard } from "@/lib/dm/enemy-conditions";
 import { naturesSanctuaryRefusal } from "@/lib/dm/srd-defenses";
 import { conditionRollRiders, conditionTurnShape } from "@/lib/srd/condition-effects";
+import { darkFantasyWeaponWard } from "@/lib/dm/genre-a-dark-fantasy-wards";
 import { isImmersed, underwaterSwing } from "@/lib/dm/underwater";
 import { swimsFrom } from "@/lib/battlemap/types";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -80,7 +84,7 @@ import { enemySpellAttack } from "@/lib/dm/enemy-casting";
 import { swallowCover, swallowRefusal } from "@/lib/dm/swallow";
 import { swallowActionOf } from "@/lib/dm/swallow-logic";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
-import { sizeForRace } from "@/lib/srd";
+import { sheetSize } from "@/lib/srd";
 import { fittedText } from "@/lib/dm/fitted-text";
 import { cloudRuneAtHit, landTurnedBlow } from "@/lib/dm/cloud-rune";
 
@@ -340,7 +344,7 @@ export function handleEnemyAttack(
   if (swallowing) {
     const refused =
       swallowRefusal(campaign.id, found, { kind: "sheet", id: target.id }, swallowing) ??
-      (swallowing.maxSize && sizeRank(sizeForRace(target.race)) > sizeRank(swallowing.maxSize)
+      (swallowing.maxSize && sizeRank(sheetSize(target)) > sizeRank(swallowing.maxSize)
         ? `${target.name} is too big: ${found.displayName}'s ${swallowing.entry} takes a ${swallowing.maxSize} or smaller creature.`
         : null);
     if (refused) {
@@ -351,6 +355,14 @@ export function handleEnemyAttack(
   if (charmedBy(found.conditions, found.conditionMeta, target.id)) {
     return {
       error: `${found.displayName} is charmed by ${target.name} and cannot attack them. It may attack someone else or take another action.`,
+      retry: true,
+      stop: "target",
+    };
+  }
+  // Neutral Ground: a creature that accepted the fixer's parley (genre-cc-a-fixer.ts).
+  if (parleyHolds(found, target.id)) {
+    return {
+      error: `${found.displayName} accepted ${target.name}'s parley and cannot attack them until their next turn. It may attack someone else or take another action.`,
       retry: true,
       stop: "target",
     };
@@ -476,13 +488,16 @@ export function handleEnemyAttack(
   const boardForWeather = getBattleMapForEncounter(encounter.id);
   // Cover protects whoever stands behind it.
   const cover = coverFor(encounter.id, enemy.id, target.id);
+  // Bulwark Advance: a ranged swing at an ally behind the knight meets
+  // three-quarters cover (genre-b-steampunk-cover.ts), set for each swing.
+  let bulwark = 0;
   // Multiattack Defense (a Hunter's Defensive Tactics): once this creature
   // hits, +4 AC against its later attacks this turn.
   const multiattackDefense = hasFeatureNamed(target, /multiattack defense/i);
   let defended = 0;
   const targetAc = () => {
     const fresh = getSheetById(target.id) ?? target;
-    return acWithEffects(campaign.id, fresh) + cover + defended;
+    return acWithEffects(campaign.id, fresh, enemy) + cover + bulwark + defended;
   };
   // A spell a character left on the creature (Bane's d4 off, Bless's d4 on)
   // counts on every swing, as it would on a character's attack.
@@ -614,6 +629,7 @@ export function handleEnemyAttack(
     }
     shots += mode.ranged ? 1 : 0;
     const ranged = mode.ranged;
+    bulwark = ranged ? bulwarkCoverRaise(encounter.id, enemy.id, target.id, cover) : 0;
     // What the block deals instead at half its hit points or at range (a
     // swarm's weaker bite, a spear thrown), from here on the swing's blow.
     attack = alternativeBlow(plannedAttack, { ranged, bloodied: standing.currentHp <= standing.maxHp / 2 });
@@ -751,8 +767,13 @@ export function handleEnemyAttack(
       // Magic Weapons: its weapon attacks are magical; so is a spell attack,
       // and a blow the block prints as magical ("magical bludgeoning").
       ...(hasTrait(standing.stats, "magicWeapons") || attack.spellAttack || attack.magical ? { magical: true } : {}),
+      // A spell's attack is a spell to what answers one (ICE Pick, The Mark
+      // Burns Back) and to a defence against spells: it was kept as magic only.
+      ...(attack.spellAttack ? { spell: true } : {}),
       // Emissary of Redemption holds nothing against a creature the paladin attacked.
       ...(authored.spurned.length ? { exceptFeatures: authored.spurned } : {}),
+      // What the post-apocalyptic classes resist of this creature's blow (One Blood).
+      ...paBlowResists({ campaignId: campaign.id, encounterId: encounter.id, attacker: standing, target: getSheetById(target.id) ?? target, ranged, spellAttack: Boolean(attack.spellAttack) }),
     };
     // The Cloud Rune (cloud-rune.ts): a knight's player turns the hit onto
     // another creature before its damage is rolled, on the same roll, so the
@@ -806,7 +827,10 @@ export function handleEnemyAttack(
     // immune to poison takes none of a bite's venom). A penalty can bring a
     // hit's damage to 0, never below it.
     const blow = blowByType(attack, damageOutcome, crit);
-    const dealt = shrunk(blow.amount);
+    // Sepulchral Aura and Numb to the Lash (genre-a-dark-fantasy-wards.ts).
+    const warded = darkFantasyWeaponWard(encounter.id, standing.id, getSheetById(target.id) ?? target, attack, shrunk(blow.amount));
+    const dealt = warded.amount;
+    notes.push(...warded.notes);
     // A critical that came only from the target lying unconscious at 0 within
     // 5 ft (SRD 5.1) keeps the blow's ordinary damage too, read off the same
     // dice: a reaction that later leaves the target standing when it landed
@@ -826,6 +850,8 @@ export function handleEnemyAttack(
     const plain = asNormal && natCrit && !odds.autoCrit ? asNormal : undefined;
     // Any critical's normal figure, for Sentinel at Death's Door (last-hit.ts).
     const normal = asNormal ? { ...asNormal, type: normalBlow?.type ?? "", from: dealt } : undefined;
+    // What the blow is made of for the target's defenses, kept with the hit
+    // so a reaction's replay meets the same clauses (last-hit.ts flags).
     // Damage lands through the damage path: the ward, each type's defenses,
     // temp HP, clamps, audit, concentration and the sheet_updated publish.
     const applied: Record<string, unknown> = dealt <= 0 ? {} : applyPcDamage(campaign, turn.id, getSheetById(target.id) ?? target, {
@@ -937,7 +963,7 @@ export function handleEnemyAttack(
     type: (closing?.attack ?? planned[0]).type,
     ranged: closing?.ranged ?? false,
   });
-  notes.push(...authoredAfterHit(campaign, { encounter, attacker: standing, target, dealt: totalDamage, taken: takenTotal, ranged: (lastSwing as { ranged: boolean } | null)?.ranged ?? false }));
+  notes.push(...authoredAfterHit(campaign, { encounter, attacker: standing, target, dealt: totalDamage, taken: takenTotal, ranged: (lastSwing as { ranged: boolean } | null)?.ranged ?? false, attackName: closing?.attack.name }));
 
   const names = [...new Set(planned.map((attack) => attack.name))];
   return {

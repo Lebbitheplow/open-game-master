@@ -13,7 +13,20 @@ export function nextDecided(
   characterId: string,
   kind: RollKind,
 ): number {
-  return decided.findIndex((roll, index) => !used.has(index) && roll.characterId === characterId && roll.kind === kind);
+  return decided.findIndex((roll, index) => !used.has(index) && !roll.choice && roll.characterId === characterId && roll.kind === kind);
+}
+
+// The player's answer to the ask before this character's opportunity attack
+// on this walker (opportunity-ask.ts), not yet used by the run: an answer is
+// no roll, so no roll site takes it above, and a choice of one walk is never
+// read as another's.
+export function nextChoice(
+  decided: readonly DecidedRoll[],
+  used: ReadonlySet<number>,
+  characterId: string,
+  walkerId: string,
+): number {
+  return decided.findIndex((roll, index) => !used.has(index) && roll.characterId === characterId && roll.choice?.walkerId === walkerId);
 }
 
 // A run's faces drawn by chance, read back in order. A die of other sides

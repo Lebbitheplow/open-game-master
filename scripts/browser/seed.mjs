@@ -2478,6 +2478,132 @@ const noticeTables = {};
   }
 }
 
+// Which weapon is out (scenario wield-chip, src/lib/dm/held-default.ts): a
+// fighter saved without saying what they hold, as every sheet was, gets the
+// default as they are made: the mail on, the longsword in hand, the handaxe
+// and the bow packed. Their Hand marks each weapon card.
+const WIELD_TITLE = "Wield Table";
+const wieldTables = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const maps = await import("../../src/lib/db/battle-maps.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(player.id, {
+      title: `${WIELD_TITLE} (${viewport})`,
+      description: "One goblin in a lane.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 3,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the lead at the wield table: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const hero = sheets.createSheet(
+      table.id,
+      world.owner.id,
+      3,
+      {
+        ...heroInput({ name: "Tamsin Reed", class: "fighter", level: 3, equipment: [{ name: "Chain Mail", qty: 1 }, { name: "Longsword", qty: 1 }, { name: "Handaxe", qty: 1 }, { name: "Longbow", qty: 1 }] }),
+        // A fighter's training, as the builder gives it, and the armor class
+        // read from the mail.
+        proficiencies: { saves: ["str", "con"], skills: [], expertise: [], languages: ["Common"], tools: [], armor: ["light", "medium", "heavy", "shields"], weapons: ["simple", "martial"] },
+        acOverride: false,
+      },
+    );
+    const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, {
+      name: "start_encounter",
+      args: { enemies: [{ monster: "goblin", count: 1 }] },
+    });
+    if (!started.ok) {
+      throw new Error(`the wield table's fight did not start: ${started.error}`);
+    }
+    const encounter = encounterRows.getActiveEncounter(table.id);
+    const board = maps.getBattleMapForEncounter(encounter.id);
+    maps.setBattleMapTerrain(board.id, ".".repeat(board.width * board.height));
+    getDatabase().prepare("UPDATE battle_maps SET doors_json = '{}' WHERE id = ?").run(board.id);
+    const place = encounter.order.findIndex((entry) => entry.characterId === hero.id);
+    if (place < 0) {
+      throw new Error("the wield table's fighter has no place in the order");
+    }
+    encounterRows.saveEncounter({
+      ...encounter,
+      orderReady: true,
+      round: Math.max(1, encounter.round),
+      turnIndex: place,
+      turnBudget: null,
+      legendary: { ...encounter.legendary, due: [] },
+    });
+    const { initiativeFloorFor } = await import("../../src/lib/dm/encounter-tools.ts");
+    campaigns.setFloor(table.id, initiativeFloorFor(table.id) ?? { mode: "open" });
+    wieldTables[viewport] = { id: table.id, hero: hero.id };
+  }
+}
+
+// The engine's guess never costs a turn (scenario guess-rehand,
+// src/lib/dm/held-default.ts): an archer whose pack lists the shortsword
+// before the longbow, made without saying what she holds, so the guess put
+// the sword in her hand. It is her turn in a fight: the bow's card is open,
+// and the sheet's weapon rows read In hand and Packed.
+const GUESS_TITLE = "Guess Table";
+const guessTables = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const maps = await import("../../src/lib/db/battle-maps.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(player.id, {
+      title: `${GUESS_TITLE} (${viewport})`,
+      description: "One goblin across a field.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 3,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the lead at the guess table: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const hero = sheets.createSheet(table.id, world.owner.id, 3, {
+      ...heroInput({ name: "Ayla Venn", class: "fighter", level: 3, equipment: [{ name: "Leather Armor", qty: 1 }, { name: "Shortsword", qty: 1 }, { name: "Longbow", qty: 1 }] }),
+      proficiencies: { saves: ["str", "con"], skills: [], expertise: [], languages: ["Common"], tools: [], armor: ["light", "medium", "heavy", "shields"], weapons: ["simple", "martial"] },
+      acOverride: false,
+    });
+    const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, {
+      name: "start_encounter",
+      args: { enemies: [{ monster: "goblin", count: 1 }] },
+    });
+    if (!started.ok) {
+      throw new Error(`the guess table's fight did not start: ${started.error}`);
+    }
+    const encounter = encounterRows.getActiveEncounter(table.id);
+    const board = maps.getBattleMapForEncounter(encounter.id);
+    maps.setBattleMapTerrain(board.id, ".".repeat(board.width * board.height));
+    getDatabase().prepare("UPDATE battle_maps SET doors_json = '{}' WHERE id = ?").run(board.id);
+    const place = encounter.order.findIndex((entry) => entry.characterId === hero.id);
+    if (place < 0) {
+      throw new Error("the guess table's archer has no place in the order");
+    }
+    encounterRows.saveEncounter({
+      ...encounter,
+      orderReady: true,
+      round: Math.max(1, encounter.round),
+      turnIndex: place,
+      turnBudget: null,
+      legendary: { ...encounter.legendary, due: [] },
+    });
+    const { initiativeFloorFor } = await import("../../src/lib/dm/encounter-tools.ts");
+    campaigns.setFloor(table.id, initiativeFloorFor(table.id) ?? { mode: "open" });
+    guessTables[viewport] = { id: table.id, hero: hero.id };
+  }
+}
+
 // PR 782: the after-the-roll card on a real parked roll. A table the player
 // runs, with the lead's hero holding the Lucky feat, one per viewport: the
 // scenario asks for a check from the GM's seat and the lead answers the card.
@@ -2868,6 +2994,62 @@ for (const viewport of ["desktop", "phone"]) {
   const roller = sheets.createSheet(table.id, world.owner.id, 5, heroInput({ name: "Wren Ashby", class: "fighter", level: 5 }));
   const wizard = sheets.createSheet(table.id, world.owner.id, 5, heroInput({ name: "Ilse Marrow", class: "wizard", subclass: "Chronurgy Magic", level: 5 }));
   twoHandsTables[viewport] = { id: table.id, roller: roller.id, wizard: wizard.id };
+}
+
+// The ask before a character's opportunity attack (src/lib/dm/opportunity-ask.ts):
+// a table the player runs, in a fight, one goblin beside the lead's fighter
+// on an open board. The GM walks it away and the lead is asked Strike or
+// Let it go (scripts/browser/scenarios/138-opportunity-ask.mjs).
+const OPPORTUNITY_TITLE = "Breakaway Table";
+const opportunityTables = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const { dice, clearDice } = await import("../lib/enforce-world.mjs");
+  const maps = await import("../../src/lib/db/battle-maps.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(player.id, {
+      title: `${OPPORTUNITY_TITLE} (${viewport})`,
+      description: "A goblin that would rather not stay.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the lead at the breakaway table: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const hero = sheets.createSheet(table.id, world.owner.id, 5, heroInput({
+      name: "Wren Ashby", class: "fighter", level: 5, abilities: { str: 16, dex: 12, con: 14, int: 10, wis: 10, cha: 10 },
+      proficiencies: { saves: [], skills: [], expertise: [], languages: ["Common"], tools: [], armor: ["light", "medium", "heavy", "shields"], weapons: ["simple", "martial"] },
+      equipment: [{ name: "Longsword", qty: 1, equipped: true }],
+    }));
+    // The goblin's initiative, then the fighter's.
+    clearDice();
+    dice(1, 18);
+    const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, {
+      name: "start_encounter",
+      args: { enemies: [{ monster: "goblin", count: 1 }] },
+    });
+    clearDice();
+    if (!started.ok) {
+      throw new Error(`the breakaway table's fight did not start: ${started.error}`);
+    }
+    const encounter = encounterRows.getActiveEncounter(table.id);
+    const board = maps.getBattleMapForEncounter(encounter.id);
+    maps.setBattleMapTerrain(board.id, ".".repeat(board.width * board.height));
+    getDatabase().prepare("UPDATE battle_maps SET doors_json = '{}' WHERE id = ?").run(board.id);
+    const [goblin] = encounterRows.listEnemies(encounter.id);
+    // Hardy enough that a Strike never ends the fight under the scenario.
+    getDatabase().prepare("UPDATE encounter_enemies SET max_hp = 200, current_hp = 200 WHERE id = ?").run(goblin.id);
+    for (const token of maps.listTokens(board.id)) {
+      maps.moveToken(token.id, token.refId === hero.id ? 2 : 3, 6, 0);
+    }
+    opportunityTables[viewport] = { id: table.id, hero: hero.id, goblin: goblin.id, goblinName: goblin.displayName };
+  }
 }
 
 // The damage roll card on real dice (play-test 2026-11-07, B5): a table the
@@ -3947,7 +4129,177 @@ const bench2Titles = {};
   }
 }
 
+// The character creator audit's screens (cc1113, 138-creator-*): what a
+// player meets on the sheet and in the level-up once the builder has made
+// them. None of these levels is taken by a scenario, so every viewport
+// opens the same tables.
+//   - Hoot, an owlfolk Metallurgist mechanist of 11th level who picked
+//     Small, with a personality and the owlfolk's language of choice not
+//     yet named: in the library, from the Tal'Dorei Crime Syndicate Member
+//     background, the page shows the size, the conditional Athletics, the
+//     pack background's feature chip and the Personality lines; at the
+//     table, as an acolyte, the sheet shows the same and owes the languages.
+//   - Morrow, a Fiend warlock of 10th level with 11th earned: the level-up's
+//     spell step asks for the 6th-level Mystic Arcanum.
+//   - Brisk, a fighter of 4th level holding Fighting Initiate with no style
+//     named yet, and 5th earned: the class step offers bard with its musical
+//     instrument, and the fighter's own step asks for the feat's style.
+const creatorAudit = {};
+{
+  const hoot = (overrides = {}) =>
+    heroInput({
+      name: "Hoot Ashfeather",
+      race: "owlfolk",
+      class: "mechanist",
+      subclass: "Metallurgist",
+      background: "crime-syndicate-member",
+      level: 11,
+      abilities: { str: 16, dex: 12, con: 14, int: 16, wis: 10, cha: 10 },
+      // Common and the background's Thieves' Cant; the owlfolk's own
+      // language of choice is not named yet.
+      proficiencies: {
+        saves: [], skills: ["deception", "sleight_of_hand"], expertise: [], languages: ["Common"],
+        tools: [], armor: ["light", "medium", "heavy", "shields"], weapons: ["simple"],
+      },
+      features: [
+        { name: "Size (Small)", source: "race" },
+        { name: "Juggernaut", source: "class", classId: "mechanist", level: 11 },
+        { name: "A Favor In Turn", source: "background" },
+      ],
+      equipment: [{ name: "Chain Mail", qty: 1, equipped: true, transmuted: "Mystic Metal" }],
+      persona: {
+        trait: "I watch the exits before I watch the room.",
+        ideal: "Loyalty. The syndicate kept me fed; I keep my word.",
+        bond: "The brand on my wrist is a debt, and I pay my debts.",
+        flaw: "",
+      },
+      ...overrides,
+    });
+  const sheetTable = campaigns.createCampaign(world.owner.id, {
+    title: "Creator Sheet Table",
+    description: "A workshop loft above the docks.",
+    theme: "high-fantasy",
+    maxPlayers: 6,
+    startingLevel: 11,
+    difficulty: "normal",
+    gameSettings: { ttsEnabled: false, genre: "high_fantasy" },
+  });
+  campaigns.setCampaignStatus(sheetTable.id, "active");
+  // At the table Hoot is an acolyte, a background the server carries, so the
+  // sheet owes the owlfolk's language and the acolyte's two (a content
+  // pack's background owes nothing there: owed-languages.ts). The pack
+  // background's feature chip is the library copy's.
+  const hootSheet = sheets.createSheet(
+    sheetTable.id,
+    world.owner.id,
+    11,
+    hoot({
+      background: "acolyte",
+      features: [
+        { name: "Size (Small)", source: "race" },
+        { name: "Juggernaut", source: "class", classId: "mechanist", level: 11 },
+        { name: "Shelter of the Faithful", source: "background" },
+      ],
+    }),
+  );
+  getDatabase().prepare(`UPDATE character_sheets SET xp = ? WHERE id = ?`).run(85000, hootSheet.id);
+  messages.insertCampaignMessage({
+    campaignId: sheetTable.id,
+    seq: campaigns.allocateSeq(sheetTable.id),
+    authorType: "dm",
+    speech: [],
+    content: "The loft smells of oil and feathers. Hoot's suit hangs ready on its frame.",
+  });
+  const hootCharacter = createCharacter(world.owner.id, 11, hoot());
+
+  const arcanumTable = campaigns.createCampaign(world.owner.id, {
+    title: "Arcanum Table",
+    description: "A pact that asks for more.",
+    theme: "high-fantasy",
+    maxPlayers: 6,
+    startingLevel: 10,
+    difficulty: "normal",
+    gameSettings: { ttsEnabled: false, genre: "high_fantasy" },
+  });
+  campaigns.setCampaignStatus(arcanumTable.id, "active");
+  const morrow = sheets.createSheet(
+    arcanumTable.id,
+    world.owner.id,
+    10,
+    heroInput({
+      name: "Morrow Vane",
+      class: "warlock",
+      subclass: "The Fiend",
+      level: 10,
+      abilities: { str: 8, dex: 14, con: 14, int: 10, wis: 12, cha: 18 },
+      features: withAsiLedger([], 2),
+      spellcasting: {
+        ability: "cha",
+        slots: {},
+        known: ["Hex", "Armor of Agathys", "Misty Step", "Hold Person", "Counterspell", "Fly", "Banishment", "Dimension Door", "Hunger of Hadar", "Scorching Ray"],
+        prepared: [],
+        cantrips: ["Eldritch Blast", "Minor Illusion", "Mage Hand", "Prestidigitation"],
+      },
+    }),
+  );
+  getDatabase().prepare(`UPDATE character_sheets SET xp = ? WHERE id = ?`).run(85000, morrow.id);
+  messages.insertCampaignMessage({
+    campaignId: arcanumTable.id,
+    seq: campaigns.allocateSeq(arcanumTable.id),
+    authorType: "dm",
+    speech: [],
+    content: "The patron's voice is closer tonight. Morrow feels a new word settle behind the teeth.",
+  });
+
+  const initiateTable = campaigns.createCampaign(world.owner.id, {
+    title: "Initiate Table",
+    description: "A drill yard at dawn.",
+    theme: "high-fantasy",
+    maxPlayers: 6,
+    startingLevel: 4,
+    difficulty: "normal",
+    gameSettings: { ttsEnabled: false, genre: "high_fantasy" },
+  });
+  campaigns.setCampaignStatus(initiateTable.id, "active");
+  const brisk = sheets.createSheet(
+    initiateTable.id,
+    world.owner.id,
+    4,
+    heroInput({
+      name: "Brisk Halloran",
+      class: "fighter",
+      subclass: "Champion",
+      level: 4,
+      abilities: { str: 16, dex: 13, con: 14, int: 10, wis: 10, cha: 13 },
+      proficiencies: {
+        saves: ["str", "con"], skills: ["athletics", "perception"], expertise: [], languages: ["Common"],
+        tools: [], armor: ["light", "medium", "heavy", "shields"], weapons: ["simple", "martial"],
+      },
+      feats: ["Fighting Initiate"],
+      // A pick is kept as a "choice" feature, which the regrant keeps.
+      features: [{ name: "Fighting Style: Defense", source: "choice", classId: "fighter", level: 1 }],
+    }),
+  );
+  getDatabase().prepare(`UPDATE character_sheets SET xp = ? WHERE id = ?`).run(6500, brisk.id);
+  messages.insertCampaignMessage({
+    campaignId: initiateTable.id,
+    seq: campaigns.allocateSeq(initiateTable.id),
+    authorType: "dm",
+    speech: [],
+    content: "The sergeant nods once. Brisk has earned the next lesson.",
+  });
+
+  Object.assign(creatorAudit, {
+    sheetTableId: sheetTable.id,
+    hootSheetId: hootSheet.id,
+    hootCharacterId: hootCharacter.id,
+    arcanumTableId: arcanumTable.id,
+    initiateTableId: initiateTable.id,
+  });
+}
+
 const ids = {
+  creatorAudit,
   fallenTables,
   clockTables,
   resolveTables,
@@ -3963,6 +4315,8 @@ const ids = {
   tidesOfChaos,
   speciesSpells,
   noticeTables,
+  wieldTables,
+  guessTables,
   afterRollTables,
   afterAttackTables,
   wrathTables,
@@ -3979,6 +4333,7 @@ const ids = {
   shiftTables,
   chronalWatchTables,
   twoHandsTables,
+  opportunityTables,
   damageStepTables,
   healingDiceTables,
   hitDiceTables,
@@ -4071,6 +4426,9 @@ const ids = {
   // Every campaign a scenario opens, by id, for the app's home tiles.
   titles: {
     [levelTable.id]: "Level Table",
+    [creatorAudit.sheetTableId]: "Creator Sheet Table",
+    [creatorAudit.arcanumTableId]: "Arcanum Table",
+    [creatorAudit.initiateTableId]: "Initiate Table",
     [secretsTable.id]: "Secrets Table",
     ...Object.fromEntries(Object.entries(dragonTables).map(([viewport, table]) => [table.id, `Dragon Table (${viewport})`])),
     [commandTable.id]: COMMAND_TITLE,
@@ -4095,6 +4453,8 @@ const ids = {
     ...Object.fromEntries(Object.entries(chipTables).map(([viewport, table]) => [table.id, `Chip Table (${viewport})`])),
     ...Object.fromEntries(Object.entries(spellbook).map(([viewport, table]) => [table.id, `${SPELLBOOK_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(noticeTables).map(([viewport, table]) => [table.id, `${NOTICE_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(wieldTables).map(([viewport, table]) => [table.id, `${WIELD_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(guessTables).map(([viewport, table]) => [table.id, `${GUESS_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(afterRollTables).map(([viewport, table]) => [table.id, `${AFTER_ROLL_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(afterAttackTables).map(([viewport, table]) => [table.id, `${AFTER_ATTACK_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(wrathTables).map(([viewport, table]) => [table.id, `${WRATH_TITLE} (${viewport})`])),
@@ -4111,6 +4471,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(shiftTables).map(([viewport, table]) => [table.id, `${SHIFT_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(chronalWatchTables).map(([viewport, table]) => [table.id, `${CHRONAL_WATCH_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(twoHandsTables).map(([viewport, table]) => [table.id, `${TWO_HANDS_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(opportunityTables).map(([viewport, table]) => [table.id, `${OPPORTUNITY_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(damageStepTables).map(([viewport, table]) => [table.id, `${DAMAGE_STEPS_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(healingDiceTables).map(([viewport, table]) => [table.id, `${HEALING_DICE_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(hitDiceTables).map(([viewport, table]) => [table.id, `${HIT_DICE_TITLE} (${viewport})`])),

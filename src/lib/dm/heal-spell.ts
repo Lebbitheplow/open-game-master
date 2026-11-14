@@ -22,7 +22,12 @@
 //
 // This module does not import mutations.ts: the cast is handed in.
 
+import { regainHitPoints } from "@/lib/dm/regain";
+import { controlledDosage } from "@/lib/dm/genre-cc-a-dark-fantasy-more";
 import { spellBreaker } from "@/lib/dm/spell-breaker";
+import { healDiceFloor } from "@/lib/dm/genre-a-cyberpunk-programs";
+import { genreBHealed } from "@/lib/dm/genre-b-spell-hits";
+import { mendedHide } from "@/lib/dm/genre-b-post-apocalyptic-beast";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { recordCast } from "@/lib/dm/last-save";
 // The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
@@ -34,7 +39,7 @@ import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { rollOwnDiceStored } from "@/lib/dm/character-roll";
 import { authoredHealMax } from "@/lib/srd/authored-economy";
 import { noteHealingRoll } from "@/lib/dm/ar-ws-empowered-healing";
-import { healAdditions, healModifier } from "@/lib/dm/heal-bonus";
+import { castingAbilityMod, healAdditions, healModifier } from "@/lib/dm/heal-bonus";
 import { publishEphemeral, publishPersisted } from "@/lib/events";
 import { openJoinerBonds } from "@/lib/dm/party-bonds";
 import { computeSheetDerived, spellSaveDcFor } from "@/lib/srd";
@@ -236,11 +241,12 @@ export function castHealingSpell(
   // The modifier, Disciple of Life and an authored feature's die (Enhanced
   // Bond, Alchemical Savant) are heal-bonus.ts's, which the Hand's healing
   // cards print from too.
+  const fromItem = itemCastNumbers(caster.id, input.spell) ?? runningItemSpell(caster, input.spell);
   const modifier = healModifier({
     dc,
     proficiencyBonus: derived.proficiencyBonus,
     noModifier: mech?.healNoModifier,
-    abilityMod: itemCastNumbers(caster.id, input.spell)?.abilityMod ?? runningItemSpell(caster, input.spell)?.abilityMod,
+    abilityMod: fromItem?.abilityMod ?? (fromItem?.saveDc ? undefined : castingAbilityMod(caster, input.spell, derived.abilityMods)),
   });
   const added = healAdditions(caster, slotLevel, derived.abilityMods);
   const riders: string[] = [...added.notes];
@@ -251,7 +257,7 @@ export function castHealingSpell(
     // Circle of Mortality: on a creature at 0 hit points (authored-effects.ts).
     authoredHealMax(caster, target) !== null ||
     target.conditions.some((entry) => entry.toLowerCase() === "beacon of hope");
-  const withBond = [expression, ...added.dice].join("+");
+  const withBond = healDiceFloor(caster, [expression, ...added.dice].join("+"));
   const full = bonus > 0 ? `${withBond}+${bonus}` : bonus < 0 ? `${withBond}-${-bonus}` : withBond;
   let amount: number;
   if (maximize) {
@@ -285,19 +291,30 @@ export function castHealingSpell(
   // cleric 2 + the slot's level.
   if (slotLevel >= 1 && target.id !== caster.id && holdsFeature(caster, "blessed healer")) {
     const self = getSheetById(caster.id) ?? caster;
-    const currentHp = Math.min(effectiveMaxHp(self), self.currentHp + 2 + slotLevel);
-    if (currentHp > self.currentHp && self.currentHp > 0) {
-      const healed = patchSheet(self.id, { currentHp });
-      if (healed) {
-        publishPersisted(campaign.id, "sheet_updated", { sheet: healed });
-      }
-      riders.push(`Blessed Healer: ${caster.name} regains ${currentHp - self.currentHp}`);
+    // Through the healing door (regain.ts): a cursed or chilled cleric
+    // regains nothing.
+    const regained = self.currentHp > 0 ? regainHitPoints(campaign, null, self, 2 + slotLevel, "Blessed Healer") : 0;
+    if (regained > 0) {
+      riders.push(`Blessed Healer: ${caster.name} regains ${regained}`);
     }
   }
   // Spell Breaker (Arcana 6): one spell of the slot's level or lower ends.
   const broken = spellBreaker(campaign, caster, target.id, slotLevel);
   if (broken) {
     riders.push(broken);
+  }
+  // Catalyst Stone's die is spent, Baptism of Ash blesses (genre-b-spell-hits.ts).
+  riders.push(...genreBHealed(campaign, caster, target, effectiveMaxHp(target) > 0 && target.currentHp * 2 < effectiveMaxHp(target)));
+  // Controlled Dosage: a plague doctor's remedy cures a poison or a disease too.
+  const dosed = controlledDosage(campaign, caster, target);
+  if (dosed) {
+    riders.push(dosed);
+  }
+  // Mended Hide: a packmaster's healing on their own beast is doubled.
+  const mended = mendedHide(caster, target);
+  if (mended) {
+    amount *= 2;
+    riders.push(mended);
   }
   return {
     amount: Math.max(1, amount),

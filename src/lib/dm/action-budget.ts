@@ -29,6 +29,9 @@ export type TurnBudget = {
   attacksAllowed: number;
   // Sneak Attack, and anything else limited to once per turn, by key.
   oncePerTurn: string[];
+  // The latest weapon hit this turn: the creature and the die it rolled
+  // with, for Orcish Fury spent with no card (src/lib/dm/orcish-fury.ts).
+  lastWeaponDie?: { enemyId: string; sides: number; type: string; crit: boolean; magical: boolean };
   // Set by the Dash action. Movement itself is NOT tracked here: the battle
   // map owns it (battle_tokens.moved_this_round), and the Dashes taken are
   // what grow that allowance for the turn.
@@ -455,6 +458,15 @@ export function attacksLeft(budget: TurnBudget): number {
     return 0;
   }
   return Math.max(0, budget.attacksAllowed - budget.attacksMade);
+}
+
+// Swings the turn has already paid for and not yet made: the rest of an
+// Attack action begun (Extra Attack), and Flurry of Blows strikes bought
+// with ki. The turn's other parts (movement, a bonus action never begun) are
+// the player's to leave unused; these are a declared action still under way.
+export function paidSwingsLeft(budget: TurnBudget): number {
+  const action = budget.attacksMade > 0 ? attacksLeft(budget) : 0;
+  return action + Math.max(0, budget.flurryStrikes ?? 0);
 }
 
 // Once-per-turn riders (Sneak Attack). Returns null when already spent.

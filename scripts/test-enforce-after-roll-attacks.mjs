@@ -282,6 +282,64 @@ await test("Dice the player has yet to enter hold the turn the same way, at the 
   }
 });
 
+// A hit's damage is the attack's last step (SRD 5.1, Making an Attack). With
+// the damage card still in the player's hand, End Turn went through and the
+// goblin took its turn before the blow that might have killed it landed.
+await test("Damage dice the player has yet to enter hold the turn too, at the button and at end_turn; entered, the turn ends.", async () => {
+  const enemy = await stage(NONE);
+  kit.setEnemy(enemy.id, { ac: 5 });
+  const userId = world.sheet(hero.id).userId;
+  setMemberRealDice(world.campaignId, userId, true);
+  try {
+    await world.invoke("pc_attack", { characterId: hero.id, targetEnemyId: enemy.id });
+    const [toHit] = open();
+    world.signIn({ id: userId });
+    assert.equal((await call(route.pending, "POST", { dice: [18] }, { campaignId: world.campaignId, pendingRollId: toHit.id })).status, 200);
+    const [damage] = open();
+    assert.equal(damage?.kind, "damage", "the hit asks for its damage");
+    assert.equal(kit.endTurn(userId), false, "End Turn waited for the damage");
+    assert.match(tools.endTurnRefusal(world.campaignId, userId), /Longsword damage is waiting on your roll\. Roll it, then end the turn\./);
+    const ended = await world.invoke("end_turn", { characterId: hero.id });
+    assert.equal(ended.ok, false);
+    assert.match(ended.error, /damage roll waits on their player's dice/);
+    assert.equal(kit.current().characterId, hero.id);
+    world.signIn({ id: userId });
+    assert.equal((await call(route.pending, "POST", { dice: [5] }, { campaignId: world.campaignId, pendingRollId: damage.id })).status, 200);
+    assert.equal(hp(enemy), 400 - 8, "the damage landed on the hero's turn");
+    assert.equal(kit.endTurn(userId), true);
+  } finally {
+    setMemberRealDice(world.campaignId, userId, false);
+  }
+});
+
+// A grapple's contest is the player's own d20 on their own turn, held on its
+// card (held-call.ts). End Turn went through under it, the grapple ran again
+// on a turn no longer theirs and was refused, and nothing was grappled.
+await test("A grapple whose contest d20 is still with the player holds the turn; entered, the grapple lands on the hero's turn.", async () => {
+  const enemy = await stage(NONE);
+  const userId = world.sheet(hero.id).userId;
+  setMemberRealDice(world.campaignId, userId, true);
+  try {
+    const out = await world.invoke("take_action", { characterId: hero.id, action: "grapple", targetEnemyId: enemy.id, reason: "seize it" });
+    assert.equal(out.ok, true, out.error);
+    const [card] = open();
+    assert.ok(card?.carry?.call, "the grapple waits on its card");
+    assert.equal(kit.endTurn(userId), false, "End Turn waited for the contest");
+    assert.match(tools.endTurnRefusal(world.campaignId, userId), /The roll you were asked for is waiting on you\. Roll it, then end the turn\./);
+    const ended = await world.invoke("end_turn", { characterId: hero.id });
+    assert.equal(ended.ok, false);
+    assert.equal(kit.current().characterId, hero.id);
+    world.signIn({ id: userId });
+    world.dice(1);
+    assert.equal((await call(route.pending, "POST", { dice: [20] }, { campaignId: world.campaignId, pendingRollId: card.id })).status, 200);
+    world.clearDice();
+    assert.ok(kit.enemy(enemy.id).conditions.includes("grappled"), "the grapple landed");
+    assert.equal(kit.endTurn(userId), true);
+  } finally {
+    setMemberRealDice(world.campaignId, userId, false);
+  }
+});
+
 // The third door: a GM turn told while the card is open (another player
 // posted) whose narration hands the turn on, or the player's own words that
 // end it, moved the pointer after the narration with no look at the roll.
@@ -336,6 +394,57 @@ await test("The lead's skip takes a card whose dice were never entered off the t
   }
 });
 
+// The hit already landed when the lead skipped the turn: left on the card,
+// its damage landed whenever the player got to it, turns later, and the
+// GM narrated an old blow as new (issue 931's kin). The skip settles it.
+await test("The lead's skip rolls a hit's owed damage on the server and lands it at once, its card closed as a fallback roll.", async () => {
+  const enemy = await stage(NONE);
+  kit.setEnemy(enemy.id, { ac: 5 });
+  const userId = world.sheet(hero.id).userId;
+  setMemberRealDice(world.campaignId, userId, true);
+  try {
+    await world.invoke("pc_attack", { characterId: hero.id, targetEnemyId: enemy.id });
+    const [toHit] = open();
+    world.signIn({ id: userId });
+    assert.equal((await call(route.pending, "POST", { dice: [18] }, { campaignId: world.campaignId, pendingRollId: toHit.id })).status, 200);
+    const [damage] = open();
+    assert.equal(damage?.kind, "damage");
+    world.signIn({ id: world.owner.id });
+    world.dice(6);
+    assert.equal((await call(route.floor, "POST", {}, { campaignId: world.campaignId })).status, 200);
+    world.clearDice();
+    assert.equal(kit.current().characterId, ally.id, "the turn was skipped");
+    assert.ok(!open().some((entry) => entry.id === damage.id), "the damage card outlived the turn");
+    assert.equal(getPendingRoll(damage.id).status, "fallback");
+    assert.equal(hp(enemy), 400 - 9, "the owed damage (1d8 6 + Strength 3) was not dealt");
+  } finally {
+    setMemberRealDice(world.campaignId, userId, false);
+  }
+});
+
+// A grapple's contest never made: the skip takes its card off the table, and
+// nothing is grappled, now or when dice are entered afterwards.
+await test("The lead's skip withdraws a held grapple contest card: nothing is rolled and nothing grappled.", async () => {
+  const enemy = await stage(NONE);
+  const userId = world.sheet(hero.id).userId;
+  setMemberRealDice(world.campaignId, userId, true);
+  try {
+    assert.equal((await world.invoke("take_action", { characterId: hero.id, action: "grapple", targetEnemyId: enemy.id, reason: "seize it" })).ok, true);
+    const [card] = open();
+    assert.ok(card?.carry?.call);
+    world.signIn({ id: world.owner.id });
+    assert.equal((await call(route.floor, "POST", {}, { campaignId: world.campaignId })).status, 200);
+    assert.equal(kit.current().characterId, ally.id, "the turn was skipped");
+    assert.ok(!open().some((entry) => entry.id === card.id), "the contest card outlived the turn");
+    world.signIn({ id: userId });
+    const late = await call(route.pending, "POST", { dice: [20] }, { campaignId: world.campaignId, pendingRollId: card.id });
+    assert.notEqual(late.status, 200, "dice entered afterwards land nothing");
+    assert.ok(!kit.enemy(enemy.id).conditions.includes("grappled"));
+  } finally {
+    setMemberRealDice(world.campaignId, userId, false);
+  }
+});
+
 await test("The lead's skip keeps a thrown roll as it lies: no card outlives the turn, and nothing is spent.", async () => {
   const enemy = await stage(LUCKY);
   world.dice(3);
@@ -350,6 +459,38 @@ await test("The lead's skip keeps a thrown roll as it lies: no card outlives the
   assert.match(getPendingRoll(pending.id).combatNote, /does not land/);
   assert.equal(world.sheet(hero.id).resources.luck_points.used, 0);
   assert.equal(hp(enemy), 400);
+});
+
+// Issue 931: a press of the lead's Skip made on one turn, reaching the server
+// after the pointer moved, skipped the next combatant's turn instead.
+await test("A floor press made against a turn that has passed is answered 409 and skips nothing; one against the floor as it stands goes through, and a body it cannot read is refused.", async () => {
+  await stage(NONE);
+  const { getFloor } = await import("../src/lib/db/campaigns.ts");
+  const { floorExpectOf, floorMoved } = await import("../src/lib/dm/floor-expect-logic.ts");
+  world.signIn({ id: world.owner.id });
+  const seen = floorExpectOf(getFloor(world.campaignId));
+  assert.equal(seen.mode, "initiative");
+  assert.equal(seen.currentName, world.sheet(hero.id).name);
+  const first = await call(route.floor, "POST", { expect: seen }, { campaignId: world.campaignId });
+  assert.equal(first.status, 200, JSON.stringify(first.json));
+  assert.equal(kit.current().characterId, ally.id, "the turn the press saw was skipped");
+  const stale = await call(route.floor, "POST", { expect: seen }, { campaignId: world.campaignId });
+  assert.equal(stale.status, 409, JSON.stringify(stale.json));
+  assert.match(stale.json.error, /^The floor changed before that reached the table \(.+\), so nothing was done\./);
+  assert.equal(kit.current().characterId, ally.id, "the ally's turn was not skipped by the stale press");
+  assert.equal((await call(route.floor, "POST", { expect: { mode: "open" } }, { campaignId: world.campaignId })).status, 409, "a press made on an open floor does not skip a fight's turn");
+  assert.equal((await call(route.floor, "POST", { expect: { mode: "sideways" } }, { campaignId: world.campaignId })).status, 400);
+  assert.equal(kit.current().characterId, ally.id);
+  const fresh = await call(route.floor, "POST", { expect: floorExpectOf(getFloor(world.campaignId)) }, { campaignId: world.campaignId });
+  assert.equal(fresh.status, 200, `a press on the floor as it stands goes through: ${JSON.stringify(fresh.json)}`);
+  // Pure: the mode decides off a fight, and the turn and round in one.
+  assert.equal(floorMoved({ mode: "open" }, { mode: "open" }), false);
+  assert.equal(floorMoved({ mode: "hold", next: { mode: "open" } }, { mode: "open" }), true);
+  const fight = { mode: "initiative", encounterId: "e", userIds: [], currentName: "Jason", round: 2 };
+  assert.equal(floorMoved(fight, { mode: "initiative" }), false, "an older screen names no turn");
+  assert.equal(floorMoved(fight, { mode: "initiative", currentName: "Jason", round: 2 }), false);
+  assert.equal(floorMoved(fight, { mode: "initiative", currentName: "Jason", round: 1 }), true);
+  assert.equal(floorMoved(fight, { mode: "initiative", currentName: "Rogue Guard", round: 2 }), true);
 });
 
 await test("A readied attack, made on another's turn, never waits: it would never land.", async () => {

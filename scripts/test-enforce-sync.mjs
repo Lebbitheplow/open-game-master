@@ -39,7 +39,8 @@ const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
 // Item offers stay off: the console honours them as the AI's turn does, and
 // the mutations below are about what publishes when a change lands. The
 // offer race further down inserts its own offer.
-const world = await openWorld({ gameSettings: { dicePolicy: "real_allowed" } });
+// Every sheet as the server stores it, with the default it gives (held-default.ts).
+const world = await openWorld({ gameSettings: { dicePolicy: "real_allowed" }, heldDefault: true });
 const who = await seats(world);
 const campaignId = world.campaignId;
 const params = { campaignId };

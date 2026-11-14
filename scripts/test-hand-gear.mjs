@@ -20,6 +20,9 @@ const { intentTools, describeIntent, messageIntentSchema } = await import("../sr
 const { autoGroups } = await import("../src/lib/dm/tool-profiles.ts");
 const { handedOverRow, addRowMath } = await import("../src/lib/dm/mutation-math.ts");
 const { resolveAttackWeapon } = await import("../src/lib/dm/attack-logic.ts");
+const { defaultHeld, keepHeldGuess, wearGained } = await import("../src/lib/dm/held-default.ts");
+const { guessedRehand, handsFullError, handsFullForPlayer } = await import("../src/lib/dm/gear-hands.ts");
+const { cardFullText } = await import("../src/lib/battlemap/hand-full-text-logic.ts");
 
 let passed = 0;
 function test(name, fn) {
@@ -291,6 +294,199 @@ test("a played gear sentence opens the gear tools for a compact call", () => {
   for (const text of ["I draw my Greatsword.", "I take off my Shield.", "I drop my Longsword.", "I pick up the Handaxe.", "I hand my Dagger to Mira."]) {
     assert.ok(autoGroups({ inEncounter: true, englishPlayerText: text }).has("gear"), text);
   }
+});
+
+// ---- which weapon is out (held-default.ts) ----
+// A player could not tell which weapon was drawn, and the storyteller chose
+// for them; every sheet now says, and every weapon card shows it.
+
+test("a weapon card says whether it is in hand or packed, and a packed one says the attack draws it", () => {
+  const cards = deriveHand(sheet({ equipment: ARMED }), FRESH_TURN);
+  assert.equal(byId(cards, "attack:longsword").wield, "in-hand");
+  assert.equal(byId(cards, "attack:dagger").wield, "stowed");
+  assert.match(byId(cards, "attack:dagger").description, /Packed away: the attack draws it with your free object interaction/);
+  assert.doesNotMatch(byId(cards, "attack:longsword").description ?? "", /Packed away/);
+  // A sheet that has not said marks nothing.
+  const unsaid = deriveHand(sheet({ equipment: [{ name: "Longsword", qty: 1 }, { name: "Dagger", qty: 1 }] }), FRESH_TURN);
+  assert.equal(byId(unsaid, "attack:longsword").wield, undefined);
+  assert.equal(byId(unsaid, "attack:dagger").wield, undefined);
+});
+
+// The Hand's "Full text" (#926) writes a card's description less its rules
+// line. A weapon's notes are one run of sentences whose start is that line,
+// so a packed versatile sword its owner is not trained with wrote it twice.
+test("a packed weapon's full text tells what its rules line does not, once", () => {
+  const base = sheet();
+  const untrained = { ...base.proficiencies, weapons: ["simple"] };
+  const cards = deriveHand(sheet({ proficiencies: untrained, equipment: [{ name: "Chain Mail", qty: 1, equipped: true }, { name: "Longsword", qty: 1, equipped: false }] }), FRESH_TURN);
+  const sword = byId(cards, "attack:longsword");
+  assert.equal(sword.wield, "stowed");
+  assert.match(sword.rules, /^Packed away/);
+  const full = cardFullText(sword);
+  assert.ok(full.length > 0, "there is more to read");
+  assert.ok(!full.includes(sword.rules), `the rules line is not written again: ${full}`);
+  assert.match(full, /Versatile/);
+  // A card whose description is its rules line has nothing more to open.
+  assert.equal(cardFullText({ rules: "One line.", description: "One line." }), "");
+  // A spell's notes: the paragraph that repeats the line goes, the rest stays.
+  assert.equal(cardFullText({ rules: "Three darts.", description: "You create three darts.\n\nThree darts.\n\nAt higher levels: one more." }), "You create three darts.\n\nAt higher levels: one more.");
+});
+
+const NO_ARMOR = { armorName: null, shieldName: null };
+const held = (rows) => rows.filter((row) => row.equipped).map((row) => row.name);
+
+test("the default holds the first weapon the character is trained with, packs the rest, and leaves a sheet that already said alone", () => {
+  const wizard = defaultHeld([{ name: "Sling", qty: 1 }, { name: "Quarterstaff", qty: 1 }, { name: "Spellbook", qty: 1 }], NO_ARMOR, ["daggers", "darts", "slings", "quarterstaffs", "light crossbows"]);
+  assert.deepEqual(held(wizard), ["Sling"]);
+  assert.ok(wizard.every((row) => row.equipped !== undefined), "every row says");
+  const untrained = defaultHeld([{ name: "Greataxe", qty: 1 }, { name: "Quarterstaff", qty: 1 }], NO_ARMOR, ["simple"]);
+  assert.deepEqual(held(untrained), ["Quarterstaff"]);
+  assert.equal(defaultHeld(ARMED, NO_ARMOR, ["martial"]), null);
+  assert.equal(defaultHeld([], NO_ARMOR, ["martial"]), null);
+});
+
+test("the default keeps the armor and shield the armor class counted, and a weapon that fits beside the shield", () => {
+  const rows = defaultHeld(
+    [{ name: "Chain Mail", qty: 1 }, { name: "Shield", qty: 1 }, { name: "Greatsword", qty: 1 }, { name: "Longsword", qty: 1 }],
+    { armorName: "Chain Mail", shieldName: "Shield" },
+    ["simple", "martial"],
+  );
+  assert.deepEqual(held(rows), ["Chain Mail", "Shield", "Longsword"]);
+});
+
+test("a caster keeps a hand free for a spell's gestures: with a shield on the arm the weapon stays packed", () => {
+  const cleric = defaultHeld(
+    [{ name: "Chain Mail", qty: 1 }, { name: "Shield", qty: 1 }, { name: "Mace", qty: 1 }],
+    { armorName: "Chain Mail", shieldName: "Shield" },
+    ["simple"],
+    true,
+  );
+  assert.deepEqual(held(cleric), ["Chain Mail", "Shield"]);
+  const bladesinger = defaultHeld([{ name: "Shortsword", qty: 1 }, { name: "Dagger", qty: 1 }], NO_ARMOR, ["simple", "shortswords"], true);
+  assert.deepEqual(held(bladesinger), ["Shortsword"]);
+});
+
+test("a light blade beside a light main weapon stays in hand too, so a two-weapon fighter keeps both", () => {
+  const rogue = defaultHeld([{ name: "Shortsword", qty: 1 }, { name: "Shortbow", qty: 1 }, { name: "Dagger", qty: 2 }], NO_ARMOR, ["simple", "shortswords"]);
+  assert.deepEqual(held(rogue), ["Shortsword", "Dagger"]);
+  const fighter = defaultHeld([{ name: "Longsword", qty: 1 }, { name: "Dagger", qty: 1 }], NO_ARMOR, ["simple", "martial"]);
+  assert.deepEqual(held(fighter), ["Longsword"]);
+});
+
+// ---- the engine's guess never costs a turn (held-default.ts, gear-hands.ts) ----
+// An archer whose pack reads Shortsword, Longbow and whose sheet never said
+// was handed the sword: the bow's card was shut for full hands, and the only
+// way to shoot on turn one was to drop the sword.
+
+const ARCHER_GUESS = () => [
+  { name: "Leather Armor", qty: 1, equipped: true },
+  { name: "Shortsword", qty: 1, equipped: true, heldGuess: true },
+  { name: "Longbow", qty: 1, equipped: false, heldGuess: true },
+];
+const flagsOf = (rows) => rows.filter((row) => row.heldGuess).map((row) => row.name);
+
+test("the default marks each weapon it decided as its guess, and the archer's last attack picks the bow", () => {
+  const rows = defaultHeld([{ name: "Leather Armor", qty: 1 }, { name: "Shortsword", qty: 1 }, { name: "Longbow", qty: 1 }], { armorName: "Leather Armor", shieldName: null }, ["simple", "martial"]);
+  assert.deepEqual(held(rows), ["Leather Armor", "Shortsword"]);
+  assert.deepEqual(flagsOf(rows), ["Shortsword", "Longbow"]);
+  const shooter = defaultHeld([{ name: "Leather Armor", qty: 1 }, { name: "Shortsword", qty: 1 }, { name: "Longbow", qty: 1 }], { armorName: "Leather Armor", shieldName: null }, ["simple", "martial"], false, "Longbow");
+  assert.deepEqual(held(shooter), ["Leather Armor", "Longbow"]);
+});
+
+test("while the guess stands the bow's card opens: playing it puts the sword away, free, and the chip still says Packed", () => {
+  const cards = deriveHand(sheet({ equipment: ARCHER_GUESS() }), FRESH_TURN);
+  const bow = byId(cards, "attack:longbow");
+  assert.equal(bow.disabled, null);
+  assert.equal(bow.wield, "stowed");
+  assert.match(bow.description, /playing it puts away Shortsword and takes it up, free this once/);
+  // Even with the interaction already gone: the change spends none.
+  assert.equal(byId(deriveHand(sheet({ equipment: ARCHER_GUESS() }), { ...FRESH_TURN, interactionUsed: true }), "attack:longbow").disabled, null);
+  const draw = byId(cards, "gear:draw");
+  assert.equal(draw.cost, "free");
+  assert.ok(!draw.interaction, "the draw card spends no interaction");
+  assert.equal(draw.disabled, null);
+  // The same pack marked by the player: the card is shut for full hands.
+  const marked = ARCHER_GUESS().map(({ heldGuess, ...row }) => (void heldGuess, row));
+  assert.match(byId(deriveHand(sheet({ equipment: marked }), FRESH_TURN), "attack:longbow").disabled ?? "", /hands are full \(Shortsword\)/);
+});
+
+test("the free change takes the bow, puts the sword away, and ends the guess, so the next change is the normal rule", () => {
+  const rows = ARCHER_GUESS();
+  const once = guessedRehand(rows, rows[2]);
+  assert.deepEqual(once.putAway, ["Shortsword"]);
+  assert.deepEqual(held(once.equipment), ["Leather Armor", "Longbow"]);
+  assert.deepEqual(flagsOf(once.equipment), []);
+  assert.equal(guessedRehand(once.equipment, once.equipment[1]), null, "a second change is not free");
+  // A shield the armor class counted stays: with it on the arm a two-handed
+  // weapon still has no room, and the normal refusal holds.
+  const guard = [{ name: "Shield", qty: 1, equipped: true }, { name: "Longsword", qty: 1, equipped: true, heldGuess: true }, { name: "Greatsword", qty: 1, equipped: false, heldGuess: true }];
+  assert.equal(guessedRehand(guard, guard[2]), null);
+  // Two guessed blades: a third one-handed weapon puts away only the last.
+  const pair = [{ name: "Shortsword", qty: 1, equipped: true, heldGuess: true }, { name: "Dagger", qty: 1, equipped: true, heldGuess: true }, { name: "Handaxe", qty: 1, equipped: false, heldGuess: true }];
+  assert.deepEqual(guessedRehand(pair, pair[2]).putAway, ["Dagger"]);
+});
+
+test("any change to what is held or worn ends the guess on every row; a write that leaves the marks keeps it and never adds it", () => {
+  const before = ARCHER_GUESS();
+  const same = keepHeldGuess(before, ARCHER_GUESS().map((row) => (row.name === "Leather Armor" ? { ...row, qty: 1 } : row)));
+  assert.deepEqual(flagsOf(same), ["Shortsword", "Longbow"]);
+  const toggled = keepHeldGuess(before, ARCHER_GUESS().map((row) => (row.name === "Longbow" ? { ...row, equipped: true } : row)));
+  assert.deepEqual(flagsOf(toggled), []);
+  const offArmor = keepHeldGuess(before, ARCHER_GUESS().map((row) => (row.name === "Leather Armor" ? { ...row, equipped: false } : row)));
+  assert.deepEqual(flagsOf(offArmor), []);
+  const dropped = keepHeldGuess(before, ARCHER_GUESS().filter((row) => row.name !== "Shortsword"));
+  assert.deepEqual(flagsOf(dropped), []);
+  // A player's edit cannot hand itself the free change.
+  const marked = before.map(({ heldGuess, ...row }) => (void heldGuess, row));
+  assert.deepEqual(flagsOf(keepHeldGuess(marked, ARCHER_GUESS())), []);
+  // The guess itself writes its marks.
+  assert.deepEqual(flagsOf(keepHeldGuess(marked, ARCHER_GUESS(), true)), ["Shortsword", "Longbow"]);
+});
+
+// ---- a player never reads a tool's name ----
+// The hands-full refusal told players "Dropping one is free (handle_item
+// drop)": the storyteller's words, on the Hand's card and the sheet.
+const TOOL_NAME = /\b[a-z]+_[a-z_]+\b/;
+
+test("the hands-full reasons a player reads name no tool; the storyteller's still names handle_item", () => {
+  const marked = ARCHER_GUESS().map(({ heldGuess, ...row }) => (void heldGuess, row));
+  const reasons = [
+    byId(deriveHand(sheet({ equipment: marked }), FRESH_TURN), "attack:longbow").disabled,
+    byId(deriveHand(sheet({ equipment: ARMED }), FRESH_TURN), "gear:draw").disabled,
+    byId(deriveHand(sheet({ equipment: ARMED }), FRESH_TURN), "attack:dagger").disabled,
+  ];
+  for (const reason of reasons) {
+    assert.match(reason ?? "", /hands are full .*Dropping one is free; putting one away takes your object interaction this turn\./);
+    assert.doesNotMatch(reason ?? "", TOOL_NAME);
+  }
+  const told = handsFullError("Kael", "Greatsword", ["Longsword"]);
+  assert.match(told, /\(handle_item drop\)/);
+  // A tool's refusal a person reads (a card the GM's seat played) is turned
+  // into the player's words, and anything else passes through.
+  assert.doesNotMatch(handsFullForPlayer(`${told} Something else.`), TOOL_NAME);
+  assert.match(handsFullForPlayer(`${told} Something else.`), /takes your object interaction this turn\. Something else\.$/);
+  assert.equal(handsFullForPlayer("Out of range."), "Out of range.");
+});
+
+// The journey's shop cloak (63-journey-artifact-to-shop): every sheet now
+// says what it wears, so a row gained unmarked read as packed and a bought
+// magic cloak added nothing to AC until its toggle was found.
+test("gained gear arrives as it did before the marks: a cloak worn while its place has room, a weapon, a suit and a second cloak packed, and the guess stands", () => {
+  const before = ARCHER_GUESS();
+  const cloak = (name) => ({ name, qty: 1, gear: { wornOn: "cloak" } });
+  const gained = wearGained(before, [...before, cloak("Cloak of the Ferry"), { name: "Longsword", qty: 1 }, { name: "Chain Mail", qty: 1 }]);
+  const mark = (rows, name) => rows.find((row) => row.name === name)?.equipped;
+  assert.equal(mark(gained, "Cloak of the Ferry"), true, "the bought cloak arrives worn");
+  assert.equal(mark(gained, "Longsword"), false, "a weapon arrives packed: drawing it is the object interaction");
+  assert.equal(mark(gained, "Chain Mail"), false, "a suit arrives packed: donning it takes minutes");
+  const second = wearGained(gained, [...gained, cloak("Spare Cloak")]);
+  assert.equal(mark(second, "Spare Cloak"), false, "a second cloak waits for the first to come off");
+  assert.deepEqual(flagsOf(keepHeldGuess(before, gained)), ["Shortsword", "Longbow"], "gaining a cloak is nobody setting a mark");
+  // An older sheet marked one row and left the rest unmarked: those read as
+  // packed, and a patch does not put them on.
+  const older = [{ name: "Shortsword", qty: 1, equipped: true }, cloak("Old Cloak")];
+  assert.equal(mark(wearGained(older, older.map((row) => ({ ...row }))), "Old Cloak"), undefined);
+  assert.equal(wearGained([{ name: "Rope", qty: 1 }], [{ name: "Rope", qty: 1 }, cloak("New Cloak")])[1].equipped, undefined, "a sheet that never said wears everything already");
 });
 
 console.log(`test-hand-gear: ${passed} passed`);

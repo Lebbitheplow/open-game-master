@@ -15,7 +15,7 @@ import {
   acBreakdownFor,
   computeSheetDerived,
   formatModifier,
-  sizeForRace,
+  sheetSize,
   type DerivedPart,
 } from "@/lib/srd";
 import { attunementSlotsFor } from "@/lib/srd/armor";
@@ -52,6 +52,7 @@ import { ResourceRow, SlotRow, STEP_BUTTON } from "@/components/sheet/SheetCount
 import { namesLookup } from "@/lib/battlemap/condition-notes";
 import { workshopClassName } from "@/lib/classes/workshop-registry";
 import { StoryHopes } from "@/app/campaigns/[campaignId]/StoryHopes";
+import { SheetPersonality } from "@/app/campaigns/[campaignId]/SheetPersonality";
 import { classWordsAfterLevel, isSplit } from "@/lib/characters/class-words";
 
 function titleCase(value: string) {
@@ -119,8 +120,9 @@ export function CharacterSheetDialog({
   const derived = computeSheetDerived(sheet);
   const armor = acBreakdownFor(sheet);
   const attunedCount = sheet.equipment.filter((item) => item.attuned).length;
-  // Only gear worth a toggle: armor, shields, magic and anything with a
-  // place on the body (src/components/sheet/sheet-state.ts wearableGear).
+  // Only gear worth a toggle: armor, shields, magic, weapons (In hand or
+  // Packed) and anything with a place on the body
+  // (src/components/sheet/sheet-state.ts wearableGear).
   const wearable = wearableGear(sheet.equipment);
   const magic = magicItemRiders(sheet.equipment, sheet);
   // Carried weight is always worth showing once the pack has weights on it;
@@ -142,7 +144,7 @@ export function CharacterSheetDialog({
     strength: sheet.abilities.str,
     equipment: sheet.equipment,
     coins: purseCoins(sheet),
-    size: sizeForRace(sheet.race),
+    size: sheetSize(sheet),
     wearer: sheet,
     // A feature's doubled capacity (Peerless Athlete), as speedFor reads it.
     carryFactor: authoredCarryFactor(sheet),
@@ -196,10 +198,11 @@ export function CharacterSheetDialog({
         setPendingWear({ name: conflict.item, conflict, change: { equipped: true } });
       } else if (!response.ok) {
         setRefusal({ text: typeof data?.error === "string" ? data.error : "That change was refused.", at });
-      } else if (typeof data?.timePassed === "string") {
+      } else if (typeof data?.timePassed === "string" || typeof data?.note === "string") {
         // Out of a fight armor takes minutes to put on or take off, and the
-        // route moved the table's clock by them (src/lib/dm/don-doff.ts).
-        setTimeNote(data.timePassed);
+        // route moved the table's clock by them (src/lib/dm/don-doff.ts); a
+        // first weapon change from the game's pick says what it put away.
+        setTimeNote([data.note, data.timePassed].filter((line) => typeof line === "string").join(" "));
       }
     } catch {
       setRefusal({ text: "The change did not reach the server.", at });
@@ -385,7 +388,7 @@ export function CharacterSheetDialog({
           </SheetBlock>
 
           <SheetBlock className="mt-4" title="Languages and training">
-            <TrainingLines proficiencies={sheet.proficiencies} />
+            <TrainingLines proficiencies={sheet.proficiencies} conditional={derived.conditionalTraining} />
           </SheetBlock>
 
           {sheet.spellcasting ? (
@@ -605,7 +608,7 @@ export function CharacterSheetDialog({
           ) : null}
           {sheet.features.length ? (
             <SheetBlock className="mt-4" title="Features and traits">
-              <FeatureChips features={sheet.features} classId={sheet.class} subclass={sheet.subclass} />
+              <FeatureChips features={sheet.features} classId={sheet.class} subclass={sheet.subclass} background={sheet.background} />
               <FeatureChoicePicker sheet={sheet} mine={mine} inCombat={inCombat} />
             </SheetBlock>
           ) : null}
@@ -621,6 +624,8 @@ export function CharacterSheetDialog({
               <p className="whitespace-pre-wrap font-serif text-sm leading-relaxed text-stone-300">{sheet.backstory}</p>
             </SheetBlock>
           ) : null}
+
+          <SheetPersonality sheet={sheet} mine={mine} />
 
           {sheet.isCompanion ? null : <StoryHopes sheet={sheet} mine={mine} />}
 

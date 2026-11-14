@@ -6,6 +6,21 @@
 // cannot wait add a held die only where it carries the roll
 // (src/lib/dm/forced-save.ts settleHeldDie).
 //
+// The table's ruling (issue #913): the card opens only on a roll that fails
+// as it stands and that a choice could turn (a hit opens it only for what
+// adds to the damage, and a roll with no DC asks, below), and on an attack
+// it says so ("As it stands, the attack misses"). The text times Lucky,
+// Bardic Inspiration, Guided Strike, War God's Blessing and Chronal Shift
+// before the outcome is known, so for those this is lenient: a use is never
+// spent on a roll that would have succeeded. It is kept because the card
+// could only stop telling by opening on rolls that succeed too, often enough
+// that its opening says nothing, and that pauses most rolls of anyone
+// holding one. Master Duelist answers a missed attack and Favored by the
+// Gods a missed attack or a failed save, so both are chosen knowing the roll
+// failed, and Dark One's Own Luck only has to come before the roll's
+// effects: for those the verdict on the card is the rule. No setting, and
+// the card keeps its words.
+//
 // A pause costs the whole table its narration, so it is only offered when an
 // ability can change the result: never on a roll that already succeeds, and
 // never for a die too small to reach. A roll with no known target (a check
@@ -253,13 +268,13 @@ function optionOf(sheet: CharacterSheet, row: AfterRollRow, kind: string, input:
 }
 
 // The roller's own choices on a roll as it stands, in the table's order.
-function ownOptions(sheet: CharacterSheet, roll: Reading, when: "short" | "hit", hit?: { melee?: boolean; wrathDice?: boolean }, reactionFree = true): AfterRollOption[] {
+function ownOptions(sheet: CharacterSheet, roll: Reading, when: "short" | "hit", hit?: { melee?: boolean; weapon?: boolean; wrathDice?: boolean }, reactionFree = true): AfterRollOption[] {
   const options: AfterRollOption[] = [];
   for (const row of AFTER_ROLL_ROWS as readonly AfterRollRow[]) {
     // A row of its own (effect "own") is offered by its module, after these.
     if (ownsItself(row) || row.whose === "other" || row.ownAmongHelpers || row.when !== when || !answers(row, roll.kind) || roll.taken.has(row.id)) continue;
     if (row.reaction && !reactionFree) continue;
-    if (when === "hit" && ((row.hitBy === "melee" && !hit?.melee) || (row.amount?.kind === "max" && !hit?.wrathDice))) continue;
+    if (when === "hit" && ((row.hitBy === "melee" && !hit?.melee) || (row.hitBy === "weapon" && !hit?.weapon) || (row.amount?.kind === "max" && !hit?.wrathDice))) continue;
     if (!holdsRow(sheet, row)) continue;
     if (when === "short" && !carries(sheet, row, roll)) continue;
     options.push(optionOf(sheet, row, roll.kind));
@@ -289,12 +304,13 @@ export function afterRollOptions(
 // no DC. A natural 1 misses whatever is added to it, so only a fresh d20 can
 // save it; a fresh d20 can always save a miss, since a natural 20 hits. Dark
 // One's Own Luck is for checks and saves alone. A hit waits on the choices
-// that ride one (Touch of Death, Destructive Wrath).
+// that ride one (Touch of Death, Destructive Wrath, Orcish Fury on a weapon's).
 export function afterAttackOptions(
   sheet: CharacterSheet,
   // `wrathDice`: the hit would roll lightning or thunder dice (destructive-wrath-logic.ts rollsWrathDice).
+  // `weapon`: a weapon attack (Orcish Fury rides only that).
   // `swing`: the weapon and the turn, for the features that read them (mt-mr-offers-logic.ts).
-  roll: { outcome: RollResult; ac: number; critRange: number; spent?: readonly AfterRollId[]; reactionFree?: boolean; melee?: boolean; wrathDice?: boolean; swing?: MrSwing },
+  roll: { outcome: RollResult; ac: number; critRange: number; spent?: readonly AfterRollId[]; reactionFree?: boolean; melee?: boolean; weapon?: boolean; wrathDice?: boolean; swing?: MrSwing },
 ): AfterRollOption[] {
   const { outcome, ac, critRange } = roll;
   if (!leadD20(outcome) || outcome.natural === undefined) {
@@ -304,7 +320,7 @@ export function afterAttackOptions(
   const reading: Reading = { kind: "attack", outcome, target: { ac, critRange }, taken };
   if (attackHits(outcome, ac, critRange)) {
     return [
-      ...ownOptions(sheet, reading, "hit", { melee: roll.melee, wrathDice: roll.wrathDice }),
+      ...ownOptions(sheet, reading, "hit", { melee: roll.melee, weapon: roll.weapon, wrathDice: roll.wrathDice }),
       // A Valor bard's die on the hit's damage (ar-wbf-bard-dice-logic.ts).
       ...(!taken.has("combat_inspiration") ? combatInspirationOption(sheet) : []),
     ];

@@ -8,7 +8,7 @@ import type { TurnBudget } from "@/lib/dm/action-budget";
 import { normalizeIntents, type EncounterIntents } from "@/lib/db/encounter-intents";
 import { restoreOwnForm } from "@/lib/db/enemy-form";
 import { normalizeSides, type SideExceptions } from "@/lib/dm/combat-sides-logic";
-import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { getSheetById, patchSheet, settleHeldGear } from "@/lib/db/sheets";
 import { endUnsensed } from "@/lib/dm/ar-ws-senses-logic";
 import { endedByRegain } from "@/lib/dm/condition-logic";
 import { noteDominationShift } from "@/lib/db/side-watch";
@@ -58,6 +58,12 @@ export function turnKey(encounter: Pick<Encounter, "round" | "order" | "turnInde
   const entry = encounter.order[encounter.turnIndex];
   const owner = entry ? `${orderEntryId(entry)}${entry.kind === "pc" && entry.reflex ? ":reflex" : ""}` : "";
   return `${encounter.round}:${owner}`;
+}
+
+// The fight as the open rolls are held against it (open-roll-logic.ts): when
+// it began, its round, and whose turn of that round the pointer rests on.
+export function fightNow(encounter: Pick<Encounter, "createdAt" | "round" | "order" | "turnIndex">): { createdAt: string; round: number; turnKey: string } {
+  return { createdAt: encounter.createdAt, round: encounter.round, turnKey: turnKey(encounter) };
 }
 
 export type EncounterStatus = "active" | "ended";
@@ -368,6 +374,13 @@ export function createEncounter(
     .run(id, campaignId, kind, summary.slice(0, 300), now, now);
   // A fight a GM turn began goes with the turn's revert (issue 685).
   keepNew("encounters", id, campaignId);
+  // A sheet saved before every sheet said what it holds says so now, as the
+  // fight that makes it matter begins (src/lib/dm/held-default.ts).
+  if (kind !== "scene") {
+    for (const sheet of settleHeldGear(campaignId)) {
+      publishPersisted(campaignId, "sheet_updated", { sheet });
+    }
+  }
   return getEncounter(id);
 }
 
@@ -381,6 +394,19 @@ export function getEncounter(id: string): Encounter | null {
 // "Is a fight running?" Scenes are deliberately invisible here: every combat
 // rule in the engine asks this question, and none of them should fire because
 // the party is standing on an exploration map.
+// Whose turn counts a duration begun now that has no combatant of this
+// fight for its source: the combatant whose turn it is (condition-logic.ts
+// countsOn, active-effects.ts). Undefined outside a fight, or when the
+// source is in the order and counts it itself.
+export function turnCounterFor(campaignId: string, source?: string): string | undefined {
+  const encounter = getActiveEncounter(campaignId);
+  if (!encounter || (source && encounter.order.some((entry) => orderEntryId(entry) === source))) {
+    return undefined;
+  }
+  const entry = encounter.order[encounter.turnIndex];
+  return entry ? orderEntryId(entry) : undefined;
+}
+
 export function getActiveEncounter(campaignId: string): Encounter | null {
   const row = getDatabase()
     .prepare(

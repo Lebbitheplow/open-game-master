@@ -8,6 +8,7 @@
 // +5 AC turns a hit into a miss, Counterspell against a spell of 1st level
 // or higher cast at its side within 60 feet (the SRD Mage, Archmage, Lich).
 
+import { riteCompleted } from "@/lib/dm/genre-gh-proof";
 import { getEnemy, listEnemies, patchEnemyConditions, saveEncounter, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { canEnemyAct } from "@/lib/dm/can-act";
@@ -128,7 +129,8 @@ export function enemyCounterspell(
   spell: string,
   level: number,
 ): { countered: boolean; note: string } | null {
-  if (level < 1 || caster.conditions.some((entry) => /^(invisible|hidden)$/i.test(entry.trim()))) {
+  // The Rite Completed's spells cannot be counterspelled (genre-gh-proof.ts).
+  if (level < 1 || riteCompleted(caster) || caster.conditions.some((entry) => /^(invisible|hidden)$/i.test(entry.trim()))) {
     return null;
   }
   for (const enemy of listEnemies(encounter.id)) {

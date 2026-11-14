@@ -22,6 +22,10 @@ const {
   normalizeCreatureName,
   resolveOutcomes,
   ruleClaims,
+  unrolledBlow,
+  unrolledBlowAt,
+  unrolledBlowPrompt,
+  unrolledEnemyBlowPrompt,
   unrolledFigure,
 } = await import("../src/lib/dm/engine-boundary.ts");
 
@@ -584,6 +588,68 @@ test("a figure no tool rolled and the model was never shown is a blow landed in 
   assert.equal(unrolledFigure([amount(8)], noted, "english"), null);
   // A turn that rolled damage leaves a misquoted figure to the rewrite.
   assert.equal(unrolledFigure([amount(8)], conversationOf([attackHit]), "english"), null);
+});
+
+// #932: a d20 check's total is no healing. The GM asked request_roll for a
+// "hit die", the check came up 8, and "healing 8 hit points" passed because
+// 8 was a number the turn produced; nobody was healed.
+test("a healing figure is held to what the effects produced, never a check's total", () => {
+  const check = { name: "request_roll", args: { kind: "ability_check", ability: "con" }, result: { ok: true, total: 8, rolls: [7], modifier: 1 } };
+  const rest = { name: "take_rest", args: { kind: "short" }, result: { ok: true, kind: "short", results: "No hit dice spent by the server." } };
+  assert.deepEqual(kinds(rule([amount(8, "healing")], [rest, check])), ["number"]);
+  assert.deepEqual(kinds(rule([amount(8, "damage")], [check])), [], "a damage figure keeps the old leeway");
+  const spent = { name: "take_rest", args: { kind: "short" }, result: { ok: true, kind: "short", results: [{ name: "Jason", diceSpent: 1, healed: 8, hp: "20/20" }] } };
+  assert.deepEqual(kinds(rule([amount(8, "healing")], [spent])), []);
+});
+
+// ---------------------------------------------------------------------------
+// Issue 931: an enemy's blow on the hero, told with no call or against one
+// ---------------------------------------------------------------------------
+
+// The fight of the report: one guard, and Jason fighting for the party.
+const guardFight = {
+  enemies: [{ id: "g1", name: "Rogue Guard", hp: 11, maxHp: 11, status: "alive" }],
+  party: [{ id: "jason-sheet", name: "Jason" }],
+};
+const guardMissedJason = {
+  name: "enemy_attack",
+  args: { enemyId: "g1", targetCharacterId: "jason-sheet" },
+  result: { attack: "Shortsword", vsAc: 15, target: "Jason", swings: [{ rolled: 9, hit: false }], hit: false },
+};
+const outRefused = {
+  name: "enemy_attack",
+  args: { enemyId: "g1", targetCharacterId: "jason-sheet" },
+  result: { error: "Rogue Guard's turn has not come yet this round: it is Jason's turn.", retry: true, stop: "turn" },
+};
+
+test("a hit the prose lands on the hero after the enemy's recorded swing missed is a MISSED contradiction", () => {
+  const found = rule([about("hit", "jason", "the guard's blade bites into you")], [guardMissedJason], guardFight);
+  assert.deepEqual(kinds(found), ["hit"]);
+  assert.match(found[0].detail, /the attack on Jason MISSED, but the narration lands it/);
+  assert.deepEqual(rule([about("miss", "jason")], [guardMissedJason], guardFight), [], "the miss told as a miss stands");
+});
+
+test("an enemy's blow on the hero with no enemy call this turn is a blow the prose alone resolved, and its correction sends the model to enemy_attack", () => {
+  const outcomes = guardOutcomes(conversationOf([outRefused]), guardFight, "english");
+  const claims = [about("hit", "jason", "The guard's blade catches you for 6 damage.")];
+  assert.deepEqual(unrolledBlowAt(claims, outcomes), { quote: "The guard's blade catches you for 6 damage.", onParty: true });
+  assert.equal(unrolledBlow(claims, outcomes), "The guard's blade catches you for 6 damage.");
+  assert.deepEqual(kinds(ruleClaims(claims, outcomes)), ["hit"]);
+  // A blow on a foe is still the player's attack to resolve.
+  assert.deepEqual(unrolledBlowAt([about("hit", "rogue guard")], outcomes), { quote: "hit rogue guard", onParty: false });
+  // The enemy's real swing this turn covers it, hit or miss.
+  assert.equal(unrolledBlowAt([about("miss", "jason")], guardOutcomes(conversationOf([guardMissedJason]), guardFight, "english")), null);
+  // A walk's opportunity attack names the hero as its target: touched, so the
+  // prose may tell it whatever its hit points say.
+  const walked = { name: "move_token", args: { token: "jason-sheet", x: 3, y: 4 }, result: { ok: true, opportunityAttacks: [{ attacker: "Rogue Guard", target: "Jason", hit: false }] } };
+  assert.equal(unrolledBlowAt([about("miss", "jason")], guardOutcomes(conversationOf([walked]), guardFight, "english")), null);
+  // Out of a fight there is nothing to hold it against.
+  assert.equal(unrolledBlowAt(claims, guardOutcomes(conversationOf([]), null, "english")), null);
+  const prompt = unrolledEnemyBlowPrompt("The guard's blade catches you for 6 damage.");
+  assert.match(prompt, /call enemy_attack for the enemy end_turn handed you, then narrate from its result; otherwise leave its turn out/i);
+  assert.match(prompt, /The guard's blade catches you for 6 damage\./);
+  assert.doesNotMatch(prompt, /\u2014/);
+  assert.match(unrolledBlowPrompt("x"), /pc_attack/, "the foe's prompt is unchanged");
 });
 
 console.log(`engine boundary: ${passed} tests passed`);

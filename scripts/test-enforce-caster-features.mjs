@@ -165,5 +165,31 @@ await test("The AI's advantage on request_roll counts only with a named circumst
   assert.equal(d20s(world.diceLog()), 2, "the console rules freely");
 });
 
+// A healing spell adds the spellcasting ability modifier (SRD 5.1, Cure
+// Wounds: "regains a number of hit points equal to 1d8 + your spellcasting
+// ability modifier"). The heal read the modifier back out of the save DC, so
+// a Robe of the Archmagi's +2 to the DC healed 2 more, on the roll and on the
+// Hand's card.
+await test("A Robe of the Archmagi's +2 to the save DC adds nothing to a healing spell: the modifier is the ability's own.", async () => {
+  const { deriveHand, FRESH_TURN } = await import("../src/lib/battlemap/hand.ts");
+  const { spellSaveDcFor } = await import("../src/lib/srd/index.ts");
+  const { world, sheets: [cleric, fighter] } = await table([caster("cleric", "wis", ["Cure Wounds"], [], 5), FIGHTER]);
+  const bare = spellSaveDcFor(world.sheet(cleric.id), "Cure Wounds");
+  world.patch(cleric.id, {
+    classes: [{ id: "cleric", level: 4, subclass: "" }, { id: "wizard", level: 1, subclass: "" }],
+    equipment: [...world.sheet(cleric.id).equipment, { name: "Robe of the Archmagi", qty: 1, equipped: true, attuned: true }],
+  });
+  assert.equal(spellSaveDcFor(world.sheet(cleric.id), "Cure Wounds"), bare + 2, "the robe raises the DC (the case under test)");
+  const spells = { "cure wounds": { level: 1, school: "evocation", castingTime: "1 action", range: "Touch", desc: "A creature you touch regains a number of hit points equal to 1d8 + your spellcasting ability modifier.", higherLevel: "", concentration: false } };
+  const card = deriveHand(world.sheet(cleric.id), FRESH_TURN, { spells }).find((entry) => entry.name === "Cure Wounds");
+  assert.equal(card?.damage, "1d8+4", `the Hand's card: ${card?.damage}`);
+  world.patch(fighter.id, { currentHp: 1 });
+  world.dice(5);
+  await world.invoke("heal", { characterId: fighter.id, casterId: cleric.id, spell: "Cure Wounds", level: 1 });
+  world.clearDice();
+  // 5 + 4 (Wisdom 18).
+  assert.equal(world.sheet(fighter.id).currentHp, 1 + 9);
+});
+
 closeTables();
 finish();

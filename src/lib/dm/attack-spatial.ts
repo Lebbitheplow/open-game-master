@@ -6,6 +6,7 @@
 // Must not import encounter-tools, pc-attack or action-tools: all three
 // call in here.
 
+import { oneWithTheRuins } from "@/lib/dm/genre-gb-ruins";
 import { fortifiedCover } from "@/lib/dm/cannon-board-dra";
 import { getBattleMapForEncounter, getTokenByRef, listTokens } from "@/lib/db/battle-maps";
 import { getEncounter, getEnemy, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
@@ -21,6 +22,7 @@ import { isIncapacitated } from "@/lib/dm/condition-logic";
 
 import { hostileWithinFiveFeet, isFlanking } from "@/lib/dm/attack-rules";
 import { zoneCoverBetween, zoneCoverFromPoint } from "@/lib/dm/zone-rules";
+import { GROVELING } from "@/lib/srd/authored-conditions-mt-species";
 
 const lowered = (conditions: string[]) => conditions.map((entry) => entry.toLowerCase());
 const blind = (conditions: string[]) => lowered(conditions).includes("blinded");
@@ -146,12 +148,56 @@ export function characterFlanks(
 }
 
 
+// Pack Tactics (a kobold): an ally of the attacker, up and able, within 5
+// feet of the target. The attacker and the target are not counted.
+export function characterHasPackmate(encounterId: string, characterId: string, enemyId: string): boolean {
+  const map = getBattleMapForEncounter(encounterId);
+  const target = map ? getTokenByRef(map.id, enemyId) : null;
+  if (!map || !target) {
+    return false;
+  }
+  const mine = sideOf(sidesOf(encounterId), "sheet", characterId);
+  return hostileWithinFiveFeet(spotOf(target), threatSpots(encounterId, map.id, mine, [characterId, enemyId]));
+}
+// Grovel, Cower, and Beg (a kobold, mt-species-spends.ts): the name of a
+// pleading creature of the attacker's side, not the attacker, within 10
+// feet of the target, which can see it (not blinded, the kobold neither
+// invisible nor hidden, no wall between them). Null for none.
+export function grovelingAllyNear(encounterId: string, characterId: string, enemyId: string): string | null {
+  const map = getBattleMapForEncounter(encounterId);
+  const target = map ? getTokenByRef(map.id, enemyId) : null;
+  const enemy = getEnemy(enemyId);
+  if (!map || !target || !enemy || blind(enemy.conditions)) {
+    return null;
+  }
+  const encounter = sidesOf(encounterId);
+  const mine = sideOf(encounter, "sheet", characterId);
+  for (const ally of listSheets(map.campaignId)) {
+    if (ally.id === characterId || !lowered(ally.conditions).includes(GROVELING) || unseen(ally.conditions)) {
+      continue;
+    }
+    const token = getTokenByRef(map.id, ally.id);
+    if (!token || sideOf(encounter, "sheet", ally.id) !== mine || tilesApart(token, target) * 5 > 10) {
+      continue;
+    }
+    if (hasLineOfSightBetween(map.terrain, map.width, spaceOf(token), spaceOf(target))) {
+      return ally.name;
+    }
+  }
+  return null;
+}
+
 // And for an enemy's melee attack on a creature of the other side.
 export function enemyFlanks(encounterId: string, enemyId: string, characterId: string): boolean {
   const map = getBattleMapForEncounter(encounterId);
   const attacker = map ? getTokenByRef(map.id, enemyId) : null;
   const target = map ? getTokenByRef(map.id, characterId) : null;
   if (!map || !attacker || !target) {
+    return false;
+  }
+  // One With the Ruins: a scavenger in ruins is never flanked (genre-gb-ruins.ts).
+  const struck = getSheetById(characterId);
+  if (struck && oneWithTheRuins(struck)) {
     return false;
   }
   const mine = sideOf(sidesOf(encounterId), "enemy", enemyId);

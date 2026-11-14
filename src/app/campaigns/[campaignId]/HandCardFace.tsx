@@ -8,6 +8,7 @@ import { cardArtwork } from "@/lib/battlemap/card-art";
 import type { HandCard, HandCardType, HandCost } from "@/lib/battlemap/hand";
 import { previewRows, type HandAim, type PreviewRow } from "@/lib/battlemap/hand-play";
 import { spellGlyphLabel, spellGlyphSrc, targetLines, type SpellGlyph } from "@/lib/battlemap/spell-glyph-logic";
+import { WIELD_LABEL as SHEET_WIELD_LABEL } from "@/components/sheet/sheet-state";
 
 // One card of the Hand and the outcome preview that floats over it. Styles
 // are in src/app/styles/hand.css; the tilt, the sheen and the art parallax
@@ -48,6 +49,15 @@ const COST_SHORT: Record<HandCost, string> = {
 
 // What the glyph and the words beside it say, for a screen reader: the card
 // is one button whose label is all it hears.
+// A weapon card's place (HandCard.wield), in the words the More sheet and the
+// weapon picker use too.
+// The words live with the sheet's own toggle, which says the same.
+export const WIELD_LABEL: Record<NonNullable<HandCard["wield"]>, string> = SHEET_WIELD_LABEL;
+const WIELD_SPOKEN: Record<NonNullable<HandCard["wield"]>, string> = {
+  "in-hand": "in hand",
+  stowed: "packed away",
+};
+
 function spellAside(card: HandCard): string {
   const parts = [card.glyph ? spellGlyphLabel(card.glyph) : "", card.targetWords ?? ""].filter(Boolean);
   return parts.length ? `, ${parts.join(", ")}` : "";
@@ -184,7 +194,7 @@ function HandCardFaceInner({
       // hover, which is how it says why it cannot be played.
       aria-disabled={card.disabled ? "true" : undefined}
       aria-pressed={card.type === "rider" ? attached : undefined}
-      aria-label={`${card.name}, ${COST_SHORT[card.cost]}${spellAside(card)}${card.disabled ? `. ${card.disabled}` : ""}`}
+      aria-label={`${card.name}${card.wield ? `, ${WIELD_SPOKEN[card.wield]}` : ""}, ${COST_SHORT[card.cost]}${spellAside(card)}${card.disabled ? `. ${card.disabled}` : ""}`}
       onClick={() => onPick(card)}
     >
       <span className="hand-card-frame" />
@@ -212,6 +222,13 @@ function HandCardFaceInner({
               className="hand-art-icon"
             />
           )}
+          {/* Which weapon is out (held-default.ts): at the well's left, the
+              part of a card a fan still shows. */}
+          {card.wield ? (
+            <span key={card.wield} className="hand-wield" data-wield={card.wield} aria-hidden="true">
+              {WIELD_LABEL[card.wield]}
+            </span>
+          ) : null}
         </span>
         <span className="hand-name">{card.name}</span>
         <span className="hand-numbers">

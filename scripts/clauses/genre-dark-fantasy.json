@@ -45,11 +45,9 @@
      "k": "mark_ends",
      "res": "Hunter's Brand"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Hunter's Brand#3",
-    "observed": "the mark is still held after the marked creature died",
-    "where": "src/lib/srd/authored-conditions.ts quarry buff on the holder: not cleared when the marked creature dies",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-dark-fantasy-deaths.ts darkFantasyOnDeath (called by enemy-damage.ts as the creature is written dead)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Hunter's Brand#3"
    },
    {
     "c": "you can see",
@@ -57,11 +55,9 @@
      "k": "mark_sight",
      "res": "Hunter's Brand"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Hunter's Brand#4",
-    "observed": "Hunter's Brand on an invisible creature the holder cannot see was accepted: the engine gives true, the text false",
-    "where": "the quarry spend in src/lib/dm/resource-tools.ts computeUseResource: the target's visibility is not checked",
-    "sev": "medium"
+    "is": "held",
+    "by": "the brand play of src/lib/dm/genre-a-dark-fantasy-spends.ts (the quarry buff with sight)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Hunter's Brand#4"
    }
   ]
  },
@@ -80,11 +76,9 @@
       "frightened"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Grim Resolve#0",
-    "observed": "d20s thrown for the wis save against frightened: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts save_adv (against frightened), read by src/lib/srd/trait-rules.ts authoredSaveTraits",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Grim Resolve#0"
    }
   ]
  },
@@ -190,15 +184,17 @@
    },
    {
     "c": "your Hunter's Brand target takes 2d10 radiant when you hit it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs ruling counter:dark_fantasy_purging_flame#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the purging_flame play of src/lib/dm/genre-a-dark-fantasy-spends.ts (a mark on the brand's creature, +2d10 radiant on the next hit: src/lib/srd/genre-a-dark-fantasy-conditions.ts)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Purging Flame",
     "recorded_as": "spends-guidance-only-counter-dark-fantasy-purging-flame",
     "ruling": "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\""
    },
    {
     "c": "declared before the roll",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_purging_flame#TRIGGER_AS_CARD",
+    "is": "held",
+    "by": "the purging_flame play of src/lib/dm/genre-a-dark-fantasy-spends.ts (declared on the hunter's turn before the swing, refused with no brand)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Purging Flame",
     "recorded_as": "spends-trigger-as-card-counter-dark-fantasy-purging-flame"
    }
   ]
@@ -218,11 +214,9 @@
       "charmed"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Iron Will#0",
-    "observed": "d20s thrown for the wis save against charmed: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts save_adv (against charmed; possession is a charm the GM names), read by src/lib/srd/trait-rules.ts authoredSaveTraits",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Iron Will#0"
    },
    {
     "c": "allies within 10 ft add +1d4 against fear",
@@ -231,11 +225,9 @@
      "against": "frightened",
      "want": "d4"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Iron Will#1",
-    "observed": "d4s added to the save of an ally 5 feet away against frightened: the engine gives 0, the text 1",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/dm/roll-riders.ts: no aura row reaches an ally's save",
-    "sev": "medium"
+    "is": "held",
+    "by": "the aura_roll row (+1d4 against fear, 10 ft), src/lib/dm/genre-a-auras.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Iron Will#1"
    }
   ]
  },
@@ -247,15 +239,12 @@
   "clauses": [
    {
     "c": "Your branded quarry cannot hide from you",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "cc_pursuit"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Relentless Pursuit#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-dark-fantasy.ts pursuedConditions, read by src/lib/dm/attack-sight.ts (the branded quarry's hidden is set aside for its hunter)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Relentless Pursuit#0"
    },
    {
     "c": "you know its direction within 1 mile",
@@ -276,11 +265,9 @@
      "k": "two_marks",
      "res": "Hunter's Brand"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Twin Brand#0",
-    "observed": "both marked creatures take the rider (damage rolls 1d8+4 and 1d8+4+1d6)",
-    "where": "src/lib/dm/resource-tools.ts (the quarry buff keeps one creature): a second mark replaces the first",
-    "sev": "medium"
+    "is": "held",
+    "by": "the brand play of src/lib/dm/genre-a-dark-fantasy-spends.ts (a second brand while the first holds another living creature)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Twin Brand#0"
    },
    {
     "c": "brand damage rises to +1d8",
@@ -290,11 +277,9 @@
      "dice": 1,
      "sides": 8
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Twin Brand#1",
-    "observed": "d8s in the damage roll 1d8+4+1d6: the engine gives 1, the text 2",
-    "where": "src/lib/srd/authored-effects-genre.ts (the quarry buff) and its rider in src/lib/srd/authored-conditions.ts: no upgrade for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the Twin Brand rows of src/lib/srd/genre-a-dark-fantasy-conditions.ts (1d8 radiant on each brand)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Twin Brand#1"
    }
   ]
  },
@@ -318,8 +303,9 @@
    },
    {
     "c": "a ranged attack against your brand becomes an automatic critical if it hits",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_judgment_shot#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the judgment_shot play of src/lib/dm/genre-a-dark-fantasy-spends.ts and src/lib/dm/genre-a-dark-fantasy-edges.ts (read by authored-hooks.ts authoredAttackSituation)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Judgment Shot",
     "recorded_as": "spends-guidance-only-counter-dark-fantasy-judgment-shot"
    }
   ]
@@ -336,23 +322,22 @@
      "k": "resist",
      "type": "necrotic"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Anathema Ward#0",
-    "observed": "hit points lost to 10 necrotic: the engine gives 10, the text 5",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "the resist row of src/lib/srd/authored-effects-genre-a.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Anathema Ward#0"
    },
    {
     "c": "curses targeting you have disadvantage",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "save_adv",
+     "ability": "wis,con",
+     "against": [
+      "curse"
+     ]
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Anathema Ward#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts Anathema Ward (save_adv against curse, a save's against in src/lib/dm/roll-about.ts SAVE_AGAINST)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Anathema Ward#1"
    }
   ]
  },
@@ -365,14 +350,11 @@
    {
     "c": "Concentration on your litanies cannot be broken by damage of 20 or less",
     "run": {
-     "k": "conc",
-     "keep": 1
+     "k": "litany"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::The Litany Unbroken#0",
-    "observed": "concentration after 10 damage and a failed save: the engine gives null, the text \"Bless\"",
-    "where": "src/lib/dm/concentration.ts (the save on damage): no rider for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-dark-fantasy-wards.ts litanyHolds (read by concentration.ts concentrationDamageHook)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::The Litany Unbroken#0"
    }
   ]
  },
@@ -384,15 +366,12 @@
   "clauses": [
    {
     "c": "Your critical hits against branded creatures prevent regeneration and revival for 24 hours",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "cc_sanctioned"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Sanctioned Execution#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-dark-fantasy.ts darkFantasyCritMarks (regeneration stopped for 24 hours, read by src/lib/dm/regeneration-turn.ts and legendary-tools.ts; the sanctioned execution mark, src/lib/srd/genre-cc-a-conditions.ts), read by src/lib/dm/attack-blow.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Sanctioned Execution#0"
    }
   ]
  },
@@ -417,14 +396,11 @@
    {
     "c": "take an extra full turn immediately after killing your branded quarry",
     "run": {
-     "k": "spend_moves",
-     "id": "dark_fantasy_no_rest_for_the_wicked"
+     "k": "cc_no_rest"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::No Rest for the Wicked#1",
-    "observed": "spending dark_fantasy_no_rest_for_the_wicked moved its counter and the turn's cost and nothing else; the result was its guidance: 1/long rest, take an extra full turn immediately after killing your branded quarry.",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-spends.ts noRest (refused until a creature the brand was on is dead; the turn's budget and reaction given back)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::No Rest for the Wicked#1"
    }
   ]
  },
@@ -452,11 +428,9 @@
      "k": "spend_moves",
      "id": "dark_fantasy_final_verdict"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Final Verdict#1",
-    "observed": "spending dark_fantasy_final_verdict moved its counter and the turn's cost and nothing else; the result was its guidance: 1/long rest, for 1 minute all your attacks against fiends, undead, and cursed creatures deal maximum weapon dice.",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "by": "the Final Verdict buff of src/lib/srd/authored-effects-genre-a-dark-fantasy.ts and finalVerdictDice of src/lib/dm/genre-a-dark-fantasy-hits.ts (read by attack-swing.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Final Verdict#1"
    }
   ]
  },
@@ -468,15 +442,9 @@
   "clauses": [
    {
     "c": "Your ranged attacks count as silvered and magical",
-    "run": {
-     "k": "magical",
-     "mode": "ranged"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Blessed Ammunition#0",
-    "observed": "damage to a creature that resists nonmagical weapons: the engine gives 3, the text 6",
-    "where": "src/lib/dm/pc-attack-damage.ts (the magical-weapon test against resistance): the feature is not read",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-fight-gaps.mjs: Blessed Ammunition: a witch hunter's pistol shot passes a werewolf's immunity to nonmagical blows that aren't silvered; without it, nothing lands",
+    "by": "src/lib/srd/authored-effects-genre-c.ts (ranged_material), read by src/lib/dm/pc-attack-profile.ts"
    }
   ]
  },
@@ -500,15 +468,23 @@
    },
    {
     "c": "emit bright warding light 20 ft for 10 minutes",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_candle_in_the_dark#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-dark-fantasy-candle-in-the-dark"
+    "run": {
+     "k": "cc_candle",
+     "part": "light"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-spends.ts candle (the candle in the dark mark for 100 rounds and the token's 20-foot light)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Candle in the Dark#1"
    },
    {
     "c": "hostile undead and fiends in it have disadvantage on attacks against your allies",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_candle_in_the_dark#GUIDANCE_ONLY",
-    "same_probe_as": 1
+    "run": {
+     "k": "cc_candle",
+     "part": "ward"
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts Candle in the Dark (attacked_disadv from undead and fiends within 20 feet, gated on the mark), read by src/lib/dm/authored-hooks.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Candle in the Dark#2"
    }
   ]
  },
@@ -532,20 +508,23 @@
    },
    {
     "c": "when a fiend or undead hits you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_flashfire_litany#TRIGGER_AS_CARD",
+    "is": "held",
+    "by": "the Flashfire Litany reaction of src/lib/srd/authored-effects-genre-a-dark-fantasy.ts (strike_back with vsTypes, authored-reactions.ts): the open hit, by a fiend or undead",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Flashfire Litany",
     "recorded_as": "spends-trigger-as-card-counter-dark-fantasy-flashfire-litany"
    },
    {
     "c": "it takes 3d8 radiant",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_flashfire_litany#HANDS_BACK",
+    "is": "held",
+    "by": "the Flashfire Litany reaction of src/lib/srd/authored-effects-genre-a-dark-fantasy.ts (strike_back with vsTypes, authored-reactions.ts): 3d8 radiant",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Flashfire Litany",
     "recorded_as": "spends-hands-back-counter-dark-fantasy-flashfire-litany"
    },
    {
     "c": "CON save halves",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_flashfire_litany#HANDS_BACK",
+    "is": "held",
+    "by": "the Flashfire Litany reaction of src/lib/srd/authored-effects-genre-a-dark-fantasy.ts (strike_back with vsTypes, authored-reactions.ts): a CON save against the spell save DC halves it",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Flashfire Litany",
     "recorded_as": "spends-hands-back-counter-dark-fantasy-flashfire-litany"
    }
   ]
@@ -558,15 +537,12 @@
   "clauses": [
    {
     "c": "Allies within 20 ft deal +1d4 radiant with weapon attacks against your branded quarry",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "cc_silver_tide"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap witch_hunter::Silver Tide#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-dark-fantasy.ts silverTideRider, read by src/lib/dm/pc-attack-plan.ts (the attack's damage dice and typed riders)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: witch_hunter::Silver Tide#0"
    }
   ]
  },
@@ -590,20 +566,23 @@
    },
    {
     "c": "mass brand",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_the_flame_that_judges#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the mass_brand play of src/lib/dm/genre-a-dark-fantasy-spends.ts (a brand of its own on each creature, the judged rows of src/lib/srd/genre-a-dark-fantasy-conditions.ts)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: The Flame That Judges",
     "recorded_as": "spends-guidance-only-counter-dark-fantasy-the-flame-that-judges"
    },
    {
     "c": "every enemy within 30 ft is branded at once",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_the_flame_that_judges#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the mass_brand play of src/lib/dm/genre-a-dark-fantasy-spends.ts (every enemy within 30 feet)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: The Flame That Judges",
     "same_probe_as": 1
    },
    {
     "c": "WIS save negates each",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_the_flame_that_judges#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the mass_brand play of src/lib/dm/genre-a-dark-fantasy-spends.ts (a WIS save against the spell save DC for each)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: The Flame That Judges",
     "same_probe_as": 2
    }
   ]
@@ -620,11 +599,9 @@
      "k": "resist",
      "type": "poison"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Miasma Ward#0",
-    "observed": "hit points lost to 10 poison: the engine gives 10, the text 5",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts resist (poison), read by src/lib/dm/pc-defenses.ts authoredResistances",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Miasma Ward#0"
    },
    {
     "c": "advantage against disease",
@@ -635,11 +612,9 @@
       "disease"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Miasma Ward#1",
-    "observed": "d20s thrown for the con save against disease: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts save_adv (against disease), read by src/lib/srd/trait-rules.ts authoredSaveTraits",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Miasma Ward#1"
    },
    {
     "c": "allies within 5 ft",
@@ -647,11 +622,9 @@
      "k": "ally_resist",
      "type": "poison"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Miasma Ward#2",
-    "observed": "hit points an ally 5 feet away lost to 10 poison: the engine gives 10, the text 5",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED: no aura row lends allies the resistance; src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "the aura_resist row (poison, 5 ft) read by src/lib/dm/authored-saves.ts authoredAuraResistances, and the aura_roll row against disease",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Miasma Ward#2"
    }
   ]
  },
@@ -687,15 +660,14 @@
    },
    {
     "c": "the kit and mask are the focus",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs a cast of a material-component spell by a genre caster with and without the named focus carried (src/lib/dm/cast-materials.ts focusProblem); not staged",
     "run": {
-     "k": "hook"
+     "k": "cc_focus",
+     "want": "kit",
+     "ability": "int"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Pharmacopoeia#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/genre-a-cyberpunk-focus.ts genreFocusOf (Pharmacopoeia: kind kit) and carriesDoctorKit, read by src/lib/dm/cast-materials.ts focusProblem",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Pharmacopoeia#1"
    }
   ]
  },
@@ -736,8 +708,9 @@
    },
    {
     "c": "a melee hit also deals 2d8 necrotic and the target cannot regain HP until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs ruling counter:dark_fantasy_lance_the_wound#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the lance play of src/lib/dm/genre-a-dark-fantasy-spends.ts (afterWeaponHit, 2d8 necrotic, the lanced wound vitals-logic.ts regainBlockedBy reads)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Lance the Wound",
     "recorded_as": "spends-guidance-only-counter-dark-fantasy-lance-the-wound",
     "ruling": "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\""
    }
@@ -765,11 +738,9 @@
      "k": "stabilize",
      "want": "wake"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Triage#1",
-    "observed": "the stabilized creature wakes after a minute; the engine wrote [{\"ok\":true,\"stabilized\":true,\"rolled\":18,\"dc\":10,\"note\":\"Holder's Medicine check (18) meets DC 10. Ally Down is stable: no more death saves, but still unconscious at 0 HP. They regain 1 hit point in 2 hours, or sooner i",
-    "where": "src/lib/dm/stabilize.ts and src/lib/dm/death.ts rollStableTimer (1d4 hours for everybody)",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-dark-fantasy-vitals.ts triageWait (stabilize.ts) and triageWake (death.ts wakeStable)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Triage#1"
    }
   ]
  },
@@ -781,15 +752,12 @@
   "clauses": [
    {
     "c": "Immune to inhaled poisons and gases",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "cc_mask"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Beaked Mask#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-drones.ts maskKeepsOut, read by src/lib/dm/aoe-characters.ts (a poison gas as it is cast) and src/lib/dm/zone-triggers.ts (the gas met on the board)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Beaked Mask#0"
    },
    {
     "c": "advantage on saves against fear while masked",
@@ -800,11 +768,9 @@
       "frightened"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Beaked Mask#1",
-    "observed": "d20s thrown for the wis save against frightened: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts save_adv (against frightened; the mask is worn unless the GM says otherwise), read by src/lib/srd/trait-rules.ts authoredSaveTraits",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Beaked Mask#1"
    }
   ]
  },
@@ -816,15 +782,12 @@
   "clauses": [
    {
     "c": "Your healing remedies also cure one disease or poison per casting",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "cc_dosage"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Controlled Dosage#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-dark-fantasy-more.ts controlledDosage, read by src/lib/dm/heal-spell.ts castHealingSpell",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Controlled Dosage#0"
    }
   ]
  },
@@ -849,21 +812,15 @@
   "clauses": [
    {
     "c": "Lance the Wound damage rises to 4d8 and spreads",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Virulent Strain#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "the lance play of src/lib/dm/genre-a-dark-fantasy-spends.ts (4d8 with Virulent Strain)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Lance the Wound"
    },
    {
     "c": "one creature adjacent to the target takes half",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
+    "is": "held",
+    "by": "the lance play of src/lib/dm/genre-a-dark-fantasy-spends.ts (half to a creature beside the target)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Lance the Wound",
     "same_probe_as": 0
    }
   ]
@@ -888,21 +845,37 @@
    },
    {
     "c": "a 20-ft radius circle for 10 minutes",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_quarantine_ring#HANDS_BACK",
-    "recorded_as": "spends-hands-back-counter-dark-fantasy-quarantine-ring"
+    "run": {
+     "k": "cc_zone",
+     "res": "Quarantine Ring",
+     "spell": "Quarantine Ring",
+     "rounds": 100,
+     "edgeFt": 20
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts Quarantine Ring (a zone spend), the area src/lib/battlemap/zones-genre-cc-a.ts quarantine ring (a 20-foot sphere on the doctor for 100 rounds), laid by src/lib/dm/genre-b-zones.ts layGenreZone",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Quarantine Ring#1"
    },
    {
     "c": "enemies treat it as difficult terrain and take 2d6 poison entering",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_quarantine_ring#HANDS_BACK",
-    "same_probe_as": 1
+    "run": {
+     "k": "cc_zone_slow",
+     "res": "Quarantine Ring",
+     "spell": "Quarantine Ring"
+    },
+    "is": "held",
+    "by": "src/lib/battlemap/zones-genre-cc-a.ts quarantine ring (halvesHostile, read by src/lib/battlemap/zones.ts zoneStepCost; the trigger on entering, 2d6 poison, read by src/lib/dm/zone-triggers.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Quarantine Ring#2"
    },
    {
     "c": "CON save halves",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_quarantine_ring#HANDS_BACK",
-    "same_probe_as": 2
+    "run": {
+     "k": "cc_zone_enter",
+     "res": "Quarantine Ring"
+    },
+    "is": "held",
+    "by": "src/lib/battlemap/zones-genre-cc-a.ts quarantine ring trigger (CON save, half on a success), run by src/lib/dm/zone-triggers.ts as an enemy enters",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Quarantine Ring#3"
    }
   ]
  },
@@ -919,25 +892,22 @@
      "type": "poison",
      "immune": true
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Iron Constitution#0",
-    "observed": "hit points lost to 10 poison: the engine gives 10, the text 0",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "the immune_damage row of src/lib/srd/authored-effects-genre-a.ts, read by src/lib/dm/pc-damage.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Iron Constitution#0"
    },
    {
     "c": "Immune to poison and disease",
     "run": {
      "k": "cond_immune",
      "conditions": [
-      "poisoned"
+      "poisoned",
+      "diseased"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Iron Constitution#1",
-    "observed": "poisoned was laid on a character the text makes immune to it",
-    "where": "src/lib/srd/trait-rules.ts condition immunities, read by set_condition: no immunity for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts immune_condition (poisoned, diseased), read by src/lib/srd/trait-rules.ts authoredConditionImmunities",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Iron Constitution#1"
    }
   ]
  },
@@ -949,15 +919,12 @@
   "clauses": [
    {
     "c": "Miasma Ward radius grows to 15 ft",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
     "run": {
-     "k": "hook"
+     "k": "cc_mantle"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Miasma Mantle#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts Miasma Mantle (aura_resist poison and aura_roll disease at 15 feet)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Miasma Mantle#0"
    },
    {
     "c": "also grants resistance to necrotic damage",
@@ -965,11 +932,9 @@
      "k": "resist",
      "type": "necrotic"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Miasma Mantle#1",
-    "observed": "hit points lost to 10 necrotic: the engine gives 10, the text 5",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts resist (necrotic), read by src/lib/dm/pc-defenses.ts authoredResistances",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Miasma Mantle#1"
    }
   ]
  },
@@ -1013,11 +978,9 @@
      "conditions": "poisoned|blinded",
      "want": "cured"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Panacea#1",
-    "observed": "conditions left on the creature touched",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-heals.ts cures: poison, disease, curse, blindness, deafness, paralysis",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Panacea#1"
    }
   ]
  },
@@ -1041,8 +1004,9 @@
    },
    {
     "c": "choose life or death for a touched creature",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_master_of_the_black_ledger#HANDS_BACK",
+    "is": "held",
+    "by": "the black_ledger play of src/lib/dm/genre-a-dark-fantasy-spends.ts (life for a creature at the table, death for a foe, a touch)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Master of the Black Ledger",
     "recorded_as": "spends-hands-back-counter-dark-fantasy-master-of-the-black-ledger"
    },
    {
@@ -1053,22 +1017,22 @@
      "target": "ally",
      "want": "full"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Master of the Black Ledger#2",
-    "observed": "the spend on the ally is refused: \"Master of the Black Ledger makes the creatures it catches save: pass targetEnemyId\"; the counter knows only the death choice",
-    "where": "scripts/generate-class-resources.mjs parseFx (enemy_save) and src/lib/dm/resource-tools.ts: the fx carries the death choice's save only, and no life choice (a touched creature restored to full HP)",
-    "sev": "medium"
+    "is": "held",
+    "by": "the black_ledger play of src/lib/dm/genre-a-dark-fantasy-spends.ts (every hit point restored, under regain.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Master of the Black Ledger#2"
    },
    {
     "c": "10d10 necrotic",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_master_of_the_black_ledger#HANDS_BACK",
+    "is": "held",
+    "by": "the black_ledger play of src/lib/dm/genre-a-dark-fantasy-spends.ts (a save_effect of 10d10 necrotic)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Master of the Black Ledger",
     "recorded_as": "spends-hands-back-counter-dark-fantasy-master-of-the-black-ledger"
    },
    {
     "c": "CON save halves",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_master_of_the_black_ledger#HANDS_BACK",
+    "is": "held",
+    "by": "the black_ledger play of src/lib/dm/genre-a-dark-fantasy-spends.ts (CON save against the spell save DC, half on a success)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Master of the Black Ledger",
     "recorded_as": "spends-hands-back-counter-dark-fantasy-master-of-the-black-ledger"
    }
   ]
@@ -1100,15 +1064,13 @@
    {
     "c": "Advantage on checks to source rare reagents, poisons, and cadavers in any settlement",
     "run": {
-     "k": "check",
+     "k": "cc_check_about",
      "skill": "investigation",
-     "want": "adv"
+     "about": "rare_reagents"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap plague_doctor::Guild Dues#0",
-    "observed": "d20s thrown for the investigation check: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts check keys (src/lib/dm/roll-about.ts CHECK_ABOUT has no circumstance for it) and src/lib/dm/roll-riders.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts Guild Dues (check_adv on any check about rare_reagents), read by src/lib/dm/roll-feature-riders.ts authoredRollRiders through request_roll's about (src/lib/dm/roll-about.ts CHECK_ABOUT)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: plague_doctor::Guild Dues#0"
    }
   ]
  },
@@ -1132,14 +1094,16 @@
    },
    {
     "c": "a wheeling flock blinds enemies in a 20-ft radius for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_murder_of_crows#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the Murder of Crows save_area of src/lib/srd/authored-effects-genre-a-dark-fantasy.ts (blinded, enemies within 20 feet)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Murder of Crows",
     "recorded_as": "spends-guidance-only-counter-dark-fantasy-murder-of-crows"
    },
    {
     "c": "CON save each turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_murder_of_crows#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the Murder of Crows save_area of src/lib/srd/authored-effects-genre-a-dark-fantasy.ts (saveEnds: a CON save at the end of each of its turns)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Murder of Crows",
     "same_probe_as": 1
    }
   ]
@@ -1193,14 +1157,16 @@
    },
    {
     "c": "when you drop to 0 HP",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_the_flock_remembers#TRIGGER_AS_CARD",
+    "is": "held",
+    "by": "flockHold of src/lib/dm/genre-a-dark-fantasy-vitals.ts, called from genre-drop-holds.ts at the drop",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: The Flock Remembers",
     "recorded_as": "spends-trigger-as-card-counter-dark-fantasy-the-flock-remembers"
    },
    {
     "c": "the flock carries you 60 ft to safety and you stabilize",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_the_flock_remembers#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "flockHold of src/lib/dm/genre-a-dark-fantasy-vitals.ts (stable at 0, 60 feet credited to the token)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: The Flock Remembers",
     "recorded_as": "spends-guidance-only-counter-dark-fantasy-the-flock-remembers"
    }
   ]
@@ -1233,11 +1199,9 @@
      "k": "magical",
      "spend": "Deathly Pact Blade"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Deathly Pact Blade#2",
-    "observed": "damage to a creature that resists nonmagical weapons: the engine gives 4, the text 8",
-    "where": "src/lib/dm/pc-attack-damage.ts (the magical-weapon test against resistance): the feature is not read",
-    "sev": "medium"
+    "is": "held",
+    "by": "the deathly pact blade condition its spend lays (src/lib/srd/genre-a-conditions.ts, magicalStrikes)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Deathly Pact Blade#2"
    }
   ]
  },
@@ -1253,23 +1217,15 @@
      "k": "club",
      "n": 1
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Sepulchral Aura#0",
-    "observed": "damage of a club hit for 6: the engine gives 6, the text 5",
-    "where": "src/lib/dm/enemy-attack damage against a character: no row reduces or answers the hit for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-dark-fantasy-wards.ts darkFantasyWeaponWard (read by enemy-attack.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Sepulchral Aura#0"
    },
    {
     "c": "minimum 1",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Sepulchral Aura#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-dark-fantasy-wards.ts darkFantasyWeaponWard (at least 1 of a blow that dealt any)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Sepulchral Aura and Numb to the Lash"
    }
   ]
  },
@@ -1347,14 +1303,16 @@
    },
    {
     "c": "spectral hands erupt in a 15-ft cube",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_grave_grip#HANDS_BACK",
+    "is": "held",
+    "by": "the Grave Grip save_area of src/lib/srd/authored-effects-genre-a-dark-fantasy.ts (the creatures named within 15 feet)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Grave Grip",
     "recorded_as": "spends-hands-back-counter-dark-fantasy-grave-grip"
    },
    {
     "c": "creatures save (STR) or are restrained until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_grave_grip#HANDS_BACK",
+    "is": "held",
+    "by": "the Grave Grip save_area of src/lib/srd/authored-effects-genre-a-dark-fantasy.ts (restrained until the start of the knight's next turn)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Grave Grip",
     "same_probe_as": 1
    }
   ]
@@ -1371,11 +1329,9 @@
      "k": "resist",
      "type": "necrotic"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Knight of Dust#0",
-    "observed": "hit points lost to 10 necrotic: the engine gives 10, the text 5",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts resist (necrotic), read by src/lib/dm/pc-defenses.ts authoredResistances",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Knight of Dust#0"
    },
    {
     "c": "you need half the usual food and sleep",
@@ -1407,10 +1363,11 @@
      "k": "ally_hit",
      "feature": "Barrow Ward",
      "die": 6,
-     "ally": "prof+cha"
+     "ally": "prof+cha",
+     "aura": 1
     },
     "is": "held",
-    "by": "the authored reaction row in src/lib/srd/authored-effects-genre.ts (reduce / take_for_ally with rangeFt), played by src/lib/dm/authored-reactions.ts",
+    "by": "the authored reaction row in src/lib/srd/authored-effects-genre.ts (reduce / take_for_ally with rangeFt), played by src/lib/dm/authored-reactions.ts, after the knight's Sepulchral Aura",
     "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Barrow Ward#1"
    }
   ]
@@ -1435,15 +1392,15 @@
    },
    {
     "c": "when you drop to 0 HP",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_deathless_vigor#TRIGGER_AS_CARD",
-    "recorded_as": "spends-trigger-as-card-counter-dark-fantasy-deathless-vigor"
+    "is": "held",
+    "by": "src/lib/dm/genre-drop-holds.ts, called by src/lib/dm/pc-damage.ts before the death engine; the counter is passive (src/lib/srd/genre-a-counter-terms.ts)",
+    "probe": "scripts/test-genre-drop-holds.mjs"
    },
    {
     "c": "drop to 1 instead and gain temp HP equal to your level",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_deathless_vigor#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-dark-fantasy-deathless-vigor"
+    "is": "held",
+    "by": "src/lib/dm/genre-drop-holds.ts, called by src/lib/dm/pc-damage.ts before the death engine; the counter is passive (src/lib/srd/genre-a-counter-terms.ts)",
+    "probe": "scripts/test-genre-drop-holds.mjs"
    }
   ]
  },
@@ -1461,11 +1418,9 @@
      "sides": 8,
      "spend": "Deathly Pact Blade"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Reaping Blade#0",
-    "observed": "damage Reaping Blade adds to a hit (8 with it, 8 without): the engine gives 0, the text 3",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (weapon_damage_rider) and src/lib/dm/pc-attack-damage.ts: nothing answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the hit_rider row gated on the pact blade, read by src/lib/dm/genre-a-strikes.ts through attack-damage-riders.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Reaping Blade#0"
    },
    {
     "c": "slain enemies cannot rise as undead unless you allow it",
@@ -1482,15 +1437,12 @@
   "clauses": [
    {
     "c": "Sepulchral Aura reaches 10 ft and also halves enemy healing within it",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
     "run": {
-     "k": "hook"
+     "k": "cc_dominion"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Sepulchral Dominion#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-dark-fantasy-wards.ts (the aura's 10 feet) and src/lib/dm/genre-cc-a-dark-fantasy-more.ts dominionHalves, read by src/lib/dm/legendary-tools.ts as an enemy regenerates",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Sepulchral Dominion#0"
    }
   ]
  },
@@ -1514,9 +1466,9 @@
    },
    {
     "c": "regain expended slot levels equal to your CHA modifier",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_the_tomb_provides#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-dark-fantasy-the-tomb-provides"
+    "is": "held",
+    "probe": "scripts/test-genre-a-slots.mjs",
+    "by": "src/lib/dm/genre-a-slots.ts recoverSlotLevels, given back by the use_resource spend itself (resource-tools.ts, recover_slots with now)"
    }
   ]
  },
@@ -1535,23 +1487,24 @@
       "charmed"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Wight-Iron Will#0",
-    "observed": "frightened was laid on a character the text makes immune to it",
-    "where": "src/lib/srd/trait-rules.ts condition immunities, read by set_condition: no immunity for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts immune_condition (frightened, charmed), read by src/lib/srd/trait-rules.ts authoredConditionImmunities",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Wight-Iron Will#0"
    },
    {
     "c": "advantage against effects that would age, drain, or possess you",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "save_adv",
+     "ability": "con,cha",
+     "against": [
+      "aging",
+      "drain",
+      "possession"
+     ]
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Wight-Iron Will#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts Wight-Iron Will (save_adv against aging, drain and possession, a save's against in src/lib/dm/roll-about.ts SAVE_AGAINST)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Wight-Iron Will#1"
    }
   ]
  },
@@ -1576,21 +1529,22 @@
    {
     "c": "raise one slain foe as a loyal skeletal squire for 8 hours",
     "run": {
-     "k": "spend_moves",
-     "id": "dark_fantasy_squire_of_bones"
+     "k": "cc_squire",
+     "part": "raise"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Squire of Bones#1",
-    "observed": "spending dark_fantasy_squire_of_bones moved its counter and the turn's cost and nothing else; the result was its guidance: 1/long rest, raise one slain foe as a loyal skeletal squire for 8 hours (uses its stats, obeys you).",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "by": "the src/lib/dm/genre-cc-a-spends.ts squire play (src/lib/dm/genre-cc-a-squire.ts raiseSquire): the dead enemy named rises as an undead summon of the knight's for 4800 rounds, acting right after them",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Squire of Bones#1"
    },
    {
     "c": "uses its stats, obeys you",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "follows clause #1 (gap grave_knight::Squire of Bones#1), which fails: the spend moves its counter and the turn's cost and nothing else; with nothing on the table there is no state this clause could be read on",
-    "same_probe_as": 1
+    "run": {
+     "k": "cc_squire",
+     "part": "stats"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-squire.ts squireForm: the foe's own armor class, hit points, speeds, scores, attacks and defences",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Squire of Bones#2"
    }
   ]
  },
@@ -1608,30 +1562,27 @@
      "sides": 8,
      "spend": "Deathly Pact Blade"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Champion of the Quiet Court#0",
-    "observed": "damage Champion of the Quiet Court adds to a hit (8 with it, 8 without): the engine gives 0, the text 3",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (weapon_damage_rider) and src/lib/dm/pc-attack-damage.ts: nothing answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the hit_rider row gated on the pact blade, read by src/lib/dm/genre-a-strikes.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Champion of the Quiet Court#0"
    },
    {
     "c": "critical hits also frighten",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "cc_crit_fright"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Champion of the Quiet Court#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-dark-fantasy.ts darkFantasyCritMarks, read by src/lib/dm/attack-blow.ts as the blow lands",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Champion of the Quiet Court#1"
    },
    {
     "c": "WIS save negates",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
-    "same_probe_as": 1
+    "run": {
+     "k": "cc_crit_fright"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-dark-fantasy.ts darkFantasyCritMarks (the WIS save against the knight's spell save DC, src/lib/dm/forced-save.ts rollEnemySave)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Champion of the Quiet Court#2"
    }
   ]
  },
@@ -1655,9 +1606,9 @@
    },
    {
     "c": "for 1 minute you cannot drop below 1 HP",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_deathless_champion#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-dark-fantasy-deathless-champion"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts SPENDS row on the feature's counter, resolved by src/lib/dm/authored-spends.ts / authored-reactions.ts: buff deathless champion, held by src/lib/dm/genre-drop-holds.ts",
+    "probe": "scripts/test-genre-a-spends.mjs"
    }
   ]
  },
@@ -1669,15 +1620,9 @@
   "clauses": [
    {
     "c": "1/turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Rose Thorn Oath#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-dark-fantasy-hits.ts darkFantasyOnHit (the turn mark, as Form of the Beast's bite keeps its own)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Rose Thorn Oath"
    },
    {
     "c": "when your pact blade hits, regain HP equal to your CHA modifier",
@@ -1686,11 +1631,9 @@
      "amount": "cha",
      "spend": "Deathly Pact Blade"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Rose Thorn Oath#1",
-    "observed": "hit points regained on the hit: the engine gives 0, the text 2",
-    "where": "src/lib/dm/pc-attack-damage.ts: no heal on a hit for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-dark-fantasy-hits.ts darkFantasyOnHit (read by authored-hooks.ts authoredOnHit)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Rose Thorn Oath#1"
    }
   ]
  },
@@ -1703,15 +1646,13 @@
    {
     "c": "Advantage on CHA checks with mourners, undead, and those who serve death",
     "run": {
-     "k": "check",
+     "k": "cc_check_about",
      "skill": "persuasion",
-     "want": "adv"
+     "about": "death_rites"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Funerary Grace#0",
-    "observed": "d20s thrown for the persuasion check: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts check keys (src/lib/dm/roll-about.ts CHECK_ABOUT has no circumstance for it) and src/lib/dm/roll-riders.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts Funerary Grace (check_adv on CHA checks about death_rites or a creature that is undead), read by src/lib/dm/roll-feature-riders.ts authoredRollRiders through request_roll's about and creature (src/lib/dm/roll-about.ts CHECK_ABOUT)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Funerary Grace#0"
    }
   ]
  },
@@ -1778,33 +1719,35 @@
    {
     "c": "a 20-ft radius garden of black roses for 1 minute",
     "run": {
-     "k": "garden",
-     "part": "zone"
+     "k": "cc_zone",
+     "res": "Garden of Grief",
+     "spell": "Garden of Grief",
+     "rounds": 10,
+     "edgeFt": 20
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Garden of Grief#1",
-    "observed": "one heal of 1d6 and nothing that lasts: no zone, no effect on the holder, nothing to tick each turn for a minute",
-    "where": "src/lib/classes/resources.json dark_fantasy_garden_of_grief (a one-time heal fx) and src/lib/dm/resource-tools.ts: no zone, no tick, no slow",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts Garden of Grief (a zone spend), the area src/lib/battlemap/zones-genre-cc-a.ts garden of grief (a 20-foot sphere on the knight for 10 rounds)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Garden of Grief#1"
    },
    {
     "c": "allies in it regain 1d6 HP per turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "follows clause #1 (gap grave_knight::Garden of Grief#1), which fails: the spend heals once and leaves nothing that lasts; with nothing on the table there is no state this clause could be read on",
-    "same_probe_as": 1
+    "run": {
+     "k": "cc_garden_heal"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-turns.ts gardenHeals, called as each turn starts (src/lib/dm/condition-tick.ts startTurnConditions)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Garden of Grief#2"
    },
    {
     "c": "enemies are slowed",
     "run": {
-     "k": "garden",
-     "part": "slow"
+     "k": "cc_zone_slow",
+     "res": "Garden of Grief",
+     "spell": "Garden of Grief"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Garden of Grief#3",
-    "observed": "no enemy in the garden is slowed",
-    "where": "src/lib/classes/resources.json dark_fantasy_garden_of_grief (a one-time heal fx) and src/lib/dm/resource-tools.ts: no zone, no tick, no slow",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/battlemap/zones-genre-cc-a.ts garden of grief (halvesHostile, read by src/lib/battlemap/zones.ts zoneStepCost)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Garden of Grief#3"
    }
   ]
  },
@@ -1828,14 +1771,16 @@
    },
    {
     "c": "when an ally within 30 ft dies",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_the_last_rose#TRIGGER_AS_CARD",
+    "is": "held",
+    "by": "the Last Rose ally hold of src/lib/dm/genre-drop-holds.ts (spent at the drop, passive in genre-a-counter-terms.ts)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: The Last Rose",
     "recorded_as": "spends-trigger-as-card-counter-dark-fantasy-the-last-rose"
    },
    {
     "c": "they instead drop to 1 HP and your next attack is an automatic critical if it hits",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_the_last_rose#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the hold (1 HP) and its holder mark, read by src/lib/dm/genre-a-dark-fantasy-edges.ts (the next attack a critical if it hits)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: The Last Rose",
     "recorded_as": "spends-guidance-only-counter-dark-fantasy-the-last-rose"
    }
   ]
@@ -1848,20 +1793,15 @@
   "clauses": [
    {
     "c": "When you attack, you may pay HP up to your proficiency bonus",
-    "run": {
-     "k": "no_door"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Mortified Flesh#0",
-    "observed": "no call plays it: use_resource answers \"No resource called \"mortified flesh\" is known. They have no limited-use resources. Send the one meant, by the name on the sheet. / No resource called \"mortified\": the engine gives false, the text true",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (no row) and src/lib/classes/resources.json (no counter): no tool plays the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the mortify play of src/lib/dm/genre-a-dark-fantasy-spends.ts (use_resource \"Mortified Flesh\" with amount, up to the proficiency bonus)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Mortified Flesh"
    },
    {
     "c": "add the same amount to the damage",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "follows clause #0 (gap penitent::Mortified Flesh#0), which fails: no call plays the feature; with nothing on the table there is no state this clause could be read on",
+    "is": "held",
+    "by": "the mortified flesh (N) rows of src/lib/srd/genre-a-dark-fantasy-conditions.ts (+N on the next attack, spent by it)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Mortified Flesh",
     "same_probe_as": 0
    }
   ]
@@ -1880,11 +1820,9 @@
      "want": "adv",
      "hp": 40
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Zeal Through Pain#0",
-    "observed": "d20s thrown for the athletics check: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts check keys (src/lib/dm/roll-about.ts CHECK_ABOUT has no circumstance for it) and src/lib/dm/roll-riders.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "the check_adv row gated belowHalf in src/lib/srd/authored-effects-genre-a.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Zeal Through Pain#0"
    },
    {
     "c": "+1 to attack rolls",
@@ -1893,11 +1831,9 @@
      "n": 1,
      "hp": 40
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Zeal Through Pain#1",
-    "observed": "what Zeal Through Pain adds to the attack roll (21 with it, 21 without): the engine gives 0, the text 1",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (attack_bonus) and src/lib/dm/pc-attack-profile.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "the attack_bonus row gated belowHalf, read by src/lib/dm/genre-a-strikes.ts in pc-attack-damage.ts foldDamageRiders",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Zeal Through Pain#1"
    }
   ]
  },
@@ -1917,11 +1853,9 @@
      ],
      "wear": "bare"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Unarmored Devotion#0",
-    "observed": "armor class (bare worn): the engine gives 12, the text 17",
-    "where": "src/lib/srd/index.ts acBreakdownFor and src/lib/srd/feature-effects.ts ac_bonus: no entry for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the Unarmored Devotion formula of src/lib/srd/armor.ts (Strength in place of Dexterity)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Unarmored Devotion#0"
    }
   ]
  },
@@ -1975,11 +1909,9 @@
       "frightened"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Flagellant's Trance#0",
-    "observed": "d20s thrown for the wis save against frightened: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts save_adv (against frightened; pain and exhaustion effects name no save of their own), read by src/lib/srd/trait-rules.ts authoredSaveTraits",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Flagellant's Trance#0"
    }
   ]
  },
@@ -2003,14 +1935,16 @@
    },
    {
     "c": "pay 5 HP",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_blood_offering#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the blood_offering play of src/lib/dm/genre-a-dark-fantasy-spends.ts (5 HP paid, refused if it would drop the penitent)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Blood Offering",
     "recorded_as": "spends-guidance-only-counter-dark-fantasy-blood-offering"
    },
    {
     "c": "one attack this turn becomes an automatic hit if the roll would miss by 3 or less",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_blood_offering#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the blood offering (+3) row of src/lib/srd/genre-a-dark-fantasy-conditions.ts (+3 to hit, spent by the attack, this turn only)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Blood Offering",
     "same_probe_as": 1
    }
   ]
@@ -2027,11 +1961,9 @@
      "k": "resist",
      "type": "slashing"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Scarred Hide#0",
-    "observed": "hit points lost to 10 slashing: the engine gives 10, the text 5",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts resist (slashing, nonmagical), read by src/lib/dm/pc-defenses.ts authoredResistances",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Scarred Hide#0"
    }
   ]
  },
@@ -2055,15 +1987,15 @@
    },
    {
     "c": "when you drop to 0 HP",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_martyr_s_endurance#TRIGGER_AS_CARD",
-    "recorded_as": "spends-trigger-as-card-counter-dark-fantasy-martyr-s-endurance"
+    "is": "held",
+    "by": "src/lib/dm/genre-drop-holds.ts, called by src/lib/dm/pc-damage.ts before the death engine; the counter is passive (src/lib/srd/genre-a-counter-terms.ts)",
+    "probe": "scripts/test-genre-drop-holds.mjs"
    },
    {
     "c": "drop to 1 instead",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_martyr_s_endurance#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-dark-fantasy-martyr-s-endurance"
+    "is": "held",
+    "by": "src/lib/dm/genre-drop-holds.ts, called by src/lib/dm/pc-damage.ts before the death engine; the counter is passive (src/lib/srd/genre-a-counter-terms.ts)",
+    "probe": "scripts/test-genre-drop-holds.mjs"
    }
   ]
  },
@@ -2075,21 +2007,15 @@
   "clauses": [
    {
     "c": "Mortified Flesh can pay up to twice your proficiency bonus in HP",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Greater Mortification#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "the mortify play of src/lib/dm/genre-a-dark-fantasy-spends.ts (twice the proficiency bonus)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Greater Mortification"
    },
    {
     "c": "the bonus damage is doubled while below half HP",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
+    "is": "held",
+    "by": "the mortify play of src/lib/dm/genre-a-dark-fantasy-spends.ts (doubled below half HP)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Greater Mortification",
     "same_probe_as": 0
    }
   ]
@@ -2147,23 +2073,15 @@
      "k": "club",
      "less": "wis"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Numb to the Lash#0",
-    "observed": "damage of a club hit for 6: the engine gives 6, the text 3",
-    "where": "src/lib/dm/enemy-attack damage against a character: no row reduces or answers the hit for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-dark-fantasy-wards.ts darkFantasyWeaponWard (read by enemy-attack.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Numb to the Lash#0"
    },
    {
     "c": "minimum 1 damage taken",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Numb to the Lash#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-dark-fantasy-wards.ts darkFantasyWeaponWard (read by enemy-attack.ts) (at least 1 of a blow that dealt any)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Sepulchral Aura and Numb to the Lash"
    }
   ]
  },
@@ -2181,11 +2099,9 @@
      "sides": 6,
      "hp": 20
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Ecstatic Fury#0",
-    "observed": "damage Ecstatic Fury adds to a hit (8 with it, 8 without): the engine gives 0, the text 6",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (weapon_damage_rider) and src/lib/dm/pc-attack-damage.ts: nothing answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the hit_rider row gated belowQuarter (src/lib/srd/genre-a-gates.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Ecstatic Fury#0"
    },
    {
     "c": "you cannot be frightened or charmed",
@@ -2197,11 +2113,9 @@
      ],
      "hp": 20
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Ecstatic Fury#1",
-    "observed": "frightened was laid on a character the text makes immune to it",
-    "where": "src/lib/srd/trait-rules.ts condition immunities, read by set_condition: no immunity for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the immune_condition row gated belowQuarter",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Ecstatic Fury#1"
    }
   ]
  },
@@ -2219,23 +2133,16 @@
      "n": 1,
      "rest": "short"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Sainted Scars#0",
-    "observed": "dark_fantasy_martyr_s_endurance after a short rest: the engine gives 1, the text 0",
-    "where": "scripts/generate-class-resources.mjs parseUses and the row in src/lib/classes/resources.json",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/genre-a-counter-terms.ts rechargeFor (short from 17th), read by take_rest",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Sainted Scars#0"
    },
    {
     "c": "each use also grants temp HP equal to your level",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Sainted Scars#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-drop-holds.ts, called by src/lib/dm/pc-damage.ts before the death engine; the counter is passive (src/lib/srd/genre-a-counter-terms.ts); temporary hit points equal to the level from 17th",
+    "probe": "scripts/test-genre-drop-holds.mjs",
+    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on"
    }
   ]
  },
@@ -2247,15 +2154,12 @@
   "clauses": [
    {
     "c": "Regain WIS-mod HP at the start of each of your turns while below half HP and conscious",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "a start-of-turn tick needs the order walked through every other seat's End Turn; not staged",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::The Body Is a Prayer#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "the turn_heal row gated below half and not unconscious, read by src/lib/dm/authored-turns.ts; scripts/test-genre-a-counters.mjs",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::The Body Is a Prayer#0"
    }
   ]
  },
@@ -2279,20 +2183,23 @@
    },
    {
     "c": "drop yourself to 1 HP",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_apotheosis_of_suffering#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the apotheosis play of src/lib/dm/genre-a-dark-fantasy-spends.ts (down to 1 HP)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Apotheosis of Suffering",
     "recorded_as": "spends-guidance-only-counter-dark-fantasy-apotheosis-of-suffering"
    },
    {
     "c": "deal the HP paid as radiant damage divided among any creatures within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_apotheosis_of_suffering#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the apotheosis play of src/lib/dm/genre-a-dark-fantasy-spends.ts (the HP paid shared evenly among the creatures within 30 feet)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Apotheosis of Suffering",
     "same_probe_as": 1
    },
    {
     "c": "DEX save halves",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_apotheosis_of_suffering#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the apotheosis play of src/lib/dm/genre-a-dark-fantasy-spends.ts (a DEX save for half against the Wisdom DC)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Apotheosis of Suffering",
     "same_probe_as": 2
    }
   ]
@@ -2328,9 +2235,12 @@
    },
    {
     "c": "enemies within 10 ft have disadvantage on their first save against fear each turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "src/lib/srd/authored-conditions.ts lists the condition as summaryOnly (\"a summary and nothing the engine reads\"): the buff is laid and its effect on a foe's or an ally's save is a line of text; the save itself was not staged"
+    "run": {
+     "k": "cc_hymn"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-saves.ts ashenHymnSources, read by src/lib/dm/forced-save.ts rollEnemySave (the first save against frightened each turn within 10 feet of the chant)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Ashen Hymn#2"
    }
   ]
  },
@@ -2348,11 +2258,9 @@
      "sides": 4,
      "mode": "unarmed"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Cinder Palms#0",
-    "observed": "damage Cinder Palms adds to a hit (5 with it, 5 without): the engine gives 0, the text 3",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (weapon_damage_rider) and src/lib/dm/pc-attack-damage.ts: nothing answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the hit_rider row on unarmed strikes and flails, read by src/lib/dm/genre-a-strikes.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Cinder Palms#0"
    }
   ]
  },
@@ -2380,8 +2288,9 @@
    },
    {
     "c": "creatures in a 15-ft cone save (CON) or take 3d6 fire and are deafened for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_voice_like_embers#HANDS_BACK",
+    "is": "held",
+    "by": "the Voice Like Embers save_area of src/lib/srd/authored-effects-genre-a-dark-fantasy.ts",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Voice Like Embers",
     "recorded_as": "spends-hands-back-counter-dark-fantasy-voice-like-embers"
    }
   ]
@@ -2398,11 +2307,9 @@
      "k": "resist",
      "type": "fire"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Robes of Soot#0",
-    "observed": "hit points lost to 10 fire: the engine gives 10, the text 5",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts resist (fire), read by src/lib/dm/pc-defenses.ts authoredResistances",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Robes of Soot#0"
    },
    {
     "c": "when a creature hits you in melee, it takes your WIS mod in fire damage",
@@ -2410,11 +2317,9 @@
      "k": "club",
      "thorns": "wis"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap penitent::Robes of Soot#1",
-    "observed": "damage the foe took for landing a melee hit: the engine gives 0, the text 3",
-    "where": "src/lib/dm/enemy-attack damage against a character: no row reduces or answers the hit for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts retaliate (WIS fire, melee), read by the authored retaliate hook (src/lib/srd/authored-coverage.ts AUTHORED_READERS.retaliate)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: penitent::Robes of Soot#1"
    }
   ]
  },
@@ -2438,15 +2343,17 @@
    },
    {
     "c": "wreathe yourself in gray flame for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs ruling counter:dark_fantasy_immolate_the_sin#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the Immolate the Sin buff of src/lib/srd/authored-effects-genre-a-dark-fantasy.ts (10 rounds)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Immolate the Sin",
     "recorded_as": "spends-guidance-only-counter-dark-fantasy-immolate-the-sin",
     "ruling": "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\""
    },
    {
     "c": "+2d8 fire on your attacks and immunity to fire",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs ruling counter:dark_fantasy_immolate_the_sin#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the hit_rider and immune_damage of src/lib/srd/authored-effects-genre-a-dark-fantasy.ts gated on the immolate the sin condition",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Immolate the Sin",
     "same_probe_as": 1
    }
   ]
@@ -2507,17 +2414,15 @@
     "run": {
      "k": "no_door"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Dirge of Sorrow#1",
-    "observed": "no call plays it: use_resource answers \"No resource called \"dirge of sorrow\" is known. Their resources: dark_fantasy_requiem_inspiration. Send the one meant, by the name on the sheet. / No resource ca\": the engine gives false, the text true",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (no row) and src/lib/classes/resources.json (no counter): no tool plays the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the src/lib/dm/genre-a-dark-fantasy-spends.ts dirge play (a save_area of one named enemy within 30 feet, the dirge of sorrow condition of src/lib/srd/genre-a-dark-fantasy-conditions.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::Dirge of Sorrow#1"
    },
    {
     "c": "WIS save negates",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "follows clause #1 (gap dirgesinger::Dirge of Sorrow#1), which fails: no call plays the feature; with nothing on the table there is no state this clause could be read on",
+    "is": "held",
+    "by": "the src/lib/dm/genre-a-dark-fantasy-spends.ts dirge play (a WIS save against the spell save DC)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Dirge of Sorrow",
     "same_probe_as": 1
    }
   ]
@@ -2541,15 +2446,14 @@
    },
    {
     "c": "your voice is the instrument",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs a cast of a material-component spell by a genre caster with and without the named focus carried (src/lib/dm/cast-materials.ts focusProblem); not staged",
     "run": {
-     "k": "hook"
+     "k": "cc_focus",
+     "want": "none",
+     "ability": "cha"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Mourning Song#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/genre-a-cyberpunk-focus.ts genreFocusOf (Mourning Song: kind none), read by src/lib/dm/cast-materials.ts focusProblem",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::Mourning Song#1"
    }
   ]
  },
@@ -2582,11 +2486,9 @@
      "k": "inspire",
      "die": "d8"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Requiem d8#0",
-    "observed": "the die handed to the ally at level 5: the engine gives \"d6\", the text \"d8\"",
-    "where": "the row's fx in src/lib/classes/resources.json (inspire, d6) has no upgrades: the die never grows",
-    "sev": "medium"
+    "is": "held",
+    "by": "the inspire die ladder on dark_fantasy_requiem_inspiration (genre-a-counter-terms.ts effect)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::Requiem d8#0"
    },
    {
     "c": "regain all uses on a short rest",
@@ -2596,11 +2498,9 @@
      "n": "cha",
      "rest": "short"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Requiem d8#1",
-    "observed": "dark_fantasy_requiem_inspiration after a short rest: the engine gives 2, the text 0",
-    "where": "scripts/generate-class-resources.mjs parseUses and the row in src/lib/classes/resources.json",
-    "sev": "medium"
+    "is": "held",
+    "by": "rechargeFor on dark_fantasy_requiem_inspiration: a short rest from 5th level",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::Requiem d8#1"
    }
   ]
  },
@@ -2624,8 +2524,9 @@
    },
    {
     "c": "all enemies within 30 ft that can hear you save (WIS) or deal half damage on their next attack",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_threnody#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the threnody play of src/lib/dm/genre-a-dark-fantasy-spends.ts (the enemies within 30 feet that hear) and src/lib/dm/genre-a-dark-fantasy-wards.ts (half damage, spent by the next blow)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Threnody",
     "recorded_as": "spends-guidance-only-counter-dark-fantasy-threnody"
    }
   ]
@@ -2646,11 +2547,9 @@
       "necrotic"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Songs of the Barrow#0",
-    "observed": "d20s thrown for the wis save against frightened: the engine gives 1, the text 2",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts save_adv (against frightened, necrotic), read by src/lib/srd/trait-rules.ts authoredSaveTraits",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::Songs of the Barrow#0"
    },
    {
     "c": "you sense undead within 60 ft",
@@ -2667,14 +2566,9 @@
   "clauses": [
    {
     "c": "Your healing dirges add your CHA modifier again to HP restored",
-    "run": {
-     "k": "spell_heal"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Lament of the Lost#0",
-    "observed": "hit points a Healing Word restored on a 3: the engine gives 5, the text 7",
-    "where": "the heal tool (src/lib/dm/heal): no rider for the feature on a healing spell",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-b-features-3.mjs: Lament of the Lost: a dirgesinger's healing spell adds the CHA modifier again",
+    "by": "src/lib/srd/authored-effects-genre-c.ts (a healing spell_rider), read by src/lib/dm/heal-bonus.ts healAdditions"
    }
   ]
  },
@@ -2690,11 +2584,9 @@
      "k": "inspire",
      "die": "d10"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Requiem d10#0",
-    "observed": "the die handed to the ally at level 10: the engine gives \"d6\", the text \"d10\"",
-    "where": "the row's fx in src/lib/classes/resources.json (inspire, d6) has no upgrades: the die never grows",
-    "sev": "medium"
+    "is": "held",
+    "by": "the inspire die ladder: d10 from 10th level",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::Requiem d10#0"
    }
   ]
  },
@@ -2718,21 +2610,15 @@
    },
    {
     "c": "spectral voices join you for 1 minute",
-    "run": {
-     "k": "spend_moves",
-     "id": "dark_fantasy_the_grave_chorus"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::The Grave Chorus#1",
-    "observed": "spending dark_fantasy_the_grave_chorus moved its counter and the turn's cost and nothing else; the result was its guidance: 1/long rest, spectral voices join you for 1 minute: your dirges affect one additional target.",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-a-capstones.mjs",
+    "by": "src/lib/srd/authored-effects-genre-a-capstones.ts: the spend's mark switches on twin_spell at any distance (authored-reaper.ts)"
    },
    {
     "c": "your dirges affect one additional target",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "follows clause #1 (gap dirgesinger::The Grave Chorus#1), which fails: the spend moves its counter and the turn's cost and nothing else; with nothing on the table there is no state this clause could be read on",
+    "is": "held",
+    "by": "the twin_spell row of src/lib/srd/authored-effects-genre-a-capstones.ts and the src/lib/dm/genre-a-dark-fantasy-spends.ts dirge play (one more enemy while the chorus sings)",
+    "probe": "scripts/test-genre-a-capstones.mjs: The Grave Chorus",
     "same_probe_as": 1
    }
   ]
@@ -2745,15 +2631,9 @@
   "clauses": [
    {
     "c": "Dirge of Sorrow affects up to three enemies and the penalty applies to attacks and saves",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Dirge of Ruin#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "the src/lib/dm/genre-a-dark-fantasy-spends.ts dirge play (three named enemies, the dirge of ruin condition: -1d4 on attacks and saves)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Dirge of Sorrow"
    }
   ]
  },
@@ -2765,15 +2645,12 @@
   "clauses": [
    {
     "c": "You and allies within 30 ft ignore difficult terrain and cannot be slowed while you sing",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "cc_march"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Funeral March#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-march.ts funeralMarchCovers, read by src/lib/dm/ar-wbf-feat-turn.ts crossesAnyGround (difficult terrain costs no extra) and src/lib/battlemap/view.ts pcMoveBudget (the speed slowing would cut stays whole)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::Funeral March#0"
    }
   ]
  },
@@ -2789,11 +2666,9 @@
      "k": "inspire",
      "die": "d12"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Requiem d12#0",
-    "observed": "the die handed to the ally at level 15: the engine gives \"d6\", the text \"d12\"",
-    "where": "the row's fx in src/lib/classes/resources.json (inspire, d6) has no upgrades: the die never grows",
-    "sev": "medium"
+    "is": "held",
+    "by": "the inspire die ladder: d12 from 15th level",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::Requiem d12#0"
    }
   ]
  },
@@ -2821,8 +2696,9 @@
    },
    {
     "c": "one creature below 50 HP that can hear you saves (CON) or drops to 0",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_song_that_ends#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "the song_that_ends play of src/lib/dm/genre-a-dark-fantasy-spends.ts (below 50 HP and hearing, or refused; a CON save or the hit points it has)",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Song That Ends",
     "recorded_as": "spends-guidance-only-counter-dark-fantasy-song-that-ends"
    }
   ]
@@ -2835,15 +2711,9 @@
   "clauses": [
    {
     "c": "Your dirges reach creatures that cannot hear",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Voice of the Veil#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "the hears() test of src/lib/dm/genre-a-dark-fantasy-spends.ts (Threnody, Song That Ends): with Voice of the Veil a deafened creature is caught",
+    "probe": "scripts/test-genre-a-dark-fantasy.mjs: Voice of the Veil"
    },
    {
     "c": "they resonate in the bone",
@@ -2869,30 +2739,27 @@
      "id": "dark_fantasy_requiem_inspiration",
      "n": 3
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::The Final Movement#0",
-    "observed": "dark_fantasy_requiem_inspiration uses spent after rolling initiative with none left: the engine gives 2, the text 0",
-    "where": "the fight's opening (initiative) in src/lib/dm/encounter tools: no regain on initiative for the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the init_refill row with amount 3, read by src/lib/srd/authored-effects.ts authoredInitiativeRefills",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::The Final Movement#0"
    },
    {
     "c": "your inspiration dice explode",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "cc_explode"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::The Final Movement#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-saves.ts inspirationDie, read by src/lib/dm/roll-feature-riders.ts as a check or save spends a Requiem die the holder gave",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::The Final Movement#1"
    },
    {
     "c": "max rolls add another die",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
-    "same_probe_as": 1
+    "run": {
+     "k": "cc_explode"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-saves.ts inspirationDie (each maximum adds another die)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::The Final Movement#2"
    }
   ]
  },
@@ -2909,11 +2776,9 @@
      "want": "auto",
      "face": 1
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Last Rites#0",
-    "observed": "a 1 on the Medicine check still stabilizes: {\"ok\":true,\"stabilized\":false,\"rolled\":4,\"dc\":10,\"note\":\"Holder's Medicine check (4) misses DC 10. Ally Down is still dying; their action is spent.\"}: the engine gives false, the text true",
-    "where": "src/lib/dm/stabilize.ts and src/lib/dm/death.ts rollStableTimer (1d4 hours for everybody)",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-dark-fantasy-vitals.ts lastRites and ritesWard (stabilize.ts: no check, a ward)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::Last Rites#0"
    },
    {
     "c": "it cannot be raised as undead",
@@ -2930,15 +2795,12 @@
   "clauses": [
    {
     "c": "When an ally within 30 ft drops to 0 HP, your next dirge this minute costs no slot if 2nd level or lower",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "cc_grief"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Grief Made Strength#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-dark-fantasy-more.ts griefMadeStrength, read by src/lib/dm/pc-damage.ts as an ally drops (slotless cast (2nd) for 10 rounds, src/lib/dm/genre-b-free-cast.ts MARKS)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::Grief Made Strength#0"
    }
   ]
  },
@@ -2963,21 +2825,20 @@
    {
     "c": "repeat the last dirge you cast this turn at a new target for free",
     "run": {
-     "k": "spend_moves",
-     "id": "dark_fantasy_elegy_of_echoes"
+     "k": "cc_elegy"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Elegy of Echoes#1",
-    "observed": "spending dark_fantasy_elegy_of_echoes moved its counter and the turn's cost and nothing else; the result was its guidance: 1/rest, repeat the last dirge you cast this turn at a new target for free (3rd level or lower).",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-spends.ts elegy (after a spell this turn, the slotless cast (3rd) mark until the turn ends, read by src/lib/dm/genre-b-free-cast.ts genreFreeCast)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::Elegy of Echoes#1"
    },
    {
     "c": "3rd level or lower",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "follows clause #1 (gap dirgesinger::Elegy of Echoes#1), which fails: the spend moves its counter and the turn's cost and nothing else; with nothing on the table there is no state this clause could be read on",
-    "same_probe_as": 1
+    "run": {
+     "k": "cc_elegy"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-b-free-cast.ts MARKS (slotless cast (3rd): a cast of 3rd level or lower)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::Elegy of Echoes#2"
    }
   ]
  },
@@ -2991,13 +2852,12 @@
     "c": "Allies within 30 ft gain resistance to necrotic damage while you sing",
     "run": {
      "k": "ally_resist",
-     "type": "necrotic"
+     "type": "necrotic",
+     "sing": 1
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap dirgesinger::Pallbearer's Procession#0",
-    "observed": "hit points an ally 5 feet away lost to 10 necrotic: the engine gives 10, the text 5",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED: no aura row lends allies the resistance; src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "the aura_resist row (necrotic, 30 ft) gated on a dirge held",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::Pallbearer's Procession#0"
    }
   ]
  },
@@ -3021,9 +2881,12 @@
    },
    {
     "c": "sing a fallen ally within a minute of death back to 1 HP without material components",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_the_rite_completed#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-dark-fantasy-the-rite-completed"
+    "run": {
+     "k": "cc_rite"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-spends.ts riteCompleted (a dead ally within the minute, src/lib/dm/revival.ts minutesSinceDeath, back at 1 hit point)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: dirgesinger::The Rite Completed#1"
    }
   ]
  },
@@ -3052,15 +2915,12 @@
   "clauses": [
    {
     "c": "1/turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Gutter Fighting#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "the hit_rider row's oncePerTurn, claimed by pc-attack-damage.ts claimOncePerTurnRiders",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Gutter Fighting#0"
    },
    {
     "c": "+1d6 damage against a creature that has not acted yet this combat or is surprised",
@@ -3069,11 +2929,9 @@
      "dice": 1,
      "sides": 6
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Gutter Fighting#1",
-    "observed": "damage Gutter Fighting adds to a hit (8 with it, 8 without): the engine gives 0, the text 3",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (weapon_damage_rider) and src/lib/dm/pc-attack-damage.ts: nothing answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "the hit_rider row vsNotActed (src/lib/dm/genre-a-strikes.ts enemyNotActed)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Gutter Fighting#1"
    }
   ]
  },
@@ -3131,21 +2989,39 @@
    },
    {
     "c": "a swarm floods a 15-ft cube",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_rat_tide#HANDS_BACK",
-    "recorded_as": "spends-hands-back-counter-dark-fantasy-rat-tide"
+    "run": {
+     "k": "cc_zone",
+     "res": "Rat Tide",
+     "spell": "Rat Tide",
+     "rounds": 10,
+     "cells": 9,
+     "at": true,
+     "place": [
+      11,
+      5
+     ]
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-spends.ts ratTide, laying src/lib/battlemap/zones-genre-cc-a.ts rat tide (a 15-foot cube) through src/lib/dm/genre-b-zones.ts layGenreZone",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Rat Tide#1"
    },
    {
     "c": "difficult terrain, and creatures inside save (DEX) or take 2d6 piercing and are distracted",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_rat_tide#HANDS_BACK",
-    "same_probe_as": 1
+    "run": {
+     "k": "cc_rat_tide"
+    },
+    "is": "held",
+    "by": "src/lib/battlemap/zones-genre-cc-a.ts rat tide (difficult terrain; DEX save or 2d6 piercing and distracted by rats, caught when laid and on entering), run by src/lib/dm/zone-triggers.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Rat Tide#2"
    },
    {
     "c": "disadvantage on their next attack",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_rat_tide#HANDS_BACK",
-    "same_probe_as": 2
+    "run": {
+     "k": "cc_rat_tide"
+    },
+    "is": "held",
+    "by": "src/lib/srd/genre-cc-a-conditions.ts distracted by rats (attackDisadvantage, consumedBy attack)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Rat Tide#3"
    }
   ]
  },
@@ -3157,15 +3033,16 @@
   "clauses": [
    {
     "c": "Immune to disease",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "cond_immune",
+     "conditions": [
+      "diseased"
+     ]
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Plaguebearer's Immunity#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts immune_condition (diseased), read by src/lib/srd/trait-rules.ts authoredConditionImmunities",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Plaguebearer's Immunity#0",
+    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages"
    },
    {
     "c": "resistance to poison damage",
@@ -3173,11 +3050,9 @@
      "k": "resist",
      "type": "poison"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Plaguebearer's Immunity#1",
-    "observed": "hit points lost to 10 poison: the engine gives 10, the text 5",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts resist (poison), read by src/lib/dm/pc-defenses.ts authoredResistances",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Plaguebearer's Immunity#1"
    }
   ]
  },
@@ -3197,11 +3072,9 @@
       "hide"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Nimble Escape#0",
-    "observed": "dash as a bonus action: Holder has no feature that makes a Dash a bonus action (that takes Cunning Action, Step of the Wind or Expeditious Retreat). They can take it with their action instead.: the engine gives false, the text true",
-    "where": "src/lib/dm/bonus-routes.ts bonusRouteFor",
-    "sev": "medium"
+    "is": "held",
+    "by": "three bonus_route rows in src/lib/srd/authored-effects-genre-a.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Nimble Escape#0"
    }
   ]
  },
@@ -3251,11 +3124,9 @@
     "run": {
      "k": "limit_tracked"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Gutter King's Word#1",
-    "observed": "the text limits its use and a level 10 vermin_lord holds no counter for it (it holds dark_fantasy_rat_tide, dark_fantasy_ten_thousand_eyes)",
-    "where": "scripts/generate-class-resources.mjs parseUses (reads N/rest, N per rest, once per day, once per rest; not N/week, per day in words, or rounds per rest)",
-    "sev": "medium"
+    "is": "held",
+    "by": "the dark_fantasy_gutter_king_s_word counter, one a day (a long rest)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Gutter King's Word#1"
    },
    {
     "c": "within their power",
@@ -3277,23 +3148,18 @@
      "dice": 1,
      "sides": 6
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Greater Gutter Fighting#0",
-    "observed": "damage Greater Gutter Fighting adds to a hit (8 with it, 8 without): the engine gives 0, the text 3",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (weapon_damage_rider) and src/lib/dm/pc-attack-damage.ts: nothing answers to the feature",
-    "sev": "medium"
+    "is": "held",
+    "by": "a second hit_rider d6 vsNotActed in src/lib/srd/authored-effects-genre-a.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Greater Gutter Fighting#0"
    },
    {
     "c": "also applies to creatures adjacent to your swarm",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
     "run": {
-     "k": "hook"
+     "k": "cc_gutter_swarm"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Greater Gutter Fighting#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/pc-attack-damage.ts (Gutter Fighting's not-acted test also holds beside the swarm, src/lib/dm/genre-cc-a-turns.ts besideSwarm)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Greater Gutter Fighting#1"
    }
   ]
  },
@@ -3317,21 +3183,21 @@
    },
    {
     "c": "drop through a grate, crack, or shadow as a reaction when targeted",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:dark_fantasy_vanish_below#TRIGGER_AS_CARD",
-    "recorded_as": "spends-trigger-as-card-counter-dark-fantasy-vanish-below"
+    "run": {
+     "k": "cc_vanish"
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts Vanish Below (a reaction on dark_fantasy_vanish_below, force_miss with moveFt 15), resolved by src/lib/dm/authored-reactions.ts and src/lib/dm/authored-reactions-more.ts reactionMove",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Vanish Below#1"
    },
    {
     "c": "the attack misses and you move 15 ft",
     "run": {
-     "k": "spend_moves",
-     "id": "dark_fantasy_vanish_below"
+     "k": "cc_vanish"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Vanish Below#2",
-    "observed": "spending dark_fantasy_vanish_below moved its counter and the turn's cost and nothing else; the result was its guidance: 1/rest, drop through a grate, crack, or shadow as a reaction when targeted; the attack misses and you move 15 ft.",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/dm/authored-reactions.ts force_miss (the hit on the holder turned to a miss, its hit points back) and reactionMove (15 feet, drawing no opportunity attack)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Vanish Below#2"
    }
   ]
  },
@@ -3368,9 +3234,21 @@
    },
    {
     "c": "its cube grows to 20 ft",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the hook probe passes only on the Rat Tide counter (src/lib/classes/resources.json dark_fantasy_rat_tide: uses and an enemy_save fx of 2d6 with no area); no row carries the cube's size, and an area pick over the board was not staged"
+    "run": {
+     "k": "cc_zone",
+     "res": "Rat Tide",
+     "spell": "Rat Tide",
+     "rounds": 10,
+     "cells": 16,
+     "at": true,
+     "place": [
+      11,
+      5
+     ]
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-spends.ts ratTide (upgrade: Rat Tide (2 uses) lays rat tide (20 ft), src/lib/battlemap/zones-genre-cc-a.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Rat Tide (2 uses)#1"
    }
   ]
  },
@@ -3382,15 +3260,12 @@
   "clauses": [
    {
     "c": "While your swarm is active, enemies within 10 ft of it cannot take reactions",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "cc_teeth"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::The Walls Have Teeth#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-turns.ts refreshTeeth (the walls have teeth, noReactions, src/lib/srd/genre-cc-a-conditions.ts), run as the swarm is laid and as each turn starts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::The Walls Have Teeth#0"
    }
   ]
  },
@@ -3414,21 +3289,15 @@
    },
    {
     "c": "summon a giant rat pack",
-    "run": {
-     "k": "spend_moves",
-     "id": "dark_fantasy_king_below_the_streets"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::King Below the Streets#1",
-    "observed": "spending dark_fantasy_king_below_the_streets moved its counter and the turn's cost and nothing else; the result was its guidance: 1/long rest, summon a giant rat pack: four allied giant-rat-statted beasts serve for 10 minutes.",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    },
    {
     "c": "four allied giant-rat-statted beasts serve for 10 minutes",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "follows clause #1 (gap vermin_lord::King Below the Streets#1), which fails: the spend moves its counter and the turn's cost and nothing else; with nothing on the table there is no state this clause could be read on",
+    "is": "held",
+    "by": "src/lib/dm/genre-a-summons.ts summonGenreCompanion rat_pack (four SRD giant rats, allies, 100 rounds)",
+    "probe": "scripts/test-genre-a-summons.mjs: King Below the Streets",
     "same_probe_as": 1
    }
   ]
@@ -3470,26 +3339,15 @@
   "clauses": [
    {
     "c": "A dire rat companion fights beside you",
-    "run": {
-     "k": "companion"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Favored of the Swarm#0",
-    "observed": "the sheet holds no companion: no pet, no summon",
-    "where": "src/lib/db/sheets.ts createSheet and src/lib/dm/summon-store.ts: no pet or summon is made for the class",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    },
    {
     "c": "AC 13, HP 3 x level, bite 1d6 + DEX, obeys your commands",
-    "run": {
-     "k": "companion",
-     "stats": 1
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Favored of the Swarm#1",
-    "observed": "the sheet holds no companion: no pet, no summon",
-    "where": "src/lib/db/sheets.ts createSheet and src/lib/dm/summon-store.ts: no pet or summon is made for the class",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    }
   ]
  },
@@ -3514,15 +3372,12 @@
   "clauses": [
    {
     "c": "You and your companion have advantage on attacks against a creature the other is adjacent to",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
     "run": {
-     "k": "hook"
+     "k": "cc_pack_hunting"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Pack Hunting#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-vermin.ts packHunting, read by src/lib/dm/authored-hooks.ts authoredAttackSituation",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Pack Hunting#0"
    }
   ]
  },
@@ -3534,29 +3389,28 @@
   "clauses": [
    {
     "c": "Your dire rat grows",
-    "is": "gap",
-    "read_only": true,
+    "is": "held",
     "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap vermin_lord::Grey Tide Rising#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    },
    {
     "c": "HP 5 x level, bite 2d6 + DEX, and its bite forces a CON save against a weakening bite",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
-    "same_probe_as": 0
+    "run": {
+     "k": "cc_grey_tide"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-a-summons.ts direRatForm (the grown bite's CON save, an onHit the summoned creature's attack reads)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Grey Tide Rising#1"
    },
    {
     "c": "disadvantage on STR checks 1 minute",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
-    "same_probe_as": 1
+    "run": {
+     "k": "cc_grey_tide"
+    },
+    "is": "held",
+    "by": "src/lib/srd/genre-cc-a-conditions.ts weakening bite (disadvantage on STR checks), laid for 10 rounds",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::Grey Tide Rising#2"
    }
   ]
  },
@@ -3580,16 +3434,21 @@
    },
    {
     "c": "for 1 minute every enemy within 30 ft is swarmed",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs ruling counter:dark_fantasy_the_crown_descends#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-dark-fantasy-the-crown-descends",
-    "ruling": "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\""
+    "run": {
+     "k": "cc_crown"
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts The Crown Descends, resolved by src/lib/dm/genre-cc-a-spends.ts crown (swarmed on every enemy within 30 feet for 10 rounds)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::The Crown Descends#1"
    },
    {
     "c": "half speed, no reactions, and 1d6 piercing at the start of each of its turns",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs ruling counter:dark_fantasy_the_crown_descends#GUIDANCE_ONLY",
-    "same_probe_as": 1
+    "run": {
+     "k": "cc_crown"
+    },
+    "is": "held",
+    "by": "src/lib/srd/genre-cc-a-conditions.ts swarmed (speedMultiplier 0.5, noReactions), and its 1d6 piercing as each of the creature's turns starts (src/lib/dm/genre-cc-a-turns.ts crownBites)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: vermin_lord::The Crown Descends#2"
    }
   ]
  }

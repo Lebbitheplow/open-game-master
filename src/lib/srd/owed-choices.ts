@@ -17,9 +17,13 @@ import { SRD_CLASSES } from "@/lib/srd";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { classWords } from "@/lib/sheet-words";
 import { owedPickLines, type OwedContext } from "@/lib/srd/owed-picks-logic";
+import { classOptionOf, grantedSkillsOf } from "@/lib/srd/owed-languages";
 
 type Owing = Pick<CharacterSheet, "class" | "subclass" | "level" | "classes" | "features" | "proficiencies"> &
-  Partial<Pick<CharacterSheet, "feats" | "spellcasting" | "featChoices" | "race" | "campaignId">>;
+  Partial<Pick<CharacterSheet, "feats" | "spellcasting" | "featChoices" | "race" | "campaignId" | "background">> & {
+    racialChoices?: { skills?: string[] } | null;
+    backgroundChoices?: { skills?: string[] } | null;
+  };
 
 export function owedChoices(sheet: Owing, context: OwedContext = {}): string[] {
   const groups = owedChoiceGroups(sheet, context);
@@ -37,11 +41,17 @@ export type OwedChoiceGroups = { levelUp: string[]; onSheet: string[] };
 export function owedChoiceGroups(sheet: Owing, context: OwedContext = {}): OwedChoiceGroups {
   const classes = classListFor(sheet);
   const out: string[] = [];
-  // The first class's skill picks: as many of its list as it offers.
-  const first = SRD_CLASSES.find((entry) => entry.id === (classes[0]?.id ?? sheet.class));
+  // The first class's skill picks: as many of its list as it offers (a
+  // setting class's as an SRD one's). The skills the species and background
+  // give are theirs, not class picks: counted as picks, a soldier fighter's
+  // Athletics and Intimidation hid the two the class still owed.
+  const first = SRD_CLASSES.find((entry) => entry.id === (classes[0]?.id ?? sheet.class)) ?? classOptionOf(classes[0]?.id ?? sheet.class);
   if (first?.skillChoices?.count) {
     const offered = new Set(first.skillChoices.from.map((id) => id.replace(/_/g, " ")));
-    const held = sheet.proficiencies.skills.filter((skill) => offered.has(skill.toLowerCase().replace(/_/g, " "))).length;
+    const granted = grantedSkillsOf(sheet);
+    const held = sheet.proficiencies.skills.filter(
+      (skill) => offered.has(skill.toLowerCase().replace(/_/g, " ")) && !granted.has(skill.toLowerCase().replace(/[^a-z0-9]+/g, "_")),
+    ).length;
     if (held < first.skillChoices.count) {
       const left = first.skillChoices.count - held;
       out.push(`${left} ${first.name} skill${left === 1 ? "" : "s"}`);

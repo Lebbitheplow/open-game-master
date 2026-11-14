@@ -269,11 +269,13 @@ await test("at an AI table the storyteller's turn is taken back from the fight t
   aiKit.place(aiHero.id, 4, 4);
   const at = aiKit.token(aiHero.id);
   const { round, turnIndex } = ai.encounter();
+  // The brute runs on its own turn, which the hero's end_turn hands over
+  // (enemy-turn-order.ts enemyFleeTurnRefusal: a creature flees only then).
   model.script([
-    reply({ calls: [call("enemy_flees", { enemyId: brute.id }), call("move_token", { token: aiHero.id, x: at.x + 1, y: at.y })] }),
-    reply({ text: "The brute bolts as you step in." }),
+    reply({ calls: [call("move_token", { token: aiHero.id, x: at.x + 1, y: at.y }), call("end_turn", { characterId: aiHero.id }), call("enemy_flees", { enemyId: brute.id })] }),
+    reply({ text: "You step in and roar; on its turn the brute bolts." }),
   ]);
-  const said = await model.turn(ai, "I step forward and roar at the brute.", aiHero.id);
+  const said = await model.turn(ai, "I step forward and roar at the brute. That ends my turn.", aiHero.id);
   assert.ok(said?.dmTurnId, "the turn wrote no narration");
   assert.notEqual(getEnemy(brute.id).status, "alive", "the model's call sent nobody running");
   const answers = model.requests.flatMap((request) => model.results(request));

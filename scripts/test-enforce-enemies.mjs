@@ -255,8 +255,11 @@ await test("enemies that flee or make terms pay half, a rout of the party nothin
 
 await test("the last enemy fleeing ends the fight", async () => {
   const [one, two] = await stage(2);
+  // Each on its own turn (enemy-turn-order.ts enemyFleeTurnRefusal).
+  kit.enemyTurn(one.id);
   assert.equal((await world.invoke("enemy_flees", { enemyId: one.id })).ok, true);
   assert.notEqual(world.encounter(), null);
+  kit.enemyTurn(two.id);
   const out = await world.invoke("enemy_flees", { enemyId: two.id });
   assert.equal(out.result.encounterOver, true);
   assert.equal(world.encounter(), null);

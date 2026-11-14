@@ -26,6 +26,7 @@ import {
 } from "@/app/campaigns/[campaignId]/DirectorPanel";
 import { AfterRollCard } from "@/app/campaigns/[campaignId]/AfterRollCard";
 import { WatchCard, WatchToggle } from "@/app/campaigns/[campaignId]/WatchCard";
+import { OpportunityCard } from "@/app/campaigns/[campaignId]/OpportunityCard";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { balanceLeft, holdsBeforeRoll, omenLeft, TABLE_WATCH } from "@/lib/dm/before-roll-logic";
 import { holdsFeature } from "@/lib/srd/feature-names";
@@ -327,7 +328,16 @@ function ComposerInner({
           // Out of a fight the same toggle, for a before-the-roll feature on an ally's check or save (issue #908).
           <WatchToggle campaignId={campaignId} sheet={tableWatchSheet} encounterId={TABLE_WATCH} />
         ) : null}
-        {pendingRolls.map((pending) => pending.parkedFor === "watch" ? (
+        {pendingRolls.map((pending) => pending.parkedFor === "opportunity" && hostOffers(capabilities, "opportunityAsk") ? (
+          <OpportunityCard
+            key={pending.id}
+            campaignId={campaignId}
+            pending={pending}
+            sheets={sheets}
+            meUserId={meUserId}
+            steersStory={steersStory}
+          />
+        ) : pending.parkedFor === "watch" ? (
           <WatchCard
             key={pending.id}
             campaignId={campaignId}

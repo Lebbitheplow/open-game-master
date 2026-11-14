@@ -114,6 +114,10 @@ export function insertEncounterTemplate(input: {
       now,
       now,
     );
+  // A first prepared fight puts run_prepared_encounter on the narrator's
+  // tool list: the next turn's first message is checked again (issue 942,
+  // src/lib/dm/turn-warmup.ts scheduleNextTurnCheck).
+  globalThis.__odmTurnHeadHook?.(input.campaignId);
   return getEncounterTemplate(id) as EncounterTemplate;
 }
 
@@ -153,6 +157,9 @@ export function updateEncounterTemplate(
       nowIso(),
       id,
     );
+  if (before) {
+    globalThis.__odmTurnHeadHook?.(before.campaignId);
+  }
   return getEncounterTemplate(id);
 }
 
@@ -161,7 +168,11 @@ export function setTemplateCued(id: string, cued: boolean) {
 }
 
 export function deleteEncounterTemplate(id: string) {
+  const before = getEncounterTemplate(id);
   getDatabase().prepare(`DELETE FROM encounter_templates WHERE id = ?`).run(id);
+  if (before) {
+    globalThis.__odmTurnHeadHook?.(before.campaignId);
+  }
 }
 
 // A prepared fight's set-up (src/lib/workshop/fight-setup-logic.ts), apart
