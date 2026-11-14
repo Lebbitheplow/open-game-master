@@ -9,6 +9,7 @@ import { canHelpSaveNow, canReactNow, canShiftNow } from "@/lib/dm/chronal-shift
 import { refuseDuringBreak } from "@/lib/dm/table-break";
 import { canTurnFate } from "@/lib/dm/fate-turn";
 import { isFatePower } from "@/lib/dm/fate-turn-logic";
+import { canLineageWatchNow, isLineageWatch } from "@/lib/dm/lineage-watch";
 import { balanceLeft, omenLeft } from "@/lib/dm/before-roll-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -32,6 +33,8 @@ function canAnswerNow(campaignId: string, sheet: CharacterSheet, power: WatchPow
   }
   if (isSaveHelp(power)) return canHelpSaveNow(campaignId, sheet, power);
   if (isFatePower(power)) return canTurnFate(campaignId, sheet, power);
+  // Saving Face, Lucky Footwork, Inspired Ingenuity, Bountiful Luck (lineage-watch.ts).
+  if (isLineageWatch(power)) return canLineageWatchNow(campaignId, sheet, power);
   return canShiftNow(campaignId, sheet);
 }
 

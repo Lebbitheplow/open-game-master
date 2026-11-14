@@ -39,6 +39,10 @@ export type CustomClass = SrdClass & {
   // class whose tables count its cantrips and spells (spellRulesClassFor).
   customSpells?: string[];
   spellRules?: string;
+  // The published class whose table counts its cantrips, where that is not
+  // the list's own class: a workshop half caster borrowing the wizard's list
+  // learns a half caster's cantrips (none), not the wizard's three.
+  cantripRules?: string;
   // Flavor label for what this class calls its spells ("Programs").
   castingLabel: string | null;
 };
@@ -106,6 +110,12 @@ export function spellClassFor(classId: string): string {
 // Without this a custom list counted by its own id found no table at all.
 export function spellRulesClassFor(classId: string): string {
   return findCustomClass(classId)?.spellRules ?? spellClassFor(classId);
+}
+
+// The published class whose table counts a caster's cantrips: its own
+// cantrip rules where it carries some, else its spell rules.
+export function cantripRulesClassFor(classId: string): string {
+  return findCustomClass(classId)?.cantripRules ?? spellRulesClassFor(classId);
 }
 
 // What a search for a class's spells names (/api/content/spells?class=,

@@ -21,10 +21,11 @@
 // Pure: the Hand reads it too (hand-ring.ts through spell-storing.ts,
 // hand-items.ts).
 
+import { isFabricatedDevice } from "@/lib/srd/genre-gb-device";
 import { findNamed, textKey } from "@/lib/language/text-logic";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
 
-type Marked = { conjured?: EquipmentItem["conjured"] };
+type Marked = { conjured?: EquipmentItem["conjured"]; name?: string };
 
 // The name the store door is asked for when a spell goes into a new bead
 // (cast-guard.ts `storing.ring`): no row answers to it, a bead is made.
@@ -63,7 +64,9 @@ export function withoutConjuredAtLongRest<T extends Marked>(equipment: readonly 
   if (!equipment) {
     return null;
   }
-  const kept = equipment.filter((item) => !isBead(item) && !isScrivenerScroll(item));
+  // A Field Fabricator device is temporary: built during one long rest, gone
+  // at the next (genre-gb-device.ts).
+  const kept = equipment.filter((item) => !isBead(item) && !isScrivenerScroll(item) && !isFabricatedDevice(item));
   return kept.length === equipment.length ? null : kept;
 }
 

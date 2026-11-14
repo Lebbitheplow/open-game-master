@@ -44,7 +44,7 @@ export async function walkRow(rig, scene, row) {
 
   // Two counters under one name: the name resolves to one of them.
   if (row.kind === "counter") {
-    const byName = rig.resources.matchResource(row.def.displayName);
+    const byName = rig.resources.matchResource(row.def.displayName, row.def.grantedBy);
     const byId = rig.resources.matchResource(row.def.id);
     if (byId?.id !== row.def.id) add("NAME_TAKEN", `the id "${row.def.id}" resolves to ${byId?.id ?? "nothing"}`);
     else if (byName?.id !== row.def.id) add("NAME_TAKEN", `the name "${row.def.displayName}" resolves to ${byName?.id ?? "nothing"} (${byName?.displayName ?? ""}), so a call by name spends or refuses the other counter`);

@@ -294,7 +294,9 @@ export function expandBackgroundGear(
         continue;
       }
     }
-    alternatives ??= gearAlternatives(line);
+    // "One set of artisan's tools" with no "or" and no "of your choice" (Level
+    // Up's Artisan) is still a kind, not an item: the player names the tool.
+    alternatives ??= gearAlternatives(line) ?? kindAlternatives(line);
     if (!alternatives) {
       names.push(line);
       continue;

@@ -20,6 +20,7 @@
 // and nothing is spent. Planned before the use is spent; must not import
 // mutations.ts.
 
+import { classSaveDc } from "@/lib/dm/command-undead";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getBattleMapForEncounter, getTokenByRef, placeToken } from "@/lib/db/battle-maps";
 import { getDmTurn } from "@/lib/db/dm-turns";
@@ -30,7 +31,6 @@ import { openTriggers } from "@/lib/dm/last-save";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { openTriggersFor, type TriggerAsk } from "@/lib/dm/reaction-triggers";
 import type { ToolError } from "@/lib/dm/tool-errors";
-import { computeSheetDerived } from "@/lib/srd";
 import { triggerSpecFor } from "@/lib/srd/trigger-table";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -41,8 +41,9 @@ type Plan = { apply: () => Record<string, unknown> };
 type Input = { campaign: Campaign; turnId: string; sheet: CharacterSheet; targetEnemyId?: string; variant?: string };
 
 function wisdomSave(input: Input, creature: EncounterEnemy) {
-  const derived = computeSheetDerived(input.sheet);
-  const dc = derived.spellSaveDc ?? 8 + derived.proficiencyBonus + derived.abilityMods.wis;
+  // The class's own spell save DC (command-undead.ts classSaveDc): a
+  // multiclass sheet's first casting ability is another class's.
+  const dc = classSaveDc(input.sheet, "wis");
   const save = rollEnemySave(input.campaign.id, creature, "wis", dc, { magical: true, record: { turn: getDmTurn(input.turnId) ?? undefined, detail: `${creature.displayName}: WIS save against ${input.sheet.name}'s ${NAME}` } });
   return { failed: !save.success, line: `${creature.displayName} Wisdom save ${save.total ?? "failed"} against DC ${dc}: ${save.success ? "made" : "failed"}.` };
 }

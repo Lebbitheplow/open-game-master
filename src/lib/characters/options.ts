@@ -5,12 +5,14 @@
 // and the rule cannot drift apart. Pure functions on plain data: no React,
 // no database.
 import {
+  backgroundFeatureOf,
   backgroundMechanics,
   classMechanics,
   type ClassMechanics,
   type RaceMechanics,
 } from "@/lib/content/mechanics";
 import { CUSTOM_BACKGROUNDS } from "@/lib/backgrounds";
+import { parseSuggestedCharacteristics, type PersonaLists } from "@/lib/backgrounds/persona-logic";
 import { CUSTOM_CLASSES } from "@/lib/classes";
 import { isWorkshopClassId, workshopClassFrom, type WorkshopClass } from "@/lib/homebrew/class-data";
 import type { Genre } from "@/lib/schemas/game-settings-options";
@@ -68,6 +70,9 @@ export type BackgroundOption = {
   featureDesc?: string;
   // The content pack's write-up, shown under the background select.
   desc?: string;
+  // A pack background's own suggested trait, ideal, bond and flaw tables,
+  // read from its text; the bundled ones' live in persona-data.ts.
+  persona?: PersonaLists;
   documentSlug?: string;
   source?: string;
 };
@@ -83,18 +88,18 @@ export type ContentRow = {
 };
 
 // A background's kit names its coin among its items ("15 gp", "a belt pouch
-// containing 10 gp"). The coin is the character's starting gold; what held
-// it stays in the pack.
+// containing 10 gp", Tal'Dorei's "a belt pouch containing 10g"). The coin is
+// the character's starting gold; what held it stays in the pack.
 export function splitPurse(kit: string[] | undefined): { equipment: string[]; purse: number } {
   let purse = 0;
   const equipment: string[] = [];
   for (const line of kit ?? []) {
-    const bare = /^\s*(\d[\d,]*)\s*gp\s*$/i.exec(line);
+    const bare = /^\s*(\d[\d,]*)\s*g(?:p|old)?\s*$/i.exec(line);
     if (bare) {
       purse += Number(bare[1].replace(/,/g, ""));
       continue;
     }
-    const held = /^(.*?)\s*(?:containing|with|holding)\s+(\d[\d,]*)\s*gp\b.*$/i.exec(line);
+    const held = /^(.*?)\s*(?:containing|with|holding)\s+(\d[\d,]*)\s*g(?:p|old)?\b.*$/i.exec(line);
     if (held) {
       purse += Number(held[2].replace(/,/g, ""));
       const container = held[1].trim().replace(/[,;]$/, "");
@@ -133,6 +138,11 @@ export function srdRaceOptions(): RaceOption[] {
     toolChoice: race.toolChoice,
     armor: race.armor,
     weapons: race.weapons,
+    weaponChoice: race.weaponChoice,
+    trainingChoice: race.trainingChoice,
+    expertiseChoice: race.expertiseChoice,
+    // A pick among packages (a shifter's subtype).
+    ...(race.variants ? { variants: race.variants } : {}),
     note: race.traits.join(" · "),
   }));
 }
@@ -289,8 +299,7 @@ export function mergedBackgroundOptions(rows: ContentRow[]): BackgroundOption[] 
   const packBackgrounds: BackgroundOption[] = rows
     .filter((row) => !bundledIds.has(row.slug.toLowerCase().replace(/-/g, "_")))
     .map((row) => {
-      const feature = String(row.data?.feature ?? "").trim();
-      const featureDesc = String(row.data?.feature_desc ?? "").trim();
+      const { feature, featureDesc } = backgroundFeatureOf(row.data ?? {});
       const mechanics = backgroundMechanics(row.data);
       // A workshop background's kit is already catalog items, its coin its own.
       const grants = row.data?.grants as { purse?: unknown } | undefined;
@@ -298,11 +307,13 @@ export function mergedBackgroundOptions(rows: ContentRow[]): BackgroundOption[] 
         grants && typeof grants.purse === "number"
           ? { equipment: mechanics.equipment, purse: grants.purse }
           : splitPurse(mechanics.equipment);
+      const persona = parseSuggestedCharacteristics(String(row.data?.suggested_characteristics ?? ""));
       return {
         id: row.slug,
         name: row.name,
         ...mechanics,
         ...kit,
+        ...(persona ? { persona } : {}),
         desc: String(row.data?.desc ?? ""),
         ...(feature ? { feature } : {}),
         ...(featureDesc ? { featureDesc } : {}),

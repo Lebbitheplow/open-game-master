@@ -96,6 +96,9 @@ export function normalizeBackgroundData(source: Raw, data: Raw & { desc: string 
   data.equipment = text(source.equipment, 500);
   data.feature = text(source.feature, 80);
   data.feature_desc = text(source.feature_desc, 4_000);
+  // The suggested trait, ideal, bond and flaw tables a copied background
+  // carries (src/lib/backgrounds/persona-logic.ts reads them); '' for none.
+  data.suggested_characteristics = text(source.suggested_characteristics, 8_000);
   const grants = backgroundGrantsOf(source.grants);
   if (grants) {
     data.grants = grants;

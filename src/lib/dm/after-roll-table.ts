@@ -50,14 +50,16 @@ export type AfterRollEffect = "extra_d20" | "add_die" | "add_dice" | "add_flat" 
 // How much an add_* or hit_damage row adds. `ability`: the holder's modifier
 // for it. `held`: the size of the die held on the sheet. `level`: 5 + twice
 // the class level (Touch of Death). `max`: lightning and thunder at their
-// maximum (Destructive Wrath).
+// maximum (Destructive Wrath). `weapon_die`: one more of the weapon's own
+// damage dice, of its type (Orcish Fury).
 export type AfterRollAmount =
   | { kind: "flat"; value: number }
   | { kind: "dice"; count: number; sides: number; type?: string }
   | { kind: "ability"; ability: "int" }
   | { kind: "held"; condition: "bardic inspiration" | "dark one's own luck"; fallback?: string }
   | { kind: "level"; className: string; base: number; per: number; type: string }
-  | { kind: "max" };
+  | { kind: "max" }
+  | { kind: "weapon_die" };
 
 // When it is offered: on a roll that falls short of its target (a miss, a
 // failed check or save, or one with no known target), or on a hit.
@@ -313,6 +315,25 @@ export const AFTER_ROLL_ROWS = [
     note: "Spend a use of Channel Divinity: this hit's lightning and thunder dice are dealt at their maximum instead of rolled.",
   },
   {
+    // Orcish Fury (a half-orc's feat): once until a short or long rest, a
+    // weapon hit rolls one of the weapon's damage dice once more, paid when
+    // the hit stands (attack-swing.ts).
+    id: "orcish_fury",
+    feature: "Orcish Fury",
+    cost: "counter",
+    counter: "feat_orcish_fury",
+    reaction: false,
+    kinds: ["attack"],
+    whose: "own",
+    effect: "hit_damage",
+    amount: { kind: "weapon_die" },
+    when: "hit",
+    hitBy: "weapon",
+    cardOnly: true,
+    label: "Orcish Fury: add a weapon die",
+    note: "Spend your use of Orcish Fury: this hit rolls one of the weapon's damage dice once more and adds it.",
+  },
+  {
     // Violent Attraction (Graviturgy 10): when a creature in sight within 60
     // feet hits with a weapon attack, a reaction adds 1d10 to its damage.
     // Offered on an ally's hit; the falling-damage half has no event to ride.
@@ -361,6 +382,21 @@ export const AFTER_ROLL_ROWS = [
     when: "short",
     label: "Unerring Accuracy: roll it again",
     note: "Once on each of your turns: roll this missed monk-weapon attack again, and the new roll stands.",
+  },
+  {
+    // Extinction (slayer 20): "1/turn against your Quarry, reroll a missed
+    // attack", once on each of the slayer's turns (mt-mr-offers-logic.ts).
+    id: "extinction",
+    feature: "Extinction",
+    cost: "own",
+    reaction: false,
+    kinds: ["attack"],
+    whose: "own",
+    effect: "own",
+    module: "mt-mr-offers-logic.ts",
+    when: "short",
+    label: "Extinction: roll it again",
+    note: "Once on each of your turns: roll this missed attack on your Quarry again, and the new roll stands.",
   },
   {
     // Homing Strikes (Soulknife 9): a Psionic Energy die added to a missed
@@ -457,6 +493,30 @@ export const AFTER_ROLL_ROWS = [
     note: "Use your reaction and 2 sorcery points: roll 1d4 and add it to this {what}.",
   },
   {
+    // Bountiful Luck (a halfling's feat): an ally in sight within 30 feet
+    // rolls a 1 on the d20, and the halfling's reaction lets them roll it
+    // again; their own Lucky then waits out their next turn (bountiful-luck.ts).
+    id: "bountiful_luck",
+    feature: "Bountiful Luck",
+    cost: "own",
+    reaction: true,
+    kinds: ["check", "save", "attack"],
+    whose: "other",
+    rangeFt: 30,
+    sight: true,
+    effect: "own",
+    module: "bountiful-luck.ts",
+    when: "short",
+    watch: {
+      hint: "let an ally roll a 1 on the d20 again",
+      button: "Let them roll the 1 again {when}",
+      title: "Use your reaction only if the d20 shows a 1 and the roll fails: that die is rolled again and the new roll stands, and your own Lucky waits out your next turn.",
+      spentError: "Your reaction is spent.",
+    },
+    label: "Bountiful Luck: {name} rolls the 1 again",
+    note: "Use your reaction: {name} rolls that d20 again and must use the new roll. Your own Lucky does nothing until the end of your next turn.",
+  },
+  {
     // The Storm Rune's prophetic state (Rune Knight 7): a reaction gives a
     // roll of the knight or a creature in sight within 60 feet advantage
     // (mt-fb-runes.ts).
@@ -475,6 +535,74 @@ export const AFTER_ROLL_ROWS = [
     note: "Use your reaction (the Storm Rune's prophetic state): this {what} has advantage, one more d20 and the higher kept.",
     otherLabel: "Prophetic State: {name} rolls with advantage",
     otherNote: "Use your reaction (the Storm Rune's prophetic state): this {what} has advantage, one more d20 and the higher kept.",
+  },
+  {
+    // Saving Face (hobgoblin, src/lib/srd/races.json): once a short rest, a
+    // missed attack or a failed check or save gains +1 for each ally the
+    // hobgoblin sees within 30 feet, +5 at most, offered where that carries
+    // it (lineage-after-roll-logic.ts). {amount}: the bonus.
+    id: "saving_face",
+    feature: "Saving Face",
+    cost: "own",
+    counter: "race_saving_face",
+    reaction: false,
+    kinds: ["check", "save", "attack"],
+    whose: "own",
+    effect: "own",
+    module: "lineage-after-roll.ts",
+    when: "short",
+    watch: {
+      hint: "add +1 for each ally you see to a roll of yours that falls short",
+      button: "Use Saving Face {when}",
+      title: "Spend Saving Face only if the roll falls short and the allies you see within 30 feet carry it: +1 for each, +5 at most.",
+      spentError: "Your Saving Face is spent, or no ally stands in sight within 30 feet.",
+    },
+    label: "Saving Face: {amount}",
+    note: "Spend Saving Face (once a short rest): {amount} to this {what}, one for each ally you see within 30 feet.",
+  },
+  {
+    // Lucky Footwork (rabbitfolk): a failed Dexterity save gains 1d4 for the
+    // reaction, not while prone or at speed 0 (lineage-after-roll-logic.ts).
+    id: "lucky_footwork",
+    feature: "Lucky Footwork",
+    cost: "own",
+    reaction: true,
+    kinds: ["save"],
+    whose: "own",
+    effect: "own",
+    module: "lineage-after-roll.ts",
+    when: "short",
+    watch: {
+      hint: "add 1d4 to your Dexterity save if it fails",
+      button: "Add 1d4 {when}",
+      title: "Use your reaction only if your Dexterity save fails and 1d4 could carry it; not while prone or unable to move.",
+      spentError: "Your reaction is spent, or you are prone or cannot move.",
+    },
+    label: "Lucky Footwork: add 1d4",
+    note: "Use your reaction: roll 1d4 and add it to this Dexterity save.",
+  },
+  {
+    // Inspired Ingenuity (a gearforged's human chassis, a Tome of Heroes
+    // pack row): a check's d20 of 9 or lower becomes a 10 for the reaction,
+    // once a short rest (lineage-after-roll-logic.ts).
+    id: "inspired_ingenuity",
+    feature: "Inspired Ingenuity",
+    cost: "own",
+    counter: "race_inspired_ingenuity",
+    reaction: true,
+    kinds: ["check"],
+    whose: "own",
+    effect: "own",
+    module: "lineage-after-roll.ts",
+    when: "short",
+    watch: {
+      hint: "make a low d20 on your check count as a 10",
+      button: "Make the d20 a 10 {when}",
+      title: "Use your reaction and Inspired Ingenuity only if the check fails on a d20 of 9 or lower and a 10 carries it.",
+      spentError: "Your Inspired Ingenuity is spent, or your reaction is.",
+    },
+    label: "Inspired Ingenuity: make the d20 a 10",
+    note: "Use your reaction and Inspired Ingenuity (once a short rest): the d20 of this check counts as a 10.",
   },
 ] as const satisfies readonly AfterRollRow[];
 
@@ -498,7 +626,8 @@ export function rowWords(id: AfterRollId, words: { kind?: string; amount?: strin
 }
 
 // The rows the watch stop arms on a roll, to be taken once it goes the wrong
-// way (chronal-shift.ts): every row with watch words.
+// way (chronal-shift.ts; the lineages' and Bountiful Luck's by
+// lineage-watch.ts): every row with watch words.
 type WatchRowOf<R> = R extends { watch: AfterRollWatch; id: infer I } ? I : never;
 export type WatchRowId = WatchRowOf<(typeof AFTER_ROLL_ROWS)[number]>;
 export const WATCH_ROWS = AFTER_ROLL_ROWS.filter((row): row is Extract<(typeof AFTER_ROLL_ROWS)[number], { watch: AfterRollWatch }> => "watch" in row);
@@ -640,6 +769,7 @@ export function amountWords(row: AfterRollRow, input: { held?: string | null; mo
   if (amount.kind === "dice") return `${amount.count}d${amount.sides}`;
   if (amount.kind === "ability") return String(input.modifier ?? 0);
   if (amount.kind === "held") return input.held ?? "";
+  if (amount.kind === "weapon_die") return "a weapon die";
   return "";
 }
 

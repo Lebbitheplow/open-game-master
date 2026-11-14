@@ -84,7 +84,12 @@ export function readArchetype(row: ReadingRow): EntryReading {
     ? Object.fromEntries(Object.entries(extra.levels).map(([level, rows]) => [level, rows.map((feature) => feature.n)]))
     : {};
   const parsed = Object.keys(levels).length
-    ? { levels, ...(extra?.spells ? { spells: extra.spells } : {}), ...(extra?.castingProfile ? { castingProfile: extra.castingProfile } : {}) }
+    ? {
+        levels,
+        ...(extra?.spells ? { spells: extra.spells } : {}),
+        ...(extra?.expanded ? { expanded: extra.expanded } : {}),
+        ...(extra?.castingProfile ? { castingProfile: extra.castingProfile } : {}),
+      }
     : null;
   const unread = !parsed && String(row.data.desc ?? "").trim() ? ["features"] : [];
   return reading({ handWritten: bundled ? { bundled } : null, parsed, unread, checked: readingChecked("archetype", row) });

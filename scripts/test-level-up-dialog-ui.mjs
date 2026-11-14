@@ -38,6 +38,20 @@ function firstStep(level, subclass) {
   return { asksMore: markup.includes(">Next<"), confirms: markup.includes("Confirm level up") };
 }
 
+// Fighting Initiate opens a fighting style slot of its own: a barbarian who
+// holds the feat with no style picked is asked for one at the level-up, as a
+// fighter's class slot asks (feature-effects.ts featStyleSlotFeatures).
+await test("A barbarian holding Fighting Initiate with no style picked is asked for one by the level-up dialog", () => {
+  const ask = (feats) => {
+    const hero = world.addHero({ class: "barbarian", level: 4, name: "Brakka", feats });
+    const sheet = { ...hero, subclass: "Path of the Berserker", xp: 6500, feats, features: withAsiLedger(hero.features, 1) };
+    const markup = renderToStaticMarkup(createElement(LevelUpDialog, { campaignId: world.campaignId, sheet, multiclassAllowed: false, onDone() {} }));
+    return { asksMore: markup.includes(">Next<"), confirms: markup.includes("Confirm level up") };
+  };
+  assert.deepEqual(ask([]), { asksMore: false, confirms: true }, "the staging: a barbarian with nothing to choose");
+  assert.deepEqual(ask(["Fighting Initiate"]), { asksMore: true, confirms: false }, "the feat's style was never asked");
+});
+
 await test("A fighter past its subclass level without a Martial Archetype is asked for one by the level-up dialog", () => {
   assert.deepEqual(firstStep(4, ""), { asksMore: true, confirms: false }, "the dialog takes the level without asking for the missed subclass");
 });

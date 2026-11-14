@@ -28,6 +28,7 @@ import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { rowName, type RowItem } from "@/lib/srd/item-row";
 import { beadsCast, beadsOf } from "@/lib/srd/prayer-beads";
+import { deviceSpells } from "@/lib/srd/genre-gb-device";
 
 export type ItemSpell = {
   spell: string;
@@ -323,6 +324,11 @@ function WONDROUS_ROWS(): ItemSpellRow[] {
 // ("Crystal Ball (Telepathy)") casts its own; then without the note a sheet
 // adds in brackets ("Wand of Fireballs (7 charges)").
 export function itemSpellsOf(itemName: string): ItemSpell[] {
+  // A salvage tech's Field Fabricator device names its own cast (genre-gb-device.ts).
+  const device = deviceSpells(itemName);
+  if (device) {
+    return device;
+  }
   const whole = itemName.trim();
   const name = whole.replace(/\s*\([^()]*\)\s*$/, "");
   return onlyItsBeads(whole, (ROWS.find((row) => row.item.test(whole)) ?? ROWS.find((row) => row.item.test(name)))?.spells ?? []);

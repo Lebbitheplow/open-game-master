@@ -595,6 +595,83 @@ const rageBonus = (level) => (level >= 16 ? 4 : level >= 9 ? 3 : 2);
   });
 }
 
+// ---- Path of the Battlerager (cc1113: the one 2014 subclass concept that had
+// no restatement) ----
+{
+  const r = await openRig();
+  const { world, kit, hero, stage, swing, enemyHits, sheet, foe, budget, rage, forced } = r;
+  const SPIKED = { equipment: [{ name: "Spiked Armor", qty: 1, equipped: true }, { name: "Greataxe", qty: 1, equipped: true }] };
+  const plain = { equipment: [{ name: "Scale Mail", qty: 1, equipped: true }, { name: "Greataxe", qty: 1, equipped: true }] };
+
+  await probe("battlerager-spikes-bonus", async () => {
+    const rager = hero("barbarian", "Path of the Battlerager", 3, SPIKED);
+    const [enemy] = await stage(rager);
+    const calm = await swing(rager, enemy, [15, 3], { weapon: "Armor Spikes", offHand: true });
+    assert.equal(calm.ok, false, "not while calm");
+    rage(rager);
+    const before = foe(enemy).currentHp;
+    const out = await swing(rager, enemy, [15, 3], { weapon: "Armor Spikes", offHand: true });
+    assert.equal(out.ok, true, out.error);
+    assert.equal(before - foe(enemy).currentHp, 3 + MOD + rageBonus(3), "1d4 (a 3) + Strength + rage");
+    assert.equal(budget().bonusUsed, true, "the bonus action");
+    const bare = hero("barbarian", "Path of the Battlerager", 3, plain);
+    const [other] = await stage(bare);
+    rage(bare);
+    assert.equal((await swing(bare, other, [15, 3], { weapon: "Armor Spikes", offHand: true })).ok, false, "no spikes without spiked armor");
+  });
+
+  await probe("battlerager-grapple-spikes", async () => {
+    const rager = hero("barbarian", "Path of the Battlerager", 3, SPIKED);
+    const [enemy] = await stage(rager);
+    rage(rager);
+    const before = foe(enemy).currentHp;
+    const out = await forced([20, 1], () => world.invoke("take_action", { characterId: rager.id, action: "grapple", targetEnemyId: enemy.id }));
+    assert.equal(out.ok, true, out.error);
+    assert.equal(out.result.success, true, JSON.stringify(out.result));
+    assert.equal(before - foe(enemy).currentHp, 3, "3 piercing from the spikes");
+  });
+
+  await probe("reckless-abandon", async () => {
+    const rager = hero("barbarian", "Path of the Battlerager", 6, SPIKED);
+    const [enemy] = await stage(rager);
+    world.patch(rager.id, { tempHp: 0 });
+    rage(rager);
+    const out = await swing(rager, enemy, [15, 4], { reckless: true });
+    assert.equal(out.ok, true, out.error);
+    assert.equal(sheet(rager).tempHp, MOD, "temporary hit points equal to the Constitution modifier");
+    const calm = hero("barbarian", "Path of the Battlerager", 6, SPIKED);
+    const [other] = await stage(calm);
+    world.patch(calm.id, { tempHp: 0 });
+    await swing(calm, other, [15, 4], { reckless: true });
+    assert.equal(sheet(calm).tempHp ?? 0, 0, "none without the rage");
+  });
+
+  await probe("battlerager-charge", async () => {
+    const rager = hero("barbarian", "Path of the Battlerager", 10, SPIKED);
+    await stage(rager);
+    assert.equal((await world.invoke("take_action", { characterId: rager.id, action: "dash", bonus: true })).ok, false, "not while calm");
+    kit.freshTurn();
+    rage(rager);
+    const out = await world.invoke("take_action", { characterId: rager.id, action: "dash", bonus: true });
+    assert.equal(out.ok, true, out.error);
+    assert.equal(budget().bonusUsed, true);
+  });
+
+  await probe("spiked-retribution", async () => {
+    const rager = hero("barbarian", "Path of the Battlerager", 14, SPIKED);
+    const [enemy] = await stage(rager);
+    rage(rager);
+    const before = foe(enemy).currentHp;
+    await enemyHits(enemy, rager, [16, 4]);
+    assert.equal(before - foe(enemy).currentHp, 3, "3 piercing back at the melee attacker");
+    const calm = hero("barbarian", "Path of the Battlerager", 14, SPIKED);
+    const [other] = await stage(calm);
+    const was = foe(other).currentHp;
+    await enemyHits(other, calm, [16, 4]);
+    assert.equal(was - foe(other).currentHp, 0, "nothing without the rage");
+  });
+}
+
 // ---- Path of the Zealot ----
 {
   const r = await openRig();

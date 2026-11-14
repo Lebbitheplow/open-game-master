@@ -1,3 +1,4 @@
+import { effectiveMaxHp } from "@/lib/dm/condition-logic";
 import { withLanguage } from "@/lib/dm/table-language-logic";
 import { campaignLanguage, getCampaignById, getCampaignSummaryState } from "@/lib/db/campaigns";
 import { listRecentAsksForThread } from "@/lib/db/asks";
@@ -160,7 +161,7 @@ function mechanicalRecord(campaignId: string, ownedCharacterIds: string[]): stri
       `Hit points right now, as the server holds them:\n${sheets
         .map(
           (sheet) =>
-            `[vitals] ${sheet.name}: ${sheet.currentHp}/${sheet.maxHp} hit points${sheet.tempHp ? `, ${sheet.tempHp} temporary` : ""}${
+            `[vitals] ${sheet.name}: ${sheet.currentHp}/${effectiveMaxHp(sheet)} hit points${sheet.tempHp ? `, ${sheet.tempHp} temporary` : ""}${
               sheet.conditions.length ? `, ${sheet.conditions.join(", ")}` : ""
             }`,
         )

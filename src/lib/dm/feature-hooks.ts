@@ -5,6 +5,7 @@
 // and Stillness of Mind (an action that ends a charm or a fear).
 //
 // Must not import mutations.ts (which reaches it through feature-spends.ts).
+import { exitAtInitiative } from "@/lib/dm/genre-cc-a-fixer";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
@@ -12,6 +13,7 @@ import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { initiativeRefills } from "@/lib/srd/resource-refills";
+import { horrorAtInitiative } from "@/lib/dm/genre-a-horror-initiative";
 import { classLevelOf, holdsFeature } from "@/lib/srd/trait-rules";
 import { removeConditions } from "@/lib/dm/condition-logic";
 import { priceTheAction } from "@/lib/dm/combat-features";
@@ -56,14 +58,16 @@ export function applyInitiativeRefills(campaign: Campaign, sheetId: string): str
   if (!sheet || sheet.deathSaves?.dead) {
     return [];
   }
+  // What a horror feature gives as the fight starts (genre-a-horror-initiative.ts).
+  const horror = [...horrorAtInitiative(campaign, sheet.id), ...exitAtInitiative(campaign, sheet.id)];
   const refill = initiativeRefills(sheet.resources, sheet.features);
   if (!refill) {
-    return [];
+    return horror;
   }
   patchSheet(sheet.id, { resources: refill.resources });
   audit(campaign, "", sheet, { initiative: refill.notes }, "rolled initiative", { resources: refill.resources });
   publishSheet(campaign, sheet.id);
-  return refill.notes;
+  return [...refill.notes, ...horror];
 }
 
 // Dark One's Blessing (Fiend warlock 1): reducing a hostile creature to 0

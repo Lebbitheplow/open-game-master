@@ -66,7 +66,7 @@ import { casterViewsOf, dedupeNames, withCasterViews, type CasterView } from "@/
 import { isThirdCaster } from "@/lib/srd/third-caster";
 import { featureHitPoints, holdsFeature, withPrimalChampion } from "@/lib/srd/trait-rules";
 import { isChoiceFeature, unmetPrerequisite } from "@/lib/srd/legality/features";
-import { findOptionByFeatureName, optionReqProblem, pickInSpellbook } from "@/lib/srd/options";
+import { findOptionByFeatureName, openOptionSlots, optionReqProblem, pickInSpellbook, requiredPickProblem } from "@/lib/srd/options";
 import { sheetCantrips, sheetSpellbook } from "@/lib/srd/owed-picks-logic";
 import { subclassChoicePickProblems } from "@/lib/srd/subclass-choice-picks";
 import { castingClassesOf } from "@/lib/srd/legality/spells";
@@ -78,6 +78,7 @@ import {
   type SpellFacts,
 } from "@/lib/srd/legality/types";
 import { textKey } from "@/lib/language/text-logic";
+import { splitToolGrants, toolPickProblem } from "@/lib/srd/tool-choices";
 import { carrySwapRecords } from "@/lib/dm/ar-ws-spell-swap-record";
 import { featChoice } from "@/lib/schemas/sheet";
 
@@ -394,11 +395,22 @@ export function buildLevelUp(
   ];
   if (isNewClass) {
     const grants = multiclassGrantsFor(klass.id);
+    // A tool the grant leaves to the player (SRD 5.1, Multiclassing: a bard's
+    // "one musical instrument of your choice") is the one named in
+    // levelUpTools; the sheet held the sentence as a proficiency.
+    const { fixed: fixedTools, choices: toolChoices } = splitToolGrants(grants.tools);
+    const toolPicks = (request.levelUpTools ?? []).map((tool) => tool.trim()).filter(Boolean);
+    if (toolPicks.length) {
+      const problem = toolChoices.length ? toolPickProblem(toolChoices, toolPicks) : `${klass.name} leaves no tool to choose.`;
+      if (problem) {
+        return refuse(problem);
+      }
+    }
     proficiencies = {
       ...proficiencies,
       armor: union(proficiencies.armor, grants.armor),
       weapons: union(proficiencies.weapons, grants.weapons),
-      tools: union(proficiencies.tools, grants.tools),
+      tools: union(proficiencies.tools, toolPicks.length ? [...fixedTools, ...toolPicks] : grants.tools),
     };
     // The one skill some grants offer. A pick off the grant's list is not
     // taken; the level still is.
@@ -572,11 +584,22 @@ export function buildLevelUp(
     // one the sheet holds stays (features.ts pruneChoiceFeatures).
     const [style] = chosenFightingStyles([pick]);
     if (style !== undefined) {
-      const after = styleSlotFeatures(classes, context.subclassExtras);
+      // A feat taken now or before opens its own slot (Fighting Initiate).
+      const after = styleSlotFeatures(classes, context.subclassExtras, [...(sheet.feats ?? []), ...featsTaken]);
       const heldStyles = chosenFightingStyles(featuresWithPicks.filter((feature) => feature.name !== pick.name));
       if (!newStyleFits(heldStyles, style, after)) {
         const open = fightingStyleChoices(after).filter((entry) => newStyleFits(heldStyles, entry.name, after));
         return refuse(`${style} is not a fighting style ${sheet.name}'s classes offer; pick one of ${open.map((entry) => entry.name).join(", ") || "none"}.`);
+      }
+    }
+  }
+  // A kind whose picks must hold one option (Elemental Attunement among a
+  // Four Elements monk's disciplines), once this level's picks are made.
+  for (const entry of classes) {
+    for (const slot of openOptionSlots({ classId: entry.id, subclass: entry.subclass ?? "", level: entry.level, features: featuresWithPicks })) {
+      const missing = picked.some((pick) => findOptionByFeatureName(pick.name)?.k === slot.kind) ? requiredPickProblem(slot) : null;
+      if (missing) {
+        return refuse(missing);
       }
     }
   }

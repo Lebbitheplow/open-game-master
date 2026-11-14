@@ -144,4 +144,18 @@ await test("Old rows with no end-of-turn meta load and tick as before: a bare un
   assert.equal(has(kit.enemy(enemy.id).conditions, "stunned"), false);
 });
 
+// T03 (audit 2026-11-13): what waited on a turn of the fight outlived it.
+// A hero who dodged in the last round was still dodging when the next fight
+// began, and an enemy that acted first attacked them at disadvantage.
+await test("The fight's end ends what waited on a turn: a Dodge or a lethargy does not carry into the next fight.", async () => {
+  await stage(monk);
+  const dodge = await world.invoke("take_action", { characterId: monk.id, action: "dodge" });
+  assert.equal(dodge.ok, true, dodge.error);
+  world.patch(cleric.id, { conditions: ["incapacitated"], conditionMeta: { incapacitated: { untilTurnEndOf: cleric.id, source: "haste" } } });
+  const ended = await world.invoke("end_encounter", { outcome: "truce" });
+  assert.equal(ended.ok, true, ended.error);
+  assert.deepEqual(world.sheet(monk.id).conditions, [], "still dodging after the fight");
+  assert.deepEqual(world.sheet(cleric.id).conditions, [], "still lethargic after the fight");
+});
+
 finish();

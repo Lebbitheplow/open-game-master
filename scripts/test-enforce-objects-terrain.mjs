@@ -104,5 +104,27 @@ await test("A creature with a swimming speed crosses water at its normal cost; o
   assert.equal(swim.size, 6);
 });
 
+// A swing at an object is a melee weapon attack like any other: a raging
+// barbarian adds Rage's damage (SRD 5.1, Rage), and exhaustion 3 puts the
+// attack roll at disadvantage (SRD 5.1, Exhaustion). It was a plain d20 and
+// the weapon's own damage, whatever the swinger was.
+await test("A raging barbarian's blow at an object adds Rage's damage, and an exhausted one rolls it at disadvantage.", async () => {
+  const brute = world.addHero({
+    class: "barbarian", level: 3, abilities: { str: 16 },
+    proficiencies: { saves: [], skills: [], expertise: [], languages: ["Common"], tools: [], armor: [], weapons: ["simple", "martial"] },
+    equipment: [{ name: "Greataxe", qty: 1 }],
+  });
+  world.patch(brute.id, { conditions: ["raging"], conditionMeta: { raging: { rounds: 10 } } });
+  world.dice(15, 5);
+  let blow = await smash({ name: "the barrel", size: "large", characterId: brute.id, weapon: "Greataxe" });
+  assert.equal(world.clearDice(), 0);
+  assert.equal(blow.result.damage, 5 + 3 + 2, JSON.stringify(blow.result));
+  world.patch(brute.id, { conditions: [], conditionMeta: {}, exhaustion: 3 });
+  world.dice(15, 2);
+  blow = await smash({ name: "the barrel", size: "large", characterId: brute.id, weapon: "Greataxe" });
+  assert.equal(world.clearDice(), 0, "one d20, not two");
+  assert.equal(blow.result.hit, false, JSON.stringify(blow.result));
+});
+
 world.close();
 finish();

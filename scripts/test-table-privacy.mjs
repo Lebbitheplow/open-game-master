@@ -21,7 +21,7 @@ const campaigns = await import("../src/lib/db/campaigns.ts");
 const events = await import("../src/lib/events.ts");
 const { listRecentAudit } = await import("../src/lib/db/sheet-audit.ts");
 const { listRecentMessages } = await import("../src/lib/db/messages.ts");
-const { tickEncounterConditions } = await import("../src/lib/dm/condition-tick.ts");
+const { startTurnConditions } = await import("../src/lib/dm/condition-tick.ts");
 const { listEffects } = await import("../src/lib/db/active-effects.ts");
 const { setTokenHidden, getBattleMapForEncounter, getTokenByRef } = await import("../src/lib/db/battle-maps.ts");
 const { buildPlayerMapView } = await import("../src/lib/battlemap/view.ts");
@@ -167,7 +167,9 @@ await test("T02: a hidden effect on an enemy gives away neither its name nor whi
     assert.equal(has(lists, secret), false);
     assert.equal(has(lists, goblin.id), false, "the target id is not sent either");
   }
-  tickEncounterConditions(fight.campaign(), { ...encounter, round: encounter.round + 1 });
+  // Its round is counted as the turn it was set on comes again.
+  const setOn = fight.encounter().order[fight.encounter().turnIndex];
+  startTurnConditions(fight.campaign(), fight.encounter(), [setOn.kind === "pc" ? setOn.characterId : setOn.enemyId]);
   assert.equal(listEffects(fight.campaignId, { kind: "enemy", id: goblin.id }).length, 0, "it did wear off");
   assert.equal(transcript(fight).includes(secret), false, "no 'wears off' line for it");
 });

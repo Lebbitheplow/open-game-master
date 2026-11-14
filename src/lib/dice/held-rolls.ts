@@ -56,7 +56,11 @@ export type HeldRollMember = {
 //
 // The fifth holds no roll of this player's at all: another creature is about
 // to roll, and the player watching for Portent may answer (src/lib/dm/foresight.ts).
-export type ParkReason = "real_dice" | "held" | "after_roll" | "foretold" | "watch";
+//
+// The sixth holds no roll either: a creature is walking out of the player's
+// reach, and they decide whether to spend their reaction on an opportunity
+// attack (src/lib/dm/opportunity-ask.ts).
+export type ParkReason = "real_dice" | "held" | "after_roll" | "foretold" | "watch" | "opportunity";
 
 type DicePreferences = Pick<HeldRollMember, "useRealDice" | "holdRolls">;
 
@@ -86,7 +90,7 @@ export function mayTypeFaces(
   dicePolicy: string,
   member: DicePreferences | null | undefined,
 ): boolean {
-  if (parkedFor === "held" || parkedFor === "after_roll" || parkedFor === "foretold" || parkedFor === "watch") {
+  if (parkedFor === "held" || parkedFor === "after_roll" || parkedFor === "foretold" || parkedFor === "watch" || parkedFor === "opportunity") {
     return false;
   }
   return parkReasonFor(dicePolicy, member) === "real_dice";

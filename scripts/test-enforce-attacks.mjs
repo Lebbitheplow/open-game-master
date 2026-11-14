@@ -286,6 +286,59 @@ await test("A lasting effect on Armor Class changes the number an attack has to 
   assert.equal(swing.result.vsAc, 15, `the attack was rolled against AC ${swing.result.vsAc}`);
 });
 
+// SRD 5.1, Rage: "When you make a melee weapon attack using Strength, you
+// gain a bonus to the damage roll." A handaxe thrown at a creature 20 feet
+// off is a ranged weapon attack (SRD 5.1, Thrown); swung beside it, a melee
+// one. The thrown handaxe took the bonus as the swing did.
+await test("Rage's damage rides a thrown weapon swung in melee, not one thrown at range", async () => {
+  const table = await duel({}, { class: "barbarian", level: 3, equipment: [{ name: "Handaxe", qty: 2 }] });
+  const { world, kit, hero } = table;
+  const raging = () => world.patch(hero.id, { conditions: ["raging"], conditionMeta: { raging: { rounds: 10 } } });
+  let enemy = await table.stage();
+  raging();
+  const swung = await kit.swing(hero.id, enemy.id, [15, 4], { weapon: "Handaxe" });
+  assert.equal(swung.damage.total, 4 + abilityMod(16) + 2, "swung beside it");
+  enemy = await table.stage();
+  raging();
+  kit.place(enemy.id, 5, 9);
+  const thrown = await kit.swing(hero.id, enemy.id, [15, 4], { weapon: "Handaxe" });
+  assert.equal(thrown.ok, true, thrown.error);
+  assert.equal(thrown.damage.total, 4 + abilityMod(16), `thrown 20 feet: ${thrown.damage.expression}`);
+  await table.kit.endFight();
+});
+
+// A melee attack is one made in reach: a handaxe or a dagger thrown 20 feet
+// is a ranged weapon attack (SRD 5.1, Thrown). Three feats keyed to melee or
+// ranged attacks read the weapon's kind instead: Mounted Combatant's
+// advantage "on melee attack rolls" rode the throw, Mobile's "when you make a
+// melee attack" spared its maker the creature's opportunity attack, and
+// Skulker's "miss with a ranged weapon attack" gave the thrower away.
+await test("A weapon thrown at range is a ranged attack for Mounted Combatant, Mobile and Skulker", async () => {
+  const { MOBILE_ATTACKED } = await import("../src/lib/srd/feat-combat.ts");
+  const { setMount } = await import("../src/lib/db/mounts.ts");
+  const table = await duel({}, { feats: ["Mounted Combatant", "Mobile", "Skulker"], equipment: [{ name: "Handaxe", qty: 2 }, { name: "Dagger", qty: 2 }] });
+  const { world, kit, hero } = table;
+  let enemy = await table.stage();
+  kit.setEnemy(enemy.id, { stats: { ...kit.enemy(enemy.id).stats, size: "Small" } });
+  setMount(world.campaignId, hero.id, { ref: "warhorse", name: "Warhorse", speed: 60, controlled: true, size: "Large" });
+  kit.place(enemy.id, 5, 9);
+  const thrown = await kit.swing(hero.id, enemy.id, [15, 3, 4], { weapon: "Handaxe" });
+  assert.equal(thrown.ok, true, thrown.error);
+  assert.equal(thrown.toHit.breakdown.terms[0].count ?? thrown.toHit.breakdown.terms[0].dice.length, 1, "a thrown handaxe took Mounted Combatant's melee advantage");
+  assert.ok(!(world.encounter().turnBudget?.oncePerTurn ?? []).includes(`${MOBILE_ATTACKED}${enemy.id}`), "a throw at range counted as Mobile's melee attack");
+  setMount(world.campaignId, hero.id, null);
+
+  enemy = await table.stage();
+  kit.setEnemy(enemy.id, { ac: 30 });
+  kit.place(enemy.id, 5, 9);
+  world.patch(hero.id, { conditions: ["hidden"], conditionMeta: { hidden: {} } });
+  const miss = await kit.swing(hero.id, enemy.id, [5, 5], { weapon: "Dagger" });
+  assert.equal(miss.result.hit, false);
+  assert.ok(world.sheet(hero.id).conditions.includes("hidden"), "Skulker: a missed throw from hiding gave the thrower away");
+  world.patch(hero.id, { conditions: [], conditionMeta: {} });
+  await table.kit.endFight();
+});
+
 await plain.kit.endFight();
 plain.world.close();
 finish();

@@ -315,6 +315,23 @@ await test("Arcane Recovery returns half the wizard's level in slot levels, once
   [low.id, mid.id, high.id].forEach((id) => assertInBounds(table, id));
 });
 
+await test("Arcane Recovery returns the highest spent slots its budget allows, and is kept when nothing is spent", async () => {
+  // The player chooses the slots (SRD 5.1, Arcane Recovery); with no choice
+  // made the server gives the most value. Lowest first, a 5th-level wizard
+  // with a 1st, a 2nd and a 3rd spent got the 1st and the 2nd back, never
+  // the 3rd; and with 2nds spent on a budget of 4, two 2nds beat a 3rd.
+  const table = await openTable();
+  const spread = table.addHero({ class: "wizard", level: 5, spellcasting: casting("int", { 1: [4, 1], 2: [3, 1], 3: [2, 1] }) });
+  const pairs = table.addHero({ class: "wizard", level: 7, spellcasting: casting("int", { 1: [4, 0], 2: [3, 2], 3: [3, 1], 4: [1, 0] }) });
+  const fresh = table.addHero({ class: "wizard", level: 5, spellcasting: casting("int", { 1: [4, 0], 2: [3, 0], 3: [2, 0] }) });
+  await shortRest(table);
+  const used = (id) => Object.fromEntries(Object.entries(table.sheet(id).spellcasting.slots).map(([level, slot]) => [level, slot.used]));
+  assert.deepEqual(used(spread.id), { 1: 1, 2: 1, 3: 0 });
+  assert.deepEqual(used(pairs.id), { 1: 0, 2: 0, 3: 1, 4: 0 });
+  // Nothing spent: the once-a-day use is kept for a rest that can use it.
+  assert.equal(table.sheet(fresh.id).resources.arcane_recovery.used, 0);
+});
+
 await test("Natural Recovery does the same for a Circle of the Land druid", async () => {
   const table = await openTable();
   const druid = table.addHero({

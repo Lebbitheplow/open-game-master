@@ -72,7 +72,9 @@ const sorted = (list) => [...(list ?? [])].sort();
 // A level 1 soldier fighter of the race, every choice the race offers made.
 function buildRace(raceId, fields = {}) {
   const race = builder.races.find((entry) => entry.id === raceId);
-  const taken = new Set(["athletics", "intimidation", ...(race.skills ?? [])]);
+  // A pick among packages (a shifter's subtype) gives its own skill too.
+  const granted = [...(race.skills ?? []), ...(race.variants?.options[0]?.skills ?? [])];
+  const taken = new Set(["athletics", "intimidation", ...granted]);
   const classSkills = ["acrobatics", "history", "insight", "perception", "survival"].filter((skill) => !taken.has(skill)).slice(0, 2);
   // A race that names the skills it picks among (the Orc's Primal
   // Intuition) picks from them.
@@ -89,11 +91,14 @@ function buildRace(raceId, fields = {}) {
     racialAsi: ["str", "dex", "con"].slice(0, race.asiChoice?.count ?? 0),
     racialSkills: free.slice(0, race.skillChoice?.count ?? 0),
     racialTool: race.toolChoice?.from[0] ?? "",
+    racialWeapons: race.weaponChoice ? race.weaponChoice.from.slice(0, race.weaponChoice.count) : [],
     racialCantrips: race.cantripChoice ? ["Prestidigitation"] : [],
     // A dragonborn chooses an ancestry; a race that repeats one of the
     // soldier's skills chooses another in its place.
     racialAncestry: raceId === "dragonborn" ? "red" : "",
-    repeatSkills: (race.skills ?? []).filter((skill) => ["athletics", "intimidation"].includes(skill)).map((_, index) => ["religion", "investigation"][index]),
+    // A race offering a pick among packages (a shifter's subtype) takes its first.
+    racialVariant: race.variants?.options[0]?.id ?? "",
+    repeatSkills: granted.filter((skill) => ["athletics", "intimidation"].includes(skill)).map((_, index) => ["religion", "investigation"][index]),
     // The variant human's feat, a racial choice like the rest (issue #124).
     feats: raceId === "variant_human" ? ["Alert"] : [],
     ...fields,
@@ -138,17 +143,123 @@ await test("the bundled race table matches the rulebook: bonuses, speed, size, l
   }
 });
 
-await test("every bundled race is well formed, and none lowers a score", () => {
-  assert.equal(srd.SRD_RACES.length, 32);
-  assert.equal(new Set(srd.SRD_RACES.map((race) => race.id)).size, 32);
+// The lineages added beyond the SRD, as the books they come from print
+// them (restated in this project's own words in races.json): what each row
+// must carry. A field left out here is checked elsewhere.
+const BOOKS = {
+  // Volo's Guide to Monsters: a kobold's Strength drops by 2, and it can
+  // grovel to open a foe to its allies.
+  kobold: { asi: { dex: 2, str: -2 }, traits: ["Grovel, Cower, and Beg (an action: until the end of your next turn, allies' attacks on foes within 10 ft of you have advantage, 1/short rest)"] },
+  // Eberron: Rising from the Last War: the bonuses, a skill and the shift's
+  // benefit come from the subrace; Keen Senses, one shift a short rest worth
+  // the level plus the Constitution modifier in temporary hit points, Common.
+  shifter: {
+    asi: {},
+    languages: ["Common"],
+    skills: ["perception"],
+    traits: ["Perception proficiency (Keen Senses)", "Shifting (a bonus action for 1 minute of temporary hit points equal to your level plus your Constitution modifier, once a short rest)"],
+    notTraits: ["Bestial Instincts"],
+    variantAsi: { beasthide: { con: 2, str: 1 }, longtooth: { str: 2, dex: 1 }, swiftstride: { dex: 2, cha: 1 }, wildhunt: { wis: 2, dex: 1 } },
+    variantSkills: { beasthide: ["athletics"], longtooth: ["intimidation"], swiftstride: ["acrobatics"], wildhunt: ["survival"] },
+  },
+  // The Wild Beyond the Witchlight (fairy, harengon) and Strixhaven (owlin):
+  // +2 to one score and +1 to another, the player's, and Common with one
+  // other language of the player's.
+  // A fairy is fey, not humanoid.
+  // A fairy and an owlin fly at their walking speed. A fairy picks the
+  // ability its Fairy Magic is cast with, and may cast its spells with slots.
+  fairy: {
+    asi: {},
+    asiChoice: { count: 2, amount: 1, amounts: [2, 1] },
+    languages: ["Common"],
+    bonusLanguages: 1,
+    type: "fey",
+    traits: ["Fey (your creature type is fey, not humanoid)", "Flight (flying speed equal to your walking speed, not while wearing medium or heavy armor)", "Fairy Magic (druidcraft cantrip, then faerie fire from 3rd level and enlarge/reduce from 5th, each free once a long rest or cast with your spell slots, using Intelligence, Wisdom or Charisma as you pick)"],
+    innateSpells: { trait: "Fairy Magic", ability: "cha", abilityChoice: ["int", "wis", "cha"], spells: [{ name: "Druidcraft", level: 1 }, { name: "Faerie Fire", level: 3, per: "long", slots: true }, { name: "Enlarge/Reduce", level: 5, per: "long", slots: true }] },
+  },
+  // An owlin and a harengon are Small or Medium, the player's pick.
+  owlfolk: { asi: {}, asiChoice: { count: 2, amount: 1, amounts: [2, 1] }, languages: ["Common"], bonusLanguages: 1, traits: ["Flight (flying speed equal to your walking speed, not while wearing medium or heavy armor)"], variants: { label: "Size", options: [{ id: "medium", name: "Medium", lines: [] }, { id: "small", name: "Small", lines: [] }] } },
+  rabbitfolk: { asi: {}, asiChoice: { count: 2, amount: 1, amounts: [2, 1] }, languages: ["Common"], bonusLanguages: 1, variants: { label: "Size", options: [{ id: "medium", name: "Medium", lines: [] }, { id: "small", name: "Small", lines: [] }] } },
+  // Mordenkainen's Tome of Foes: an eladrin has the elf's traits and Fey
+  // Step, and none of the high elf's or wood elf's weapon training.
+  eladrin: { notTraits: ["Elf Weapon Training"], weapons: null },
+  // Volo's Guide to Monsters: a triton sees no better in the dark than a
+  // human, and its Control Air and Water reaches wall of water at 5th.
+  triton: {
+    notTraits: ["Darkvision"],
+    traits: ["Control Air and Water (fog cloud, then gust of wind from 3rd level and wall of water from 5th, 1/long rest each)"],
+    innateSpells: { trait: "Control Air and Water", ability: "cha", spells: [{ name: "Fog Cloud", level: 1, per: "long" }, { name: "Gust of Wind", level: 3, per: "long" }, { name: "Wall of Water", level: 5, per: "long", circle: 3 }] },
+  },
+  // Volo's Guide to Monsters (the yuan-ti pureblood): animal friendship at
+  // will, on snakes only, beside poison spray and suggestion.
+  serpentfolk: {
+    traits: ["Serpent Magic (poison spray cantrip and animal friendship at will on snakes only, then suggestion from 3rd level, 1/long rest)"],
+    innateSpells: { trait: "Serpent Magic", ability: "cha", spells: [{ name: "Poison Spray", level: 1 }, { name: "Animal Friendship", level: 1, atWill: true, only: { onlyOn: ["poisonous-snake", "constrictor-snake", "giant-poisonous-snake", "giant-constrictor-snake", "flying-snake"], words: "on a snake" } }, { name: "Suggestion", level: 3, per: "long" }] },
+  },
+  // Mordenkainen's Tome of Foes: Duergar Magic is cast on the duergar alone,
+  // enlarge/reduce's enlarge only, with no material components.
+  duergar: {
+    traits: ["Duergar Magic (enlarge on yourself from 3rd level, invisibility on yourself from 5th, 1/long rest each, no material components)"],
+    innateSpells: { trait: "Duergar Magic", ability: "int", spells: [{ name: "Enlarge/Reduce", level: 3, per: "long", self: true, noMaterial: true, only: { variant: "enlarged", words: "to enlarge themselves" } }, { name: "Invisibility", level: 5, per: "long", self: true, noMaterial: true }] },
+  },
+  // Elemental Evil Player's Companion: an aarakocra speaks its own tongue too.
+  aarakocra: { languages: ["Common", "Aarakocra", "Auran"] },
+  // Mythic Odysseys of Theros: a satyr and a centaur are fey, not humanoid,
+  // and a centaur's Equine Build makes climbing hard going.
+  satyr: { type: "fey", traits: ["Fey (your creature type is fey, not humanoid)"] },
+  centaur: { type: "fey", traits: ["Fey (your creature type is fey, not humanoid)", "Equine Build (count as one size larger for carrying and for the weight you can push or drag, and each foot of climbing costs 4 extra feet)"] },
+  // END OF BOOKS
+};
+
+await test("every added lineage carries what its book prints", async () => {
+  const wrong = [];
+  for (const [id, book] of Object.entries(BOOKS)) {
+    const race = srd.SRD_RACES.find((entry) => entry.id === id);
+    for (const [field, value] of Object.entries(book)) {
+      if (field === "traits") {
+        for (const line of value) if (!race.traits.includes(line)) wrong.push(`${id} lacks "${line}"`);
+      } else if (field === "notTraits") {
+        for (const line of value) if (race.traits.some((trait) => trait.toLowerCase().startsWith(line.toLowerCase()))) wrong.push(`${id} carries "${line}"`);
+      } else if (field === "variantAsi" || field === "variantSkills") {
+        for (const [option, want] of Object.entries(value)) {
+          const held = race.variants?.options.find((entry) => entry.id === option)?.[field === "variantAsi" ? "asi" : "skills"] ?? null;
+          if (JSON.stringify(held) !== JSON.stringify(want)) wrong.push(`${id} ${option} ${field}: ${JSON.stringify(held)}, the book ${JSON.stringify(want)}`);
+        }
+      } else if (JSON.stringify(race[field] ?? null) !== JSON.stringify(value)) {
+        wrong.push(`${id} ${field}: ${JSON.stringify(race[field] ?? null)}, the book ${JSON.stringify(value)}`);
+      }
+    }
+  }
+  assert.deepEqual(wrong, []);
+  // The duergar's casts are on itself, and need no material components.
+  const { grantedCastsOf } = await import("../src/lib/srd/granted-casts.ts");
+  const duergarCasts = grantedCastsOf({ race: "duergar", level: 5, features: [] }).filter((cast) => cast.source === "Duergar Magic");
+  assert.deepEqual(duergarCasts.map((cast) => [cast.spell, cast.selfOnly ?? false, cast.noMaterial ?? false]), [["Enlarge/Reduce", true, true], ["Invisibility", true, true]]);
+  // A kobold's Strength is lowered on the sheet the builder makes.
+  const kobold = buildRace("kobold");
+  assert.equal(kobold.blocker, null, kobold.blocker?.message);
+  // A fairy's +2 goes to the first ability picked and its +1 to the second,
+  // and the builder holds the save until both are placed.
+  const unplaced = buildRace("fairy", { racialAsi: ["dex"] });
+  assert.ok(unplaced.blocker, "the builder saved a fairy with one of its two increases unplaced");
+  const fairy = buildRace("fairy", { racialAsi: ["dex", "cha"] });
+  assert.equal(fairy.blocker, null, fairy.blocker?.message);
+  assert.deepEqual([fairy.sheet.abilities.dex - BASE.dex, fairy.sheet.abilities.cha - BASE.cha], [2, 1]);
+});
+
+await test("every bundled race is well formed, and none lowers a score but where its book does", () => {
+  assert.equal(srd.SRD_RACES.length, 46);
+  assert.equal(new Set(srd.SRD_RACES.map((race) => race.id)).size, 46);
   for (const race of srd.SRD_RACES) {
-    assert.ok([25, 30, 35].includes(race.speed), `${race.id} speed ${race.speed}`);
+    // A centaur gallops at 40.
+    assert.ok([25, 30, 35, 40].includes(race.speed), `${race.id} speed ${race.speed}`);
     assert.ok(["Small", "Medium"].includes(race.size), `${race.id} size`);
     assert.ok(race.languages.includes("Common"), `${race.id} speaks no Common`);
     assert.ok(race.traits.length > 0, `${race.id} has no traits`);
     for (const [ability, bonus] of Object.entries(race.asi)) {
       assert.ok(["str", "dex", "con", "int", "wis", "cha"].includes(ability));
-      assert.ok(bonus === 1 || bonus === 2, `${race.id} ${ability} ${bonus}`);
+      // A lowered score only where the book prints one (BOOKS below).
+      assert.ok(bonus === 1 || bonus === 2 || BOOKS[race.id]?.asi?.[ability] === bonus, `${race.id} ${ability} ${bonus}`);
     }
     for (const skill of race.skills ?? []) {
       assert.ok(srd.findSkill(skill), `${race.id} grants ${skill}`);
@@ -160,10 +271,14 @@ await test("the stored sheet carries the race: scores, speed, languages, skills,
   for (const race of srd.SRD_RACES) {
     const rule = RULEBOOK[race.id];
     const sheet = await seated(race.id);
+    // A pick among packages (a shifter's first subtype, buildRace) adds its own.
+    const firstOption = race.variants?.options[0];
     const bonus = { ...(rule?.asi ?? race.asi) };
-    for (const ability of ["str", "dex", "con"].slice(0, rule?.pick ?? race.asiChoice?.count ?? 0)) {
-      bonus[ability] = (bonus[ability] ?? 0) + 1;
-    }
+    for (const [ability, value] of Object.entries(firstOption?.asi ?? {})) bonus[ability] = (bonus[ability] ?? 0) + value;
+    // buildRace's picks, each its own amount (a fairy's +2 then +1).
+    ["str", "dex", "con"].slice(0, rule?.pick ?? race.asiChoice?.count ?? 0).forEach((ability, index) => {
+      bonus[ability] = (bonus[ability] ?? 0) + (race.asiChoice?.amounts?.[index] ?? 1);
+    });
     const expected = Object.fromEntries(Object.entries(BASE).map(([ability, score]) => [ability, score + (bonus[ability] ?? 0)]));
     assert.deepEqual(sheet.abilities, expected, `${race.id} abilities`);
     assert.equal(sheet.speed, rule?.speed ?? race.speed, `${race.id} speed`);
@@ -174,7 +289,7 @@ await test("the stored sheet carries the race: scores, speed, languages, skills,
     // race's. A skill the race and the soldier both give is replaced by
     // another of the player's choice, so every grant counts.
     const fixed = rule?.skills ?? race.skills ?? [];
-    const racial = fixed.length + (rule?.skillPicks ?? race.skillChoice?.count ?? 0);
+    const racial = fixed.length + (rule?.skillPicks ?? race.skillChoice?.count ?? 0) + (firstOption?.skills?.length ?? 0);
     assert.equal(sheet.proficiencies.skills.length, 4 + racial, `${race.id} skills: ${sheet.proficiencies.skills}`);
     assert.equal(new Set(sheet.proficiencies.skills).size, sheet.proficiencies.skills.length, `${race.id} repeats a skill`);
     for (const skill of rule?.skills ?? race.skills ?? []) {
@@ -186,11 +301,14 @@ await test("the stored sheet carries the race: scores, speed, languages, skills,
     for (const armor of rule?.armor ?? race.armor ?? []) {
       assert.ok(sheet.proficiencies.armor.includes(armor), `${race.id} lacks ${armor} armor`);
     }
-    // The race's traits, and a dragonborn's chosen ancestry beside them.
+    // The race's traits, a dragonborn's chosen ancestry beside them, and the
+    // lines of a pick among packages (a shifter's first subtype, buildRace).
     const traits = sheet.features
       .filter((feature) => feature.source === "race" && !/^draconic ancestry:/i.test(feature.name))
       .map((feature) => feature.name);
-    assert.deepEqual(traits, race.traits, `${race.id} traits`);
+    const option = race.variants?.options[0];
+    const picked = option ? [`${race.variants.label} (${option.name})`, ...(option.lines ?? [])] : [];
+    assert.deepEqual(traits, [...race.traits, ...picked], `${race.id} traits`);
     assert.equal(
       sheet.features.some((feature) => /^draconic ancestry: red/i.test(feature.name)),
       race.id === "dragonborn",
@@ -307,6 +425,88 @@ await test("the Orc's Primal Intuition picks two skills from its seven, never an
   const onList = buildRace("orc", { racialSkills: ["medicine", "nature"] });
   assert.equal(onList.blocker, null, onList.blocker?.message);
   assert.ok(["medicine", "nature"].every((skill) => onList.sheet.proficiencies.skills.includes(skill)));
+});
+
+// Every SRD 5.1 tool (Equipment, Tools), for a trait that leaves the tool to
+// the player.
+const EVERY_TOOL = (await import("../src/lib/srd/feat-grant-text.ts")).KNOWN_TOOLS;
+await test("every racial skill or tool pick is offered from the list its trait names, and a trait that names none leaves every one open", () => {
+  // Kenku Training, Changeling Instincts and Hunter's Lore name their skills;
+  // offered any skill, a kenku could take Arcana and a changeling Athletics.
+  // Specialized Design leaves the tool to the player; offered four, a
+  // warforged could not be an alchemist.
+  // The lists the source traits give (VGtM Kenku Training and Hunter's Lore,
+  // ERLW Changeling Instincts, ODM's Orc), and the picks they leave open
+  // (Skill Versatility, the variant human's skill, Specialized Design). A new
+  // lineage with a skill pick is classed here before this passes.
+  const LISTED = {
+    kenku: ["acrobatics", "deception", "sleight_of_hand", "stealth"],
+    changeling: ["deception", "insight", "intimidation", "persuasion"],
+    lizardfolk: ["animal_handling", "nature", "perception", "stealth", "survival"],
+    orc: ["animal_handling", "insight", "intimidation", "medicine", "nature", "perception", "survival"],
+    centaur: ["animal_handling", "medicine", "nature", "survival"],
+    shifter: ["acrobatics", "athletics", "intimidation", "survival"],
+  };
+  const OPEN = ["half_elf", "variant_human", "warforged"];
+  const label = (id) => id.replace(/_/g, " ");
+  const wrong = [];
+  for (const row of srd.SRD_RACES) {
+    const offered = builder.races.find((entry) => entry.id === row.id);
+    if (row.skillChoice) {
+      const want = LISTED[row.id] ?? (OPEN.includes(row.id) ? [] : null);
+      const from = sorted(offered.skillChoice?.from);
+      const trait = row.traits.find((line) => /skill/i.test(line) && !/proficiency \(/i.test(line)) ?? "";
+      const unnamed = (want ?? []).filter((id) => !new RegExp(`\\b${label(id)}\\b`, "i").test(trait));
+      if (!want) wrong.push(`${row.id}: a skill pick this test has not classed as listed or open`);
+      else if (JSON.stringify(from) !== JSON.stringify(sorted(want))) wrong.push(`${row.id} skills: offered ${from.join(", ") || "any"}, the trait's list is ${want.join(", ") || "any"}`);
+      else if (unnamed.length) wrong.push(`${row.id}: its trait "${trait}" does not name ${unnamed.join(", ")}`);
+    }
+    if (row.toolChoice) {
+      const trait = row.traits.find((line) => /\btools?\b/i.test(line)) ?? "";
+      const open = /tool of your choice/i.test(trait);
+      const from = sorted(offered.toolChoice?.from);
+      if (open && JSON.stringify(from) !== JSON.stringify(sorted(EVERY_TOOL))) wrong.push(`${row.id} tools: "${trait}" offers ${from.length} tools, not every one`);
+    }
+  }
+  assert.deepEqual(wrong, []);
+  // And the server holds a pick to that list.
+  const offList = buildRace("kenku", { racialSkills: ["arcana", "stealth"] });
+  assert.equal(offList.blocker?.kind, "error", "a kenku took Arcana from Kenku Training");
+  const alchemist = buildRace("warforged", { racialTool: "alchemist's supplies", racialSkills: ["arcana"] });
+  assert.equal(alchemist.blocker, null, alchemist.blocker?.message);
+  assert.ok(alchemist.sheet.proficiencies.tools.includes("alchemist's supplies"));
+});
+
+await test("a lineage's own armor bonus holds out of armor beside the Defense style, which waits for armor", () => {
+  const none = { saves: [], skills: [], expertise: [], languages: [], tools: [], armor: ["light", "medium", "heavy"], weapons: [] };
+  const ac = (features, equipment = []) =>
+    srd.deriveAc({ abilities: { ...BASE, dex: 14 }, equipment, features: features.map((name) => ({ name, source: "race" })), class: "fighter", level: 1, acOverride: false, proficiencies: none });
+  const plated = ["Integrated Protection (+1 AC)"];
+  const both = [...plated, "Fighting Style: Defense"];
+  const mail = [{ name: "Chain Mail", equipped: true }];
+  assert.deepEqual([ac([]), ac(plated), ac(both), ac(plated, mail), ac(both, mail)], [12, 13, 13, 17, 18]);
+});
+
+// The lineages players come to the builder asking for by concept, each
+// offered without a content pack: a teleporting fey elf, a sea elf, a gray
+// dwarf of the deep roads, a sea-dweller, a snake-blooded caster, a small
+// dragon-kin, a winged flier.
+const SOUGHT = {
+  eladrin: "Elf (Eladrin)", sea_elf: "Elf (Sea)", duergar: "Dwarf (Duergar)",
+  triton: "Triton", serpentfolk: "Serpentfolk", kobold: "Kobold", aarakocra: "Aarakocra",
+  hobgoblin: "Hobgoblin", satyr: "Satyr", fairy: "Fairy", owlfolk: "Owlfolk",
+  centaur: "Centaur", rabbitfolk: "Rabbitfolk", shifter: "Shifter",
+};
+await test("the builder offers the lineages players look for, with no content pack", () => {
+  const missing = Object.entries(SOUGHT).filter(([id, name]) => builder.races.find((entry) => entry.id === id)?.name !== name).map(([id]) => id);
+  assert.deepEqual(missing, []);
+  for (const id of Object.keys(SOUGHT)) {
+    const built = buildRace(id);
+    assert.equal(built.blocker, null, `${id}: ${built.blocker?.message}`);
+  }
+  // A shifter is asked for its subtype (the stored sheet above carries the
+  // lines of the one picked).
+  assert.match(buildRace("shifter", { racialVariant: "" }).blocker?.message ?? "", /shifter subtype/i);
 });
 
 await test("with the content pack, the SRD's races come through its rows unchanged", () => {

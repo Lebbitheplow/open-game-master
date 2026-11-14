@@ -192,16 +192,25 @@ function glyphEntry(group, key, label, subject, extra = {}) {
   return { ...entry(group, key, label, subject, extra), prompt: `${subject}, ${GLYPH_STYLE}`, negative: GLYPH_NEGATIVE, model: "qwen" };
 }
 
+// The spell paintings a class feature still wears (src/lib/icons.ts
+// ICON_ALIASES entries whose kind is "spell").
+export const SPELL_PAINTINGS_WORN = new Set(["arms-of-hadar", "clairvoyance", "command", "cure-wounds", "daylight", "disguise-self", "enthrall", "fear", "fog-cloud", "guiding-bolt", "heroes-feast", "invisibility", "jump", "knock", "minor-illusion", "modify-memory", "protection-from-energy", "protection-from-evil-and-good", "shield", "summon-draconic-spirit", "warding-bond"]);
+
 export async function buildIconList() {
   const list = [];
 
-  // Spells: the SRD manifest, keyed by the slug of the SRD name.
+  // Spells: the SRD manifest, keyed by the slug of the SRD name. A spell is
+  // drawn as its glyph everywhere (src/lib/battlemap/spell-glyph-logic.ts), so
+  // only the paintings a class feature still wears through ICON_ALIASES in
+  // src/lib/icons.ts are kept and painted; scripts/test-icons.mjs holds this
+  // list to those aliases. The other 508 were retired after 0.35.0.
   const rawSpells = readJson("src/lib/srd/manifest/spells.json");
   const spells = Array.isArray(rawSpells) ? rawSpells : rawSpells.spells || Object.values(rawSpells);
   for (const s of spells) {
     const level = Number(s.l) || 0;
     const school = String(s.s || "").toLowerCase();
-    list.push(entry("spell", s.n, s.n, `a symbolic icon representing the fantasy spell ${s.n}, ${LEVEL_WORD[level] || "a spell"} of ${school}, ${SCHOOL_HINT[school] || "in arcane colours"}, pure imagery of what the spell does, a wordless pictogram`, { school, level }));
+    const painting = entry("spell", s.n, s.n, `a symbolic icon representing the fantasy spell ${s.n}, ${LEVEL_WORD[level] || "a spell"} of ${school}, ${SCHOOL_HINT[school] || "in arcane colours"}, pure imagery of what the spell does, a wordless pictogram`, { school, level });
+    if (SPELL_PAINTINGS_WORN.has(painting.id.slice("spell-".length))) list.push(painting);
   }
   for (const [school, hint] of Object.entries(SCHOOL_HINT)) {
     list.push(entry("family", `spell-${school}`, `${school} spell`, `a symbol of ${school} magic, ${hint}`));

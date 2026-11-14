@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { petReachProblem } from "@/lib/dm/pet-place";
+import { petFeetTo, petReachProblem } from "@/lib/dm/pet-place";
 import { recordTrigger } from "@/lib/dm/last-save";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
@@ -25,8 +25,7 @@ import { landBlow } from "@/lib/dm/pc-attack-damage";
 import { badArguments, noneNamed, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCoverError } from "@/lib/dm/swallow";
 import { buildPet, defenseWords, DRAKE_ESSENCES, petCreatureType } from "@/lib/dm/pet-build";
-import { conditionIncomingAttackState } from "@/lib/srd/condition-effects";
-import { mergeAdvantage } from "@/lib/dm/condition-logic";
+import { attackContext } from "@/lib/dm/condition-logic";
 import { damageAdjust } from "@/lib/dm/damage-logic";
 import { findTableMonster } from "@/lib/bestiary/homebrew-monsters";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
@@ -333,13 +332,25 @@ export function handlePetAttack(
     return { error: `${pet.name}'s ${attack.name} strikes only a prone creature, and ${enemy.displayName} is not prone. Nothing was spent.`, refused: "rules" };
   }
 
-  // The target's conditions as they meet this attacker (SRD 5.1): a
-  // restrained target is struck with advantage, and one warded by
-  // Protection from Evil and Good turns a fiend or fey familiar's strike
-  // with disadvantage, by the kind the caster made it (pet-build.ts
-  // petCreatureType).
-  const incoming = conditionIncomingAttackState(enemy.conditions, petCreatureType(pet));
-  const advantage = mergeAdvantage(incoming.sources);
+  // Both sides' conditions as they meet this attacker (SRD 5.1, Conditions),
+  // read as every other attack reads them (condition-logic.ts
+  // attackContext): a restrained, stunned or paralyzed target is struck with
+  // advantage, a prone one with advantage within 5 feet, a dodging or
+  // invisible one with disadvantage, a hit within 5 feet on a paralyzed or
+  // unconscious one is a critical hit; one warded by Protection from Evil
+  // and Good turns a fiend or fey familiar's strike, by the kind the caster
+  // made it (pet-build.ts petCreatureType). Only the warding spells counted.
+  const feetTo = petFeetTo(encounter.id, sheet, enemy.id);
+  const ranged = Boolean(attack.range) && !(attack.thrown && feetTo !== null && feetTo <= (attack.reach ?? 5));
+  const incoming = attackContext({
+    attackerConditions: pet.conditions ?? [],
+    targetConditions: enemy.conditions,
+    melee: !ranged,
+    adjacent: feetTo === null ? !ranged : feetTo <= 5,
+    requested: "none",
+    attackerType: petCreatureType(pet),
+  });
+  const advantage = incoming.advantage;
   // Tagged as an ally's attack, so a foretold number a watch stop armed for
   // the pet lands on its d20 (foresight-saves.ts).
   const hitOutcome = rollExpression(d20Expression(attack.toHit, advantage), undefined, { purpose: { roller: "hero", kind: "attack", who: pet.name } });
@@ -364,8 +375,8 @@ export function handlePetAttack(
 
   // The enemy's real AC today: a spell or an effect on it counts.
   const vsAc = enemyAcWithEffects(campaign.id, enemy);
-  const crit = hitOutcome.crit === "nat20";
-  const hit = hitOutcome.crit !== "nat1" && (crit || hitOutcome.total >= vsAc);
+  const hit = hitOutcome.crit !== "nat1" && (hitOutcome.crit === "nat20" || hitOutcome.total >= vsAc);
+  const crit = hit && (hitOutcome.crit === "nat20" || incoming.autoCrit);
   if (!hit) {
     return {
       ok: true,

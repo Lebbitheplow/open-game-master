@@ -10,6 +10,7 @@
 // one d20's odds where the roll had two.
 //
 // Server side: the board and the clock are read.
+import { pursuedConditions } from "@/lib/dm/genre-cc-a-dark-fantasy";
 import { attackSenses, attackSight, characterSenses, enemySenses, fearAsRolled, lightOnAttack, type Sight } from "@/lib/dm/attack-light";
 import { hasFeralSenses, seenTargetConditions } from "@/lib/dm/attack-features";
 import type { PastSight } from "@/lib/dm/condition-logic";
@@ -54,7 +55,8 @@ export function attackSightVerdict(input: {
     light: light.sources,
     // Frightened weighs on the roll only with its source in sight.
     attackerConditions: fearAsRolled(input.encounterId, sheet.id, sheet.conditions, sheet.conditionMeta),
-    targetConditions: seenTargetConditions(sheet, enemy.conditions),
+    // Relentless Pursuit: a witch hunter's branded quarry cannot hide from them.
+    targetConditions: pursuedConditions(sheet, enemy, seenTargetConditions(sheet, enemy.conditions)),
     notes,
   };
 }

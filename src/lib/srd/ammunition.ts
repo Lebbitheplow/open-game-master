@@ -156,3 +156,11 @@ export function withAmmoCount<T extends Item>(items: T[], index: number, count: 
 export function recoveredAmmo(spent: number): number {
   return Math.floor(Math.max(0, spent) / 2);
 }
+
+// Whether the party is there to gather it: SRD 5.1, Ammunition: "At the end
+// of the battle, you can recover half your expended ammunition by taking a
+// minute to search the battlefield." A party that fled, or lies beaten, has
+// no field to search; the arrows it loosed stay where they fell.
+export function searchesTheField(outcome: string): boolean {
+  return outcome !== "party_fled" && outcome !== "party_defeated";
+}

@@ -4,6 +4,7 @@
 import "./lib/enforce-world.mjs";
 import { runOrSurvey } from "./lib/sweep-clauses-srd-survey.mjs";
 import { assert, clauseRig } from "./lib/sweep-clauses-srd-rig.mjs";
+import { d20Faces } from "./lib/enforce-combat.mjs";
 
 const rig = await clauseRig();
 const worn = (...names) => names.map((name) => ({ name, qty: 1, equipped: true }));
@@ -88,6 +89,22 @@ P["feat.prerequisites"] = async () => {
     "Heavy Armor Master": [who({ armor: ["light", "medium"] }), who({ armor: ["light", "medium", "heavy"] })],
     "Medium Armor Master": [who({ armor: ["light"] }), who({ armor: ["light", "medium"] })],
     "Moderately Armored": [who(), who({ armor: ["light"] })],
+    Grappler: [who(), who({ abilities: { ...plainScores, str: 13 } })],
+    "Fighting Initiate": [who({ weapons: ["simple"] }), who({ weapons: ["simple", "longswords"] })],
+    Prodigy: [who({ raceId: "high_elf", raceName: "High Elf" }), who({ raceId: "half_orc", raceName: "Half-Orc" })],
+    "Squat Nimbleness": [who(), who({ raceId: "lightfoot_halfling", raceName: "Lightfoot Halfling" })],
+    "Infernal Constitution": [who(), who({ raceId: "tiefling", raceName: "Tiefling" })],
+    "Fey Teleportation": [who({ raceId: "wood_elf", raceName: "Wood Elf" }), who({ raceId: "high_elf", raceName: "High Elf" })],
+    "Wood Elf Magic": [who({ raceId: "high_elf", raceName: "High Elf" }), who({ raceId: "wood_elf", raceName: "Wood Elf" })],
+    "Drow High Magic": [who({ raceId: "wood_elf", raceName: "Wood Elf" }), who({ raceId: "drow", raceName: "Drow" })],
+    "Dragon Hide": [who(), who({ raceId: "dragonborn", raceName: "Dragonborn" })],
+    "Dragon Fear": [who(), who({ raceId: "dragonborn", raceName: "Dragonborn" })],
+    "Dwarven Fortitude": [who(), who({ raceId: "hill_dwarf", raceName: "Hill Dwarf" })],
+    "Fade Away": [who(), who({ raceId: "rock_gnome", raceName: "Rock Gnome" })],
+    "Second Chance": [who(), who({ raceId: "lightfoot_halfling", raceName: "Lightfoot Halfling" })],
+    "Flames of Phlegethos": [who(), who({ raceId: "tiefling", raceName: "Tiefling" })],
+    "Orcish Fury": [who(), who({ raceId: "half_orc", raceName: "Half-Orc" })],
+    "Bountiful Luck": [who(), who({ raceId: "lightfoot_halfling", raceName: "Lightfoot Halfling" })],
   };
   const wrong = [];
   for (const [feat, [without, holder]] of Object.entries(cases)) {
@@ -97,6 +114,175 @@ P["feat.prerequisites"] = async () => {
     else if (unmetPrerequisite(text, holder)) wrong.push(`${feat}: "${text}" refused with it`);
   }
   assert.deepEqual(wrong, []);
+  // A race prerequisite is met by that race or a subrace of it, read from the
+  // species' parent and never from words in its id or name (SRD 5.1): a
+  // gearforged on a dwarf chassis, or a darakhul of dwarf heritage, is not a
+  // dwarf; a duergar or a pack's hill dwarf is. Size still answers "a Small
+  // race". The pack's rows (Tome of Heroes) are read where the pack is loaded.
+  const pack = (await import("../src/lib/content/index.ts")).listRaces({ limit: 500 }).length > 0;
+  const lineage = [
+    ["Dwarven Fortitude", "hill_dwarf", "Hill Dwarf", true],
+    ["Dwarven Fortitude", "duergar", "Duergar", true],
+    ["Dwarven Fortitude", "dwarfish_golem", "Dwarf Golem", false],
+    ["Elven Accuracy", "drow", "Drow", true],
+    ["Elven Accuracy", "eladrin", "Eladrin", true],
+    ["Elven Accuracy", "half_elf", "Half-Elf", true],
+    ["Elven Accuracy", "half_orc", "Half-Orc", false],
+    ["Prodigy", "high_elf", "High Elf", false],
+    ["Fade Away", "deep_gnome", "Deep Gnome", true],
+    ...(pack
+      ? [
+          ["Dwarven Fortitude", "dwarf-chassis", "Gearforged (Dwarf Chassis)", false],
+          ["Squat Nimbleness", "dwarf-chassis", "Gearforged (Dwarf Chassis)", false],
+          ["Dwarven Fortitude", "dwarf-heritage", "Darakhul (Dwarf Heritage)", false],
+          ["Dwarven Fortitude", "odm-hill-dwarf", "Dwarf (Hill)", true],
+          ["Dwarven Fortitude", "mountain-dwarf", "Dwarf (Mountain)", true],
+          ["Elven Accuracy", "odm-drow", "Elf (Drow)", true],
+          ["Elven Accuracy", "elfshadow-fey-heritage", "Darakhul (Elf/Shadow Fey Heritage)", false],
+          ["Fade Away", "gnome-chassis", "Gearforged (Gnome Chassis)", false],
+          ["Prodigy", "human-chassis", "Gearforged (Human Chassis)", false],
+        ]
+      : []),
+  ];
+  const misread = lineage.flatMap(([feat, raceId, raceName, meets]) => {
+    const text = authoredFeatPrerequisite(feat);
+    const met = !unmetPrerequisite(text, who({ raceId, raceName }));
+    return met === meets ? [] : [`${feat} for ${raceName}: ${met ? "taken" : "refused"}`];
+  });
+  assert.deepEqual(misread, [], "species prerequisites read off the species' parent");
+  const small = who({ raceId: "lightfoot_halfling", raceName: "Lightfoot Halfling" });
+  assert.equal(unmetPrerequisite(authoredFeatPrerequisite("Squat Nimbleness"), small), null, "a Small race still meets Squat Nimbleness");
+};
+
+// Squat Nimbleness: advantage on the check to escape a grapple. The hero is
+// held by the dummy; the escape is rolled with two d20s, the higher kept.
+P["feat.squat-nimbleness.escape"] = async () => {
+  const thrown = {};
+  for (const [label, feats] of [["plain", []], ["nimble", ["Squat Nimbleness"]]]) {
+    const t = await rig.table();
+    const who = t.hero({ class: "fighter", level: 4, race: "hill_dwarf", feats });
+    const [foe] = await t.fight([who]);
+    t.world.patch(who.id, { conditions: ["grappled"], conditionMeta: { grappled: { source: foe.id } } });
+    const out = await t.act(who, "escape", {}, [3, 18, 10, 10]);
+    assert.equal(out.ok, true, out.error);
+    const check = t.lastRolls(6).find((roll) => /escape/i.test(JSON.stringify(roll)) && /skill|ability|check/i.test(roll.kind ?? ""));
+    thrown[label] = check ? d20Faces(check).length : JSON.stringify(t.lastRolls(3)).slice(0, 300);
+  }
+  assert.deepEqual(thrown, { plain: 1, nimble: 2 }, "d20s on the escape check");
+};
+
+// Fade Away: the reaction on taking damage turns the gnome invisible, and
+// its use comes back on a short rest.
+P["feat.fade-away.invisible"] = async () => {
+  const t = await rig.table();
+  const who = t.hero({ class: "fighter", level: 4, race: "rock_gnome", feats: ["Fade Away"] });
+  assert.deepEqual(t.sheet(who).resources.feat_fade_away, { max: 1, used: 0 }, "the use");
+  const [foe] = await t.fight([who]);
+  t.foesTurn(foe);
+  const hit = await t.strike(foe, who, [18, 4]);
+  assert.equal(hit.ok, true, hit.error);
+  const out = await t.use(who, "Fade Away");
+  assert.equal(out.ok, true, out.error);
+  assert.equal(t.has(who, "invisible"), true, `conditions: ${t.sheet(who).conditions.join(", ")}`);
+  assert.equal(t.used(who, "feat_fade_away"), 1);
+  const { resourceDef } = await import("../src/lib/srd/class-resources.ts");
+  assert.equal(resourceDef("feat_fade_away").recharge, "short");
+};
+
+// Dragon Fear: a use of Breath Weapon spent on the roar; a creature that
+// fails the Wisdom save is frightened, and saves again at the end of its turns.
+P["feat.dragon-fear.roar"] = async () => {
+  const t = await rig.table();
+  const who = t.hero({ class: "fighter", level: 4, race: "dragonborn", feats: ["Dragon Fear"], abilities: { cha: 16 } });
+  const [foe] = await t.fight([who]);
+  const out = await t.use(who, "Dragon Fear", { targetEnemyIds: [foe.id] }, [1, 1, 1]);
+  assert.equal(out.ok, true, out.error);
+  assert.equal(t.foeHas(foe, "frightened"), true, `the foe holds ${t.world.encounter() ? JSON.stringify(t.foeHas) : ""}`);
+  assert.equal(t.used(who, "breath_weapon"), 1, "the roar spent the Breath Weapon");
+  const meta = t.kit.enemy(foe.id).conditionMeta?.frightened;
+  assert.ok(JSON.stringify(meta ?? {}).includes("saveEnds"), `the fright saves again: ${JSON.stringify(meta)}`);
+};
+
+// Dwarven Fortitude: a hurt dwarf's Dodge spends one hit die and heals.
+P["feat.dwarven-fortitude.dodge"] = async () => {
+  const t = await rig.table();
+  const who = t.hero({ class: "fighter", level: 4, race: "hill_dwarf", feats: ["Dwarven Fortitude"] });
+  await t.fight([who]);
+  t.world.patch(who.id, { currentHp: 10 });
+  const spentBefore = t.sheet(who).hitDice?.spent ?? 0;
+  const out = await t.act(who, "dodge", {}, [6, 6, 6]);
+  assert.equal(out.ok, true, out.error);
+  assert.ok(t.sheet(who).currentHp > 10, `hit points after the Dodge: ${t.sheet(who).currentHp}`);
+  assert.equal(t.sheet(who).hitDice.spent, spentBefore + 1, "one hit die spent");
+};
+
+// Second Chance: a hit on the halfling is rolled again with the reaction,
+// and the new roll stands.
+P["feat.second-chance.reroll"] = async () => {
+  const t = await rig.table();
+  const who = t.hero({ class: "fighter", level: 4, race: "lightfoot_halfling", feats: ["Second Chance"] });
+  const [foe] = await t.fight([who]);
+  t.foesTurn(foe);
+  const before = t.sheet(who).currentHp;
+  const hit = await t.strike(foe, who, [18, 4]);
+  assert.equal(hit.ok, true, hit.error);
+  assert.ok(t.sheet(who).currentHp < before, "the staging: the dummy hit");
+  const out = await t.invoke("use_reaction", { characterId: who.id, feature: "second chance" }, [1]);
+  assert.equal(out.ok, true, out.error);
+  assert.equal(t.sheet(who).currentHp, before, "the new roll of 1 misses and the hit points come back");
+  assert.equal(t.used(who, "feat_second_chance"), 1);
+};
+
+// Second Chance's use comes back when initiative is rolled, and on a short rest.
+P["feat.second-chance.refill"] = async () => {
+  const { initiativeRefills } = await import("../src/lib/srd/resource-refills.ts");
+  const { resourceDef } = await import("../src/lib/srd/class-resources.ts");
+  const back = initiativeRefills({ feat_second_chance: { max: 1, used: 1 } }, []);
+  assert.deepEqual(back?.resources.feat_second_chance, { max: 1, used: 0 });
+  assert.equal(resourceDef("feat_second_chance").recharge, "short");
+};
+
+// Fighting Initiate: a barbarian, who has no fighting style of its own,
+// keeps the style the feat chose through the sheet door's regrant; without
+// the feat the same style is a pick nothing opened, and is dropped.
+P["feat.fighting-initiate.style"] = async () => {
+  const t = await rig.table();
+  const style = { name: "Fighting Style: Archery", source: "choice" };
+  const base = { class: "barbarian", level: 4, features: [style] };
+  const plain = t.hero(base);
+  const initiate = t.hero({ ...base, feats: ["Fighting Initiate"] });
+  const holds = (who) => t.sheet(who).features.some((feature) => feature.name === style.name);
+  assert.equal(holds(plain), false, "a barbarian with no fighting style slot kept Archery");
+  assert.equal(holds(initiate), true, "a Fighting Initiate barbarian lost the style the feat chose");
+  const { openStyleSlots } = await import("../src/lib/srd/style-slots.ts");
+  const open = openStyleSlots([{ id: "barbarian", level: 4 }], [], undefined, ["Fighting Initiate"]);
+  assert.equal(open.count, 1, "the feat opens one style to pick");
+  assert.equal(open.choices.length, 6, "of the fighter's six");
+  assert.equal(openStyleSlots([{ id: "barbarian", level: 4 }], [style], undefined, ["Fighting Initiate"]).count, 0, "the style held fills it");
+};
+
+// Prodigy: a skill, a tool and a language of the player's choice, and
+// expertise in a skill they are proficient in, each landing on the sheet.
+P["feat.prodigy.picks"] = async () => {
+  const { authoredFeatDesc } = await import("../src/lib/srd/feat-effects.ts");
+  const { featGrantSpec, applyFeatGrants } = await import("../src/lib/srd/feat-grants.ts");
+  const desc = authoredFeatDesc("Prodigy");
+  const spec = featGrantSpec(desc);
+  assert.deepEqual([spec.skills, spec.tools, spec.languages, spec.expertise], [1, 1, 1, 1], "Prodigy's picks as read from its text");
+  const proficiencies = { saves: ["str", "con"], skills: ["athletics"], expertise: [], languages: ["Common"], tools: [], armor: [], weapons: [] };
+  const verdict = applyFeatGrants({
+    proficiencies,
+    feats: [{ name: "Prodigy", desc }],
+    choices: { prodigy: { skills: ["stealth"], tools: ["thieves' tools"], languages: ["Elvish"], expertise: ["athletics"] } },
+    strict: true,
+  });
+  assert.deepEqual(verdict.problems, []);
+  assert.ok(verdict.proficiencies.skills.includes("stealth"), "the skill");
+  assert.ok(verdict.proficiencies.tools.includes("thieves' tools"), "the tool");
+  assert.ok(verdict.proficiencies.languages.includes("Elvish"), "the language");
+  assert.ok(verdict.proficiencies.expertise.includes("athletics"), "the expertise");
+  const unpicked = applyFeatGrants({ proficiencies, feats: [{ name: "Prodigy", desc }], choices: {}, strict: true });
+  assert.ok(unpicked.problems.length > 0, "Prodigy taken with nothing picked was accepted");
 };
 
 const d20s = (swing) => swing.toHit?.breakdown?.terms?.[0]?.dice?.length ?? 0;
@@ -261,5 +447,13 @@ const WBF_PROBES = [
   "feat.mounted-combatant.advantage", "feat.mounted-combatant.redirect", "feat.eldritch-adept.replace",
 ];
 assert.deepEqual(WBF_PROBES.filter((id) => !P[id]), [], "probes the wbf modules no longer write");
+
+// The species feats whose effects ride the fight's doors, written out for
+// the same reason: feat.flames-of-phlegethos.reroll, feat.flames-of-phlegethos.wreathe,
+// feat.flames-of-phlegethos.burn, feat.orcish-fury.die, feat.orcish-fury.rest,
+// feat.orcish-fury.strike, feat.bountiful-luck.reroll, feat.bountiful-luck.lucky.
+const { speciesProbes, SPECIES_PROBES } = await import("./lib/sweep-clauses-feats-species.mjs");
+speciesProbes(rig, P);
+assert.deepEqual(SPECIES_PROBES.filter((id) => !P[id]), [], "probes the species module no longer writes");
 
 await runOrSurvey("scripts/test-enforce-sweep-clauses-feats.mjs", P);

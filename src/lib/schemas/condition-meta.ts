@@ -32,6 +32,8 @@ const conditionInstanceSchema = z.object({
     // started (src/lib/dm/turn-end.ts).
     untilTurnEndOf: z.string().trim().min(1).max(80).optional(),
     turnBegun: z.boolean().optional(),
+    // Whose turn counts a sourceless count down in a fight (condition-logic.ts).
+    countsOn: z.string().trim().min(1).max(80).optional(),
     // Flesh to Stone's count of saves (src/lib/dm/spell-turn-end.ts).
     tally: z.object({ passed: z.number().int().min(0).max(3), failed: z.number().int().min(0).max(3) }).optional(),
     saveEnds: z
@@ -98,11 +100,17 @@ const conditionInstanceSchema = z.object({
     turnEndBeyondFeet: z.number().int().min(5).max(600).optional(),
     // Lasts while this barbarian rages (Call the Hunt): src/lib/dm/rage-bound.ts.
     whileRagingOf: z.string().trim().min(1).max(80).optional(),
+    // The location a ward was set at (src/lib/dm/genre-gh-wards.ts).
+    place: z.string().trim().min(1).max(120).optional(),
     // A knocked-out creature's 1d4 hours to coming to (foe-carry-logic.ts).
     wakeAfterHours: z.number().int().min(1).max(4).optional(),
     // The clock instant (in-world minutes) a commanding charm's running hour
     // began at (Command Undead's hourly save, src/lib/dm/ar-ws-command-hours.ts).
     hourFrom: z.number().int().min(0).optional(),
+    // Mummy rot: when the curse took hold, and the maximum it has eaten
+    // (src/lib/dm/mummy-rot-logic.ts).
+    rotFrom: z.number().int().min(0).optional(),
+    rotDrain: z.number().int().min(0).max(5000).optional(),
     // The temporary hit points the effect granted, gone when it ends.
     tempHp: z.number().int().min(1).max(500).optional(),
     // A once-a-turn rider spent: the turn it went in (encounters.ts turnKey),

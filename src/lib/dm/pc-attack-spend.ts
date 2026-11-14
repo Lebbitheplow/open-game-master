@@ -5,6 +5,8 @@
 // the attack's profile and options are known. The budget is a copy; nothing
 // is stored until pc-attack.ts stores it.
 
+import { weaponNamed } from "@/lib/srd/weapons";
+import { reloadsFreely } from "@/lib/srd/genre-b-steampunk-moves";
 import { markAttackedWith } from "@/lib/dm/mt-srd-ranger";
 import { MELEE_ATTACKED, SECOND_BONUS_ATTACK } from "@/lib/dm/feature-bonus-attacks";
 import { holdsFeat } from "@/lib/srd/feat-effects";
@@ -16,6 +18,7 @@ import { OPEN_HAND_NOT_FLURRY } from "@/lib/dm/attack-choice-rules";
 import { flurryStrikeRefusal, holdsRow, sunBoltStrike, swingMarks } from "@/lib/dm/mt-mr-turn";
 import { loadingProblem, withLoadingFired } from "@/lib/dm/attack-rules";
 import { withClawsExtra } from "@/lib/dm/authored-attacks";
+import { autoLoaderSwing } from "@/lib/srd/genre-b-steampunk-attacks";
 import type { PcAttackArgs } from "@/lib/dm/pc-attack";
 import {
   ATTACKED,
@@ -26,6 +29,7 @@ import {
 } from "@/lib/dm/pc-attack-options";
 import type { BuiltAttack } from "@/lib/dm/pc-attack-profile";
 import { hunterMultiattack } from "@/lib/dm/srd-attacks";
+import { broadsideAttack, holdsBroadside } from "@/lib/dm/genre-gb-broadside";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { toolError, type ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
@@ -78,8 +82,11 @@ export function spendAttackEconomy(input: {
   let flurryStrike = false;
   // Whirlwind Attack and Volley: the whole action, one attack a creature
   // (src/lib/dm/srd-attacks.ts).
+  // A Sky Corsair's Broadside rides the same `volley` (genre-gb-broadside.ts).
   const multiattack =
-    args.whirlwind || args.volley
+    args.volley && holdsBroadside(sheet)
+      ? broadsideAttack({ sheet, budget, profile, weaponAttack, atRange, enemyId })
+      : args.whirlwind || args.volley
       ? hunterMultiattack({
           sheet,
           kind: args.whirlwind ? "whirlwind" : "volley",
@@ -98,7 +105,8 @@ export function spendAttackEconomy(input: {
     const usesAttackAction =
       !grantedBonusAction && !input.grantedWholeAction && !bonusSwing && !args.offHand && !options.bonusAttack && !options.hordeBreaker && kind !== "spell" && !multiattack;
     if (usesAttackAction) {
-      const loading = loadingProblem({ who: sheet.name, profile, budget, feats: sheet.feats, campaignId: sheet.campaignId });
+      // Powder Discipline: a firearm reloads without costing the attack (genre-b-steampunk-moves.ts).
+      const loading = reloadsFreely(sheet, weaponNamed(profile.base ?? "")) ? null : loadingProblem({ who: sheet.name, profile, budget, feats: sheet.feats, campaignId: sheet.campaignId });
       // A new action (Action Surge, Haste) reloads; only a swing that would
       // ride the action already fired from is refused.
       if (loading && attacksLeft(budget) > 0 && budget.attacksMade > 0) {
@@ -140,7 +148,9 @@ export function spendAttackEconomy(input: {
         : kind === "spell"
           ? // The cast guard charges the casting time in pc-attack.ts.
             { ok: true as const, budget }
-          : spendAttack(budget, sheet.name, { unarmed: profile.weapon === "Unarmed strike" || sunBoltStrike(sheet, profile.weapon), flurry: args.flurryStrike === true });
+          : // The Auto-Loader Harness's extra firearm attack rides this spend
+            // (src/lib/srd/genre-b-steampunk-attacks.ts).
+            autoLoaderSwing(sheet, profile, budget, (open) => spendAttack(open, sheet.name, { unarmed: profile.weapon === "Unarmed strike" || sunBoltStrike(sheet, profile.weapon), flurry: args.flurryStrike === true }));
     if (!spend.ok) {
       return { refused: usesAttackAction ? withSurgeOpen(toolError(spend), sheet, budget) : toolError(spend) };
     }
@@ -177,7 +187,9 @@ export function spendAttackEconomy(input: {
     }
     // A melee weapon attack this turn opens Pistol and Blade's shot
     // (src/lib/dm/feature-bonus-attacks.ts).
-    if (weaponAttack && !profile.ranged && holdsPistolAndBlade(sheet) && !budget.oncePerTurn.includes(MELEE_ATTACKED)) {
+    // Melee is where the attack is made from: a dagger thrown at range is a
+    // ranged attack, whatever its kind.
+    if (weaponAttack && !atRange && holdsPistolAndBlade(sheet) && !budget.oncePerTurn.includes(MELEE_ATTACKED)) {
       budget = { ...budget, oncePerTurn: [...budget.oncePerTurn, MELEE_ATTACKED] };
     }
     // Who was attacked this turn, for Horde Breaker's second target (kept
@@ -191,7 +203,7 @@ export function spendAttackEconomy(input: {
     // Mobile and Skirmisher: the creature attacked in melee makes no
     // opportunity attack against them this turn (opportunity.ts).
     // Fancy Footwork is the same rule for a Swashbuckler (mt-mr-turn.ts).
-    if (!profile.ranged && (evadesOpportunityAttacksAfterMelee(sheet) || holdsRow(sheet, "rogue::Fancy Footwork")) && !budget.oncePerTurn.includes(`${MOBILE_ATTACKED}${enemyId}`)) {
+    if (!atRange && (evadesOpportunityAttacksAfterMelee(sheet) || holdsRow(sheet, "rogue::Fancy Footwork")) && !budget.oncePerTurn.includes(`${MOBILE_ATTACKED}${enemyId}`)) {
       budget = { ...budget, oncePerTurn: [...budget.oncePerTurn, `${MOBILE_ATTACKED}${enemyId}`] };
     }
     if (usesAttackAction) {

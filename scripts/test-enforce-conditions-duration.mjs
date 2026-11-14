@@ -266,12 +266,18 @@ await test("a failed save keeps the condition and the save comes round again", a
 
 await test("a condition with rounds and a save ends on whichever comes first", async () => {
   kit.reset(hero.id);
+  // Set with no source, its rounds are counted on the turn it was set on.
+  const setOn = kit.pointer().id;
   await set({ condition: "restrained", rounds: 2, saveAbility: "str", saveDc: 30 });
   world.dice(1);
   nextRound();
   assert.deepEqual(held(), ["restrained"]);
   world.dice(1);
   nextRound();
+  // That turn begins once the enemies the round's end walked past have gone.
+  for (let turn = 0; turn < 8 && kit.pointer().id !== setOn; turn += 1) {
+    assert.equal(kit.skipTurn(), true);
+  }
   world.clearDice();
   assert.deepEqual(held(), []);
 });
@@ -284,6 +290,8 @@ await test("an enemy's timed condition and its save run on the same clock", asyn
   kit.reset(hero.id);
   kit.reset(ally.id);
   kit.resetEnemy(goblin.id);
+  // Set with no source, its round is counted on the turn it was set on.
+  const setOn = kit.pointer().id;
   const timed = await enemySet(goblin.id, { condition: "Blinded", rounds: 1 });
   assert.equal(timed.ok, true, timed.error);
   const saved = await enemySet(goblin.id, { condition: "Restrained", saveAbility: "str", saveDc: 30 });
@@ -295,6 +303,9 @@ await test("an enemy's timed condition and its save run on the same clock", asyn
   world.diceLog();
   world.dice(19);
   nextRound();
+  for (let turn = 0; turn < 8 && kit.pointer().id !== setOn; turn += 1) {
+    assert.equal(kit.skipTurn(), true);
+  }
   world.clearDice();
   assert.deepEqual(kit.rolled(), ["d20:19"]);
   assert.equal(kit.enemy(goblin.id).conditions.includes("blinded"), false);

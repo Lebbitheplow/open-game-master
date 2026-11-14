@@ -9,6 +9,7 @@
 // and plain-node tests import it with no Next or database context.
 import type { WorldPack } from "@/lib/worlds/types";
 import { textKey } from "@/lib/language/text-logic";
+import { srdRaceId } from "@/lib/srd/race-id";
 
 export type IdReskin = { id: string; name: string; blurb: string };
 
@@ -17,16 +18,28 @@ export type IdReskin = { id: string; name: string; blurb: string };
 // builder keys "show the canonical name too" off.
 export type Reskinned<T> = T & { packName?: string; packBlurb?: string };
 
+// How a pack's id is matched to an option's. A pack names races by the
+// bundled snake_case ids (hill_dwarf, variant_human), while with the content
+// pack installed the creator offers its rows under kebab-case slugs
+// (hill-dwarf), so a race is matched on its one spelling (srdRaceId). Matched
+// on the raw id, six of Saltmarch's twelve peoples kept their canonical
+// names and dropped out of the world's recommended group. Classes and
+// backgrounds use one spelling everywhere.
+function reskinKey(kind: IdReskinKind | undefined, id: string): string {
+  return kind === "races" ? srdRaceId(id) : id;
+}
+
 export function applyIdReskins<T extends { id: string; name: string }>(
   options: T[],
   reskins: IdReskin[],
+  kind?: IdReskinKind,
 ): Array<Reskinned<T>> {
   if (!reskins.length) {
     return options;
   }
-  const byId = new Map(reskins.map((entry) => [entry.id, entry]));
+  const byId = new Map(reskins.map((entry) => [reskinKey(kind, entry.id), entry]));
   return options.map((option) => {
-    const reskin = byId.get(option.id);
+    const reskin = byId.get(reskinKey(kind, option.id));
     if (!reskin) {
       return option;
     }
@@ -78,7 +91,23 @@ export function displayName(
   }
   const wanted = textKey(canonical);
   const match = pack[kind].find((entry) => textKey(entry.from) === wanted);
-  return match ? match.name : canonical;
+  if (match) {
+    return match.name;
+  }
+  // The class tables list one feature at each step of its growth: "Bardic
+  // Inspiration (d6)", "Channel Divinity (1/rest)", "Channel Divinity: Turn
+  // Undead". A pack renames the feature, so each step wears the new name
+  // with its die or count kept; matched on the exact name only, every one of
+  // them showed the canonical name.
+  const split = /^(.*?)(\s*\(.*\)|:\s.*)$/.exec(canonical);
+  if (split) {
+    const base = textKey(split[1]);
+    const stem = pack[kind].find((entry) => textKey(entry.from) === base);
+    if (stem) {
+      return `${stem.name}${split[2]}`;
+    }
+  }
+  return canonical;
 }
 
 export type IdReskinKind = "races" | "classes" | "backgrounds";
@@ -90,7 +119,8 @@ export function packRecommends(
   kind: IdReskinKind,
   id: string,
 ): boolean {
-  return Boolean(pack?.[kind].some((entry) => entry.id === id));
+  const wanted = reskinKey(kind, id);
+  return Boolean(pack?.[kind].some((entry) => reskinKey(kind, entry.id) === wanted));
 }
 
 // The ids a pack recommends, in the pack's own order. These are raw pack

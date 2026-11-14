@@ -63,7 +63,7 @@ const patch = (body, user = who.player) => {
 
 // The hopes for the story are the player's to change any time, like the
 // backstory (scripts/test-story-hopes.mjs).
-const COSMETIC = ["portrait", "notes", "backstory", "hopes"];
+const COSMETIC = ["portrait", "notes", "backstory", "hopes", "persona"];
 
 // A value the schema accepts for each field, so the refusal is the route's
 // and not the parser's.
@@ -88,6 +88,7 @@ const SAMPLE = {
   subclass: "Champion",
   levelUpClass: "fighter",
   levelUpSkill: "athletics",
+  levelUpTools: ["lute"],
   levelUpSpells: ["Shield"],
   levelUpForget: "Shield",
   levelUpChanges: [{ from: "Storm Aura (Desert)", to: "Storm Aura (Sea)" }],

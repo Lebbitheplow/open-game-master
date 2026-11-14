@@ -19,7 +19,7 @@ import { closeTables, FIGHTER, table } from "./lib/enforce-spell-kit.mjs";
 const { test, finish } = suite("test-enforce-effect-refresh");
 const { listEffects } = await import("../src/lib/db/active-effects.ts");
 const { patchEnemyHp } = await import("../src/lib/db/encounters.ts");
-const { tickEncounterConditions } = await import("../src/lib/dm/condition-tick.ts");
+const { startTurnConditions } = await import("../src/lib/dm/condition-tick.ts");
 const { getDatabase } = await import("../src/lib/db/core.ts");
 
 const VITALITY = (value, more = {}) => ({ name: "Vitality", modifiers: [{ field: "maxHp", mode: "add", value }], duration: "minutes", remaining: 10, visible: true, ...more });
@@ -120,7 +120,7 @@ await test("refreshing one of two maximum-HP effects leaves the other's share wh
 });
 
 await test("an enemy's refresh, strengthening, weakening, expiry and lifting move its hit points the same way", async () => {
-  const { world, enemies: [dummy] } = await table([FIGHTER]);
+  const { world, sheets: [hero], enemies: [dummy] } = await table([FIGHTER]);
   const enemy = () => hp(world.enemies().find((entry) => entry.id === dummy.id));
   const on = async (value, more) => {
     const out = await world.invoke("set_effect", { enemyId: dummy.id, ...VITALITY(value, more) });
@@ -139,7 +139,8 @@ await test("an enemy's refresh, strengthening, weakening, expiry and lifting mov
   patchEnemyHp(dummy.id, 104, "alive");
   await on(10, { duration: "rounds", remaining: 1 });
   assert.deepEqual(enemy(), [100, 100]);
-  tickEncounterConditions(world.campaign(), { ...world.encounter(), round: 2 });
+  // Set on the hero's turn, its round is counted as that turn comes again.
+  startTurnConditions(world.campaign(), world.encounter(), [hero.id]);
   assert.equal(effectsOn(world, "enemy", dummy.id).length, 0);
   assert.deepEqual(enemy(), [90, 90]);
   await on(10);
@@ -150,7 +151,7 @@ await test("an enemy's refresh, strengthening, weakening, expiry and lifting mov
 });
 
 await test("an enemy's maximum moved by an effect reaches the table's tracker", async () => {
-  const { world, enemies: [dummy] } = await table([FIGHTER]);
+  const { world, sheets: [hero], enemies: [dummy] } = await table([FIGHTER]);
   let since = lastSeq(world);
   assert.equal((await world.invoke("set_effect", { enemyId: dummy.id, ...VITALITY(10) })).ok, true);
   assert.ok(eventsSince(world, "encounter_updated", since) >= 1, "set");

@@ -26,6 +26,7 @@ const { createSheetSchema } = await import("../src/lib/schemas/sheet.ts");
 const { createSheet, listSheets } = await import("../src/lib/db/sheets.ts");
 const { createCharacter, listCharactersForUser } = await import("../src/lib/db/characters.ts");
 const { PREGENS, pregenById, pregenSummaries } = await import("../src/lib/starter/pregens.ts");
+const { findBackground, findClass, findRace } = await import("../src/lib/srd/index.ts");
 const { STARTER_ONE_SHOT, createStarterCampaign } = await import("../src/lib/starter/one-shot.ts");
 const { CALENDAR_PRESETS, MINUTES_PER_DAY, breakDown, dayPart, defaultClock, describeInstant, toInstant } = await import("../src/lib/dm/calendar.ts");
 
@@ -148,6 +149,33 @@ test("every ready-made hero passes the table's admission door at level 1 and arr
   const sera = listSheets(table.id).find((sheet) => sheet.name === "Sera");
   assert.equal(sera.spellcasting?.cantrips.length, 3);
   assert.ok(sera.spellcasting?.prepared.includes("Cure Wounds"));
+});
+
+// A ready-made hero is a finished level 1 character: the class's skill
+// picks on top of the background's (a skill both give is picked again from
+// the class's list, as the builder asks), and the languages the race and the
+// background let a player choose. Brakk had the outlander's two skills and
+// no barbarian ones, and all four spoke only Common.
+test("every ready-made hero makes every choice its level 1 owes: class skills beside the background's, and its languages", () => {
+  const table = createStarterCampaign(host.id, { solo: false });
+  for (const pregen of PREGENS) {
+    const player = createUser(`owing-${pregen.id}`, "x");
+    const admitted = admitSheet({ door: "table", level: 1, sheet: createSheetSchema.parse(pregen.sheet), userId: player.id, campaign: table });
+    assert.ok(admitted.ok, pregen.id);
+    const sheet = admitted.sheet;
+    const klass = findClass(sheet.class);
+    const background = findBackground(sheet.background);
+    const race = findRace(sheet.race);
+    const fromBackground = new Set(background.skills);
+    const classPicks = sheet.proficiencies.skills.filter((skill) => !fromBackground.has(skill) && klass.skillChoices.from.includes(skill));
+    assert.ok(
+      classPicks.length >= klass.skillChoices.count,
+      `${sheet.name} has ${classPicks.length} of the ${klass.skillChoices.count} ${klass.name} skills beside the ${background.name}'s (${sheet.proficiencies.skills.join(", ")})`,
+    );
+    const owedLanguages = race.languages.length + (race.bonusLanguages ?? 0) + (background.languages ?? 0);
+    const spoken = sheet.proficiencies.languages.filter((language) => !/thieves/i.test(language));
+    assert.ok(spoken.length >= owedLanguages, `${sheet.name} speaks ${spoken.join(", ")}; the race and background give ${owedLanguages}`);
+  }
 });
 
 test("the picker's summaries carry no sheet, and ids resolve", () => {

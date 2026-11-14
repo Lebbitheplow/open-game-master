@@ -104,4 +104,18 @@ test("the cap is enforced on placement and says so", () => {
   assert.ok(outcome.error.includes(String(LIGHT_LIMITS.max)));
 });
 
+// SRD 5.1, Adventuring Gear: a hooded lantern "casts bright light in a
+// 30-foot radius and dim light for an additional 30 feet", a bullseye
+// lantern bright light in a 60-foot cone and dim light for an additional 60
+// feet; Daylight's sphere is 60 feet with dim light 60 feet past it. Placed
+// lights were held to 40 feet, so the Lantern preset dimmed at 40 feet.
+test("a placed light reaches as far as the largest SRD source, and the lantern preset dims at 60 feet", () => {
+  const lantern = LIGHT_PRESETS.find((preset) => preset.id === "lantern");
+  assert.deepEqual([lantern.brightRadius, lantern.dimRadius], [6, 12], "the lantern preset is not a hooded lantern's 30 and 30 more");
+  const [bullseye] = normalizeLights([{ x: 2, y: 2, brightRadius: 12, dimRadius: 24 }], WIDTH, HEIGHT);
+  assert.deepEqual([bullseye.brightRadius, bullseye.dimRadius], [12, 24], "a 60-foot light with 60 more of dim was cut down");
+  assert.equal(LIGHT_LIMITS.maxRadius, 24, "the cap is not the largest SRD source");
+  assert.equal(normalizeLights([{ x: 2, y: 2, brightRadius: 12 }], WIDTH, HEIGHT)[0].dimRadius, 24, "an unsaid dim radius is not twice the bright");
+});
+
 console.log(`test-map-lights: ${passed} passed`);

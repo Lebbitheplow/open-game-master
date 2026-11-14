@@ -87,6 +87,34 @@ const FX_ABILITIES = /(STR|DEX|CON|INT|WIS|CHA)/;
 const FX_CONDITIONS =
   /(blinded|charmed|deafened|frightened|grappled|incapacitated|paralyzed|petrified|poisoned|restrained|stunned|prone)/i;
 
+const DAMAGE_TYPES =
+  /\d+d\d+\s+(acid|bludgeoning|cold|fire|force|lightning|necrotic|piercing|poison|psychic|radiant|slashing|thunder)\b/i;
+
+// A save effect's reach, length and damage type, as the text words them.
+// Rounds: a minute is 10, ten minutes 100, an hour 600, "until (your|their|
+// its) next turn" 1. Reach: "within N ft", an area "N-ft radius/cube/cone/
+// flare/line/burst" measured from the holder, "adjacent" 5.
+function saveTermsFromText(text) {
+  const out = {};
+  const minutes = /\bfor (\d+|a|one) minutes?\b/i.exec(text);
+  const hour = /\bfor (?:1|an|one) hour\b/i.test(text);
+  if (/\buntil (?:the end of )?(?:your|their|its) next turn\b/i.test(text)) out.rounds = 1;
+  else if (minutes) out.rounds = 10 * (/^\d+$/.test(minutes[1]) ? Number(minutes[1]) : 1);
+  else if (hour) out.rounds = 600;
+  const within = /\bwithin (\d+)\s*(?:ft|feet)\b/i.exec(text);
+  const area = /\b(\d+)-(?:ft|foot)\s+(?:radius|cube|cone|flare|line|burst|sphere)\b/i.exec(text);
+  if (within) out.rangeFt = Number(within[1]);
+  else if (area) out.rangeFt = Number(area[1]);
+  else if (/\badjacent\b/i.test(text)) out.rangeFt = 5;
+  const type = DAMAGE_TYPES.exec(text);
+  if (type) out.type = type[1].toLowerCase();
+  // "are pushed 10 ft": a creature that fails is moved straight away from the
+  // holder (src/lib/dm/counter-saves.ts).
+  const pushed = /\bpushed (\d+)\s*(?:ft|feet)\b/i.exec(text);
+  if (pushed) out.pushFeet = Number(pushed[1]);
+  return out;
+}
+
 function parseFx(desc) {
   const text = desc;
   // Healing: "an ally regains 3d6 + WIS HP", "regain 10 + level HP".
@@ -119,8 +147,16 @@ function parseFx(desc) {
     const dice = /(\d+d\d+)/.exec(text)?.[1];
     const condition = FX_CONDITIONS.exec(text)?.[1]?.toLowerCase();
     const area = /each creature|cone|line\b|radius|burst/i.test(text);
+    // The reach, the length and the damage type the text states ("within 30
+    // ft", "a 15-ft cube", "adjacent creatures"; "for 1 minute", "until
+    // their next turn"; "4d6 bludgeoning"): the spend refuses a creature
+    // beyond the reach, lays the condition for that many rounds and deals
+    // that type (src/lib/dm/counter-saves.ts reads all three). Before this a
+    // generated save reached any creature on the board, laid its condition
+    // with no end and dealt untyped damage.
+    const terms = saveTermsFromText(text);
     if (area && dice) {
-      return { kind: "aoe", dice, save: ability };
+      return { kind: "aoe", dice, save: ability, ...terms };
     }
     if (dice || condition) {
       // "(CON save halves)": the spend rolls the save itself
@@ -134,6 +170,7 @@ function parseFx(desc) {
         ...(condition ? { condition } : {}),
         ...(dice ? { dice } : {}),
         ...(half ? { half: true } : {}),
+        ...terms,
       };
     }
   }
@@ -222,6 +259,20 @@ function collect() {
               const rows = upgradesFor.get(id) ?? [];
               rows.push({ match: feat.n.trim().toLowerCase(), uses: namedUses(feat.n) });
               upgradesFor.set(id, rows);
+            }
+            // A later feature of another name that grows a counter: "Improved
+            // Catalyst: Catalyst Stone adds +1d8 and has 3 uses per rest",
+            // "Second Adaptation: Rapid Adaptation has 2 uses", "Fourth Gadget:
+            // ...; Overclock has 2 uses per rest". The holder of the later
+            // feature has that many (both genre packages' catalogs say so).
+            for (const grown of feat.d.matchAll(/(?:^|; )([A-Z][A-Za-z'-]*(?: [A-Z][A-Za-z'-]*)*) (?:[^;.]*? and )?has (\d+|two|three|four) uses\b/g)) {
+              const target = `${slugify(genre)}_${slugify(baseName(grown[1]))}`;
+              const count = /^\d+$/.test(grown[2]) ? Number(grown[2]) : { two: 2, three: 3, four: 4 }[grown[2]];
+              if (target !== id && count) {
+                const rows = upgradesFor.get(target) ?? [];
+                rows.push({ match: feat.n.trim().toLowerCase(), uses: count });
+                upgradesFor.set(target, rows);
+              }
             }
             if (!parsedUses) {
               continue;

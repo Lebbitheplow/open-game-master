@@ -34,9 +34,15 @@ import { openStoneChange } from "@/lib/dm/ar-ws-stone";
 import { holdsCantripAttack } from "@/lib/dm/ar-ws-cantrip-attack";
 import { deflectionCastProblem } from "@/lib/dm/ar-ws-deflection-mark";
 import { eruptOnCast } from "@/lib/dm/ar-ws-heart-storm";
+import { genreFreeCast as genreBFreeCast } from "@/lib/dm/genre-b-free-cast";
+import { capstoneMarks } from "@/lib/dm/genre-gb-alchemy";
+import { removeConditions, incapacitatedBy, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { subclassExtrasForTable } from "@/lib/db/subclass-extras";
 import { enemyCounterspell } from "@/lib/dm/enemy-reactions";
 import { endInvisibilityOnCast } from "@/lib/dm/attack-marks";
+import { droneFocusProblem } from "@/lib/dm/genre-a-cyberpunk-drones";
+import { marginaliaProblem } from "@/lib/srd/genre-gh-horror-spells";
+import { riteCompleted } from "@/lib/dm/genre-gh-proof";
 import { endSanctuaryOnHarm } from "@/lib/dm/spell-defenses";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, type Encounter } from "@/lib/db/encounters";
@@ -48,6 +54,9 @@ import { advanceClock } from "@/lib/db/clock";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { materialPatch } from "@/lib/dm/cast-material";
 import { freeCastCounter, signatureCounter, spendSignature } from "@/lib/dm/caster-features";
+import { freeCastRestOf } from "@/lib/srd/feat-spells";
+import { debtComesDue } from "@/lib/dm/genre-a-slots";
+import { genreFreeCast, genreFreeCastPatch } from "@/lib/dm/genre-a-casts";
 import { arcanumCounter } from "@/lib/dm/counter-cast-arcanum";
 import { bareFacts, pointsOfferFor, pointsPayFirst, pointsPlan, pointsSpent, pointsWhenNoSlot } from "@/lib/dm/ar-ws-points-cast";
 import { spendGrantUse } from "@/lib/srd/granted-casts";
@@ -57,7 +66,6 @@ import { describeCastingTime, type SpellFacts } from "@/lib/srd/spell-facts";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
-import { incapacitatedBy, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { attacksAllowedFor, budgetFor, markReactionUsed, storeBudget } from "@/lib/dm/turn-budget";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { droppedLine, setConcentration } from "@/lib/dm/concentration";
@@ -110,9 +118,8 @@ import { wardOnCast } from "@/lib/dm/arcane-ward";
 import { casterCost } from "@/lib/dm/spell-self";
 import { toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
-import { holdsFeature } from "@/lib/srd/feature-names";
+import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { revisedOnlySpell, revisedOnlySpellProblem } from "@/lib/content/edition";
-import { isConditionNamed } from "@/lib/srd/feature-names";
 
 // Which tool the cast came through. It decides two things only: whether a
 // casting whose shares are resolved one call at a time (Eldritch Blast's
@@ -250,11 +257,16 @@ function namelessSlot(
   if (input.dryRun || plan.kind === "none") {
     return { ok: true, dryRun: Boolean(input.dryRun) };
   }
-  const spellcasting = spellcastingAfter(sheet, plan);
-  patchSheet(sheet.id, { spellcasting });
-  hooks.record({ level: plan.level, used: plan.state.used, max: plan.state.max }, { spellcasting });
+  // A slot with no spell (Divine Smite's) is a slot expended all the same:
+  // The Debt Comes Due answers it as it answers a cast (genre-a-slots.ts).
+  const paid = spellcastingAfter(sheet, plan);
+  const debt = paid ? debtComesDue(sheet, paid, sheet.resources, { kind: plan.kind, level: plan.level }) : null;
+  const spellcasting = debt?.spellcasting ?? paid;
+  const patch: FullPatchSheetInput = { spellcasting, ...(debt ? { resources: debt.resources } : {}) };
+  patchSheet(sheet.id, patch);
+  hooks.record({ level: plan.level, used: plan.state.used, max: plan.state.max }, patch);
   hooks.publish();
-  return { ok: true, slot: slotLine(plan) };
+  return { ok: true, slot: slotLine(plan), ...(debt ? { debtComesDue: debt.line } : {}) };
 }
 
 function spellcastingAfter(sheet: CharacterSheet, plan: SlotPlan): CharacterSheet["spellcasting"] {
@@ -550,9 +562,17 @@ export function castSpell(
   if (state) {
     return state;
   }
-  const voice = components.problem ?? silenceProblem(campaign.id, sheet.id, sheet.name, castFacts) ?? antimagicProblem(campaign.id, sheet.id, sheet.name);
+  // The Rite Completed: no verbal or somatic component for the minute
+  // (genre-gh-proof.ts), so neither a silence nor bound hands stop the cast.
+  const unspoken = riteCompleted(sheet) && !castFacts?.material;
+  const voice = (unspoken ? null : components.problem) ?? droneFocusProblem(campaign.id, sheet, castFacts) ?? (unspoken ? null : silenceProblem(campaign.id, sheet.id, sheet.name, castFacts)) ?? antimagicProblem(campaign.id, sheet.id, sheet.name);
   if (voice) {
     return voice;
+  }
+  // Marginalia's spells are cast as rituals only (genre-gh-horror-spells.ts).
+  const marginalia = marginaliaProblem(sheet, facts, Boolean(input.ritual || completing?.ritual));
+  if (marginalia) {
+    return { error: marginalia, refused: "rules" };
   }
   if (input.ritual && !completing) {
     const ritual = ritualProblem(sheet, spell, facts);
@@ -609,6 +629,12 @@ export function castSpell(
   const freeCast = input.ritual || signature || byPoints ? null : freeCastCounter(sheet, spell, facts, input.level);
   // A warlock's Mystic Arcanum pays for its own spell (counter-cast-arcanum.ts).
   const arcanum = input.ritual || signature || freeCast || slowHeld || byPoints ? null : arcanumCounter(sheet, facts, input.level);
+  // A genre capstone's slotless cast (genre-a-casts.ts): Singularity's mark,
+  // Apocrypha's 6th level spell.
+  const genreCast = input.ritual || signature || freeCast || arcanum || slowHeld || byPoints ? null : genreFreeCast(sheet, facts, input.level);
+  // A genre feature's slotless cast (Overpressure Valve, Sublimation, Reactor
+  // Heart...): its mark on the caster pays (src/lib/dm/genre-b-free-cast.ts).
+  const genreFree = input.ritual || signature || freeCast || arcanum || slowHeld || byPoints || genreCast ? null : genreBFreeCast(sheet, facts?.level, input.level);
   // Mantle of Majesty's Command costs no slot while the mantle holds.
   const mantled =
     !input.ritual && !signature && !freeCast && !byPoints && /^command$/i.test(engine.trim()) &&
@@ -619,7 +645,7 @@ export function castSpell(
   // The race's grant pays only when nothing before it in the plan below
   // did: a Topaz fighter with Fey Touched casting misty step spends the
   // feat's free cast or the ancestry's use, never both (issue #833).
-  const grantPaid = Boolean(grant) && grantNoSlot && !input.ritual && !slowHeld && !signature && !freeCast && !byPoints;
+  const grantPaid = Boolean(grant) && grantNoSlot && !input.ritual && !slowHeld && !signature && !freeCast && !byPoints && !genreCast && !genreFree;
   // A reaction spell cast into a ring answers no trigger: it takes the action.
   const turnFacts = input.storing && facts?.castingTime === "reaction" ? { ...facts, castingTime: "action" as const } : facts;
   const planned: SlotPlan | ToolError = input.ritual
@@ -631,9 +657,13 @@ export function castSpell(
     : signature
       ? { kind: "none", note: `${name} is a Signature Spell: cast at 3rd level with no slot, once until a short rest.` }
       : freeCast
-        ? { kind: "none", note: `${name} is cast without a slot (a feat's free cast): once until a long rest.` }
+        ? { kind: "none", note: freeCastRestOf(freeCast) === "at will" ? `${name} is cast without a slot (a feat's spell at will).` : `${name} is cast without a slot (a feat's free cast): once until a ${freeCastRestOf(freeCast)} rest.` }
         : arcanum
           ? { kind: "none", note: `${name} is cast as a Mystic Arcanum, with no spell slot: once until a long rest.` }
+        : genreCast
+          ? { kind: "none", note: genreCast.note }
+        : genreFree
+          ? { kind: "none", note: `${name} is cast with no spell slot (${genreFree.condition}${genreFree.spent ? ", now spent" : ", for the minute"}).` }
         : grant && grantPaid
           ? { kind: "none", note: `${name} is cast through ${grant.source} with no spell slot${grant.counter ? `: ${(grant.uses ?? 1) === 1 ? "once" : `${grant.uses} times`}, and again after a ${grant.rest ?? "long"} rest` : ", at will"}${grant.castAt ? `, as a level ${grant.castAt} spell` : ""}.` }
         : mantled
@@ -655,7 +685,7 @@ export function castSpell(
     return barred && "error" in barred ? barred : slot;
   }
   // Infernal Legacy's hellish rebuke is cast as a 2nd-level spell, with no slot.
-  const slotLevel = slowHeld ? slowHeld.slotLevel : slot.kind === "none" ? (pointsPaid ? pointsPaid.level : grantPaid ? grant?.castAt ?? null : null) : slot.level;
+  const slotLevel = slowHeld ? slowHeld.slotLevel : slot.kind === "none" ? (pointsPaid ? pointsPaid.level : grantPaid ? grant?.castAt ?? null : genreFree ? genreFree.level : null) : slot.level;
   // A ritual out of a fight costs no turn; in one it is begun with the
   // action like any casting held across turns, and a completing casting
   // costs no action at all.
@@ -721,7 +751,8 @@ export function castSpell(
   if (signature) {
     patch.resources = spendSignature(sheet.resources, signature);
   }
-  if (freeCast) {
+  // One cast at will spends nothing.
+  if (freeCast && freeCastRestOf(freeCast) !== "at will") {
     patch.resources = spendSignature(sheet.resources, freeCast);
   }
   if (arcanum) {
@@ -729,6 +760,23 @@ export function castSpell(
   }
   if (pointsPaid) {
     patch.resources = pointsSpent(sheet, patch, pointsPaid);
+  }
+  if (genreCast) {
+    Object.assign(patch, genreFreeCastPatch(sheet, genreCast, patch.resources ?? sheet.resources));
+  }
+  // A one-cast genre mark is spent by the cast it paid for.
+  if (genreFree?.spent) {
+    const held = patch.conditions ?? sheet.conditions;
+    const left = removeConditions(held, patch.conditionMeta ?? sheet.conditionMeta, held.filter((entry) => isConditionNamed(entry, genreFree.condition)));
+    patch.conditions = left.conditions;
+    patch.conditionMeta = left.meta;
+  }
+  // The Great Work's and Magnum Opus's marks belong to the cast their slotless
+  // mark paid for: the last cast's go, this one's is laid (genre-gb-alchemy.ts).
+  const capstone = capstoneMarks(sheet, patch.conditions ?? sheet.conditions, patch.conditionMeta ?? sheet.conditionMeta, genreFree?.spent ? genreFree.condition : null);
+  if (capstone) {
+    patch.conditions = capstone.conditions;
+    patch.conditionMeta = capstone.conditionMeta;
   }
   // The grant's use (Thief of Five Fates' with its slot, Infernal Legacy's
   // without one). A cast a slot paid for, its free uses spent, spends none.
@@ -768,6 +816,14 @@ export function castSpell(
     if (boon.note) {
       result.lunarBoons = boon.note;
     }
+  }
+  // The Debt Comes Due: the last slot, paid, comes straight back
+  // (src/lib/dm/genre-a-slots.ts).
+  const debt = slot.kind !== "none" && patch.spellcasting ? debtComesDue(sheet, patch.spellcasting, patch.resources ?? sheet.resources, { kind: slot.kind, level: slot.level }) : null;
+  if (debt) {
+    patch.spellcasting = debt.spellcasting;
+    patch.resources = debt.resources;
+    result.debtComesDue = debt.line;
   }
   // Wild Magic Surge: after a sorcerer spell of 1st level or higher the GM may
   // have the sorcerer roll on the surge table, and a spent Tides of Chaos then

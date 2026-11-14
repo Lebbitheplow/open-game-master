@@ -31,10 +31,10 @@ and a million gold.
 | `src/lib/srd/skills.json`, `spell-slots.json`, `class-features.json` | SRD 5.1 data (CC-BY-4.0) | 2014 |
 | `src/lib/srd/classes.json` | The SRD twelve, all correct against the SRD table, PLUS `artificer`, which is not in SRD 5.1 (its `_license` line still says "derived from the SRD 5.1") | 2014 + ODM |
 | `src/lib/srd/races.json` | 31 rows. 9 are SRD 5.1. 7 are 2014 Player's Handbook subraces not in the SRD (mountain dwarf, wood elf, drow, stout halfling, forest gnome, deep gnome, variant human). 15 are lineages from later books restated by ODM (aasimar, goliath, firbolg, tabaxi, kenku, tortle, four genasi, changeling, warforged, goblin, bugbear, lizardfolk). The file's `_license` claims SRD 5.1 for all; `_license_authored` says "below the SRD nine are original content" | 2014 |
-| `src/lib/srd/backgrounds.json` | Acolyte is SRD 5.1. The other 12 are the 2014 PHB backgrounds (the file calls them "generic skill pairings") | 2014 |
+| `src/lib/srd/backgrounds.json` | Acolyte is SRD 5.1. The other 12 are the 2014 PHB backgrounds (the file calls them "generic skill pairings"), and 5 more are their 2014 variants (Knight, Pirate, Spy, Gladiator, Guild Merchant), restated in ODM's words | 2014 |
 | `src/lib/backgrounds/catalog.json` | 36 setting backgrounds written by ODM | ODM |
 | `src/lib/classes/*.json` | 36 genre classes written by ODM (6 per genre), each borrowing an SRD spell list | ODM |
-| `src/lib/srd/subclasses.json`, `authored-*.json` | 105 subclasses, spells, 52 feats written by ODM ("odm-expanded") | ODM, 2014 shape |
+| `src/lib/srd/subclasses.json`, `authored-*.json` | 106 subclasses, spells, 52 feats written by ODM ("odm-expanded") | ODM, 2014 shape |
 | Content pack v1 (`wotc-srd`, `toh`, `a5e`, `taldorei`, `o5e`, ...) | Open5e v1: SRD 5.1 plus third-party OGL/CC books | 2014 family |
 | Content pack v2 backfill (`srd-2024`, `a5e-ag`, `a5e-ddg`, `a5e-gpg`, `bfrd`, `spells-that-dont-suck`) | Added only where a NAME is new (dedupe by name, `scripts/import-open5e.mjs`) | includes 2024 |
 
@@ -282,7 +282,8 @@ species reads as the 2014 one with a note in the builder.
 - SRD class starting equipment choices (a)/(b) and rolled starting wealth by class.
 - Alignment, age, height, weight: free text or absent.
 - Small size limits on heavy weapons: `sizeForRace` is tested, its use is the combat suite's.
-- Background personality traits, ideals, bonds, flaws.
+- Background personality traits, ideals, bonds, flaws: built since (the Identity step's
+  Personality block, `src/lib/backgrounds/persona-logic.ts`, `scripts/test-character-persona.mjs`).
 
 ## Could not test, and why
 

@@ -58,6 +58,20 @@ async function brew(kind, name, data) {
 const made = await brew("class", "Spellblade", SPELLBLADE);
 const classId = made.body.entry ? workshopClassId(made.body.entry.id) : "";
 
+// A half caster borrowing the wizard's list casts as a half caster: its
+// cantrips follow its own kind of table (a half caster's has none), not the
+// wizard's three at 1st level. The builder, the save's check and the
+// level-up all read cantripCapOf.
+await test("A workshop half caster that borrows the wizard's list learns no cantrips, as a half caster's table gives none", async () => {
+  const { cantripCapOf } = await import("../src/lib/srd/spell-prep.ts");
+  const { builderCasting } = await import("../src/app/characters/builder/casting.ts");
+  for (const level of [1, 2, 5, 11, 20]) {
+    assert.equal(cantripCapOf({ classId, level }), null, `level ${level}: ${cantripCapOf({ classId, level })} cantrips`);
+  }
+  const casting = builderCasting(findClass(classId), "", 2);
+  assert.equal(casting.cantripCap, null, `the builder offers ${casting.cantripCap} cantrips`);
+});
+
 await test("A class kept in the workshop is a class to the engines at once.", () => {
   assert.equal(made.status, 201, JSON.stringify(made.body));
   const klass = findClass(classId);

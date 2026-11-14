@@ -11,6 +11,7 @@ import { cn } from "@/lib/cn";
 import { OWNS_ESCAPE } from "@/lib/owned-escape";
 import { ui } from "@/lib/ui";
 import { spellLevelOf } from "@/lib/srd/spell-lists";
+import { arcanumName } from "@/lib/srd/mystic-arcanum";
 import { customSpellsOf, spellListLabel } from "@/lib/classes/class-spell-list";
 import { bundledSpellSchool } from "@/lib/srd/spell-facts";
 import { thirdCasterSchoolProblem } from "@/lib/srd/third-caster";
@@ -76,6 +77,7 @@ export function SpellsGearStep({
         onRemove={actions.removeEquipmentItem}
         purse={purse}
         inputClass={inputClass}
+        itemLabel={(name) => displayName(pack, "items", name)}
         kit={
           <>
             {klass && derived.classKit && derived.kitChoices ? (
@@ -241,6 +243,9 @@ export function SpellsSection({
     spellWider,
     spellStyle,
     spellbookAdvice,
+    arcanumLevels,
+    chosenArcanum,
+    requiredCantrip,
   } = derived;
   // Every class holds to the 5e tables: a setting class borrows an SRD
   // class's spell list and its counts with it, the same counts the server
@@ -262,8 +267,11 @@ export function SpellsSection({
   // See SpellBook: the chosen tab is announced after mount so the travelling
   // pill never lands on server-rendered markup before hydration.
   const mounted = useSyncExternalStore(noSubscribe, () => true, () => false);
+  // A warlock's Mystic Arcanum reaches past the pact slots: one spell of
+  // each level from 6th, picked beside the spells known.
+  const reach = Math.max(maxSpellLevel, ...arcanumLevels);
   // A patron's expanded spells and a Divine Soul's cleric list join it.
-  const { pool, loading } = useWiderSpellPool(spellSearchClass, maxSpellLevel, true, spellWider);
+  const { pool, loading } = useWiderSpellPool(spellSearchClass, reach, true, spellWider);
   // A chosen spell the class list lacks (an edited sheet, a pack spell)
   // still finds its level.
   const lookups = useSpellLookups([...cantrips, ...spells]);
@@ -286,6 +294,11 @@ export function SpellsSection({
   // list is in (until then every pick would look off it).
   const onClassList = (name: string) => poolByName.has(textKey(name));
   const className = klass.name.toLowerCase();
+  const levelOfName = (name: string) => poolByName.get(textKey(name))?.level ?? spellLevelOf(name);
+  const isArcanum = (level: number | null) => level !== null && arcanumLevels.includes(level);
+  // The arcanum already chosen at a level, other than `name`.
+  const arcanumAt = (level: number, name: string) =>
+    spells.find((entry) => textKey(entry) !== textKey(name) && levelOfName(entry) === level);
   const anyBuild =
     spellGrants && !loading
       ? builderAnyListGroup({
@@ -296,6 +309,7 @@ export function SpellsSection({
           cantripCap,
           own: className,
           maxLevel: maxSpellLevel,
+          held: spellAdvice?.label,
         })
       : { group: null, chosen: [] };
   const anyGroup = anyBuild.group;
@@ -319,9 +333,9 @@ export function SpellsSection({
         name,
       ].map(schoolOf),
     });
-  // Only the starters the save takes for this class: the bundled list puts
-  // none of the artificer's suggested cantrips on its list, and a star on
-  // one led to a refusal at the save.
+  // Only the starters the save takes for this class: a star on a spell the
+  // list lacks (the artificer's, before the checklist carried its whole
+  // list) led to a refusal at the save.
   const listRule = { third: klass.casterType === "none", spellClass: spellSearchClass, spellPool: loading ? undefined : pool };
   const starterCantrips = (starters?.cantrips ?? []).filter((entry) => spellOnSavedList(entry.n, listRule));
   const starterSpells = (starters?.spells ?? []).filter((entry) => spellOnSavedList(entry.n, listRule));
@@ -405,6 +419,10 @@ export function SpellsSection({
       setCantrips((current) => current.filter((entry) => textKey(entry) !== textKey(name)));
       return;
     }
+    if (keptForNamed(name)) {
+      setLimitNote(`Your subclass's Spellcasting teaches ${requiredCantrip}: choose it as one of your cantrips, then ${name} if there is room.`);
+      return;
+    }
     if (cantripCap !== null && chosenCantrips.length >= cantripCap) {
       if (offerSwap("cantrip", name)) {
         return;
@@ -420,6 +438,16 @@ export function SpellsSection({
     if (has(spells, name)) {
       setSpells((current) => current.filter((entry) => textKey(entry) !== textKey(name)));
       setBookPrepared((current) => current.filter((entry) => textKey(entry) !== textKey(name)));
+      return;
+    }
+    const level = levelOfName(name);
+    if (isArcanum(level) && level !== null) {
+      const held = arcanumAt(level, name);
+      if (held) {
+        setLimitNote(`${arcanumName(klass.id, level)} teaches one spell of level ${level}, and ${held} is yours. Remove it to choose ${name}.`);
+        return;
+      }
+      setSpells((current) => [...current, name]);
       return;
     }
     // A full list first, as the tile says (blockedFor below), then the
@@ -495,6 +523,17 @@ export function SpellsSection({
   // full list reads as full before anyone taps (issue 66: taps past the cap
   // did nothing a player could see).
   const cantripsFull = cantripCap !== null && chosenCantrips.length >= cantripCap;
+  // An Arcane Trickster's Mage Hand: the last open cantrip is kept for it,
+  // as the level-up keeps it (src/lib/srd/third-caster.ts
+  // thirdCasterCantripProblem). Without this the step let all three go to
+  // other cantrips and only then, behind the spells still to pick, said
+  // Mage Hand was owed.
+  const keptForNamed = (name: string) =>
+    Boolean(requiredCantrip) &&
+    textKey(name) !== textKey(requiredCantrip ?? "") &&
+    !chosenCantrips.some((entry) => textKey(entry) === textKey(requiredCantrip ?? "")) &&
+    cantripCap !== null &&
+    chosenCantrips.length >= cantripCap - 1;
   const listCap = wizard ? bookCap : spellCap;
   const listFull = listCap !== null && chosenSpells.length >= listCap;
   const preparedFull = spellCap !== null && chosenPrepared.length >= spellCap;
@@ -503,7 +542,9 @@ export function SpellsSection({
   // this spell offers a swap instead (backlog F13): the tile says so and is
   // not dimmed.
   const swapsIn = (name: string, level: number | null, tileState: SpellTile["state"]) =>
-    tileState === "inBook"
+    isArcanum(level)
+      ? false
+      : tileState === "inBook"
       ? phase === "prepare" && preparedFull && candidatesFor("prepared", name).length > 0
       : tileState === "available" &&
         (level === 0 ? cantripsFull && candidatesFor("cantrip", name).length > 0 : listFull && candidatesFor("spell", name).length > 0);
@@ -518,7 +559,10 @@ export function SpellsSection({
       return undefined;
     }
     if (level === 0) {
-      return cantripsFull ? "Cantrips full" : undefined;
+      return cantripsFull ? "Cantrips full" : keptForNamed(name) ? `${requiredCantrip} first` : undefined;
+    }
+    if (isArcanum(level) && level !== null) {
+      return arcanumAt(level, name) ? "Arcanum chosen" : undefined;
     }
     if (listFull) {
       // Picks to trade, and the two schools turn every one away: the rule
@@ -547,12 +591,12 @@ export function SpellsSection({
   const tiles: SpellTile[] = names.flatMap((name): SpellTile[] => {
     const row = poolByName.get(textKey(name)) ?? lookups.get(textKey(name));
     const level = row?.level ?? spellLevelOf(name) ?? (has(cantrips, name) ? 0 : null);
-    if ((level === 0 && cantripAdvice === null) || (level !== null && level > maxSpellLevel)) {
+    if ((level === 0 && cantripAdvice === null) || (level !== null && level > maxSpellLevel && !isArcanum(level))) {
       return [];
     }
     let tileState: SpellTile["state"];
     if (level === 0) {
-      tileState = isRacial(name) || isFeat(name) ? "granted" : has(cantrips, name) ? "ready" : "available";
+      tileState = isRacial(name) || isFeat(name) || isGranted(name) ? "granted" : has(cantrips, name) ? "ready" : "available";
     } else if (isGranted(name) || isFeat(name)) {
       tileState = "granted";
     } else if (wizard) {
@@ -644,6 +688,7 @@ export function SpellsSection({
           },
         ]
       : []),
+    ...(arcanumLevels.length ? [{ label: arcanumName(klass.id), value: chosenArcanum.length, max: arcanumLevels.length }] : []),
   ];
 
   // The desk's header (backlog F13): the numbers the build math table
@@ -777,7 +822,7 @@ export function SpellsSection({
       ) : null}
       <SpellBook
         tiles={tiles}
-        maxLevel={maxSpellLevel}
+        maxLevel={reach}
         counters={counters}
         onTile={onTile}
         writingBook={wizard && phase === "book"}

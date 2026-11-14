@@ -85,6 +85,9 @@ const STEP_OF_TARGET: Record<BlockerTarget, string> = {
   racialAsi: "ancestry",
   racialSkills: "ancestry",
   racialTool: "ancestry",
+  racialWeapons: "ancestry",
+  racialTraining: "ancestry",
+  racialExpertise: "ancestry",
   racialCantrip: "ancestry",
   racialFeat: "ancestry",
   ancestry: "ancestry",
@@ -259,7 +262,7 @@ function CharacterBuilderForm({
   // Display overlay only. applyIdReskins rewrites `name`, never `id`, so
   // race.asi, classFeaturesFor(klass.id), spellClassFor(klass.id) and the
   // submitted sheet all keep seeing canonical values.
-  const races = useMemo(() => applyIdReskins(rawRaces, pack?.races ?? []), [rawRaces, pack]);
+  const races = useMemo(() => applyIdReskins(rawRaces, pack?.races ?? [], "races"), [rawRaces, pack]);
   const classes = useMemo(() => applyClassReskins(rawClasses, pack), [rawClasses, pack]);
   const backgrounds = useMemo(
     () => applyIdReskins(rawBackgrounds, pack?.backgrounds ?? []),
@@ -788,6 +791,7 @@ function CharacterBuilderForm({
             state={state}
             pack={pack}
             initial={initial}
+            background={background ?? null}
             paintsPortraits={paintsPortraits}
             onUploadPortrait={() => setCropping(true)}
             alignmentGroups={pickers.alignmentGroups}

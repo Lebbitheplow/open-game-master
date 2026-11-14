@@ -24,7 +24,10 @@ const { CUSTOM_CLASSES } = await import("../src/lib/classes/index.ts");
 // Windows CI checks out with CRLF.
 const read = (path) => fs.readFileSync(new URL(`../${path}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
 const exists = (url) => fs.existsSync(new URL(`../public${url}`, import.meta.url));
-const look = (art) => /-(feminine|masculine|neutral)\.webp$/.exec(art)?.[1];
+// A lineage still awaiting its own plate (the species of the cc1113 audit:
+// triton, kobold, centaur and the rest) shows the adventurer placeholder,
+// itself painted in the three looks: placeholders/character/<look>.webp.
+const look = (art) => /[-/](feminine|masculine|neutral)\.webp$/.exec(art)?.[1];
 
 let passed = 0;
 async function test(name, fn) {

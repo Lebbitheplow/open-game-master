@@ -9,6 +9,7 @@
 // authored-effects-data2.ts). Called from the damage stage both dice paths
 // run (attack-blow.ts landSwingBlow), so a hit by real dice asks it too.
 
+import { classSaveDc } from "@/lib/dm/command-undead";
 import { getEnemy, patchEnemyConditions } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
 import type { SwingScene } from "@/lib/dm/attack-swing";
@@ -18,7 +19,6 @@ import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { sendHome } from "@/lib/dm/spell-planes";
 import { textKey } from "@/lib/language/text-logic";
-import { computeSheetDerived } from "@/lib/srd";
 
 export const MORTAL_BULWARK = "mortal bulwark";
 // The mark a made save leaves, its source the paladin it was made against
@@ -53,8 +53,9 @@ export function bulwarkBanish(scene: SwingScene, damage: number): string | null 
   if (withstood && meta[withstood]?.source === sheet.id) {
     return null;
   }
-  const derived = computeSheetDerived(sheet);
-  const dc = derived.spellSaveDc ?? 8 + derived.proficiencyBonus + (derived.abilityMods.cha ?? 0);
+  // The class's own spell save DC (command-undead.ts classSaveDc): a
+  // multiclass sheet's first casting ability is another class's.
+  const dc = classSaveDc(sheet, "cha");
   // A banishment takes the creature out of the fight, so Legendary
   // Resistance answers a failure (resist), and Magic Resistance the save.
   const save = rollEnemySave(campaign.id, enemy, "cha", dc, {

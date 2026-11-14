@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { dominionHalves } from "@/lib/dm/genre-cc-a-dark-fantasy-more";
 import { dmRoll } from "@/lib/dm/roll-card";
 import { type Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, listEnemies, orderEntryId, saveEncounter, turnKey, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
@@ -165,10 +166,11 @@ export function refillLegendaryForTurn(encounter: Encounter, enemy: EncounterEne
       // Never past the maximum, which exhaustion 4 halves. What the block
       // asks that the server cannot see ("isn't in sunlight or running
       // water") is the DM's to hold it to.
-      const healed = Math.min(enemyHpCap(enemy), enemy.currentHp + regeneration.amount);
+      const halved = dominionHalves(encounter.campaignId, encounter.id, enemy.id, regeneration.amount);
+      const healed = Math.min(enemyHpCap(enemy), enemy.currentHp + halved.amount);
       patchEnemyHp(enemy.id, healed, "alive");
       lines.push(
-        `${enemy.displayName} regenerates ${healed - enemy.currentHp} hit points.${regeneration.onlyIf ? ` Its Regeneration works only if ${regeneration.onlyIf}: if it does not, take them back with apply_damage.` : ""}`,
+        `${enemy.displayName} regenerates ${healed - enemy.currentHp} hit points${halved.note ? ` (${halved.note})` : ""}.${regeneration.onlyIf ? ` Its Regeneration works only if ${regeneration.onlyIf}: if it does not, take them back with apply_damage.` : ""}`,
       );
     }
   }

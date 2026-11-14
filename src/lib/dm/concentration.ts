@@ -1,12 +1,17 @@
 import { concentrationFeat } from "@/lib/srd/feat-combat";
 import { bladesongConcentrationBonus } from "@/lib/dm/ar-ws-bladesong";
+import { concentrationAdvantage } from "@/lib/dm/genre-a-cyberpunk-defenses";
+import { holdsGenreFeature } from "@/lib/srd/genre-b-combat";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import { litanyHolds } from "@/lib/dm/genre-a-dark-fantasy-wards";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import {
   getActiveEncounter,
+  getEnemy,
   listEnemies,
   patchEnemyConditions,
   saveEncounter,
+  setEnemyConcentration,
 } from "@/lib/db/encounters";
 import { activePublicEncounter } from "@/lib/db/encounter-view";
 import { CASTING_HELD, releaseHeldAction } from "@/lib/dm/action-budget";
@@ -14,7 +19,7 @@ import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { spellEngineName, spellMechanicsFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { conditionConcentrationFloor } from "@/lib/srd/condition-effects";
-import { addConditionInstance, instancesOf, removeConditionInstances, type ConditionMeta, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { addConditionInstance, incapacitatedBy, instancesOf, removeConditionInstances, type ConditionMeta, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { fullDurationRule } from "@/lib/srd/full-duration";
 import { heldBySpell, spellDurationRounds } from "@/lib/dm/spell-effects";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
@@ -193,6 +198,35 @@ export function withLethargy(conditions: string[], meta: ConditionMetaMap, lifet
   return next;
 }
 
+// Haste's lethargy is the incapacitated condition, and an incapacitated
+// creature's concentration ends (SRD 5.1, Concentration). The lethargy is
+// written straight to the conditions where Haste ends (below, and as its
+// count runs out, condition-tick.ts), not through set_condition, so a cleric
+// whose Haste ended kept concentrating on Bless (audit 2026-11-13, T05).
+// Called once the lethargy is written. Returns lines for the table.
+export function endLethargicConcentration(campaign: Campaign, sheetIds: string[], enemyIds: string[] = []): string[] {
+  const lines: string[] = [];
+  for (const id of sheetIds) {
+    const sheet = getSheetById(id);
+    if (sheet?.concentratingOn && incapacitatedBy(sheet.conditions)) {
+      const spell = breakConcentration(campaign, null, sheet.id, "incapacitated by Haste's lethargy");
+      if (spell) {
+        lines.push(`${sheet.name} loses concentration on ${spell}: Haste's lethargy leaves them incapacitated.`);
+      }
+    }
+  }
+  for (const id of enemyIds) {
+    const enemy = getEnemy(id);
+    const spell = enemy?.status === "alive" && incapacitatedBy(enemy.conditions) ? enemy.concentration : null;
+    if (enemy && spell) {
+      setEnemyConcentration(enemy.id, null);
+      clearSpellConditionsByName(campaign, spell, undefined, enemy.id);
+      lines.push(`${enemy.displayName} loses concentration on ${spell}: Haste's lethargy leaves it incapacitated.`);
+    }
+  }
+  return lines;
+}
+
 // Removes the effect conditions a broken concentration spell was holding in
 // place, from every party sheet and every living enemy in the active
 // encounter. A condition records the spell and caster that laid it down
@@ -236,6 +270,7 @@ export function clearSpellConditionsByName(
   );
   const spellNames = new Set([textKey(spell), ...(resolved ? [textKey(resolved.name)] : [])]);
   const encounter = getActiveEncounter(campaign.id);
+  const lethargic: { sheets: string[]; enemies: string[] } = { sheets: [], enemies: [] };
   for (const target of listSheets(campaign.id)) {
     // Only this casting's instances go: a condition another source still
     // holds stays (src/lib/dm/condition-logic.ts removeConditionInstances).
@@ -252,6 +287,7 @@ export function clearSpellConditionsByName(
     const lethargy = held.some((condition) => condition.toLowerCase() === "hasted");
     if (lethargy) {
       Object.assign(cleared, withLethargy(cleared.conditions, cleared.meta, lethargyMeta(target.id)));
+      lethargic.sheets.push(target.id);
     }
     const updated = patchSheet(target.id, {
       conditions: cleared.conditions,
@@ -263,6 +299,7 @@ export function clearSpellConditionsByName(
     }
   }
   if (!encounter) {
+    endLethargicConcentration(campaign, lethargic.sheets);
     return;
   }
   for (const enemy of listEnemies(encounter.id)) {
@@ -276,10 +313,14 @@ export function clearSpellConditionsByName(
       const hasteEnded = held.some((condition) => condition.toLowerCase() === "hasted");
       if (hasteEnded) {
         Object.assign(cleared, withLethargy(cleared.conditions, cleared.meta, lethargyMeta(enemy.id)));
+        lethargic.enemies.push(enemy.id);
       }
       patchEnemyConditions(enemy.id, cleared.conditions, cleared.meta);
     }
   }
+  // After both loops: ending another spell rewrites conditions the loops
+  // above read once.
+  endLethargicConcentration(campaign, lethargic.sheets, lethargic.enemies);
 }
 
 // A spell held for its whole duration whose result then outlasts it
@@ -389,6 +430,11 @@ export function concentrationDamageHook(
   if (guarded) {
     return { concentration: { spell, held: true, guarded: `${guarded.feature}: damage cannot break it` } };
   }
+  // The Litany Unbroken (src/lib/dm/genre-a-dark-fantasy-wards.ts).
+  const litany = litanyHolds(fresh, damage);
+  if (litany) {
+    return { concentration: { spell, held: true, guarded: litany } };
+  }
   const dc = Math.max(10, Math.floor(damage / 2));
   // It is a saving throw like any other, rolled by the one builder every
   // save uses (src/lib/dm/forced-save.ts): a paladin's aura, Bless and Bane,
@@ -397,7 +443,12 @@ export function concentrationDamageHook(
   // (src/lib/srd/feat-combat.ts), and Starry Form's floor under the d20 are
   // what this save adds.
   const feat = concentrationFeat(fresh);
+  // Split Focus: the same advantage, from a genre feature (genre-a-cyberpunk-defenses.ts).
+  const focus = concentrationAdvantage(fresh);
   const warCaster = feat?.advantage === true;
+  // Redundant Systems: "Advantage on CON saves to maintain concentration on
+  // schematics", which are every spell the machinist casts.
+  const redundant = !warCaster && holdsGenreFeature(fresh, "machinist", "Redundant Systems");
   const floor = conditionConcentrationFloor(fresh.conditions);
   // The Bladesong's Intelligence modifier on this save alone (ar-ws-bladesong.ts).
   const song = bladesongConcentrationBonus(fresh);
@@ -411,7 +462,7 @@ export function concentrationDamageHook(
     `CON save to keep concentration (${spell})`,
     undefined,
     null,
-    warCaster ? { advantage: "advantage", reason: "War Caster: advantage to keep concentration" } : null,
+    warCaster || focus ? { advantage: "advantage", reason: `${warCaster ? "War Caster" : focus}: advantage to keep concentration` } : redundant ? { advantage: "advantage", reason: "Redundant Systems: advantage to keep concentration" } : null,
     false,
     { ...(added ? { die: added } : {}), ...(floor ? { floor } : {}) },
   );

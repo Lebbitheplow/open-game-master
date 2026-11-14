@@ -8,7 +8,7 @@ import { getSheetById } from "@/lib/db/sheets";
 import { markAffinityCast } from "@/lib/dm/affinity-cast";
 import { markSpellDamage } from "@/lib/dm/spell-damage-mark";
 import { spellBombardment } from "@/lib/dm/ar-ws-bombardment";
-import { elementalAdeptApplies, floorDamageDice } from "@/lib/srd/feat-combat";
+import { elementalAdeptApplies, flamesOfPhlegethosApplies, floorDamageDice, rerollOnesDice } from "@/lib/srd/feat-combat";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { Encounter, EncounterEnemy } from "@/lib/db/encounters";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -24,7 +24,10 @@ import { empoweredLine, empoweredRoll } from "@/lib/dm/mt-srd-metamagic";
 import { flooredDamage, maximizedDamage } from "@/lib/dm/spell-riders";
 import { spendWrath, wrathApplies, WRATH_NOTE } from "@/lib/dm/destructive-wrath";
 import { curseBurn } from "@/lib/dm/spell-retort";
+import { programSpellLanded } from "@/lib/dm/genre-a-cyberpunk-spell-hits";
 import { spellDamageRiders } from "@/lib/srd/spell-damage-riders";
+import { genreBSpellAtMaximum, genreBSpellLanded } from "@/lib/dm/genre-b-spell-hits";
+import { catalystRerolls, spendCatalystReroll } from "@/lib/dm/genre-gb-alchemy";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // Rolls and lands the damage, writing what happened onto `base`; returns the
@@ -86,7 +89,11 @@ export function landSpellDamage(input: {
   const secondType = mech?.secondType;
   const [firstDice, secondDice] = splitDamageExpression(damageExpression, secondType) ?? [];
   const secondAdept = secondDice ? elementalAdeptApplies(sheet, secondType) : false;
-  const floored = (dice: string) => (adept || secondAdept ? floorDamageDice(dice) : dice);
+  // Flames of Phlegethos: the fire part's 1s are rolled again, before the floor.
+  const floored = (dice: string, type?: string) => {
+    const flamed = flamesOfPhlegethosApplies(sheet, type) ? rerollOnesDice(dice) : dice;
+    return adept || secondAdept ? floorDamageDice(flamed) : flamed;
+  };
   // Destructive Wrath, on the casting's one roll: the creatures after the first
   // take that roll (`sharedRoll`). Only the lightning or thunder part is dealt
   // at its maximum; the other type of a two-type spell is still rolled.
@@ -95,14 +102,15 @@ export function landSpellDamage(input: {
   // Blight's maximum is this creature's (a plant), so a later creature of the
   // area rolls its own; Overchannel's and Wrath's are the casting's.
   const plantMaximum = maximizedDamage(mech, enemy, damageExpression) !== null;
-  const atMaximum = Boolean(input.atMaximum) || plantMaximum;
+  // Overcharge (aether channeler): "a damaging art rolls maximum dice".
+  const atMaximum = Boolean(input.atMaximum) || plantMaximum || (sharedRoll === undefined && genreBSpellAtMaximum(sheet));
   const parts: SpellDicePart[] =
     firstDice && secondDice && damageType && secondType
       ? [
-          { type: damageType, dice: [floored(firstDice), ...riders.dice].join("+"), atMaximum: atMaximum || wrathOn(damageType) },
-          { type: secondType, dice: [floored(secondDice), ...riders.diceSecond].join("+"), atMaximum: atMaximum || wrathOn(secondType) },
+          { type: damageType, dice: [floored(firstDice, damageType), ...riders.dice].join("+"), atMaximum: atMaximum || wrathOn(damageType) },
+          { type: secondType, dice: [floored(secondDice, secondType), ...riders.diceSecond].join("+"), atMaximum: atMaximum || wrathOn(secondType) },
         ]
-      : [{ type: damageType ?? "", dice: [floored(damageExpression), ...riders.dice, ...riders.diceSecond].join("+"), atMaximum: atMaximum || wrathOn(damageType) }];
+      : [{ type: damageType ?? "", dice: [floored(damageExpression, damageType), ...riders.dice, ...riders.diceSecond].join("+"), atMaximum: atMaximum || wrathOn(damageType) }];
   if (parts.some((part) => wrathOn(part.type))) {
     spendWrath(campaign.id, sheet.id);
     base.destructiveWrath = WRATH_NOTE;
@@ -125,7 +133,16 @@ export function landSpellDamage(input: {
   if (burst) {
     base.spellBombardment = burst.note;
   }
-  const shares = shared ?? typedShares(burst?.outcome ?? outcome, parts);
+  // Stone of the Magnum Opus: the Catalyst Stone thrown as a reroll of all
+  // the formula's dice, the better total kept (genre-gb-alchemy.ts).
+  let landed = burst?.outcome ?? outcome;
+  if (landed && catalystRerolls(holder)) {
+    spendCatalystReroll(holder);
+    const again = rollCard(campaign, turn, sheet.id, "damage", rollAgainst(spellName, enemy.displayName), typedRollExpression(parts), { kind: "sheet", id: sheet.id, name: sheet.name });
+    base.catalystStone = `Stone of the Magnum Opus: the dice thrown again, ${landed.total} then ${again.total}; ${again.total > landed.total ? "the second" : "the first"} kept.`;
+    landed = again.total > landed.total ? again : landed;
+  }
+  const shares = shared ?? typedShares(landed, parts);
   const rolledTotal = shares.reduce((sum, share) => sum + share, 0);
   const total = rolledTotal + riders.flat + riders.flatSecond;
   const halves = halfOnSave || riders.potentCantrip;
@@ -196,6 +213,17 @@ export function landSpellDamage(input: {
     }
     // Grim Harvest, Keeper of Souls on the kill (ar-ws-harvest.ts).
     const onKill = applied.dead && encounter ? spellKill(campaign, encounter, enemy, sheet.id, { spell, spellLevel, slotLevel: input.slotLevel }) : [];
+    // A cyberpunk caster's once-a-turn rider on the program that struck
+    // (genre-a-cyberpunk-spell-hits.ts).
+    const programs = applied.dead ? [] : programSpellLanded({ campaign, turn, encounter, sheet, enemy, first: sharedRoll === undefined, sheets, sheetsById });
+    if (programs.length) {
+      base.programRiders = programs;
+    }
+    // The genre casters' riders on a spell that struck (genre-b-spell-hits.ts).
+    const genre = genreBSpellLanded({ campaign, turn, encounter, sheet, enemy, damageType, dealt: damageDealt, first: sharedRoll === undefined, sheets, sheetsById });
+    if (genre.length) {
+      base.genreFeatures = genre;
+    }
     if (onKill.length) {
       base.subclassFeatures = onKill;
     }

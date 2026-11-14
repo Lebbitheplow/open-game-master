@@ -30,6 +30,7 @@ import { abilityMod, suite } from "./lib/enforce-harness.mjs";
 const { test, finish } = suite("test-enforce-resource-tables");
 const world = await openTable();
 const { RESOURCE_DEFS, resourceDef } = await import("../src/lib/srd/class-resources.ts");
+const { GENRE_EXTRA_COUNTERS } = await import("../src/lib/srd/genre-counter-terms.ts");
 
 const LEVELS = Array.from({ length: 20 }, (_, index) => index + 1);
 const SCORES = { str: 10, dex: 10, con: 12, int: 10, wis: 14, cha: 16 };
@@ -276,7 +277,9 @@ await test("every counter id is unique, so no definition hides another", () => {
   // And a Draconic sorcerer's three, played as often as the points allow:
   // Elemental Affinity's resistance, Dragon Wings and Draconic Presence
   // (src/lib/dm/draconic-spends.ts, issue #833).
-  assert.equal(RESOURCE_DEFS.length, 29 + AUTHORED.length + GENRE.length + 3 + 6 + 1 + 3);
+  // And the genre counters whose limit the prose states in words the
+  // generator does not read ("1/week"), src/lib/srd/genre-counter-terms.ts.
+  assert.equal(RESOURCE_DEFS.length, 29 + AUTHORED.length + GENRE.length + 3 + 6 + 1 + 3 + GENRE_EXTRA_COUNTERS.length);
 });
 
 await test("every authored and genre row is structurally legal", () => {
@@ -316,7 +319,10 @@ await test("every counter has a whole maximum of at least one and never shrinks 
       let before = 0;
       for (const level of LEVELS) {
         const max = def.maxFor(level, flat(modifier));
-        if (!Number.isInteger(max) || max < 1) {
+        // A counter every use of which another pool pays (Dragon Fear: a use
+        // of Breath Weapon) holds none of its own.
+        const paidElsewhere = Boolean(def.fallbackPool) && max === 0;
+        if (!Number.isInteger(max) || (max < 1 && !paidElsewhere)) {
           problems.push(`${def.id}: max ${max} at level ${level}, modifier ${modifier}`);
         }
         if (max < before) {

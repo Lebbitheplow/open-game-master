@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { packClassTables } from "@/lib/classes/pack-class-registry";
 import { currentUser, unauthorized } from "@/lib/auth";
 import {
   CHARACTER_ROLES,
@@ -54,6 +55,8 @@ export async function GET(
     events: listEventsForLibraryCharacter(characterId),
     // The workshop classes it holds, read in the browser as on the server.
     workshopClasses: workshopClassDefs([character.class, ...((character.sheet as { classes?: Array<{ id: string }> } | undefined)?.classes ?? []).map((entry) => entry.id)]),
+    // The pack classes it holds (a Mechanist), as the table's snapshot sends them.
+    packClasses: packClassTables([character.class, ...((character.sheet as { classes?: Array<{ id: string }> } | undefined)?.classes ?? []).map((entry) => entry.id)]),
     // Its species, as the table's snapshot sends them: a workshop species'
     // spells and its options' (issue #833) are read in the browser too.
     species: speciesAtTable([character.race]),

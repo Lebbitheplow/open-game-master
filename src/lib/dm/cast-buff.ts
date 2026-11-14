@@ -49,7 +49,7 @@ import { unwillingResist } from "@/lib/dm/hostile-buffs";
 import { badArguments, holdingHint, invalidArguments, noneNamed, type ToolResult } from "@/lib/dm/tool-errors";
 import { zoneArgsSchema } from "@/lib/dm/zone-args";
 import { textKey } from "@/lib/language/text-logic";
-import { nameChoice } from "@/lib/srd/feature-names";
+import { isNamed, nameChoice } from "@/lib/srd/feature-names";
 import { castsSpells } from "@/lib/srd";
 import { grantedCastOf } from "@/lib/dm/cast-rules";
 import type { FreeLimit } from "@/lib/srd/counter-casts";
@@ -140,7 +140,10 @@ export function handleCastBuff(
   }
   // A spell an item paid for needs no Spellcasting feature, as it runs on too.
   // So does a later target of a casting an item made this turn (item-casts.ts).
-  if (!castsSpells(sheet) && !paidByItem(sheet, args.spell ?? "") && !itemCastOpen(campaign.id, sheet, args.spell ?? "")) {
+  // A species' or feat's own spell (a duergar's Enlarge/Reduce, a tiefling
+  // fighter's Darkness) needs none either: cast-rules.ts judges its use.
+  const grantedSpell = grantedCastOf(sheet, args.spell ?? "", spellFactsFor(args.spell ?? "", spellAuthorsFor(campaign)));
+  if (!castsSpells(sheet) && !grantedSpell && !paidByItem(sheet, args.spell ?? "") && !itemCastOpen(campaign.id, sheet, args.spell ?? "")) {
     return { error: `${sheet.name} cannot cast spells.`, refused: "rules" };
   }
   const barred = castBarred(campaign, turn.id, { characterId: sheet.id, spell: args.spell, ...(args.level ? { level: args.level } : {}), via: "buff" }, sheets, sheetsById);
@@ -255,7 +258,9 @@ export function handleCastBuff(
   // (Magic Weapon +2 from a 4th level slot).
   let condition = buff.condition;
   if (buff.variants?.length) {
-    const wanted = textKey(args.variant ?? "");
+    // A free casting with one choice of its own (Duergar Magic: enlarge) makes
+    // it when the call names none (counter-casts.ts FreeLimit variant).
+    const wanted = textKey(args.variant ?? grantedSpell?.freeLimit?.variant ?? "");
     const picked = buff.variants.find((entry) => [entry, nameChoice(entry) ?? ""].some((spelling) => textKey(spelling) === wanted));
     if (!picked) {
       return wanted
@@ -312,7 +317,7 @@ export function handleCastBuff(
   const selfOnly = granted?.selfOnly;
   if (selfOnly && (targetRows.length || targetSheets.some((target) => target.id !== sheet.id))) {
     return {
-      error: `${sheet.name} casts ${resolvedMech.name} through an invocation on themselves only; another creature takes it from a slot of a spell they know. Nothing was spent.`,
+      error: `${sheet.name} casts ${resolvedMech.name} through ${granted?.source ?? "an invocation"} on themselves only; another creature takes it from a slot of a spell they know. Nothing was spent.`,
       refused: "rules",
     };
   }
@@ -391,7 +396,7 @@ export function handleCastBuff(
       spell: args.spell,
       ...(args.level ? { level: args.level } : {}),
       via: "buff",
-      ...(granted?.freeLimit && !withinFreeLimit(granted.freeLimit, sheet.id, targetSheets, targetRows.length, polymorphForm) ? { freeFits: false } : {}),
+      ...(granted?.freeLimit && !withinFreeLimit(granted.freeLimit, sheet.id, targetSheets, targetRows.length, polymorphForm, condition) ? { freeFits: false } : {}),
       reason: (args.reason ?? "").slice(0, 200),
       ...placementArgs(args),
     }),
@@ -573,8 +578,13 @@ export function handleCastBuff(
 // Whether a casting stays inside a free grant's limits (Shapechanger: only
 // the wizard, into a beast of challenge rating 1 or lower); outside them the
 // cast guard has a slot pay (src/lib/dm/cast-guard.ts freeFits).
-function withinFreeLimit(limit: FreeLimit, casterId: string, targets: ReadonlyArray<{ id: string }>, rows: number, form: { cr: number } | null): boolean {
+// Duergar Magic's enlarge is the one choice its free casting makes: reduce is
+// outside it.
+function withinFreeLimit(limit: FreeLimit, casterId: string, targets: ReadonlyArray<{ id: string }>, rows: number, form: { cr: number } | null, condition: string): boolean {
   if (limit.selfOnly && (rows > 0 || targets.some((target) => target.id !== casterId))) {
+    return false;
+  }
+  if (limit.variant && !isNamed(condition, limit.variant)) {
     return false;
   }
   return limit.maxCr === undefined || !form || form.cr <= limit.maxCr;

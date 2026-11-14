@@ -223,7 +223,8 @@ const MOUNTING_KEY = "mount_or_dismount";
 // words both read this.
 const SADDLE = "born to the saddle";
 function mountingFeet(sheet: CharacterSheet): number {
-  return holdsFeature(sheet, SADDLE) ? 5 : Math.floor(speedToTiles(sheet.speed) / 2) * 5;
+  // Half of a 25-foot speed is 12.5 feet, so three squares of it are spent, as standing up rounds.
+  return holdsFeature(sheet, SADDLE) ? 5 : Math.ceil(speedToTiles(sheet.speed) / 2) * 5;
 }
 
 function spendMountingMovement(

@@ -17,6 +17,7 @@
 // spends instead of a slot. Pure.
 import type { Ability } from "@/lib/schemas/sheet";
 import { textKey } from "@/lib/language/text-logic";
+import { authoredFeatDesc, tableFeat } from "@/lib/srd/feat-effects";
 import { featChoice } from "@/lib/schemas/sheet";
 
 // The scores a spell is cast with.
@@ -48,6 +49,16 @@ export type FeatSpellSpec = {
   // Every levelled spell (fixed and picked) is castable once per long rest
   // without a slot.
   freeCast: boolean;
+  // The rest that brings the free cast back: a long one, or a short one
+  // ("once per short rest": Fey Teleportation's misty step).
+  freeCastRest: "long" | "short";
+  // Spells cast as often as the character likes, with no slot (Drow High
+  // Magic's detect magic); each also among the fixed spells.
+  atWill: string[];
+  // The casting ability the text names outright ("Wisdom is your
+  // spellcasting ability for these spells"), which no pick or raised score
+  // overrides. Null when it names none.
+  fixedAbility: CastingAbility | null;
   // The spells sit in a ritual book and are cast only as rituals.
   ritualBook: boolean;
   // How the casting ability is settled: the player names it, it follows the
@@ -64,7 +75,7 @@ export type FeatSpellPicks = {
 
 const EMPTY: FeatSpellSpec = {
   cantrips: 0, attackCantrip: false, spells: 0, spellLevel: 1, schools: [], lists: [], listChoice: false,
-  fixedSpells: [], fixedCantrips: [], freeCast: false, ritualBook: false, ability: "raised",
+  fixedSpells: [], fixedCantrips: [], freeCast: false, freeCastRest: "long", atWill: [], fixedAbility: null, ritualBook: false, ability: "raised",
 };
 
 const COUNTS: Record<string, number> = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4 };
@@ -103,7 +114,7 @@ export function featSpellSpec(desc: string): FeatSpellSpec {
   if (!text) {
     return EMPTY;
   }
-  const spec: FeatSpellSpec = { ...EMPTY, schools: [], lists: [], fixedSpells: [], fixedCantrips: [] };
+  const spec: FeatSpellSpec = { ...EMPTY, schools: [], lists: [], fixedSpells: [], fixedCantrips: [], atWill: [] };
 
   // "You learn misty step and one 1st-level divination or enchantment spell"
   const learnNamed = /\byou learn ([a-z' ]+?) and (one|two|a) (?:(\d)(?:st|nd|rd|th)-level|level (\d)) ([a-z]+)(?: or ([a-z]+))? spell/.exec(text);
@@ -147,6 +158,22 @@ export function featSpellSpec(desc: string): FeatSpellSpec {
   const castsOnce = /\byou can cast ([a-z' ]+?) once per long rest without a (?:spell )?slot\b/.exec(text);
   if (castsOnce) {
     spec.fixedSpells.push(castsOnce[1].trim());
+  }
+  // "You can cast longstrider and pass without trace, each once per long
+  // rest without a spell slot", "you can cast misty step once per short
+  // rest without a spell slot": spells named with their own rest.
+  const castsEach = /\byou can (?:also )?cast ([a-z' ]+?(?: and [a-z' ]+?)?),? (?:each )?once per (long|short) rest without a (?:spell )?slot\b/.exec(text);
+  if (castsEach && !castsOnce) {
+    spec.fixedSpells.push(...castsEach[1].split(/ and /).map((name) => name.trim()).filter(Boolean));
+    if (castsEach[2] === "short") {
+      spec.freeCastRest = "short";
+    }
+  }
+  // "You can cast detect magic at will, without a spell slot".
+  for (const free of text.matchAll(/\byou can (?:also )?cast ([a-z' ]+?) at will\b/g)) {
+    const name = free[1].trim();
+    spec.atWill.push(name);
+    spec.fixedSpells.push(name);
   }
 
   // "learn two cantrips of your choice from the Cleric, Druid, or Wizard spell list"
@@ -199,9 +226,13 @@ export function featSpellSpec(desc: string): FeatSpellSpec {
   // (castsOnce, above) is a free cast too: this line used to overwrite it,
   // and a Telepathic fighter had no slot to cast it with.
   spec.freeCast =
-    (Boolean(castsOnce) || /\bcastable once per long rest without a slot\b|\bcast it once without (?:expending )?a spell slot\b|\bonce without (?:expending )?a spell slot\b|\bmust finish a long rest before you can cast it again\b|\bcast this spell once per long rest\b/.test(text)) &&
+    (Boolean(castsOnce) || Boolean(castsEach) || /\bcastable once per long rest without a slot\b|\bcast it once without (?:expending )?a spell slot\b|\bonce without (?:expending )?a spell slot\b|\bmust finish a long rest before you can cast it again\b|\bcast this spell once per long rest\b/.test(text)) &&
     spec.spells + spec.fixedSpells.length > 0 && !spec.ritualBook;
 
+  const fixed = /\b(intelligence|wisdom|charisma) is your spellcasting ability for (?:these spells|this spell|them|it)\b/.exec(text);
+  if (fixed && !/\bor (?:intelligence|wisdom|charisma) is your spellcasting ability\b/.test(text)) {
+    spec.fixedAbility = ({ intelligence: "int", wisdom: "wis", charisma: "cha" } as const)[fixed[1] as "intelligence" | "wisdom" | "charisma"];
+  }
   if (/\b(?:intelligence|wisdom|charisma)(?:, (?:wisdom|charisma))*,? or (?:wisdom|charisma) is your spellcasting ability\b|\bchoose (?:intelligence|wisdom|charisma)\b.*\bspellcasting ability\b/.test(text)) {
     spec.ability = "choice";
   } else if (/\bspellcasting ability for these spells depends on the class\b|\bcharisma for bard\b|\bsame (?:casting|spellcasting) (?:attribute|ability) as the (?:list|class)\b|\bsame as the spellcasting class\b/.test(text)) {
@@ -250,8 +281,11 @@ export type FeatSpellGrant = {
   spells: string[];
   // Spells in a ritual book, cast only as rituals.
   rituals: string[];
-  // The spells with a free cast once per long rest.
+  // The spells with a free cast once per long rest (or per short rest,
+  // freeCastRest), and those cast at will.
   freeCasts: string[];
+  freeCastRest?: "long" | "short";
+  atWill?: string[];
   // The class list the picks came from, where the feat asked for one.
   list: string | null;
   ability: CastingAbility | null;
@@ -335,18 +369,22 @@ export function featSpellGrants(input: FeatSpellInput): FeatSpellVerdict {
     const fixed = [...sorted(spec.fixedSpells, false), ...sorted(spec.fixedCantrips, false)].map((name) => input.spellOf?.(name)?.name ?? capital(name));
     const fixedCantrips = [...sorted(spec.fixedCantrips, true), ...sorted(spec.fixedSpells, true)].map((name) => input.spellOf?.(name)?.name ?? capital(name));
     const named = [...fixed, ...picked.map((name) => input.spellOf?.(name)?.name ?? name)];
-    const ability: CastingAbility | null =
-      spec.ability === "choice"
+    const ability: CastingAbility | null = spec.fixedAbility ??
+      (spec.ability === "choice"
         ? (picks.ability ?? null)
         : spec.ability === "list"
           ? (list ? listAbility(list) : null)
-          : (castingAbility(input.raisedAbility(feat.name)) ?? picks.ability ?? null);
+          : (castingAbility(input.raisedAbility(feat.name)) ?? picks.ability ?? null));
+    const atWill = spec.atWill.map((name) => input.spellOf?.(name)?.name ?? capital(name));
+    const atWillKeys = new Set(atWill.map(textKey));
     grants.push({
       feat: feat.name,
       cantrips: [...fixedCantrips, ...cantrips.map((name) => input.spellOf?.(name)?.name ?? name)],
       spells: spec.ritualBook ? [] : named,
       rituals: spec.ritualBook ? named : [],
-      freeCasts: spec.freeCast ? named : [],
+      freeCasts: spec.freeCast ? named.filter((name) => !atWillKeys.has(textKey(name))) : [],
+      ...(spec.freeCastRest === "short" ? { freeCastRest: "short" as const } : {}),
+      ...(atWill.length ? { atWill } : {}),
       list,
       ability,
     });
@@ -361,36 +399,69 @@ const capital = (value: string) => value.replace(/(^|\s)(['‘]?)([a-z])/g, (_, 
 // ---- the free cast, as a feature and a counter ----
 
 export const FREE_CAST_PREFIX = "Free cast: ";
-const FREE_CAST_PATTERN = /^free cast: (.+?) \((.+)\)$/i;
+// "Free cast: Misty Step (Fey Touched)" comes back on a long rest; "Free
+// cast (short rest): ..." on a short one; "Free cast (at will): ..." is
+// never spent.
+export type FreeCastRest = "long" | "short" | "at will";
+const FREE_CAST_PATTERN = /^free cast(?: \((short rest|at will)\))?: (.+?) \((.+)\)$/i;
 
-export function freeCastFeatureName(spell: string, feat: string): string {
-  return `${FREE_CAST_PREFIX}${spell} (${feat})`;
+export function freeCastFeatureName(spell: string, feat: string, rest: FreeCastRest = "long"): string {
+  return rest === "long" ? `${FREE_CAST_PREFIX}${spell} (${feat})` : `Free cast (${rest === "short" ? "short rest" : "at will"}): ${spell} (${feat})`;
 }
 
-// The spell and feat a Free cast feature names, or null.
-export function freeCastOf(featureName: string): { spell: string; feat: string } | null {
+// The spell, feat and rest a Free cast feature names, or null.
+export function freeCastOf(featureName: string): { spell: string; feat: string; rest: FreeCastRest } | null {
   const match = FREE_CAST_PATTERN.exec(featureName.trim());
-  return match ? { spell: match[1], feat: match[2] } : null;
+  if (!match) {
+    return null;
+  }
+  const rest: FreeCastRest = !match[1] ? "long" : match[1].toLowerCase() === "short rest" ? "short" : "at will";
+  return { spell: match[2], feat: match[3], rest };
 }
 
 const slug = (name: string) => textKey(name).replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 
-export function freeCastResourceId(spell: string): string {
-  return `free_cast_${slug(spell)}`;
+// The counter of a free cast: "free_cast_misty_step" back on a long rest,
+// "free_cast_sr_misty_step" on a short one, "free_cast_aw_detect_magic" for
+// one cast at will (never spent; the sheet holds no counter for it).
+export function freeCastResourceId(spell: string, rest: FreeCastRest = "long"): string {
+  return `free_cast_${rest === "short" ? "sr_" : rest === "at will" ? "aw_" : ""}${slug(spell)}`;
 }
 
 export function isFreeCastResource(id: string): boolean {
   return id.startsWith("free_cast_");
 }
 
+// The rest a free-cast counter id comes back on.
+export function freeCastRestOf(id: string): FreeCastRest {
+  return id.startsWith("free_cast_sr_") ? "short" : id.startsWith("free_cast_aw_") ? "at will" : "long";
+}
+
 // The spell a free-cast counter id names, in words ("misty step").
 export function freeCastSpellOf(id: string): string {
-  return id.replace(/^free_cast_/, "").replace(/_/g, " ");
+  return id.replace(/^free_cast_(?:sr_|aw_)?/, "").replace(/_/g, " ");
 }
 
 // Every Free cast feature the grants call for.
 export function freeCastFeatures(grants: FeatSpellGrant[]): string[] {
-  return grants.flatMap((grant) => grant.freeCasts.map((spell) => freeCastFeatureName(spell, grant.feat)));
+  return grants.flatMap((grant) => [
+    ...grant.freeCasts.map((spell) => freeCastFeatureName(spell, grant.feat, grant.freeCastRest === "short" ? "short" : "long")),
+    ...(grant.atWill ?? []).map((spell) => freeCastFeatureName(spell, grant.feat, "at will")),
+  ]);
+}
+
+// The counter a feat's free cast of this spell would spend, among the ones
+// the sheet's features hold: the at-will one first (never spent), then a
+// short rest's, then a long rest's. Null when no feature names the spell.
+export function heldFreeCastId(features: ReadonlyArray<{ name: string }> | undefined, spell: string): string | null {
+  const wanted = textKey(spell);
+  const held = (features ?? []).map((feature) => freeCastOf(feature.name)).filter((free) => free && textKey(free.spell) === wanted);
+  for (const rest of ["at will", "short", "long"] as const) {
+    if (held.some((free) => free!.rest === rest)) {
+      return freeCastResourceId(spell, rest);
+    }
+  }
+  return null;
 }
 
 // ---- the ability a feat's spell is cast with ----
@@ -424,6 +495,11 @@ export function featSpellAbility(sheet: FeatSpellSheet, spell: string): CastingA
     }
   }
   for (const feat of feats) {
+    // The ability the feat's own text names (Wood Elf Magic's Wisdom).
+    const named = featSpellSpec(authoredFeatDesc(feat) ?? tableFeat(feat)?.desc ?? "").fixedAbility;
+    if (named) {
+      return named;
+    }
     const picks = featChoice(choices, feat);
     // The score the feat raised: its improvement's, or for the feat a
     // variant human took with the race (on the sheet, with no improvement

@@ -1,0 +1,318 @@
+// The probes of the cyberpunk clause ledger the fifth genre-a round adds
+// (scripts/clauses/genre-cyberpunk.json): one per mechanism of
+// src/lib/dm/genre-a-cyberpunk-*.ts, same contract as the probes of
+// sweep-clauses-genre-a-probes.mjs (an assertion is the rule not held, any
+// other throw is the probe's setup breaking).
+import { must, eq, mod } from "./sweep-clauses-genre-a.mjs";
+import { TRAINED } from "./enforce-combat.mjs";
+
+const key = (name) => name.toLowerCase().replace(/\s*\([^)]*\)\s*$/, "").trim();
+// A caster of the class's own ability, Fire Bolt known, two slot levels.
+const CASTING = (ability) => ({ ability, slots: { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 } }, known: ["Magic Missile", "Healing Word"], prepared: ["Magic Missile", "Healing Word"], cantrips: ["Fire Bolt"] });
+const stripFeature = (t, id, name) => t.world.patch(id, { features: t.world.sheet(id).features.filter((entry) => key(entry.name) !== key(name)) });
+
+export const CYBER = {
+  // "1/turn, shove a target 10 ft with a psionic hit": a Fire Bolt that hits
+  // moves the foe two squares away; a second hit the same turn does not; a
+  // holder without the feature shoves nobody.
+  async spell_shove(t, run, feature) {
+    const scene = await t.stage(feature, { lane: true, extra: { equipment: [], spellcasting: CASTING("cha") } });
+    t.kit.place(scene.far.id, 9, 5);
+    const at = () => t.kit.token(scene.far.id).x;
+    const bolt = async () => must(await t.kit.swing(scene.holder.id, scene.far.id, [15, 3, 3, 3], { spell: "Fire Bolt" }), "the Fire Bolt");
+    await bolt();
+    eq(at() - 9, 2, "squares the foe moved after a psionic hit");
+    t.kit.freshTurn();
+    t.kit.giveTurn(scene.holder.id);
+    stripFeature(t, scene.holder.id, feature.name);
+    t.kit.place(scene.far.id, 9, 5);
+    await bolt();
+    eq(at(), 9, "squares the foe moved after a Fire Bolt from a holder without the feature");
+  },
+};
+
+// "1/turn": a second Fire Bolt on the same turn (the action handed back, the
+// turn's once-a-turn claims kept) carries no rider; the first did.
+CYBER.program_once = async function programOnce(t, run, feature) {
+  const ability = run.ability ?? "int";
+  const scene = await t.stage(feature, { lane: true, extra: { equipment: [], spellcasting: CASTING(ability) } });
+  const bolt = async () => {
+    const before = t.foeHp(scene.far.id);
+    must(await t.kit.swing(scene.holder.id, scene.far.id, [15, 3, 3, 3, 3, 3], { spell: "Fire Bolt" }), "the Fire Bolt");
+    return before - t.foeHp(scene.far.id);
+  };
+  const first = await bolt();
+  const encounter = t.world.encounter();
+  t.encounters.saveEncounter({ ...encounter, turnBudget: { ...encounter.turnBudget, actionUsed: false, castThisAction: false, attacksMade: 0 } });
+  const second = await bolt();
+  eq(first - second, run.n, `damage the rider added to the first Fire Bolt of the turn over the second (${first} then ${second})`);
+  // The same once a turn on a save spell (program_save below).
+  await CYBER.program_save(t, run, feature);
+};
+
+// "Each drone regains 2d6 HP at the start of your turn, once per rest each":
+// both drones of a 9th-level rigger, hurt, are mended as the rigger's turn
+// starts (2d6 on 3s), the rigger untouched; hurt again, they are not.
+CYBER.drone_repair = async function droneRepair(t, run, feature) {
+  const turns = await import(new URL("../../src/lib/dm/authored-turns.ts", import.meta.url).href);
+  t.fresh();
+  const hero = t.hero(feature.classId, run.level ?? feature.level, { currentHp: 40 });
+  const made = must(await t.world.invoke("use_resource", { characterId: hero.id, resource: "Drone Companion" }), "Drone Companion").result;
+  const drones = (made?.result?.summoned ?? made?.summoned ?? []).map((entry) => entry.characterId);
+  if (drones.length < 2) throw new Error(`the staged rigger has ${drones.length} drones`);
+  const hurt = () => drones.forEach((id) => t.world.patch(id, { currentHp: 1 }));
+  const start = () => {
+    t.world.clearDice();
+    t.world.dice(3, 3, 3, 3);
+    turns.authoredTurnStart(t.world.campaign(), t.world.encounter(), [hero.id]);
+    t.world.clearDice();
+  };
+  hurt();
+  start();
+  eq(drones.map((id) => t.hp(id)).join(","), "7,7", "the drones' hit points after the rigger's turn starts");
+  hurt();
+  start();
+  eq(drones.map((id) => t.hp(id)).join(","), "1,1", "the drones' hit points as a second turn starts, each mended once since the rest");
+};
+
+// "1/turn": a second foe dropped on the same turn adds no second attack.
+CYBER.apex_once = async function apexOnce(t, run, feature) {
+  // Three foes, so two can drop and the fight runs on.
+  t.fresh();
+  const hero = t.hero(feature.classId, feature.level);
+  await t.kit.fight(3, { heroFaces: { [hero.id]: 19 } });
+  const foes = t.world.enemies();
+  t.kit.place(hero.id, 5, 5);
+  foes.forEach((foe, index) => t.kit.place(foe.id, 4 + index, 6));
+  t.kit.giveTurn(hero.id);
+  for (const foe of foes.slice(0, 2)) {
+    t.kit.setEnemy(foe.id, { currentHp: 1 });
+    must(await t.kit.swing(hero.id, foe.id, [15, 4, 3, 3]), "the staged attack");
+  }
+  eq(t.world.encounter().turnBudget.attacksAllowed, 4, "attacks allowed after dropping two foes in one turn (three and one more, once)");
+};
+
+// "one drone turns invisible for 1 minute": the rigger's drone, not the rigger.
+CYBER.drone_ghost = async function droneGhost(t, run, feature) {
+  t.fresh();
+  const hero = t.hero(feature.classId, feature.level);
+  const made = must(await t.world.invoke("use_resource", { characterId: hero.id, resource: "Drone Companion" }), "Drone Companion").result;
+  const drone = (made?.result?.summoned ?? made?.summoned ?? [])[0]?.characterId;
+  if (!drone) throw new Error("the staged rigger has no drone");
+  must(await t.world.invoke("use_resource", { characterId: hero.id, resource: "Ghost Protocol" }), "Ghost Protocol");
+  const has = (id) => t.world.sheet(id).conditions.map((entry) => entry.toLowerCase()).includes("invisible");
+  eq(`${has(drone)}/${has(hero.id)}`, "true/false", "invisible on the drone / on the rigger");
+  eq(JSON.stringify(t.world.sheet(drone).conditionMeta?.invisible ?? {}).includes("10"), true, "ten rounds (a minute) on the drone's invisibility");
+};
+
+// "weapon damage to every foe within 5 ft": the slash hurts the foe beside
+// the samurai and not the one 70 feet off, and spends one attack.
+CYBER.whirl = async function whirl(t, run, feature) {
+  const scene = await t.stage(feature);
+  const near = t.foeHp(scene.near.id);
+  const far = t.foeHp(scene.far.id);
+  t.world.clearDice();
+  t.world.dice(5);
+  must(await t.world.invoke("use_resource", { characterId: scene.holder.id, resource: "Whirl of Edges" }), "Whirl of Edges");
+  t.world.clearDice();
+  eq(`${near - t.foeHp(scene.near.id)}/${far - t.foeHp(scene.far.id)}`, "9/0", "damage to the foe within 5 feet (a longsword's 5 + STR 4) / to the far foe");
+  eq(t.budget().attacksMade, 1, "attacks of the Attack action made");
+};
+
+// "a creature hit by your psionic saves (WIS) or is stunned": refused with
+// no hit; after a Fire Bolt hits, a failed save stuns.
+CYBER.synaptic = async function synaptic(t, run, feature) {
+  const scene = await t.stage(feature, { lane: true, extra: { equipment: [], spellcasting: CASTING("cha") } });
+  const spend = () => t.world.invoke("use_resource", { characterId: scene.holder.id, resource: "cyberpunk_synaptic_overload", targetEnemyId: scene.far.id });
+  eq((await spend()).ok, false, "Synaptic Overload on a creature no psionic hit");
+  must(await t.kit.swing(scene.holder.id, scene.far.id, [15, 3, 3, 3], { spell: "Fire Bolt" }), "the Fire Bolt");
+  t.world.clearDice();
+  t.world.dice(2);
+  must(await spend(), "Synaptic Overload after the hit");
+  t.world.clearDice();
+  eq(t.kit.enemy(scene.far.id).conditions.map((entry) => entry.toLowerCase()).includes("stunned"), true, "stunned after a failed WIS save");
+};
+
+// "your next damaging psionic deals maximum damage": after the spend, a
+// Burning Hands through aoe_damage lands 3d6 at 18 and takes the mark off;
+// the next lands as rolled.
+CYBER.rend = async function rend(t, run, feature) {
+  const scene = await t.stage(feature, { extra: { equipment: [], spellcasting: { ...CASTING("cha"), known: ["Burning Hands"], prepared: ["Burning Hands"] } } });
+  must(await t.world.invoke("use_resource", { characterId: scene.holder.id, resource: "Reality Rend" }), "Reality Rend");
+  const burn = async () => {
+    t.kit.giveTurn(scene.holder.id);
+    t.kit.setEnemy(scene.near.id, { currentHp: 300 });
+    t.world.clearDice();
+    t.world.dice(1, 1, 1, 20, 20);
+    must(await t.world.invoke("aoe_damage", { casterId: scene.holder.id, spell: "Burning Hands", level: 1, enemyIds: [scene.near.id] }), "Burning Hands");
+    t.world.clearDice();
+    return 300 - t.foeHp(scene.near.id);
+  };
+  const first = await burn();
+  const second = await burn();
+  eq(`${first}/${second}`, "18/1", "Burning Hands with the mark, then without (the dice show 1s; the foe saves at 20 for half)");
+};
+
+// "reroll a failed CHA-based check": refused with no failed check; after a
+// Persuasion check fails (a 2), the spend rolls it again (a 20) and it holds.
+CYBER.grease = async function grease(t, run, feature) {
+  t.fresh();
+  const hero = t.hero(feature.classId, feature.level, { proficiencies: { ...TRAINED, skills: ["persuasion"] } });
+  const spend = () => t.world.invoke("use_resource", { characterId: hero.id, resource: "Grease the Wheels" });
+  eq((await spend()).ok, false, "Grease the Wheels with no failed check");
+  t.world.clearDice();
+  t.world.dice(2);
+  must(await t.world.invoke("request_roll", { characterId: hero.id, kind: "skill_check", skill: "persuasion", dc: 15, reason: "a probe" }), "the check");
+  t.world.clearDice();
+  t.world.dice(20);
+  const out = must(await spend(), "Grease the Wheels after the failure");
+  t.world.clearDice();
+  eq(/succeeds/.test(JSON.stringify(out.result)), true, `the reroll on a 20: ${JSON.stringify(out.result).slice(0, 200)}`);
+};
+
+// The focus clauses (src/lib/srd/genre-a-cyberpunk-focus.ts): Mage Armor's
+// cured leather has no price, so it asks for a pouch or the caster's focus.
+//   cyberdeck: "needs their cyberdeck as a focus": refused with a holy symbol
+//     alone, cast with a Cyberdeck;
+//   none: "needs no material focus": cast with nothing carried, where the
+//     focus check refused every caster before the feature was read;
+//   drone: "the drone is the focus": refused with an arcane focus and no
+//     drone, cast once Drone Companion has built one.
+CYBER.focus = async function focus(t, run, feature) {
+  const ability = run.ability ?? "int";
+  t.fresh();
+  const hero = t.hero(feature.classId, feature.level, { equipment: [], spellcasting: { ...CASTING(ability), known: ["Mage Armor"], prepared: ["Mage Armor"] } });
+  const carry = (...names) => t.world.patch(hero.id, { equipment: names.map((name) => ({ name, qty: 1, equipped: false })) });
+  const cast = async () => (await t.world.invoke("cast_buff", { characterId: hero.id, spell: "Mage Armor" })).ok;
+  if (run.want === "cyberdeck") {
+    carry("Amulet");
+    eq(await cast(), false, "Mage Armor cast with a holy symbol and no cyberdeck");
+    carry("Cyberdeck");
+    eq(await cast(), true, "Mage Armor cast with the cyberdeck carried");
+  } else if (run.want === "none") {
+    eq(await cast(), true, "Mage Armor cast with no pouch and no focus");
+  } else {
+    carry("Arcane Focus");
+    eq(await cast(), false, "Mage Armor cast with an arcane focus and no drone built");
+    must(await t.world.invoke("use_resource", { characterId: hero.id, resource: "Drone Companion" }), "Drone Companion");
+    eq(await cast(), true, "Mage Armor cast with a drone on the board");
+  }
+};
+
+// "Reaction when a creature damages you": refused with nothing dealt to the
+// esper; after a foe's Burning Hands catches them (an area's save, which
+// leaves no hit record: src/lib/dm/last-save.ts recordDamage) the reaction
+// answers that creature with no target named.
+CYBER.feedback = async function feedback(t, run, feature) {
+  const scene = await t.stage(feature);
+  const react = () => t.world.invoke("use_reaction", { characterId: scene.holder.id, feature: "Feedback Loop" });
+  eq((await react()).ok, false, "Feedback Loop with no damage dealt to the esper");
+  t.kit.setEnemy(scene.near.id, { stats: { ...t.kit.enemy(scene.near.id).stats, spellcasting: { dc: 14, attack: 6, ability: "int", slots: { 1: 2 }, spells: [{ name: "Burning Hands", level: 1 }] } } });
+  t.foesTurn(scene);
+  t.kit.freshRound();
+  t.world.clearDice();
+  t.world.dice(3, 3, 3, 3);
+  must(await t.world.invoke("aoe_damage", { casterEnemyId: scene.near.id, spell: "Burning Hands", characterIds: [scene.holder.id] }), "the foe's Burning Hands");
+  t.world.clearDice();
+  if (t.hp(scene.holder.id) >= 100) throw new Error("the staged Burning Hands dealt the esper nothing");
+  const before = t.foeHp(scene.near.id);
+  const out = await react();
+  eq(out.ok, true, `Feedback Loop after an area's damage (${out.error ?? "accepted"})`);
+  eq(before - t.foeHp(scene.near.id), mod("cha"), "psychic damage dealt back to the creature that breathed");
+};
+
+// A foe that casts: Fire Bolt at +6 to hit and Burning Hands at DC 14.
+function foeCasts(t, scene) {
+  t.kit.setEnemy(scene.near.id, { stats: { ...t.kit.enemy(scene.near.id).stats, spellcasting: { dc: 14, attack: 6, ability: "int", slots: { 1: 4 }, spells: [{ name: "Fire Bolt", level: 0 }, { name: "Burning Hands", level: 1 }] } } });
+}
+
+async function foeSpell(t, scene, spell, ...faces) {
+  t.foesTurn(scene);
+  t.kit.freshRound();
+  t.world.clearDice();
+  t.world.dice(...faces);
+  const out = await t.world.invoke("cast_at_player", { characterId: scene.holder.id, casterEnemyId: scene.near.id, spell });
+  t.world.clearDice();
+  return must(out, `the foe's ${spell}`).result;
+}
+
+// ICE Pick, "When a hostile program or spell targets you, reaction to add +2
+// AC": the foe's Fire Bolt on a 13 against AC 12 hits and the reaction turns
+// it (part "ac"); a club is neither a program nor a spell and is refused
+// with nothing spent (part "trigger"). Replaces the probe of
+// sweep-clauses-genre-a-named.mjs, which staged a club for the AC.
+CYBER.ice = async function ice(t, run, feature) {
+  const scene = await t.stage(feature);
+  const react = () => t.world.invoke("use_reaction", { characterId: scene.holder.id, feature: "ICE Pick" });
+  if (run.part === "ac") {
+    foeCasts(t, scene);
+    t.foesTurn(scene);
+    t.kit.freshRound();
+    t.world.clearDice();
+    // Two d20s: the foe shoots with a hostile creature within 5 feet.
+    t.world.dice(7, 7, 4);
+    const bolt = await t.world.invoke("enemy_attack", { enemyId: scene.near.id, targetCharacterId: scene.holder.id, spell: "Fire Bolt" });
+    t.world.clearDice();
+    must(bolt, "the foe's Fire Bolt");
+    if (t.hp(scene.holder.id) >= 100) throw new Error(`the staged Fire Bolt on a 13 did not hit: ${JSON.stringify(bolt.result).slice(0, 700)}`);
+    const out = await react();
+    eq(out.ok, true, `ICE Pick against a Fire Bolt on a 13 (${out.error ?? "accepted"})`);
+    eq(t.hp(scene.holder.id), 100, "a 13 against AC 12 + 2 misses, and the hit points come back");
+    return;
+  }
+  await t.clubs(scene, scene.holder, 16, 4);
+  eq((await react()).ok, false, "ICE Pick answered a club, which is neither a program nor a spell");
+};
+
+// "When you succeed on a save against a spell, deal 2d8 psychic damage to the
+// caster": a failed save against the foe's Burning Hands leaves the foe
+// unhurt; a made one burns it for 2d8 (two 4s).
+CYBER.intrusion = async function intrusion(t, run, feature) {
+  const scene = await t.stage(feature);
+  foeCasts(t, scene);
+  const before = t.foeHp(scene.near.id);
+  await foeSpell(t, scene, "Burning Hands", 1, 4, 4, 4, 4, 4);
+  eq(before - t.foeHp(scene.near.id), 0, "damage to the caster after a failed save");
+  await foeSpell(t, scene, "Burning Hands", 20, 4, 4, 4, 4, 4);
+  eq(before - t.foeHp(scene.near.id), 8, "psychic damage to the caster after a made save (2d8 on two 4s)");
+};
+
+// Lethal Payload and Neural Spike on a save spell: Acid Splash through
+// cast_at_enemy on a failed save lands its own 1d6 and the rider (run.n on
+// 3s); a second Acid Splash the same turn, the action handed back, lands the
+// 1d6 alone.
+CYBER.program_save = async function programSave(t, run, feature) {
+  const ability = run.ability ?? "int";
+  const scene = await t.stage(feature, { extra: { equipment: [], spellcasting: { ...CASTING(ability), cantrips: ["Fire Bolt", "Acid Splash"] } } });
+  const splash = async () => {
+    const before = t.foeHp(scene.near.id);
+    t.world.clearDice();
+    t.world.dice(1, 3, 3, 3);
+    must(await t.world.invoke("cast_at_enemy", { characterId: scene.holder.id, targetEnemyId: scene.near.id, spell: "Acid Splash" }), "Acid Splash");
+    t.world.clearDice();
+    return before - t.foeHp(scene.near.id);
+  };
+  const first = await splash();
+  const encounter = t.world.encounter();
+  t.encounters.saveEncounter({ ...encounter, turnBudget: { ...encounter.turnBudget, actionUsed: false, castThisAction: false, attacksMade: 0 } });
+  const second = await splash();
+  eq(`${first}/${second}`, `${3 + run.n}/3`, "damage of the first Acid Splash of the turn (its 1d6 and the rider) and of the second (the 1d6 alone)");
+};
+
+// A check the text gives advantage when it is about one thing (the GM's call
+// names it in request_roll's `about`): two d20s for it, one for the same
+// check about nothing listed.
+CYBER.check_about = async function checkAbout(t, run, feature) {
+  t.fresh();
+  const hero = t.hero(feature.classId, feature.level, { proficiencies: { ...TRAINED, skills: [run.skill] } });
+  const d20s = async (about) => {
+    t.world.clearDice();
+    t.world.diceLog();
+    t.world.dice(10, 17, 3);
+    must(await t.world.invoke("request_roll", { characterId: hero.id, kind: "skill_check", skill: run.skill, dc: 10, reason: "a probe", ...(about ? { about } : {}) }), `the ${run.skill} check about ${about ?? "nothing listed"}`);
+    t.world.clearDice();
+    return t.world.diceLog().filter((die) => die.sides === 20).length;
+  };
+  eq(await d20s(run.about), 2, `d20s thrown for a ${run.skill} check about ${run.about}`);
+  eq(await d20s(null), 1, `d20s thrown for a ${run.skill} check about nothing listed`);
+};

@@ -13,10 +13,12 @@
 // (contest-roll.ts rollCharacterCheck: proficiency and expertise, its
 // advantage and conditions, its features and effects).
 
+import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { authoredStealthAtNormal, type AuthoredSheet } from "@/lib/srd/authored-effects";
 import { resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
+import { observersDisadvantaged } from "@/lib/dm/genre-cc-a-checks";
 import { charmedBy } from "@/lib/dm/enemy-profile";
 import { getSheetById } from "@/lib/db/sheets";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
@@ -137,7 +139,9 @@ export function contestOpponent(
 export type ContestRoll = { name: string; skill: string; total: number; dc: number; answering: boolean };
 
 // The character a contest is against, as charm reads them.
-export type Charmable = { name: string; conditions: string[]; conditionMeta?: unknown };
+// `class`, `classes` and `features`: what the roller holds that changes the
+// opponent's side (Patient Hands, src/lib/dm/genre-cc-a-checks.ts).
+export type Charmable = { name: string; conditions: string[]; conditionMeta?: unknown; class?: string; classes?: CharacterSheet["classes"]; features?: CharacterSheet["features"] };
 type CharmMeta = Parameters<typeof charmedBy>[1];
 
 // Rolls the opponent's side of a contest and returns the DC the character's
@@ -162,12 +166,14 @@ export function rollContest(
   // the character's own check against a creature they charmed counted.
   const opponentRef = opponent.sheetId ?? opponent.enemyId;
   const charmer = Boolean(input.roller && opponentRef && charmedBy(input.roller.conditions, input.roller.conditionMeta as CharmMeta, opponentRef));
+  // Patient Hands: the creature watching the grifter's hands rolls at disadvantage.
+  const hardToCatch = observersDisadvantaged(input.roller, mine);
   const asSheet = opponent.sheetId ? getSheetById(opponent.sheetId) : null;
   if (asSheet) {
     const checked = rollCharacterCheck(
       campaign,
       asSheet,
-      { ...(theirs ? { skill: theirs } : { ability }), ...(charmer && input.roller ? { charmedTarget: input.roller.name } : {}) },
+      { ...(theirs ? { skill: theirs } : { ability }), ...(charmer && input.roller ? { charmedTarget: input.roller.name } : {}), ...(hardToCatch ? { advantage: "disadvantage" as const } : {}) },
       `${opponent.name}: ${label} (contest)`,
     );
     if (checked.rollId) {
@@ -186,6 +192,7 @@ export function rollContest(
     ...derivation.sources,
     ...(charmer && ability === "cha" ? ["advantage" as const] : []),
     ...(worn ? ["disadvantage" as const] : []),
+    ...(hardToCatch ? ["disadvantage" as const] : []),
     ...(effect?.advantage ? ["advantage" as const] : []),
     ...(effect?.disadvantage ? ["disadvantage" as const] : []),
   ]);

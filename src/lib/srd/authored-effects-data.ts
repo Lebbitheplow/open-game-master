@@ -178,6 +178,34 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
       },
     ],
   },
+  // Path of the Battlerager (odm-expanded, cc1113). The spikes are the
+  // spiked suit's, so every part of them asks for it on.
+  "barbarian::Battlerager Armor": {
+    subclass: "Path of the Battlerager",
+    // pc_attack weapon "Armor Spikes" with offHand: the bonus action, on its
+    // own; the grapple's 3 piercing is src/lib/dm/combat-actions.ts.
+    effects: [
+      {
+        kind: "natural_weapon",
+        gate: { ...RAGING, wornArmor: "Spiked Armor" },
+        weapon: { name: "Armor Spikes", aliases: ["spikes", "spiked armor"], dice: "1d4", type: "piercing", second: "1d4", bonusAlone: true },
+      },
+    ],
+  },
+  // The temporary hit points ride Reckless Attack's declaration
+  // (src/lib/dm/pc-attack.ts markAttackOptions), and the rage holds them.
+  "barbarian::Reckless Abandon": {
+    subclass: "Path of the Battlerager",
+    narrated: "Applied by the attack that declares Reckless Attack while raging (pc-attack.ts markAttackOptions).",
+  },
+  "barbarian::Battlerager Charge": {
+    subclass: "Path of the Battlerager",
+    effects: [{ kind: "bonus_route", action: "dash", gate: RAGING }],
+  },
+  "barbarian::Spiked Retribution": {
+    subclass: "Path of the Battlerager",
+    effects: [{ kind: "retaliate", formula: "3", type: "piercing", melee: true, gate: { ...RAGING, wornArmor: "Spiked Armor", notCondition: "incapacitated" } }],
+  },
   "barbarian::Fanatical Focus": {
     subclass: "Path of the Zealot",
     spends: [
@@ -226,7 +254,9 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
         kind: "reach",
         tiles: 1,
         gate: RAGING,
-        note: "Crushing Throw's Rage damage on a Strength thrown hit, and growing Large, are the GM's to add.",
+        // Crushing Throw's Rage damage on a Strength thrown hit is the
+        // attack engine's (attack-logic.ts ragingMeleeBonus).
+        note: "Growing Large is the GM's to add.",
       },
     ],
   },

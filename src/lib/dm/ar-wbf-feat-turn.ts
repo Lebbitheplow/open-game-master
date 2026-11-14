@@ -8,6 +8,7 @@ import { getSheetById } from "@/lib/db/sheets";
 import { budgetApplies, type TurnBudget } from "@/lib/dm/action-budget";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
+import { funeralMarchCovers } from "@/lib/dm/genre-cc-a-march";
 import { CHARGER_PUSH_TILES, CHARGER_RAN, CHARGER_RUN_TILES, dashCrossesDifficultTerrain, hasCharger } from "@/lib/srd/feat-moves";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -16,11 +17,12 @@ type XY = { x: number; y: number };
 const ownBudget = (encounter: Encounter | null, sheetId: string): TurnBudget | null =>
   encounter && budgetApplies(encounter.turnBudget, sheetId, encounter.round) ? encounter.turnBudget : null;
 
-// Mobile on a turn its holder Dashed: every pcMoveTraits caller that prices a
-// character's own walk passes this as `anyGround`, so the board lights the
-// squares the move route will charge.
+// Mobile on a turn its holder Dashed, or a character a singing dirgesinger's
+// Funeral March covers: every pcMoveTraits caller that prices a character's
+// own walk passes this as `anyGround`, so the board lights the squares the
+// move route will charge.
 export function crossesAnyGround(encounter: Encounter | null, sheet: Pick<CharacterSheet, "id" | "feats" | "features">): boolean {
-  return dashCrossesDifficultTerrain(sheet, ownBudget(encounter, sheet.id)?.dashed === true);
+  return dashCrossesDifficultTerrain(sheet, ownBudget(encounter, sheet.id)?.dashed === true) || funeralMarchCovers(encounter, sheet.id);
 }
 
 // The run a Charger's walk leaves on the turn, kept as one mark:

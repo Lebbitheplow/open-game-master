@@ -35,6 +35,9 @@ const { getDatabase } = await import("../src/lib/db/core.ts");
 const { requestTokens } = await import("../src/lib/dm/request-fit.ts");
 const { subclassLevelFor } = await import("../src/lib/srd/features.ts");
 const { earnedAsiCountFor } = await import("../src/lib/srd/asi.ts");
+const { owedChoices } = await import("../src/lib/srd/owed-choices.ts");
+const { casterViewsOf, cantripCapOf, dedupeNames, heldSpells, spellCapOf } = await import("../src/lib/srd/spell-prep.ts");
+const { adaptSheetToLevel } = await import("../src/lib/characters/adapt.ts");
 
 const model = await fakeModel();
 
@@ -252,12 +255,18 @@ await test("the action is on where an AI DM is set up, drafts one hero per seat 
   desk.world.close();
 });
 
-await test("every class the builder offers drafts to a legal sheet at levels 1, 4, 11 and 20.", async () => {
+// Every level a workshop's party can be set to, so a pregen offered at any
+// table level is checked: legal at the library's door, and nothing the
+// levels earned left for the player to pick (a skill, an improvement, a
+// subclass, expertise, a fighting style, a class feature's pick), with as
+// many cantrips and spells as the class may hold.
+await test("every class the builder offers drafts to a legal, finished sheet at every level 1 to 20.", async () => {
   const desk = await openDesk();
   const offered = engine.draftOffered();
   const swapped = [];
+  const unfinished = [];
   for (const klass of offered.classes) {
-    for (const level of [1, 4, 11, 20]) {
+    for (let level = 1; level <= 20; level += 1) {
       const built = engine.buildDraft(
         { name: `Test ${klass.name}`, concept: "", className: klass.name, race: "Human", background: "Acolyte", backstory: "A test hero.", role: null },
         level,
@@ -274,12 +283,105 @@ await test("every class the builder offers drafts to a legal sheet at levels 1, 
       }
       const verdict = admitSheet({ door: "library", level: built.draft.level, sheet: built.draft.sheet, userId: desk.dm.id });
       assert.ok(verdict.ok, `${klass.id} at ${level} is not legal: ${verdict.problems?.join("; ")}`);
+      // The class's own skill picks, for a setting class as for a core one:
+      // owedChoices reads only the core classes' lists.
+      if (verdict.sheet.class === klass.id && klass.skillChoices?.count) {
+        const fromList = new Set(klass.skillChoices.from.map((skill) => skill.toLowerCase()));
+        const held = (verdict.sheet.proficiencies?.skills ?? []).filter((skill) => fromList.has(skill.toLowerCase())).length;
+        if (held < klass.skillChoices.count) unfinished.push(`${klass.id} at ${level} holds ${held} of its ${klass.skillChoices.count} class skills`);
+      }
+      const owed = [...(verdict.owed ?? []), ...owedChoices(verdict.sheet)];
+      if (owed.length) unfinished.push(`${klass.id} at ${level} owes ${owed.join("; ")}`);
+      for (const view of casterViewsOf(verdict.sheet)) {
+        const cantripCap = cantripCapOf(view);
+        if (cantripCap !== null && dedupeNames(view.cantrips).length < cantripCap) {
+          unfinished.push(`${klass.id} at ${level} has ${dedupeNames(view.cantrips).length} of ${cantripCap} cantrips`);
+        }
+        const cap = spellCapOf(view, verdict.sheet.abilities);
+        const held = dedupeNames([...heldSpells(view), ...view.pending]).length;
+        if (cap && held < cap.count) unfinished.push(`${klass.id} at ${level} has ${held} of ${cap.count} ${cap.label}`);
+      }
     }
   }
+  assert.deepEqual(unfinished, []);
   // The fill picks every option whose prerequisite the character meets
   // (quickBuild.ts), so a level 20 artificer's late infusions are filled
   // too; any class swapped is a new gap.
   assert.deepEqual(swapped, []);
+  desk.world.close();
+});
+
+// "Use in campaign" and a library hero joining a table in play: the stored
+// sheet is adapted to the table's level (src/lib/characters/adapt.ts) and
+// judged by the stored door. Every class, stored at 11 and at 20 with its
+// subclass, improvements, spells and kit, enters a table at every level. It
+// is never refused for what the adaptation did, and going up or staying it
+// keeps every pick it had; going down gives back only what the lower level
+// has not earned (the next level-up asks for it again). A barbarian 20 was
+// refused below 20 (Primal Champion's points kept), and a draconic sorcerer
+// at level 1 (Draconic Resilience's hit point left out).
+await test("every class stored at levels 11 and 20 enters a table at every level, keeping every pick it can.", async () => {
+  const desk = await openDesk();
+  const offered = engine.draftOffered();
+  const seeded = (seed) => () => {
+    seed = (seed * 1664525 + 1013904223) % 4294967296;
+    return seed / 4294967296;
+  };
+  const names = (list) => (list ?? []).map((entry) => (typeof entry === "string" ? entry : entry.name).toLowerCase());
+  const lost = (before, after) => {
+    const kept = new Set(names(after));
+    return names(before).filter((name) => !kept.has(name));
+  };
+  const failures = [];
+  let turn = 0;
+  for (const klass of offered.classes) {
+    for (const from of [11, 20]) {
+      turn += 1;
+      const race = offered.races[turn % offered.races.length];
+      const background = offered.backgrounds[turn % offered.backgrounds.length];
+      const built = engine.buildDraft(
+        { name: "Test Hero", concept: "", className: klass.name, race: race.name, background: background.name, backstory: "A test hero.", role: null },
+        from,
+        offered,
+        seeded(turn),
+      );
+      assert.ok(built.ok, `${klass.id} ${from}: ${built.error}`);
+      const library = admitSheet({ door: "library", level: from, sheet: built.draft.sheet, userId: desk.dm.id });
+      assert.ok(library.ok, `${klass.id} ${from}: ${library.problems?.join("; ")}`);
+      const stored = library.sheet;
+      for (let to = 1; to <= 20; to += 1) {
+        const label = `${klass.id} ${race.id} ${from} to ${to}`;
+        const joined = admitSheet({ door: "stored", level: to, sheet: adaptSheetToLevel(stored, from, to), userId: desk.dm.id, campaign: null });
+        if (!joined.ok) {
+          failures.push(`${label} refused: ${joined.problems[0]}`);
+          continue;
+        }
+        if (to < from) continue;
+        const sheet = joined.sheet;
+        const lists = {
+          subclass: stored.subclass && sheet.subclass !== stored.subclass ? [stored.subclass] : [],
+          feats: lost(stored.feats, sheet.feats),
+          skills: lost(stored.proficiencies?.skills, sheet.proficiencies?.skills),
+          expertise: lost(stored.proficiencies?.expertise, sheet.proficiencies?.expertise),
+          languages: lost(stored.proficiencies?.languages, sheet.proficiencies?.languages),
+          tools: lost(stored.proficiencies?.tools, sheet.proficiencies?.tools),
+          features: lost(stored.features, sheet.features),
+          cantrips: lost(stored.spellcasting?.cantrips, sheet.spellcasting?.cantrips),
+          known: lost(stored.spellcasting?.known, sheet.spellcasting?.known),
+          prepared: lost(stored.spellcasting?.prepared, sheet.spellcasting?.prepared),
+          spellbook: lost(stored.spellcasting?.spellbook, sheet.spellcasting?.spellbook),
+          equipment: lost(stored.equipment, sheet.equipment),
+        };
+        for (const [kind, gone] of Object.entries(lists)) {
+          if (gone.length) failures.push(`${label} lost ${kind}: ${gone.join(", ")}`);
+        }
+        if (to === from && (sheet.abilities.str !== stored.abilities.str || sheet.abilities.con !== stored.abilities.con)) {
+          failures.push(`${label} changed its scores at its own level`);
+        }
+      }
+    }
+  }
+  assert.deepEqual(failures.slice(0, 20), [], `${failures.length} joins failed`);
   desk.world.close();
 });
 

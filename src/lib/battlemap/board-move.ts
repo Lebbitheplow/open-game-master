@@ -162,8 +162,10 @@ export type MoveNote = { text: string; tone: "struck" | "ground" | "move" };
 // attack, a spell area's spikes or hold. The engine's own lines, unchanged.
 export function moveNotesFrom(body: unknown): MoveNote[] {
   const source = (body ?? {}) as { opportunityAttacks?: unknown; zoneEffects?: unknown; jump?: unknown };
-  const jump = (source.jump ?? null) as { feet?: unknown; landed?: unknown; highJumpFeet?: unknown } | null;
-  const high = jump && typeof jump.highJumpFeet === "number" ? ` A high jump reaches ${jump.highJumpFeet} feet.` : "";
+  const jump = (source.jump ?? null) as { feet?: unknown; landed?: unknown; highJumpFeet?: unknown; highJumpDie?: unknown } | null;
+  // A jump die (Mirthful Leaps) is added to a high jump too.
+  const die = jump && typeof jump.highJumpDie === "number" ? `, plus 1d${jump.highJumpDie} for a high jump of its own` : "";
+  const high = jump && typeof jump.highJumpFeet === "number" ? ` A high jump reaches ${jump.highJumpFeet} feet${die}.` : "";
   const leapt =
     jump && typeof jump.feet === "number"
       ? [{ text: `Jumped ${jump.feet} feet and landed ${typeof jump.landed === "string" ? jump.landed : "on their feet"}.${high}`, tone: "move" as const }]

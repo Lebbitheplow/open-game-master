@@ -49,6 +49,10 @@ export function pcResistances(input: {
   class?: string;
   level?: number;
   wildShape?: WildShapeView;
+  // The feats taken, whose text may grant a resistance (Infernal
+  // Constitution's cold and poison), read as features of the same name the
+  // way speedFor reads Mobile.
+  feats?: string[];
 }, options?: { magical?: boolean; spell?: boolean; except?: string[]; noCreature?: boolean }): string {
   // A Polymorph's beast has none of the character's lineage, features or
   // gear; the effects laid on the creature still hold (shape-rules.ts).
@@ -59,11 +63,12 @@ export function pcResistances(input: {
   out.push(...authoredResistances(sheet, options));
   // Typed feature effects (parsed subclass features, Heart of the Storm).
   if (sheet.class) {
+    const featNames = (sheet.feats ?? []).filter((feat) => !sheet.features.some((feature) => feature.name.trim().toLowerCase() === feat.trim().toLowerCase()));
     out.push(
       ...defenseRiders({
         class: sheet.class,
         level: sheet.level ?? 1,
-        features: sheet.features,
+        features: [...sheet.features, ...featNames.map((name) => ({ name }))],
       }).resistances,
     );
   }

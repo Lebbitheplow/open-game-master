@@ -62,7 +62,7 @@ function stepOnto(
   const squeeze = typeof traits === "object" && traits.squeeze === true;
   const idx = tileIndex(width, nx, ny);
   const ch = tileAt(terrain, width, nx, ny);
-  const base = zoneStepOf(traits)(fromIdx, idx, moveCost(ch, traits));
+  const base = spaceStepCost(terrain, width, height, { x: nx, y: ny }, footprint, traits, fromIdx);
   if (footprint === 1) {
     // A wall the mover passes through (a door or a window to a Ghost Walk,
     // passage.ts objectTiles) is crossed as a creature's space is.
@@ -106,6 +106,26 @@ export function squeezedAt(
     !standable(terrain, width, height, occupied, at.x, at.y, footprint, null, false) &&
     standable(terrain, width, height, occupied, at.x, at.y, (footprint - 1) as Footprint, null, false)
   );
+}
+
+// What a step onto (x, y) costs a mover of this footprint: the dearest
+// ground under any square of its space. An ogre whose far squares crossed
+// rubble or webbing paid what its top-left square stood on, often nothing.
+function spaceStepCost(terrain: string, width: number, height: number, at: XY, footprint: Footprint, traits: MoveTraits, fromIdx: number): number {
+  const idx = tileIndex(width, at.x, at.y);
+  const step = zoneStepOf(traits);
+  if (footprint === 1) {
+    return step(fromIdx, idx, moveCost(tileAt(terrain, width, at.x, at.y), traits));
+  }
+  let cost = 1;
+  for (const tile of footprintTiles(at, footprint)) {
+    if (tile.x < 0 || tile.y < 0 || tile.x >= width || tile.y >= height) {
+      continue;
+    }
+    const here = tileIndex(width, tile.x, tile.y);
+    cost = Math.max(cost, step(fromIdx < 0 ? -1 : fromIdx + (here - idx), here, moveCost(tileAt(terrain, width, tile.x, tile.y), traits)));
+  }
+  return cost;
 }
 
 // A spell area's say on a step, or the step's own cost.
@@ -267,18 +287,24 @@ export function walkPathWithBudget(
   // Where the walk starts, for a spell area that minds the direction of a
   // step (Gust of Wind).
   from?: XY,
+  // A mover larger than a square: its whole space pays the ground under it,
+  // and a step it takes squeezed costs double (SRD 5.1, Squeezing into a
+  // Smaller Space), as findPath priced the way.
+  space?: { height: number; occupied: Set<number>; footprint: Footprint },
 ): { at: XY | null; spent: number; reachedEnd: boolean } {
   let spent = 0;
   let at: XY | null = null;
   const passable = passableOf(swims);
-  const zoneStep = zoneStepOf(swims);
+  const footprint = space?.footprint ?? 1;
+  const height = space?.height ?? Number.MAX_SAFE_INTEGER;
   let previous = from ? tileIndex(width, from.x, from.y) : -1;
   for (const step of path) {
     const here = tileIndex(width, step.x, step.y);
     const through = passable?.has(here) ?? false;
-    const base = zoneStep(previous, here, moveCost(tileAt(terrain, width, step.x, step.y), swims));
+    const base = spaceStepCost(terrain, width, height, step, footprint, swims, previous);
     previous = here;
-    const cost = through ? Math.max(base, 2) : base;
+    const squeezed = Boolean(space && footprint > 1 && squeezedAt(terrain, width, space.height, space.occupied, step, footprint));
+    const cost = through || squeezed ? Math.max(base, 2) : base;
     if (spent + cost > budget) {
       return { at, spent, reachedEnd: false };
     }

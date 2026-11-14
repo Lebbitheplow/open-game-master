@@ -104,6 +104,24 @@ await test("A story pet the table made in the workshop fights with that block, i
   world.close();
 });
 
+// SRD 5.1, Conditions: attack rolls against a paralyzed creature have
+// advantage, and any attack that hits it is a critical hit if the attacker is
+// within 5 feet. A pet's bite read only the warding spells on its target,
+// so it swung one d20 at a paralyzed creature and hit it for plain damage.
+await test("A pet's attack meets its target's conditions: a paralyzed creature beside it is struck with advantage, and the hit is a critical one.", async () => {
+  const { world, hero, dummy } = await summonedOnBoard("wolf");
+  const { patchEnemyConditions } = await import("../src/lib/db/encounters.ts");
+  patchEnemyConditions(dummy.id, ["paralyzed"], { paralyzed: { rounds: 10 } });
+  // Two d20s (5 and 15, the 15 kept), then the bite's 2d4 twice and its +2.
+  world.dice(5, 15, 3, 3, 3, 3);
+  const bite = await world.invoke("pet_attack", { characterId: hero.id, targetEnemyId: dummy.id });
+  assert.equal(world.clearDice(), 0, "a second d20 was thrown, and the dice of a critical");
+  assert.equal(bite.ok, true, bite.error);
+  assert.equal(bite.result.crit, true, JSON.stringify(bite.result));
+  assert.equal(enemyOf(world, dummy.id).currentHp, 90 - 14);
+  world.close();
+});
+
 // Issue 659: the refusal told the model an ordinary familiar delivers touch
 // spells, which the engine never does (it has no square on the board, and a
 // touch spell is measured from its caster).

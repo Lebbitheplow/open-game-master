@@ -26,6 +26,7 @@
 //     necrotic damage, you regain hit points equal to half of it").
 // The passage itself is the board's (ar-ws-umbral-logic.ts
 // movesThroughEverything, read by passage.ts pcMoveTraits).
+import { regainHitPoints } from "@/lib/dm/regain";
 import { getBattleMapForEncounter, insertToken, listTokens, removeTokenByRef } from "@/lib/db/battle-maps";
 import type { Campaign } from "@/lib/db/campaigns";
 import { closeStandInTurn, openStandInTurn, type DmTurn } from "@/lib/db/dm-turns";
@@ -215,11 +216,13 @@ export function projectionDreadHeal(campaign: Campaign, encounter: Encounter, ne
   if (meta.usedTurn === key) {
     return null;
   }
-  const healed = Math.min(sheet.maxHp, sheet.currentHp + Math.floor(necrotic / 2)) - sheet.currentHp;
-  patchSheetAudited(campaign.id, sheet.id, { currentHp: sheet.currentHp + healed, conditionMeta: { ...sheet.conditionMeta, [SPIRIT_PROJECTION]: { ...meta, usedTurn: key } } }, {
-    kind: "heal",
-    reason: `Spirit Projection in Form of Dread: half of ${necrotic} necrotic damage dealt`,
-    delta: { healed },
+  patchSheetAudited(campaign.id, sheet.id, { conditionMeta: { ...sheet.conditionMeta, [SPIRIT_PROJECTION]: { ...meta, usedTurn: key } } }, {
+    kind: "spirit_projection",
+    reason: "Spirit Projection in Form of Dread: once a turn",
+    delta: { usedTurn: key },
   });
+  // Through the healing door (regain.ts), which bars what may not regain and
+  // reads the real maximum; the stored one was used here.
+  const healed = regainHitPoints(campaign, null, getSheetById(sheet.id) ?? sheet, Math.floor(necrotic / 2), `Spirit Projection in Form of Dread: half of ${necrotic} necrotic damage dealt`);
   return `${sheet.name} regains ${healed} hit points, half the ${necrotic} necrotic damage dealt (Spirit Projection in Form of Dread, once a turn).`;
 }

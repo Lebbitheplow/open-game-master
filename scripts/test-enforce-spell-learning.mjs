@@ -20,7 +20,7 @@
 import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
-import { cleric, sorcerer, wizard } from "./lib/enforce-spells.mjs";
+import { cleric, sorcerer, warlock, wizard } from "./lib/enforce-spells.mjs";
 
 const { test, finish } = suite("test-enforce-spell-learning");
 const world = await openWorld();
@@ -244,6 +244,21 @@ await test("a caster at their Spells Known limit learns nothing more until one i
   assert.equal((await learn(table, sorc, "Fly")).ok, true);
   assert.deepEqual(table.sheet(sorc.id).spellcasting.known, ["Magic Missile", "Shield", "Hold Person", "Fireball", "Haste", "Fly"]);
   assert.equal((await learn(table, sorc, "Counterspell")).ok, false);
+});
+
+// SRD 5.1, Mystic Arcanum: the warlock's 6th level spell is chosen beside
+// the Spells Known column, so a warlock whose column is full still learns
+// its arcanum, and learns no second spell of that level (the creator spells
+// audit, P02: learn_spell counted the arcanum as a spell known).
+await test("a warlock at its Spells Known limit still learns its Mystic Arcanum, and no second one of that level", async () => {
+  const table = await openWorld();
+  const known = ["Hex", "Hellish Rebuke", "Hold Person", "Misty Step", "Counterspell", "Fly", "Banishment", "Dimension Door", "Hold Monster", "Scrying", "Dream"];
+  const lock = table.addHero(warlock(11, { features: [{ name: "Mystic Arcanum (6th level)", source: "class" }], spellcasting: { known } }));
+  assert.equal((await learn(table, lock, "Contact Other Plane")).ok, false, "the column is full");
+  const arcanum = await learn(table, lock, "Circle of Death");
+  assert.equal(arcanum.ok, true, arcanum.error);
+  assert.equal((await learn(table, lock, "True Seeing")).ok, false, "one 6th level arcanum");
+  assert.deepEqual(table.sheet(lock.id).spellcasting.known, [...known, "Circle of Death"]);
 });
 
 await test("a character with no spellcasting is taught no spell, and nobody forgets what they never knew", async () => {

@@ -16,13 +16,16 @@ import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 
 const { test, finish } = suite("test-npc-mind-fight-wake");
 
+// The spend table first: entered from genre-gh-wards instead, upstream's import cycle
+// (wards -> spend effects -> horror plays -> wards) reads GH_WARD_PLAYS before it is set.
+await import("../src/lib/dm/authored-spend-effects.ts");
+const tools = await import("../src/lib/dm/encounter-tools.ts");
 const { allocateSeq } = await import("../src/lib/db/campaigns.ts");
 const { insertCampaignMessage, listAllMessages } = await import("../src/lib/db/messages.ts");
 const { createCompanionUser } = await import("../src/lib/db/users.ts");
 const { createSheet, markSheetAsCompanion, setCompanionCommander, getSheetById } = await import("../src/lib/db/sheets.ts");
 const { companionNpcFor } = await import("../src/lib/db/companion-npcs.ts");
 const { createDmTurn, getDmTurn } = await import("../src/lib/db/dm-turns.ts");
-const tools = await import("../src/lib/dm/encounter-tools.ts");
 const { registerDmWaker } = await import("../src/lib/dm/wake.ts");
 
 // Counted here rather than run: the loop registers its own waker as it

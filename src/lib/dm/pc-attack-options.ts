@@ -23,6 +23,8 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { holdsFeature } from "@/lib/srd/feature-names";
+import { DEATH_OR_GLORY } from "@/lib/srd/genre-b-post-apocalyptic-conditions";
+import { holdsDeathOrGlory, recklessConditionFor } from "@/lib/dm/genre-death-or-glory";
 
 export const BONUS_ATTACKS = ["martial arts", "frenzy", "feature"] as const;
 export type AnyBonusAttack = (typeof BONUS_ATTACKS)[number];
@@ -67,6 +69,9 @@ export type AttackOptions = {
   declaresReckless: boolean;
   // This swing rides the reckless turn: advantage.
   recklessAdvantage: boolean;
+  // The condition the reckless turn leaves: Reckless Attack's, or Death or
+  // Glory's (which Ride Eternal leaves with no opening for the enemy).
+  recklessCondition?: string;
   nonlethal: boolean;
   // Horde Breaker's extra attack: it spends no attack of the action, only
   // the once-per-turn key it claims.
@@ -206,16 +211,28 @@ export function checkAttackOptions(input: {
   }
 
   const strengthMelee = meleeWeapon && profile.ability === "str";
-  const alreadyReckless = hasCondition(sheet, RECKLESS);
+  // A road warrior's Death or Glory is the same reckless turn, on any melee
+  // attack ("advantage on melee attacks this turn"), not only a Strength one
+  // (src/lib/dm/genre-death-or-glory.ts).
+  const glory = !hasFeature(sheet, "reckless attack") && holdsDeathOrGlory(sheet);
+  const recklessMelee = glory ? meleeWeapon : strengthMelee;
+  const alreadyReckless = hasCondition(sheet, RECKLESS) || hasCondition(sheet, DEATH_OR_GLORY);
   if (args.reckless) {
-    if (!hasFeature(sheet, "reckless attack")) {
-      return { refused: { error: `${sheet.name} has no Reckless Attack (a barbarian's feature from 2nd level). They can make the attack without it.`, retry: true } };
+    if (!hasFeature(sheet, "reckless attack") && !glory) {
+      return { refused: { error: `${sheet.name} has no Reckless Attack (a barbarian's feature from 2nd level) and no Death or Glory (a road warrior's). They can make the attack without it.`, retry: true } };
     }
     if (!budget) {
-      return { refused: { error: "Reckless Attack is declared on the barbarian's own turn. They can make the attack without it.", retry: true } };
+      return { refused: { error: "Reckless Attack is declared on the attacker's own turn. They can make the attack without it.", retry: true } };
     }
-    if (!strengthMelee) {
-      return { refused: { error: "Reckless Attack covers melee weapon attacks made with Strength; this one is not. They can make the attack without it.", retry: true } };
+    if (!recklessMelee) {
+      return {
+        refused: {
+          error: glory
+            ? "Death or Glory covers melee attacks; this one is not. They can make the attack without it."
+            : "Reckless Attack covers melee weapon attacks made with Strength; this one is not. They can make the attack without it.",
+          retry: true,
+        },
+      };
     }
     if (!alreadyReckless && budget.attacksMade > 0) {
       return {
@@ -224,7 +241,8 @@ export function checkAttackOptions(input: {
     }
     options.declaresReckless = !alreadyReckless;
   }
-  options.recklessAdvantage = Boolean(budget) && strengthMelee && (alreadyReckless || options.declaresReckless);
+  options.recklessAdvantage = Boolean(budget) && recklessMelee && (alreadyReckless || options.declaresReckless);
+  options.recklessCondition = glory ? recklessConditionFor(sheet) : RECKLESS;
 
   if (args.hordeBreaker) {
     const problem = hordeBreakerProblem({ ...input, weaponAttack });

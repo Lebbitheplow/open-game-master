@@ -17,6 +17,7 @@ import { afterRollOptions, canWaitOnRoll } from "@/lib/dm/after-roll-logic";
 import { allyChoicesFor, reactionFreeFor, rollsCanWait } from "@/lib/dm/after-roll";
 import { noteShift, takeShift } from "@/lib/dm/chronal-shift";
 import { takeFate } from "@/lib/dm/fate-turn";
+import { takeLineage } from "@/lib/dm/lineage-watch";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { claimedAdvantage } from "@/lib/dm/pc-attack-options";
@@ -313,6 +314,8 @@ export function handleRequestRoll(
     // Convergent Future or Bend Luck set on it at the stop (fate-turn.ts).
     if (sheet && typeof args.dc === "number" && canWaitOnRoll(args.kind)) {
       outcome = takeFate(campaignId, purpose, sheet.name, outcome, args.dc)?.outcome ?? outcome;
+      // Saving Face, Lucky Footwork, Inspired Ingenuity or Bountiful Luck (lineage-watch.ts).
+      outcome = takeLineage(campaignId, purpose, sheet.name, outcome, { dc: args.dc }, resolved.detail)?.outcome ?? outcome;
     }
     // The server threw it: the dice wait on the player when something they
     // hold could change the result, or a wizard beside them could make them
@@ -321,7 +324,7 @@ export function handleRequestRoll(
       // A luck point spent before the throw (luck: true) was this roll's one.
       ? [
           ...afterRollOptions(fresh, { kind: args.kind, outcome, dc: args.dc ?? null, spent: resolved.spendInspiration?.split("|").includes(LUCK_SPEND) ? ["lucky"] : [], reactionFree: reactionFreeFor(campaignId, fresh.id), check: { skill: args.kind === "skill_check" ? resolved.detail : null, tool: args.tool } }),
-          ...allyChoicesFor(campaignId, fresh, { kind: args.kind, outcome, dc: args.dc ?? null }),
+          ...allyChoicesFor(campaignId, fresh, { kind: args.kind, outcome, dc: args.dc ?? null, detail: resolved.detail }),
         ]
       : [];
     if (sheet && options.length) {

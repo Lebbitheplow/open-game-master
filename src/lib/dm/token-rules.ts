@@ -18,6 +18,7 @@ import { footprintLookup, occupiedTiles, pcMoveBudget } from "@/lib/battlemap/vi
 import { tileIndex, type BattleToken } from "@/lib/battlemap/types";
 import { pcMoveTraits } from "@/lib/battlemap/passage";
 import { describeDistances } from "@/lib/battlemap/serialize";
+import { tokenFootprint } from "@/lib/dm/board-reach";
 import { standUpTiles } from "@/lib/srd/authored-effects-more";
 import { budgetApplies } from "@/lib/dm/action-budget";
 import { crossesAnyGround, noteStraightRun } from "@/lib/dm/ar-wbf-feat-turn";
@@ -151,7 +152,7 @@ export function payForTeleport(
 // the model narrates the new distances instead of remembering the pre-move
 // map.
 export function distancesFrom(tokens: BattleToken[], mover: BattleToken, at: XY): { distancesNow?: string } {
-  const distances = describeDistances(at, tokens.filter((other) => other.id !== mover.id));
+  const distances = describeDistances({ ...at, footprint: tokenFootprint(mover) }, tokens.filter((other) => other.id !== mover.id), tokenFootprint);
   return distances ? { distancesNow: distances } : {};
 }
 
@@ -159,7 +160,7 @@ export function distancesFrom(tokens: BattleToken[], mover: BattleToken, at: XY)
 // to the refusal, so the reply reads the board's distances whether the walk
 // happened or not.
 export function stillAt(tokens: BattleToken[], mover: BattleToken): string {
-  const distances = describeDistances(mover, tokens.filter((other) => other.id !== mover.id));
+  const distances = describeDistances({ ...mover, footprint: tokenFootprint(mover) }, tokens.filter((other) => other.id !== mover.id), tokenFootprint);
   return ` Still at (${mover.x},${mover.y})${distances ? `: ${distances}` : "."}`;
 }
 
