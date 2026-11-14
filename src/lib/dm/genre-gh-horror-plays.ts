@@ -158,13 +158,22 @@ function stitchTheTear(ctx: SpendContext): Resolution {
   return { result: { applied: `${enemy.displayName} is pulled back through the stitched tear and is gone.` } };
 }
 
-export const GH_HORROR_PLAYS: Record<string, (ctx: SpendContext) => Resolution> = {
-  peer_review: peerReview,
-  final_chapter: finalChapter,
-  rite_of_severance: riteOfSeverance,
-  stitch_the_tear: stitchTheTear,
-  // Sanctified Ground, Warding Sigil, Grounding Rig (src/lib/dm/genre-gh-wards.ts).
-  ...GH_WARD_PLAYS,
-  // Whispered Names (src/lib/dm/genre-gh-names.ts).
-  whispered_names: learnName,
-};
+// Built on first use, not at module load: genre-gh-wards.ts sits on an import
+// cycle back to this file, so spreading GH_WARD_PLAYS while this module
+// evaluates can read it before it is initialized (a ReferenceError that broke
+// every encounter end-turn).
+let ghHorrorPlaysCache: Record<string, (ctx: SpendContext) => Resolution> | null = null;
+
+export function ghHorrorPlays(): Record<string, (ctx: SpendContext) => Resolution> {
+  ghHorrorPlaysCache ??= {
+    peer_review: peerReview,
+    final_chapter: finalChapter,
+    rite_of_severance: riteOfSeverance,
+    stitch_the_tear: stitchTheTear,
+    // Sanctified Ground, Warding Sigil, Grounding Rig (src/lib/dm/genre-gh-wards.ts).
+    ...GH_WARD_PLAYS,
+    // Whispered Names (src/lib/dm/genre-gh-names.ts).
+    whispered_names: learnName,
+  };
+  return ghHorrorPlaysCache;
+}
