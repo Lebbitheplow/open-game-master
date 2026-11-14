@@ -166,8 +166,17 @@ const BOOKS = {
   // +2 to one score and +1 to another, the player's, and Common with one
   // other language of the player's.
   // A fairy is fey, not humanoid.
-  // A fairy and an owlin fly at their walking speed.
-  fairy: { asi: {}, asiChoice: { count: 2, amount: 1, amounts: [2, 1] }, languages: ["Common"], bonusLanguages: 1, type: "fey", traits: ["Fey (your creature type is fey, not humanoid)", "Flight (flying speed equal to your walking speed, not while wearing medium or heavy armor)"] },
+  // A fairy and an owlin fly at their walking speed. A fairy picks the
+  // ability its Fairy Magic is cast with, and may cast its spells with slots.
+  fairy: {
+    asi: {},
+    asiChoice: { count: 2, amount: 1, amounts: [2, 1] },
+    languages: ["Common"],
+    bonusLanguages: 1,
+    type: "fey",
+    traits: ["Fey (your creature type is fey, not humanoid)", "Flight (flying speed equal to your walking speed, not while wearing medium or heavy armor)", "Fairy Magic (druidcraft cantrip, then faerie fire from 3rd level and enlarge/reduce from 5th, each free once a long rest or cast with your spell slots, using Intelligence, Wisdom or Charisma as you pick)"],
+    innateSpells: { trait: "Fairy Magic", ability: "cha", abilityChoice: ["int", "wis", "cha"], spells: [{ name: "Druidcraft", level: 1 }, { name: "Faerie Fire", level: 3, per: "long", slots: true }, { name: "Enlarge/Reduce", level: 5, per: "long", slots: true }] },
+  },
   owlfolk: { asi: {}, asiChoice: { count: 2, amount: 1, amounts: [2, 1] }, languages: ["Common"], bonusLanguages: 1, traits: ["Flight (flying speed equal to your walking speed, not while wearing medium or heavy armor)"] },
   rabbitfolk: { asi: {}, asiChoice: { count: 2, amount: 1, amounts: [2, 1] }, languages: ["Common"], bonusLanguages: 1 },
   // Mordenkainen's Tome of Foes: an eladrin has the elf's traits and Fey

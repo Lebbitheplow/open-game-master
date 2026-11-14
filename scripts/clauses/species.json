@@ -2725,7 +2725,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "c6c50c2368a1",
+  "sha": "42cfbc7bafdd",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -2764,10 +2764,16 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.fairy.flight"
    },
    {
-    "c": "Fairy Magic (druidcraft cantrip, then faerie fire from 3rd level and enlarge/reduce from 5th, 1/long rest each)",
+    "c": "Fairy Magic (druidcraft cantrip, then faerie fire from 3rd level and enlarge/reduce from 5th",
     "is": "held",
     "by": "src/lib/srd/racial-grants.ts innateSpellsFor and innateSpellCounters (the row's innateSpells), cast by use_spell_slot without a slot",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits.mjs: species.fairy.innate"
+   },
+   {
+    "c": "each free once a long rest or cast with your spell slots, using Intelligence, Wisdom or Charisma as you pick",
+    "is": "held",
+    "by": "src/lib/srd/racial-grants.ts speciesSpellRows (innateSpells.abilityChoice: the ability the sheet's Fairy Magic pick names, racialChoices.variant or the race feature's variant id) and slotsToo (a row's slots: true), read by src/lib/srd/granted-casts.ts and src/lib/dm/cast-rules.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.fairy.fairy-magic"
    },
    {
     "c": "\"languages\":[\"Common\"]",
@@ -2782,7 +2788,7 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.fairy.choices"
    },
    {
-    "c": "\"innateSpells\":{\"trait\":\"Fairy Magic\",\"ability\":\"cha\",\"spells\":[{\"name\":\"Druidcraft\",\"level\":1},{\"name\":\"Faerie Fire\",\"level\":3,\"per\":\"long\"},{\"name\":\"Enlarge/Reduce\",\"level\":5,\"per\":\"long\"}]}",
+    "c": "\"innateSpells\":{\"trait\":\"Fairy Magic\",\"ability\":\"cha\",\"abilityChoice\":[\"int\",\"wis\",\"cha\"],\"spells\":[{\"name\":\"Druidcraft\",\"level\":1},{\"name\":\"Faerie Fire\",\"level\":3,\"per\":\"long\",\"slots\":true},{\"name\":\"Enlarge/Reduce\",\"level\":5,\"per\":\"long\",\"slots\":true}]}",
     "is": "held",
     "by": "src/lib/srd/racial-grants.ts innateSpellsFor and innateSpellCounters (the row's innateSpells), cast by use_spell_slot without a slot",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits.mjs: species.fairy.innate"
@@ -2792,6 +2798,12 @@
     "is": "held",
     "by": "src/lib/srd/index.ts creatureTypeForRace through src/lib/dm/summon-rules.ts sheetCreatureType",
     "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.fairy.fey"
+   },
+   {
+    "is": "held",
+    "by": "src/lib/content/species-variants.ts (the builder asks which ability casts Fairy Magic and writes its line on the sheet); src/lib/srd/racial-grants.ts speciesSpellRows (innateSpells.abilityChoice: the ability the sheet's Fairy Magic pick names, racialChoices.variant or the race feature's variant id) and slotsToo (a row's slots: true), read by src/lib/srd/granted-casts.ts and src/lib/dm/cast-rules.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.fairy.fairy-magic",
+    "c": "\"variants\":{\"label\":\"Fairy Magic ability\",\"options\":[{\"id\":\"int\",\"name\":\"Intelligence\",\"lines\":[]},{\"id\":\"wis\",\"name\":\"Wisdom\",\"lines\":[]},{\"id\":\"cha\",\"name\":\"Charisma\",\"lines\":[]}]}"
    }
   ]
  },

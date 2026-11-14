@@ -134,12 +134,16 @@ export function breathWeaponFor(
 // `atWill`: a levelled spell cast without a counter, as often as wanted (a
 // serpentfolk's animal friendship on snakes). `self`: cast on the caster
 // alone, and `noMaterial`: with no material components (Duergar Magic).
-type InnateSpellRow = { name: string; level: number; castAt?: number; per?: "long"; rest?: "short" | "long"; uses?: number; atWill?: boolean; self?: boolean; noMaterial?: boolean };
+// `slots`: the character's own spell slots cast it too (Fairy Magic).
+type InnateSpellRow = { name: string; level: number; castAt?: number; per?: "long"; rest?: "short" | "long"; uses?: number; atWill?: boolean; self?: boolean; noMaterial?: boolean; slots?: boolean };
 type RaceRow = {
   id: string;
   ancestryChoice?: string;
   cantripChoice?: { list?: string };
-  innateSpells?: { trait: string; ability: Ability; spells: InnateSpellRow[] };
+  // `abilityChoice`: the abilities the player picks among to cast these with
+  // (a fairy's Intelligence, Wisdom or Charisma), the pick being the row's
+  // variant option of that id; `ability` answers until one is picked.
+  innateSpells?: { trait: string; ability: Ability; abilityChoice?: Ability[]; spells: InnateSpellRow[] };
 };
 
 const RACES = (racesJson as unknown as { races: RaceRow[] }).races;
@@ -269,6 +273,21 @@ export type SpeciesSpellChoices = {
   features?: ReadonlyArray<{ name: string; variant?: string }> | null;
 };
 
+// The ability a row that lets the player choose (Fairy Magic) is cast with:
+// the sheet's pick (racialChoices.variant, or the id its race feature
+// carries), or the pick's line among the race features ("Fairy Magic
+// ability (Wisdom)"), which a sheet at a table holds; null when none is one
+// of the row's.
+const ABILITY_WORDS: Record<Ability, string> = { str: "strength", dex: "dexterity", con: "constitution", int: "intelligence", wis: "wisdom", cha: "charisma" };
+function pickedInnateAbility(innate: NonNullable<RaceRow["innateSpells"]>, held: SpeciesSpellChoices | null | undefined): Ability | null {
+  if (!innate.abilityChoice?.length || !held) {
+    return null;
+  }
+  const picks = [held.variant ?? "", ...(held.features ?? []).map((feature) => feature.variant ?? "")].map((entry) => entry.trim());
+  const lines = (held.features ?? []).map((feature) => textKey(feature.name)).filter((name) => name.startsWith(textKey(`${innate.trait} ability`)));
+  return innate.abilityChoice.find((ability) => picks.includes(ability) || lines.some((name) => name.endsWith(textKey(`(${ABILITY_WORDS[ability]})`)))) ?? null;
+}
+
 // The option a sheet holds, among the species' options with spells.
 function heldOptionSpells(species: SpeciesRules | null, held: SpeciesSpellChoices | null | undefined) {
   const options = species?.variantSpells;
@@ -298,7 +317,7 @@ export function speciesSpellRows(raceId: string, rules?: SpeciesRules | null, he
   } else {
     const row = raceRow(raceId, rules);
     if (row?.innateSpells) {
-      out.push(...rowsFrom({ ability: row.innateSpells.ability, spells: row.innateSpells.spells.map((spell) => ({ ...spell, spell: spell.name })) }, row.innateSpells.trait));
+      out.push(...rowsFrom({ ability: pickedInnateAbility(row.innateSpells, held) ?? row.innateSpells.ability, spells: row.innateSpells.spells.map((spell) => ({ ...spell, spell: spell.name })) }, row.innateSpells.trait));
     }
   }
   const option = heldOptionSpells(species, held);

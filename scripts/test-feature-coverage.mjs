@@ -459,7 +459,7 @@ test("every racial trait is enforced, a resource, or acknowledged", () => {
     "Ram (1d4 bludgeoning unarmed strike)",
     "Fey (your creature type is fey, not humanoid)",
     "Reveler (Performance and Persuasion proficiency, and one musical instrument of your choice)",
-    "Fairy Magic (druidcraft cantrip, then faerie fire from 3rd level and enlarge/reduce from 5th, 1/long rest each)",
+    "Fairy Magic (druidcraft cantrip, then faerie fire from 3rd level and enlarge/reduce from 5th, each free once a long rest or cast with your spell slots, using Intelligence, Wisdom or Charisma as you pick)",
     "Stealth proficiency (Silent Feathers)",
     "Hooves (1d4 bludgeoning unarmed strike)",
     "Equine Build (count as one size larger for carrying, and each foot of climbing costs 4 extra feet)",

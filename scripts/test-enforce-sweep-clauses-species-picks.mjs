@@ -306,6 +306,35 @@ for (const row of RACES) {
       same([centaur >= 400, human], [true, 200], `${row.name}: two climb squares and a step, then a human on the same climb`);
     });
   }
+  // Fairy Magic: the player picks Intelligence, Wisdom or Charisma to cast
+  // it with, and faerie fire, once free a long rest, is cast with a spell
+  // slot after that.
+  if (row.variants?.label === "Fairy Magic ability") {
+    probe("fairy-magic", async () => {
+      const { racialSpellAbility } = await import("../src/lib/srd/racial-grants.ts");
+      const t = await rig.table();
+      // The pick's record among the race features, as the sheet door writes it.
+      const recordOf = (id) => `${row.variants.label} (${row.variants.options.find((option) => option.id === id).name})`;
+      const fairy = (id) => t.hero(of({ class: "wizard", spells: ["Magic Missile"], racialChoices: { variant: id }, features: [{ name: recordOf(id), source: "race" }], equipment: [{ name: "Component pouch", qty: 1 }] }));
+      const wise = fairy("wis");
+      const clever = fairy("int");
+      await t.fight([wise, clever]);
+      const abilities = [racialSpellAbility(t.sheet(wise), "Faerie Fire"), racialSpellAbility(t.sheet(clever), "Faerie Fire"), racialSpellAbility(t.sheet(wise), "Druidcraft")];
+      const slotsLeft = () => JSON.stringify(t.sheet(wise).spellcasting?.slots ?? null);
+      const before = slotsLeft();
+      const cast = () => t.invoke("use_spell_slot", { characterId: wise.id, spell: "Faerie Fire" });
+      const free = await cast();
+      const afterFree = slotsLeft();
+      t.freshTurn();
+      const slotted = await cast();
+      const afterSlot = slotsLeft();
+      same(
+        [abilities, Boolean(free.ok), t.used(wise, "racial_faerie_fire"), afterFree === before, Boolean(slotted.ok), afterSlot !== afterFree],
+        [["wis", "int", "wis"], true, 1, true, true, true],
+        `${row.name}: the ability picked for Fairy Magic, a free faerie fire, then one from a slot (${free.error ?? ""} ${slotted.error ?? ""})`,
+      );
+    });
+  }
 }
 
 // The probes above by name, for the ledger's probe check (it finds a probe
@@ -318,6 +347,7 @@ const NAMES = [
   "species.centaur.fey",
   "species.fairy.fey",
   "species.centaur.climbing",
+  "species.fairy.fairy-magic",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
 
