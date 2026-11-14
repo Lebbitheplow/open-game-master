@@ -1,12 +1,41 @@
 # Appearance themes: progress and pending ideas
 
-A working list of themes to build after [PR 962](https://github.com/Lebbitheplow/open-game-master/pull/962).
-Add a row for a new idea and update its status, evidence and next step as work
-moves. Use [Build an appearance theme](appearance-themes.md) for implementation
+A shared coordination board for people and sessions building appearance themes,
+starting with [PR 962](https://github.com/Lebbitheplow/open-game-master/pull/962).
+Check active work before starting, claim the theme you will work on, and leave
+its location and next step for whoever follows. Use
+[Build an appearance theme](appearance-themes.md) for implementation
 and [the validation record](appearance-validation.md) for completed checks.
 
-Last reconciled: 2026-11-14. This list records ideas; it does not authorize new
-theme implementation or change a genre's default.
+Last reconciled: 2026-11-14. Suggested priorities and genre claims below are
+proposals until agreed.
+
+## Active work and handoffs
+
+Keep this table current while work is underway. An owner identifies the person
+or session to coordinate with; it does not mean that session is still running.
+
+| Work | Owner / last contributor | Branch, commit or work location | State and next step | Last update |
+| --- | --- | --- | --- | --- |
+| Shared framework; Arcane, Woodland, Gothic | Codex, PR 962 session | `codex/genre-appearance-themes`, PR 962; local worktree `theme-infrastructure-pr` | Safeguards and guide pushed. Full repository tests running; record their result before closing validation. | 2026-11-14 |
+| Deep Forge | Fable; successor not yet assigned | Reported commit `c92039a08`; reference repo `C:\dev\tabletop-companion`, worktree `C:\dev\ogm-appearance-themes` | Groundwork already exists. Continue from Fable's implementation and port to the current framework; locate that work before starting another version. | 2026-11-14 |
+| Sunken Tide | Fable; successor not yet assigned | Stopped session; worktree/branch and handoff link still to record | Groundwork already exists per Albert/Fable. Next session should locate and preserve that work, then record what remains. | 2026-11-14 |
+
+### Starting, coordinating and handing off
+
+1. Read this table and the theme row. If an owner is listed, coordinate with
+   them or read their handoff before taking over. An old date alone is not a
+   reason to assume work has been abandoned.
+2. Claim the work here before implementation: record your name/session, branch
+   or worktree, intended scope and next step. Publish that small update to the
+   shared branch/PR so other sessions can see the claim.
+3. Keep theme assets and styles in the theme's own files. If shared framework
+   changes are needed, record them here and coordinate with its owner. Identify
+   the required base commit when a theme depends on an unmerged framework change.
+4. Before stopping, update status and location, save a recoverable commit or
+   worktree, and leave checks run, remaining issues and one concrete next action.
+   Link the PR or handoff. Mark work paused, ready for review or available for
+   pickup explicitly; retain the last contributor when ownership changes.
 
 ## Status and delivery
 
@@ -119,4 +148,4 @@ identities. Proposed claims are not active defaults.
 | When does a genre theme become the default? | Register the visual theme first; make a genre-default change an explicit reviewed decision. Existing campaigns following genre will change appearance. | Maintainer agreement for each claim. |
 | How many themes before grouping the picker? | The current checks cover three real choices and four/six-card layout fixtures. Reassess with the first seventh theme and actual phone use. | Whether grouping or filtering helps; six is a test case, not a product limit. |
 | What is the asset budget per theme? | Measure the complete shipped set and retain the existing 2 MiB limit per image. | The suggested 0.5–2 MB per-theme range is an estimate, not an enforced total. |
-| Who owns recoverable Forge/Tide work? | Record its actual location and handoff before new implementation begins. | Commit/worktree access and the next worker. |
+| Who continues Forge/Tide? | Build on Fable's groundwork and record the handoff in the active-work table. | Tide's work location and the next owner for each theme. |
