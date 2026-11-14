@@ -614,7 +614,13 @@ try {
     const card = (vramGb, ramGb = 32) => ({ ramGb, gpu: { name: "card", vramGb }, unified: false });
     assert.equal(hardware.storytellerFit(card(8, 64)), "below", "an 8 GB card is below the minimum whatever sits beside it");
     assert.equal(hardware.storytellerFit(card(15.7, 16)), "minimum", "a 16 GB card reads a little under 16");
-    assert.equal(hardware.storytellerFit(card(16, 32)), "recommended", "16 GB beside 32 GB holds the 35B at Q4 with its experts in RAM");
+    // Issue 954: system memory beside the card no longer counts toward the recommendation.
+    assert.equal(hardware.storytellerFit(card(16, 64)), "minimum", "a 16 GB card holds gpt-oss-20b whole, however much RAM sits beside it");
+    assert.equal(hardware.storytellerQuant(card(16, 64)), null);
+    assert.equal(hardware.storytellerFit(card(23.6, 32)), "recommended", "a 24 GB card holds the 35B whole at Q3");
+    assert.equal(hardware.storytellerQuant(card(23.6, 32)), "UD-Q3_K_XL");
+    assert.equal(hardware.storytellerQuant(card(31.5, 64)), "UD-Q4_K_M");
+    assert.equal(hardware.storytellerQuant({ ramGb: 125, gpu: { name: "AMD graphics", vramGb: 125 }, unified: true }), "Q8_0");
     assert.equal(hardware.storytellerFit({ ramGb: 16, gpu: { name: "Apple silicon", vramGb: 16 }, unified: true }), "below", "a 16 GB Mac leaves its GPU about 13");
     assert.equal(hardware.storytellerFit({ ramGb: 24, gpu: { name: "Apple silicon", vramGb: 24 }, unified: true }), "minimum");
     assert.equal(hardware.storytellerFit({ ramGb: 32, gpu: null, unified: false }), "unknown");

@@ -5,7 +5,7 @@
 // reading the answers are in discovery-logic.ts.
 import { comfyStatus, type ComfyStatus } from "@/lib/comfyui";
 import { hostAvailability } from "@/lib/harness/discover";
-import { describeMachine, machine, storytellerFit, type StorytellerFit } from "@/lib/model-registry/hardware";
+import { describeMachine, machine, storytellerFit, storytellerQuant, type StorytellerFit } from "@/lib/model-registry/hardware";
 import { replyTimeout } from "@/lib/reply-timeout";
 import {
   COMFYUI_PORT,
@@ -60,8 +60,9 @@ export type ScanResult = {
   kokoro: { url: string; voices: string[] } | null;
   whisper: { url: string } | null;
   // This machine and the local storyteller it can run, for the wizard's
-  // hints when no model server answered.
-  machine?: { summary: string; fit: StorytellerFit };
+  // hints when no model server answered: quant is the recommended model's
+  // largest quantization its graphics hold whole, null below that.
+  machine?: { summary: string; fit: StorytellerFit; quant: string | null };
 };
 
 async function getJson(url: string, timeoutMs: number, headers: Record<string, string> = {}) {
@@ -156,7 +157,7 @@ export async function scanLocalServices(ownPort = process.env.PORT): Promise<Sca
     seenPorts.add(port);
     return true;
   });
-  return { inContainer, text, comfyui, kokoro, whisper, machine: { summary: describeMachine(here), fit: storytellerFit(here) } };
+  return { inContainer, text, comfyui, kokoro, whisper, machine: { summary: describeMachine(here), fit: storytellerFit(here), quant: storytellerQuant(here) } };
 }
 
 export type ModelListing =
