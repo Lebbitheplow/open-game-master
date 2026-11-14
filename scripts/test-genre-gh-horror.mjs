@@ -148,5 +148,38 @@ await run("Stitch the Tear: a summoned creature of CR 5 or lower is sent back, a
   assert.equal(used(hero, "horror_stitch_the_tear"), 1);
 });
 
+// ---- GH05: marks a spell reads ----
+
+const { genreCastsAtMaximum, genreFreeCast } = await load("lib/dm/genre-a-casts.ts");
+const { proofUnresisted } = await load("lib/dm/genre-gh-proof.ts");
+const { enemyCounterspell } = await load("lib/dm/enemy-reactions.ts");
+
+await run("Proof: the spend marks the parapsychologist's next spell, cast at its maximum and not resisted by Legendary Resistance", async () => {
+  const hero = rig.holder(feature("parapsychologist", "Proof", 20));
+  assert.equal(genreCastsAtMaximum(world.sheet(hero.id), 3), null);
+  rig.must(await spend(hero, "Proof"), "Proof");
+  const sheet = world.sheet(hero.id);
+  assert.equal(genreCastsAtMaximum(sheet, 3), "Proof", "the spell is not cast at its maximum");
+  assert.equal(proofUnresisted(true, sheet), false, "Legendary Resistance may still be spent");
+  assert.equal(proofUnresisted(true, { conditions: [] }), true);
+  assert.equal(used(hero, "horror_proof"), 1);
+});
+
+await run("Ritual Echo: spent after a stigmata, the same spell of 2nd level or lower is cast again with no slot, and a 3rd-level one is not", async () => {
+  const hero = rig.holder(feature("apostate", "Ritual Echo", 6));
+  rig.must(await spend(hero, "Ritual Echo"), "Ritual Echo");
+  const sheet = world.sheet(hero.id);
+  assert.equal(genreFreeCast(sheet, bundledSpellFacts("Hold Person"), undefined)?.row.feature, "Ritual Echo");
+  assert.equal(genreFreeCast(sheet, bundledSpellFacts("Fireball"), undefined)?.row.feature ?? null, null);
+});
+
+await run("The Rite Completed: for a minute no enemy's Counterspell is tried on the apostate's spells", async () => {
+  const hero = rig.holder(feature("apostate", "The Rite Completed", 14));
+  rig.must(await spend(hero, "The Rite Completed"), "The Rite Completed");
+  const sheet = world.sheet(hero.id);
+  assert.ok(sheet.conditions.includes("the rite completed"), `conditions ${sheet.conditions}`);
+  assert.equal(enemyCounterspell(world.campaign().id, null, { id: "none" }, sheet, "Hold Person", 2), null);
+});
+
 rig.world.close();
 finish();

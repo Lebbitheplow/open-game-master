@@ -41,6 +41,7 @@ import { enemyCounterspell } from "@/lib/dm/enemy-reactions";
 import { endInvisibilityOnCast } from "@/lib/dm/attack-marks";
 import { droneFocusProblem } from "@/lib/dm/genre-a-cyberpunk-drones";
 import { marginaliaProblem } from "@/lib/srd/genre-gh-horror-spells";
+import { riteCompleted } from "@/lib/dm/genre-gh-proof";
 import { endSanctuaryOnHarm } from "@/lib/dm/spell-defenses";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, type Encounter } from "@/lib/db/encounters";
@@ -559,7 +560,10 @@ export function castSpell(
   if (state) {
     return state;
   }
-  const voice = components.problem ?? droneFocusProblem(campaign.id, sheet, castFacts) ?? silenceProblem(campaign.id, sheet.id, sheet.name, castFacts) ?? antimagicProblem(campaign.id, sheet.id, sheet.name);
+  // The Rite Completed: no verbal or somatic component for the minute
+  // (genre-gh-proof.ts), so neither a silence nor bound hands stop the cast.
+  const unspoken = riteCompleted(sheet) && !castFacts?.material;
+  const voice = (unspoken ? null : components.problem) ?? droneFocusProblem(campaign.id, sheet, castFacts) ?? (unspoken ? null : silenceProblem(campaign.id, sheet.id, sheet.name, castFacts)) ?? antimagicProblem(campaign.id, sheet.id, sheet.name);
   if (voice) {
     return voice;
   }

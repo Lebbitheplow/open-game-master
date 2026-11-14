@@ -24,6 +24,7 @@
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import type { SpellFacts } from "@/lib/srd/spell-facts";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { proofHeld } from "@/lib/dm/genre-gh-proof";
 
 // `atMaximum`: the spell the mark pays for deals its maximum damage (Their
 // Power, Your Hands: "without a slot at its maximum effect").
@@ -40,6 +41,11 @@ export const GENRE_A_CASTS: GenreCast[] = [
   // spend lays the mark of the holder's level (genre-a-horror-casts.ts).
   { counter: "horror_bleeding_power", feature: "Deeper Scars", mark: "bleeding power (deeper scars)", maxLevel: 3 },
   { counter: "horror_bleeding_power", feature: "Bleeding Power", mark: "bleeding power", maxLevel: 1 },
+  // Ritual Echo (apostate 6, cc1113 genre-c): "1/long rest, duplicate a
+  // stigmata of 2nd level or lower you just cast at a second target for
+  // free": spent after the cast, the mark of the turn pays for the same
+  // spell again at the second creature, with no slot.
+  { counter: "horror_ritual_echo", feature: "Ritual Echo", mark: "ritual echo", maxLevel: 2 },
   { counter: "horror_apocrypha", feature: "Apocrypha", level: 6 },
   { counter: "horror_seventh_seal", feature: "Seventh Seal", level: 7 },
 ];
@@ -76,6 +82,11 @@ export function genreFreeCast(
 // whose row says so, read before the cast clears it (cast-at-enemy.ts,
 // aoe-spell.ts), or null.
 export function genreCastsAtMaximum(sheet: Pick<CharacterSheet, "conditions">, level: number): string | null {
+  // Proof (parapsychologist 20): "your next apparatus spell is cast at
+  // maximum effect", with its own slot (src/lib/dm/genre-gh-proof.ts).
+  if (level >= 1 && proofHeld(sheet)) {
+    return "Proof";
+  }
   for (const row of GENRE_A_CASTS) {
     if ("mark" in row && row.atMaximum && level >= 1 && level <= row.maxLevel && sheet.conditions.some((entry) => isConditionNamed(entry, row.mark))) {
       return row.feature;

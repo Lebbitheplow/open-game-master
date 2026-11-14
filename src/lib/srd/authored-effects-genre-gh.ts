@@ -33,5 +33,16 @@ export const GENRE_GH_AUTHORED: GenreRow[] = [
   // (contested WIS, you have advantage)": a minute's ritual, so the action.
   played("exorcist", "Rite of Severance", "horror_rite_of_severance", "action", "rite_of_severance", "ally"),
   // "1/long rest, close a portal, summoning, or breach of CR/level 5 or lower as an action".
+  // "1/long rest, your next apparatus spell is cast at maximum effect and
+  // cannot be resisted by legendary resistance": the mark of the turn
+  // (src/lib/dm/genre-gh-proof.ts reads it).
+  row("Proof", ["parapsychologist"], { counter: "horror_proof", spends: [{ name: "Proof", pool: { id: "horror_proof" }, action: "none", does: { kind: "buff", condition: "proof", rounds: 1 } }] }),
+  // "1/long rest, duplicate a stigmata of 2nd level or lower you just cast
+  // at a second target for free": the mark of the turn, which the next cast
+  // of 2nd level or lower spends in place of a slot (src/lib/dm/genre-a-casts.ts).
+  row("Ritual Echo", ["apostate"], { counter: "horror_ritual_echo", spends: [{ name: "Ritual Echo", pool: { id: "horror_ritual_echo" }, action: "none", does: { kind: "buff", condition: "ritual echo", rounds: 1 } }] }),
+  // "1/long rest, for 1 minute your stigmata cost no verbal or somatic
+  // components and cannot be counterspelled" (src/lib/dm/genre-gh-proof.ts).
+  row("The Rite Completed", ["apostate"], { counter: "horror_the_rite_completed", spends: [{ name: "The Rite Completed", pool: { id: "horror_the_rite_completed" }, action: "none", does: { kind: "buff", condition: "the rite completed", rounds: 10 } }] }),
   played("occultist", "Stitch the Tear", "horror_stitch_the_tear", "action", "stitch_the_tear", "enemy"),
 ];

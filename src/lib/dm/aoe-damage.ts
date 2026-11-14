@@ -2,6 +2,7 @@
 // spell planned by aoe-spell.ts, an enemy's breath or spell by enemy-casting.ts,
 // a trap). Split out of encounter-tools-extra.ts; never imports encounter-tools.
 
+import { proofUnresisted } from "@/lib/dm/genre-gh-proof";
 import { echoAreaSave } from "@/lib/dm/mt-fb-echo";
 import { beguilingBroken } from "@/lib/dm/mt-fb-arrow-riders";
 import { magicImmunityNote } from "@/lib/dm/monster-traits";
@@ -618,9 +619,13 @@ export function handleAoeDamage(
           magical: Boolean(plan) || Boolean(enemyUse?.magical),
           // A legendary creature spends a resistance on an area's binding
           // condition, as it would on one cast at it alone (legendary-logic.ts).
-          resist: plan?.conditions.length
-            ? bindsWorthResisting(plan.conditions, Boolean(plan.mech?.condition?.endsWith))
-            : Boolean(laysCondition) && bindsWorthResisting([laysCondition ?? ""], false),
+          // Proof's spell is not resisted (genre-gh-proof.ts).
+          resist: proofUnresisted(
+            plan?.conditions.length
+              ? bindsWorthResisting(plan.conditions, Boolean(plan.mech?.condition?.endsWith))
+              : Boolean(laysCondition) && bindsWorthResisting([laysCondition ?? ""], false),
+            plan?.caster,
+          ),
           against: plan?.conditions ?? (enemyUse?.condition ? [enemyUse.condition] : laysCondition ? [laysCondition] : []),
           cover: saveCover(enemy.id),
           // The spell's damage types, for a save that leans only against some
