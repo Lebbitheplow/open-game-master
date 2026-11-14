@@ -63,7 +63,7 @@ import {
   type FightingStyleId,
 } from "@/lib/srd/feature-effects";
 import { spellStyleFor, spellbookAllowance } from "@/lib/srd/spell-prep";
-import { arcanumSplit, mysticArcanumLevels } from "@/lib/srd/mystic-arcanum";
+import { arcanumName, arcanumSplit, mysticArcanumLevels } from "@/lib/srd/mystic-arcanum";
 import { isThirdCaster, thirdCasterRequiredCantrip } from "@/lib/srd/third-caster";
 import {
   abilitiesAfterLevel,
@@ -824,7 +824,7 @@ export function LevelUpDialog({
       return held
         ? {
             short: "Arcanum chosen",
-            long: `Your Mystic Arcanum holds one spell of each level from 6th, and ${held} is your level ${level} arcanum.${heldArcana.open.includes(level) ? ` Untick it to choose ${name}.` : ""}`,
+            long: `${arcanumName(classChoice, level)} teaches one spell of level ${level}, and ${held} is yours.${heldArcana.open.includes(level) ? ` Untick it to choose ${name}.` : ""}`,
           }
         : null;
     }
@@ -1711,7 +1711,7 @@ export function LevelUpDialog({
                     ) : null}
                     {heldArcana.open.map((level) => (
                       <li key={`arcanum-${level}`}>
-                        <span className="text-amber-200">Mystic Arcanum: choose one level {level} warlock spell.</span>{" "}
+                        <span className="text-amber-200">{arcanumName(classChoice, level)}: choose one level {level} warlock spell.</span>{" "}
                         You cast it once without a spell slot, then again after a long rest. It does not count
                         against your spells known.
                       </li>

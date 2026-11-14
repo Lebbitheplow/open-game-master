@@ -11,6 +11,7 @@ import { cn } from "@/lib/cn";
 import { OWNS_ESCAPE } from "@/lib/owned-escape";
 import { ui } from "@/lib/ui";
 import { spellLevelOf } from "@/lib/srd/spell-lists";
+import { arcanumName } from "@/lib/srd/mystic-arcanum";
 import { customSpellsOf, spellListLabel } from "@/lib/classes/class-spell-list";
 import { bundledSpellSchool } from "@/lib/srd/spell-facts";
 import { thirdCasterSchoolProblem } from "@/lib/srd/third-caster";
@@ -438,7 +439,7 @@ export function SpellsSection({
     if (isArcanum(level) && level !== null) {
       const held = arcanumAt(level, name);
       if (held) {
-        setLimitNote(`Your Mystic Arcanum holds one spell of each level from 6th, and ${held} is your level ${level} arcanum. Remove it to choose ${name}.`);
+        setLimitNote(`${arcanumName(klass.id, level)} teaches one spell of level ${level}, and ${held} is yours. Remove it to choose ${name}.`);
         return;
       }
       setSpells((current) => [...current, name]);
@@ -671,7 +672,7 @@ export function SpellsSection({
           },
         ]
       : []),
-    ...(arcanumLevels.length ? [{ label: "Mystic Arcanum", value: chosenArcanum.length, max: arcanumLevels.length }] : []),
+    ...(arcanumLevels.length ? [{ label: arcanumName(klass.id), value: chosenArcanum.length, max: arcanumLevels.length }] : []),
   ];
 
   // The desk's header (backlog F13): the numbers the build math table

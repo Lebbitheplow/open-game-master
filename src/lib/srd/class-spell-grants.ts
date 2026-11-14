@@ -49,6 +49,9 @@ export type ClassSpellGrants = {
   // brings Magical Secrets, not Additional Magical Secrets again). `onTop`:
   // held on top of the class's count rather than inside it.
   sources: Array<{ feature: string; count: number; onTop: boolean }>;
+  // The any-list picks must be rituals (Marginalia: "Learn two rituals from
+  // any spell list"); offListProblems refuses another.
+  ritualsOnly?: boolean;
 };
 
 const NONE: ClassSpellGrants = {
@@ -123,7 +126,11 @@ export function classSpellGrants(view: GrantView): ClassSpellGrants {
   }
   // A genre class's feature that learns spells from any list, on top of the
   // class's own count or what it prepares (ANY_LIST_FEATURES below).
-  const anyList = ANY_LIST_FEATURES.find((entry) => entry.classId === classId && view.level >= entry.level);
+  // A sheet's feature list, when one is passed, must hold the feature too (a
+  // workshop class that dropped it has none).
+  const anyList = ANY_LIST_FEATURES.find(
+    (entry) => entry.classId === classId && view.level >= entry.level && (!features.length || holdsFeature({ features }, entry.feature)),
+  );
   if (anyList) {
     return {
       ...NONE,
@@ -132,6 +139,7 @@ export function classSpellGrants(view: GrantView): ClassSpellGrants {
       extraSpells: anyList.count,
       feature: anyList.feature,
       sources: [{ feature: anyList.feature, count: anyList.count, onTop: true }],
+      ...(anyList.ritualsOnly ? { ritualsOnly: true } : {}),
     };
   }
   // SRD 5.1, Circle of the Land, Bonus Cantrip: "When you choose this circle
@@ -152,9 +160,18 @@ export function classSpellGrants(view: GrantView): ClassSpellGrants {
 // - Grafted Power (aberrant 13, src/lib/classes/post-apocalyptic-features.json):
 //   "Learn two spells from any spell list; they count as mutations for you."
 //   On top of the mutations the class's count gives.
-const ANY_LIST_FEATURES = [
+// - Marginalia (occultist 10, src/lib/classes/horror-features.json): "Learn
+//   two rituals from any spell list; cast them as rituals only." Each pick a
+//   ritual (offListProblems refuses another), cast only as a ritual
+//   (src/lib/srd/genre-gh-horror-spells.ts marginaliaProblem).
+// - Unified Theory (parapsychologist 17): "Learn three spells from any spell
+//   list; they count as wizard-list apparatus effects for you." Held and cast
+//   as the class's own.
+const ANY_LIST_FEATURES: ReadonlyArray<{ classId: string; level: number; count: number; feature: string; ritualsOnly?: boolean }> = [
   { classId: "netrunner", level: 13, count: 2, feature: "Black Market Firmware" },
   { classId: "aberrant", level: 13, count: 2, feature: "Grafted Power" },
+  { classId: "occultist", level: 10, count: 2, feature: "Marginalia", ritualsOnly: true },
+  { classId: "parapsychologist", level: 17, count: 3, feature: "Unified Theory" },
 ];
 
 // The domains that teach spells from another list, on top of the cleric's
@@ -211,7 +228,8 @@ export function offListProblems(input: {
   // The features' number before this change (the same number at creation).
   allowedBefore: number;
   kept: number;
-  strays: Array<{ name: string; cantrip: boolean }>;
+  // `ritual`: the pick is a ritual, read where the grant takes rituals only.
+  strays: Array<{ name: string; cantrip: boolean; ritual?: boolean }>;
   list: string;
   label: string;
 }): string[] {
@@ -220,8 +238,10 @@ export function offListProblems(input: {
     stray.cantrip
       ? `${stray.name} is not a ${input.list} cantrip, so a ${input.label} cannot learn it`
       : `${stray.name} is not on the ${input.list} spell list, so a ${input.label} cannot learn or prepare it`;
-  const takes = (stray: { cantrip: boolean }) => grants.anyList > 0 && (stray.cantrip || grants.anyListSpells);
-  const problems = input.strays.filter((stray) => !takes(stray)).map((stray) => `${offList(stray)}.`);
+  const takes = (stray: { cantrip: boolean; ritual?: boolean }) => grants.anyList > 0 && (stray.cantrip || grants.anyListSpells) && (!grants.ritualsOnly || stray.ritual === true);
+  const problems = input.strays
+    .filter((stray) => !takes(stray))
+    .map((stray) => (grants.ritualsOnly && grants.anyList > 0 && !stray.cantrip ? `${offList(stray)}: ${grants.feature} takes rituals only, and it is not one.` : `${offList(stray)}.`));
   const taken = input.strays.filter(takes);
   const used = Math.min(input.allowedBefore, input.kept);
   if (taken.length && used + taken.length > grants.anyList) {

@@ -73,20 +73,26 @@ await test("a spell above the level the slots reach is refused, and a warlock's 
 // warlock's tables reach past its slots; only a class with an arcanum does.
 await test("a setting pact caster without a Mystic Arcanum stops at 5th level spells", async () => {
   const known = ["Hex", "Armor of Agathys", "Hold Person", "Counterspell", "Banishment", "Hold Monster", "Circle of Death", "Fear", "Fly", "Dimension Door", "Scrying"];
-  for (const klass of ["occultist", "grave_knight"]) {
-    const pact = sheet(klass, 17, { ability: klass === "occultist" ? "int" : "cha", cantrips: ["Eldritch Blast", "Minor Illusion", "Prestidigitation", "Chill Touch"], known });
-    const problems = spellListProblems(pact).join(" ");
-    assert.match(problems, /Circle of Death is a level 6 spell/, `${klass}: a 6th level spell is refused`);
-  }
+  const pact = sheet("grave_knight", 17, { ability: "cha", cantrips: ["Eldritch Blast", "Minor Illusion", "Prestidigitation", "Chill Touch"], known });
+  assert.match(spellListProblems(pact).join(" "), /Circle of Death is a level 6 spell/, "grave_knight: a 6th level spell is refused");
+  // The occultist's own Apocrypha (13th) and Seventh Seal (17th) teach one
+  // 6th and one 7th level warlock spell (src/lib/srd/mystic-arcanum.ts),
+  // and nothing reaches 8th.
+  const occultist = (more) => sheet("occultist", 17, { ability: "int", cantrips: ["Eldritch Blast", "Minor Illusion", "Prestidigitation", "Chill Touch"], known: [...known, ...more] });
+  assert.doesNotMatch(spellListProblems(occultist([])).join(" "), /Circle of Death is a level 6 spell/, "occultist: Apocrypha's 6th level spell is refused");
+  assert.match(spellListProblems(occultist(["Power Word Stun"])).join(" "), /Power Word Stun is a level 8 spell/, "occultist: an 8th level spell is taken");
   // The warlock's own Arcanum still reaches 6th at 11.
   assert.deepEqual(spellListProblems(sheet("warlock", 11, { ability: "cha", cantrips: ["Eldritch Blast", "Minor Illusion", "Prestidigitation", "Chill Touch"], known })), []);
   const { mysticArcanumTop } = await import("../src/lib/srd/spell-prep.ts");
   assert.equal(mysticArcanumTop("warlock", 17), 9);
-  assert.equal(mysticArcanumTop("occultist", 17), 0);
+  assert.equal(mysticArcanumTop("occultist", 17), 7);
+  assert.equal(mysticArcanumTop("grave_knight", 17), 0);
   assert.equal(mysticArcanumTop("grave_knight", 20), 0);
   // The level-up preview offers no more than the slots either.
   const { casterPreview } = await import("../src/app/campaigns/[campaignId]/level-up-preview.ts");
-  assert.equal(casterPreview({ classId: "occultist", subclass: "", level: 17, abilitiesAfter: abilities }).maxLevel, 5);
+  assert.equal(casterPreview({ classId: "grave_knight", subclass: "", level: 17, abilitiesAfter: abilities }).maxLevel, 5);
+  // The occultist's level-up offers Seventh Seal's 7th level spell.
+  assert.equal(casterPreview({ classId: "occultist", subclass: "", level: 17, abilitiesAfter: abilities }).maxLevel, 7);
   assert.equal(casterPreview({ classId: "warlock", subclass: "", level: 17, abilitiesAfter: abilities }).maxLevel, 9);
 });
 

@@ -71,6 +71,7 @@ import { BOND_SPEND } from "@/lib/dm/emboldening-bond-logic";
 import { magicalStrengthSave } from "@/lib/dm/infusion-charges";
 import { horrorCultSave } from "@/lib/srd/genre-a-horror-holds";
 import { nemesisClaim, treatmentUndoes } from "@/lib/dm/genre-b-mystery-dossier";
+import { huntedInstinctsAdvantage } from "@/lib/dm/genre-gh-hunted";
 
 // Everything resolveRollExpression cannot read for itself, for one roll of
 // one character: the aura over them (saves only), the lasting effects on
@@ -96,7 +97,7 @@ export function rollExtrasFor(campaign: Campaign, sheet: CharacterSheet, kind: s
     // The genre auras an ally holds (Steadying Presence, Fear No Rust):
     // rolls.ts adds them to a save against what each names.
     ...(kind === "saving_throw" ? { saveAuras: genreBSaveAuras(campaign.id, sheet) } : {}),
-    ...rollEffectExtras(campaign.id, sheet.id, kind),
+    ...withHunted(rollEffectExtras(campaign.id, sheet.id, kind), kind === "initiative" ? huntedInstinctsAdvantage(campaign.id, sheet) : null),
     encumbrance: campaign.gameSettings.variantRules.encumbrance,
     // Sunlight Sensitivity reads the board's sky (src/lib/dm/sunlight.ts).
     sunlight: hasSunlightSensitivity(sheet) && inDirectSunlight(campaign.id),
@@ -120,6 +121,12 @@ export function rollExtrasFor(campaign: Campaign, sheet: CharacterSheet, kind: s
     // (prey-escape.ts); rolls.ts adds it to a check named against the hold.
     escapeDie: kind === "skill_check" || kind === "ability_check" ? preyEscapeDie(sheet) : null,
   };
+}
+
+// Hunted Instincts' advantage on initiative joins the lasting effects' merge
+// (src/lib/dm/genre-gh-hunted.ts), so a disadvantage there still cancels it.
+function withHunted<T extends { effectAdvantage?: boolean; effectNote?: string }>(effects: T, hunted: string | null): T {
+  return hunted ? { ...effects, effectAdvantage: true, effectNote: [effects.effectNote, hunted].filter(Boolean).join("; ") } : effects;
 }
 
 // The proficiencies of the character whose Help this one holds.

@@ -481,10 +481,11 @@ export function cantripCapOf(
   return suggestedCantripCount(cantripRulesClassFor(view.classId), view.level, casterTypeOf(view.classId));
 }
 
-// A warlock's Mystic Arcanum (src/lib/srd/mystic-arcanum.ts): its levels,
+// A warlock's Mystic Arcanum, or an occultist's Apocrypha and Seventh Seal
+// (src/lib/srd/mystic-arcanum.ts): its levels,
 // its reach past the pact slots, and which held spells are the arcana. Kept
 // here too, as the spell rules' other readers import them from this module.
-export { arcanumExtraProblem, arcanumSplit, mysticArcanumLevels, mysticArcanumTop } from "@/lib/srd/mystic-arcanum";
+export { arcanumExtraProblem, arcanumName, arcanumSplit, mysticArcanumLevels, mysticArcanumTop } from "@/lib/srd/mystic-arcanum";
 
 // Everything the 5e tables say is wrong with the spell lists a sheet arrives
 // with: more cantrips than the class knows, more spells held than its known
@@ -555,7 +556,7 @@ export function spellListProblems(
     // A warlock's arcana sit beside the Spells Known column: one of each
     // arcanum level is left out of the count, a second of one level refused.
     const arcana = arcanumSplit(view, held, options.spellLevelOf);
-    const extraArcanum = arcanumExtraProblem(arcana, options.spellLevelOf);
+    const extraArcanum = arcanumExtraProblem(arcana, options.spellLevelOf, view.classId);
     if (extraArcanum) {
       problems.push(extraArcanum);
     }

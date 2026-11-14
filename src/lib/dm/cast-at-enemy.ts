@@ -75,6 +75,7 @@ import { scrollNumbers } from "@/lib/dm/consumables";
 import { conditionNameRefusal } from "@/lib/dm/set-condition";
 import { swallowCover } from "@/lib/dm/swallow";
 import { genreCastsAtMaximum } from "@/lib/dm/genre-a-casts";
+import { proofUnresisted } from "@/lib/dm/genre-gh-proof";
 
 const castArgsSchema = z.object({
   characterId: z.string(),
@@ -519,7 +520,8 @@ export function handleCastAtEnemy(
     const resist = bindsWorthResisting(conditions, Boolean(mechCondition?.endsWith));
     const save = rollEnemySave(campaign.id, enemy, ability, dc, {
       magical: true,
-      resist,
+      // Proof's spell is not resisted by Legendary Resistance (genre-gh-proof.ts).
+      resist: proofUnresisted(resist, sheet),
       against: conditions,
       // Cover between the caster and the target counts on a DEX save,
       // unless the spell says it does not (Sacred Flame): SRD 5.1, Cover.

@@ -21,6 +21,7 @@ import { isConditionNamed } from "@/lib/srd/feature-names";
 import { horrorHolds } from "@/lib/srd/genre-a-horror-holds";
 import type { FullPatchSheetInput } from "@/lib/schemas/sheet";
 import type { SpendDoes } from "@/lib/srd/authored-effects-types";
+import { GH_HORROR_PLAYS } from "@/lib/dm/genre-gh-horror-plays";
 
 type Resolution = ToolError | { patch?: FullPatchSheetInput; result: Record<string, unknown> };
 
@@ -144,6 +145,8 @@ function observerEffect(ctx: SpendContext): Resolution {
 const PLAYS: Record<string, (ctx: SpendContext) => Resolution> = {
   terminal_focus: terminalFocus,
   observer_effect: observerEffect,
+  // The cc1113 genre-c pass's (src/lib/dm/genre-gh-horror-plays.ts).
+  ...GH_HORROR_PLAYS,
 };
 
 export function horrorSpend(ctx: SpendContext, play: string): Resolution {

@@ -73,15 +73,9 @@
    },
    {
     "c": "a holy symbol or ritual kit is the focus",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs a cast of a material-component spell by a genre caster with and without the named focus carried (src/lib/dm/cast-materials.ts focusProblem); not staged",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap exorcist::Liturgy#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Liturgy: a exorcist's material spell needs the focus the feature names (or a pouch), and another class's focus is refused",
+    "by": "src/lib/srd/genre-gh-horror-focus.ts horrorFocusOf (a holy symbol, a Ritual Kit or Holy Kit line), read by src/lib/dm/cast-materials.ts focusProblem"
    }
   ]
  },
@@ -317,15 +311,15 @@
    },
    {
     "c": "a 1-minute ritual expels a possessing entity from a host",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_rite_of_severance#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-rite-of-severance"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Rite of Severance: an exorcist's Wisdom contest, with advantage, expels the entity possessing an ally",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts horror_spend row on the class counter, played by src/lib/dm/genre-gh-horror-plays.ts riteOfSeverance (WIS check with advantage against the possessor's, the host's possessed condition ended)"
    },
    {
     "c": "contested WIS, you have advantage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_rite_of_severance#GUIDANCE_ONLY",
-    "same_probe_as": 1
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Rite of Severance: an exorcist's Wisdom contest, with advantage, expels the entity possessing an ally",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts horror_spend row on the class counter, played by src/lib/dm/genre-gh-horror-plays.ts riteOfSeverance (WIS check with advantage against the possessor's, the host's possessed condition ended)"
    }
   ]
  },
@@ -611,15 +605,9 @@
    },
    {
     "c": "the grimoire is the focus",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs a cast of a material-component spell by a genre caster with and without the named focus carried (src/lib/dm/cast-materials.ts focusProblem); not staged",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Pact of the Page#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Pact of the Page: a occultist's material spell needs the focus the feature names (or a pouch), and another class's focus is refused",
+    "by": "src/lib/srd/genre-gh-horror-focus.ts horrorFocusOf (a Grimoire, Spellbook or Book line), read by src/lib/dm/cast-materials.ts focusProblem"
    }
   ]
  },
@@ -746,22 +734,15 @@
   "clauses": [
    {
     "c": "Learn two rituals from any spell list",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs the level-up offer of the builder for this class and level (the builder sweep's rig), not staged here",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Marginalia#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Marginalia: a 10th-level occultist holds two rituals from any list on top of their spells known, and a non-ritual off the list is refused",
+    "by": "src/lib/srd/class-spell-grants.ts ANY_LIST_FEATURES (two any-list picks on top, ritualsOnly), read by classSpellGrants and offListProblems (the builder, the level-up dialog and both routes)"
    },
    {
     "c": "cast them as rituals only",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs the level-up offer of the builder for this class and level (the builder sweep's rig), not staged here",
-    "same_probe_as": 0
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Marginalia: a spell it brought is cast as a ritual only, and a warlock spell is cast as ever",
+    "by": "src/lib/srd/genre-gh-horror-spells.ts marginaliaProblem, asked by src/lib/dm/cast-guard.ts"
    }
   ]
  },
@@ -805,9 +786,9 @@
   "clauses": [
    {
     "c": "Learn one 6th-level warlock spell",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the hook probe passes only on the horror_apocrypha counter; learning the spell is a builder or level-up pick, and no pick of a 6th-level warlock spell for a genre class was staged"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Apocrypha and Seventh Seal: an occultist's list reaches a 6th-level spell at 13th and a 7th-level one at 17th, and no further",
+    "by": "src/lib/srd/mystic-arcanum.ts ARCANUM_FEATURES, read by mysticArcanumLevels and mysticArcanumTop (the builder's preview, levelUpSpells and spellListProblems)"
    },
    {
     "c": "1/long rest",
@@ -878,9 +859,9 @@
   "clauses": [
    {
     "c": "Learn one 7th-level warlock spell",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the hook probe passes only on the horror_seventh_seal counter; learning the spell is a builder or level-up pick, and no pick of a 7th-level warlock spell for a genre class was staged"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Apocrypha and Seventh Seal: an occultist's list reaches a 6th-level spell at 13th and a 7th-level one at 17th, and no further",
+    "by": "src/lib/srd/mystic-arcanum.ts ARCANUM_FEATURES, read by mysticArcanumLevels and mysticArcanumTop"
    },
    {
     "c": "1/long rest",
@@ -922,15 +903,15 @@
    },
    {
     "c": "reroll any one die you or a creature within 60 ft just rolled",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_the_final_chapter#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-the-final-chapter"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs The Final Chapter: the occultist's own save is rolled again and the reroll stands; an attack on them is answered by its reaction",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts horror_spend row on the class counter, played by src/lib/dm/genre-gh-horror-plays.ts finalChapter (a save or check of the occultist or an ally within 60 feet, the new roll standing), and its reroll_hit reaction (roller, 60 feet) for an attack roll, src/lib/dm/authored-reactions.ts"
    },
    {
     "c": "the reroll stands",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_the_final_chapter#GUIDANCE_ONLY",
-    "same_probe_as": 1
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs The Final Chapter: the occultist's own save is rolled again and the reroll stands; an attack on them is answered by its reaction",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts horror_spend row on the class counter, played by src/lib/dm/genre-gh-horror-plays.ts finalChapter (a save or check of the occultist or an ally within 60 feet, the new roll standing), and its reroll_hit reaction (roller, 60 feet) for an attack roll, src/lib/dm/authored-reactions.ts"
    }
   ]
  },
@@ -1030,15 +1011,9 @@
    },
    {
     "c": "close a portal, summoning, or breach of CR/level 5 or lower",
-    "run": {
-     "k": "spend_moves",
-     "id": "horror_stitch_the_tear"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Stitch the Tear#1",
-    "observed": "spending horror_stitch_the_tear moved its counter and the turn's cost and nothing else; the result was its guidance: 1/long rest, close a portal, summoning, or breach of CR/level 5 or lower as an action.",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Stitch the Tear: a summoned creature of CR 5 or lower is sent back, and one that was not summoned is refused",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts horror_spend row on the class counter, played by src/lib/dm/genre-gh-horror-plays.ts stitchTheTear (a creature marked summoned of CR 5 or lower is sent back; a portal or breach is a place the GM closes in the story)"
    },
    {
     "c": "as an action",
@@ -2225,15 +2200,9 @@
    },
    {
     "c": "the kit is the focus",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs a cast of a material-component spell by a genre caster with and without the named focus carried (src/lib/dm/cast-materials.ts focusProblem); not staged",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap parapsychologist::Applied Theory#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Applied Theory: a parapsychologist's material spell needs the focus the feature names (or a pouch), and another class's focus is refused",
+    "by": "src/lib/srd/genre-gh-horror-focus.ts horrorFocusOf (the Field Instruments line), read by src/lib/dm/cast-materials.ts focusProblem"
    }
   ]
  },
@@ -2293,15 +2262,15 @@
    },
    {
     "c": "when an ally fails an INT, WIS, or CHA save within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_peer_review#TRIGGER_AS_CARD",
-    "recorded_as": "spends-trigger-as-card-counter-horror-peer-review"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Peer Review: an ally's failed WIS save is rolled again, a success ends what the save would have ended, and the use is spent; a failed STR save is not its to reroll",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts horror_spend row on the class counter, played by src/lib/dm/genre-gh-horror-plays.ts peerReview (the ally named within 30 feet, their last failed INT, WIS or CHA save rolled again)"
    },
    {
     "c": "let them reroll with your guidance",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_peer_review#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-peer-review"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Peer Review: an ally's failed WIS save is rolled again, a success ends what the save would have ended, and the use is spent; a failed STR save is not its to reroll",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts horror_spend row on the class counter, played by src/lib/dm/genre-gh-horror-plays.ts peerReview (the ally named within 30 feet, their last failed INT, WIS or CHA save rolled again)"
    }
   ]
  },
@@ -2453,22 +2422,15 @@
   "clauses": [
    {
     "c": "Learn three spells from any spell list",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs the level-up offer of the builder for this class and level (the builder sweep's rig), not staged here",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap parapsychologist::Unified Theory#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Unified Theory: a 17th-level parapsychologist holds three spells from any list, cast as the class's own",
+    "by": "src/lib/srd/class-spell-grants.ts ANY_LIST_FEATURES (three any-list picks on top), read by classSpellGrants; the picks sit in the class's own spells, cast with its ability and slots"
    },
    {
     "c": "they count as wizard-list apparatus effects for you",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs the level-up offer of the builder for this class and level (the builder sweep's rig), not staged here",
-    "same_probe_as": 0
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Unified Theory: a 17th-level parapsychologist holds three spells from any list, cast as the class's own",
+    "by": "src/lib/srd/class-spell-grants.ts ANY_LIST_FEATURES (three any-list picks on top), read by classSpellGrants; the picks sit in the class's own spells, cast with its ability and slots"
    }
   ]
  },
@@ -2525,9 +2487,9 @@
    },
    {
     "c": "your next apparatus spell is cast at maximum effect and cannot be resisted by legendary resistance",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_proof#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-proof"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Proof: the spend marks the parapsychologist's next spell, cast at its maximum and not resisted by Legendary Resistance",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts Proof (the proof mark for the turn), read by src/lib/dm/genre-a-casts.ts genreCastsAtMaximum and src/lib/dm/genre-gh-proof.ts proofUnresisted (cast-at-enemy.ts, aoe-damage.ts)"
    }
   ]
  },
@@ -2766,9 +2728,9 @@
   "clauses": [
    {
     "c": "Advantage on initiative when cultists or their summonings are present",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the initiative probe reads the sheet's initiative roll outside a fight, so it cannot put cultists in the fight; Read the Room's unconditional \"Advantage on initiative\" fails that probe (survivor::Read the Room#0), and a fight against cultists was not staged for this one"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Hunted Instincts: an apostate rolls initiative with advantage while a cultist is in the fight, and not against goblins or without the feature",
+    "by": "src/lib/dm/genre-gh-hunted.ts huntedInstinctsAdvantage (a cultist or cult fanatic, or a creature marked summoned, among the fight's enemies), read by src/lib/dm/forced-save.ts rollExtrasFor"
    },
    {
     "c": "you cannot be surprised by them",
@@ -3009,15 +2971,9 @@
    },
    {
     "c": "duplicate a stigmata of 2nd level or lower you just cast at a second target for free",
-    "run": {
-     "k": "spend_moves",
-     "id": "horror_ritual_echo"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap apostate::Ritual Echo#1",
-    "observed": "spending horror_ritual_echo moved its counter and the turn's cost and nothing else; the result was its guidance: 1/long rest, duplicate a stigmata of 2nd level or lower you just cast at a second target for free.",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Ritual Echo: spent after a stigmata, the same spell of 2nd level or lower is cast again with no slot, and a 3rd-level one is not",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts Ritual Echo (the ritual echo mark), read by src/lib/dm/genre-a-casts.ts GENRE_A_CASTS genreFreeCast (the cast guard's free cast)"
    }
   ]
  },
@@ -3069,15 +3025,9 @@
    },
    {
     "c": "for 1 minute your stigmata cost no verbal or somatic components and cannot be counterspelled",
-    "run": {
-     "k": "spend_moves",
-     "id": "horror_the_rite_completed"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap apostate::The Rite Completed#1",
-    "observed": "spending horror_the_rite_completed moved its counter and the turn's cost and nothing else; the result was its guidance: 1/long rest, for 1 minute your stigmata cost no verbal or somatic components and cannot be counterspelled.",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs The Rite Completed: for a minute no enemy's Counterspell is tried on the apostate's spells",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts The Rite Completed (the mark for a minute), read by src/lib/dm/genre-gh-proof.ts riteCompleted in src/lib/dm/enemy-reactions.ts enemyCounterspell and src/lib/dm/cast-guard.ts (no silence or component refusal)"
    }
   ]
  }

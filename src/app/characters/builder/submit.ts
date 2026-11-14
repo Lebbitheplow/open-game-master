@@ -24,6 +24,7 @@ import { unmetFeatMessage, type FeatJudge } from "./featPrereqs";
 import type { BackgroundOption, ClassOption, RaceOption } from "./useBuilderOptions";
 import type { BuilderDerived } from "./useBuilderDerived";
 import { isCantripName, spellLevelOf } from "@/lib/srd/spell-lists";
+import { arcanumName } from "@/lib/srd/mystic-arcanum";
 import type { BuilderState, EquipmentItem } from "./useBuilderState";
 import { textKey } from "@/lib/language/text-logic";
 import { ALL_SKILLS } from "@/lib/content/mechanics";
@@ -414,7 +415,7 @@ export function spellsBlocks(
 type DeskCounts = Pick<
   BuilderDerived,
   "spellSupply" | "cantripAdvice" | "chosenCantrips" | "spellbookAdvice" | "chosenSpells" | "spellAdvice" | "chosenPrepared"
-> & Partial<Pick<BuilderDerived, "arcanumLevels" | "chosenArcanum" | "requiredCantrip">> & { klass: Pick<ClassOption, "name">; casterLevel: number };
+> & Partial<Pick<BuilderDerived, "arcanumLevels" | "chosenArcanum" | "requiredCantrip">> & { klass: Pick<ClassOption, "name" | "id">; casterLevel: number };
 
 function deskBlocks(desk: DeskCounts, who: string): StepBlock[] {
   const derived = desk;
@@ -474,7 +475,7 @@ function deskBlocks(desk: DeskCounts, who: string): StepBlock[] {
   const arcanaHeld = new Set((derived.chosenArcanum ?? []).map((name) => spellLevelOf(name)));
   for (const level of derived.arcanumLevels ?? []) {
     if (!arcanaHeld.has(level)) {
-      owed.push(block("spells", `Pick your Mystic Arcanum: one level ${level} warlock spell.`));
+      owed.push(block("spells", `Pick your ${arcanumName(klass.id, level)} spell: one level ${level} warlock spell.`));
     }
   }
   return owed;

@@ -26,6 +26,7 @@ import type { ItemTag } from "@/lib/schemas/item-tags";
 import { subclassFocus } from "@/lib/dm/ar-wbf-bard-casting-logic";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { carriesCyberdeck, carriesDoctorKit, genreFocusOf } from "@/lib/srd/genre-a-cyberpunk-focus";
+import { carriesHorrorFocus, horrorFocusOf } from "@/lib/srd/genre-gh-horror-focus";
 
 export type MaterialComponent = {
   // The words a carried line must share.
@@ -272,6 +273,19 @@ export function focusProblem(sheet: Pick<CharacterSheet, "name" | "class" | "cla
   }
   const classIds = [sheet.class, ...(sheet.classes ?? []).map((entry) => entry.id)].map((id) => (id ?? "").trim().toLowerCase());
   const kinds = [...new Set(classIds.flatMap((id) => CLASS_FOCUS[id] ?? []))];
+  // A horror caster's own focus (src/lib/srd/genre-gh-horror-focus.ts): the
+  // exorcist's holy symbol or ritual kit, the occultist's grimoire, the
+  // parapsychologist's field instruments, and no other kind unless an SRD
+  // class of theirs names one.
+  const horror = horrorFocusOf(sheet);
+  if (horror.length) {
+    if (horror.some((rule) => carriesHorrorFocus(sheet.equipment, rule))) {
+      return null;
+    }
+    if (!kinds.length) {
+      return { error: `${facts.name} has a material component${facts.materialText ? ` (${facts.materialText.replace(/\.$/, "")})` : ""}: ${sheet.name} needs a component pouch or ${horror.map((rule) => `${rule.label} (${rule.feature})`).join(" or ")} to cast it, and carries neither. Add one to the sheet. Nothing was spent.`, refused: "rules" };
+    }
+  }
   // A caster whose class names no focus (a ranger, a fighter's Eldritch
   // Knight reads an arcane one) may use any.
   const allowed = kinds.length ? kinds : Object.keys(FOCI);

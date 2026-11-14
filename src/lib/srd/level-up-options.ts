@@ -38,6 +38,7 @@ import {
   dedupeNames,
   grantedSpellsOf,
   preparedCount,
+  arcanumName,
   arcanumSplit,
   grantedCantripsOf,
   maxSpellLevelOf,
@@ -433,7 +434,7 @@ export function levelUpOptions(sheet: CharacterSheet, context: LevelUpOptionsCon
         grants.anyList ? `${grants.feature}: ${grants.anyList} of the ${grants.anyListSpells ? "spells" : "cantrips"} held may come from any class's spell list.` : "",
         requiredCantrip ? `${requiredCantrip} must be one of the new cantrips: the subclass's Spellcasting teaches it.` : "",
         arcana.open.length
-          ? `Mystic Arcanum: also name one warlock spell of level ${arcana.open.join(", ")} in levelUpSpells, beside the new spells and not counted in them.`
+          ? `${arcanumName(klass.id)}: also name one warlock spell of level ${arcana.open.join(", ")} in levelUpSpells, beside the new spells and not counted in them.`
           : "",
         schools
           ? `Levelled spells come from ${schools.from.join(" and ")}; ${schools.otherSchoolPicks} more may come from any other school.`
