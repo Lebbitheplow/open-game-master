@@ -26,6 +26,10 @@
 //     pack text by species-prose-logic.ts): a reaction to piercing or
 //     slashing damage just taken, once a short rest; the derro and each
 //     creature within 5 feet take necrotic damage equal to its level.
+//   - Grovel, Cower, and Beg (kobold): an action, once a short rest; the
+//     kobold is "groveling" until the end of its next turn, and allies'
+//     attacks on foes within 10 feet of it have advantage (attack-spatial.ts
+//     grovelingAllyNear, read by pc-attack-situation.ts).
 //   - Shifting (shifter) with a subtype picked: the subtype's own form
 //     ("shifted (beasthide)"...), Beasthide's extra 1d6 temporary hit points
 //     with it. A shifter with no subtype on the sheet takes the counter's
@@ -49,7 +53,7 @@ import { computeSheetDerived, speedFor } from "@/lib/srd";
 import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { textKey } from "@/lib/language/text-logic";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
-import { FELINE_AGILITY, FELINE_AGILITY_COUNTER, RADIANCE, SHAPECHANGED, SHELL_DEFENSE, SHIFT_FORMS, SHIFTED, SHROUD, WINGS } from "@/lib/srd/authored-conditions-mt-species";
+import { FELINE_AGILITY, FELINE_AGILITY_COUNTER, GROVEL_COUNTER, GROVELING, RADIANCE, SHAPECHANGED, SHELL_DEFENSE, SHIFT_FORMS, SHIFTED, SHROUD, WINGS } from "@/lib/srd/authored-conditions-mt-species";
 import { rollOwnDice } from "@/lib/dm/character-roll";
 import { freshLastHit, writeLastHit, type LastHit } from "@/lib/dm/last-hit";
 import { canReactNow } from "@/lib/dm/chronal-shift";
@@ -84,6 +88,7 @@ export function speciesTraitSpend(
   if (name === "tinker" && holdsTinker(sheet)) return tinker(campaign, sheet, args.variant);
   if (name === "tainted blood" && sheet.resources?.[TAINTED_BLOOD]) return taintedBlood(campaign, turnId, sheet);
   if (name === "rabbit hop" && sheet.resources?.[RABBIT_HOP]) return rabbitHop(campaign, sheet, args);
+  if (/^grovel,? cower,? and beg$/.test(name) && sheet.resources?.[GROVEL_COUNTER]) return grovel(campaign, sheet);
   const form = shiftFormOf(sheet);
   if (name === "shifting" && form && sheet.resources?.[SHIFTING_COUNTER]) return shifting(campaign, sheet, form);
   return null;
@@ -472,5 +477,40 @@ function rabbitHop(campaign: Campaign, sheet: CharacterSheet, args: SpeciesSpend
     left: `${state.max - state.used - 1}/${state.max}`,
     refills: "on a long rest",
     applied: [`${sheet.name} leaps ${plan.feet} feet to (${args.x},${args.y}), drawing no opportunity attacks.`],
+  };
+}
+
+// ---- Grovel, Cower, and Beg ----
+
+function grovel(campaign: Campaign, sheet: CharacterSheet): ToolResult {
+  const state = sheet.resources[GROVEL_COUNTER];
+  if (state.used >= state.max) {
+    return { error: `${sheet.name} has used Grovel, Cower, and Beg: it comes back on a short or long rest. Nothing was spent.`, refused: "rules" };
+  }
+  const encounter = getActiveEncounter(campaign.id);
+  const fight = encounter && (encounter.kind ?? "fight") === "fight" ? encounter : null;
+  const price = priceTheAction(sheet, fight, "Grovel, Cower, and Beg", "action");
+  if ("error" in price) {
+    return toolError(price);
+  }
+  price.commit();
+  const updated = patchSheet(sheet.id, { resources: { ...sheet.resources, [GROVEL_COUNTER]: { max: state.max, used: state.used + 1 } } });
+  if (fight) {
+    // Begun as the kobold's next turn starts, taken as it ends (condition-logic.ts).
+    setOwn(campaign, updated ?? sheet, [[GROVELING, { source: sheet.id, untilTurnEndOf: sheet.id }]]);
+  } else {
+    publishSheet(campaign, sheet.id);
+  }
+  return {
+    ok: true,
+    resource: "Grovel, Cower, and Beg",
+    cost: "their action",
+    left: `${state.max - state.used - 1}/${state.max}`,
+    refills: "on a short or long rest",
+    applied: [
+      fight
+        ? `${sheet.name} cowers and begs. Until the end of their next turn, allies' attack rolls against foes within 10 feet of ${sheet.name} that can see them have advantage (the server adds it).`
+        : `${sheet.name} cowers and begs; with no fight running, narrate the distraction.`,
+    ],
   };
 }

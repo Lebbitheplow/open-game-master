@@ -451,6 +451,7 @@ test("every racial trait is enforced, a resource, or acknowledged", () => {
     "Poison Immunity (immune to poison damage and the poisoned condition)",
     "Serpent Magic (poison spray cantrip and animal friendship at will on snakes only, then suggestion from 3rd level, 1/long rest)",
     "Pack Tactics (advantage on an attack against a creature an ally stands within 5 feet of)",
+    "Grovel, Cower, and Beg (an action: until the end of your next turn, allies' attacks on foes within 10 ft of you have advantage, 1/short rest)",
     "Flight (flying speed of 50 ft, not while wearing medium or heavy armor)",
     "Flight (flying speed of 30 ft, not while wearing medium or heavy armor)",
     "Talons (1d4 slashing unarmed strike)",

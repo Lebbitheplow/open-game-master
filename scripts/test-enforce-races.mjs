@@ -147,8 +147,9 @@ await test("the bundled race table matches the rulebook: bonuses, speed, size, l
 // them (restated in this project's own words in races.json): what each row
 // must carry. A field left out here is checked elsewhere.
 const BOOKS = {
-  // Volo's Guide to Monsters: a kobold's Strength drops by 2.
-  kobold: { asi: { dex: 2, str: -2 } },
+  // Volo's Guide to Monsters: a kobold's Strength drops by 2, and it can
+  // grovel to open a foe to its allies.
+  kobold: { asi: { dex: 2, str: -2 }, traits: ["Grovel, Cower, and Beg (an action: until the end of your next turn, allies' attacks on foes within 10 ft of you have advantage, 1/short rest)"] },
   // Eberron: Rising from the Last War: the bonuses, a skill and the shift's
   // benefit come from the subrace; Keen Senses, one shift a short rest worth
   // the level plus the Constitution modifier in temporary hit points, Common.

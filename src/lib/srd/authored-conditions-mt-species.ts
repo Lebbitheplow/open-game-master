@@ -22,6 +22,9 @@ export const SHIFT_FORMS = [
   { subtype: "Wildhunt", condition: "shifted (wildhunt)" },
 ] as const;
 export const WILDHUNT_SHIFT = "shifted (wildhunt)";
+// A kobold's Grovel, Cower, and Beg, until the end of its next turn.
+export const GROVELING = "groveling";
+export const GROVEL_COUNTER = "race_grovel";
 
 export const MT_SPECIES_CONDITIONS: ConditionEffectRow[] = [
   // Tortle: "Shell Defense (withdraw for +4 AC and save advantage, at the
@@ -76,6 +79,14 @@ export const MT_SPECIES_CONDITIONS: ConditionEffectRow[] = [
     match: ["shifted (wildhunt)"],
     summary: "Shifted (Wildhunt): for a minute, advantage on Wisdom checks, and no attack roll from within 30 feet has advantage against them while they are not incapacitated.",
     advantageOn: [{ kind: "check", ability: "wis" }],
+  },
+  // Kobold: "Grovel, Cower, and Beg (an action: until the end of your next
+  // turn, allies' attacks on foes within 10 ft of you have advantage...)".
+  // The advantage is the ally's attack's (attack-spatial.ts grovelingAllyNear).
+  {
+    id: "groveling",
+    match: [GROVELING],
+    summary: "Groveling: cowering pitifully until the end of their next turn; allies' attack rolls against foes within 10 feet of them that can see them have advantage.",
   },
   {
     id: "shapechanged",

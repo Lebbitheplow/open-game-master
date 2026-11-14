@@ -20,7 +20,7 @@ import { thrownAtRange } from "@/lib/dm/attack-rules";
 import { attackSightVerdict } from "@/lib/dm/attack-sight";
 import {
   characterFlanks,
-  characterHasPackmate,
+  characterHasPackmate, grovelingAllyNear,
   characterShootsInMelee,
   creatureCover,
   tilesBetween,
@@ -207,6 +207,12 @@ export function attackSituation(input: {
   if (packTactics) {
     conditionContext.notes.push("Pack Tactics: an ally beside the target, advantage");
   }
+  // Grovel, Cower, and Beg: a groveling ally (a kobold) within 10 feet of the
+  // target, which can see it; any attack roll, a spell's too.
+  const groveler = grovelingAllyNear(encounter.id, sheet.id, enemy.id);
+  if (groveler) {
+    conditionContext.notes.push(`${groveler} grovels within 10 feet of the target: advantage`);
+  }
   // A held Help: advantage on this attack, which spends it.
   // Only a Help given against this enemy (src/lib/dm/help-logic.ts).
   const helped = heldHelp(sheet, { enemyId: enemy.id });
@@ -329,6 +335,7 @@ export function attackSituation(input: {
     ...(helped ? ["advantage" as const] : []),
     ...(flanking ? ["advantage" as const] : []),
     ...(packTactics ? ["advantage" as const] : []),
+    ...(groveler ? ["advantage" as const] : []),
     ...(input.recklessAdvantage ? ["advantage" as const] : []),
     ...(input.inspired ? ["advantage" as const] : []),
     ...light.sources,

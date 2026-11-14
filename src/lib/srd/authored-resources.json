@@ -2610,6 +2610,19 @@
    "passive": true
   },
   {
+   "id": "race_grovel",
+   "displayName": "Grovel, Cower, and Beg",
+   "match": [
+    "grovel, cower, and beg",
+    "grovel cower and beg"
+   ],
+   "uses": 1,
+   "ability": null,
+   "recharge": "short",
+   "action": "action",
+   "guidance": "An action: the kobold cowers pitifully, and until the end of its next turn its allies' attack rolls against foes within 10 feet of it have advantage. Once a short or long rest. The server lays the mark."
+  },
+  {
    "id": "race_rabbit_hop",
    "displayName": "Rabbit Hop",
    "match": [

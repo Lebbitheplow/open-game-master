@@ -21,6 +21,7 @@ import { isIncapacitated } from "@/lib/dm/condition-logic";
 
 import { hostileWithinFiveFeet, isFlanking } from "@/lib/dm/attack-rules";
 import { zoneCoverBetween, zoneCoverFromPoint } from "@/lib/dm/zone-rules";
+import { GROVELING } from "@/lib/srd/authored-conditions-mt-species";
 
 const lowered = (conditions: string[]) => conditions.map((entry) => entry.toLowerCase());
 const blind = (conditions: string[]) => lowered(conditions).includes("blinded");
@@ -156,6 +157,33 @@ export function characterHasPackmate(encounterId: string, characterId: string, e
   }
   const mine = sideOf(sidesOf(encounterId), "sheet", characterId);
   return hostileWithinFiveFeet(spotOf(target), threatSpots(encounterId, map.id, mine, [characterId, enemyId]));
+}
+// Grovel, Cower, and Beg (a kobold, mt-species-spends.ts): the name of a
+// groveling creature of the attacker's side, not the attacker, within 10
+// feet of the target, which can see it (not blinded, the kobold neither
+// invisible nor hidden, no wall between them). Null for none.
+export function grovelingAllyNear(encounterId: string, characterId: string, enemyId: string): string | null {
+  const map = getBattleMapForEncounter(encounterId);
+  const target = map ? getTokenByRef(map.id, enemyId) : null;
+  const enemy = getEnemy(enemyId);
+  if (!map || !target || !enemy || blind(enemy.conditions)) {
+    return null;
+  }
+  const encounter = sidesOf(encounterId);
+  const mine = sideOf(encounter, "sheet", characterId);
+  for (const ally of listSheets(map.campaignId)) {
+    if (ally.id === characterId || !lowered(ally.conditions).includes(GROVELING) || unseen(ally.conditions)) {
+      continue;
+    }
+    const token = getTokenByRef(map.id, ally.id);
+    if (!token || sideOf(encounter, "sheet", ally.id) !== mine || tilesApart(token, target) * 5 > 10) {
+      continue;
+    }
+    if (hasLineOfSightBetween(map.terrain, map.width, spaceOf(token), spaceOf(target))) {
+      return ally.name;
+    }
+  }
+  return null;
 }
 
 // And for an enemy's melee attack on a creature of the other side.

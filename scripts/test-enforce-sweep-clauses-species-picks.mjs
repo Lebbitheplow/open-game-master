@@ -234,6 +234,36 @@ for (const row of RACES) {
       same([await saveFaces(who, "Phantasmal Force"), await saveFaces(who, "Feeblemind"), await saveFaces(other, "Phantasmal Force")], [2, 1, 1], `${row.name}: d20s on an Intelligence save against Phantasmal Force, against Feeblemind, and a human's against Phantasmal Force`);
     });
   }
+  // Grovel, Cower, and Beg: the kobold's action, and until the end of its
+  // next turn an ally's attack on a foe within 10 feet of it has advantage;
+  // a foe farther off gets none of it.
+  if (holds(row, "grovel, cower, and beg")) {
+    probe("grovel", async () => {
+      const t = await rig.table();
+      const who = t.hero(of());
+      const ally = t.hero(plain({ equipment: [{ name: "Shortsword", equipped: true }] }));
+      const [foe, far] = await t.fight([who, ally], { foes: 2 });
+      // Under a roof: a kobold's Sunlight Sensitivity is its own probe.
+      const { getDatabase } = await import("../src/lib/db/core.ts");
+      getDatabase().prepare("UPDATE battle_maps SET outdoors = 0 WHERE id = ?").run(t.kit.map().id);
+      const d20s = async (enemy) => {
+        t.kit.giveTurn(ally.id);
+        const swing = await t.swing(ally, enemy, [15, 3, 4], { weapon: "Shortsword" });
+        return swing.toHit?.breakdown.terms.find((term) => term.sides === 20)?.dice.length;
+      };
+      // The ally steps to the foe's far side, (7,5); the kobold stays at (5,5).
+      t.kit.place(ally.id, 7, 5);
+      const before = await d20s(foe);
+      t.kit.giveTurn(who.id);
+      const grovel = await t.use(who, "Grovel, Cower, and Beg");
+      const seen = [grovel.ok, t.budget()?.actionUsed, t.used(who, "race_grovel")];
+      const near = await d20s(foe);
+      t.kit.place(far.id, 7, 6);
+      t.kit.place(who.id, 2, 2);
+      const away = await d20s(far);
+      same([before, seen, near, away], [1, [true, true, 1], 2, 1], `${row.name}: an ally's d20s before the grovel, the grovel, then on a foe beside the kobold and on one 10 feet beyond it (${grovel.error ?? ""})`);
+    });
+  }
 }
 
 // The probes above by name, for the ledger's probe check (it finds a probe
@@ -241,6 +271,7 @@ for (const row of RACES) {
 const NAMES = [
   "species.satyr.mirthful-leaps", "species.centaur.charge", "species.hobgoblin.saving-face",
   "species.rabbitfolk.lucky-footwork", "species.shifter.subtypes", "species.duergar.illusions",
+  "species.kobold.grovel",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
 
