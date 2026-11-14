@@ -2955,7 +2955,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "6369e86714d6",
+  "sha": "439f29ad4461",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -2970,7 +2970,7 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.shifter.grants"
    },
    {
-    "c": "\"asi\":{\"dex\":2,\"wis\":1}",
+    "c": "\"asi\":{}",
     "is": "held",
     "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.shifter.grants"
@@ -2982,33 +2982,33 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.shifter.darkvision"
    },
    {
-    "c": "Bestial Instincts (one skill from Acrobatics, Athletics, Intimidation, Survival)",
-    "is": "held",
-    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
-    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.shifter.choices"
-   },
-   {
-    "c": "Shifting (a bonus action for 1 minute of temporary hit points twice your proficiency bonus, as many times a long rest as your proficiency bonus)",
-    "is": "held",
-    "by": "src/lib/srd/authored-resources.json race_shifting (proficiency-bonus uses, the shifted form and its temporary hit points), spent by use_resource",
-    "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.shifter.shifting"
-   },
-   {
-    "c": "\"languages\":[\"Common\",\"Sylvan\"]",
+    "c": "Perception proficiency (Keen Senses)",
     "is": "held",
     "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.shifter.grants"
    },
    {
-    "c": "\"skillChoice\":{\"count\":1,\"from\":[\"acrobatics\",\"athletics\",\"intimidation\",\"survival\"]}",
+    "c": "Shifting (a bonus action for 1 minute of temporary hit points equal to your level plus your Constitution modifier, once a short rest)",
     "is": "held",
-    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
-    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.shifter.choices"
+    "by": "src/lib/srd/authored-resources.json race_shifting (one use, short rest, temporary hit points of the level plus the Constitution modifier), spent by use_resource; with a subtype, src/lib/dm/mt-species-spends.ts shifting",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.shifter.shifting"
    },
    {
-    "c": "\"variants\":{\"label\":\"Shifter subtype\",\"options\":[{\"id\":\"beasthide\",\"name\":\"Beasthide\",\"lines\":[\"Beasthide (shifted: an extra 1d6 temporary hit points and 1 more AC)\"]},{\"id\":\"longtooth\",\"name\":\"Longtooth\",\"lines\":[\"Longtooth (shifted: a Fangs attack as a bonus action)\",\"Fangs (while shifted, 1d6 piercing unarmed strike)\"]},{\"id\":\"swiftstride\",\"name\":\"Swiftstride\",\"lines\":[\"Swiftstride (shifted: 10 more feet of speed, and a 10-foot step as a reaction)\"]},{\"id\":\"wildhunt\",\"name\":\"Wildhunt\",\"lines\":[\"Wildhunt (shifted: advantage on Wisdom checks; attacks on you lose advantage)\"]}]}",
+    "c": "\"languages\":[\"Common\"]",
     "is": "held",
-    "by": "src/lib/content/species-variants.ts (the subtype the builder asks for, its lines written on the sheet by variantFeatureNames); src/lib/dm/mt-species-spends.ts shifting lays the subtype's form, read from src/lib/srd/authored-conditions-mt-species.ts (AC, speed, Wisdom checks), src/lib/dm/enemy-swing-odds.ts (no advantage against Wildhunt), src/lib/dm/feature-bonus-attacks.ts (Longtooth's fangs) and src/lib/dm/lineage-reactions.ts (Swiftstride's step)",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.shifter.grants"
+   },
+   {
+    "c": "\"skills\":[\"perception\"]",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.shifter.grants"
+   },
+   {
+    "c": "\"variants\":{\"label\":\"Shifter subtype\",\"options\":[{\"id\":\"beasthide\",\"name\":\"Beasthide\",\"asi\":{\"con\":2,\"str\":1},\"skills\":[\"athletics\"],\"lines\":[\"Beasthide (shifted: an extra 1d6 temporary hit points and 1 more AC)\"]},{\"id\":\"longtooth\",\"name\":\"Longtooth\",\"asi\":{\"str\":2,\"dex\":1},\"skills\":[\"intimidation\"],\"lines\":[\"Longtooth (shifted: a Fangs attack as a bonus action)\",\"Fangs (while shifted, 1d6 piercing unarmed strike)\"]},{\"id\":\"swiftstride\",\"name\":\"Swiftstride\",\"asi\":{\"dex\":2,\"cha\":1},\"skills\":[\"acrobatics\"],\"lines\":[\"Swiftstride (shifted: 10 more feet of speed, and a 10-foot step as a reaction)\"]},{\"id\":\"wildhunt\",\"name\":\"Wildhunt\",\"asi\":{\"wis\":2,\"dex\":1},\"skills\":[\"survival\"],\"lines\":[\"Wildhunt (shifted: advantage on Wisdom checks; no attack within 30 ft of you has advantage)\"]}]}",
+    "is": "held",
+    "by": "src/lib/content/species-variants.ts (the subtype the builder asks for: its ability bonuses, its skill and its lines on the sheet); src/lib/dm/mt-species-spends.ts shifting lays the subtype's form, read from src/lib/srd/authored-conditions-mt-species.ts (AC, speed, Wisdom checks), src/lib/dm/enemy-swing-odds.ts (no advantage within 30 feet against Wildhunt), src/lib/dm/feature-bonus-attacks.ts (Longtooth's fangs) and src/lib/dm/lineage-reactions.ts (Swiftstride's step)",
     "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.shifter.subtypes"
    }
   ]

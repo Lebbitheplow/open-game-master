@@ -72,7 +72,9 @@ const sorted = (list) => [...(list ?? [])].sort();
 // A level 1 soldier fighter of the race, every choice the race offers made.
 function buildRace(raceId, fields = {}) {
   const race = builder.races.find((entry) => entry.id === raceId);
-  const taken = new Set(["athletics", "intimidation", ...(race.skills ?? [])]);
+  // A pick among packages (a shifter's subtype) gives its own skill too.
+  const granted = [...(race.skills ?? []), ...(race.variants?.options[0]?.skills ?? [])];
+  const taken = new Set(["athletics", "intimidation", ...granted]);
   const classSkills = ["acrobatics", "history", "insight", "perception", "survival"].filter((skill) => !taken.has(skill)).slice(0, 2);
   // A race that names the skills it picks among (the Orc's Primal
   // Intuition) picks from them.
@@ -96,7 +98,7 @@ function buildRace(raceId, fields = {}) {
     racialAncestry: raceId === "dragonborn" ? "red" : "",
     // A race offering a pick among packages (a shifter's subtype) takes its first.
     racialVariant: race.variants?.options[0]?.id ?? "",
-    repeatSkills: (race.skills ?? []).filter((skill) => ["athletics", "intimidation"].includes(skill)).map((_, index) => ["religion", "investigation"][index]),
+    repeatSkills: granted.filter((skill) => ["athletics", "intimidation"].includes(skill)).map((_, index) => ["religion", "investigation"][index]),
     // The variant human's feat, a racial choice like the rest (issue #124).
     feats: raceId === "variant_human" ? ["Alert"] : [],
     ...fields,
@@ -147,6 +149,18 @@ await test("the bundled race table matches the rulebook: bonuses, speed, size, l
 const BOOKS = {
   // Volo's Guide to Monsters: a kobold's Strength drops by 2.
   kobold: { asi: { dex: 2, str: -2 } },
+  // Eberron: Rising from the Last War: the bonuses, a skill and the shift's
+  // benefit come from the subrace; Keen Senses, one shift a short rest worth
+  // the level plus the Constitution modifier in temporary hit points, Common.
+  shifter: {
+    asi: {},
+    languages: ["Common"],
+    skills: ["perception"],
+    traits: ["Perception proficiency (Keen Senses)", "Shifting (a bonus action for 1 minute of temporary hit points equal to your level plus your Constitution modifier, once a short rest)"],
+    notTraits: ["Bestial Instincts"],
+    variantAsi: { beasthide: { con: 2, str: 1 }, longtooth: { str: 2, dex: 1 }, swiftstride: { dex: 2, cha: 1 }, wildhunt: { wis: 2, dex: 1 } },
+    variantSkills: { beasthide: ["athletics"], longtooth: ["intimidation"], swiftstride: ["acrobatics"], wildhunt: ["survival"] },
+  },
 };
 
 await test("every added lineage carries what its book prints", () => {
@@ -158,6 +172,11 @@ await test("every added lineage carries what its book prints", () => {
         for (const line of value) if (!race.traits.includes(line)) wrong.push(`${id} lacks "${line}"`);
       } else if (field === "notTraits") {
         for (const line of value) if (race.traits.some((trait) => trait.toLowerCase().startsWith(line.toLowerCase()))) wrong.push(`${id} carries "${line}"`);
+      } else if (field === "variantAsi" || field === "variantSkills") {
+        for (const [option, want] of Object.entries(value)) {
+          const held = race.variants?.options.find((entry) => entry.id === option)?.[field === "variantAsi" ? "asi" : "skills"] ?? null;
+          if (JSON.stringify(held) !== JSON.stringify(want)) wrong.push(`${id} ${option} ${field}: ${JSON.stringify(held)}, the book ${JSON.stringify(want)}`);
+        }
       } else if (JSON.stringify(race[field] ?? null) !== JSON.stringify(value)) {
         wrong.push(`${id} ${field}: ${JSON.stringify(race[field] ?? null)}, the book ${JSON.stringify(value)}`);
       }
@@ -193,7 +212,10 @@ await test("the stored sheet carries the race: scores, speed, languages, skills,
   for (const race of srd.SRD_RACES) {
     const rule = RULEBOOK[race.id];
     const sheet = await seated(race.id);
+    // A pick among packages (a shifter's first subtype, buildRace) adds its own.
+    const firstOption = race.variants?.options[0];
     const bonus = { ...(rule?.asi ?? race.asi) };
+    for (const [ability, value] of Object.entries(firstOption?.asi ?? {})) bonus[ability] = (bonus[ability] ?? 0) + value;
     for (const ability of ["str", "dex", "con"].slice(0, rule?.pick ?? race.asiChoice?.count ?? 0)) {
       bonus[ability] = (bonus[ability] ?? 0) + 1;
     }
@@ -207,7 +229,7 @@ await test("the stored sheet carries the race: scores, speed, languages, skills,
     // race's. A skill the race and the soldier both give is replaced by
     // another of the player's choice, so every grant counts.
     const fixed = rule?.skills ?? race.skills ?? [];
-    const racial = fixed.length + (rule?.skillPicks ?? race.skillChoice?.count ?? 0);
+    const racial = fixed.length + (rule?.skillPicks ?? race.skillChoice?.count ?? 0) + (firstOption?.skills?.length ?? 0);
     assert.equal(sheet.proficiencies.skills.length, 4 + racial, `${race.id} skills: ${sheet.proficiencies.skills}`);
     assert.equal(new Set(sheet.proficiencies.skills).size, sheet.proficiencies.skills.length, `${race.id} repeats a skill`);
     for (const skill of rule?.skills ?? race.skills ?? []) {

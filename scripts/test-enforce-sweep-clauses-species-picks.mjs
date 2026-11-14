@@ -160,7 +160,8 @@ for (const row of RACES) {
     });
   }
   // The shifter's subtype, picked in the builder: Shifting lays that
-  // subtype's form. Beasthide: 1d6 more temporary hit points and +1 AC.
+  // subtype's form. Beasthide: 1d6 more temporary hit points (on the level
+  // plus the Constitution modifier, 5 + 2) and +1 AC.
   // Longtooth: no fangs until shifted, then a bonus-action bite. Swiftstride:
   // 10 more feet of speed, and a 10-foot step as a reaction when a foe stands
   // within 5 feet. Wildhunt: advantage on Wisdom checks, and a prone wildhunt
@@ -212,7 +213,7 @@ for (const row of RACES) {
       const wildhunt = [wisBefore, wisAfter, await proneFaces(hunt), await proneFaces(stride)];
       same(
         [longtooth, beasthide, swiftstride, wildhunt],
-        [[false, true, true, true, true], [true, 10, 1], [10, true, true, 6, 8], [1, 2, 1, 2]],
+        [[false, true, true, true, true], [true, 11, 1], [10, true, true, 6, 8], [1, 2, 1, 2]],
         `${row.name}: Longtooth's fangs before and after the shift, Beasthide's hit points and AC, Swiftstride's speed and step, Wildhunt's Wisdom check and a prone attack (${early.error ?? ""} ${fangs.error ?? ""} ${step.error ?? ""})`,
       );
     });

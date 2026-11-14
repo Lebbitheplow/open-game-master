@@ -304,7 +304,10 @@ for (const row of RACES) {
       const form = resource === "race_shifting" ? [t.has(who, "shifted"), t.sheet(who).tempHp] : [Boolean(far?.error), token.x, token.y, token.movedThisRound];
       await t.kit.endFight();
       await t.rest("long");
-      same([seen, form, t.used(who, resource)], [[true, 3, 1, true], resource === "race_shifting" ? [true, 6] : [true, 5, 8, 0], 0], `${row.name}: one use of three at 5th level (a bonus action), ${resource === "race_shifting" ? "the form and 6 temporary hit points, " : "a 20-foot hop refused and a 15-foot one landed, "}and every use back after a long rest (${out.error ?? ""})`);
+      // Shifting (Eberron): one use a short rest, the level plus the
+      // Constitution modifier (5 + 2) in temporary hit points.
+      const uses = resource === "race_shifting" ? 1 : 3;
+      same([seen, form, t.used(who, resource)], [[true, uses, 1, true], resource === "race_shifting" ? [true, 7] : [true, 5, 8, 0], 0], `${row.name}: one use of ${uses} at 5th level (a bonus action), ${resource === "race_shifting" ? "the form and 7 temporary hit points, " : "a 20-foot hop refused and a 15-foot one landed, "}and every use back after a long rest (${out.error ?? ""})`);
     });
   }
   if (holds(row, "expert forgery")) {

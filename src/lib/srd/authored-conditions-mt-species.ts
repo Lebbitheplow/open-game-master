@@ -74,7 +74,7 @@ export const MT_SPECIES_CONDITIONS: ConditionEffectRow[] = [
   {
     id: "shifted_wildhunt",
     match: ["shifted (wildhunt)"],
-    summary: "Shifted (Wildhunt): for a minute, advantage on Wisdom checks, and no attack roll against them has advantage.",
+    summary: "Shifted (Wildhunt): for a minute, advantage on Wisdom checks, and no attack roll from within 30 feet has advantage against them while they are not incapacitated.",
     advantageOn: [{ kind: "check", ability: "wis" }],
   },
   {

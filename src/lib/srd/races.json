@@ -1407,34 +1407,31 @@
       "name": "Shifter",
       "speed": 30,
       "size": "Medium",
-      "asi": {
-        "dex": 2,
-        "wis": 1
-      },
+      "asi": {},
       "traits": [
         "Darkvision 60 ft",
-        "Bestial Instincts (one skill from Acrobatics, Athletics, Intimidation, Survival)",
-        "Shifting (a bonus action for 1 minute of temporary hit points twice your proficiency bonus, as many times a long rest as your proficiency bonus)"
+        "Perception proficiency (Keen Senses)",
+        "Shifting (a bonus action for 1 minute of temporary hit points equal to your level plus your Constitution modifier, once a short rest)"
       ],
       "languages": [
-        "Common",
-        "Sylvan"
+        "Common"
       ],
-      "skillChoice": {
-        "count": 1,
-        "from": [
-          "acrobatics",
-          "athletics",
-          "intimidation",
-          "survival"
-        ]
-      },
+      "skills": [
+        "perception"
+      ],
       "variants": {
         "label": "Shifter subtype",
         "options": [
           {
             "id": "beasthide",
             "name": "Beasthide",
+            "asi": {
+              "con": 2,
+              "str": 1
+            },
+            "skills": [
+              "athletics"
+            ],
             "lines": [
               "Beasthide (shifted: an extra 1d6 temporary hit points and 1 more AC)"
             ]
@@ -1442,6 +1439,13 @@
           {
             "id": "longtooth",
             "name": "Longtooth",
+            "asi": {
+              "str": 2,
+              "dex": 1
+            },
+            "skills": [
+              "intimidation"
+            ],
             "lines": [
               "Longtooth (shifted: a Fangs attack as a bonus action)",
               "Fangs (while shifted, 1d6 piercing unarmed strike)"
@@ -1450,6 +1454,13 @@
           {
             "id": "swiftstride",
             "name": "Swiftstride",
+            "asi": {
+              "dex": 2,
+              "cha": 1
+            },
+            "skills": [
+              "acrobatics"
+            ],
             "lines": [
               "Swiftstride (shifted: 10 more feet of speed, and a 10-foot step as a reaction)"
             ]
@@ -1457,8 +1468,15 @@
           {
             "id": "wildhunt",
             "name": "Wildhunt",
+            "asi": {
+              "wis": 2,
+              "dex": 1
+            },
+            "skills": [
+              "survival"
+            ],
             "lines": [
-              "Wildhunt (shifted: advantage on Wisdom checks; attacks on you lose advantage)"
+              "Wildhunt (shifted: advantage on Wisdom checks; no attack within 30 ft of you has advantage)"
             ]
           }
         ]

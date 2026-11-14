@@ -296,9 +296,9 @@ export function shiftFormOf(sheet: CharacterSheet): (typeof SHIFT_FORMS)[number]
   return SHIFT_FORMS.find((form) => holdsFeature(sheet, form.subtype)) ?? null;
 }
 
-// "Shifting (a bonus action for 1 minute of temporary hit points twice your
-// proficiency bonus, as many times a long rest as your proficiency bonus)",
-// in the form the subtype gives.
+// "Shifting (a bonus action for 1 minute of temporary hit points equal to
+// your level plus your Constitution modifier, once a short rest)" (Eberron:
+// Rising from the Last War), in the form the subtype gives.
 function shifting(campaign: Campaign, sheet: CharacterSheet, form: (typeof SHIFT_FORMS)[number]): ToolResult {
   const state = sheet.resources[SHIFTING_COUNTER];
   if (state.used >= state.max) {
@@ -313,9 +313,10 @@ function shifting(campaign: Campaign, sheet: CharacterSheet, form: (typeof SHIFT
     return toolError(price);
   }
   price.commit();
-  const twice = 2 * computeSheetDerived(sheet).proficiencyBonus;
+  // The level plus the Constitution modifier, at least 1.
+  const base = Math.max(1, sheet.level + computeSheetDerived(sheet).abilityMods.con);
   const extra = "extraTempHp" in form ? form.extraTempHp : null;
-  const tempHp = extra ? Math.max(twice, rollOwnDice(campaign, sheet, `${sheet.name}: Shifting (${form.subtype}) temporary hit points`, `${twice}+${extra}`).total) : twice;
+  const tempHp = extra ? Math.max(base, rollOwnDice(campaign, sheet, `${sheet.name}: Shifting (${form.subtype}) temporary hit points`, `${base}+${extra}`).total) : base;
   const updated = patchSheet(sheet.id, {
     resources: { ...sheet.resources, [SHIFTING_COUNTER]: { max: state.max, used: state.used + 1 } },
     ...(tempHp > sheet.tempHp ? { tempHp } : {}),

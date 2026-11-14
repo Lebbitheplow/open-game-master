@@ -463,7 +463,6 @@ test("every racial trait is enforced, a resource, or acknowledged", () => {
     "Equine Build (count as one size larger for carrying)",
     "Survivor (one skill from Animal Handling, Medicine, Nature, Survival)",
     "Perception proficiency (Leporine Senses)",
-    "Bestial Instincts (one skill from Acrobatics, Athletics, Intimidation, Survival)",
     // The jump die the board's jump door rolls (src/lib/dm/jump-move.ts).
     "Mirthful Leaps (roll a d8 and add that many feet to each long or high jump)",
     // The bonus-action hooves pc_attack opens after a charge (feature-bonus-attacks.ts).
@@ -478,7 +477,7 @@ test("every racial trait is enforced, a resource, or acknowledged", () => {
     "Longtooth (shifted: a Fangs attack as a bonus action)",
     "Fangs (while shifted, 1d6 piercing unarmed strike)",
     "Swiftstride (shifted: 10 more feet of speed, and a 10-foot step as a reaction)",
-    "Wildhunt (shifted: advantage on Wisdom checks; attacks on you lose advantage)",
+    "Wildhunt (shifted: advantage on Wisdom checks; no attack within 30 ft of you has advantage)",
   ]);
   const uncovered = [];
   for (const race of races) {

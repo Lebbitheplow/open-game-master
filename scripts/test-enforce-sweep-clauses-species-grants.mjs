@@ -89,9 +89,11 @@ function picksFor(row) {
   if (row.asiChoice) picks.racialAsi = ["int", "wis", "dex"].filter((ability) => !row.asi?.[ability]).slice(0, row.asiChoice.count);
   if (row.cantripChoice) picks.racialCantrips = ["Fire Bolt"].slice(0, row.cantripChoice.count);
   if (row.ancestryChoice) picks.racialAncestry = "red";
-  // A pick among packages (a shifter's subtype): the first.
+  if (!Object.keys(picks).length) return null;
+  // A pick among packages (a shifter's subtype) beside them: the first. A
+  // row whose only pick it is is checked by scripts/test-enforce-races.mjs.
   if (row.variants) picks.racialVariant = row.variants.options[0].id;
-  return Object.keys(picks).length ? picks : null;
+  return picks;
 }
 
 const P = {};
@@ -223,7 +225,7 @@ const NAMES = [
   "species.hobgoblin.grants", "species.satyr.grants", "species.fairy.grants", "species.owlfolk.grants",
   "species.hobgoblin.darkvision", "species.owlfolk.darkvision", "species.hobgoblin.choices", "species.satyr.choices",
   "species.centaur.grants", "species.rabbitfolk.grants", "species.shifter.grants", "species.shifter.darkvision",
-  "species.centaur.choices", "species.shifter.choices",
+  "species.centaur.choices",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
 
