@@ -9,6 +9,7 @@
   - [02 — Proposta tecnica per PNG isolati](../tickets/open-game-master-evolution/02-npc-isolation-design.md)
   - [Ricognizione upstream](../research/ogm-upstream-npc-agents.md)
   - [Studi sugli agenti LLM nei giochi](../research/llm-game-agents-evidence.md)
+  - [Italiano: che cosa esiste e da dove partire](../research/ogm-italiano.md)
 
 ## Type
 Wayfinding spec
@@ -117,8 +118,10 @@ L'italiano può essere recuperato in seguito, come confermato dall'utente.
 - Proposta tecnica → futura implementazione: creare slice solo dopo la proposta;
   nessun ticket implementativo è autorizzato automaticamente.
 - PNG e Pi: completati.
-- Italiano: è la frontiera attuale; parte con un'indagine (perimetro, proxy della #919,
-  fork francese) senza predefinirne il design.
+- Italiano: indagine fatta ([rapporto](../research/ogm-italiano.md)). Storia già in italiano
+  con Table language (serve embedding multilingue); contenuti e interfaccia in inglese.
+  In attesa delle scelte dell'utente: embedding, allineamento a upstream, contenuti come
+  dati, forma dell'interfaccia (gettext come upstream o catalogo/proxy).
 
 ## Ticket Plan
 | ID | Tipo | Mode | Blockers | Titolo | Output atteso |
@@ -145,4 +148,5 @@ AFK descrive il ticket, non abilita un runner o la sua esecuzione automatica.
 
 ## Next Review
 Ticket 01–09 di [ogm-npc-isolation-design](../tickets/ogm-npc-isolation-design/) eseguiti
-e mergiati; Pi integrato come programma del tavolo. Prossimo: indagine sull'italiano.
+e mergiati; Pi integrato come programma del tavolo. Indagine sull'italiano completata:
+prossimo, le decisioni elencate nel [rapporto](../research/ogm-italiano.md).
