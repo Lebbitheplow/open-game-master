@@ -19,6 +19,7 @@ import {
   recordNpcProposal,
   setNpcAway,
   setNpcInspiration,
+  setNpcTier,
 } from "@/lib/db/npc-minds";
 import { requestUtilityMessage } from "@/lib/dm/model";
 import { resolveTextTimeoutMs } from "@/lib/model-client";
@@ -587,7 +588,12 @@ const pastSchema = z.object({
   name: z.string().trim().min(1).max(120),
   inspiration: z.string().trim().max(200).optional(),
   past: z.array(z.string().trim().min(1).max(400)).max(8).optional(),
+  firstTier: z.boolean().optional(),
 });
+
+// First-tier NPCs besides the party's companions: each is a mind the table
+// pays for every time they act.
+export const MAX_FIRST_TIER_NPCS = 4;
 
 // npc_past: who someone was before play, laid down before they first act.
 // Refused once they have lived anything, so a companion cannot suddenly
@@ -612,13 +618,23 @@ export function handleNpcPast(campaign: Campaign, rawArguments: string): ToolRes
       refused: "rules",
     };
   }
+  if (args.firstTier !== undefined && !npc.companionSheetId) {
+    const others = cast.filter((entry) => entry.id !== npc.id && !entry.archived && !entry.companionSheetId && tierOfNpc(entry) === "primary");
+    if (args.firstTier && others.length >= MAX_FIRST_TIER_NPCS) {
+      return {
+        error: `${others.map((entry) => entry.name).join(", ")} already have their own minds (${MAX_FIRST_TIER_NPCS} at most). Keep ${npc.name} second tier, or give one of them back to the narrator with firstTier: false first.`,
+        refused: "limit",
+      };
+    }
+    setNpcTier(npc.id, args.firstTier ? "primary" : "secondary");
+  }
   if (args.inspiration !== undefined) {
     setNpcInspiration(npc.id, args.inspiration);
   }
   for (const line of args.past ?? []) {
     addNpcMemories(campaign.id, [npc.id], { kind: "knowledge", sourceKind: "background", sourceName: "", content: line, learnedAt: 0 }, currentTurnId() ?? "");
   }
-  return { ok: true, npc: npc.name, past: args.past?.length ?? 0, inspiration: args.inspiration ?? getNpcInspiration(npc.id) };
+  return { ok: true, npc: npc.name, past: args.past?.length ?? 0, inspiration: args.inspiration ?? getNpcInspiration(npc.id), tier: tierOfNpc(npc) };
 }
 
 // How many minds act off-screen each time the world's time moves on.

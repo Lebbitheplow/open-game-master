@@ -199,3 +199,10 @@ finché si è vivi per goderne.
 Vale solo per le campagne con le menti NPC attive (`gameSettings.npcMinds`, cioè le nuove).
 Il motore non impone un tiro di morale: decidono le menti e il Master, mentre l'esito resta
 alle regole.
+
+## Personaggi chiave con mente propria
+Oltre ai compagni del gruppo, il Master può dare una mente propria ai pochi personaggi da
+cui dipende la storia (chi custodisce il segreto, un prigioniero, un rivale, un mandante):
+`npc_past` con `firstTier: true`, prima che parlino. Al massimo 4 oltre ai compagni (ogni
+mente costa una chiamata al modello ogni volta che agisce); `firstTier: false` li restituisce
+al narratore. Il giocatore non sceglie chi: lo decide il Master, che conosce la trama.
