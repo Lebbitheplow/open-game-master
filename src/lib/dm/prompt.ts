@@ -12,7 +12,7 @@ import type { StoredRoll } from "@/lib/db/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { ADVENTURE_BEGINS_NOTE, haltedTurnPrefix, LEAD_NOTE_PREFIX, OPENING_SCENE_CUE, type CampaignMember } from "@/lib/campaign-types";
 import { heldRollUserIds } from "@/lib/dice/held-rolls";
-import { computeSheetDerived, findClass, findSkill, formatModifier, sizeForRace, spellAbilityFor, spellSaveDcFor, speedFor, SRD_SKILLS } from "@/lib/srd";
+import { computeSheetDerived, findClass, findSkill, formatModifier, sheetSize, spellAbilityFor, spellSaveDcFor, speedFor, SRD_SKILLS } from "@/lib/srd";
 import { innateSpellsFor } from "@/lib/srd/racial-grants";
 import { attackSummary } from "@/lib/srd/creature-attacks";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
@@ -698,7 +698,7 @@ export function describeSheet(
         strength: sheet.abilities.str,
         equipment: sheet.equipment ?? [],
         coins: purseCoins({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
-        size: sizeForRace(sheet.race),
+        size: sheetSize(sheet),
         // The capacity the pack is refused by (Peerless Athlete doubles it).
         carryFactor: authoredCarryFactor(sheet),
         wearer: sheet,
@@ -708,7 +708,7 @@ export function describeSheet(
     ? `  Carrying ${load.carriedLb} lb of a ${load.capacityLb} lb capacity${load.unweighed ? ` (${load.unweighed} item${load.unweighed === 1 ? "" : "s"} of unknown weight, so the total is a floor)` : ""}${load.note ? `: ${load.note}` : ""}${load.overCapacity ? ". OVER CAPACITY: they cannot pick up anything more." : ""}`
     : null;
   const lines = [
-    `- ${sheet.name} (${sizeForRace(sheet.race)} ${raceWords(sheet)} ${classLabel}) characterId=${sheet.id} played by ${playedBy}${realDice ? " (rolls PHYSICAL dice)" : ""}`,
+    `- ${sheet.name} (${sheetSize(sheet)} ${raceWords(sheet)} ${classLabel}) characterId=${sheet.id} played by ${playedBy}${realDice ? " (rolls PHYSICAL dice)" : ""}`,
     `  HP ${sheet.currentHp}/${sheet.maxHp}${sheet.tempHp ? ` (+${sheet.tempHp} temp)` : ""}${deathNote} | AC ${sheet.ac} | Speed ${speedFor(sheet, { encumbrance: options.encumbrance })} | Passive Perception ${derived.passivePerception} | Initiative ${formatModifier(derived.initiative)} | Hit Dice ${hitDiceLabel}`,
     `  ${abilities} | Save proficiencies: ${sheet.proficiencies.saves.map((save) => save.toUpperCase()).join(", ") || "none"}`,
     `  Skill proficiencies: ${proficientSkills || "none"}`,

@@ -80,7 +80,7 @@ import { enemySpellAttack } from "@/lib/dm/enemy-casting";
 import { swallowCover, swallowRefusal } from "@/lib/dm/swallow";
 import { swallowActionOf } from "@/lib/dm/swallow-logic";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
-import { sizeForRace } from "@/lib/srd";
+import { sheetSize } from "@/lib/srd";
 import { fittedText } from "@/lib/dm/fitted-text";
 import { cloudRuneAtHit, landTurnedBlow } from "@/lib/dm/cloud-rune";
 
@@ -340,7 +340,7 @@ export function handleEnemyAttack(
   if (swallowing) {
     const refused =
       swallowRefusal(campaign.id, found, { kind: "sheet", id: target.id }, swallowing) ??
-      (swallowing.maxSize && sizeRank(sizeForRace(target.race)) > sizeRank(swallowing.maxSize)
+      (swallowing.maxSize && sizeRank(sheetSize(target)) > sizeRank(swallowing.maxSize)
         ? `${target.name} is too big: ${found.displayName}'s ${swallowing.entry} takes a ${swallowing.maxSize} or smaller creature.`
         : null);
     if (refused) {

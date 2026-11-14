@@ -42,7 +42,7 @@ import { standUpTiles } from "@/lib/srd/authored-effects-more";
 import { dragCostFactor, dragPlacements, grappledBy, walkCostFactor } from "@/lib/dm/drag";
 import { jumpMove } from "@/lib/dm/jump-move";
 import { jumpLine } from "@/lib/srd/jump";
-import { sizeForRace } from "@/lib/srd";
+import { sheetSize } from "@/lib/srd";
 import { proneCharge } from "@/lib/battlemap/board-move";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
 import { swallowWalk } from "@/lib/dm/swallow";
@@ -394,7 +394,7 @@ export async function POST(
       return Response.json({ error: `${sheet.name} is prone; they stand up before dragging anyone.` }, { status: 409 });
     }
     // A careful drag is half speed, as the drag alone is (drag.ts).
-    spend = (stepCost ?? cost) * walkCostFactor(dragCostFactor(sizeForRace(sheet.race), held.map((enemy) => ({ refId: enemy.id, name: enemy.displayName, size: enemy.stats.size }))), careful);
+    spend = (stepCost ?? cost) * walkCostFactor(dragCostFactor(sheetSize(sheet), held.map((enemy) => ({ refId: enemy.id, name: enemy.displayName, size: enemy.stats.size }))), careful);
     if (spend > budget) {
       return Response.json({ error: `Dragging a grappled creature halves ${sheet.name}'s speed: that move costs ${spend * 5} feet and ${budget * 5} are left this turn.` }, { status: 400 });
     }

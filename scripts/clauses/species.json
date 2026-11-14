@@ -2811,7 +2811,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "1f60e3cb5fb9",
+  "sha": "e76feeed6f5d",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -2872,6 +2872,12 @@
     "is": "held",
     "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.owlfolk.grants"
+   },
+   {
+    "c": "\"variants\":{\"label\":\"Size\",\"options\":[{\"id\":\"medium\",\"name\":\"Medium\",\"lines\":[]},{\"id\":\"small\",\"name\":\"Small\",\"lines\":[]}]}",
+    "is": "held",
+    "by": "src/lib/content/species-variants.ts (the builder asks Small or Medium and writes the pick's record, \"Size (Small)\", among the race features), read by src/lib/srd/index.ts sheetSize at every size reader (heavy weapons, grapple and shove reach, squeezing, carrying, the board's footprint)",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.owlfolk.size"
    }
   ]
  },
@@ -2959,7 +2965,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "246b9c176eaa",
+  "sha": "7d0d49f8fbf7",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -3026,6 +3032,12 @@
     "is": "held",
     "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.rabbitfolk.grants"
+   },
+   {
+    "c": "\"variants\":{\"label\":\"Size\",\"options\":[{\"id\":\"medium\",\"name\":\"Medium\",\"lines\":[]},{\"id\":\"small\",\"name\":\"Small\",\"lines\":[]}]}",
+    "is": "held",
+    "by": "src/lib/content/species-variants.ts (the builder asks Small or Medium and writes the pick's record, \"Size (Small)\", among the race features), read by src/lib/srd/index.ts sheetSize at every size reader (heavy weapons, grapple and shove reach, squeezing, carrying, the board's footprint)",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.rabbitfolk.size"
    }
   ]
  },

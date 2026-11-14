@@ -12,7 +12,7 @@ import type { PlayerMapView } from "@/lib/battlemap/view-types";
 import { zoneRowFor } from "@/lib/battlemap/zones-spells";
 import { dragCostFactor, grappledBy } from "@/lib/dm/drag";
 import type { ViewZone } from "@/lib/dm/zone-view";
-import { sizeForRace } from "@/lib/srd";
+import { sheetSize } from "@/lib/srd";
 import { standUpTiles } from "@/lib/srd/authored-effects-more";
 import { jumpReach } from "@/lib/dm/jump-reach";
 import { runUpTiles } from "@/lib/srd/feat-moves";
@@ -68,7 +68,7 @@ export function viewerMoves(input: {
       runningStart,
       drag: held.length
         ? {
-            factor: dragCostFactor(sizeForRace(sheet.race), held.map((enemy) => ({ refId: enemy.id, name: enemy.displayName, size: enemy.stats.size }))),
+            factor: dragCostFactor(sheetSize(sheet), held.map((enemy) => ({ refId: enemy.id, name: enemy.displayName, size: enemy.stats.size }))),
             names: held.map((enemy) => enemy.displayName),
           }
         : null,

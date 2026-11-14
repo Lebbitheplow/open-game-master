@@ -13,7 +13,7 @@ import { tokenFootprint } from "@/lib/dm/board-reach";
 
 import { passableTiles } from "@/lib/battlemap/passage";
 import { getSheetById } from "@/lib/db/sheets";
-import { sizeForRace } from "@/lib/srd";
+import { sheetSize } from "@/lib/srd";
 import { removeConditions } from "@/lib/dm/condition-logic";
 import { resolvePcOpportunityWalk } from "@/lib/dm/opportunity";
 import { publishEphemeral } from "@/lib/events";
@@ -344,7 +344,7 @@ export function enemyMoveTraits(width: number, tokens: BattleToken[], mover: Bat
     }
     if (token.kind === "pc") {
       const sheet = getSheetById(token.refId);
-      return sheet ? sizeForRace(sheet.race) : undefined;
+      return sheet ? sheetSize(sheet) : undefined;
     }
     return undefined;
   };

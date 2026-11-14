@@ -18,7 +18,7 @@
 import { itemWeightByName } from "@/lib/content";
 import { carryMultiplier, encumbranceFor, type CarriedItem } from "@/lib/srd/encumbrance";
 import { densityCarryFactor } from "@/lib/srd/ar-ws-density";
-import { sizeForRace } from "@/lib/srd";
+import { sheetSize } from "@/lib/srd";
 import { itemAbilityScore, type Wearer } from "@/lib/srd/magic-items";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
@@ -55,7 +55,7 @@ function loadOf(sheet: Carrier, equipment: CarriedItem[], purse?: Purse) {
     strength: sheet.abilities.str,
     equipment: weighed(equipment),
     coins: purseCoins(purse ?? { gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
-    size: sheet.race ? sizeForRace(sheet.race) : undefined,
+    size: sheet.race ? sheetSize(sheet) : undefined,
     wearer: sheet as Wearer,
     carryFactor: carryFactorOf(sheet),
   });
@@ -88,6 +88,6 @@ export function liftLimits(sheet: Carrier & { equipment: CarriedItem[] }): { cap
   const strength = Math.max(1, set);
   // The same size and factor loadOf weighs by, so the lift and the capacity
   // agree; Adjust Density doubles or halves both (src/lib/srd/ar-ws-density.ts).
-  const multiplier = carryMultiplier(carrySize(sheet.race ? sizeForRace(sheet.race) : undefined, sheet as Wearer)) * carryFactorOf(sheet) * densityCarryFactor(sheet.conditions);
+  const multiplier = carryMultiplier(carrySize(sheet.race ? sheetSize(sheet) : undefined, sheet as Wearer)) * carryFactorOf(sheet) * densityCarryFactor(sheet.conditions);
   return { capacityLb: strength * 15 * multiplier, liftLb: strength * 30 * multiplier };
 }

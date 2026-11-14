@@ -12,7 +12,7 @@ import { climbsFreely } from "@/lib/srd/feat-combat";
 import { earthUnderfoot, hasEarthWalk } from "@/lib/srd/mt-species-traits";
 import { footprintIndexes, type Footprint } from "@/lib/battlemap/footprint";
 import { moveTraitsFrom, TERRAIN, tileIndex, type BattleToken, type MoveTraits } from "@/lib/battlemap/types";
-import { sizeForRace } from "@/lib/srd";
+import { sheetSize } from "@/lib/srd";
 import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { movesThroughEverything } from "@/lib/dm/ar-ws-umbral-logic";
 import { itemSpeeds, type Wearer, type WornMagicItem } from "@/lib/srd/magic-items";
@@ -108,7 +108,7 @@ export function pcMoveTraits(input: {
   // crossesAnyGround): difficult terrain costs no extra.
   anyGround?: boolean;
 }): MoveTraits {
-  const moverSize = sizeForRace(input.sheet.race);
+  const moverSize = sheetSize(input.sheet);
   // Athlete: climbing costs no extra movement (src/lib/srd/feat-combat.ts).
   const base = moveTraitsFrom(input.sheet.features);
   const freely = typeof base === "object" && base !== null && climbsFreely(input.sheet) ? { ...base, climbs: true } : base;

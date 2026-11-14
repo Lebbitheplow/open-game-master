@@ -32,7 +32,7 @@ import { pcAttackSpatials } from "@/lib/dm/map-tools";
 import type { FeatureRider } from "@/lib/dm/pc-attack-damage";
 import type { ManeuverPick } from "@/lib/dm/pc-attack-plan";
 import type { BuiltAttack } from "@/lib/dm/pc-attack-profile";
-import { sizeForRace } from "@/lib/srd";
+import { sheetSize } from "@/lib/srd";
 import { wearsUntrainedArmor } from "@/lib/srd/armor";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
 import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
@@ -270,7 +270,7 @@ export function attackSituation(input: {
   // SRD heavy property: Small creatures swing oversized weapons at
   // disadvantage.
   // Giant Foe lifts the Small character's heavy-weapon disadvantage (feat-combat.ts).
-  const smallWithHeavy = profile.heavy && sizeForRace(sheet.race) === "Small" && !liftsSmallHeavyPenalty(sheet);
+  const smallWithHeavy = profile.heavy && sheetSize(sheet) === "Small" && !liftsSmallHeavyPenalty(sheet);
   // Sunlight Sensitivity: in direct sunlight, disadvantage (sunlight.ts).
   const sunlit = hasSunlightSensitivity(sheet) && inDirectSunlight(campaign.id);
   if (sunlit) {

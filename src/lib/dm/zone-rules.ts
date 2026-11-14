@@ -11,7 +11,7 @@
 import { getBattleMapForEncounter, getTokenByRef, type BattleMap } from "@/lib/db/battle-maps";
 import { getActiveBoard, getActiveEncounter, getEnemy } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
-import { sizeForRace } from "@/lib/srd";
+import { sheetSize } from "@/lib/srd";
 import { barredByShell, barredCells, ignoresZoneSteps, moverSpellTraits, withBarred, withEdges, type ZoneMover } from "@/lib/battlemap/zones-movers";
 import { effectiveTerrain, type LightZone } from "@/lib/battlemap/scene";
 import { tileIndex, type MapLight, type MoveTraits, type XY } from "@/lib/battlemap/types";
@@ -56,7 +56,7 @@ function moverOf(map: BattleMap, moverKind: string, moverRef: string | undefined
   const sheet = getSheetById(moverRef);
   // A summoned creature is what its stat block says (a skeleton is undead),
   // a shaped one what its form is (summon-rules.ts sheetCreatureType).
-  return sheet ? { size: sizeForRace(sheet.race), flying, conditions: sheet.conditions, ref: moverRef, type: sheetCreatureType(sheet) } : null;
+  return sheet ? { size: sheetSize(sheet), flying, conditions: sheet.conditions, ref: moverRef, type: sheetCreatureType(sheet) } : null;
 }
 
 // A mover's walking traits with the spell areas' say on each step, and what

@@ -1393,7 +1393,22 @@
       "bonusLanguages": 1,
       "skills": [
         "stealth"
-      ]
+      ],
+      "variants": {
+        "label": "Size",
+        "options": [
+          {
+            "id": "medium",
+            "name": "Medium",
+            "lines": []
+          },
+          {
+            "id": "small",
+            "name": "Small",
+            "lines": []
+          }
+        ]
+      }
     },
     {
       "id": "centaur",
@@ -1452,7 +1467,22 @@
       "bonusLanguages": 1,
       "skills": [
         "perception"
-      ]
+      ],
+      "variants": {
+        "label": "Size",
+        "options": [
+          {
+            "id": "medium",
+            "name": "Medium",
+            "lines": []
+          },
+          {
+            "id": "small",
+            "name": "Small",
+            "lines": []
+          }
+        ]
+      }
     },
     {
       "id": "shifter",

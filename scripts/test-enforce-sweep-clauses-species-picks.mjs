@@ -335,6 +335,27 @@ for (const row of RACES) {
       );
     });
   }
+  // A size the player picks (an owlin or a harengon is Small or Medium): a
+  // Small one swings a heavy weapon (a greatsword) at disadvantage, a Medium
+  // one does not.
+  if (row.variants?.label === "Size") {
+    probe("size", async () => {
+      const t = await rig.table();
+      // The pick's record among the race features, as the sheet door writes it.
+      const recordOf = (id) => `${row.variants.label} (${row.variants.options.find((option) => option.id === id).name})`;
+      const hero = (id) => t.hero(of({ racialChoices: { variant: id }, features: [{ name: recordOf(id), source: "race" }], equipment: [{ name: "Greatsword", equipped: true }] }));
+      const small = hero("small");
+      const medium = hero("medium");
+      const [foe] = await t.fight([small, medium]);
+      t.kit.place(medium.id, 7, 5);
+      const d20s = async (who) => {
+        t.kit.giveTurn(who.id);
+        const swing = await t.swing(who, foe, [15, 3, 4], { weapon: "Greatsword" });
+        return swing.toHit?.breakdown.terms.find((term) => term.sides === 20)?.dice.length;
+      };
+      same([await d20s(small), await d20s(medium)], [2, 1], `${row.name}: d20s on a greatsword swing, picked Small, then Medium`);
+    });
+  }
 }
 
 // The probes above by name, for the ledger's probe check (it finds a probe
@@ -348,6 +369,8 @@ const NAMES = [
   "species.fairy.fey",
   "species.centaur.climbing",
   "species.fairy.fairy-magic",
+  "species.owlfolk.size",
+  "species.rabbitfolk.size",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
 
