@@ -61,10 +61,15 @@ export function UiLanguageApplier() {
     document.documentElement.lang = "it";
     let stop: (() => void) | undefined;
     let cancelled = false;
-    void Promise.all([import("@/lib/language/ui-it.json"), import("@/lib/language/ui-it.patterns.json")])
-      .then(([catalog, patterns]) => {
+    void Promise.all([import("@/lib/language/ui-it.json"), import("@/lib/language/ui-it.patterns.json"), import("@/lib/language/srd-names-it")])
+      .then(([catalog, patterns, srd]) => {
         if (!cancelled) {
-          stop = startUiTranslation(document.documentElement, uiTranslator(catalog.default, patterns.default));
+          stop = startUiTranslation(
+            document.documentElement,
+            uiTranslator(catalog.default, patterns.default),
+            // The server's lines name things by the Italian SRD's names.
+            uiTranslator(catalog.default, patterns.default, srd.italianName),
+          );
         }
       })
       // No catalog, no harm: the page stays English.

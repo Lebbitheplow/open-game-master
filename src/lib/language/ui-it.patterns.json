@@ -6868,5 +6868,11 @@
   "· {sharedLeft} still to choose": "· {sharedLeft} ancora da scegliere",
   "· {value} campaign": "· campagna {value}",
   "· {value} to hit": "· {value} al tiro per colpire",
-  "“{name}” reads as a {reserved}, which is not a creature ODM makes.": "“{name}” sembra indicare un {reserved}, un tipo di creatura che ODM non crea."
+  "“{name}” reads as a {reserved}, which is not a creature ODM makes.": "“{name}” sembra indicare un {reserved}, un tipo di creatura che ODM non crea.",
+  "For a minute, an enemy that starts its turn within {AURA_FEET} feet of {name} makes a Wisdom save (DC {value}) or is frightened of them until its next turn starts.": "Per un minuto, un nemico che inizia il proprio turno entro {AURA_FEET} piedi da {name} effettua un tiro salvezza su Saggezza (CD {value}) o è spaventato da {name} fino all'inizio del suo turno successivo.",
+  "{label} answers the hit that drops {name} to 0 hit points, and they are not down.": "{label} risponde al colpo che porta {name} a 0 punti ferita, e {name} non cade.",
+  "{name} stands ready to hold {name2}'s spirit: if they die within the minute, for 24 hours a spell that returns the dead finds them as if freshly dead.": "{name} è pronto a trattenere lo spirito di {name2}: se muore entro il minuto, per 24 ore un incantesimo che riporta in vita i morti lo trova come se fosse appena morto.",
+  "{name}'s rage ends at 0 hit points with three death saves failed, and they die.": "L'ira di {name} termina a 0 punti ferita con tre tiri salvezza contro la morte falliti, e {name} muore.",
+  "{name}'s rage ends at 0 hit points, and they fall unconscious, dying.": "L'ira di {name} termina a 0 punti ferita, e {name} cade privo di sensi, morente.",
+  "{name}'s rage ends at 0 hit points: stable, they fall unconscious.": "L'ira di {name} termina a 0 punti ferita: stabile, {name} cade privo di sensi."
 }

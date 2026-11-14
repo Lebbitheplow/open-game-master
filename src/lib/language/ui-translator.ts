@@ -20,8 +20,10 @@ function leftAlone(element: Element | null): boolean {
 // no entry whole (src/app/campaigns/[campaignId]/MessageParts.tsx).
 const BY_SENTENCE = "[data-ui-sentences]";
 
-export function startUiTranslation(root: Element, whole: UiTranslator): () => void {
-  const bySentence = sentenceTranslator(whole);
+// `chronicle` reads the server's lines (the same catalog, with the SRD's
+// Italian names in its slots); the rest of the page reads `whole`.
+export function startUiTranslation(root: Element, whole: UiTranslator, chronicle: UiTranslator = whole): () => void {
+  const bySentence = sentenceTranslator(chronicle);
   const translatorFor = (element: Element | null) => (element?.closest(BY_SENTENCE) ? bySentence : whole);
   // What this layer last wrote, so its own writes are not read back as
   // English (a translation may itself be some other entry's English).

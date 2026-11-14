@@ -84,8 +84,12 @@ riepilogo «Previously» sono testo di persone o del modello: `translate="no"` (
   volta, intero o frase per frase; altrimenti il match cade e la frase resta in inglese;
 - una frase non si taglia dentro parentesi.
 
-Limiti noti: i nomi di oggetti e incantesimi dentro queste righe restano in inglese
-(«Scimitar»), e le liste di nomi tengono «and».
+- nelle righe del server, uno slot che è un nome (o una lista di nomi) prende il nome
+  ufficiale dell'SRD italiano quando ne ha uno solo (`italianName` in
+  `src/lib/language/srd-names-it.ts`: «Scimitar» → «Scimitarra», «Bandit 2» → «Bandito 2»,
+  «Longsword +1» → «Spada lunga +1»); «and»/«or» della lista prendono la congiunzione del
+  pattern `{value} and {value2}` del catalogo («e»). Il resto dell'interfaccia non cambia i
+  nomi.
 
 ## Contratti
 - `src/lib/language/ui-it.json`: oggetto piatto `{"English text": "Testo italiano"}`, il

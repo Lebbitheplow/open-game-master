@@ -15,6 +15,7 @@ register("./lib/register-alias.mjs", import.meta.url);
 const { test, finish } = suite("test-ui-translate");
 const { uiTranslator, sentenceTranslator, resolveUiLanguage, isUiLanguageChoice } = await import("../src/lib/language/ui-translate-logic.ts");
 const { extract, extractServer } = await import("./extract-ui-strings.mjs");
+const { italianName } = await import("../src/lib/language/srd-names-it.ts");
 
 const catalog = { Save: "Salva", "Widen the panel": "Allarga il pannello", "Your turn.": "Tocca a te." };
 const patterns = { "{name}'s turn": "Turno di {name}", "{count} of {total} left": "{count} su {total} rimasti" };
@@ -115,6 +116,13 @@ await test("a server's line with no entry whole is read sentence by sentence; a 
   // The pattern with the most fixed words wins, whatever the catalog's order.
   const specific = uiTranslator({}, { "{name} attacks {value}.": "{name} attacca {value}.", "{name} attacks {target} with {attack}.": "{name} attacca {target} con {attack}." });
   assert.equal(specific("Bandito 3 attacks Brann with Scimitar."), "Bandito 3 attacca Brann con Scimitar.");
+  // The server's lines: names in a slot read by the SRD's Italian names, a
+  // list's "and" by the catalog's own "{value} and {value2}".
+  const chronicle = uiTranslator({}, { "{name} attacks {target} with {attack}.": "{name} attacca {target} con {attack}.", "{value} act{value2} before {name}.": "Prima di {name} tocca a {value}.", "{value} and {value2}": "{value} e {value2}" }, italianName);
+  assert.equal(chronicle("Bandit 2 attacks Brann with Scimitar."), "Bandito 2 attacca Brann con Scimitarra.");
+  assert.equal(chronicle("Bandito 1, Bandito 2 and Bandito 3 act before Brann."), "Prima di Brann tocca a Bandito 1, Bandito 2 e Bandito 3.");
+  assert.equal(italianName("Longsword +1"), "Spada lunga +1");
+  assert.equal(italianName("Kara"), undefined);
   // A slot glued to a word or another slot may be empty.
   const glued = uiTranslator({}, { "{value} act{value2} before {name}.": "Prima di {name} tocca a {value}.", "{value} vs AC {value2}:": "{value} contro CA {value2}:", "HIT for {value3}{value4}": "COLPITO per {value3}{value4}", "{name} attacks with {attack} ({summary}).": "{name} attacca con {attack} ({summary})." });
   assert.equal(glued("Bandito 1 and Bandito 2 act before Brann."), "Prima di Brann tocca a Bandito 1 and Bandito 2.");
