@@ -173,83 +173,83 @@ export function crosswalkFor(page: Pick<RulebookPage, "id" | "kind" | "title">, 
 // lines above on purpose: when a where line changes up there, its line here
 // changes with it.
 const WHERE_FR: Record<string, { where: string; template?: string }> = {
-  "racial-traits": { where: "Atelier : Races ; le créateur accorde chaque trait qu'il lit" },
+  "racial-traits": { where: "Atelier : Races ; le créateur de personnage applique chaque trait qu'il lit" },
   "beyond-1st-level": { where: "Montée de niveau : points de vie selon la méthode de la table, capacités, améliorations" },
   multiclassing: { where: "Montée de niveau, quand la table autorise une seconde classe : conditions requises, maîtrises, emplacements" },
-  alignment: { where: "Champs de la fiche et du Cast ; aucune règle ne le lit" },
+  alignment: { where: "Champs de la fiche et de la Distribution ; aucune règle ne le lit" },
   languages: { where: "Créateur : langues issues de la race, de l'historique et des dons" },
-  inspiration: { where: "Le MJ l'accorde (set_condition) ; un jet la dépense pour obtenir l'avantage" },
-  backgrounds: { where: "Atelier : Historiques ; le créateur accorde compétences, outils, langues, kit et pièces" },
+  inspiration: { where: "Attribuée par le MJ (set_condition) ; utilisable sur un jet pour obtenir l'avantage" },
+  backgrounds: { where: "Atelier : Historiques ; le créateur accorde compétences, outils, langues, équipement et pièces" },
   coinage: { where: "Bourses : achat, modify_gold" },
-  "selling-treasure": { where: "achat aux prix de la table, en boutique ou non" },
+  "selling-treasure": { where: "Achat et vente aux tarifs fixés par la table, en boutique ou ailleurs" },
   armor: { where: "Le moteur d'armures (CA, Force, Discrétion, enfiler et retirer) ; Atelier : Objets" },
   weapons: { where: "Le moteur d'attaques (propriétés, portées, finesse, arme polyvalente) ; Atelier : Objets" },
-  "adventuring-gear": { where: "Objets avec poids et prix ; Atelier : Objets" },
-  tools: { where: "Créateur : maîtrises d'outils ; les jets avec eux appliquent la maîtrise" },
+  "adventuring-gear": { where: "Équipement avec encombrement et coût ; Atelier : Objets" },
+  tools: { where: "Créateur : maîtrise d'outils ; le bonus de maîtrise est appliqué aux jets associés" },
   "mounts-and-vehicles": { where: "Montures : mount_up et combat monté. Les véhicules sont narrés" },
   "trade-goods": { where: "Les marchandises gardent leur valeur entière à la vente (trade-value.ts)" },
-  expenses: { where: "set_lifestyle et les temps libres facturent les coûts" },
-  feats: { where: "Atelier : Dons ; s'applique comme pour les dons que les moteurs connaissent" },
-  "using-ability-scores": { where: "Jets, sauvegardes, oppositions, scores passifs" },
+  expenses: { where: "set_lifestyle et temps morts facturent les coûts" },
+  feats: { where: "Atelier : Dons ; fonctionne de la même manière que les dons gérés par le moteur" },
+  "using-ability-scores": { where: "Tests de caractéristique, sauvegardes, oppositions, scores passifs" },
   adventuring: { where: "Voyage, repos, chute, suffocation, vision et lumière" },
-  combat: { where: "Le moteur de combat : initiative, actions, attaques, dégâts, sauvegardes contre la mort" },
+  combat: { where: "Le moteur de combat : initiative, actions, attaques, dégâts, jets de sauvegarde contre la mort" },
   spellcasting: { where: "Le contrôle d'incantation : emplacements, composantes, concentration, rituels" },
   "spell-lists": { where: "Listes de sorts du créateur et de la montée de niveau" },
-  traps: { where: "Atelier : Risques (pièges), appliqués par apply_hazard" },
-  diseases: { where: "Atelier : Risques (maladies), appliquées par afflict" },
+  traps: { where: "Atelier : Dangers (pièges), appliqués par apply_hazard" },
+  diseases: { where: "Atelier : Dangers (maladies), appliquées par afflict" },
   madness: { where: "afflict : folie de courte durée, de longue durée et indéfinie, d'après les tables" },
   objects: { where: "damage_object : CA selon la matière, points de vie selon la taille, seuil de dégâts" },
-  poisons: { where: "Atelier : Risques (poisons), appliqués par afflict" },
-  "magic-items": { where: "Atelier : Objets (harmonisation, effets, ajouts, charges, sorts)" },
+  poisons: { where: "Atelier : Dangers (poisons), appliqués par afflict" },
+  "magic-items": { where: "Atelier : Objets (harmonisation, effets, propriétés additionnelles, charges, sorts)" },
   "sentient-magic-items": { where: "Atelier : Objets (Il est conscient) ; un conflit se règle à l'opposition de Charisme du MJ" },
   artifacts: { where: "Atelier : Objets pour ce qu'il fait ; sa destruction et ses propriétés relèvent du MJ" },
-  "monster-statistics": { where: "Éditeur du Bestiaire, calibré d'après la table du DMG" },
-  "nonplayer-characters": { where: "Le Cast, avec des blocs de stats issus du bestiaire" },
+  "monster-statistics": { where: "Éditeur du Bestiaire, calibré d'après la table du Guide du Maître" },
+  "nonplayer-characters": { where: "La Distribution, avec des blocs de stats issus du bestiaire" },
   conditions: { where: "Le moteur d'états" },
   "gods-of-the-multiverse": { where: "Entrées Lore et WorldForge pour les dieux propres à un monde" },
   "the-planes-of-existence": { where: "Lore ; les sorts de passage entre plans sont narrés" },
   "legal-information": { where: "La licence sous laquelle le livre est publié" },
-  "half-dragon-template": { where: "Bestiaire : construis-le à partir du catalogue, modèle demi-dragon (sens, résistance, draconique, le souffle de sa moitié dragon)" },
-  "customizing-npcs": { where: "Bestiaire : construis-le à partir du catalogue (châssis d'ascendance et de classe), et le Cast pour qui ils sont" },
+  "half-dragon-template": { where: "Bestiaire : créer depuis le catalogue avec le modèle demi-dragon (sens, résistance, langue draconique et souffle hérité)" },
+  "customizing-npcs": { where: "Bestiaire : créer depuis le catalogue (base d'ascendance et de classe) ; la Distribution pour leur identité" },
   "ammunition-1-2-or-3": {
-    where: "Atelier : Objets ; l'harmonisation et le poids sont suivis, ce qu'il fait relève du MJ",
-    template: "une famille de trois objets (+1, +2, +3) : copie celui que tu veux et règle son bonus",
+    where: "Atelier : Objets ; l'harmonisation et le poids sont gérés, le fonctionnement est laissé à l'appréciation du MJ",
+    template: "une famille de trois objets (+1, +2, +3) : dupliquer l'élément souhaité et ajuster son bonus",
   },
   "armor-1-2-or-3": {
-    where: "Atelier : Objets ; l'harmonisation et le poids sont suivis, ce qu'il fait relève du MJ",
-    template: "une famille de trois objets (+1, +2, +3) : copie celle que tu veux et règle son bonus d'armure",
+    where: "Atelier : Objets ; l'harmonisation et le poids sont gérés, le fonctionnement est laissé à l'appréciation du MJ",
+    template: "une famille de trois objets (+1, +2, +3) : dupliquer l'armure souhaitée et ajuster son bonus d'armure",
   },
   "shield-1-2-or-3": {
-    where: "Atelier : Objets ; l'harmonisation et le poids sont suivis, ce qu'il fait relève du MJ",
-    template: "une famille de trois objets (+1, +2, +3) : copie celui que tu veux et règle son bonus de bouclier",
+    where: "Atelier : Objets ; l'harmonisation et le poids sont gérés, le fonctionnement est laissé à l'appréciation du MJ",
+    template: "une famille de trois objets (+1, +2, +3) : dupliquer le bouclier souhaité et ajuster son bonus de bouclier",
   },
 };
 
 const SPELL_WHERE_FR: Record<"engine" | "editable", string> = {
-  engine: "Les outils d'incantation le lancent (sauvegarde ou attaque, dégâts, état, zone) ; Atelier : Sorts pour une copie qui fait la même chose",
-  editable: "Le contrôle d'incantation dépense l'emplacement et vérifie les composantes ; son effet est narré. Atelier : Sorts pour une copie",
+  engine: "Les outils d'incantation gèrent ses jets (sauvegarde ou attaque, dégâts, état, zone) ; Atelier : Sorts pour en créer une copie identique",
+  editable: "Le contrôle d'incantation dépense l'emplacement et vérifie les composantes ; l'effet est narré. Atelier : Sorts pour en créer une copie",
 };
 
 const ITEM_WHERE_FR: Record<"engine" | "editable", string> = {
-  engine: "Atelier : Objets ; le moteur applique ses {fields}",
-  editable: "Atelier : Objets ; l'harmonisation et le poids sont suivis, ce qu'il fait relève du MJ",
+  engine: "Atelier : Objets ; le moteur gère ses paramètres ({fields})",
+  editable: "Atelier : Objets ; l'harmonisation et le poids sont gérés, le fonctionnement est laissé à l'appréciation du MJ",
 };
 
-const MONSTER_WHERE_FR = "Le moteur de combat applique son bloc ; le Bestiaire le copie entier, texte imprimé compris";
-const RACE_WHERE_FR = "Le créateur accorde ses traits ; Atelier : Races pour une copie ou une nouvelle";
+const MONSTER_WHERE_FR = "Le moteur de combat gère sa fiche de profil ; le Bestiaire permet de la dupliquer intégralement, texte officiel inclus";
+const RACE_WHERE_FR = "Le créateur accorde ses traits ; Atelier : Races pour en créer une copie ou une variante";
 const CLASS_WHERE_FR =
-  "La classe est celle fournie avec l'application, que le créateur et la montée de niveau appliquent ; Atelier : Sous-classes pour de nouveaux chemins (une nouvelle classe de base n'est pas ce que l'atelier fabrique)";
+  "La classe est fournie avec l'application, gérée par la création et la montée de niveau ; Atelier : Sous-classes pour de nouvelles voies (la création de classe de base n'est pas prise en charge)";
 const READ_WHERE_FR = "À lire dans le livre";
 
 // The engine fields a magic item runs, as the French line names them.
 const FIELD_LABELS_FR: Record<string, string> = {
-  weapon: "arme",
-  armor: "armure",
+  weapon: "statistiques d'arme",
+  armor: "statistiques d'armure",
   effects: "effets",
-  weaponRiders: "ajouts d'arme",
-  armorRiders: "ajouts d'armure",
+  weaponRiders: "effets additionnels d'arme",
+  armorRiders: "effets additionnels d'armure",
   charges: "charges",
-  checks: "bonus de vérification",
+  checks: "tests de caractéristique",
   spells: "sorts",
 };
 

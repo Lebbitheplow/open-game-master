@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 // and folio, the quick links). No page text; that comes a page at a time.
 // The book reads the request's language (the reader sends its locale in
 // Accept-Language); Vary keeps a cached French answer out of an English ask.
-export async function GET(request: Request = new Request("http://localhost/api/rulebook")) {
+export async function GET(request: Request) {
   const user = await currentUser();
   if (!user) {
     return unauthorized();

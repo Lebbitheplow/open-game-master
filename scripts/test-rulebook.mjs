@@ -366,9 +366,9 @@ try {
   await test("the crosswalk speaks the reader's language but reads the English book's names", () => {
     const walk = crosswalkFor(rulebookPage("fireball", "fr").page, "fr");
     assert.equal(walk.support, "engine", "Boule de feu stays an engine spell");
-    assert.match(walk.where, /Les outils d'incantation le lancent/);
+    assert.match(walk.where, /Les outils d'incantation gèrent ses jets/);
     const magicItems = crosswalkFor(rulebookPage("magic-items", "fr").page, "fr");
-    assert.match(magicItems.where, /Atelier : Objets \(harmonisation, effets, ajouts, charges, sorts\)/);
+    assert.match(magicItems.where, /Atelier : Objets \(harmonisation, effets, propriétés additionnelles, charges, sorts\)/);
     const enFireball = crosswalkFor(rulebookPage("fireball").page, "en");
     assert.equal(enFireball.support, "engine");
     assert.match(enFireball.where, /The cast tools roll it/);
@@ -423,7 +423,7 @@ try {
 
   await test("the routes are closed to a caller who is not signed in", async () => {
     globalThis.__odmTestToken = "";
-    assert.equal((await contentsRoute.GET()).status, 401);
+    assert.equal((await contentsRoute.GET(new Request("http://x/api/rulebook"))).status, 401);
     assert.equal((await pageRoute.GET(new Request("http://x/api/rulebook/pages/combat"), params("combat"))).status, 401);
     assert.equal((await searchRoute.GET(new Request("http://x/api/rulebook/search?q=cover"))).status, 401);
   });
@@ -431,7 +431,7 @@ try {
   await test("a signed-in reader gets contents, pages and search", async () => {
     const user = createUser(`reader-${randomBytes(3).toString("hex")}`, "x");
     globalThis.__odmTestToken = mintSession(user.id).token;
-    const contents = await (await contentsRoute.GET()).json();
+    const contents = await (await contentsRoute.GET(new Request("http://x/api/rulebook"))).json();
     assert.equal(contents.chapters.length, 17);
     assert.equal(contents.chapters[0].entries[0].md, undefined, "the contents carry no page text");
     const combat = await pageRoute.GET(new Request("http://x/api/rulebook/pages/combat"), params("combat"));
@@ -453,7 +453,7 @@ try {
     const frFound = await (await searchRoute.GET(new Request(`http://x/api/rulebook/search?q=${encodeURIComponent("boule de feu")}`, inFrench))).json();
     assert.equal(frFound.hits[0].page, "fireball");
     // A request without the header keeps reading the English book.
-    const enContents = await (await contentsRoute.GET()).json();
+    const enContents = await (await contentsRoute.GET(new Request("http://x/api/rulebook"))).json();
     assert.equal(enContents.chapters.find((chapter) => chapter.id === "spells").title, "Spells");
   });
 

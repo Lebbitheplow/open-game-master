@@ -157,6 +157,7 @@ function spellLevel(meta) {
 function tidy(markdown) {
   return markdown
     .replace(/<!--\s*CHECK[\s\S]*?-->\n?/g, "")
+    .replace("***Vision ans le noir***", "***Vision dans le noir***")
     .split("\n")
     .map((line) => line.replace(/\s+$/, ""))
     .join("\n")
