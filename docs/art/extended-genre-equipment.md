@@ -29,6 +29,12 @@ to their genre variants. Existing weapon and bonus-name handling remains in
 place. Unknown genres, unsupported items and unrelated homebrew names retain
 their original fallback. Equipment rules and availability do not change.
 
+The browser reads a generated table of 130 gear aliases and 32 weapon
+spellings instead of importing the full equipment catalogues and their rules
+dependencies. Regenerate it with `node scripts/generate-equipment-art-aliases.mjs`
+when the paintings or catalogue names change; `--check` verifies it without
+writing. The artwork test also checks the table against the catalogue.
+
 ## Sources
 
 The [manifest](extended-genre-equipment-2026-11-14.json) records the image
@@ -79,11 +85,18 @@ ran in Chromium, not on physical native hardware.
 | App shell, night | [Desktop](extended-genre-equipment-app-desktop-dark.png) | [Phone](extended-genre-equipment-app-phone-dark.png) |
 | App shell, day | [Desktop](extended-genre-equipment-app-desktop-light.png) | [Phone](extended-genre-equipment-app-phone-light.png) |
 
-The production build compiled successfully with webpack, then failed Next.js
+The local production build compiled successfully with webpack, then failed Next.js
 type checking because the shops API route exports `shopView`. That export is
 also present in the unchanged base commit from PR #961. The visual checks
 therefore used a development server; the separate client app-shell build passed.
 No build configuration or shops route was changed to suppress the error.
+
+CI's standard production builds passed on Windows and Linux; the Linux job
+then failed its JavaScript bundle budgets. PR #961 already exceeded those
+same four route budgets. The final resolver removes the catalogue imports:
+an isolated esbuild measurement fell from 76,329 to 17,454 gzip bytes. This
+measurement is for the resolver, not a substitute for the CI route budgets.
+The final CI budget result is pending.
 
 The full test suite is still running. Its completed file results are retained
 across resumed runs so unfinished files can finish without rerunning those

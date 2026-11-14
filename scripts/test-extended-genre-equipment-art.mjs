@@ -14,11 +14,21 @@ const { GameIcon } = await import("../src/components/ui/GameIcon.tsx");
 const { EquipmentArtProvider } = await import("../src/components/ui/EquipmentArtProvider.tsx");
 const { buildIconList } = await import("./icon-set.mjs");
 const { matchGear } = await import("../src/lib/srd/adventuring-gear.ts");
+const { buildEquipmentArtAliases } = await import("./generate-equipment-art-aliases.mjs");
 const root = path.resolve(import.meta.dirname, "..");
 const read = (file) => JSON.parse(readFileSync(path.join(root, file), "utf8"));
 const report = read("docs/art/extended-genre-equipment-2026-11-14.json");
 const subjects = read("scripts/extended-genre-equipment-subjects.json");
 const manifest = read("public/assets/icons/manifest.json");
+const aliases = read("src/lib/equipment-art-aliases.json");
+assert.deepEqual(aliases, buildEquipmentArtAliases(), "the browser alias table matches the catalogue");
+for (const [genre, entries] of Object.entries(read("src/lib/equipment-art.json"))) {
+  for (const [name, canonical] of Object.entries({ ...aliases.gear, ...aliases.weapons })) {
+    if (!entries[canonical]) continue;
+    assert.equal(equipmentArtwork({ kind: "item", key: name }, genre, "inventory").key, entries[canonical].item);
+    assert.equal(cardArtwork({ kind: "item", key: name }, genre).key, entries[canonical].card);
+  }
+}
 const catalogue = await buildIconList();
 assert.equal(subjects.length, 87);
 assert.equal(new Set(subjects.map(r => r.id)).size, 87);
