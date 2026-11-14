@@ -17,13 +17,16 @@ import { getSheetById } from "@/lib/db/sheets";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { horrorAcBonus } from "@/lib/dm/genre-a-horror-board";
 import { genreBAuraAc } from "@/lib/dm/genre-b-auras";
+import { wardedAc } from "@/lib/srd/genre-gh-warded";
 
-export function acWithEffects(campaignId: string, sheet: CharacterSheet): number {
+// `attacker`: the creature attacking, when one is: a Hunter's Kit warding
+// counts against its type only (src/lib/srd/genre-gh-warded.ts).
+export function acWithEffects(campaignId: string, sheet: CharacterSheet, attacker?: { stats?: { type?: string | null } } | null): number {
   return applyField(
     // Alone in the Dark's +1 reads the board (src/lib/dm/genre-a-horror-board.ts),
     // and an ally's genre aura (Guardian's Instinct, Shield Coupling) is
     // measured on the board as the attack is made (src/lib/dm/genre-b-auras.ts).
-    effectiveAcFor(sheet) + horrorAcBonus(campaignId, sheet) + genreBAuraAc(campaignId, sheet),
+    effectiveAcFor(sheet) + horrorAcBonus(campaignId, sheet) + genreBAuraAc(campaignId, sheet) + wardedAc(sheet.conditions, attacker?.stats?.type),
     effectOutcome(campaignId, { kind: "character", id: sheet.id }, "ac"),
   );
 }

@@ -295,5 +295,29 @@ await run("Grounding Rig: a ten-minute setup, one a long rest; a fight there lay
   assert.equal(withEdges(null, zones(), { conditions: ["ethereal"] })(inside, tileIndex(map.width, 15, 2), 5), BARRED, "a phasing creature crossed the rig");
 });
 
+// ---- GH08: Hunter's Kit wardings ----
+
+const { acWithEffects } = await load("lib/dm/ac-effects.ts");
+
+await run("Hunter's Kit: a warding made out of a fight gives the ally +2 AC against the monster type named for the night, not against another type; with Stake and Salt it covers the whole party", async () => {
+  const hero = rig.holder(feature("slayer", "Hunter's Kit", 2));
+  await kit.endFight();
+  assert.ok((await spend(hero, "Hunter's Kit", { targetCharacterId: rig.ally.id })).error, "a warding against no type");
+  rig.must(await spend(hero, "Hunter's Kit", { targetCharacterId: rig.ally.id, variant: "undead" }), "Hunter's Kit");
+  assert.ok(world.sheet(rig.ally.id).conditions.includes("warded (undead)"), `conditions ${world.sheet(rig.ally.id).conditions}`);
+  assert.deepEqual(world.sheet(hero.id).conditions, [], "the slayer warded themself too");
+  await kit.fight(2);
+  const [near, far] = world.enemies();
+  typed(near, "undead");
+  typed(far, "humanoid (goblinoid)");
+  const ac = (enemy) => acWithEffects(world.campaignId, world.sheet(rig.ally.id), kit.enemy(enemy.id));
+  assert.equal(ac(near) - ac(far), 2, `AC ${ac(near)} against the undead, ${ac(far)} against the goblin`);
+  assert.ok((await spend(hero, "Hunter's Kit", { variant: "undead" })).error, "a warding crafted in a fight");
+  await kit.endFight();
+  withFeature(hero, "Stake and Salt");
+  rig.must(await spend(hero, "Hunter's Kit", { variant: "fiend" }), "Hunter's Kit with Stake and Salt");
+  for (const who of [hero, rig.ally]) assert.ok(world.sheet(who.id).conditions.includes("warded (fiend)"), `${who.name} is not warded`);
+});
+
 rig.world.close();
 finish();

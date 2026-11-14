@@ -488,7 +488,7 @@ export function handleEnemyAttack(
   let defended = 0;
   const targetAc = () => {
     const fresh = getSheetById(target.id) ?? target;
-    return acWithEffects(campaign.id, fresh) + cover + bulwark + defended;
+    return acWithEffects(campaign.id, fresh, enemy) + cover + bulwark + defended;
   };
   // A spell a character left on the creature (Bane's d4 off, Bless's d4 on)
   // counts on every swing, as it would on a character's attack.

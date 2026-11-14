@@ -8,6 +8,7 @@ export const GENRE_A_HORROR_CONDITIONS: ConditionEffectRow[] = [
   // The wards (src/lib/dm/genre-gh-wards.ts): what the setter carries while the ward holds.
   { id: "sanctified_ground", match: ["sanctified ground"], summary: "Sanctified Ground: the exorcist's ward holds where it was set; a fight there is fought in it (a hostile spirit entering is seen and takes 1d8 radiant)." },
   { id: "warding_sigil", match: ["warding sigil"], summary: "Warding Sigil: the occultist's sigil holds where it was set; the first hostile creature crossing it makes an INT save, 2d6 psychic (half on a success)." },
+  { id: "warded", match: ["warded"], summary: "Hunter's Kit warding: +2 AC against attacks by the monster type it names, for the night." },
   { id: "grounding_rig", match: ["grounding rig"], summary: "Grounding Rig: for an hour nothing teleports into or out of 20 feet around the rig, and no ethereal creature crosses its edge." },
   { id: "binding_words", match: ["binding words"], summary: "Binding Words: the exorcist's next Rite of Repulsion also restrains, for a minute, the first creature it takes hold of." },
   { id: "terminal_focus", match: ["terminal focus"], summary: "Terminal Focus: the survivor's second full turn of the first round." },

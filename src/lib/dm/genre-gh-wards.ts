@@ -41,6 +41,8 @@ import { placeSpellZone } from "@/lib/dm/zone-cast";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { computeSheetDerived } from "@/lib/srd";
 import { isConditionNamed, isNamed } from "@/lib/srd/feature-names";
+import { WARDED_AC, WARDING_TYPES, wardedCondition } from "@/lib/srd/genre-gh-warded";
+import { textKey } from "@/lib/language/text-logic";
 
 type Resolution = ToolError | { patch?: FullPatchSheetInput; result: Record<string, unknown> };
 
@@ -130,9 +132,39 @@ function setWard(ctx: SpendContext, ward: Ward): Resolution {
   };
 }
 
-export const GH_WARD_PLAYS: Record<string, (ctx: SpendContext) => Resolution> = Object.fromEntries(
-  Object.entries(GH_WARDS).map(([play, ward]) => [play, (ctx: SpendContext) => setWard(ctx, ward)]),
-);
+// Hunter's Kit (slayer 2): "Craft stakes, salt lines, and wardings during a
+// rest; a warding gives one ally +2 AC against one monster type for a night",
+// and with Stake and Salt (3) "Your Hunter's Kit wardings cover the whole
+// party". The type is the call's variant; the ally its targetCharacterId (the
+// slayer when none is named); a night is eight hours on the clock. The AC is
+// src/lib/srd/genre-gh-warded.ts wardedAc's, asked by every enemy attack.
+function huntersKit(ctx: SpendContext): Resolution {
+  const type = WARDING_TYPES.find((entry) => textKey(entry) === textKey(ctx.args.variant ?? ""));
+  if (!type) {
+    return { error: `${ctx.spend.name}: name the monster type the warding is made against as the variant (${WARDING_TYPES.join(", ")}). Nothing was spent.`, retry: true };
+  }
+  const party = holds(ctx.sheet, "Stake and Salt");
+  const one = ctx.args.targetCharacterId ? getSheetById(ctx.args.targetCharacterId) : ctx.sheet;
+  if (!one) {
+    return { error: `${ctx.spend.name}: no character ${ctx.args.targetCharacterId} to ward. Nothing was spent.`, retry: true };
+  }
+  const covered = party ? listSheets(ctx.campaign.id).filter((sheet) => !sheet.deathSaves?.dead) : [one];
+  const condition = wardedCondition(type);
+  for (const stale of covered) {
+    const sheet = getSheetById(stale.id) ?? stale;
+    const meta: ConditionMetaMap = { ...(sheet.conditionMeta as ConditionMetaMap), [condition]: { rounds: 8 * ROUNDS_PER_HOUR, source: ctx.sheet.id } };
+    const updated = patchSheet(sheet.id, { conditions: [...sheet.conditions.filter((entry) => textKey(entry) !== textKey(condition)), condition], conditionMeta: meta });
+    if (updated) {
+      publishPersisted(ctx.campaign.id, "sheet_updated", { sheet: updated });
+    }
+  }
+  return { result: { applied: `${covered.map((sheet) => sheet.name).join(", ")} ${covered.length === 1 ? "has" : "have"} +${WARDED_AC} AC against ${type} attacks for the night (${condition}).` } };
+}
+
+export const GH_WARD_PLAYS: Record<string, (ctx: SpendContext) => Resolution> = {
+  ...Object.fromEntries(Object.entries(GH_WARDS).map(([play, ward]) => [play, (ctx: SpendContext) => setWard(ctx, ward)])),
+  hunters_kit: huntersKit,
+};
 
 // A fight begins: every ward still holding at the party's place is laid on
 // its board. The lines say what was laid.

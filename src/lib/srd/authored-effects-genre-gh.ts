@@ -56,5 +56,9 @@ export const GENRE_GH_AUTHORED: GenreRow[] = [
   ward("exorcist", "Sanctified Ground", "sanctified_ground", "is ten minutes of ritual (one with Wax and Wick), never made in the middle of a fight"),
   ward("occultist", "Warding Sigil", "warding_sigil", "is a minute of chalk-work, never made in the middle of a fight"),
   ward("parapsychologist", "Grounding Rig", "grounding_rig", "is a ten-minute setup, never made in the middle of a fight", "horror_grounding_rig"),
+  // "Craft stakes, salt lines, and wardings during a rest; a warding gives one
+  // ally +2 AC against one monster type for a night" (the whole party with
+  // Stake and Salt): src/lib/dm/genre-gh-wards.ts huntersKit.
+  row("Hunter's Kit", ["slayer"], { spends: [{ name: "Hunter's Kit", aliases: ["Warding"], action: "none", fight: "out", outOfFightWhy: "is crafted during a rest, never in the middle of a fight", does: { kind: "horror_spend", play: "hunters_kit", aim: "ally" } }] }),
   played("occultist", "Stitch the Tear", "horror_stitch_the_tear", "action", "stitch_the_tear", "enemy"),
 ];
