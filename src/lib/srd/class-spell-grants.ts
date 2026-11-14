@@ -126,11 +126,7 @@ export function classSpellGrants(view: GrantView): ClassSpellGrants {
   }
   // A genre class's feature that learns spells from any list, on top of the
   // class's own count or what it prepares (ANY_LIST_FEATURES below).
-  // A sheet's feature list, when one is passed, must hold the feature too (a
-  // workshop class that dropped it has none).
-  const anyList = ANY_LIST_FEATURES.find(
-    (entry) => entry.classId === classId && view.level >= entry.level && (!features.length || holdsFeature({ features }, entry.feature)),
-  );
+  const anyList = ANY_LIST_FEATURES.find((entry) => entry.classId === classId && view.level >= entry.level);
   if (anyList) {
     return {
       ...NONE,

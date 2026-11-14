@@ -145,6 +145,20 @@ const ICON_ALIASES: Record<string, { kind: IconKind; slug: string }> = {
   // necrotic burst around the caster.
   "feature/orcish-fury": { kind: "feature", slug: "rage" },
   "feature/tainted-blood": { kind: "spell", slug: "arms-of-hadar" },
+  // A kobold's grovel the Command it acts out; a machinist's Familiar's Help
+  // its Clockwork Familiar; a gadgeteer's gadgets the spells they stand in
+  // for (the grapnel the aeronaut's line, the smoke bomb Fog Cloud, the arc
+  // lamp Daylight, the ear trumpet Clairvoyance, the skeleton key Knock, the
+  // pocket shield Shield), and their pick-list the artificer's infusions.
+  "feature/grovel-cower-and-beg": { kind: "spell", slug: "command" },
+  "feature/familiars-help": { kind: "feature", slug: "clockwork-familiar" },
+  "feature/grapnel": { kind: "feature", slug: "grapnel-line" },
+  "feature/smoke-bomb": { kind: "spell", slug: "fog-cloud" },
+  "feature/arc-lamp": { kind: "spell", slug: "daylight" },
+  "feature/ear-trumpet": { kind: "spell", slug: "clairvoyance" },
+  "feature/skeleton-key": { kind: "spell", slug: "knock" },
+  "feature/pocket-shield": { kind: "spell", slug: "shield" },
+  "family/option-gadget": { kind: "family", slug: "option-infusion" },
 };
 
 export function iconPath(kind: IconKind, key: string): string {

@@ -39,7 +39,7 @@ function gadgeteer(level, picks) {
   world.patch(hero.id, { features, resources });
   return hero;
 }
-const use = (hero, name, args = {}) => world.invoke("use_resource", { characterId: hero.id, resource: name, reason: "test", ...args });
+const spendOn = (hero, name, args = {}) => world.invoke("use_resource", { characterId: hero.id, resource: name, reason: "test", ...args });
 
 await run("Utility Gadgets, Third, Fourth and Fifth Gadget: a gadgeteer picks two gadgets at 1st level, three at 6th, four at 10th and five at 14th, from the six the text names", async () => {
   const names = options.optionsOfKind("gadget").map((option) => option.n);
@@ -55,23 +55,23 @@ await run("A picked gadget is a bonus action with INT-mod uses back on any rest:
   const counter = world.sheet(hero.id).resources?.steampunk_gadget_pocket_shield;
   assert.equal(counter?.max, MOD, `the Pocket Shield counter: ${JSON.stringify(counter)}`);
   const ac = world.sheet(hero.id).ac;
-  rig.must(await use(hero, "Pocket Shield"), "Pocket Shield");
+  rig.must(await spendOn(hero, "Pocket Shield"), "Pocket Shield");
   assert.equal(rig.budget().bonusUsed, true, "the gadget did not spend the bonus action");
   const { acWithEffects } = await load("lib/dm/effects.ts").catch(() => ({}));
   const derived = rig.srd.deriveAc(world.sheet(hero.id));
   assert.equal(derived, ac + 2, `AC ${derived} with the shield open, ${ac} before (${acWithEffects ? "effects read" : ""})`);
   rig.myTurn(hero);
-  rig.must(await use(hero, "Ear Trumpet"), "Ear Trumpet");
+  rig.must(await spendOn(hero, "Ear Trumpet"), "Ear Trumpet");
   assert.equal(await rig.d20sOf(hero, { kind: "skill_check", skill: "perception" }), 2, "Perception with the ear trumpet");
   rig.myTurn(hero);
-  rig.must(await use(hero, "Skeleton Key"), "Skeleton Key");
+  rig.must(await spendOn(hero, "Skeleton Key"), "Skeleton Key");
   assert.equal(await rig.d20sOf(hero, { kind: "ability_check", ability: "dex" }), 2, "a Dexterity check with the skeleton key");
   rig.myTurn(hero);
-  rig.must(await use(hero, "Grapnel"), "Grapnel");
+  rig.must(await spendOn(hero, "Grapnel"), "Grapnel");
   const { steampunkStride } = await load("lib/srd/genre-b-steampunk-moves.ts");
   assert.equal(steampunkStride(world.sheet(hero.id)).climbs, true, "the grapnel's round does not climb freely");
   // A gadget not picked is no use at all.
-  const refused = await use(hero, "Arc Lamp");
+  const refused = await spendOn(hero, "Arc Lamp");
   assert.equal(refused.ok, false, "an unpicked gadget was used");
   // The uses come back on a short rest.
   world.patch(hero.id, { resources: { ...world.sheet(hero.id).resources, steampunk_gadget_pocket_shield: { max: MOD, used: MOD } } });
@@ -85,7 +85,7 @@ await run("Smoke Discipline: the gadgeteer's smoke bomb fills a 15-foot radius t
   for (const level of [1, 9]) {
     const hero = gadgeteer(level, ["Smoke Bomb", "Arc Lamp"]);
     const { near } = await rig.fight(hero);
-    rig.must(await use(hero, "Smoke Bomb", { targetEnemyId: near.id }), "Smoke Bomb");
+    rig.must(await spendOn(hero, "Smoke Bomb", { targetEnemyId: near.id }), "Smoke Bomb");
     const map = getBattleMapForEncounter(world.encounter().id);
     const smoke = map.spellZones.find((zone) => /smoke/i.test(`${zone.runsAs ?? ""} ${zone.spell ?? ""}`));
     assert.ok(smoke, `no smoke on the board at level ${level}: ${JSON.stringify(map.spellZones).slice(0, 300)}`);
@@ -104,9 +104,9 @@ await run("Chain Deployment: a second, different gadget rides the bonus action t
   const chain = async () => {
     rig.myTurn(hero);
     world.patch(hero.id, { conditions: [], conditionMeta: {} });
-    rig.must(await use(hero, "Ear Trumpet"), "the first gadget");
-    const second = await use(hero, "Arc Lamp");
-    const third = second.ok ? await use(hero, "Pocket Shield") : null;
+    rig.must(await spendOn(hero, "Ear Trumpet"), "the first gadget");
+    const second = await spendOn(hero, "Arc Lamp");
+    const third = second.ok ? await spendOn(hero, "Pocket Shield") : null;
     return { second: second.ok, third: third?.ok ?? null };
   };
   const { on, off } = await rig.both(hero, row, chain);
@@ -122,7 +122,7 @@ await run("Third Gadget: the Arc Lamp's flash makes one creature within 30 feet 
   const { clearDice, dice } = await import("./lib/enforce-world.mjs");
   clearDice();
   dice(5);
-  const out = rig.must(await use(hero, "Arc Lamp Flash", { targetEnemyId: near.id }), "Arc Lamp Flash");
+  const out = rig.must(await spendOn(hero, "Arc Lamp Flash", { targetEnemyId: near.id }), "Arc Lamp Flash");
   clearDice();
   // Proficiency 3 at 6th, INT 3 (the rig's scores): DC 14.
   assert.ok(JSON.stringify(out).includes("14"), `the flash's save: ${JSON.stringify(out).slice(0, 300)}`);

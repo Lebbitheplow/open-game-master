@@ -160,7 +160,7 @@ export function characterHasPackmate(encounterId: string, characterId: string, e
   return hostileWithinFiveFeet(spotOf(target), threatSpots(encounterId, map.id, mine, [characterId, enemyId]));
 }
 // Grovel, Cower, and Beg (a kobold, mt-species-spends.ts): the name of a
-// groveling creature of the attacker's side, not the attacker, within 10
+// pleading creature of the attacker's side, not the attacker, within 10
 // feet of the target, which can see it (not blinded, the kobold neither
 // invisible nor hidden, no wall between them). Null for none.
 export function grovelingAllyNear(encounterId: string, characterId: string, enemyId: string): string | null {

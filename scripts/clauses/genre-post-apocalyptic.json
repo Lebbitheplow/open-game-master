@@ -134,7 +134,7 @@
    {
     "c": "Advantage to spot traps, ambushes, and unstable ground",
     "is": "held",
-    "probe": "scripts/test-genre-gb-checks.mjs Trap Eye: a check with the circumstance or creature named throws two d20",
+    "probe": "scripts/test-genre-gb-checks.mjs Trap Eye: a perception check with about traps throws two d20, with about tracking one, and without the feature one",
     "by": "src/lib/srd/authored-effects-genre-gb.ts (check_adv perception and investigation about traps), read by src/lib/dm/roll-feature-riders.ts authoredRollRiders from request_roll"
    },
    {
@@ -414,7 +414,7 @@
    {
     "c": "Advantage on Stealth while in ruins or wreckage",
     "is": "held",
-    "probe": "scripts/test-genre-gb-checks.mjs Silent Salvage: a check with the circumstance or creature named throws two d20",
+    "probe": "scripts/test-genre-gb-checks.mjs Silent Salvage: a stealth check with about ruins throws two d20, with about tracking one, and without the feature one",
     "by": "src/lib/srd/authored-effects-genre-gb.ts (check_adv stealth about ruins), read by src/lib/dm/roll-feature-riders.ts authoredRollRiders from request_roll"
    }
   ]
@@ -979,7 +979,7 @@
    {
     "c": "Advantage on Intimidation against travelers, traders, and rival crews",
     "is": "held",
-    "probe": "scripts/test-genre-gb-checks.mjs Reaver's Toll: a check with the circumstance or creature named throws two d20",
+    "probe": "scripts/test-genre-gb-checks.mjs Reaver's Toll: a intimidation check with creature trader throws two d20, with creature orc one, and without the feature one",
     "by": "src/lib/srd/authored-effects-genre-gb.ts (check_adv intimidation against a traveler, trader, merchant or crew), read by src/lib/dm/roll-feature-riders.ts authoredRollRiders from request_roll"
    }
   ]
@@ -1152,7 +1152,7 @@
    {
     "c": "advantage on Perception checks using smell",
     "is": "held",
-    "probe": "scripts/test-genre-gb-checks.mjs Predator Senses: a perception check with about smell throws two d20",
+    "probe": "scripts/test-genre-gb-checks.mjs Predator Senses: a perception check with about smell throws two d20, with about tracking one, and without the feature one",
     "by": "src/lib/srd/authored-effects-genre-b.ts Predator Senses (check_adv perception about smell), read by src/lib/dm/roll-feature-riders.ts authoredRollRiders from request_roll"
    }
   ]
@@ -2297,7 +2297,7 @@
    {
     "c": "Advantage on Intimidation and Persuasion against raiders, cultists, and the desperate",
     "is": "held",
-    "probe": "scripts/test-genre-gb-checks.mjs Shepherd's Stare: a check with the circumstance or creature named throws two d20",
+    "probe": "scripts/test-genre-gb-checks.mjs Shepherd's Stare: a intimidation check with creature raider throws two d20, with creature elf one, and without the feature one",
     "by": "src/lib/srd/authored-effects-genre-gb.ts (check_adv intimidation and persuasion against a raider, bandit, cultist or the desperate), read by src/lib/dm/roll-feature-riders.ts authoredRollRiders from request_roll"
    }
   ]

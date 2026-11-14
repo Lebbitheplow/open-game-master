@@ -27,6 +27,7 @@ import { suite } from "./lib/enforce-harness.mjs";
 const { test, finish } = suite("test-enforce-genre-classes");
 const { CUSTOM_CLASSES, CUSTOM_CLASS_FEATURES } = await import("../src/lib/classes/index.ts");
 const { resourceDef } = await import("../src/lib/srd/class-resources.ts");
+const { authoredSpendFor } = await import("../src/lib/srd/authored-effects.ts");
 const { canMulticlassInto, slotTableFor, pactSlotsFor } = await import("../src/lib/srd/multiclass.ts");
 const { createSheet } = await import("../src/lib/db/sheets.ts");
 
@@ -219,7 +220,11 @@ await test("A limited-use counter belongs to a feature the character has, and on
     const seen = new Set();
     for (const id of Object.keys(sheet.resources)) {
       const name = resourceDef(id).displayName.toLowerCase();
-      if (!features.includes(name)) {
+      // A counter named for one of its feature's spends (a machinist's
+      // Familiar's Help, the second card of Clockwork Familiar) belongs to
+      // the feature that spend is authored on.
+      const owner = authoredSpendFor(sheet, name)?.held.feature.toLowerCase();
+      if (!features.includes(name) && !(owner && features.includes(owner))) {
         wrong.push(`${klass.id} holds ${id}, and has no feature called ${name}`);
       }
       if (seen.has(name)) {

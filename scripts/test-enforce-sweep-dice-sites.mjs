@@ -498,6 +498,11 @@ const SITES = {
   "lib/dm/after-roll.ts#spendAfterRoll": "H the die or d20 a choice on the after-the-roll card adds",
   "lib/dm/mt-fb-runes.ts#spendPropheticState": "H the d20 the Storm Rune's prophetic state adds on the after-the-roll card",
   "lib/dm/aoe-damage.ts#handleAoeDamage": "D area damage",
+  // The dirgesinger's inspiration die exploding on its highest face (The
+  // Final Movement, genre-cc-a-saves.ts): the die rides a d20 already thrown.
+  "lib/dm/genre-cc-a-saves.ts#explodedDie": "D an inspiration die rolled again on its highest face (The Final Movement)",
+  "lib/dm/genre-gb-aeronaut.ts#grapnelAce": "F the creature's Strength against Grapnel Ace's trip or disarm",
+  "lib/dm/genre-gh-horror-plays.ts#riteOfSeverance": "F the possessing entity's Wisdom against the Rite of Severance",
   "lib/dm/mt-mr-offers.ts#dieOf": "H the Psionic Energy die a choice on the after-the-roll card adds (Homing Strikes, Psi-Bolstered Knack)",
   "lib/dm/mt-mr-offers.ts#rerolled": "H a d20 thrown again from the after-the-roll card (Unerring Accuracy, Draconic Presence)",
   "lib/dm/ar-ws-bombardment.ts#spellBombardment": "D a spell's exploded damage die (Spell Bombardment), where the area roll's own card carries it",

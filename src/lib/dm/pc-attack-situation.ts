@@ -206,7 +206,7 @@ export function attackSituation(input: {
   if (packTactics) {
     conditionContext.notes.push("Pack Tactics: an ally beside the target, advantage");
   }
-  // Grovel, Cower, and Beg: a groveling ally (a kobold) within 10 feet of the
+  // Grovel, Cower, and Beg: a pleading ally (a kobold) within 10 feet of the
   // target, which can see it; any attack roll, a spell's too.
   const groveler = grovelingAllyNear(encounter.id, sheet.id, enemy.id);
   if (groveler) {

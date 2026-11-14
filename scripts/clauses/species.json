@@ -2500,7 +2500,7 @@
    {
     "c": "Grovel, Cower, and Beg (an action: until the end of your next turn, allies' attacks on foes within 10 ft of you have advantage, 1/short rest)",
     "is": "held",
-    "by": "src/lib/srd/authored-resources.json race_grovel (once a short rest, an action), spent by use_resource through src/lib/dm/mt-species-spends.ts grovel (the groveling mark until the end of the kobold's next turn), read by src/lib/dm/pc-attack-situation.ts (an ally's attack on a foe within 10 feet of the kobold has advantage)",
+    "by": "src/lib/srd/authored-resources.json race_grovel (once a short rest, an action), spent by use_resource through src/lib/dm/mt-species-spends.ts grovel (the pleading mark until the end of the kobold's next turn), read by src/lib/dm/pc-attack-situation.ts (an ally's attack on a foe within 10 feet of the kobold has advantage)",
     "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.kobold.grovel"
    },
    {

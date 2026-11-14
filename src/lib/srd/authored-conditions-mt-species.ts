@@ -23,7 +23,9 @@ export const SHIFT_FORMS = [
 ] as const;
 export const WILDHUNT_SHIFT = "shifted (wildhunt)";
 // A kobold's Grovel, Cower, and Beg, until the end of its next turn.
-export const GROVELING = "groveling";
+// Its own name: "groveling" is Command's Grovel (condition-effects-last.ts),
+// which ends the creature's turn.
+export const GROVELING = "pleading";
 export const GROVEL_COUNTER = "race_grovel";
 
 export const MT_SPECIES_CONDITIONS: ConditionEffectRow[] = [
@@ -84,9 +86,9 @@ export const MT_SPECIES_CONDITIONS: ConditionEffectRow[] = [
   // turn, allies' attacks on foes within 10 ft of you have advantage...)".
   // The advantage is the ally's attack's (attack-spatial.ts grovelingAllyNear).
   {
-    id: "groveling",
+    id: "pleading",
     match: [GROVELING],
-    summary: "Groveling: cowering pitifully until the end of their next turn; allies' attack rolls against foes within 10 feet of them that can see them have advantage.",
+    summary: "Pleading: groveling and cowering pitifully until the end of their next turn; allies' attack rolls against foes within 10 feet of them that can see them have advantage.",
   },
   {
     id: "shapechanged",

@@ -19,7 +19,7 @@ import { tileIndex } from "@/lib/battlemap/types";
 import { sideOf } from "@/lib/dm/combatant";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { holdsGenreFeature } from "@/lib/srd/genre-b-combat";
-import { weaponNamed } from "@/lib/srd/weapons";
+import { matchWeapon } from "@/lib/srd/weapons";
 
 type Step = (from: number, to: number, cost: number) => number;
 
@@ -27,9 +27,10 @@ type Step = (from: number, to: number, cost: number) => number;
 const DIFFICULT = 2;
 
 // The knight's reach in squares: a melee weapon with the reach property in
-// hand reaches two, anything else one.
+// hand reaches two, anything else one. Read by its row (matchWeapon), so a
+// renamed glaive keeps its reach.
 export function knightReachTiles(sheet: Pick<CharacterSheet, "equipment">): number {
-  const reach = (sheet.equipment ?? []).some((item) => item.equipped && weaponNamed(item.name)?.properties?.includes("reach"));
+  const reach = (sheet.equipment ?? []).some((item) => item.equipped && matchWeapon(item)?.properties?.includes("reach"));
   return reach ? 2 : 1;
 }
 

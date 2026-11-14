@@ -91,22 +91,22 @@ export const CHECK_KEY_PROPERTIES = {
     type: "string",
     enum: [...CHECK_ABOUT, NONE],
     description:
-      "What the check is about, or 'none'; features keyed to it apply.",
+      "Its subject, or 'none'; features keyed to it apply.",
   },
   creature: {
     type: "string",
     description:
-      "A creature the check is about: rules type or humanoid race ('undead', 'orc'), or 'none'.",
+      "A creature it is about (rules type or race: 'undead', 'orc'), or 'none'.",
   },
   terrain: {
     type: "string",
     enum: [...NATURAL_TERRAINS, NONE],
-    description: "The terrain it is made in (Natural Explorer), or 'none'.",
+    description: "Its terrain (Natural Explorer), or 'none'.",
   },
   by: {
     type: "string",
     enum: [...CHECK_SENSES, NONE],
-    description: "The sense it needs, or 'none': blinded or deafened fails it.",
+    description: "The sense it needs (blind or deaf fails), or 'none'.",
   },
 };
 

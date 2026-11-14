@@ -155,7 +155,9 @@ export async function openBuilder() {
     const extras = extraClassRows(state.extraClasses, classes);
     // The race with its picked option folded in, as CharacterBuilder.tsx
     // hands it on (a shifter's subtype brings its own bonuses and skill).
-    const shaped = raceRow ? withSpeciesVariant(raceRow, state.racialVariant ?? "") : raceRow;
+    // A race handed in already folded with its option (withSpeciesVariant)
+    // keeps it when the state names none.
+    const shaped = raceRow && state.racialVariant ? withSpeciesVariant(raceRow, state.racialVariant) : raceRow;
     const derived = withoutReact(() =>
       useBuilderDerived({ state, race: shaped, klass, background: backgroundRow, extras, featDescs }),
     );

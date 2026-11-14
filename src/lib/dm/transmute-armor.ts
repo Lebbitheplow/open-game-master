@@ -37,7 +37,8 @@ export function transmuteArmor(ctx: SpendContext, does: Extract<SpendDoes, { kin
   const named = ctx.args.variant?.trim();
   const suits = items.map((item, at) => ({ item, at })).filter(({ item }) => isSuit(item));
   const pick = named
-    ? suits.find(({ item }) => textKey(item.name) === textKey(named)) ?? suits.find(({ item }) => textKey(item.name).includes(textKey(named)))
+    ? // By its whole name: a part of one picked the first suit containing it.
+      suits.find(({ item }) => textKey(item.name) === textKey(named))
     : suits.find(({ item }) => isWorn(item, items)) ?? (suits.length === 1 ? suits[0] : undefined);
   if (!pick) {
     return {

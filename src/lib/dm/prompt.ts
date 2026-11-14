@@ -1622,16 +1622,16 @@ export const requestRollTool = {
           type: "string",
           enum: [...SAVE_AGAINST, NONE],
           description:
-            "saving_throw only: what the save resists (a condition, a damage type, disease, dismount) or 'none'. dismount is being thrown from a mount. The server applies the traits keyed to it (Brave, Fey Ancestry, Countercharm).",
+            "saving_throw only: what the save resists, or 'none' (dismount: thrown from a mount). Traits keyed to it apply (Brave, Fey Ancestry).",
         },
         magical: {
           type: "boolean",
-          description: "saving_throw only: the effect is a spell or other magic (Gnome Cunning, Spell Resistance).",
+          description: "saving_throw only: the effect is magic (Gnome Cunning, Spell Resistance).",
         },
         casterType: {
           type: "string",
           enum: [...CREATURE_TYPES],
-          description: "saving_throw against a spell: the caster's creature type, when known (Holy Nimbus).",
+          description: "saving_throw against a spell: its caster's creature type (Holy Nimbus).",
         },
         tool: {
           type: "string",

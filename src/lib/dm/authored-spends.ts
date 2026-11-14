@@ -201,7 +201,12 @@ export function authoredFeatureSpend(
   // A counter's id names the same spend as the feature's name. Without this a
   // call by id (sub_elder_champion) fell to the generic path, which spends the
   // use and applies nothing.
-  const direct = authoredSpendFor(sheet, resourceDef(resourceName)?.displayName ?? resourceName);
+  const byName = authoredSpendFor(sheet, resourceDef(resourceName)?.displayName ?? resourceName);
+  // A variant naming another spend of the same pool picks that spend
+  // ("Grapnel Line" with variant "Grapnel Trip", "Arc Lamp" with "Arc Lamp
+  // Flash"). Before this the pool's own spend ran and the variant was dropped.
+  const sibling = byName?.spend.pool?.id && args.variant ? authoredSpendFor(sheet, args.variant) : null;
+  const direct = sibling && sibling.spend.name !== byName?.spend.name && sibling.spend.pool?.id === byName?.spend.pool?.id ? sibling : byName;
   const found = direct ?? poolOptionSpend(sheet, resourceName, args.variant);
   if (!found) {
     return null;
