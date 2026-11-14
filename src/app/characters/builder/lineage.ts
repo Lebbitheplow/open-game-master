@@ -6,7 +6,7 @@
 
 import { asiPickWords } from "@/lib/srd/race-asi";
 import { GENDERS } from "@/lib/gender";
-import { characterPlaceholder, LINEAGES_AWAITING_ART, normalizeGender, raceFamily } from "@/lib/placeholders";
+import { characterPlaceholder, normalizeGender, raceFamily } from "@/lib/placeholders";
 import type { Ability } from "@/lib/schemas/sheet";
 import { canonicalRaceId, srdRaceFor } from "@/lib/content/race-options";
 import { textKey } from "@/lib/language/text-logic";
@@ -120,6 +120,19 @@ const FAMILY_WORDS: Array<[RegExp, string]> = [
   [/genasi.*water|water.*genasi/, "genasi-water"],
   [/genasi/, "genasi"],
   [/changeling/, "changeling"],
+  // The eleven painted 2026-11-13. A hobgoblin comes before the goblin its
+  // name holds: it is a people of its own, not a goblin.
+  [/triton/, "triton"],
+  [/serpentfolk/, "serpentfolk"],
+  [/kobold/, "kobold"],
+  [/aarakocra/, "aarakocra"],
+  [/hobgoblin/, "hobgoblin"],
+  [/satyr/, "satyr"],
+  [/fairy/, "fairy"],
+  [/owlfolk/, "owlfolk"],
+  [/centaur/, "centaur"],
+  [/rabbitfolk/, "rabbitfolk"],
+  [/shifter/, "shifter"],
   [/bugbear/, "bugbear"],
   [/goblin/, "goblin"],
   [/lizardfolk/, "lizardfolk"],
@@ -135,11 +148,6 @@ const FAMILY_WORDS: Array<[RegExp, string]> = [
 ];
 
 export function lineageFamily(raceId: string, name = ""): string | null {
-  // A lineage awaiting its own plate draws the neutral adventurer, never a
-  // kin's face its name holds a word of (a hobgoblin is no goblin).
-  if ((LINEAGES_AWAITING_ART as readonly string[]).includes(canonicalRaceId(raceId))) {
-    return null;
-  }
   const direct = raceFamily(canonicalRaceId(raceId));
   if (direct) {
     return direct;
