@@ -762,7 +762,7 @@ await test("system: a short investigation with an absent NPC, a late messenger a
 // ---- A first-tier mind's turn in the scene (design §9) -------------------
 
 await test("on stage means it acted last turn: owed a turn now unless asked, informed, away, archived or fighting as a companion", () => {
-  const base = { tier: "primary", archived: false, away: false, companionInFight: false, actedLastTurn: true };
+  const base = { tier: "primary", archived: false, away: false, companionInFight: false, actedLastTurn: true, onStageRecently: true };
   const cands = [
     { ...base, id: "a", name: "Aldo" },
     { ...base, id: "b", name: "Bea", actedLastTurn: false },
@@ -777,6 +777,16 @@ await test("on stage means it acted last turn: owed a turn now unless asked, inf
   assert.match(note, /npc_speak/);
   assert.match(note, /only what they could see and hear/);
   assert.match(note, /npc_inform/);
+  // A time skip also asks whoever was on stage a few turns back.
+  const quiet = [
+    { ...base, id: "h", name: "Hugo", actedLastTurn: false },
+    { ...base, id: "i", name: "Ida", actedLastTurn: false, onStageRecently: false },
+  ];
+  assert.deepEqual(logic.mindsOwedTurn(quiet, new Set()).map((entry) => entry.name), [], "no time skip: only last turn's actors");
+  assert.deepEqual(logic.mindsOwedTurn(quiet, new Set(), true).map((entry) => entry.name), ["Hugo"], "a time skip: who was on stage lately");
+  assert.match(logic.sceneMindsPrompt(["Hugo"], true), /how long passes/);
+  assert.doesNotMatch(note, /how long passes/);
+  assert.ok(logic.TIME_SKIP_TOOLS.has("take_rest") && logic.TIME_SKIP_TOOLS.has("pass_time") && logic.TIME_SKIP_TOOLS.has("travel"));
 });
 
 await test("a mind on stage is not forgotten: a turn without its turn sends the narrator back once, and npc_inform takes it off stage", async () => {
@@ -817,6 +827,65 @@ await test("a mind on stage is not forgotten: a turn without its turn sends the 
     assert.equal(nudges(), 0, "off stage after the news: no nudge");
   } finally {
     minds.setNpcTier(getNpcByName(world.campaignId, "Prisoner Hale").id, "secondary");
+    for (const other of others) {
+      minds.setNpcTier(other.id, "primary");
+    }
+  }
+});
+
+await test("a rest lets time pass over the scene: a mind on stage a few turns back is asked what it does meanwhile; one sent off stage is not", async () => {
+  const { listNpcs } = await import("../src/lib/db/npcs.ts");
+  const { saveDmTurn } = await import("../src/lib/db/dm-turns.ts");
+  const others = listNpcs(world.campaignId).filter((entry) => mind.tierOfNpc(entry) === "primary");
+  for (const other of others) {
+    minds.setNpcTier(other.id, "secondary");
+  }
+  npc("Prisoner Vell", { trait: "chained in the corner of the shelter" });
+  const lived = () => model.requests.filter((request) => String(request.messages?.at(-1)?.content ?? "").includes("how long passes")).length;
+  // A GM turn in which nobody's mind acted: Vell is no longer last turn's actor.
+  const gap = () => {
+    const turn = createDmTurn(world.campaignId, [], "ai");
+    turn.status = "done";
+    saveDmTurn(turn);
+  };
+  try {
+    model.script([
+      reply({ calls: [call("npc_speak", { name: "Prisoner Vell", perceives: "Aria sits down by the fire, across from you." })] }),
+      answer({ speech: "Cold night.", intent: "" }),
+      reply({ text: '"Cold night," Vell says.' }),
+    ]);
+    await model.turn(world, "I sit by the fire.", aria.id);
+    gap();
+    model.script([
+      reply({ calls: [call("take_rest", { kind: "short" })] }),
+      reply({ text: "Aria sleeps for an hour while the rain drums on the roof." }),
+      reply({ calls: [call("npc_speak", { name: "Prisoner Vell", perceives: "An hour passes. Aria sleeps by the fire; the guards doze." })] }),
+      answer({ speech: "", intent: "test the chain against the post, quietly" }),
+      reply({ text: "In the dark, the chain creaks against the post." }),
+    ]);
+    const dm = await model.turn(world, "I sleep for an hour.", aria.id);
+    assert.equal(lived(), 1, "the rest sent the narrator back once to ask Vell what it does meanwhile");
+    assert.match(dm.content, /chain creaks/, "what the mind chose is narrated");
+    assert.ok(memories("Prisoner Vell").some((entry) => entry.sourceKind === "perceived" && /An hour passes/.test(entry.content)));
+
+    gap();
+    model.script([reply({ text: "Aria studies the map by the fire." })]);
+    await model.turn(world, "I study the map.", aria.id);
+    assert.equal(lived(), 0, "no time skip and Vell not last turn's actor: no nudge");
+
+    model.script([
+      reply({ calls: [call("npc_inform", { name: "Prisoner Vell", source: "own eyes", news: "The guards drag you to the cellar.", witnessed: true })] }),
+      reply({ text: "The guards take Vell down to the cellar." }),
+    ]);
+    await model.turn(world, "I tell the guards to lock him in the cellar.", aria.id);
+    model.script([
+      reply({ calls: [call("take_rest", { kind: "short" })] }),
+      reply({ text: "Aria rests for another hour." }),
+    ]);
+    await model.turn(world, "I rest again.", aria.id);
+    assert.equal(lived(), 0, "sent off stage by npc_inform: the rest does not ask Vell");
+  } finally {
+    minds.setNpcTier(getNpcByName(world.campaignId, "Prisoner Vell").id, "secondary");
     for (const other of others) {
       minds.setNpcTier(other.id, "primary");
     }

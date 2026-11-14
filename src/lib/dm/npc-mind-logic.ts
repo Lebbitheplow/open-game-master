@@ -513,25 +513,42 @@ export type SceneMindCandidate = {
   away: boolean;
   companionInFight: boolean;
   actedLastTurn: boolean;
+  // Acted in one of the last few turns and not sent off stage since
+  // (npc-minds.ts npcsOnStageRecently): asked when time skips.
+  onStageRecently: boolean;
 };
 
-export function mindsOwedTurn(candidates: readonly SceneMindCandidate[], touchedIds: ReadonlySet<string>): SceneMindCandidate[] {
+// The tools that let time pass over the scene: a rest, a wait, a journey,
+// downtime. Whoever is on stage lives that stretch too.
+export const TIME_SKIP_TOOLS: ReadonlySet<string> = new Set(["take_rest", "pass_time", "travel", "downtime"]);
+
+export function mindsOwedTurn(
+  candidates: readonly SceneMindCandidate[],
+  touchedIds: ReadonlySet<string>,
+  timeSkipped = false,
+): SceneMindCandidate[] {
   return candidates.filter(
     (entry) =>
       entry.tier === "primary" &&
       !entry.archived &&
       !entry.away &&
       !entry.companionInFight &&
-      entry.actedLastTurn &&
+      (entry.actedLastTurn || (timeSkipped && entry.onStageRecently)) &&
       !touchedIds.has(entry.id),
   );
 }
 
 // The note that sends the narrator back once when a turn closed without the
 // owed minds' turns.
-export function sceneMindsPrompt(names: readonly string[]): string {
+export function sceneMindsPrompt(names: readonly string[], timeSkipped = false): string {
   const who = names.join(", ");
   return [
+    ...(timeSkipped
+      ? [
+          "[Table note] Time passed over the scene this turn, and the characters on stage lived it too: what they do in that stretch is theirs to choose, not yours.",
+          "In perceives, tell each how long passes, where they are and what goes on around them; their mind chooses what they do meanwhile (talk, sleep, keep watch, try something). Narrate the stretch from what they chose.",
+        ]
+      : []),
     `[Table note] ${who} ${names.length === 1 ? "is" : "are"} a first-tier character in this scene and had no turn of their own in it.`,
     "Like a player at the table, each acts after the players and before the outcome.",
     "Call npc_speak for each now. In perceives, tell them only what they could see and hear of this turn from where they are: sounds, shouts, who left and who came back, what was said within earshot. Nothing from beyond their sight and hearing, and nothing of anyone's thoughts.",

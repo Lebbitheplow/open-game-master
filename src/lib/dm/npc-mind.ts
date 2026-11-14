@@ -17,6 +17,7 @@ import {
   getNpcTier,
   listNpcProposals,
   npcsActedInTurn,
+  npcsOnStageRecently,
   recordNpcProposal,
   setNpcAway,
   setNpcInspiration,
@@ -62,6 +63,7 @@ import {
   overheard,
   rosterNote,
   tierOf,
+  TIME_SKIP_TOOLS,
   turnActorOf,
   healthWord,
   renderFightView,
@@ -115,9 +117,16 @@ export function mindsAwaitingTurn(
   if (!npcMindsOn(campaign) || !turnId) {
     return [];
   }
-  const previous = listRecentDmTurns(campaign.id, 4).filter((turn) => turn.id !== turnId && !turn.revertedAt).at(-1);
-  const acted = npcsActedInTurn(campaign.id, previous?.id ?? "");
-  if (!acted.size) {
+  const earlier = listRecentDmTurns(campaign.id, 6)
+    .filter((turn) => turn.id !== turnId && !turn.revertedAt)
+    .map((turn) => turn.id)
+    .reverse();
+  const acted = npcsActedInTurn(campaign.id, earlier[0] ?? "");
+  // A rest, a wait or a journey this turn: whoever was on stage in the last
+  // few turns lives that stretch too, not only who acted in the last one.
+  const timeSkipped = calls.some((call) => TIME_SKIP_TOOLS.has(call.name));
+  const recent = timeSkipped ? npcsOnStageRecently(campaign.id, earlier.slice(0, 4)) : new Set<string>();
+  if (!acted.size && !recent.size) {
     return [];
   }
   const cast = listNpcs(campaign.id);
@@ -136,8 +145,10 @@ export function mindsAwaitingTurn(
       away: Boolean(getNpcAway(npc.id)),
       companionInFight: inFight && Boolean(npc.companionSheetId),
       actedLastTurn: acted.has(npc.id),
+      onStageRecently: recent.has(npc.id),
     })),
     touched,
+    timeSkipped,
   );
   return owed.flatMap((entry) => cast.filter((npc) => npc.id === entry.id));
 }

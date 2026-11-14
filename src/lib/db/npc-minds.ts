@@ -44,6 +44,32 @@ export function npcsActedInTurn(campaignId: string, turnId: string): Set<string>
   return new Set(rows.map((row) => row.npc_id));
 }
 
+// The NPCs still on stage across the recent DM turns `turnIdsNewestFirst`:
+// for each NPC, the newest of those turns that left it any memory decides.
+// It acted there (said or did something): still on stage. It was only told
+// something (npc_inform): it had left the scene. A time skip asks the first
+// kind for their turn (npc-mind.ts mindsAwaitingTurn).
+export function npcsOnStageRecently(campaignId: string, turnIdsNewestFirst: readonly string[]): Set<string> {
+  const onStage = new Set<string>();
+  const decided = new Set<string>();
+  const read = getDatabase().prepare(`SELECT npc_id, MAX(source_kind = 'self') AS acted FROM npc_memories WHERE campaign_id = ? AND turn_id = ? GROUP BY npc_id`);
+  for (const turnId of turnIdsNewestFirst) {
+    if (!turnId) {
+      continue;
+    }
+    for (const row of read.all(campaignId, turnId) as Array<{ npc_id: string; acted: number }>) {
+      if (decided.has(row.npc_id)) {
+        continue;
+      }
+      decided.add(row.npc_id);
+      if (row.acted) {
+        onStage.add(row.npc_id);
+      }
+    }
+  }
+  return onStage;
+}
+
 export function listNpcMemories(campaignId: string, npcId: string): NpcMemory[] {
   const rows = getDatabase()
     .prepare(
