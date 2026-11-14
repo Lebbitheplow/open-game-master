@@ -67,5 +67,8 @@ export const GENRE_GH_AUTHORED: GenreRow[] = [
   // spell attack or its first save against you each combat": the spend
   // records the name known (src/lib/dm/genre-gh-names.ts).
   row("Whispered Names", ["occultist"], { spends: [{ name: "Whispered Names", action: "none", does: { kind: "horror_spend", play: "whispered_names", aim: "enemy" } }] }),
+  // "Allies within 10 ft may use your Adrenaline Surge movement options as a
+  // reaction when you do, 1/rest each": an ally's reaction, the survivor's use.
+  row("Last One Out", ["survivor"], { counter: "horror_last_one_out", reactions: [{ name: "Last One Out", usedBy: "party", pool: { id: "horror_last_one_out" }, does: { kind: "surge_follow", rangeFt: 10 } }] }),
   played("occultist", "Stitch the Tear", "horror_stitch_the_tear", "action", "stitch_the_tear", "enemy"),
 ];

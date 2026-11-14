@@ -1325,15 +1325,9 @@
   "clauses": [
    {
     "c": "Allies within 10 ft may use your Adrenaline Surge movement options as a reaction when you do",
-    "run": {
-     "k": "spend_moves",
-     "id": "horror_last_one_out"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::Last One Out#0",
-    "observed": "spending horror_last_one_out moved its counter and the turn's cost and nothing else; the result was its guidance: Allies within 10 ft may use your Adrenaline Surge movement options as a reaction when you do, 1/rest each.",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Last One Out: when the survivor Dashes with Adrenaline Surge, an ally within 10 feet moves their speed as a reaction without drawing opportunity attacks, the survivor's use spent; before the surge, or from farther off, it is refused",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts Last One Out (a party reaction on the survivor's counter), resolved by src/lib/dm/genre-gh-last-one-out.ts lastOneOut after src/lib/dm/action-tools.ts marks an Adrenaline Surge Dash or Disengage (markSurge); found for an ally by src/lib/srd/authored-effects.ts authoredReactionNamed"
    },
    {
     "c": "1/rest each",

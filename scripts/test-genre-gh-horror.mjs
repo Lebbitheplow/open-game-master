@@ -412,5 +412,22 @@ await run("Whispered Names: a creature whose name the occultist knows makes its 
   assert.equal(await named(), false, "the second spell attack this fight had advantage too");
 });
 
+// ---- GH13: Last One Out ----
+
+await run("Last One Out: when the survivor Dashes with Adrenaline Surge, an ally within 10 feet moves their speed as a reaction without drawing opportunity attacks, the survivor's use spent; before the surge, or from farther off, it is refused", async () => {
+  const hero = rig.holder(feature("survivor", "Last One Out", 13));
+  await rig.fight(hero);
+  const follow = (x, y) => world.invoke("use_reaction", { characterId: rig.ally.id, feature: "Last One Out", x, y, reason: "probe" });
+  assert.ok((await follow(5, 8)).error, "followed a surge never made");
+  rig.must(await world.invoke("take_action", { characterId: hero.id, action: "dash", bonus: true, reason: "probe" }), "Adrenaline Surge Dash");
+  kit.place(rig.ally.id, 5, 6);
+  assert.ok((await follow(5, 9)).error, "followed from 20 feet off");
+  kit.place(rig.ally.id, 5, 3);
+  rig.must(await follow(5, 8), "Last One Out");
+  const at = listTokens(boardMap().id).find((entry) => entry.refId === rig.ally.id);
+  assert.deepEqual([at.x, at.y], [5, 8], "the ally did not move");
+  assert.equal(used(hero, "horror_last_one_out"), 1, "the survivor's use was not spent");
+});
+
 rig.world.close();
 finish();

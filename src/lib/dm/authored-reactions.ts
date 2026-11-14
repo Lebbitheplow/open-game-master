@@ -58,6 +58,7 @@ import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { allyOf, noHit, settle, SPENT, spendReaction, type Ctx } from "@/lib/dm/reaction-tools";
 import { unseenRefusal, withinFeet } from "@/lib/dm/authored-saves";
 import { resolveMoreReaction } from "@/lib/dm/authored-reactions-more";
+import { lastOneOut } from "@/lib/dm/genre-gh-last-one-out";
 import { bodyguardExtras } from "@/lib/dm/genre-b-mystery-enforcer";
 import { projectWard } from "@/lib/dm/arcane-ward";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -1269,5 +1270,8 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
     case "move":
     case "redirect_miss":
       return resolveMoreReaction(ctx, reaction);
+    // Last One Out (src/lib/dm/genre-gh-last-one-out.ts).
+    case "surge_follow":
+      return lastOneOut(ctx, found.holder, reaction.name, does.rangeFt);
   }
 }

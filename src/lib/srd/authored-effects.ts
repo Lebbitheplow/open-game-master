@@ -644,6 +644,15 @@ export function authoredReactionNamed(name: string): { reaction: AuthoredReactio
       }
     }
   }
+  // A genre class's reaction an ally takes (Last One Out), by the key a
+  // held genre row carries (genre::<feature>).
+  for (const genre of GENRE_AUTHORED) {
+    for (const reaction of genre.entry.reactions ?? []) {
+      if ([reaction.name, ...(reaction.aliases ?? [])].map(textKey).includes(wanted)) {
+        return { reaction, row: { key: `genre::${textKey(genre.feature)}`, classId: genre.classes?.[0] ?? "genre", feature: genre.feature, entry: genre.entry } };
+      }
+    }
+  }
   return null;
 }
 

@@ -1251,7 +1251,10 @@ export type ReactionDoes =
   // feet of them instead (Tipsy Sway).
   | { kind: "redirect_miss"; rangeFt: number }
   // The holder's Wild Surge is rolled again (Unstable Backlash).
-  | { kind: "resurge" };
+  | { kind: "resurge" }
+  // An ally within `rangeFt` follows the holder's Adrenaline Surge Dash or
+  // Disengage with a move of their speed (Last One Out, genre-gh-last-one-out.ts).
+  | { kind: "surge_follow"; rangeFt: number };
 
 export type AuthoredReaction = {
   name: string;
