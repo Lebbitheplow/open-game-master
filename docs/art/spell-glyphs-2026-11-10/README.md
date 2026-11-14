@@ -61,6 +61,11 @@ the level-up dialog's too), the party panel's concentration chip, the hero
 tips and the workshop. Away from the Hand the glyph is read from
 `src/lib/battlemap/spell-glyph-table.json`, which
 `scripts/build-spell-glyph-table.mjs` writes from the Hand's own answers. The
-per-spell paintings in `public/assets/icons/spell/` are no longer drawn for a
-spell; nine class features still borrow one as their icon (`ICON_ALIASES` in
-`src/lib/icons.ts`), so the folder stays until those have art of their own.
+per-spell paintings are no longer drawn for a spell, and after 0.35.0 the 508
+that nothing drew were deleted (a run of every browser scenario, on the
+website and in the app shell, asked for none of them). `public/assets/icons/spell/`
+keeps the nine that class features still borrow as their icon (`ICON_ALIASES`
+in `src/lib/icons.ts`), and `SPELL_PAINTINGS_WORN` in `scripts/icon-set.mjs`
+paints only those, so a generator run never brings the rest back.
+`scripts/test-icons.mjs` holds the folder, the manifest and the painted index
+to the aliases.
