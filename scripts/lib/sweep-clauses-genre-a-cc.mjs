@@ -726,6 +726,37 @@ Object.assign(CC, {
   },
 });
 
+Object.assign(CC, {
+  // Black Market Firmware, through the level-up route's own check
+  // (src/lib/srd/level-up-spells.ts) and the prepare door (spell-prep.ts).
+  // "learn": a netrunner reaching 13th takes Cure Wounds and Mass Cure Wounds
+  // off the wizard list, and not a third. "count": held as the netrunner's
+  // own, on top of what they prepare, and kept ready at a rest.
+  async cc_firmware(t, run, feature) {
+    const { levelUpSpells } = await load("lib/srd/level-up-spells.ts");
+    const { checklistSpell, checklistSpellsOn } = await load("lib/srd/spell-lists.ts");
+    const { changePreparation, spellCapWithGrantsOf, spellCapOf } = await load("lib/srd/spell-prep.ts");
+    const wizard = checklistSpellsOn("wizard").filter((spell) => spell.level >= 1 && spell.level <= 6).map((spell) => spell.name);
+    const programs = ["Cure Wounds", "Mass Cure Wounds"];
+    const before = { classId: feature.classId, ability: "int", level: feature.level - 1, subclass: "", style: "prepared", known: [], prepared: wizard.slice(0, 12), cantrips: [], pending: [], spellbook: [], features: [] };
+    const up = (picks) => levelUpSpells({ before, level: feature.level, subclass: "", list: "wizard", firstLevel: false, abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }, freeCantrips: 0, features: [], spellOf: checklistSpell, picks: { kind: "picks", spells: picks } });
+    const taken = up(programs);
+    if (run.part === "learn") {
+      eq(`${"view" in taken}/${"view" in up([...programs, "Healing Word"])}`, "true/false", `two programs off the wizard list at 13th (${taken.error ?? "taken"}) / a third`);
+      return;
+    }
+    if (!("view" in taken)) throw new Error(`the level-up refused the programs: ${taken.error}`);
+    const view = { ...before, level: feature.level, prepared: [...wizard.slice(0, 13), ...programs] };
+    const abilities = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
+    const kept = changePreparation(view, "unprepare", "Cure Wounds", { abilities, inClassList: true, onList: (name) => !programs.includes(name) });
+    eq(
+      `${spellCapWithGrantsOf(view, abilities).count - spellCapOf(view, abilities).count}/${"error" in kept}`,
+      "2/true",
+      "programs held on top of what the netrunner prepares / Cure Wounds kept ready at a rest",
+    );
+  },
+});
+
 // The vermin lord's dire rat, built before the fight (Favored of the Swarm).
 async function ratPack(t, feature) {
   t.fresh();

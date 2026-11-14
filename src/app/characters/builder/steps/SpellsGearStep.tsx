@@ -297,6 +297,7 @@ export function SpellsSection({
           cantripCap,
           own: className,
           maxLevel: maxSpellLevel,
+          held: spellAdvice?.label,
         })
       : { group: null, chosen: [] };
   const anyGroup = anyBuild.group;

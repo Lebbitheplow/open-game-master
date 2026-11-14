@@ -211,23 +211,23 @@
   "clauses": [
    {
     "c": "Learn two programs from any spell list",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs the level-up offer of the builder for this class and level (the builder sweep's rig), not staged here",
     "run": {
-     "k": "hook"
+     "k": "cc_firmware",
+     "part": "learn"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Black Market Firmware#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/class-spell-grants.ts classSpellGrants (two any-list picks on top at netrunner 13), read by the level-up route (src/lib/srd/level-up-spells.ts), the level-up offer (level-up-options.ts), the builder's spell step and the campaign's level-up dialog (any-list-picks-logic.ts) and the creation check (legality/spells.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Black Market Firmware#0"
    },
    {
     "c": "they count as wizard-list for you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Black Market Firmware#0 (a table check only: no engine table answers to the feature)",
-    "read_only": true,
-    "stopped": "needs the level-up offer of the builder for this class and level (the builder sweep's rig), not staged here",
-    "same_probe_as": 0
+    "run": {
+     "k": "cc_firmware",
+     "part": "count"
+    },
+    "is": "held",
+    "by": "src/lib/srd/spell-prep.ts spellCapWithGrantsOf and changePreparation: the programs are held as the netrunner's own, on top of what they prepare, and stay ready at a rest",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Black Market Firmware#1"
    }
   ]
  },

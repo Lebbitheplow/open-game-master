@@ -121,6 +121,21 @@ export function classSpellGrants(view: GrantView): ClassSpellGrants {
   if (classId === "cleric") {
     return clericGrants(view, features);
   }
+  // Black Market Firmware (netrunner 13, src/lib/classes/cyberpunk-features.json):
+  // "Learn two programs from any spell list; they count as wizard-list for
+  // you." Learned, so on top of what the netrunner prepares from the wizard
+  // list, as Arcane Mastery's four sit on top of a cleric's (the 2026-11-13
+  // creator audit).
+  if (classId === "netrunner" && view.level >= 13) {
+    return {
+      ...NONE,
+      anyList: 2,
+      anyListSpells: true,
+      extraSpells: 2,
+      feature: "Black Market Firmware",
+      sources: [{ feature: "Black Market Firmware", count: 2, onTop: true }],
+    };
+  }
   // SRD 5.1, Circle of the Land, Bonus Cantrip: "When you choose this circle
   // at 2nd level, you learn one additional druid cantrip of your choice."
   if (view.level >= 2 && subclassNamedBare(view.subclass ?? "", "Circle of the Land")) {
