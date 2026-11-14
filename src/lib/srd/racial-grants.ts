@@ -132,8 +132,9 @@ export function breathWeaponFor(
 // `rest` and `uses`: a spell that comes back on a short rest (Firbolg Magic),
 // as a workshop species' row says it.
 // `atWill`: a levelled spell cast without a counter, as often as wanted (a
-// serpentfolk's animal friendship on snakes).
-type InnateSpellRow = { name: string; level: number; castAt?: number; per?: "long"; rest?: "short" | "long"; uses?: number; atWill?: boolean };
+// serpentfolk's animal friendship on snakes). `self`: cast on the caster
+// alone, and `noMaterial`: with no material components (Duergar Magic).
+type InnateSpellRow = { name: string; level: number; castAt?: number; per?: "long"; rest?: "short" | "long"; uses?: number; atWill?: boolean; self?: boolean; noMaterial?: boolean };
 type RaceRow = {
   id: string;
   ancestryChoice?: string;
@@ -185,6 +186,10 @@ export type InnateSpell = {
   rest: "long" | "short";
   // The character's own spell slots can cast it too.
   slotsToo: boolean;
+  // Cast on the caster alone, and with no material components (Duergar
+  // Magic); absent elsewhere.
+  selfOnly?: boolean;
+  noMaterial?: boolean;
   // The ability it is cast with ("Charisma is your spellcasting ability for
   // these spells"), or null when the source names none.
   ability: Ability | null;
@@ -220,7 +225,7 @@ function circleOf(name: string, written: number | undefined, guess: number): num
   return checklistSpell(name)?.level ?? written ?? guess;
 }
 
-type GroupRow = SpeciesSpell & { name?: string; per?: "long"; atWill?: boolean };
+type GroupRow = SpeciesSpell & { name?: string; per?: "long"; atWill?: boolean; self?: boolean; noMaterial?: boolean };
 
 function rowsFrom(group: { ability: Ability | null; spells: GroupRow[] }, source: string): InnateSpell[] {
   return group.spells.map((row) => {
@@ -246,6 +251,8 @@ function rowsFrom(group: { ability: Ability | null; spells: GroupRow[] }, source
       uses: counted ? Math.max(1, row.uses ?? 1) : 0,
       rest,
       slotsToo: counted && row.slots === true,
+      ...(row.self ? { selfOnly: true } : {}),
+      ...(row.noMaterial ? { noMaterial: true } : {}),
       ability: group.ability,
       source,
     };

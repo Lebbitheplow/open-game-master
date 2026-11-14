@@ -443,7 +443,7 @@ test("every racial trait is enforced, a resource, or acknowledged", () => {
     "Sea Elf Training (spear, trident, light crossbow, net)",
     "Friend of the Sea (share simple ideas with beasts that have a swimming speed)",
     "Duergar Resilience (adv. vs illusions, charmed and paralyzed)",
-    "Duergar Magic (enlarge/reduce on yourself from 3rd level, invisibility on yourself from 5th, 1/long rest each)",
+    "Duergar Magic (enlarge on yourself from 3rd level, invisibility on yourself from 5th, 1/long rest each, no material components)",
     "Cold Resistance",
     "Control Air and Water (fog cloud, then gust of wind from 3rd level and wall of water from 5th, 1/long rest each)",
     "Emissary of the Sea (share simple ideas with beasts that breathe water)",

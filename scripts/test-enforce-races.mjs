@@ -183,10 +183,16 @@ const BOOKS = {
     traits: ["Serpent Magic (poison spray cantrip and animal friendship at will on snakes only, then suggestion from 3rd level, 1/long rest)"],
     innateSpells: { trait: "Serpent Magic", ability: "cha", spells: [{ name: "Poison Spray", level: 1 }, { name: "Animal Friendship", level: 1, atWill: true }, { name: "Suggestion", level: 3, per: "long" }] },
   },
+  // Mordenkainen's Tome of Foes: Duergar Magic is cast on the duergar alone,
+  // enlarge/reduce's enlarge only, with no material components.
+  duergar: {
+    traits: ["Duergar Magic (enlarge on yourself from 3rd level, invisibility on yourself from 5th, 1/long rest each, no material components)"],
+    innateSpells: { trait: "Duergar Magic", ability: "int", spells: [{ name: "Enlarge/Reduce", level: 3, per: "long", self: true, noMaterial: true }, { name: "Invisibility", level: 5, per: "long", self: true, noMaterial: true }] },
+  },
   // END OF BOOKS
 };
 
-await test("every added lineage carries what its book prints", () => {
+await test("every added lineage carries what its book prints", async () => {
   const wrong = [];
   for (const [id, book] of Object.entries(BOOKS)) {
     const race = srd.SRD_RACES.find((entry) => entry.id === id);
@@ -206,6 +212,10 @@ await test("every added lineage carries what its book prints", () => {
     }
   }
   assert.deepEqual(wrong, []);
+  // The duergar's casts are on itself, and need no material components.
+  const { grantedCastsOf } = await import("../src/lib/srd/granted-casts.ts");
+  const duergarCasts = grantedCastsOf({ race: "duergar", level: 5, features: [] }).filter((cast) => cast.source === "Duergar Magic");
+  assert.deepEqual(duergarCasts.map((cast) => [cast.spell, cast.selfOnly ?? false, cast.noMaterial ?? false]), [["Enlarge/Reduce", true, true], ["Invisibility", true, true]]);
   // A kobold's Strength is lowered on the sheet the builder makes.
   const kobold = buildRace("kobold");
   assert.equal(kobold.blocker, null, kobold.blocker?.message);
