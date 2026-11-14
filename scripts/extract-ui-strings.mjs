@@ -109,6 +109,11 @@ function hiddenContext(node) {
     }
     if (ts.isCallExpression(up) || ts.isNewExpression(up)) {
       const callee = up.expression.getText().split(/[.(]/).filter(Boolean);
+      // A list's push takes data: the labels in `actions.push({ label })`
+      // are shown, though router.push("/path")'s own argument is not.
+      if (callee.at(-1) === "push" && !up.arguments.includes(node)) {
+        return false;
+      }
       if (callee.some((part) => HIDDEN_CALLS.has(part))) {
         return true;
       }
