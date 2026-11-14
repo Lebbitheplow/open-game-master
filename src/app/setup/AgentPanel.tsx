@@ -13,7 +13,7 @@ import type { HarnessId, HarnessStatus } from "@/lib/harness/types";
 
 type Update = (change: (draft: Draft) => Draft) => void;
 
-const MARKS: Record<HarnessId, string> = { claude: "CC", codex: "Cx", opencode: "oc", grok: "Gk" };
+const MARKS: Record<HarnessId, string> = { claude: "CC", codex: "Cx", opencode: "oc", grok: "Gk", pi: "π" };
 
 function statusTone(status: HarnessStatus): { tone: "ready" | "warn" | "off"; text: string } {
   if (status.availability !== "ok") return { tone: "off", text: "Not available here" };

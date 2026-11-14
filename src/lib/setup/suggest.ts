@@ -25,6 +25,7 @@ export const AGENT_LABELS: Record<HarnessChoiceId, string> = {
   codex: "Codex",
   opencode: "opencode",
   grok: "Grok Build",
+  pi: "Pi",
 };
 
 export function suggestPictures(input: SuggestInput): PicturesSuggestion {
