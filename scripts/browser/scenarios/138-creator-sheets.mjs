@@ -71,12 +71,12 @@ export default {
     await narrowPhone(t);
     const problems = [];
     const errors = consoleErrors(page);
-    const hootLines = async (scope, where) => {
+    const hootLines = async (scope, where, { pack = true } = {}) => {
       const text = ((await scope.textContent()) ?? "").replace(/\s+/g, " ");
       if (!/Small/.test(text)) problems.push(`${where}: the owlfolk's size (Small) is not shown`);
       if (!/Conditional/.test(text) || !/Athletics while wearing the armor from Mystic Metal/i.test(text)) problems.push(`${where}: no conditional Athletics line`);
       else if (!/holds now/.test(text)) problems.push(`${where}: the conditional Athletics does not say it holds now, in the suit`);
-      if (!/A Favor In Turn/.test(text)) problems.push(`${where}: the pack background's feature is not shown`);
+      if (pack && !/A Favor In Turn/.test(text)) problems.push(`${where}: the pack background's feature is not shown`);
       if (!/Personality/.test(text) || !/I watch the exits/.test(text)) problems.push(`${where}: the Personality lines are not shown`);
     };
     try {
@@ -118,7 +118,7 @@ export default {
       await t.open(`/campaigns/${audit.sheetTableId}`);
       if (viewport === "phone") await openPanelTab(t, "party").catch(() => {});
       const sheet = await openSheet(t, "Hoot Ashfeather");
-      await hootLines(sheet, "table sheet");
+      await hootLines(sheet, "table sheet", { pack: false });
       const owed = sheet.getByText(/Languages to choose/).first();
       if (await upTo(() => owed.count(), 10_000)) {
         await owed.scrollIntoViewIfNeeded();

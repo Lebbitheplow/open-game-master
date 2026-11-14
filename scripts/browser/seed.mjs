@@ -4078,11 +4078,11 @@ const bench2Titles = {};
 // them. None of these levels is taken by a scenario, so every viewport
 // opens the same tables.
 //   - Hoot, an owlfolk Metallurgist mechanist of 11th level who picked
-//     Small, from the Tal'Dorei Crime Syndicate Member background, with a
-//     personality and the owlfolk's language of choice not yet named: the
-//     sheet shows the size, the conditional Athletics, the pack background's
-//     feature chip, the Personality block and the owed language. A copy in
-//     the library shows the same on the character page.
+//     Small, with a personality and the owlfolk's language of choice not
+//     yet named: in the library, from the Tal'Dorei Crime Syndicate Member
+//     background, the page shows the size, the conditional Athletics, the
+//     pack background's feature chip and the Personality lines; at the
+//     table, as an acolyte, the sheet shows the same and owes the languages.
 //   - Morrow, a Fiend warlock of 10th level with 11th earned: the level-up's
 //     spell step asks for the 6th-level Mystic Arcanum.
 //   - Brisk, a fighter of 4th level holding Fighting Initiate with no style
@@ -4129,7 +4129,23 @@ const creatorAudit = {};
     gameSettings: { ttsEnabled: false, genre: "high_fantasy" },
   });
   campaigns.setCampaignStatus(sheetTable.id, "active");
-  const hootSheet = sheets.createSheet(sheetTable.id, world.owner.id, 11, hoot());
+  // At the table Hoot is an acolyte, a background the server carries, so the
+  // sheet owes the owlfolk's language and the acolyte's two (a content
+  // pack's background owes nothing there: owed-languages.ts). The pack
+  // background's feature chip is the library copy's.
+  const hootSheet = sheets.createSheet(
+    sheetTable.id,
+    world.owner.id,
+    11,
+    hoot({
+      background: "acolyte",
+      features: [
+        { name: "Size (Small)", source: "race" },
+        { name: "Juggernaut", source: "class", classId: "mechanist", level: 11 },
+        { name: "Shelter of the Faithful", source: "background" },
+      ],
+    }),
+  );
   getDatabase().prepare(`UPDATE character_sheets SET xp = ? WHERE id = ?`).run(85000, hootSheet.id);
   messages.insertCampaignMessage({
     campaignId: sheetTable.id,
@@ -4204,7 +4220,8 @@ const creatorAudit = {};
         tools: [], armor: ["light", "medium", "heavy", "shields"], weapons: ["simple", "martial"],
       },
       feats: ["Fighting Initiate"],
-      features: [{ name: "Fighting Style: Defense", source: "class", classId: "fighter", level: 1 }],
+      // A pick is kept as a "choice" feature, which the regrant keeps.
+      features: [{ name: "Fighting Style: Defense", source: "choice", classId: "fighter", level: 1 }],
     }),
   );
   getDatabase().prepare(`UPDATE character_sheets SET xp = ? WHERE id = ?`).run(6500, brisk.id);

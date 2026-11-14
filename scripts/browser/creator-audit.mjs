@@ -234,11 +234,16 @@ export function consoleErrors(page) {
     // A missing favicon or an aborted image of a closed page is no fault of
     // the screen.
     if (/favicon|net::ERR_ABORTED/.test(text)) return;
+    // The browser's own line for a failed load names no address; the
+    // response listener below names each one that counts.
+    if (/^Failed to load resource/.test(text)) return;
     seen.push(text.slice(0, 200));
   };
   // Which load failed: the console names only the status.
   const failed = (response) => {
-    if (response.status() >= 400) seen.push(`${response.status()} ${response.url().replace(/^https?:\/\/[^/]+/, "").slice(0, 120)}`);
+    // A table on a server with no voice answers its voice channels 403 on
+    // every page; that is the table's, not the creator's.
+    if (response.status() >= 400 && !/\/voice\/channels/.test(response.url())) seen.push(`${response.status()} ${response.url().replace(/^https?:\/\/[^/]+/, "").slice(0, 120)}`);
   };
   page.on("console", listen);
   page.on("response", failed);
