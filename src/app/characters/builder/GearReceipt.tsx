@@ -56,7 +56,8 @@ function QtyField({ row, onQty }: { row: ReceiptRow; onQty: (qty: number) => voi
           setDraft(null);
         }
       }}
-      className="h-9 w-12 rounded-md border border-stone-700 bg-stone-950 text-center font-mono text-xs text-stone-100 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+      // 36 px on a desk, a finger's 40 on a phone (AGENTS.md).
+      className="h-9 w-12 pointer-coarse:h-10 rounded-md border border-stone-700 bg-stone-950 text-center font-mono text-xs text-stone-100 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
     />
   );
 }
