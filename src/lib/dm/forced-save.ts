@@ -17,6 +17,7 @@ import { spiritTotemRollAdvantage } from "@/lib/dm/spirit-totem";
 import { landsStrideClaim } from "@/lib/dm/mt-srd-druid";
 import { noteShift, takeSaveHelp, takeShift } from "@/lib/dm/chronal-shift";
 import { takeFate } from "@/lib/dm/fate-turn";
+import { takeLineage } from "@/lib/dm/lineage-watch";
 import { recordInspiredSuccess, recordSave } from "@/lib/dm/last-save";
 import { lentRolls } from "@/lib/dm/genre-a-auras";
 import { counterIntrusion } from "@/lib/dm/genre-a-cyberpunk-defenses";
@@ -450,6 +451,8 @@ export function rollCharacterSave(
   }
   // Convergent Future or Bend Luck set on this save at the stop (fate-turn.ts).
   outcome = takeFate(campaign.id, purpose, sheet.name, outcome, dc)?.outcome ?? outcome;
+  // Saving Face, Lucky Footwork or Bountiful Luck set on it (lineage-watch.ts).
+  outcome = takeLineage(campaign.id, purpose, sheet.name, outcome, { dc }, ability)?.outcome ?? outcome;
   // Flash of Genius or Favored by the Gods set on this save at the stop.
   const helped = takeSaveHelp(campaign.id, purpose, sheet.name, outcome, dc);
   if (helped) {

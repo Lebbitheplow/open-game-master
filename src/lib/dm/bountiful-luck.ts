@@ -6,7 +6,9 @@
 //
 // It answers a roll that waits on its card (after-roll.ts allyChoicesFor):
 // the halfling's player presses it from their own screen, as a helper does
-// Chronal Shift's. A roll the server throws inside a call has no stop for it.
+// Chronal Shift's. A roll the server throws inside a call that no card waits
+// on (an agent seat's, a companion's) is answered at the watch stop before
+// the call (lineage-watch.ts).
 
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";

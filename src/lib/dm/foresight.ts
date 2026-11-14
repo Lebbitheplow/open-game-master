@@ -44,7 +44,8 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { canTurnFate, inFateReach } from "@/lib/dm/fate-turn";
 import type { OpenedStop } from "@/lib/dm/held-call";
 import { beforeRollAt, runWithBeforeRoll, tableWatcherFor, type BeforeChoice } from "@/lib/dm/foresight-before";
-import { balanceLeft, omenLeft, TABLE_WATCH } from "@/lib/dm/before-roll-logic";
+import { balanceLeft, holdsWatchRow, omenLeft, TABLE_WATCH } from "@/lib/dm/before-roll-logic";
+import { canLineageWatchNow, LINEAGE_WATCH, lineageWatchRolls } from "@/lib/dm/lineage-watch";
 
 // The rolls a watch stop offers Convergent Future and Bend Luck on: the ones
 // a roll site asks takeFate about.
@@ -67,7 +68,7 @@ export const WATCH_SECONDS = 20;
 function canWatch(campaignId: string, sheet: CharacterSheet, encounterId: string): boolean {
   return (
     sheet.watchingEncounterId === encounterId &&
-    (foretoldLeft(sheet).length > 0 || omenLeft(sheet) !== null || balanceLeft(sheet) || WATCH_ROWS.some((row) => holdsFeature(sheet, row.feature))) &&
+    (foretoldLeft(sheet).length > 0 || omenLeft(sheet) !== null || balanceLeft(sheet) || WATCH_ROWS.some((row) => holdsWatchRow(sheet, row.feature))) &&
     sheet.currentHp > 0 &&
     !holdsCondition(sheet, "blinded", "unconscious") &&
     rollsCanWait(sheet) &&
@@ -371,6 +372,16 @@ function watcherFor(campaignId: string, encounter: Encounter, about: About, ownC
       const saves = canHelpSaveNow(campaignId, sheet, power) ? savesHelped(campaignId, encounter, sheet, power, about, sheets) : [];
       if (saves.length) {
         return { watcher: sheet, power, choices: choicesOf(saves, () => "failure") };
+      }
+    }
+    // Saving Face, Lucky Footwork and Inspired Ingenuity on the holder's own
+    // roll, Bountiful Luck on an ally's 1 (lineage-watch.ts): a roll the call
+    // throws that no card of the roller's answers, as the save helps above.
+    const unanswered = [...(about.rollerWaits ? about.rolls.filter((roll) => roll.ref !== about.rollerId) : about.rolls), ...(about.riderSaves ?? [])];
+    for (const power of LINEAGE_WATCH) {
+      const rolls = canLineageWatchNow(campaignId, sheet, power) ? lineageWatchRolls(campaignId, sheet, power, unanswered, (ref) => side(ref) === mine, sheets) : [];
+      if (rolls.length) {
+        return { watcher: sheet, power, choices: choicesOf(rolls, () => "failure") };
       }
     }
   }

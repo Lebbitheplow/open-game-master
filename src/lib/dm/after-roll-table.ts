@@ -507,6 +507,12 @@ export const AFTER_ROLL_ROWS = [
     effect: "own",
     module: "bountiful-luck.ts",
     when: "short",
+    watch: {
+      hint: "let an ally roll a 1 on the d20 again",
+      button: "Let them roll the 1 again {when}",
+      title: "Use your reaction only if the d20 shows a 1 and the roll fails: that die is rolled again and the new roll stands, and your own Lucky waits out your next turn.",
+      spentError: "Your reaction is spent.",
+    },
     label: "Bountiful Luck: {name} rolls the 1 again",
     note: "Use your reaction: {name} rolls that d20 again and must use the new roll. Your own Lucky does nothing until the end of your next turn.",
   },
@@ -545,6 +551,12 @@ export const AFTER_ROLL_ROWS = [
     effect: "own",
     module: "lineage-after-roll.ts",
     when: "short",
+    watch: {
+      hint: "add +1 for each ally you see to a roll of yours that falls short",
+      button: "Use Saving Face {when}",
+      title: "Spend Saving Face only if the roll falls short and the allies you see within 30 feet carry it: +1 for each, +5 at most.",
+      spentError: "Your Saving Face is spent, or no ally stands in sight within 30 feet.",
+    },
     label: "Saving Face: {amount}",
     note: "Spend Saving Face (once a short rest): {amount} to this {what}, one for each ally you see within 30 feet.",
   },
@@ -560,6 +572,12 @@ export const AFTER_ROLL_ROWS = [
     effect: "own",
     module: "lineage-after-roll.ts",
     when: "short",
+    watch: {
+      hint: "add 1d4 to your Dexterity save if it fails",
+      button: "Add 1d4 {when}",
+      title: "Use your reaction only if your Dexterity save fails and 1d4 could carry it; not while prone or unable to move.",
+      spentError: "Your reaction is spent, or you are prone or cannot move.",
+    },
     label: "Lucky Footwork: add 1d4",
     note: "Use your reaction: roll 1d4 and add it to this Dexterity save.",
   },
@@ -577,6 +595,12 @@ export const AFTER_ROLL_ROWS = [
     effect: "own",
     module: "lineage-after-roll.ts",
     when: "short",
+    watch: {
+      hint: "make a low d20 on your check count as a 10",
+      button: "Make the d20 a 10 {when}",
+      title: "Use your reaction and Inspired Ingenuity only if the check fails on a d20 of 9 or lower and a 10 carries it.",
+      spentError: "Your Inspired Ingenuity is spent, or your reaction is.",
+    },
     label: "Inspired Ingenuity: make the d20 a 10",
     note: "Use your reaction and Inspired Ingenuity (once a short rest): the d20 of this check counts as a 10.",
   },
@@ -602,7 +626,8 @@ export function rowWords(id: AfterRollId, words: { kind?: string; amount?: strin
 }
 
 // The rows the watch stop arms on a roll, to be taken once it goes the wrong
-// way (chronal-shift.ts): every row with watch words.
+// way (chronal-shift.ts; the lineages' and Bountiful Luck's by
+// lineage-watch.ts): every row with watch words.
 type WatchRowOf<R> = R extends { watch: AfterRollWatch; id: infer I } ? I : never;
 export type WatchRowId = WatchRowOf<(typeof AFTER_ROLL_ROWS)[number]>;
 export const WATCH_ROWS = AFTER_ROLL_ROWS.filter((row): row is Extract<(typeof AFTER_ROLL_ROWS)[number], { watch: AfterRollWatch }> => "watch" in row);

@@ -8,6 +8,7 @@
 import { tranceFloored } from "@/lib/dm/ar-ws-trance-floor";
 import { spendWhisperedName } from "@/lib/dm/genre-gh-names";
 import { noteShift, takeShift } from "@/lib/dm/chronal-shift";
+import { takeLineage } from "@/lib/dm/lineage-watch";
 import { settleAttackDie } from "@/lib/dm/forced-save";
 import { insertRoll } from "@/lib/db/rolls";
 import { d20Expression, rollExpression, type RollResult } from "@/lib/dice";
@@ -75,9 +76,12 @@ export function shiftedThrow(plan: AttackPlan, strike: Strike, ac: number, critR
   const thrown = throwToHit(plan, strike);
   const natural = thrown.natural ?? 0;
   const hits = natural !== 1 && (natural >= critRange || thrown.total >= ac);
-  const by = takeShift(plan.campaign.id, { roller: "hero", kind: "attack", who: plan.sheet.name }, hits);
+  const tag = { roller: "hero" as const, kind: "attack" as const, who: plan.sheet.name };
+  const by = takeShift(plan.campaign.id, tag, hits);
   if (!by) {
-    return thrown;
+    // A miss Saving Face carries, or an ally's 1 Bountiful Luck rolls again,
+    // set on it at the stop (lineage-watch.ts).
+    return hits ? thrown : (takeLineage(plan.campaign.id, tag, plan.sheet.name, thrown, { ac, critRange })?.outcome ?? thrown);
   }
   const again = throwToHit(plan, strike);
   noteShift(plan.campaign.id, `${by} used Chronal Shift: ${plan.sheet.name} rolled the attack again (${thrown.total} became ${again.total}), and the new roll stands.`);
