@@ -1,8 +1,10 @@
 // The machinist's clockwork familiars, built on the genre companions' road
 // (src/lib/dm/genre-a-summons.ts): allies on the board with their stat
 // blocks, each acting on its maker's command right after them.
-//   Clockwork Familiar (machinist 6)   "A small brass automaton assists you:
-//     it carries, fetches, and grants advantage on one check per rest": the
+//   Clockwork Familiar (machinist 3) "A small brass automaton assists you:
+//     it carries, fetches, and grants advantage on one check per rest". It
+//     comes with the chapter at 3rd, since the Clockwork Savant's frame for
+//     it arrives then (at 6th the frame sat idle three levels). The
 //     free card builds it out of a fight (a Tiny construct, AC 13, HP 5 + the
 //     machinist's level, no attack); its help is a second card, once a rest,
 //     that leaves the Help for a check on the machinist (help-logic.ts), so

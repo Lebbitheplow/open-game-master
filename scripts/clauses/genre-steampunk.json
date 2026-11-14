@@ -115,7 +115,7 @@
  "machinist::Clockwork Familiar": {
   "source": "src/lib/classes/steampunk-features.json",
   "group": "machinist",
-  "level": 6,
+  "level": 3,
   "sha": "7cd8e9a4542a",
   "clauses": [
    {

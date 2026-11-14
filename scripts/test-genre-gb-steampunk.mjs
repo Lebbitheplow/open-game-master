@@ -408,8 +408,8 @@ const { summonsOf } = await load("lib/dm/summon-store.ts");
 const familiars = (hero) => summonsOf(world.campaignId, hero.id, "Clockwork Familiar").map((entry) => world.sheet(entry.id));
 
 await run("Clockwork Familiar: the free card builds a brass familiar on the board out of a fight, and its help, once a rest, gives the machinist advantage on their next check", async () => {
-  const row = feature("machinist", "Clockwork Familiar", 6);
-  const hero = rig.holder(row);
+  const row = feature("machinist", "Clockwork Familiar", 3);
+  const hero = rig.holder(row, { level: 6 });
   // The plain familiar: the savant's frame is a case of its own below.
   world.patch(hero.id, { features: world.sheet(hero.id).features.filter((entry) => entry.name !== "Improved Familiar Frame") });
   await kit.endFight();
@@ -423,6 +423,21 @@ await run("Clockwork Familiar: the free card builds a brass familiar on the boar
   assert.equal(used(hero, "steampunk_clockwork_familiar"), 1, "the help spent no use");
   assert.equal(await rig.d20sOf(hero, { kind: "skill_check", skill: "athletics" }), 2, "the next check did not roll with advantage");
   assert.equal(await rig.d20sOf(hero, { kind: "skill_check", skill: "athletics" }), 1, "the help served a second check");
+});
+
+// The savant's frame arrives at 3rd with the chapter, so the familiar it
+// frames is built from 3rd too: Clockwork Familiar is a 3rd-level feature.
+await run("A 3rd-level Clockwork Savant builds their clockwork familiar, framed: 9 hit points and the sting, the frame doing something from the level it arrives", async () => {
+  const row = feature("machinist", "Improved Familiar Frame", 3);
+  const hero = rig.holder(row, { level: 3 });
+  await kit.endFight();
+  const names = world.sheet(hero.id).features.map((entry) => entry.name);
+  assert.ok(names.includes("Clockwork Familiar"), `a 3rd-level savant holds no Clockwork Familiar: ${names.join(", ")}`);
+  await play(hero, "Clockwork Familiar");
+  const [made] = familiars(hero);
+  assert.ok(made, "no familiar stands at 3rd");
+  assert.equal(made.maxHp, 9, `the framed familiar's hit points at 3rd: ${made.maxHp}`);
+  assert.match(JSON.stringify(made), /Sting/, "the framed familiar has no sting");
 });
 
 await run("Improved Familiar Frame and Twin Automata: a savant's familiar has 3 x level hit points and a 30-foot sting of 1d8 + INT, and from 11th two stand", async () => {

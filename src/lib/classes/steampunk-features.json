@@ -9,9 +9,11 @@
           { "n": "Field Repair", "d": "2/rest, 1 minute of work restores 1d8 + INT HP to a construct, machine, or armored ally." }
         ],
         "2": [{ "n": "Blueprint Memory", "d": "After studying a machine or mechanism for a minute, you can describe, operate, or sabotage it competently." }],
-        "3": [{ "n": "Guild Chapter", "d": "Chooses an engineering chapter (subclass)." }],
+        "3": [
+          { "n": "Guild Chapter", "d": "Chooses an engineering chapter (subclass)." },
+          { "n": "Clockwork Familiar", "d": "A small brass automaton assists you: it carries, fetches, and grants advantage on one check per rest." }
+        ],
         "5": [{ "n": "Overpressure Valve", "d": "1/rest, cast a 1st-level schematic without expending a slot." }],
-        "6": [{ "n": "Clockwork Familiar", "d": "A small brass automaton assists you: it carries, fetches, and grants advantage on one check per rest." }],
         "7": [{ "n": "Reinforced Chassis", "d": "+1 AC while wearing armor you have tuned (any armor after a long rest)." }],
         "9": [{ "n": "Steamvent Burst", "d": "1/rest, adjacent creatures save (DEX) or take 3d8 fire and are pushed 10 ft when you vent your armor." }],
         "10": [{ "n": "Precision Engineering", "d": "Your schematics ignore half cover and treat three-quarters cover as half." }],
