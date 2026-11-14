@@ -8,7 +8,9 @@
 //   - a species pick whose own fields grant nothing (an owlfolk's or rabbitfolk's Size, a
 //     fairy's Fairy Magic ability: the species' rules read the pick itself)
 //     is named alone, never "its words only", and every bundled species'
-//     other picks still say what they give.
+//     other picks still say what they give;
+//   - a pick of spells (a Smuggler's Legerdemain cantrip) says the rule it
+//     is picked under once, and each spell's info opens the spell itself.
 import assert from "node:assert/strict";
 import { register } from "node:module";
 
@@ -16,6 +18,8 @@ register("./lib/register-alias.mjs", import.meta.url);
 
 const { toolLabel, toolKind, toolPickOptions, KNOWN_TOOLS, MUSICAL_INSTRUMENTS } = await import("../src/lib/srd/tool-choices.ts");
 const { variantGivesAnything, variantShort } = await import("../src/lib/content/species-variants.ts");
+const { optionKindRule, optionPicksSpells, optionsOfKind } = await import("../src/lib/srd/options.ts");
+const optionsJson = (await import("../src/lib/srd/options.json", { with: { type: "json" } })).default;
 const races = (await import("../src/lib/srd/races.json", { with: { type: "json" } })).default.races;
 
 let passed = 0;
@@ -58,6 +62,18 @@ test("a species pick that grants nothing of its own is named alone; every other 
     }
   }
   assert.deepEqual(bare.sort(), ["fairy:cha", "fairy:int", "fairy:wis", "owlfolk:medium", "owlfolk:small", "rabbitfolk:medium", "rabbitfolk:small"]);
+});
+
+test("a kind that picks spells says its rule once and its options are spells; any other kind keeps its own words", () => {
+  const spellKinds = Object.entries(optionsJson.kinds).filter(([, meta]) => meta.spellLevel !== undefined).map(([kind]) => kind);
+  assert.ok(spellKinds.includes("legerdemain_cantrip"));
+  for (const kind of spellKinds) {
+    assert.ok(optionPicksSpells(kind), kind);
+    assert.ok(optionKindRule(kind), `${kind} has its rule to say once`);
+  }
+  assert.ok(optionsOfKind("legerdemain_cantrip").some((option) => option.n === "Mending"));
+  assert.equal(optionPicksSpells("invocation"), false);
+  assert.equal(optionKindRule("invocation"), null);
 });
 
 console.log(`${passed} passed`);

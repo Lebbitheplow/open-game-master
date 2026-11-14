@@ -12,6 +12,8 @@
 //   - with the content pack, a mutated derro names its weapons and its
 //     Otherworldly Influence, and a human-chassis gearforged its Adaptable
 //     Acumen and the skill it doubles;
+//   - a criminal rogue, given thieves' tools by class and background,
+//     picks another tool in its place beside its gaming set;
 //   - every one of those blocks has named controls, a finger's size on a
 //     phone, a focus ring by keyboard, nothing pushed past the step's edge,
 //     no sideways scroll, and a clean axe run.
@@ -177,6 +179,19 @@ export default {
       block = await people("satyr", "Satyr");
       await look(t, block, "satyr's choices", problems);
       await shootBoth(t, block, "ancestry-satyr");
+
+      // ---- a criminal rogue: thieves' tools twice, another tool in its place ----
+      step = await openDraft(t, "ancestry", { ...base, classId: "rogue", raceId: "human", backgroundId: "criminal" });
+      const toolPanels = step.locator('section[data-builder-target="tools"]');
+      await eventually(() => toolPanels.count(), { timeoutMs: 20_000, label: "the criminal's tool panels" });
+      const texts = await toolPanels.allTextContents();
+      const replacement = texts.findIndex((text) => /tool\b/i.test(text) && !/gaming set/i.test(text.split("\n")[0] ?? ""));
+      check(texts.length >= 2, `a criminal rogue picks its gaming set and a tool in place of the doubled thieves' tools (${texts.length} panel(s): ${texts.map((text) => text.slice(0, 50)).join(" | ")})`);
+      for (let at = 0; at < texts.length; at += 1) {
+        await look(t, toolPanels.nth(at), `criminal's tool panel ${at + 1}`, problems);
+      }
+      await shootBoth(t, toolPanels.nth(Math.max(0, replacement)), "ancestry-criminal-replacement-tool");
+      await shootBoth(t, toolPanels.first(), "ancestry-criminal-gaming-set");
 
       // ---- the content pack's peoples, when the pack is here ----
       step = await openDraft(t, "ancestry", { ...base, raceId: "" });

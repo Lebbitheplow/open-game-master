@@ -45,8 +45,18 @@ export async function shootBoth(t, locator, name) {
     await untilStill(t.page).catch(() => {});
     const file = shotFor(t, `${name}-${mode === "light" ? "day" : "night"}`);
     if (locator) {
-      await locator.scrollIntoViewIfNeeded().catch(() => {});
-      await locator.screenshot({ path: file }).catch(async () => t.page.screenshot({ path: file }));
+      // A part taller than the window is shot as the window, its top in
+      // view: an element shot past the edge of a scroll pane comes out cut.
+      const box = await locator.boundingBox().catch(() => null);
+      const tall = box && box.height > (t.page.viewportSize()?.height ?? 800) * 0.85;
+      if (tall) {
+        await locator.evaluate((el) => el.scrollIntoView({ block: "start" })).catch(() => {});
+        await untilStill(t.page).catch(() => {});
+        await t.page.screenshot({ path: file });
+      } else {
+        await locator.scrollIntoViewIfNeeded().catch(() => {});
+        await locator.screenshot({ path: file }).catch(async () => t.page.screenshot({ path: file }));
+      }
     } else {
       await t.page.screenshot({ path: file });
     }
@@ -180,10 +190,15 @@ export async function ringOnTab(t, control, part, problems) {
     const focused = document.activeElement;
     const target = focused === el || el.contains(focused) ? focused : null;
     if (!target) return { on: false, why: `the focus went to ${focused?.outerHTML.slice(0, 80)}` };
+    // The ring may be the card's round the focused pick (a card holding a
+    // pick and its info button rings whole).
+    const ringed = (node) => {
+      const style = getComputedStyle(node);
+      return (style.outlineStyle !== "none" && parseFloat(style.outlineWidth) > 0) || (style.boxShadow && style.boxShadow !== "none");
+    };
     const style = getComputedStyle(target);
-    const outline = style.outlineStyle !== "none" && parseFloat(style.outlineWidth) > 0;
-    const shadow = style.boxShadow && style.boxShadow !== "none";
-    return { on: outline || shadow, why: `outline ${style.outlineStyle} ${style.outlineWidth}, shadow ${style.boxShadow}` };
+    const on = ringed(target) || (target.parentElement ? ringed(target.parentElement) : false);
+    return { on, why: `outline ${style.outlineStyle} ${style.outlineWidth}, shadow ${style.boxShadow}` };
   });
   if (!ring.on) problems.push(`${part}: no focus ring by keyboard (${ring.why})`);
 }

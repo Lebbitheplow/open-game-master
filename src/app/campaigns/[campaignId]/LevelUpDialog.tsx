@@ -13,7 +13,7 @@ import { ChevronDown, Dices, Loader2, Search, Sparkles, X } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
 import { InfoButton, InfoChipList } from "@/components/ui/InfoDialog";
-import { describeFeature, describeSkill } from "@/lib/help";
+import { contentSlug, describeFeature, describeSkill } from "@/lib/help";
 import { useClassFeatureText } from "@/lib/classes/use-feature-text";
 import { settingClassIds, splitBySetting } from "@/lib/classes";
 import type { Genre } from "@/lib/schemas/game-settings";
@@ -22,6 +22,8 @@ import {
   findOptionByFeatureName,
   openOptionSlots,
   optionFeatureName,
+  optionKindRule,
+  optionPicksSpells,
   optionSlotsFor,
   slotTakes,
   type OptionSlot,
@@ -1504,6 +1506,9 @@ export function LevelUpDialog({
                         <p className="mb-1 mt-2 text-xs uppercase tracking-wide text-amber-200/80">
                           {slot.label}: {slot.total - slot.remaining}/{slot.total} chosen
                         </p>
+                        {/* A pick of spells says its rule once; each spell's
+                            info opens the spell (as on the builder's class step). */}
+                        {optionKindRule(slot.kind) ? <p className="mb-1 text-[11px] text-stone-400">{optionKindRule(slot.kind)}</p> : null}
                         <div className="max-h-56 space-y-1.5 overflow-y-auto pr-1">
                           {slot.options.map((option) => {
                             const picked = slot.chosen.some(
@@ -1530,17 +1535,23 @@ export function LevelUpDialog({
                                   className="grow text-left"
                                 >
                                   <span className="block">{option.n}</span>
-                                  <span className="block text-[11px] text-stone-500">
-                                    {already ? "Already known. " : ""}
-                                    {option.req ? `Requires ${option.req}. ` : ""}
-                                    {option.d}
-                                  </span>
+                                  {already || option.req || !optionPicksSpells(slot.kind) ? (
+                                    <span className="block text-[11px] text-stone-500">
+                                      {already ? "Already known. " : ""}
+                                      {option.req ? `Requires ${option.req}. ` : ""}
+                                      {optionPicksSpells(slot.kind) ? "" : option.d}
+                                    </span>
+                                  ) : null}
                                 </button>
-                                <InfoButton
-                                  label={option.n}
-                                  meta={option.req ? `Requires ${option.req}` : undefined}
-                                  text={option.d}
-                                />
+                                {optionPicksSpells(slot.kind) ? (
+                                  <InfoButton label={option.n} note={option.d} reference={{ kind: "spells", slug: contentSlug(option.n), name: option.n }} />
+                                ) : (
+                                  <InfoButton
+                                    label={option.n}
+                                    meta={option.req ? `Requires ${option.req}` : undefined}
+                                    text={option.d}
+                                  />
+                                )}
                               </div>
                             );
                           })}
