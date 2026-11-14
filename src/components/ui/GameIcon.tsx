@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { iconCandidates, iconPath, isPainted, type IconRef } from "@/lib/icons";
+import { iconCandidates, iconPath, type IconRef } from "@/lib/icons";
 import { cn } from "@/lib/cn";
+import { equipmentArtwork } from "@/lib/equipment-art-logic";
+import { useEquipmentGenre } from "@/components/ui/EquipmentArtProvider";
 
 // Action illustrations are wide paintings (256x128): they fill the box the
 // caller gives them, uncropped and unzoomed. Every other icon sits on the lit
@@ -13,7 +15,9 @@ import { cn } from "@/lib/cn";
 const SNUG_KINDS = new Set<IconRef["kind"]>(["glyph", "condition"]);
 
 export function GameIcon({ icon, size = "size-6", className }: { icon: IconRef; size?: string; className?: string }) {
-  const candidates = iconCandidates(icon);
+  const genre = useEquipmentGenre();
+  const artwork = equipmentArtwork(icon, genre, icon.kind === "action" ? "card" : "inventory");
+  const candidates = artwork === icon ? iconCandidates(icon) : [iconPath(artwork.kind, artwork.key), ...iconCandidates(icon)];
   const [attempt, setAttempt] = useState(0);
   const [shownFor, setShownFor] = useState(candidates[0]);
   // A list row can be reused for another thing; start its chain again.
@@ -24,8 +28,9 @@ export function GameIcon({ icon, size = "size-6", className }: { icon: IconRef; 
   if (attempt >= candidates.length) {
     return null;
   }
-  // The first candidate is the action's own painting whenever it ships.
-  const actionArt = icon.kind === "action" && attempt === 0 && isPainted(iconPath("action", icon.key));
+  // A base card after a failed genre variant is still a wide painting;
+  // only the family fallback belongs inside the circular frame.
+  const actionArt = icon.kind === "action" && candidates[attempt]?.startsWith("/assets/icons/action/");
   return (
     <span
       aria-hidden="true"

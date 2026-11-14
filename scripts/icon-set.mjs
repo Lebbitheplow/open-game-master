@@ -426,6 +426,12 @@ export async function buildIconList() {
     list.push(entry("action", id, label, subject, { genre, externalArt: true }));
   }
 
+  // Shared gear has separate genre exports so the fantasy set stays intact.
+  for (const { id, cardId, label, subject, kind, genre } of readJson("scripts/shared-genre-equipment-subjects.json")) {
+    list.push(entry("item", id, label, subject, { kind, genre, externalArt: true, width: 256, height: 256 }));
+    list.push(entry("action", cardId, label, subject, { genre, externalArt: true, width: 256, height: 128 }));
+  }
+
   // Damage types, for the log and the delivery table's chips.
   for (const [type, subject] of Object.entries({
     fire: "a flame", cold: "a snowflake of ice", lightning: "a lightning bolt", acid: "a dripping green drop", poison: "a skull and a green vial",

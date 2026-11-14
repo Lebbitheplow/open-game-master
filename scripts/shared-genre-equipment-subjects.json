@@ -1,0 +1,443 @@
+[
+  {
+    "id": "cyberpunk-dagger",
+    "cardId": "cyberpunk-weapon-dagger",
+    "itemId": "dagger",
+    "label": "Dagger",
+    "kind": "weapon",
+    "genre": "cyberpunk",
+    "subject": "a short single cyberpunk utility dagger with a dark ceramic-coated steel blade, sharply lit bevel, textured black polymer grip and one restrained cyan inset in the handle; solid physical blade, not an energy sword"
+  },
+  {
+    "id": "cyberpunk-forgery-kit",
+    "cardId": "cyberpunk-gear-forgery-kit",
+    "itemId": "forgery-kit",
+    "label": "Forgery Kit",
+    "kind": "gear",
+    "genre": "cyberpunk",
+    "subject": "an open compact black document-work case containing a small cyan-lit inspection tablet, blank plastic ID cards, a stylus and a compact embossing tool; fictional unmarked props, no readable documents or instructions"
+  },
+  {
+    "id": "dark-fantasy-longsword",
+    "cardId": "dark-fantasy-weapon-longsword",
+    "itemId": "longsword",
+    "label": "Longsword",
+    "kind": "weapon",
+    "genre": "dark_fantasy",
+    "subject": "a complete medieval longsword with a straight double-edged blade, austere blackened iron crossguard, worn oxblood leather grip and small tarnished silver pommel; somber old-world craftsmanship, no skulls or blood"
+  },
+  {
+    "id": "dark-fantasy-chain-shirt",
+    "cardId": "dark-fantasy-armor-chain-shirt",
+    "itemId": "chain-shirt",
+    "label": "Chain Shirt",
+    "kind": "armor",
+    "genre": "dark_fantasy",
+    "subject": "a sleeveless short chain shirt made of closely linked dark iron rings, worn brown leather edging and a simple throat buckle; clearly chainmail links rather than plate, empty garment without a body"
+  },
+  {
+    "id": "dark-fantasy-manacles",
+    "cardId": "dark-fantasy-gear-manacles",
+    "itemId": "manacles",
+    "label": "Manacles",
+    "kind": "gear",
+    "genre": "dark_fantasy",
+    "subject": "a pair of heavy medieval blackened iron wrist manacles linked by a short intact chain, rough forged texture and simple closed locking hasps; isolated equipment with no captive or body"
+  },
+  {
+    "id": "dark-fantasy-dagger",
+    "cardId": "dark-fantasy-weapon-dagger",
+    "itemId": "dagger",
+    "label": "Dagger",
+    "kind": "weapon",
+    "genre": "dark_fantasy",
+    "subject": "a short medieval dagger with a straight silver-gray double-edged blade, blackened crossguard and worn oxblood leather handle; austere gothic profile, no blood or skull ornaments"
+  },
+  {
+    "id": "dark-fantasy-leather",
+    "cardId": "dark-fantasy-armor-leather",
+    "itemId": "leather",
+    "label": "Leather",
+    "kind": "armor",
+    "genre": "dark_fantasy",
+    "subject": "an empty fitted medieval leather cuirass with short shoulder guards, dark oxblood and soot-brown hardened leather panels, visible hand stitching and restrained tarnished buckles; clearly leather armor, no metal breastplate"
+  },
+  {
+    "id": "dark-fantasy-herbalism-kit",
+    "cardId": "dark-fantasy-gear-herbalism-kit",
+    "itemId": "herbalism-kit",
+    "label": "Herbalism Kit",
+    "kind": "gear",
+    "genre": "dark_fantasy",
+    "subject": "an open weathered brown leather herbalist roll containing a small stone mortar and pestle, tied bundles of sage-colored dried leaves and three corked amber bottles; restrained medieval materials, one coherent compact kit"
+  },
+  {
+    "id": "dark-fantasy-shield",
+    "cardId": "dark-fantasy-armor-shield",
+    "itemId": "shield",
+    "label": "Shield",
+    "kind": "armor",
+    "genre": "dark_fantasy",
+    "subject": "a medieval kite shield of dark stained timber with a plain blackened iron rim and central boss, worn oxblood leather face panels and a few repaired scratches; complete shield, no crest, text or skull"
+  },
+  {
+    "id": "dark-fantasy-flail",
+    "cardId": "dark-fantasy-weapon-flail",
+    "itemId": "flail",
+    "label": "Flail",
+    "kind": "weapon",
+    "genre": "dark_fantasy",
+    "subject": "a complete short medieval flail: one worn leather-wrapped wooden handle, one short visible iron chain and one single small flanged iron ball; arranged diagonally as one connected object, blackened iron and oxblood leather"
+  },
+  {
+    "id": "dark-fantasy-whip",
+    "cardId": "dark-fantasy-weapon-whip",
+    "itemId": "whip",
+    "label": "Whip",
+    "kind": "weapon",
+    "genre": "dark_fantasy",
+    "subject": "one complete dark brown braided leather whip, neatly coiled into a compact oval beside its short oxblood-wrapped grip; the coil, thin tapered lash and handle clearly connected, somber medieval equipment"
+  },
+  {
+    "id": "dark-fantasy-lute",
+    "cardId": "dark-fantasy-gear-lute",
+    "itemId": "lute",
+    "label": "Lute",
+    "kind": "gear",
+    "genre": "dark_fantasy",
+    "subject": "one medieval pear-shaped lute with a rounded dark walnut body, pale carved soundboard rosette, visible strings, short neck and angled pegbox; worn polished wood with a restrained oxblood strap, complete instrument"
+  },
+  {
+    "id": "dark-fantasy-club",
+    "cardId": "dark-fantasy-weapon-club",
+    "itemId": "club",
+    "label": "Club",
+    "kind": "weapon",
+    "genre": "dark_fantasy",
+    "subject": "a short heavy medieval hardwood club with dark gnarled grain, one plain blackened iron reinforcing band and a worn brown leather grip; blunt rounded head with no sharp spikes"
+  },
+  {
+    "id": "dark-fantasy-poisoners-kit",
+    "cardId": "dark-fantasy-gear-poisoners-kit",
+    "itemId": "poisoners-kit",
+    "label": "Poisoner's Kit",
+    "kind": "gear",
+    "genre": "dark_fantasy",
+    "subject": "an open aged leather apothecary case holding three sealed muted green glass vials, a small brass balance spoon and a folded cloth; clearly fictional medieval inventory equipment, no ingredients, labels or instructions"
+  },
+  {
+    "id": "horror-leather",
+    "cardId": "horror-armor-leather",
+    "itemId": "leather",
+    "label": "Leather",
+    "kind": "armor",
+    "genre": "horror",
+    "subject": "an empty early-twentieth-century hunter's protective leather vest with a short high collar, reinforced dark umber shoulder panels, weathered stitching and dull nickel buckles; practical worn leather, no modern ballistic plates, no gore"
+  },
+  {
+    "id": "horror-holy-symbol",
+    "cardId": "horror-gear-holy-symbol",
+    "itemId": "holy-symbol",
+    "label": "Holy Symbol",
+    "kind": "gear",
+    "genre": "horror",
+    "subject": "one tarnished silver sunburst devotional pendant on a short dark rosary-like chain, an abstract amber center and worn edges; fictional protective religious symbol for an occult investigator, understated period craft, no letters"
+  },
+  {
+    "id": "horror-dagger",
+    "cardId": "horror-weapon-dagger",
+    "itemId": "dagger",
+    "label": "Dagger",
+    "kind": "weapon",
+    "genre": "horror",
+    "subject": "a compact antique occult hunter's dagger with a narrow polished physical steel blade, simple tarnished silver guard and dark ebonized wooden grip; restrained early-twentieth-century heirloom, no blood, no symbols or written runes"
+  },
+  {
+    "id": "horror-component-pouch",
+    "cardId": "horror-gear-component-pouch",
+    "itemId": "component-pouch",
+    "label": "Component Pouch",
+    "kind": "gear",
+    "genre": "horror",
+    "subject": "an open weathered charcoal leather occult investigator's belt pouch holding two small corked bottles, a pale stone charm and a tied bundle of dried herbs; period brass clasp, subtle violet glass accents, compact coherent pouch"
+  },
+  {
+    "id": "horror-longsword",
+    "cardId": "horror-weapon-longsword",
+    "itemId": "longsword",
+    "label": "Longsword",
+    "kind": "weapon",
+    "genre": "horror",
+    "subject": "a complete antique straight longsword kept by an occult hunter, long polished steel blade with a muted silver sheen, narrow tarnished crossguard and dark carved hardwood grip; elegant practical heirloom with no supernatural glow, blood or symbols"
+  },
+  {
+    "id": "horror-chain-shirt",
+    "cardId": "horror-armor-chain-shirt",
+    "itemId": "chain-shirt",
+    "label": "Chain Shirt",
+    "kind": "armor",
+    "genre": "horror",
+    "subject": "an empty short antique chainmail shirt, close-set dull silver iron rings over a narrow dark leather collar and shoulder edging; aged but intact protective heirloom for a monster hunter, unmistakable mail, no body or gore"
+  },
+  {
+    "id": "mystery-club",
+    "cardId": "mystery-weapon-club",
+    "itemId": "club",
+    "label": "Club",
+    "kind": "weapon",
+    "genre": "mystery",
+    "subject": "one early-twentieth-century detective's compact wooden truncheon, smooth dark walnut barrel, rounded blunt end, turned handle and short brown leather wrist loop; restrained period police equipment, no markings"
+  },
+  {
+    "id": "mystery-leather",
+    "cardId": "mystery-armor-leather",
+    "itemId": "leather",
+    "label": "Leather",
+    "kind": "armor",
+    "genre": "mystery",
+    "subject": "an empty fitted early-twentieth-century protective leather waistcoat, warm chestnut leather with discreet reinforced front panels, tailored seams and small antique brass side buckles; clearly leather armor in the shape of a period vest"
+  },
+  {
+    "id": "mystery-dagger",
+    "cardId": "mystery-weapon-dagger",
+    "itemId": "dagger",
+    "label": "Dagger",
+    "kind": "weapon",
+    "genre": "mystery",
+    "subject": "one period gentleman's short dagger with a bright tapered steel blade, modest nickel crossguard, finely polished walnut handle and brass end cap; elegant late-Victorian craftsmanship, no disguise mechanism or extra objects"
+  },
+  {
+    "id": "mystery-quarterstaff",
+    "cardId": "mystery-weapon-quarterstaff",
+    "itemId": "quarterstaff",
+    "label": "Quarterstaff",
+    "kind": "weapon",
+    "genre": "mystery",
+    "subject": "one complete long straight hardwood quarterstaff, polished warm walnut with simple nickel end caps and a central textured leather handgrip; period travel and self-defense staff, clearly long and blunt, no concealed blade"
+  },
+  {
+    "id": "mystery-disguise-kit",
+    "cardId": "mystery-gear-disguise-kit",
+    "itemId": "disguise-kit",
+    "label": "Disguise Kit",
+    "kind": "gear",
+    "genre": "mystery",
+    "subject": "an open compact brown leather theatrical makeup case with a small mirror, three neutral cream pans, one makeup brush, a folded dark hairpiece and plain round spectacles; early-twentieth-century investigator's kit, no faces or labels"
+  },
+  {
+    "id": "mystery-warhammer",
+    "cardId": "mystery-weapon-warhammer",
+    "itemId": "warhammer",
+    "label": "Warhammer",
+    "kind": "weapon",
+    "genre": "mystery",
+    "subject": "one compact antique warhammer with a rectangular polished steel striking head, a short blunt peen, smooth walnut shaft and small nickel grip ferrules; elegant period craftsmanship while remaining unmistakably a hammer, no spikes or gears"
+  },
+  {
+    "id": "mystery-studded-leather",
+    "cardId": "mystery-armor-studded-leather",
+    "itemId": "studded-leather",
+    "label": "Studded Leather",
+    "kind": "armor",
+    "genre": "mystery",
+    "subject": "an empty tailored dark chestnut protective leather waistcoat with evenly spaced small domed brass studs on reinforced panels and a high-cut period collar; clearly studded leather armor, distinct from a plain vest, no body"
+  },
+  {
+    "id": "post-apocalyptic-leather",
+    "cardId": "post-apocalyptic-armor-leather",
+    "itemId": "leather",
+    "label": "Leather",
+    "kind": "armor",
+    "genre": "post_apocalyptic",
+    "subject": "an empty patchwork motorcycle-style leather armor vest with mismatched dark brown and faded ochre leather panels, thick repair stitching and salvaged belt buckles; tough practical salvaged leather, no metal breastplate or spikes"
+  },
+  {
+    "id": "post-apocalyptic-tinkers-tools",
+    "cardId": "post-apocalyptic-gear-tinkers-tools",
+    "itemId": "tinkers-tools",
+    "label": "Tinker's Tools",
+    "kind": "gear",
+    "genre": "post_apocalyptic",
+    "subject": "an open patched canvas tool roll containing a compact adjustable spanner, screwdriver, pliers, a spool of wire and a small salvaged gauge; sun-faded fabric, worn steel and orange repair tape, compact coherent kit"
+  },
+  {
+    "id": "post-apocalyptic-battleaxe",
+    "cardId": "post-apocalyptic-weapon-battleaxe",
+    "itemId": "battleaxe",
+    "label": "Battleaxe",
+    "kind": "weapon",
+    "genre": "post_apocalyptic",
+    "subject": "one salvaged battleaxe with a broad recognizable axe head of repaired weathered steel, a sturdy short wooden haft reinforced by two metal bands, and faded orange cloth wrapped around the grip; complete silhouette, no gore"
+  },
+  {
+    "id": "post-apocalyptic-hide",
+    "cardId": "post-apocalyptic-armor-hide",
+    "itemId": "hide",
+    "label": "Hide",
+    "kind": "armor",
+    "genre": "post_apocalyptic",
+    "subject": "an empty primitive protective vest made from layered tan and dark brown animal hide, rough-cut edges, broad leather ties and patched suede shoulder flaps; wasteland survival craft, no head, body, fresh flesh or metal plate"
+  },
+  {
+    "id": "post-apocalyptic-spear",
+    "cardId": "post-apocalyptic-weapon-spear",
+    "itemId": "spear",
+    "label": "Spear",
+    "kind": "weapon",
+    "genre": "post_apocalyptic",
+    "subject": "one complete long wasteland spear with a broad weathered steel spearhead, straight salvaged wooden shaft and secure-looking wrapped bindings with faded orange cloth below the socket; unmistakable spear, sparse practical construction"
+  },
+  {
+    "id": "post-apocalyptic-dagger",
+    "cardId": "post-apocalyptic-weapon-dagger",
+    "itemId": "dagger",
+    "label": "Dagger",
+    "kind": "weapon",
+    "genre": "post_apocalyptic",
+    "subject": "one short salvaged survival dagger with a worn gray steel blade, simple squared guard and grip wrapped in faded orange fabric over dark wood; convincing intact knife silhouette with repaired materials, no blood"
+  },
+  {
+    "id": "post-apocalyptic-mace",
+    "cardId": "post-apocalyptic-weapon-mace",
+    "itemId": "mace",
+    "label": "Mace",
+    "kind": "weapon",
+    "genre": "post_apocalyptic",
+    "subject": "one compact wasteland mace with a blunt faceted steel head, short repaired hardwood shaft, dark metal collar and worn ochre fabric grip; clearly a mace with a solid striking head, no spikes, blades or gore"
+  },
+  {
+    "id": "post-apocalyptic-herbalism-kit",
+    "cardId": "post-apocalyptic-gear-herbalism-kit",
+    "itemId": "herbalism-kit",
+    "label": "Herbalism Kit",
+    "kind": "gear",
+    "genre": "post_apocalyptic",
+    "subject": "an open patched canvas field herbalism pouch containing a small battered metal mortar and pestle, tied dry leaves and three reused small amber jars with plain lids; earthy green and ochre materials, no labels or instructions"
+  },
+  {
+    "id": "post-apocalyptic-shortbow",
+    "cardId": "post-apocalyptic-weapon-shortbow",
+    "itemId": "shortbow",
+    "label": "Shortbow",
+    "kind": "weapon",
+    "genre": "post_apocalyptic",
+    "subject": "one complete compact survival shortbow made of weathered laminated wood, patched leather central grip and one taut intact bowstring; dark brown and faded orange bindings, no arrow nocked and no futuristic attachments"
+  },
+  {
+    "id": "post-apocalyptic-quiver",
+    "cardId": "post-apocalyptic-gear-quiver",
+    "itemId": "quiver",
+    "label": "Quiver",
+    "kind": "gear",
+    "genre": "post_apocalyptic",
+    "subject": "one empty salvaged arrow quiver made from a scuffed narrow leather cylinder and patched canvas shoulder strap, reinforced rim and bottom, faded ochre repairs; open mouth visibly empty, complete compact equipment silhouette"
+  },
+  {
+    "id": "post-apocalyptic-arrows",
+    "cardId": "post-apocalyptic-gear-arrows",
+    "itemId": "arrows",
+    "label": "Arrows",
+    "kind": "gear",
+    "genre": "post_apocalyptic",
+    "subject": "a small bundle of exactly three complete wasteland arrows tied at their centers, straight repaired wooden shafts, simple worn steel triangular heads and mismatched muted brown feather fletching; all tips and tails visible"
+  },
+  {
+    "id": "steampunk-light-hammer",
+    "cardId": "steampunk-weapon-light-hammer",
+    "itemId": "light-hammer",
+    "label": "Light Hammer",
+    "kind": "weapon",
+    "genre": "steampunk",
+    "subject": "one small steampunk machinist's light hammer with a compact steel head, brass mounting collar and polished walnut handle with a dark leather grip; practical workshop craftsmanship, restrained brass details, no extraneous gears"
+  },
+  {
+    "id": "steampunk-tinkers-tools",
+    "cardId": "steampunk-gear-tinkers-tools",
+    "itemId": "tinkers-tools",
+    "label": "Tinker's Tools",
+    "kind": "gear",
+    "genre": "steampunk",
+    "subject": "an open dark leather steampunk tool roll containing a small brass-handled screwdriver, compact steel spanner, fine pliers, a winding key and one brass pressure gauge; carefully fitted individual tools, compact coherent kit, no text"
+  },
+  {
+    "id": "steampunk-rapier",
+    "cardId": "steampunk-weapon-rapier",
+    "itemId": "rapier",
+    "label": "Rapier",
+    "kind": "weapon",
+    "genre": "steampunk",
+    "subject": "one complete elegant steampunk rapier with a long slender steel blade, an open brass swept hilt, copper-accented guard and dark walnut grip; visibly a thrusting rapier, balanced believable period craft, no machine housing or energy blade"
+  },
+  {
+    "id": "steampunk-leather",
+    "cardId": "steampunk-armor-leather",
+    "itemId": "leather",
+    "label": "Leather",
+    "kind": "armor",
+    "genre": "steampunk",
+    "subject": "an empty fitted steampunk leather protective vest with rich cognac leather panels, shoulder caps, neat stitching and restrained brass buckles and rivets; leather remains the dominant material, no brass breastplate, no body"
+  },
+  {
+    "id": "steampunk-navigators-tools",
+    "cardId": "steampunk-gear-navigators-tools",
+    "itemId": "navigators-tools",
+    "label": "Navigator's Tools",
+    "kind": "gear",
+    "genre": "steampunk",
+    "subject": "a compact steampunk navigator's open dark leather case holding a brass compass with an unlettered simple dial, a small brass sextant and folded blank parchment; readable large silhouettes, warm brass and blue glass, no map text or numbers"
+  },
+  {
+    "id": "steampunk-dagger",
+    "cardId": "steampunk-weapon-dagger",
+    "itemId": "dagger",
+    "label": "Dagger",
+    "kind": "weapon",
+    "genre": "steampunk",
+    "subject": "one short steampunk dagger with a bright physical steel blade, restrained brass crossguard, walnut grip, copper rivets and brass pommel; elegant industrial-era craftsmanship with no moving gears, cables or energy blade"
+  },
+  {
+    "id": "steampunk-alchemists-supplies",
+    "cardId": "steampunk-gear-alchemists-supplies",
+    "itemId": "alchemists-supplies",
+    "label": "Alchemist's Supplies",
+    "kind": "gear",
+    "genre": "steampunk",
+    "subject": "an open fitted walnut alchemist's case containing two rounded glass flasks with amber and teal liquids, a small brass stand, a glass stirring rod and a compact mortar; steampunk laboratory craft, compact coherent supplies, no labels or formulae"
+  },
+  {
+    "id": "steampunk-quarterstaff",
+    "cardId": "steampunk-weapon-quarterstaff",
+    "itemId": "quarterstaff",
+    "label": "Quarterstaff",
+    "kind": "weapon",
+    "genre": "steampunk",
+    "subject": "one complete long steampunk quarterstaff with a straight dark hardwood shaft, slim brass end caps and a textured brown leather central grip; a few restrained copper rings, clearly a blunt staff rather than a rifle or magical beam"
+  },
+  {
+    "id": "steampunk-warhammer",
+    "cardId": "steampunk-weapon-warhammer",
+    "itemId": "warhammer",
+    "label": "Warhammer",
+    "kind": "weapon",
+    "genre": "steampunk",
+    "subject": "one steampunk warhammer with a substantial square steel head, a short blunt rear peen, brass side plates, copper rivets and a dark walnut haft; believable physical hammer, restrained mechanical-era ornament, no glowing power source"
+  },
+  {
+    "id": "steampunk-shield",
+    "cardId": "steampunk-armor-shield",
+    "itemId": "shield",
+    "label": "Shield",
+    "kind": "armor",
+    "genre": "steampunk",
+    "subject": "one compact round steampunk shield with a broad dark stained timber face, brass reinforced rim, steel central boss and evenly spaced copper rivets; sturdy circular shield, no clock face, gauges, letters or decorative loose gears"
+  },
+  {
+    "id": "steampunk-chain-mail",
+    "cardId": "steampunk-armor-chain-mail",
+    "itemId": "chain-mail",
+    "label": "Chain Mail",
+    "kind": "armor",
+    "genre": "steampunk",
+    "subject": "an empty full-length steampunk chainmail hauberk with short sleeves, dense linked dark steel rings, a reinforced brown leather collar and restrained brass shoulder fittings; clearly linked mail rather than plate, complete garment without a body"
+  }
+]
