@@ -29,6 +29,7 @@ import {
 } from "@/lib/dm/pc-attack-options";
 import type { BuiltAttack } from "@/lib/dm/pc-attack-profile";
 import { hunterMultiattack } from "@/lib/dm/srd-attacks";
+import { broadsideAttack, holdsBroadside } from "@/lib/dm/genre-gb-broadside";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { toolError, type ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
@@ -81,8 +82,11 @@ export function spendAttackEconomy(input: {
   let flurryStrike = false;
   // Whirlwind Attack and Volley: the whole action, one attack a creature
   // (src/lib/dm/srd-attacks.ts).
+  // A Sky Corsair's Broadside rides the same `volley` (genre-gb-broadside.ts).
   const multiattack =
-    args.whirlwind || args.volley
+    args.volley && holdsBroadside(sheet)
+      ? broadsideAttack({ sheet, budget, profile, weaponAttack, atRange, enemyId })
+      : args.whirlwind || args.volley
       ? hunterMultiattack({
           sheet,
           kind: args.whirlwind ? "whirlwind" : "volley",

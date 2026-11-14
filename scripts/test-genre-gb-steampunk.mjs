@@ -530,5 +530,31 @@ await run("Legend of the Skies: the aeronaut's first-round turn is followed by a
   void without;
 });
 
+// ---- GB19: Broadside ----
+
+await run("Broadside: the spent use lets the Attack action fire once at each creature in a 15-foot cone, a creature outside the cone or struck already is refused, and without it volley is refused", async () => {
+  const row = feature("aeronaut", "Broadside", 11);
+  const hero = rig.holder(row, { gear: "firearm" });
+  const { near, far } = await rig.fight(hero);
+  kit.place(near.id, 7, 2);
+  kit.place(far.id, 5, 5);
+  rig.myTurn(hero);
+  const fire = (enemy) => kit.swing(hero.id, enemy.id, [15, 3, 3, 3, 3], { weapon: "Pistol", volley: true });
+  const bare = await fire(near);
+  assert.equal(bare.ok, false, "volley fired with no Broadside spent");
+  rig.myTurn(hero);
+  rig.must(await useIt(hero, "Broadside"), "Broadside");
+  assert.equal(used(hero, "steampunk_broadside"), 1, "the use was not spent");
+  const first = await fire(near);
+  assert.ok(first.ok, `the first shot: ${first.error}`);
+  const outside = await fire(far);
+  assert.equal(outside.ok, false, "a creature 15 feet off at a right angle to the cone was fired at");
+  kit.place(far.id, 7, 3);
+  const second = await fire(far);
+  assert.ok(second.ok, `the second shot, inside the cone: ${second.error}`);
+  const again = await fire(near);
+  assert.equal(again.ok, false, "the same creature was fired at twice");
+});
+
 rig.world.close();
 finish();

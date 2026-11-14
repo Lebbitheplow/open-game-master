@@ -136,6 +136,14 @@ export const GENRE_GB_AUTHORED: GenreRow[] = [
     spends: [{ name: "Legend of the Skies", action: "none", oncePer: { marker: "legend of the skies", rounds: 10 }, does: { kind: "steampunk", what: "extra_turn" } }],
   }),
 
+  // Broadside: "1/rest, fire at up to three targets in a 15-ft cone with a
+  // single attack roll each": the turn's mark, then pc_attack with volley
+  // (src/lib/dm/genre-gb-broadside.ts).
+  row("Broadside", ["aeronaut"], {
+    counter: "steampunk_broadside",
+    spends: [{ name: "Broadside", pool: { id: "steampunk_broadside" }, action: "none", does: { kind: "buff", condition: "broadside", rounds: 1 } }],
+  }),
+
   // Difference Engine Mind: "1/rest, take the calculated answer: treat one
   // INT-based check as a natural 20" (src/lib/dm/genre-gb-calculated.ts).
   row("Difference Engine Mind", ["machinist"], {

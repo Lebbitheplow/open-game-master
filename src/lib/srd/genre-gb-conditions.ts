@@ -35,6 +35,7 @@ const ACID_FORMULA = "acid formula";
 const CATALYST_REROLL = "catalyst reroll";
 
 export const GENRE_GB_CONDITION_EFFECTS: ConditionEffectRow[] = [
+  { id: "broadside", match: ["broadside"], summary: "Broadside: this turn the corsair's Attack action fires once at each of up to three creatures in a 15-foot cone (pc_attack with volley)." },
   { id: "legend_of_the_skies", match: ["legend of the skies"], summary: "Legend of the Skies: the aeronaut has taken this fight's extra turn." },
   { id: "calculated_answer", match: ["calculated answer"], summary: "Difference Engine Mind: the next Intelligence check counts its d20 as a 20." },
   { id: "acid_formula", match: [ACID_FORMULA], summary: "Corrosive Focus: this turn the alchemist's spells deal acid damage in place of their own type." },
