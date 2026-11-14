@@ -53,7 +53,9 @@ import { commitZoneMove, planZoneMove } from "@/lib/dm/zone-move";
 import { zoneArgsSchema, zonePlacement } from "@/lib/dm/zone-args";
 import { coverFor, coverFromPoint } from "@/lib/dm/attack-spatial";
 import { zoneRowFor } from "@/lib/battlemap/zones-spells";
-import { spellEngineName } from "@/lib/content";
+import { spellEngineName, spellMechanicsFor } from "@/lib/content";
+import { sheetCreatureType } from "@/lib/dm/summon-rules";
+import { textKey } from "@/lib/language/text-logic";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { spellReachProblem, spellWardOn } from "@/lib/dm/cast-reach";
 import { partsTaken, partsTotal, splitDamageExpression, type DamagePart } from "@/lib/dm/aoe-parts";
@@ -287,6 +289,28 @@ export function handleAoeDamage(
       const ward = wardOn(target.id, target.name);
       if (ward) {
         shielded.push(ward);
+        pcTargets.splice(pcTargets.indexOf(target), 1);
+      }
+    }
+  }
+  // An area that affects some creature types alone (Calm Emotions: "each
+  // humanoid") passes over the others caught in it: a satyr, centaur or
+  // fairy is fey (summon-rules.ts sheetCreatureType). A stat block that names
+  // no type is not passed over on a guess.
+  const areaTypes = args.spell ? spellMechanicsFor({ spell: args.spell, userIds: spellAuthorsFor(campaign) })?.mech.targetTypes : undefined;
+  if (areaTypes?.length) {
+    const fits = (type: string) => !type || areaTypes.some((wanted) => textKey(type).includes(textKey(wanted)));
+    for (const enemy of [...enemyTargets]) {
+      const type = String(enemy.stats.type ?? "");
+      if (!fits(type)) {
+        shielded.push(`${args.spell} affects only ${areaTypes.join(" or ")} creatures; ${enemy.displayName} is ${textKey(type)} and is passed over.`);
+        enemyTargets.splice(enemyTargets.indexOf(enemy), 1);
+      }
+    }
+    for (const target of [...pcTargets]) {
+      const type = sheetCreatureType(target);
+      if (!fits(type)) {
+        shielded.push(`${args.spell} affects only ${areaTypes.join(" or ")} creatures; ${target.name} is ${textKey(type)} and is passed over.`);
         pcTargets.splice(pcTargets.indexOf(target), 1);
       }
     }

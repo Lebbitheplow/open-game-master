@@ -286,6 +286,36 @@ for (const row of RACES) {
         `${row.name}: a foe's Hold Person at them, then at a human (${fey.error ?? ""} ${human.error ?? ""})`,
       );
     });
+    // A character's spell for humanoids alone passes over them too: a
+    // cleric's Calm Emotions catching them and a human calms the human
+    // only, and a character turned against the party casting Hold Person
+    // at them is refused, nothing spent. A spell for the fey (Divine Word
+    // sends a celestial, elemental, fey or fiend home) reads them as fey.
+    probe("fey-allies", async () => {
+      const t = await rig.table();
+      const who = t.hero(of());
+      const other = t.hero(plain());
+      const cleric = t.hero(plain({ class: "cleric", level: 5, spells: ["Calm Emotions", "Hold Person"], equipment: [{ name: "Component pouch", qty: 1 }] }));
+      await t.fight([cleric, who, other]);
+      t.kit.place(who.id, 7, 7);
+      t.kit.place(other.id, 8, 7);
+      const calm = await t.invoke("aoe_damage", { casterCharacterId: cleric.id, spell: "Calm Emotions", characterIds: [who.id, other.id], damage: 0 }, [2, 2, 2, 2]);
+      const calmed = [Boolean(calm.ok), t.has(who, "calmed"), t.has(other, "calmed")];
+      const { sheetFoeView } = await import("../src/lib/dm/sheet-foe.ts");
+      const kind = sheetFoeView(t.world.encounter().id, t.sheet(who)).stats.type;
+      // The cleric turned against the party (a domination, a betrayal).
+      const { moveToSide } = await import("../src/lib/dm/combat-sides.ts");
+      moveToSide(t.world.campaign(), cleric.id, "foe", { quiet: true });
+      t.freshTurn();
+      t.kit.giveTurn(cleric.id);
+      const slots = JSON.stringify(t.sheet(cleric).spellcasting?.slots ?? null);
+      const hold = await t.invoke("cast_at_player", { characterId: who.id, casterEnemyId: cleric.id, spell: "Hold Person", saveAbility: "wis" }, [2, 2, 2]);
+      same(
+        [calmed, kind, Boolean(hold.ok), /humanoid/.test(hold.error ?? ""), t.has(who, "paralyzed"), JSON.stringify(t.sheet(cleric).spellcasting?.slots ?? null) === slots],
+        [[true, false, true], "fey", false, true, false, true],
+        `${row.name}: a cleric's Calm Emotions on them and a human, their type as a foe reads it, then the cleric's Hold Person at them (${calm.error ?? ""} ${hold.error ?? ""})`,
+      );
+    });
   }
   // Serpent Magic: animal friendship at will "on snakes only". The free
   // casting charms a snake; a wolf, a beast of another kind, is refused with
@@ -418,6 +448,9 @@ const NAMES = [
   "species.satyr.fey",
   "species.centaur.fey",
   "species.fairy.fey",
+  "species.satyr.fey-allies",
+  "species.centaur.fey-allies",
+  "species.fairy.fey-allies",
   "species.centaur.climbing",
   "species.fairy.fairy-magic",
   "species.owlfolk.size",

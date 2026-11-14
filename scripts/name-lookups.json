@@ -1435,7 +1435,7 @@
     "lib/dm/ai-gate.ts#switch": [["key",1,"switches on tool names, event kinds, key names and kinds"]],
     "lib/dm/ai-gate.ts#whole": [["identity",1,"a held condition by its canonical name"]],
     "lib/dm/ai-gate.ts#whole-single": [["identity",1,"the trap hold's stored condition against the condition read whole"]],
-    "lib/dm/aoe-damage.ts#partial": [["parse",1,"a comma list of target refs"]],
+    "lib/dm/aoe-damage.ts#partial": [["parse",1,"a comma list of target refs"],["key",1,"a spell's target types against the creature type its stat block or sheet names (Calm Emotions' humanoid)"]],
     "lib/dm/aoe-damage.ts#whole": [["key",2,"targets the server listed, by the same stored names"]],
     "lib/dm/aoe-parts.ts#partial": [["parse",4,"a dice expression read term by term (its signs and dice) for its maximum and its term count, never a record's name"],["pattern",2,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/dm/aoe-parts.ts#number": [["key",2,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],

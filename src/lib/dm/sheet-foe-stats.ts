@@ -17,7 +17,7 @@
 import type { EnemyAttack, EnemyStats } from "@/lib/bestiary/statblock";
 import { deriveCr } from "@/lib/bestiary/derive-cr";
 import { resolveAttackWeapon, weaponAttackProfile } from "@/lib/dm/attack-logic";
-import { enemyStatsFromSummon } from "@/lib/dm/summon-rules";
+import { enemyStatsFromSummon, sheetCreatureType } from "@/lib/dm/summon-rules";
 import { attacksAllowedFor } from "@/lib/dm/turn-budget";
 import { acBreakdownFor, computeSheetDerived, sheetSize as lineageSize } from "@/lib/srd";
 import { combatRiders } from "@/lib/srd/feature-effects";
@@ -80,7 +80,10 @@ export function sheetEnemyStats(sheet: CharacterSheet): EnemyStats {
     xp: 0,
     attacksPerTurn: Math.max(1, attacksAllowedFor(sheet)),
     size: sheetSize(sheet),
-    type: "humanoid",
+    // What the character is (a satyr, centaur or fairy is fey; a druid's
+    // bear a beast), so a spell for some creature types (Hold Person, Divine
+    // Word's sending home) reads them as it reads any creature.
+    type: sheetCreatureType(sheet),
     abilities: { ...sheet.abilities },
     skills: { ...derived.skills },
     senses: { passivePerception: derived.passivePerception },

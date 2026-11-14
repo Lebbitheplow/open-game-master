@@ -2678,10 +2678,16 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.satyr.grants"
    },
    {
-    "c": "Fey (your creature type is fey, not humanoid)",
+    "c": "Fey (your creature type is fey",
     "is": "held",
     "by": "src/lib/srd/races.json type 'fey', read by src/lib/srd/index.ts creatureTypeForRace through src/lib/dm/summon-rules.ts sheetCreatureType; src/lib/dm/cast-at-player.ts passes a humanoid-only spell (Hold Person) over the character",
     "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.satyr.fey"
+   },
+   {
+    "c": "not humanoid)",
+    "is": "held",
+    "by": "src/lib/dm/sheet-foe-stats.ts sheetEnemyStats (the type sheetCreatureType reads, for a character on the foes' side) and src/lib/dm/aoe-damage.ts (an area for some creature types passes over the others): a character's humanoid-only spell, Calm Emotions or Hold Person, passes over them",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.satyr.fey-allies"
    },
    {
     "c": "Ram (1d4 bludgeoning unarmed strike)",
@@ -2770,10 +2776,16 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.fairy.choices"
    },
    {
-    "c": "Fey (your creature type is fey, not humanoid)",
+    "c": "Fey (your creature type is fey",
     "is": "held",
     "by": "src/lib/srd/races.json type 'fey', read by src/lib/srd/index.ts creatureTypeForRace through src/lib/dm/summon-rules.ts sheetCreatureType; src/lib/dm/cast-at-player.ts passes a humanoid-only spell (Hold Person) over the character",
     "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.fairy.fey"
+   },
+   {
+    "c": "not humanoid)",
+    "is": "held",
+    "by": "src/lib/dm/sheet-foe-stats.ts sheetEnemyStats (the type sheetCreatureType reads, for a character on the foes' side) and src/lib/dm/aoe-damage.ts (an area for some creature types passes over the others): a character's humanoid-only spell, Calm Emotions or Hold Person, passes over them",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.fairy.fey-allies"
    },
    {
     "c": "Flight (flying speed equal to your walking speed, not while wearing medium or heavy armor)",
@@ -2924,10 +2936,16 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.centaur.grants"
    },
    {
-    "c": "Fey (your creature type is fey, not humanoid)",
+    "c": "Fey (your creature type is fey",
     "is": "held",
     "by": "src/lib/srd/races.json type 'fey', read by src/lib/srd/index.ts creatureTypeForRace through src/lib/dm/summon-rules.ts sheetCreatureType; src/lib/dm/cast-at-player.ts passes a humanoid-only spell (Hold Person) over the character",
     "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.centaur.fey"
+   },
+   {
+    "c": "not humanoid)",
+    "is": "held",
+    "by": "src/lib/dm/sheet-foe-stats.ts sheetEnemyStats (the type sheetCreatureType reads, for a character on the foes' side) and src/lib/dm/aoe-damage.ts (an area for some creature types passes over the others): a character's humanoid-only spell, Calm Emotions or Hold Person, passes over them",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.centaur.fey-allies"
    },
    {
     "c": "Hooves (1d4 bludgeoning unarmed strike)",
