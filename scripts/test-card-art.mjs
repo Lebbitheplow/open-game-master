@@ -51,8 +51,8 @@ test("a weapon written in the book's order or with a bonus shows its weapon's pa
   ]) assert.equal(cardArtwork({ kind: "item", key: name, family: "item-weapon" }).key, key, name);
 });
 
-test("unknown, custom and genre items retain their existing fallback", () => {
-  for (const key of ["Moon Longsword", "Pistol", "Unknown Relic"]) {
+test("unknown and custom items retain their existing fallback", () => {
+  for (const key of ["Moon Longsword", "Moon Pistol", "Unknown Relic"]) {
     const ref = { kind: "item", key, family: "item-weapon" };
     assert.equal(cardArtwork(ref), ref);
   }
@@ -103,7 +103,7 @@ test("fantasy, custom and unrecognized genres retain base art; missing variants 
   assert.equal(cardArtwork(spell, "cyberpunk"), spell);
   assert.equal(cardArtwork({ kind: "item", key: "Longsword" }, "cyberpunk").key, "weapon-longsword");
   const pistol = { kind: "item", key: "Pistol", family: "item-weapon" };
-  assert.equal(cardArtwork(pistol, "mystery"), pistol);
+  assert.equal(cardArtwork(pistol, "mystery").key, "weapon-pistol");
 });
 
 // The GM's Monster Hand deals the enemies' Dash, Disengage, Dodge, Escape
