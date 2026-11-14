@@ -148,6 +148,9 @@ export type MoveTraits =
       // extra: Mobile on a turn its holder Dashed (src/lib/srd/feat-moves.ts).
       anyGround?: boolean;
       climbs?: boolean;
+      // A centaur's Equine Build: each foot climbed costs 4 more, so a climb
+      // square costs 5 (a climbing speed still makes it 1).
+      hardClimb?: boolean;
       passable?: Set<number>;
       squeeze?: boolean;
       // What a spell area makes of a step (src/lib/battlemap/zones.ts
@@ -175,7 +178,7 @@ export function moveCost(ch: string, traits: MoveTraits = false): number {
     return swims ? 1 : 2;
   }
   if (ch === TERRAIN.climb) {
-    return typeof traits === "object" && traits.climbs ? 1 : 2;
+    return typeof traits === "object" && traits.climbs ? 1 : typeof traits === "object" && traits.hardClimb ? 5 : 2;
   }
   const stride = typeof traits === "object" && Boolean(traits.landStride || traits.anyGround);
   return ch === TERRAIN.difficult && !stride ? 2 : 1;

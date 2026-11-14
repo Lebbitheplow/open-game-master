@@ -282,6 +282,30 @@ for (const row of RACES) {
       );
     });
   }
+  // Equine Build: each foot a centaur climbs costs 4 more, so a climb
+  // square costs 25 feet; two of them and a step (55 feet) are past a
+  // centaur's 40, while a human (two climb squares at 10 feet, one step)
+  // makes it in 25 of 30.
+  if (row.traits.some((line) => line.includes("each foot of climbing costs 4 extra feet"))) {
+    probe("climbing", async () => {
+      const t = await rig.table();
+      const who = t.hero(of());
+      const other = t.hero(plain());
+      const up = async (mover) => {
+        await t.fight([mover]);
+        const walls = [];
+        for (let x = 0; x < 20; x += 1) walls.push([x, 1, "#"], [x, 3, "#"]);
+        walls.push([3, 2, "^"], [4, 2, "^"]);
+        t.kit.openField(walls);
+        t.kit.place(mover.id, 2, 2);
+        t.kit.place(mover.id === who.id ? other.id : who.id, 18, 10);
+        return (await walkTo(t, mover, 5, 2)).status;
+      };
+      const centaur = await up(who);
+      const human = await up(other);
+      same([centaur >= 400, human], [true, 200], `${row.name}: two climb squares and a step, then a human on the same climb`);
+    });
+  }
 }
 
 // The probes above by name, for the ledger's probe check (it finds a probe
@@ -293,6 +317,7 @@ const NAMES = [
   "species.satyr.fey",
   "species.centaur.fey",
   "species.fairy.fey",
+  "species.centaur.climbing",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
 

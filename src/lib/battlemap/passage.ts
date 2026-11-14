@@ -121,6 +121,8 @@ export function pcMoveTraits(input: {
   // Earth Walk (earth genasi): difficult ground of earth or stone costs no
   // extra movement (src/lib/srd/mt-species-traits.ts).
   const earthen = hasEarthWalk(input.sheet) && earthUnderfoot(input.theme) ? { landStride: true } : {};
+  // Equine Build (centaur): each foot of climbing costs 4 extra feet.
+  const equine = holdsFeature(input.sheet, "equine build") ? { hardClimb: true } : {};
   // Umbral Form's holder and a Phantom on its Ghost Walk both pass.
   const everything = movesThroughEverything(input.sheet.conditions) || (input.sheet.conditions ?? []).some((entry) => isConditionNamed(entry, GHOST_WALK));
   const spaces = passableTiles({
@@ -136,6 +138,7 @@ export function pcMoveTraits(input: {
   return {
     ...(typeof traits === "object" ? traits : { swims: traits }),
     ...earthen,
+    ...equine,
     ...(input.anyGround ? { anyGround: true } : {}),
     passable: everything && input.drawnTerrain ? new Set([...spaces, ...objectTiles(input.drawnTerrain)]) : spaces,
   };

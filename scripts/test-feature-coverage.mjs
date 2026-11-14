@@ -462,7 +462,7 @@ test("every racial trait is enforced, a resource, or acknowledged", () => {
     "Fairy Magic (druidcraft cantrip, then faerie fire from 3rd level and enlarge/reduce from 5th, 1/long rest each)",
     "Stealth proficiency (Silent Feathers)",
     "Hooves (1d4 bludgeoning unarmed strike)",
-    "Equine Build (count as one size larger for carrying)",
+    "Equine Build (count as one size larger for carrying, and each foot of climbing costs 4 extra feet)",
     "Survivor (one skill from Animal Handling, Medicine, Nature, Survival)",
     "Perception proficiency (Leporine Senses)",
     // The jump die the board's jump door rolls (src/lib/dm/jump-move.ts).
