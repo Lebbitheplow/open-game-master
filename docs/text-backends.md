@@ -160,6 +160,42 @@ middle of the turn where the fight begins or ends, and the tool list changes at
 no other time. (Up to 0.35.1 each end of a fight read the prompt twice, and the
 first turn of a campaign did too.)
 
+A server that keeps what it has read does not read it again at all:
+
+- **llama-server's memory cache** (`--cache-ram`, on by default at 8 GB) saves
+  the prompt it is leaving and brings back the one it returns to, with nothing
+  to set. Measured on Qwen3.5 9B: back to the rules of no fight after a fight
+  took 1.3 seconds instead of 74. Leave it on unless the machine has no memory
+  to spare.
+- **Snapshots on disk** (`--slot-save-path /some/folder/`, with the trailing
+  slash), for a machine whose memory is all spoken for. The app notices the
+  flag and drives it: each prompt start is saved when the turn that read it
+  ends, and restored before the call that needs it, at a fight's start and
+  end, after the server restarts, and when another table has had the slot.
+  Measured on the BC-250 with gpt-oss-20b: 0.6 seconds to save, 0.6 to 0.8 to
+  restore, against 88 to 105 seconds to read the same 33K to 37K tokens. A
+  snapshot is about 450 to 490 MB there, and the app keeps at most six per
+  model in that folder, writing over the one used longest ago. With this flag
+  the app also sends a table's turns to one slot and its helper calls to
+  another, so a helper call never takes the turn's prompt (it did, about once a
+  session, and that turn read everything again).
+
+`DM_PROMPT_SNAPSHOTS=0` leaves the flag unused.
+
+Measured on the BC-250 with gpt-oss-20b (`scripts/smoke-local.mjs`, 2026-11-14,
+seconds a turn, two campaigns one after the other on the same server):
+
+| | 0.35.1 | First campaign, nothing saved yet | Second campaign |
+|---|---|---|---|
+| Town (8 turns) | 67 | 60 | 31 |
+| Skirmish (9 turns) | 86 | 56 | 38 |
+| Slowest turn, town | 199 | 134 | 71 |
+| Slowest turn, skirmish | 263 | 155 | 64 |
+
+What a turn still reads every time is the game state and the transcript, which
+follow the rules: 3,000 to 5,000 tokens in a new campaign, 14 to 22 seconds
+there.
+
 ### presence_penalty
 
 Keep `presence_penalty` at 0 for the GM. A meaningful presence penalty under the long
@@ -314,6 +350,7 @@ llama-server -m gpt-oss-20b-MXFP4.gguf --alias gpt-oss-20b \
   -c 65536 -np 2 --kv-unified --jinja -ngl 99 \
   --flash-attn on --cache-type-k q8_0 --cache-type-v q8_0 \
   --reasoning-budget 1024 --cache-ram 0 \
+  --slot-save-path /home/you/llama-slots/ \
   --port 8001
 ```
 
@@ -322,6 +359,8 @@ llama-server -m gpt-oss-20b-MXFP4.gguf --alias gpt-oss-20b \
   it together. A fight on the full rules runs to about 52K tokens.
 - `--cache-ram 0` keeps llama-server from holding extra prompt cache in system
   memory, which on this box is the memory the model needs.
+- `--slot-save-path` gives it the disk instead (see The prompt cache): the folder
+  must exist, and the path ends with a slash. Allow about 3 GB.
 
 ## Local models (legacy "Local" provider, Ollama)
 

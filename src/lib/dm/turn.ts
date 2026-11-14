@@ -157,7 +157,17 @@ import { characterAwaitingPlayer, characterHeld, prepareWordFor } from "@/lib/dm
 import { hitIdOf, openHits } from "@/lib/dm/last-hit";
 import { aiPlaysSheet } from "@/lib/dm/companion-command";
 import { enemiesDue, enemiesOwedTurn, personRunsTable } from "@/lib/dm/enemies-due";
-import { narratorKeepsPromptStart, noteTurnHead, rulesAcrossFight, scheduleNextTurnCheck, settleTurnWarmup, turnHeadKey, warmNextTurn } from "@/lib/dm/turn-warmup";
+import {
+  narratorKeepsPromptStart,
+  noteTurnHead,
+  noteTurnReuse,
+  readyTurnHead,
+  rulesAcrossFight,
+  scheduleNextTurnCheck,
+  settleTurnWarmup,
+  turnHeadKey,
+  warmNextTurn,
+} from "@/lib/dm/turn-warmup";
 import { directContextFor } from "@/lib/dm/direct-context";
 import { castCarded, castDeclared, castRolled, castToolHint, namedCreature, slotlessCastCall, storedCastHint, unpaidCastPrompt, type CastCreature } from "@/lib/dm/slotless-cast-logic";
 import { storerHolding } from "@/lib/srd/spell-storing";
@@ -2136,9 +2146,18 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
         firstMessage.content = rules;
       }
     }
+    // A narrator that keeps prompt snapshots has the first message put back
+    // from one when its slot holds another (src/lib/dm/prompt-snapshot.ts):
+    // a fight's rules after the first fight, the table's own after another
+    // table's turn or a restart. The compact set's first message follows the
+    // players' words, so it is never the same twice and is left alone.
+    let slot: number | undefined;
     if (!resolvesCard && firstMessage?.role === "system" && typeof firstMessage.content === "string") {
       const head = turnHeadKey(campaign.settings, firstMessage.content, tools);
       await settleTurnWarmup(campaignId, head);
+      if (rulesFollowTools && !toolsClosed) {
+        slot = await readyTurnHead(campaign.settings, campaignId, head, turn.callIndex === 0);
+      }
       noteTurnHead(campaignId, head);
     }
     // The card's own tool call stands in for the first reply: the engine
@@ -2154,6 +2173,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       // Fitted again to the window before it goes: the prompt has grown by
       // every call and result so far (src/lib/dm/turn-fit.ts).
       ...turnCallOptions(campaign, turn, "turn"),
+      ...(slot !== undefined ? { slot } : {}),
       // Force pure narration on the last permitted call so a tool-happy
       // model cannot loop forever.
       toolChoice: finalCall ? "none" : "auto",
@@ -2174,6 +2194,9 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     });
 
     const { message, error, finishReason } = reply;
+    if (slot !== undefined && !error) {
+      noteTurnReuse(campaign.settings, campaignId, reply.usage?.cachedInputTokens);
+    }
     // A call the server answered with its tools taken off is kept on the
     // turn's trace and shown on the admin text-model panel (tool-call-health.ts).
     if (!resolvesCard && tools.length && !error) {
