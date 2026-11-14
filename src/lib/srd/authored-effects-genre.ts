@@ -19,6 +19,7 @@ import { GENRE_B_MYSTERY_AUTHORED } from "@/lib/srd/authored-effects-genre-b-mys
 import { GENRE_B_PA_AUTHORED } from "@/lib/srd/authored-effects-genre-b-post-apocalyptic";
 import { GENRE_B_STEAMPUNK_AUTHORED } from "@/lib/srd/authored-effects-genre-b-steampunk";
 import { GENRE_GB_AUTHORED } from "@/lib/srd/authored-effects-genre-gb";
+import { GENRE_GH_AUTHORED } from "@/lib/srd/authored-effects-genre-gh";
 
 export type GenreRow = { feature: string; classes?: string[]; entry: AuthoredEntry };
 
@@ -113,6 +114,8 @@ export const GENRE_AUTHORED: GenreRow[] = [
   { feature: "Intercept Protocol", entry: { subclass: "genre", reactions: [{ name: "Intercept Protocol", does: { kind: "take_for_ally", rangeFt: 5, swap: true } }] } },
   { feature: "Blood Bond", entry: { subclass: "genre", reactions: [{ name: "Blood Bond", does: { kind: "take_for_ally", rangeFt: 30, share: "split", ownSummon: true } }] } },
   ...GENRE_A_AUTHORED,
+  // The horror classes' features of the cc1113 genre-c pass.
+  ...GENRE_GH_AUTHORED,
   // The mystery, post-apocalyptic and steampunk classes' own (wave 2).
   ...GENRE_B_AUTHORED,
   ...GENRE_B_MYSTERY_AUTHORED,

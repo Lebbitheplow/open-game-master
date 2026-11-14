@@ -2,7 +2,7 @@
 // (ids GH..): each case fails without its mechanism, and the clause ledger
 // (scripts/clauses/genre-horror.json) points here for the clauses it holds.
 import assert from "node:assert/strict";
-import "./lib/enforce-world.mjs";
+import { dice, clearDice } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { clausesRig } from "./lib/sweep-clauses-genre-b-probes.mjs";
 
@@ -90,6 +90,62 @@ await test("Unified Theory: a 17th-level parapsychologist holds three spells fro
 
 await test("Apocrypha and Seventh Seal: an occultist's list reaches a 6th-level spell at 13th and a 7th-level one at 17th, and no further", () => {
   assert.deepEqual([12, 13, 16, 17, 20].map((level) => mysticArcanumTop("occultist", level)), [0, 6, 6, 7, 7]);
+});
+
+// ---- GH04: plays of the horror counters ----
+
+const spend = (hero, resource, args = {}) => world.invoke("use_resource", { characterId: hero.id, resource, reason: "probe", ...args });
+const used = (hero, id) => world.sheet(hero.id).resources?.[id]?.used ?? 0;
+async function failedSave(who, ability, condition) {
+  clearDice();
+  dice(2);
+  rig.must(await world.invoke("request_roll", { characterId: who.id, kind: "saving_throw", ability, dc: 15, reason: "probe" }), "the save");
+  if (condition) world.patch(who.id, { conditions: [condition], conditionMeta: { [condition]: { saveEnds: { ability, dc: 15 } } } });
+}
+
+await run("Peer Review: an ally's failed WIS save is rolled again, a success ends what the save would have ended, and the use is spent; a failed STR save is not its to reroll", async () => {
+  const hero = rig.holder(feature("parapsychologist", "Peer Review", 6));
+  await failedSave(rig.ally, "str");
+  assert.ok((await spend(hero, "Peer Review", { targetCharacterId: rig.ally.id })).error, "a failed STR save was rerolled");
+  await failedSave(rig.ally, "wis", "frightened");
+  dice(19);
+  const out = rig.must(await spend(hero, "Peer Review", { targetCharacterId: rig.ally.id }), "Peer Review");
+  assert.match(JSON.stringify(out), /success/);
+  assert.deepEqual(world.sheet(rig.ally.id).conditions, [], "the fear the save ends still holds");
+  assert.equal(used(hero, "horror_peer_review"), 1);
+});
+
+await run("The Final Chapter: the occultist's own save is rolled again and the reroll stands; an attack on them is answered by its reaction", async () => {
+  const hero = rig.holder(feature("occultist", "The Final Chapter", 18));
+  await failedSave(hero, "con", "poisoned");
+  dice(18);
+  const out = rig.must(await spend(hero, "The Final Chapter"), "The Final Chapter");
+  assert.match(JSON.stringify(out), /success/);
+  assert.deepEqual(world.sheet(hero.id).conditions, []);
+  assert.equal(used(hero, "horror_the_final_chapter"), 1);
+  const { authored: held } = rig.engineHooks(hero, { name: "The Final Chapter" });
+  assert.ok(held.length, "no authored row answers The Final Chapter");
+});
+
+await run("Rite of Severance: an exorcist's Wisdom contest, with advantage, expels the entity possessing an ally", async () => {
+  const hero = rig.holder(feature("exorcist", "Rite of Severance", 15));
+  world.patch(rig.ally.id, { conditions: ["possessed"], conditionMeta: {} });
+  clearDice();
+  dice(18, 3, 2);
+  const out = rig.must(await spend(hero, "Rite of Severance", { targetCharacterId: rig.ally.id }), "Rite of Severance");
+  assert.match(JSON.stringify(out), /expelled/);
+  assert.deepEqual(world.sheet(rig.ally.id).conditions, []);
+  assert.ok((await spend(hero, "Rite of Severance", { targetCharacterId: rig.ally.id })).error, "a second rite on a free host");
+});
+
+await run("Stitch the Tear: a summoned creature of CR 5 or lower is sent back, and one that was not summoned is refused", async () => {
+  const hero = rig.holder(feature("occultist", "Stitch the Tear", 7));
+  const { near, far } = await rig.fight(hero);
+  assert.ok((await spend(hero, "Stitch the Tear", { targetEnemyId: near.id })).error, "a creature never summoned was sent back");
+  kit.setEnemy(far.id, { conditions: ["summoned"] });
+  rig.must(await spend(hero, "Stitch the Tear", { targetEnemyId: far.id }), "Stitch the Tear");
+  assert.notEqual(kit.enemy(far.id).status, "alive", "the summoned creature is still here");
+  assert.equal(used(hero, "horror_stitch_the_tear"), 1);
 });
 
 rig.world.close();

@@ -311,15 +311,15 @@
    },
    {
     "c": "a 1-minute ritual expels a possessing entity from a host",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_rite_of_severance#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-rite-of-severance"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Rite of Severance: an exorcist's Wisdom contest, with advantage, expels the entity possessing an ally",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts horror_spend row on the class counter, played by src/lib/dm/genre-gh-horror-plays.ts riteOfSeverance (WIS check with advantage against the possessor's, the host's possessed condition ended)"
    },
    {
     "c": "contested WIS, you have advantage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_rite_of_severance#GUIDANCE_ONLY",
-    "same_probe_as": 1
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Rite of Severance: an exorcist's Wisdom contest, with advantage, expels the entity possessing an ally",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts horror_spend row on the class counter, played by src/lib/dm/genre-gh-horror-plays.ts riteOfSeverance (WIS check with advantage against the possessor's, the host's possessed condition ended)"
    }
   ]
  },
@@ -903,15 +903,15 @@
    },
    {
     "c": "reroll any one die you or a creature within 60 ft just rolled",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_the_final_chapter#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-the-final-chapter"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs The Final Chapter: the occultist's own save is rolled again and the reroll stands; an attack on them is answered by its reaction",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts horror_spend row on the class counter, played by src/lib/dm/genre-gh-horror-plays.ts finalChapter (a save or check of the occultist or an ally within 60 feet, the new roll standing), and its reroll_hit reaction (roller, 60 feet) for an attack roll, src/lib/dm/authored-reactions.ts"
    },
    {
     "c": "the reroll stands",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_the_final_chapter#GUIDANCE_ONLY",
-    "same_probe_as": 1
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs The Final Chapter: the occultist's own save is rolled again and the reroll stands; an attack on them is answered by its reaction",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts horror_spend row on the class counter, played by src/lib/dm/genre-gh-horror-plays.ts finalChapter (a save or check of the occultist or an ally within 60 feet, the new roll standing), and its reroll_hit reaction (roller, 60 feet) for an attack roll, src/lib/dm/authored-reactions.ts"
    }
   ]
  },
@@ -1011,15 +1011,9 @@
    },
    {
     "c": "close a portal, summoning, or breach of CR/level 5 or lower",
-    "run": {
-     "k": "spend_moves",
-     "id": "horror_stitch_the_tear"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Stitch the Tear#1",
-    "observed": "spending horror_stitch_the_tear moved its counter and the turn's cost and nothing else; the result was its guidance: 1/long rest, close a portal, summoning, or breach of CR/level 5 or lower as an action.",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Stitch the Tear: a summoned creature of CR 5 or lower is sent back, and one that was not summoned is refused",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts horror_spend row on the class counter, played by src/lib/dm/genre-gh-horror-plays.ts stitchTheTear (a creature marked summoned of CR 5 or lower is sent back; a portal or breach is a place the GM closes in the story)"
    },
    {
     "c": "as an action",
@@ -2268,15 +2262,15 @@
    },
    {
     "c": "when an ally fails an INT, WIS, or CHA save within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_peer_review#TRIGGER_AS_CARD",
-    "recorded_as": "spends-trigger-as-card-counter-horror-peer-review"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Peer Review: an ally's failed WIS save is rolled again, a success ends what the save would have ended, and the use is spent; a failed STR save is not its to reroll",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts horror_spend row on the class counter, played by src/lib/dm/genre-gh-horror-plays.ts peerReview (the ally named within 30 feet, their last failed INT, WIS or CHA save rolled again)"
    },
    {
     "c": "let them reroll with your guidance",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_peer_review#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-peer-review"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Peer Review: an ally's failed WIS save is rolled again, a success ends what the save would have ended, and the use is spent; a failed STR save is not its to reroll",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts horror_spend row on the class counter, played by src/lib/dm/genre-gh-horror-plays.ts peerReview (the ally named within 30 feet, their last failed INT, WIS or CHA save rolled again)"
    }
   ]
  },
