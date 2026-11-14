@@ -1813,15 +1813,9 @@
    },
    {
     "c": "marking is free when a creature harms an ally",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap slayer::Improved Quarry#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Improved Quarry: marking the creature that harmed an ally this round costs no bonus action; marking one that harmed nobody still does",
+    "by": "src/lib/dm/genre-gh-quarry.ts improvedQuarryFree (the round's attack lines and the creature's damage rolls on an ally), asked by src/lib/dm/authored-spends.ts beside freeSpendThisTurn: the Quarry spend costs no action"
    }
   ]
  },

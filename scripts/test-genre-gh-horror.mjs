@@ -346,5 +346,19 @@ await run("Extinction: once on each of the slayer's turns a missed attack on the
   await card.keepAll(hero);
 });
 
+// ---- GH10: Improved Quarry's free mark ----
+
+await run("Improved Quarry: marking the creature that harmed an ally this round costs no bonus action; marking one that harmed nobody still does", async () => {
+  const hero = rig.holder(feature("slayer", "Improved Quarry", 11));
+  const { near, far } = await rig.fight(hero);
+  await rig.clubbed(near, rig.ally, 16);
+  assert.ok(world.sheet(rig.ally.id).currentHp < 100, "the club did not land on the ally");
+  kit.giveTurn(hero.id);
+  rig.must(await spend(hero, "Quarry", { targetEnemyId: near.id }), "Quarry on the creature that hurt the ally");
+  assert.notEqual(rig.budget().bonusUsed, true, "the free mark cost a bonus action");
+  rig.must(await spend(hero, "Quarry", { targetEnemyId: far.id }), "Quarry on a creature that hurt nobody");
+  assert.equal(rig.budget().bonusUsed, true, "the mark on a creature that harmed nobody cost nothing");
+});
+
 rig.world.close();
 finish();
