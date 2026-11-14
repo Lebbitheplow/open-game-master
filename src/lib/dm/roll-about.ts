@@ -62,6 +62,10 @@ export const CHECK_ABOUT = [
   "ships",
   // Automatic Writing (parapsychologist): searching a place where someone died violently.
   "violent_death",
+  // Funerary Grace (grave knight): with mourners and those who serve death.
+  "death_rites",
+  // Guild Dues (plague doctor): sourcing rare reagents, poisons or cadavers.
+  "rare_reagents",
 ] as const;
 export type CheckAbout = (typeof CHECK_ABOUT)[number];
 
@@ -109,7 +113,9 @@ export const CHECK_KEY_PROPERTIES = {
 // What a save can resist: a condition, a damage type, a disease, or being
 // thrown from a mount (Born to the Saddle). Whether it is magic, and the
 // type of a spell's caster, are fields of their own (SaveAgainst).
-export const SAVE_AGAINST = [...CONDITION_VALUES, ...DAMAGE_TYPE_VALUES, "disease", "dismount"] as const;
+// "curse": a curse laid on the creature (Anathema Ward); "aging", "drain"
+// (of life or hit point maximum) and "possession" (Wight-Iron Will).
+export const SAVE_AGAINST = [...CONDITION_VALUES, ...DAMAGE_TYPE_VALUES, "disease", "dismount", "curse", "aging", "drain", "possession"] as const;
 export type SaveAgainstValue = (typeof SAVE_AGAINST)[number];
 
 // What one save resists, as the save-keyed traits read it.

@@ -6,6 +6,8 @@
 // pc-attack.ts, which decides and rolls the attack these dice belong to.
 // Nothing here refuses the attack.
 
+import { besideSwarm } from "@/lib/dm/genre-cc-a-turns";
+import { holdsGenreFeature } from "@/lib/srd/genre-b-combat";
 import { textKey } from "@/lib/language/text-logic";
 import { runToward } from "@/lib/dm/mt-fb-charge";
 import { airborneNow } from "@/lib/dm/genre-gb-airborne";
@@ -68,7 +70,8 @@ export function foldDamageRiders(input: {
   const { campaignId, sheet } = input;
   // Gutter Fighting's "a creature that has not acted yet this combat".
   const fight = input.enemy?.id ? getActiveEncounter(campaignId) : null;
-  const notActed = Boolean(fight && input.enemy?.id && enemyNotActed(fight, input.enemy.id));
+  // Greater Gutter Fighting: "also applies to creatures adjacent to your swarm".
+  const notActed = Boolean(fight && input.enemy?.id && (enemyNotActed(fight, input.enemy.id) || (holdsGenreFeature(sheet, "vermin_lord", "Greater Gutter Fighting") && besideSwarm(fight, sheet.id, input.enemy.id))));
   // The run straight at it this turn, for a rider that rides one (Ram Speed).
   const ranFt = fight && input.enemy?.id ? runToward(fight, sheet.id, input.enemy.id) : 0;
   let profile = input.profile;

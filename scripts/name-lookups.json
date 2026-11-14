@@ -9,6 +9,12 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
+    "lib/dm/genre-cc-a-squire.ts#whole": [["identity",1,"a record by its whole name (textKey on both sides): the creature size the foe's block names"]],
+    "lib/dm/genre-cc-a-squire.ts#partial": [["parse",1,"an attack's own damage type, the first of the types its stored line joins with a slash"]],
+    "lib/dm/genre-cc-a-saves.ts#partial": [["parse",1,"a die's faces read from its dice notation"]],
+    "lib/dm/genre-cc-a-saves.ts#keyed": [["key",1,"a held condition's meta, by the condition's own stored name"]],
+    "lib/dm/genre-cc-a-turns.ts#first": [["key",1,"the token of an enemy of the fight, by its id"]],
+    "lib/dm/genre-cc-a-checks.ts#partial": [["parse",2,"the skill a check card names in the detail the engine wrote for it (the roll record keeps no skill field), read as Grease the Wheels reads it"]],
     "lib/dm/invoke-roll.ts#partial": [["pattern",1,"a fixed pattern over the model's roll reason that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/srd/infusion-picks.ts#bypass": [["identity",2,"a record by its whole name (textKey on both sides): the infusion option names and the carried rows that take them"]],
     "lib/srd/infusion-picks.ts#helper": [["identity",1,"a record by its whole name (textKey on both sides): the infusion option names and the carried rows that take them"]],

@@ -21,6 +21,7 @@
 // hit points, concentration, death, the token), so this module never imports
 // enemy-damage.ts, which reaches it.
 
+import { packHunting } from "@/lib/dm/genre-cc-a-vermin";
 import { defenderDodging } from "@/lib/dm/defender-dodge";
 import { darkVeil } from "@/lib/dm/ar-ws-lunar-empowerment";
 import { enemyNotActed } from "@/lib/dm/genre-a-strikes";
@@ -326,7 +327,7 @@ export function authoredAttackSituation(input: {
   let autoCrit: string | null = null;
   const type = textKey(enemy.stats.type ?? "");
   // Pack Tactics Training, Apex Pair (src/lib/dm/genre-b-post-apocalyptic-pack.ts).
-  const pack = packTactics(input.campaignId, encounter.id, sheet, enemy);
+  const pack = packTactics(input.campaignId, encounter.id, sheet, enemy) ?? packHunting(input.campaignId, encounter.id, sheet, enemy);
   if (pack) {
     sources.push("advantage");
     notes.push(pack);

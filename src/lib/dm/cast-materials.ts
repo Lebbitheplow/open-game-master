@@ -25,7 +25,7 @@ import { hasItemTag } from "@/lib/srd/item-tags";
 import type { ItemTag } from "@/lib/schemas/item-tags";
 import { subclassFocus } from "@/lib/dm/ar-wbf-bard-casting-logic";
 import { holdsFeature } from "@/lib/srd/feature-names";
-import { carriesCyberdeck, genreFocusOf } from "@/lib/srd/genre-a-cyberpunk-focus";
+import { carriesCyberdeck, carriesDoctorKit, genreFocusOf } from "@/lib/srd/genre-a-cyberpunk-focus";
 
 export type MaterialComponent = {
   // The words a carried line must share.
@@ -264,6 +264,11 @@ export function focusProblem(sheet: Pick<CharacterSheet, "name" | "class" | "cla
     return carriesCyberdeck(sheet.equipment) || sheet.equipment.some((item) => hasItemTag(item, "arcane_focus"))
       ? null
       : { error: `${facts.name} has a material component${facts.materialText ? ` (${facts.materialText.replace(/\.$/, "")})` : ""}: ${sheet.name} needs their cyberdeck as the focus (${genre.feature}; a Cyberdeck or an arcane focus on the sheet) or a component pouch to cast it, and carries neither. Add one to the sheet. Nothing was spent.`, refused: "rules" };
+  }
+  if (genre?.kind === "kit") {
+    return carriesDoctorKit(sheet.equipment)
+      ? null
+      : { error: `${facts.name} has a material component${facts.materialText ? ` (${facts.materialText.replace(/\.$/, "")})` : ""}: ${sheet.name}'s focus is their kit and mask (${genre.feature}; a herbalism kit, a healer's kit or the beaked mask on the sheet) or a component pouch, and they carry neither. Add one to the sheet. Nothing was spent.`, refused: "rules" };
   }
   const classIds = [sheet.class, ...(sheet.classes ?? []).map((entry) => entry.id)].map((id) => (id ?? "").trim().toLowerCase());
   const kinds = [...new Set(classIds.flatMap((id) => CLASS_FOCUS[id] ?? []))];

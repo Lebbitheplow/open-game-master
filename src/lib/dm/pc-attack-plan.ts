@@ -6,6 +6,7 @@
 // the quiver is only counted, the maneuver's pool and the smite's slot are
 // only looked at, and the budget is a copy until pc-attack.ts stores it.
 
+import { silverTideRider } from "@/lib/dm/genre-cc-a-dark-fantasy";
 import { secondSneakKey } from "@/lib/dm/mt-mr-turn";
 import { luckPointsLeft } from "@/lib/srd/class-resources";
 import { ownTurnOf } from "@/lib/dm/held-turn";
@@ -674,6 +675,11 @@ export function planPcAttack(input: {
   if (curse) {
     profile = { ...profile, damageExpression: `${profile.damageExpression}+${curse.dice}` };
   }
+  // Silver Tide's radiant on a witch hunter's branded quarry (genre-cc-a-dark-fantasy.ts).
+  const tide = silverTideRider(campaign.id, encounter.id, sheet, enemy, weaponAttack);
+  if (tide) {
+    profile = { ...profile, damageExpression: `${profile.damageExpression}+${tide.dice}`, riderNotes: [...profile.riderNotes, tide.note] };
+  }
   const situation = attackSituation({
     campaign,
     encounter,
@@ -811,7 +817,7 @@ export function planPcAttack(input: {
     // Curving Shot's reroll is the same arrow.
     ammo: options.featureBonus?.noAmmo ? null : ammo,
     drawn,
-    typedRiders: [...folded.typedRiders, ...gear.typed, ...(curse ? [curse] : [])],
+    typedRiders: [...folded.typedRiders, ...gear.typed, ...(curse ? [curse] : []), ...(tide ? [{ dice: tide.dice, type: tide.type }] : [])],
     droppedRiders,
     hitClaims,
     effectiveAc: geometry.effectiveAc,

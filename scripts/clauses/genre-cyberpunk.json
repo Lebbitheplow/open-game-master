@@ -37,15 +37,12 @@
   "clauses": [
    {
     "c": "May run any known program with the ritual tag over 10 minutes without spending a slot",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "ritual casting by a genre caster is not staged by this sweep",
     "run": {
-     "k": "hook"
+     "k": "cc_ritual"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Hot-Sim Focus#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/cast-rules.ts canCastRituals (Hot-Sim Focus), read by the ritual guard ritualProblem",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Hot-Sim Focus#0"
    }
   ]
  },
@@ -119,12 +116,13 @@
   "clauses": [
    {
     "c": "Stores one program of level 1-3",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "a stored program is not a state any tool of the catalog writes; there is no call to make",
-    "probe": "none of its own: no program is stored on the sheet; the hook probe now answers for the counter of clause #1",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "run": {
+     "k": "cc_daemon",
+     "level": 5
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts Daemon Cache, resolved by src/lib/dm/genre-cc-a-spends.ts daemonCache (slotless cast (3rd), read by src/lib/dm/genre-b-free-cast.ts genreFreeCast)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Daemon Cache#0"
    },
    {
     "c": "cast it once without a slot per long rest",
@@ -195,12 +193,13 @@
   "clauses": [
    {
     "c": "Cache holds two programs of level 1-5",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "a stored program is not a state any tool of the catalog writes; there is no call to make",
-    "probe": "none of its own: no program is stored on the sheet; the hook probe now answers for the Daemon Cache counter",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "run": {
+     "k": "cc_daemon",
+     "level": 11
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-spends.ts daemonCache (slotless cast (5th) with Daemon Cache (2 programs)) and the counter's upgrade to two uses (src/lib/srd/genre-a-counter-terms.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Daemon Cache (2 programs)#0"
    }
   ]
  },
@@ -212,23 +211,23 @@
   "clauses": [
    {
     "c": "Learn two programs from any spell list",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs the level-up offer of the builder for this class and level (the builder sweep's rig), not staged here",
     "run": {
-     "k": "hook"
+     "k": "cc_firmware",
+     "part": "learn"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Black Market Firmware#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/class-spell-grants.ts classSpellGrants (two any-list picks on top at netrunner 13), read by the level-up route (src/lib/srd/level-up-spells.ts), the level-up offer (level-up-options.ts), the builder's spell step and the campaign's level-up dialog (any-list-picks-logic.ts) and the creation check (legality/spells.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Black Market Firmware#0"
    },
    {
     "c": "they count as wizard-list for you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Black Market Firmware#0 (a table check only: no engine table answers to the feature)",
-    "read_only": true,
-    "stopped": "needs the level-up offer of the builder for this class and level (the builder sweep's rig), not staged here",
-    "same_probe_as": 0
+    "run": {
+     "k": "cc_firmware",
+     "part": "count"
+    },
+    "is": "held",
+    "by": "src/lib/srd/spell-prep.ts spellCapWithGrantsOf and changePreparation: the programs are held as the netrunner's own, on top of what they prepare, and stay ready at a rest",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Black Market Firmware#1"
    }
   ]
  },
@@ -339,9 +338,12 @@
    },
    {
     "c": "+2 to the save",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages"
+    "run": {
+     "k": "cc_ice_save"
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts ICE Pick (ac_vs_hit orSave 2), resolved by src/lib/dm/ar-ws-deflection.ts deflectSaveHalf and src/lib/dm/save-turned.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::ICE Pick#2"
    }
   ]
  },
@@ -971,9 +973,12 @@
    },
    {
     "c": "opportunity attacks against you have disadvantage",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "an opportunity attack against the holder is not staged by this sweep (it needs the holder to leave a foe's reach on the holder's own turn through the move route)"
+    "run": {
+     "k": "cc_oa"
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts Afterimage (oa_disadv), read by src/lib/dm/opportunity.ts resolveOpportunityAttacks (activeAuthored(sheet, \"oa_disadv\"))",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Afterimage#1"
    }
   ]
  },
@@ -1043,10 +1048,12 @@
    },
    {
     "c": "10 minutes of tinkering restores a broken device or gives a tool user +1d4 for 1 hour",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs ruling counter:cyberpunk_jury_rig#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-cyberpunk-jury-rig",
-    "ruling": "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\""
+    "run": {
+     "k": "cc_jury"
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts Jury-Rig (src/lib/dm/genre-cc-a-spends.ts juryRig, the jury-rigged mark for 600 rounds), read by src/lib/dm/rolls.ts on a check made with a tool",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: rigger::Jury-Rig#1"
    }
   ]
  },
@@ -1125,11 +1132,12 @@
    },
    {
     "c": "command all your drones with a single action",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Drone Swarm#0 (a table check only: no engine table answers to the feature)",
-    "read_only": true,
-    "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
-    "same_probe_as": 0
+    "run": {
+     "k": "cc_drone_command"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-a-summons.ts summonGenreCompanion (each drone a summoned ally with its own place in the order, acting on its own turn, so no command spends the rigger's action)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: rigger::Drone Swarm#1"
    }
   ]
  },
@@ -1141,15 +1149,12 @@
   "clauses": [
    {
     "c": "Drone command and Remote Eyes range extends to 1 mile",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
     "run": {
-     "k": "hook"
+     "k": "cc_drone_command"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Signal Boost#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-summons.ts summonGenreCompanion (a drone acts on its own turn wherever it stands on the board: no command range binds it, so a mile's reach holds)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: rigger::Signal Boost#0"
    }
   ]
  },
@@ -1205,15 +1210,17 @@
   "clauses": [
    {
     "c": "Advantage on saves against effects that would sever or hijack control of your drones",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
     "run": {
-     "k": "hook"
+     "k": "save_adv",
+     "ability": "wis,con",
+     "against": [
+      "charmed",
+      "stunned"
+     ]
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Hardened Uplink#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts Hardened Uplink (save_adv against charmed, stunned, paralyzed, incapacitated, unconscious), read by the save's roll keys",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: rigger::Hardened Uplink#0"
    }
   ]
  },
@@ -1240,9 +1247,12 @@
   "clauses": [
    {
     "c": "Rebuild a destroyed drone on a long rest for free",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on"
+    "run": {
+     "k": "cc_backup_frame"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-a-summons.ts summonGenreCompanion (Drone Companion builds the drones again outside a fight with no counter spent)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: rigger::Backup Frame#0"
    },
    {
     "c": "once per day",
@@ -1407,15 +1417,12 @@
   "clauses": [
    {
     "c": "Your drones take half damage from area effects, none on a successful DEX save",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
     "run": {
-     "k": "hook"
+     "k": "cc_drone_evasion"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Evasive Subroutines#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-drones.ts droneEvades, read by src/lib/dm/aoe-characters.ts (Evasion on a DEX save for half, half of any other area)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: rigger::Evasive Subroutines#0"
    }
   ]
  },
@@ -1601,15 +1608,12 @@
   "clauses": [
    {
     "c": "Sell goods at full value",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs the shop's sell route with a priced item; not staged here",
     "run": {
-     "k": "hook"
+     "k": "cc_full_value"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap fixer::Silver Ledger#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-fixer.ts sellsAtFullValue, read by src/lib/dm/shop-tools.ts handleSellItem",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: fixer::Silver Ledger#0"
    },
    {
     "c": "you can always find a buyer or seller within a day",
@@ -1626,15 +1630,12 @@
   "clauses": [
    {
     "c": "When you roll initiative, move up to your speed without provoking opportunity attacks",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "cc_exit"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap fixer::Exit Strategy#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-fixer.ts exitAtInitiative (src/lib/dm/feature-hooks.ts, as initiative is rolled) and src/lib/dm/genre-cc-a-spends.ts exitStrategy (src/lib/dm/authored-reactions-more.ts reactionMove: full speed, no opportunity attack)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: fixer::Exit Strategy#0"
    }
   ]
  },
@@ -1698,15 +1699,12 @@
   "clauses": [
    {
     "c": "A creature that accepts your parley cannot attack you until your next turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "cc_parley"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap fixer::Neutral Ground#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-spends.ts parley (the neutral ground mark until the fixer's next turn), read by src/lib/dm/enemy-attack.ts through src/lib/dm/genre-cc-a-fixer.ts parleyHolds",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: fixer::Neutral Ground#0"
    }
   ]
  },
@@ -2873,15 +2871,8 @@
   "clauses": [
    {
     "c": "Carry or drag allies at full speed",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Extraction#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "left",
+    "why": "A position the engine does not track for any class: no character carries or drags an ally on the board (src/lib/dm/drag-move.ts drags only a grappled foe), so the speed of carrying one is the GM's to narrate. The nearest written reason is docs/rules-enforcement-audit.md, \"What stays narrated, and why\": \"Authored features, 11. Roleplay or information (Master of Nature, Know Your Enemy, ...), a position or companion the engine does not track\"."
    },
    {
     "c": "allies you stabilize or heal gain 1d6 temp HP",

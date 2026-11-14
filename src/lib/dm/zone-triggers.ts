@@ -16,6 +16,7 @@
 // roll row and its damage lands through spell-aura.ts hurtEnemy. Returns
 // the lines for the table.
 
+import { maskKeepsOut } from "@/lib/dm/genre-cc-a-drones";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import type { Campaign } from "@/lib/db/campaigns";
 import { closeStandInTurn, openStandInTurn, type DmTurn } from "@/lib/db/dm-turns";
@@ -206,6 +207,10 @@ function strike(
   const sheet = getSheetById(victim.id);
   if (!sheet || sheet.deathSaves?.dead) {
     return [];
+  }
+  // Beaked Mask: a poison gas the plague doctor would breathe passes them by (genre-cc-a-drones.ts).
+  if (maskKeepsOut(sheet, row.gas === true, trigger.type, trigger.condition, trigger.losesAction)) {
+    return [`${sheet.name}'s beaked mask keeps out ${zone.spell}.`];
   }
   const held = Boolean(trigger.condition && holds(sheet.conditions, trigger.condition) && !dice);
   if (held && !trigger.concentrationSave) {

@@ -12,6 +12,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { GEAR_ZONE_ROWS } from "@/lib/battlemap/zones-gear";
 import { FEATURE_ZONE_ROWS } from "@/lib/battlemap/zones-features";
 import { GENRE_B_ZONE_ROWS } from "@/lib/battlemap/zones-genre-b";
+import { GENRE_CC_A_ZONE_ROWS } from "@/lib/battlemap/zones-genre-cc-a";
 
 export type ZoneShape =
   // A burst around a point: every square within `feet` of it (a cylinder
@@ -542,7 +543,7 @@ export const CREATURE_ZONE_ROWS: Record<string, ZoneRow> = {
 };
 
 // A class feature's own area (Dread Lord's gloom) reads its row here too.
-const AREA_ROWS: Record<string, ZoneRow> = { ...ZONE_ROWS, ...GEAR_ZONE_ROWS, ...CREATURE_ZONE_ROWS, ...FEATURE_ZONE_ROWS, ...MT_FB_ZONE_ROWS, ...GENRE_B_ZONE_ROWS };
+const AREA_ROWS: Record<string, ZoneRow> = { ...ZONE_ROWS, ...GEAR_ZONE_ROWS, ...CREATURE_ZONE_ROWS, ...FEATURE_ZONE_ROWS, ...MT_FB_ZONE_ROWS, ...GENRE_B_ZONE_ROWS, ...GENRE_CC_A_ZONE_ROWS };
 
 export function zoneRowFor(spell: ZoneNamed): ZoneRow | null {
   return AREA_ROWS[zoneKey(spell)] ?? null;

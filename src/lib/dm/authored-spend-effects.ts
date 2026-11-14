@@ -3,6 +3,7 @@
 // it writes; the caller then spends the pool and the turn.
 
 import { familiarWork } from "@/lib/dm/genre-gb-familiars";
+import { genreCcSpend } from "@/lib/dm/genre-cc-a-spends";
 import { memoryOffBoard, stripMemory } from "@/lib/dm/ar-ws-alter-memories";
 import { buffAim, otherOutcomes, strayBuffTarget } from "@/lib/dm/ar-ws-buff-aim";
 import { scribeScroll } from "@/lib/dm/ar-ws-scrivener";
@@ -631,6 +632,8 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
       return { result: { applied: does.text } };
     case "mystery":
       return mysterySpend(ctx, does.effect);
+    case "genre_cc":
+      return genreCcSpend(ctx, does.play);
     case "aoe_report": {
       // Rolled in the spend on the creatures the call names, half on a save
       // (src/lib/dm/counter-saves.ts): it handed these numbers back for an

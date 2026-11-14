@@ -50,9 +50,16 @@ const PASSIVES: GenreRow[] = [
   ]),
   row("plague_doctor", "Beaked Mask", [FEAR]),
   row("plague_doctor", "Iron Constitution", [{ kind: "immune_damage", types: ["poison"] }, { kind: "immune_condition", conditions: ["poisoned", "diseased"] }]),
-  row("plague_doctor", "Miasma Mantle", [{ kind: "resist", types: ["necrotic"] }]),
+  // "Miasma Ward radius grows to 15 ft": the ward's aura again, 15 feet out.
+  row("plague_doctor", "Miasma Mantle", [
+    { kind: "resist", types: ["necrotic"] },
+    { kind: "aura_resist", rangeFt: 15, types: ["poison"] },
+    { kind: "aura_roll", rangeFt: 15, roll: "save", against: ["disease"] },
+  ]),
   row("grave_knight", "Knight of Dust", [{ kind: "resist", types: ["necrotic"] }]),
-  row("grave_knight", "Wight-Iron Will", [{ kind: "immune_condition", conditions: ["frightened", "charmed"] }]),
+  // "advantage against effects that would age, drain, or possess you": the
+  // saves whose `against` names them (src/lib/dm/roll-about.ts SAVE_AGAINST).
+  row("grave_knight", "Wight-Iron Will", [{ kind: "immune_condition", conditions: ["frightened", "charmed"] }, { kind: "save_adv", against: ["aging", "drain", "possession"] }]),
   row("penitent", "Scarred Hide", [{ kind: "resist", types: ["slashing"], nonmagical: true }]),
   row("penitent", "Flagellant's Trance", [FEAR]),
   // "when a creature hits you in melee, it takes your WIS mod in fire damage"
@@ -172,7 +179,8 @@ const STRIKES: GenreRow[] = [
   row("grave_knight", "Reaping Blade", [{ kind: "hit_rider", dice: "1d8", type: "necrotic", when: "melee", gate: PACT_BLADE }]),
   // "Your pact blade's necrotic rises to +2d8": one more d8 on Reaping Blade's.
   row("grave_knight", "Champion of the Quiet Court", [{ kind: "hit_rider", dice: "1d8", type: "necrotic", when: "melee", gate: PACT_BLADE }]),
-  row("witch_hunter", "Anathema Ward", [{ kind: "resist", types: ["necrotic"] }]),
+  // "curses targeting you have disadvantage": a save against a curse rolls with advantage.
+  row("witch_hunter", "Anathema Ward", [{ kind: "resist", types: ["necrotic"] }, { kind: "save_adv", against: ["curse"] }]),
   row("dirgesinger", "The Final Movement", [{ kind: "init_refill", resource: "dark_fantasy_requiem_inspiration", amount: 3 }]),
   // horror
   // "spirits" are undead in the SRD's types.

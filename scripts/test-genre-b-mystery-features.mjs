@@ -664,5 +664,52 @@ await run("Anchor of the Living: an ally's death in the fight is what it answers
   assert.equal(minutesSinceDeath(world.campaignId, ally.id), 0, "the spirit anchored as they lay dying is not freshly dead ten hours on");
 });
 
+// ---- the grifter (creator audit 2026-11-13, genre pass 2) ----
+
+const { listRecentRolls } = await import(new URL("lib/db/rolls.ts", SRC).href);
+const check = async (hero, skill, face, extra = {}) => {
+  clearDice();
+  dice(face, face, face, face);
+  const out = await world.invoke("request_roll", { characterId: hero.id, kind: "skill_check", skill, dc: 15, reason: "test", ...extra });
+  clearDice();
+  return rig.must(out, `the ${skill} check`);
+};
+
+await run("Silver Tongue: the grifter rolls their last failed Deception or Persuasion check again, once a short rest; refused with nothing spent when the last failure was another check", async () => {
+  const hero = rig.holder(feature("grifter", "Silver Tongue", 1), { skills: ["deception", "persuasion", "athletics"] });
+  const spend = async (face) => {
+    clearDice();
+    dice(face, face);
+    const out = await world.invoke("use_resource", { characterId: hero.id, resource: "Silver Tongue" });
+    clearDice();
+    return out;
+  };
+  const none = await spend(20);
+  assert.equal(none.ok, false, "Silver Tongue rerolled with no check failed");
+  await check(hero, "deception", 2);
+  await check(hero, "athletics", 2);
+  const other = await spend(20);
+  assert.equal(other.ok, false, "Silver Tongue rerolled a failed Athletics check");
+  assert.equal(used(hero, "mystery_silver_tongue"), 0, "the refused reroll spent its use");
+  await check(hero, "persuasion", 2);
+  const out = rig.must(await spend(20), "Silver Tongue after a failed Persuasion check");
+  assert.match(JSON.stringify(out), /Persuasion check is rolled again.*succeeds/, JSON.stringify(out).slice(0, 300));
+  assert.equal(used(hero, "mystery_silver_tongue"), 1, "the reroll did not spend its use");
+});
+
+await run("Patient Hands: the creature contesting the grifter's Sleight of Hand rolls its Perception at disadvantage; without the feature it does not", async () => {
+  const contest = async (hero) => {
+    await check(hero, "sleight_of_hand", 10, { againstMonster: "Goblin" });
+    const rolled = listRecentRolls(world.campaignId, 6).filter((roll) => roll.characterId === null && /contest/.test(roll.detail)).at(-1);
+    assert.ok(rolled, "no contest roll was recorded for the goblin");
+    return rolled.advantage ?? "none";
+  };
+  const hero = rig.holder(feature("grifter", "Patient Hands", 3), { skills: ["sleight_of_hand"] });
+  assert.equal(await contest(hero), "disadvantage", "the goblin watching the grifter's hands");
+  rig.reset();
+  const plain = rig.holder(feature("grifter", "Silver Tongue", 1), { skills: ["sleight_of_hand"] });
+  assert.notEqual(await contest(plain), "disadvantage", "the goblin watching a grifter without Patient Hands");
+});
+
 rig.world.close();
 finish();

@@ -1,4 +1,5 @@
 import { legendEnded } from "@/lib/dm/genre-b-post-apocalyptic-beast";
+import { ccTurnStart } from "@/lib/dm/genre-cc-a-turns";
 import { settleFrenzies } from "@/lib/dm/frenzy";
 import { endRageBound } from "@/lib/dm/rage-bound";
 import { settleFullThrottle } from "@/lib/dm/genre-b-steampunk-ends";
@@ -273,6 +274,8 @@ export function startTurnConditions(
   const spellLines = [...spellTurnStart(campaign, encounter, combatantIds), ...authoredTurnStart(campaign, encounter, combatantIds)];
   // The spell areas on the board: those that ran out go, the rest strike (zone-triggers.ts).
   spellLines.push(...zoneTurnStart(campaign, encounter, combatantIds));
+  // The vermin lord's swarms and the grave knight's garden (genre-cc-a-turns.ts).
+  spellLines.push(...ccTurnStart(campaign, encounter, combatantIds));
   // Prismatic Spray's violet ray asks its WIS save as the caster's turn starts (prismatic.ts).
   spellLines.push(...violetRayTurnStart(campaign, combatantIds));
   if (enemiesChanged || spellLines.length) {

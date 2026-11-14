@@ -170,7 +170,8 @@ export function spendRealityRend(campaign: Campaign, caster: CharacterSheet): st
 const CHA_SKILL = /\b(persuasion|deception|intimidation|performance)\b/i;
 
 function grease({ campaign, sheet, label }: Ctx): Out {
-  const failed = listRecentRolls(campaign.id, 60).find(
+  // The rolls come oldest first: the last failure is the latest one.
+  const failed = listRecentRolls(campaign.id, 60).reverse().find(
     (roll) => roll.characterId === sheet.id && (roll.kind === "skill_check" || roll.kind === "ability_check") && roll.dc !== null && roll.total < roll.dc,
   );
   const skill = failed ? textKey(CHA_SKILL.exec(failed.detail)?.[1] ?? "") || undefined : undefined;

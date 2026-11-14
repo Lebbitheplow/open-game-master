@@ -286,6 +286,18 @@ export function spellCapOf(
   return suggestedSpellCount(spellRulesClassFor(view.classId), view.level, abilityMod(abilities[view.ability]));
 }
 
+// The cap with the spells a feature teaches on top of it (Additional Magical
+// Secrets' two, Arcane Mastery's four, Black Market Firmware's two:
+// class-spell-grants.ts), as the creation check and the level-up count them:
+// the sheet's counter and the prepare door read this one.
+export function spellCapWithGrantsOf(
+  view: CasterView,
+  abilities: CharacterSheet["abilities"],
+): { label: string; count: number } | null {
+  const cap = spellCapOf(view, abilities);
+  return cap ? { ...cap, count: cap.count + classSpellGrants(view).extraSpells } : null;
+}
+
 // Prepared now plus waiting for the rest, as the cap counts them.
 export function preparedCount(view: CasterView): number {
   return spellsAgainstLimit(dedupeNames([...view.prepared, ...view.pending]), grantedSpellsOf(view));
@@ -298,12 +310,16 @@ export type PrepResult = { view: CasterView; note: string } | { error: string };
 // One change a player makes to what is prepared. `inClassList` is the
 // caller's answer to "is this spell on the class list at a level they can
 // cast" (the server checks it against the content pack; a prepared caster may
-// pick anything on it, a wizard only what is in their book).
+// pick anything on it, a wizard only what is in their book). `onList`, where
+// the caller can answer it, says whether a held spell is on the class's list
+// at all: a prepared caster's spell off it was learned through a feature
+// (Arcane Mastery, Black Market Firmware, class-spell-grants.ts), which no
+// long rest brings back, so it stays ready.
 export function changePreparation(
   view: CasterView,
   action: PrepAction,
   spell: string,
-  context: { abilities: CharacterSheet["abilities"]; inClassList: boolean },
+  context: { abilities: CharacterSheet["abilities"]; inClassList: boolean; onList?: (name: string) => boolean },
 ): PrepResult {
   const name = spell.trim();
   if (!name) {
@@ -325,9 +341,14 @@ export function changePreparation(
     }
     return { view: { ...view, pending: without(view.pending, name) }, note: `${name} will not be prepared.` };
   }
+  // Learned off the list, and held on top of what is prepared.
+  const grants = classSpellGrants(view);
   if (action === "unprepare") {
     if (has(granted, name)) {
       return { error: `${name} comes with the subclass and is always prepared.` };
+    }
+    if (view.style === "prepared" && grants.anyListSpells && has(view.prepared, name) && context.onList && !context.onList(name)) {
+      return { error: `${name} was learned through ${grants.feature} and is always ready; it is not prepared or unprepared at a rest.` };
     }
     if (has(view.pending, name)) {
       return { view: { ...view, pending: without(view.pending, name) }, note: `${name} will not be prepared.` };
@@ -369,7 +390,7 @@ export function changePreparation(
   if (view.style === "prepared" && !context.inClassList) {
     return { error: `${name} is not on the list this class can prepare at its level.` };
   }
-  const cap = spellCapOf(view, context.abilities);
+  const cap = spellCapWithGrantsOf(view, context.abilities);
   if (cap && preparedCount(view) >= cap.count) {
     return {
       error: `Already ${cap.count} ${cap.label}, counting the ones waiting for the long rest. Unprepare one first.`,

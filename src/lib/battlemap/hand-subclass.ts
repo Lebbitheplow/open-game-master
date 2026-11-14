@@ -97,6 +97,8 @@ function targetOf(does: SpendDoes): HandTarget {
   if (does.kind === "horror_spend") return does.aim ?? "none";
   // A mystery class's own spend says what it is aimed at (genre-b-mystery-spends.ts).
   if (does.kind === "mystery") return does.target ?? "none";
+  // The creator audit's second genre pass (genre-cc-a-spends.ts).
+  if (does.kind === "genre_cc") return does.aim ?? "none";
   // A sermon that names its ally (Flock's Shepherd).
   if (does.kind === "wastes") return does.target ?? "none";
   return "none";

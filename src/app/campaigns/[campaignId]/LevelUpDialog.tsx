@@ -746,6 +746,7 @@ export function LevelUpDialog({
     picks: anyPicks.map((name) => anyLevelOf(name) === 0),
     own: ownListName,
     maxLevel: maxCastable ?? 0,
+    held: allowance?.label,
   });
   // The group waits for the class's list, which says what is held off it.
   const anyGroup = showSpells && !poolLoading ? rooms.group : null;

@@ -97,8 +97,10 @@ function sourcesOpen(grants: Pick<ClassSpellGrants, "sources">, before: Pick<Cla
 // The group's sentence. `own` is the class's name as a sentence reads it
 // ("bard"). `ownAbove`: the group leaves out the class's own list, which the
 // book above holds (the builder); otherwise it lists it too, as Magical
-// Secrets allows ("including this one").
-function hintFor(input: { sources: Source[]; spells: boolean; cantrips: boolean; own: string; maxLevel: number; ownAbove: boolean }): string {
+// Secrets allows ("including this one"). `held`: what the class's count
+// counts, "spells known" or, for a class that prepares (a netrunner's Black
+// Market Firmware, a cleric's Arcane Mastery), "spells prepared".
+function hintFor(input: { sources: Source[]; spells: boolean; cantrips: boolean; own: string; maxLevel: number; ownAbove: boolean; held?: string }): string {
   const lists = input.ownAbove
     ? `any other class's spell list (the ${input.own}'s own are above)`
     : `any class's spell list, the ${input.own}'s included`;
@@ -111,11 +113,12 @@ function hintFor(input: { sources: Source[]; spells: boolean; cantrips: boolean;
   const from = `From ${lists}: ${reach}${input.cantrips ? " or a cantrip" : ""}.`;
   // A class has at most one source on top of its count.
   const extra = input.sources.find((source) => source.onTop);
+  const held = input.held ?? "spells known";
   const counted = !extra
-    ? " They count among your spells known."
+    ? ` They count among your ${held}.`
     : input.sources.every((source) => source.onTop)
-      ? " They come on top of your spells known."
-      : ` The ${extra.count} from ${extra.feature} come on top of your spells known.`;
+      ? ` They come on top of your ${held}.`
+      : ` The ${extra.count} from ${extra.feature} come on top of your ${held}.`;
   const cantrip = input.cantrips
     ? ` A cantrip chosen here also takes one of your ${input.ownAbove ? "cantrips known" : "new cantrips"}.`
     : "";
@@ -148,6 +151,7 @@ export function spellPickRooms(input: {
   // highest spell level it casts.
   own: string;
   maxLevel: number;
+  held?: string;
 }): SpellPickRooms {
   const { grants } = input;
   const plain: SpellPickRooms = { group: null, kept: 0, spells: input.spells, cantrips: input.cantrips };
@@ -182,7 +186,7 @@ export function spellPickRooms(input: {
     group: {
       feature,
       title: titleFor(feature, slots, levelled),
-      hint: hintFor({ sources, spells: levelled, cantrips: levelled && offersCantrips, own: input.own, maxLevel: input.maxLevel, ownAbove: false }),
+      hint: hintFor({ sources, spells: levelled, cantrips: levelled && offersCantrips, own: input.own, maxLevel: input.maxLevel, ownAbove: false, held: input.held }),
       slots,
       spells: levelled,
       cantrips: offersCantrips,
@@ -213,6 +217,7 @@ export function builderAnyListGroup(input: {
   // The class's name as a sentence reads it ("bard").
   own: string;
   maxLevel: number;
+  held?: string;
 }): { group: AnyListGroup | null; chosen: string[] } {
   const { grants } = input;
   if (!grants.anyList) {
@@ -228,7 +233,7 @@ export function builderAnyListGroup(input: {
     group: {
       feature,
       title: titleFor(feature, grants.anyList, levelled),
-      hint: hintFor({ sources, spells: levelled, cantrips: levelled && offersCantrips, own: input.own, maxLevel: input.maxLevel, ownAbove: true }),
+      hint: hintFor({ sources, spells: levelled, cantrips: levelled && offersCantrips, own: input.own, maxLevel: input.maxLevel, ownAbove: true, held: input.held }),
       slots: grants.anyList,
       spells: levelled,
       cantrips: offersCantrips,

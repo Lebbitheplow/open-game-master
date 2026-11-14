@@ -108,9 +108,14 @@ async function changeSpell(
     }
   }
 
+  const authors = spellAuthorsFor(context.campaign);
   const result = changePreparation(view, action, spell, {
     abilities: sheet.abilities,
     inClassList,
+    onList: (name) => {
+      const facts = spellFactsFor(name, authors);
+      return !facts || spellOnCasterList(view, facts);
+    },
   });
   if ("error" in result) {
     return Response.json({ error: result.error }, { status: 400 });

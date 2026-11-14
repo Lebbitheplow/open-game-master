@@ -27,6 +27,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { summonRecord } from "@/lib/dm/summon-rules";
 import { removeSummon, spawnSummons, summonsOf } from "@/lib/dm/summon-store";
 import type { ToolError } from "@/lib/dm/tool-errors";
+import { WEAKENED } from "@/lib/srd/genre-cc-a-conditions";
 
 export type GenreCompanion = "drones" | "dire_rat" | "rat_pack";
 
@@ -80,7 +81,10 @@ export function direRatForm(sheet: CharacterSheet, level: number): SummonForm {
     speed: 30,
     climb: 30,
     abilities: { str: 12, dex: 16, con: 12, int: 2, wis: 12, cha: 4 },
-    attacks: [{ name: "Bite", toHit: derived.proficiencyBonus + dex, damage: `${grown ? "2d6" : "1d6"}+${dex}`, type: "piercing" }],
+    // Grey Tide Rising: "its bite forces a CON save against a weakening bite
+    // (disadvantage on STR checks 1 minute)", at the vermin lord's 8 +
+    // proficiency + DEX, as the bite's other numbers are theirs.
+    attacks: [{ name: "Bite", toHit: derived.proficiencyBonus + dex, damage: `${grown ? "2d6" : "1d6"}+${dex}`, type: "piercing", ...(grown ? { onHit: { save: "con" as const, dc: 8 + derived.proficiencyBonus + dex, condition: WEAKENED, rounds: 10 } } : {}) }],
     traits: "Obeys the vermin lord's commands.",
   };
 }

@@ -121,18 +121,17 @@ export function classSpellGrants(view: GrantView): ClassSpellGrants {
   if (classId === "cleric") {
     return clericGrants(view, features);
   }
-  // Grafted Power (aberrant 13, src/lib/classes/post-apocalyptic-features.json):
-  // "Learn two spells from any spell list; they count as mutations for you."
-  // Learned, so on top of the mutations the class's count gives, as
-  // Additional Magical Secrets' two sit on top of a Lore bard's.
-  if (classId === "aberrant" && view.level >= 13) {
+  // A genre class's feature that learns spells from any list, on top of the
+  // class's own count or what it prepares (ANY_LIST_FEATURES below).
+  const anyList = ANY_LIST_FEATURES.find((entry) => entry.classId === classId && view.level >= entry.level);
+  if (anyList) {
     return {
       ...NONE,
-      anyList: 2,
+      anyList: anyList.count,
       anyListSpells: true,
-      extraSpells: 2,
-      feature: "Grafted Power",
-      sources: [{ feature: "Grafted Power", count: 2, onTop: true }],
+      extraSpells: anyList.count,
+      feature: anyList.feature,
+      sources: [{ feature: anyList.feature, count: anyList.count, onTop: true }],
     };
   }
   // SRD 5.1, Circle of the Land, Bonus Cantrip: "When you choose this circle
@@ -142,6 +141,21 @@ export function classSpellGrants(view: GrantView): ClassSpellGrants {
   }
   return NONE;
 }
+
+// The genre classes' features that learn spells from any list. Learned, so
+// on top of the class's count, as Additional Magical Secrets' two sit on top
+// of a Lore bard's and Arcane Mastery's four on top of a cleric's (the
+// 2026-11-13 creator audit):
+// - Black Market Firmware (netrunner 13, src/lib/classes/cyberpunk-features.json):
+//   "Learn two programs from any spell list; they count as wizard-list for
+//   you." On top of what the netrunner prepares from the wizard list.
+// - Grafted Power (aberrant 13, src/lib/classes/post-apocalyptic-features.json):
+//   "Learn two spells from any spell list; they count as mutations for you."
+//   On top of the mutations the class's count gives.
+const ANY_LIST_FEATURES = [
+  { classId: "netrunner", level: 13, count: 2, feature: "Black Market Firmware" },
+  { classId: "aberrant", level: 13, count: 2, feature: "Grafted Power" },
+];
 
 // The domains that teach spells from another list, on top of the cleric's
 // counts (the divine clause ledger): "One druid cantrip" (Acolyte of Nature),

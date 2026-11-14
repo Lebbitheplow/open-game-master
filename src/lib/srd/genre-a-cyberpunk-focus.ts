@@ -14,18 +14,26 @@
 //     item; a drone of theirs on the board is it. Whether one stands is the
 //     cast guard's to ask (src/lib/dm/genre-a-cyberpunk-drones.ts
 //     droneFocusProblem), since this module reads the sheet alone.
+// The dark fantasy casters with a rule of their own:
+//   Mourning Song, "your voice is the instrument": a dirgesinger's unpriced
+//     material asks for no pouch and no instrument;
+//   Pharmacopoeia, "the kit and mask are the focus": a plague doctor's focus
+//     is the doctor's kit (a herbalism kit, a healer's kit, or the beaked
+//     mask that goes with it) and no other kind.
 // Pure.
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { lineNamed, type RowItem } from "@/lib/srd/item-row";
 
-export type GenreFocus = { kind: "cyberdeck" | "none" | "drone"; feature: string };
+export type GenreFocus = { kind: "cyberdeck" | "none" | "drone" | "kit"; feature: string };
 
 type Holder = { features?: ReadonlyArray<{ name: string }>; feats?: readonly string[] };
 
 const FOCUS: ReadonlyArray<GenreFocus> = [
   { kind: "none", feature: "Wetware Surge" },
+  { kind: "none", feature: "Mourning Song" },
   { kind: "drone", feature: "Machine Codex" },
   { kind: "cyberdeck", feature: "Deck Interface" },
+  { kind: "kit", feature: "Pharmacopoeia" },
 ];
 
 // The most forgiving focus rule a sheet's features give (a multiclassed esper
@@ -38,4 +46,10 @@ export function genreFocusOf(sheet: Holder): GenreFocus | null {
 // row's English ones (the carried-line rule of src/lib/srd/item-row.ts).
 export function carriesCyberdeck(items: readonly RowItem[]): boolean {
   return lineNamed(items, "Cyberdeck") >= 0;
+}
+
+// The plague doctor's kit or mask, by the line's name (the same carried-line rule).
+export const DOCTOR_KIT = ["Herbalism Kit", "Healer's Kit", "Plague Mask", "Beaked Mask"];
+export function carriesDoctorKit(items: readonly RowItem[]): boolean {
+  return DOCTOR_KIT.some((name) => lineNamed(items, name) >= 0);
 }

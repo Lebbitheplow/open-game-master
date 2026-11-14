@@ -1040,8 +1040,9 @@
    },
    {
     "c": "reroll a failed Deception or Persuasion check",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:mystery_silver_tongue#SPENT_FOR_NOTHING"
+    "is": "held",
+    "probe": "scripts/test-genre-b-mystery-features.mjs test Silver Tongue: the grifter rolls their last failed Deception or Persuasion check again",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts Silver Tongue (a mystery spend on mystery_silver_tongue), resolved by src/lib/dm/genre-cc-a-checks.ts rerollFailedCheck through src/lib/dm/genre-b-mystery-spends.ts"
    },
    {
     "c": "Deception or Persuasion check",
@@ -1461,12 +1462,9 @@
    },
    {
     "c": "observers have disadvantage to catch you",
-    "is": "gap",
-    "probe": "not run: the observers' Perception against the grifter is a check the engine does not key to its holder's feature.",
-    "observed": "nothing in the engine answers to Patient Hands: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium",
-    "note": "The feature's other clauses are built, so the unhooked probe (any hook on the feature) no longer tells this one apart: the observers' Perception against the grifter is a check the engine does not key to its holder's feature.",
-    "read_only": true
+    "is": "held",
+    "probe": "scripts/test-genre-b-mystery-features.mjs test Patient Hands: the creature contesting the grifter's Sleight of Hand rolls its Perception at disadvantage",
+    "by": "src/lib/dm/genre-cc-a-checks.ts observersDisadvantaged, read by src/lib/dm/roll-gates.ts rollContest (request_roll's againstEnemyId or againstMonster)"
    }
   ]
  },

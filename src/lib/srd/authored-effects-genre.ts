@@ -12,6 +12,7 @@
 // dealt nothing.
 import { GENRE_C_AUTHORED } from "@/lib/srd/authored-effects-genre-c";
 import { PACK_CLASS_AUTHORED } from "@/lib/srd/authored-effects-pack-classes";
+import { GENRE_CC_A_AUTHORED } from "@/lib/srd/authored-effects-genre-cc-a";
 import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
 import { GENRE_A_AUTHORED } from "@/lib/srd/authored-effects-genre-a";
 import { QUARRY_LADDER } from "@/lib/srd/authored-effects-genre-a-horror";
@@ -27,7 +28,8 @@ const note = (text: string) => ({ kind: "note" as const, text });
 
 export const GENRE_AUTHORED: GenreRow[] = [
   // ---- the move as a bonus action ----
-  { feature: "Afterimage", entry: { subclass: "genre", effects: [{ kind: "bonus_route", action: "dash" }, { kind: "bonus_route", action: "disengage" }] } },
+  // "opportunity attacks against you have disadvantage" (the opportunity attack's roll reads oa_disadv).
+  { feature: "Afterimage", entry: { subclass: "genre", effects: [{ kind: "bonus_route", action: "dash" }, { kind: "bonus_route", action: "disengage" }, { kind: "oa_disadv" }] } },
   { feature: "Slippery", entry: { subclass: "genre", effects: [{ kind: "bonus_route", action: "disengage" }, { kind: "bonus_route", action: "hide" }] } },
   { feature: "Escape Artist", entry: { subclass: "genre", effects: [{ kind: "bonus_route", action: "disengage" }, { kind: "bonus_route", action: "hide" }] } },
   { feature: "Rigging Runner", entry: { subclass: "genre", effects: [{ kind: "bonus_route", action: "dash" }] } },
@@ -103,7 +105,9 @@ export const GENRE_AUTHORED: GenreRow[] = [
     entry: { subclass: "genre", spends: [{ name: "Field Instruments", action: "action", does: note("The GM says whether the supernatural is present within 60 feet, and its rough direction.") }] },
   },
   // ---- reactions ----
-  { feature: "ICE Pick", entry: { subclass: "genre", reactions: [{ name: "ICE Pick", does: { kind: "ac_vs_hit", amount: 2, spellOnly: true } }] } },
+  // "+2 AC or +2 to the save": the save's half is Arcane Deflection's
+  // (orSave: the failed save just rolled, turned when +2 reaches the DC).
+  { feature: "ICE Pick", entry: { subclass: "genre", reactions: [{ name: "ICE Pick", does: { kind: "ac_vs_hit", amount: 2, spellOnly: true, orSave: 2 } }] } },
   { feature: "Feedback Loop", entry: { subclass: "genre", reactions: [{ name: "Feedback Loop", does: { kind: "strike_back", amount: "cha", type: "psychic" } }] } },
   { feature: "Barrow Ward", entry: { subclass: "genre", reactions: [{ name: "Barrow Ward", does: { kind: "reduce", amount: "cha+prof", who: "ally", rangeFt: 10 } }] } },
   { feature: "Penance Shared", entry: { subclass: "genre", reactions: [{ name: "Penance Shared", does: { kind: "take_for_ally", rangeFt: 5, share: "halved" } }] } },
@@ -124,4 +128,6 @@ export const GENRE_AUTHORED: GenreRow[] = [
   ...GENRE_C_AUTHORED,
   // A content-pack class's (Black Flag's Mechanist).
   ...PACK_CLASS_AUTHORED,
+  // The cyberpunk, dark fantasy and mystery features the second pass of that audit built.
+  ...GENRE_CC_A_AUTHORED,
 ];

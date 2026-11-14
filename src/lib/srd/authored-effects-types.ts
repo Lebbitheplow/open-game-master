@@ -1020,6 +1020,8 @@ export type SpendDoes =
   // Court's procession, Anchor of the Living's hold).
   // `target`: what its Hand card is aimed at (src/lib/battlemap/hand-subclass.ts).
   | { kind: "mystery"; effect: string; target?: "enemy" | "ally" }
+  // The creator audit's second genre pass (src/lib/dm/genre-cc-a-spends.ts).
+  | { kind: "genre_cc"; play: "crown" | "rat_tide" | "no_rest" | "rite" | "elegy" | "candle" | "daemon_cache" | "parley" | "exit" | "jury_rig" | "squire"; aim?: "enemy" | "ally" }
   // An area on the board (src/lib/dm/genre-b-zones.ts): Gear Swarm, Dissolving Mist.
   | ({ kind: "zone" } & GenreZoneSpec)
   // The steampunk classes' own spends (src/lib/srd/genre-b-steampunk-types.ts,
@@ -1252,7 +1254,10 @@ export type ReactionDoes =
   | { kind: "chance_miss"; die: string; min: number; vsMark?: string }
   // The last hit is declared a miss, for a level of exhaustion.
   // `rangeFt`: the attacker made its roll within this many feet of the holder.
-  | { kind: "force_miss"; exhaustion: number; rangeFt?: number }
+  // `moveFt`: and the holder moves up to this many feet, drawing no
+  // opportunity attack, to the square use_reaction's x and y name (Vanish
+  // Below: "the attack misses and you move 15 ft").
+  | { kind: "force_miss"; exhaustion: number; rangeFt?: number; moveFt?: number }
   // A critical hit on the holder or a creature in range becomes a normal hit:
   // the same dice without the critical's, and a death-save failure for one blow
   // at 0 rather than two (Sentinel at Death's Door).

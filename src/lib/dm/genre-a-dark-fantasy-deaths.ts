@@ -10,6 +10,7 @@ import { publishPersisted } from "@/lib/events";
 import { removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { BRAND_CONDITIONS } from "@/lib/srd/genre-a-dark-fantasy-conditions";
+import { quarrySlainMark } from "@/lib/dm/genre-cc-a-spends";
 
 // The brands on the dead creature come off, a line for each hunter.
 export function darkFantasyOnDeath(campaign: Campaign, enemyId: string): string[] {
@@ -22,7 +23,10 @@ export function darkFantasyOnDeath(campaign: Campaign, enemyId: string): string[
       continue;
     }
     const cleared = removeConditions(sheet.conditions, meta, ended);
-    const updated = patchSheet(sheet.id, { conditions: cleared.conditions, conditionMeta: cleared.meta });
+    // No Rest for the Wicked: "an extra full turn immediately after killing
+    // your branded quarry", spent before this turn ends (genre-cc-a-spends.ts).
+    const slain = quarrySlainMark(sheet);
+    const updated = patchSheet(sheet.id, slain ? { conditions: [...cleared.conditions, slain.condition], conditionMeta: { ...cleared.meta, [slain.condition]: { ...slain.meta, quarry: enemyId } } } : { conditions: cleared.conditions, conditionMeta: cleared.meta });
     if (updated) {
       publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
     }

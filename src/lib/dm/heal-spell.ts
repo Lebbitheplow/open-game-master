@@ -22,6 +22,7 @@
 //
 // This module does not import mutations.ts: the cast is handed in.
 
+import { controlledDosage } from "@/lib/dm/genre-cc-a-dark-fantasy-more";
 import { spellBreaker } from "@/lib/dm/spell-breaker";
 import { healDiceFloor } from "@/lib/dm/genre-a-cyberpunk-programs";
 import { genreBHealed } from "@/lib/dm/genre-b-spell-hits";
@@ -304,6 +305,11 @@ export function castHealingSpell(
   }
   // Catalyst Stone's die is spent, Baptism of Ash blesses (genre-b-spell-hits.ts).
   riders.push(...genreBHealed(campaign, caster, target, effectiveMaxHp(target) > 0 && target.currentHp * 2 < effectiveMaxHp(target)));
+  // Controlled Dosage: a plague doctor's remedy cures a poison or a disease too.
+  const dosed = controlledDosage(campaign, caster, target);
+  if (dosed) {
+    riders.push(dosed);
+  }
   // Mended Hide: a packmaster's healing on their own beast is doubled.
   const mended = mendedHide(caster, target);
   if (mended) {
