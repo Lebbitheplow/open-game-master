@@ -100,7 +100,7 @@ function files(dir) {
 }
 
 function hiddenContext(node) {
-  for (let up = node.parent; up; up = up.parent) {
+  for (let from = node, up = node.parent; up; from = up, up = up.parent) {
     if (ts.isJsxAttribute(up)) {
       return HIDDEN_ATTRIBUTES.has(up.name.getText()) || up.name.getText().startsWith("data-");
     }
@@ -120,8 +120,8 @@ function hiddenContext(node) {
     if (ts.isCaseClause(up)) {
       return true;
     }
-    if (ts.isPropertyAssignment(up) && up.initializer !== node && !ts.isObjectLiteralExpression(up.initializer)) {
-      return true; // an object key
+    if (ts.isPropertyAssignment(up) && up.name === from) {
+      return true; // an object key, not its value ("content: play ? `...` : ...")
     }
     if (ts.isStatement(up) || ts.isJsxElement(up) || ts.isJsxSelfClosingElement(up)) {
       return false;
@@ -135,6 +135,53 @@ function hiddenContext(node) {
 // Italian word inside an English sentence, so it is left as it is.
 function fragment(text) {
   return /^[a-z][\w'-]*$/.test(text) || /^(The|A|An)$/.test(text);
+}
+
+// The server's own lines in the chronicle (src/lib: a turn passing, the pack,
+// a poison at midnight) are often several sentences put together from
+// pieces, so they are listed sentence by sentence, as the page reads them in
+// a system line (ui-translator.ts): a sentence's leading pieces that are only
+// slots (another sentence put in front) are cut off.
+export const SERVER_SOURCES = ["src/lib/dm", "src/lib/workshop", "src/lib/campaign-types.ts"];
+// The same cut as src/lib/language/ui-translate-logic.ts SENTENCE_END.
+export const SENTENCE_END = /(?<=[.!?:])\s+(?=[\p{Lu}{(«"“])/u;
+
+function sentences(text) {
+  return text
+    .split(SENTENCE_END)
+    // A slot standing for a sentence before or after this one: "{dying} It is
+    // now", "turn.{extra}". "{name} ends their turn" keeps its name.
+    .map((piece) => piece.replace(/^(?:\{\w+\}\s*)+(?=\p{Lu})/u, "").replace(/(?<=[.!?:])(?:\{\w+\})+$/, "").trim())
+    .filter((piece) => piece.length <= MAX_LINE && /\p{L}{2}/u.test(piece.replace(/\{\w+\}/g, "")));
+}
+
+// What the model reads and the player never sees: tool definitions, prompts
+// and the claims a narration is read for. A table line is short.
+const MODEL_ONLY = /(tool-defs|prompt|claims-logic|-guide|instructions)/;
+const MAX_LINE = 240;
+
+export function serverFiles() {
+  return SERVER_SOURCES.flatMap((entry) => {
+    const full = path.join(ROOT, entry);
+    return fs.statSync(full).isDirectory() ? files(full) : [full];
+  }).filter((file) => !MODEL_ONLY.test(path.basename(file)));
+}
+
+export function extractServer(sourceFiles = serverFiles()) {
+  const { texts, patterns } = extract(sourceFiles);
+  const sentenceTexts = new Set();
+  const sentencePatterns = new Set();
+  for (const text of texts) {
+    for (const piece of sentences(text)) {
+      (/\{\w+\}/.test(piece) ? sentencePatterns : sentenceTexts).add(piece);
+    }
+  }
+  for (const pattern of patterns) {
+    for (const piece of sentences(pattern)) {
+      (/\{\w+\}/.test(piece) ? sentencePatterns : sentenceTexts).add(piece);
+    }
+  }
+  return { texts: [...sentenceTexts].sort(), patterns: [...sentencePatterns].sort() };
 }
 
 export function extract(sourceFiles = SOURCES.flatMap((dir) => files(path.join(ROOT, dir)))) {
@@ -216,7 +263,10 @@ function readJson(file) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const { texts, patterns } = extract();
+  const ui = extract();
+  const server = extractServer();
+  const texts = [...new Set([...ui.texts, ...server.texts])].sort();
+  const patterns = [...new Set([...ui.patterns, ...server.patterns])].sort();
   const catalog = readJson(CATALOG);
   const known = readJson(PATTERNS);
   const missing = texts.filter((text) => !Object.hasOwn(catalog, text));

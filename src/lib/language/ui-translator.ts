@@ -6,7 +6,7 @@
 // Story text, names and what people write sit under translate="no" and are
 // never read.
 
-import type { UiTranslator } from "@/lib/language/ui-translate-logic";
+import { sentenceTranslator, type UiTranslator } from "@/lib/language/ui-translate-logic";
 
 export const TRANSLATED_ATTRIBUTES = ["title", "placeholder", "aria-label", "alt"] as const;
 
@@ -16,7 +16,13 @@ function leftAlone(element: Element | null): boolean {
   return !element || element.closest(LEFT_ALONE) !== null;
 }
 
-export function startUiTranslation(root: Element, translate: UiTranslator): () => void {
+// A server's line in the chronicle, read sentence by sentence when it has
+// no entry whole (src/app/campaigns/[campaignId]/MessageParts.tsx).
+const BY_SENTENCE = "[data-ui-sentences]";
+
+export function startUiTranslation(root: Element, whole: UiTranslator): () => void {
+  const bySentence = sentenceTranslator(whole);
+  const translatorFor = (element: Element | null) => (element?.closest(BY_SENTENCE) ? bySentence : whole);
   // What this layer last wrote, so its own writes are not read back as
   // English (a translation may itself be some other entry's English).
   const wroteText = new WeakMap<Node, string>();
@@ -38,7 +44,7 @@ export function startUiTranslation(root: Element, translate: UiTranslator): () =
       return true;
     }
     const englishTexts = nodes.map(english);
-    const translated = translate(englishTexts.join(""));
+    const translated = translatorFor(parent)(englishTexts.join(""));
     if (translated === null) {
       return false;
     }
@@ -59,7 +65,7 @@ export function startUiTranslation(root: Element, translate: UiTranslator): () =
     if (node.parentElement && joined(node.parentElement)) {
       return;
     }
-    const translated = translate(value);
+    const translated = translatorFor(node.parentElement)(value);
     if (translated !== null) {
       englishOf.set(node, value);
       wroteText.set(node, translated);
@@ -73,7 +79,7 @@ export function startUiTranslation(root: Element, translate: UiTranslator): () =
     if (value === null || wrote?.get(name) === value || leftAlone(element)) {
       return;
     }
-    const translated = translate(value);
+    const translated = whole(value);
     if (translated !== null) {
       (wrote ?? wroteAttribute.set(element, new Map()).get(element)!).set(name, translated);
       element.setAttribute(name, translated);

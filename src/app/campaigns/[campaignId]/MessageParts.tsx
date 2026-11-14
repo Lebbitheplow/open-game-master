@@ -79,7 +79,7 @@ export function SystemMessage({ content, glyph }: { content: string; glyph?: Sys
     return (
       <div data-tone="ember" className="panel session-banner-card rounded-xl border-ember-500/40">
         <SectionHead title="Party Lead" glyph="tab-lead" level="h4" className="mb-1" />
-        <p className="text-sm text-amber-100/90">{content.slice(LEAD_NOTE_PREFIX.length)}</p>
+        <p className="text-sm text-amber-100/90" translate="no">{content.slice(LEAD_NOTE_PREFIX.length)}</p>
       </div>
     );
   }
@@ -92,7 +92,7 @@ export function SystemMessage({ content, glyph }: { content: string; glyph?: Sys
           <VenetianMask className="size-3.5" aria-hidden="true" />
           Revealed
         </p>
-        <p className="mt-0.5 text-sm leading-snug text-violet-50">{content.slice(PACT_REVEAL_PREFIX.length)}</p>
+        <p className="mt-0.5 text-sm leading-snug text-violet-50" data-ui-sentences="">{content.slice(PACT_REVEAL_PREFIX.length)}</p>
       </div>
     );
   }
@@ -103,7 +103,7 @@ export function SystemMessage({ content, glyph }: { content: string; glyph?: Sys
     return (
       <section aria-label="Previously" className="panel session-banner-card session-recap rounded-xl">
         <SectionHead title="Previously" glyph="cue-bell" level="h4" className="mb-1" />
-        <p className="session-recap-text">{content.slice(RECAP_PREFIX.length)}</p>
+        <p className="session-recap-text" translate="no">{content.slice(RECAP_PREFIX.length)}</p>
       </section>
     );
   }
@@ -113,7 +113,9 @@ export function SystemMessage({ content, glyph }: { content: string; glyph?: Sys
   return (
     <p className="session-sysline">
       <GameIcon icon={{ kind: "glyph", key: join ? "system-party" : (glyph ?? "cue-bell") }} size="size-6" />
-      <span className="min-w-0">{text}</span>
+      {/* The server's own line, read sentence by sentence in another
+          language (src/lib/language/ui-translator.ts). */}
+      <span className="min-w-0" data-ui-sentences="">{text}</span>
     </p>
   );
 }
@@ -126,7 +128,7 @@ export function ShopOpenLine({ content, onBrowse }: { content: string; onBrowse?
   return (
     <p className="session-sysline">
       <GameIcon icon={{ kind: "glyph", key: "cue-coin" }} size="size-6" />
-      <span id={lineId} className="min-w-0">{content}</span>
+      <span id={lineId} className="min-w-0" data-ui-sentences="">{content}</span>
       {onBrowse ? (
         <button type="button" onClick={onBrowse} aria-describedby={lineId} data-browse-wares="" className={kitButtonClass("small", "shrink-0 not-italic text-amber-100")}>
           <GameIcon icon={{ kind: "glyph", key: "tab-market" }} size="size-5" />
