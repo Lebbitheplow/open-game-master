@@ -46,7 +46,7 @@ export function recoverSlotLevels(slots: Slots, budget: number, opts: { maxLevel
     }
     return { slots: next, regained };
   }
-  const open = Object.fromEntries(order.map((level) => [String(level), next[String(level)] ?? { max: 0, used: 0 }]));
+  const open = Object.fromEntries(order.filter((level) => next[String(level)]).map((level) => [String(level), next[String(level)]]));
   for (const level of slotRecoveryPlan(open, budget)) {
     take(level);
   }

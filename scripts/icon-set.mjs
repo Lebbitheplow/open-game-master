@@ -194,7 +194,7 @@ function glyphEntry(group, key, label, subject, extra = {}) {
 
 // The spell paintings a class feature still wears (src/lib/icons.ts
 // ICON_ALIASES entries whose kind is "spell").
-export const SPELL_PAINTINGS_WORN = new Set(["cure-wounds", "enthrall", "fear", "guiding-bolt", "heroes-feast", "modify-memory", "protection-from-energy", "summon-draconic-spirit", "warding-bond"]);
+export const SPELL_PAINTINGS_WORN = new Set(["arms-of-hadar", "clairvoyance", "command", "cure-wounds", "daylight", "disguise-self", "enthrall", "fear", "fog-cloud", "guiding-bolt", "heroes-feast", "invisibility", "jump", "knock", "minor-illusion", "modify-memory", "protection-from-energy", "protection-from-evil-and-good", "shield", "summon-draconic-spirit", "warding-bond"]);
 
 export async function buildIconList() {
   const list = [];

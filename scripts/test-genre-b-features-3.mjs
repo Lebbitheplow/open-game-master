@@ -267,7 +267,7 @@ await run("Alpha's Roar: beasts and mutants within 30 ft save (WIS) or cower for
   assert.equal(beast.conditionMeta.cowering?.rounds, 10, "it does not cower for a minute");
   assert.deepEqual(kit.enemy(far.id).conditions, [], "a creature of another type cowered too");
   const at = kit.token(hero.id);
-  assert.deepEqual(fearSourceAt(kit.map().id, beast.conditions, beast.conditionMeta), { x: at.x, y: at.y }, "its walk does not keep away from the packmaster");
+  assert.deepEqual(fearSourceAt(kit.map().id, beast.conditions, beast.conditionMeta), { x: at.x, y: at.y, footprint: 1 }, "its walk does not keep away from the packmaster");
   kit.place(near.id, 14, 2);
   kit.setEnemy(near.id, { conditions: [], conditionMeta: {} });
   world.patch(hero.id, { resources: { ...world.sheet(hero.id).resources, post_apocalyptic_alpha_s_roar: { ...world.sheet(hero.id).resources.post_apocalyptic_alpha_s_roar, used: 0 } } });

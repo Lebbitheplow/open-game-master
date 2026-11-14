@@ -2,6 +2,39 @@
   "px": 128,
   "icons": [
     {
+      "id": "spell-arms-of-hadar",
+      "group": "spell",
+      "key": "Arms of Hadar",
+      "label": "Arms of Hadar",
+      "src": "/assets/icons/spell/arms-of-hadar.webp",
+      "bytes": 9442,
+      "seed": 1887263393,
+      "school": "conjuration",
+      "level": 1
+    },
+    {
+      "id": "spell-clairvoyance",
+      "group": "spell",
+      "key": "Clairvoyance",
+      "label": "Clairvoyance",
+      "src": "/assets/icons/spell/clairvoyance.webp",
+      "bytes": 2120,
+      "seed": 986063890,
+      "school": "divination",
+      "level": 3
+    },
+    {
+      "id": "spell-command",
+      "group": "spell",
+      "key": "Command",
+      "label": "Command",
+      "src": "/assets/icons/spell/command.webp",
+      "bytes": 3258,
+      "seed": 1999052215,
+      "school": "enchantment",
+      "level": 1
+    },
+    {
       "id": "spell-cure-wounds",
       "group": "spell",
       "key": "Cure Wounds",
@@ -10,6 +43,28 @@
       "bytes": 2630,
       "seed": 327921824,
       "school": "evocation",
+      "level": 1
+    },
+    {
+      "id": "spell-daylight",
+      "group": "spell",
+      "key": "Daylight",
+      "label": "Daylight",
+      "src": "/assets/icons/spell/daylight.webp",
+      "bytes": 3228,
+      "seed": 653141098,
+      "school": "evocation",
+      "level": 3
+    },
+    {
+      "id": "spell-disguise-self",
+      "group": "spell",
+      "key": "Disguise Self",
+      "label": "Disguise Self",
+      "src": "/assets/icons/spell/disguise-self.webp",
+      "bytes": 2750,
+      "seed": 1773679752,
+      "school": "illusion",
       "level": 1
     },
     {
@@ -35,6 +90,17 @@
       "level": 3
     },
     {
+      "id": "spell-fog-cloud",
+      "group": "spell",
+      "key": "Fog Cloud",
+      "label": "Fog Cloud",
+      "src": "/assets/icons/spell/fog-cloud.webp",
+      "bytes": 3120,
+      "seed": 868424360,
+      "school": "conjuration",
+      "level": 1
+    },
+    {
       "id": "spell-guiding-bolt",
       "group": "spell",
       "key": "Guiding Bolt",
@@ -57,6 +123,50 @@
       "level": 6
     },
     {
+      "id": "spell-invisibility",
+      "group": "spell",
+      "key": "Invisibility",
+      "label": "Invisibility",
+      "src": "/assets/icons/spell/invisibility.webp",
+      "bytes": 4810,
+      "seed": 615272040,
+      "school": "illusion",
+      "level": 2
+    },
+    {
+      "id": "spell-jump",
+      "group": "spell",
+      "key": "Jump",
+      "label": "Jump",
+      "src": "/assets/icons/spell/jump.webp",
+      "bytes": 1644,
+      "seed": 770775641,
+      "school": "transmutation",
+      "level": 1
+    },
+    {
+      "id": "spell-knock",
+      "group": "spell",
+      "key": "Knock",
+      "label": "Knock",
+      "src": "/assets/icons/spell/knock.webp",
+      "bytes": 2574,
+      "seed": 1014331345,
+      "school": "transmutation",
+      "level": 2
+    },
+    {
+      "id": "spell-minor-illusion",
+      "group": "spell",
+      "key": "Minor Illusion",
+      "label": "Minor Illusion",
+      "src": "/assets/icons/spell/minor-illusion.webp",
+      "bytes": 1964,
+      "seed": 1746609103,
+      "school": "illusion",
+      "level": 0
+    },
+    {
       "id": "spell-modify-memory",
       "group": "spell",
       "key": "Modify Memory",
@@ -77,6 +187,28 @@
       "seed": 2065341621,
       "school": "abjuration",
       "level": 3
+    },
+    {
+      "id": "spell-protection-from-evil-and-good",
+      "group": "spell",
+      "key": "Protection from Evil and Good",
+      "label": "Protection from Evil and Good",
+      "src": "/assets/icons/spell/protection-from-evil-and-good.webp",
+      "bytes": 1836,
+      "seed": 701324600,
+      "school": "abjuration",
+      "level": 1
+    },
+    {
+      "id": "spell-shield",
+      "group": "spell",
+      "key": "Shield",
+      "label": "Shield",
+      "src": "/assets/icons/spell/shield.webp",
+      "bytes": 2322,
+      "seed": 1253488893,
+      "school": "abjuration",
+      "level": 1
     },
     {
       "id": "spell-summon-draconic-spirit",
