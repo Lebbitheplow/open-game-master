@@ -68,6 +68,25 @@ Senza scelta, chi ha il browser in italiano ma preferisce l'interfaccia inglese 
 il contrario, su un dispositivo condiviso) non avrebbe alternative. Sta solo nelle
 Impostazioni personali, mai nella creazione della campagna; un solo selettore.
 
+## Righe di sistema della cronaca
+Le righe che il server scrive da sé (turni, zaino del gruppo, veleni, tempo che passa)
+nascono in `src/lib` e spesso uniscono più frasi. L'estrattore legge anche `src/lib/dm`,
+`src/lib/workshop` e `src/lib/campaign-types.ts` (esclusi prompt e definizioni degli
+strumenti, che il giocatore non vede) e le elenca **frase per frase**, togliendo le parti
+variabili che stanno per un'altra frase. Nella pagina, gli elementi con
+`data-ui-sentences` (riga di sistema, negozio aperto, patto rivelato) provano prima la riga
+intera, poi ogni frase; quelle senza voce restano in inglese. Note del capogruppo e
+riepilogo «Previously» sono testo di persone o del modello: `translate="no"` (l'etichetta
+«Capogruppo:» sì, è dell'interfaccia). Regole del lettore di pattern:
+- vince il pattern con più parole fisse;
+- uno slot attaccato a una parola o a un altro slot può essere vuoto (`act{s}`);
+- uno slot che contiene prosa (più parole minuscole, una fine di frase) va tradotto a sua
+  volta, intero o frase per frase; altrimenti il match cade e la frase resta in inglese;
+- una frase non si taglia dentro parentesi.
+
+Limiti noti: i nomi di oggetti e incantesimi dentro queste righe restano in inglese
+(«Scimitar»), e le liste di nomi tengono «and».
+
 ## Contratti
 - `src/lib/language/ui-it.json`: oggetto piatto `{"English text": "Testo italiano"}`, il
   formato di ziomik. Un suo catalogo si copia così com'è; le nostre voci funzionano col suo
@@ -109,9 +128,6 @@ Impostazioni personali, mai nella creazione della campagna; un solo selettore.
 - Copertura: `extract-ui-strings --check` riporta la quota tradotta.
 
 ## Limiti noti
-- I messaggi di sistema scritti dal server nella cronaca (es. «It is now Kara's turn») non
-  sono in `src/app`/`src/components`: restano in inglese finché l'estrattore non legge anche
-  `src/lib`.
 - Una parola minuscola isolata o un articolo spezzati dal markup non si traducono, per non
   mescolare le lingue in una frase.
 - Al primo caricamento completo della pagina l'inglese può comparire per un istante.

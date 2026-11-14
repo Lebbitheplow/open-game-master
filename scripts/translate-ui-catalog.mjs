@@ -11,7 +11,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { register } from "node:module";
-import { extract } from "./extract-ui-strings.mjs";
+import { extract, extractServer } from "./extract-ui-strings.mjs";
 
 register("./lib/register-alias.mjs", import.meta.url);
 const { italianGlossary } = await import("../src/lib/language/srd-names-it.ts");
@@ -29,7 +29,11 @@ const JOBS = option("--jobs", 4);
 const LIMIT = option("--limit", Infinity);
 
 const catalog = fs.existsSync(FILE) ? JSON.parse(fs.readFileSync(FILE, "utf8")) : {};
-const { texts, patterns } = extract();
+// The interface's text and the server's own chronicle lines, one catalog.
+const ui = extract();
+const server = extractServer();
+const texts = [...new Set([...ui.texts, ...server.texts])];
+const patterns = [...new Set([...ui.patterns, ...server.patterns])];
 const todo = (PATTERNS ? patterns : texts).filter((text) => !Object.hasOwn(catalog, text)).slice(0, LIMIT);
 console.log(`${todo.length} to translate in batches of ${BATCH}, ${JOBS} at a time`);
 

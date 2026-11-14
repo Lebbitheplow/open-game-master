@@ -25,6 +25,13 @@ import { appendDictation } from "@/lib/dictation";
 import { ROLL_KIND_LABELS, rollChronicleLead, rollToastLead } from "@/lib/roll-labels";
 import { LengthNote } from "@/components/ui/LengthNote";
 import { atBottom, chronicleSignature, chronicleSystemLine, chronicleWindow } from "@/lib/chronicle-logic";
+import { LEAD_NOTE_PREFIX, RECAP_PREFIX } from "@/lib/campaign-types";
+
+// The lead's direction and the "Previously" are a person's and the model's
+// words: never translated (docs/specs/ogm-italian-ui.md).
+function isPeoplesNote(content: string): boolean {
+  return content.startsWith(LEAD_NOTE_PREFIX) || content.startsWith(RECAP_PREFIX);
+}
 import { textLength } from "@/lib/text-limits";
 import { questGlanceOf, type Quest } from "@/lib/dm/quest-logic";
 
@@ -628,7 +635,7 @@ export function TabletopChronicle({
             // The DM's out-of-character answer is a line, as table talk is.
             if (message.authorType === "dm" && isOocAnswer(message.content)) {
               return (
-                <p key={message.id} className="cine-chronicle-line">
+                <p key={message.id} className="cine-chronicle-line" translate="no">
                   Game Master: &ldquo;{message.content.trim()}&rdquo;
                 </p>
               );
@@ -637,7 +644,7 @@ export function TabletopChronicle({
               const parts = message.content.split(ROLL_MARKER);
               const dropcap = message.id === firstPassageId;
               return (
-                <div key={message.id} className="cine-chronicle-passage">
+                <div key={message.id} className="cine-chronicle-passage" translate="no">
                   {parts.map((part, index) => {
                     if (index % 2 === 1) {
                       const roll = rollsById.get(part);
@@ -658,7 +665,7 @@ export function TabletopChronicle({
             }
             if (message.authorType === "player") {
               const line = (
-                <p key={message.id} className="cine-chronicle-line">
+                <p key={message.id} className="cine-chronicle-line" translate="no">
                   {nameOf(message)}: &ldquo;{message.content.trim()}&rdquo;
                 </p>
               );
@@ -681,14 +688,28 @@ export function TabletopChronicle({
                     const roll = rollsById.get(id);
                     return roll ? <ChronicleRoll key={roll.id} roll={roll} sheets={sheets} /> : null;
                   })}
-                  <p className="cine-chronicle-system">{chronicleSystemLine(message.content)}</p>
+                  <p className="cine-chronicle-system" data-ui-sentences="">{chronicleSystemLine(message.content)}</p>
                 </div>
               );
             }
             return (
-              <p key={message.id} className="cine-chronicle-system">
-                {chronicleSystemLine(message.content)}
-              </p>
+              // The server's own line, read sentence by sentence in another
+              // language (src/lib/language/ui-translator.ts); the passages and
+              // lines above are people's and the model's words, never translated.
+              message.content.startsWith(LEAD_NOTE_PREFIX) ? (
+                // The label is the interface's; the direction is the lead's.
+                <p key={message.id} className="cine-chronicle-system">
+                  <span>Party lead:</span> <span translate="no">{message.content.slice(LEAD_NOTE_PREFIX.length)}</span>
+                </p>
+              ) : (
+                <p
+                  key={message.id}
+                  className="cine-chronicle-system"
+                  {...(isPeoplesNote(message.content) ? { translate: "no" as const } : { "data-ui-sentences": "" })}
+                >
+                  {chronicleSystemLine(message.content)}
+                </p>
+              )
             );
           })}
           </div>

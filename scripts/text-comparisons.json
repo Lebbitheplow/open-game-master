@@ -45,6 +45,7 @@
     "lib/dm/fall-landing.ts#str-eq": [["english-source",1,"reference: SRD spell, condition and feature names"]],
     "lib/dm/mount-area.ts#str-key": [["key",1,"a mount's stored ref, an SRD mount id (engine vocabulary)"]],
     "lib/dm/casting-answered.ts#str-indexOf": [["english-source",1,"reference: SRD spell, condition and feature names"]],
+    "lib/language/ui-translate-logic.ts#re-word": [["english-source",1,"the server's own English chronicle lines read for a list joined by and/or inside a pattern slot; the words are ODM's, never a person's (docs/specs/ogm-italian-ui.md)"]],
     "lib/dm/casting-answered.ts#re-word": [["english-source",1,"reference: SRD spell, condition and feature names"]],
     "lib/dm/casting-answered.ts#str-includes": [["english-source",1,"reference: SRD spell, condition and feature names"]],
     "lib/dm/casting-answered.ts#str-eq": [["english-source",5,"reference: SRD spell, condition and feature names"]],
