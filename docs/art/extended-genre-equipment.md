@@ -66,4 +66,25 @@ the campaign and app-shell review is recorded separately below.
 | Phone, night | [Inventory](extended-genre-equipment-phone-dark.png) | [Cards](extended-genre-equipment-phone-dark-cards.png) |
 | Phone, day | [Inventory](extended-genre-equipment-phone-light.png) | [Cards](extended-genre-equipment-phone-light-cards.png) |
 
-Full build, suite and live-screen results are pending.
+The website and built client app shell also passed with a synthetic steampunk
+character. Every capture loaded all 16 new equipment images, reported no page
+errors, and passed the missing-variant fallback check. A backpack without its
+genre image falls back to the existing gear-family icon. The app-shell check
+ran in Chromium, not on physical native hardware.
+
+| Live screenshots | Desktop | Phone |
+| --- | --- | --- |
+| Website, night | [Desktop](extended-genre-equipment-web-desktop-dark.png) | [Phone](extended-genre-equipment-web-phone-dark.png) |
+| Website, day | [Desktop](extended-genre-equipment-web-desktop-light.png) | [Phone](extended-genre-equipment-web-phone-light.png) |
+| App shell, night | [Desktop](extended-genre-equipment-app-desktop-dark.png) | [Phone](extended-genre-equipment-app-phone-dark.png) |
+| App shell, day | [Desktop](extended-genre-equipment-app-desktop-light.png) | [Phone](extended-genre-equipment-app-phone-light.png) |
+
+The production build compiled successfully with webpack, then failed Next.js
+type checking because the shops API route exports `shopView`. That export is
+also present in the unchanged base commit from PR #961. The visual checks
+therefore used a development server; the separate client app-shell build passed.
+No build configuration or shops route was changed to suppress the error.
+
+The full test suite is still running. Its completed file results are retained
+across resumed runs so unfinished files can finish without rerunning those
+already passed.
