@@ -76,13 +76,19 @@ real-device checks must not be inferred from this table.
 | --- | --- | --- | --- | --- |
 | `forge` | Deep Forge | Dark basalt, hammered bronze bands, ember light; square-cut keys | **built**, reported | Fable's handoff identifies `c92039a08`, built on `e75ec96ae`, with four images and prompts. That commit is not available in this checkout. Recover and inspect it, then port its own styles/assets to PR 962's current catalog and material variables. Rerun current checks; the old reference had two narrow-combat failures. |
 | `tide` | Sunken Tide | Sea-glass teal, pale driftwood, verdigris bronze, pearl | **started**, reported | Fable reports a stopped session with no commit. No working files have been verified here. Preserve the brief; locate recoverable files before treating this as more than an idea. |
+| `kingdoms` | High Kingdoms | Ivory, royal blue, heraldry, illuminated manuscript borders | **idea** | From the original session list. Emphasize banners, heraldic fittings and manuscript ornament; keep it distinct from Cloud Citadel's airy marble and sky imagery. No owner yet. |
+| `hearth` | Hearth & Haven | Warm parchment, amber, oak, cosy tavern atmosphere | **idea** | From the original session list. Use crafted indoor woodwork and warm lamplight, distinct from Ancient Woodland's living vines and forest canopy. No owner yet. |
 | `frost` | Frostbound | Blue-white ice, pale steel, aurora green accent | **idea** | Day mode is the natural starting point. Give night mode a cold steel/aurora identity distinct from Arcane's indigo and amethyst. |
-| `dunes` | Sunscorched | Sandstone, turquoise inlay, beaten gold | **idea** | Start with warm day materials. Use turquoise geometry and stone relief to distinguish it from Arcane's brass fittings. |
+| `dunes` | Sunscorched | Sandstone, turquoise inlay, beaten gold or bronze, carved geometric borders | **idea** | Also covers the original **Lost Empires** proposal (sandstone, bronze, turquoise, carved borders). Keep one work item while these briefs overlap; settle the display name and metal treatment when claimed. Use stone relief to distinguish it from Arcane's brass fittings. |
 | `skyhold` | Cloud Citadel | White marble, sky blue, gilt | **idea** | Lightest of the set. Check text, disabled controls and selected states against pale surfaces before adding ornament. |
 
 These are additional fantasy settings, not automatic genre claims. In
 particular, Deep Forge should not acquire steampunk by default merely because
 both use metal.
+
+The original six-theme list is now accounted for: Arcane, Ancient Woodland and
+Gothic are in PR 962; High Kingdoms and Hearth & Haven are pending above; Lost
+Empires is carried under Sunscorched rather than becoming a duplicate assignment.
 
 ## Genre themes
 
@@ -97,6 +103,12 @@ identities. Proposed claims are not active defaults.
 | `brassworks` | Brassworks | Riveted brass, oxblood leather, gauge glass | Steampunk | **idea** | Keep it mechanical and precise, distinct from Deep Forge's hammered metal and basalt. Decorative gauges must not look like controls. |
 | `wasteland` | Wasteland | Rusted sheet metal, hazard yellow, sun-bleached canvas | Post-apocalyptic | **idea** | Keep rust and scratches off reading surfaces. Hazard stripes must not compete with real warnings or selected states. |
 | `gaslight` | Gaslight | Dark walnut, green baize, brass lamp glow | Mystery | **idea** | Use restrained joinery and lamp fittings, distinct from Woodland's living vines and Gothic's cathedral tracery. |
+
+**Science fiction** was also mentioned as a later direction in the original
+discussion, but has no named theme or visual brief yet. Define that brief before
+creating a separate theme row; Neon District covers cyberpunk, not all science
+fiction. Science fiction is not currently a built-in genre, so this direction
+does not claim a genre default.
 
 ## Suggested build order
 
