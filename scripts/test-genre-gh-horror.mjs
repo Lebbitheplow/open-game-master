@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { dice, clearDice } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { clausesRig } from "./lib/sweep-clauses-genre-b-probes.mjs";
+import { afterRollKit } from "./lib/sweep-clauses-mt-mr.mjs";
 
 const SRC = new URL("../src/", import.meta.url);
 const load = (file) => import(new URL(file, SRC).href);
@@ -317,6 +318,32 @@ await run("Hunter's Kit: a warding made out of a fight gives the ally +2 AC agai
   withFeature(hero, "Stake and Salt");
   rig.must(await spend(hero, "Hunter's Kit", { variant: "fiend" }), "Hunter's Kit with Stake and Salt");
   for (const who of [hero, rig.ally]) assert.ok(world.sheet(who.id).conditions.includes("warded (fiend)"), `${who.name} is not warded`);
+});
+
+// ---- GH09: Extinction's reroll ----
+
+await run("Extinction: once on each of the slayer's turns a missed attack on their Quarry is rolled again and the new roll stands; a second miss that turn, or a miss on another creature, is not offered it", async () => {
+  const hero = rig.holder(feature("slayer", "Extinction", 20));
+  const card = await afterRollKit(world);
+  const { near, far } = await rig.fight(hero);
+  rig.must(await spend(hero, "Quarry", { targetEnemyId: near.id }), "Quarry");
+  kit.place(far.id, 5, 1);
+  const miss = async (enemy) => {
+    const out = await kit.swing(hero.id, enemy.id, [2, 3, 3, 3, 3]);
+    assert.ok(!out.error, `pc_attack: ${out.error}`);
+  };
+  await miss(near);
+  assert.ok(card.offered().includes("extinction"), `offered ${card.offered()} on a missed Quarry`);
+  const again = await card.choose(hero, "extinction", 19, 3, 3, 3, 3);
+  assert.match(again.note, /HIT/, `the reroll (a 19) stands: ${again.note}`);
+  await card.keepAll(hero);
+  await miss(near);
+  assert.ok(!card.offered().includes("extinction"), "a second reroll the same turn");
+  await card.keepAll(hero);
+  rig.myTurn(hero);
+  await miss(far);
+  assert.ok(!card.offered().includes("extinction"), "a reroll on a creature that is not the Quarry");
+  await card.keepAll(hero);
 });
 
 rig.world.close();

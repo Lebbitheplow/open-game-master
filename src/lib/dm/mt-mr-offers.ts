@@ -2,7 +2,7 @@
 // database (wave 2, part mr): what a parked attack tells the offers, and
 // spending what the player chose (src/lib/dm/mt-mr-offers-logic.ts has the
 // offers and their rules). The after-roll route calls mrSpendAfterRoll for
-// these four ids in place of after-roll.ts spendAfterRoll, since two of them
+// these ids (Extinction's with Unerring Accuracy's) in place of after-roll.ts spendAfterRoll, since two of them
 // are paid only when they change the result and so read the roll's target.
 
 import type { Campaign } from "@/lib/db/campaigns";
@@ -14,7 +14,8 @@ import { extraD20Expression, withBonusDie, withRerolledD20, type AfterRollId } f
 import { spendFeatureUse } from "@/lib/dm/attack-onhit";
 import { isMonkWeapon } from "@/lib/dm/attack-logic";
 import { recordTargetAc, type AttackRecord } from "@/lib/dm/attack-record";
-import { ACCURACY_MARK, DRACONIC_PRESENCE, PSIONIC_ENERGY, psionicEnergyDie, type MrSwing } from "@/lib/dm/mt-mr-offers-logic";
+import { quarryOn } from "@/lib/dm/genre-a-horror-marks";
+import { ACCURACY_MARK, DRACONIC_PRESENCE, EXTINCTION_MARK, PSIONIC_ENERGY, psionicEnergyDie, type MrSwing } from "@/lib/dm/mt-mr-offers-logic";
 import { holdsRow } from "@/lib/dm/mt-mr-turn";
 import { markReactionUsed, storeBudget } from "@/lib/dm/turn-budget";
 import { textKey } from "@/lib/language/text-logic";
@@ -24,7 +25,7 @@ import { matchWeapon } from "@/lib/srd/weapons";
 
 // The facts of an attack the offers read: the weapon by the record's own
 // fields, the turn by the encounter's budget.
-export function swingFacts(campaignId: string, sheet: CharacterSheet, record: Pick<AttackRecord, "weapon" | "base" | "unarmed">): MrSwing {
+export function swingFacts(campaignId: string, sheet: CharacterSheet, record: Pick<AttackRecord, "weapon" | "base" | "unarmed"> & { targetEnemyId?: string }): MrSwing {
   const encounter = getActiveEncounter(campaignId);
   const budget = encounter?.turnBudget ?? null;
   const ownTurn = Boolean(encounter && budgetApplies(budget, sheet.id, encounter.round));
@@ -34,6 +35,8 @@ export function swingFacts(campaignId: string, sheet: CharacterSheet, record: Pi
     psychicBlade: textKey(record.weapon ?? "") === "psychic blade",
     ownTurn,
     accuracyUsed: Boolean(ownTurn && budget?.oncePerTurn.includes(ACCURACY_MARK)),
+    quarry: Boolean(record.targetEnemyId && quarryOn(sheet, record.targetEnemyId)),
+    extinctionUsed: Boolean(ownTurn && budget?.oncePerTurn.includes(EXTINCTION_MARK)),
   };
 }
 
@@ -52,17 +55,22 @@ const dieOf = (die: string) => ({ sides: Number(die.slice(1)), value: rollExpres
 // on offer; nothing is spent then.
 export function mrSpendAfterRoll(campaign: Campaign, sheet: CharacterSheet, id: AfterRollId, outcome: RollResult, pending: Pick<PendingRoll, "campaignId" | "dc" | "attack">): { outcome: RollResult; choosing: boolean; touchOfDeath?: number; destructiveWrath?: boolean } | null {
   const record = pending.attack as AttackRecord | null;
-  if (id === "unerring_accuracy") {
+  if (id === "unerring_accuracy" || id === "extinction") {
+    const mark = id === "extinction" ? EXTINCTION_MARK : ACCURACY_MARK;
     const encounter = getActiveEncounter(campaign.id);
     const budget = encounter?.turnBudget ?? null;
-    if (!record || !encounter || !budgetApplies(budget, sheet.id, encounter.round) || budget.oncePerTurn.includes(ACCURACY_MARK)) {
+    if (!record || !encounter || !budgetApplies(budget, sheet.id, encounter.round) || budget.oncePerTurn.includes(mark)) {
+      return null;
+    }
+    // Extinction's reroll is against the slayer's Quarry only.
+    if (id === "extinction" && !(record.targetEnemyId && quarryOn(sheet, record.targetEnemyId))) {
       return null;
     }
     const again = rerolled(outcome);
     if (!again) {
       return null;
     }
-    storeBudget(encounter, { ...budget, oncePerTurn: [...budget.oncePerTurn, ACCURACY_MARK] });
+    storeBudget(encounter, { ...budget, oncePerTurn: [...budget.oncePerTurn, mark] });
     return { outcome: again, choosing: false };
   }
   if (id === "homing_strikes" || id === "psi_knack") {
