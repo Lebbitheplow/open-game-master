@@ -14,7 +14,8 @@
 Wayfinding spec
 
 ## Status
-Active — ticket 01 e 02 completati come documenti; nessuna implementazione avviata.
+Active — obiettivo 1 (PNG isolati) e obiettivo 3 (Pi) realizzati e mergiati in `main`
+(PR #1, `193bcd8cb`); prossimo: obiettivo 2, l'italiano.
 
 ## Destination
 Evolvere il fork di Open Game Master, in ordine di priorità:
@@ -23,7 +24,8 @@ Evolvere il fork di Open Game Master, in ordine di priorità:
    Nessun accesso implicito ai segreti della campagna o aggiornamento retroattivo
    delle conoscenze.
 2. Esperienza interamente in italiano.
-3. Integrazione con Pi, con ruolo e superficie ancora da definire.
+3. Integrazione con Pi: deciso che Pi è un programma del tavolo, scelto come Codex
+   (vedi Decisions So Far).
 
 L'isolamento riguarda il contesto e l'accesso ai dati del personaggio, non implica
 necessariamente processi o modelli diversi. Questa è un'ipotesi tecnica da valutare,
@@ -44,7 +46,18 @@ non una scelta architetturale approvata.
   ispirazioni originali ed evolutive, scheda prevalente, passato coerente, conoscenze
   con provenienza, credenze distinte, rivelazioni motivate, autonomia fuori scena,
   autorità delle regole, campagna nuova e ripresa senza effetti duplicati.
-  La spec conserva le risposte esplicite dell'utente; nessuna implementazione è dichiarata.
+  La spec conserva le risposte esplicite dell'utente.
+- PNG isolati implementati con i ticket 01–09 di
+  [ogm-npc-isolation-design](../tickets/ogm-npc-isolation-design/): menti separate,
+  conoscenze con provenienza, credenze e bugie, validazione delle risposte, vita fuori
+  scena, compagni con turno di combattimento proprio, modello e livello di ragionamento
+  per personaggio (anche su server locali o personalizzati). Mergiati in `main` con la PR #1.
+- Ruolo di Pi (deciso dall'utente): Pi si sceglie esattamente come Codex, cioè è uno dei
+  programmi del tavolo in Admin → Agent, per narratore, contabilità e menti dei personaggi.
+  Nessun altro ruolo richiesto. Isolato: niente strumenti propri, sessioni, estensioni o
+  MCP dell'utente; solo gli strumenti MCP del tavolo. Codex resta il predefinito.
+  Provato in una partita vera (narratore Pi e mente di Brann tramite Pi).
+  Documentato in [agent-harness.md](../agent-harness.md).
 
 ## Evidence
 Riferimenti relativi alla base osservata; ricontrollarli se cambia il codice.
@@ -89,7 +102,6 @@ L'italiano può essere recuperato in seguito, come confermato dall'utente.
 - Come rendere verificabili i vincoli mentali della scheda e le affermazioni del PNG,
   senza confondere bugie intenzionali, ipotesi e invenzioni del modello.
 - Perimetro della traduzione: UI, contenuti, regole, aiuti e nomi propri.
-- Ruolo di Pi: narratore, controllo del giocatore, gestione dei PNG o altro.
 
 ## Out of Scope
 - Implementazione, installazione dipendenze, avvio di una seconda istanza o migrazioni in questa fase.
@@ -104,8 +116,9 @@ L'italiano può essere recuperato in seguito, come confermato dall'utente.
   con prima slice «il nome sconosciuto».
 - Proposta tecnica → futura implementazione: creare slice solo dopo la proposta;
   nessun ticket implementativo è autorizzato automaticamente.
-- Italiano e Pi restano nella destinazione, ma fuori dalla frontiera immediata:
-  aprire indagini dedicate alla revisione successiva, senza predefinirne il design.
+- PNG e Pi: completati.
+- Italiano: è la frontiera attuale; parte con un'indagine (perimetro, proxy della #919,
+  fork francese) senza predefinirne il design.
 
 ## Ticket Plan
 | ID | Tipo | Mode | Blockers | Titolo | Output atteso |
@@ -120,7 +133,9 @@ AFK descrive il ticket, non abilita un runner o la sua esecuzione automatica.
 - Budget, tempo per attempt, massimo attempts: nessuno impostato.
 - Approvazioni: mappa e ticket richiesti; risposte comportamentali di 01 confermate
   come documentato nella spec.
-  Nessuna autorizzazione a spendere, migrare dati esistenti, pubblicare, fare deploy o merge.
+  Merge nel fork autorizzato dall'utente («mergia tutto nel fork nostro»), con permesso
+  di merge automatico registrato per il repository. Nessuna autorizzazione a spendere,
+  migrare dati esistenti o fare deploy.
 - Versione esatta: nessuna richiesta.
 - Vincoli rilevati: richieste dell'utente, AGENTS.md, CLAUDE.md, README.md,
   docs/configuration.md e documenti sopra; preservare partita e fallback vocale.
@@ -129,6 +144,5 @@ AFK descrive il ticket, non abilita un runner o la sua esecuzione automatica.
   di esecuzione; questa mappa non è tale richiesta.
 
 ## Next Review
-Ticket implementativi creati in [ogm-npc-isolation-design](../tickets/ogm-npc-isolation-design/),
-figlia della [proposta](ogm-npc-isolation-design.md). Pronto: 01 «il nome sconosciuto».
-Eseguire richiede una richiesta esplicita. Poi indagine sull'italiano.
+Ticket 01–09 di [ogm-npc-isolation-design](../tickets/ogm-npc-isolation-design/) eseguiti
+e mergiati; Pi integrato come programma del tavolo. Prossimo: indagine sull'italiano.
