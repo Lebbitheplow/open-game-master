@@ -326,7 +326,7 @@ export function packRaceOptions(rows: RaceRow[], keepIds: Iterable<string> = [])
       slug: row.slug,
       documentSlug: row.documentSlug,
       source: row.document ?? row.documentSlug,
-      lineage: [row.slug, ...(parent ? [parent.slug] : [])],
+      lineage: lineageOf(row, parentSlug, bySlug),
     };
     // A shade's Living Origin is its size, speed and a language: each origin
     // is offered as the subrace it is, so the size every engine reads by the
@@ -365,6 +365,22 @@ function livingOriginOption(base: PackRaceOption, origin: (typeof LIVING_ORIGINS
     choiceTraitNames: base.choiceTraitNames.filter((name) => textKey(name) !== textKey("Living Origin")),
     note: base.note,
   };
+}
+
+// What the row is, by slug, for a feat's race prerequisite: its own, its
+// parent's, and for a workshop species the race it was started from
+// (`parentRace`, else the published or bundled source its copy recorded:
+// copiedFrom, kept by every save before the parent was), with that race's
+// own parent where the pack holds it.
+function lineageOf(row: RaceRow, parentSlug: string, bySlug: ReadonlyMap<string, RaceRow>): string[] {
+  const copied = row.data.copiedFrom as { source?: unknown; slug?: unknown } | undefined;
+  const started = typeof row.data.parentRace === "string" && row.data.parentRace
+    ? row.data.parentRace
+    : copied && (copied.source === "published" || copied.source === "bundled") && typeof copied.slug === "string"
+      ? copied.slug
+      : "";
+  const startedParent = started ? String(bySlug.get(started)?.data.parent_slug ?? "") : "";
+  return [...new Set([row.slug, parentSlug, started, startedParent].filter((slug) => slug && slug !== "undefined"))];
 }
 
 // What the engines read off an option the bundled list does not carry

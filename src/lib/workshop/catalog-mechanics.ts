@@ -186,13 +186,16 @@ export function raceMechanicsOf(
   const traits = option.traitNames.map((name) => `**_${name}._** ${paragraphs.get(name) ?? ""}`.trim()).join("\n\n");
   // The race's spells are the bundled table's only for the row that is that
   // race: Tome of Heroes' Drow, kept under the bare slug here, is its own.
-  return raceTableOf(option, traits, String(row.data.vision ?? parent?.data.vision ?? ""), optionIdFor({ slug: row.slug, documentSlug: row.documentSlug ?? "wotc-srd" }));
+  return raceTableOf(option, traits, String(row.data.vision ?? parent?.data.vision ?? ""), optionIdFor({ slug: row.slug, documentSlug: row.documentSlug ?? "wotc-srd" }), row.slug);
 }
 
 // What a species's data carries for one of the builder's race options.
-function raceTableOf(option: RaceOption, traits: string, vision: string, bundledId = option.id): Record<string, unknown> {
+// `parentRace`: the race the copy is started from, which it stays a kind of
+// for a feat's race prerequisite (homebrew/race-data.ts keeps it).
+function raceTableOf(option: RaceOption, traits: string, vision: string, bundledId = option.id, parentRace = option.id): Record<string, unknown> {
   const spells = option.spells ?? bundledSpeciesSpells(bundledId);
   return {
+    parentRace,
     traits,
     size: option.size ?? "Medium",
     ...(option.heavyArmorSpeed ? { heavyArmorSpeed: true } : {}),
