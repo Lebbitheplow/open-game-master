@@ -37,6 +37,7 @@ import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import type { Ability } from "@/lib/srd/authored-effects-types";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { GH_WARD_PLAYS } from "@/lib/dm/genre-gh-wards";
+import { learnName } from "@/lib/dm/genre-gh-names";
 
 type Resolution = ToolError | { patch?: FullPatchSheetInput; result: Record<string, unknown> };
 
@@ -164,4 +165,6 @@ export const GH_HORROR_PLAYS: Record<string, (ctx: SpendContext) => Resolution> 
   stitch_the_tear: stitchTheTear,
   // Sanctified Ground, Warding Sigil, Grounding Rig (src/lib/dm/genre-gh-wards.ts).
   ...GH_WARD_PLAYS,
+  // Whispered Names (src/lib/dm/genre-gh-names.ts).
+  whispered_names: learnName,
 };

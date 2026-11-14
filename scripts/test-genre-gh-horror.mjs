@@ -379,5 +379,38 @@ await run("Baseline Readings: a minute's measurement out of a fight gives the pa
   assert.ok((await spend(hero, "Baseline Readings")).error, "a minute's measurement in a fight");
 });
 
+// ---- GH12: Whispered Names ----
+
+const { rollEnemySave } = await load("lib/dm/forced-save.ts");
+const { diceLog } = await import("./lib/enforce-world.mjs");
+
+await run("Whispered Names: a creature whose name the occultist knows makes its first save against them each fight at disadvantage, the next at none, and another creature at none; the first spell attack on a named creature has advantage", async () => {
+  const hero = rig.holder(feature("occultist", "Whispered Names", 5));
+  const { near, far } = await rig.fight(hero);
+  assert.ok((await spend(hero, "Whispered Names")).error, "a name known of no creature");
+  rig.must(await spend(hero, "Whispered Names", { targetEnemyId: near.id }), "Whispered Names");
+  const d20s = (enemy) => {
+    clearDice();
+    diceLog();
+    rollEnemySave(world.campaignId, kit.enemy(enemy.id), "wis", 15, { origin: { ref: hero.id } });
+    return diceLog().filter((die) => die.sides === 20).length;
+  };
+  assert.equal(d20s(far), 1, "a creature whose name is unknown saved at disadvantage");
+  assert.equal(d20s(near), 2, "the named creature's first save was not at disadvantage");
+  assert.equal(d20s(near), 1, "the second save this fight was at disadvantage too");
+  await kit.endFight();
+  world.patch(hero.id, { spellcasting: { ability: "cha", slots: { 1: { max: 2, used: 0 } }, prepared: [], known: [], cantrips: ["Eldritch Blast"] } });
+  const again = await rig.fight(hero);
+  rig.must(await spend(hero, "Whispered Names", { targetEnemyId: again.near.id }), "Whispered Names");
+  const named = async () => {
+    const out = await kit.swing(hero.id, again.near.id, [15, 15, 3, 3, 3, 3], { spell: "Eldritch Blast" });
+    assert.ok(!out.error, `the spell attack: ${out.error}`);
+    return (out.result?.conditionEffects ?? []).some((note) => /Whispered Names: advantage/.test(note));
+  };
+  assert.equal(await named(), true, "the first spell attack on the named creature had no advantage");
+  rig.myTurn(hero);
+  assert.equal(await named(), false, "the second spell attack this fight had advantage too");
+});
+
 rig.world.close();
 finish();

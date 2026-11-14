@@ -617,15 +617,9 @@
   "clauses": [
    {
     "c": "Knowing a creature's true or use-name gives you advantage on your first spell attack or its first save against you each combat",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Whispered Names#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Whispered Names: a creature whose name the occultist knows makes its first save against them each fight at disadvantage, the next at none, and another creature at none; the first spell attack on a named creature has advantage",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts Whispered Names (the spend records the name known, src/lib/dm/genre-gh-names.ts), read once a fight by src/lib/dm/pc-attack-situation.ts (advantage on a spell attack, spent in pc-attack-resolve.ts) and src/lib/dm/forced-save.ts rollEnemySave (disadvantage on its save against the occultist)"
    }
   ]
  },

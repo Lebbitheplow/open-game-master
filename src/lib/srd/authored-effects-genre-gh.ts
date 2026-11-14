@@ -63,5 +63,9 @@ export const GENRE_GH_AUTHORED: GenreRow[] = [
   // "After 1 minute of measurement, grant the party advantage on the next
   // save any of them makes against a haunting or psychic effect".
   row("Baseline Readings", ["parapsychologist"], { spends: [{ name: "Baseline Readings", action: "none", fight: "out", outOfFightWhy: "is a minute of measurement, never taken in the middle of a fight", does: { kind: "horror_spend", play: "baseline_readings" } }] }),
+  // "Knowing a creature's true or use-name gives you advantage on your first
+  // spell attack or its first save against you each combat": the spend
+  // records the name known (src/lib/dm/genre-gh-names.ts).
+  row("Whispered Names", ["occultist"], { spends: [{ name: "Whispered Names", action: "none", does: { kind: "horror_spend", play: "whispered_names", aim: "enemy" } }] }),
   played("occultist", "Stitch the Tear", "horror_stitch_the_tear", "action", "stitch_the_tear", "enemy"),
 ];

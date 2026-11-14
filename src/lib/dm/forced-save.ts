@@ -27,6 +27,7 @@ import type { EncounterEnemy } from "@/lib/db/encounters";
 import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { spendWhisperedName } from "@/lib/dm/genre-gh-names";
 import { patchSheetAudited, type AuditActor } from "@/lib/dm/audited-patch";
 import { currentTurnId } from "@/lib/dm/job-control";
 import { d20Expression, rollExpression, type RollResult } from "@/lib/dice";
@@ -605,6 +606,10 @@ export function rollEnemySave(
   const riders = conditionRollRiders(enemy.conditions, "save", ability);
   // Authored subclass features (Magical Ambush, Hound of Ill Omen, Unsettling Words): authored-saves.ts.
   const authored = authoredEnemySave(campaignId, enemy, { channel: options.channel, magical: options.magical, damageType: options.damageType });
+  // Whispered Names: its first save this fight against the occultist who
+  // knows its name is at disadvantage (genre-gh-names.ts).
+  const namer = options.origin && "ref" in options.origin ? getSheetById(options.origin.ref) : null;
+  const named = spendWhisperedName(getActiveEncounter(campaignId), namer, enemy.id);
   const resistsMagic = options.magical === true && hasTrait(enemy.stats, "magicResistance");
   const against = conditionSaveLean(enemy.stats, options.against);
   // Sunlight Weakness: its saves are at disadvantage in sunlight.
@@ -620,6 +625,7 @@ export function rollEnemySave(
     ...(sunWeak ? ["disadvantage" as const] : []),
     ...(options.advantage ? ["advantage" as const] : []),
     ...(options.disadvantage ? ["disadvantage" as const] : []),
+    ...(named ? ["disadvantage" as const] : []),
     ...riders.advantageSources,
     ...authored.sources,
   ]);

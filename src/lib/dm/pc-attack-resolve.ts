@@ -6,6 +6,7 @@
 // refused or paid for everything this rolls; nothing here refuses the attack.
 
 import { tranceFloored } from "@/lib/dm/ar-ws-trance-floor";
+import { spendWhisperedName } from "@/lib/dm/genre-gh-names";
 import { noteShift, takeShift } from "@/lib/dm/chronal-shift";
 import { settleAttackDie } from "@/lib/dm/forced-save";
 import { insertRoll } from "@/lib/db/rolls";
@@ -91,6 +92,10 @@ export function shiftedThrow(plan: AttackPlan, strike: Strike, ac: number, critR
 export function rollPcAttack(plan: AttackPlan, strike: Strike, mote: HeldMote | null = null, thrownForPlayer: RollResult | null = null): Record<string, unknown> {
   const { campaign, turn, sheet, enemy, budget, context } = plan;
   const record = attackRecord(plan, strike, mote);
+  // Whispered Names' advantage rode this spell attack: its use this fight is spent.
+  if (plan.kind === "spell") {
+    spendWhisperedName(plan.encounter, sheet, enemy.id);
+  }
   const scene: SwingScene = { campaign, turn, sheet, enemy, sheets: plan.sheets, sheetsById: plan.sheetsById };
   // Notes written from here on; the plan's own ride the answer before them.
   const notes = context.notes;
