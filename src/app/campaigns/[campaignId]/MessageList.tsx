@@ -116,6 +116,7 @@ export function MessageList({
   onLoreCheck,
   onRenarrate,
   onContinueScene,
+  onRetract,
   onSelectVariant,
   onBrowseShop,
   meUserId = "",
@@ -163,6 +164,8 @@ export function MessageList({
   onLoreCheck?: (message: CampaignMessage) => void;
   onRenarrate?: (message: CampaignMessage) => void;
   onContinueScene?: (message: CampaignMessage) => void;
+  // Take back and rewrite: offered on the newest player move only.
+  onRetract?: (message: CampaignMessage) => void;
   onSelectVariant?: (message: CampaignMessage, index: number) => void;
   // A shop's "is open" line opens the Market on that shop.
   onBrowseShop?: (shopId: string) => void;
@@ -232,6 +235,23 @@ export function MessageList({
       hasContinue ? (message: CampaignMessage) => continueRef.current?.(message) : undefined,
     [hasContinue],
   );
+  const retractRef = useRef(onRetract);
+  useEffect(() => {
+    retractRef.current = onRetract;
+  });
+  const hasRetract = Boolean(onRetract);
+  const stableRetract = useMemo(
+    () => (hasRetract ? (message: CampaignMessage) => retractRef.current?.(message) : undefined),
+    [hasRetract],
+  );
+  const latestPlayerMessageId = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      if (messages[index].authorType === "player") {
+        return messages[index].id;
+      }
+    }
+    return null;
+  }, [messages]);
   const pinMemoryRef = useRef(onPinMemory);
   useEffect(() => {
     pinMemoryRef.current = onPinMemory;
@@ -433,6 +453,7 @@ export function MessageList({
               ? stableContinue
               : undefined
           }
+          onRetract={message.id === latestPlayerMessageId ? stableRetract : undefined}
           onSelectVariant={stableSelectVariant}
           onBrowseShop={stableBrowseShop}
         />

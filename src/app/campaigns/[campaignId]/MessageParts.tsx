@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, EyeOff, Flag, Scale, VenetianMask } from "lucide-react";
+import { Copy, EyeOff, Flag, Scale, Undo2, VenetianMask } from "lucide-react";
 import { useId } from "react";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { ContextMenu } from "@/components/ui/ContextMenu";
@@ -155,6 +155,7 @@ export function PlayerMessage({
   sheetsById,
   membersById,
   onReport,
+  onRetract,
 }: {
   message: CampaignMessage;
   mine: boolean;
@@ -162,6 +163,7 @@ export function PlayerMessage({
   sheetsById: ReadonlyMap<string, TranscriptSheet>;
   membersById: Map<string, CampaignMember>;
   onReport?: (message: CampaignMessage) => void;
+  onRetract?: (message: CampaignMessage) => void;
 }) {
   // Older messages predate characterId, so fall back to the author's
   // sheet in this campaign before giving up on a character identity. A line
@@ -181,6 +183,17 @@ export function PlayerMessage({
   const actions: MessageAction[] = [copyAction(message)];
   if (onReport && !mine && message.userId) {
     actions.push(reportAction(message, onReport, false));
+  }
+  if (onRetract) {
+    actions.push({
+      id: "retract",
+      name: "Take back and rewrite",
+      label: "Take back this move and rewrite it",
+      hint: "Take back: remove this move and the GM's answer to it, and get its words back to correct",
+      glyph: "tab-log",
+      icon: <Undo2 className="size-3.5" />,
+      onSelect: () => onRetract(message),
+    });
   }
   // The face beside a line is at most seven rem across: the small copy the
   // server keeps of a portrait (src/lib/image-variant-url.ts), not the
