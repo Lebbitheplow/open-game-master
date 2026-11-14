@@ -104,21 +104,15 @@
   "clauses": [
    {
     "c": "10 minutes of ritual wards a 30-ft area for 8 hours",
-    "run": {
-     "k": "no_door"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap exorcist::Sanctified Ground#0",
-    "observed": "no call plays it: use_resource answers \"No resource called \"sanctified ground\" is known. Their resources: horror_rite_of_repulsion. Send the one meant, by the name on the sheet. / No resource called \"\": the engine gives false, the text true",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (no row) and src/lib/classes/resources.json (no counter): no tool plays the feature",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Sanctified Ground: ten minutes of ritual (one with Wax and Wick), refused in a fight; a fight begun there holds it, and a hostile spirit walking in is seen and takes 1d8 radiant while a humanoid takes nothing",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts Sanctified Ground (fight: out), played by src/lib/dm/genre-gh-wards.ts: the clock moves ten minutes, the ward is an 8-hour condition at the place it was set, laid on the board by layStandingWards when a fight begins there (src/lib/dm/encounter-tools.ts)"
    },
    {
     "c": "hostile spirits entering it are visible and take 1d8 radiant on entry",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "follows clause #0 (gap exorcist::Sanctified Ground#0), which fails: no call plays the feature; with nothing on the table there is no state this clause could be read on",
-    "same_probe_as": 0
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Sanctified Ground: ten minutes of ritual (one with Wax and Wick), refused in a fight; a fight begun there holds it, and a hostile spirit walking in is seen and takes 1d8 radiant while a humanoid takes nothing",
+    "by": "src/lib/battlemap/zones-genre-gh.ts sanctified ground (a hostile undead entering: 1d8 radiant, its invisible and hidden end), resolved by src/lib/dm/zone-triggers.ts"
    }
   ]
  },
@@ -457,15 +451,9 @@
   "clauses": [
    {
     "c": "Your Sanctified Ground ritual takes 1 minute instead of 10",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap exorcist::Wax and Wick#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Sanctified Ground: ten minutes of ritual (one with Wax and Wick), refused in a fight; a fight begun there holds it, and a hostile spirit walking in is seen and takes 1d8 radiant while a humanoid takes nothing",
+    "by": "src/lib/dm/genre-gh-wards.ts GH_WARDS sanctified_ground quicker (wardMinutes): the clock moves one minute for a holder of Wax and Wick"
    }
   ]
  },
@@ -561,28 +549,21 @@
   "clauses": [
    {
     "c": "1 minute of chalk-work wards a doorway or 5-ft line for 8 hours",
-    "run": {
-     "k": "no_door"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Warding Sigil#0",
-    "observed": "no call plays it: use_resource answers \"No resource called \"warding sigil\" is known. They have no limited-use resources. Send the one meant, by the name on the sheet. / No resource called \"warding sig\": the engine gives false, the text true",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (no row) and src/lib/classes/resources.json (no counter): no tool plays the feature",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Warding Sigil: a minute's chalk-work; the first hostile creature crossing makes an INT save or takes 2d6 psychic, half on a success, and the sigil is spent; Rite of the Threshold covers 15 feet an ethereal creature cannot cross",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts Warding Sigil (fight: out), played by src/lib/dm/genre-gh-wards.ts: a minute on the clock, an 8-hour condition at the place, laid as one square beside the occultist toward the nearest foe when a fight begins there"
    },
    {
     "c": "the first hostile creature crossing takes 2d6 psychic",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "follows clause #0 (gap occultist::Warding Sigil#0), which fails: no call plays the feature; with nothing on the table there is no state this clause could be read on",
-    "same_probe_as": 0
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Warding Sigil: a minute's chalk-work; the first hostile creature crossing makes an INT save or takes 2d6 psychic, half on a success, and the sigil is spent; Rite of the Threshold covers 15 feet an ethereal creature cannot cross",
+    "by": "src/lib/battlemap/zones-genre-gh.ts warding sigil (INT save, 2d6 psychic, half on a success, firstOnly), resolved by src/lib/dm/zone-triggers.ts afterStrike"
    },
    {
     "c": "INT save halves",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "follows clause #0 (gap occultist::Warding Sigil#0), which fails: no call plays the feature; with nothing on the table there is no state this clause could be read on",
-    "same_probe_as": 1
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Warding Sigil: a minute's chalk-work; the first hostile creature crossing makes an INT save or takes 2d6 psychic, half on a success, and the sigil is spent; Rite of the Threshold covers 15 feet an ethereal creature cannot cross",
+    "by": "src/lib/battlemap/zones-genre-gh.ts warding sigil (INT save, 2d6 psychic, half on a success, firstOnly), resolved by src/lib/dm/zone-triggers.ts afterStrike"
    }
   ]
  },
@@ -714,15 +695,9 @@
   "clauses": [
    {
     "c": "Your Warding Sigil can cover a 15-ft radius and also blocks ethereal passage",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Rite of the Threshold#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Warding Sigil: a minute's chalk-work; the first hostile creature crossing makes an INT save or takes 2d6 psychic, half on a success, and the sigil is spent; Rite of the Threshold covers 15 feet an ethereal creature cannot cross",
+    "by": "src/lib/dm/genre-gh-wards.ts GH_WARDS warding_sigil upgrade: the threshold sigil of src/lib/battlemap/zones-genre-gh.ts (15-ft radius, barsEthereal, read by src/lib/battlemap/zones-movers.ts withEdges)"
    }
   ]
  },
@@ -2345,9 +2320,9 @@
    },
    {
     "c": "a 10-minute setup makes a 20-ft radius immune to teleportation and phasing for 1 hour",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_grounding_rig#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-grounding-rig"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Grounding Rig: a ten-minute setup, one a long rest; a fight there lays 20 feet nothing teleports into or out of, and an ethereal creature cannot cross",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts Grounding Rig (fight: out), played by src/lib/dm/genre-gh-wards.ts; the grounding rig area of src/lib/battlemap/zones-genre-gh.ts (noTeleport, read by src/lib/dm/genre-a-horror-wards.ts horrorTeleportRefusal; barsEthereal, read by zones-movers.ts withEdges)"
    }
   ]
  },

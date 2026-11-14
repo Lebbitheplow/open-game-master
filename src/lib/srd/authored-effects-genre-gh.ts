@@ -18,6 +18,13 @@ const row = (feature: string, classes: string[], entry: Omit<AuthoredEntry, "sub
 const played = (classId: string, feature: string, counter: string, action: SpendAction, play: string, aim?: "enemy" | "ally", more: Omit<AuthoredEntry, "subclass" | "counter" | "spends"> = {}): GenreRow =>
   row(feature, [classId], { counter, ...more, spends: [{ name: feature, pool: { id: counter }, action, does: { kind: "horror_spend", play, ...(aim ? { aim } : {}) } }] });
 
+// A ward set out of a fight; `counter`: its uses (Grounding Rig's one a long rest).
+const ward = (classId: string, feature: string, play: string, why: string, counter?: string): GenreRow =>
+  row(feature, [classId], {
+    ...(counter ? { counter } : {}),
+    spends: [{ name: feature, ...(counter ? { pool: { id: counter } } : {}), action: "none", fight: "out", outOfFightWhy: why, does: { kind: "horror_spend", play } }],
+  });
+
 export const GENRE_GH_AUTHORED: GenreRow[] = [
   // "1/rest, when an ally fails an INT, WIS, or CHA save within 30 ft, let
   // them reroll with your guidance": no action is named, so it costs none.
@@ -44,5 +51,10 @@ export const GENRE_GH_AUTHORED: GenreRow[] = [
   // "1/long rest, for 1 minute your stigmata cost no verbal or somatic
   // components and cannot be counterspelled" (src/lib/dm/genre-gh-proof.ts).
   row("The Rite Completed", ["apostate"], { counter: "horror_the_rite_completed", spends: [{ name: "The Rite Completed", pool: { id: "horror_the_rite_completed" }, action: "none", does: { kind: "buff", condition: "the rite completed", rounds: 10 } }] }),
+  // The wards (src/lib/dm/genre-gh-wards.ts): minutes of work, so never in a
+  // fight; the area holds at the place it was set for the hours given.
+  ward("exorcist", "Sanctified Ground", "sanctified_ground", "is ten minutes of ritual (one with Wax and Wick), never made in the middle of a fight"),
+  ward("occultist", "Warding Sigil", "warding_sigil", "is a minute of chalk-work, never made in the middle of a fight"),
+  ward("parapsychologist", "Grounding Rig", "grounding_rig", "is a ten-minute setup, never made in the middle of a fight", "horror_grounding_rig"),
   played("occultist", "Stitch the Tear", "horror_stitch_the_tear", "action", "stitch_the_tear", "enemy"),
 ];

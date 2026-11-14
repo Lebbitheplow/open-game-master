@@ -181,5 +181,119 @@ await run("The Rite Completed: for a minute no enemy's Counterspell is tried on 
   assert.equal(enemyCounterspell(world.campaign().id, null, { id: "none" }, sheet, "Hold Person", 2), null);
 });
 
+// ---- GH07: the wards ----
+
+const { getClock } = await load("lib/db/clock.ts");
+const { getCampaignById } = await load("lib/db/campaigns.ts");
+const { getBattleMapForEncounter, listTokens } = await load("lib/db/battle-maps.ts");
+const { layStandingWards } = await load("lib/dm/genre-gh-wards.ts");
+const { liveZones, saveZones } = await load("lib/dm/zone-store.ts");
+const { zonesAfterMove } = await load("lib/dm/zone-triggers.ts");
+const { horrorTeleportRefusal } = await load("lib/dm/genre-a-horror-wards.ts");
+const { withEdges, BARRED } = await load("lib/battlemap/zones-movers.ts");
+const { tileIndex } = await load("lib/battlemap/types.ts");
+
+const minute = () => getClock(world.campaignId).instant;
+const boardMap = () => getBattleMapForEncounter(world.encounter().id);
+const zones = () => liveZones(boardMap(), world.encounter());
+const lost = (enemy) => 300 - kit.enemy(enemy.id).currentHp;
+const typed = (enemy, type) => kit.setEnemy(enemy.id, { stats: { ...kit.enemy(enemy.id).stats, type } });
+const withFeature = (hero, name) => world.patch(hero.id, { features: [...world.sheet(hero.id).features, { ...world.sheet(hero.id).features[0], name }] });
+// The ward set out of a fight, the minutes it took on the clock.
+async function setWard(hero, name) {
+  await kit.endFight();
+  const before = minute();
+  rig.must(await spend(hero, name), name);
+  return minute() - before;
+}
+// The fight begun at the ward's place, its board's areas laid again where
+// the setter now stands (the fight's opening placed everyone at random).
+async function fightInWard(hero) {
+  // kit.fight, not rig.fight: rig.fight clears every condition first.
+  await kit.fight(2, { heroFaces: { [hero.id]: 19, [rig.ally.id]: 3 } });
+  const [near, far] = world.enemies();
+  for (const enemy of [near, far]) kit.setEnemy(enemy.id, { maxHp: 300, currentHp: 300 });
+  assert.ok(zones().length, "the fight's board holds no ward");
+  saveZones(boardMap().id, []);
+  kit.place(hero.id, 5, 2);
+  kit.place(rig.ally.id, 5, 3);
+  kit.place(near.id, 6, 2);
+  kit.place(far.id, 18, 2);
+  rig.myTurn(hero);
+  return { near: kit.enemy(near.id), far: kit.enemy(far.id) };
+}
+const lay = () => layStandingWards(world.campaignId);
+function walk(enemy, from, path) {
+  kit.place(enemy.id, from.x, from.y);
+  return zonesAfterMove(getCampaignById(world.campaignId), world.encounter().id, { kind: "enemy", refId: enemy.id }, from, path);
+}
+
+await run("Sanctified Ground: ten minutes of ritual (one with Wax and Wick), refused in a fight; a fight begun there holds it, and a hostile spirit walking in is seen and takes 1d8 radiant while a humanoid takes nothing", async () => {
+  const hero = rig.holder(feature("exorcist", "Sanctified Ground", 5));
+  world.patch(hero.id, { features: world.sheet(hero.id).features.filter((entry) => entry.name !== "Wax and Wick") });
+  assert.equal(await setWard(hero, "Sanctified Ground"), 10, "the ritual's minutes");
+  assert.ok(world.sheet(hero.id).conditions.includes("sanctified ground"), "the ward holds nowhere");
+  const { near, far } = await fightInWard(hero);
+  assert.ok((await spend(hero, "Sanctified Ground")).error, "a ten-minute ritual made in a fight");
+  lay();
+  typed(far, "undead");
+  kit.setEnemy(far.id, { conditions: ["invisible"] });
+  clearDice();
+  dice(5);
+  walk(far, { x: 10, y: 2 }, [{ x: 9, y: 2 }, { x: 8, y: 2 }, { x: 7, y: 2 }]);
+  clearDice();
+  assert.equal(lost(far), 5, `the spirit entering lost ${lost(far)}`);
+  assert.deepEqual(kit.enemy(far.id).conditions, [], "the spirit is still unseen inside");
+  typed(near, "humanoid");
+  dice(5);
+  walk(near, { x: 10, y: 4 }, [{ x: 9, y: 4 }, { x: 8, y: 4 }, { x: 7, y: 4 }]);
+  clearDice();
+  assert.equal(lost(near), 0, "a humanoid walking in was burned");
+  rig.must(await world.invoke("end_encounter", { outcome: "truce" }), "end_encounter");
+  assert.ok(world.sheet(hero.id).conditions.includes("sanctified ground"), "the eight-hour ward ended with the fight");
+  withFeature(hero, "Wax and Wick");
+  assert.equal(await setWard(hero, "Sanctified Ground"), 1, "Wax and Wick's minute");
+});
+
+await run("Warding Sigil: a minute's chalk-work; the first hostile creature crossing makes an INT save or takes 2d6 psychic, half on a success, and the sigil is spent; Rite of the Threshold covers 15 feet an ethereal creature cannot cross", async () => {
+  const hero = rig.holder(feature("occultist", "Warding Sigil", 9));
+  world.patch(hero.id, { features: world.sheet(hero.id).features.filter((entry) => entry.name !== "Rite of the Threshold") });
+  assert.equal(await setWard(hero, "Warding Sigil"), 1, "the chalk-work's minutes");
+  const { near, far } = await fightInWard(hero);
+  kit.place(near.id, 12, 2);
+  kit.place(far.id, 9, 2);
+  lay();
+  const [sigil] = zones();
+  assert.deepEqual([sigil?.cells.length, sigil?.origin.x], [1, 6], "the sigil is not the square beside the occultist toward the foe");
+  clearDice();
+  dice(2, 4, 4);
+  walk(far, { x: 9, y: 2 }, [{ x: 8, y: 2 }, { x: 7, y: 2 }, { x: 6, y: 2 }]);
+  clearDice();
+  assert.equal(lost(far), 8, `the first across lost ${lost(far)}`);
+  assert.equal(zones().length, 0, "the sigil outlasted its first");
+  withFeature(hero, "Rite of the Threshold");
+  lay();
+  const [threshold] = zones();
+  assert.ok(threshold && threshold.cells.length > 9, "Rite of the Threshold's sigil covers no radius");
+  const inside = tileIndex(boardMap().width, 5, 2);
+  const outside = tileIndex(boardMap().width, 15, 2);
+  assert.equal(withEdges(null, zones(), { conditions: ["ethereal"] })(inside, outside, 5), BARRED, "an ethereal creature crossed the sigil");
+  assert.equal(withEdges(null, zones(), { conditions: [] })?.(inside, outside, 5) ?? 5, 5, "a creature on foot was barred");
+});
+
+await run("Grounding Rig: a ten-minute setup, one a long rest; a fight there lays 20 feet nothing teleports into or out of, and an ethereal creature cannot cross", async () => {
+  const hero = rig.holder(feature("parapsychologist", "Grounding Rig", 11));
+  assert.equal(await setWard(hero, "Grounding Rig"), 10, "the setup's minutes");
+  assert.equal(used(hero, "horror_grounding_rig"), 1);
+  const { far } = await fightInWard(hero);
+  lay();
+  const map = boardMap();
+  const token = listTokens(map.id).find((entry) => entry.refId === far.id);
+  assert.match(horrorTeleportRefusal(world.campaignId, map, token, { x: 6, y: 3 }, undefined)?.error ?? "allowed", /cannot teleport into/);
+  assert.equal(horrorTeleportRefusal(world.campaignId, map, token, { x: 17, y: 4 }, undefined), null, "a jump far from the rig was refused");
+  const inside = tileIndex(map.width, 5, 2);
+  assert.equal(withEdges(null, zones(), { conditions: ["ethereal"] })(inside, tileIndex(map.width, 15, 2), 5), BARRED, "a phasing creature crossed the rig");
+});
+
 rig.world.close();
 finish();

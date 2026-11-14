@@ -12,6 +12,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { GEAR_ZONE_ROWS } from "@/lib/battlemap/zones-gear";
 import { FEATURE_ZONE_ROWS } from "@/lib/battlemap/zones-features";
 import { GENRE_B_ZONE_ROWS } from "@/lib/battlemap/zones-genre-b";
+import { GENRE_GH_ZONE_ROWS } from "@/lib/battlemap/zones-genre-gh";
 
 export type ZoneShape =
   // A burst around a point: every square within `feet` of it (a cylinder
@@ -67,6 +68,12 @@ export type ZoneTrigger = {
   immuneSucceeds?: string;
   // Strikes each creature once only (burning webs).
   once?: boolean;
+  // Spent by the first creature it strikes (Warding Sigil: "the first
+  // hostile creature crossing takes 2d6 psychic"): the area is gone after.
+  firstOnly?: boolean;
+  // These conditions end on a creature it strikes (Sanctified Ground:
+  // "hostile spirits entering it are visible").
+  reveals?: string[];
   // The dice grow with the caster's level in this class, the last row
   // reached winning (Spreading Spores: the Halo of Spores die).
   byLevel?: { class: string; dice: Array<[number, string]> };
@@ -150,6 +157,12 @@ export type ZoneRow = {
   // Antimagic Field: no spell is cast inside it, and none cast from outside
   // reaches a creature in it (src/lib/dm/zone-rules.ts).
   antimagic?: boolean;
+  // No creature teleports into, out of or within it (Grounding Rig: "immune
+  // to teleportation"), read by src/lib/dm/genre-a-horror-wards.ts.
+  noTeleport?: boolean;
+  // An ethereal creature does not cross its edge, in or out (Rite of the
+  // Threshold's "blocks ethereal passage", Grounding Rig's phasing).
+  barsEthereal?: boolean;
   // Wall of Ice: 10-foot sections an attack can break (AC, hit points, the
   // damage type that deals double), each leaving the area named in `leaves`
   // where it stood (src/lib/dm/zone-walls.ts).
@@ -542,7 +555,7 @@ export const CREATURE_ZONE_ROWS: Record<string, ZoneRow> = {
 };
 
 // A class feature's own area (Dread Lord's gloom) reads its row here too.
-const AREA_ROWS: Record<string, ZoneRow> = { ...ZONE_ROWS, ...GEAR_ZONE_ROWS, ...CREATURE_ZONE_ROWS, ...FEATURE_ZONE_ROWS, ...MT_FB_ZONE_ROWS, ...GENRE_B_ZONE_ROWS };
+const AREA_ROWS: Record<string, ZoneRow> = { ...ZONE_ROWS, ...GEAR_ZONE_ROWS, ...CREATURE_ZONE_ROWS, ...FEATURE_ZONE_ROWS, ...MT_FB_ZONE_ROWS, ...GENRE_B_ZONE_ROWS, ...GENRE_GH_ZONE_ROWS };
 
 export function zoneRowFor(spell: ZoneNamed): ZoneRow | null {
   return AREA_ROWS[zoneKey(spell)] ?? null;
