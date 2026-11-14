@@ -453,7 +453,7 @@ test("every racial trait is enforced, a resource, or acknowledged", () => {
     "Pack Tactics (advantage on an attack against a creature an ally stands within 5 feet of)",
     "Grovel, Cower, and Beg (an action: until the end of your next turn, allies' attacks on foes within 10 ft of you have advantage, 1/short rest)",
     "Flight (flying speed of 50 ft, not while wearing medium or heavy armor)",
-    "Flight (flying speed of 30 ft, not while wearing medium or heavy armor)",
+    "Flight (flying speed equal to your walking speed, not while wearing medium or heavy armor)",
     "Talons (1d4 slashing unarmed strike)",
     "Martial Training (light armor and two martial weapons of your choice)",
     "Ram (1d4 bludgeoning unarmed strike)",

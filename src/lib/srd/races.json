@@ -1312,7 +1312,7 @@
       },
       "traits": [
         "Fey (your creature type is fey, not humanoid)",
-        "Flight (flying speed of 30 ft, not while wearing medium or heavy armor)",
+        "Flight (flying speed equal to your walking speed, not while wearing medium or heavy armor)",
         "Fairy Magic (druidcraft cantrip, then faerie fire from 3rd level and enlarge/reduce from 5th, 1/long rest each)"
       ],
       "languages": [
@@ -1357,7 +1357,7 @@
       },
       "traits": [
         "Superior Darkvision 120 ft",
-        "Flight (flying speed of 30 ft, not while wearing medium or heavy armor)",
+        "Flight (flying speed equal to your walking speed, not while wearing medium or heavy armor)",
         "Stealth proficiency (Silent Feathers)"
       ],
       "languages": [

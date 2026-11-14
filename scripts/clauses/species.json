@@ -2725,7 +2725,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "c25d98231c9c",
+  "sha": "c6c50c2368a1",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -2758,9 +2758,9 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.fairy.fey"
    },
    {
-    "c": "Flight (flying speed of 30 ft, not while wearing medium or heavy armor)",
+    "c": "Flight (flying speed equal to your walking speed, not while wearing medium or heavy armor)",
     "is": "held",
-    "by": "src/lib/battlemap/types.ts flyingSpeedOf (bulkyArmor), read by src/lib/dm/token-state.ts flightOf and the board's flying move",
+    "by": "src/lib/battlemap/types.ts flyingSpeedOf (a feature naming a flying speed with no number flies at walkingFeet, the sheet's speed; bulkyArmor grounds it), read by src/lib/dm/token-state.ts flightOf and the board's flying move",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.fairy.flight"
    },
    {
@@ -2799,7 +2799,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "3c0960f95267",
+  "sha": "1f60e3cb5fb9",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -2832,9 +2832,9 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.owlfolk.darkvision"
    },
    {
-    "c": "Flight (flying speed of 30 ft, not while wearing medium or heavy armor)",
+    "c": "Flight (flying speed equal to your walking speed, not while wearing medium or heavy armor)",
     "is": "held",
-    "by": "src/lib/battlemap/types.ts flyingSpeedOf (bulkyArmor), read by src/lib/dm/token-state.ts flightOf and the board's flying move",
+    "by": "src/lib/battlemap/types.ts flyingSpeedOf (a feature naming a flying speed with no number flies at walkingFeet, the sheet's speed; bulkyArmor grounds it), read by src/lib/dm/token-state.ts flightOf and the board's flying move",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.owlfolk.flight"
    },
    {

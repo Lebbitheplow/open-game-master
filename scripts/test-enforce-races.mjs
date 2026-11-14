@@ -166,8 +166,9 @@ const BOOKS = {
   // +2 to one score and +1 to another, the player's, and Common with one
   // other language of the player's.
   // A fairy is fey, not humanoid.
-  fairy: { asi: {}, asiChoice: { count: 2, amount: 1, amounts: [2, 1] }, languages: ["Common"], bonusLanguages: 1, type: "fey", traits: ["Fey (your creature type is fey, not humanoid)"] },
-  owlfolk: { asi: {}, asiChoice: { count: 2, amount: 1, amounts: [2, 1] }, languages: ["Common"], bonusLanguages: 1 },
+  // A fairy and an owlin fly at their walking speed.
+  fairy: { asi: {}, asiChoice: { count: 2, amount: 1, amounts: [2, 1] }, languages: ["Common"], bonusLanguages: 1, type: "fey", traits: ["Fey (your creature type is fey, not humanoid)", "Flight (flying speed equal to your walking speed, not while wearing medium or heavy armor)"] },
+  owlfolk: { asi: {}, asiChoice: { count: 2, amount: 1, amounts: [2, 1] }, languages: ["Common"], bonusLanguages: 1, traits: ["Flight (flying speed equal to your walking speed, not while wearing medium or heavy armor)"] },
   rabbitfolk: { asi: {}, asiChoice: { count: 2, amount: 1, amounts: [2, 1] }, languages: ["Common"], bonusLanguages: 1 },
   // Mordenkainen's Tome of Foes: an eladrin has the elf's traits and Fey
   // Step, and none of the high elf's or wood elf's weapon training.

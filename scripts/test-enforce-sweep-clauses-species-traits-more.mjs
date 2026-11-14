@@ -257,7 +257,8 @@ for (const row of RACES) {
       same([alone, beside], [1, 2], `${row.name}: d20s on a strike with no ally at the foe's side, then with one`);
     });
   }
-  // Flight: a flying speed of its own, grounded in medium or heavy armor.
+  // Flight: a flying speed of its own, grounded in medium or heavy armor;
+  // one "equal to your walking speed" follows that speed when it changes.
   if (holds(row, "flight (flying speed")) {
     probe("flight", async () => {
       const { flightOf } = await import("../src/lib/dm/token-state.ts");
@@ -271,8 +272,16 @@ for (const row of RACES) {
       const light = flightOf(encounter, t.kit.token(who.id));
       t.patch(who, { equipment: [{ name: "Chain Mail", equipped: true }] });
       const heavy = flightOf(encounter, t.kit.token(who.id));
-      const feet = Number(/flying speed of (\d+)/.exec(row.traits.join(" "))[1]);
-      same([bare, light, heavy, flightOf(encounter, t.kit.token(other.id))], [feet, feet, null, null], `${row.name}: flying speed bare, in leather, in chain mail, and a human's`);
+      const line = row.traits.find((entry) => entry.toLowerCase().startsWith("flight (flying speed"));
+      const follows = /equal to your walking speed/i.test(line);
+      const feet = follows ? row.speed : Number(/flying speed of (\d+)/.exec(line)[1]);
+      t.patch(who, { equipment: [], speed: row.speed + 10 });
+      const faster = flightOf(encounter, t.kit.token(who.id));
+      same(
+        [bare, light, heavy, faster, flightOf(encounter, t.kit.token(other.id))],
+        [feet, feet, null, follows ? row.speed + 10 : feet, null],
+        `${row.name}: flying speed bare, in leather, in chain mail, with 10 more feet of walking speed, and a human's`,
+      );
     });
   }
   // Hare-Trigger: the proficiency bonus on initiative, beside a human's.
