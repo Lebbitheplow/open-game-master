@@ -95,6 +95,8 @@ export default {
         await eventually(async () => /favor|syndicate/i.test(((await info.textContent()) ?? "").replace(/A Favor In Turn/g, "")), { timeoutMs: 15_000, label: "the feature's text" }).catch(() =>
           problems.push("character page: the background feature's info opens with no text"),
         );
+        // The feature, not the background's whole story with the feature at its foot.
+        if (/slum-run streets/.test((await info.textContent()) ?? "")) problems.push("character page: the feature's info opens the background's whole story");
         await untilStill(page).catch(() => {});
         await shootBoth(t, null, "library-background-feature-info");
         await page.keyboard.press("Escape");
@@ -162,6 +164,7 @@ export default {
         "the level-up's Mystic Arcanum",
       );
       await untilStill(page).catch(() => {});
+      if (!/Mystic Arcanum \d+\/1/.test(((await arcanum.textContent()) ?? "").replace(/\s+/g, " "))) problems.push("level-up: the spell book does not count the Mystic Arcanum beside the spells known");
       const sixth = arcanum.locator("button").filter({ hasText: /^\s*VI\s*$/ }).first();
       if (await sixth.count()) {
         await t.tap(sixth);

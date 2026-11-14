@@ -1813,6 +1813,17 @@ export function LevelUpDialog({
                             },
                           ]
                         : []),
+                      // The arcanum's own count beside the spells known, as
+                      // the builder's spell step shows it.
+                      ...(heldArcana.open.length
+                        ? [
+                            {
+                              label: arcanumName(classChoice),
+                              value: heldArcana.open.filter((level) => arcanumPickOf(level)).length,
+                              max: heldArcana.open.length,
+                            },
+                          ]
+                        : []),
                     ]}
                     onTile={(tile) => {
                       setSpellNote("");
