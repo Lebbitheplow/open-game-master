@@ -2,6 +2,7 @@ import { iconSlug, isPainted, iconPath, type IconRef } from "@/lib/icons";
 import { weaponNamed } from "@/lib/srd/weapons";
 import { cardIcon, type SpellGlyph } from "@/lib/battlemap/spell-glyph-logic";
 import itemArtwork from "./card-art.json";
+import { equipmentArtwork } from "@/lib/equipment-art-logic";
 
 const ITEM_ART = new Map<string, string>(Object.entries(itemArtwork));
 const GENRE_ACTIONS = new Set([
@@ -40,6 +41,8 @@ function genreActionKey(key: string, genre?: string | null): string | null {
 // A weapon is found by its whole name as weaponNamed reads it, so a shop's
 // "Crossbow, hand" (the book's order) or a "Longsword +1" shows its weapon.
 export function cardArtwork(icon: IconRef, genre?: string | null): IconRef {
+  const equipment = equipmentArtwork(icon, genre, "card");
+  if (equipment !== icon) return equipment;
   const baseKey =
     icon.kind === "item"
       ? ITEM_ART.get(iconSlug(weaponNamed(icon.key)?.name ?? icon.key))

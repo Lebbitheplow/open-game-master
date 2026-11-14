@@ -1,0 +1,64 @@
+{
+  "web": {
+    "records": [
+      {
+        "viewport": "desktop",
+        "theme": "dark",
+        "images": 19,
+        "file": "shared-genre-equipment-web-desktop-dark.png"
+      },
+      {
+        "viewport": "desktop",
+        "theme": "light",
+        "images": 19,
+        "file": "shared-genre-equipment-web-desktop-light.png"
+      },
+      {
+        "viewport": "phone",
+        "theme": "dark",
+        "images": 19,
+        "file": "shared-genre-equipment-web-phone-dark.png"
+      },
+      {
+        "viewport": "phone",
+        "theme": "light",
+        "images": 19,
+        "file": "shared-genre-equipment-web-phone-light.png"
+      }
+    ],
+    "pageErrors": [],
+    "missingVariantFallback": true,
+    "scope": "Production website in Chromium with synthetic local table"
+  },
+  "app": {
+    "records": [
+      {
+        "viewport": "desktop",
+        "theme": "dark",
+        "images": 19,
+        "file": "shared-genre-equipment-app-desktop-dark.png"
+      },
+      {
+        "viewport": "desktop",
+        "theme": "light",
+        "images": 19,
+        "file": "shared-genre-equipment-app-desktop-light.png"
+      },
+      {
+        "viewport": "phone",
+        "theme": "dark",
+        "images": 19,
+        "file": "shared-genre-equipment-app-phone-dark.png"
+      },
+      {
+        "viewport": "phone",
+        "theme": "light",
+        "images": 19,
+        "file": "shared-genre-equipment-app-phone-light.png"
+      }
+    ],
+    "pageErrors": [],
+    "missingVariantFallback": true,
+    "scope": "Client app shell in Chromium with synthetic local table"
+  }
+}
