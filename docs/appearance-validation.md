@@ -1,5 +1,46 @@
 # Appearance infrastructure validation
 
+## Current-main port
+
+The port onto `044b9dcd0409c5b862a77241de6f18311f497f74` was checked on
+2026-11-14. These checks use the code submitted in PR #962:
+
+| Check | Result |
+| --- | --- |
+| `node scripts/test-appearance.mjs` | 11 checks passed, including older-host compatibility |
+| `node scripts/test-capabilities.mjs` | Passed |
+| `node scripts/test-table-settings-groups.mjs` | 9 enforced checks passed |
+| `npm run lint` | Passed with 313 warnings and no errors |
+| `npm run build` | Initial port passed, including TypeScript; final overlay extension still requires CI |
+| `node scripts/check-bundle-budget.mjs` | Passed with the documented theme stylesheet allowance |
+| Browser layout matrix | 36 checks passed; the remaining enlarged-map check passed after fixing the test's breakpoint handling |
+| `theme:check -- --theme woodland --interactions-only` | 3 checks passed, including enlarged-map artwork, desktop/phone geometry and keyboard card activation |
+
+The phone checks cover 320/390px screens and 125% text. They found and verified
+fixes for the cramped composer and a non-shrinking combat desk. The enlarged map
+now renders its own four corners and frame inside its dialog. Its checks cover
+day/night at 390px and desktop, and confirm decorations do not intercept input.
+The updated component and browser script also passed focused ESLint.
+
+Reviewed screenshots are saved in [images/appearance](images/appearance),
+including the [enlarged battle map](images/appearance/woodland-map-enlarged-night.png).
+The PR description embeds the desktop and phone captures. All data is fictional.
+
+The production build measured 105.9 KiB of compressed shared CSS and 112.5 KiB
+on the rulebook page. The stylesheet budgets are now 112 and 119 KiB to allow
+the new palettes, ornaments, picker and Woodland furniture with about 5%
+headroom. JavaScript budgets are unchanged. The first Linux CI build completed,
+then failed its old CSS budget; the Windows CI build passed.
+
+The full local test suite was interrupted during dependency setup and is not a
+passing result. Its three reported failures were rerun individually after setup:
+`test-cast-known.mjs` passed 21 checks, `test-enforce-srd-adventuring.mjs` passed
+17, and `test-create-chooser.mjs` passed 9. Full CI, native-shell and real-device
+validation remain outstanding. Keep the PR in draft until the remaining checks
+are resolved.
+
+## Original implementation
+
 The results below were recorded on 2026-11-14 for the original theme
 implementation before its port to current main. They are historical evidence,
 not validation of the port. Reproduce them using [Build an appearance theme](appearance-themes.md).

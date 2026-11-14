@@ -181,10 +181,34 @@ try {
       await waitFor(`!!document.querySelector('button[aria-label="Close the board"]')`);
       await pause(500);
       const g=await geometry();
-      assert.ok(g.dialog && g.dialog.right<=1360 && g.dialog.bottom<=900,'Enlarged map fits');
-      await shot('map-enlarged');
-      await click('button[aria-label="Close the board"]');
-      await pause(650);
+      try {
+        assert.ok(g.dialog && g.dialog.x>=-1 && g.dialog.y>=-1 && g.dialog.right<=1361 && g.dialog.bottom<=901,'Enlarged map fits: '+JSON.stringify(g.dialog));
+        const ornaments=await evaluate(`(() => { const e=document.querySelector('.theme-overlay .theme-ornaments[data-surface="overlay"]');return e && {corners:e.children.length,pointerEvents:getComputedStyle(e).pointerEvents,frame:getComputedStyle(e,'::before').borderImageSource,corner:getComputedStyle(e.firstElementChild).backgroundImage}; })()`);
+        assert.equal(ornaments?.corners,4,'Enlarged map has its own four decorative corners');
+        assert.equal(ornaments.pointerEvents,'none','Border does not intercept map controls');
+        for (const slot of ['frame','corner']) {
+          const expected=themeArtStyle(theme)['--theme-art-'+slot];
+          if (expected==='none') assert.equal(ornaments[slot],'none');
+          else assert.ok(ornaments[slot].includes(expected.slice(5,-2)),`Overlay receives registered ${slot} artwork`);
+        }
+        await shot('map-enlarged');
+        for (const [width,height,mode] of [[390,844,'dark'],[390,844,'light'],[1360,900,'light']]) {
+          await click('button[aria-label="Close the board"]');
+          await dimensions(width,height,mode,1);
+          // Crossing the phone breakpoint remounts the board in its tab.
+          // Open the dialog at each size, rather than resize an unmounted one.
+          if (width<1024) { await click('.cine-bottombar [data-tour="tab-battle"]'); await pause(650); }
+          await click('button[aria-label="Enlarge battle map"]');
+          await waitFor(`!!document.querySelector('.theme-overlay .theme-ornaments[data-surface="overlay"]')`);
+          await pause(650);
+          const resized=await geometry();
+          assert.ok(resized.dialog && resized.dialog.x>=-1 && resized.dialog.y>=-1 && resized.dialog.right<=width+1 && resized.dialog.bottom<=height+1,'Resized enlarged map fits: '+JSON.stringify(resized.dialog));
+          await shot(`map-enlarged-${width}-${mode}`);
+        }
+      } finally {
+        if (await evaluate(`!!document.querySelector('button[aria-label="Close the board"]')`)) await click('button[aria-label="Close the board"]');
+        await dimensions(1360,900,'dark',1);
+      }
       return g;
     });
     await run('Combat hand opens a card', async () => {

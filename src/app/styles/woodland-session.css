@@ -201,6 +201,17 @@ html[data-appearance="woodland"][data-theme] :is(.cine-chronicle-page, .cine-tab
   background: var(--woodland-paper);
   border-color: var(--woodland-silver-edge);
 }
+html[data-appearance="woodland"][data-theme] .theme-overlay {
+  border: 10px solid transparent;
+  background: linear-gradient(var(--woodland-paper), var(--woodland-paper)) padding-box,
+    var(--woodland-grain) center / 420px border-box;
+}
+@media (max-width: 1023px) {
+  html[data-appearance="woodland"][data-theme] .theme-overlay { border-width: 4px; }
+}
+@media (forced-colors: active) {
+  html[data-appearance="woodland"][data-theme] .theme-overlay { border: 1px solid CanvasText; background: Canvas; }
+}
 html[data-appearance="woodland"][data-theme] :is(.cine-chronicle-text, .cine-chronicle-line, .cine-chronicle-input, .cine-chronicle-roll-math) { color: var(--color-stone-200); }
 html[data-appearance="woodland"][data-theme] :is(.cine-chronicle-eyebrow, .cine-chronicle-cap, .cine-chronicle-send, .cine-tabletop-title) {
   color: var(--woodland-silver);
@@ -228,7 +239,6 @@ html[data-appearance="woodland"][data-theme] .theme-table [aria-label="How the h
   overscroll-behavior: contain;
 }
 html[data-appearance="woodland"][data-theme] .theme-table .cine-chat { min-height: 0; }
-html[data-appearance="woodland"][data-theme] .theme-table .cine-desk { flex-shrink: 0; }
 html[data-appearance="woodland"][data-theme] .theme-table .cine-fight-board .board-view { min-height: 160px; }
 @media (max-width: 639px), (max-height: 719px) {
   html[data-appearance="woodland"][data-theme] .theme-table .hand {
@@ -247,4 +257,8 @@ html[data-appearance="woodland"][data-theme] .theme-table .cine-fight-board .boa
   html[data-appearance="woodland"][data-theme] .theme-table .session-well > :nth-child(2) { margin-left: auto; }
   html[data-appearance="woodland"][data-theme] .theme-table .cine-desk .session-mode { padding-right: .5rem; gap: .2rem; }
   html[data-appearance="woodland"][data-theme] .theme-table .session-mode > span[aria-hidden] { width: 1.1rem; height: 1.1rem; }
+}
+@media (max-width: 400px) and (max-height: 700px) {
+  /* Leave room for the story when a short phone also uses enlarged text. */
+  html[data-appearance="woodland"][data-theme] .theme-table .session-well textarea { height: 2.25rem; }
 }

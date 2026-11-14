@@ -120,6 +120,7 @@ The neutral hooks already exist in the components:
 | Hook | Use |
 | --- | --- |
 | `.theme-table` | Full-screen active session |
+| `.theme-overlay` | Full-screen portalled surfaces, including the enlarged battle map |
 | `.theme-lobby-shell` | Lobby enclosure |
 | `.theme-framed` | Padded content explicitly opted into a decorative panel border |
 | `.theme-key`, `.theme-key-primary` | Shared neutral and primary controls |
@@ -135,7 +136,14 @@ to inherit Woodland's wood, curves or lobby arrangement.
 The ornament is an absolute overlay with `aria-hidden` and no pointer events. It
 does not reserve space for itself. Reserve a quiet rail in your theme's container
 styles and keep the asset's transparent interior clear of text and controls.
-Woodland uses a 10px table rail on desktop and 4px on phones. Its lobby rail is
+The enlarged battle map renders its own `ThemeOrnaments surface="overlay"`
+inside the dialog. A portal is outside the session's element tree, so it cannot
+reuse the session's ornament element. It inherits the registered artwork from
+the document root and uses the same frame and corner geometry as the table.
+Keep overlay containers positioned (the battle map uses `fixed`) and place the
+ornaments inside them; do not change their positioning to `relative`.
+
+Woodland uses a 10px table and overlay rail on desktop and 4px on phones. Its lobby rail is
 26px on desktop and 12px on phones. It has additional inner padding.
 
 Shared ornament measurements can be overridden in the theme selector:
