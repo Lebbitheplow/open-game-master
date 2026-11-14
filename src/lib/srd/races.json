@@ -1295,18 +1295,23 @@
       "name": "Fairy",
       "speed": 30,
       "size": "Small",
-      "asi": {
-        "dex": 2,
-        "cha": 1
+      "asi": {},
+      "asiChoice": {
+        "count": 2,
+        "amount": 1,
+        "amounts": [
+          2,
+          1
+        ]
       },
       "traits": [
         "Flight (flying speed of 30 ft, not while wearing medium or heavy armor)",
         "Fairy Magic (druidcraft cantrip, then faerie fire from 3rd level and enlarge/reduce from 5th, 1/long rest each)"
       ],
       "languages": [
-        "Common",
-        "Sylvan"
+        "Common"
       ],
+      "bonusLanguages": 1,
       "innateSpells": {
         "trait": "Fairy Magic",
         "ability": "cha",
@@ -1333,9 +1338,14 @@
       "name": "Owlfolk",
       "speed": 30,
       "size": "Medium",
-      "asi": {
-        "dex": 2,
-        "wis": 1
+      "asi": {},
+      "asiChoice": {
+        "count": 2,
+        "amount": 1,
+        "amounts": [
+          2,
+          1
+        ]
       },
       "traits": [
         "Superior Darkvision 120 ft",
@@ -1343,9 +1353,9 @@
         "Stealth proficiency (Silent Feathers)"
       ],
       "languages": [
-        "Common",
-        "Sylvan"
+        "Common"
       ],
+      "bonusLanguages": 1,
       "skills": [
         "stealth"
       ]
@@ -1384,9 +1394,14 @@
       "name": "Rabbitfolk",
       "speed": 30,
       "size": "Medium",
-      "asi": {
-        "dex": 2,
-        "wis": 1
+      "asi": {},
+      "asiChoice": {
+        "count": 2,
+        "amount": 1,
+        "amounts": [
+          2,
+          1
+        ]
       },
       "traits": [
         "Hare-Trigger (add your proficiency bonus to initiative)",
@@ -1395,9 +1410,9 @@
         "Lucky Footwork (on a failed Dexterity save, use your reaction to add 1d4; not while prone or at speed 0)"
       ],
       "languages": [
-        "Common",
-        "Sylvan"
+        "Common"
       ],
+      "bonusLanguages": 1,
       "skills": [
         "perception"
       ]

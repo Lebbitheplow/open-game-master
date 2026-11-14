@@ -31,7 +31,7 @@ export type RaceMechanics = {
   skills?: string[];
   // `from` names the skills it picks among; unset, any skill.
   skillChoice?: { count: number; from?: string[] };
-  asiChoice?: { count: number; amount: number; from?: Ability[] };
+  asiChoice?: { count: number; amount: number; from?: Ability[]; amounts?: number[] };
   cantripChoice?: { list: string; count: number };
   tools?: string[];
   toolChoice?: { count: number; from: string[] };
@@ -503,10 +503,12 @@ function structuredGrants(data: Record<string, unknown>): StructuredGrants {
     const from = stringList(skillChoice.from)?.filter((skill) => (ALL_SKILLS as readonly string[]).includes(skill));
     out.skillChoice = { count: Number(skillChoice.count), ...(from?.length ? { from } : {}) };
   }
-  const asiChoice = data.asiChoice as { count?: unknown; amount?: unknown; from?: unknown } | undefined;
+  const asiChoice = data.asiChoice as { count?: unknown; amount?: unknown; from?: unknown; amounts?: unknown } | undefined;
   if (asiChoice && Number(asiChoice.count) > 0) {
     const from = Array.isArray(asiChoice.from) ? (asiChoice.from.filter((entry) => (ABILITIES as readonly unknown[]).includes(entry)) as Ability[]) : [];
-    out.asiChoice = { count: Number(asiChoice.count), amount: Number(asiChoice.amount) || 1, ...(from.length ? { from } : {}) };
+    // Each pick's own amount (a fairy's +2 then +1), when the row names them.
+    const amounts = Array.isArray(asiChoice.amounts) ? asiChoice.amounts.map(Number).filter((value) => value === 1 || value === 2) : [];
+    out.asiChoice = { count: Number(asiChoice.count), amount: Number(asiChoice.amount) || 1, ...(from.length ? { from } : {}), ...(amounts.length === Number(asiChoice.count) ? { amounts } : {}) };
   }
   const cantripChoice = data.cantripChoice as { list?: unknown; count?: unknown } | undefined;
   if (cantripChoice && typeof cantripChoice.list === "string") {

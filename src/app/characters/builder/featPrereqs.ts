@@ -1,4 +1,5 @@
 import { ABILITIES, type Ability, type AbilityScores } from "@/lib/schemas/sheet";
+import { asiPickMost } from "@/lib/srd/race-asi";
 import { ABILITY_SCORE_CAP } from "@/lib/srd/asi";
 import { authoredFeatPrerequisite } from "@/lib/srd/feat-effects";
 import { packFeatText } from "@/lib/srd/feat-text";
@@ -102,7 +103,7 @@ export function builderFeatCandidate({ state, derived, race, klass, background }
   const abilityRoom = Object.fromEntries(
     ABILITIES.map((ability) => {
       const placed = state.racialAsi.includes(ability);
-      const room = (openRacial && !placed ? race!.asiChoice!.amount : 0) + openSlots * 2;
+      const room = (openRacial && !placed ? asiPickMost(race!.asiChoice!) : 0) + openSlots * 2;
       return [ability, Math.min(room, Math.max(0, ABILITY_SCORE_CAP - abilities[ability]))];
     }),
   ) as Record<Ability, number>;

@@ -1,5 +1,6 @@
 "use client";
 
+import { asiPickAmount, asiPickWords } from "@/lib/srd/race-asi";
 import { useId } from "react";
 import CatalogBrowser from "@/app/characters/builder/CatalogBrowser";
 import ContentPicker from "@/app/characters/builder/ContentPicker";
@@ -189,7 +190,7 @@ export function RacialChoicesSection({
       {race.asiChoice ? (
         <div data-builder-target="racialAsi">
           <span className="mb-1 flex flex-wrap items-center gap-1 text-stone-400">
-            <GameTerm id="ability_score">Ability</GameTerm> increases (+{race.asiChoice.amount} to{" "}
+            <GameTerm id="ability_score">Ability</GameTerm> increases ({race.asiChoice.amounts ? asiPickWords(race.asiChoice) : `+${race.asiChoice.amount}`} to{" "}
             {asiFrom
               ? asiFrom.map((ability) => ABILITY_NAMES[ability]).join(" or ")
               : `${race.asiChoice.count} abilities of your choice`}
@@ -202,7 +203,7 @@ export function RacialChoicesSection({
                   value={asi[index] ?? ""}
                   onChange={(next) => onAsiChange(index, next)}
                   className="min-w-0 grow"
-                  label={`Ability increase ${index + 1}`}
+                  label={race.asiChoice!.amounts ? `Ability increase ${index + 1} (+${asiPickAmount(race.asiChoice!, index)})` : `Ability increase ${index + 1}`}
                   placeholder="Choose an ability..."
                   options={[
                     // Still a row of its own, so a pick can be taken back.

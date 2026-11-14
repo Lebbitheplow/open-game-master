@@ -161,6 +161,12 @@ const BOOKS = {
     variantAsi: { beasthide: { con: 2, str: 1 }, longtooth: { str: 2, dex: 1 }, swiftstride: { dex: 2, cha: 1 }, wildhunt: { wis: 2, dex: 1 } },
     variantSkills: { beasthide: ["athletics"], longtooth: ["intimidation"], swiftstride: ["acrobatics"], wildhunt: ["survival"] },
   },
+  // The Wild Beyond the Witchlight (fairy, harengon) and Strixhaven (owlin):
+  // +2 to one score and +1 to another, the player's, and Common with one
+  // other language of the player's.
+  fairy: { asi: {}, asiChoice: { count: 2, amount: 1, amounts: [2, 1] }, languages: ["Common"], bonusLanguages: 1 },
+  owlfolk: { asi: {}, asiChoice: { count: 2, amount: 1, amounts: [2, 1] }, languages: ["Common"], bonusLanguages: 1 },
+  rabbitfolk: { asi: {}, asiChoice: { count: 2, amount: 1, amounts: [2, 1] }, languages: ["Common"], bonusLanguages: 1 },
 };
 
 await test("every added lineage carries what its book prints", () => {
@@ -186,6 +192,13 @@ await test("every added lineage carries what its book prints", () => {
   // A kobold's Strength is lowered on the sheet the builder makes.
   const kobold = buildRace("kobold");
   assert.equal(kobold.blocker, null, kobold.blocker?.message);
+  // A fairy's +2 goes to the first ability picked and its +1 to the second,
+  // and the builder holds the save until both are placed.
+  const unplaced = buildRace("fairy", { racialAsi: ["dex"] });
+  assert.ok(unplaced.blocker, "the builder saved a fairy with one of its two increases unplaced");
+  const fairy = buildRace("fairy", { racialAsi: ["dex", "cha"] });
+  assert.equal(fairy.blocker, null, fairy.blocker?.message);
+  assert.deepEqual([fairy.sheet.abilities.dex - BASE.dex, fairy.sheet.abilities.cha - BASE.cha], [2, 1]);
 });
 
 await test("every bundled race is well formed, and none lowers a score but where its book does", () => {
@@ -216,9 +229,10 @@ await test("the stored sheet carries the race: scores, speed, languages, skills,
     const firstOption = race.variants?.options[0];
     const bonus = { ...(rule?.asi ?? race.asi) };
     for (const [ability, value] of Object.entries(firstOption?.asi ?? {})) bonus[ability] = (bonus[ability] ?? 0) + value;
-    for (const ability of ["str", "dex", "con"].slice(0, rule?.pick ?? race.asiChoice?.count ?? 0)) {
-      bonus[ability] = (bonus[ability] ?? 0) + 1;
-    }
+    // buildRace's picks, each its own amount (a fairy's +2 then +1).
+    ["str", "dex", "con"].slice(0, rule?.pick ?? race.asiChoice?.count ?? 0).forEach((ability, index) => {
+      bonus[ability] = (bonus[ability] ?? 0) + (race.asiChoice?.amounts?.[index] ?? 1);
+    });
     const expected = Object.fromEntries(Object.entries(BASE).map(([ability, score]) => [ability, score + (bonus[ability] ?? 0)]));
     assert.deepEqual(sheet.abilities, expected, `${race.id} abilities`);
     assert.equal(sheet.speed, rule?.speed ?? race.speed, `${race.id} speed`);

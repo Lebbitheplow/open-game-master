@@ -1,4 +1,5 @@
 import type { Finding } from "@/lib/rulesets/validate";
+import { asiPickMost, asiPickTotal } from "@/lib/srd/race-asi";
 import { classFeaturesFor, subclassLevelFor, subclassNamesFor } from "@/lib/srd/features";
 import { featAbilityIncreaseFrom } from "@/lib/srd/feat-effects";
 import { featGrantSpec } from "@/lib/srd/feat-grant-text";
@@ -70,8 +71,8 @@ export function speciesFindings(data: Data): Finding[] {
   const out: Finding[] = [];
   const parsed = raceMechanics(data);
   const fixed = Object.values(parsed.asi).reduce((sum, value) => sum + (value ?? 0), 0);
-  const chosen = (parsed.asiChoice?.count ?? 0) * (parsed.asiChoice?.amount ?? 0);
-  const biggest = Math.max(0, ...Object.values(parsed.asi).map((value) => value ?? 0), parsed.asiChoice?.amount ?? 0);
+  const chosen = parsed.asiChoice ? asiPickTotal(parsed.asiChoice) : 0;
+  const biggest = Math.max(0, ...Object.values(parsed.asi).map((value) => value ?? 0), parsed.asiChoice ? asiPickMost(parsed.asiChoice) : 0);
   if (biggest > 2) {
     out.push({ level: "warn", text: `Raises one score by ${biggest}: no SRD race raises a score by more than 2.` });
   }

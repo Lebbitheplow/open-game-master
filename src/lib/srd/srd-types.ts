@@ -36,7 +36,9 @@ export type SrdRace = {
   speed: number;
   size: string;
   asi: Partial<Record<Ability, number>>;
-  asiChoice?: { count: number; amount: number };
+  // `amounts`: each pick's own amount, in order (a fairy's +2 then +1:
+  // src/lib/srd/race-asi.ts).
+  asiChoice?: { count: number; amount: number; amounts?: number[] };
   traits: string[];
   languages: string[];
   // Extra languages of the player's choice (SRD: human, half-elf, high elf).

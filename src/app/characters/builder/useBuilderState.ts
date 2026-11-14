@@ -1,5 +1,6 @@
 "use client";
 
+import { asiPickAmount } from "@/lib/srd/race-asi";
 import type { Gender } from "@/lib/gender";
 import { normalizeAttraction, type Attraction } from "@/lib/attraction";
 import { authoredFeatDesc } from "@/lib/srd/feat-effects";
@@ -587,9 +588,9 @@ export function useBuilderState({
       base[ability as Ability] += bonus ?? 0;
     }
     if (shaped?.asiChoice) {
-      for (const ability of now.racialAsi) {
-        if (ability) base[ability] += shaped.asiChoice.amount;
-      }
+      now.racialAsi.forEach((ability, index) => {
+        if (ability) base[ability] += asiPickAmount(shaped.asiChoice!, index);
+      });
     }
     const slots = builderAsiSlotLevels(entries.map((entry) => ({ id: entry.row?.id ?? "", level: entry.level }))).length;
     return applyAsiChoices(base, asiChoices.slice(0, slots));
@@ -698,9 +699,9 @@ export function useBuilderState({
       }
       // Racial bumps of the player's choice were baked in the same way.
       if (initialRace?.asiChoice) {
-        for (const ability of initial.racialChoices?.asi ?? []) {
-          base[ability] -= initialRace.asiChoice.amount;
-        }
+        (initial.racialChoices?.asi ?? []).forEach((ability, index) => {
+          base[ability] -= asiPickAmount(initialRace.asiChoice!, index);
+        });
       }
       setScores(base);
       // A saved sheet opens on the roll method: its six scores become the
