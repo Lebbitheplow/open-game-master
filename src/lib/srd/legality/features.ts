@@ -28,6 +28,7 @@ import { choiceDamageTypeOf } from "@/lib/srd/chosen-element";
 import type { SubclassExtras } from "@/lib/srd/subclass-tables";
 import { ABILITY_NAMES, type FeatFacts } from "@/lib/srd/legality/types";
 import { textKey } from "@/lib/language/text-logic";
+import { speciesLineage } from "@/lib/srd/race-id";
 import { isSwapRecord } from "@/lib/dm/ar-ws-spell-swap-record";
 
 let tableNames: Set<string> | null = null;
@@ -290,38 +291,17 @@ export type PrerequisiteCheck = {
   requirements: RequirementCheck[];
 };
 
-// The species a prerequisite may name, each with the words a race's id or
-// name carries for it. A drow or an eladrin is an elf; a half-elf is not
-// (Elven Accuracy names both), nor is a half-orc an orc.
-const SPECIES_WORDS: Record<string, string[]> = {
-  elf: ["elf", "drow", "eladrin"],
-  "high elf": ["high elf"],
-  "wood elf": ["wood elf"],
-  drow: ["drow"],
-  "half elf": ["half elf"],
-  "half orc": ["half orc"],
-  human: ["human"],
-  dwarf: ["dwarf", "duergar"],
-  halfling: ["halfling"],
-  gnome: ["gnome", "svirfneblin"],
-  dragonborn: ["dragonborn"],
-  tiefling: ["tiefling"],
-  orc: ["orc"],
-  goblin: ["goblin"],
-  hobgoblin: ["hobgoblin"],
-  bugbear: ["bugbear"],
-  kobold: ["kobold"],
-  aasimar: ["aasimar"],
-  genasi: ["genasi"],
-  goliath: ["goliath"],
-  firbolg: ["firbolg"],
-  tabaxi: ["tabaxi"],
-  kenku: ["kenku"],
-  tortle: ["tortle"],
-  lizardfolk: ["lizardfolk"],
-  changeling: ["changeling"],
-  warforged: ["warforged"],
-};
+// The species a prerequisite may name, as race ids. A race prerequisite is
+// met by that race or a subrace of it (SRD 5.1), read off the species'
+// lineage (src/lib/srd/race-id.ts speciesLineage: a drow, an eladrin or a
+// high elf is an elf; a half-elf is a half-elf and meets "elf" only where the
+// feat also names half-elf), never off words in its id or name: a gearforged
+// on a dwarf chassis is a gearforged, not a dwarf.
+const SPECIES_KEYS = new Set([
+  "elf", "high_elf", "wood_elf", "drow", "half_elf", "half_orc", "human", "dwarf", "hill_dwarf", "mountain_dwarf",
+  "halfling", "gnome", "dragonborn", "tiefling", "orc", "goblin", "hobgoblin", "bugbear", "kobold", "aasimar",
+  "genasi", "goliath", "firbolg", "tabaxi", "kenku", "tortle", "lizardfolk", "changeling", "warforged",
+]);
 
 // A species (or size) requirement read as a test of the candidate: "Elf or
 // half-elf", "Half-elf, half-orc, or human", "A Small or smaller race",
@@ -338,14 +318,13 @@ function speciesRequirement(part: string): ((who: FeatCandidate) => boolean) | n
     if (/^(?:small|tiny)(?: race| species| creature)?$/.test(alternative)) {
       return (who) => (who.size ?? sizeForRace(who.raceId)) === "Small";
     }
-    const words = SPECIES_WORDS[alternative.replace(/(?<=[a-z])s$/, "").replace(/ (?:race|species)$/, "")] ?? SPECIES_WORDS[alternative];
-    if (!words) {
+    const key = [alternative.replace(/(?<=[a-z])s$/, "").replace(/ (?:race|species)$/, ""), alternative]
+      .map((form) => form.replace(/\s+/g, "_"))
+      .find((form) => SPECIES_KEYS.has(form));
+    if (!key) {
       return null;
     }
-    return (who) => {
-      const named = `${who.raceId} ${who.raceName}`.toLowerCase().replace(/[^a-z]+/g, " ");
-      return words.some((word) => new RegExp(word.startsWith("half ") ? `\\b${word}\\b` : `(?<!half )\\b${word}\\b`).test(named));
-    };
+    return (who) => speciesLineage(who.raceId).includes(key);
   });
   if (!tests.length || tests.some((entry) => entry === null)) {
     return null;

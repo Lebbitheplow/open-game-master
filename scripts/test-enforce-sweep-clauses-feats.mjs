@@ -114,6 +114,44 @@ P["feat.prerequisites"] = async () => {
     else if (unmetPrerequisite(text, holder)) wrong.push(`${feat}: "${text}" refused with it`);
   }
   assert.deepEqual(wrong, []);
+  // A race prerequisite is met by that race or a subrace of it, read from the
+  // species' parent and never from words in its id or name (SRD 5.1): a
+  // gearforged on a dwarf chassis, or a darakhul of dwarf heritage, is not a
+  // dwarf; a duergar or a pack's hill dwarf is. Size still answers "a Small
+  // race". The pack's rows (Tome of Heroes) are read where the pack is loaded.
+  const pack = (await import("../src/lib/content/index.ts")).listRaces({ limit: 500 }).length > 0;
+  const lineage = [
+    ["Dwarven Fortitude", "hill_dwarf", "Hill Dwarf", true],
+    ["Dwarven Fortitude", "duergar", "Duergar", true],
+    ["Dwarven Fortitude", "dwarfish_golem", "Dwarf Golem", false],
+    ["Elven Accuracy", "drow", "Drow", true],
+    ["Elven Accuracy", "eladrin", "Eladrin", true],
+    ["Elven Accuracy", "half_elf", "Half-Elf", true],
+    ["Elven Accuracy", "half_orc", "Half-Orc", false],
+    ["Prodigy", "high_elf", "High Elf", false],
+    ["Fade Away", "deep_gnome", "Deep Gnome", true],
+    ...(pack
+      ? [
+          ["Dwarven Fortitude", "dwarf-chassis", "Gearforged (Dwarf Chassis)", false],
+          ["Squat Nimbleness", "dwarf-chassis", "Gearforged (Dwarf Chassis)", false],
+          ["Dwarven Fortitude", "dwarf-heritage", "Darakhul (Dwarf Heritage)", false],
+          ["Dwarven Fortitude", "odm-hill-dwarf", "Dwarf (Hill)", true],
+          ["Dwarven Fortitude", "mountain-dwarf", "Dwarf (Mountain)", true],
+          ["Elven Accuracy", "odm-drow", "Elf (Drow)", true],
+          ["Elven Accuracy", "elfshadow-fey-heritage", "Darakhul (Elf/Shadow Fey Heritage)", false],
+          ["Fade Away", "gnome-chassis", "Gearforged (Gnome Chassis)", false],
+          ["Prodigy", "human-chassis", "Gearforged (Human Chassis)", false],
+        ]
+      : []),
+  ];
+  const misread = lineage.flatMap(([feat, raceId, raceName, meets]) => {
+    const text = authoredFeatPrerequisite(feat);
+    const met = !unmetPrerequisite(text, who({ raceId, raceName }));
+    return met === meets ? [] : [`${feat} for ${raceName}: ${met ? "taken" : "refused"}`];
+  });
+  assert.deepEqual(misread, [], "species prerequisites read off the species' parent");
+  const small = who({ raceId: "lightfoot_halfling", raceName: "Lightfoot Halfling" });
+  assert.equal(unmetPrerequisite(authoredFeatPrerequisite("Squat Nimbleness"), small), null, "a Small race still meets Squat Nimbleness");
 };
 
 // Squat Nimbleness: advantage on the check to escape a grapple. The hero is

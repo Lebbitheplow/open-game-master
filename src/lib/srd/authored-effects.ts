@@ -260,6 +260,12 @@ export function wearsArmorNamed(sheet: Pick<AuthoredSheet, "equipment">, name: s
   return items.some((item) => isWorn(item, items) && textKey(matchArmor(item)?.name ?? item.name ?? "") === wanted);
 }
 
+// The suit a feature transformed, worn (the row's `transmuted` mark).
+export function wearsTransmutedArmor(sheet: Pick<AuthoredSheet, "equipment">, feature: string): boolean {
+  const items = sheet.equipment ?? [];
+  return items.some((item) => isWorn(item, items) && textKey((item as { transmuted?: string }).transmuted ?? "") === textKey(feature));
+}
+
 // Any body armor on, light to heavy (a shield is not worn on the body):
 // Dragon Wings cannot come through it (SRD 5.1). The sheet's fly speed, the
 // board's and the spend read this one answer (issue #833 review).
@@ -288,6 +294,9 @@ export function gateHolds(gate: Gate | undefined, sheet: AuthoredSheet, held: He
     return false;
   }
   if (gate.heavyArmor && !wearsHeavy(sheet)) {
+    return false;
+  }
+  if (gate.transmutedArmor && !wearsTransmutedArmor(sheet, gate.transmutedArmor)) {
     return false;
   }
   if (gate.unarmored && wearsBodyArmor(sheet)) {
@@ -445,6 +454,17 @@ export function authoredCheckTraits(sheet: AuthoredSheet): Array<RollKey & { not
     ...(effect.skills ? [{ roll: "check" as const, skills: effect.skills, ...(effect.about ? { about: effect.about } : {}) }] : []),
     ...(effect.abilities ? [{ roll: "check" as const, abilities: effect.abilities, ...(effect.about ? { about: effect.about } : {}) }] : []),
   ].map((key) => ({ ...key, ...(effect.creatures ? { creatures: effect.creatures } : {}), note: `${held.feature}: advantage` })));
+}
+
+// The skills a feature trains only while its gate holds, each with the
+// feature, the words of the condition, and whether it holds now: the derived
+// sheet adds the proficiency while it does and lists the training either way.
+export function authoredConditionalTraining(sheet: AuthoredSheet): Array<{ skill: string; by: string; while: string; active: boolean }> {
+  return heldAuthored(sheet).flatMap((held) =>
+    (held.entry.effects ?? []).flatMap((effect) =>
+      effect.kind === "skill_prof" ? effect.skills.map((skill) => ({ skill, by: held.feature, while: effect.while, active: gateHolds(effect.gate, sheet, held) })) : [],
+    ),
+  );
 }
 
 // The skills a held feature doubles the proficiency bonus of

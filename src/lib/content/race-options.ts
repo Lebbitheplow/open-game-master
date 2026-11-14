@@ -101,6 +101,9 @@ export type PackRaceOption = {
   documentSlug: string;
   // The book it comes from, by title.
   source: string;
+  // The row's slug and its parent's: what a race prerequisite reads
+  // (src/lib/srd/race-id.ts speciesLineage).
+  lineage?: string[];
 } & RaceMechanics;
 
 // The id the builder and the sheet use for a pack row. A stored character
@@ -323,6 +326,7 @@ export function packRaceOptions(rows: RaceRow[], keepIds: Iterable<string> = [])
       slug: row.slug,
       documentSlug: row.documentSlug,
       source: row.document ?? row.documentSlug,
+      lineage: lineageOf(row, parentSlug, bySlug),
     };
     // A shade's Living Origin is its size, speed and a language: each origin
     // is offered as the subrace it is, so the size every engine reads by the
@@ -363,12 +367,28 @@ function livingOriginOption(base: PackRaceOption, origin: (typeof LIVING_ORIGINS
   };
 }
 
+// What the row is, by slug, for a feat's race prerequisite: its own, its
+// parent's, and for a workshop species the race it was started from
+// (`parentRace`, else the published or bundled source its copy recorded:
+// copiedFrom, kept by every save before the parent was), with that race's
+// own parent where the pack holds it.
+function lineageOf(row: RaceRow, parentSlug: string, bySlug: ReadonlyMap<string, RaceRow>): string[] {
+  const copied = row.data.copiedFrom as { source?: unknown; slug?: unknown } | undefined;
+  const started = typeof row.data.parentRace === "string" && row.data.parentRace
+    ? row.data.parentRace
+    : copied && (copied.source === "published" || copied.source === "bundled") && typeof copied.slug === "string"
+      ? copied.slug
+      : "";
+  const startedParent = started ? String(bySlug.get(started)?.data.parent_slug ?? "") : "";
+  return [...new Set([row.slug, parentSlug, started, startedParent].filter((slug) => slug && slug !== "undefined"))];
+}
+
 // What the engines read off an option the bundled list does not carry
 // (src/lib/srd/race-id.ts SpeciesRules): the server's reader
 // (src/lib/characters/species-rules.ts) and the builder's
 // (useBuilderOptions.ts) both build it here, so the browser and the server
 // read a workshop species' spells, and each option's, alike (issue #833).
-export function speciesRulesOf(option: Pick<RaceMechanics, "size" | "heavyArmorSpeed" | "traitNames" | "spells" | "variants">): SpeciesRules {
+export function speciesRulesOf(option: Pick<RaceMechanics, "size" | "heavyArmorSpeed" | "traitNames" | "spells" | "variants"> & { lineage?: string[] }): SpeciesRules {
   const variantSpells = Object.fromEntries(
     (option.variants?.options ?? []).flatMap((entry) =>
       entry.spells ? [[entry.id, { ...entry.spells, from: variantRecordName(option.variants!.label, entry) }]] : [],
@@ -380,5 +400,6 @@ export function speciesRulesOf(option: Pick<RaceMechanics, "size" | "heavyArmorS
     traitNames: option.traitNames,
     ...(option.spells ? { spells: option.spells } : {}),
     ...(Object.keys(variantSpells).length ? { variantSpells } : {}),
+    ...(option.lineage?.length ? { lineage: option.lineage } : {}),
   };
 }

@@ -198,6 +198,25 @@ await test("A resistance picked in the species editor is resisted at the table."
   assert.doesNotMatch(pcResistances(become(plainsfolk)), /\bfire\b/);
 });
 
+// A feat's race prerequisite is met by the race and its subraces (SRD 5.1,
+// legality/features.ts): a species started from a published race carries
+// that race as its parent, so a copied Hill Dwarf is a dwarf and a copied
+// Lightfoot a halfling; one written from nothing is neither. A species saved
+// before the parent was kept has it from the source its copy recorded.
+await test("A workshop species started from a published race is that race for a feat's prerequisite.", async () => {
+  const { unmetPrerequisite } = await import("../src/lib/srd/legality/features.ts");
+  const scores = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
+  const meets = (species, prerequisite) => unmetPrerequisite(prerequisite, { abilities: scores, armor: [], casts: false, raceId: species.id, raceName: species.name ?? "" }) === null;
+  assert.equal(stonefolk.data.parentRace, "hill-dwarf", "the copy keeps the race it was started from");
+  const legacy = { ...stonefolk.data, copiedFrom: { name: "Hill Dwarf", source: "published", slug: "hill-dwarf" } };
+  delete legacy.parentRace;
+  const oldStonefolk = await brew("Old Stonefolk", legacy);
+  assert.deepEqual(
+    { stonefolk: meets(stonefolk, "Dwarf"), old: meets(oldStonefolk, "Dwarf"), smallkinHalfling: meets(smallkin, "Halfling"), smallkinDwarf: meets(smallkin, "Dwarf"), plainsfolk: meets(plainsfolk, "Dwarf") },
+    { stonefolk: true, old: true, smallkinHalfling: true, smallkinDwarf: false, plainsfolk: false },
+  );
+});
+
 await test("A content-pack species is the size its text says (Tome of Heroes' Derro: \"Your size is Small.\").", async () => {
   if (!world.hasPack) return;
   assert.equal(sizeForRace("derro"), "Small");

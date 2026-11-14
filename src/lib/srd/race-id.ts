@@ -49,6 +49,9 @@ export type SpeciesRules = {
   // those, not the ones a published trait it names would borrow.
   spells?: SpeciesSpellGroup;
   variantSpells?: Record<string, SpeciesSpellGroup & { from?: string }>;
+  // The pack row's own slug and its parent's ("dwarf-chassis", "gearforged"):
+  // what the species IS, for a feat's race prerequisite (speciesLineage).
+  lineage?: string[];
 };
 
 let speciesReader: ((raceId: string) => SpeciesRules | null) | null = null;
@@ -152,4 +155,41 @@ export function hpBonusPerLevel(raceId: string, rules?: SpeciesRules | null): nu
 // of its id. The server's feat check and the builder's step gate both ask.
 export function racialFeatCount(raceId: string): number {
   return srdRaceId(raceId) === "variant_human" ? 1 : 0;
+}
+
+// The race a bundled subrace belongs to (SRD 5.1: a subrace is its race),
+// and the subraces other books print under the same peoples. A half-elf or a
+// half-orc is a race of its own; Tome of Heroes' chassis and heritages are
+// gearforged and darakhul, which their pack rows' parents say.
+const BUNDLED_PARENT: Record<string, string> = {
+  hill_dwarf: "dwarf",
+  mountain_dwarf: "dwarf",
+  duergar: "dwarf",
+  high_elf: "elf",
+  wood_elf: "elf",
+  drow: "elf",
+  eladrin: "elf",
+  sea_elf: "elf",
+  lightfoot_halfling: "halfling",
+  stout_halfling: "halfling",
+  variant_human: "human",
+  rock_gnome: "gnome",
+  forest_gnome: "gnome",
+  deep_gnome: "gnome",
+  svirfneblin: "gnome",
+  fire_genasi: "genasi",
+  water_genasi: "genasi",
+  air_genasi: "genasi",
+  earth_genasi: "genasi",
+};
+
+// Every race the species is, by id: its own, the pack row's slug and its
+// parent's (SpeciesRules.lineage), and the race each of those is a subrace
+// of. Never read from words in an id or a name: "dwarf-chassis" is a
+// gearforged, and a bundled "high_elf" is an elf because the table says so.
+export function speciesLineage(raceId: string, rules?: SpeciesRules | null): string[] {
+  const own = raceId.trim() ? [srdRaceId(raceId)] : [];
+  const read = (speciesRulesFor(raceId, rules)?.lineage ?? []).map(srdRaceId);
+  const ids = [...new Set([...own, ...read])].filter(Boolean);
+  return [...new Set(ids.flatMap((id) => (BUNDLED_PARENT[id] ? [id, BUNDLED_PARENT[id]] : [id])))];
 }

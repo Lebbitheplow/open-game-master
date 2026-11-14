@@ -388,7 +388,7 @@ export function CharacterSheetDialog({
           </SheetBlock>
 
           <SheetBlock className="mt-4" title="Languages and training">
-            <TrainingLines proficiencies={sheet.proficiencies} />
+            <TrainingLines proficiencies={sheet.proficiencies} conditional={derived.conditionalTraining} />
           </SheetBlock>
 
           {sheet.spellcasting ? (

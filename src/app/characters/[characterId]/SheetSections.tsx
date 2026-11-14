@@ -130,7 +130,7 @@ export function SheetSections({ sheet, level = 1 }: { sheet: CreateSheetInput; l
       </SheetPanel>
 
       <SheetPanel title="Languages and training">
-        <TrainingLines proficiencies={sheet.proficiencies} />
+        <TrainingLines proficiencies={sheet.proficiencies} conditional={derived.conditionalTraining} />
       </SheetPanel>
 
       {sheet.spellcasting || speciesSpellsShown({ ...sheet, level }).length ? (

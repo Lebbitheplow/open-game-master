@@ -95,6 +95,7 @@ import { beguilingBroken } from "@/lib/dm/mt-fb-arrow-riders";
 import { cleanse, forcedStrike, forcedStrikePlan, meleeHitRefusal, pushFoe, sizeRefusal, throwFoe } from "@/lib/dm/mt-fb-spend";
 import { playDarkFantasy } from "@/lib/dm/genre-a-dark-fantasy-spends";
 import { layCastMark } from "@/lib/dm/genre-a-horror-casts";
+import { transmuteArmor } from "@/lib/dm/transmute-armor";
 
 const DAMAGE_WORDS = new Set(["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"]);
 
@@ -865,6 +866,9 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
     case "forge_item":
     case "sense_undead":
       return clericSpend(ctx, does);
+    // Mystic Metal's suit (src/lib/dm/transmute-armor.ts).
+    case "transmute_armor":
+      return transmuteArmor(ctx, does);
     // The ranger's (src/lib/dm/authored-spend-divine-rng.ts).
     case "pet_command":
     case "this_turn":

@@ -119,6 +119,11 @@ export function normalizeRaceData(source: Raw, data: Raw & { desc: string }): { 
   if (expertise) data.expertiseChoice = expertise;
   // A copied shade's Living Origin (src/lib/content/race-options.ts).
   if (source.livingOrigin === true) data.livingOrigin = true;
+  // The published race a copy was started from ("hill-dwarf", "hill_dwarf"):
+  // its parent, so a feat's race prerequisite reads the copy as that race
+  // (src/lib/srd/race-id.ts speciesLineage). A slug, never prose.
+  const parentRace = text(source.parentRace, 80).trim();
+  if (/^[a-z0-9][a-z0-9_-]*$/i.test(parentRace)) data.parentRace = parentRace;
   const variants = checkSpeciesVariants(source.variants);
   if ("error" in variants) {
     return variants;

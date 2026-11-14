@@ -26,6 +26,9 @@ export type Gate = {
   heavyArmor?: boolean;
   // The holder wears no body armor (Dragon Wings).
   unarmored?: boolean;
+  // The holder wears the suit this feature transformed (the row's
+  // `transmuted` mark: Juggernaut reads Mystic Metal's).
+  transmutedArmor?: string;
   // The holder wears this armor, by name (Battlerager Armor's spiked armor).
   wornArmor?: string;
   // The holder is concentrating on a spell.
@@ -133,6 +136,10 @@ export type AuthoredEffect = Base &
     // Twice the proficiency bonus on checks with these skills the holder is
     // proficient in (a mystery class's "Double proficiency bonus on Insight").
     | { kind: "skill_expertise"; skills: string[] }
+    // Proficiency in these skills while the gate holds, listed on the sheet
+    // as conditional training with `while` its words (Black Flag's
+    // Juggernaut: Athletics while wearing the Mystic Metal armor).
+    | { kind: "skill_prof"; skills: string[]; while: string }
     // A critical hit against the holder is a normal hit.
     | { kind: "crit_immune" }
     // The holder's damage of these types ignores resistance.
@@ -970,6 +977,9 @@ export type SpendDoes =
   | { kind: "read_thoughts"; rangeFt: number }
   | { kind: "duplicity"; condition: string; rounds: number }
   | { kind: "forge_item" }
+  // A lasting transformation laid on one suit of armor the holder carries,
+  // moved off any other (Black Flag's Mystic Metal): src/lib/dm/transmute-armor.ts.
+  | { kind: "transmute_armor"; feature: string }
   | { kind: "sense_undead"; rangeFt: number }
   // Exceptional Training: the Beast Master's bonus-action command to its
   // companion, one of `options` (src/lib/dm/authored-spend-divine-rng.ts).

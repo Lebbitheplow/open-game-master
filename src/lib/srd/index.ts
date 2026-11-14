@@ -14,7 +14,7 @@ import { computeArmorClass, unarmoredFormulaFor, type AcBreakdown } from "@/lib/
 import { conditionAcRiders } from "@/lib/srd/condition-effects";
 import { featureSaveProficiencies, featureSkillProficiencies } from "@/lib/srd/trait-rules";
 import { borrowedProficiencies } from "@/lib/srd/borrowed-proficiency";
-import { authoredAcBonus, authoredCheckSwap, authoredSaveModifier, authoredSpeeds, authoredExpertise } from "@/lib/srd/authored-effects";
+import { authoredAcBonus, authoredCheckSwap, authoredSaveModifier, authoredSpeeds, authoredExpertise, authoredConditionalTraining } from "@/lib/srd/authored-effects";
 import { effectiveAbilities, itemSpeeds, magicItemRiders, type Wearer, type WornMagicItem } from "@/lib/srd/magic-items";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
 import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
@@ -404,6 +404,8 @@ export type SheetDerived = {
   abilityMods: Record<Ability, number>;
   saves: Record<Ability, number>;
   skills: Record<string, number>;
+  // Skills a feature trains only while a condition holds, and whether it does.
+  conditionalTraining: Array<{ skill: string; by: string; while: string; active: boolean }>;
   initiative: number;
   passivePerception: number;
   passiveInvestigation: number;
@@ -552,7 +554,15 @@ export function computeSheetDerived(
   ];
   // Skills a feature trains (Beguiling Influence), as featureSaves above.
   // and a skill lent for a while (Knowledge of the Ages, borrowed-proficiency.ts).
-  const featureSkills = [...featureSkillProficiencies({ features: riderFeatures }), ...borrowedProficiencies(sheet.conditions).skills];
+  // A feature's training that holds only while its condition does (Black
+  // Flag's Juggernaut: Athletics in the Mystic Metal armor), listed whether
+  // or not it holds now.
+  const conditionalTraining = authoredConditionalTraining(sheet);
+  const featureSkills = [
+    ...featureSkillProficiencies({ features: riderFeatures }),
+    ...borrowedProficiencies(sheet.conditions).skills,
+    ...conditionalTraining.filter((entry) => entry.active).map((entry) => entry.skill),
+  ];
   const skillParts = Object.fromEntries(
     SRD_SKILLS.map((skill) => {
       const trained = expertise.includes(skill.id)
@@ -623,6 +633,7 @@ export function computeSheetDerived(
     abilityMods,
     saves,
     skills,
+    conditionalTraining,
     initiative: sumParts(initiativeParts),
     passivePerception: sumParts(passiveParts),
     passiveInvestigation: sumParts(passiveInvestigationParts),
