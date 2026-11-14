@@ -655,6 +655,43 @@ Object.assign(CC, {
   },
 });
 
+Object.assign(CC, {
+  // Funeral March: with the dirgesinger singing (a dirge held), the ally
+  // beside them walks three squares north across two rows of rough ground for three
+  // squares, and their speed slowed is 30 still; with the song stopped, five
+  // squares and 15.
+  async cc_march(t, run, feature) {
+    const { pcMoveBudget } = await load("lib/battlemap/view.ts");
+    const scene = await t.stage(feature);
+    const walk = async () => {
+      // Two whole rows of rough ground, so no path goes round them.
+      const width = t.kit.map().width;
+      t.kit.openField([3, 4].flatMap((y) => Array.from({ length: width }, (_, x) => [x, y, ","])));
+      t.kit.freshTurn();
+      t.kit.giveTurn(scene.ally.id);
+      t.kit.place(scene.ally.id, 4, 5);
+      // The player's own move, as the app sends it (the move route).
+      const route = await t.world.route("campaigns/[campaignId]/battle-map/move");
+      t.world.signIn({ id: t.world.sheet(scene.ally.id).userId });
+      const response = await route.POST(new Request(`http://odm.test/api/campaigns/${t.world.campaignId}/battle-map/move`, { method: "POST", body: JSON.stringify({ x: 4, y: 2 }) }), { params: Promise.resolve({ campaignId: t.world.campaignId }) });
+      t.world.signIn(t.world.owner);
+      if (response.status !== 200) throw new Error(`the ally's walk was refused: ${JSON.stringify(await response.json().catch(() => ({})))}`);
+      return t.kit.token(scene.ally.id).movedThisRound;
+    };
+    const slowed = () => {
+      t.world.patch(scene.ally.id, { conditions: ["slowed"] });
+      const speed = pcMoveBudget(t.world.campaignId, t.world.encounter(), t.kit.map(), t.world.sheet(scene.ally.id), t.kit.token(scene.ally.id)).speed;
+      t.world.patch(scene.ally.id, { conditions: [] });
+      return speed;
+    };
+    t.world.patch(scene.holder.id, { concentratingOn: "Bane" });
+    const singing = `${await walk()}/${slowed()}`;
+    t.world.patch(scene.holder.id, { concentratingOn: null });
+    const silent = `${await walk()}/${slowed()}`;
+    eq(`${singing} | ${silent}`, "3/30 | 5/15", "squares the ally's walk cost / their speed slowed, the dirgesinger singing | not singing");
+  },
+});
+
 // The vermin lord's dire rat, built before the fight (Favored of the Swarm).
 async function ratPack(t, feature) {
   t.fresh();
