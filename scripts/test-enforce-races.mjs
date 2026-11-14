@@ -207,7 +207,7 @@ const BOOKS = {
   // Mythic Odysseys of Theros: a satyr and a centaur are fey, not humanoid,
   // and a centaur's Equine Build makes climbing hard going.
   satyr: { type: "fey", traits: ["Fey (your creature type is fey, not humanoid)"] },
-  centaur: { type: "fey", traits: ["Fey (your creature type is fey, not humanoid)", "Equine Build (count as one size larger for carrying, and each foot of climbing costs 4 extra feet)"] },
+  centaur: { type: "fey", traits: ["Fey (your creature type is fey, not humanoid)", "Equine Build (count as one size larger for carrying and for the weight you can push or drag, and each foot of climbing costs 4 extra feet)"] },
   // END OF BOOKS
 };
 

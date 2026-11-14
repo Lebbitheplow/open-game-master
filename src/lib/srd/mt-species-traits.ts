@@ -48,9 +48,12 @@ export function naturalArmorOf(sheet: Held | null | undefined): NaturalArmor | n
 const SIZES = ["Tiny", "Small", "Medium", "Large", "Huge", "Gargantuan"];
 // "Powerful Build (count as one size larger for carrying)": the size the
 // carrying capacity and the push, drag and lift limit are worked from.
-export function carrySize(size: string | undefined, sheet: Held | null | undefined): string | undefined {
-  // A centaur's Equine Build carries as one size larger too.
-  if (!holdsFeature({ features: sheet?.features ?? [] }, "powerful build", "equine build")) {
+// `use`: what the size is for. A centaur's Equine Build counts one size
+// larger for "carrying capacity and the weight you can push or drag" and not
+// for a lift, which Powerful Build's "push, drag, or lift" covers too.
+export function carrySize(size: string | undefined, sheet: Held | null | undefined, use: "carry" | "lift" = "carry"): string | undefined {
+  const holder = { features: sheet?.features ?? [] };
+  if (!holdsFeature(holder, "powerful build") && (use === "lift" || !holdsFeature(holder, "equine build"))) {
     return size;
   }
   const at = SIZES.findIndex((entry) => entry.toLowerCase() === (size ?? "Medium").trim().toLowerCase());

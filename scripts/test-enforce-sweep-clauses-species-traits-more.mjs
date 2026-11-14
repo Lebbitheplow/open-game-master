@@ -135,7 +135,18 @@ for (const row of RACES) {
       const other = t.hero(plain({ abilities: { str: 16 } }));
       // Strength times 15 and 30 for a human; twice that for one size larger.
       const [mine, theirs] = [t.sheet(who).abilities.str, t.sheet(other).abilities.str];
-      same([liftLimits(t.sheet(who)), liftLimits(t.sheet(other))], [{ capacityLb: mine * 30, liftLb: mine * 60 }, { capacityLb: theirs * 15, liftLb: theirs * 30 }], `${row.name}: carrying capacity and push, drag or lift, beside a human's`);
+      // Powerful Build counts for the push, the drag and the lift; Equine
+      // Build for the push and the drag alone, so a centaur lifts what a
+      // human does. The lift tool answers by how it is moved.
+      const equine = holds(row, "equine build");
+      const lift = (how, weightLb) => t.invoke("lift", { characterId: who.id, weightLb, how });
+      const heavy = mine * 30 + 10;
+      const [pushed, lifted] = [await lift("push", heavy), await lift("lift", heavy)];
+      same(
+        [liftLimits(t.sheet(who)), liftLimits(t.sheet(other)), Boolean(pushed.ok), Boolean(lifted.ok)],
+        [{ capacityLb: mine * 30, liftLb: mine * (equine ? 30 : 60), pushLb: mine * 60 }, { capacityLb: theirs * 15, liftLb: theirs * 30, pushLb: theirs * 30 }, true, !equine],
+        `${row.name}: carrying capacity, lift and push or drag, beside a human's, then ${heavy} lb pushed and lifted (${pushed.error ?? ""} ${lifted.error ?? ""})`,
+      );
     });
   }
   if (holds(row, "mountain born")) {

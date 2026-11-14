@@ -2885,7 +2885,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "44b4bc72ddc3",
+  "sha": "f59d1af9922d",
   "clauses": [
    {
     "c": "\"speed\":40",
@@ -2924,9 +2924,9 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.centaur.charge"
    },
    {
-    "c": "Equine Build (count as one size larger for carrying",
+    "c": "Equine Build (count as one size larger for carrying and for the weight you can push or drag",
     "is": "held",
-    "by": "src/lib/srd/mt-species-traits.ts carrySize (Equine Build), read by src/lib/dm/load-rules.ts liftLimits",
+    "by": "src/lib/srd/mt-species-traits.ts carrySize (Equine Build: carrying, pushing and dragging, never the lift), read by src/lib/srd/encumbrance.ts encumbranceFor, src/lib/dm/load-rules.ts liftLimits (pushLb) and src/lib/dm/explore-tools.ts lift",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.centaur.powerful-build"
    },
    {
