@@ -1134,7 +1134,7 @@
         "Darkvision 60 ft",
         "Magic Resistance (adv. on saves against spells and other magic)",
         "Poison Immunity (immune to poison damage and the poisoned condition)",
-        "Serpent Magic (poison spray cantrip, then suggestion from 3rd level, 1/long rest)"
+        "Serpent Magic (poison spray cantrip and animal friendship at will on snakes only, then suggestion from 3rd level, 1/long rest)"
       ],
       "languages": [
         "Common",
@@ -1148,6 +1148,11 @@
           {
             "name": "Poison Spray",
             "level": 1
+          },
+          {
+            "name": "Animal Friendship",
+            "level": 1,
+            "atWill": true
           },
           {
             "name": "Suggestion",

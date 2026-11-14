@@ -449,7 +449,7 @@ test("every racial trait is enforced, a resource, or acknowledged", () => {
     "Emissary of the Sea (share simple ideas with beasts that breathe water)",
     "Magic Resistance (adv. on saves against spells and other magic)",
     "Poison Immunity (immune to poison damage and the poisoned condition)",
-    "Serpent Magic (poison spray cantrip, then suggestion from 3rd level, 1/long rest)",
+    "Serpent Magic (poison spray cantrip and animal friendship at will on snakes only, then suggestion from 3rd level, 1/long rest)",
     "Pack Tactics (advantage on an attack against a creature an ally stands within 5 feet of)",
     "Flight (flying speed of 50 ft, not while wearing medium or heavy armor)",
     "Flight (flying speed of 30 ft, not while wearing medium or heavy armor)",

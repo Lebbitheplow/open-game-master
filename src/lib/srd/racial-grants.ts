@@ -131,7 +131,9 @@ export function breathWeaponFor(
 
 // `rest` and `uses`: a spell that comes back on a short rest (Firbolg Magic),
 // as a workshop species' row says it.
-type InnateSpellRow = { name: string; level: number; castAt?: number; per?: "long"; rest?: "short" | "long"; uses?: number };
+// `atWill`: a levelled spell cast without a counter, as often as wanted (a
+// serpentfolk's animal friendship on snakes).
+type InnateSpellRow = { name: string; level: number; castAt?: number; per?: "long"; rest?: "short" | "long"; uses?: number; atWill?: boolean };
 type RaceRow = {
   id: string;
   ancestryChoice?: string;
@@ -218,7 +220,7 @@ function circleOf(name: string, written: number | undefined, guess: number): num
   return checklistSpell(name)?.level ?? written ?? guess;
 }
 
-type GroupRow = SpeciesSpell & { name?: string; per?: "long" };
+type GroupRow = SpeciesSpell & { name?: string; per?: "long"; atWill?: boolean };
 
 function rowsFrom(group: { ability: Ability | null; spells: GroupRow[] }, source: string): InnateSpell[] {
   return group.spells.map((row) => {
@@ -229,6 +231,8 @@ function rowsFrom(group: { ability: Ability | null; spells: GroupRow[] }, source
     // a levelled spell: a counted use, never an unlimited one.
     const circle = circleOf(name, row.circle, row.per || row.uses || row.name === undefined ? 1 : 0);
     const levelled = circle > 0;
+    // At will: no counter and no free-use count (atWill on a bundled row).
+    const counted = levelled && row.atWill !== true;
     const rest = row.rest === "short" ? "short" : "long";
     return {
       name,
@@ -238,10 +242,10 @@ function rowsFrom(group: { ability: Ability | null; spells: GroupRow[] }, source
       // names a higher one ("as a 2nd-level spell"). Darkness is a 2nd-level
       // spell and was cast as a 1st.
       castAt: levelled ? Math.max(circle, row.castAt ?? circle) : 0,
-      counterId: levelled ? racialSpellCounterId(name, rest) : null,
-      uses: levelled ? Math.max(1, row.uses ?? 1) : 0,
+      counterId: counted ? racialSpellCounterId(name, rest) : null,
+      uses: counted ? Math.max(1, row.uses ?? 1) : 0,
       rest,
-      slotsToo: levelled && row.slots === true,
+      slotsToo: counted && row.slots === true,
       ability: group.ability,
       source,
     };

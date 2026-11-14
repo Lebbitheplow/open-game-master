@@ -177,6 +177,12 @@ const BOOKS = {
     traits: ["Control Air and Water (fog cloud, then gust of wind from 3rd level and wall of water from 5th, 1/long rest each)"],
     innateSpells: { trait: "Control Air and Water", ability: "cha", spells: [{ name: "Fog Cloud", level: 1, per: "long" }, { name: "Gust of Wind", level: 3, per: "long" }, { name: "Wall of Water", level: 5, per: "long", circle: 3 }] },
   },
+  // Volo's Guide to Monsters (the yuan-ti pureblood): animal friendship at
+  // will, on snakes only, beside poison spray and suggestion.
+  serpentfolk: {
+    traits: ["Serpent Magic (poison spray cantrip and animal friendship at will on snakes only, then suggestion from 3rd level, 1/long rest)"],
+    innateSpells: { trait: "Serpent Magic", ability: "cha", spells: [{ name: "Poison Spray", level: 1 }, { name: "Animal Friendship", level: 1, atWill: true }, { name: "Suggestion", level: 3, per: "long" }] },
+  },
   // END OF BOOKS
 };
 

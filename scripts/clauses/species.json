@@ -2403,7 +2403,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "2ac090fa430f",
+  "sha": "5ddeb7938f1e",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -2448,9 +2448,9 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.serpentfolk.poison-immunity"
    },
    {
-    "c": "Serpent Magic (poison spray cantrip, then suggestion from 3rd level, 1/long rest)",
+    "c": "Serpent Magic (poison spray cantrip and animal friendship at will on snakes only, then suggestion from 3rd level, 1/long rest)",
     "is": "held",
-    "by": "src/lib/srd/racial-grants.ts innateSpellsFor and innateSpellCounters (the row's innateSpells), cast by use_spell_slot without a slot",
+    "by": "src/lib/srd/racial-grants.ts innateSpellsFor (the row's innateSpells: animal friendship at will, no counter), cast by use_spell_slot without a slot",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits.mjs: species.serpentfolk.innate"
    },
    {
@@ -2460,7 +2460,7 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.serpentfolk.grants"
    },
    {
-    "c": "\"innateSpells\":{\"trait\":\"Serpent Magic\",\"ability\":\"cha\",\"spells\":[{\"name\":\"Poison Spray\",\"level\":1},{\"name\":\"Suggestion\",\"level\":3,\"per\":\"long\"}]}",
+    "c": "\"innateSpells\":{\"trait\":\"Serpent Magic\",\"ability\":\"cha\",\"spells\":[{\"name\":\"Poison Spray\",\"level\":1},{\"name\":\"Animal Friendship\",\"level\":1,\"atWill\":true},{\"name\":\"Suggestion\",\"level\":3,\"per\":\"long\"}]}",
     "is": "held",
     "by": "src/lib/srd/racial-grants.ts innateSpellsFor and innateSpellCounters (the row's innateSpells), cast by use_spell_slot without a slot",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits.mjs: species.serpentfolk.innate"
