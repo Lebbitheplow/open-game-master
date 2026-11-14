@@ -32,6 +32,10 @@ export const ELEGY_MARK = "slotless cast (3rd)";
 // level or lower".
 export const GRIEF_MARK = "slotless cast (2nd)";
 
+// Squire of Bones: the corpse a grave knight raised, so it rises once
+// (src/lib/dm/genre-cc-a-squire.ts).
+export const RAISED_SQUIRE = "raised as a squire";
+
 export const GENRE_CC_A_CONDITIONS: ConditionEffectRow[] = [
   { id: "neutral_ground", match: ["neutral ground"], summary: "Neutral Ground: it accepted the fixer's parley and cannot attack them until the fixer's next turn." },
   { id: "exit_strategy", match: ["exit strategy"], summary: "Exit Strategy: the fixer may move up to their speed before their first turn, drawing no opportunity attacks." },
@@ -43,5 +47,6 @@ export const GENRE_CC_A_CONDITIONS: ConditionEffectRow[] = [
   { id: "swarmed", match: [SWARMED], summary: "The Crown Descends: swarmed by rats, half speed, no reactions, and 1d6 piercing at the start of each of its turns.", speedMultiplier: 0.5, noReactions: true },
   { id: "the_walls_have_teeth", match: [TEETH], summary: "The Walls Have Teeth: within 10 feet of the vermin lord's swarm, it cannot take reactions.", noReactions: true },
   { id: "weakening_bite", match: [WEAKENED], summary: "Grey Tide Rising: a weakening bite, disadvantage on Strength checks for a minute.", disadvantageOn: [{ kind: "check", ability: "str" }] },
+  { id: "raised_as_a_squire", match: [RAISED_SQUIRE], summary: "Squire of Bones: its bones rose as a grave knight's skeletal squire; it cannot be raised again." },
   { id: "sanctioned_execution", match: [SANCTIONED], summary: "Sanctioned Execution: for 24 hours the creature cannot regenerate and cannot be revived." },
 ];

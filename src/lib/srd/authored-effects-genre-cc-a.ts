@@ -99,6 +99,9 @@ export const GENRE_CC_A_AUTHORED: GenreRow[] = [
   { feature: "Evasive Subroutines", classes: ["rigger"], entry: { subclass: "genre", heldBy: { file: "src/lib/dm/aoe-characters.ts", call: "droneEvades(" } } },
 
   // "2/long rest, 10 minutes of tinkering ... gives a tool user +1d4 for 1 hour".
+  // "1/long rest, raise one slain foe as a loyal skeletal squire for 8 hours
+  // (uses its stats, obeys you)" (src/lib/dm/genre-cc-a-squire.ts).
+  counted("grave_knight", "Squire of Bones", "dark_fantasy_squire_of_bones", "action", { kind: "genre_cc", play: "squire", aim: "enemy" }),
   counted("rigger", "Jury-Rig", "cyberpunk_jury_rig", "action", { kind: "genre_cc", play: "jury_rig", aim: "ally" }),
   // The fixer (src/lib/dm/genre-cc-a-fixer.ts).
   { feature: "Silver Ledger", classes: ["fixer"], entry: { subclass: "genre", heldBy: { file: "src/lib/dm/shop-tools.ts", call: "sellsAtFullValue(" } } },

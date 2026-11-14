@@ -56,8 +56,9 @@ import { RAT_TIDE, RAT_TIDE_GROWN } from "@/lib/battlemap/zones-genre-cc-a";
 import { getBattleMapForEncounter, listTokens } from "@/lib/db/battle-maps";
 import { zonesAfterMove } from "@/lib/dm/zone-triggers";
 import { isNamed } from "@/lib/srd/feature-names";
+import { raiseSquire } from "@/lib/dm/genre-cc-a-squire";
 
-export type GenreCcPlay = "crown" | "rat_tide" | "no_rest" | "rite" | "elegy" | "candle" | "daemon_cache" | "parley" | "exit" | "jury_rig";
+export type GenreCcPlay = "crown" | "rat_tide" | "no_rest" | "rite" | "elegy" | "candle" | "daemon_cache" | "parley" | "exit" | "jury_rig" | "squire";
 
 type Resolution = ToolError | { patch?: Record<string, unknown>; result: Record<string, unknown> };
 
@@ -85,6 +86,8 @@ export function genreCcSpend(ctx: SpendContext, play: GenreCcPlay): Resolution {
       return exitStrategy(ctx);
     case "jury_rig":
       return juryRig(ctx);
+    case "squire":
+      return raiseSquire(ctx.campaign, ctx.sheet, ctx.args.targetEnemyId);
   }
 }
 

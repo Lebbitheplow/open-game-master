@@ -1529,21 +1529,22 @@
    {
     "c": "raise one slain foe as a loyal skeletal squire for 8 hours",
     "run": {
-     "k": "spend_moves",
-     "id": "dark_fantasy_squire_of_bones"
+     "k": "cc_squire",
+     "part": "raise"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs gap grave_knight::Squire of Bones#1",
-    "observed": "spending dark_fantasy_squire_of_bones moved its counter and the turn's cost and nothing else; the result was its guidance: 1/long rest, raise one slain foe as a loyal skeletal squire for 8 hours (uses its stats, obeys you).",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "by": "the src/lib/dm/genre-cc-a-spends.ts squire play (src/lib/dm/genre-cc-a-squire.ts raiseSquire): the dead enemy named rises as an undead summon of the knight's for 4800 rounds, acting right after them",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Squire of Bones#1"
    },
    {
     "c": "uses its stats, obeys you",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "follows clause #1 (gap grave_knight::Squire of Bones#1), which fails: the spend moves its counter and the turn's cost and nothing else; with nothing on the table there is no state this clause could be read on",
-    "same_probe_as": 1
+    "run": {
+     "k": "cc_squire",
+     "part": "stats"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-squire.ts squireForm: the foe's own armor class, hit points, speeds, scores, attacks and defences",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-dark-fantasy.mjs: grave_knight::Squire of Bones#2"
    }
   ]
  },

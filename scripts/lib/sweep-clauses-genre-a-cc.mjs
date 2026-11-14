@@ -692,6 +692,40 @@ Object.assign(CC, {
   },
 });
 
+Object.assign(CC, {
+  // Squire of Bones: refused on the living foe; once the knight kills it,
+  // its bones rise. "raise": an undead squire of the knight's for 4800
+  // rounds, acting right after them. "stats": its hit points, armor class
+  // and attacks are the foe's.
+  async cc_squire(t, run, feature) {
+    const scene = await t.stage(feature);
+    const raise = () => t.world.invoke("use_resource", { characterId: scene.holder.id, resource: "Squire of Bones", targetEnemyId: scene.near.id });
+    eq((await raise()).ok, false, "Squire of Bones on a living foe");
+    t.kit.setEnemy(scene.near.id, { currentHp: 1 });
+    must(await t.kit.swing(scene.holder.id, scene.near.id, [15, 4, 4, 4, 4]), "the killing blow");
+    if (t.kit.enemy(scene.near.id).status !== "dead") throw new Error("the near foe did not die");
+    // The knight's next turn: the kill spent this one's action.
+    t.kit.freshTurn();
+    t.kit.giveTurn(scene.holder.id);
+    const made = must(await raise(), "Squire of Bones on the slain foe").result;
+    const id = (made?.result?.summoned ?? made?.summoned ?? [])[0]?.characterId;
+    eq(Boolean(id), true, "a squire raised from the slain foe");
+    const squire = t.world.sheet(id);
+    if (run.part === "raise") {
+      const order = t.world.encounter().order.map((entry) => entry.characterId ?? entry.enemyId);
+      eq(
+        `${squire.summon?.creatureType}/${squire.summon?.casterId === scene.holder.id}/${squire.conditionMeta?.summoned?.rounds}/${order.indexOf(id) - order.indexOf(scene.holder.id)}`,
+        "undead/true/4800/1",
+        "the squire's type / the knight's to command / its rounds / its place after the knight",
+      );
+      return;
+    }
+    const foe = t.kit.enemy(scene.near.id);
+    const swings = (attacks) => JSON.stringify(attacks.filter((attack) => !attack.bonusAction).map((attack) => [attack.name, attack.toHit, attack.damage]));
+    eq(`${squire.maxHp}/${squire.ac}/${swings(squire.summon?.attacks ?? [])}`, `${foe.maxHp}/${foe.ac}/${swings(foe.stats.attacks)}`, "the squire's hit points / armor class / attacks, against the foe's");
+  },
+});
+
 // The vermin lord's dire rat, built before the fight (Favored of the Swarm).
 async function ratPack(t, feature) {
   t.fresh();

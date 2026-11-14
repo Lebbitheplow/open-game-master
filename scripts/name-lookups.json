@@ -9,6 +9,8 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
+    "lib/dm/genre-cc-a-squire.ts#whole": [["identity",1,"a record by its whole name (textKey on both sides): the creature size the foe's block names"]],
+    "lib/dm/genre-cc-a-squire.ts#partial": [["parse",1,"an attack's own damage type, the first of the types its stored line joins with a slash"]],
     "lib/dm/genre-cc-a-saves.ts#partial": [["parse",1,"a die's faces read from its dice notation"]],
     "lib/dm/genre-cc-a-saves.ts#keyed": [["key",1,"a held condition's meta, by the condition's own stored name"]],
     "lib/dm/genre-cc-a-turns.ts#first": [["key",1,"the token of an enemy of the fight, by its id"]],
