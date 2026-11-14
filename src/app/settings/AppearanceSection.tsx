@@ -4,6 +4,8 @@ import { PageSection } from "@/components/PageShell";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { Slider } from "@/components/ui/Slider";
 import { ui } from "@/lib/ui";
+import { useUiLanguageChoice, writeUiLanguageChoice } from "@/lib/ui-language";
+import type { UiLanguageChoice } from "@/lib/language/ui-translate-logic";
 import { UI_SCALE_MAX, UI_SCALE_MIN, useThemePrefs, writeThemeChoice, writeUiScale, type ThemeChoice } from "@/lib/theme-mode";
 
 // Appearance (docs/vtt-parity-implementation-plan.md section 14): the night
@@ -15,8 +17,17 @@ const CHOICES: Array<{ id: ThemeChoice; label: string; glyph: string }> = [
   { id: "light", label: "Parchment day", glyph: "daypart-day" },
 ];
 
+// The interface's language (docs/specs/ogm-italian-ui.md). A language's own
+// name is never translated, so it reads the same in either.
+const LANGUAGES: Array<{ id: UiLanguageChoice; label: string; own?: true }> = [
+  { id: "auto", label: "Follow the browser" },
+  { id: "english", label: "English", own: true },
+  { id: "italian", label: "Italiano", own: true },
+];
+
 export function AppearanceSection() {
   const { choice, scale } = useThemePrefs();
+  const language = useUiLanguageChoice();
   return (
     <PageSection
       heading="Appearance"
@@ -36,6 +47,25 @@ export function AppearanceSection() {
             <GameIcon icon={{ kind: "glyph", key: entry.glyph }} size="size-8" /> {entry.label}
           </button>
         ))}
+      </div>
+      <div className="mt-4 text-xs text-stone-400">
+        <p className="mb-1">Interface language</p>
+        <div data-pill-group="" role="group" aria-label="Interface language" className="flex flex-wrap gap-2">
+          {LANGUAGES.map((entry) => (
+            <button
+              data-on={language === entry.id ? "" : undefined}
+              key={entry.id}
+              type="button"
+              aria-pressed={language === entry.id}
+              onClick={() => writeUiLanguageChoice(entry.id)}
+              translate={entry.own ? "no" : undefined}
+              className="theme-card motion-press"
+            >
+              {entry.label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-1">The story, names and what players write stay as they are.</p>
       </div>
       <div className="mt-4 text-xs text-stone-400">
         <div className="mb-1 flex items-center justify-between gap-3">

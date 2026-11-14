@@ -2341,6 +2341,8 @@
     "lib/language/srd-names-it.ts#keyed": [["identity",2,"an item's official Italian name by textKey, whole, to the English row's name (null, so nothing, when two English items share it)"]],
     "lib/language/srd-names-it.ts#partial": [["pattern",1,"the glossary: the official English rules names a prompt holds, found by one pattern of the whole names, to list beside the table-language directive; no record is decided"],["parse",2,"a magic bonus (+1 to +3) read off the front or the back of an Italian item name, so the name without it is looked up whole"],["key",2,"building the English to Italian list and the glossary's lines without repeats"]],
     "lib/language/srd-names-it.ts#whole": [["key",1,"the glossary leaves out an English name whose Italian name is the same word"]],
+    "lib/language/ui-translate-logic.ts#normalizer": [["key",1,"an interface text's outer spaces cut before it is looked up as a catalog key, and put back around the translation"]],
+    "lib/language/ui-translate-logic.ts#partial": [["parse",5,"the interface's own English text matched whole against the translation catalog's keys, or against a pattern's fixed words with its {slots} copied; names no record (docs/specs/ogm-italian-ui.md)"]],
     "lib/language/text-logic.ts#first": [["search",1,"the records whose name holds a word, listed in a refusal"]],
     "lib/language/text-logic.ts#helper": [["search",1,"the records whose name holds a word, listed in a refusal"],["search",1,"the phrase finder itself"]],
     "lib/language/text-logic.ts#normalizer": [["identity",1,"textKey itself"]],

@@ -138,7 +138,7 @@ export function DmContent({ content, rollsById, sheetsById, cast = [], lines, sp
   // narration shows the character.
   if (speaker) {
     return (
-      <div className="narration space-y-2">
+      <div className="narration space-y-2" translate="no">
         {parts.map((part, index) =>
           part.kind === "text" ? (
             <SpeechLine key={index} speaker={speaker} cast={cast}>
@@ -152,7 +152,7 @@ export function DmContent({ content, rollsById, sheetsById, cast = [], lines, sp
     );
   }
   return (
-    <div className="narration space-y-2">
+    <div className="narration space-y-2" translate="no">
       {parts.map((part, index) =>
         part.kind === "text" ? (
           <div key={index} className="space-y-2">
