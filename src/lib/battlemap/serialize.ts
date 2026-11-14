@@ -1,4 +1,5 @@
-import { chebyshev, tileIndex, type AmbientLight, type BattleToken, type MapLight, type TokenKind } from "@/lib/battlemap/types";
+import { tileIndex, type AmbientLight, type BattleToken, type MapLight, type TokenKind } from "@/lib/battlemap/types";
+import { footprintDistance, footprintTiles, type Footprint } from "@/lib/battlemap/footprint";
 import { describeScene, type DoorStates, type MapLabel } from "@/lib/battlemap/scene";
 import { withAnchors, type SpellZone } from "@/lib/battlemap/zones";
 import { describeZones } from "@/lib/battlemap/zones-describe";
@@ -49,12 +50,24 @@ const DISTANCE_GROUPS: Array<[string, TokenKind[]]> = [
   ["Others", ["npc", "prop"]],
 ];
 
-export function describeDistances(from: { x: number; y: number }, others: BattleToken[]): string {
+// How many squares a token fills (a Large enemy two by two), for a caller
+// that can read its size; absent, one.
+export type FootprintOf = (token: Pick<BattleToken, "kind" | "refId">) => Footprint;
+
+// Measured nearest square to nearest square, as every rule measures it
+// (src/lib/dm/board-reach.ts tilesApart). Anchor to anchor called a hero
+// toe to toe with an ogre's far side "10 ft", in the lines the prompt calls
+// authoritative, while the attack it then refused or allowed read 5.
+export function describeDistances(
+  from: { x: number; y: number; footprint?: Footprint },
+  others: BattleToken[],
+  footprintOf: FootprintOf = () => 1,
+): string {
   return DISTANCE_GROUPS.flatMap(([label, kinds]) => {
     const entries = others
       .filter((other) => kinds.includes(other.kind))
       .map((other) => {
-        const tilesApart = chebyshev(from.x, from.y, other.x, other.y);
+        const tilesApart = footprintDistance(from, from.footprint ?? 1, other, footprintOf(other));
         return `${other.name} ${tilesApart <= 1 ? "ADJACENT (melee range, 5 ft)" : `${tilesApart * 5} ft`}`;
       });
     return entries.length ? [`${label}: ${entries.join("; ")}.`] : [];
@@ -68,11 +81,18 @@ export function serializeMapForPrompt(
   map: SerializableMap,
   tokens: BattleToken[],
   statuses?: Map<string, string>,
+  footprintOf: FootprintOf = () => 1,
 ): string {
   const glyphs = tokenGlyphs(tokens);
   const grid = map.terrain.split("");
+  // Every square a creature fills carries its letter, so a Large ogre reads
+  // as the two by two it is.
   for (const token of tokens) {
-    grid[tileIndex(map.width, token.x, token.y)] = glyphs.get(token.id) ?? "?";
+    for (const tile of footprintTiles(token, footprintOf(token))) {
+      if (tile.x < map.width && tile.y < map.height) {
+        grid[tileIndex(map.width, tile.x, tile.y)] = glyphs.get(token.id) ?? "?";
+      }
+    }
   }
 
   const lines: string[] = [];
@@ -107,7 +127,7 @@ export function serializeMapForPrompt(
   const enemyTokens = tokens.filter((token) => token.kind === "enemy");
   if (pcTokens.length && (enemyTokens.length || pcTokens.length > 1)) {
     const rows = pcTokens.map(
-      (pc) => `- ${pc.name}: ${describeDistances(pc, [...enemyTokens, ...pcTokens.filter((other) => other.id !== pc.id)])}`,
+      (pc) => `- ${pc.name}: ${describeDistances(pc, [...enemyTokens, ...pcTokens.filter((other) => other.id !== pc.id)], footprintOf)}`,
     );
     lines.push(`Distances (authoritative; do not re-count tiles):\n${rows.join("\n")}`);
   }

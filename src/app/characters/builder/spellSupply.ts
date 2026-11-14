@@ -65,8 +65,8 @@ export function spellSupplyOf(
 // The supply the bundled checklist gives a class, with what its subclass
 // adds (a patron's expanded spells, a Divine Soul's cleric list). The server
 // takes every one of them with or without the content pack, so a count the
-// builder asks for past this is a pick that may not exist: without the pack,
-// a level 3 artificer may prepare four spells and the checklist has three.
+// builder asks for past this is a pick that may not exist (a workshop class
+// whose list is shorter than its count).
 export function bundledSpellSupply(input: {
   spellClass: string;
   maxSpellLevel: number;

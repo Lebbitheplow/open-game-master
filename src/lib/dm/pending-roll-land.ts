@@ -22,7 +22,9 @@ import { settleAttackDie } from "@/lib/dm/forced-save";
 import { rollsCanWait } from "@/lib/dm/after-roll";
 import { afterToHitLanded, runQueuedParts } from "@/lib/dm/pc-attack-parts";
 import { moteAfterRoll } from "@/lib/dm/authored-mote";
-import type { RollResult } from "@/lib/dice";
+import { rollExpression, type RollResult } from "@/lib/dice";
+import { heroRollTag } from "@/lib/dice-script-logic";
+import { throwDamage } from "@/lib/dm/attack-blow";
 import { endTurnOnLanding, recordInitiativeRoll, settleTurn, turnHolder } from "@/lib/dm/encounter-tools";
 import { applyInitiativeRefills } from "@/lib/dm/feature-hooks";
 import { applyPendingDamageRoll } from "@/lib/dm/enemy-damage";
@@ -44,13 +46,16 @@ import { getActiveEncounter } from "@/lib/db/encounters";
 
 // What a landed roll leaves: its record, or, for dice whose call waits again
 // on another roll, the word that they are kept (held-call.ts runHeldAgain).
-export type Landed = StoredRoll | { waiting: string };
+// An answer to the ask before an opportunity attack (opportunity-ask.ts)
+// lands no roll of its own: it says so.
+export type Landed = StoredRoll | { waiting: string } | { answered: string };
 
 const KEPT = "The dice are in. The call they belong to waits on another roll, and records them when it finishes.";
+const ANSWERED = "Your answer is in, and the walk goes on.";
 
 // What a route answers the one who landed a roll.
-export function landedBody(landed: Landed): { roll: StoredRoll } | { waiting: string } {
-  return "waiting" in landed ? landed : { roll: landed };
+export function landedBody(landed: Landed): { roll: StoredRoll } | { waiting: string } | { answered: string } {
+  return "waiting" in landed || "answered" in landed ? landed : { roll: landed };
 }
 
 export type RollLanding = {
@@ -79,7 +84,7 @@ function landHeld(campaign: Campaign, pending: PendingRoll, outcome: RollResult,
   if (record && after) {
     postPersonsRecord(campaign, after, record, { rollIds: roll ? [roll.id] : [] });
   }
-  return waits ? { waiting: KEPT } : roll;
+  return waits ? { waiting: KEPT } : (roll ?? (pending.carry?.ask ? { answered: ANSWERED } : null));
 }
 
 // An attack sent with endTurn ("and end the turn", the console's check box)
@@ -303,7 +308,39 @@ export function keepRollsLeftBehind(campaign: Campaign, skippedId: string | null
       withdrawUnrolled(campaign, pending);
     }
   }
-  return left.length;
+  return left.length + (skippedId ? settleSkippedStages(campaign, skippedId, fight) : 0);
+}
+
+// The rest of the skipped turn's cards (issue 931's kin). A hit's damage card:
+// the hit landed, so its damage is owed; left on the card it landed turns
+// later and was told as a new blow. It is thrown now as the "Roll digitally"
+// fallback throws it (pending-rolls route: the hit's own damage feats ride
+// it). A contest or check its action held on the player's d20 (held-call.ts
+// ownTurn): never made, so the card goes and nothing it was for happens.
+function settleSkippedStages(campaign: Campaign, skippedId: string, fight: { createdAt: string } | undefined): number {
+  const mine = listOpenPendingRolls(campaign.id).filter((entry) => entry.characterId === skippedId && (!fight || entry.createdAt >= fight.createdAt));
+  let settled = 0;
+  for (const pending of mine) {
+    if (pending.kind === "damage" && pending.attack && !pending.thrown) {
+      const ask = (pending.attack as AttackRecord).damage ?? null;
+      const outcome = ask ? throwDamage(ask, pending.attack.attacker ?? "", []) : rollExpression(pending.expression, undefined, { purpose: heroRollTag("damage") });
+      if (landPendingRoll(campaign, pending, outcome, { status: "fallback", physical: false, source: "digital" })) {
+        settled += 1;
+      }
+    } else if (pending.carry?.call?.ownTurn) {
+      const withdrawn = withdrawPendingRoll(pending.id);
+      if (!withdrawn) {
+        continue;
+      }
+      settled += 1;
+      setPendingCombatNote(pending.id, `${pending.detail} was still with its player when their turn ended, so what it was for never happened: nothing was rolled, spent or done. Narrate the moment passing.`);
+      publishPersisted(campaign.id, "roll_pending", { pendingRoll: publicPendingRoll(withdrawn) });
+      if (!listPendingForTurn(pending.turnId).some((entry) => entry.status === "pending") && !resumeHumanTurn(pending.turnId)) {
+        enqueueDmJob(campaign.id, () => closeStaleDmTurn(campaign.id, pending.turnId), { kind: "turn" });
+      }
+    }
+  }
+  return settled;
 }
 
 function withdrawUnrolled(campaign: Campaign, pending: PendingRoll) {

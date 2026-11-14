@@ -26,6 +26,7 @@ import { brightSquare } from "@/lib/dm/one-with-shadows";
 import { getCampaignById } from "@/lib/db/campaigns";
 import { getEnemy, type Encounter } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
+import { genreBAuraAttack } from "@/lib/dm/genre-b-auras";
 import type { HandBoardFacts } from "@/lib/battlemap/hand-core";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -124,7 +125,7 @@ export function targetSight(input: { campaignId: string; encounterId: string; ch
 
 // The engine's verdicts on the viewer's own square (hand-core.ts
 // HandBoardFacts): a Hide take_action would refuse there, in a fight, and
-// the Silence they stand in.
+// the Silence they stand in, and what an ally's aura adds to their attack rolls.
 export function ownSquareFacts(campaignId: string, encounter: Pick<Encounter, "id" | "kind">, sheet: CharacterSheet): HandBoardFacts {
   const out: HandBoardFacts = {};
   const campaign = encounter.kind === "fight" ? getCampaignById(campaignId) : null;
@@ -136,5 +137,8 @@ export function ownSquareFacts(campaignId: string, encounter: Pick<Encounter, "i
   // and Cloak of Shadows refuse.
   const bright = brightSquare(campaignId, sheet);
   if (bright) out.bright = bright;
+  // An ally's aura on this character's attack rolls (genre-b-auras.ts).
+  const aura = genreBAuraAttack(campaignId, sheet);
+  if (aura.bonus) out.attackAura = aura;
   return out;
 }

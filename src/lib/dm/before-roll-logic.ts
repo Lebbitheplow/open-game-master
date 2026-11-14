@@ -24,7 +24,7 @@ import { canWaitOnRoll, keepD20 } from "@/lib/dm/after-roll-logic";
 import { WATCH_ROWS, type WatchPower } from "@/lib/dm/after-roll-table";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { holdsFeature } from "@/lib/srd/feature-names";
+import { holdsFeature, isNamed } from "@/lib/srd/feature-names";
 
 export const COSMIC_OMEN = "sub_cosmic_omen";
 export const RESTORE_BALANCE = "sub_restore_balance";
@@ -86,7 +86,13 @@ export function watchFeatureOf(sheet: Watching, table = false): WatchPower | nul
   if (foretoldLeft(sheet).length > 0) return "portent";
   if (omenLeft(sheet)) return "cosmic_omen";
   if (balanceLeft(sheet)) return "restore_balance";
-  return table ? null : (WATCH_ROWS.find((row) => holdsFeature(sheet, row.feature))?.id ?? null);
+  return table ? null : (WATCH_ROWS.find((row) => holdsWatchRow(sheet, row.feature))?.id ?? null);
+}
+
+// Whether the sheet holds a watch row's feature: a trait or class feature,
+// or a feat the sheet lists as one (Bountiful Luck).
+export function holdsWatchRow(sheet: Pick<CharacterSheet, "features" | "feats">, feature: string): boolean {
+  return holdsFeature(sheet, feature) || (sheet.feats ?? []).some((feat) => isNamed(feat, feature));
 }
 
 export type BeforeRollChoice = { id: BeforeRollPower; label: string; note: string };

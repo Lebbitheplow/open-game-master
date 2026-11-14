@@ -86,7 +86,7 @@ export const TAIL_CONDITION_EFFECTS: ConditionEffectRow[] = [
   {
     id: "retching",
     match: ["retching"],
-    summary: "Stinking Cloud: it spends its action retching and reeling this turn.",
+    summary: "Retching: it spends its action retching and reeling (Stinking Cloud, an alchemist's Fumes and Vapors).",
     noAction: true,
   },
   {

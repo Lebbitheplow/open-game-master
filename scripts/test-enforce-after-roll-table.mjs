@@ -62,7 +62,7 @@ await test("The table owns the card's choices, the route's enum and the watch st
   const ids = table.AFTER_ROLL_ROWS.map((row) => row.id);
   assert.equal(new Set(ids).size, ids.length, "one row per choice");
   assert.deepEqual(table.AFTER_ROLL_IDS, ids);
-  assert.deepEqual(Object.keys(table.WATCH_FEATURES), ["portent", "cosmic_omen", "restore_balance", "slayers_counter", "cloud_rune", "chronal_shift", "flash_of_genius", "favored_by_the_gods", "convergent_future", "bend_luck"]);
+  assert.deepEqual(Object.keys(table.WATCH_FEATURES), ["portent", "cosmic_omen", "restore_balance", "slayers_counter", "cloud_rune", "chronal_shift", "flash_of_genius", "favored_by_the_gods", "convergent_future", "bend_luck", "bountiful_luck", "saving_face", "lucky_footwork", "inspired_ingenuity"]);
   // Portent, Cosmic Omen and Restore Balance go on the d20 before it is thrown.
   assert.deepEqual(Object.keys(table.WATCH_FEATURES).filter(table.armsBeforeRoll), ["portent", "cosmic_omen", "restore_balance"]);
   assert.deepEqual(table.SAVE_HELPS, ["flash_of_genius", "favored_by_the_gods"]);
@@ -76,7 +76,7 @@ await test("The table owns the card's choices, the route's enum and the watch st
     assert.ok(row.label && row.note, `${row.id}: the card's words`);
     assert.ok((row.effect === "own") === Boolean(row.module), `${row.id}: a row of its own names the module that offers and spends it`);
   }
-  assert.deepEqual([...table.AFTER_ROLL_COUNTERS].sort(), ["art_flash_of_genius", "sub_favored_by_the_gods", "sub_master_duelist"]);
+  assert.deepEqual([...table.AFTER_ROLL_COUNTERS].sort(), ["art_flash_of_genius", "feat_orcish_fury", "sub_favored_by_the_gods", "sub_master_duelist"]);
 });
 
 await test("The route refuses a choice no row names, and asks again for one a row names that is not on offer.", async () => {

@@ -36,6 +36,7 @@ import { classListFor, slotTableFor } from "@/lib/srd/multiclass";
 import { weaponAttackProfile, weaponOf } from "@/lib/dm/attack-logic";
 import { matchWeapon } from "@/lib/srd/weapons";
 import { formatPrice, purseCopper } from "@/lib/srd/currency";
+import { personaLine } from "@/lib/backgrounds/persona-logic";
 
 // The subset of a character the sheet renders. The runtime CharacterSheet is
 // structurally assignable to this, so the in-session dialog passes its `sheet`
@@ -68,6 +69,8 @@ export type PdfCharacter = {
   portrait: SheetAttachment | null;
   notes: string;
   backstory: string;
+  // Trait, ideal, bond and flaw as one line ("" when none).
+  personality: string;
 };
 
 // Library characters store a CreateSheetInput (no runtime currentHp/xp) plus a
@@ -111,6 +114,7 @@ export function libraryToPdfCharacter(character: {
     portrait: s.portrait,
     notes: s.notes,
     backstory: s.backstory,
+    personality: personaLine(s.persona),
   };
 }
 
@@ -478,7 +482,7 @@ async function drawTraits(ctx: Ctx, c: PdfCharacter, portraitBytes?: Uint8Array)
   const bioH = y - MARGIN;
   box(ctx, x, MARGIN, w, bioH, true);
   heading(ctx, x + 4, y - 11, "Backstory & Notes");
-  const bioText = [c.backstory, c.notes].filter(Boolean).join("\n\n");
+  const bioText = [c.personality ? `Personality: ${c.personality}` : "", c.backstory, c.notes].filter(Boolean).join("\n\n");
   field(ctx, x + 4, MARGIN + 3, w - 8, bioH - 16, bioText, { size: 8, multiline: true });
 }
 

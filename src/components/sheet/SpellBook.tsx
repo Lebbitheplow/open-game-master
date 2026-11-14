@@ -302,7 +302,8 @@ export function SpellBook({
                   setFilter("");
                 }}
                 className={cn(
-                  "relative min-w-9 rounded-lg border px-2.5 py-1 font-display text-xs tracking-wide transition-colors",
+                  // A finger's size on a phone (AGENTS.md): 26 px tall there before.
+                  "relative min-w-9 rounded-lg border px-2.5 py-1 font-display text-xs tracking-wide transition-colors pointer-coarse:min-h-10 pointer-coarse:min-w-10",
                   selected
                     ? "border-amber-400/70 bg-amber-400/15 text-amber-100 shadow-[0_0_12px_rgba(212,171,58,0.2)]"
                     : "border-stone-700/70 text-stone-400 hover:border-amber-500/40 hover:text-stone-200",
@@ -323,7 +324,7 @@ export function SpellBook({
           onChange={(event) => setFilter(event.target.value)}
           placeholder="Find a spell..."
           aria-label={searchLabel}
-          className="ml-auto w-36 rounded-md border border-stone-700/70 bg-stone-950 px-2 py-1 text-xs text-stone-200 outline-none focus:border-amber-400/60"
+          className="ml-auto w-36 rounded-md border border-stone-700/70 bg-stone-950 px-2 py-1 text-xs text-stone-200 outline-none focus:border-amber-400/60 pointer-coarse:min-h-10"
         />
       </div>
       {factsByName ? (
@@ -422,7 +423,7 @@ export function SpellBook({
                     onTile?.(tile);
                   }}
                   title={tile.blocked ?? tile.note ?? STATE_TEXT[tile.state]}
-                  className="flex w-full min-w-0 items-center gap-2 text-left disabled:cursor-default"
+                  className="flex w-full min-w-0 items-center gap-2 text-left disabled:cursor-default pointer-coarse:min-h-10"
                 >
                   <span className="relative shrink-0">
                     <GameIcon icon={spellGlyphIcon(tile.name, typeof tile.data?.runsAs === "string" ? tile.data.runsAs : null, tile.data?.mech)} size="size-9" />

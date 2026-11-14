@@ -11,6 +11,11 @@
 // are flown over (their ground costs nothing extra), walls stop it, and a
 // low wall or chasm edge ("|") is taken as a 3-foot obstacle, cleared by a
 // jump of 15 feet or more.
+// A jump die (a satyr's Mirthful Leaps: "roll a d8 and add that many feet to
+// each long or high jump") is rolled as the jump is made and its feet are
+// added after the reach, never halved for a standing start: `dieFeet`. A
+// jump the die leaves short comes down where it reaches on the same line
+// (landingWithin).
 
 import { TERRAIN, chebyshev, tileAt, tileIndex, type XY } from "@/lib/battlemap/types";
 
@@ -27,6 +32,14 @@ export function longJumpFeet(strength: number, runningStart: boolean): number {
 export function highJumpFeet(strength: number, runningStart: boolean): number {
   const feet = Math.max(0, 3 + Math.floor((Math.floor(strength) - 10) / 2));
   return runningStart ? feet : Math.floor(feet / 2);
+}
+
+// Where a jump of `feet` along the straight line toward `to` comes down: the
+// farthest square of that line it covers, or null when it covers none.
+export function landingWithin(from: XY, to: XY, feet: number): XY | null {
+  const line = jumpLine(from, to);
+  const tiles = Math.min(line.length, Math.floor(Math.max(0, feet) / TILE_FEET));
+  return tiles >= 1 ? line[tiles - 1] : null;
 }
 
 // The squares a straight jump passes over, then the landing square.
@@ -61,6 +74,9 @@ export function planLongJump(input: {
   // Flat feet added after the Strength reach, which a standing start does
   // not halve (Peerless Athlete's 10; src/lib/dm/jump-reach.ts).
   extraFeet?: number;
+  // Feet a jump die rolled for this jump adds (Mirthful Leaps), after the
+  // reach and outside the standing start's halving.
+  dieFeet?: number;
   budgetTiles: number;
   name: string;
 }): JumpPlan {
@@ -70,7 +86,7 @@ export function planLongJump(input: {
   }
   const tiles = chebyshev(from.x, from.y, to.x, to.y);
   const feet = tiles * TILE_FEET;
-  const reach = longJumpFeet(input.strength, input.runningStart) + Math.max(0, input.extraFeet ?? 0);
+  const reach = longJumpFeet(input.strength, input.runningStart) + Math.max(0, input.extraFeet ?? 0) + Math.max(0, input.dieFeet ?? 0);
   if (tiles < 1) {
     return { ok: false, error: "A jump has to go somewhere." };
   }

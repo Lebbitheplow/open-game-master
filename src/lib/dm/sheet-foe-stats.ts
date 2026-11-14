@@ -17,17 +17,18 @@
 import type { EnemyAttack, EnemyStats } from "@/lib/bestiary/statblock";
 import { deriveCr } from "@/lib/bestiary/derive-cr";
 import { resolveAttackWeapon, weaponAttackProfile } from "@/lib/dm/attack-logic";
-import { enemyStatsFromSummon } from "@/lib/dm/summon-rules";
+import { enemyStatsFromSummon, sheetCreatureType } from "@/lib/dm/summon-rules";
 import { attacksAllowedFor } from "@/lib/dm/turn-budget";
-import { acBreakdownFor, computeSheetDerived, sizeForRace } from "@/lib/srd";
+import { acBreakdownFor, computeSheetDerived, sheetSize as lineageSize } from "@/lib/srd";
 import { combatRiders } from "@/lib/srd/feature-effects";
 import { magicItemRiders } from "@/lib/srd/magic-items";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
-// ODM keeps no size on a sheet: the race says it (srd sizeForRace).
-export function sheetSize(sheet: Pick<CharacterSheet, "race">): string {
-  return sizeForRace(sheet.race);
+// ODM keeps no size on a sheet: the race says it, or the size its lineage
+// let the player pick (srd sheetSize).
+export function sheetSize(sheet: Pick<CharacterSheet, "race" | "features">): string {
+  return lineageSize(sheet);
 }
 
 // The best weapon the sheet carries as the block's attack, or an unarmed
@@ -79,7 +80,10 @@ export function sheetEnemyStats(sheet: CharacterSheet): EnemyStats {
     xp: 0,
     attacksPerTurn: Math.max(1, attacksAllowedFor(sheet)),
     size: sheetSize(sheet),
-    type: "humanoid",
+    // What the character is (a satyr, centaur or fairy is fey; a druid's
+    // bear a beast), so a spell for some creature types (Hold Person, Divine
+    // Word's sending home) reads them as it reads any creature.
+    type: sheetCreatureType(sheet),
     abilities: { ...sheet.abilities },
     skills: { ...derived.skills },
     senses: { passivePerception: derived.passivePerception },

@@ -1,4 +1,4 @@
-import { findCustomClass, spellPoolKeyFor, spellRulesClassFor } from "@/lib/classes";
+import { cantripRulesClassFor, findCustomClass, spellPoolKeyFor, spellRulesClassFor } from "@/lib/classes";
 import { classLabelOf, spellOnListKey, type ListedSpell } from "@/lib/classes/class-spell-list";
 import { suggestedCantripCount, suggestedSpellCount } from "@/lib/content/mechanics";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -8,6 +8,7 @@ import type { SubclassExtras } from "@/lib/srd/subclass-tables";
 import { isCantripName, spellLevelOf, spellsAgainstLimit } from "@/lib/srd/spell-lists";
 import {
   isThirdCaster,
+  thirdCasterCantripProblem,
   thirdCasterCantrips,
   thirdCasterList,
   thirdCasterProfileOf,
@@ -17,6 +18,7 @@ import {
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { classSpellGrants } from "@/lib/srd/class-spell-grants";
+import { arcanumExtraProblem, arcanumSplit, mysticArcanumTop } from "@/lib/srd/mystic-arcanum";
 
 // How a caster's spell list works, and the 5e (SRD 5.1) timing for changing
 // it. Pure and database-free, shared by the sheet, the builder, the server
@@ -232,6 +234,13 @@ export function grantedSpellsOf(view: CasterView): string[] {
   return learned.length ? dedupeNames([...subclass, ...learned]) : subclass;
 }
 
+// The cantrips among them (the Light Domain's light, the Celestial patron's
+// light and sacred flame): known on top of the Cantrips Known column, filed
+// with the cantrips, never counted in it.
+export function grantedCantripsOf(view: CasterView): string[] {
+  return grantedSpellsOf(view).filter((name) => isCantripName(name));
+}
+
 // What this caster may learn beyond its class's list: its subclass's
 // expanded spells (a warlock patron's), by name, and other classes' lists
 // (a Divine Soul's cleric list). Learned, they count like any other spell.
@@ -277,6 +286,18 @@ export function spellCapOf(
   return suggestedSpellCount(spellRulesClassFor(view.classId), view.level, abilityMod(abilities[view.ability]));
 }
 
+// The cap with the spells a feature teaches on top of it (Additional Magical
+// Secrets' two, Arcane Mastery's four, Black Market Firmware's two:
+// class-spell-grants.ts), as the creation check and the level-up count them:
+// the sheet's counter and the prepare door read this one.
+export function spellCapWithGrantsOf(
+  view: CasterView,
+  abilities: CharacterSheet["abilities"],
+): { label: string; count: number } | null {
+  const cap = spellCapOf(view, abilities);
+  return cap ? { ...cap, count: cap.count + classSpellGrants(view).extraSpells } : null;
+}
+
 // Prepared now plus waiting for the rest, as the cap counts them.
 export function preparedCount(view: CasterView): number {
   return spellsAgainstLimit(dedupeNames([...view.prepared, ...view.pending]), grantedSpellsOf(view));
@@ -289,12 +310,16 @@ export type PrepResult = { view: CasterView; note: string } | { error: string };
 // One change a player makes to what is prepared. `inClassList` is the
 // caller's answer to "is this spell on the class list at a level they can
 // cast" (the server checks it against the content pack; a prepared caster may
-// pick anything on it, a wizard only what is in their book).
+// pick anything on it, a wizard only what is in their book). `onList`, where
+// the caller can answer it, says whether a held spell is on the class's list
+// at all: a prepared caster's spell off it was learned through a feature
+// (Arcane Mastery, Black Market Firmware, class-spell-grants.ts), which no
+// long rest brings back, so it stays ready.
 export function changePreparation(
   view: CasterView,
   action: PrepAction,
   spell: string,
-  context: { abilities: CharacterSheet["abilities"]; inClassList: boolean },
+  context: { abilities: CharacterSheet["abilities"]; inClassList: boolean; onList?: (name: string) => boolean },
 ): PrepResult {
   const name = spell.trim();
   if (!name) {
@@ -316,9 +341,14 @@ export function changePreparation(
     }
     return { view: { ...view, pending: without(view.pending, name) }, note: `${name} will not be prepared.` };
   }
+  // Learned off the list, and held on top of what is prepared.
+  const grants = classSpellGrants(view);
   if (action === "unprepare") {
     if (has(granted, name)) {
       return { error: `${name} comes with the subclass and is always prepared.` };
+    }
+    if (view.style === "prepared" && grants.anyListSpells && has(view.prepared, name) && context.onList && !context.onList(name)) {
+      return { error: `${name} was learned through ${grants.feature} and is always ready; it is not prepared or unprepared at a rest.` };
     }
     if (has(view.pending, name)) {
       return { view: { ...view, pending: without(view.pending, name) }, note: `${name} will not be prepared.` };
@@ -360,7 +390,7 @@ export function changePreparation(
   if (view.style === "prepared" && !context.inClassList) {
     return { error: `${name} is not on the list this class can prepare at its level.` };
   }
-  const cap = spellCapOf(view, context.abilities);
+  const cap = spellCapWithGrantsOf(view, context.abilities);
   if (cap && preparedCount(view) >= cap.count) {
     return {
       error: `Already ${cap.count} ${cap.label}, counting the ones waiting for the long rest. Unprepare one first.`,
@@ -448,17 +478,14 @@ export function cantripCapOf(
   if (isThirdCaster(view.classId, view.subclass, view.progression)) {
     return view.level >= 3 ? thirdCasterCantrips(view.classId, view.level, view.progression) : null;
   }
-  return suggestedCantripCount(spellRulesClassFor(view.classId), view.level, casterTypeOf(view.classId));
+  return suggestedCantripCount(cantripRulesClassFor(view.classId), view.level, casterTypeOf(view.classId));
 }
 
-// A warlock's Mystic Arcanum reaches past pact slots: one spell of 6th level
-// at 11, 7th at 13, 8th at 15 and 9th at 17.
-function arcanumTop(view: Pick<CasterView, "classId" | "level">): number {
-  if (spellRulesClassFor(view.classId) !== "warlock") {
-    return 0;
-  }
-  return view.level >= 17 ? 9 : view.level >= 15 ? 8 : view.level >= 13 ? 7 : view.level >= 11 ? 6 : 0;
-}
+// A warlock's Mystic Arcanum, or an occultist's Apocrypha and Seventh Seal
+// (src/lib/srd/mystic-arcanum.ts): its levels,
+// its reach past the pact slots, and which held spells are the arcana. Kept
+// here too, as the spell rules' other readers import them from this module.
+export { arcanumExtraProblem, arcanumName, arcanumSplit, mysticArcanumLevels, mysticArcanumTop } from "@/lib/srd/mystic-arcanum";
 
 // Everything the 5e tables say is wrong with the spell lists a sheet arrives
 // with: more cantrips than the class knows, more spells held than its known
@@ -483,6 +510,9 @@ export function spellListProblems(
     freeSpells?: string[];
     // The table's subclasses, for a workshop subclass's always-prepared spells.
     extras?: SubclassExtras;
+    // A spell's level as the server knows it (a content pack's, the table's
+    // homebrew), for a warlock's arcana; the bundled checklist's when absent.
+    spellLevelOf?: (name: string) => number | null;
   } = {},
 ): string[] {
   const problems: string[] = [];
@@ -502,17 +532,35 @@ export function spellListProblems(
     const grants = classSpellGrants(view);
     const baseCantripCap = cantripCapOf(view);
     const cantripCap = baseCantripCap === null ? null : baseCantripCap + grants.extraCantrips;
-    const named = dedupeNames(view.cantrips).filter((name) => !free.has(textKey(name)));
+    // A subclass's own cantrips (the Light Domain's light) sit on top too.
+    const grantedCantrips = new Set(grantedCantripsOf(view).map(textKey));
+    const named = dedupeNames(view.cantrips).filter((name) => !free.has(textKey(name)) && !grantedCantrips.has(textKey(name)));
     const cantrips = named.slice(0, Math.max(0, named.length - freeCount));
     freeCount = 0;
     if (cantripCap !== null && cantrips.length > cantripCap) {
       problems.push(`A ${label} knows ${cantripCap} ${cantripCap === 1 ? "cantrip" : "cantrips"}; that list has ${cantrips.length}.`);
     }
+    // An Arcane Trickster's Mage Hand among them (third-caster.ts). Judged
+    // on a new sheet, as the book is: one already in play keeps what it has.
+    const namedCantrip =
+      options.bookAllowance === false
+        ? null
+        : thirdCasterCantripProblem({ classId: view.classId, subclass: view.subclass, profile: view.progression, level: view.level, cantrips, cap: cantripCap });
+    if (namedCantrip) {
+      problems.push(namedCantrip);
+    }
     const granted = grantedSpellsOf(view);
     const held = dedupeNames([...heldSpells(view), ...view.pending]).filter((name) => !isCantripName(name) && !freeSpells.has(textKey(name)));
     const tableCap = spellCapOf(view, sheet.abilities);
     const cap = tableCap ? { ...tableCap, count: tableCap.count + grants.extraSpells } : null;
-    const counted = spellsAgainstLimit(held, granted);
+    // A warlock's arcana sit beside the Spells Known column: one of each
+    // arcanum level is left out of the count, a second of one level refused.
+    const arcana = arcanumSplit(view, held, options.spellLevelOf);
+    const extraArcanum = arcanumExtraProblem(arcana, options.spellLevelOf, view.classId);
+    if (extraArcanum) {
+      problems.push(extraArcanum);
+    }
+    const counted = spellsAgainstLimit(held, [...granted, ...arcana.arcanum]);
     if (cap && counted > cap.count) {
       problems.push(`A ${label} may hold ${cap.count} ${cap.label}; that list has ${counted}.`);
     }
@@ -527,7 +575,7 @@ export function spellListProblems(
         problems.push(`A ${label} starts with ${allowance} spells in the spellbook; that book has ${book}.`);
       }
     }
-    const top = Math.max(maxSpellLevelOf(view), arcanumTop(view));
+    const top = Math.max(maxSpellLevelOf(view), mysticArcanumTop(view.classId, view.level));
     for (const name of dedupeNames([...held, ...view.spellbook]).filter((name) => !freeSpells.has(textKey(name)))) {
       const spellLevel = spellLevelOf(name);
       if (spellLevel !== null && spellLevel > top) {

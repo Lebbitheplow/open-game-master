@@ -4,7 +4,8 @@ import type { CreateSheetInput } from "@/lib/schemas/sheet";
 // Each is a complete level 1 sheet in the shape the character builder
 // submits: standard array with the human's +1 on every score, the class's
 // starting kit as the book's first choices, the background's tool pick
-// made. They pass the same admission door as any player's character
+// made, the class's skills beside the background's and the languages the
+// race and background give (scripts/test-starter.mjs holds them to it). They pass the same admission door as any player's character
 // (src/lib/characters/admit.ts, scripts/test-starter.mjs proves it), so
 // nothing here is special-cased at the table: once picked, a hero is a
 // library character like any other.
@@ -72,7 +73,17 @@ export const PREGENS: Pregen[] = [
       maxHp: 14,
       ac: 14,
       hitDice: { die: "d12", total: 1, spent: 0 },
-      proficiencies: { saves: ["str", "con"], skills: ["athletics", "survival"], expertise: [], languages: ["Common"], tools: ["drum"], armor: [], weapons: [] },
+      proficiencies: {
+        saves: ["str", "con"],
+        // The outlander's Athletics and Survival, and the barbarian's own two.
+        skills: ["athletics", "survival", "intimidation", "perception"],
+        expertise: [],
+        // Common, the human's extra language and the outlander's.
+        languages: ["Common", "Giant", "Orc"],
+        tools: ["drum"],
+        armor: [],
+        weapons: [],
+      },
       equipment: [...pack([["Greataxe"], ["Handaxe", 2]]), ...EXPLORER, ...pack([["Javelin", 4]])],
       backstory: "Raised in the high passes, Brakk came down to the lowlands when the herds died, and has not found a reason to go back.",
     },
@@ -91,7 +102,17 @@ export const PREGENS: Pregen[] = [
       maxHp: 12,
       ac: 18,
       hitDice: { die: "d10", total: 1, spent: 0 },
-      proficiencies: { saves: ["str", "con"], skills: ["athletics", "perception"], expertise: [], languages: ["Common"], tools: ["dice set"], armor: [], weapons: [] },
+      proficiencies: {
+        saves: ["str", "con"],
+        // The soldier's Athletics and Intimidation, and the fighter's own two.
+        skills: ["athletics", "intimidation", "perception", "survival"],
+        expertise: [],
+        // Common and the human's extra language.
+        languages: ["Common", "Dwarvish"],
+        tools: ["dice set"],
+        armor: [],
+        weapons: [],
+      },
       equipment: [...pack([["Chain Mail"], ["Longsword"], ["Shield"], ["Light Crossbow"], ["Crossbow Bolts", 20]]), ...DUNGEONEER],
       // A fighter's 1st-level Fighting Style, which the sheet listed as owed
       // once fighting styles were (issue #833): Defense, for the chain mail.
@@ -115,9 +136,11 @@ export const PREGENS: Pregen[] = [
       hitDice: { die: "d8", total: 1, spent: 0 },
       proficiencies: {
         saves: ["dex", "int"],
-        skills: ["stealth", "acrobatics", "perception", "investigation"],
+        // The criminal's Deception and Stealth, and the rogue's own four.
+        skills: ["deception", "stealth", "acrobatics", "perception", "investigation", "sleight_of_hand"],
         expertise: ["stealth", "perception"],
-        languages: ["Common"],
+        // Common and the human's extra language; Thieves' Cant is the class's.
+        languages: ["Common", "Halfling"],
         tools: ["thieves' tools", "dice set"],
         armor: [],
         weapons: [],
@@ -141,7 +164,17 @@ export const PREGENS: Pregen[] = [
       maxHp: 10,
       ac: 15,
       hitDice: { die: "d8", total: 1, spent: 0 },
-      proficiencies: { saves: ["wis", "cha"], skills: ["medicine", "insight"], expertise: [], languages: ["Common"], tools: [], armor: [], weapons: [] },
+      proficiencies: {
+        saves: ["wis", "cha"],
+        // The acolyte's Insight and Religion, and the cleric's own two.
+        skills: ["insight", "religion", "medicine", "persuasion"],
+        expertise: [],
+        // Common, the human's extra language and the acolyte's two.
+        languages: ["Common", "Celestial", "Elvish", "Halfling"],
+        tools: [],
+        armor: [],
+        weapons: [],
+      },
       equipment: [...pack([["Mace"], ["Scale Mail"], ["Spear"]]), ...PRIEST, ...pack([["Shield"], ["Holy Symbol"]])],
       spellcasting: {
         ability: "wis",

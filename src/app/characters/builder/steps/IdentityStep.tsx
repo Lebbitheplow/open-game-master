@@ -9,9 +9,12 @@ import { cn } from "@/lib/cn";
 import type { CreateSheetInput } from "@/lib/schemas/sheet";
 import { ui } from "@/lib/ui";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
+import { EMPTY_PERSONA, personaSuggestionsFor } from "@/lib/backgrounds/persona-logic";
 import type { WorldPack } from "@/lib/worlds/types";
 import OptionPicker, { type PickerGroup } from "../OptionPicker";
 import { rollHeroName } from "../heroNames";
+import { PersonalityFields } from "../PersonalityFields";
+import type { BackgroundOption } from "../useBuilderOptions";
 import type { BuilderState } from "../useBuilderState";
 import { Field, StepPanel, inputClass } from "./shared";
 
@@ -33,6 +36,7 @@ export function IdentityStep({
   state,
   pack,
   initial,
+  background,
   paintsPortraits,
   onUploadPortrait,
   alignmentGroups,
@@ -42,6 +46,9 @@ export function IdentityStep({
   state: BuilderState;
   pack: WorldPack | null;
   initial?: CreateSheetInput;
+  // The background chosen on the Ancestry step, whose suggested trait,
+  // ideal, bond and flaw the Personality block offers.
+  background?: BackgroundOption | null;
   // Whether this server can paint a portrait at all. Without an image
   // backend the section offers the upload alone and stops promising a
   // painting that would never arrive.
@@ -60,6 +67,8 @@ export function IdentityStep({
   // Asked only where the host keeps it: an older host drops the field (an
   // app's screens may be newer than the host they are opened on).
   const asksHopes = hostOffers(useCapabilities(), "storyHopes");
+  // The same for the personality's four lines.
+  const asksPersona = hostOffers(useCapabilities(), "persona");
   const keptSaved = Boolean(initial?.portrait && portrait?.url === initial.portrait.url);
 
   return (
@@ -215,6 +224,22 @@ export function IdentityStep({
         />
         <LengthNote id={`${backstoryId}-length`} length={state.backstory.length} max={BACKSTORY_MAX} from={0.75} />
       </StepPanel>
+
+      {asksPersona ? (
+        <StepPanel
+          title="Personality (optional)"
+          help={`A trait, an ideal, a bond and a flaw: four short lines the GM plays your hero by. Pick from ${
+            background ? `the ${background.name}'s suggestions` : "the suggestions"
+          } or write your own. Leave any of them blank. The party can read these, and you can change them later from your character sheet.`}
+        >
+          <PersonalityFields
+            value={state.persona ?? EMPTY_PERSONA}
+            onChange={state.setPersona}
+            suggestions={personaSuggestionsFor(background)}
+            backgroundName={background?.name}
+          />
+        </StepPanel>
+      ) : null}
 
       {asksHopes ? (
         <StepPanel

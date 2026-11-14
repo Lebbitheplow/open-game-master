@@ -16,7 +16,7 @@ import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import { liftLimits, weighed } from "@/lib/dm/load-rules";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
 import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
-import { sizeForRace } from "@/lib/srd";
+import { sheetSize } from "@/lib/srd";
 import { LIFESTYLES } from "@/lib/dm/between-state";
 import { tableNote, writeLifestyle } from "@/lib/dm/between-io";
 import { LIFESTYLE_COST_CP, coverOf, downtimeProblem, spendDowntime, type DowntimeEntry } from "@/lib/dm/lifestyle";
@@ -177,12 +177,17 @@ function handleLift(args: z.infer<typeof liftSchema>, sheets: CharacterSheet[], 
   // you to hoist up to four times the weight you can normally lift" (issue
   // #570, EQP-26).
   const pulleys = how === "lift" && sheet.equipment.some((item) => matchGear(rowName(item)) === BLOCK_AND_TACKLE);
-  const hoistLb = pulleys ? limits.liftLb * 4 : limits.liftLb;
+  // A push or a drag is held to the push limit, which Equine Build doubles
+  // and a lift's does not (load-rules.ts liftLimits).
+  const handLb = how === "lift" ? limits.liftLb : limits.pushLb;
+  const hoistLb = pulleys ? limits.liftLb * 4 : handLb;
   if (args.weightLb > hoistLb) {
     return {
       error: pulleys
         ? `${sheet.name} can hoist at most ${hoistLb} lb with a block and tackle (four times their ${limits.liftLb} lb lift); ${args.weightLb} lb does not move. Narrate the strain; more hands (another character's own lift) are the way.`
-        : `${sheet.name} can push, drag or lift at most ${limits.liftLb} lb (30 x Strength); ${args.weightLb} lb does not move. Narrate the strain; more hands (another character's own lift) or a lever are the way.`,
+        : limits.liftLb === limits.pushLb
+          ? `${sheet.name} can push, drag or lift at most ${handLb} lb (30 x Strength); ${args.weightLb} lb does not move. Narrate the strain; more hands (another character's own lift) or a lever are the way.`
+          : `${sheet.name} can ${how === "lift" ? `lift at most ${handLb} lb (30 x Strength), though they push or drag up to ${limits.pushLb}` : `push or drag at most ${handLb} lb`}; ${args.weightLb} lb does not move. Narrate the strain; more hands (another character's own lift) or a lever are the way.`,
       refused: "rules",
     };
   }
@@ -193,7 +198,7 @@ function handleLift(args: z.infer<typeof liftSchema>, sheets: CharacterSheet[], 
     strength: sheet.abilities.str,
     equipment: weighed(sheet.equipment),
     coins: purseCoins({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
-    size: sizeForRace(sheet.race),
+    size: sheetSize(sheet),
     wearer: sheet,
     // The capacity liftLimits read (Peerless Athlete doubles it).
     carryFactor: authoredCarryFactor(sheet),
@@ -203,7 +208,7 @@ function handleLift(args: z.infer<typeof liftSchema>, sheets: CharacterSheet[], 
   return {
     ok: true,
     [how === "lift" ? "lifted" : how === "push" ? "pushed" : "dragged"]: `${args.weightLb} lb`,
-    limitLb: limits.liftLb,
+    limitLb: handLb,
     capacityLb: limits.capacityLb,
     ...(slowed ? { speed: 5 } : {}),
     note: slowed

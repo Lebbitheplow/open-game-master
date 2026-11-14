@@ -3,11 +3,11 @@ import { archiveHomebrew, deleteHomebrew, getHomebrew, restoreHomebrew } from "@
 import { updateHomebrewCarried } from "@/lib/db/homebrew-rename";
 import { serverPublishedNameProblem } from "@/lib/homebrew/published-names-server";
 import { normalizeHomebrewForSave } from "@/lib/homebrew/species-choice-server";
-import { spellFactsFor } from "@/lib/characters/catalog";
+import { raceGrantsFor, spellFactsFor } from "@/lib/characters/catalog";
 import { homebrewLimitProblems } from "@/lib/homebrew/limits";
 import { patchHomebrewSchema } from "@/lib/schemas/homebrew";
 import { forgetSpeciesRules } from "@/lib/characters/species-rules";
-import { resyncSpeciesSpellCounters } from "@/lib/db/species-spell-resync";
+import { resyncSpeciesSpeed, resyncSpeciesSpellCounters } from "@/lib/db/species-spell-resync";
 import { forgetTableFeats } from "@/lib/db/table-feats";
 import { forgetTableHazards } from "@/lib/db/table-hazards";
 import { textKey } from "@/lib/language/text-logic";
@@ -78,6 +78,11 @@ export async function PATCH(
   // A species' spells reach the characters already at a table (issue #833).
   if (updated && existing.kind === "race") {
     resyncSpeciesSpellCounters(`homebrew:${id}`);
+    // And its walking speed, as its size does (species-spell-resync.ts).
+    const speed = raceGrantsFor(`homebrew:${id}`, [user.id])?.speed;
+    if (speed !== undefined) {
+      resyncSpeciesSpeed(`homebrew:${id}`, speed);
+    }
   }
   forgetTableFeats();
   forgetTableHazards();

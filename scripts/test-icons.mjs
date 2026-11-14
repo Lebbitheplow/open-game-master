@@ -12,7 +12,7 @@ import { register } from "node:module";
 register("./lib/register-alias.mjs", import.meta.url);
 
 const { iconSlug, iconPath, familyIconPath, iconCandidates } = await import("../src/lib/icons.ts");
-const { slugify } = await import("./icon-set.mjs");
+const { slugify, SPELL_PAINTINGS_WORN } = await import("./icon-set.mjs");
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ICONS = path.join(ROOT, "public", "assets", "icons");
@@ -113,5 +113,28 @@ if (existsSync(path.join(ICONS, "manifest.json"))) {
     if (existsSync(UI)) assert.ok(folderBytes(UI) <= 3 * 1024 * 1024, `ui is ${(folderBytes(UI) / 1048576).toFixed(1)} MB`);
   });
 }
+
+// A spell is drawn as its glyph everywhere (spell-glyph-logic.ts), so the
+// per-spell paintings were retired after 0.35.0; only the ones a class
+// feature still wears through ICON_ALIASES stay. The generator's list, the
+// folder, the manifest and the painted index all name exactly those, so a
+// new alias to a spell painting fails here until its file is kept, and a
+// generator run never paints the retired ones back.
+test("the spell paintings kept are exactly the ones a class feature wears", () => {
+  const source = readFileSync(path.join(ROOT, "src", "lib", "icons.ts"), "utf8");
+  const worn = [...source.matchAll(/\{ kind: "spell", slug: "([a-z0-9-]+)" \}/g)].map((match) => match[1]).sort();
+  assert.ok(worn.length > 0, "icons.ts has spell aliases to read");
+  assert.deepEqual([...SPELL_PAINTINGS_WORN].sort(), [...new Set(worn)], "icon-set.mjs SPELL_PAINTINGS_WORN matches the spell aliases in icons.ts");
+  const files = readdirSync(path.join(ICONS, "spell")).map((file) => file.replace(/\.webp$/, "")).sort();
+  assert.deepEqual(files, [...SPELL_PAINTINGS_WORN].sort(), "public/assets/icons/spell holds the worn paintings and nothing else");
+  const manifest = JSON.parse(readFileSync(path.join(ICONS, "manifest.json"), "utf8"));
+  const listed = manifest.icons.filter((icon) => icon.group === "spell").map((icon) => icon.src.split("/").pop().replace(/\.webp$/, "")).sort();
+  assert.deepEqual(listed, files, "the manifest lists the same spell paintings");
+  const painted = JSON.parse(readFileSync(path.join(ROOT, "src", "lib", "painted-icons.json"), "utf8"));
+  assert.deepEqual([...painted.spell].sort(), files, "painted-icons.json lists the same spell paintings");
+  // A spell with no painting asks for none: its card falls to the school.
+  assert.deepEqual(iconCandidates({ kind: "spell", key: "Magic Missile", family: "spell-evocation" }), ["/assets/icons/family/spell-evocation.webp"]);
+  assert.deepEqual(iconCandidates({ kind: "feature", key: "Chef's Treats" }), ["/assets/icons/spell/heroes-feast.webp"]);
+});
 
 console.log(`icons: ${passed} checks passed`);

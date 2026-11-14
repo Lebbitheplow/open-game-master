@@ -127,7 +127,8 @@ function ContentBody({ reference }: { reference: ContentRef }) {
         );
         if (response.ok) {
           const data = await response.json();
-          const text = withNote(data?.entry, describeContentEntry(data?.entry?.data));
+          // A background's feature asked by name opens that feature.
+          const text = withNote(data?.entry, describeContentEntry(data?.entry?.data, reference.kind === "backgrounds" ? reference.name : undefined));
           if (text) {
             if (!cancelled) {
               setState({ text, loading: false });

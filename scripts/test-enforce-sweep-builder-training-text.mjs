@@ -19,6 +19,7 @@ const rows = sweepRows("test-enforce-sweep-builder-training-text", { KNOWN: hasP
 const creation = await openCreation();
 const sb = await openSweepBuilder({ world: creation.world, user: creation.player });
 const { subclassGrants } = await import("../src/lib/srd/subclass-training.ts");
+const { authoredConditionalTraining } = await import("../src/lib/srd/authored-effects.ts");
 const { classFeaturesFor, subclassFeatureDescription, subclassNamesFor } = await import("../src/lib/srd/features.ts");
 const { KNOWN_TOOLS } = await import("../src/lib/srd/feat-grant-text.ts");
 const { SRD_SKILLS } = await import("../src/lib/srd/index.ts");
@@ -44,8 +45,18 @@ for (const klass of sb.classes) {
       if (!skills.length && !tools.length) continue;
       features += 1;
       await rows.row(`training-text:${klass.id}/${subclass.name}/${feature.name}`, async () => {
-        const grant = grants.find((candidate) => key(candidate.name) === key(feature.name) && key(candidate.subclass) === key(subclass.name));
         const quote = giving.join(" ").slice(0, 260);
+        // Training that holds only while a condition does ("While wearing the
+        // armor from your Mystic Metal feature, you have proficiency in the
+        // Athletics skill"): the derived sheet adds it while it holds, never
+        // proficiencies.skills (authored-effects.ts authoredConditionalTraining).
+        if (giving.every((sentence) => /^\s*while\b/i.test(sentence))) {
+          const held = authoredConditionalTraining({ class: klass.id, classes: [{ id: klass.id, level: 20, subclass: subclass.name }], features: [{ name: feature.name, source: "class", classId: klass.id }] });
+          const lost = skills.filter((name) => !held.some((entry) => key(entry.skill) === key(SRD_SKILLS.find((skill) => skill.name === name).id)));
+          assert.ok(!lost.length && !tools.length, `the text trains ${[...lost, ...tools].join(", ")} while a condition holds, and nothing grants it then: "${quote}"`);
+          return;
+        }
+        const grant = grants.find((candidate) => key(candidate.name) === key(feature.name) && key(candidate.subclass) === key(subclass.name));
         assert.ok(grant, `the text gives proficiency and the engine grants nothing for this feature: "${quote}"`);
         const spec = grant.spec;
         const skillIds = new Set([...spec.fixedSkills, ...spec.skillsFrom].map(key));

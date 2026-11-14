@@ -41,11 +41,16 @@ export async function openBuilder() {
   const options = await src("app/characters/builder/useBuilderOptions.ts");
   const { useBuilderDerived, extraClassRows } = await src("app/characters/builder/useBuilderDerived.ts");
   const submit = await src("app/characters/builder/submit.ts");
-  const { splitToolGrants } = await src("lib/srd/tool-choices.ts");
+  const toolChoices = await src("lib/srd/tool-choices.ts");
+  const { splitToolGrants } = toolChoices;
+  const { withSpeciesVariant } = await src("lib/content/species-variants.ts");
 
   // The first tools of each open grant that no other grant already names.
-  function firstToolPicks(grants) {
-    const { fixed, choices } = splitToolGrants(grants);
+  // The tool owed in place of one given twice (a rogue criminal's second
+  // thieves' tools) is picked the same way, after them.
+  function firstToolPicks(grants, replacement = null) {
+    const { fixed, choices: open } = splitToolGrants(grants);
+    const choices = replacement ? [...open, replacement] : open;
     const taken = new Set(fixed.map((tool) => tool.toLowerCase()));
     const picks = [];
     for (const choice of choices) {
@@ -75,6 +80,9 @@ export async function openBuilder() {
       racialAsi: [],
       racialSkills: [],
       racialTool: "",
+      racialWeapons: [],
+      racialTraining: [],
+      racialExpertise: "",
       racialAncestry: "",
       toolPicks: [],
       repeatSkills: [],
@@ -135,19 +143,29 @@ export async function openBuilder() {
     // pick itself passes toolPicks (an empty list to pick nothing).
     const picked =
       fields.toolPicks === undefined && klass && backgroundRow
-        ? { toolPicks: firstToolPicks([...(klass.tools ?? []), ...(backgroundRow.tools ?? [])]) }
+        ? {
+            toolPicks: firstToolPicks(
+              [...(klass.tools ?? []), ...(backgroundRow.tools ?? [])],
+              toolChoices.repeatedToolChoice(klass.tools, backgroundRow.tools, raceRow?.tools),
+            ),
+          }
         : {};
     const state = stateOf({ ...thrown, ...picked, ...fields });
     // The classes after the first with their rows, as the wizard passes them.
     const extras = extraClassRows(state.extraClasses, classes);
+    // The race with its picked option folded in, as CharacterBuilder.tsx
+    // hands it on (a shifter's subtype brings its own bonuses and skill).
+    // A race handed in already folded with its option (withSpeciesVariant)
+    // keeps it when the state names none.
+    const shaped = raceRow && state.racialVariant ? withSpeciesVariant(raceRow, state.racialVariant) : raceRow;
     const derived = withoutReact(() =>
-      useBuilderDerived({ state, race: raceRow, klass, background: backgroundRow, extras, featDescs }),
+      useBuilderDerived({ state, race: shaped, klass, background: backgroundRow, extras, featDescs }),
     );
-    const input = { state, derived, race: raceRow, klass, background: backgroundRow };
+    const input = { state, derived, race: shaped, klass, background: backgroundRow };
     const blocker = submit.validateBuilder(input);
     const result = derived.preview && raceRow && klass && backgroundRow ? submit.buildBuilderResult(input) : null;
     return { state, derived, blocker, result, sheet: result?.sheet ?? null, level: result?.level ?? null };
   }
 
-  return { races, classes, backgrounds, stateOf, build, submit };
+  return { races, classes, backgrounds, stateOf, build, submit, toolChoices };
 }

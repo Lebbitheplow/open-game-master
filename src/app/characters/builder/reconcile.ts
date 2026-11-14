@@ -1,6 +1,6 @@
 import type { Ability } from "@/lib/schemas/sheet";
 import { classFeaturesFor, expertiseAllowed, expertiseSlotsFor, racialTraitsFor, subclassLevelFor } from "@/lib/srd/features";
-import { fightingStyleChoices, fightingStyleSlots, type FightingStyleId } from "@/lib/srd/feature-effects";
+import { featStyleSlotFeatures, fightingStyleChoices, fightingStyleSlots, type FightingStyleId } from "@/lib/srd/feature-effects";
 import { findOptionByFeatureName, optionCost, optionSlotsFor } from "@/lib/srd/options";
 import { subclassChoicePickKept, subclassPickFeatures } from "@/lib/srd/subclass-choice-picks";
 import { parseSubclassChoicePick } from "@/lib/content/subclass-choices";
@@ -14,6 +14,8 @@ import { subclassGrants } from "@/lib/srd/subclass-training";
 import { bonusLanguageCount, type BlockerTarget } from "./submit";
 import type { BackgroundOption, ClassOption, RaceOption } from "./useBuilderOptions";
 import { textKey } from "@/lib/language/text-logic";
+import { ALL_SKILLS } from "@/lib/content/mechanics";
+import { KNOWN_TOOLS } from "@/lib/srd/feat-grant-text";
 
 // Every pick the player makes in the builder depends on an earlier choice:
 // class skills on the class, and on what the background and race already
@@ -40,6 +42,12 @@ export type BuilderPicks = {
   racialAsi: Array<Ability | "">;
   racialCantrips: string[];
   racialTool: string;
+  // The weapons named from the race's list (a hobgoblin's two martial).
+  racialWeapons: string[];
+  // Skills or tools named from the race's trainingChoice, and the skill its
+  // expertiseChoice doubles (a human chassis's Adaptable Acumen).
+  racialTraining: string[];
+  racialExpertise: string;
   // The skill picked in place of one the race and the background both give.
   repeatSkills: string[];
   backgroundSkills: string[];
@@ -66,6 +74,9 @@ export type ReconcileContext = {
   // The ids a stored workshop subclass choice's picks keep, by the pick's
   // name (useBuilderState pickIds): a pick its author renamed is kept.
   pickIds?: Readonly<Record<string, string>>;
+  // The feats chosen: one may open a fighting style slot (Fighting
+  // Initiate), whose style is kept like a class's.
+  feats?: ReadonlyArray<string>;
 };
 
 export type ReconcileExtra = { klass?: ClassOption; subclass: string; level: number; skills?: string[] };
@@ -169,6 +180,9 @@ export function reconcilePicks(
     racialAsi: input.racialAsi ?? [],
     racialCantrips: input.racialCantrips ?? [],
     racialTool: input.racialTool ?? "",
+    racialWeapons: input.racialWeapons ?? [],
+    racialTraining: input.racialTraining ?? [],
+    racialExpertise: input.racialExpertise ?? "",
     repeatSkills: input.repeatSkills ?? [],
     backgroundSkills: input.backgroundSkills ?? [],
     bonusLanguages: input.bonusLanguages ?? [],
@@ -291,6 +305,19 @@ export function reconcilePicks(
       ? picks.racialTool
       : "";
   note("racial tool", "racialTool", [picks.racialTool], [racialTool]);
+  // Weapons from the race's own list, as many as it names, each once.
+  const racialWeapons = race?.weaponChoice
+    ? slotted(picks.racialWeapons, race.weaponChoice.count, (weapon) => race.weaponChoice!.from.some((entry) => textKey(entry) === textKey(weapon)))
+    : [];
+  note("racial weapon", "racialWeapons", picks.racialWeapons, racialWeapons);
+  // A skill (by id) or a tool, as many as the race names, each once.
+  const racialTraining = race?.trainingChoice
+    ? slotted(picks.racialTraining, race.trainingChoice.count, (pick) => (ALL_SKILLS as readonly string[]).includes(pick) || KNOWN_TOOLS.includes(pick))
+    : [];
+  note("racial training", "racialTraining", picks.racialTraining, racialTraining);
+  // A skill or a tool ("one of those skills or tools or another ... you have").
+  const racialExpertise = race?.expertiseChoice && ((ALL_SKILLS as readonly string[]).includes(picks.racialExpertise) || KNOWN_TOOLS.includes(picks.racialExpertise)) ? picks.racialExpertise : "";
+  note("racial expertise", "racialExpertise", [picks.racialExpertise], [racialExpertise]);
   // As many different cantrips as the race offers, and none from a race
   // that offers none.
   const racialCantrips = race?.cantripChoice ? unique(picks.racialCantrips).slice(0, race.cantripChoice.count) : [];
@@ -355,7 +382,10 @@ export function reconcilePicks(
   const featuresOf = classes.map((entry) => classFeaturesFor(entry.klass.id, entry.subclass, entry.level));
   // Each with the class that grants it: a paladin's and a ranger's Fighting
   // Style offer their own four styles (feature-effects.ts fightingStyleChoices).
-  const features = featuresOf.flatMap((list, index) => list.map((feature) => ({ ...feature, classId: classes[index].klass.id })));
+  const features = [
+    ...featuresOf.flatMap((list, index) => list.map((feature) => ({ ...feature, classId: classes[index].klass.id }))),
+    ...featStyleSlotFeatures(context.feats),
+  ];
   // Only the styles the slots allow (a Swords bard: Dueling or Two-Weapon
   // Fighting); a pick may name the style rather than its id.
   const allowedStyles = new Set(fightingStyleChoices(features).flatMap((style) => [style.id, textKey(style.name)]));
@@ -403,7 +433,7 @@ export function reconcilePicks(
   // its own level (phase 1 of F9 builds one casting class).
   const casterAt = classes.length > 1 ? castingIndexOf(classes.map((entry) => ({ row: entry.klass, subclass: entry.subclass, level: entry.level }))) : 0;
   const caster = casterAt >= 0 ? classes[casterAt] : undefined;
-  const { maxSpellLevel, cantripCap, casts } = builderCasting(caster?.klass, caster?.subclass, caster?.level ?? level);
+  const { maxSpellLevel, arcanumLevels, cantripCap, casts } = builderCasting(caster?.klass, caster?.subclass, caster?.level ?? level);
   // The race's cantrips are not class picks: a stored sheet lists them with
   // the class's (submit.ts finalCantrips), and read back they would count
   // against the class's allowance (issue #118).
@@ -416,7 +446,8 @@ export function reconcilePicks(
   const spells = casts
     ? unique(picks.spells).filter((name) => {
         const spellLevel = spellLevelOf(name);
-        return spellLevel === null || (spellLevel > 0 && spellLevel <= maxSpellLevel);
+        // A warlock's Mystic Arcanum reaches past its slots.
+        return spellLevel === null || (spellLevel > 0 && spellLevel <= maxSpellLevel) || arcanumLevels.includes(spellLevel);
       })
     : [];
   note("spell", "spells", picks.spells, spells);
@@ -432,6 +463,9 @@ export function reconcilePicks(
       racialAsi,
       racialCantrips,
       racialTool,
+      racialWeapons,
+      racialTraining,
+      racialExpertise,
       repeatSkills,
       backgroundSkills,
       bonusLanguages,

@@ -524,5 +524,60 @@ await test("a character made at a table or in the library names the tools an ope
   );
 });
 
+// SRD 5.1, Backgrounds: "If a character would gain the same proficiency from
+// two different sources, he or she can choose a different proficiency of the
+// same kind instead." A rogue criminal's thieves' tools, a druid hermit's
+// herbalism kit: the second grant is a tool of the player's choice.
+await test("a tool the class, background and race name twice is a tool of the player's choice in its place: every bundled class, background and race", () => {
+  const { splitToolGrants } = builder.toolChoices;
+  const fixedOf = (tools) => new Set(splitToolGrants(tools ?? []).fixed.map((tool) => tool.toLowerCase()));
+  let combos = 0;
+  for (const klass of builder.classes) {
+    for (const background of builder.backgrounds) {
+      for (const race of builder.races) {
+        const counts = new Map();
+        for (const source of [fixedOf(klass.tools), fixedOf(background.tools), fixedOf(race.tools)]) {
+          for (const tool of source) counts.set(tool, (counts.get(tool) ?? 0) + 1);
+        }
+        const repeats = [...counts.values()].reduce((sum, n) => sum + Math.max(0, n - 1), 0);
+        if (!repeats) continue;
+        combos += 1;
+        const built = builder.build({ race: race.id, class: klass.id, background: background.id, toolPicks: [] });
+        const replacement = built.derived.toolGrants.choices.find((choice) => /replacement/.test(choice.label));
+        assert.ok(replacement, `${race.id} ${klass.id} ${background.id}: ${[...counts].filter(([, n]) => n > 1).map(([tool]) => tool).join(", ")} is given twice and nothing is offered in its place`);
+        assert.equal(replacement.count, repeats, `${race.id} ${klass.id} ${background.id}: ${replacement.count} replacement tools for ${repeats} repeats`);
+        assert.ok(!replacement.from.some((tool) => counts.has(tool.toLowerCase())), `${race.id} ${klass.id} ${background.id}: the replacement offers a tool already held`);
+      }
+    }
+  }
+  assert.ok(combos >= 3, `only ${combos} combinations repeat a tool: rogue criminal, rogue urchin and druid hermit do`);
+});
+
+await test("a rogue criminal picks a tool in place of the second thieves' tools; the builder holds until it is picked, the table stores it, and a stored rogue criminal without one still joins", async () => {
+  const rogue = (toolPicks) =>
+    builder.build({
+      race: "human", class: "rogue", background: "criminal", scores: scoresFor("rogue"),
+      chosenSkills: ["acrobatics", "athletics", "insight", "perception"], expertisePicks: ["stealth", "perception"],
+      bonusLanguages: ["Elvish"], toolPicks,
+    });
+  const unpicked = rogue(["dice set"]);
+  assert.match(unpicked.blocker?.message ?? "", /Pick 1 more replacement tool/, JSON.stringify(unpicked.blocker));
+  const picked = rogue(["dice set", "lute"]);
+  assert.equal(picked.blocker, null, picked.blocker?.message);
+  assert.deepEqual([...picked.sheet.proficiencies.tools].sort(), ["dice set", "lute", "thieves' tools"]);
+  const stored = await atTable(picked.sheet);
+  assert.equal(stored.status, 201, stored.error);
+  assert.deepEqual([...stored.sheet.proficiencies.tools].sort(), ["dice set", "lute", "thieves' tools"]);
+  clearSeat();
+  // Two tools of the player's choice where one is owed is refused.
+  const greedy = await atTable({ ...picked.sheet, proficiencies: { ...picked.sheet.proficiencies, tools: ["thieves' tools", "dice set", "lute", "drum"] } });
+  assert.equal(greedy.status, 400, "a rogue criminal stored two tools in place of one repeat");
+  clearSeat();
+  // One made before the replacement existed carries only its two tools.
+  const before = await atTable({ ...picked.sheet, proficiencies: { ...picked.sheet.proficiencies, tools: ["thieves' tools", "dice set"] } });
+  assert.equal(before.status, 201, before.error);
+  clearSeat();
+});
+
 world.close();
 finish();

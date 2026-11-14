@@ -4,6 +4,9 @@
 // apply_damage so audit, undo and the death engine all run. Split from
 // aoe-damage.ts, which rolls the blast once and calls this with it.
 
+import { maskKeepsOut } from "@/lib/dm/genre-cc-a-drones";
+import { zoneRowFor } from "@/lib/battlemap/zones-spells";
+import { droneEvades } from "@/lib/dm/genre-cc-a-drones";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getSheetById } from "@/lib/db/sheets";
@@ -12,6 +15,7 @@ import type { AoeSpellPlan } from "@/lib/dm/aoe-spell";
 import { partsTaken, partsTotal, type DamagePart } from "@/lib/dm/aoe-parts";
 import type { EnemyUse } from "@/lib/dm/enemy-casting";
 import { rollCharacterSave } from "@/lib/dm/forced-save";
+import { recordDamage } from "@/lib/dm/last-save";
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { handleSetCondition } from "@/lib/dm/set-condition";
@@ -21,6 +25,8 @@ import type { spellConditionMeta } from "@/lib/dm/spell-effects";
 import { defenseRiders } from "@/lib/srd/feature-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { saveAgainst } from "@/lib/dm/roll-about";
+import { spellSchoolFor } from "@/lib/content";
+import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { areaOnMount } from "@/lib/dm/mount-area";
 
 export function aoeOnCharacters(input: {
@@ -53,6 +59,12 @@ export function aoeOnCharacters(input: {
       results.push({ target: sheet.name, success: true, damage: 0, sculpted: `${plan.caster.name}'s Sculpt Spells shapes the spell around them.` });
       continue;
     }
+    // Beaked Mask: a poison gas the plague doctor would breathe passes them by (genre-cc-a-drones.ts).
+    const gasRow = input.spell ? zoneRowFor(input.spell) : null;
+    if (gasRow && maskKeepsOut(sheet, gasRow.gas === true, input.type ?? gasRow.trigger?.type, gasRow.trigger?.condition, gasRow.trigger?.losesAction)) {
+      results.push({ target: sheet.name, success: true, damage: 0, masked: `${sheet.name}'s beaked mask keeps out ${input.spell}.` });
+      continue;
+    }
     // The save a requested roll would be: conditions, a paladin's aura,
     // lasting effects, exhaustion and an inspiration die all count
     // (src/lib/dm/forced-save.ts).
@@ -74,6 +86,8 @@ export function aoeOnCharacters(input: {
         damageType: input.type,
         magical: Boolean(input.spell),
         spellBy: input.spell && enemyUse ? enemyUse.enemy.stats.type : undefined,
+        // The spell's school (a duergar's resilience against illusions).
+        school: input.spell ? spellSchoolFor(input.spell, spellAuthorsFor(campaign)) : null,
       }),
       enemyUse?.enemy ?? null,
       null,
@@ -104,11 +118,14 @@ export function aoeOnCharacters(input: {
     // Evasion: on a Dexterity save for half, a made save takes nothing and a
     // failed one takes half. Only for DEX saves against effects that would
     // deal half on a success at all.
+    // Evasive Subroutines: a rigger's drone, "half damage from area effects,
+    // none on a successful DEX save" (genre-cc-a-drones.ts).
+    const evasive = droneEvades(sheet);
     const evasion =
       ability === "dex" &&
       halfOnSave &&
-      defenseRiders({ class: sheet.class, level: sheet.level, features: sheet.features }).evasion;
-    const taken = partsTaken(blast, evasion ? (success ? "none" : "half") : success ? (halfOnSave ? "half" : "none") : "full");
+      (evasive || defenseRiders({ class: sheet.class, level: sheet.level, features: sheet.features }).evasion);
+    const taken = partsTaken(blast, evasion ? (success ? "none" : "half") : success ? (halfOnSave ? "half" : "none") : evasive ? "half" : "full");
     const damageTaken = partsTotal(taken);
     const row: Record<string, unknown> = {
       target: sheet.name,
@@ -174,6 +191,13 @@ export function aoeOnCharacters(input: {
       if (applied.note) {
         row.note = applied.note;
       }
+    }
+    // The creature's damage is kept for the reactions that answer "a creature
+    // damages you" (last-save.ts recordDamage): a dragon's breath left no
+    // record, so Feedback Loop and Hellish Rebuke had nothing to answer.
+    const landed = typeof row.damageApplied === "number" ? row.damageApplied : damageTaken;
+    if (enemyUse?.enemy && landed > 0) {
+      recordDamage(campaign.id, sheet.id, { id: enemyUse.enemy.id, name: enemyUse.enemy.displayName }, landed, input.type ?? landing.map((part) => part.type ?? "").filter(Boolean).join(" and "), Boolean(input.spell));
     }
     // What a failed save leaves beyond the damage and the condition
     // (Thunderwave's push, Stinking Cloud's lost action, Divine Word's

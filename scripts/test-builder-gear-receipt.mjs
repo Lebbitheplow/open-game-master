@@ -263,4 +263,25 @@ test("the purse view hands the receipt to the gear step", () => {
   assert.equal(typeof view.receipt.setQty, "function");
 });
 
+// A world pack renames gear (Saltmarch's Shortsword is a Gutting Blade). The
+// pack carried the names, and the creator's gear table never showed them:
+// only spells and features were overlaid. The canonical name stays beside
+// the new one, as a renamed people or calling shows its own.
+const saltmarch = (await import("../src/lib/worlds/bundled/saltmarch.json", { with: { type: "json" } })).default;
+const { displayName } = await import("../src/lib/worlds/reskin-logic.ts");
+test("a world's renamed gear shows in the receipt with the canonical name beside it", () => {
+  const pack = saltmarch;
+  const row = (name) => ({ name, qty: 1, preAdded: 1, free: 1, bought: 0, unitCopper: 1000, costCopper: 0, refused: null, weapon: null });
+  const markup = renderToStaticMarkup(
+    createElement(GearReceipt, {
+      receipt: { rows: [row("Shortsword"), row("Leather"), row("Rope, hempen (50 feet)")], coinCopper: 0, spentCopper: 0, leftCopper: 0, setQty: () => {} },
+      itemLabel: (name) => displayName(pack, "items", name),
+    }),
+  );
+  assert.ok(markup.includes("Gutting Blade"), "the renamed shortsword is not shown");
+  assert.ok(markup.includes("Oilskins"), "the renamed leather armor is not shown");
+  assert.ok(markup.includes("Shortsword"), "the canonical name is not beside the new one");
+  assert.ok(markup.includes("Rope, hempen (50 feet)"), "gear the pack does not rename keeps its name");
+});
+
 console.log(`\n${passed} passed`);

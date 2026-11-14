@@ -295,4 +295,122 @@ test("A Pact of the Chain warlock built at 3rd holds find familiar free of the s
   assert.ok(built.sheet?.spellcasting?.known?.includes("Find Familiar"), "the saved sheet does not carry find familiar");
 });
 
+// Grafted Power (aberrant 13): "Learn two spells from any spell list; they
+// count as mutations for you." The aberrant casts from the sorcerer's list.
+test("An aberrant reaching 13th learns Grafted Power's two spells from any class on top of the mutations the class's count gives, and the level-up takes them", () => {
+  const grants = classSpellGrants({ classId: "aberrant", level: 13 });
+  assert.deepEqual([grants.anyList, grants.extraSpells, grants.feature], [2, 2, "Grafted Power"], `Grafted Power's grant: ${JSON.stringify(grants)}`);
+  assert.equal(classSpellGrants({ classId: "aberrant", level: 12 }).anyList, 0, "a 12th-level aberrant was offered Grafted Power");
+  const capAt = (level) => casterPreview({ classId: "aberrant", subclass: "", level, abilitiesAfter: ABILITIES }).spellCap.count;
+  const sorcerer = listOf("sorcerer", 1, 6);
+  const known = sorcerer.slice(0, capAt(12));
+  const fresh = sorcerer.filter((name) => !known.includes(name)).slice(0, capAt(13) - capAt(12));
+  assert.ok(!onList("sorcerer")("Cure Wounds") && !onList("sorcerer")("Guardian of Faith"), "the off-list picks are on the sorcerer's list");
+  const take = (picks) => levelUpSpells({
+    before: { classId: "aberrant", ability: "cha", level: 12, subclass: "", style: "known", known, prepared: [], cantrips: listOf("sorcerer", 0, 0).slice(0, 5), pending: [], spellbook: [], features: [] },
+    level: 13, subclass: "", list: "sorcerer", firstLevel: false, abilities: ABILITIES, freeCantrips: 0, features: [], spellOf: checklistSpell,
+    picks: { kind: "picks", spells: picks },
+  });
+  const taken = take([...fresh, "Cure Wounds", "Guardian of Faith"]);
+  assert.ok("view" in taken, `the level-up refused Grafted Power's two: ${taken.error}`);
+  const third = take([...fresh, "Cure Wounds", "Guardian of Faith", "Bless"]);
+  assert.ok(!("view" in third), "a third spell off the list was taken");
+});
+
+// Black Market Firmware (netrunner 13, src/lib/classes/cyberpunk-features.json):
+// "Learn two programs from any spell list; they count as wizard-list for
+// you." A netrunner prepares from the wizard list; the two are learned on top
+// of what they prepare, as a cleric's Arcane Mastery spells are.
+const { legalizeSheet } = await import("../src/lib/srd/sheet-legality.ts");
+const { bundledPrices } = await import("../src/lib/srd/starting-wealth.ts");
+const { bundledSubclassName } = await import("../src/lib/srd/features.ts");
+const { changePreparation } = await import("../src/lib/srd/spell-prep.ts");
+const WIZARD_SPELLS = listOf("wizard", 1, 6);
+const notWizard = (name) => !onList("wizard")(name);
+const FIRMWARE = ["Cure Wounds", "Mass Cure Wounds"];
+assert.ok([...FIRMWARE, "Healing Word"].every(notWizard), "the programs these cases take from other lists are off the wizard's");
+const netrunnerUp = (prepared, picks) =>
+  levelUpSpells({
+    before: { classId: "netrunner", ability: "int", level: 12, subclass: "", style: "prepared", known: [], prepared, cantrips: listOf("wizard", 0, 0).slice(0, 5), pending: [], spellbook: [], features: [] },
+    level: 13,
+    subclass: "",
+    list: "wizard",
+    firstLevel: false,
+    abilities: ABILITIES,
+    freeCantrips: 0,
+    features: [],
+    spellOf: checklistSpell,
+    picks: { kind: "picks", spells: picks },
+  });
+
+test("A netrunner reaching 13th takes Black Market Firmware's two programs from any class on top of what they prepare, and no third", () => {
+  const grants = classSpellGrants({ classId: "netrunner", level: 13 });
+  assert.deepEqual([grants.anyList, grants.extraSpells, grants.anyListSpells, grants.feature], [2, 2, true, "Black Market Firmware"]);
+  assert.equal(classSpellGrants({ classId: "netrunner", level: 12 }).anyList, 0, "Black Market Firmware arrives at 13th level");
+  const { rooms } = dialogRooms({ classId: "netrunner", levelAfter: 13, known: WIZARD_SPELLS.slice(0, 12), cantrips: listOf("wizard", 0, 0).slice(0, 5) });
+  assert.equal(rooms.group?.title, "Black Market Firmware: 2 spells from any class");
+  assert.match(rooms.group.hint, /on top of/);
+  const prepared = WIZARD_SPELLS.slice(0, 12);
+  const taken = netrunnerUp(prepared, FIRMWARE);
+  assert.ok("view" in taken, `the route refused the netrunner's Black Market Firmware: ${taken.error}`);
+  const third = netrunnerUp(prepared, [...FIRMWARE, "Healing Word"]);
+  assert.match(third.error ?? "", /Black Market Firmware/, "a third program from another list was let in");
+});
+
+test("A netrunner built at 13th holds Black Market Firmware's two programs on top of what they prepare, and the server keeps them", () => {
+  const classRow = (id) => builder.classes.find((entry) => entry.id === id);
+  const server = (sheet) =>
+    legalizeSheet(sheet, {
+      door: "library",
+      level: 13,
+      hpMethod: "average",
+      startingWealth: "equipment",
+      classOf: (id) => classRow(id) ?? null,
+      race: { ...builder.races.find((entry) => entry.id === sheet.race), feats: 0 },
+      background: builder.backgrounds.find((entry) => entry.id === sheet.background) ?? null,
+      baseline: null,
+      abilityPool: null,
+      wealthRoll: null,
+      priceOf: bundledPrices,
+      spellOf: checklistSpell,
+      featOf: () => null,
+      subclassOffered: (classId, name) => Boolean(bundledSubclassName(classId, name)),
+      rollDie: () => 3,
+    });
+  const build = (spells) => builder.build({ race: "human", class: "netrunner", background: "sage", level: 13, spells, cantrips: listOf("wizard", 0, 0).slice(0, 5) });
+  const built = build([...WIZARD_SPELLS.slice(0, 10), ...FIRMWARE]);
+  const plain = classSpellGrants({ classId: "netrunner", level: 12 });
+  assert.equal(plain.extraSpells, 0);
+  const { group, chosen } = builderAnyListGroup({
+    grants: built.derived.spellGrants,
+    cantrips: built.derived.chosenCantrips,
+    spells: built.derived.chosenSpells,
+    onList: onList("wizard"),
+    cantripCap: built.derived.cantripAdvice,
+    own: "netrunner",
+    maxLevel: built.derived.maxSpellLevel,
+    held: built.derived.spellAdvice?.label,
+  });
+  assert.equal(group?.title, "Black Market Firmware: 2 spells from any class");
+  assert.match(group.hint, /on top of your spells prepared/, "the hint named a netrunner's count as spells known");
+  assert.deepEqual(chosen, FIRMWARE);
+  const mod = Math.floor((built.state.scores?.int ?? built.sheet.abilities.int) / 2) - 5;
+  assert.equal(built.derived.spellAdvice?.count, Math.max(1, mod + 13) + 2, "the builder's count left out the two programs");
+  assert.deepEqual(built.sheet?.spellcasting?.prepared?.filter(notWizard), FIRMWARE, "the saved sheet lost the programs from other lists");
+  assert.deepEqual(server(built.sheet).problems, [], "the server refused the netrunner's Black Market Firmware");
+  const over = build([...WIZARD_SPELLS.slice(0, 10), ...FIRMWARE, "Healing Word"]);
+  assert.match(server(over.sheet).problems.join(" "), /Black Market Firmware/, "the server let a third program from another list in");
+});
+
+test("A netrunner's learned programs stay ready at a rest, and sit on top of what they prepare", () => {
+  const view = { classId: "netrunner", ability: "int", level: 13, subclass: "", style: "prepared", known: [], prepared: [...WIZARD_SPELLS.slice(0, 13), ...FIRMWARE], cantrips: [], pending: [], spellbook: [], features: [] };
+  const context = { abilities: ABILITIES, inClassList: true, onList: (name) => !notWizard(name) };
+  assert.match(changePreparation(view, "unprepare", "Cure Wounds", context).error ?? "", /Black Market Firmware/, "a learned program was unprepared");
+  const freed = changePreparation(view, "unprepare", WIZARD_SPELLS[0], context);
+  assert.ok("view" in freed, freed.error);
+  const again = changePreparation(freed.view, "prepare", WIZARD_SPELLS[20], context);
+  assert.ok("view" in again, `a netrunner with room for one more wizard spell was refused: ${again.error}`);
+  assert.match(changePreparation(again.view, "prepare", WIZARD_SPELLS[21], context).error ?? "", /Already 15/, "the prepared list ran past the class's count and the two programs");
+});
+
 console.log(`test-any-list-picks: ${passed} passed`);

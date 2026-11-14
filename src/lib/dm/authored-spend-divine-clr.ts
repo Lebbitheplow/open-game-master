@@ -2,6 +2,7 @@
 // (src/lib/srd/authored-effects-w2-divine-clr.ts rows), resolved from
 // src/lib/dm/authored-spend-effects.ts resolveSpendEffect like every authored
 // spend: a refusal returns before anything is paid.
+import { classSaveDc } from "@/lib/dm/command-undead";
 import { getActiveEncounter, getEnemy, patchEnemyConditions } from "@/lib/db/encounters";
 import { foesOfSheet, resolveTargetFoe } from "@/lib/dm/sheet-foe";
 import { swallowCoverBetween, swallowCoverError } from "@/lib/dm/swallow";
@@ -69,8 +70,9 @@ function readThoughts(ctx: SpendContext, rangeFt: number): Resolution {
   if (!withinFeet(encounter.id, sheet.id, enemy.id, rangeFt)) {
     return { error: `${enemy.displayName} is beyond ${rangeFt} feet of ${sheet.name}; ${ctx.spend.name} reaches no further. Nothing was spent.`, refused: "rules" };
   }
-  const derived = computeSheetDerived(sheet);
-  const dc = derived.spellSaveDc ?? 8 + derived.proficiencyBonus + derived.abilityMods.wis;
+  // The class's own spell save DC (command-undead.ts classSaveDc): a
+  // multiclass sheet's first casting ability is another class's.
+  const dc = classSaveDc(sheet, "wis");
   const save = rollEnemySave(campaign.id, enemy, "wis", dc, {
     magical: true,
     record: { turn: ctx.turn ?? undefined, detail: `${enemy.displayName}: WIS save against ${ctx.spend.name}` },

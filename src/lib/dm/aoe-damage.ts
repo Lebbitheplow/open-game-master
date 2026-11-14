@@ -2,13 +2,14 @@
 // spell planned by aoe-spell.ts, an enemy's breath or spell by enemy-casting.ts,
 // a trap). Split out of encounter-tools-extra.ts; never imports encounter-tools.
 
+import { proofUnresisted } from "@/lib/dm/genre-gh-proof";
 import { echoAreaSave } from "@/lib/dm/mt-fb-echo";
 import { beguilingBroken } from "@/lib/dm/mt-fb-arrow-riders";
 import { magicImmunityNote } from "@/lib/dm/monster-traits";
 import { abilityAreaShape, areaProblem, spellAreaShape } from "@/lib/dm/aoe-shape";
 import { spellFactsFor } from "@/lib/content";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
-import { elementalAdeptApplies, floorDamageDice } from "@/lib/srd/feat-combat";
+import { elementalAdeptApplies, flamesOfPhlegethosApplies, floorDamageDice, rerollOnesDice } from "@/lib/srd/feat-combat";
 import { z } from "zod";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
@@ -52,7 +53,9 @@ import { commitZoneMove, planZoneMove } from "@/lib/dm/zone-move";
 import { zoneArgsSchema, zonePlacement } from "@/lib/dm/zone-args";
 import { coverFor, coverFromPoint } from "@/lib/dm/attack-spatial";
 import { zoneRowFor } from "@/lib/battlemap/zones-spells";
-import { spellEngineName } from "@/lib/content";
+import { spellEngineName, spellMechanicsFor } from "@/lib/content";
+import { sheetCreatureType } from "@/lib/dm/summon-rules";
+import { textKey } from "@/lib/language/text-logic";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { spellReachProblem, spellWardOn } from "@/lib/dm/cast-reach";
 import { partsTaken, partsTotal, splitDamageExpression, type DamagePart } from "@/lib/dm/aoe-parts";
@@ -286,6 +289,28 @@ export function handleAoeDamage(
       const ward = wardOn(target.id, target.name);
       if (ward) {
         shielded.push(ward);
+        pcTargets.splice(pcTargets.indexOf(target), 1);
+      }
+    }
+  }
+  // An area that affects some creature types alone (Calm Emotions: "each
+  // humanoid") passes over the others caught in it: a satyr, centaur or
+  // fairy is fey (summon-rules.ts sheetCreatureType). A stat block that names
+  // no type is not passed over on a guess.
+  const areaTypes = args.spell ? spellMechanicsFor({ spell: args.spell, userIds: spellAuthorsFor(campaign) })?.mech.targetTypes : undefined;
+  if (areaTypes?.length) {
+    const fits = (type: string) => !type || areaTypes.some((wanted) => textKey(type).includes(textKey(wanted)));
+    for (const enemy of [...enemyTargets]) {
+      const type = String(enemy.stats.type ?? "");
+      if (!fits(type)) {
+        shielded.push(`${args.spell} affects only ${areaTypes.join(" or ")} creatures; ${enemy.displayName} is ${textKey(type)} and is passed over.`);
+        enemyTargets.splice(enemyTargets.indexOf(enemy), 1);
+      }
+    }
+    for (const target of [...pcTargets]) {
+      const type = sheetCreatureType(target);
+      if (!fits(type)) {
+        shielded.push(`${args.spell} affects only ${areaTypes.join(" or ")} creatures; ${target.name} is ${textKey(type)} and is passed over.`);
         pcTargets.splice(pcTargets.indexOf(target), 1);
       }
     }
@@ -540,7 +565,9 @@ export function handleAoeDamage(
       empoweredNote = empoweredLine(empowered.empower);
     }
     for (const [index, { expression, type }] of parts.entries()) {
-      const thrown = rollExpression(wrathParts[index] ? String(expressionMaximum(expression)) : adept ? floorDamageDice(expression) : expression, undefined, index === 0 ? empowered : {});
+      // Flames of Phlegethos: a character's fire part rolls its 1s again, before the floor.
+      const flamed = plan && flamesOfPhlegethosApplies(plan.caster, type) ? rerollOnesDice(expression) : expression;
+      const thrown = rollExpression(wrathParts[index] ? String(expressionMaximum(expression)) : adept ? floorDamageDice(flamed) : flamed, undefined, index === 0 ? empowered : {});
       // Spell Bombardment: a die at its highest number is rolled again, once
       // a turn, on the roll's own card (src/lib/dm/ar-ws-bombardment.ts).
       const burst = plan ? spellBombardment({ campaign, turn, sheet: plan.caster, outcome: thrown, spell: plan.spell, card: false }) : null;
@@ -618,9 +645,13 @@ export function handleAoeDamage(
           magical: Boolean(plan) || Boolean(enemyUse?.magical),
           // A legendary creature spends a resistance on an area's binding
           // condition, as it would on one cast at it alone (legendary-logic.ts).
-          resist: plan?.conditions.length
-            ? bindsWorthResisting(plan.conditions, Boolean(plan.mech?.condition?.endsWith))
-            : Boolean(laysCondition) && bindsWorthResisting([laysCondition ?? ""], false),
+          // Proof's spell is not resisted (genre-gh-proof.ts).
+          resist: proofUnresisted(
+            plan?.conditions.length
+              ? bindsWorthResisting(plan.conditions, Boolean(plan.mech?.condition?.endsWith))
+              : Boolean(laysCondition) && bindsWorthResisting([laysCondition ?? ""], false),
+            plan?.caster,
+          ),
           against: plan?.conditions ?? (enemyUse?.condition ? [enemyUse.condition] : laysCondition ? [laysCondition] : []),
           cover: saveCover(enemy.id),
           // The spell's damage types, for a save that leans only against some

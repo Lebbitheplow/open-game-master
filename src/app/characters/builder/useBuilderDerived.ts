@@ -1,4 +1,5 @@
 import type { Genre } from "@/lib/schemas/game-settings";
+import { asiPickAmount } from "@/lib/srd/race-asi";
 import { expertiseAllowed, expertiseSlotsFor, subclassExpandedSpellsFor, subclassSpellListsFor } from "@/lib/srd/features";
 import { multiclassGrantsFor, type MulticlassGrant } from "@/lib/srd/multiclass";
 import { useMemo as useReactMemo, type DependencyList } from "react";
@@ -19,12 +20,12 @@ import {
 } from "@/lib/srd/starting-wealth";
 import { suggestArmor } from "@/lib/srd/armor";
 import { classFeaturesFor, subclassSpellsFor } from "@/lib/srd/features";
-import { fightingStyleChoices, fightingStyleSlots } from "@/lib/srd/feature-effects";
-import { openOptionSlots, optionFeatureName, slotTakes, type OptionSlot } from "@/lib/srd/options";
+import { featStyleSlotFeatures, fightingStyleChoices, fightingStyleSlots } from "@/lib/srd/feature-effects";
+import { openOptionSlots, optionFeatureName, optionReqProblem, slotTakes, type OptionSlot } from "@/lib/srd/options";
 import { subclassChoiceSlots } from "@/lib/srd/subclass-choice-picks";
 import { parseSubclassChoicePick, subclassChoicePickName } from "@/lib/content/subclass-choices";
 import { subclassPickFeatures } from "@/lib/srd/subclass-choice-picks";
-import { spellStyleFor, spellbookAllowance, type SpellStyle } from "@/lib/srd/spell-prep";
+import { arcanumSplit, spellStyleFor, spellbookAllowance, type SpellStyle } from "@/lib/srd/spell-prep";
 import {
   chooseKitOption as withKitOption,
   classKitFor,
@@ -47,7 +48,7 @@ import { applyFeatGrants, featGrantSpec, type FeatGrantSpec } from "@/lib/srd/fe
 import { applySubclassTraining, grantsForHeldTraining, subclassGrants } from "@/lib/srd/subclass-training";
 import { featSpellGrants, featSpellNames } from "@/lib/srd/feat-spells";
 import { expandBackgroundGear } from "@/lib/srd/gear-choices";
-import { splitToolGrants, type ToolChoice } from "@/lib/srd/tool-choices";
+import { repeatedToolChoice, splitToolGrants, type ToolChoice } from "@/lib/srd/tool-choices";
 import { builderHitPoints } from "./builderHp";
 import { bundledSpellSupply } from "./spellSupply";
 import { classSpellGrants, type ClassSpellGrants } from "@/lib/srd/class-spell-grants";
@@ -56,6 +57,7 @@ import { combatRiders, fightingStyleFeatureName } from "@/lib/srd/feature-effect
 import type { BackgroundOption, ClassOption, RaceOption } from "./useBuilderOptions";
 import type { BuilderState, EquipmentItem as BuilderItem } from "./useBuilderState";
 import { textKey } from "@/lib/language/text-logic";
+import { ALL_SKILLS } from "@/lib/content/mechanics";
 
 // The derivation memoises each value with React's useMemo while the wizard
 // renders. Not marked "use client", so the server can run the same body
@@ -90,24 +92,35 @@ export type TableRules = {
 // and its tool pick) fills no open grant, as the library's door counts it
 // (src/lib/srd/legality/proficiencies.ts): a dwarf's brewer's supplies are
 // not also a folk hero's artisan's tools.
+// `replacement` is the tool owed in place of one the class, background and
+// race name twice (src/lib/srd/tool-choices.ts repeatedToolChoice); it comes
+// last, so a pick fills the open grant that names it first. `placedIn` is the
+// choice each chosen tool answers, for the panel that shows it.
 export function resolveToolPicks(
   grants: string[],
   picks: string[],
   held: string[] = [],
-): { fixed: string[]; choices: ToolChoice[]; chosen: string[]; left: number[] } {
-  const { fixed, choices } = splitToolGrants(grants);
+  replacement: ToolChoice | null = null,
+): { fixed: string[]; choices: ToolChoice[]; chosen: string[]; left: number[]; placedIn: number[] } {
+  const split = splitToolGrants(grants);
+  const { fixed } = split;
   const taken = new Set([...fixed, ...held].filter(Boolean).map((tool) => textKey(tool)));
+  const choices = replacement
+    ? [...split.choices, { ...replacement, from: replacement.from.filter((tool) => !taken.has(textKey(tool))) }]
+    : split.choices;
   const left = choices.map((choice) => choice.count);
   const chosen: string[] = [];
+  const placedIn: number[] = [];
   for (const pick of picks.map((tool) => textKey(tool))) {
     const slot = choices.findIndex((choice, index) => left[index] > 0 && choice.from.some((tool) => textKey(tool) === pick));
     const tool = slot >= 0 ? choices[slot].from.find((entry) => textKey(entry) === pick) : undefined;
     if (tool !== undefined && !chosen.includes(tool) && !taken.has(pick)) {
       left[slot] -= 1;
       chosen.push(tool);
+      placedIn.push(slot);
     }
   }
-  return { fixed, choices, chosen, left };
+  return { fixed, choices, chosen, left, placedIn };
 }
 
 // A class taken after the first (backlog F9) with the row it was picked
@@ -143,6 +156,11 @@ export type CasterDesk = {
   casts: boolean;
   spellSearchClass: string;
   maxSpellLevel: number;
+  // A warlock's Mystic Arcanum levels, and the spells chosen as them: picked
+  // above the slots, one of each level, outside the spells known count.
+  arcanumLevels: number[];
+  chosenArcanum: string[];
+  requiredCantrip: string | null;
   spellWider: { spells: string[]; lists: string[] };
   cantripAdvice: number | null;
   spellAdvice: ReturnType<typeof builderSpellAdvice>;
@@ -203,7 +221,8 @@ function casterDeskOf(
   // `features` holds the picks: a workshop choice's option spells (issue #833).
   const subclassSpells = casts ? withLearned(subclassSpellsFor(row.id, subclass, level, undefined, features), spellGrants) : [];
   const spellWider = casts
-    ? { spells: subclassExpandedSpellsFor(row.id, subclass, level), lists: subclassSpellListsFor(row.id, subclass) }
+    ? // The picks too: a genie's kind and an animal lord add their own spells.
+      { spells: subclassExpandedSpellsFor(row.id, subclass, level, undefined, features), lists: subclassSpellListsFor(row.id, subclass) }
     : { spells: [], lists: [] };
   const spellStyle: SpellStyle | null = !casts
     ? null
@@ -215,7 +234,9 @@ function casterDeskOf(
           ? "prepared"
           : spellStyleFor(row.id);
   const free = new Set(subclassSpells.map(textKey));
-  const chosenSpells = lists.spells.filter((name) => !free.has(textKey(name)));
+  const chosenArcanum = arcanumSplit({ classId: row.id, level }, casting.arcanumLevels.length ? lists.spells : []).arcanum;
+  const arcanumKeys = new Set(chosenArcanum.map(textKey));
+  const chosenSpells = lists.spells.filter((name) => !free.has(textKey(name)) && !arcanumKeys.has(textKey(name)));
   const book = new Set(lists.spells.map(textKey));
   const mod = abilities && casting.ability ? abilityMod(abilities[casting.ability]) : null;
   return {
@@ -228,6 +249,9 @@ function casterDeskOf(
     casts,
     spellSearchClass: casting.list,
     maxSpellLevel: casting.maxSpellLevel,
+    arcanumLevels: casting.arcanumLevels,
+    chosenArcanum,
+    requiredCantrip: casting.requiredCantrip,
     spellWider,
     cantripAdvice: casting.cantripCap === null ? null : casting.cantripCap + spellGrants.extraCantrips,
     spellAdvice: withExtras(casts && abilities ? builderSpellAdvice(casting, row, subclass, level, abilities) : null, spellGrants),
@@ -238,7 +262,7 @@ function casterDeskOf(
     spellbookAdvice: spellStyle === "spellbook" ? spellbookAllowance(level) : null,
     racialCantrips: [],
     featSpells: { cantrips: [], spells: [] },
-    chosenCantrips: lists.cantrips,
+    chosenCantrips: lists.cantrips.filter((name) => !free.has(textKey(name))),
     chosenSpells,
     chosenPrepared: spellStyle === "spellbook" ? lists.bookPrepared.filter((name) => book.has(textKey(name))) : chosenSpells,
     spellSupply:
@@ -285,7 +309,7 @@ export function useBuilderDerived({
 }) {
   const {
     level, scores, racialAsi, asiChoices, chosenSkills, expertisePicks, bonusLanguages,
-    racialSkills, racialTool, backgroundSkills, backgroundGearPicks, hpOverride, acOverride, equipment, removedAutoNames,
+    racialSkills, racialTool, racialWeapons, racialTraining, racialExpertise, backgroundSkills, backgroundGearPicks, hpOverride, acOverride, equipment, removedAutoNames,
     toolPicks, repeatSkills,
     subclass, optionPicks, spells, cantrips, bookPrepared, keepsStoredGear, asiRecorded, asiReachedLevel,
   } = state;
@@ -330,11 +354,12 @@ export function useBuilderDerived({
   const racialBonus = useMemo(() => {
     const bonus: Partial<Record<Ability, number>> = { ...(race?.asi ?? {}) };
     if (race?.asiChoice) {
-      for (const ability of racialAsi) {
+      // Each pick its own amount, in order (a fairy's +2 then +1).
+      racialAsi.forEach((ability, index) => {
         if (ability) {
-          bonus[ability] = (bonus[ability] ?? 0) + race.asiChoice.amount;
+          bonus[ability] = (bonus[ability] ?? 0) + asiPickAmount(race.asiChoice!, index);
         }
-      }
+      });
     }
     return bonus;
   }, [race, racialAsi]);
@@ -459,12 +484,14 @@ export function useBuilderDerived({
         ...backgroundSkills.filter(Boolean),
         ...(race?.skills ?? []),
         ...racialSkills.filter(Boolean),
+        // Adaptable Acumen's picks that are skills.
+        ...(race?.trainingChoice ? (racialTraining ?? []).filter((pick) => (ALL_SKILLS as readonly string[]).includes(pick)) : []),
         ...repeatSkills.filter(Boolean),
         // The skill a class taken second let the player pick.
         ...extras.flatMap((entry) => entry.skills.filter(Boolean)),
       ]),
     ],
-    [chosenSkills, background, backgroundSkills, race, racialSkills, repeatSkills, extras],
+    [chosenSkills, background, backgroundSkills, race, racialSkills, racialTraining, repeatSkills, extras],
   );
 
   // The class's, the background's, then each class taken second's: a
@@ -475,6 +502,9 @@ export function useBuilderDerived({
         [...(klass?.tools ?? []), ...(background?.tools ?? []), ...grants.flatMap((grant) => grant.tools)],
         toolPicks,
         [...(race?.tools ?? []), racialTool],
+        // A tool two of them name is one of the player's choice instead (a
+        // rogue criminal's second thieves' tools), as the server allows.
+        klass && background ? repeatedToolChoice(klass.tools, background.tools, race?.tools) : null,
       ),
     [klass, background, grants, toolPicks, race, racialTool],
   );
@@ -484,18 +514,29 @@ export function useBuilderDerived({
       ...splitToolGrants(klass?.tools ?? []).choices.map(() => (klass ? `your ${klass.name} class` : "")),
       ...splitToolGrants(background?.tools ?? []).choices.map(() => (background ? `your ${background.name} background` : "")),
       ...extras.flatMap((entry, index) => splitToolGrants(grants[index]?.tools ?? []).choices.map(() => `your ${entry.klass.name} levels`)),
+      // The tool owed in place of one given twice, named.
+      ...toolGrants.choices
+        .filter((choice) => choice.instead?.length)
+        .map((choice) => `your class, background and species, which give you ${[...new Set(choice.instead)].join(" and ")} twice`),
     ],
-    [klass, background, extras, grants],
+    [klass, background, extras, grants, toolGrants],
   );
   // Every tool the character is trained with, the list the sheet carries;
   // the background's kit fills its "of your choice" lines from it.
   const trainedTools = useMemo(
     () => [
       ...new Set(
-        [...toolGrants.fixed, ...(race?.tools ?? []), racialTool, ...toolGrants.chosen].filter(Boolean),
+        [
+          ...toolGrants.fixed,
+          ...(race?.tools ?? []),
+          racialTool,
+          // Adaptable Acumen's picks that are tools.
+          ...(race?.trainingChoice ? (racialTraining ?? []).filter((pick) => !(ALL_SKILLS as readonly string[]).includes(pick)) : []),
+          ...toolGrants.chosen,
+        ].filter(Boolean),
       ),
     ],
-    [toolGrants, race, racialTool],
+    [toolGrants, race, racialTool, racialTraining],
   );
   // The background's kit with its choice lines answered (issue #127): a
   // tool line from the training above, an either-or line from the pick
@@ -564,7 +605,7 @@ export function useBuilderDerived({
       // Races can teach combat training too: mountain dwarf armor, drow
       // and wood elf weapons. A class taken second adds its multiclass row.
       armor: [...new Set([...(klass?.armor ?? []), ...(race?.armor ?? []), ...grants.flatMap((grant) => grant.armor)])],
-      weapons: [...new Set([...(klass?.weapons ?? []), ...(race?.weapons ?? []), ...grants.flatMap((grant) => grant.weapons)])],
+      weapons: [...new Set([...(klass?.weapons ?? []), ...(race?.weapons ?? []), ...(race?.weaponChoice ? (racialWeapons ?? []).filter(Boolean) : []), ...grants.flatMap((grant) => grant.weapons)])],
     };
     const withFeats = applyFeatGrants({
       proficiencies,
@@ -579,9 +620,12 @@ export function useBuilderDerived({
     // of them (SRD 5.1, Bard and Rogue: "choose two of your skill
     // proficiencies"), a Lore bard's subclass skills and a feat's among them,
     // as the level-up already allows.
-    const own = expertisePicks.filter((skillId) => expertiseAllowed(skillId, trained.skills, classList.map((entry) => entry.id)));
+    // And the race's own (a human chassis's Adaptable Acumen), on a skill or
+    // a tool held.
+    const racial = race?.expertiseChoice && racialExpertise && (trained.skills.includes(racialExpertise) || trained.tools.includes(racialExpertise)) ? [racialExpertise] : [];
+    const own = [...expertisePicks.filter((skillId) => expertiseAllowed(skillId, trained.skills, classList.map((entry) => entry.id))), ...racial];
     return { ...trained, expertise: [...new Set([...own, ...(trained.expertise ?? [])])] };
-  }, [proficientSkills, klass, classList, grants, classLanguages, race, background, expertisePicks, bonusLanguages, trainedTools, featNames, featDescOf, featChoices, subclassTraining]);
+  }, [proficientSkills, klass, classList, grants, classLanguages, race, racialWeapons, racialExpertise, background, expertisePicks, bonusLanguages, trainedTools, featNames, featDescOf, featChoices, subclassTraining]);
 
   // Hit points as the server will work them out (builderHp.ts): lineage,
   // feats, Draconic Resilience and the table's method. A table that rolls
@@ -916,9 +960,11 @@ export function useBuilderDerived({
 
   // Fighting styles the class has earned by this level. Stored on the sheet
   // as "choice"-sourced features so the level-up regrant preserves them.
-  const styleSlots = useMemo(() => fightingStyleSlots(grantedFeatures), [grantedFeatures]);
+  // A feat opens one more (Fighting Initiate).
+  const styleSlotSources = useMemo(() => [...grantedFeatures, ...featStyleSlotFeatures(featNames)], [grantedFeatures, featNames]);
+  const styleSlots = useMemo(() => fightingStyleSlots(styleSlotSources), [styleSlotSources]);
   // The styles those slots allow (a Swords bard: Dueling or Two-Weapon Fighting).
-  const styleChoices = useMemo(() => fightingStyleChoices(grantedFeatures, klass?.id), [grantedFeatures, klass?.id]);
+  const styleChoices = useMemo(() => fightingStyleChoices(styleSlotSources, klass?.id), [styleSlotSources, klass?.id]);
 
   // Invocations, maneuvers, metamagic, pact boons, infusions, runes and
   // elemental disciplines: the pick-lists that used to be feature names with
@@ -952,6 +998,26 @@ export function useBuilderDerived({
       return merged.map((entry) => (entry === held ? { ...held, total, remaining: Math.max(0, total - held.chosen.length) } : entry));
     }, []);
   }, [classList, grantedFeatures, optionPicks, featNames, spells]);
+  // The options not open yet, by their feature name, with why: a level the
+  // class has not reached ("Breath of Winter needs monk level 17"), a pact
+  // boon not taken. The class step shows them closed, as the level-up and
+  // the owed picks do; the save refuses one (sheet-legality.ts). A cantrip
+  // prerequisite waits for the spell step and the save.
+  const optionUnmet = useMemo(() => {
+    const facts = {
+      classLevel: (id: string) => classList.find((entry) => textKey(entry.id) === textKey(id))?.level ?? 0,
+      features: [...grantedFeatures, ...optionPicks.map((optionName) => ({ name: optionName }))],
+      cantrips: [] as string[],
+    };
+    const out: Record<string, string> = {};
+    for (const slot of optionSlots) {
+      for (const option of slot.options) {
+        const reason = optionReqProblem(option, facts, { cantripsLater: true });
+        if (reason) out[optionFeatureName(slot.kind, option.n)] = reason;
+      }
+    }
+    return out;
+  }, [classList, grantedFeatures, optionPicks, optionSlots]);
   // A workshop subclass's own choices (a bloodline, an element): one pick
   // each, at the class level its author set, kept as "Bloodline (Storm)"
   // among the option picks (issue #833).
@@ -982,9 +1048,10 @@ export function useBuilderDerived({
   const spellWider = useMemo(
     () =>
       casterKlass && casting.casts
-        ? { spells: subclassExpandedSpellsFor(casterKlass.id, casterSubclass, casterLevel), lists: subclassSpellListsFor(casterKlass.id, casterSubclass) }
+        ? // The picks too: a genie's kind and an animal lord add their own spells.
+          { spells: subclassExpandedSpellsFor(casterKlass.id, casterSubclass, casterLevel, undefined, pickFeatures), lists: subclassSpellListsFor(casterKlass.id, casterSubclass) }
         : { spells: [], lists: [] },
-    [casterKlass, casterSubclass, casterLevel, casting.casts],
+    [casterKlass, casterSubclass, casterLevel, casting.casts, pickFeatures],
   );
   // A class that casts, and has something to cast at this level. A level 1
   // paladin or ranger has a spellcasting ability and no spells, no cantrips
@@ -1090,14 +1157,22 @@ export function useBuilderDerived({
       ),
     [featNames, featDescOf, featChoices],
   );
+  // A subclass's own cantrips (the Light Domain's light) are known on top
+  // of the class's count too (src/lib/srd/spell-prep.ts grantedCantripsOf).
   const chosenCantrips = useMemo(() => {
-    const free = new Set([...racialCantrips, ...featSpells.cantrips].map((name) => textKey(name)));
+    const free = new Set([...racialCantrips, ...featSpells.cantrips, ...subclassSpells].map((name) => textKey(name)));
     return cantrips.filter((name) => !free.has(textKey(name)));
-  }, [cantrips, racialCantrips, featSpells]);
+  }, [cantrips, racialCantrips, featSpells, subclassSpells]);
+  // A warlock's arcana sit beside the spells known (spell-prep.ts arcanumSplit).
+  const arcanumLevels = casting.arcanumLevels;
+  const chosenArcanum = useMemo(
+    () => (arcanumLevels.length && casterKlass ? arcanumSplit({ classId: casterKlass.id, level: casterLevel }, spells).arcanum : []),
+    [arcanumLevels, casterKlass, casterLevel, spells],
+  );
   const chosenSpells = useMemo(() => {
-    const free = new Set(subclassSpells.map((spellName) => textKey(spellName)));
+    const free = new Set([...subclassSpells, ...chosenArcanum].map((spellName) => textKey(spellName)));
     return spells.filter((spellName) => !free.has(textKey(spellName)));
-  }, [spells, subclassSpells]);
+  }, [spells, subclassSpells, chosenArcanum]);
   const chosenPrepared = useMemo(() => {
     if (spellStyle !== "spellbook") {
       return chosenSpells;
@@ -1146,6 +1221,9 @@ export function useBuilderDerived({
             casts,
             spellSearchClass,
             maxSpellLevel,
+            arcanumLevels,
+            chosenArcanum,
+            requiredCantrip: casting.requiredCantrip,
             spellWider,
             cantripAdvice,
             spellAdvice,
@@ -1180,9 +1258,9 @@ export function useBuilderDerived({
     });
   }, [
     klass, extras, classList, leadIndex, multiclass, casterSpellLists, shownAbilities, effectiveLevel, casterKlass, casterSubclass,
-    casterLevel, casts, spellSearchClass, maxSpellLevel, spellWider, cantripAdvice, spellAdvice, starters, subclassSpells,
+    casterLevel, casts, spellSearchClass, maxSpellLevel, arcanumLevels, chosenArcanum, spellWider, cantripAdvice, spellAdvice, starters, subclassSpells,
     castingLabel, spellStyle, spellbookAdvice, racialCantrips, featSpells, chosenCantrips, chosenSpells, chosenPrepared,
-    spellSupply, casting.ability, preview, spells, bookPrepared, cantrips, spellGrants, grantedFeatures, optionPicks,
+    spellSupply, casting.ability, casting.requiredCantrip, preview, spells, bookPrepared, cantrips, spellGrants, grantedFeatures, optionPicks,
   ]);
 
   return {
@@ -1241,6 +1319,7 @@ export function useBuilderDerived({
     styleSlots,
     styleChoices,
     optionSlots,
+    optionUnmet,
     subclassChoiceSlots: subclassChoiceSlotsOpen,
     spellSearchClass,
     spellWider,
@@ -1259,6 +1338,9 @@ export function useBuilderDerived({
     spellbookAdvice,
     spellSupply,
     maxSpellLevel,
+    arcanumLevels,
+    chosenArcanum,
+    requiredCantrip: casting.requiredCantrip,
     spellGrants,
   };
 }

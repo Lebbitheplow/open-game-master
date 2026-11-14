@@ -44,6 +44,7 @@ export function turnFromEncounter(
       ? encounter.reactionsUsed.includes(sheet.id)
       : (engine?.reactionUsed ?? false),
     attacksMade: own?.attacksMade ?? 0,
+    ...(own?.attacksAllowed ? { attacksAllowed: own.attacksAllowed } : {}),
     ...(own?.extraActions ? { extraActions: own.extraActions } : {}),
     ...(own?.grantedActions ? { grantedActions: own.grantedActions } : {}),
     ...(own?.marks?.length ? { marks: own.marks } : {}),

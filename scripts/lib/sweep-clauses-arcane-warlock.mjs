@@ -35,8 +35,15 @@ export function probes(rig, shared) {
     assert.equal(out.ok, true, out.error);
     return foes;
   }
+  // The kind is chosen once (src/lib/srd/options.ts genie_kind): the
+  // shared holder is made a genie of no kind again first, so each probe
+  // reads a warlock who chose this one.
   async function kind(who, name) {
     await kit.endFight();
+    const features = sheet(who).features
+      .filter((feature) => !/^genie's vessel:/i.test(feature.name))
+      .map((feature) => (/^genie's vessel \(/i.test(feature.name) ? { ...feature, name: "Genie's Vessel" } : feature));
+    world.patch(who.id, { features });
     const out = await spend(who, "Genie Kind", { variant: name });
     assert.equal(out.ok, true, out.error);
   }

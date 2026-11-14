@@ -7,6 +7,7 @@ import { parkReasonFor, type ParkReason } from "@/lib/dice/held-rolls";
 import type { ThrownRoll } from "@/lib/dm/after-roll-logic";
 import type { AfterRollId, WatchPower } from "@/lib/dm/after-roll-table";
 import type { RollTag } from "@/lib/dice-script-logic";
+import type { OpportunityAsk, OpportunityChoice } from "@/lib/dm/opportunity-ask-logic";
 import { writeTurnQuality } from "@/lib/db/turn-ledger";
 import { currentTurnId, releaseStandIn, standInFor } from "@/lib/dm/job-control";
 import type { GuardReport } from "@/lib/narrator-quality";
@@ -352,6 +353,9 @@ export type PendingAttack = {
   // A Valor bard's Bardic Inspiration die on this hit's damage, chosen on
   // the hit (after-roll.ts, ar-wbf-bard-dice.ts).
   combatInspiration?: boolean;
+  // Orcish Fury, chosen on the hit (after-roll.ts): one more of the weapon's
+  // damage dice, its use paid when the hit stands (attack-swing.ts).
+  orcishFury?: boolean;
   attacker: string;
   weapon: string;
   targetEnemyId: string;
@@ -397,6 +401,9 @@ export type PendingCarry = {
   // start when the roll lands, and what that run answered.
   call?: HeldRollCall;
   answer?: string;
+  // The question a walk's call stopped on before a character's opportunity
+  // attack, and its answer once given (src/lib/dm/opportunity-ask.ts).
+  ask?: OpportunityAsk;
 };
 
 // A roll a held call already has, for its next run: the player's, as it
@@ -410,6 +417,9 @@ export type DecidedRoll = {
   outcome: RollResult;
   raw: boolean;
   landing?: { physical: boolean; source: "digital" | "physical" };
+  // Not a roll: the player's answer to an opportunity attack's ask
+  // (opportunity-ask.ts), which no roll site takes (held-call-logic.ts).
+  choice?: OpportunityChoice;
 };
 
 // A tool call held for a player's roll. `tape`: the faces its first run drew
@@ -424,6 +434,10 @@ export type HeldRollCall = {
   // The roll site threw the dice itself and parked them for the player's
   // choice: what lands is the site's own roll, already whole.
   siteThrew?: boolean;
+  // The fight turn (encounters.ts turnKey) the call was made on, when it was
+  // the rolling character's own: their action waits on this roll, so their
+  // turn does not end under it (open-roll-logic.ts attackRollWithPlayer).
+  ownTurn?: string;
 };
 
 export type PendingRoll = {
@@ -512,7 +526,7 @@ function mapPending(row: PendingRow): PendingRoll {
     attack: parseJson<PendingAttack | null>(row.attack_json, null),
     combatNote: row.combat_note ?? null,
     parkedFor:
-      row.parked_for === "real_dice" || row.parked_for === "held" || row.parked_for === "after_roll" || row.parked_for === "foretold" || row.parked_for === "watch" ? row.parked_for : null,
+      row.parked_for === "real_dice" || row.parked_for === "held" || row.parked_for === "after_roll" || row.parked_for === "foretold" || row.parked_for === "watch" || row.parked_for === "opportunity" ? row.parked_for : null,
     thrown: parseJson<ThrownRoll | null>(row.thrown_json ?? null, null),
     watch: parseJson<WatchStop | null>(row.watch_json ?? null, null),
     visibility: row.visibility ?? "public",
@@ -821,6 +835,16 @@ export function listOpenAfterRolls(): PendingRoll[] {
   ensureParkColumn();
   const rows = getDatabase()
     .prepare(`SELECT * FROM pending_rolls WHERE status = 'pending' AND thrown_json IS NOT NULL ORDER BY created_at ASC`)
+    .all() as PendingRow[];
+  return rows.map(mapPending);
+}
+
+// Every opportunity attack's ask still open at any table, for the clocks a
+// restart lost (src/lib/dm/opportunity-ask-timer.ts).
+export function listOpenOpportunityAsks(): PendingRoll[] {
+  ensureParkColumn();
+  const rows = getDatabase()
+    .prepare(`SELECT * FROM pending_rolls WHERE status = 'pending' AND parked_for = 'opportunity' ORDER BY created_at ASC`)
     .all() as PendingRow[];
   return rows.map(mapPending);
 }

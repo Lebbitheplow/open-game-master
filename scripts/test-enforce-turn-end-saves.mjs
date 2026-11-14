@@ -173,4 +173,32 @@ await test("A character held after their turn saves at the end of their own next
 });
 
 model.close();
+// T04 (audit 2026-11-13): the counts of the character a move landed on ran
+// down before the enemies that move walked past had played their turns. A
+// "stunned for 1 round" the wizard laid on their turn (no source given, so
+// counted on the wizard's turn) ended as the wizard's next turn began, in
+// the same move that handed the creature its turn, and the creature acted;
+// one the creature could act under ended before it had.
+await test("T04: a one-round hold laid on the turn before a creature's lasts through the creature's turn.", async () => {
+  const enemy = await stage();
+  endTurnOf(fighter);
+  kit.handOnEnemies();
+  const stun = await world.invoke("set_condition", { enemyId: enemy.id, condition: "stunned", rounds: 1 });
+  assert.equal(stun.ok, true, stun.error);
+  endTurnOf(wizard);
+  assert.ok(kit.enemy(enemy.id).conditions.includes("stunned"), "it wore off at the round's wrap, before the creature's turn");
+  endTurnOf(fighter);
+  const struck = await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: fighter.id });
+  assert.ok(struck.error, "the creature stunned as its turn came acted once freed");
+  // A fear the creature can act under holds while it plays its turn.
+  const fear = await world.invoke("set_condition", { enemyId: enemy.id, condition: "frightened", rounds: 1, sourceCharacterId: wizard.id });
+  assert.equal(fear.ok, true, fear.error);
+  endTurnOf(wizard);
+  endTurnOf(fighter);
+  assert.ok(kit.enemy(enemy.id).conditions.includes("frightened"), "the fear ended before the creature's turn was played");
+  kit.handOnEnemies();
+  endTurnOf(wizard);
+  assert.ok(!kit.enemy(enemy.id).conditions.includes("frightened"), "and ends once the wizard's turn has come again");
+});
+
 finish();

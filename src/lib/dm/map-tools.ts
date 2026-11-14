@@ -1,3 +1,5 @@
+import { pushImmune } from "@/lib/srd/genre-b-steampunk-moves";
+import { roadRaging } from "@/lib/dm/genre-gb-road-rage";
 import { readiedHeld } from "@/lib/dm/readied-kinds";
 import { carriedLight, lightPlacement } from "@/lib/dm/light-timers";
 import { getClock } from "@/lib/db/clock";
@@ -65,6 +67,7 @@ import { auraMenaceAsk } from "@/lib/dm/aura-menace";
 import { awayFromFear, enemyMoveTraits, fearSourceAt, standUpCost, standUpIfProne } from "@/lib/dm/enemy-approach";
 import { enemyMoveBudget } from "@/lib/dm/enemy-speed";
 import { movementLeft, spendEnemyDisengage } from "@/lib/dm/enemy-actions";
+import { picketHolds } from "@/lib/dm/genre-b-mystery-enforcer";
 import { forgetEnemyTurns, enemyTurnEntry, speedWords } from "@/lib/dm/enemy-turn-logic";
 import { nearerSquares } from "@/lib/dm/flee-logic";
 import { aggressiveSteps, approachSteps } from "@/lib/dm/enemy-aggressive";
@@ -73,6 +76,7 @@ import { declaredThisTurn, walkHeld } from "@/lib/dm/player-word";
 import { featureTeleportFeet } from "@/lib/dm/feature-teleport";
 import { featureLandingRefusal } from "@/lib/dm/mt-mr-spends";
 import { goesBetweenShadows, shadowsRefusal } from "@/lib/dm/ar-ws-shadow-light";
+import { horrorTeleportRefusal } from "@/lib/dm/genre-a-horror-wards";
 import { distancesFrom, payForTeleport, stillAt, teleportRangeFeet, walkCharacter } from "@/lib/dm/token-rules";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -359,6 +363,12 @@ export function handleTeleportToken(
   if (landing) {
     return landing;
   }
+  // The horror classes' rules on a teleport (Warden of the Threshold, Walk
+  // Between's "a space you can see": src/lib/dm/genre-a-horror-wards.ts).
+  const warded = horrorTeleportRefusal(campaign.id, map, token, { x: args.x, y: args.y }, args.spell);
+  if (warded) {
+    return warded;
+  }
   // A legendary action that bought the jump (a sphinx's or a solar's
   // Teleport) gives its reach and has paid for it.
   const live = token.kind === "enemy" ? getActiveEncounter(campaign.id) : null;
@@ -618,7 +628,8 @@ export function handleMoveToken(
     }
     // The move a character readied releases off their turn, by whoever runs
     // the table (readied-release.ts: their reaction, up to their speed).
-    if (fresh && readiedHeld(fresh)?.holds === "move" && !ownTurn) {
+    // A readied move, or Road Rage's move as an ally drops (genre-gb-road-rage.ts).
+    if (fresh && (readiedHeld(fresh)?.holds === "move" || roadRaging(fresh)) && !ownTurn) {
       return walkCharacter(campaign, encounter, map, fresh, resolved.token, { x: args.x, y: args.y }, { drag: args.drag, careful: args.careful });
     }
     // Off their own turn, a character in the order is the game saying no, as
@@ -772,7 +783,7 @@ export function handleMoveToken(
       approachCut = drawn.cut;
     }
     const budget = Math.floor(Math.max(0, (allowance ? allowance.tiles : (move?.tilesLeft ?? 0)) - standCost) / factor);
-    const walk = walkPathWithBudget(map.terrain, map.width, steps, budget, traits, resolved.token);
+    const walk = walkPathWithBudget(map.terrain, map.width, steps, budget, traits, resolved.token, moverFootprint > 1 ? { height: map.height, occupied, footprint: moverFootprint } : undefined);
     if (!walk.at && allowance) {
       return { error: `${resolved.token.name} cannot get anywhere toward (${args.x},${args.y}) on its legendary move (${allowance.tiles * 5} ft).${stillAt(tokens, resolved.token)}`, refused: "rules" };
     }
@@ -837,6 +848,8 @@ export function handleMoveToken(
           landing,
           walkedPart(path, landing),
           Boolean(disengaged),
+          // Picket Stance strikes a walker that Disengaged (genre-b-mystery-enforcer.ts).
+          picketHolds,
         )
       : { notes: [] as string[] };
   const opportunity = struck.notes;
@@ -888,7 +901,6 @@ export function handleMoveToken(
   if (resolved.kind === "enemy" && resolved.enemy) {
     markSqueezing(campaign.id, resolved.enemy.id, squeezedAt(map.terrain, map.width, map.height, occupied, landing, moverFootprint));
   }
-
   // The spell areas walked (or pushed) into: their saves and damage (zone-triggers.ts).
   const zoneEffects = zonesAfterMove(campaign, encounter.id, resolved.token, origin, walked, { careful });
   // Who it came near, on record for what answers a creature moving up (move-near.ts).
@@ -950,6 +962,12 @@ export function pushTokenAway(
   const target = map ? getTokenByRef(map.id, targetRef) : null;
   if (!map || !pusher || !target) {
     return { moved: false, reason: "there is no battle map to move it on" };
+  }
+  // Boiler Plate: an armored, conscious steam knight is not pushed
+  // (src/lib/srd/genre-b-steampunk-moves.ts).
+  const pushed = target.kind === "pc" ? getSheetById(target.refId) : null;
+  if (pushed && pushImmune(pushed)) {
+    return { moved: false, reason: `${pushed.name}'s Boiler Plate holds them in place: they cannot be pushed while conscious` };
   }
   const at = {
     x: target.x + Math.sign(target.x - pusher.x),

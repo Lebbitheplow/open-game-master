@@ -63,6 +63,19 @@ export function chargedBudget(encounter: Encounter, budget: TurnBudget, enemyId:
   return { ...budget, oncePerTurn: [...kept, `${CHARGED}${enemyId}:${feet}`] };
 }
 
+// How many feet straight at this creature the character has run this turn:
+// a run that already ended in a melee attack on it, or the one under way.
+// Read before the swing lands (the damage riders fold before the roll), so
+// the run under way counts as chargedBudget will record it.
+export function runToward(encounter: Encounter, ownerId: string, enemyId: string): number {
+  const budget = encounter.turnBudget && encounter.turnBudget.ownerId === ownerId ? encounter.turnBudget : null;
+  if (!budget) {
+    return 0;
+  }
+  const run = budget.oncePerTurn.find((key) => key.startsWith(RUN_FROM));
+  return Math.max(chargedFeet(budget.oncePerTurn, enemyId), run ? runFeet(encounter, ownerId, enemyId, run) : 0);
+}
+
 // The refusal of a spend that rides a charge (AuthoredSpend.chargeFeet) when
 // the creature named was not run at this turn, or null.
 export function chargeRefusal(campaignId: string, sheet: CharacterSheet, label: string, feet: number, enemyId: string | undefined): ToolError | null {

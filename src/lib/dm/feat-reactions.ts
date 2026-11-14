@@ -25,7 +25,8 @@ import { spendRollCarriers } from "@/lib/dm/forced-save";
 import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { rollExpression } from "@/lib/dice";
 import { reactionPatch } from "@/lib/dm/reaction-refund";
-import { defensiveDuelistBonus, hasMageSlayer, hasSentinel } from "@/lib/srd/feat-combat";
+import { defensiveDuelistBonus, hasMageSlayer, hasSentinel, ORCISH_FURY_STRIKE } from "@/lib/srd/feat-combat";
+import { holdsFeat } from "@/lib/srd/feat-effects";
 import { listSheets } from "@/lib/db/sheets";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
@@ -111,6 +112,35 @@ export function mageSlayer(ctx: Ctx): ToolResult {
   return "error" in result ? result : { ...result, reaction: "Mage Slayer" };
 }
 
+// Orcish Fury: right after Relentless Endurance holds the half-orc up (the
+// mark pc-damage.ts leaves until their next turn), the reaction makes one
+// weapon attack, melee or ranged, through pc_attack's own rules as Mage
+// Slayer's does. It costs no use of the feat's counter.
+export function orcishFury(ctx: Ctx): ToolResult {
+  const { campaign, encounter, sheet, args } = ctx;
+  if (!holdsFeat(sheet, "Orcish Fury")) {
+    return { error: `${sheet.name} has no Orcish Fury; the reaction attack after Relentless Endurance is that feat's. Nothing was spent.`, refused: "rules" };
+  }
+  const fresh = getSheetById(sheet.id) ?? sheet;
+  if (!fresh.conditions.some((entry) => textKey(entry) === ORCISH_FURY_STRIKE)) {
+    return { error: `Orcish Fury's attack comes right after Relentless Endurance holds ${sheet.name} at 1 hit point, and it has not just done so. Nothing was spent.`, refused: "rules" };
+  }
+  if (!encounter) {
+    return { error: "Orcish Fury's attack happens in a fight; there is no active encounter.", refused: "rules" };
+  }
+  if (!args.targetEnemyId) {
+    return { error: "Orcish Fury makes one weapon attack: pass its targetEnemyId. Nothing was spent.", retry: true };
+  }
+  addSheetCondition(campaign, fresh, READIED, { untilTurnOf: sheet.id }, "Orcish Fury");
+  const result = handlePcAttack(campaign, ctx.turn, JSON.stringify({ characterId: sheet.id, targetEnemyId: args.targetEnemyId }), ctx.sheets, ctx.sheetsById, new Set(), null);
+  const after = getSheetById(sheet.id);
+  if (after) {
+    const marks = "error" in result ? [READIED] : [READIED, ORCISH_FURY_STRIKE];
+    const cleared = removeConditions(after.conditions, after.conditionMeta, marks);
+    patchSheet(after.id, { conditions: cleared.conditions, conditionMeta: cleared.meta });
+  }
+  return "error" in result ? result : { ...result, reaction: "Orcish Fury" };
+}
 
 // Sentinel (and Level Up's Guarded Warrior): a creature within 5 feet that
 // attacks someone other than the character draws one melee weapon attack
@@ -255,6 +285,53 @@ export function lucky(ctx: Ctx): ToolResult {
   };
 }
 
+
+// Second Chance (a halfling's feat): when an attack hits the character,
+// the reaction makes the attacker roll that d20 again, and the new roll
+// stands, whichever it is. Once until a short or long rest, or until
+// initiative is rolled (resource-refills.ts initiativeRefills). Answers the
+// last attack on record at the hit Lucky would pick (luckyTarget).
+export const SECOND_CHANCE = "feat_second_chance";
+export function secondChance(ctx: Ctx): ToolResult {
+  const { campaign, sheet } = ctx;
+  const fresh = getSheetById(sheet.id) ?? sheet;
+  const counter = fresh.resources?.[SECOND_CHANCE];
+  if (!counter) {
+    return { error: `${sheet.name} has no Second Chance: it is a halfling's feat, and it is not among theirs. Nothing was spent.`, refused: "rules" };
+  }
+  if (counter.used >= counter.max) {
+    return { error: `${sheet.name} has used Second Chance; it comes back when initiative is rolled or after a short or long rest. Nothing was spent.`, refused: "rules" };
+  }
+  const fits = (hit: LastHit) => hit.source === "attack" && attackerFoeId(hit) !== null && !hit.answered.includes("second chance") && hit.swings.some((swing) => swing.hit);
+  const record = freshLastHit(campaign.id, sheet.id, fits) ?? freshLastHit(campaign.id, sheet.id);
+  if (!record || record.source !== "attack" || attackerFoeId(record) === null || !record.swings.some((swing) => swing.hit)) {
+    return { error: `Second Chance answers an attack that just hit ${sheet.name}, and the server has no such attack on record. Nothing was spent.`, refused: "rules" };
+  }
+  const index = luckyTarget(record.swings);
+  if (index === -1) {
+    return { error: `${record.attacker.name}'s ${record.attack} has no d20 on record to roll again. Nothing was spent.`, refused: "rules" };
+  }
+  spendReaction(ctx);
+  const spent = getSheetById(sheet.id) ?? fresh;
+  patchSheet(sheet.id, { resources: { ...(spent.resources ?? {}), [SECOND_CHANCE]: { max: counter.max, used: counter.used + 1 } } });
+  const swing = record.swings[index] as SwingRecord & { natural: number };
+  const attack = swing.attack ?? record.attack;
+  const natural = rollExpression("1d20").total;
+  const total = swing.total - swing.natural + natural;
+  const stillHits = natural === 20 || (natural !== 1 && total >= swing.vsAc);
+  const plain = stillHits ? plainOfReroll(swing, natural) : swing;
+  const corrected = record.swings.map((entry, at) => (at === index && !stillHits ? { ...entry, hit: false, natural, total, raw: 0 } : at === index ? { ...plain, natural, total } : entry));
+  const settled = settle(ctx, record, corrected, "second chance");
+  return {
+    ok: true,
+    reaction: "Second Chance",
+    spent: SPENT(sheet.name),
+    applied: stillHits
+      ? `Second Chance: ${record.attacker.name} rolls the ${attack} again and gets ${natural}; it still hits${plain !== swing ? `, no longer a critical: ${settled.given} hit points come back. HP ${settled.hp}` : ""}.`
+      : `Second Chance: ${record.attacker.name} rolls the ${attack} again and gets ${natural}; it misses: ${settled.given} hit points come back. HP ${settled.hp}.`,
+    ...(settled.notes.length ? { notes: settled.notes } : {}),
+  };
+}
 
 // Boundless Reserves and Sorcerous Vigor (Tome of Heroes): at the start of
 // their turn with no ki (or sorcery points) left, the reaction spends one

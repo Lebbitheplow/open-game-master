@@ -8,7 +8,7 @@
 //
 // This module must not import mutations.ts (which imports it).
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
-import { getActiveEncounter, getEnemy, listEnemies, patchEnemyConditions } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy, listEnemies, patchEnemyConditions, turnCounterFor } from "@/lib/db/encounters";
 // Registers the board's landing for a flyer the condition grounds
 // (db/flight-watch.ts), which this module's writes call on.
 import "@/lib/dm/token-state";
@@ -44,6 +44,7 @@ import { awardInspirationCounter, heldInspiration, spendInspirationCounter } fro
 import { withoutGrapple } from "@/lib/dm/grapple";
 import { releaseLostPins } from "@/lib/dm/grappler-pin";
 import { featureConditionImmunities, sourcedConditionImmunity } from "@/lib/srd/trait-rules";
+import { horrorConditionImmunity } from "@/lib/dm/genre-a-horror-board";
 import { magicItemRiders } from "@/lib/srd/magic-items";
 import { conditionGrantedImmunity } from "@/lib/srd/condition-effect-queries";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
@@ -259,6 +260,12 @@ export function conditionImmunity(
   if (warded) {
     return `${warded} makes them immune`;
   }
+  // The horror classes' immunities that read the board or the source
+  // (Seen Worse, Apostasy Complete: src/lib/dm/genre-a-horror-board.ts).
+  const horror = horrorConditionImmunity(campaign.id, sheet, wanted, source);
+  if (horror) {
+    return `${horror} makes them immune`;
+  }
   const own = featureConditionImmunities(sheet);
   // A worn item's too (SRD 5.1, Periapt of Proof against Poison: "You are
   // immune to the poisoned condition").
@@ -395,12 +402,16 @@ export function handleSetCondition(
   // An effect's own meta says whether damage ends it; only a sleep laid by
   // name has the rule to go by.
   const wakes = !options?.spellEffect && wakesOnDamage(normalized, sheet.currentHp);
+  // A count with no combatant to count it is counted on the turn it began
+  // on (condition-logic.ts countsOn), not at the round's wrap.
+  const countsOn = rounds && !options?.spellEffect?.source ? turnCounterFor(campaign.id, source || undefined) : undefined;
   const incoming: ConditionMeta | undefined =
     rounds || saveEnds || source || options?.spellEffect || wakes
       ? {
           ...(rounds ? { rounds } : {}),
           ...(saveEnds ? { saveEnds } : {}),
           ...(source ? { source } : {}),
+          ...(countsOn ? { countsOn } : {}),
           ...(options?.spellEffect ?? {}),
           ...(wakes ? { endsOnDamage: true } : {}),
         }

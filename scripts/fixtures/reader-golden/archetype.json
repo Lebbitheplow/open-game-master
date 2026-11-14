@@ -105,7 +105,7 @@
     },
     {
       "id": "archetype:open5e/abjurationist",
-      "why": "a row with text but no feature headings: missing, counted as unread",
+      "why": "a row with no feature headings in its text: its v2 feature list, each at the first level it lists, is the table",
       "row": {
         "slug": "abjurationist",
         "name": "Abjurationist",
@@ -166,16 +166,30 @@
         "classSlug": "wizard"
       },
       "expect": {
-        "source": "missing",
-        "mechanics": null,
-        "unread": [
-          "features"
-        ]
+        "source": "parsed",
+        "mechanics": {
+          "levels": {
+            "3": [
+              "Arcane Aegis",
+              "Expert Abjurer"
+            ],
+            "6": [
+              "Aegis Extension"
+            ],
+            "10": [
+              "Anti-Magician"
+            ],
+            "14": [
+              "Resistance to Magic"
+            ]
+          }
+        },
+        "unread": []
       }
     },
     {
       "id": "archetype:a5e-ag/gambling-general",
-      "why": "an empty row: missing, nothing to count",
+      "why": "a row with no text: its v2 feature list is the table",
       "row": {
         "slug": "gambling-general",
         "name": "Gambling General",
@@ -236,8 +250,26 @@
         "classSlug": "marshal"
       },
       "expect": {
-        "source": "missing",
-        "mechanics": null,
+        "source": "parsed",
+        "mechanics": {
+          "levels": {
+            "3": [
+              "Daring Commander"
+            ],
+            "7": [
+              "Defensive Measures"
+            ],
+            "11": [
+              "Hold the Line"
+            ],
+            "15": [
+              "Risky Tactics"
+            ],
+            "18": [
+              "Canny Adversary"
+            ]
+          }
+        },
         "unread": []
       }
     }

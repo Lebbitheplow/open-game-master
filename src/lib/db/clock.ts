@@ -1,4 +1,5 @@
 import { tickEffectMinutes } from "@/lib/db/active-effects";
+import { mummyRotClock } from "@/lib/dm/mummy-rot";
 import { getCampaignById } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { gutterBurntLights } from "@/lib/dm/light-timers";
@@ -154,6 +155,8 @@ export function advanceClock(
   // its midnight (src/lib/dm/afflictions.ts, affliction-poisons.ts).
   afflictionClockTick(campaignId, moved.instant);
   poisonClockTick(campaignId, moved.instant);
+  // Mummy rot's 3d6 off the maximum for every 24 hours (mummy-rot.ts).
+  mummyRotClock(campaignId, current.instant, moved.instant);
   // A companion's ultimatum whose deadline it passed (issue 503).
   if (conscienceClockTick(campaignId)) {
     publishEphemeral(campaignId, "relationships_updated", {});
@@ -261,11 +264,12 @@ export function setTravelPace(campaignId: string, pace: CampaignClock["travelPac
   setClock(campaignId, pace ? { ...rest, travelPace: pace } : rest);
 }
 
-// A stretch of marching that just ended and who marched it, kept for the
-// day after it (src/lib/srd/travel.ts forcedMarchSpan).
-export function recordMarch(campaignId: string, end: number, minutes: number, ids: string[]) {
+// A stretch of travel that just ended and who travelled it, kept for the
+// day after it (src/lib/srd/travel.ts forcedMarchSpan). `carried`: ridden
+// aboard a vehicle, no hour of it marched.
+export function recordMarch(campaignId: string, end: number, minutes: number, ids: string[], carried = false) {
   const current = getClock(campaignId);
-  setClock(campaignId, { ...current, marched: [...legsWithinDay(current.marched ?? [], end), { end, minutes, ids }] });
+  setClock(campaignId, { ...current, marched: [...legsWithinDay(current.marched ?? [], end), { end, minutes, ids, ...(carried ? { carried: true as const } : {}) }] });
 }
 
 // How much water the party finds each day, for the `supplies` variant

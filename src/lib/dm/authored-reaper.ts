@@ -3,7 +3,8 @@
 // first from the same slot, at no further cost (the material components a
 // spell consumes are the caster's to provide for each). Reaper (Death cleric
 // 1) does the same for a necromancy cantrip, Moon Fire (Lunar Sorcery 1) for
-// sacred flame. cast_at_enemy with two targets for a spell that reaches one
+// sacred flame; Singularity, Author of the Unwritten and The Grave Chorus
+// twin a spell at any distance while their mark holds. cast_at_enemy with two targets for a spell that reaches one
 // (src/lib/dm/cast-at-enemy-targets.ts) reaches handleReaperCast, which casts once (the slot spent, if any) and opens one
 // more share of that casting for the second creature (cast-guard.ts open
 // casts, so nothing more is spent).
@@ -67,14 +68,15 @@ export function handleReaperCast(
   const facts = spellFactsFor(spell, authors);
   const twin = authoredTwinSpell(sheet, { name: facts?.name ?? spell, school: spellSchoolFor(spell, authors), level: facts?.level ?? 0 });
   if (!twin) {
-    return { error: `${sheet.name} cannot strike a second creature with ${spell}: that takes Reaper (a necromancy cantrip), Improved Reaper (a 1st to 5th level necromancy spell), Moon Fire (sacred flame) or Split Enchantment (an enchantment spell of 1st level or higher). Ask the player whether to cast it at one creature. Nothing was spent.`, retry: true };
+    return { error: `${sheet.name} cannot strike a second creature with ${spell}: that takes Reaper (a necromancy cantrip), Improved Reaper (a 1st to 5th level necromancy spell), Moon Fire (sacred flame), Split Enchantment (an enchantment spell of 1st level or higher), or a genre capstone that twins it (Singularity, Author of the Unwritten, The Grave Chorus) while it holds. Ask the player whether to cast it at one creature. Nothing was spent.`, retry: true };
   }
   const mech = spellMechanicsFor({ spell, userIds: authors })?.mech;
   if ((mech?.targets?.count ?? 1) > 1 || mech?.area) {
     return { error: `${spell} already reaches more than one creature; ${twin.feature} doubles a spell that targets only one. Ask the player whether to cast it as it is. Nothing was spent.`, retry: true };
   }
   // Reaper's and Moon Fire's second creature stands within 5 feet of the
-  // first. Split Enchantment's text sets no distance between the two.
+  // first. Split Enchantment's text sets no distance between the two, nor do
+  // the genre capstones' "two targets".
   if (!twin.anywhere && !withinFeet(encounter.id, first.id, second.id, 5)) {
     return { error: `${second.displayName} is not within 5 feet of ${first.displayName}; ${twin.feature}'s second target must be. Ask the player for another target, or whether to cast it at one creature. Nothing was spent.`, retry: true };
   }
@@ -100,10 +102,13 @@ export function handleReaperCast(
   if (live && liveBudget) {
     const open = openCastOf(liveBudget, name);
     const slotLevel = typeof rest.level === "number" ? rest.level : (open?.slotLevel ?? facts?.level ?? null);
-    storeBudget(live, withOpenCast(liveBudget, { spell: name, slotLevel, left: (open?.left ?? 0) + 1 }));
+    // Daemon Swarm's third creature: one more share stays open after the
+    // second, for a cast_at_enemy of the same spell at it.
+    storeBudget(live, withOpenCast(liveBudget, { spell: name, slotLevel, left: (open?.left ?? 0) + (twin.targets ?? 2) - 1 }));
   }
   const again = handleCastAtEnemy(campaign, turn, JSON.stringify({ ...rest, targetEnemyId: second.id }), sheets, sheetsById);
-  return { ...cast, secondTarget: again, [twin.feature]: `${name} also strikes ${second.displayName}.` };
+  const more = (twin.targets ?? 2) > 2 ? ` Cast it once more with cast_at_enemy at a third creature: it is paid.` : "";
+  return { ...cast, secondTarget: again, [twin.feature]: `${name} also strikes ${second.displayName}.${more}` };
 }
 
 // The same feature through pc_attack, for an attack-roll spell (Chill Touch,

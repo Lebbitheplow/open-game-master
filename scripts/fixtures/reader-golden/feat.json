@@ -44,7 +44,7 @@
       "expect": {
         "source": "hand-written",
         "mechanics": {
-          "engine": "[server]"
+          "runsAs": "Grappler"
         },
         "unread": []
       }

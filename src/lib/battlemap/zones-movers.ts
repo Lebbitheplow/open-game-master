@@ -73,7 +73,8 @@ export function moverSpellTraits(mover: ZoneMover | null): { landStride?: true; 
   };
 }
 
-// A step function with the edges of Forcecage and Antilife Shell closed to
+// A step function with the edges of Forcecage and Antilife Shell (and, to an
+// ethereal mover, a Rite of the Threshold sigil or a Grounding Rig) closed to
 // this mover: a step from inside to outside or back is barred. Null when no
 // such area stands.
 export function withEdges(
@@ -83,7 +84,7 @@ export function withEdges(
 ): ((from: number, to: number, cost: number) => number) | null {
   const edges = zones.filter((zone) => {
     const row = zoneRowFor(zone);
-    return Boolean(row?.cage || (row?.barsLiving && zone.casterId !== mover?.ref && barredByShell(mover?.type)));
+    return Boolean(row?.cage || (row?.barsLiving && zone.casterId !== mover?.ref && barredByShell(mover?.type)) || (row?.barsEthereal && mover && has(mover, "ethereal")));
   });
   if (!edges.length) {
     return step;

@@ -38,13 +38,23 @@ export function holdsCalm(conditions: readonly string[]): boolean {
 }
 
 type XY = { x: number; y: number };
+// What is feared, with how many squares across it fills (a Huge dragon's 3).
+type Source = XY & { footprint?: number };
 
-const apart = (a: XY, b: XY) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+// Squares from a square to the nearest square of what it fears. Measured to
+// the top-left square of a Huge dragon's nine, a frightened hero walking
+// along its west side drew nearer to it unrefused, and one stepping around
+// its east side at the same distance was refused.
+const gap = (at: number, lo: number, size: number) => Math.max(0, lo - at, at - (lo + size - 1));
+const apart = (a: XY, b: Source) => Math.max(gap(a.x, b.x, b.footprint ?? 1), gap(a.y, b.y, b.footprint ?? 1));
+
+// The same measure for the readers outside (enemy-approach.ts awayFromFear).
+export const fearDistance = apart;
 
 // The squares nearer `source` than `from` is, by tile index: a creature that
 // fears it cannot step on them (SRD 5.1, Frightened; Turn Undead), so a walk
 // that routes around them is a walk it may take.
-export function nearerSquares(width: number, height: number, from: XY, source: XY): number[] {
+export function nearerSquares(width: number, height: number, from: XY, source: Source): number[] {
   const start = apart(from, source);
   const out: number[] = [];
   for (let y = 0; y < height; y += 1) {
@@ -61,7 +71,7 @@ export function nearerSquares(width: number, height: number, from: XY, source: X
 // the one farthest from what it flees, the cheaper walk on a tie, and never
 // a square nearer than where it stands. Null when nowhere is farther (it is
 // cornered: a turned creature Dodges then).
-export function farthestFrom(from: XY, source: XY, reachable: ReadonlyArray<XY & { cost: number }>): (XY & { cost: number }) | null {
+export function farthestFrom(from: XY, source: Source, reachable: ReadonlyArray<XY & { cost: number }>): (XY & { cost: number }) | null {
   const start = apart(from, source);
   let best: (XY & { cost: number }) | null = null;
   for (const square of reachable) {

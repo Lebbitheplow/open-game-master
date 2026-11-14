@@ -88,9 +88,9 @@ export type EffectModifier = {
 // When an effect ends.
 //
 // "rounds" and "minutes" are one lifetime counted in two units, on one clock
-// at a time, as timed conditions are: in a fight the round wrap counts it (a
-// round off a "rounds" effect each wrap, a minute off a "minutes" one every
-// tenth), and outside one the in-world clock does (src/lib/dm/calendar.ts),
+// at a time, as timed conditions are: in a fight its rounds are counted as
+// the turn it began on comes round again (a round off a "rounds" effect, a
+// minute off a "minutes" one every tenth of its rounds), and outside one the in-world clock does (src/lib/dm/calendar.ts),
 // ten rounds to the minute. A "rounds" effect that outlasts the fight wears
 // off on the road, and "for an hour" ends mid-fight when the hour is up.
 // "encounter" ends when the fight does. "manual" never expires on its own,
@@ -151,6 +151,13 @@ export type ActiveEffect = {
   // the right default for a curse nobody has noticed yet.
   visible: boolean;
   createdAt: string;
+  // In a fight, whose turn it was when it began: its rounds are counted as
+  // that combatant's turns start, as a condition's are counted at its
+  // source's (condition-tick.ts). Null when it began outside one, or its
+  // turn-taker is not in the order: the round's wrap counts it then.
+  anchorId?: string | null;
+  // Rounds of a fight counted toward the next minute of a "minutes" effect.
+  anchorRounds?: number;
 };
 
 export type EffectInput = {
@@ -324,23 +331,31 @@ export type TickResult = {
   expired: ActiveEffect[];
 };
 
-// One round of a fight passing: a round off every "rounds" effect, and a
-// minute off every "minutes" one when this round completes a minute.
+// One round of a fight passing for the effects `counts` takes (by whose
+// turn they began on): a round off a "rounds" effect, and a round toward a
+// minute of a "minutes" one, every tenth of ITS rounds a minute gone. Counted
+// from the fight's own round, "for 1 minute" begun in round 9 ended at the
+// wrap into round 11, after two rounds (audit 2026-11-13, T01).
 // "encounter" ones end with the fight.
-export function tickRound(effects: ActiveEffect[], minutePassed = false): TickResult {
+export function tickRound(effects: ActiveEffect[], counts: (anchorId: string | null) => boolean = () => true, roundsPerMinute = 10): TickResult {
   const kept: ActiveEffect[] = [];
   const expired: ActiveEffect[] = [];
   for (const effect of effects) {
-    const spent = effect.duration === "rounds" ? 1 : effect.duration === "minutes" && minutePassed ? 1 : 0;
-    if (!spent) {
+    if ((effect.duration !== "rounds" && effect.duration !== "minutes") || !counts(effect.anchorId ?? null)) {
       kept.push(effect);
       continue;
     }
-    const remaining = effect.remaining - spent;
+    const rounds = (effect.anchorRounds ?? 0) + 1;
+    const minute = effect.duration === "minutes" && rounds >= roundsPerMinute;
+    if (effect.duration === "minutes" && !minute) {
+      kept.push({ ...effect, anchorRounds: rounds });
+      continue;
+    }
+    const remaining = effect.remaining - 1;
     if (remaining <= 0) {
       expired.push(effect);
     } else {
-      kept.push({ ...effect, remaining });
+      kept.push({ ...effect, remaining, anchorRounds: 0 });
     }
   }
   return { kept, expired };

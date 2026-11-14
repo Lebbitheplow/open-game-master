@@ -427,6 +427,7 @@ export const WORKBENCH_TOOLS: WorkbenchTool[] = [
         description: "Feature names from choices.featurePicks options, exactly as listed (\"Fighting Style: Defense\", \"Invocation: Agonizing Blast\").",
       },
       levelUpSkill: { type: "string", description: "One of choices.levelUpSkill.options (a new class's skill)." },
+      levelUpTools: { type: "array", items: { type: "string" }, maxItems: 3, description: "choices.levelUpTools.count of choices.levelUpTools.options (a new class's tool, such as a bard's instrument)." },
       levelUpSpells: { type: "array", items: { type: "string" }, maxItems: 20, description: "New cantrips and spells by name, within choices.spells." },
       levelUpForget: { type: "string", description: "A spell a known caster gives up for one of levelUpSpells (choices.spells.mayReplaceOne)." },
     },
@@ -436,7 +437,7 @@ export const WORKBENCH_TOOLS: WorkbenchTool[] = [
     // The level-up's fields and nothing else: the route takes a cosmetic
     // edit on this PATCH too, which this tool does not offer.
     body: (a) => ({
-      ...pick(a, ["level", "levelUpClass", "hpChoice", "asiChoices", "featChoices", "subclass", "expertise", "levelUpSkill", "levelUpSpells", "levelUpForget"]),
+      ...pick(a, ["level", "levelUpClass", "hpChoice", "asiChoices", "featChoices", "subclass", "expertise", "levelUpSkill", "levelUpTools", "levelUpSpells", "levelUpForget"]),
       ...(Array.isArray(a.featurePicks) && a.featurePicks.length
         ? { features: a.featurePicks.map((name) => ({ name: String(name), source: "choice" })) }
         : {}),

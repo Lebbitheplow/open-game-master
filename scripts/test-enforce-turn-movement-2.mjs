@@ -194,6 +194,83 @@ await test("An ambusher's Disengage that closes the turn it was owed leaves its 
   assert.equal(kit.token(goblin.id).x, 12);
 });
 
+// ---- frightened of something large ----
+
+// SRD 5.1, Frightened: "can't willingly move closer to the source of its
+// fear". A Huge goblin stand-in fills (10..12, 4..6); Kara at (6,8) is 20 feet
+// from its nearest square and (7,8) is 15. Measured to its top-left square
+// both read 20, and the step was taken.
+await test("A character frightened of a Huge creature cannot step closer to its nearest square, and may walk around it at the same distance.", async () => {
+  const goblin = await stage();
+  kit.setEnemy(goblin.id, { stats: { size: "Huge" } });
+  try {
+    kit.place(goblin.id, 10, 4);
+    kit.place(kara.id, 6, 8);
+    world.patch(kara.id, { conditions: ["frightened"], conditionMeta: { frightened: { source: goblin.id } } });
+    assert.equal(await walk(kara, 7, 8), 409, "a frightened step from 20 to 15 feet off the creature was taken");
+    assert.deepEqual(at(kara.id), [6, 8]);
+    // (6,10) is still 20 feet from it (four squares left of its side).
+    assert.equal(await walk(kara, 6, 10), 200, "a step at the same distance was refused");
+  } finally {
+    world.patch(kara.id, { conditions: [], conditionMeta: {} });
+    kit.setEnemy(goblin.id, { stats: { size: "Small" } });
+  }
+});
+
+// ---- a large creature walking in to strike ----
+
+// SRD 5.1, Squeezing into a Smaller Space: a Large creature squeezes through
+// a space 5 feet wide, and "each foot of movement it uses costs 1 extra
+// foot". enemy_attack's walk-up walked an ogre as one square: through the
+// gap at full price, 35 feet, and into its swing.
+await test("An ogre walking in to attack squeezes a one-square gap at double cost, as move_token walks it, and falls short of a hero it would otherwise reach.", async () => {
+  const paint = [];
+  for (let y = 0; y < 9; y += 1) if (y !== 4) paint.push([8, y, "#"]);
+  const goblin = await stage(paint);
+  kit.setEnemy(goblin.id, { stats: { size: "Large", speed: "40 ft.", attacks: [{ name: "Greatclub", toHit: 6, damage: "2d8+4", type: "bludgeoning", mode: "melee", reach: 5 }] } });
+  try {
+    kit.place(goblin.id, 3, 4);
+    kit.place(kara.id, 12, 4);
+    kit.place(brom.id, 20, 8);
+    kit.freshRound();
+    const out = await world.invoke("enemy_attack", { enemyId: goblin.id, targetCharacterId: kara.id });
+    assert.equal(out.ok, false, "the ogre squeezed through the gap at full speed and swung");
+    // Three open squares, two squeezed at double, one more: 40 feet.
+    assert.deepEqual(at(goblin.id), [9, 4]);
+    assert.equal(kit.token(goblin.id).movedThisRound, 8);
+  } finally {
+    kit.setEnemy(goblin.id, { stats: { size: "Small", speed: "30 ft." } });
+  }
+});
+
+// ---- the reach an opportunity attack is measured by ----
+
+// SRD 5.1: an opportunity attack comes "when a hostile creature that you can
+// see moves out of your reach". A dragon's tail reaches 15 feet though its
+// bite, listed first, reaches 10: only the bite's reach was read, and a hero
+// stepping out of the tail's provoked nothing.
+await test("A creature's reach for an opportunity attack is its longest melee reach, made with the attack that reaches there.", async () => {
+  const goblin = await stage();
+  kit.setEnemy(goblin.id, { stats: { attacks: [
+    { name: "Bite", toHit: 6, damage: "1d10+4", type: "piercing", mode: "melee", reach: 10 },
+    { name: "Tail", toHit: 6, damage: "1d8+4", type: "bludgeoning", mode: "melee", reach: 15 },
+  ] } });
+  try {
+    kit.place(goblin.id, 10, 4);
+    kit.place(kara.id, 13, 4);
+    world.signIn({ id: kara.userId });
+    const response = await moveRoute.POST(
+      new Request(`http://odm.test/api/campaigns/${world.campaignId}/battle-map/move`, { method: "POST", body: JSON.stringify({ x: 15, y: 4 }) }),
+      { params: Promise.resolve({ campaignId: world.campaignId }) },
+    );
+    const body = await response.json();
+    assert.equal(response.status, 200, JSON.stringify(body));
+    assert.equal(body.opportunityAttacks?.length, 1, `leaving the tail's 15-foot reach drew no opportunity attack: ${JSON.stringify(body.opportunityAttacks)}`);
+  } finally {
+    kit.setEnemy(goblin.id, { stats: { attacks: [{ name: "Scimitar", toHit: 4, damage: "1d6+2", type: "slashing", mode: "melee", reach: 5 }] } });
+  }
+});
+
 // ---- mounting ----
 
 await test("Mounting costs half the rider's speed during their own move; the AI is refused off their turn, the console is not.", async () => {
@@ -219,6 +296,21 @@ await test("Mounting costs half the rider's speed during their own move; the AI 
   assert.equal(off2.ok, true, `the console lost its free hand: ${off2.error}`);
   assert.equal(kit.token(brom.id).movedThisRound, before, "the console's off-turn dismount charged movement");
   assert.doesNotMatch(JSON.stringify(off2.result ?? off2), /movementSpent|costs half their movement/, "the console's uncharged dismount reported movement spent");
+});
+
+// SRD 5.1, Mounting and Dismounting: "costs an amount of movement equal to
+// half your speed". Half of 25 feet is 12.5: three squares of it are spent,
+// and the rider who rounded down kept a square the rule does not leave.
+await test("Mounting costs a 25-foot rider three squares, half their speed rounded up, not two.", async () => {
+  await stage();
+  world.patch(kara.id, { speed: 25 });
+  try {
+    const on = await ai.invoke("mount_up", { characterId: kara.id, mount: "Riding horse" });
+    assert.equal(on.ok, true, on.error);
+    assert.equal(kit.token(kara.id).movedThisRound, 3, "half of 25 feet was charged as 10");
+  } finally {
+    world.patch(kara.id, { speed: 30 });
+  }
 });
 
 await test("Mounting is the rider's move: a stunned rider is refused at the console and the AI's door alike, and nothing is charged.", async () => {

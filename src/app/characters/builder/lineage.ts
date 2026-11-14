@@ -4,6 +4,7 @@
 // scripts/test-lineage-cards.mjs drives every rule here
 // (docs/visual-overhaul-plan.md 7.3 and 7.5).
 
+import { asiPickWords } from "@/lib/srd/race-asi";
 import { GENDERS } from "@/lib/gender";
 import { characterPlaceholder, normalizeGender, raceFamily } from "@/lib/placeholders";
 import type { Ability } from "@/lib/schemas/sheet";
@@ -20,7 +21,7 @@ export type LineageEntry = {
   id: string;
   name: string;
   asi: Partial<Record<Ability, number>>;
-  asiChoice?: { count: number; amount: number };
+  asiChoice?: { count: number; amount: number; amounts?: number[] };
   // A species that lets its player choose (species-variants.ts): each
   // option's bonuses, for the card's chip.
   variants?: { options: Array<{ asi?: Partial<Record<Ability, number>> }> };
@@ -119,6 +120,19 @@ const FAMILY_WORDS: Array<[RegExp, string]> = [
   [/genasi.*water|water.*genasi/, "genasi-water"],
   [/genasi/, "genasi"],
   [/changeling/, "changeling"],
+  // The eleven painted 2026-11-13. A hobgoblin comes before the goblin its
+  // name holds: it is a people of its own, not a goblin.
+  [/triton/, "triton"],
+  [/serpentfolk/, "serpentfolk"],
+  [/kobold/, "kobold"],
+  [/aarakocra/, "aarakocra"],
+  [/hobgoblin/, "hobgoblin"],
+  [/satyr/, "satyr"],
+  [/fairy/, "fairy"],
+  [/owlfolk/, "owlfolk"],
+  [/centaur/, "centaur"],
+  [/rabbitfolk/, "rabbitfolk"],
+  [/shifter/, "shifter"],
   [/bugbear/, "bugbear"],
   [/goblin/, "goblin"],
   [/lizardfolk/, "lizardfolk"],
@@ -189,7 +203,7 @@ const ASI_CHARACTER: Record<Ability, string> = {
   cha: "Commands a room",
 };
 
-export function lineageTagline(entry: Pick<LineageEntry, "asi" | "asiChoice">): string {
+export function lineageTagline(entry: Pick<LineageEntry, "asi" | "asiChoice"> & Partial<Pick<LineageEntry, "variants">>): string {
   const bumps = Object.entries(entry.asi).filter(([, bonus]) => (bonus ?? 0) > 0) as Array<
     [Ability, number]
   >;
@@ -197,7 +211,8 @@ export function lineageTagline(entry: Pick<LineageEntry, "asi" | "asiChoice">): 
     return "Adaptable";
   }
   if (!bumps.length) {
-    return entry.asiChoice ? "Yours to shape" : "";
+    // Placed by the player, or by the subtype picked (a shifter's).
+    return entry.asiChoice || entry.variants?.options.some((option) => option.asi) ? "Yours to shape" : "";
   }
   // Array.sort is stable, so a tie keeps the order the race lists them in.
   const [top] = [...bumps].sort((a, b) => b[1] - a[1]);
@@ -263,7 +278,7 @@ export function asiChips(asi: Partial<Record<Ability, number>>): AsiChip[] {
 // different bonuses say only that the bonus is chosen.
 export function asiChoiceChip(entry: Pick<LineageEntry, "asiChoice" | "variants">): string | null {
   if (entry.asiChoice && entry.asiChoice.count > 0) {
-    return `Choose ${Array.from({ length: entry.asiChoice.count }, () => signed(entry.asiChoice!.amount)).join(" / ")}`;
+    return `Choose ${asiPickWords(entry.asiChoice)}`;
   }
   const shapes = (entry.variants?.options ?? []).map((option) =>
     Object.values(option.asi ?? {})
@@ -288,7 +303,9 @@ export function lineageChoices(entry: LineageEntry): string[] {
   const out: string[] = [];
   if (entry.asiChoice) {
     out.push(
-      `${countWord(entry.asiChoice.count)} ${entry.asiChoice.count === 1 ? "ability" : "abilities"} to raise by ${entry.asiChoice.amount}`,
+      entry.asiChoice.amounts
+        ? `${countWord(entry.asiChoice.count)} abilities to raise, by ${entry.asiChoice.amounts.join(" and ")}`
+        : `${countWord(entry.asiChoice.count)} ${entry.asiChoice.count === 1 ? "ability" : "abilities"} to raise by ${entry.asiChoice.amount}`,
     );
   }
   if (entry.bonusLanguages) {

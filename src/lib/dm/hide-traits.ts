@@ -22,12 +22,13 @@ import { blockedLines } from "@/lib/battlemap/sight-lines";
 import { chebyshev } from "@/lib/battlemap/types";
 import { conditionSeesInvisible } from "@/lib/srd/condition-effect-queries";
 import { normalizeClock } from "@/lib/dm/calendar";
-import { sizeForRace } from "@/lib/srd";
+import { sheetSize } from "@/lib/srd";
 import { holdsFeature } from "@/lib/srd/trait-rules";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { weatherPerceptionRider } from "@/lib/srd/weather";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
+import { vanishesInPlainSight } from "@/lib/srd/genre-b-mystery";
 
 const SIZES = ["tiny", "small", "medium", "large", "huge", "gargantuan"];
 const rank = (size: string | undefined) => {
@@ -51,8 +52,13 @@ function lightlyObscuredByNature(campaign: Campaign, map: { outdoors?: boolean; 
 // creature that can see you clearly"), or null. The board view sends it for
 // the viewer's own token, so the Hand shuts its Hide cards in these words;
 // before it the cards were open on a lit, open field and the engine refused.
-export function hideRefusal(campaign: Campaign, encounterId: string, sheet: CharacterSheet): ToolError | null {
+// `plain`: the verdict with no Vanish, for the Hide that must pay for it.
+export function hideRefusal(campaign: Campaign, encounterId: string, sheet: CharacterSheet, options: { plain?: boolean } = {}): ToolError | null {
   const watcher = seenClearlyDespiteTraits(campaign, encounterId, sheet);
+  // Vanish: "Hide ... even in plain sight" while a use is left (src/lib/srd/genre-b-mystery.ts).
+  if (watcher && !options.plain && vanishesInPlainSight(sheet)) {
+    return null;
+  }
   return watcher
     ? { error: `${sheet.name} cannot hide: ${watcher} sees them clearly. They move out of its sight, behind cover or into darkness first, then hide.`, refused: "rules" }
     : null;
@@ -79,7 +85,7 @@ export function seenClearlyDespiteTraits(
     return null;
   }
   const stealthy = holdsFeature(sheet, "naturally stealthy");
-  const mySize = rank(sizeForRace(sheet.race));
+  const mySize = rank(sheetSize(sheet));
   const tokens = listTokens(map.id);
   // A creature one size larger than the hider standing in the sight lines.
   const screened = (fromX: number, fromY: number) =>
@@ -89,7 +95,7 @@ export function seenClearlyDespiteTraits(
       }
       const other = getSheetById(token.refId);
       const enemy = other ? null : listEnemies(encounterId).find((entry) => entry.id === token.refId);
-      const size = other ? sizeForRace(other.race) : (enemy?.stats.size as string | undefined);
+      const size = other ? sheetSize(other) : (enemy?.stats.size as string | undefined);
       return (
         rank(size) > mySize &&
         blockedLines([{ x: fromX, y: fromY }], [{ x: hider.x, y: hider.y }], (x, y) => x === token.x && y === token.y) > 0

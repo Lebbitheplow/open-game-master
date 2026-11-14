@@ -327,4 +327,112 @@ test("a barbarian 20 at a level 20 table, or one that already holds Primal Champ
   assert.deepEqual(adaptSheetToLevel(barbarian(19, champion), 19, 20).abilities, barbarian(19).abilities);
 });
 
+// Mystic Arcanum (SRD 5.1, Warlock): an arcanum sits beside the Spells Known
+// column, so a level 20 warlock joining a level 13 table keeps its 6th- and
+// 7th-level arcana and the column's twelve spells. The trim read the pact
+// slots' 5th level as the ceiling and dropped every arcanum.
+{
+  const { checklistSpellsOn } = await import("../src/lib/srd/spell-lists.ts");
+  const listOf = (spellLevel) => checklistSpellsOn("warlock").filter((spell) => spell.level === spellLevel).map((spell) => spell.name);
+  const regular = [1, 2, 3, 4, 5].flatMap(listOf).slice(0, 15);
+  const arcana = [6, 7, 8, 9].map((spellLevel) => listOf(spellLevel)[0]);
+  test("a warlock joining below the level it was built keeps each arcanum its new level still has", () => {
+    const warlock = sheet({
+      class: "warlock",
+      subclass: "The Fiend",
+      abilities: { str: 8, dex: 14, con: 14, int: 10, wis: 12, cha: 20 },
+      hitDice: { total: 20, spent: 0 },
+      spellcasting: { ability: "cha", slots: {}, cantrips: ["Eldritch Blast", "Minor Illusion", "Mage Hand", "Prestidigitation"], known: [...regular, ...arcana], prepared: [] },
+    });
+    const known = adaptSheetToLevel(warlock, 20, 13).spellcasting.known;
+    assert.deepEqual(known.filter((name) => arcana.includes(name)), arcana.slice(0, 2), "the 6th- and 7th-level arcana stay, the 8th and 9th go");
+    assert.equal(known.filter((name) => !arcana.includes(name)).length, 12, "the column's twelve spells at 13th");
+  });
+
+  // What a class feature holds on top of the counts stays with it: the
+  // Book of Shadows' three cantrips (Pact of the Tome), Additional Magical
+  // Secrets' two spells (College of Lore). The trim held both to the bare
+  // column.
+  test("a Tome warlock and a Lore bard joining lower keep what their features hold beside the counts", () => {
+    const cantrips = ["Eldritch Blast", "Minor Illusion", "Mage Hand", "Fire Bolt", "Light", "Guidance"];
+    const tome = sheet({
+      class: "warlock",
+      subclass: "The Fiend",
+      abilities: { str: 8, dex: 14, con: 14, int: 10, wis: 12, cha: 18 },
+      hitDice: { total: 6, spent: 0 },
+      features: [{ name: "Pact Boon: Pact of the Tome", source: "choice" }],
+      spellcasting: { ability: "cha", slots: {}, cantrips, known: regular.slice(0, 7), prepared: [] },
+    });
+    assert.deepEqual(adaptSheetToLevel(tome, 6, 4).spellcasting.cantrips, cantrips, "three of the warlock's own and the book's three at 4th");
+    const bardSpells = checklistSpellsOn("bard").filter((spell) => spell.level >= 1 && spell.level <= 4).map((spell) => spell.name).slice(0, 14);
+    const lore = sheet({
+      class: "bard",
+      subclass: "College of Lore",
+      abilities: { str: 8, dex: 14, con: 14, int: 10, wis: 12, cha: 18 },
+      hitDice: { total: 9, spent: 0 },
+      spellcasting: { ability: "cha", slots: {}, cantrips: ["Vicious Mockery", "Light", "Mage Hand"], known: bardSpells, prepared: [] },
+    });
+    assert.equal(adaptSheetToLevel(lore, 9, 8).spellcasting.known.length, 13, "eleven spells known at 8th and Additional Magical Secrets' two");
+  });
+
+  test("a tiefling wizard joining lower keeps Thaumaturgy beside the class's cantrips", () => {
+    const wizard = sheet({
+      class: "wizard",
+      subclass: "School of Evocation",
+      race: "tiefling",
+      abilities: { str: 8, dex: 14, con: 14, int: 18, wis: 12, cha: 10 },
+      hitDice: { total: 4, spent: 0 },
+      spellcasting: { ability: "int", slots: {}, cantrips: ["Thaumaturgy", "Fire Bolt", "Light", "Mage Hand", "Prestidigitation"], known: [], prepared: [], spellbook: [] },
+    });
+    assert.deepEqual(adaptSheetToLevel(wizard, 4, 3).spellcasting.cantrips.sort(), ["Fire Bolt", "Light", "Mage Hand", "Thaumaturgy"].sort(), "three wizard cantrips at 3rd and the race's");
+  });
+}
+// A sheet the library stores lists no class features (the door writes them
+// at read time), only the background's and the improvements' count, and the
+// door writes Primal Champion's points onto a barbarian 20's scores. Read off
+// the feature list alone, such a barbarian joining a level 20 table gained
+// the points twice (Constitution 23 became 24), and one joining below 20
+// kept them and was refused for Strength 24.
+const libraryForm = [{ name: "Shelter of the Faithful (Acolyte)", source: "background" }];
+
+test("a library barbarian 20 joining below 20 gives the points back, and at 20 gains nothing twice", () => {
+  const stored = barbarian(20, libraryForm);
+  stored.abilities = { ...stored.abilities, str: 24, con: 23 };
+  const lower = adaptSheetToLevel(stored, 20, 15);
+  assert.equal(lower.abilities.str, 20);
+  assert.equal(lower.abilities.con, 19);
+  const same = adaptSheetToLevel(stored, 20, 20);
+  assert.equal(same.abilities.str, 24);
+  assert.equal(same.abilities.con, 23, "Primal Champion was added a second time");
+});
+
+test("a library barbarian 19 joining a level 20 table still gains Primal Champion once", () => {
+  const nineteen = barbarian(19, libraryForm);
+  nineteen.abilities = { ...nineteen.abilities, str: 18, con: 16 };
+  const adapted = adaptSheetToLevel(nineteen, 19, 20);
+  assert.equal(adapted.abilities.str, 22);
+  assert.equal(adapted.abilities.con, 20);
+});
+
+// Draconic Resilience: a hit point per sorcerer level, which the door counts
+// (featureHitPoints). The hit points worked out for the new level left it
+// out, so a draconic sorcerer joining a level 1 table was refused for one hit
+// point short, and one joining any other level came in a point per level
+// short of what the rules give.
+test("a draconic sorcerer's hit points at the new level keep Draconic Resilience's point per level", () => {
+  const sorcerer = sheet({
+    class: "sorcerer",
+    subclass: "Draconic Bloodline",
+    abilities: { str: 8, dex: 14, con: 14, int: 10, wis: 12, cha: 17 },
+    features: libraryForm,
+    maxHp: 11 * 4 + 6 + 2 + 11 * 2 + 11,
+  });
+  // Level 1: 6 + 2 (Constitution) + 1.
+  assert.equal(adaptSheetToLevel(sorcerer, 11, 1).maxHp, 9);
+  // Level 5: 9 + 4 x (4 + 2 + 1).
+  assert.equal(adaptSheetToLevel(sorcerer, 11, 5).maxHp, 37);
+  // Any other sorcerer has no such point.
+  assert.equal(adaptSheetToLevel({ ...sorcerer, subclass: "Wild Magic" }, 11, 1).maxHp, 8);
+});
+
 console.log(`character adapt: ${passed} assertions passed.`);

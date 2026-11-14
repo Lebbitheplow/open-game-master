@@ -150,6 +150,32 @@ await test("an invalid manifest is refused and writes nothing", async () => {
   assert.deepEqual(fs.readdirSync(scratch), before, "a refused install still touched the disk");
 });
 
+// A reskin naming an id the creator has no option for is dropped without a
+// word (applyIdReskins renames only what exists), so the installed world
+// would promise a people or a calling no player can find. The workshop's
+// export refuses such a draft (draft-check.ts); a file installed by hand or
+// from a registry is held to the same rule.
+await test("a pack that renames a race, class or background the creator does not offer is refused", async () => {
+  const before = fs.readdirSync(scratch);
+  for (const [bad, named] of [
+    [manifest({ races: [{ id: "no_such_people", name: "Ghosts", blurb: "" }] }), "no_such_people"],
+    [manifest({ classes: [{ id: "no_such_calling", name: "Haunter", blurb: "", castingLabel: null }] }), "no_such_calling"],
+    [manifest({ backgrounds: [{ id: "no_such_past", name: "Drifter", blurb: "" }] }), "no_such_past"],
+    [manifest({ companionRaces: ["no_such_companion"] }), "no_such_companion"],
+  ]) {
+    const result = await installWorldPack(bad);
+    assert.ok(!result.ok, `a pack naming ${named} installed`);
+    assert.equal(result.status, 400);
+    assert.ok(result.error.includes(named), `the refusal does not name ${named}: ${result.error}`);
+  }
+  assert.deepEqual(fs.readdirSync(scratch), before, "a refused install still touched the disk");
+  // The content pack's spelling of a bundled race (hill-dwarf) is the same
+  // race, and installs.
+  const kebab = await installWorldPack(manifest({ id: "kebab_world", races: [{ id: "hill-dwarf", name: "Pileworker", blurb: "" }] }));
+  assert.ok(kebab.ok, kebab.ok ? "" : kebab.error);
+  await removeWorldPack("kebab_world");
+});
+
 await test("a traversal id cannot escape the installed directory", () => {
   // The schema already rejects these, but installedPackPath is the last line
   // of defence and the one whose failure would be an arbitrary file write.

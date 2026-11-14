@@ -294,6 +294,38 @@ await test("a companion recruited as a caster of 5th level holds a whole legal l
   assert.equal(sheet.spellcasting.cantrips.length, 4);
 });
 
+// Mystic Arcanum (SRD 5.1, Warlock): one spell of 6th level at 11th, 7th at
+// 13th, 8th at 15th and 9th at 17th, held beside the Spells Known column. A
+// companion warlock was built and levelled to the column alone.
+await test("a warlock companion recruited at 17th holds one arcanum of each level beside its fourteen spells known", async () => {
+  const world = await table();
+  const { id } = await recruit(world, "warlock", { level: 17 });
+  const sheet = world.sheet(id);
+  assert.deepEqual(spellListProblems(sheet, { bookAllowance: true }), []);
+  const levels = sheet.spellcasting.known.map((name) => checklistSpell(name)?.level);
+  assert.deepEqual([6, 7, 8, 9].map((spellLevel) => levels.filter((level) => level === spellLevel).length), [1, 1, 1, 1], `the arcana: ${sheet.spellcasting.known.join(", ")}`);
+  assert.equal(levels.filter((level) => level <= 5).length, 14, "the column's fourteen at 17th");
+});
+
+await test("a warlock companion levelled from 10th to 11th learns the column's spell and its 6th-level arcanum", async () => {
+  const world = await table();
+  const { id } = await recruit(world, "warlock", { level: 10 });
+  const raised = await raiseTo(world, id, 11);
+  assert.equal(raised.level, 11);
+  const levels = raised.spellcasting.known.map((name) => checklistSpell(name)?.level);
+  assert.equal(levels.filter((level) => level === 6).length, 1, `a 6th-level arcanum: ${raised.spellcasting.known.join(", ")}`);
+  assert.equal(levels.filter((level) => level <= 5).length, 11);
+});
+
+await test("a College of Lore companion holds Additional Magical Secrets' two spells beside the bard's count", async () => {
+  const world = await table();
+  const { id } = await recruit(world, "bard", { level: 6 });
+  const sheet = world.sheet(id);
+  if (sheet.subclass !== "College of Lore") return;
+  assert.deepEqual(spellListProblems(sheet, { bookAllowance: true }), []);
+  assert.equal(sheet.spellcasting.known.length, 11, "nine spells known at 6th and the college's two");
+});
+
 // ---- the classes of other settings ----
 
 await test("every setting class makes a companion, and the companion levels", async () => {

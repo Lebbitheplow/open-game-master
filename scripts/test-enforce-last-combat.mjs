@@ -253,6 +253,21 @@ await test("An enemy with Magic Weapons makes a magical opportunity attack: Ston
   assert.equal(world.sheet(fighter.id).currentHp, 54);
 });
 
+// SRD 5.1, Bane: "Whenever a target that fails this saving throw makes an
+// attack roll or a saving throw before the spell ends, the target must roll
+// a d4 and subtract the number rolled." The opportunity attack read only the
+// conditions on both sides, never a spell's die on the swinger.
+await test("A Baned enemy's opportunity attack takes the d4 off its roll, as its attacks on its own turn do.", async () => {
+  const enemy = await leaveReach(fighter, { name: "Slam", toHit: 0, damage: "1d6", type: "bludgeoning", mode: "melee", reach: 5 });
+  kit.setEnemy(enemy.id, { conditions: ["bane"], conditionMeta: { bane: { rounds: 10 } } });
+  // A 10 meets AC 10; Bane's 1 brings it to 9.
+  world.dice(10, 1, 4);
+  const moved = await walk(fighter, 5, 3);
+  world.clearDice();
+  assert.equal(moved.status, 200, JSON.stringify(moved.body));
+  assert.equal(world.sheet(fighter.id).currentHp, 60, "the swing hit as if no Bane were on it");
+});
+
 // ---- a two-type blow with no rider data (R3) ----
 
 await test("A stored attack with two damage types and no rider data still splits its blow by type: the tiefling halves only the fire.", async () => {

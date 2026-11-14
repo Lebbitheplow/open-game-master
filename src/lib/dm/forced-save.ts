@@ -8,21 +8,29 @@
 // request_roll (src/lib/dm/invoke-roll.ts), group_check and aoe_damage call
 // in here; cast_at_player and cast_at_enemy are meant to.
 
+import { magnumOpusBinds } from "@/lib/dm/genre-gb-alchemy";
+import { ruinsInitiative } from "@/lib/dm/genre-gb-ruins";
+import { ashenHymnSources, explodedDie } from "@/lib/dm/genre-cc-a-saves";
 import { beguilingBroken } from "@/lib/dm/mt-fb-arrow-riders";
 import { takeCounteredSave } from "@/lib/dm/slayers-counter-mark";
 import { spiritTotemRollAdvantage } from "@/lib/dm/spirit-totem";
 import { landsStrideClaim } from "@/lib/dm/mt-srd-druid";
 import { noteShift, takeSaveHelp, takeShift } from "@/lib/dm/chronal-shift";
 import { takeFate } from "@/lib/dm/fate-turn";
+import { takeLineage } from "@/lib/dm/lineage-watch";
 import { recordInspiredSuccess, recordSave } from "@/lib/dm/last-save";
+import { lentRolls } from "@/lib/dm/genre-a-auras";
+import { counterIntrusion } from "@/lib/dm/genre-a-cyberpunk-defenses";
 import { diehardSaveAdvantage, shieldMasterSaveBonus } from "@/lib/srd/feat-combat";
-import { LUCK_SPEND } from "@/lib/dm/roll-riders";
+import { LUCK_SPEND, INSPIRATION_SPEND, spendInspirationCounter } from "@/lib/dm/roll-riders";
 import { spendLuckCounter } from "@/lib/srd/class-resources";
 import { allocateSeq, getCampaignById, type Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import type { EncounterEnemy } from "@/lib/db/encounters";
 import { insertRoll } from "@/lib/db/rolls";
-import { getSheetById } from "@/lib/db/sheets";
+import { getSheetById, listSheets } from "@/lib/db/sheets";
+import { isConditionNamed } from "@/lib/srd/feature-names";
+import { spendWhisperedName } from "@/lib/dm/genre-gh-names";
 import { patchSheetAudited, type AuditActor } from "@/lib/dm/audited-patch";
 import { currentTurnId } from "@/lib/dm/job-control";
 import { d20Expression, rollExpression, type RollResult } from "@/lib/dice";
@@ -32,12 +40,12 @@ import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
 import { allySaveAura } from "@/lib/dm/aura";
 import { allyInitiativeAura } from "@/lib/dm/divine-auras";
+import { genreBSaveAuras } from "@/lib/dm/genre-b-auras";
 import { mergeAdvantage, removeConditions, rollDerivation } from "@/lib/dm/condition-logic";
 import { effectOutcome, rollEffectExtras } from "@/lib/dm/effect-tools";
 import { resolveRollExpression, type RollArgs } from "@/lib/dm/rolls";
 import { listedAgainst, type SaveAgainst } from "@/lib/dm/roll-about";
 import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
-import { INSPIRATION_SPEND, spendInspirationCounter } from "@/lib/dm/roll-riders";
 import { inDirectSunlight } from "@/lib/dm/sunlight";
 import { obscuredFor } from "@/lib/dm/zone-rules";
 import { rollerLight } from "@/lib/dm/place-light";
@@ -64,6 +72,9 @@ import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { bondRider, bondStamped } from "@/lib/dm/emboldening-bond";
 import { BOND_SPEND } from "@/lib/dm/emboldening-bond-logic";
 import { magicalStrengthSave } from "@/lib/dm/infusion-charges";
+import { BASELINE_READINGS, horrorCultSave } from "@/lib/srd/genre-a-horror-holds";
+import { nemesisClaim, treatmentUndoes } from "@/lib/dm/genre-b-mystery-dossier";
+import { huntedInstinctsAdvantage } from "@/lib/dm/genre-gh-hunted";
 
 // Everything resolveRollExpression cannot read for itself, for one roll of
 // one character: the aura over them (saves only), the lasting effects on
@@ -72,7 +83,10 @@ export function rollExtrasFor(campaign: Campaign, sheet: CharacterSheet, kind: s
   const aura = kind === "saving_throw" ? allySaveAura(campaign.id, sheet) : null;
   // An ally's Aura of the Sentinel on initiative (divine-auras.ts): every
   // initiative roll comes through here, so the ally's bonus is read once.
-  const sentinel = kind === "initiative" ? allyInitiativeAura(campaign.id, sheet) : null;
+  const sentinelAura = kind === "initiative" ? allyInitiativeAura(campaign.id, sheet) : null;
+  // Trap Eye's +2 in ruins rides the same bonus (genre-gb-ruins.ts).
+  const ruins = kind === "initiative" ? ruinsInitiative(campaign.id, sheet) : null;
+  const sentinel = sentinelAura || ruins ? { bonus: (sentinelAura?.bonus ?? 0) + (ruins?.bonus ?? 0), note: [sentinelAura?.note, ruins?.note].filter(Boolean).join("; ") } : null;
   // Exalted Champion's allies (exalted-aura.ts): advantage on Wisdom and death saves.
   const exalted = kind === "saving_throw" ? exaltedAllyAdvantage(campaign.id, sheet) : null;
   return {
@@ -81,7 +95,12 @@ export function rollExtrasFor(campaign: Campaign, sheet: CharacterSheet, kind: s
     // A Spirit Totem's aura the roller stands in (spirit-totem.ts).
     ...(kind === "saving_throw" || kind === "skill_check" || kind === "ability_check" ? { totemAdvantage: spiritTotemRollAdvantage(campaign.id, sheet) } : {}),
     ...(sentinel ? { initiativeBonus: sentinel.bonus, initiativeNote: sentinel.note } : {}),
-    ...rollEffectExtras(campaign.id, sheet.id, kind),
+    // The genre classes' auras on saves and checks (src/lib/dm/genre-a-auras.ts).
+    ...(kind === "saving_throw" || kind === "skill_check" || kind === "ability_check" ? { lent: lentRolls(campaign.id, sheet) } : {}),
+    // The genre auras an ally holds (Steadying Presence, Fear No Rust):
+    // rolls.ts adds them to a save against what each names.
+    ...(kind === "saving_throw" ? { saveAuras: genreBSaveAuras(campaign.id, sheet) } : {}),
+    ...withHunted(rollEffectExtras(campaign.id, sheet.id, kind), kind === "initiative" ? huntedInstinctsAdvantage(campaign.id, sheet) : null),
     encumbrance: campaign.gameSettings.variantRules.encumbrance,
     // Sunlight Sensitivity reads the board's sky (src/lib/dm/sunlight.ts).
     sunlight: hasSunlightSensitivity(sheet) && inDirectSunlight(campaign.id),
@@ -105,6 +124,12 @@ export function rollExtrasFor(campaign: Campaign, sheet: CharacterSheet, kind: s
     // (prey-escape.ts); rolls.ts adds it to a check named against the hold.
     escapeDie: kind === "skill_check" || kind === "ability_check" ? preyEscapeDie(sheet) : null,
   };
+}
+
+// Hunted Instincts' advantage on initiative joins the lasting effects' merge
+// (src/lib/dm/genre-gh-hunted.ts), so a disadvantage there still cancels it.
+function withHunted<T extends { effectAdvantage?: boolean; effectNote?: string }>(effects: T, hunted: string | null): T {
+  return hunted ? { ...effects, effectAdvantage: true, effectNote: [effects.effectNote, hunted].filter(Boolean).join("; ") } : effects;
 }
 
 // The proficiencies of the character whose Help this one holds.
@@ -162,6 +187,17 @@ export function spendRollCarriers(campaignId: string, sheetId: string, spent: st
     delta: { resource: carriers.map(carrierWords).join(" and "), spent: 1 },
     actor: actor ?? (currentTurnId() ? "dm" : "player"),
   });
+  // Baseline Readings is the party's one advantage: spent by one, it is gone
+  // from them all (genre-a-horror-holds.ts).
+  if (carriers.some((carrier) => isConditionNamed(carrier, BASELINE_READINGS))) {
+    for (const other of listSheets(campaignId)) {
+      const held = other.id === sheet.id ? [] : other.conditions.filter((entry) => isConditionNamed(entry, BASELINE_READINGS));
+      if (held.length) {
+        const rest = removeConditions(other.conditions, other.conditionMeta, held);
+        patchSheetAudited(campaignId, other.id, { conditions: rest.conditions, conditionMeta: rest.meta }, { kind: "use_resource", reason: "spent on a roll", delta: { resource: "Baseline Readings", spent: 1 }, actor: actor ?? (currentTurnId() ? "dm" : "player") });
+      }
+    }
+  }
 }
 
 // A held Bardic Inspiration or Dark One's Own Luck die on a roll that cannot
@@ -192,7 +228,9 @@ export function settleHeldDie(campaignId: string, sheetId: string, outcome: Roll
       continue;
     }
     const bard = held === heldBardicDie && sheet ? bardOfHeldDie(sheet) : null;
-    settled = withBonusDie(settled, { sides: sidesOf(die.die), value: rollExpression(`1${die.die}`).total, kept: true });
+    // The Final Movement: a Requiem die its dirgesinger gave explodes (genre-cc-a-saves.ts).
+    const exploded = held === heldBardicDie ? explodedDie(sheet, die.condition, die.die) : null;
+    settled = withBonusDie(settled, { sides: sidesOf(die.die), value: exploded ?? rollExpression(`1${die.die}`).total, kept: true });
     // Unfailing Inspiration: a die that left the roll short is kept.
     if (!sheet || !unfailingDieKept(sheet, die.condition, settled.total, dc)) {
       spendRollCarriers(campaignId, sheetId, die.condition);
@@ -362,7 +400,8 @@ export function rollCharacterSave(
   // Diehard: advantage against what would exhaust them.
   const diehard = diehardSaveAdvantage(sheet, resists?.against);
   // Land's Stride: advantage against Entangle and its kind (mt-srd-druid.ts).
-  const claimed = claim ?? (diehard ? { advantage: "advantage" as const, reason: "Diehard: advantage against exhaustion" } : landsStrideClaim(sheet, detail));
+  // Nemesis Study: a save the detective's nemesis forces (genre-b-mystery-dossier.ts).
+  const claimed = claim ?? horrorCultSave(sheet, resists, from) ?? (diehard ? { advantage: "advantage" as const, reason: "Diehard: advantage against exhaustion" } : null) ?? nemesisClaim(campaign.id, sheet, from) ?? landsStrideClaim(sheet, detail);
   const waits = heldDieWaits(sheet, dc);
   const resolved = resolveRollExpression(
     {
@@ -412,6 +451,8 @@ export function rollCharacterSave(
   }
   // Convergent Future or Bend Luck set on this save at the stop (fate-turn.ts).
   outcome = takeFate(campaign.id, purpose, sheet.name, outcome, dc)?.outcome ?? outcome;
+  // Saving Face, Lucky Footwork or Bountiful Luck set on it (lineage-watch.ts).
+  outcome = takeLineage(campaign.id, purpose, sheet.name, outcome, { dc }, ability)?.outcome ?? outcome;
   // Flash of Genius or Favored by the Gods set on this save at the stop.
   const helped = takeSaveHelp(campaign.id, purpose, sheet.name, outcome, dc);
   if (helped) {
@@ -444,6 +485,9 @@ export function rollCharacterSave(
   if (from) {
     recordSave(campaign.id, sheet.id, ability, { id: from.id, name: from.displayName }, outcome.total >= dc, resists?.against, dc);
   }
+  // A netrunner's Counter-Intrusion burns the caster of a spell they saved
+  // against (src/lib/dm/genre-a-cyberpunk-defenses.ts).
+  const intrusion = from && outcome.total >= dc && resists?.magical ? counterIntrusion(campaign, turn, sheet, from) : null;
   return {
     success: outcome.total >= dc,
     total: outcome.total,
@@ -458,6 +502,7 @@ export function rollCharacterSave(
       ...(strength ? [strength.note] : []),
       ...(shiftLine ? [`${shiftLine}${outcome.total})`] : []),
       ...(helped ? [helped.line] : []),
+      ...(intrusion ? [intrusion] : []),
     ],
   };
 }
@@ -562,12 +607,23 @@ export function rollEnemySave(
     noteFailedSave(campaignId, enemy.id, options.record?.detail ?? `${ability.toUpperCase()} save`);
     return { success: false, total: null, autoFailed: true, notes: derivation.notes };
   }
+  // Magnum Opus: a construct cannot resist the machinist's capstone cast
+  // (genre-gb-alchemy.ts). Legendary Resistance is resisting too.
+  const opus = magnumOpusBinds(campaignId, enemy, options.magical === true);
+  if (opus) {
+    noteFailedSave(campaignId, enemy.id, options.record?.detail ?? `${ability.toUpperCase()} save`);
+    return { success: false, total: null, autoFailed: true, notes: [opus] };
+  }
   const effect = effectOutcome(campaignId, { kind: "enemy", id: enemy.id }, "save");
   // A spell a character left on the creature (Bane's d4 off, Bless's d4 on)
   // counts on its saves exactly as it would on a character's.
   const riders = conditionRollRiders(enemy.conditions, "save", ability);
   // Authored subclass features (Magical Ambush, Hound of Ill Omen, Unsettling Words): authored-saves.ts.
   const authored = authoredEnemySave(campaignId, enemy, { channel: options.channel, magical: options.magical, damageType: options.damageType });
+  // Whispered Names: its first save this fight against the occultist who
+  // knows its name is at disadvantage (genre-gh-names.ts).
+  const namer = options.origin && "ref" in options.origin ? getSheetById(options.origin.ref) : null;
+  const named = spendWhisperedName(getActiveEncounter(campaignId), namer, enemy.id);
   const resistsMagic = options.magical === true && hasTrait(enemy.stats, "magicResistance");
   const against = conditionSaveLean(enemy.stats, options.against);
   // Sunlight Weakness: its saves are at disadvantage in sunlight.
@@ -583,8 +639,11 @@ export function rollEnemySave(
     ...(sunWeak ? ["disadvantage" as const] : []),
     ...(options.advantage ? ["advantage" as const] : []),
     ...(options.disadvantage ? ["disadvantage" as const] : []),
+    ...(named ? ["disadvantage" as const] : []),
     ...riders.advantageSources,
     ...authored.sources,
+    // Ashen Hymn: the first save against fear each turn beside the chant (genre-cc-a-saves.ts).
+    ...ashenHymnSources(campaignId, enemy, options.against),
   ]);
   const purpose = { roller: "enemy" as const, kind: "save" as const, who: enemy.displayName };
   const expression = `${d20Expression(saveModFor(enemy.stats, ability) + effect.bonus + covered, advantage)}${riders.diceSuffix}`;
@@ -615,8 +674,14 @@ export function rollEnemySave(
     });
     options.record.turn?.rollIds.push(roll.id);
   }
-  const made = outcome.total >= dc;
-  const resisted = !made && options.resist === true && spendLegendaryResistance(campaignId, enemy.id);
+  // An alienist's treatment undoes the save (genre-b-mystery-dossier.ts): as
+  // if it rolled a 1, or not to be resisted at all.
+  const undone = treatmentUndoes(campaignId, enemy, options.magical === true);
+  if (undone?.face && outcome.natural !== undefined) {
+    outcome = { ...outcome, total: outcome.total - outcome.natural + undone.face };
+  }
+  const made = !undone?.hard && outcome.total >= dc;
+  const resisted = !made && !undone?.hard && options.resist === true && spendLegendaryResistance(campaignId, enemy.id);
   if (!made && !resisted) {
     noteFailedSave(campaignId, enemy.id, options.record?.detail ?? `${ability.toUpperCase()} save`);
   }
@@ -635,6 +700,7 @@ export function rollEnemySave(
       ...coverNote(covered),
       ...riders.notes,
       ...authored.notes,
+      ...(undone ? [undone.note] : []),
       ...(shiftedBy ? [`${shiftedBy}'s Chronal Shift: rolled again (${firstTotal} became ${outcome.total})`] : []),
     ],
   };

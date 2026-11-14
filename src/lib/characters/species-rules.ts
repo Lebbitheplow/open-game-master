@@ -30,7 +30,14 @@ function workshopRow(id: string) {
 function optionFor(raceId: string) {
   if (raceId.startsWith("homebrew:")) {
     const row = workshopRow(raceId);
-    return row ? packRaceOptions([row], [raceId])[0] : undefined;
+    if (row) {
+      return packRaceOptions([row], [raceId])[0];
+    }
+    // A workshop shade's Living Origin, "homebrew:<id>-dwarf-origin": the
+    // entry's own id, then the origin among its options.
+    const origin = /^(homebrew:.+?)-[a-z-]+-origin$/.exec(raceId);
+    const base = origin ? workshopRow(origin[1]) : null;
+    return base ? packRaceOptions([base]).find((entry) => entry.id === raceId) : undefined;
   }
   const rows = listRaces({ limit: 500 }).map((row) => ({
     slug: row.slug,

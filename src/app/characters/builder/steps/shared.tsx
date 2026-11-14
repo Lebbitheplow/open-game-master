@@ -212,8 +212,10 @@ export function PickPill({
   label?: string;
   children: ReactNode;
 }) {
+  // A finger's size on a phone (AGENTS.md): the pill was 34 px tall there,
+  // in every tool, skill and kit pick of the builder.
   const shell = cn(
-    "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs transition-colors duration-150",
+    "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs transition-colors duration-150 pointer-coarse:min-h-10",
     disabled
       ? "border-stone-800 bg-stone-900/60 text-stone-500"
       : selected
@@ -240,7 +242,7 @@ export function PickPill({
         onClick={onClick}
         disabled={disabled}
         aria-pressed={selected}
-        className="disabled:cursor-not-allowed"
+        className="disabled:cursor-not-allowed pointer-coarse:min-h-10"
       >
         {children}
       </button>

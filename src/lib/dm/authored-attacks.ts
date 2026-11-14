@@ -116,7 +116,7 @@ export function secondWeaponProblem(sheet: CharacterSheet, weapon: string | unde
   if (!budget) {
     return { error: `The second ${natural.weapon.name.toLowerCase()} is a bonus action on ${sheet.name}'s own turn; it is not their turn. What they declared waits for their turn.`, refused: "rules" };
   }
-  if (budget.attacksMade < 1 || !budget.lightMeleeAttack) {
+  if (!natural.weapon.bonusAlone && (budget.attacksMade < 1 || !budget.lightMeleeAttack)) {
     return { error: `The second ${natural.weapon.name.toLowerCase()} follows an attack with the first on the same turn; ${sheet.name} attacks with it first.`, retry: true };
   }
   return null;

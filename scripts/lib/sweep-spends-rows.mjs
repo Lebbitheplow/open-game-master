@@ -97,6 +97,8 @@ export async function tableRows(rig) {
       // holder's own option chosen again changes nothing and is refused, so
       // the change is opened by the casting its row names.
       ...(does?.kind === "choose" && does.changeAfterCast ? ["the holder cast a spell that opens the choice"] : []),
+      // A cure ends a condition someone carries (src/lib/dm/genre-b-cure.ts): the holder carries the first it names.
+      ...(does?.kind === "cure" && !does.every ? [`condition: ${does.ends[0]}`] : []),
       ...(does?.types?.length && (does.kind === "save_effect" || does.kind === "save_area") ? [`the foe is ${does.types[0]}`] : []),
       ...(item?.usedBy === "inspired" ? ["the ally inspired"] : []),
     ];

@@ -19,6 +19,12 @@ import { COMBAT_CONDITION_EFFECTS } from "@/lib/srd/combat-rows";
 import { AUTHORED_CONDITION_ROWS } from "@/lib/srd/authored-conditions";
 import { AFFLICTION_CONDITION_EFFECTS } from "@/lib/srd/affliction-conditions";
 import { LAST_CONDITION_EFFECTS } from "@/lib/srd/condition-effects-last";
+import { GENRE_A_CONDITIONS } from "@/lib/srd/genre-a-conditions";
+import { GENRE_B_CONDITION_EFFECTS } from "@/lib/srd/genre-b-conditions";
+import { GENRE_B_MYSTERY_CONDITION_EFFECTS } from "@/lib/srd/genre-b-mystery-conditions";
+import { GENRE_B_PA_CONDITION_EFFECTS } from "@/lib/srd/genre-b-post-apocalyptic-conditions";
+import { GENRE_B_STEAMPUNK_CONDITION_EFFECTS } from "@/lib/srd/genre-b-steampunk-conditions";
+import { GENRE_GB_CONDITION_EFFECTS } from "@/lib/srd/genre-gb-conditions";
 import { NUMBERED_CONDITION_EFFECTS, STRIKE_CONDITION_EFFECTS } from "@/lib/srd/condition-effects-spells";
 import type { ConditionEffectRow, SaveAbilityId } from "@/lib/srd/condition-effect-types";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -827,6 +833,12 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
   ...AUTHORED_CONDITION_ROWS,
   ...AFFLICTION_CONDITION_EFFECTS,
   ...LAST_CONDITION_EFFECTS,
+  ...GENRE_A_CONDITIONS,
+  ...GENRE_B_STEAMPUNK_CONDITION_EFFECTS,
+  ...GENRE_GB_CONDITION_EFFECTS,
+  ...GENRE_B_CONDITION_EFFECTS,
+  ...GENRE_B_MYSTERY_CONDITION_EFFECTS,
+  ...GENRE_B_PA_CONDITION_EFFECTS,
 ];
 
 // The registry row a condition name resolves to, or null: a row's term as
@@ -998,6 +1010,9 @@ export function conditionRollRiders(
       if (matchesRollKind(grant, kind, ability)) {
         riders.advantageSources.push("advantage");
         riders.notes.push(`${condition}: advantage`);
+        // Advantage on "the next" roll is spent by it (The Game Afoot, Chorus
+        // of the Dead); before this the condition gave it to every roll.
+        used = true;
       }
     }
     for (const grant of row.disadvantageOn ?? []) {
@@ -1141,12 +1156,14 @@ export function conditionResistances(conditions: string[], options?: { magical?:
 
 // Speed after condition riders: flat bonuses apply first, then the
 // strongest multiplier (haste x2 beats longstrider stacking oddities).
-export function conditionSpeed(conditions: string[], baseSpeed: number): number {
+// `whole`: nothing slows it (Unstoppable: "Your speed cannot be reduced"): a
+// penalty, a slowing multiplier or a lower set speed is passed over.
+export function conditionSpeed(conditions: string[], baseSpeed: number, whole = false): number {
   let speed = baseSpeed;
   let multiplier = 1;
   // A form with a speed of its own (Gaseous Form) replaces the walk.
   const set = activeConditionEffects(conditions).map(({ row }) => row.speedSet).filter((value): value is number => value !== undefined);
-  if (set.length) {
+  if (set.length && !(whole && Math.min(...set) < baseSpeed)) {
     return Math.min(...set);
   }
   // The strongest boost and the strongest slowdown, each counted once (two
@@ -1155,12 +1172,12 @@ export function conditionSpeed(conditions: string[], baseSpeed: number): number 
   let faster = 1;
   let slower = 1;
   for (const { row } of activeConditionEffects(conditions)) {
-    if (row.speedBonus) {
+    if (row.speedBonus && !(whole && row.speedBonus < 0)) {
       speed += row.speedBonus;
     }
     if (row.speedMultiplier !== undefined) {
       faster = Math.max(faster, row.speedMultiplier);
-      slower = Math.min(slower, row.speedMultiplier);
+      slower = whole ? slower : Math.min(slower, row.speedMultiplier);
     }
   }
   multiplier = faster * slower;

@@ -9,7 +9,7 @@ import type { BattleMap } from "@/lib/db/battle-maps";
 import { listSheets } from "@/lib/db/sheets";
 import type { EncounterEnemy } from "@/lib/db/encounters";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { sizeForRace } from "@/lib/srd";
+import { sheetSize } from "@/lib/srd";
 import { occupiedTiles } from "@/lib/battlemap/view";
 import type { Footprint } from "@/lib/battlemap/footprint";
 import type { BattleToken, XY } from "@/lib/battlemap/types";
@@ -33,7 +33,7 @@ export function enemyDrag(campaignId: string, enemy: EncounterEnemy, tokens: Bat
   }
   const factor = dragCostFactor(
     enemy.stats.size,
-    sheets.map((sheet) => ({ refId: sheet.id, name: sheet.name, size: sizeForRace(sheet.race) })),
+    sheets.map((sheet) => ({ refId: sheet.id, name: sheet.name, size: sheetSize(sheet) })),
   );
   return { factor, held };
 }
@@ -49,7 +49,7 @@ export function characterDrag(sheet: CharacterSheet, enemies: EncounterEnemy[], 
     return { error: `${sheet.name} is not grappling anyone on the board, so there is nothing to drag. Move them without drag.`, retry: true };
   }
   const factor = dragCostFactor(
-    sizeForRace(sheet.race),
+    sheetSize(sheet),
     gripped.map((enemy) => ({ refId: enemy.id, name: enemy.displayName, size: enemy.stats.size })),
   );
   return { factor, held };

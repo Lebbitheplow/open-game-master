@@ -23,6 +23,7 @@ const sweep = await openLevelSweep();
 const { subclassNamesFor, subclassLevelFor } = await import("../src/lib/srd/features.ts");
 const { optionSlotsFor } = await import("../src/lib/srd/options.ts");
 const { classListFor } = await import("../src/lib/srd/multiclass.ts");
+const { toolChoiceOf } = await import("../src/lib/srd/tool-choices.ts");
 void optionSlotsFor;
 
 // The subclass of each class whose features open a pick of their own, where
@@ -60,6 +61,10 @@ for (const second of CORE.filter((id) => offered.has(id))) {
     const listed = walk.offers.flatMap((entry) => (entry.choices.featurePicks ?? []).map((slot) => slot.label));
     const choices = walk.sheet.features.filter((feature) => feature.source === "choice").map((feature) => feature.name);
     assert.ok(!listed.length || choices.length, `the offers listed ${listed.join(", ")} and the sheet holds no choice at all`);
+    // A tool the second class's grant leaves to the player (a bard's one
+    // musical instrument) is a named tool on the sheet, never the sentence.
+    const sentences = (walk.sheet.proficiencies.tools ?? []).filter((tool) => toolChoiceOf(tool));
+    assert.deepEqual(sentences, [], `the sheet holds a tool choice as a proficiency: ${JSON.stringify(walk.sheet.proficiencies.tools)}`);
   });
   // The offer against the PATCH, in a row of its own (as the single-class
   // walk keeps it), so a known refusal there hides nothing above.

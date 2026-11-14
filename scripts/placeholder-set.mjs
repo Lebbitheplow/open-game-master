@@ -260,6 +260,19 @@ const RACES = [
   { id: "mutated", name: "Mutated", traits: "a derro with a tentacle-like growth from the shoulder and wild hair" },
   { id: "uncorrupted", name: "Uncorrupted", traits: "an uncorrupted derro with clearer eyes and steadier stance" },
   { id: "gearforged", name: "Gearforged", traits: "a clockwork construct body with gears at the joints and a faceplate" },
+  // Hand-painted by Smoebo, 2026-11-13 (docs/art/species-portraits-2026-11-13.json).
+  // No original sits in data/placeholder-src for these, so --reencode skips them.
+  { id: "triton", name: "Triton", traits: "blue sea-touched skin, finned ears and a scaled mantle" },
+  { id: "serpentfolk", name: "Serpentfolk", traits: "a smooth snake-scaled head with a ridged crown and slit eyes" },
+  { id: "kobold", name: "Kobold", traits: "a small build, a draconic snouted head and short backswept horns" },
+  { id: "aarakocra", name: "Aarakocra", traits: "a raptor head with a hooked beak and feathered shoulders" },
+  { id: "hobgoblin", name: "Hobgoblin", traits: "a soldierly build, long pointed ears, small tusks and banded armour" },
+  { id: "satyr", name: "Satyr", traits: "curling goat horns, pointed ears and a set of pipes" },
+  { id: "fairy", name: "Fairy", traits: "translucent insect wings, pointed ears and a small slight build" },
+  { id: "owlfolk", name: "Owlfolk", traits: "an owl head with a round facial disc, ear tufts and folded wings" },
+  { id: "centaur", name: "Centaur", traits: "a person's torso rising from a horse's body and a bow at the shoulder" },
+  { id: "rabbitfolk", name: "Rabbitfolk", traits: "a rabbit head with long upright ears and a travelling cloak" },
+  { id: "shifter", name: "Shifter", traits: "feral pointed ears, a wild mane of hair and a fur mantle" },
 ];
 
 // Silhouette shorthand for a class: the gear is the whole tell.

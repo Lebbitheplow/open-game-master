@@ -43,4 +43,22 @@ assert.equal(picks[0].message, ancestry[0].message);
 assert.equal(owedHeadline(picks.length), "Three choices left on this step");
 assert.equal(owedHeadline(1), "One choice left on this step");
 assert.equal(owedHeadline(0), null);
+// A setting class grants its skills as a core class does: its count is
+// required at the class step, not a suggestion to scroll past (a netrunner
+// saved with none of its two picks).
+{
+  const { customClassOptions } = await import("../src/lib/characters/options.ts");
+  const netrunner = customClassOptions().find((row) => row.id === "netrunner");
+  assert.ok(netrunner?.skillChoices.count > 0, "the staging: the netrunner picks skills");
+  const state = { chosenSkills: [], subclass: "", stylePicks: [], expertisePicks: [], optionPicks: [] };
+  const derived = { effectiveLevel: 1, primaryLevel: 1, styleSlots: 0, optionSlots: [], proficientSkills: [], expertiseSkills: [] };
+  const blocks = submit.callingBlocks(netrunner, state, derived);
+  assert.ok(
+    blocks.some((entry) => entry.target === "classSkills"),
+    `a netrunner with no skill picked is let through: ${JSON.stringify(blocks)}`,
+  );
+  const picked = submit.callingBlocks(netrunner, { ...state, chosenSkills: netrunner.skillChoices.from.slice(0, netrunner.skillChoices.count) }, derived);
+  assert.ok(!picked.some((entry) => entry.target === "classSkills"), "its picks made, it passes");
+}
+
 console.log("test-builder-owed: ok");

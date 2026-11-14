@@ -11044,12 +11044,9 @@
             }
           ],
           "onHit": {
-            "manual": [
-              "If the target is a creature, it must succeed on a DC 12 Constitution saving throw or be cursed with mummy rot.",
-              "The cursed target can't regain hit points, and its hit point maximum decreases by 10 (3d6) for every 24 hours that elapse.",
-              "If the curse reduces the target's hit point maximum to 0, the target dies, and its body turns to dust.",
-              "The curse lasts until removed by the remove curse spell or other magic."
-            ]
+            "save": "con",
+            "dc": 12,
+            "condition": "cursed (mummy rot)"
           }
         }
       ],
@@ -11106,12 +11103,9 @@
             }
           ],
           "onHit": {
-            "manual": [
-              "If the target is a creature, it must succeed on a DC 16 Constitution saving throw or be cursed with mummy rot.",
-              "The cursed target can't regain hit points, and its hit point maximum decreases by 10 (3d6) for every 24 hours that elapse.",
-              "If the curse reduces the target's hit point maximum to 0, the target dies, and its body turns to dust.",
-              "The curse lasts until removed by the remove curse spell or other magic."
-            ]
+            "save": "con",
+            "dc": 16,
+            "condition": "cursed (mummy rot)"
           }
         }
       ],

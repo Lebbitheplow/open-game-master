@@ -11,7 +11,7 @@
 // The counters live in the sheet's resources (src/lib/srd/class-resources.ts:
 // overchannel, signature_spell_1, signature_spell_2).
 
-import { freeCastResourceId } from "@/lib/srd/feat-spells";
+import { freeCastResourceId, freeCastRestOf, heldFreeCastId } from "@/lib/srd/feat-spells";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
@@ -118,7 +118,7 @@ export function signatureCounter(
 // sheet holds a "Free cast: <spell> (<feat>)" feature for it (so the counter
 // exists), the cast is at the spell's own level, and the use is unspent.
 export function freeCastCounter(
-  sheet: Pick<CharacterSheet, "resources">,
+  sheet: Pick<CharacterSheet, "resources"> & { features?: CharacterSheet["features"] },
   spell: string,
   facts: SpellFacts | null,
   named: number | undefined,
@@ -126,9 +126,19 @@ export function freeCastCounter(
   if (facts && named !== undefined && named !== facts.level) {
     return null;
   }
-  const id = freeCastResourceId(facts?.name ?? spell);
-  const state = sheet.resources?.[id];
-  return state && state.used < state.max ? id : null;
+  // The feature that names the spell says which counter (at will, a short
+  // rest's, a long rest's); one cast at will needs none.
+  const heldId = heldFreeCastId(sheet.features, facts?.name ?? spell) ?? heldFreeCastId(sheet.features, spell);
+  if (heldId && freeCastRestOf(heldId) === "at will") {
+    return heldId;
+  }
+  for (const id of [heldId, freeCastResourceId(facts?.name ?? spell)]) {
+    const state = id ? sheet.resources?.[id] : undefined;
+    if (id && state && state.used < state.max) {
+      return id;
+    }
+  }
+  return null;
 }
 
 // The resources after a Signature Spell is cast.

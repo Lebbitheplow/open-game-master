@@ -42,7 +42,7 @@ export const SPELL_GLYPH_NAMES: Partial<Record<SpellGlyph, string[]>> = {
     "Crown of Madness", "Darkness", "Divine Word", "Draconic Mischief", "Earthbind", "Elemental Bane",
     "Enemies Abound", "Ensnaring Strike", "Enthrall", "Forcecage", "Grasping Vine", "Gust", "Gust of Wind",
     "Hunter's Mark", "Illusory Dragon", "Immovable Object", "Magic Jar", "Planar Binding", "Power Word Kill",
-    "Power Word Pain", "Puppet", "Ray of Enfeeblement", "Reality Break", "Reverse Gravity", "Silence",
+    "Puppet", "Ray of Enfeeblement", "Reality Break", "Reverse Gravity", "Silence",
     "Silvery Barbs", "Sleep", "Snare", "Soul Cage", "Stinking Cloud", "Symbol", "Telekinesis",
     "Temporal Shunt", "Time Stop", "Transmute Rock", "Wall of Sand", "Watery Sphere", "Zone of Truth",
   ],

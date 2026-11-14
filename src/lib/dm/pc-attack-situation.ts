@@ -6,9 +6,9 @@
 // nothing is written and nothing is refused.
 
 import { attackRollExtras } from "@/lib/dm/attack-roll-extras";
+import { whisperedNameHolds } from "@/lib/dm/genre-gh-names";
 import { bondRider } from "@/lib/dm/emboldening-bond";
-import { liftsSmallHeavyPenalty } from "@/lib/srd/feat-combat";
-import { shootsFreelyInMelee } from "@/lib/srd/feat-combat";
+import { liftsSmallHeavyPenalty, shootsFreelyInMelee } from "@/lib/srd/feat-combat";
 import type { Campaign } from "@/lib/db/campaigns";
 import { inDirectSunlight } from "@/lib/dm/sunlight";
 import { hasSunlightSensitivity } from "@/lib/srd/trait-rules";
@@ -20,6 +20,7 @@ import { thrownAtRange } from "@/lib/dm/attack-rules";
 import { attackSightVerdict } from "@/lib/dm/attack-sight";
 import {
   characterFlanks,
+  characterHasPackmate, grovelingAllyNear,
   characterShootsInMelee,
   creatureCover,
   tilesBetween,
@@ -31,7 +32,7 @@ import { pcAttackSpatials } from "@/lib/dm/map-tools";
 import type { FeatureRider } from "@/lib/dm/pc-attack-damage";
 import type { ManeuverPick } from "@/lib/dm/pc-attack-plan";
 import type { BuiltAttack } from "@/lib/dm/pc-attack-profile";
-import { sizeForRace } from "@/lib/srd";
+import { sheetSize } from "@/lib/srd";
 import { wearsUntrainedArmor } from "@/lib/srd/armor";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
 import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
@@ -46,6 +47,7 @@ import { tokenFootprint } from "@/lib/dm/board-reach";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 import { heldHelp } from "@/lib/dm/help-logic";
+import { holdsFeature } from "@/lib/srd/feature-names";
 import { authoredAttackSituation } from "@/lib/dm/authored-hooks";
 import { featUsable } from "@/lib/srd/feat-use";
 import { effectiveAbilities } from "@/lib/srd/magic-items";
@@ -198,6 +200,19 @@ export function attackSituation(input: {
   if (flanking) {
     conditionContext.notes.push("flanking: advantage");
   }
+  // Pack Tactics (a kobold): advantage on an attack roll against a creature
+  // with an ally of the attacker, not incapacitated, within 5 feet of it.
+  // Any attack roll, a spell's too; before this it was a name on the sheet.
+  const packTactics = holdsFeature(sheet, "pack tactics") && characterHasPackmate(encounter.id, sheet.id, enemy.id);
+  if (packTactics) {
+    conditionContext.notes.push("Pack Tactics: an ally beside the target, advantage");
+  }
+  // Grovel, Cower, and Beg: a pleading ally (a kobold) within 10 feet of the
+  // target, which can see it; any attack roll, a spell's too.
+  const groveler = grovelingAllyNear(encounter.id, sheet.id, enemy.id);
+  if (groveler) {
+    conditionContext.notes.push(`${groveler} grovels within 10 feet of the target: advantage`);
+  }
   // A held Help: advantage on this attack, which spends it.
   // Only a Help given against this enemy (src/lib/dm/help-logic.ts).
   const helped = heldHelp(sheet, { enemyId: enemy.id });
@@ -240,7 +255,7 @@ export function attackSituation(input: {
   // Effect conditions on the attacker's own roll: Bless's +1d4, Bane's
   // -1d4, True Strike's one-shot advantage, a mote's inspiration die
   // (attack-roll-extras.ts, which the Hand's cards print from too).
-  const attackRiders = attackRollExtras(sheet, bondRider(campaign.id, sheet));
+  const attackRiders = attackRollExtras(sheet, bondRider(campaign.id, sheet), kind === "weapon" ? profile : undefined);
   // A mark an authored feature leaves for one attack (Entropic Ward's).
   attackRiders.spent.push(...authored.spent);
   conditionContext.notes.push(...attackRiders.notes, ...input.onHitNotes);
@@ -255,7 +270,7 @@ export function attackSituation(input: {
   // SRD heavy property: Small creatures swing oversized weapons at
   // disadvantage.
   // Giant Foe lifts the Small character's heavy-weapon disadvantage (feat-combat.ts).
-  const smallWithHeavy = profile.heavy && sizeForRace(sheet.race) === "Small" && !liftsSmallHeavyPenalty(sheet);
+  const smallWithHeavy = profile.heavy && sheetSize(sheet) === "Small" && !liftsSmallHeavyPenalty(sheet);
   // Sunlight Sensitivity: in direct sunlight, disadvantage (sunlight.ts).
   const sunlit = hasSunlightSensitivity(sheet) && inDirectSunlight(campaign.id);
   if (sunlit) {
@@ -308,6 +323,12 @@ export function attackSituation(input: {
   if (underwater?.note) {
     conditionContext.notes.push(underwater.note);
   }
+  // Whispered Names: the occultist's first spell attack this fight on a
+  // creature whose name they know (genre-gh-names.ts).
+  const whispered = kind === "spell" && whisperedNameHolds(encounter, sheet, enemy);
+  if (whispered) {
+    conditionContext.notes.push("Whispered Names: advantage, knowing its name");
+  }
   // Every source, kept for the plan's last ones (a feint, Powerful
   // Attacker): advantage and disadvantage cancel once over them all.
   const sources: Advantage[] = [
@@ -319,8 +340,11 @@ export function attackSituation(input: {
     ...(input.attackEffect.disadvantage ? ["disadvantage" as const] : []),
     ...(helped ? ["advantage" as const] : []),
     ...(flanking ? ["advantage" as const] : []),
+    ...(packTactics ? ["advantage" as const] : []),
+    ...(groveler ? ["advantage" as const] : []),
     ...(input.recklessAdvantage ? ["advantage" as const] : []),
     ...(input.inspired ? ["advantage" as const] : []),
+    ...(whispered ? ["advantage" as const] : []),
     ...light.sources,
     ...(grappling ? ["advantage" as const] : []),
     ...authored.sources,

@@ -1,0 +1,161 @@
+// The horror classes' features built in the fifth genre-a round (WAVE2 D5:
+// "The genre classes' text is the rule, played on the SRD 5.1 engine"), as
+// the authored layer's rows. Registered with one line in
+// authored-effects-genre-a.ts, so the three genre branches never append to
+// the same array. A row whose rule an engine outside this layer applies names
+// that engine (`heldBy`); the readers find it through
+// src/lib/srd/genre-a-horror-holds.ts.
+//
+// The text each row holds is src/lib/classes/horror-features.json; the ledger
+// (scripts/clauses/genre-horror.json) says which clause each row holds.
+import type { AuthoredEntry, SpendAction } from "@/lib/srd/authored-effects-types";
+import type { GenreRow } from "@/lib/srd/authored-effects-genre";
+
+const held = (classId: string, feature: string, file: string, call: string, more: Partial<AuthoredEntry> = {}): GenreRow => ({
+  feature,
+  classes: [classId],
+  entry: { subclass: "genre", heldBy: { file, call }, ...more },
+});
+
+const counted = (classId: string, feature: string, counter: string, more: Omit<AuthoredEntry, "subclass" | "counter">): GenreRow => ({
+  feature,
+  classes: [classId],
+  entry: { subclass: "genre", counter, ...more },
+});
+
+// A counter whose spend src/lib/dm/genre-a-horror-spends.ts plays.
+const played = (classId: string, feature: string, counter: string, action: SpendAction, play: string, aim?: "enemy" | "ally"): GenreRow =>
+  counted(classId, feature, counter, { spends: [{ name: feature, pool: { id: counter }, action, does: { kind: "horror_spend", play, ...(aim ? { aim } : {}) } }] });
+
+export const GENRE_A_HORROR: GenreRow[] = [
+  // "1/long rest, cast one stigmata of 5th level or lower without a slot at
+  // its maximum effect": the mark lasts the turn, and the cast it pays for
+  // (src/lib/dm/genre-a-casts.ts) clears it at its maximum damage.
+  // "1/rest, cast a 1st-level stigmata without a slot; take 1d4 necrotic that
+  // cannot be reduced", and Deeper Scars: "up to 3rd-level stigmata; the
+  // backlash is 2d4 necrotic". The spend lays the mark and takes the backlash.
+  counted("apostate", "Bleeding Power", "horror_bleeding_power", {
+    spends: [{
+      name: "Bleeding Power",
+      pool: { id: "horror_bleeding_power" },
+      action: "none",
+      does: { kind: "cast_mark", condition: [[1, "bleeding power"], [11, "bleeding power (deeper scars)"]], rounds: 1, backlash: [[1, "1d4"], [11, "2d4"]] },
+    }],
+  }),
+  held("apostate", "Deeper Scars", "src/lib/dm/genre-a-casts.ts", "bleeding power (deeper scars)"),
+  // "1/rest, see through the eyes of a creature you can see for 1 minute (WIS
+  // save negates)": the save is rolled and, failed, the creature carries the
+  // link for the minute; what the occultist sees through it is the GM's.
+  counted("occultist", "Borrowed Eyes", "horror_borrowed_eyes", {
+    spends: [{
+      name: "Borrowed Eyes",
+      pool: { id: "horror_borrowed_eyes" },
+      action: "action",
+      does: { kind: "save_effect", save: "wis", dcAbility: "spell", sight: true, condition: "borrowed eyes", rounds: 10, onFail: "lends the occultist its eyes for a minute" },
+    }],
+  }),
+  // "1/rest, after a creature you have measured attacks, impose disadvantage
+  // on that attack": a reaction to the open attack record; which creatures
+  // were measured is the GM's to keep.
+  counted("parapsychologist", "Predictive Model", "horror_predictive_model", {
+    reactions: [{ name: "Predictive Model", pool: { id: "horror_predictive_model" }, sees: "attacker", does: { kind: "disadv_vs_hit" } }],
+  }),
+  counted("apostate", "Their Power, Your Hands", "horror_their_power_your_hands", {
+    spends: [{ name: "Their Power, Your Hands", pool: { id: "horror_their_power_your_hands" }, action: "none", does: { kind: "buff", condition: "their power, your hands", rounds: 1 } }],
+  }),
+  // ---- the counters src/lib/dm/genre-a-horror-spends.ts plays ----
+  // "Your Rite of Repulsion affects creatures immune to being frightened"
+  held("exorcist", "Voice of Authority", "src/lib/dm/genre-a-horror-spends.ts", "horrorSaveArea"),
+  // "affected creatures take 2d8 radiant when it takes hold"
+  held("exorcist", "Greater Rite", "src/lib/dm/genre-a-horror-spends.ts", "horrorSaveArea"),
+  // "1/long rest, a spirit or fiend that fails against your Rite of Repulsion
+  // is also restrained for 1 minute"
+  // The words are readied; the next rite spends them (horrorSaveArea).
+  counted("exorcist", "Binding Words", "horror_binding_words", {
+    spends: [{ name: "Binding Words", pool: { id: "horror_binding_words" }, action: "none", does: { kind: "buff", condition: "binding words", rounds: 10 } }],
+  }),
+  // "1/long rest, gain temp HP equal to twice your level when combat starts"
+  // Given as initiative is rolled; the counter is passive (genre-a-counter-terms.ts).
+  held("survivor", "Bitter Endurance", "src/lib/dm/genre-a-horror-initiative.ts", "horrorAtInitiative"),
+  // "1/long rest, take two full turns in the first round of combat"
+  played("survivor", "Terminal Focus", "horror_terminal_focus", "none", "terminal_focus"),
+  // "1/long rest, force an invisible, ethereal, or shapechanged creature
+  // within 60 ft into its true visible form for 1 minute (CHA save negates)"
+  played("parapsychologist", "Observer Effect", "horror_observer_effect", "action", "observer_effect", "enemy"),
+  // ---- around an attack: src/lib/dm/genre-a-horror-hits.ts ----
+  // "1/long rest, an attack against a creature at half HP or lower becomes an
+  // automatic critical if it hits": the mark the next such attack spends.
+  counted("slayer", "The Stake Remembers", "horror_the_stake_remembers", {
+    spends: [{ name: "The Stake Remembers", pool: { id: "horror_the_stake_remembers" }, action: "none", does: { kind: "buff", condition: "the stake remembers", rounds: 1 } }],
+  }),
+  // "1/short rest, declare a called shot: on hit, the target also loses one
+  // movement mode, attack, or sense until your next turn": the variant names
+  // which.
+  counted("slayer", "Called Shot", "horror_called_shot", {
+    spends: [{
+      name: "Called Shot",
+      pool: { id: "horror_called_shot" },
+      action: "none",
+      does: { kind: "buff", condition: "called shot", rounds: 1, variants: { movement: "called shot (movement)", attack: "called shot (attack)", sense: "called shot (sense)" } },
+    }],
+  }),
+  // "Your critical hits against your Quarry deal maximum damage"
+  held("slayer", "Deathblow", "src/lib/dm/genre-a-horror-hits.ts", "horrorCritMaximum"),
+  // "Your critical hits against undead or shapechangers stun them until the
+  // end of your next turn (CON save negates...)"
+  held("slayer", "Piercing the Heart", "src/lib/dm/genre-a-horror-hits.ts", "horrorOnHit"),
+  // "After damaging a spirit, your party's attacks against it count as magical for 1 minute"
+  held("parapsychologist", "Ectoplasmic Sample", "src/lib/dm/genre-a-horror-hits.ts", "horrorOnHit, horrorSampled"),
+  // "Your attacks deal +1d8 damage against creatures that have downed an ally this fight"
+  { feature: "No Witnesses Left", classes: ["survivor"], entry: { subclass: "genre", effects: [{ kind: "hit_rider", dice: "1d8", vsCondition: "downed an ally" }] } },
+  // "Your apparatus spells ignore resistance to psychic and force damage"
+  { feature: "Resonance Lock", classes: ["parapsychologist"], entry: { subclass: "genre", effects: [{ kind: "ignore_resist", types: ["psychic", "force"] }] } },
+  // "See invisible and ethereal creatures within 30 ft"
+  held("occultist", "Veilsight", "src/lib/dm/attack-light.ts", "horrorVeilTiles"),
+  // "Won't Die Here recharges on a long rest and also ends one condition on you"
+  held("survivor", "Nine Lives", "src/lib/dm/genre-drop-holds.ts", "horrorDropEnds"),
+  // "Creatures cannot teleport into or out of a 30-ft radius around you unless you allow it"
+  held("occultist", "Warden of the Threshold", "src/lib/dm/map-tools.ts", "horrorTeleportRefusal"),
+  // "While no ally is within 10 ft, +1 AC and advantage on Stealth"
+  held("survivor", "Alone in the Dark", "src/lib/dm/genre-a-horror-board.ts", "horrorAcBonus, horrorLentRolls"),
+  // "Immune to being frightened while any ally can see you"
+  held("survivor", "Seen Worse", "src/lib/dm/genre-a-horror-board.ts", "horrorConditionImmunity"),
+  // "Immune to charm and possession by fiends and aberrations"
+  held("apostate", "Apostasy Complete", "src/lib/dm/genre-a-horror-board.ts", "horrorConditionImmunity"),
+  // "Advantage on saves against madness, charm, and fear from aberrations and fiends"
+  held("occultist", "Ink-Stained Mind", "src/lib/srd/genre-a-horror-holds.ts", "horrorSourcedSaves"),
+  // "Advantage on saves against spells cast by fiends, cultists, and aberrations"
+  held("apostate", "Turncoat's Insight", "src/lib/srd/genre-a-horror-holds.ts", "horrorSourcedSaves, horrorCultSave"),
+  // "Advantage on death saves; stabilizing you takes no check"
+  held("survivor", "Death's Old Acquaintance", "src/lib/dm/death.ts", "horrorDeathSaveAdvantage"),
+  // "While you are the last conscious party member, resist all damage and
+  // your speed doubles"
+  held("survivor", "Sole Survivor", "src/lib/dm/pc-damage.ts", "soleSurvivorResistances"),
+  held("exorcist", "Consecrated Tools", "src/lib/dm/pc-attack-damage.ts", "horrorMagicalAgainst"),
+  // "Double proficiency bonus on Arcana and Religion checks"
+  held("occultist", "Forbidden Lore", "src/lib/dm/rolls.ts", "horrorCheckRider"),
+  // "Advantage on checks to identify or recall lore about undead and
+  // shapechangers": the lore skills, about a creature the GM names.
+  {
+    feature: "Vampiric Scholar",
+    classes: ["slayer"],
+    entry: { subclass: "genre", effects: [{ kind: "check_adv", skills: ["arcana", "history", "religion", "nature", "investigation"], creatures: ["undead", "shapechanger"] }] },
+  },
+  // "Advantage on checks to identify supernatural creatures and effects you
+  // have measured before": the supernatural creature types; whether this one
+  // was measured before is the GM's to keep.
+  {
+    feature: "Documented Phenomena",
+    classes: ["parapsychologist"],
+    entry: {
+      subclass: "genre",
+      effects: [{ kind: "check_adv", skills: ["arcana", "religion", "nature", "investigation"], creatures: ["aberration", "celestial", "elemental", "fey", "fiend", "undead"] }],
+    },
+  },
+];
+
+// Improved Quarry (slayer 11): "Quarry damage rises to +2d6": a second d6 on
+// hits against the marked creature, from the level the class grants it
+// (src/lib/dm/genre-a-strikes.ts reads vsMark). It rides the Quarry row, which
+// authored-effects-genre.ts spreads in.
+export const QUARRY_LADDER = [{ kind: "hit_rider" as const, dice: "1d6", vsMark: "quarry", gate: { level: 11 } }];

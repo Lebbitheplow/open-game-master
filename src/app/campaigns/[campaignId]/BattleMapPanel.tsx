@@ -589,7 +589,8 @@ export function BattleMapPanel({
     }
     // The DM spends no budget, so nothing they measure is ever too far.
     if (held === null && moveMode === "jump" && view.moves) {
-      return jumpRulerFor(view, fromId, to, view.moves.jumpFeet);
+      // A jump die may carry the jump as far as its best face (Mirthful Leaps).
+      return jumpRulerFor(view, fromId, to, view.moves.jumpFeet + (view.moves.jumpDie ?? 0));
     }
     return rulerFor(view, fromId, to, held === null, held === null && moveMode === "drag" ? view.moves?.drag?.factor ?? 1 : 1);
   }, [hover, livePending, held, view, aimingArea, moveMode]);

@@ -209,7 +209,7 @@ test("Spell Sniper adds its cantrip to a caster's list on top of the class's", (
 
 test("the free cast is a feature and a counter the sheet can read back", () => {
   assert.equal(freeCastFeatureName("Misty Step", "Fey Touched"), "Free cast: Misty Step (Fey Touched)");
-  assert.deepEqual(freeCastOf("Free cast: Misty Step (Fey Touched)"), { spell: "Misty Step", feat: "Fey Touched" });
+  assert.deepEqual(freeCastOf("Free cast: Misty Step (Fey Touched)"), { spell: "Misty Step", feat: "Fey Touched", rest: "long" });
   assert.equal(freeCastOf("Racial cantrip: Thaumaturgy"), null);
   assert.equal(freeCastResourceId("Misty Step"), "free_cast_misty_step");
   assert.equal(freeCastSpellOf("free_cast_misty_step"), "misty step");
@@ -297,6 +297,57 @@ test("a sheet stored with the misreadings is mended, and one without them is lef
   assert.equal(mendedFeatSpells({ feats: ["Alert"], features: [], spellcasting: lists }), null);
   // An edit of a sheet restored from before the fix drops it with the feats' spells.
   assert.deepEqual(withoutFeatSpells(lists, []).cantrips, ["Fire Bolt", "Light"]);
+});
+
+// A feat's free cast that comes back on a short rest, a spell cast at will,
+// and a casting ability the text names: before, every free cast was once a
+// long rest, "at will" taught nothing, and a feat that raised no score cast
+// with whatever ability the player happened to name.
+const { populateResources, resourceDef } = await import("../src/lib/srd/class-resources.ts");
+const { freeCastCounter } = await import("../src/lib/dm/caster-features.ts");
+test("a free cast that comes back on a short rest, a spell cast at will, and a named casting ability", () => {
+  const short = featSpellSpec("You can cast misty step once per short rest without a spell slot. Intelligence is your spellcasting ability for this spell.");
+  assert.deepEqual(short.fixedSpells, ["misty step"]);
+  assert.equal(short.freeCast, true);
+  assert.equal(short.freeCastRest, "short");
+  assert.equal(short.fixedAbility, "int");
+  const drow = featSpellSpec("You can cast detect magic at will, without a spell slot. You can also cast levitate and dispel magic, each once per long rest without a spell slot. Charisma is your spellcasting ability for these spells.");
+  assert.deepEqual(drow.atWill, ["detect magic"]);
+  assert.deepEqual([...drow.fixedSpells].sort(), ["detect magic", "dispel magic", "levitate"]);
+  assert.equal(drow.freeCastRest, "long");
+  assert.equal(drow.fixedAbility, "cha");
+  // A choice of three is still a choice, not a named ability.
+  assert.equal(featSpellSpec("Intelligence, Wisdom, or Charisma is your spellcasting ability for these spells.").fixedAbility, null);
+
+  const known = { "misty step": 2, "detect magic": 1, levitate: 2, "dispel magic": 3 };
+  const spellOf = (name) => (known[name.toLowerCase()] ? { name: name.replace(/\b[a-z]/g, (c) => c.toUpperCase()), level: known[name.toLowerCase()], classes: ["wizard"] } : null);
+  const { grants } = featSpellGrants({
+    feats: [
+      { name: "Blink Gift", desc: "You can cast misty step once per short rest without a spell slot. Intelligence is your spellcasting ability for this spell." },
+      { name: "Dark Gift", desc: "You can cast detect magic at will, without a spell slot. You can also cast levitate and dispel magic, each once per long rest without a spell slot. Charisma is your spellcasting ability for these spells." },
+    ],
+    choices: {}, raisedAbility: () => "wis", spellOf, strict: false,
+  });
+  assert.deepEqual(grants.map((grant) => grant.ability), ["int", "cha"], "the named ability wins over the score raised");
+  const features = freeCastFeatures(grants);
+  assert.deepEqual(features.sort(), [
+    "Free cast (at will): Detect Magic (Dark Gift)",
+    "Free cast (short rest): Misty Step (Blink Gift)",
+    "Free cast: Dispel Magic (Dark Gift)",
+    "Free cast: Levitate (Dark Gift)",
+  ]);
+  assert.deepEqual(freeCastOf("Free cast (short rest): Misty Step (Blink Gift)"), { spell: "Misty Step", feat: "Blink Gift", rest: "short" });
+  const resources = populateResources(features.map((name) => ({ name, source: "story" })), 5, {}, {});
+  assert.deepEqual(resources[freeCastResourceId("Misty Step", "short")], { max: 1, used: 0 });
+  assert.equal(resourceDef(freeCastResourceId("Misty Step", "short")).recharge, "short");
+  assert.equal(resourceDef(freeCastResourceId("Levitate")).recharge, "long");
+  assert.equal(Object.keys(resources).some((id) => id.includes("detect_magic")), false, "a spell cast at will has no counter");
+  const sheet = { features: features.map((name) => ({ name })), resources };
+  assert.equal(freeCastCounter(sheet, "Detect Magic", { name: "Detect Magic", level: 1 }, undefined), freeCastResourceId("Detect Magic", "at will"));
+  assert.equal(freeCastCounter(sheet, "Misty Step", { name: "Misty Step", level: 2 }, undefined), freeCastResourceId("Misty Step", "short"));
+  const spent = { ...sheet, resources: { ...resources, [freeCastResourceId("Misty Step", "short")]: { max: 1, used: 1 } } };
+  assert.equal(freeCastCounter(spent, "Misty Step", { name: "Misty Step", level: 2 }, undefined), null, "spent until the short rest");
+  assert.equal(freeCastCounter(spent, "Detect Magic", { name: "Detect Magic", level: 1 }, undefined), freeCastResourceId("Detect Magic", "at will"), "at will, again and again");
 });
 
 console.log(`${passed} checks passed`);

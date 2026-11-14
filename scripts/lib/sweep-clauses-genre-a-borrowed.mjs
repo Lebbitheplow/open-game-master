@@ -11,18 +11,10 @@ import assert from "node:assert/strict";
 const SRC = new URL("../../src/", import.meta.url);
 const key = (name) => name.toLowerCase().replace(/\s*\([^)]*\)\s*$/, "").trim();
 
-export const KNOWN_BORROWED = {
-  "esper::Thought Shield": {
-    rule: '"Your mind cannot be read; +2 on WIS saves." (Thought Shield, src/lib/classes/cyberpunk-features.json): the text gives no damage resistance',
-    where: "src/lib/srd/authored-effects.ts heldAuthored (borrowedRow) and src/lib/srd/feature-effects.ts effectsFor: a genre feature is answered by name",
-    severity: "high",
-  },
-  "exorcist::Voice of Authority": {
-    rule: '"Your Rite of Repulsion affects creatures immune to being frightened." (Voice of Authority, src/lib/classes/horror-features.json): the text grants no reaction attack',
-    where: "src/lib/srd/authored-effects.ts heldAuthored (borrowedRow): the exorcist borrows cleric::Voice of Authority (Order Domain)",
-    severity: "high",
-  },
-};
+// Thought Shield (the Great Old One's resistance, answered by name) and Voice
+// of Authority (the Order Domain's reaction, borrowed) are held now: a genre
+// class never borrows another class's row, and a classed entry wins its name.
+export const KNOWN_BORROWED = {};
 
 export async function borrowedHooks({ rig, test, gap, features, discover, seen }) {
   const fx = await import(new URL("lib/srd/feature-effects.ts", SRC).href);
@@ -35,7 +27,9 @@ export async function borrowedHooks({ rig, test, gap, features, discover, seen }
     for (const feature of features.filter((entry) => entry.classId === classId)) {
       const own = (effect) => effect.kind === "narrative" || (effect.kind === "extra_attack" && /^Attack (twice|three times)/.test(feature.text));
       const answers = [
-        ...typed.filter((entry) => key(entry.feature) === key(feature.name) && !own(entry.effect)).map((entry) => `feature effect ${entry.effect.kind}${entry.effect.types ? ` (${entry.effect.types.join(", ")})` : ""}, from "${String(entry.def.guidance ?? "").slice(0, 90)}"`),
+        // An entry written for this very class (its `classes` names it) is the
+        // feature's own hook, not another class's.
+        ...typed.filter((entry) => key(entry.feature) === key(feature.name) && !own(entry.effect) && !(entry.def.classes ?? []).includes(classId.replace(/_/g, " "))).map((entry) => `feature effect ${entry.effect.kind}${entry.effect.types ? ` (${entry.effect.types.join(", ")})` : ""}, from "${String(entry.def.guidance ?? "").slice(0, 90)}"`),
         ...rows.filter((entry) => key(entry.name) === key(feature.name) && entry.entry?.subclass !== "genre").map((entry) => `the authored row of ${entry.entry?.subclass} (${Object.keys(entry.entry ?? {}).filter((part) => part !== "subclass").join(", ")})`),
       ];
       if (answers.length) found.set(feature.key, answers.join("; "));

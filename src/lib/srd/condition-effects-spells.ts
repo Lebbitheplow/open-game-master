@@ -240,6 +240,24 @@ export const NUMBERED_CONDITION_EFFECTS: ConditionEffectRow[] = [
     attackDisadvantage: true,
   },
   {
+    id: "racked with pain",
+    match: ["racked with pain"],
+    summary:
+      "Power Word Pain: speed no more than 10 feet, disadvantage on attack rolls, ability checks and every save but Constitution; a spell it casts fails unless it first passes a CON save. A CON save at the end of each of its turns ends it.",
+    // The cap reads as the speed itself: no creature the word can reach
+    // walks slower than 10 feet in the SRD bestiary.
+    speedSet: 10,
+    attackDisadvantage: true,
+    disadvantageOn: [
+      { kind: "check" },
+      { kind: "save", ability: "str" },
+      { kind: "save", ability: "dex" },
+      { kind: "save", ability: "int" },
+      { kind: "save", ability: "wis" },
+      { kind: "save", ability: "cha" },
+    ],
+  },
+  {
     id: "shillelagh",
     match: ["shillelagh"],
     summary:

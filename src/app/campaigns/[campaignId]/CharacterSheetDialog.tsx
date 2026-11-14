@@ -15,7 +15,7 @@ import {
   acBreakdownFor,
   computeSheetDerived,
   formatModifier,
-  sizeForRace,
+  sheetSize,
   type DerivedPart,
 } from "@/lib/srd";
 import { attunementSlotsFor } from "@/lib/srd/armor";
@@ -52,6 +52,7 @@ import { ResourceRow, SlotRow, STEP_BUTTON } from "@/components/sheet/SheetCount
 import { namesLookup } from "@/lib/battlemap/condition-notes";
 import { workshopClassName } from "@/lib/classes/workshop-registry";
 import { StoryHopes } from "@/app/campaigns/[campaignId]/StoryHopes";
+import { SheetPersonality } from "@/app/campaigns/[campaignId]/SheetPersonality";
 import { classWordsAfterLevel, isSplit } from "@/lib/characters/class-words";
 
 function titleCase(value: string) {
@@ -143,7 +144,7 @@ export function CharacterSheetDialog({
     strength: sheet.abilities.str,
     equipment: sheet.equipment,
     coins: purseCoins(sheet),
-    size: sizeForRace(sheet.race),
+    size: sheetSize(sheet),
     wearer: sheet,
     // A feature's doubled capacity (Peerless Athlete), as speedFor reads it.
     carryFactor: authoredCarryFactor(sheet),
@@ -387,7 +388,7 @@ export function CharacterSheetDialog({
           </SheetBlock>
 
           <SheetBlock className="mt-4" title="Languages and training">
-            <TrainingLines proficiencies={sheet.proficiencies} />
+            <TrainingLines proficiencies={sheet.proficiencies} conditional={derived.conditionalTraining} />
           </SheetBlock>
 
           {sheet.spellcasting ? (
@@ -607,7 +608,7 @@ export function CharacterSheetDialog({
           ) : null}
           {sheet.features.length ? (
             <SheetBlock className="mt-4" title="Features and traits">
-              <FeatureChips features={sheet.features} classId={sheet.class} subclass={sheet.subclass} />
+              <FeatureChips features={sheet.features} classId={sheet.class} subclass={sheet.subclass} background={sheet.background} />
               <FeatureChoicePicker sheet={sheet} mine={mine} inCombat={inCombat} />
             </SheetBlock>
           ) : null}
@@ -623,6 +624,8 @@ export function CharacterSheetDialog({
               <p className="whitespace-pre-wrap font-serif text-sm leading-relaxed text-stone-300">{sheet.backstory}</p>
             </SheetBlock>
           ) : null}
+
+          <SheetPersonality sheet={sheet} mine={mine} />
 
           {sheet.isCompanion ? null : <StoryHopes sheet={sheet} mine={mine} />}
 

@@ -2,6 +2,7 @@
 // fight and outside the party's own sheets. Names match the tool names the
 // AI DM is offered exactly.
 import { NATURAL_TERRAINS, type NaturalTerrain } from "@/lib/dm/roll-about";
+import { CONVEYANCES, type Conveyance } from "@/lib/srd/travel";
 import { CHECK_KEY_FORM } from "@/lib/dm/catalog-roll";
 import { DEED_SEVERITIES } from "@/lib/dm/companion-values-logic";
 
@@ -25,6 +26,10 @@ import { WHISPER_MAX_CHARS } from "@/lib/dm/whisper-limits";
 // The Travel form's names for the kinds of land Natural Explorer reads: one
 // for each, so a kind added to NATURAL_TERRAINS fails the build here.
 const LAND_LABELS: Record<NaturalTerrain, string> = { arctic: "Arctic", coast: "Coast", desert: "Desert", forest: "Forest", grassland: "Grassland", mountain: "Mountain", swamp: "Swamp", underdark: "Underdark" };
+
+// The Travel form's names for what the party rides in: one for each, so a
+// vehicle added to CONVEYANCES fails the build here.
+const CONVEYANCE_LABELS: Record<Conveyance, string> = { wagon: "Wagon", carriage: "Carriage", cart: "Cart", chariot: "Chariot", sled: "Sled", rowboat: "Rowboat", keelboat: "Keelboat", longship: "Longship", "sailing ship": "Sailing ship", galley: "Galley", warship: "Warship" };
 
 // The console form's words for a deed's severity (issue 503).
 const SEVERITY_LABELS: Record<(typeof DEED_SEVERITIES)[number], string> = { minor: "Minor", serious: "Serious", atrocity: "Atrocity" };
@@ -132,6 +137,9 @@ export const WORLD_ADJUDICATIONS: CatalogEntry[] = [
           { value: "fast", label: "Fast" },
         ],
       },
+      // Riders aboard are carried, not marching (world-tools.ts travel
+      // `aboard`): an older host drops it unread and counts a forced march.
+      { name: "aboard", label: "Riding in", kind: "select", options: CONVEYANCES.map((value) => ({ value, label: CONVEYANCE_LABELS[value] })), help: "Leave blank on foot or horseback. Riders aboard a vehicle make no forced-march saves; a boat or ship goes at its own speed.", host: { feature: "carriedTravel" } },
       { name: "characterIds", label: "Who travels", kind: "characters", help: "Leave empty for the whole party." },
       { name: "water", label: "Water to be found", kind: "select", options: [{ value: "plenty", label: "Plenty" }, { value: "half", label: "Half (DC 15 CON a day)" }, { value: "none", label: "None" }], help: "Holds until set to plenty.", variant: "supplies" },
       MEAL_FIELD,

@@ -1,0 +1,861 @@
+{
+ "_source": "Every race row of the content pack outside the bundled documents (Tome of Heroes, Open5e), copied from data/content/open5e.sqlite as the content index serves it, cut to the fields the builder reads.",
+ "races": [
+  {
+   "slug": "acid-cap",
+   "name": "Acid Cap",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Strength"
+      ],
+      "value": 1
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Strength score increases by 1.",
+    "traits": "***Acid Cap Resistance.*** You have resistance to acid damage.\n\n***Acid Spores.*** When you are hit by a melee weapon attack within 5 feet of you, you can use your reaction to emit acidic spores. If you do, the attacker takes acid damage equal to half your level (rounded up). You can use your acid spores a number of times equal to your Constitution modifier (a minimum of once). You regain any expended uses when you finish a long rest.\n\n***Clan Athlete.*** You have proficiency in the Athletics skill.",
+    "parent_slug": "mushroomfolk"
+   }
+  },
+  {
+   "slug": "alseid",
+   "name": "Alseid",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Dexterity"
+      ],
+      "value": 2
+     },
+     {
+      "attributes": [
+       "Wisdom"
+      ],
+      "value": 1
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Dexterity score increases by 2, and your Wisdom score increases by 1.",
+    "size": "***Size.*** Alseid stand over 6 feet tall and weigh around 300 pounds. Your size is Medium.",
+    "size_raw": "Medium",
+    "speed": {
+     "walk": 40
+    },
+    "speed_desc": "***Speed.*** Alseid are fast for their size, with a base walking speed of 40 feet.",
+    "languages": "***Languages.*** You can speak, read, and write Common and Elvish.",
+    "vision": "***Darkvision.*** Accustomed to the limited light beneath the forest canopy, you have superior vision in dark and dim conditions. You can see in dim light within 60 feet of you as if it were bright light, and in darkness as if it were dim light. You can't discern color in darkness, only shades of gray.",
+    "traits": "***Alseid Weapon Training.*** You have proficiency with spears and shortbows.\n\n***Light Hooves.*** You have proficiency in the Stealth skill.\n\n***Quadruped.*** The mundane details of the structures of humanoids can present considerable obstacles for you. You have to squeeze when moving through trapdoors, manholes, and similar structures even when a Medium humanoid wouldn't have to squeeze. In addition, ladders, stairs, and similar structures are difficult terrain for you.\n\n***Woodfriend.*** When in a forest, you leave no tracks and can automatically discern true north."
+   }
+  },
+  {
+   "slug": "bhain-kwai",
+   "name": "Bhain Kwai",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Constitution"
+      ],
+      "value": 2
+     },
+     {
+      "attributes": [
+       "Strength"
+      ],
+      "value": 1
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Constitution score increases by 2, and your Strength score increases by 1.",
+    "traits": "***Strong Back.*** Your carrying capacity is your Strength score multiplied by 20, instead of by 15.\n\n***Wetland Dweller.*** You are adapted to your home terrain. Difficult terrain composed of mud or from wading through water up to waist deep doesn't cost you extra movement. You have a swimming speed of 25 feet.",
+    "parent_slug": "minotaur"
+   }
+  },
+  {
+   "slug": "boghaid",
+   "name": "Boghaid",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Wisdom"
+      ],
+      "value": 2
+     },
+     {
+      "attributes": [
+       "Constitution"
+      ],
+      "value": 1
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Wisdom score increases by 2, and your Constitution score increases by 1.",
+    "traits": "***Highlander.*** You are adapted to life at high altitudes, and you suffer no ill effects or penalties from elevations above 8,000 feet.\n\n***Storied Culture.*** You have proficiency in the Performance skill, and you gain proficiency with one of the following musical instruments: bagpipes, drum, horn, or shawm.\n\n***Wooly.*** Your thick, wooly coat of hair keeps you warm, allowing you to function in cold weather without special clothing or gear. You have advantage on saving throws against spells and other effects that deal cold damage.",
+    "parent_slug": "minotaur"
+   }
+  },
+  {
+   "slug": "catfolk",
+   "name": "Catfolk",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Dexterity"
+      ],
+      "value": 2
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Dexterity score increases by 2.",
+    "size": "***Size.*** Catfolk have a similar stature to humans but are generally leaner and more muscular. Your size is Medium.",
+    "size_raw": "Medium",
+    "speed": {
+     "walk": 30
+    },
+    "speed_desc": "***Speed.*** Your base walking speed is 30 feet.",
+    "languages": "***Languages.*** You can speak, read, and write Common.",
+    "vision": "***Darkvision.*** You have a cat's keen senses, especially in the dark. You can see in dim light within 60 feet of you as if it were bright light, and in darkness as if it were dim light. You can't discern color in darkness, only shades of gray.",
+    "traits": "***Cat's Claws.*** Your sharp claws can cut with ease. Your claws are natural melee weapons, which you can use to make unarmed strikes. When you hit with a claw, your claw deals slashing damage equal to 1d4 + your Strength modifier, instead of the bludgeoning damage normal for an unarmed strike.\n\n***Hunter's Senses.*** You have proficiency in the Perception and Stealth skills."
+   }
+  },
+  {
+   "slug": "darakhul",
+   "name": "Darakhul",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Constitution"
+      ],
+      "value": 1
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Constitution score increases by 1.",
+    "size": "***Size.*** Your size is determined by your Heritage Subrace.",
+    "size_raw": "Medium",
+    "speed": {
+     "walk": 30
+    },
+    "speed_desc": "***Speed.*** Your base walking speed is determined by your Heritage Subrace.",
+    "languages": "***Languages.*** You can speak, read, and write Common, Darakhul, and a language associated with your Heritage Subrace.",
+    "vision": "***Darkvision.*** You can see in dim light within 60 feet as though it were bright light and in darkness as if it were dim light. You can't discern color in darkness, only shades of gray.",
+    "traits": "***Hunger for Flesh.*** You must consume 1 pound of raw meat each day or suffer the effects of starvation. If you go 24 hours without such a meal, you gain one level of exhaustion. While you have any levels of exhaustion from this trait, you can't regain hit points or remove levels of exhaustion until you spend at least 1 hour consuming 10 pounds of raw meat.\n\n***Imperfect Undeath.*** You transitioned into undeath, but your transition was imperfect. Though you are a humanoid, you are susceptible to effects that target undead. You can regain hit points from spells like cure wounds, but you can also be affected by game effects that specifically target undead, such as a cleric's Turn Undead feature. Game effects that raise a creature from the dead work on you as normal, but they return you to life as a darakhul. A true resurrection or wish spell can restore you to life as a fully living member of your original race.\n\n***Powerful Jaw.*** Your heavy jaw is powerful enough to crush bones to powder. Your bite is a natural melee weapon, which you can use to make unarmed strikes. When you hit with it, your bite deals piercing damage equal to 1d4 + your Strength modifier, instead of the bludgeoning damage normal for an unarmed strike.\n\n***Sunlight Sensitivity.*** You have disadvantage on attack rolls and on Wisdom (Perception) checks that rely on sight when you, the target of your attack, or whatever you are trying to perceive is in direct sunlight.\n\n***Undead Resilience.*** You are infused with the dark energy of undeath, which frees you from some frailties that plague most creatures. You have resistance to necrotic damage and poison damage, you are immune to disease, and you have advantage on saving throws against being charmed or poisoned. When you finish a short rest, you can reduce your exhaustion level by 1, provided you have ingested at least 1 pound of raw meat in the last 24 hours (see Hunger for Flesh).\n\n***Undead Vitality.*** You don't need to breathe, and you don't sleep the way most creatures do. Instead, you enter a dormant state that resembles death, remaining semiconscious, for 6 hours a day. While dormant, you have disadvantage on Wisdom (Perception) checks. After resting in this way, you gain the same benefit that a human does from 8 hours of sleep.\n\n***Heritage Subrace.*** You were something else before you became a darakhul. This heritage determines some of your traits. Choose one Heritage Subrace below and apply the listed traits."
+   }
+  },
+  {
+   "slug": "delver",
+   "name": "Delver",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Strength"
+      ],
+      "value": 1
+     },
+     {
+      "attributes": [
+       "Dexterity"
+      ],
+      "value": 1
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Strength or Dexterity score increases by 1.",
+    "traits": "***Rapport with Insects.*** Your caste's years of working alongside the giant spiders and beetles that your people utilized in building and defending cities has left your caste with an innate affinity with the creatures. You can communicate simple ideas with insect-like beasts with an Intelligence of 3 or lower, such as spiders, beetles, wasps, scorpions, and centipedes. You can understand them in return, though this understanding is often limited to knowing the creature's current or most recent state, such as “hungry,” “content,” or “in danger.” Delver drow often keep such creatures as pets, mounts, or beasts of burden.\n\n***Specialized Training.*** You are proficient in one skill and one tool of your choice.\n\n***Martial Excellence.*** You are proficient with one martial weapon of your choice and with light armor.",
+    "parent_slug": "drow"
+   }
+  },
+  {
+   "slug": "derro",
+   "name": "Derro",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Dexterity"
+      ],
+      "value": 2
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Dexterity score increases by 2.",
+    "size": "***Size.*** Derro stand between 3 and 4 feet tall with slender limbs and wide shoulders. Your size is Small.",
+    "size_raw": "Medium",
+    "speed": {
+     "walk": 30
+    },
+    "speed_desc": "***Speed.*** Derro are fast for their size. Your base walking speed is 30 feet.",
+    "languages": "***Languages.*** You can speak, read, and write Dwarvish and your choice of Common or Undercommon.",
+    "vision": "***Superior Darkvision.*** Accustomed to life underground, you can see in dim light within 120 feet of you as if it were bright light, and in darkness as if it were dim light. You can't discern color in darkness, only shades of gray.",
+    "traits": "***Eldritch Resilience.*** You have advantage on Constitution saving throws against spells.\n\n***Sunlight Sensitivity.*** You have disadvantage on attack rolls and on Wisdom (Perception) checks that rely on sight when you, the target of your attack, or whatever you are trying to perceive is in direct sunlight."
+   }
+  },
+  {
+   "slug": "derro-heritage",
+   "name": "Derro Heritage",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Charisma"
+      ],
+      "value": 2
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Charisma score increases by 2.",
+    "traits": "***Calculating Insanity.*** The insanity of your race was compressed into a cold, hard brilliance when you took on your darakhul form. These flashes of brilliance come to you at unexpected moments. You know the true strike cantrip. Charisma is your spellcasting ability for it. You can cast true strike as a bonus action a number of times equal to your Charisma modifier (a minimum of once). You regain any expended uses when you finish a long rest.",
+    "parent_slug": "darakhul"
+   }
+  },
+  {
+   "slug": "dragonborn-heritage",
+   "name": "Dragonborn Heritage",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Strength"
+      ],
+      "value": 2
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Strength score increases by 2.",
+    "traits": "***Corrupted Bite.*** The inherent breath weapon of your draconic heritage is corrupted by the necrotic energy of your new darakhul form. Instead of forming a line or cone, your breath weapon now oozes out of your ghoulish maw. As a bonus action, you breathe necrotic energy onto your fangs and make one bite attack. If the attack hits, it deals extra necrotic damage equal to your level. You can't use this trait again until you finish a long rest.",
+    "parent_slug": "darakhul"
+   }
+  },
+  {
+   "slug": "drow",
+   "name": "Drow",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Intelligence"
+      ],
+      "value": 2
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Intelligence score increases by 2.",
+    "size": "***Size.*** Drow are slightly shorter and slimmer than humans. Your size is Medium.",
+    "size_raw": "Medium",
+    "speed": {
+     "walk": 25
+    },
+    "speed_desc": "***Speed.*** Your base walking speed is 30 feet.",
+    "languages": "***Languages.*** You can speak, read, and write Elvish and your choice of Common or Undercommon.",
+    "vision": "***Superior Darkvision.*** Accustomed to life in the darkest depths of the world, you can see in dim light within 120 feet of you as if it were bright light, and in darkness as if it were dim light. You can't discern color in darkness, only shades of gray.",
+    "traits": "***Fey Ancestry.*** You have advantage on saving throws against being charmed, and magic can't put you to sleep.\n\n***Mind of Steel.*** You understand the complexities of minds, as well as the magic that can affect them. You have advantage on Wisdom, Intelligence, and Charisma saving throws against spells.\n\n***Sunlight Sensitivity.*** You have disadvantage on attack rolls and on Wisdom (Perception) checks that rely on sight when you, the target of your attack, or whatever you are trying to perceive is in direct sunlight."
+   }
+  },
+  {
+   "slug": "drow-heritage",
+   "name": "Drow Heritage",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Intelligence"
+      ],
+      "value": 2
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Intelligence score increases by 2.",
+    "traits": "***Poison Bite.*** When you hit with your bite attack, you can release venom into your foe. If you do, your bite deals an extra 1d6 poison damage. The damage increases to 3d6 at 11th level. After you release this venom into a creature, you can't do so again until you finish a short or long rest.",
+    "parent_slug": "darakhul"
+   }
+  },
+  {
+   "slug": "dwarf-chassis",
+   "name": "Dwarf Chassis",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Constitution"
+      ],
+      "value": 1
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Constitution score increases by 1.",
+    "traits": "***Always Armed.*** Every dwarf knows that it's better to leave home without pants than without your weapon. Choose a weapon with which you are proficient and that doesn't have the two-handed property. You can integrate this weapon into one of your arms. While the weapon is integrated, you can't be disarmed of it by any means, though you can use an action to remove the weapon. You can draw or sheathe the weapon as normal, the weapon folding into or springing from your arm instead of a sheath. While the integrated weapon is drawn in this way, it is considered held in that arm's hand, which can't be used for other actions such as casting spells. You can integrate a new weapon or replace an integrated weapon as part of a short or long rest. You can have up to two weapons integrated at a time, one per arm. You have advantage on Dexterity (Sleight of Hand) checks to conceal an integrated weapon.\n\n***Remembered Training.*** You remember some of your combat training from your previous life. You have proficiency with two martial weapons of your choice and with light and medium armor.",
+    "parent_slug": "gearforged"
+   }
+  },
+  {
+   "slug": "dwarf-heritage",
+   "name": "Dwarf Heritage",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Wisdom"
+      ],
+      "value": 2
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Wisdon score increases by 2.",
+    "traits": "***Dwarven Stoutness.*** Your hit point maximum increases by 1, and it increases by 1 every time you gain a level.",
+    "parent_slug": "darakhul"
+   }
+  },
+  {
+   "slug": "elfshadow-fey-heritage",
+   "name": "Elf/Shadow Fey Heritage",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Dexterity"
+      ],
+      "value": 2
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Dexterity score increases by 2.",
+    "traits": "***Supernatural Senses.*** Your keen elven senses are honed even more by the power of undeath and the hunger within you. You can now smell when blood is in the air. You have proficiency in the Perception skill, and you have advantage on Wisdom (Perception) checks to notice or find a creature within 30 feet of you that doesn't have all of its hit points.",
+    "parent_slug": "darakhul"
+   }
+  },
+  {
+   "slug": "erina",
+   "name": "Erina",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Dexterity"
+      ],
+      "value": 2
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Dexterity score increases by 2, and you can choose to increase either your Wisdom or Charisma score by 1.",
+    "size": "***Size.*** Erina average about 3 feet tall and weigh about 50 pounds. Your size is Small.",
+    "size_raw": "Medium",
+    "speed": {
+     "walk": 25
+    },
+    "speed_desc": "***Speed.*** Your base walking speed is 25 feet.",
+    "languages": "***Languages.*** You can speak Erina and either Common or Sylvan.",
+    "vision": "***Darkvision.*** Accustomed to life in the dark burrows of your people, you have superior vision in dark and dim conditions. You can see in dim light within 60 feet of you as if it were bright light, and in darkness as if it were dim light. You can't discern color in darkness, only shades of gray.",
+    "traits": "***Hardy.*** The erina diet of snakes and venomous insects has made them hardy. You have advantage on saving throws against poison, and you have resistance against poison damage.\n\n***Spines.*** Erina grow needle-sharp spines in small clusters atop their heads and along their backs. While you are grappling a creature or while a creature is grappling you, the creature takes 1d4 piercing damage at the start of your turn.\n\n***Keen Senses.*** You have proficiency in the Perception skill.\n\n***Digger.*** You have a burrowing speed of 20 feet, but you can use it to move through only earth and sand, not mud, ice, or rock."
+   }
+  },
+  {
+   "slug": "far-touched",
+   "name": "Far-Touched",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Charisma"
+      ],
+      "value": 1
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Charisma score increases by 1.",
+    "traits": "***Insanity.*** You have advantage on saving throws against being charmed or frightened. In addition, you can read and understand Void Speech, but you can speak only a few words of the dangerous and maddening language—the words necessary for using the spells in your Mad Fervor trait.\n\n***Mad Fervor.*** The driving force behind your insanity has blessed you with a measure of its power. You know the vicious mockery cantrip. When you reach 3rd level, you can cast the enthrall spell with this trait, and starting at 5th level, you can cast the fear spell with it. Once you cast a non-cantrip spell with this trait, you can't do so again until you finish a long rest. Charisma is your spellcasting ability for these spells. If you are using Deep Magic for 5th Edition, these spells are instead crushing curse, maddening whispers, and alone, respectively.",
+    "parent_slug": "derro"
+   }
+  },
+  {
+   "slug": "favored",
+   "name": "Favored",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Charisma"
+      ],
+      "value": 1
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Charisma score increases by 1.",
+    "traits": "***Blessed Help.*** Your intuition and connection to your allies allows you to assist and protect them. You know the spare the dying cantrip. When you reach 3rd level, you can cast the bless spell once with this trait and regain the ability to do so when you finish a long rest. Charisma is your spellcasting ability for these spells.\n\n***Clan Leader.*** You have proficiency in the Persuasion skill.\n\n***Restful Spores.*** If you or any friendly creatures within 30 feet of you regain hit points at the end of a short rest by spending one or more Hit Dice, each of those creatures regains additional hit points equal to your proficiency bonus. Once a creature benefits from your restful spores, it can't do so again until it finishes a long rest.",
+    "parent_slug": "mushroomfolk"
+   }
+  },
+  {
+   "slug": "fever-bit",
+   "name": "Fever-Bit",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Constitution"
+      ],
+      "value": 1
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Constitution score increases by 1.",
+    "traits": "***Deathly Resilience.*** Your long exposure to the life-sapping energies of darakhul fever has made you more resilient. You have resistance to necrotic damage, and advantage on death saving throws.\n\n***Iron Constitution.*** You are immune to disease.\n\n***Near-Death Experience.*** Your brush with death has made you more stalwart in the face of danger. You have advantage on saving throws against being frightened.",
+    "parent_slug": "drow"
+   }
+  },
+  {
+   "slug": "gearforged",
+   "name": "Gearforged",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Any"
+      ],
+      "value": 1
+     },
+     {
+      "attributes": [
+       "Any"
+      ],
+      "value": 1
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Two different ability scores of your choice increase by 1.",
+    "size": "***Size.*** Your size is determined by your Race Chassis.",
+    "size_raw": "Medium",
+    "speed": {
+     "walk": 30
+    },
+    "speed_desc": "***Speed.*** Your base walking speed is determined by your Race Chassis.",
+    "languages": "***Languages.*** You can speak, read, and write Common, Machine Speech (a whistling, clicking language that's incomprehensible to non-gearforged), and a language associated with your Race Chassis.",
+    "traits": "***Construct Resilience.*** Your body is constructed, which frees you from some of the limits of fleshand- blood creatures. You have resistance to poison damage, you are immune to disease, and you have advantage on saving throws against being poisoned.\n\n***Construct Vitality.*** You don't need to eat, drink, or breathe, and you don't sleep the way most creatures do. Instead, you enter a dormant state where you resemble a statue and remain semiconscious for 6 hours a day. During this time, the magic in your soul gem and everwound springs slowly repairs the day's damage to your mechanical body. While in this dormant state, you have disadvantage on Wisdom (Perception) checks. After resting in this way, you gain the same benefit that a human does from 8 hours of sleep.\n\n***Living Construct.*** Your consciousness and soul reside within a soul gem to animate your mechanical body. As such, you are a living creature with some of the benefits and drawbacks of a construct. Though you can regain hit points from spells like cure wounds, you can also be affected by game effects that specifically target constructs, such as the shatter spell. As long as your soul gem remains intact, game effects that raise a creature from the dead work on you as normal, repairing the damaged pieces of your mechanical body (restoring lost sections only if the spell normally restores lost limbs) and returning you to life as a gearforged. Alternatively, if your body is destroyed but your soul gem and memory gears are intact, they can be installed into a new body with a ritual that takes one day and 10,000 gp worth of materials. If your soul gem is destroyed, only a wish spell can restore you to life, and you return as a fully living member of your original race.\n\n***Race Chassis.*** Four races are known to create unique gearforged, building mechanical bodies similar in size and shape to their people: dwarf, gnome, human, and kobold. Choose one of these forms."
+   }
+  },
+  {
+   "slug": "gnome-chassis",
+   "name": "Gnome Chassis",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Intelligence"
+      ],
+      "value": 1
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Intelligence score increases by 1.",
+    "traits": "***Mental Fortitude.*** When creating their first gearforged, gnome engineers put their efforts toward ensuring that the gnomish mind remained a mental fortress, though they were unable to fully replicate the gnomish mind's resilience once transferred to a soul gem. Choose Intelligence, Wisdom, or Charisma. You have advantage on saving throws made with that ability score against magic.\n\n***Quick Fix.*** When you are below half your hit point maximum, you can use a bonus action to apply a quick patch up to your damaged body. You gain temporary hit points equal to your proficiency bonus. You can't use this trait again until you finish a short or long rest.",
+    "parent_slug": "gearforged"
+   }
+  },
+  {
+   "slug": "gnome-heritage",
+   "name": "Gnome Heritage",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Intelligence"
+      ],
+      "value": 2
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Intelligence score increases by 2.",
+    "traits": "***Magical Hunger.*** When a creature you can see within 30 feet of you casts a spell, you can use your reaction to consume the spell's residual magic. Your consumption doesn't counter or otherwise affect the spell or the spellcaster. When you consume this residual magic, you gain temporary hit points (minimum of 1) equal to your Constitution modifier, and you can't use this trait again until you finish a short or long rest.",
+    "parent_slug": "darakhul"
+   }
+  },
+  {
+   "slug": "halfling-heritage",
+   "name": "Halfling Heritage",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Dexterity"
+      ],
+      "value": 2
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Dexterity score increases by 2.",
+    "traits": "***Ill Fortune.*** Your uncanny halfling luck has taken a dark turn since your conversion to an undead creature. When a creature rolls a 20 on the d20 for an attack roll against you, the creature must reroll the attack and use the new roll. If the second attack roll misses you, the attacking creature takes necrotic damage equal to twice your Constitution modifier (minimum of 2).",
+    "parent_slug": "darakhul"
+   }
+  },
+  {
+   "slug": "human-chassis",
+   "name": "Human Chassis",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Any"
+      ],
+      "value": 1
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** One ability score of your choice increases by 1.",
+    "traits": "***Adaptable Acumen.*** You gain proficiency in two skills or tools of your choice. Choose one of those skills or tools or another skill or tool proficiency you have. Your proficiency bonus is doubled for any ability check you make that uses the chosen skill or tool.\n\n***Inspired Ingenuity.*** When you roll a 9 or lower on the d20 for an ability check, you can use a reaction to change the roll to a 10. You can't use this trait again until you finish a short or long rest.",
+    "parent_slug": "gearforged"
+   }
+  },
+  {
+   "slug": "humanhalf-elf-heritage",
+   "name": "Human/Half-Elf Heritage",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Any"
+      ],
+      "value": 2
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** One ability score of your choice, other than Constitution, increases by 2.",
+    "traits": "***Versatility.*** The training and experience of your early years was not lost when you became a darakhul. You have proficiency in two skills and one tool of your choice.",
+    "parent_slug": "darakhul"
+   }
+  },
+  {
+   "slug": "kobold-chassis",
+   "name": "Kobold Chassis",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Dexterity"
+      ],
+      "value": 1
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Dexterity score increases by 1.",
+    "traits": "***Clutch Aide.*** Kobolds spend their lives alongside their clutchmates, both those hatched around the same time as them and those they choose later in life, and you retain much of this group-oriented intuition. You can take the Help action as a bonus action.\n\n***Resourceful.*** If you have at least one set of tools, you can cobble together one set of makeshift tools of a different type with 1 minute of work. For example, if you have cook's utensils, you can use them to create a temporary set of thieves' tools. The makeshift tools last for 10 minutes then collapse into their component parts, returning your tools to their normal forms. While the makeshift tools exist, you can't use the set of tools you used to create the makeshift tools. At the GM's discretion, you might not be able to replicate some tools, such as an alchemist's alembic or a disguise kit's cosmetics. A creature other than you that uses the makeshift tools has disadvantage on the check.",
+    "parent_slug": "gearforged"
+   }
+  },
+  {
+   "slug": "kobold-heritage",
+   "name": "Kobold Heritage",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Intelligence"
+      ],
+      "value": 2
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Intelligence score increases by 2.",
+    "traits": "***Devious Bite.*** When you hit a creature with your bite attack and you have advantage on the attack roll, your bite deals an extra 1d4 piercing damage.",
+    "parent_slug": "darakhul"
+   }
+  },
+  {
+   "slug": "malkin",
+   "name": "Malkin",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Intelligence"
+      ],
+      "value": 1
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Intelligence score increases by 1.",
+    "traits": "***Curiously Clever.*** You have proficiency in the Investigation skill.\n\n***Charmed Curiosity.*** When you roll a 1 on the d20 for a Dexterity check or saving throw, you can reroll the die and must use the new roll.",
+    "parent_slug": "catfolk"
+   }
+  },
+  {
+   "slug": "minotaur",
+   "name": "Minotaur",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Strength"
+      ],
+      "value": 2
+     },
+     {
+      "attributes": [
+       "Constitution"
+      ],
+      "value": 1
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Strength score increases by 2, and your Constitution score increases by 1.",
+    "size": "***Size.*** Adult males can reach a height of 7 feet, with females averaging 3 inches shorter. Your size is Medium.",
+    "size_raw": "Medium",
+    "speed": {
+     "walk": 30
+    },
+    "speed_desc": "***Speed.*** Your base walking speed is 30 feet.",
+    "languages": "***Languages.*** You can speak, read, and write Common and Minotaur.",
+    "vision": "***Darkvision.*** You can see in dim light within 60 feet of you as if it were bright light, and in darkness as if it were dim light. You can't discern color in darkness, only shades of gray.",
+    "traits": "***Natural Attacks.*** Your horns are sturdy and sharp. Your horns are a natural melee weapon, which you can use to make unarmed strikes. When you hit with your horns, they deal piercing damage equal to 1d6 + your Strength modifier, instead of the bludgeoning damage normal for an unarmed strike.\n\n***Charge.*** Once per turn, if you move at least 10 feet toward a target and hit it with a horn attack in the same turn, you deal an extra 1d6 piercing damage and you can shove the target up to 5 feet as a bonus action. At 11th level, when you shove a creature with Charge, you can push it up to 10 feet instead. You can use this trait a number of times per day equal to your Constitution modifier (minimum of once), and you regain all expended uses when you finish a long rest.\n\n***Labyrinth Sense.*** You can retrace without error any path you have previously taken, with no ability check."
+   }
+  },
+  {
+   "slug": "morel",
+   "name": "Morel",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Dexterity"
+      ],
+      "value": 1
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Dexterity score increases by 1.",
+    "traits": "***Adaptable Camouflage.*** If you spend at least 1 minute in an environment with ample naturally occurring plants or fungi, such as a grassland, a forest, or an underground fungal cavern, you can adjust your natural coloration to blend in with the local plant life. If you do so, you have advantage on Dexterity (Stealth) checks for the next 24 hours while in that environment.\n\n***Clan Scout.*** You have proficiency in the Stealth skill.",
+    "parent_slug": "mushroomfolk"
+   }
+  },
+  {
+   "slug": "mushroomfolk",
+   "name": "Mushroomfolk",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Wisdom"
+      ],
+      "value": 2
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Wisdom score increases by 2.",
+    "size": "***Size.*** A mushroomfolk's size is determined by its subrace.",
+    "size_raw": "Medium",
+    "speed": {
+     "walk": 30
+    },
+    "speed_desc": "***Speed.*** Your base walking speed is 30 feet.",
+    "languages": "***Languages.*** You can speak, read, and write Mushroomfolk and your choice of Common or Undercommon.",
+    "vision": "***Darkvision.*** Accustomed to life underground, you can see in dim light within 60 feet of you as if it were bright light, and in darkness as if it were dim light. You can't discern color in darkness, only shades of gray.",
+    "traits": "***Fungoid Form.*** You are a humanoid, though the fungal nature of your body and your unique diet of decayed vegetable and animal matter marks you with some plant-like characteristics. You have advantage on saving throws against poison, and you have resistance to poison damage. In addition, you are immune to disease.\n\n***Hardy Survivor.*** Your upbringing in mushroomfolk society has taught you how to defend yourself and find food. You have proficiency in the Survival skill.\n\n***Subrace.*** Three subraces of mushroomfolk are known to wander the world: acid cap, favored, and morel. Choose one of these subraces."
+   }
+  },
+  {
+   "slug": "mutated",
+   "name": "Mutated",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Strength"
+      ],
+      "value": 1
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Strength score increases by 1. ",
+    "traits": "***Athletic Training.*** You have proficiency in the Athletics skill, and you are proficient with two martial weapons of your choice.\n\n***Otherworldly Influence.*** Your close connection to the strange powers that your people worship has mutated your form. Choose one of the following:\n* **Alien Appendage.** You have a tentacle-like growth on your body. This tentacle is a natural melee weapon, which you can use to make unarmed strikes. When you hit with it, your tentacle deals bludgeoning damage equal to 1d4 + your Strength modifier, instead of the bludgeoning damage normal for an unarmed strike. This tentacle has a reach of 5 feet and can lift a number of pounds equal to double your Strength score. The tentacle can't wield weapons or shields or perform tasks that require manual precision, such as performing the somatic components of a spell, but it can perform simple tasks, such as opening an unlocked door or container, stowing or retrieving an object, or pouring the contents out of a vial.\n* **Tainted Blood.** Your blood is tainted by your connection with otherworldly entities. When you take piercing or slashing damage, you can use your reaction to force your blood to spray out of the wound. You and each creature within 5 feet of you take necrotic damage equal to your level. Once you use this trait, you can't use it again until you finish a short or long rest.\n* **Tenebrous Flesh.** Your skin is rubbery and tenebrous, granting you a +1 bonus to your Armor Class.",
+    "parent_slug": "derro"
+   }
+  },
+  {
+   "slug": "pantheran",
+   "name": "Pantheran",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Wisdom"
+      ],
+      "value": 1
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Wisdom score increases by 1.",
+    "traits": "***Hunter's Charge.*** Once per turn, if you move at least 10 feet toward a target and hit it with a melee weapon attack in the same turn, you can use a bonus action to attack that creature with your Cat's Claws. You can use this trait a number of times per day equal to your proficiency bonus, and you regain all expended uses when you finish a long rest.\n\n***One With the Wilds.*** You have proficiency in one of the following skills of your choice: Insight, Medicine, Nature, or Survival.",
+    "parent_slug": "catfolk"
+   }
+  },
+  {
+   "slug": "purified",
+   "name": "Purified",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Charisma"
+      ],
+      "value": 1
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Charisma score increases by 1.",
+    "traits": "***Innate Spellcasting.*** You know the poison spray cantrip. When you reach 3rd level, you can cast suggestion once with this trait and regain the ability to do so when you finish a long rest. When you reach 5th level, you can cast the tongues spell once and regain the ability to do so when you finish a long rest. Intelligence is your spellcasting ability for these spells.\n\n***Born Leader.*** You gain proficiency with two of the following skills of your choice: History, Insight, Performance, and Persuasion.",
+    "parent_slug": "drow"
+   }
+  },
+  {
+   "slug": "ravenfolk",
+   "name": "Ravenfolk",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Dexterity"
+      ],
+      "value": 2
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Dexterity score increases by 2.",
+    "traits": "***Sudden Bite and Flight.*** If you surprise a creature during the first round of combat, you can make a bite attack as a bonus action. If it hits, you can immediately take the Dodge action as a reaction.",
+    "parent_slug": "darakhul"
+   }
+  },
+  {
+   "slug": "satarre",
+   "name": "Satarre",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Constitution"
+      ],
+      "value": 2
+     },
+     {
+      "attributes": [
+       "Intelligence"
+      ],
+      "value": 1
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Constitution score increases by 2, and your Intelligence score increases by 1.",
+    "size": "***Size.*** Satarre are tall but thin, from 6 to 7 feet tall with peculiar, segmented limbs. Your size is Medium.",
+    "size_raw": "Medium",
+    "speed": {
+     "walk": 30
+    },
+    "speed_desc": "***Speed.*** Your base walking speed is 30 feet.",
+    "languages": "***Languages.*** You can speak, read, and write Common and one of the following: Abyssal, Infernal, or Void Speech. Void Speech is a language of dark gods and ancient blasphemies, and the mere sound of its sibilant tones makes many other creatures quite uncomfortable.",
+    "vision": "***Darkvision.*** Thanks to your dark planar parentage, you have superior vision in darkness. You can see in dim light within 60 feet of you as if it were bright light, and in darkness as if it were dim light. You can't discern color in darkness, only shades of gray.",
+    "traits": "***A Friend to Death.*** You have resistance to necrotic damage.\n\n***Keeper of Secrets.*** You have proficiency in the Arcana skill, and you have advantage on Intelligence (Arcana) checks related to the planes and planar travel. In addition, you have proficiency in one of the following skills of your choice: History, Insight, and Religion.\n\n***Carrier of Rot.*** You can use your action to inflict rot on a creature you can see within 10 feet of you. The creature must make a Constitution saving throw. The DC for this saving throw equals 8 + your Constitution modifier + your proficiency bonus. A creature takes 1d4 necrotic damage on a failed save, and half as much damage on a successful one. A creature that fails the saving throw also rots for 1 minute. A rotting creature takes 1d4 necrotic damage at the end of each of its turns. The target or a creature within 5 feet of it can use an action to excise the rot with a successful Wisdom (Medicine) check. The DC for the check equals the rot's Constitution saving throw DC. The rot also disappears if the target receives magical healing. The damage for the initial action and the rotting increases to 2d4 at 6th level, 3d4 at 11th level, and 4d4 at 16th level. After you use your Carrier of Rot trait, you can't use it again until you complete a short or long rest."
+   }
+  },
+  {
+   "slug": "shade",
+   "name": "Shade",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Charisma"
+      ],
+      "value": 1
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Charisma score increases by 1, and one other ability score of your choice increases by 1. Choose one ability score that is increased by your Living Origin or by one of its subraces. That ability score increases by 1.",
+    "size": "***Size.*** Your size is determined by your Living Origin.",
+    "size_raw": "Medium",
+    "speed": {
+     "walk": 30
+    },
+    "speed_desc": "***Speed.*** Your speed is determined by your Living Origin.",
+    "languages": "***Languages.*** You can speak, read, and write Common and one other language spoken by your Living Origin.",
+    "vision": "***Darkvision.*** Your existence beyond death makes you at home in the dark. You can see in dim light within 60 feet of you as if it were bright light and in darkness as if it were dim light. You can't discern color in darkness, only shades of gray.",
+    "traits": "***Ghostly Flesh.*** Starting at 3rd level, you can use your action to dissolve your physical body into the ephemeral stuff of spirits. You become translucent and devoid of color, and the air around you grows cold. Your transformation lasts for 1 minute or until you end it as a bonus action. During it, you have a flying speed of 30 feet with the ability to hover, and you have resistance to bludgeoning, piercing, and slashing damage from nonmagical attacks that aren't made with silvered weapons. In addition, you have advantage on ability checks and saving throws made to escape a grapple or against being restrained, and you can move through creatures and solid objects as if they were difficult terrain. If you end your turn inside an object, you take 1d10 force damage. Once you use this trait, you can't use it again until you finish a long rest.\n\n***Imperfect Undeath.*** You are a humanoid, but your partial transition into undeath makes you susceptible to effects that target undead. Though you can regain hit points from spells like cure wounds, you can also be affected by game effects that specifically target undead, such as a cleric's Turn Undead feature. Game effects that raise a creature from the dead work on you as normal, but they return you to life as a shade. A true resurrection or wish spell can restore you to life as a fully living member of your original race.\n\n***Life Drain.*** When you damage a creature with an attack or a spell, you can choose to deal extra necrotic damage to the target equal to your level. If the creature's race matches your Living Origin, you gain temporary hit points equal to the necrotic damage dealt. Once you use this trait, you can't use it again until you finish a short or long rest.\n\n***Spectral Resilience.*** You have advantage on saving throws against poison and disease, and you have resistance to necrotic damage.\n\n***Living Origin.*** As living echoes of who they once were, shades maintain some of the traits they bore in life. Choose another race as your Living Origin. This is the race you were in life. Your size and speed are those of your Living Origin, and you know one language spoken by your Living Origin."
+   }
+  },
+  {
+   "slug": "stoor-halfling",
+   "name": "Stoor Halfling",
+   "documentSlug": "o5e",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Constitution"
+      ],
+      "value": 1
+     }
+    ],
+    "asi_desc": "**_Ability Score Increase._** Your Constitution score increases by 1.",
+    "traits": "**_Stoor Hardiness._** You gain resistance to poison damage, and you make saving throws against poison with advantage.",
+    "parent_slug": "halfling"
+   }
+  },
+  {
+   "slug": "tiefling-heritage",
+   "name": "Tiefling Heritage",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Charisma"
+      ],
+      "value": 1
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Charisma score increases by 1.",
+    "traits": "***Necrotic Rebuke.*** When you are hit by a weapon attack, you can use a reaction to envelop the attacker in shadowy flames. The attacker takes necrotic damage equal to your Charisma modifier (minimum of 1), and it has disadvantage on attack rolls until the end of its next turn. You must finish a long rest before you can use this feature again.",
+    "parent_slug": "darakhul"
+   }
+  },
+  {
+   "slug": "trollkin-heritage",
+   "name": "Trollkin Heritage",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Strength"
+      ],
+      "value": 2
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Strength score increases by 2.",
+    "traits": "***Regenerative Bite.*** The regenerative powers of your trollkin heritage are less potent than they were in life and need a little help. As an action, you can make a bite attack against a creature that isn't undead or a construct. On a hit, you regain hit points (minimum of 1) equal to half the amount of damage dealt. Once you use this trait, you can't use it again until you finish a long rest.",
+    "parent_slug": "darakhul"
+   }
+  },
+  {
+   "slug": "uncorrupted",
+   "name": "Uncorrupted",
+   "documentSlug": "toh",
+   "data": {
+    "asi": [
+     {
+      "attributes": [
+       "Wisdom"
+      ],
+      "value": 1
+     }
+    ],
+    "asi_desc": "***Ability Score Increase.*** Your Wisdom score increases by 1.",
+    "traits": "***Psychic Barrier.*** Your time among your less sane brethren has inured you to their madness. You have resistance to psychic damage, and you have advantage on ability checks and saving throws made against effects that inflict insanity, such as spells like contact other plane and symbol, and effects that cause short-term, long-term, or indefinite madness.\n\n***Studied Insight.*** You are skilled at discerning other creature's motives and intentions. You have proficiency in the Insight skill, and, if you study a creature for at least 1 minute, you have advantage on any initiative checks in combat against that creature for the next hour.",
+    "parent_slug": "derro"
+   }
+  }
+ ]
+}

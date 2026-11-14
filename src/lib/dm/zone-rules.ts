@@ -11,7 +11,7 @@
 import { getBattleMapForEncounter, getTokenByRef, type BattleMap } from "@/lib/db/battle-maps";
 import { getActiveBoard, getActiveEncounter, getEnemy } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
-import { sizeForRace } from "@/lib/srd";
+import { sheetSize } from "@/lib/srd";
 import { barredByShell, barredCells, ignoresZoneSteps, moverSpellTraits, withBarred, withEdges, type ZoneMover } from "@/lib/battlemap/zones-movers";
 import { effectiveTerrain, type LightZone } from "@/lib/battlemap/scene";
 import { tileIndex, type MapLight, type MoveTraits, type XY } from "@/lib/battlemap/types";
@@ -32,6 +32,8 @@ import type { SpellFacts } from "@/lib/srd/spell-facts";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { silenceRefusal } from "@/lib/dm/cast-rules";
 import { sheetCreatureType } from "@/lib/dm/summon-rules";
+import { withWallOfMuscle } from "@/lib/dm/genre-b-mystery-wall";
+import { withHoldTheLine } from "@/lib/dm/genre-b-steampunk-hold";
 
 function zonesOf(map: BattleMap | null): SpellZone[] {
   if (!map?.spellZones.length) {
@@ -56,7 +58,7 @@ function moverOf(map: BattleMap, moverKind: string, moverRef: string | undefined
   const sheet = getSheetById(moverRef);
   // A summoned creature is what its stat block says (a skeleton is undead),
   // a shaped one what its form is (summon-rules.ts sheetCreatureType).
-  return sheet ? { size: sizeForRace(sheet.race), flying, conditions: sheet.conditions, ref: moverRef, type: sheetCreatureType(sheet) } : null;
+  return sheet ? { size: sheetSize(sheet), flying, conditions: sheet.conditions, ref: moverRef, type: sheetCreatureType(sheet) } : null;
 }
 
 // A mover's walking traits with the spell areas' say on each step, and what
@@ -67,7 +69,11 @@ export function withZoneSteps(traits: MoveTraits, map: BattleMap, moverKind: str
   const mover = moverOf(map, moverKind, moverRef);
   const zones = zonesOf(map);
   const own = moverSpellTraits(mover);
-  const step = withEdges(withBarred(ignoresZoneSteps(mover) ? null : zoneStepCost(zones, map.width, moverKind, typeof traits === "object" && traits.anyGround === true), barredCells(zones, mover)), zones, mover);
+  const anyGround = typeof traits === "object" && traits.anyGround === true;
+  // The ground a Wall of Muscle or a Hold the Line makes difficult slows no
+  // mover that difficult terrain never slows (Master of the High Wire).
+  const areas = zoneStepCost(zones, map.width, moverKind, anyGround);
+  const step = withEdges(withBarred(ignoresZoneSteps(mover) ? null : anyGround ? areas : withHoldTheLine(map, moverKind, moverRef, withWallOfMuscle(map, moverKind, moverRef, areas)), barredCells(zones, mover)), zones, mover);
   if (!step && !Object.keys(own).length) {
     return traits;
   }

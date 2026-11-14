@@ -34,10 +34,11 @@ export type MarchState = {
   // naming it decided it is, so a later call that names no material or size
   // does not make the iron gate a wooden one (src/lib/dm/object-damage.ts).
   objects?: Record<string, ObjectRecord>;
-  // The stretches marched in the last day (end instant, minutes, who), so a
-  // leg's forced march counts the hours each traveller marched before it
-  // that day (src/lib/srd/travel.ts forcedMarchSpan). Absent: none.
-  marched?: Array<{ end: number; minutes: number; ids: string[] }>;
+  // The stretches travelled in the last day (end instant, minutes, who, and
+  // whether they rode it aboard a vehicle), so a leg's forced march counts
+  // the hours each traveller marched before it that day (src/lib/srd/
+  // travel.ts forcedMarchSpan). Absent: none.
+  marched?: Array<{ end: number; minutes: number; ids: string[]; carried?: true }>;
 };
 
 // One named object as the clock keeps it. A clock written before the
@@ -116,12 +117,13 @@ export function normalizeMarch(record: Record<string, unknown>): MarchState {
     Array.isArray(list) ? list.filter((id): id is string => typeof id === "string" && id.length <= 80).slice(0, 20) : [];
   const shortRest = restRaw && ids(restRaw.ids).length ? { ids: ids(restRaw.ids), sung: ids(restRaw.sung), fed: ids(restRaw.fed) } : undefined;
   const marched = (Array.isArray(record.marched) ? record.marched : [])
-    .map((leg: { end?: unknown; minutes?: unknown; ids?: unknown } | null) => ({
+    .map((leg: { end?: unknown; minutes?: unknown; ids?: unknown; carried?: unknown } | null) => ({
       end: bounded(leg?.end, 0, Number.MAX_SAFE_INTEGER),
       minutes: bounded(leg?.minutes, 1, 48 * 60),
       ids: ids(leg?.ids),
+      ...(leg?.carried === true ? { carried: true as const } : {}),
     }))
-    .filter((leg): leg is { end: number; minutes: number; ids: string[] } => leg.end !== undefined && leg.minutes !== undefined && leg.ids.length > 0)
+    .filter((leg): leg is { end: number; minutes: number; ids: string[]; carried?: true } => leg.end !== undefined && leg.minutes !== undefined && leg.ids.length > 0)
     .slice(-12);
   return {
     ...(travelPace ? { travelPace } : {}),

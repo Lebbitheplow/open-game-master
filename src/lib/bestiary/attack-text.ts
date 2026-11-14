@@ -1,4 +1,5 @@
 import { CONDITION_WORDS, conditionName, parseSaveEffect, SAVE_DC } from "@/lib/dm/monster-abilities";
+import { MUMMY_ROT } from "@/lib/dm/mummy-rot-logic";
 import type { TurnTie } from "@/lib/dm/save-effect";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
 
@@ -421,6 +422,14 @@ function readOnHit(hit: string, effectOnly: boolean): OnHitRider | null {
       rider.drainHeals = true;
     }
   }
+  // Mummy rot (SRD 5.1 Mummy, Mummy Lord): a curse the engine keeps, with
+  // its healing barred and its daily 3d6 off the maximum
+  // (src/lib/dm/mummy-rot-logic.ts). Left in `manual`, the GM was told and
+  // nothing on the sheet ever changed.
+  const rot = /\bcursed with mummy rot\b/i.test(hit);
+  if (rot) {
+    rider.condition = MUMMY_ROT;
+  }
   // The sleep a poisoned hit can bring. Read here, not left in `manual`:
   // the text was dropped unread, so a drow's bolt or a couatl's bite poisoned
   // and never put anyone to sleep.
@@ -477,6 +486,9 @@ function readOnHit(hit: string, effectOnly: boolean): OnHitRider | null {
   // cover, regurgitation and corpse are not left to the GM.
   if (rider.swallow) {
     manual = manual.filter((sentence) => !/\b(?:swallowed|regurgitate|escape from the corpse)\b/i.test(sentence));
+  }
+  if (rot) {
+    manual = manual.filter((sentence) => !/\b(?:mummy rot|cursed target|the curse (?:reduces|lasts))\b/i.test(sentence));
   }
   manual = manual.slice(0, 3);
   if (manual.length) {

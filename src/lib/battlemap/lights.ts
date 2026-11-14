@@ -15,7 +15,14 @@ export const LIGHT_LIMITS = {
   // the cheap thing it is; the same ceiling the UVTT importer keeps.
   max: 24,
   minRadius: 1,
-  maxRadius: 8,
+  // The largest SRD source: a bullseye lantern's and Daylight's 60 feet of
+  // bright light and 60 more of dim, 120 feet (SRD 5.1). At 8 a placed
+  // lantern dimmed at 40 feet, not 60. The lit set is cast on the server
+  // once per board change and cached (lit-cache.ts), never per frame: 24
+  // lights of this reach took about 4 ms on a 24x18 board and 15 ms on a
+  // 60x60 import, against about 1.3 and 1.8 at 8. A carried bullseye
+  // lantern already reaches this far (light-timers.ts).
+  maxRadius: 24,
 } as const;
 
 // What a torch, a lantern and a bonfire look like in tiles, so the palette
@@ -23,7 +30,8 @@ export const LIGHT_LIMITS = {
 export const LIGHT_PRESETS = [
   { id: "candle", label: "Candle", brightRadius: 1, dimRadius: 2 },
   { id: "torch", label: "Torch", brightRadius: 4, dimRadius: 8 },
-  { id: "lantern", label: "Lantern", brightRadius: 6, dimRadius: 8 },
+  // A hooded lantern: 30 feet bright, 30 more dim (SRD 5.1).
+  { id: "lantern", label: "Lantern", brightRadius: 6, dimRadius: 12 },
   { id: "bonfire", label: "Bonfire", brightRadius: 8, dimRadius: 8 },
 ] as const;
 
@@ -58,7 +66,7 @@ export function normalizeLights(raw: unknown, width: number, height: number): Ma
       continue;
     }
     const brightRadius = clamp(source.brightRadius, LIGHT_LIMITS.minRadius, LIGHT_LIMITS.maxRadius, 4);
-    const dimRadius = clamp(source.dimRadius, brightRadius, LIGHT_LIMITS.maxRadius, Math.min(8, brightRadius * 2));
+    const dimRadius = clamp(source.dimRadius, brightRadius, LIGHT_LIMITS.maxRadius, Math.min(LIGHT_LIMITS.maxRadius, brightRadius * 2));
     seen.add(index);
     out.push({ x, y, brightRadius, dimRadius });
     if (out.length >= LIGHT_LIMITS.max) {
