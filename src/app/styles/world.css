@@ -1861,9 +1861,10 @@ html[data-theme="light"] .cine-quest-body { color: #2d2419; }
 html[data-theme="light"] .cine-board-frame { box-shadow: 0 0 30px rgba(122, 88, 20, 0.2), 0 18px 40px rgba(60, 44, 16, 0.3); }
 html[data-theme="light"] .cine-board-frame > :not(.board-view) { background: #f1ebde; border-color: rgba(122, 88, 20, 0.5); }
 html[data-theme="light"] .board-panel > .board-view { background: #0d0b1c; }
-/* The enlarged board is a night table by day too: what stands on its starfield
-   keeps the night's ink. */
-html[data-theme="light"] .cine-tabletop {
+/* The starfield board keeps night ink. Painted themes give the surrounding
+   dialog its own day materials, so restrict this palette to the board itself. */
+html[data-theme="light"]:not([data-theme-ornaments="true"]) .cine-tabletop,
+html[data-theme="light"][data-theme-ornaments="true"] .cine-tabletop .board-view {
   --color-stone-950: #0d0b1c;
   --color-stone-900: #151229;
   --color-stone-800: #211b3a;

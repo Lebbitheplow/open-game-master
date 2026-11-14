@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Leaf, Sparkles, Church } from "lucide-react";
-import { APPEARANCE_THEMES, themeArtStyle, type AppearanceChoice } from "@/lib/appearance-themes";
+import { APPEARANCE_THEMES, themeArtStyle, type AppearanceChoice, type ThemeArt } from "@/lib/appearance-themes";
 import { useThemePrefs, writeAppearanceChoice, writeThemeChoice, type ThemeChoice } from "@/lib/theme-mode";
 
 const ICONS = { sparkles: Sparkles, leaf: Leaf, church: Church };
@@ -29,9 +29,10 @@ export function AppearancePicker() {
         {APPEARANCE_THEMES.map((entry) => {
           const Icon = ICONS[entry.icon];
           const selected = appearanceChoice === entry.id;
+          const art: ThemeArt | undefined = entry.art;
           return (
             <button type="button" key={entry.id} aria-pressed={selected} onClick={() => pick(entry.id)} className="appearance-option">
-              <span className="appearance-preview" data-appearance={entry.id} data-theme={mode} style={themeArtStyle(entry.id)} aria-hidden="true">
+              <span className="appearance-preview" data-appearance={entry.id} data-theme={mode} data-theme-ornaments={Boolean(art?.frame || art?.corner)} style={themeArtStyle(entry.id)} aria-hidden="true">
                 <span className="appearance-preview-frame"><Icon size={28} strokeWidth={1.2} /><span className="appearance-preview-title">The adventure awaits</span><span className="appearance-preview-line" /><span className="appearance-preview-line appearance-preview-line-short" /></span>
               </span>
               <span className="appearance-option-copy"><span className="appearance-option-title">{entry.name}{selected ? <Check size={16} aria-hidden="true" /> : null}</span><span className="appearance-option-description">{entry.description}</span></span>

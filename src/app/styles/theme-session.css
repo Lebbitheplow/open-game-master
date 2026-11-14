@@ -1,0 +1,285 @@
+/* Shared painted table and overlay furniture. Materials come from the theme. */
+html[data-theme-ornaments="true"][data-theme] :is(.theme-table, .theme-overlay) {
+  --cine-gold: var(--material-metal);
+  --cine-gold-pale: var(--color-amber-200);
+  --cine-ink: var(--color-stone-100);
+  --cine-ink-soft: var(--color-stone-300);
+  --cine-ink-dim: var(--color-stone-400);
+  --cine-hairline: var(--appearance-rule);
+  --cine-panel: var(--material-inset);
+  border: 10px solid transparent;
+  background: var(--material-rail-wash), var(--material-grain) center / 420px;
+  box-shadow: inset 0 0 0 1px var(--material-edge);
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .cine-backdrop {
+  background-color: var(--material-paper);
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .cine-backdrop[data-placeholder] {
+  background: var(--theme-art-backdrop) 60% center / cover;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .cine-backdrop[data-placeholder] .cine-art { display: none; }
+html[data-theme-ornaments="true"][data-theme] .theme-table .cine-scrim-stack {
+  background: var(--material-scrim);
+}
+html[data-theme-ornaments="true"][data-theme="light"] .theme-table .cine-scrim-stack {
+  background: var(--material-scrim);
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .cine-scrim-vignette {
+  background: radial-gradient(ellipse at center, transparent 35%, color-mix(in srgb, var(--material-paper) 40%, transparent));
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table header.cine-header {
+  position: relative;
+  flex-shrink: 0;
+  padding-left: 36px;
+  background: var(--material-control-wash), var(--material-grain) center / 620px;
+  border-bottom: 2px ridge var(--material-edge);
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .session-title {
+  color: var(--color-amber-200);
+  background: none;
+  filter: none;
+  -webkit-text-fill-color: currentColor;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .cine-header .session-title + p {
+  color: var(--color-stone-300);
+  text-shadow: none;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .cine-header .session-hbtn {
+  background: var(--material-inset);
+  border: 1px solid var(--material-edge);
+  border-radius: var(--material-fitting-radius);
+  color: var(--material-metal);
+  box-shadow: inset 0 1px 0 #dce5cf30, 0 2px 5px #0003;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .cine-header .session-hbtn-lit {
+  background: var(--appearance-wash);
+  box-shadow: inset 0 2px 5px #0004;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table :is(.cine-chat, .cine-panel) {
+  background: var(--material-paper);
+  border-color: var(--material-edge);
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .cine-chat .session-transcript {
+  background: var(--material-paper);
+  mask-image: none;
+  -webkit-mask-image: none;
+  scrollbar-color: var(--material-edge) var(--material-paper);
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .session-dm-body {
+  color: var(--color-stone-200);
+  text-shadow: none;
+  line-height: 1.8;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .session-dm .section-head-title {
+  color: var(--material-metal);
+  letter-spacing: .18em;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .session-bubble {
+  background: var(--material-inset);
+  color: var(--color-stone-200);
+  border-color: var(--appearance-rule);
+  border-radius: 12px 3px 12px 3px;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .session-bubble-ooc { color: var(--color-stone-400); }
+html[data-theme-ornaments="true"][data-theme] .theme-table .session-speaker { color: var(--material-metal); }
+html[data-theme-ornaments="true"][data-theme] .theme-table .cine-party { padding: 14px 12px; }
+html[data-theme-ornaments="true"][data-theme] .theme-table .cine-party-card {
+  background: var(--material-inset);
+  border-color: var(--material-edge);
+  border-radius: var(--material-panel-radius);
+  box-shadow: inset 0 1px 0 #dce5cf25, 0 4px 12px #0004;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .cine-party-name { color: var(--color-stone-100); }
+html[data-theme-ornaments="true"][data-theme] .theme-table .cine-party-hp { color: var(--color-stone-300); }
+html[data-theme-ornaments="true"][data-theme] .theme-table .cine-party-face {
+  border-color: var(--material-edge);
+  box-shadow: 0 0 0 2px #c4cebc80;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .cine-party-fill:not([data-low="true"]) {
+  background: linear-gradient(90deg, #668449, #b9d88e);
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .cine-party-card[data-current="true"] {
+  border-color: var(--color-amber-300);
+  box-shadow: inset 3px 0 0 var(--color-amber-400), 0 0 12px var(--appearance-wash);
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table :is(.cine-desk, .cine-rail, .cine-bottombar) {
+  background: var(--material-control-wash), var(--material-grain) center / 420px;
+  border-color: var(--material-edge);
+  box-shadow: inset 0 1px 0 #dce5cf40;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .cine-desk { border-top: 2px ridge var(--material-edge); }
+html[data-theme-ornaments="true"][data-theme] .theme-table .session-well {
+  background: var(--material-inset);
+  border: 1px solid var(--material-edge);
+  border-radius: var(--material-control-radius);
+  box-shadow: inset 0 2px 8px #0003;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .session-well:focus-within {
+  border-color: var(--color-amber-400);
+  box-shadow: 0 0 0 2px var(--appearance-rule), inset 0 2px 8px #0003;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .cine-desk .session-mode {
+  border: 1px solid var(--material-edge);
+  border-radius: var(--material-control-radius);
+  background: var(--material-paper);
+  color: var(--color-stone-200);
+  box-shadow: inset 0 1px 0 #dce5cf30;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .cine-desk .session-mode[data-on] {
+  background: linear-gradient(#344d2d, #203522);
+  color: #f4f4da;
+  border-color: var(--color-amber-400);
+  box-shadow: inset 0 2px 6px #0004, 0 2px 0 var(--color-amber-500);
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .cine-send {
+  background: linear-gradient(#456332, #233b1d);
+  color: #f4f4da;
+  border-color: #b4c99c;
+  border-radius: var(--material-control-radius);
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .session-well textarea::placeholder {
+  color: var(--color-stone-500);
+  opacity: 1;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table :is(.cine-rail, .cine-bottombar) .rail-glyph {
+  border: 1px solid var(--material-edge);
+  border-radius: var(--material-fitting-radius);
+  background: var(--material-metal-finish);
+  box-shadow: inset 0 0 0 2px #344a3766;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table [aria-current="page"] {
+  color: var(--color-stone-100);
+  background: var(--material-inset);
+  border-radius: 16px 3px;
+  box-shadow: inset 0 2px 6px #0004;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table [aria-current="page"] > .rail-glyph {
+  border-color: var(--color-amber-400);
+  box-shadow: 0 0 0 2px var(--appearance-rule);
+  opacity: 1;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .cine-quest {
+  background: var(--material-inset);
+  color: var(--color-stone-200);
+  border-color: var(--material-edge);
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table :is(.cine-quest-body, .cine-quest-eyebrow) {
+  color: var(--color-stone-200);
+  text-shadow: none;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .hand {
+  --hand-face: var(--material-inset);
+  --hand-edge: var(--material-edge);
+  --hand-edge-quiet: var(--appearance-rule);
+  max-height: min(28dvh, 22rem);
+  overflow-y: auto;
+}
+@media (max-width: 1023px) {
+  html[data-theme-ornaments="true"][data-theme] .theme-table { border-width: 4px; }
+  html[data-theme-ornaments="true"][data-theme] .theme-table .cine-header { padding-left: 24px; }
+  html[data-theme-ornaments="true"][data-theme] .theme-table .cine-bottombar { flex-shrink: 0; }
+}
+@media (forced-colors: active) {
+  html[data-theme-ornaments="true"][data-theme] .theme-table { border: 1px solid CanvasText; }
+}
+@media (max-width: 639px) {
+  html[data-theme-ornaments="true"][data-theme] .theme-table header.cine-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 10px;
+    padding-left: 24px;
+  }
+  html[data-theme-ornaments="true"][data-theme] .theme-table .cine-header > div:first-child { display: contents; }
+  html[data-theme-ornaments="true"][data-theme] .theme-table .session-title { grid-column: 1 / -1; }
+  html[data-theme-ornaments="true"][data-theme] .theme-table .session-title + p { min-width: 0; }
+}
+
+/* Combat surfaces keep the same reading materials as the story. The
+   enlarged board is portalled, so its selectors also work outside main. */
+html[data-theme-ornaments="true"][data-theme] .cine-chronicle-page,
+html[data-theme-ornaments="true"][data-theme] .cine-tabletop,
+html[data-theme-ornaments="true"][data-theme] .cine-board-frame > .board-panel {
+  background: var(--material-paper);
+  border-color: var(--material-edge);
+}
+html[data-theme-ornaments="true"][data-theme] .theme-overlay {
+  border: 10px solid transparent;
+  background: linear-gradient(var(--material-paper), var(--material-paper)) padding-box,
+    var(--material-grain) center / 420px border-box;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-overlay .cine-order-row {
+  background: var(--material-inset);
+  border-color: var(--appearance-rule);
+}
+html[data-theme-ornaments="true"][data-theme] .theme-overlay .cine-order-row[data-current="true"] {
+  background: var(--appearance-wash);
+  border-color: var(--material-edge);
+}
+html[data-theme-ornaments="true"][data-theme] .theme-overlay :is(.cine-order-name, .cine-order-round) { color: var(--color-stone-200); }
+html[data-theme-ornaments="true"][data-theme] .theme-overlay .cine-order-init { color: var(--color-stone-400); }
+/* The phone's initiative strip sits outside the dark board in this portal. */
+html[data-theme-ornaments="true"][data-theme="light"] .theme-overlay .board-order-above .board-eyebrow {
+  color: var(--color-stone-200);
+  text-shadow: none;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-overlay .cine-tabletop-close {
+  color: var(--color-stone-200);
+  background: var(--material-inset);
+  border-color: var(--material-edge);
+}
+@media (max-width: 1023px) {
+  html[data-theme-ornaments="true"][data-theme] .theme-overlay { border-width: 4px; }
+}
+@media (forced-colors: active) {
+  html[data-theme-ornaments="true"][data-theme] .theme-overlay { border: 1px solid CanvasText; background: Canvas; }
+}
+html[data-theme-ornaments="true"][data-theme] :is(.cine-chronicle-text, .cine-chronicle-line, .cine-chronicle-input, .cine-chronicle-roll-math) { color: var(--color-stone-200); }
+html[data-theme-ornaments="true"][data-theme] :is(.cine-chronicle-eyebrow, .cine-chronicle-cap, .cine-chronicle-send, .cine-tabletop-title) {
+  color: var(--material-metal);
+  text-shadow: none;
+}
+html[data-theme-ornaments="true"][data-theme] :is(.cine-chronicle-system, .cine-chronicle-quiet, .cine-chronicle-mode) { color: var(--color-stone-400); }
+html[data-theme-ornaments="true"][data-theme] .cine-chronicle-mode[data-on] { color: var(--color-stone-100); border-color: var(--material-edge); }
+html[data-theme-ornaments="true"][data-theme] .cine-chronicle-roller {
+  background: var(--material-control-wash), var(--material-grain) center / 420px;
+  border: 1px solid var(--material-edge);
+  box-shadow: 0 2px 5px #0003;
+}
+html[data-theme-ornaments="true"][data-theme] .cine-board-frame {
+  background: var(--material-metal-finish);
+  box-shadow: 0 4px 16px #0004;
+}
+html[data-theme-ornaments="true"][data-theme] .cine-board-frame::before { display: none; }
+html[data-theme-ornaments="true"][data-theme] .theme-table .session-banner[data-tone="blood"] {
+  background: var(--material-inset);
+  border-color: var(--color-red-500);
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table [aria-label="How the hand works"] {
+  max-height: min(18dvh, 12rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .cine-chat { min-height: 0; }
+html[data-theme-ornaments="true"][data-theme] .theme-table .cine-fight-board .board-view { min-height: 160px; }
+@media (max-width: 639px), (max-height: 719px) {
+  html[data-theme-ornaments="true"][data-theme] .theme-table .hand {
+    max-height: max(3rem, min(28dvh, calc(100dvh - 26rem)));
+    overflow-y: auto;
+  }
+  html[data-theme-ornaments="true"][data-theme] .theme-table .board-dock .board-view { min-height: 180px; }
+}
+@media (max-width: 400px) {
+  html[data-theme-ornaments="true"][data-theme] .theme-table .session-well { flex-wrap: wrap; gap: 6px; }
+  html[data-theme-ornaments="true"][data-theme] .theme-table .session-well textarea {
+    flex-basis: 100%;
+    min-width: 0;
+    height: 3rem;
+  }
+  html[data-theme-ornaments="true"][data-theme] .theme-table .session-well > :nth-child(2) { margin-left: auto; }
+  html[data-theme-ornaments="true"][data-theme] .theme-table .cine-desk .session-mode { padding-right: .5rem; gap: .2rem; }
+  html[data-theme-ornaments="true"][data-theme] .theme-table .session-mode > span[aria-hidden] { width: 1.1rem; height: 1.1rem; }
+}
+@media (max-width: 400px) and (max-height: 700px) {
+  /* Leave room for the story when a short phone also uses enlarged text. */
+  html[data-theme-ornaments="true"][data-theme] .theme-table .session-well textarea { height: 2.25rem; }
+}

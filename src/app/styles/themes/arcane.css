@@ -1,4 +1,13 @@
 /* arcane: both brightness palettes. See docs/appearance-themes.md. */
+[data-appearance="arcane"] {
+  --theme-corner-background-size: 400%;
+  --theme-corner-background-position: top left;
+  --theme-table-corner-size: 48px;
+  --theme-table-corner-size-small: 32px;
+  --material-fitting-radius: 50%;
+  --material-control-radius: 6px;
+  --material-panel-radius: 12px 4px;
+}
 [data-appearance="arcane"][data-theme="dark"] {
   --background: #0a0817;
   --foreground: #e9e6f4;
@@ -26,6 +35,7 @@
   --color-amber-50: #fdf7e7;
 }
 [data-appearance="arcane"][data-theme="light"] {
+  --material-primary-wash: linear-gradient(#755c24f0, #493716f0);
   --background: #f4efe4;
   --foreground: #221a10;
   --color-stone-950: #fbf8f1;
@@ -33,7 +43,7 @@
   --color-stone-800: #e4dccb;
   --color-stone-700: #cbc0a8;
   --color-stone-600: #8f8468;
-  --color-stone-500: #6d6350;
+  --color-stone-500: #655b49;
   --color-stone-400: #55493a;
   --color-stone-300: #3f3427;
   --color-stone-200: #2d2419;

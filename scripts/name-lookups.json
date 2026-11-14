@@ -9,6 +9,9 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
+    "lib/theme-mode.ts#keyed": [["key",2,"browser preference cache entries are addressed by fixed storage keys, never by player-written names"]],
+    "lib/theme-mode.ts#whole": [["key",1,"stored preference and artwork sentinel values select display behavior, not game records named by people"]],
+    "components/ui/LobbyIcon.tsx#fallback": [["key",1,"a fixed heading-glyph key selects a decorative icon; an unknown key gets a generic settings fitting and changes no game identity"]],
     "lib/dm/genre-cc-a-squire.ts#whole": [["identity",1,"a record by its whole name (textKey on both sides): the creature size the foe's block names"]],
     "lib/dm/genre-cc-a-squire.ts#partial": [["parse",1,"an attack's own damage type, the first of the types its stored line joins with a slash"]],
     "lib/dm/genre-cc-a-saves.ts#partial": [["parse",1,"a die's faces read from its dice notation"]],

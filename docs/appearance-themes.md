@@ -1,13 +1,13 @@
 # Build an appearance theme
 
 Use this guide to add a visual theme with its own palette, materials and artwork.
-Everything needed to register and validate it lives in this repository. Ancient
-Woodland is the worked example for a theme with painted borders and fittings.
-Arcane and Gothic are palette and CSS treatments; they do not yet have equivalent
-painted furniture.
+Everything needed to register and validate it lives in this repository. All three
+shipped themes have painted materials, borders and scenery: Woodland uses oak
+and ivy, Arcane uses indigo stone and celestial brass, and Gothic uses cathedral
+stone, silver tracery and garnet glass.
 
 The [implementation validation record](appearance-validation.md) lists the checks
-completed for Woodland and the shared infrastructure.
+completed for all three themes and the shared infrastructure.
 
 ## How the pieces fit
 
@@ -22,8 +22,9 @@ written story theme. A player can use Woodland in either day or night mode.
 | Campaign picker | `src/app/campaigns/[campaignId]/GameSettingsGroups.tsx` | Visual theme in Atmosphere, saved through the existing settings schema |
 | Base palettes | `src/app/styles/themes/<id>.css` | Complete light and dark color sets |
 | Shared surfaces | `src/app/styles/appearance.css` | Controls, dialogs, preview layout and common color rules |
-| Painted ornaments | `src/components/ThemeOrnaments.tsx`, `src/app/styles/theme-ornaments.css` | Four rotated corners, table border, phone sizing and forced-colors behavior |
-| Woodland treatment | `src/app/styles/woodland-materials.css`, `woodland-session.css` | Oak surfaces, silver fittings, lobby arrangement and active-play treatment |
+| Painted ornaments | `src/components/ThemeOrnaments.tsx`, `src/app/styles/theme-ornaments.css` | Four rotated corners, table/overlay border, phone sizing and forced-colors behavior |
+| Shared materials | `src/app/styles/theme-materials.css`, `theme-session.css` | Textured controls, metal fittings, lobby arrangement, active table and enlarged-map treatment |
+| Lobby emblem | `src/components/ThemeEmblem.tsx` | The catalog's symbol in the theme's metal fitting |
 | Artwork | `public/assets/themes/<id>/` | Versioned images and their provenance record |
 | Automated checks | `scripts/test-appearance.mjs`, `scripts/appearance/` | Catalog checks and a disposable browser preview |
 
@@ -41,8 +42,8 @@ It is not the app appearance registry. Leave it alone when adding an appearance.
    and browser preferences. Avoid renaming a shipped ID without a migration.
 
 2. Copy `src/app/styles/themes/arcane.css` to
-   `src/app/styles/themes/moonlit.css`. Replace both `data-appearance="arcane"`
-   selectors with `data-appearance="moonlit"`. Set all 24 color variables for each
+   `src/app/styles/themes/moonlit.css`. Replace every `data-appearance="arcane"`
+   selector with `data-appearance="moonlit"`. Set all 24 color variables for each
    brightness mode. Keep six-digit hex colors in these base blocks so the contrast
    check can read them. `stone-*` supplies surfaces and text; `amber-*` supplies
    the theme accent even if that accent is green or silver.
@@ -61,7 +62,7 @@ It is not the app appearance registry. Leave it alone when adding an appearance.
 
    The pickers and schema now include it. Existing symbols are `sparkles`, `leaf`
    and `church`. To introduce another symbol, extend `AppearanceDefinition.icon`
-   and the symbol map in `AppearancePicker.tsx` together.
+   and the symbol maps in `AppearancePicker.tsx` and `ThemeEmblem.tsx` together.
 
 4. Import the new stylesheet in `src/app/globals.css`, alongside the other
    `./styles/themes/` imports. Put treatment styles after the shared surface
@@ -110,10 +111,31 @@ explicit reset prevents one theme from inheriting another theme's artwork.
 | `corner` | `--theme-art-corner` | Transparent top-left L-shaped fitting; lower-right interior empty; rotates for the other three corners |
 | `backdrop` | `--theme-art-backdrop` | Wide opaque scene that remains readable when cropped for a shallow banner |
 
-The shared renderer automatically uses the frame and corner slots. Texture and
-backdrop are available to the theme's CSS. Woodland shows how to put a controlled
-color wash over a texture and how to use a backdrop only when no campaign cover
-or scene painting exists. Keep those placeholder conditions when adapting it.
+The shared renderer automatically uses the frame and corner slots. Registering
+either also enables the shared painted layout and material styles. These put a
+controlled color wash over the texture and use the backdrop only when no campaign
+cover or scene painting exists. Keep those placeholder conditions when adapting it.
+
+Set material variables in the theme's stylesheet; do not copy the shared styling.
+Defaults use the theme's palette, and overrides also apply inside picker previews:
+
+| Variables | What they change |
+| --- | --- |
+| `--material-inset`, `--material-paper` | Opaque backgrounds beneath readable text |
+| `--material-panel-wash`, `--material-control-wash` | Gradients layered over the texture |
+| `--material-metal`, `--material-edge` | Fitting text and border colors |
+| `--material-metal-finish`, `--material-metal-ink` | Painted metal gradient and its emblem color |
+| `--material-primary-wash` | Primary-button gradient; keep light button text legible in both modes |
+| `--material-fitting-radius`, `--material-control-radius`, `--material-panel-radius` | Circular Arcane, pointed Gothic or asymmetric Woodland shapes |
+| `--material-body-wash`, `--material-rail-wash`, `--material-scrim` | Page, rail and scenery shading |
+| `--material-crest-tilt` | Rotation of the decorative lobby emblem |
+
+Arcane and Gothic reuse their frame image for the `corner` slot. Their CSS sets
+`--theme-corner-background-size: 400%` and
+`--theme-corner-background-position: top left`, displaying the top-left quarter
+before the renderer rotates it. Keep that quarter's inner area transparent.
+For a separate corner image, retain the defaults `contain` and `center` instead.
+This avoids generating a second fitting that does not match its frame.
 
 The neutral hooks already exist in the components:
 
@@ -127,11 +149,11 @@ The neutral hooks already exist in the components:
 | `.theme-key-danger` | Exclusion for destructive controls; preserve their meaning |
 | `.theme-default-cover` | Lobby cover only when the campaign has no cover |
 | `.cine-backdrop[data-placeholder]` | Active-play backdrop only without a cover or painted scene |
-| `.theme-heading-icon`, `.theme-crest` | Optional lobby fittings; the current crest is a leaf symbol |
+| `.theme-heading-icon`, `.theme-crest` | Optional lobby fittings; the crest uses the catalog's symbol |
 
 New themes can style these hooks without editing `Lobby.tsx` or `SessionView.tsx`.
-Keep theme-specific materials in that theme's CSS. A starship panel does not have
-to inherit Woodland's wood, curves or lobby arrangement.
+Keep theme-specific material variables in that theme's CSS. For a substantially
+different layout, add scoped treatment rules after the shared material imports.
 
 The ornament is an absolute overlay with `aria-hidden` and no pointer events. It
 does not reserve space for itself. Reserve a quiet rail in your theme's container
@@ -143,7 +165,7 @@ the document root and uses the same frame and corner geometry as the table.
 Keep overlay containers positioned (the battle map uses `fixed`) and place the
 ornaments inside them; do not change their positioning to `relative`.
 
-Woodland uses a 10px table and overlay rail on desktop and 4px on phones. Its lobby rail is
+The shared painted layout uses a 10px table and overlay rail on desktop and 4px on phones. Its lobby rail is
 26px on desktop and 12px on phones. It has additional inner padding.
 
 Shared ornament measurements can be overridden in the theme selector:
@@ -160,6 +182,10 @@ Shared ornament measurements can be overridden in the theme selector:
 The table's small measurements apply below 1024px; the lobby's apply at 540px and
 below. Themes with no frame or corner hide the overlay entirely. Forced-colors
 mode hides it for every theme. Decorative overlays must never receive focus.
+Arcane and Gothic override table corners to 48px on desktop and 32px on phones:
+their opaque metal fittings need less space than Woodland's open leaves. Inspect
+the actual artwork over headings and close buttons; geometry checks alone cannot
+detect a painted corner covering text.
 
 Keep each shipped image below 2 MiB. Prefer WebP for painted material and alpha
 art, and SVG for suitable vector designs. Inspect alpha edges, repetition and

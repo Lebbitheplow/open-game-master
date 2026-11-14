@@ -1,9 +1,51 @@
 # Appearance infrastructure validation
 
+## Painted Arcane and Gothic extension
+
+The 2026-11-14 extension gives all three themes painted materials and artwork.
+Arcane adds indigo stone, celestial brass and an observatory; Gothic adds
+cathedral stone, silver tracery, garnet glass and a moonlit cloister. Both reuse
+the shared material styles and ornament renderer, including the portalled map.
+Their production WebP assets and generation provenance are committed alongside
+the authoring guide. Each asset is below 2 MiB.
+
+| Check | Result |
+| --- | --- |
+| Appearance catalog, preferences, artwork and palette checks | 11 passed |
+| Campaign-creation option coverage | 5 passed; appearance deliberately defaults to genre and is changed later |
+| Repository name-lookup audit | 4 passed |
+| Repository text-comparison audit | 6 passed |
+| Focused ESLint on changed theme components and tests | Passed |
+| Arcane browser matrix | 37 passed; 3 focused interaction checks also passed after reducing corner size |
+| Gothic browser matrix | 37 passed |
+| Production build and TypeScript | Passed; the later phone initiative-label CSS correction was checked in the browser |
+| Bundle budgets | Passed: 106.7 KiB shared CSS, 113.3 KiB rulebook CSS; JavaScript budgets unchanged |
+| Production day-ink scenarios | 2 of 2 passed, desktop and phone |
+| Woodland browser regression | 37 passed in the final warmed run |
+
+Manual inspection found that the new metal corners needed smaller table sizes
+than Woodland's open leaves. They now use 48px corners on desktop and 32px on
+phones. The enlarged map keeps its own painted border, while its day-mode
+surround uses the selected theme's light palette. Only the starfield board keeps
+night text; the phone's initiative label outside it uses readable day ink without
+the night shadow. Screenshots in [images/appearance](images/appearance) use fictional
+data and show both brightness modes on desktop and 390px phone viewports.
+
+The preceding PR commit's CI identified the creation-option omission, missing
+classifications for fixed theme/storage keys, and faint Arcane hint text on
+parchment. This extension addresses those findings; the checks above distinguish
+local verification from final-commit CI. Full-suite CI, native-shell and
+real-device validation remain required. The PR remains a draft.
+
+The first Woodland regression attempt ran during production compilation and
+timed out on its initial lobby, dice dialog and enlarged map. After compilation,
+the complete warmed run passed all 37 checks. These timeouts are retained here
+to distinguish the successful rerun from the initial attempt.
+
 ## Current-main port
 
-The port onto `044b9dcd0409c5b862a77241de6f18311f497f74` was checked on
-2026-11-14. These checks use the code submitted in PR #962:
+The initial port onto `044b9dcd0409c5b862a77241de6f18311f497f74` was checked on
+2026-11-14. These are historical results for PR #962 before the extension above:
 
 | Check | Result |
 | --- | --- |

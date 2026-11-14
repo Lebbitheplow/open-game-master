@@ -1,4 +1,17 @@
 /* gothic: both brightness palettes. See docs/appearance-themes.md. */
+[data-appearance="gothic"] {
+  --theme-corner-background-size: 400%;
+  --theme-corner-background-position: top left;
+  --theme-table-corner-size: 48px;
+  --theme-table-corner-size-small: 32px;
+  --material-fitting-radius: 50% 50% 3px 3px;
+  --material-control-radius: 12px 12px 2px 2px;
+  --material-panel-radius: 18px 18px 3px 3px;
+  --material-primary-wash: linear-gradient(#782c48e8, #3c1428eb);
+  --material-metal-finish: linear-gradient(135deg, #e2cbd3, #93727f 48%, #cdb3bf 51%, #75535f);
+  --material-metal-ink: #301723;
+  --material-rail-wash: linear-gradient(#20141b70, #20141b70);
+}
 [data-appearance="gothic"][data-theme="dark"] {
   --background: #160e13;
   --foreground: #efe3e7;
@@ -26,6 +39,7 @@
   --color-amber-50: #fff7fa;
 }
 [data-appearance="gothic"][data-theme="light"] {
+  --material-primary-wash: linear-gradient(#74304deb, #48162df0);
   --background: #f1e8e7;
   --foreground: #33212a;
   --color-stone-950: #faf5f2;

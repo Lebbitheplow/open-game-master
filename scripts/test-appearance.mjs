@@ -4,7 +4,7 @@ import { register } from "node:module";
 import { readFileSync, existsSync, statSync } from "node:fs";
 register("./lib/register-alias.mjs", import.meta.url);
 
-const { APPEARANCE_THEMES, APPEARANCE_THEME_IDS, THEME_ART_SLOTS, themeArtStyle, campaignAppearance, resolveAppearance } = await import("../src/lib/appearance-themes.ts");
+const { APPEARANCE_THEMES, APPEARANCE_THEME_IDS, THEME_ART_SLOTS, themeArtStyle, artSlotStyle, campaignAppearance, resolveAppearance } = await import("../src/lib/appearance-themes.ts");
 const { gameSettingsSchema, normalizeGameSettings } = await import("../src/lib/schemas/game-settings.ts");
 const prefs = await import("../src/lib/theme-mode.ts");
 const { hostOffers } = await import("../src/lib/use-capabilities.ts");
@@ -88,6 +88,9 @@ test("every registered palette has the full token set and legible text", () => {
       ]) {
         assert.ok(contrast(colors[foreground], colors[background]) >= 4.5, `${theme}/${mode}: ${foreground} against ${background}`);
       }
+      if (theme === "arcane" && mode === "light") {
+        assert.ok(contrast(colors["--color-stone-500"], "#ebe0c2") >= 4.5, "Arcane hint text must remain legible on the darker parchment sheet panels");
+      }
     }
   }
 });
@@ -137,10 +140,13 @@ try {
       prefs.writeAppearanceChoice(theme);
       assert.deepEqual(Object.fromEntries(Object.values(THEME_ART_SLOTS).map(key => [key, properties.get(key)])), themeArtStyle(theme));
     }
-    prefs.writeAppearanceChoice("arcane");
-    assert.equal(document.documentElement.dataset.themeOrnaments, "false", "Empty ornaments must not widen an unframed layout");
-    for (const key of Object.values(THEME_ART_SLOTS)) assert.equal(properties.get(key), "none");
-    assert.equal(themeArtStyle("gothic")[THEME_ART_SLOTS.corner], "none", "Nested previews must not inherit Woodland corners");
+    assert.equal(document.documentElement.dataset.themeOrnaments, "true");
+    const empty = artSlotStyle();
+    for (const key of Object.values(THEME_ART_SLOTS)) assert.equal(empty[key], "none");
+    const partial = artSlotStyle({ frame: "/assets/example-frame.webp" });
+    assert.equal(partial[THEME_ART_SLOTS.corner], "none", "A partial theme must clear inherited corners");
+    assert.equal(partial[THEME_ART_SLOTS.texture], "none", "A partial theme must clear inherited material");
+    assert.equal(partial[THEME_ART_SLOTS.frame], 'url("/assets/example-frame.webp")');
   });
   test("following the campaign clears a personal override", () => {
     prefs.writeAppearanceChoice("campaign");

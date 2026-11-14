@@ -20,7 +20,16 @@ export interface AppearanceDefinition {
 // Add a theme here once. Schema IDs, both pickers and validation use this list.
 // See docs/appearance-themes.md for palette, artwork and preview requirements.
 export const APPEARANCE_THEMES = [
-  { id: "arcane", name: "Arcane", description: "Indigo skies, aged gold, and celestial detail.", icon: "sparkles", stylesheet: "src/app/styles/themes/arcane.css" },
+  {
+    id: "arcane", name: "Arcane", description: "Indigo stone, celestial brass, and amethyst fittings.", icon: "sparkles", stylesheet: "src/app/styles/themes/arcane.css",
+    art: {
+      texture: "/assets/themes/arcane/indigo-stone-v1.webp",
+      frame: "/assets/themes/arcane/celestial-brass-frame-v1.webp",
+      corner: "/assets/themes/arcane/celestial-brass-frame-v1.webp",
+      backdrop: "/assets/themes/arcane/astral-observatory-v1.webp",
+    },
+    provenance: "public/assets/themes/arcane/art-provenance.json",
+  },
   {
     id: "woodland", name: "Ancient Woodland", description: "Carved oak, living ivy, and silver leaf fittings.", icon: "leaf", stylesheet: "src/app/styles/themes/woodland.css",
     art: {
@@ -31,7 +40,16 @@ export const APPEARANCE_THEMES = [
     },
     provenance: "public/assets/themes/woodland/art-provenance.json",
   },
-  { id: "gothic", name: "Gothic", description: "Charcoal, rose silver, and cathedral arches.", icon: "church", stylesheet: "src/app/styles/themes/gothic.css" },
+  {
+    id: "gothic", name: "Gothic", description: "Cathedral stone, silver tracery, and garnet glass.", icon: "church", stylesheet: "src/app/styles/themes/gothic.css",
+    art: {
+      texture: "/assets/themes/gothic/cathedral-slate-v1.webp",
+      frame: "/assets/themes/gothic/cathedral-iron-frame-v1.webp",
+      corner: "/assets/themes/gothic/cathedral-iron-frame-v1.webp",
+      backdrop: "/assets/themes/gothic/moonlit-cloister-v1.webp",
+    },
+    provenance: "public/assets/themes/gothic/art-provenance.json",
+  },
 ] as const satisfies readonly AppearanceDefinition[];
 export type AppearanceTheme = (typeof APPEARANCE_THEMES)[number]["id"];
 export type AppearanceChoice = "campaign" | AppearanceTheme;
@@ -45,7 +63,10 @@ export function appearanceDefinition(id: AppearanceTheme): AppearanceDefinition 
 // Explicit none values prevent artwork leaking when switching themes or when
 // a picker thumbnail is nested inside a different theme. Safe during SSR too.
 export function themeArtStyle(id: AppearanceTheme): Record<`--theme-art-${string}`, string> {
-  const art = appearanceDefinition(id).art;
+  return artSlotStyle(appearanceDefinition(id).art);
+}
+
+export function artSlotStyle(art?: ThemeArt): Record<`--theme-art-${string}`, string> {
   return Object.fromEntries(Object.entries(THEME_ART_SLOTS).map(([slot, property]) => {
     const asset = art?.[slot as keyof ThemeArt];
     return [property, asset ? `url(${JSON.stringify(asset)})` : "none"];

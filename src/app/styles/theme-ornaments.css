@@ -9,7 +9,7 @@
 html[data-theme-ornaments="true"] .theme-ornaments { display: block; }
 .theme-ornaments > span {
   position: absolute;
-  background: var(--theme-art-corner, none) center / contain no-repeat;
+  background: var(--theme-art-corner, none) var(--theme-corner-background-position, center) / var(--theme-corner-background-size, contain) no-repeat;
 }
 .theme-ornaments > :nth-child(1) { top: 0; left: 0; }
 .theme-ornaments > :nth-child(2) { top: 0; right: 0; transform: rotate(90deg); }

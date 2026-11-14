@@ -1,6 +1,7 @@
 "use client";
 
-import { Dices, Leaf, Pencil } from "lucide-react";
+import { Dices, Pencil } from "lucide-react";
+import { ThemeEmblem } from "@/components/ThemeEmblem";
 import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { CampaignCover } from "@/components/CampaignCover";
@@ -83,7 +84,7 @@ export function LobbyHero({
         />
       </div>
       <div className="lobby-hero-caption relative -mt-1 px-4 pb-4 sm:px-5 sm:pb-5">
-        <span className="theme-crest" aria-hidden="true"><Leaf /></span>
+        <ThemeEmblem />
         <p className={ui.sectionEyebrow}>{eyebrow}</p>
         <div className="mt-1 flex items-start gap-2">
           <GoldTitle className="min-w-0 text-balance break-words leading-tight">{campaign.title}</GoldTitle>

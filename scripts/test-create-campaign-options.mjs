@@ -58,7 +58,10 @@ const creationSurface = `${payload}\n${worldSetup}\n${rulesPanel}`;
 // `companionConscience` (issue 503) is one more: Leave is a safe default,
 // and it matters only once a lasting companion travels with the party, so
 // the Bonds group of GameSettingsPanel owns it.
+// `appearanceTheme` follows the genre at creation. The Atmosphere group can
+// change it later, and each player can override it without changing the game.
 const DELIBERATELY_OMITTED = new Set([
+  "appearanceTheme",
   "stages",
   "beatReminder",
   "dmAssist",
