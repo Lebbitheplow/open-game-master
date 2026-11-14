@@ -420,6 +420,44 @@ export function healthWord(current: number, max: number): string {
 
 export type FightSeen = { name: string; health: string; conditions: string[]; feet: number | null };
 
+// A first-tier mind's own model and reasoning effort (ticket 09), chosen by
+// whoever runs the story from what the table's agent program offers. Blank
+// fields follow the table's mind route (the utility model, else the story's).
+export type MindModelChoice = { model: string; effort: string };
+
+export function parseMindModel(raw: string): MindModelChoice | null {
+  if (!raw) {
+    return null;
+  }
+  try {
+    const value = JSON.parse(raw) as Partial<MindModelChoice>;
+    const model = typeof value.model === "string" ? value.model.trim() : "";
+    const effort = typeof value.effort === "string" ? value.effort.trim() : "";
+    return model || effort ? { model, effort } : null;
+  } catch {
+    return null;
+  }
+}
+
+// What the program offers, as the choice is checked against: an unknown
+// model, or an effort the model (or, with no model, the table's) lacks, is
+// refused. `fallbackModel` is the table's mind model, for a choice of effort
+// alone.
+export function mindModelProblem(
+  choice: MindModelChoice,
+  offered: ReadonlyArray<{ id: string; efforts?: readonly string[] }>,
+  fallbackModel: string,
+): string | null {
+  const model = offered.find((entry) => entry.id === (choice.model || fallbackModel));
+  if (choice.model && !model) {
+    return `The agent program does not offer the model "${choice.model}".`;
+  }
+  if (choice.effort && !(model?.efforts ?? []).includes(choice.effort)) {
+    return `The model "${choice.model || fallbackModel}" does not offer the effort "${choice.effort}".`;
+  }
+  return null;
+}
+
 // What the companion's hands allow (attack-rules.ts handsRuling): the
 // shield on its arm, and the carried two-handed weapons it cannot use with it.
 export type FightHands = { shield: string | null; blocked: string[] };

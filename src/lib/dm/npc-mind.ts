@@ -13,6 +13,7 @@ import {
   lastOffscreenInstants,
   listNpcMemories,
   getNpcAway,
+  getNpcMindModel,
   getNpcTier,
   listNpcProposals,
   recordNpcProposal,
@@ -273,7 +274,7 @@ async function askMind(
         { role: "system", content: withLanguage(MIND_SYSTEM, campaign.gameSettings.tableLanguage) },
         { role: "user", content: prompt },
       ],
-      { meta: { task: offscreen ? "npc_mind_offscreen" : "npc_mind" }, timeoutMs: MIND_TIMEOUT_MS() },
+      { meta: { task: offscreen ? "npc_mind_offscreen" : "npc_mind" }, timeoutMs: MIND_TIMEOUT_MS(), mindChoice: getNpcMindModel(npc.id) },
     );
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "the model call failed", latencyMs: Date.now() - started };

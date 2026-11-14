@@ -9,6 +9,7 @@ import { UserAvatar, ui } from "@/lib/ui";
 import type { CampaignMember } from "@/lib/campaign-types";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { classLevelWords, speciesAndClassWords } from "@/lib/characters/class-words";
+import { CompanionMind } from "@/app/campaigns/[campaignId]/CompanionMind";
 
 
 // Small gold badge on a party row: DM, co-DM, party lead, owner, real dice.
@@ -65,6 +66,7 @@ export function LobbyParty({
   canBuildCompanion,
   onBuildCompanion,
   onDismissCompanion,
+  mindsCampaignId = null,
   className,
   style,
   companionsClassName,
@@ -106,6 +108,9 @@ export function LobbyParty({
   canBuildCompanion: boolean;
   onBuildCompanion: () => void;
   onDismissCompanion: (characterId: string) => void;
+  // The campaign's id at a table with NPC minds, where each companion's mind
+  // may think with a model of its own (CompanionMind); null elsewhere.
+  mindsCampaignId?: string | null;
   // The lobby's layout hooks (order on the phone, entrance stagger). The
   // companions section takes the party's unless it is given its own.
   className?: string;
@@ -329,6 +334,11 @@ export function LobbyParty({
                       <p className="truncate text-sm text-stone-400">
                         {speciesAndClassWords(companion)}
                       </p>
+                      {/* Only whoever steers the story gets this list's
+                          remove buttons; the mind's model is theirs too. */}
+                      {mindsCampaignId ? (
+                        <CompanionMind campaignId={mindsCampaignId} characterId={companion.id} name={companion.name} />
+                      ) : null}
                     </div>
                   </div>
                   <Tooltip content="Remove this companion">

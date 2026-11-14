@@ -28,6 +28,7 @@ import { CharacterSheetDialog } from "@/app/campaigns/[campaignId]/CharacterShee
 import { TradeDialog } from "@/app/campaigns/[campaignId]/TradeDialog";
 import { CompanionBuilderDialog } from "@/app/campaigns/[campaignId]/CompanionBuilderDialog";
 import { CompanionCommand } from "@/app/campaigns/[campaignId]/CompanionCommand";
+import { CompanionMind } from "@/app/campaigns/[campaignId]/CompanionMind";
 import { CompanionPaintButton } from "@/app/campaigns/[campaignId]/CompanionPaintButton";
 import { CompanionKeepButton } from "@/app/campaigns/[campaignId]/CompanionKeepButton";
 import { CompanionBondLine, useRomanceBonds } from "@/app/campaigns/[campaignId]/CompanionBondLine";
@@ -912,6 +913,10 @@ export function PartyPanel({
                 canChoose={steersStory}
                 ownMind={npcMinds}
               />
+            ) : null}
+
+            {campaignId && npcMinds && steersStory && sheet.isCompanion && !sheet.summon ? (
+              <CompanionMind campaignId={campaignId} characterId={sheet.id} name={sheet.name} />
             ) : null}
 
             {campaignId && steersStory && !sheet.isCompanion && sheet.libraryRole === "companion" ? (

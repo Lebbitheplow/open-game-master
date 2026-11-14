@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
-import { parseAway, type NpcAway, type NpcMemory, type NpcMemoryKind, type NpcSourceKind } from "@/lib/dm/npc-mind-logic";
+import { parseAway, parseMindModel, type MindModelChoice, type NpcAway, type NpcMemory, type NpcMemoryKind, type NpcSourceKind } from "@/lib/dm/npc-mind-logic";
 
 // The registers behind the NPC minds (src/lib/dm/npc-mind.ts): what each NPC
 // knows and from whom, and each time a mind was asked. Thin on purpose; the
@@ -160,6 +160,17 @@ export function getNpcAway(npcId: string): NpcAway | null {
 
 export function setNpcAway(npcId: string, away: NpcAway | null) {
   getDatabase().prepare(`UPDATE npcs SET away_json = ?, updated_at = ? WHERE id = ?`).run(away ? JSON.stringify(away) : "", nowIso(), npcId);
+}
+
+// The mind's own model and effort (ticket 09), or null for the table's.
+export function getNpcMindModel(npcId: string): MindModelChoice | null {
+  const row = getDatabase().prepare(`SELECT mind_model_json FROM npcs WHERE id = ?`).get(npcId) as { mind_model_json?: string } | undefined;
+  return parseMindModel(row?.mind_model_json ?? "");
+}
+
+export function setNpcMindModel(npcId: string, choice: MindModelChoice | null) {
+  const value = choice && (choice.model || choice.effort) ? JSON.stringify({ model: choice.model, effort: choice.effort }) : "";
+  getDatabase().prepare(`UPDATE npcs SET mind_model_json = ?, updated_at = ? WHERE id = ?`).run(value, nowIso(), npcId);
 }
 
 // Set where an adventure is made, never by the narrator in play: for now no

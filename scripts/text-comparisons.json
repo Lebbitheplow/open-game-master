@@ -1749,6 +1749,7 @@
     "lib/dm/npc-logic.ts#str-list": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/npc-mind-logic.ts#str-list": [["key",2,"a mind's memory kinds, source kinds and mental ability keys (engine vocabulary)"]],
     "lib/dm/npc-mind-logic.ts#str-eq": [["key",2,"a memory's stored kind or source kind, a companion's kind and an NPC's stored tier (engine vocabulary)"]],
+    "lib/dm/npc-mind.ts#str-includes": [["key",1,"SRD weapon property id (two-handed)"]],
     "lib/dm/npc-mind-tools.ts#str-list": [["key",2,"tool names and required field names (engine vocabulary)"]],
     "lib/dm/npc-suggest.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/object-actions.ts#str-eq": [["key",1,"a gear weapon's damage type, the engine's own English name (a burning torch kindles oil)"]],

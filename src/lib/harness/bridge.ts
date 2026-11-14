@@ -36,7 +36,7 @@ import { harnessOfferFor } from "./policy.ts";
 import { makeRunDir, removeRunDir } from "./run-dir.ts";
 import { getCampaignById } from "@/lib/db/campaigns";
 import type { HarnessErrorKind, HarnessEvent, HarnessSession, McpToolDefinition } from "./types.ts";
-import { HARNESS_MAX_RUN_MS, isHarnessId } from "./types.ts";
+import { HARNESS_MAX_RUN_MS, isHarnessEffort, isHarnessId, type HarnessConfig, type HarnessEffort } from "./types.ts";
 
 // A burst of parallel calls from one model reply arrives as separate HTTP
 // requests a few milliseconds apart; they are gathered into one round, as a
@@ -596,7 +596,39 @@ export type HarnessRequestContext = {
   catalogue?: readonly unknown[];
   // A DM turn, released by the loop when it ends.
   turn?: boolean;
+  // A first-tier NPC mind's own model and effort (src/lib/dm/npc-mind.ts,
+  // ticket 09): blank fields, or ones the program no longer offers, follow
+  // the role's own.
+  choice?: { model: string; effort: string };
 };
+
+// The model and effort a call's own choice picks, checked against what the
+// program offers now. One it no longer offers is left for the role's own,
+// with a line in the log.
+async function chosenRun(
+  config: HarnessConfig,
+  choice: { model: string; effort: string },
+  roleModel: string,
+): Promise<{ model: string; effort?: HarnessEffort }> {
+  const offered = isHarnessId(config.id) ? ((await probeHarness(config.id).catch(() => null))?.models ?? []) : [];
+  let model = roleModel;
+  if (choice.model) {
+    if (offered.some((entry) => entry.id === choice.model)) {
+      model = choice.model;
+    } else {
+      console.warn(`[harness] a mind's model "${choice.model}" is no longer offered; it runs on the table's model "${roleModel}"`);
+    }
+  }
+  if (!choice.effort) {
+    return { model };
+  }
+  const efforts = offered.find((entry) => entry.id === model)?.efforts ?? [];
+  if (isHarnessEffort(choice.effort) && efforts.includes(choice.effort)) {
+    return { model, effort: choice.effort };
+  }
+  console.warn(`[harness] a mind's effort "${choice.effort}" is not offered by "${model}"; it runs at the table's effort`);
+  return { model };
+}
 
 // The model call, for provider "harness".
 export async function requestHarnessMessage(
@@ -647,8 +679,9 @@ async function prepareRun(context: HarnessRequestContext) {
     removeRunDir(cwd);
     return { error: harnessError(`Refused to start: ${leak} would have reached the program.`, "lockdown") } as const;
   }
-  const model =
-    context.role === "utility" ? config.utilityModel || config.model : config.model;
+  const roleModel = context.role === "utility" ? config.utilityModel || config.model : config.model;
+  const chosen = context.choice ? await chosenRun(config, context.choice, roleModel) : null;
+  const model = chosen?.model ?? roleModel;
   // The Fast tier the admin chose for this role (issue 255); the adapter
   // asks for it only where its connection has one (src/lib/speed-tier.ts).
   const role = context.role === "utility" ? "utility" : "story";
@@ -662,7 +695,7 @@ async function prepareRun(context: HarnessRequestContext) {
       : [];
   const speed =
     wantsFast && agentSpeedEligibility({ harnessId: config.id, model, models: fastModels }).ok ? ({ role } as const) : undefined;
-  return { config, binary, cwd, env, model, speed, adapter: adapterFor(config.id) } as const;
+  return { config, binary, cwd, env, model, chosenEffort: chosen?.effort, speed, adapter: adapterFor(config.id) } as const;
 }
 
 async function startSession(
@@ -675,7 +708,7 @@ async function startSession(
   if ("error" in prepared) {
     return prepared;
   }
-  const { config, binary, cwd, env, model, speed, adapter } = prepared;
+  const { config, binary, cwd, env, model, chosenEffort, speed, adapter } = prepared;
   const kind = context.turn ? "turn" : "other";
   if (!(await acquireSlot(kind, config.maxConcurrent, timeoutMs))) {
     removeRunDir(cwd);
@@ -708,7 +741,7 @@ async function startSession(
       binary,
       system: rendered.system,
       model,
-      effort: config.effort,
+      effort: chosenEffort ?? config.effort,
       ...(speed ? { speed } : {}),
       mcp: { url: harnessMcpUrl(), token },
       cwd,
@@ -740,7 +773,7 @@ async function completeWithHarness(
   if ("error" in prepared) {
     return prepared;
   }
-  const { config, binary, cwd, env, model, speed, adapter } = prepared;
+  const { config, binary, cwd, env, model, chosenEffort, speed, adapter } = prepared;
   if (!(await acquireSlot("other", config.maxConcurrent, timeoutMs))) {
     removeRunDir(cwd);
     return { error: harnessError("Every agent slot is busy; try again in a moment.", "timeout") };
@@ -776,7 +809,7 @@ async function completeWithHarness(
         system: rendered.system,
         model,
         // The bookkeeping model's own effort when the admin set one.
-        effort: context.role === "utility" ? config.utilityEffort || config.effort : config.effort,
+        effort: chosenEffort ?? (context.role === "utility" ? config.utilityEffort || config.effort : config.effort),
         ...(speed ? { speed } : {}),
         mcp: null,
         cwd,

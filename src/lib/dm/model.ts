@@ -50,6 +50,10 @@ export type DmCallOptions = ChatRequestOptions & {
   fit?: { history?: { start: number; end: number }; protectFrom?: number };
   // Upkeep that waits while a table's turn is calling the same backend.
   background?: boolean;
+  // A first-tier NPC mind's own model and effort (src/lib/dm/npc-mind.ts,
+  // ticket 09), for a utility call on the table's agent program; other
+  // routes, and blank fields, run as the table's.
+  mindChoice?: { model: string; effort: string } | null;
 };
 
 // What the call was sized to, for the turn's Context panel.
@@ -86,6 +90,8 @@ type Route = {
   windowAssumed: boolean;
   // One backend, for calibration and the interactive gate.
   key: string;
+  // An agent program call's own model and effort (DmCallOptions.mindChoice).
+  choice?: { model: string; effort: string };
 };
 
 const DEFAULT_MIN_OUTPUT = { story: 1_024, utility: 512 } as const;
@@ -125,11 +131,17 @@ export function storyRouteKey(settings: StorySettings): string {
   return storyRoute(settings).key;
 }
 
+// Whether this table's NPC minds (utility calls) run on the server's agent
+// program, where a mind may pick its own model and effort (ticket 09).
+export function utilityOnAgent(settings: StorySettings): boolean {
+  return settings.utilityProvider === "harness" || (settings.textProvider === "harness" && !(settings.utilityModel ?? "").trim());
+}
+
 // The utility model's own route, or null when the table has none and its
 // utility work runs on the story route.
 async function utilityRoute(settings: StorySettings): Promise<Route | null> {
   const model = (settings.utilityModel ?? "").trim();
-  if (settings.utilityProvider === "harness" || (settings.textProvider === "harness" && !model)) {
+  if (utilityOnAgent(settings)) {
     const config = harnessConfig();
     return {
       provider: "harness",
@@ -224,7 +236,7 @@ function send(route: Route, messages: ChatMessage[], options: ChatRequestOptions
       messages,
       options,
       route.backendRole === "utility"
-        ? { role: "utility" }
+        ? { role: "utility", ...(route.choice ? { choice: route.choice } : {}) }
         : { role: "story", campaignId: options.harness?.campaignId, catalogue: options.harness?.catalogue, turn: options.harness?.turn },
     );
   }
@@ -491,7 +503,14 @@ export async function requestUtilityMessage(
     return attempt(story, "utility", messages, options, null);
   }
   if (route.provider === "harness") {
-    return attempt(route, "utility", messages, options, null);
+    const choice = options.mindChoice;
+    // Measured under the model it asks for (src/lib/usage/model-calls.ts); one
+    // the program stopped offering runs on the table's, as the log says.
+    const own =
+      choice && (choice.model || choice.effort)
+        ? { ...route, choice, model: choice.model || route.model, key: `harness|utility|${choice.model}|${choice.effort}` }
+        : route;
+    return attempt(own, "utility", messages, options, null);
   }
   const state = breakers().get(route.key) ?? CLOSED;
   if (breakerOpen(state, Date.now())) {
