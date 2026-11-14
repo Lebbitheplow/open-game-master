@@ -3045,7 +3045,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "439f29ad4461",
+  "sha": "1e312e6b6d29",
   "clauses": [
    {
     "c": "\"speed\":30",

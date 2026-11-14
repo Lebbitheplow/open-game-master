@@ -1539,7 +1539,7 @@ export const requestRollTool = {
   function: {
     name: "request_roll",
     description:
-      "Ask the server to roll dice for an uncertain outcome; it resolves the character's modifier from their sheet.",
+      "Roll dice for an uncertain outcome; the server takes the modifier from the sheet.",
     parameters: {
       type: "object",
       additionalProperties: false,
@@ -1574,7 +1574,7 @@ export const requestRollTool = {
           type: "string",
           enum: ["very_easy", "easy", "moderate", "hard", "very_hard", "nearly_impossible"],
           description:
-            "How hard the task is. The server turns it into the DC (5, 10, 15, 20, 25 or 30, in order). Prefer this over dc. Omit for damage or initiative.",
+            "How hard the task is; the server makes it the DC (5 to 30). Prefer it to dc. Omit for damage or initiative.",
         },
         dc: {
           type: "integer",
@@ -1584,12 +1584,12 @@ export const requestRollTool = {
         expression: {
           type: "string",
           description:
-            "damage and custom only: the dice expression ('2d6+3'). Never an enemy's roll (enemy_attack) or a party character's attack (pc_attack).",
+            "damage and custom only: the dice ('2d6+3'). Never an enemy's roll (enemy_attack) or a party attack (pc_attack).",
         },
         damageType: {
           type: "string",
           description:
-            "damage only: the damage type (fire, slashing), for resistances, immunities and vulnerabilities.",
+            "damage only: the damage type (fire, slashing), for resistance, immunity, vulnerability.",
         },
         advantage: {
           type: "string",
@@ -1606,12 +1606,12 @@ export const requestRollTool = {
         advantageReason: {
           type: "string",
           description:
-            "The circumstance behind it, in a few words. Without one, the server sets the claim aside.",
+            "The circumstance, in a few words; without one the server sets the claim aside.",
         },
         targetEnemyId: {
           type: "string",
           description:
-            "damage only, in combat, from someone with no sheet: the enemy struck, exact enemyId from GAME STATE. Someone with no sheet is an NPC ally never recruited. The server applies the total; never follow up with apply_damage. A party character's damage goes through pc_attack or the spell tools, never here.",
+            "damage only, in combat, by an NPC with no sheet: the enemy struck (enemyId). Exact enemyId from GAME STATE; the server applies the total, no apply_damage after. A party character's damage goes through pc_attack or the spell tools.",
         },
         reason: {
           type: "string",
@@ -1622,11 +1622,11 @@ export const requestRollTool = {
           type: "string",
           enum: [...SAVE_AGAINST, NONE],
           description:
-            "saving_throw only: what the save resists, or 'none' (dismount: thrown from a mount). Traits keyed to it apply (Brave, Fey Ancestry).",
+            "saving_throw only: what it resists (a condition, damage type, disease, dismount) or 'none'. Traits keyed to it apply (Brave, Fey Ancestry).",
         },
         magical: {
           type: "boolean",
-          description: "saving_throw only: the effect is magic (Gnome Cunning, Spell Resistance).",
+          description: "saving_throw only: a spell or other magic (Gnome Cunning, Spell Resistance).",
         },
         casterType: {
           type: "string",

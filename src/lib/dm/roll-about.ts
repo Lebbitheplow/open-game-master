@@ -96,7 +96,7 @@ export const CHECK_KEY_PROPERTIES = {
   creature: {
     type: "string",
     description:
-      "A creature it is about (rules type or race: 'undead', 'orc'), or 'none'.",
+      "A creature it is about: type or humanoid race ('undead', 'orc'), or 'none'.",
   },
   terrain: {
     type: "string",

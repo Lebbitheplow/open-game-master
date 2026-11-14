@@ -117,10 +117,10 @@ export const TOOL_GROUPS: Record<ToolGroupId, { summary: string; tools: readonly
   // Opened by itself when anyone at the table casts (ProfileSignals.caster).
   spells: { summary: "a character's spells: buffs and summons, a saving-throw spell at one enemy, a slot spent on a utility spell", tools: ["cast_buff", "cast_at_enemy", "use_spell_slot"] },
   // The exploring core, closed in a fight and one call away there.
-  outside: { summary: "moving the party, items and gold, XP, social checks, a rest (the out-of-fight actions)", tools: CORE_EXPLORE },
+  outside: { summary: "moving the party, items and gold, XP, social checks, a rest", tools: CORE_EXPLORE },
   companions: { summary: "adding or dismissing an AI companion", tools: ["add_companion", "dismiss_companion"] },
   sheet: {
-    summary: "lasting sheet changes: damage outside a fight, stabilizing, revealing an item, learning a spell, a story change to who a character is",
+    summary: "sheet changes: damage outside a fight, stabilizing, revealing an item, learning a spell, a story change",
     tools: ["apply_damage", "stabilize", "reveal_item", "learn_spell", "update_sheet"],
   },
   tactics: {
@@ -133,7 +133,7 @@ export const TOOL_GROUPS: Record<ToolGroupId, { summary: string; tools: readonly
     summary: "treasure hoards, overland travel, passing time, weather, breaking objects, a title card",
     tools: ["roll_treasure", "damage_object", "travel", "pass_time", "set_weather", "show_title"],
   },
-  explore: { summary: "downtime, lifestyles, lifting and dragging, diseases, madness and poisons", tools: ["lift", "set_lifestyle", "downtime", "afflict"] },
+  explore: { summary: "downtime, lifestyles, lifting, diseases, madness, poisons", tools: ["lift", "set_lifestyle", "downtime", "afflict"] },
   binder: { summary: "handouts and the quest log", tools: ["show_handout", "dismiss_handout", "set_quest", "tick_objective"] },
   factions: { summary: "faction standing and notes", tools: ["adjust_reputation", "faction_note"] },
   // Buying and selling is purchase, in the exploring core (issue #471).
@@ -141,10 +141,10 @@ export const TOOL_GROUPS: Record<ToolGroupId, { summary: string; tools: readonly
   settlement: { summary: "inventing a settlement", tools: ["generate_settlement"] },
   party: { summary: "the party's shared pack and purse", tools: ["party_stash"] },
   effects: { summary: "a lasting blessing, curse or boon that is not a condition", tools: ["set_effect", "clear_effect"] },
-  scenes: { summary: "structured scenes: chases, heists, skill challenges", tools: ["start_scene", "scene_check", "end_scene"] },
+  scenes: { summary: "chases, heists, skill challenges", tools: ["start_scene", "scene_check", "end_scene"] },
   sound: { summary: "the table's music and sound stings", tools: ["set_ambience", "play_sting"] },
   mounts: { summary: "mounting and dismounting", tools: ["mount_up", "dismount"] },
-  gear: { summary: "donning a shield, drawing a weapon, dropping, picking up or handing over an item", tools: ["handle_item"] },
+  gear: { summary: "drawing, donning, dropping, picking up or handing over an item", tools: ["handle_item"] },
   // A pet's damage is apply_damage's (issue #471), which a table with pets
   // is offered with this group.
   pets: { summary: "familiars, pets and animal companions", tools: ["summon_pet", "pet_attack", "dismiss_pet", "apply_damage"] },
