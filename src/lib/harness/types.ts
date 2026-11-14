@@ -1,10 +1,10 @@
 // Public types of the harness context: an agent program the admin already
-// has (Claude Code, Codex, opencode, Grok Build) standing in for the story
+// has (Claude Code, Codex, opencode, Grok Build, Pi) standing in for the story
 // model. Pure, no imports, so scripts/test-harness-*.mjs can load it.
 
-export type HarnessId = "claude" | "codex" | "opencode" | "grok";
+export type HarnessId = "claude" | "codex" | "opencode" | "grok" | "pi";
 
-export const HARNESS_IDS: readonly HarnessId[] = ["claude", "codex", "opencode", "grok"];
+export const HARNESS_IDS: readonly HarnessId[] = ["claude", "codex", "opencode", "grok", "pi"];
 
 export function isHarnessId(value: unknown): value is HarnessId {
   return typeof value === "string" && (HARNESS_IDS as readonly string[]).includes(value);

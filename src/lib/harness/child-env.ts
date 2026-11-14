@@ -72,6 +72,8 @@ const PER_HARNESS: Record<string, readonly string[]> = {
   // OPENCODE_DB moves opencode 2's store, where it keeps its sign-ins too.
   opencode: ["OPENCODE_CONFIG_DIR", "OPENCODE_DB"],
   grok: ["GROK_HOME", "XAI_API_KEY"],
+  // Pi keeps its sign-in and settings in its own folder (~/.pi/agent).
+  pi: ["PI_CODING_AGENT_DIR"],
 };
 
 // Names that must never pass, whatever an allowlist entry above might

@@ -94,7 +94,7 @@ export function StorytellerStep({
           onPick={() => pick("agent")}
           glyph="system-share"
           title="An agent you already pay for"
-          sub="Claude Code, Codex, opencode or Grok Build, signed in on this computer, narrating on its own plan."
+          sub="Claude Code, Codex, opencode, Grok Build or Pi, signed in on this computer, narrating on its own plan."
         />
         <ChoiceCard
           picked={draft.story === "none"}

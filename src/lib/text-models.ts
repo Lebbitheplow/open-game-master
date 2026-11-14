@@ -8,7 +8,7 @@
 // fails its first turn.
 //
 // "harness" hands the storyteller to an agent program the server's admin has
-// installed and signed into (Claude Code, Codex, opencode, Grok Build). Which
+// installed and signed into (Claude Code, Codex, opencode, Grok Build, Pi). Which
 // one, and on which model, is chosen once for the whole server in the admin
 // panel (src/lib/harness/); a campaign only says "use the server's agent".
 export type TextProvider = "local" | "custom" | "none" | "harness";
