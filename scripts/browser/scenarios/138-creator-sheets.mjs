@@ -18,8 +18,17 @@
 //     a fighter asks for the feat's style;
 //   - each part has named controls, a finger's size on a phone, nothing
 //     pushed past its edge, no sideways scroll, and a clean axe run.
+import fs from "node:fs";
+import path from "node:path";
 import { check, eventually, openPanelTab, untilStill, upTo } from "../lib.mjs";
 import { consoleErrors, look, narrowPhone, ringOnTab, shootBoth } from "../creator-audit.mjs";
+
+// Hoot's Metallurgist subclass (Black Flag) and Crime Syndicate Member
+// background are content-pack rows: with no pack (CI's browser run) the
+// suit's Athletics line and the background's feature have nothing to show,
+// and the page's ask for the background answers 404.
+const TREE = path.resolve(import.meta.dirname, "..", "..", "..");
+const hasPack = () => fs.existsSync(process.env.CONTENT_DB_PATH ?? path.join(TREE, "data", "content", "open5e.sqlite"));
 
 async function openSheet(t, name) {
   const { page, root } = t;
@@ -74,9 +83,11 @@ export default {
     const hootLines = async (scope, where, { pack = true } = {}) => {
       const text = ((await scope.textContent()) ?? "").replace(/\s+/g, " ");
       if (!/Small/.test(text)) problems.push(`${where}: the owlfolk's size (Small) is not shown`);
-      if (!/Conditional/.test(text) || !/Athletics while wearing the armor from Mystic Metal/i.test(text)) problems.push(`${where}: no conditional Athletics line`);
+      if (!hasPack()) {
+        // The suit's Athletics comes from the pack's Metallurgist.
+      } else if (!/Conditional/.test(text) || !/Athletics while wearing the armor from Mystic Metal/i.test(text)) problems.push(`${where}: no conditional Athletics line`);
       else if (!/holds now/.test(text)) problems.push(`${where}: the conditional Athletics does not say it holds now, in the suit`);
-      if (pack && !/A Favor In Turn/.test(text)) problems.push(`${where}: the pack background's feature is not shown`);
+      if (pack && hasPack() && !/A Favor In Turn/.test(text)) problems.push(`${where}: the pack background's feature is not shown`);
       if (!/Personality/.test(text) || !/I watch the exits/.test(text)) problems.push(`${where}: the Personality lines are not shown`);
     };
     try {
@@ -88,7 +99,9 @@ export default {
       await hootLines(pageRoot, "character page");
       // The background feature's info opens what it does.
       const favor = pageRoot.getByRole("button", { name: /What is A Favor In Turn\?/ }).first();
-      if (await upTo(() => favor.count(), 5_000)) {
+      if (!hasPack()) {
+        // No pack, no background feature to open.
+      } else if (await upTo(() => favor.count(), 5_000)) {
         await t.tap(favor);
         const info = page.locator('[role="dialog"]').filter({ hasText: "A Favor In Turn" }).last();
         await eventually(() => info.count(), { timeoutMs: 10_000, label: "the feature's info" });
@@ -223,7 +236,7 @@ export default {
       await look(t, initiate, "level-up: Fighting Initiate style step", problems);
       await shootBoth(t, null, "levelup-fighting-initiate");
       await page.keyboard.press("Escape");
-      for (const text of errors.seen) problems.push(`console: ${text}`);
+      for (const text of errors.seen) if (hasPack() || !/\/api\/content\/backgrounds\//.test(text)) problems.push(`console: ${text}`);
     } finally {
       errors.stop();
     }

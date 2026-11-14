@@ -476,7 +476,8 @@ Object.assign(CC, {
   async cc_full_value(t, run, feature) {
     const shops = await load("lib/db/shops.ts");
     t.fresh();
-    const hero = t.hero(feature.classId, feature.level, { equipment: [{ name: "Dagger", qty: 2 }] });
+    // The worth stands in for the pack's list price on a server without one.
+    const hero = t.hero(feature.classId, feature.level, { equipment: [{ name: "Dagger", qty: 2, worth: 2 }] });
     const shop = shops.insertShop(t.world.campaignId, { name: "Fence", kind: "general", size: "town", markup: 1, stock: [{ itemName: "Rope", qty: 1, priceCp: 100, note: "" }] });
     const copper = () => { const sheet = t.world.sheet(hero.id); return (sheet.gold ?? 0) * 100 + (sheet.silver ?? 0) * 10 + (sheet.copper ?? 0); };
     const sell = async () => {

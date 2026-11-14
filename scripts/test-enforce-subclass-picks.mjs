@@ -16,6 +16,8 @@ const { test, finish } = suite("test-enforce-subclass-picks");
 const sweep = await openFillSweep();
 const door = doors({ creation: sweep.libraryCreation });
 const { optionFeatureName, optionsOfKind } = await import("../src/lib/srd/options.ts");
+const { contentPackInstalled } = await import("../src/lib/content/db.ts");
+const hasPack = contentPackInstalled();
 
 // A character the builder fills at this level, with one pick of `kind`
 // swapped for `option`: what the builder says of it, and what the server does.
@@ -109,7 +111,8 @@ await test("A07 The builder's spell step offers the spells a picked patron optio
   const problems = [];
   for (const [subclass, kind, option, spell] of [
     ["The Genie", "genie_kind", "Efreeti", "Burning Hands"],
-    ["Animal Lords", "animal_lord", "Toad King", "Fog Cloud"],
+    // Animal Lords is Tome of Heroes, a content-pack subclass.
+    ...(hasPack ? [["Animal Lords", "animal_lord", "Toad King", "Fog Cloud"]] : []),
   ]) {
     const { fields } = await sweep.library.fill(sweep.library.fresh({ level: 1, classId: "warlock", subclass }));
     const optionPicks = [...fields.optionPicks.filter((name) => !name.startsWith(optionFeatureName(kind, ""))), optionFeatureName(kind, option)];
@@ -120,6 +123,10 @@ await test("A07 The builder's spell step offers the spells a picked patron optio
 });
 
 await test("A08 A Smuggler rogue (Tome of Heroes) picks two wizard illusion or transmutation cantrips at 3rd level, a 1st-level one at 7th and a 2nd-level one at 13th; the builder asks, the save keeps them, and the engine casts them, the spells once a long rest without a slot.", async () => {
+  // The Smuggler is a content-pack subclass (Tome of Heroes).
+  if (!hasPack) {
+    return;
+  }
   const { spellHeldProblem, grantedCastOf } = await import("../src/lib/dm/cast-rules.ts");
   const { populateResources } = await import("../src/lib/srd/class-resources.ts");
   const { bundledSpellSchool } = await import("../src/lib/srd/spell-facts.ts");
