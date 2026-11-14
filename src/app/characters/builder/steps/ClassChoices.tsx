@@ -193,7 +193,9 @@ export function ClassChoices({
                     aria-pressed={selected}
                     disabled={Boolean(notYet)}
                     onClick={() => actions.toggleOption(slot, option.n)}
-                    className="grow text-left disabled:cursor-not-allowed"
+                    // A finger's height even when the card holds only a
+                    // spell's name (a Legerdemain cantrip).
+                    className="min-h-10 grow text-left disabled:cursor-not-allowed"
                   >
                     <span className="block text-xs">{option.n}</span>
                     {notYet || option.req || !spells ? (
