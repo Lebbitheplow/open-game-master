@@ -19,6 +19,7 @@ import { baseName, rowName } from "@/lib/srd/item-row";
 import { findPoison } from "@/lib/srd/afflictions";
 import itemTagsJson from "@/lib/classes/item-tags.json";
 import { textKey } from "@/lib/language/text-logic";
+import { englishItemName } from "@/lib/language/srd-names-it";
 import { pluralForms } from "@/lib/srd/name-forms";
 import type { ItemTag } from "@/lib/schemas/item-tags";
 
@@ -102,6 +103,17 @@ function rowNamed(name: string): ItemRow | null {
 // armor or poison that name is ("+1 Longsword"). Null for a name no table
 // knows.
 export function itemRow(item: Pick<TaggedItem, "name" | "slug" | "srdName">): ItemRow | null {
+  const row = englishRow(item);
+  if (row) {
+    return row;
+  }
+  // An official Italian name, whole, is the English row's
+  // (src/lib/language/srd-names-it.ts): "Spada lunga" is the Longsword.
+  const english = englishItemName(rowName(item));
+  return english ? englishRow({ name: english }) : null;
+}
+
+function englishRow(item: Pick<TaggedItem, "name" | "slug" | "srdName">): ItemRow | null {
   const bySlug = item.slug ? BY_SLUG.get(item.slug) : undefined;
   if (bySlug) {
     return bySlug;

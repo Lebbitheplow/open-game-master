@@ -31,7 +31,7 @@ const hero = world.addHero({ class: "fighter", level: 3 });
 const carried = (name) => getSheetById(hero.id).equipment.find((item) => item.name === name);
 
 await test("A thing no table knows by name, sent with no tags, is asked what it is, at every table, and nothing is granted.", async () => {
-  for (const name of ["Pozione di guarigione", "Potion de soins", "Poción de curación", "Heiltrank", "Glowing vial"]) {
+  for (const name of ["Pozione curativa", "Potion de soins", "Poción de curación", "Heiltrank", "Glowing vial"]) {
     const out = await ai("grant_item", { characterId: hero.id, item: name, reason: "the chest" }, hero);
     assert.equal(out.retry, true, `${name}: granted without asking`);
     assert.match(out.error, /send it again with srdName/);
@@ -39,13 +39,19 @@ await test("A thing no table knows by name, sent with no tags, is asked what it 
   }
 });
 
+await test("The book's official Italian name, whole, is the English row, granted with no question.", async () => {
+  const out = await ai("grant_item", { characterId: hero.id, item: "Pozione di guarigione", reason: "the chest" }, hero);
+  assert.equal(out.ok, true, out.error);
+  assert.equal(carried("Pozione di guarigione")?.srdName, "Potion of Healing", "the official Italian name was not granted as its row");
+});
+
 await test("Told it heals, the potion is asked which healing potion it is, and granted once srdName names it; tags [] grants a thing that is none of them.", async () => {
-  const asked = await ai("grant_item", { characterId: hero.id, item: "Pozione di guarigione", tags: ["consumable", "potion", "healing_potion"], reason: "the chest" }, hero);
+  const asked = await ai("grant_item", { characterId: hero.id, item: "Pozione curativa", tags: ["consumable", "potion", "healing_potion"], reason: "the chest" }, hero);
   assert.equal(asked.retry, true, "a healing potion of no kind was granted");
   assert.match(asked.error, /srdName naming the potion's kind/);
-  const granted = await ai("grant_item", { characterId: hero.id, item: "Pozione di guarigione", srdName: "Potion of Healing", tags: ["consumable", "potion", "healing_potion"], reason: "the chest" }, hero);
+  const granted = await ai("grant_item", { characterId: hero.id, item: "Pozione curativa", srdName: "Potion of Healing", tags: ["consumable", "potion", "healing_potion"], reason: "the chest" }, hero);
   assert.equal(granted.ok, true, granted.error);
-  assert.deepEqual(carried("Pozione di guarigione").tags, ["consumable", "potion", "healing_potion"]);
+  assert.deepEqual(carried("Pozione curativa").tags, ["consumable", "potion", "healing_potion"]);
   const letter = await ai("grant_item", { characterId: hero.id, item: "Lettera sigillata", tags: [], reason: "the courier" }, hero);
   assert.equal(letter.ok, true, letter.error);
 });

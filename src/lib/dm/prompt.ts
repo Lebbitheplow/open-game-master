@@ -101,6 +101,7 @@ import { rollerName } from "@/lib/roll-labels";
 import { tableHazards } from "@/lib/srd/table-hazards";
 import { waypointProperty } from "@/lib/dm/waypoint-logic";
 import { languageDirective } from "@/lib/dm/table-language-logic";
+import { italianGlossary } from "@/lib/language/srd-names-it";
 import { OFFER_NOTE_PREFIX, renderOffersBlock, type OfferLine } from "@/lib/dm/proposal-logic";
 import { ENEMY_TURNS_CUE } from "@/lib/dm/enemies-due";
 import { CREATURE_TYPES } from "@/lib/bestiary/creature-type";
@@ -1512,6 +1513,12 @@ export function buildGameStateBlock(state: DmGameState): string {
   const hazards = tableHazardLine(campaign.id);
   if (hazards) {
     sections.push(hazards);
+  }
+  // An Italian table's narrator reads the official Italian names of the
+  // rules things this state names (src/lib/language/srd-names-it.ts).
+  const glossary = campaign.gameSettings.tableLanguage === "italian" ? italianGlossary([...sections, ...moment].join("\n")) : "";
+  if (glossary) {
+    sections.push(glossary);
   }
   return [...sections, THIS_MOMENT_HEADING, ...moment, "=== END GAME STATE ==="].join("\n\n");
 }
