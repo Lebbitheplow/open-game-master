@@ -222,7 +222,7 @@ const NAMES = [
   "species.eladrin.grants", "species.sea_elf.grants", "species.duergar.grants",
   "species.eladrin.darkvision", "species.sea_elf.darkvision", "species.duergar.darkvision", "species.duergar.choices",
   "species.triton.grants", "species.serpentfolk.grants", "species.kobold.grants", "species.aarakocra.grants",
-  "species.triton.darkvision", "species.serpentfolk.darkvision", "species.kobold.darkvision",
+  "species.serpentfolk.darkvision", "species.kobold.darkvision",
   "species.hobgoblin.grants", "species.satyr.grants", "species.fairy.grants", "species.owlfolk.grants",
   "species.hobgoblin.darkvision", "species.owlfolk.darkvision", "species.hobgoblin.choices", "species.satyr.choices",
   "species.centaur.grants", "species.rabbitfolk.grants", "species.shifter.grants", "species.shifter.darkvision",

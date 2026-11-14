@@ -1088,11 +1088,10 @@
         "cha": 1
       },
       "traits": [
-        "Darkvision 60 ft",
         "30 ft swim speed",
         "Amphibious (breathe air and water)",
         "Cold Resistance",
-        "Control Air and Water (fog cloud, then gust of wind from 3rd level and water breathing from 5th, 1/long rest each)",
+        "Control Air and Water (fog cloud, then gust of wind from 3rd level and wall of water from 5th, 1/long rest each)",
         "Emissary of the Sea (share simple ideas with beasts that breathe water)"
       ],
       "languages": [
@@ -1114,9 +1113,10 @@
             "per": "long"
           },
           {
-            "name": "Water Breathing",
+            "name": "Wall of Water",
             "level": 5,
-            "per": "long"
+            "per": "long",
+            "circle": 3
           }
         ]
       }

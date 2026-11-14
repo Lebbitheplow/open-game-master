@@ -170,6 +170,13 @@ const BOOKS = {
   // Mordenkainen's Tome of Foes: an eladrin has the elf's traits and Fey
   // Step, and none of the high elf's or wood elf's weapon training.
   eladrin: { notTraits: ["Elf Weapon Training"], weapons: null },
+  // Volo's Guide to Monsters: a triton sees no better in the dark than a
+  // human, and its Control Air and Water reaches wall of water at 5th.
+  triton: {
+    notTraits: ["Darkvision"],
+    traits: ["Control Air and Water (fog cloud, then gust of wind from 3rd level and wall of water from 5th, 1/long rest each)"],
+    innateSpells: { trait: "Control Air and Water", ability: "cha", spells: [{ name: "Fog Cloud", level: 1, per: "long" }, { name: "Gust of Wind", level: 3, per: "long" }, { name: "Wall of Water", level: 5, per: "long", circle: 3 }] },
+  },
   // END OF BOOKS
 };
 

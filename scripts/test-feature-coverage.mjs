@@ -445,7 +445,7 @@ test("every racial trait is enforced, a resource, or acknowledged", () => {
     "Duergar Resilience (adv. vs illusions, charmed and paralyzed)",
     "Duergar Magic (enlarge/reduce on yourself from 3rd level, invisibility on yourself from 5th, 1/long rest each)",
     "Cold Resistance",
-    "Control Air and Water (fog cloud, then gust of wind from 3rd level and water breathing from 5th, 1/long rest each)",
+    "Control Air and Water (fog cloud, then gust of wind from 3rd level and wall of water from 5th, 1/long rest each)",
     "Emissary of the Sea (share simple ideas with beasts that breathe water)",
     "Magic Resistance (adv. on saves against spells and other magic)",
     "Poison Immunity (immune to poison damage and the poisoned condition)",
