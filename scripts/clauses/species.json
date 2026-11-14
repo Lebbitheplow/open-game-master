@@ -2521,7 +2521,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "d52f376d69f6",
+  "sha": "46dd13e69969",
   "clauses": [
    {
     "c": "\"speed\":25",
@@ -2554,7 +2554,7 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.aarakocra.natural-weapon"
    },
    {
-    "c": "\"languages\":[\"Common\",\"Auran\"]",
+    "c": "\"languages\":[\"Common\",\"Aarakocra\",\"Auran\"]",
     "is": "held",
     "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.aarakocra.grants"

@@ -189,6 +189,8 @@ const BOOKS = {
     traits: ["Duergar Magic (enlarge on yourself from 3rd level, invisibility on yourself from 5th, 1/long rest each, no material components)"],
     innateSpells: { trait: "Duergar Magic", ability: "int", spells: [{ name: "Enlarge/Reduce", level: 3, per: "long", self: true, noMaterial: true }, { name: "Invisibility", level: 5, per: "long", self: true, noMaterial: true }] },
   },
+  // Elemental Evil Player's Companion: an aarakocra speaks its own tongue too.
+  aarakocra: { languages: ["Common", "Aarakocra", "Auran"] },
   // END OF BOOKS
 };
 
