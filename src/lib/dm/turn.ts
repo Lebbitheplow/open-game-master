@@ -292,7 +292,8 @@ import { acceptsCall, offeredAs } from "@/lib/dm/tool-merge-logic";
 import { petTools, PET_TOOL_NAMES } from "@/lib/dm/pet-tools";
 import { socialTools, SOCIAL_TOOL_NAMES, handleSetNpc, npcRosterForPrompt } from "@/lib/dm/social-tools";
 import { npcMindTools, NPC_MIND_TOOL_NAMES } from "@/lib/dm/npc-mind-tools";
-import { awayArrivalNote, handleNpcInform, handleNpcPast, handleNpcSpeak, mindRosterNotes, mindTurnRefusal, npcMindsOn } from "@/lib/dm/npc-mind";
+import { awayArrivalNote, handleNpcInform, handleNpcPast, handleNpcSpeak, mindRosterNotes, mindTurnRefusal, mindsAwaitingTurn, npcMindsOn } from "@/lib/dm/npc-mind";
+import { sceneMindsPrompt } from "@/lib/dm/npc-mind-logic";
 import { worldForPrompt } from "@/lib/dm/world-prompt";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import {
@@ -2039,6 +2040,9 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
   // One shot at a reply that wrote the story arc's bookkeeping instead of
   // making the calls it stands for (arcBookkeepingPrompt, issue 941).
   let arcNudged = false;
+  // One shot at a turn that closed without the turn owed to a first-tier
+  // mind still on stage (npc-mind.ts mindsAwaitingTurn, design §9).
+  let sceneMindsNudged = false;
   // What the current call streamed to the draft, and how many narration
   // parts the turn held before it. Settled once the call's text is kept or
   // withheld for good: before the next call (a correction sends the model
@@ -2799,6 +2803,27 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
           role: "user",
           content: intentCorrection(card.intent, card.characterId, card.name, card.resolution),
         });
+        saveDmTurn(turn);
+        continue;
+      }
+      // A first-tier mind still on stage plays like a player at the table:
+      // a turn that closes without giving it one sends the narrator back
+      // once to ask it, telling it only what it perceived from where it
+      // stands. The narration so far stays; the mind's turn follows it.
+      const owedMinds =
+        finalCall || sceneMindsNudged || !turn.narrationParts.length
+          ? []
+          : mindsAwaitingTurn(campaign, turn.id, turnCalls(turn.conversation, toolCalls));
+      if (owedMinds.length) {
+        sceneMindsNudged = true;
+        turn.conversation.push({
+          role: "assistant",
+          ...carried,
+          content: visibleText || "",
+          ...(toolCalls.length ? { tool_calls: echoedToolCalls } : {}),
+        });
+        answerRanAbove(fightOwnsFloor(campaignId), false);
+        turn.conversation.push({ role: "user", content: sceneMindsPrompt(owedMinds.map((npc) => npc.name)) });
         saveDmTurn(turn);
         continue;
       }
