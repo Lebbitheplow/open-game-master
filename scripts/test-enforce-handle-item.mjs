@@ -327,7 +327,18 @@ await test("What an enemy lets fall is asked what it is, as grant_item asks, at 
       campaign: world.campaign(), turn: createDmTurn(world.campaignId, []), sheets, sheetsById: new Map(sheets.map((sheet) => [sheet.id, sheet])), realDiceUserIds: new Set(),
     });
   };
-  for (const name of ["Scimitarra", "Cimeterre", "Cimitarra", "Krummsäbel", "Curved blade"]) {
+  // The book's own Italian name, whole, is the row (src/lib/language/srd-names-it.ts).
+  {
+    await freshFight();
+    const [enemy] = world.enemies();
+    kit.place(enemy.id, 3, 2);
+    const dropped = await ai({ enemyId: enemy.id, action: "drop", item: "Scimitarra" });
+    assert.equal(dropped.ok, true, dropped.error);
+    const taken = await handle({ action: "pick_up", item: "Scimitarra" });
+    assert.equal(taken.ok, true, taken.error);
+    assert.equal(matchWeapon(row(fighter, "Scimitarra"))?.name, "Scimitar");
+  }
+  for (const name of ["Sciabola", "Cimeterre", "Cimitarra", "Krummsäbel", "Curved blade"]) {
     await freshFight();
     const [enemy] = world.enemies();
     kit.place(enemy.id, 3, 2);

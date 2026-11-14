@@ -66,5 +66,8 @@ Decisioni per l'utente, in ordine di costo:
 2. Allineare il fork a upstream prima di toccare migliaia di stringhe, per evitare conflitti
    con 403 commit.
 3. Contenuti italiani come dati (nomi ufficiali per id SRD), la parte che upstream accetta.
+   **Fatto** ([spec](../specs/ogm-italian-srd-names.md)): `src/lib/language/srd-names-it.json`,
+   generato da `scripts/generate-it-srd-names.mjs` dall'SRD 5.1 italiano ufficiale; glossario
+   per il narratore e riconoscimento degli oggetti per nome italiano intero.
 4. Interfaccia: approccio gettext (allineato a upstream, costoso) oppure catalogo/proxy
    alla ziomik (rapido, fuori dal codice, non accettabile upstream).

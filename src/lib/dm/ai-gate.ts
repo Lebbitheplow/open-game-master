@@ -43,6 +43,7 @@ import { sentItemTags } from "@/lib/dm/item-logic";
 import { isTableGearName } from "@/lib/db/homebrew";
 import { unrevealedLine } from "@/lib/dm/mutation-math";
 import { enemyHoldsItem } from "@/lib/dm/gear-ground";
+import { englishItemName } from "@/lib/language/srd-names-it";
 
 export type GateContext = {
   campaign: Campaign;
@@ -164,7 +165,12 @@ function itemFacts(ctx: GateContext, name: string, args: Record<string, unknown>
   // A revealed item keeps the tags it was granted with.
   const equipment = name === "reveal_item" ? (ctx.sheetsById.get(String(args.characterId ?? ""))?.equipment ?? []) : [];
   const carried = equipment[unrevealedLine(equipment, described)];
-  const srdName = typeof args.srdName === "string" && args.srdName.trim() ? args.srdName.trim() : undefined;
+  const sentSrdName = typeof args.srdName === "string" && args.srdName.trim() ? args.srdName.trim() : undefined;
+  // The book's own Italian name, whole, is the English row's
+  // (src/lib/language/srd-names-it.ts): sent on as that row's srdName, so
+  // every engine that reads a row by its name reads it.
+  const official = sentSrdName || !englishItemName(itemName) ? undefined : itemRow({ name: itemName })?.name;
+  const srdName = sentSrdName ?? official;
   const spell = typeof args.spell === "string" ? args.spell : undefined;
   const tags = sentItemTags({ name: itemName, srdName }, Array.isArray(args.tags) ? listedItemTags(args.tags) : undefined, spell) ?? carried?.tags;
   const item = { name: itemName, ...(srdName ? { srdName } : {}), ...(tags ? { tags } : {}) };
@@ -201,7 +207,7 @@ function itemFacts(ctx: GateContext, name: string, args: Record<string, unknown>
       },
     };
   }
-  return { args: rawArguments };
+  return { args: official ? JSON.stringify({ ...args, srdName: official }) : rawArguments };
 }
 
 // An advantage claimed with a reason but no advantageSource: asked whether

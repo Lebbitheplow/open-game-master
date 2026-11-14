@@ -152,7 +152,7 @@ function makeSheet(overrides = {}) {
   };
 }
 
-function makeState(sheet) {
+function makeState(sheet, settings = {}) {
   return {
     campaign: {
       id: "camp-1",
@@ -174,6 +174,7 @@ function makeState(sheet) {
         mapsEnabled: false,
         midGameJoinOpen: false,
         holdSubmissions: false,
+        ...settings,
       },
     },
     members: [
@@ -209,6 +210,17 @@ test("SRD sheets render without primers or feature glosses", () => {
   assert.ok(!block.includes("Class primer:"));
   assert.ok(block.includes("Second Wind,") || block.includes("Second Wind\n") || /Second Wind(?! \()/.test(block));
   assert.ok(!block.includes("Second Wind ("));
+});
+
+test("an Italian table's DM state lists the official Italian names of the rules things it holds; an English one does not", () => {
+  const sheet = makeSheet({
+    spellcasting: { ability: "int", slots: { 1: { max: 2, used: 0 } }, prepared: ["Magic Missile"], known: [] },
+  });
+  const italian = buildGameStateBlock(makeState(sheet, { genre: "fantasy", tableLanguage: "italian" }));
+  assert.ok(italian.includes("OFFICIAL ITALIAN NAMES"), "no glossary at the Italian table");
+  assert.ok(italian.includes("- Magic Missile → Dardo incantato"));
+  const english = buildGameStateBlock(makeState(sheet, { genre: "fantasy", tableLanguage: "english" }));
+  assert.ok(!english.includes("OFFICIAL ITALIAN NAMES"));
 });
 
 console.log(`test-class-catalog: ${passed} tests passed.`);

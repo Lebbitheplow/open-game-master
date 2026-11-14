@@ -11,6 +11,7 @@
 // directive, so their prompts are unchanged.
 
 import { TABLE_LANGUAGE_NAMES, type TableLanguage } from "../schemas/game-settings-options.ts";
+import { italianGlossary } from "../language/srd-names-it.ts";
 
 export function languageDirective(language: TableLanguage): string {
   if (language === "english") {
@@ -21,8 +22,14 @@ export function languageDirective(language: TableLanguage): string {
 }
 
 // A prose call's system prompt with the directive appended: unchanged for an
-// English table.
+// English table. An Italian table's also gets, before the directive, the
+// official Italian names of the rules things the prompt names
+// (src/lib/language/srd-names-it.ts).
 export function withLanguage(system: string, language: TableLanguage): string {
   const directive = languageDirective(language);
-  return directive ? `${system}\n\n${directive}` : system;
+  if (!directive) {
+    return system;
+  }
+  const glossary = language === "italian" ? italianGlossary(system) : "";
+  return [system, glossary, directive].filter(Boolean).join("\n\n");
 }

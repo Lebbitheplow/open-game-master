@@ -93,13 +93,16 @@ test("a vial of basic poison is its row, by any of the row's spellings or its sr
 
 // The same thing at five tables: the English row's name, then the name a
 // player writes in Italian, French, Spanish and German, read by no word of it
-// and by the tags it carries.
+// and by the tags it carries. An official Italian SRD name, whole, is the
+// English row's (src/lib/language/srd-names-it.ts): "Razioni (1 giorno)" is
+// not the book's "Razioni (1 giornata)", so it stays unread.
 const TABLES = [
   ["Potion of Healing", "Pozione di guarigione", "Potion de soins", "Poción de curación", "Heiltrank"],
   ["Torch", "Torcia", "Torche", "Antorcha", "Fackel"],
   ["Rations (1 day)", "Razioni (1 giorno)", "Vivres (1 jour)", "Raciones (1 día)", "Rationen (1 Tag)"],
   ["Arrows (20)", "Frecce (20)", "Flèches (20)", "Flechas (20)", "Pfeile (20)"],
 ];
+const OFFICIAL_ITALIAN = new Set(["Pozione di guarigione", "Torcia", "Frecce (20)"]);
 const TAGS = [["consumable", "potion", "healing_potion"], ["consumable", "torch"], ["consumable", "food"], ["consumable", "arrows", "carried"]];
 
 test("an English row's name gives its tags; a name in another language gives none until the item carries them", () => {
@@ -108,6 +111,10 @@ test("an English row's name gives its tags; a name in another language gives non
       assert.ok(itemTags({ name: english }).includes(tag), `${english} is not ${tag}`);
     }
     for (const name of others) {
+      if (OFFICIAL_ITALIAN.has(name)) {
+        assert.deepEqual(itemTags({ name }), itemTags({ name: english }), `${name} is not the official name of ${english}`);
+        continue;
+      }
       assert.deepEqual(itemTags({ name }), [], `${name} was read by its words`);
       assert.deepEqual(itemTags({ name, tags: TAGS[index] }), TAGS[index]);
     }
