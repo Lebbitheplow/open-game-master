@@ -157,7 +157,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "2329fe6d8fc8",
+  "sha": "854010d99efb",
   "clauses": [
    {
     "c": "\"speed\":25",
@@ -214,7 +214,13 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.duergar.illusions"
    },
    {
-    "c": "Duergar Magic (enlarge on yourself from 3rd level, invisibility on yourself from 5th, 1/long rest each, no material components)",
+    "c": "Duergar Magic (enlarge on yourself from 3rd level",
+    "is": "held",
+    "by": "src/lib/srd/racial-grants.ts innateSpellsFor (the row's freeLimit variant: enlarged, on the duergar alone), held by src/lib/dm/cast-buff.ts and src/lib/dm/cast-guard.ts: reduce is refused, and no variant named enlarges",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.duergar.enlarge-only"
+   },
+   {
+    "c": "invisibility on yourself from 5th, 1/long rest each, no material components)",
     "is": "held",
     "by": "src/lib/srd/racial-grants.ts innateSpellsFor (the row's innateSpells, on the duergar alone, no material components: granted-casts.ts selfOnly and noMaterial, held by cast-buff.ts), cast by use_spell_slot without a slot",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits.mjs: species.duergar.innate"
@@ -244,7 +250,7 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.duergar.grants"
    },
    {
-    "c": "\"innateSpells\":{\"trait\":\"Duergar Magic\",\"ability\":\"int\",\"spells\":[{\"name\":\"Enlarge/Reduce\",\"level\":3,\"per\":\"long\",\"self\":true,\"noMaterial\":true},{\"name\":\"Invisibility\",\"level\":5,\"per\":\"long\",\"self\":true,\"noMaterial\":true}]}",
+    "c": "\"innateSpells\":{\"trait\":\"Duergar Magic\",\"ability\":\"int\",\"spells\":[{\"name\":\"Enlarge/Reduce\",\"level\":3,\"per\":\"long\",\"self\":true,\"noMaterial\":true,\"only\":{\"variant\":\"enlarged\",\"words\":\"to enlarge themselves\"}},{\"name\":\"Invisibility\",\"level\":5,\"per\":\"long\",\"self\":true,\"noMaterial\":true}]}",
     "is": "held",
     "by": "src/lib/srd/racial-grants.ts innateSpellsFor and innateSpellCounters (the row's innateSpells), cast by use_spell_slot without a slot",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits.mjs: species.duergar.innate"

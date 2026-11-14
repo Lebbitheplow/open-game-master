@@ -312,6 +312,25 @@ for (const row of RACES) {
       );
     });
   }
+  // Duergar Magic: enlarge on yourself, never reduce. Enlarge/Reduce named
+  // with no variant enlarges the duergar; reduce is refused, nothing spent.
+  if (holds(row, "duergar magic")) {
+    probe("enlarge-only", async () => {
+      const t = await rig.table();
+      const who = t.hero(of({ class: "fighter", level: 3 }));
+      await t.fight([who]);
+      const cast = (variant) => t.invoke("cast_buff", { characterId: who.id, spell: "Enlarge/Reduce", ...(variant ? { variant } : {}), targetCharacterIds: [who.id] });
+      const shrink = await cast("reduced");
+      const shrunk = [t.has(who, "reduced"), t.used(who, "racial_enlarge_reduce")];
+      t.freshTurn();
+      const grow = await cast(null);
+      same(
+        [Boolean(shrink.ok), /enlarge/i.test(shrink.error ?? ""), shrunk, Boolean(grow.ok), t.has(who, "enlarged"), t.used(who, "racial_enlarge_reduce")],
+        [false, true, [false, 0], true, true, 1],
+        `${row.name}: Enlarge/Reduce to reduce, then with no variant named (${shrink.error ?? ""} ${grow.error ?? ""})`,
+      );
+    });
+  }
   // Equine Build: each foot a centaur climbs costs 4 more, so a climb
   // square costs 25 feet; two of them and a step (55 feet) are past a
   // centaur's 40, while a human (two climb squares at 10 feet, one step)
@@ -395,6 +414,7 @@ const NAMES = [
   "species.rabbitfolk.lucky-footwork", "species.shifter.subtypes", "species.duergar.illusions",
   "species.kobold.grovel",
   "species.serpentfolk.snakes-only",
+  "species.duergar.enlarge-only",
   "species.satyr.fey",
   "species.centaur.fey",
   "species.fairy.fey",

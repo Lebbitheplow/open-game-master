@@ -121,7 +121,11 @@
             "level": 3,
             "per": "long",
             "self": true,
-            "noMaterial": true
+            "noMaterial": true,
+            "only": {
+              "variant": "enlarged",
+              "words": "to enlarge themselves"
+            }
           },
           {
             "name": "Invisibility",

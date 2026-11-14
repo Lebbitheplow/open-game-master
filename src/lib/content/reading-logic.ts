@@ -71,7 +71,10 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 //      and a harengon their size, a fairy its Fairy Magic ability), a satyr,
 //      centaur and fairy are fey, and the eladrin, triton, serpentfolk,
 //      duergar, aarakocra and centaur lines changed.
-export const READER_REVISION = 11;
+// 12:  a serpentfolk's animal friendship is held to snakes and a duergar's
+//      Enlarge/Reduce to enlarge (their innate rows' freeLimit), and a
+//      centaur's Equine Build line names the push and the drag.
+export const READER_REVISION = 12;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";
 
