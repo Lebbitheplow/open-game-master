@@ -118,6 +118,13 @@ Nomi al tavolo: **Personaggi** (primo grado) e **Comparse** (secondo grado); nel
   sentire da dove si trova, oppure `npc_inform` se ha lasciato la scena. Una notizia non è
   un'azione, quindi dopo `npc_inform` il personaggio esce di scena finché la storia non lo
   interpella di nuovo. Un compagno in combattimento usa il proprio turno di combattimento (§11).
+- **Salto di tempo** (applicato dal server): quando il turno fa passare il tempo sulla scena
+  (`take_rest`, `pass_time`, `travel`, `downtime`, `TIME_SKIP_TOOLS`), il turno spetta a ogni
+  mente di primo grado che era in scena negli ultimi quattro turni GM: in scena se nel più
+  recente di quei turni in cui compare ha agito, fuori se lì ha solo ricevuto una notizia
+  (`npcsOnStageRecently`). Il narratore le dice quanto tempo passa e cosa succede intorno;
+  cosa fa in quel tempo (parla, dorme, veglia, tenta qualcosa) lo sceglie la mente, e il
+  narratore racconta il tratto a partire da quella scelta, senza decidere per lei.
 - **Secondo grado**: tutti gli altri (oste, fabbro, viandante, alleati `guest`). Li
   interpreta il narratore dalla loro personalità e da un registro leggero: cosa hanno
   appreso, da chi, e quali nomi degli eroi conoscono. `npc_speak` li rifiuta senza

@@ -293,7 +293,7 @@ import { petTools, PET_TOOL_NAMES } from "@/lib/dm/pet-tools";
 import { socialTools, SOCIAL_TOOL_NAMES, handleSetNpc, npcRosterForPrompt } from "@/lib/dm/social-tools";
 import { npcMindTools, NPC_MIND_TOOL_NAMES } from "@/lib/dm/npc-mind-tools";
 import { awayArrivalNote, handleNpcInform, handleNpcPast, handleNpcSpeak, mindRosterNotes, mindTurnRefusal, mindsAwaitingTurn, npcMindsOn } from "@/lib/dm/npc-mind";
-import { sceneMindsPrompt } from "@/lib/dm/npc-mind-logic";
+import { sceneMindsPrompt, TIME_SKIP_TOOLS } from "@/lib/dm/npc-mind-logic";
 import { worldForPrompt } from "@/lib/dm/world-prompt";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import {
@@ -2810,10 +2810,11 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       // a turn that closes without giving it one sends the narrator back
       // once to ask it, telling it only what it perceived from where it
       // stands. The narration so far stays; the mind's turn follows it.
-      const owedMinds =
-        finalCall || sceneMindsNudged || !turn.narrationParts.length
-          ? []
-          : mindsAwaitingTurn(campaign, turn.id, turnCalls(turn.conversation, toolCalls));
+      // A rest, a wait or a journey widens who is owed (mindsAwaitingTurn)
+      // and tells them how long they lived through.
+      const asksMinds = !finalCall && !sceneMindsNudged && turn.narrationParts.length > 0;
+      const callsSoFar = asksMinds ? turnCalls(turn.conversation, toolCalls) : [];
+      const owedMinds = asksMinds ? mindsAwaitingTurn(campaign, turn.id, callsSoFar) : [];
       if (owedMinds.length) {
         sceneMindsNudged = true;
         turn.conversation.push({
@@ -2823,7 +2824,10 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
           ...(toolCalls.length ? { tool_calls: echoedToolCalls } : {}),
         });
         answerRanAbove(fightOwnsFloor(campaignId), false);
-        turn.conversation.push({ role: "user", content: sceneMindsPrompt(owedMinds.map((npc) => npc.name)) });
+        turn.conversation.push({ role: "user", content: sceneMindsPrompt(
+            owedMinds.map((npc) => npc.name),
+            callsSoFar.some((call) => TIME_SKIP_TOOLS.has(call.name)),
+          ), });
         saveDmTurn(turn);
         continue;
       }
