@@ -36,7 +36,10 @@ export type CounterCast = {
   freeLimit?: FreeLimit;
 };
 
-export type FreeLimit = { selfOnly?: boolean; maxCr?: number; words: string };
+// `onlyOn`: the bestiary rows (slugs) the target must be made from (a
+// serpentfolk's animal friendship "on snakes only"); `variant`: the one choice the free
+// casting makes (Duergar Magic's enlarge, never reduce).
+export type FreeLimit = { selfOnly?: boolean; maxCr?: number; onlyOn?: string[]; variant?: string; words: string };
 
 const LUNAR = { "full moon": "Shield", "new moon": "Ray of Sickness", "crescent moon": "Color Spray" };
 

@@ -2403,7 +2403,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "5ddeb7938f1e",
+  "sha": "3f383deb478e",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -2448,9 +2448,21 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.serpentfolk.poison-immunity"
    },
    {
-    "c": "Serpent Magic (poison spray cantrip and animal friendship at will on snakes only, then suggestion from 3rd level, 1/long rest)",
+    "c": "Serpent Magic (poison spray cantrip and animal friendship at will",
     "is": "held",
     "by": "src/lib/srd/racial-grants.ts innateSpellsFor (the row's innateSpells: animal friendship at will, no counter), cast by use_spell_slot without a slot",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits.mjs: species.serpentfolk.innate"
+   },
+   {
+    "c": "on snakes only",
+    "is": "held",
+    "by": "src/lib/srd/racial-grants.ts innateSpellsFor (the row's freeLimit onlyOn: the SRD snakes' bestiary rows), held by src/lib/dm/cast-at-enemy.ts before the cast: a beast made from another row is refused, nothing spent",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.serpentfolk.snakes-only"
+   },
+   {
+    "c": "then suggestion from 3rd level, 1/long rest)",
+    "is": "held",
+    "by": "src/lib/srd/racial-grants.ts innateSpellsFor (Suggestion from 3rd, a long-rest counter), cast by use_spell_slot without a slot",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits.mjs: species.serpentfolk.innate"
    },
    {
@@ -2460,7 +2472,7 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.serpentfolk.grants"
    },
    {
-    "c": "\"innateSpells\":{\"trait\":\"Serpent Magic\",\"ability\":\"cha\",\"spells\":[{\"name\":\"Poison Spray\",\"level\":1},{\"name\":\"Animal Friendship\",\"level\":1,\"atWill\":true},{\"name\":\"Suggestion\",\"level\":3,\"per\":\"long\"}]}",
+    "c": "\"innateSpells\":{\"trait\":\"Serpent Magic\",\"ability\":\"cha\",\"spells\":[{\"name\":\"Poison Spray\",\"level\":1},{\"name\":\"Animal Friendship\",\"level\":1,\"atWill\":true,\"only\":{\"onlyOn\":[\"poisonous-snake\",\"constrictor-snake\",\"giant-poisonous-snake\",\"giant-constrictor-snake\",\"flying-snake\"],\"words\":\"on a snake\"}},{\"name\":\"Suggestion\",\"level\":3,\"per\":\"long\"}]}",
     "is": "held",
     "by": "src/lib/srd/racial-grants.ts innateSpellsFor and innateSpellCounters (the row's innateSpells), cast by use_spell_slot without a slot",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits.mjs: species.serpentfolk.innate"

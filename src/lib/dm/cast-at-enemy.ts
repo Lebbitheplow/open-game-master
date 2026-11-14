@@ -333,6 +333,19 @@ export function handleCastAtEnemy(
       refused: "rules",
     };
   }
+  // A free casting held to some creatures (a serpentfolk's animal friendship
+  // "on snakes only", counter-casts.ts FreeLimit onlyOn): another beast is
+  // refused with nothing spent, unless the caster's own slots cast it too,
+  // when a slot pays as for any casting (cast-guard.ts freeFits).
+  const grant = grantedCastOf(sheet, spellName, facts);
+  const onlyOn = grant?.freeLimit?.onlyOn;
+  const outsideFree = Boolean(onlyOn?.length) && !freeLimitHolds(onlyOn!, enemy);
+  if (outsideFree && !grant?.slotsToo) {
+    return {
+      error: `${sheet.name} casts ${spellName} through ${grant!.source} only ${grant!.freeLimit!.words}, and ${enemy.displayName} is not one. Nothing was spent; pick another target or another spell.`,
+      retry: true,
+    };
+  }
   // Hold Monster and Command on the undead, Blight on a construct: cast, and
   // spent, to no effect (SRD 5.1).
   const spared = creatureType && mech?.immuneTypes?.some((type) => creatureType.includes(type)) ? `${spellName} has no effect on ${creatureType} creatures, and ${enemy.displayName} is one.` : null;
@@ -399,6 +412,7 @@ export function handleCastAtEnemy(
       ...(mech?.darts ? { uses: args.darts ?? 20 } : {}),
       // A Scribe's damage type swap is the guard's to judge (ar-ws-awakened.ts).
       ...(args.damageType ? { swapType: args.damageType } : {}),
+      ...(outsideFree ? { freeFits: false } : {}),
       via,
       reason: (args.reason ?? "").slice(0, 200),
     }),
@@ -695,4 +709,11 @@ export function handleCastAtEnemy(
     markRepeatStruck(campaign, spellName, sheet.id, [enemy.id]);
   }
   return { ok: true, ...base, ...(zone ? { area: zone } : moved ? { area: moved } : {}) };
+}
+
+// Whether the creature is one a free casting held to these bestiary rows
+// reaches, read from the row it was made from (its slug), never its name: a
+// "Hissing Viper" made from the poisonous snake is a snake.
+function freeLimitHolds(slugs: readonly string[], enemy: { slug?: string }): boolean {
+  return Boolean(enemy.slug) && slugs.includes(enemy.slug!);
 }

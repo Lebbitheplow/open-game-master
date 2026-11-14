@@ -194,7 +194,7 @@ const BOOKS = {
   // will, on snakes only, beside poison spray and suggestion.
   serpentfolk: {
     traits: ["Serpent Magic (poison spray cantrip and animal friendship at will on snakes only, then suggestion from 3rd level, 1/long rest)"],
-    innateSpells: { trait: "Serpent Magic", ability: "cha", spells: [{ name: "Poison Spray", level: 1 }, { name: "Animal Friendship", level: 1, atWill: true }, { name: "Suggestion", level: 3, per: "long" }] },
+    innateSpells: { trait: "Serpent Magic", ability: "cha", spells: [{ name: "Poison Spray", level: 1 }, { name: "Animal Friendship", level: 1, atWill: true, only: { onlyOn: ["poisonous-snake", "constrictor-snake", "giant-poisonous-snake", "giant-constrictor-snake", "flying-snake"], words: "on a snake" } }, { name: "Suggestion", level: 3, per: "long" }] },
   },
   // Mordenkainen's Tome of Foes: Duergar Magic is cast on the duergar alone,
   // enlarge/reduce's enlarge only, with no material components.

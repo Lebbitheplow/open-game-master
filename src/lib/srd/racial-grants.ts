@@ -12,6 +12,7 @@ import { racialCantripsOf, type RacialCantripChoices } from "@/lib/srd/racial-ca
 import { textKey } from "@/lib/language/text-logic";
 import { checklistSpell } from "@/lib/srd/spell-lists";
 import type { SpeciesSpell, SpeciesSpellGroup } from "@/lib/content/species-spells";
+import type { FreeLimit } from "@/lib/srd/counter-casts";
 
 // ---- Draconic Ancestry (SRD 5.1, Dragonborn) ----
 
@@ -135,7 +136,9 @@ export function breathWeaponFor(
 // serpentfolk's animal friendship on snakes). `self`: cast on the caster
 // alone, and `noMaterial`: with no material components (Duergar Magic).
 // `slots`: the character's own spell slots cast it too (Fairy Magic).
-type InnateSpellRow = { name: string; level: number; castAt?: number; per?: "long"; rest?: "short" | "long"; uses?: number; atWill?: boolean; self?: boolean; noMaterial?: boolean; slots?: boolean };
+// `only`: what the free casting is held to (counter-casts.ts FreeLimit): a
+// serpentfolk's animal friendship on snakes, a duergar's enlarge.
+type InnateSpellRow = { name: string; level: number; castAt?: number; per?: "long"; rest?: "short" | "long"; uses?: number; atWill?: boolean; self?: boolean; noMaterial?: boolean; slots?: boolean; only?: FreeLimit };
 type RaceRow = {
   id: string;
   ancestryChoice?: string;
@@ -194,6 +197,9 @@ export type InnateSpell = {
   // Magic); absent elsewhere.
   selfOnly?: boolean;
   noMaterial?: boolean;
+  // What the free casting is held to (Serpent Magic's snakes, Duergar
+  // Magic's enlarge); the cast tools judge it (cast-at-enemy.ts, cast-buff.ts).
+  freeLimit?: FreeLimit;
   // The ability it is cast with ("Charisma is your spellcasting ability for
   // these spells"), or null when the source names none.
   ability: Ability | null;
@@ -229,7 +235,7 @@ function circleOf(name: string, written: number | undefined, guess: number): num
   return checklistSpell(name)?.level ?? written ?? guess;
 }
 
-type GroupRow = SpeciesSpell & { name?: string; per?: "long"; atWill?: boolean; self?: boolean; noMaterial?: boolean };
+type GroupRow = SpeciesSpell & { name?: string; per?: "long"; atWill?: boolean; self?: boolean; noMaterial?: boolean; only?: FreeLimit };
 
 function rowsFrom(group: { ability: Ability | null; spells: GroupRow[] }, source: string): InnateSpell[] {
   return group.spells.map((row) => {
@@ -257,6 +263,7 @@ function rowsFrom(group: { ability: Ability | null; spells: GroupRow[] }, source
       slotsToo: counted && row.slots === true,
       ...(row.self ? { selfOnly: true } : {}),
       ...(row.noMaterial ? { noMaterial: true } : {}),
+      ...(row.only ? { freeLimit: row.only } : {}),
       ability: group.ability,
       source,
     };

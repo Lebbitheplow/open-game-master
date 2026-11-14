@@ -287,6 +287,31 @@ for (const row of RACES) {
       );
     });
   }
+  // Serpent Magic: animal friendship at will "on snakes only". The free
+  // casting charms a snake; a wolf, a beast of another kind, is refused with
+  // nothing spent, and the cast tool says to aim it at a snake.
+  if (holds(row, "serpent magic")) {
+    probe("snakes-only", async () => {
+      const t = await rig.table();
+      const who = t.hero(of({ equipment: [{ name: "Component pouch", qty: 1 }] }));
+      const [snake, wolf] = await t.fight([who], { foes: 2, foe: { type: "beast", abilities: { str: 4, dex: 14, con: 11, int: 1, wis: 6, cha: 3 } } });
+      const { getDatabase } = await import("../src/lib/db/core.ts");
+      const rename = (enemy, name, slug) => getDatabase().prepare("UPDATE encounter_enemies SET display_name = ?, slug = ? WHERE id = ?").run(name, slug, enemy.id);
+      rename(snake, "Poisonous Snake", "poisonous-snake");
+      rename(wolf, "Wolf", "wolf");
+      t.kit.place(wolf.id, 7, 5);
+      const befriend = (enemy) => t.invoke("cast_at_enemy", { characterId: who.id, targetEnemyId: enemy.id, spell: "Animal Friendship", saveAbility: "wis" }, [2, 2]);
+      const wolfOut = await befriend(wolf);
+      const wolfSpent = t.budget()?.actionUsed ?? false;
+      t.freshTurn();
+      const snakeOut = await befriend(snake);
+      same(
+        [Boolean(wolfOut.ok), /snake/i.test(wolfOut.error ?? ""), Boolean(wolfOut.retry), wolfSpent, Boolean(snakeOut.ok)],
+        [false, true, true, false, true],
+        `${row.name}: animal friendship at a wolf, then at a poisonous snake (${wolfOut.error ?? ""} ${snakeOut.error ?? ""})`,
+      );
+    });
+  }
   // Equine Build: each foot a centaur climbs costs 4 more, so a climb
   // square costs 25 feet; two of them and a step (55 feet) are past a
   // centaur's 40, while a human (two climb squares at 10 feet, one step)
@@ -369,6 +394,7 @@ const NAMES = [
   "species.satyr.mirthful-leaps", "species.centaur.charge", "species.hobgoblin.saving-face",
   "species.rabbitfolk.lucky-footwork", "species.shifter.subtypes", "species.duergar.illusions",
   "species.kobold.grovel",
+  "species.serpentfolk.snakes-only",
   "species.satyr.fey",
   "species.centaur.fey",
   "species.fairy.fey",

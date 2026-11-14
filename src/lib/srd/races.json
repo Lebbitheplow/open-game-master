@@ -1156,7 +1156,17 @@
           {
             "name": "Animal Friendship",
             "level": 1,
-            "atWill": true
+            "atWill": true,
+            "only": {
+              "onlyOn": [
+                "poisonous-snake",
+                "constrictor-snake",
+                "giant-poisonous-snake",
+                "giant-constrictor-snake",
+                "flying-snake"
+              ],
+              "words": "on a snake"
+            }
           },
           {
             "name": "Suggestion",
