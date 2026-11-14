@@ -2574,6 +2574,17 @@
    "action": "bonus"
   },
   {
+   "id": "steampunk_clockwork_familiar",
+   "displayName": "Familiar's Help",
+   "match": [
+    "clockwork familiar"
+   ],
+   "uses": 1,
+   "recharge": "short",
+   "guidance": "Clockwork Familiar: once between rests, the brass familiar helps its machinist, who has advantage on their next ability check.",
+   "action": "none"
+  },
+  {
    "id": "steampunk_gadget_grapnel",
    "displayName": "Grapnel",
    "match": [

@@ -883,7 +883,7 @@ export type SpendDoes =
   | { kind: "light"; brightFt: number; dimFt: number; condition: string }
   // A genre class's companion with the text's stats (src/lib/dm/genre-a-summons.ts):
   // the rigger's drones, the vermin lord's dire rat, King Below the Streets' rats.
-  | { kind: "genre_summon"; companion: "drones" | "dire_rat" | "rat_pack" }
+  | { kind: "genre_summon"; companion: "drones" | "dire_rat" | "rat_pack" | "familiar" | "familiar_help" | "juggernaut" }
   // A cyberpunk counter's own spend (src/lib/dm/genre-a-cyberpunk-spends.ts).
   | { kind: "cyber_spend"; what: "ghost_protocol" | "lazarus" | "whirl" | "synaptic" | "grease" }
   // A mark on the holder that pays for their next spell it fits with no slot

@@ -402,5 +402,59 @@ await run("Difference Engine Mind: the spent use counts the next Intelligence ch
   assert.ok(wisdom < arcana - 10, `the Wisdom check took the answer too (${wisdom})`);
 });
 
+// ---- GB17: the machinist's familiars ----
+
+const { summonsOf } = await load("lib/dm/summon-store.ts");
+const familiars = (hero) => summonsOf(world.campaignId, hero.id, "Clockwork Familiar").map((entry) => world.sheet(entry.id));
+
+await run("Clockwork Familiar: the free card builds a brass familiar on the board out of a fight, and its help, once a rest, gives the machinist advantage on their next check", async () => {
+  const row = feature("machinist", "Clockwork Familiar", 6);
+  const hero = rig.holder(row);
+  // The plain familiar: the savant's frame is a case of its own below.
+  world.patch(hero.id, { features: world.sheet(hero.id).features.filter((entry) => entry.name !== "Improved Familiar Frame") });
+  await kit.endFight();
+  const refused = await world.invoke("use_resource", { characterId: hero.id, resource: "Familiar's Help", reason: "test" });
+  assert.equal(refused.ok, false, "the help came with no familiar built");
+  await play(hero, "Clockwork Familiar");
+  const [made] = familiars(hero);
+  assert.ok(made, "no familiar stands");
+  assert.equal(made.maxHp, 11, `the familiar's hit points at 6th: ${made.maxHp}`);
+  await play(hero, "Familiar's Help");
+  assert.equal(used(hero, "steampunk_clockwork_familiar"), 1, "the help spent no use");
+  assert.equal(await rig.d20sOf(hero, { kind: "skill_check", skill: "athletics" }), 2, "the next check did not roll with advantage");
+  assert.equal(await rig.d20sOf(hero, { kind: "skill_check", skill: "athletics" }), 1, "the help served a second check");
+});
+
+await run("Improved Familiar Frame and Twin Automata: a savant's familiar has 3 x level hit points and a 30-foot sting of 1d8 + INT, and from 11th two stand", async () => {
+  const row = feature("machinist", "Improved Familiar Frame", 3);
+  const hero = rig.holder(row, { level: 11 });
+  await kit.endFight();
+  await play(hero, "Clockwork Familiar");
+  const made = familiars(hero);
+  assert.equal(made.length, 2, `${made.length} familiars stand at 11th with Twin Automata`);
+  assert.equal(made[0].maxHp, 33, `the framed familiar's hit points at 11th: ${made[0].maxHp}`);
+  const sting = JSON.stringify(made[0]);
+  assert.match(sting, /1d8\+3/, `the sting: ${sting.slice(0, 400)}`);
+  const off = await rig.without(hero, { name: "Twin Automata" }, async () => {
+    await play(hero, "Clockwork Familiar");
+    return familiars(hero).length;
+  });
+  assert.equal(off, 1, "without Twin Automata a second familiar stood");
+});
+
+await run("The Great Work Walks: the familiars merge into a juggernaut of twice a familiar's hit points with a 2d10 + INT slam for 10 minutes, once a long rest", async () => {
+  const row = feature("machinist", "The Great Work Walks", 15);
+  const hero = rig.holder(row);
+  await kit.endFight();
+  await play(hero, "Clockwork Familiar");
+  await play(hero, "The Great Work Walks");
+  assert.equal(familiars(hero).length, 0, "the familiars still stand beside the juggernaut");
+  const [giant] = summonsOf(world.campaignId, hero.id, "The Great Work Walks").map((entry) => world.sheet(entry.id));
+  assert.ok(giant, "no juggernaut stands");
+  assert.equal(giant.maxHp, 90, `the juggernaut's hit points at 15th: ${giant.maxHp}`);
+  assert.match(JSON.stringify(giant), /2d10\+3/, "the slam is not 2d10 + INT");
+  assert.equal(used(hero, "steampunk_the_great_work_walks"), 1, "the merge spent no use");
+});
+
 rig.world.close();
 finish();

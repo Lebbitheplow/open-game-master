@@ -90,6 +90,23 @@ export const GENRE_GB_AUTHORED: GenreRow[] = [
     reactions: [{ name: "Road Rage", pool: { id: "post_apocalyptic_road_rage" }, gate: { condition: ROAD_RAGE }, does: { kind: "attack", rangeFt: 5, weaponRange: true } }],
   }),
 
+  // ---- the machinist's familiars (src/lib/dm/genre-gb-familiars.ts) ----
+  // Clockwork Familiar: the free card builds it out of a fight; its help,
+  // "advantage on one check per rest", is its own card from a counter.
+  row("Clockwork Familiar", ["machinist"], {
+    counter: "steampunk_clockwork_familiar",
+    spends: [
+      { name: "Clockwork Familiar", action: "none", fight: "out", does: { kind: "genre_summon", companion: "familiar" } },
+      { name: "Familiar's Help", pool: { id: "steampunk_clockwork_familiar" }, action: "none", does: { kind: "genre_summon", companion: "familiar_help" } },
+    ],
+  }),
+  // The Great Work Walks: "1/long rest, your familiars merge into a brass
+  // juggernaut for 10 minutes". No action is named, so the merge costs none.
+  row("The Great Work Walks", ["machinist"], {
+    counter: "steampunk_the_great_work_walks",
+    spends: [{ name: "The Great Work Walks", pool: { id: "steampunk_the_great_work_walks" }, action: "none", does: { kind: "genre_summon", companion: "juggernaut" } }],
+  }),
+
   // Difference Engine Mind: "1/rest, take the calculated answer: treat one
   // INT-based check as a natural 20" (src/lib/dm/genre-gb-calculated.ts).
   row("Difference Engine Mind", ["machinist"], {

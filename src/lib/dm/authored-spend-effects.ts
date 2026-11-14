@@ -2,6 +2,7 @@
 // has checked the gate, the pool and the turn). Each resolver refuses before
 // it writes; the caller then spends the pool and the turn.
 
+import { familiarWork } from "@/lib/dm/genre-gb-familiars";
 import { memoryOffBoard, stripMemory } from "@/lib/dm/ar-ws-alter-memories";
 import { buffAim, otherOutcomes, strayBuffTarget } from "@/lib/dm/ar-ws-buff-aim";
 import { scribeScroll } from "@/lib/dm/ar-ws-scrivener";
@@ -838,7 +839,10 @@ export function resolveSpendEffect(ctx: SpendContext, spec: SpendDoes): Resoluti
     case "cyber_spend":
       return resolveCyberSpend({ campaign: ctx.campaign, sheet, label: ctx.spend.name, args: ctx.args }, does.what, (next) => resolveSpendEffect(ctx, next));
     case "genre_summon":
-      return summonGenreCompanion(ctx.campaign, sheet, does.companion, ctx.held.level);
+      // The machinist's familiars (genre-gb-familiars.ts).
+      return does.companion === "familiar" || does.companion === "familiar_help" || does.companion === "juggernaut"
+        ? familiarWork(ctx.campaign, sheet, does.companion, ctx.held.level)
+        : summonGenreCompanion(ctx.campaign, sheet, does.companion, ctx.held.level);
     case "cast_mark":
       return layCastMark(ctx, does);
     case "horror_spend":

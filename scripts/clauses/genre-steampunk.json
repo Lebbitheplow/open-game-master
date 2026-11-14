@@ -120,11 +120,9 @@
   "clauses": [
    {
     "c": "A small brass automaton assists you: it carries, fetches, and grants advantage on one check per rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Clockwork Familiar#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Clockwork Familiar: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Clockwork Familiar: the free card builds a brass familiar on the board out of a fight, and its help, once a rest, gives the machinist advantage on their next check",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Clockwork Familiar and The Great Work Walks (genre_summon), src/lib/dm/genre-gb-familiars.ts familiarForms, juggernautForm and familiarWork (from src/lib/dm/authored-spend-effects.ts)"
    }
   ]
  },
@@ -440,16 +438,15 @@
   "clauses": [
    {
     "c": "Your familiar gains a sting (1d8 + INT piercing, 30 ft) and HP equal to 3 x your level",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Improved Familiar Frame#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Improved Familiar Frame: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Improved Familiar Frame and Twin Automata: a savant's familiar has 3 x level hit points and a 30-foot sting of 1d8 + INT, and from 11th two stand",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Clockwork Familiar and The Great Work Walks (genre_summon), src/lib/dm/genre-gb-familiars.ts familiarForms, juggernautForm and familiarWork (from src/lib/dm/authored-spend-effects.ts)"
    },
    {
     "c": "1d8 + INT piercing",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Improved Familiar Frame#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Improved Familiar Frame and Twin Automata: a savant's familiar has 3 x level hit points and a 30-foot sting of 1d8 + INT, and from 11th two stand",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Clockwork Familiar and The Great Work Walks (genre_summon), src/lib/dm/genre-gb-familiars.ts familiarForms, juggernautForm and familiarWork (from src/lib/dm/authored-spend-effects.ts)"
    }
   ]
  },
@@ -529,16 +526,15 @@
   "clauses": [
    {
     "c": "Build a second familiar",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Twin Automata#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Twin Automata: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Improved Familiar Frame and Twin Automata: a savant's familiar has 3 x level hit points and a 30-foot sting of 1d8 + INT, and from 11th two stand",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Clockwork Familiar and The Great Work Walks (genre_summon), src/lib/dm/genre-gb-familiars.ts familiarForms, juggernautForm and familiarWork (from src/lib/dm/authored-spend-effects.ts)"
    },
    {
     "c": "both act on your command",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Twin Automata#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Improved Familiar Frame and Twin Automata: a savant's familiar has 3 x level hit points and a 30-foot sting of 1d8 + INT, and from 11th two stand",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Clockwork Familiar and The Great Work Walks (genre_summon), src/lib/dm/genre-gb-familiars.ts familiarForms, juggernautForm and familiarWork (from src/lib/dm/authored-spend-effects.ts)"
    }
   ]
  },
@@ -562,18 +558,21 @@
    },
    {
     "c": "your familiars merge into a brass juggernaut for 10 minutes (double HP, 2d10 + INT slam, you may ride it)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_the_great_work_walks#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs The Great Work Walks: the familiars merge into a juggernaut of twice a familiar's hit points with a 2d10 + INT slam for 10 minutes, once a long rest",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Clockwork Familiar and The Great Work Walks (genre_summon), src/lib/dm/genre-gb-familiars.ts familiarForms, juggernautForm and familiarWork (from src/lib/dm/authored-spend-effects.ts)"
    },
    {
     "c": "for 10 minutes",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_the_great_work_walks#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs The Great Work Walks: the familiars merge into a juggernaut of twice a familiar's hit points with a 2d10 + INT slam for 10 minutes, once a long rest",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Clockwork Familiar and The Great Work Walks (genre_summon), src/lib/dm/genre-gb-familiars.ts familiarForms, juggernautForm and familiarWork (from src/lib/dm/authored-spend-effects.ts)"
    },
    {
     "c": "2d10 + INT",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_the_great_work_walks#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs The Great Work Walks: the familiars merge into a juggernaut of twice a familiar's hit points with a 2d10 + INT slam for 10 minutes, once a long rest",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Clockwork Familiar and The Great Work Walks (genre_summon), src/lib/dm/genre-gb-familiars.ts familiarForms, juggernautForm and familiarWork (from src/lib/dm/authored-spend-effects.ts)"
    }
   ]
  },
