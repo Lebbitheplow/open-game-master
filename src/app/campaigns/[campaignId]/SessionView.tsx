@@ -296,6 +296,17 @@ export function SessionView({
   const [askOpen, setAskOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  // A pin or a fact saves into a panel that may be closed: a few seconds'
+  // word above the composer says it took.
+  const [confirmation, setConfirmation] = useState<{ glyph: string; text: string; at: number } | null>(null);
+  const confirm = useCallback((next: { glyph: string; text: string }) => setConfirmation({ ...next, at: Date.now() }), []);
+  useEffect(() => {
+    if (!confirmation) {
+      return;
+    }
+    const timer = window.setTimeout(() => setConfirmation(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [confirmation]);
   const [dismissedLevelUp, setDismissedLevelUp] = useState("");
   // The party card's Level up button opened the dialog by hand.
   const [levelUpByHand, setLevelUpByHand] = useState(false);
@@ -418,9 +429,16 @@ export function SessionView({
       <>
         {audioWaiting}
         <NarrationFailureBanner messageIds={messageIds} status={narrationStatus} onRetry={replayNarration} />
+        {confirmation ? (
+          <SessionBanner key={confirmation.at} glyph={confirmation.glyph} tone="quiet">
+            <span role="status" className="block">
+              {confirmation.text}
+            </span>
+          </SessionBanner>
+        ) : null}
       </>
     ),
-    [audioWaiting, messageIds, narrationStatus, replayNarration],
+    [audioWaiting, messageIds, narrationStatus, replayNarration, confirmation],
   );
   // A test fight is in no campaign list (issue 553): the header's way out,
   // the phone's back arrow included, leads to the workshop it tests.
@@ -1458,6 +1476,7 @@ export function SessionView({
                 onRenarrate={setRenarrate}
                 onBrowseShop={browseShop}
                 onPinned={bumpPins}
+                onConfirm={confirm}
               >
                 {needsCharacter ? (
                   <Suspense fallback={<PanelLoading />}>

@@ -41,6 +41,7 @@ export function SessionChatColumn({
   onRenarrate,
   onBrowseShop,
   onPinned,
+  onConfirm,
   stage,
   keepTranscript = false,
   showTranscript = false,
@@ -67,6 +68,8 @@ export function SessionChatColumn({
   onBrowseShop: (shopId: string) => void;
   // A memory pin landed, so the pins panel should refetch.
   onPinned: () => void;
+  // A save that leaves nothing on screen (a pin, a fact) says it happened.
+  onConfirm: (confirmation: { glyph: string; text: string }) => void;
   // The fight stage (the board and the chronicle scroll) in place of the
   // transcript while a board is on the table and the columns are docked.
   stage?: ReactNode;
@@ -235,6 +238,12 @@ export function SessionChatColumn({
             return;
           }
           onPinned();
+          onConfirm({
+            glyph: "ui-pin",
+            text: isFullMessage
+              ? "Pinned: the GM keeps this message in mind every turn."
+              : "Pinned: the GM keeps this passage in mind every turn.",
+          });
         }}
         onPinCanon={
           steersStory
@@ -271,6 +280,7 @@ export function SessionChatColumn({
                   return;
                 }
                 await refreshFacts();
+                onConfirm({ glyph: "tab-facts", text: "Added to Facts as established canon." });
               }
             : undefined
         }
