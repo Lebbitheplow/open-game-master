@@ -11,7 +11,8 @@ export const dynamic = "force-dynamic";
 
 // A companion's own mind: the model and reasoning effort it thinks with
 // (ticket 09, src/lib/dm/npc-mind-model.ts). Whoever runs the story reads and
-// picks it, from what the table's agent program offers; blank is the table's.
+// picks it, from what the table's agent program or model server offers;
+// blank is the table's.
 // It holds from the mind's next call.
 
 async function companionMind(campaignId: string, characterId: string) {
@@ -55,7 +56,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ca
   if (choice.model || choice.effort) {
     const offer = await mindModelOffer(found.context.campaign);
     if (!offer) {
-      return Response.json({ error: "This table's minds do not run on an agent program, so they think with the table's model." }, { status: 409 });
+      return Response.json({ error: "This table's model server lists no models to choose from, so its minds think with the table's model." }, { status: 409 });
     }
     const problem = mindChoiceProblem(offer, choice);
     if (problem) {

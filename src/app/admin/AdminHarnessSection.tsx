@@ -384,19 +384,6 @@ export function AdminHarnessSection({
                     : []),
                 ]}
               />
-              <SelectField
-                label="Characters model"
-                hint="The minds of the important characters and companions, at tables where they think for themselves. A companion's card can pick its own."
-                value={draft.mindModel}
-                onChange={(mindModel) => setDraft(withOfferedEffort(chosen, { ...draft, mindModel }))}
-                options={[
-                  { value: "", label: "The same as bookkeeping" },
-                  ...models.map((model) => ({ value: model.id, label: model.deprecated ? `${model.label} (deprecated)` : model.label })),
-                  ...(draft.mindModel && !models.some((model) => model.id === draft.mindModel)
-                    ? [{ value: draft.mindModel, label: draft.mindModel }]
-                    : []),
-                ]}
-              />
               {chosen.id === "claude" || chosen.id === "codex" ? (
                 <>
                   <SpeedField
@@ -419,8 +406,23 @@ export function AdminHarnessSection({
                 <>
                   <EffortField status={chosen} draft={draft} onChange={(effort) => setDraft({ ...draft, effort })} />
                   <UtilityEffortField status={chosen} draft={draft} onChange={(utilityEffort) => setDraft({ ...draft, utilityEffort })} />
-                  <MindEffortField status={chosen} draft={draft} onChange={(mindEffort) => setDraft({ ...draft, mindEffort })} />
                 </>
+              ) : null}
+              <SelectField
+                label="Characters model"
+                hint="The minds of the important characters and companions, at tables where they think for themselves. A companion's card can pick its own."
+                value={draft.mindModel}
+                onChange={(mindModel) => setDraft(withOfferedEffort(chosen, { ...draft, mindModel }))}
+                options={[
+                  { value: "", label: "The same as bookkeeping" },
+                  ...models.map((model) => ({ value: model.id, label: model.deprecated ? `${model.label} (deprecated)` : model.label })),
+                  ...(draft.mindModel && !models.some((model) => model.id === draft.mindModel)
+                    ? [{ value: draft.mindModel, label: draft.mindModel }]
+                    : []),
+                ]}
+              />
+              {chosen.id === "claude" || chosen.id === "codex" || chosen.id === "opencode" ? (
+                <MindEffortField status={chosen} draft={draft} onChange={(mindEffort) => setDraft({ ...draft, mindEffort })} />
               ) : null}
               <SelectField
                 label="Who may use it"

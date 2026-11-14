@@ -481,6 +481,36 @@ function breakers(): Map<string, BreakerState> {
   return (globalThis.__odmUtilityBreakers ??= new Map<string, BreakerState>());
 }
 
+// Where a table's NPC minds think when they are not on the agent program:
+// its utility model's route, or the story's when it has none (ticket 09).
+export async function mindServerRoute(settings: StorySettings): Promise<Pick<Route, "provider" | "baseUrl" | "apiKey" | "model">> {
+  return (await utilityRoute(settings)) ?? storyRoute(settings);
+}
+
+// A mind's own model on the table's local or custom server (ticket 09): the
+// same server, the model it chose. One that fails runs on the table's model,
+// as the log says; null leaves the call to the table's route.
+async function attemptChosenModel(
+  route: Route,
+  messages: ChatMessage[],
+  options: DmCallOptions,
+): Promise<DmCallResult | null> {
+  const model = options.mindChoice?.model ?? "";
+  if (!model || model === route.model || route.provider === "harness") {
+    return null;
+  }
+  const own: Route =
+    route.provider === "local"
+      ? { ...route, model, windowTokens: localContextTokens(model), key: `local|${model}` }
+      : { ...route, model, windowAssumed: true, key: `custom|${route.baseUrl.trim()}|${model}` };
+  const result = await attempt(own, "utility", messages, options, null);
+  if (!result.error || outcomeOf(result) === "stopped") {
+    return result;
+  }
+  console.warn(`[npc-mind] the chosen model "${model}" failed; thinking with the table's "${route.model}"`, result.error);
+  return null;
+}
+
 // Mechanical, non-narration work: history compaction, chapter summaries and
 // fact extraction, world-arc ticks, lore checks, Ask answers. None of it is
 // read as prose, so it runs happily on a small model while the story model
@@ -500,7 +530,7 @@ export async function requestUtilityMessage(
   const route = await utilityRoute(settings);
   const story = storyRoute(settings);
   if (!route) {
-    return attempt(story, "utility", messages, options, null);
+    return (await attemptChosenModel(story, messages, options)) ?? attempt(story, "utility", messages, options, null);
   }
   if (route.provider === "harness") {
     const choice = options.mindChoice;
@@ -511,6 +541,10 @@ export async function requestUtilityMessage(
         ? { ...route, choice, model: choice.model || route.model, key: `harness|utility|${choice.model}|${choice.effort}` }
         : route;
     return attempt(own, "utility", messages, options, null);
+  }
+  const chosen = await attemptChosenModel(route, messages, options);
+  if (chosen) {
+    return chosen;
   }
   const state = breakers().get(route.key) ?? CLOSED;
   if (breakerOpen(state, Date.now())) {

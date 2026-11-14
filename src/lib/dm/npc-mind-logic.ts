@@ -450,7 +450,7 @@ export function mindModelProblem(
 ): string | null {
   const model = offered.find((entry) => entry.id === (choice.model || fallbackModel));
   if (choice.model && !model) {
-    return `The agent program does not offer the model "${choice.model}".`;
+    return `The table's model server does not offer the model "${choice.model}".`;
   }
   if (choice.effort && !(model?.efforts ?? []).includes(choice.effort)) {
     return `The model "${choice.model || fallbackModel}" does not offer the effort "${choice.effort}".`;

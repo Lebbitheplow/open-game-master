@@ -167,6 +167,26 @@ await test("the characters' model set beside the story's is what minds without t
   }
 });
 
+await test("Claude Code as the table's program offers its own models the same way", async () => {
+  const harness = { id: "claude", model: "sonnet", utilityModel: "", effort: "", campaigns: "all", maxConcurrent: 4, turnTimeoutSec: 60 };
+  saveGlobalConfig({ harness });
+  offered = [
+    { id: "sonnet", label: "Sonnet", efforts: ["low", "medium", "high"] },
+    { id: "opus", label: "Opus", efforts: ["low", "high", "max"] },
+  ];
+  try {
+    const answer = await (await route.GET(new Request("http://x/"), params(tobin))).json();
+    assert.deepEqual(answer.offer?.models.map((model) => model.id), ["sonnet", "opus"]);
+    assert.equal((await patch(tobin, { model: "opus", effort: "max" })).status, 200);
+    const run = await speakAs("Tobin");
+    assert.deepEqual({ model: run.model, effort: run.effort }, { model: "opus", effort: "max" });
+    assert.equal((await patch(tobin, { model: "", effort: "" })).status, 200);
+  } finally {
+    offered = OFFERED;
+    saveGlobalConfig({ harness: { ...harness, id: "codex", model: "gpt-table", effort: "medium" } });
+  }
+});
+
 await test("the characters' effort lists what their model offers, and a model change drops an effort it lacks", async () => {
   const { mindEffortChoices, withOfferedEffort } = await import("../src/lib/harness/effort-choices.ts");
   const program = { models: OFFERED };
