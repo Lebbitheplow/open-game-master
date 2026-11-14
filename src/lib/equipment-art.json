@@ -9,6 +9,76 @@
       "item": "cyberpunk-forgery-kit",
       "card": "cyberpunk-gear-forgery-kit",
       "baseCard": "gear-forgery-kit"
+    },
+    "backpack": {
+      "item": "cyberpunk-backpack",
+      "card": "cyberpunk-gear-backpack",
+      "baseCard": "gear-backpack"
+    },
+    "pouch": {
+      "item": "cyberpunk-pouch",
+      "card": "cyberpunk-gear-pouch",
+      "baseCard": "gear-pouch"
+    },
+    "rations-1-day": {
+      "item": "cyberpunk-rations-1-day",
+      "card": "cyberpunk-gear-rations-1-day",
+      "baseCard": "gear-rations-1-day"
+    },
+    "thieves-tools": {
+      "item": "cyberpunk-thieves-tools",
+      "card": "cyberpunk-gear-thieves-tools",
+      "baseCard": "gear-thieves-tools"
+    },
+    "clothes-common": {
+      "item": "cyberpunk-clothes-common",
+      "card": "cyberpunk-gear-clothes-common",
+      "baseCard": "gear-clothes-common"
+    },
+    "clothes-fine": {
+      "item": "cyberpunk-clothes-fine",
+      "card": "cyberpunk-gear-clothes-fine",
+      "baseCard": "gear-clothes-fine"
+    },
+    "clothes-travelers": {
+      "item": "cyberpunk-clothes-travelers",
+      "card": "cyberpunk-gear-clothes-travelers",
+      "baseCard": "gear-clothes-travelers"
+    },
+    "lock": {
+      "item": "cyberpunk-lock",
+      "card": "cyberpunk-gear-lock",
+      "baseCard": "gear-lock"
+    },
+    "chest": {
+      "item": "cyberpunk-chest",
+      "card": "cyberpunk-gear-chest",
+      "baseCard": "gear-chest"
+    },
+    "climbers-kit": {
+      "item": "cyberpunk-climbers-kit",
+      "card": "cyberpunk-gear-climbers-kit",
+      "baseCard": "gear-climbers-kit"
+    },
+    "grappling-hook": {
+      "item": "cyberpunk-grappling-hook",
+      "card": "cyberpunk-gear-grappling-hook",
+      "baseCard": "gear-grappling-hook"
+    },
+    "manacles": {
+      "item": "cyberpunk-manacles",
+      "card": "cyberpunk-gear-manacles",
+      "baseCard": "gear-manacles"
+    },
+    "disguise-kit": {
+      "item": "cyberpunk-disguise-kit",
+      "card": "cyberpunk-gear-disguise-kit",
+      "baseCard": "gear-disguise-kit"
+    },
+    "tinkers-tools": {
+      "item": "cyberpunk-tinkers-tools",
+      "card": "cyberpunk-gear-tinkers-tools",
+      "baseCard": "gear-tinkers-tools"
     }
   },
   "dark_fantasy": {
@@ -71,6 +141,76 @@
       "item": "dark-fantasy-poisoners-kit",
       "card": "dark-fantasy-gear-poisoners-kit",
       "baseCard": "gear-poisoners-kit"
+    },
+    "backpack": {
+      "item": "dark-fantasy-backpack",
+      "card": "dark-fantasy-gear-backpack",
+      "baseCard": "gear-backpack"
+    },
+    "pouch": {
+      "item": "dark-fantasy-pouch",
+      "card": "dark-fantasy-gear-pouch",
+      "baseCard": "gear-pouch"
+    },
+    "rations-1-day": {
+      "item": "dark-fantasy-rations-1-day",
+      "card": "dark-fantasy-gear-rations-1-day",
+      "baseCard": "gear-rations-1-day"
+    },
+    "thieves-tools": {
+      "item": "dark-fantasy-thieves-tools",
+      "card": "dark-fantasy-gear-thieves-tools",
+      "baseCard": "gear-thieves-tools"
+    },
+    "clothes-common": {
+      "item": "dark-fantasy-clothes-common",
+      "card": "dark-fantasy-gear-clothes-common",
+      "baseCard": "gear-clothes-common"
+    },
+    "clothes-fine": {
+      "item": "dark-fantasy-clothes-fine",
+      "card": "dark-fantasy-gear-clothes-fine",
+      "baseCard": "gear-clothes-fine"
+    },
+    "clothes-travelers": {
+      "item": "dark-fantasy-clothes-travelers",
+      "card": "dark-fantasy-gear-clothes-travelers",
+      "baseCard": "gear-clothes-travelers"
+    },
+    "lock": {
+      "item": "dark-fantasy-lock",
+      "card": "dark-fantasy-gear-lock",
+      "baseCard": "gear-lock"
+    },
+    "chest": {
+      "item": "dark-fantasy-chest",
+      "card": "dark-fantasy-gear-chest",
+      "baseCard": "gear-chest"
+    },
+    "bedroll": {
+      "item": "dark-fantasy-bedroll",
+      "card": "dark-fantasy-gear-bedroll",
+      "baseCard": "gear-bedroll"
+    },
+    "blanket": {
+      "item": "dark-fantasy-blanket",
+      "card": "dark-fantasy-gear-blanket",
+      "baseCard": "gear-blanket"
+    },
+    "tent-two-person": {
+      "item": "dark-fantasy-tent-two-person",
+      "card": "dark-fantasy-gear-tent-two-person",
+      "baseCard": "gear-tent-two-person"
+    },
+    "alchemists-supplies": {
+      "item": "dark-fantasy-alchemists-supplies",
+      "card": "dark-fantasy-gear-alchemists-supplies",
+      "baseCard": "gear-alchemists-supplies"
+    },
+    "holy-symbol": {
+      "item": "dark-fantasy-holy-symbol",
+      "card": "dark-fantasy-gear-holy-symbol",
+      "baseCard": "gear-holy-symbol"
     }
   },
   "horror": {
@@ -103,6 +243,76 @@
       "item": "horror-chain-shirt",
       "card": "horror-armor-chain-shirt",
       "baseCard": "armor-chain-shirt"
+    },
+    "backpack": {
+      "item": "horror-backpack",
+      "card": "horror-gear-backpack",
+      "baseCard": "gear-backpack"
+    },
+    "pouch": {
+      "item": "horror-pouch",
+      "card": "horror-gear-pouch",
+      "baseCard": "gear-pouch"
+    },
+    "rations-1-day": {
+      "item": "horror-rations-1-day",
+      "card": "horror-gear-rations-1-day",
+      "baseCard": "gear-rations-1-day"
+    },
+    "thieves-tools": {
+      "item": "horror-thieves-tools",
+      "card": "horror-gear-thieves-tools",
+      "baseCard": "gear-thieves-tools"
+    },
+    "clothes-common": {
+      "item": "horror-clothes-common",
+      "card": "horror-gear-clothes-common",
+      "baseCard": "gear-clothes-common"
+    },
+    "clothes-fine": {
+      "item": "horror-clothes-fine",
+      "card": "horror-gear-clothes-fine",
+      "baseCard": "gear-clothes-fine"
+    },
+    "clothes-travelers": {
+      "item": "horror-clothes-travelers",
+      "card": "horror-gear-clothes-travelers",
+      "baseCard": "gear-clothes-travelers"
+    },
+    "lock": {
+      "item": "horror-lock",
+      "card": "horror-gear-lock",
+      "baseCard": "gear-lock"
+    },
+    "chest": {
+      "item": "horror-chest",
+      "card": "horror-gear-chest",
+      "baseCard": "gear-chest"
+    },
+    "bedroll": {
+      "item": "horror-bedroll",
+      "card": "horror-gear-bedroll",
+      "baseCard": "gear-bedroll"
+    },
+    "blanket": {
+      "item": "horror-blanket",
+      "card": "horror-gear-blanket",
+      "baseCard": "gear-blanket"
+    },
+    "tent-two-person": {
+      "item": "horror-tent-two-person",
+      "card": "horror-gear-tent-two-person",
+      "baseCard": "gear-tent-two-person"
+    },
+    "disguise-kit": {
+      "item": "horror-disguise-kit",
+      "card": "horror-gear-disguise-kit",
+      "baseCard": "gear-disguise-kit"
+    },
+    "alchemists-supplies": {
+      "item": "horror-alchemists-supplies",
+      "card": "horror-gear-alchemists-supplies",
+      "baseCard": "gear-alchemists-supplies"
     }
   },
   "mystery": {
@@ -140,6 +350,71 @@
       "item": "mystery-studded-leather",
       "card": "mystery-armor-studded-leather",
       "baseCard": "armor-studded-leather"
+    },
+    "backpack": {
+      "item": "mystery-backpack",
+      "card": "mystery-gear-backpack",
+      "baseCard": "gear-backpack"
+    },
+    "pouch": {
+      "item": "mystery-pouch",
+      "card": "mystery-gear-pouch",
+      "baseCard": "gear-pouch"
+    },
+    "rations-1-day": {
+      "item": "mystery-rations-1-day",
+      "card": "mystery-gear-rations-1-day",
+      "baseCard": "gear-rations-1-day"
+    },
+    "thieves-tools": {
+      "item": "mystery-thieves-tools",
+      "card": "mystery-gear-thieves-tools",
+      "baseCard": "gear-thieves-tools"
+    },
+    "clothes-common": {
+      "item": "mystery-clothes-common",
+      "card": "mystery-gear-clothes-common",
+      "baseCard": "gear-clothes-common"
+    },
+    "clothes-fine": {
+      "item": "mystery-clothes-fine",
+      "card": "mystery-gear-clothes-fine",
+      "baseCard": "gear-clothes-fine"
+    },
+    "clothes-travelers": {
+      "item": "mystery-clothes-travelers",
+      "card": "mystery-gear-clothes-travelers",
+      "baseCard": "gear-clothes-travelers"
+    },
+    "lock": {
+      "item": "mystery-lock",
+      "card": "mystery-gear-lock",
+      "baseCard": "gear-lock"
+    },
+    "chest": {
+      "item": "mystery-chest",
+      "card": "mystery-gear-chest",
+      "baseCard": "gear-chest"
+    },
+    "playing-card-set": {
+      "item": "mystery-playing-card-set",
+      "card": "mystery-gear-playing-card-set",
+      "baseCard": "gear-playing-card-set"
+    },
+    "dice-set": {
+      "item": "mystery-dice-set",
+      "card": "mystery-gear-dice-set",
+      "baseCard": "gear-dice-set"
+    },
+    "manacles": {
+      "item": "mystery-manacles",
+      "card": "mystery-gear-manacles",
+      "baseCard": "gear-manacles"
+    },
+    "forgery-kit": {
+      "item": "mystery-forgery-kit",
+      "card": "mystery-gear-forgery-kit",
+      "baseCard": "gear-forgery-kit"
     }
   },
   "post_apocalyptic": {
@@ -197,6 +472,86 @@
       "item": "post-apocalyptic-arrows",
       "card": "post-apocalyptic-gear-arrows",
       "baseCard": "gear-arrows"
+    },
+    "backpack": {
+      "item": "post-apocalyptic-backpack",
+      "card": "post-apocalyptic-gear-backpack",
+      "baseCard": "gear-backpack"
+    },
+    "pouch": {
+      "item": "post-apocalyptic-pouch",
+      "card": "post-apocalyptic-gear-pouch",
+      "baseCard": "gear-pouch"
+    },
+    "rations-1-day": {
+      "item": "post-apocalyptic-rations-1-day",
+      "card": "post-apocalyptic-gear-rations-1-day",
+      "baseCard": "gear-rations-1-day"
+    },
+    "thieves-tools": {
+      "item": "post-apocalyptic-thieves-tools",
+      "card": "post-apocalyptic-gear-thieves-tools",
+      "baseCard": "gear-thieves-tools"
+    },
+    "clothes-common": {
+      "item": "post-apocalyptic-clothes-common",
+      "card": "post-apocalyptic-gear-clothes-common",
+      "baseCard": "gear-clothes-common"
+    },
+    "clothes-fine": {
+      "item": "post-apocalyptic-clothes-fine",
+      "card": "post-apocalyptic-gear-clothes-fine",
+      "baseCard": "gear-clothes-fine"
+    },
+    "clothes-travelers": {
+      "item": "post-apocalyptic-clothes-travelers",
+      "card": "post-apocalyptic-gear-clothes-travelers",
+      "baseCard": "gear-clothes-travelers"
+    },
+    "lock": {
+      "item": "post-apocalyptic-lock",
+      "card": "post-apocalyptic-gear-lock",
+      "baseCard": "gear-lock"
+    },
+    "chest": {
+      "item": "post-apocalyptic-chest",
+      "card": "post-apocalyptic-gear-chest",
+      "baseCard": "gear-chest"
+    },
+    "bedroll": {
+      "item": "post-apocalyptic-bedroll",
+      "card": "post-apocalyptic-gear-bedroll",
+      "baseCard": "gear-bedroll"
+    },
+    "blanket": {
+      "item": "post-apocalyptic-blanket",
+      "card": "post-apocalyptic-gear-blanket",
+      "baseCard": "gear-blanket"
+    },
+    "tent-two-person": {
+      "item": "post-apocalyptic-tent-two-person",
+      "card": "post-apocalyptic-gear-tent-two-person",
+      "baseCard": "gear-tent-two-person"
+    },
+    "climbers-kit": {
+      "item": "post-apocalyptic-climbers-kit",
+      "card": "post-apocalyptic-gear-climbers-kit",
+      "baseCard": "gear-climbers-kit"
+    },
+    "grappling-hook": {
+      "item": "post-apocalyptic-grappling-hook",
+      "card": "post-apocalyptic-gear-grappling-hook",
+      "baseCard": "gear-grappling-hook"
+    },
+    "playing-card-set": {
+      "item": "post-apocalyptic-playing-card-set",
+      "card": "post-apocalyptic-gear-playing-card-set",
+      "baseCard": "gear-playing-card-set"
+    },
+    "dice-set": {
+      "item": "post-apocalyptic-dice-set",
+      "card": "post-apocalyptic-gear-dice-set",
+      "baseCard": "gear-dice-set"
     }
   },
   "steampunk": {
@@ -254,6 +609,86 @@
       "item": "steampunk-chain-mail",
       "card": "steampunk-armor-chain-mail",
       "baseCard": "armor-chain-mail"
+    },
+    "backpack": {
+      "item": "steampunk-backpack",
+      "card": "steampunk-gear-backpack",
+      "baseCard": "gear-backpack"
+    },
+    "pouch": {
+      "item": "steampunk-pouch",
+      "card": "steampunk-gear-pouch",
+      "baseCard": "gear-pouch"
+    },
+    "rations-1-day": {
+      "item": "steampunk-rations-1-day",
+      "card": "steampunk-gear-rations-1-day",
+      "baseCard": "gear-rations-1-day"
+    },
+    "thieves-tools": {
+      "item": "steampunk-thieves-tools",
+      "card": "steampunk-gear-thieves-tools",
+      "baseCard": "gear-thieves-tools"
+    },
+    "clothes-common": {
+      "item": "steampunk-clothes-common",
+      "card": "steampunk-gear-clothes-common",
+      "baseCard": "gear-clothes-common"
+    },
+    "clothes-fine": {
+      "item": "steampunk-clothes-fine",
+      "card": "steampunk-gear-clothes-fine",
+      "baseCard": "gear-clothes-fine"
+    },
+    "clothes-travelers": {
+      "item": "steampunk-clothes-travelers",
+      "card": "steampunk-gear-clothes-travelers",
+      "baseCard": "gear-clothes-travelers"
+    },
+    "lock": {
+      "item": "steampunk-lock",
+      "card": "steampunk-gear-lock",
+      "baseCard": "gear-lock"
+    },
+    "chest": {
+      "item": "steampunk-chest",
+      "card": "steampunk-gear-chest",
+      "baseCard": "gear-chest"
+    },
+    "climbers-kit": {
+      "item": "steampunk-climbers-kit",
+      "card": "steampunk-gear-climbers-kit",
+      "baseCard": "gear-climbers-kit"
+    },
+    "grappling-hook": {
+      "item": "steampunk-grappling-hook",
+      "card": "steampunk-gear-grappling-hook",
+      "baseCard": "gear-grappling-hook"
+    },
+    "playing-card-set": {
+      "item": "steampunk-playing-card-set",
+      "card": "steampunk-gear-playing-card-set",
+      "baseCard": "gear-playing-card-set"
+    },
+    "dice-set": {
+      "item": "steampunk-dice-set",
+      "card": "steampunk-gear-dice-set",
+      "baseCard": "gear-dice-set"
+    },
+    "manacles": {
+      "item": "steampunk-manacles",
+      "card": "steampunk-gear-manacles",
+      "baseCard": "gear-manacles"
+    },
+    "disguise-kit": {
+      "item": "steampunk-disguise-kit",
+      "card": "steampunk-gear-disguise-kit",
+      "baseCard": "gear-disguise-kit"
+    },
+    "forgery-kit": {
+      "item": "steampunk-forgery-kit",
+      "card": "steampunk-gear-forgery-kit",
+      "baseCard": "gear-forgery-kit"
     }
   }
 }
