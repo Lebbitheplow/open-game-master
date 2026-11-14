@@ -94,6 +94,26 @@ export function speciesProbes(rig, P) {
     assert.equal(out.status, 200, JSON.stringify(out.json));
     assert.equal(before - t.enemy(foe).currentHp, 5 + 3 + 6, "the longsword's 5 + 3, and the fury's d8 of 6");
     assert.equal(t.used(who, "feat_orcish_fury"), 1);
+    // A seat an agent plays (or a companion) has no card: a bare use_resource
+    // adds the die to its latest weapon hit this turn (orcish-fury.ts), and
+    // before one lands it is refused with nothing spent, to try again after.
+    const bare = await rig.table();
+    const orc = bare.hero({ class: "fighter", level: 4, race: "half_orc", feats: ["Orcish Fury"], equipment: worn("Longsword") });
+    const { createConnectionGrant } = await import("../../src/lib/agents/grants.ts");
+    const seat = createConnectionGrant({ userId: bare.sheet(orc).userId, name: "seat", scopes: ["play"], campaignId: bare.world.campaignId });
+    assert.ok(!("error" in seat), seat.error);
+    const [target] = await bare.fight([orc]);
+    const early = await bare.use(orc, "Orcish Fury", {}, [6]);
+    assert.notEqual(early.ok, true, `a use before any hit was taken: ${JSON.stringify(early)}`);
+    assert.equal(early.retry, true, "the refusal before a hit asks for the call again after one");
+    assert.equal(bare.used(orc, "feat_orcish_fury"), 0, "the refused use was spent");
+    const hit = await bare.swing(orc, target, [15, 5], { weapon: "Longsword" });
+    assert.ok(hit.damage, `the agent seat's longsword did not hit: ${JSON.stringify(hit.out).slice(0, 300)}`);
+    const struck = bare.enemy(target).currentHp;
+    const fury = await bare.use(orc, "Orcish Fury", {}, [6]);
+    assert.equal(fury.ok, true, JSON.stringify(fury));
+    assert.equal(struck - bare.enemy(target).currentHp, 6, "the bare use's d8 of 6 on the creature the longsword hit");
+    assert.equal(bare.used(orc, "feat_orcish_fury"), 1);
   };
 
   P["feat.orcish-fury.rest"] = async () => {

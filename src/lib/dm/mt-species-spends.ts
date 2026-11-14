@@ -27,13 +27,15 @@
 //     slashing damage just taken, once a short rest; the derro and each
 //     creature within 5 feet take necrotic damage equal to its level.
 //   - Grovel, Cower, and Beg (kobold): an action, once a short rest; the
-//     kobold is "groveling" until the end of its next turn, and allies'
+//     kobold is "pleading" until the end of its next turn, and allies'
 //     attacks on foes within 10 feet of it have advantage (attack-spatial.ts
 //     grovelingAllyNear, read by pc-attack-situation.ts).
 //   - Shifting (shifter) with a subtype picked: the subtype's own form
 //     ("shifted (beasthide)"...), Beasthide's extra 1d6 temporary hit points
 //     with it. A shifter with no subtype on the sheet takes the counter's
 //     own form through the generic spend.
+//   - Orcish Fury (a half-orc's feat), spent with no card: one more of the
+//     weapon's damage dice on the latest weapon hit this turn (orcish-fury.ts).
 //
 // Called from the use_resource arm of src/lib/dm/mutations.ts before the
 // generic path; must not import mutations.ts.
@@ -66,6 +68,7 @@ import { conditionSpeed } from "@/lib/srd/condition-effects";
 import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { creditFeatureTeleport } from "@/lib/dm/feature-teleport";
+import { orcishFurySpend } from "@/lib/dm/orcish-fury";
 
 // `x`, `y`: the square a leap lands on (Rabbit Hop).
 export type SpeciesSpendArgs = { variant?: string; x?: number; y?: number };
@@ -78,7 +81,7 @@ export function speciesTraitSpend(
   args: SpeciesSpendArgs,
 ): Record<string, unknown> | null {
   // A Hand card names its counter's id ("race_feline_agility"), a call the trait.
-  const name = textKey(resourceName.replace(/_/g, " ")).replace(/^race /, "");
+  const name = textKey(resourceName.replace(/_/g, " ")).replace(/^(race|feat) /, "");
   const sheet = getSheetById(stale.id) ?? stale;
   if (name === "shell defense" && holdsFeature(sheet, "shell defense")) return shellDefense(campaign, sheet, args.variant);
   if (name === "shapechanger" && lineageShapechanger(sheet, args.variant)) return shapechanger(campaign, sheet, args.variant);
@@ -88,7 +91,10 @@ export function speciesTraitSpend(
   if (name === "tinker" && holdsTinker(sheet)) return tinker(campaign, sheet, args.variant);
   if (name === "tainted blood" && sheet.resources?.[TAINTED_BLOOD]) return taintedBlood(campaign, turnId, sheet);
   if (name === "rabbit hop" && sheet.resources?.[RABBIT_HOP]) return rabbitHop(campaign, sheet, args);
-  if (/^grovel,? cower,? and beg$/.test(name) && sheet.resources?.[GROVEL_COUNTER]) return grovel(campaign, sheet);
+  // A half-orc's Orcish Fury with no card to choose it on (orcish-fury.ts).
+  if (name === "orcish fury" && sheet.resources?.feat_orcish_fury) return orcishFurySpend(campaign, turnId, sheet);
+  // A Hand card names the counter ("race_grovel"), a call the trait.
+  if (/^grovel(,? cower,? and beg)?$/.test(name) && sheet.resources?.[GROVEL_COUNTER]) return grovel(campaign, sheet);
   const form = shiftFormOf(sheet);
   if (name === "shifting" && form && sheet.resources?.[SHIFTING_COUNTER]) return shifting(campaign, sheet, form);
   return null;

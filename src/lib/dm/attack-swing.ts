@@ -37,6 +37,7 @@ import { applyRiderCondition, clearHitSpent, openCurvingShot, spendOnHit } from 
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { applySpellHitCondition, spellAttackRider } from "@/lib/dm/spell-attack-riders";
 import { noteSwing, storeBudget } from "@/lib/dm/turn-budget";
+import { weaponDieOf } from "@/lib/dm/orcish-fury-logic";
 import { openLastHit } from "@/lib/dm/last-hit";
 import { chargedBudget } from "@/lib/dm/mt-fb-charge";
 import { growBeastForm } from "@/lib/dm/mt-fb-beast";
@@ -194,6 +195,12 @@ export function judgeSwing(scene: SwingScene, record: AttackRecord, toHit: RollR
     // to the holders of a rider.
     if (record.weaponAttack ?? !record.spell) {
       markAttackTurn(campaign.id, record, `${WEAPON_HIT}${record.targetEnemyId}`);
+      // The die it rolled with, for Orcish Fury spent with no card (orcish-fury.ts).
+      const die = weaponDieOf({ enemyId: record.targetEnemyId, expression: record.damageExpression, type: record.damageType ?? "", crit, magical: record.magical === true });
+      const turn = die ? attackTurn(campaign.id, record) : null;
+      if (turn && die) {
+        storeBudget(turn.encounter, { ...turn.budget, lastWeaponDie: die });
+      }
     } else {
       // A spell attack's hit, for what answers a creature a psionic hit
       // (Synaptic Overload, src/lib/dm/genre-a-cyberpunk-spends.ts).

@@ -29,6 +29,9 @@ export type TurnBudget = {
   attacksAllowed: number;
   // Sneak Attack, and anything else limited to once per turn, by key.
   oncePerTurn: string[];
+  // The latest weapon hit this turn: the creature and the die it rolled
+  // with, for Orcish Fury spent with no card (src/lib/dm/orcish-fury.ts).
+  lastWeaponDie?: { enemyId: string; sides: number; type: string; crit: boolean; magical: boolean };
   // Set by the Dash action. Movement itself is NOT tracked here: the battle
   // map owns it (battle_tokens.moved_this_round), and the Dashes taken are
   // what grow that allowance for the turn.

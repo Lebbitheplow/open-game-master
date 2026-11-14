@@ -2718,8 +2718,7 @@
    "ability": null,
    "recharge": "short",
    "action": "none",
-   "guidance": "Orcish Fury (a half-orc's feat): once until a short or long rest, a weapon hit rolls one of the weapon's damage dice once more as extra damage, chosen on the card the hit waits on, which spends it. The reaction attack right after Relentless Endurance is use_reaction 'orcish fury' with targetEnemyId, and costs no use.",
-   "passive": true
+   "guidance": "Orcish Fury (a half-orc's feat): once until a short or long rest, a weapon hit rolls one of the weapon's damage dice once more as extra damage of its type. A player chooses it on the card the hit waits on, which spends it; use_resource 'Orcish Fury' adds the die to the character's latest weapon hit this turn (refused before one lands). The reaction attack right after Relentless Endurance is use_reaction 'orcish fury' with targetEnemyId, and costs no use."
   },
   {
    "id": "steampunk_grapnel_line",
