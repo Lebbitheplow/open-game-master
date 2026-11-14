@@ -698,23 +698,15 @@
   "clauses": [
    {
     "c": "A launcher and line: swing or pull yourself 30 ft as part of your movement",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Grapnel Line#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Grapnel Line: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Grapnel Line: INT-mod uses back on any rest, each carrying the aeronaut 30 feet to the square named and no farther",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Grapnel Line (teleport 30), src/lib/srd/authored-resources.json steampunk_grapnel_line"
    },
    {
     "c": "INT-mod uses per rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Grapnel Line#1:uses",
-    "k": "uses",
-    "p": {
-     "id": "steampunk_grapnel_line",
-     "ability": "int",
-     "rest": "any"
-    },
-    "observed": "a level 6 aeronaut holds no counter steampunk_grapnel_line (counters: none)"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Grapnel Line: INT-mod uses back on any rest, each carrying the aeronaut 30 feet to the square named and no farther",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Grapnel Line (teleport 30), src/lib/srd/authored-resources.json steampunk_grapnel_line"
    }
   ]
  },
@@ -819,8 +811,9 @@
    },
    {
     "c": "when combat starts, immediately move your speed and make one attack",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_boarding_action#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Boarding Action: in the first round the aeronaut gets their speed again and one weapon attack beside their action, once a rest; after the first round it is refused",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts (the aeronaut's rows), src/lib/dm/genre-gb-aeronaut.ts (kind steampunk, src/lib/dm/genre-b-steampunk-spends.ts) boardingAction"
    }
   ]
  },
@@ -855,11 +848,9 @@
   "clauses": [
    {
     "c": "Grapnel Line can also disarm or trip (contested by STR) at 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Grapnel Ace#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Grapnel Ace: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Grapnel Ace: the line trips or disarms a creature within 30 feet on a won Athletics against Strength contest, a lost one leaves it be, and one 65 feet off is out of reach",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts (the aeronaut's rows), src/lib/dm/genre-gb-aeronaut.ts (kind steampunk, src/lib/dm/genre-b-steampunk-spends.ts) grapnelAce"
    }
   ]
  },
@@ -915,11 +906,9 @@
   "clauses": [
    {
     "c": "When you roll initiative, gain a full extra turn before the first round begins",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Legend of the Skies#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Legend of the Skies: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Legend of the Skies: the aeronaut's first-round turn is followed by a full fresh one, once a fight, and not after the first round",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts (the aeronaut's rows), src/lib/dm/genre-gb-aeronaut.ts (kind steampunk, src/lib/dm/genre-b-steampunk-spends.ts) extraTurn"
    }
   ]
  },

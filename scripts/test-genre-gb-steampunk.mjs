@@ -456,5 +456,79 @@ await run("The Great Work Walks: the familiars merge into a juggernaut of twice 
   assert.equal(used(hero, "steampunk_the_great_work_walks"), 1, "the merge spent no use");
 });
 
+// ---- GB18: the aeronaut's line, its ace, Boarding Action, Legend of the Skies ----
+
+const useIt = (hero, resource, args = {}) => world.invoke("use_resource", { characterId: hero.id, resource, reason: "test", ...args });
+const atRound = (round) => encountersDb.saveEncounter({ ...world.encounter(), round });
+
+await run("Grapnel Line: INT-mod uses back on any rest, each carrying the aeronaut 30 feet to the square named and no farther", async () => {
+  const row = feature("aeronaut", "Grapnel Line", 6);
+  const hero = rig.holder(row);
+  assert.equal(world.sheet(hero.id).resources?.steampunk_grapnel_line?.max, 3, "the line holds no INT-mod uses");
+  await rig.fight(hero);
+  const far = await useIt(hero, "Grapnel Line", { x: 13, y: 2 });
+  assert.equal(far.ok, false, "the line carried the aeronaut 40 feet");
+  rig.must(await useIt(hero, "Grapnel Line", { x: 11, y: 2 }), "Grapnel Line");
+  const token = kit.token(hero.id);
+  assert.deepEqual([token.x, token.y], [11, 2], `the aeronaut stands at (${token.x},${token.y})`);
+  assert.equal(used(hero, "steampunk_grapnel_line"), 1, "the swing spent no use");
+});
+
+await run("Grapnel Ace: the line trips or disarms a creature within 30 feet on a won Athletics against Strength contest, a lost one leaves it be, and one 65 feet off is out of reach", async () => {
+  const row = feature("aeronaut", "Grapnel Ace", 15);
+  const hero = rig.holder(row);
+  const { near, far } = await rig.fight(hero);
+  kit.place(near.id, 9, 2);
+  clearDice();
+  dice(18, 2);
+  rig.must(await useIt(hero, "Grapnel Trip", { targetEnemyId: near.id }), "Grapnel Trip");
+  assert.ok(foe(near).conditions.includes("prone"), `the creature's conditions after the trip: ${foe(near).conditions}`);
+  clearDice();
+  dice(2, 19);
+  rig.must(await useIt(hero, "Grapnel Disarm", { targetEnemyId: near.id }), "Grapnel Disarm");
+  assert.ok(!foe(near).conditions.includes("disarmed"), "a lost contest disarmed the creature");
+  clearDice();
+  const out = await useIt(hero, "Grapnel Disarm", { targetEnemyId: far.id });
+  assert.equal(out.ok, false, "a creature 65 feet off was reached");
+  assert.equal(used(hero, "steampunk_grapnel_line"), 2, "the two contests did not each spend a line use");
+});
+
+await run("Boarding Action: in the first round the aeronaut gets their speed again and one weapon attack beside their action, once a rest; after the first round it is refused", async () => {
+  const row = feature("aeronaut", "Boarding Action", 13);
+  const hero = rig.holder(row);
+  await rig.fight(hero);
+  atRound(1);
+  rig.myTurn(hero);
+  const before = rig.budget();
+  rig.must(await useIt(hero, "Boarding Action"), "Boarding Action");
+  const after = rig.budget();
+  assert.equal((after.dashes ?? 0) - (before.dashes ?? 0), 1, "no speed again");
+  assert.equal((after.extraActions ?? 0) - (before.extraActions ?? 0), 1, "no extra attack");
+  assert.equal(used(hero, "steampunk_boarding_action"), 1, "the use was not spent");
+  world.patch(hero.id, { resources: { ...world.sheet(hero.id).resources, steampunk_boarding_action: { ...world.sheet(hero.id).resources.steampunk_boarding_action, used: 0 } } });
+  atRound(2);
+  assert.equal((await useIt(hero, "Boarding Action")).ok, false, "Boarding Action was taken in the second round");
+});
+
+await run("Legend of the Skies: the aeronaut's first-round turn is followed by a full fresh one, once a fight, and not after the first round", async () => {
+  const row = feature("aeronaut", "Legend of the Skies", 20);
+  const hero = rig.holder(row);
+  await rig.fight(hero);
+  atRound(1);
+  rig.myTurn(hero);
+  rig.must(await world.invoke("take_action", { characterId: hero.id, action: "dodge", reason: "test" }), "dodge");
+  assert.equal(rig.budget().actionUsed, true, "the Dodge spent no action");
+  rig.must(await useIt(hero, "Legend of the Skies"), "Legend of the Skies");
+  assert.ok(!rig.budget().actionUsed, "the extra turn's action is not fresh");
+  assert.equal((await useIt(hero, "Legend of the Skies")).ok, false, "a second extra turn in the same fight");
+  const { without } = rig;
+  world.patch(hero.id, { conditions: [] });
+  atRound(2);
+  rig.myTurn(hero);
+  atRound(2);
+  assert.equal((await useIt(hero, "Legend of the Skies")).ok, false, "an extra turn after the first round");
+  void without;
+});
+
 rig.world.close();
 finish();

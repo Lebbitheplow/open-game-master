@@ -107,6 +107,35 @@ export const GENRE_GB_AUTHORED: GenreRow[] = [
     spends: [{ name: "The Great Work Walks", pool: { id: "steampunk_the_great_work_walks" }, action: "none", does: { kind: "genre_summon", companion: "juggernaut" } }],
   }),
 
+  // ---- the aeronaut (src/lib/dm/genre-gb-aeronaut.ts) ----
+  // Grapnel Line: "swing or pull yourself 30 ft as part of your movement,
+  // INT-mod uses per rest": the line carries the aeronaut 30 feet to the
+  // square named, over what lies between, no action.
+  row("Grapnel Line", ["aeronaut"], {
+    counter: "steampunk_grapnel_line",
+    spends: [{ name: "Grapnel Line", pool: { id: "steampunk_grapnel_line" }, action: "none", does: { kind: "teleport", feet: 30, note: "swung or pulled along the grapnel line, as part of the move" } }],
+  }),
+  // Grapnel Ace: "Grapnel Line can also disarm or trip (contested by STR) at
+  // 30 ft", from the line's uses.
+  row("Grapnel Ace", ["aeronaut"], {
+    spends: [
+      { name: "Grapnel Trip", pool: { id: "steampunk_grapnel_line" }, action: "none", does: { kind: "steampunk", what: "grapnel", mode: "trip" } },
+      { name: "Grapnel Disarm", pool: { id: "steampunk_grapnel_line" }, action: "none", does: { kind: "steampunk", what: "grapnel", mode: "disarm" } },
+    ],
+  }),
+  // Boarding Action: "1/rest, when combat starts, immediately move your speed
+  // and make one attack".
+  row("Boarding Action", ["aeronaut"], {
+    counter: "steampunk_boarding_action",
+    spends: [{ name: "Boarding Action", pool: { id: "steampunk_boarding_action" }, action: "none", does: { kind: "steampunk", what: "boarding" } }],
+  }),
+  // Legend of the Skies: "When you roll initiative, gain a full extra turn
+  // before the first round begins": once a fight, its mark outlasting the
+  // first round.
+  row("Legend of the Skies", ["aeronaut"], {
+    spends: [{ name: "Legend of the Skies", action: "none", oncePer: { marker: "legend of the skies", rounds: 10 }, does: { kind: "steampunk", what: "extra_turn" } }],
+  }),
+
   // Difference Engine Mind: "1/rest, take the calculated answer: treat one
   // INT-based check as a natural 20" (src/lib/dm/genre-gb-calculated.ts).
   row("Difference Engine Mind", ["machinist"], {

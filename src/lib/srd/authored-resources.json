@@ -2574,6 +2574,18 @@
    "action": "bonus"
   },
   {
+   "id": "steampunk_grapnel_line",
+   "displayName": "Grapnel Line",
+   "match": [
+    "grapnel line"
+   ],
+   "uses": 1,
+   "ability": "int",
+   "recharge": "short",
+   "guidance": "Grapnel Line: a number of times equal to the aeronaut's Intelligence modifier (at least once) between rests, swing or pull 30 feet as part of their move, or with Grapnel Ace trip or disarm a creature within 30 feet.",
+   "action": "none"
+  },
+  {
    "id": "steampunk_clockwork_familiar",
    "displayName": "Familiar's Help",
    "match": [
