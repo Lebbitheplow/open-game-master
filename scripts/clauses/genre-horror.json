@@ -73,15 +73,9 @@
    },
    {
     "c": "a holy symbol or ritual kit is the focus",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs a cast of a material-component spell by a genre caster with and without the named focus carried (src/lib/dm/cast-materials.ts focusProblem); not staged",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap exorcist::Liturgy#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Liturgy: a exorcist's material spell needs the focus the feature names (or a pouch), and another class's focus is refused",
+    "by": "src/lib/srd/genre-gh-horror-focus.ts horrorFocusOf (a holy symbol, a Ritual Kit or Holy Kit line), read by src/lib/dm/cast-materials.ts focusProblem"
    }
   ]
  },
@@ -611,15 +605,9 @@
    },
    {
     "c": "the grimoire is the focus",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs a cast of a material-component spell by a genre caster with and without the named focus carried (src/lib/dm/cast-materials.ts focusProblem); not staged",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Pact of the Page#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Pact of the Page: a occultist's material spell needs the focus the feature names (or a pouch), and another class's focus is refused",
+    "by": "src/lib/srd/genre-gh-horror-focus.ts horrorFocusOf (a Grimoire, Spellbook or Book line), read by src/lib/dm/cast-materials.ts focusProblem"
    }
   ]
  },
@@ -2225,15 +2213,9 @@
    },
    {
     "c": "the kit is the focus",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs a cast of a material-component spell by a genre caster with and without the named focus carried (src/lib/dm/cast-materials.ts focusProblem); not staged",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap parapsychologist::Applied Theory#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Applied Theory: a parapsychologist's material spell needs the focus the feature names (or a pouch), and another class's focus is refused",
+    "by": "src/lib/srd/genre-gh-horror-focus.ts horrorFocusOf (the Field Instruments line), read by src/lib/dm/cast-materials.ts focusProblem"
    }
   ]
  },
