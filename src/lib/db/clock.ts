@@ -261,11 +261,12 @@ export function setTravelPace(campaignId: string, pace: CampaignClock["travelPac
   setClock(campaignId, pace ? { ...rest, travelPace: pace } : rest);
 }
 
-// A stretch of marching that just ended and who marched it, kept for the
-// day after it (src/lib/srd/travel.ts forcedMarchSpan).
-export function recordMarch(campaignId: string, end: number, minutes: number, ids: string[]) {
+// A stretch of travel that just ended and who travelled it, kept for the
+// day after it (src/lib/srd/travel.ts forcedMarchSpan). `carried`: ridden
+// aboard a vehicle, no hour of it marched.
+export function recordMarch(campaignId: string, end: number, minutes: number, ids: string[], carried = false) {
   const current = getClock(campaignId);
-  setClock(campaignId, { ...current, marched: [...legsWithinDay(current.marched ?? [], end), { end, minutes, ids }] });
+  setClock(campaignId, { ...current, marched: [...legsWithinDay(current.marched ?? [], end), { end, minutes, ids, ...(carried ? { carried: true as const } : {}) }] });
 }
 
 // How much water the party finds each day, for the `supplies` variant

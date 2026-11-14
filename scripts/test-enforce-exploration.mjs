@@ -71,6 +71,117 @@ await test("A march naming nobody at the table is refused before anything moves:
   }
 });
 
+// ---- riding aboard (SRD 5.1, Mounts and Vehicles) ----
+
+const clear = () => world.invoke("set_weather", { sky: "clear", temperature: "mild", wind: "calm" });
+// The next day at this hour and minute, under a clear sky.
+const nextDayAt = async (hour, minute = 0) => {
+  const { getClock: clockNow, setClockInstant: setInstant } = await import("../src/lib/db/clock.ts");
+  setInstant(world.campaignId, (Math.floor(clockNow(world.campaignId).instant / 1440) + 1) * 1440 + hour * 60 + minute);
+  await clear();
+};
+// A leg of four hours or more, or a dawn, rolls a new sky from Math.random:
+// 0.5 keeps the clear one with no drift.
+const steadySky = async (run) => {
+  const random = Math.random;
+  Math.random = () => 0.5;
+  try {
+    return await run();
+  } finally {
+    Math.random = random;
+  }
+};
+
+// The report against 0.35.0: a long rest ending at 21:01, eight hours on
+// foot through the night, a quarter hour at an inn, then a wagon, whose first
+// hour rolled "CON save vs forced march, hour 9, DC 11": riders aboard were
+// counted as marching it.
+await test("Riders aboard a wagon are not marching: a wagon boarded after eight hours on foot rolls no forced-march save, keeps its pace's miles, and says why.", async () => {
+  const { getClock: clockNow } = await import("../src/lib/db/clock.ts");
+  const { forcedMarchSpan } = await import("../src/lib/srd/travel.ts");
+  const rider = world.addHero({ user: world.owner, class: "fighter", level: 3, maxHp: 40 });
+  await nextDayAt(13, 1);
+  const { walked, wagon, onFoot } = await steadySky(async () => {
+    const rest = await world.invoke("take_rest", { kind: "long", characterIds: [rider.id] });
+    assert.equal(rest.ok, true, rest.error);
+    const walked = await world.invoke("travel", { hours: 8, pace: "normal", characterIds: [rider.id] });
+    await world.invoke("pass_time", { amount: 15, unit: "minutes" });
+    // The same three hours on foot are the ninth to the eleventh.
+    const day = clockNow(world.campaignId);
+    const onFoot = forcedMarchSpan(day.marched.filter((leg) => leg.ids.includes(rider.id)), day.instant + 180, 3, day.longRests?.[rider.id]);
+    const wagon = await world.invoke("travel", { hours: 3, pace: "normal", aboard: "wagon", characterIds: [rider.id] });
+    return { walked, wagon, onFoot };
+  });
+  assert.equal(walked.result.forcedMarch, false, JSON.stringify(walked.result));
+  assert.deepEqual(onFoot, { from: 1, to: 3 }, "walked, the leg would be no forced march");
+  assert.equal(wagon.ok, true, wagon.error);
+  assert.equal(wagon.result.forcedMarch, false, JSON.stringify(wagon.result));
+  assert.equal(wagon.result.aboard, "wagon");
+  assert.equal(wagon.result.miles, 9, "a wagon chooses a pace as normal");
+  assert.match(wagon.result.note, /not marching/);
+  assert.deepEqual(savesOf(rider.id), []);
+  assert.equal(world.sheet(rider.id).exhaustion ?? 0, 0);
+});
+
+await test("Hours ridden aboard add nothing to the day's march and are no halt in it: six hours walked, nine ridden and four walked are two forced-march hours, DC 11 and 12.", async () => {
+  const { getClock: clockNow } = await import("../src/lib/db/clock.ts");
+  const walker = world.addHero({ user: world.owner, class: "fighter", level: 3, maxHp: 40 });
+  await nextDayAt(6);
+  const last = await steadySky(async () => {
+    await world.invoke("travel", { hours: 6, pace: "normal", characterIds: [walker.id] });
+    await world.invoke("travel", { hours: 9, pace: "normal", aboard: "carriage", characterIds: [walker.id] });
+    world.dice(1, 1);
+    try {
+      return await world.invoke("travel", { hours: 4, pace: "normal", characterIds: [walker.id] });
+    } finally {
+      world.clearDice();
+    }
+  });
+  assert.equal(last.ok, true, last.error);
+  assert.equal(last.result.forcedMarch, true, JSON.stringify(last.result));
+  assert.deepEqual(savesOf(walker.id), [11, 12]);
+  assert.equal(world.sheet(walker.id).exhaustion, 2);
+  // The clock keeps the ride as a carried leg (src/lib/dm/march-state.ts).
+  assert.deepEqual(clockNow(world.campaignId).marched.filter((leg) => leg.ids.includes(walker.id)).map((leg) => leg.carried === true), [false, true, false]);
+});
+
+await test("A ship makes her own speed whatever the pace or the ground, with no fast-pace penalty and no forced march: ten hours aboard a sailing ship are 20 miles and no save.", async () => {
+  const { getClock: clockNow } = await import("../src/lib/db/clock.ts");
+  const sailor = world.addHero({ user: world.owner, class: "fighter", level: 3, maxHp: 40 });
+  await nextDayAt(6);
+  const out = await steadySky(() => world.invoke("travel", { hours: 10, pace: "fast", terrain: "difficult", aboard: "sailing ship", characterIds: [sailor.id] }));
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.miles, 20, JSON.stringify(out.result));
+  assert.equal(out.result.passivePerceptionMod, 0, "a vessel takes no fast-pace penalty");
+  assert.equal(out.result.forcedMarch, false);
+  assert.deepEqual(savesOf(sailor.id), []);
+  // No slow-pace stealth either: the pace the clock keeps is a normal one's.
+  assert.equal(clockNow(world.campaignId).travelPace, "normal");
+  const leg = await steadySky(() => world.invoke("travel", { miles: 9, aboard: "galley", characterIds: [sailor.id] }));
+  assert.equal(leg.result.hours, 3, "9 miles at a galley's 4 mph take 3 hours");
+});
+
+await test("A journey of days aboard a crewed ship sails on through the night, the rest taken aboard; a rowboat puts in at dusk as walkers camp.", async () => {
+  const { getClock: clockNow } = await import("../src/lib/db/clock.ts");
+  const sailor = world.addHero({ user: world.owner, class: "fighter", level: 3, maxHp: 40 });
+  await nextDayAt(6);
+  const start = clockNow(world.campaignId).instant;
+  const voyage = await steadySky(() => world.invoke("travel", { days: 2, aboard: "sailing ship", characterIds: [sailor.id] }));
+  assert.equal(voyage.ok, true, voyage.error);
+  assert.deepEqual(voyage.result.legs.map((leg) => leg.hours), [16, 16], JSON.stringify(voyage.result));
+  assert.equal(voyage.result.legs[0].miles, 32);
+  assert.equal(voyage.result.nights[0].sailedOn, 16, JSON.stringify(voyage.result.nights));
+  assert.equal(clockNow(world.campaignId).instant - start, 40 * 60, "16 hours, the night's 8, and 16 more");
+  assert.deepEqual(savesOf(sailor.id), []);
+  const rower = world.addHero({ user: world.owner, class: "fighter", level: 3, maxHp: 40 });
+  await nextDayAt(6);
+  const from = clockNow(world.campaignId).instant;
+  const crossing = await steadySky(() => world.invoke("travel", { days: 2, aboard: "rowboat", characterIds: [rower.id] }));
+  assert.equal(crossing.ok, true, crossing.error);
+  assert.deepEqual(crossing.result.legs.map((leg) => leg.miles), [12, 12], JSON.stringify(crossing.result));
+  assert.equal(clockNow(world.campaignId).instant - from, 32 * 60, "8 hours, the camp's 16, and 8 more");
+});
+
 // Passive Perception exactly 15: WIS 16 (+3) and proficiency (+2).
 const lookout = world.addHero({ user: world.owner, class: "ranger", level: 1, race: "human", abilities: { wis: 16 }, proficiencies: profs({ skills: ["perception"] }) });
 // The clock set to an hour of the next day, so a case reads the light it
