@@ -380,5 +380,27 @@ await run("Magnum Opus: a construct fails its save against the spell the slotles
   assert.ok(lost(near) < 10, `a humanoid saving on a 20 took ${lost(near)}`);
 });
 
+const used = (hero, id) => world.sheet(hero.id).resources?.[id]?.used ?? 0;
+// ---- GB16: Difference Engine Mind ----
+
+await run("Difference Engine Mind: the spent use counts the next Intelligence check's d20 as a 20, a Wisdom check keeps its own, and the check spends it", async () => {
+  const row = feature("machinist", "Difference Engine Mind", 17);
+  const hero = rig.holder(row);
+  await play(hero, "Difference Engine Mind");
+  assert.equal(used(hero, "steampunk_difference_engine_mind"), 1, "the use was not spent");
+  const total = async (args) => {
+    clearDice();
+    dice(4);
+    const out = rig.must(await world.invoke("request_roll", { characterId: hero.id, dc: 30, reason: "probe", ...args }), "request_roll");
+    clearDice();
+    return out.total;
+  };
+  const wisdom = await total({ kind: "ability_check", ability: "wis" });
+  const arcana = await total({ kind: "skill_check", skill: "arcana" });
+  const after = await total({ kind: "skill_check", skill: "arcana" });
+  assert.equal(arcana - after, 16, `the calculated Arcana check totalled ${arcana} and the next one ${after}; a 4 counted as a 20 is 16 more`);
+  assert.ok(wisdom < arcana - 10, `the Wisdom check took the answer too (${wisdom})`);
+});
+
 rig.world.close();
 finish();

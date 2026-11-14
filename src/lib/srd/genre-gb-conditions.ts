@@ -35,6 +35,7 @@ const ACID_FORMULA = "acid formula";
 const CATALYST_REROLL = "catalyst reroll";
 
 export const GENRE_GB_CONDITION_EFFECTS: ConditionEffectRow[] = [
+  { id: "calculated_answer", match: ["calculated answer"], summary: "Difference Engine Mind: the next Intelligence check counts its d20 as a 20." },
   { id: "acid_formula", match: [ACID_FORMULA], summary: "Corrosive Focus: this turn the alchemist's spells deal acid damage in place of their own type." },
   { id: "catalyst_reroll", match: [CATALYST_REROLL], summary: "Stone of the Magnum Opus: the next spell's damage dice are thrown twice and the better total kept." },
   { id: "the_great_work", match: ["the great work"], summary: "The Great Work: the spell just cast with no slot deals its dice at their maximum." },

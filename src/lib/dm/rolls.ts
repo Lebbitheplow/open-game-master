@@ -28,6 +28,7 @@ import { rollFeatureRiders } from "@/lib/dm/roll-feature-riders";
 import type { RollArgs } from "@/lib/dm/roll-args";
 import { DM_TOOL_NAME_PATTERN, invokeToolCallRegex, toolTextRegex, withoutIdArguments, withoutServerLines, xmlToolCallRegex } from "@/lib/dm/tool-text";
 import { acBreakdownFor, computeSheetDerived, findSkill, SRD_SKILLS } from "@/lib/srd";
+import { CALCULATED_ANSWER, calculatedAnswer } from "@/lib/dm/genre-gb-calculated";
 import { withoutSentences, type NarrationClaim } from "@/lib/dm/claims-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { Light } from "@/lib/dm/notice-logic";
@@ -580,8 +581,12 @@ function resolveUnfloored(
   // A check named against the hold it escapes (`against: "grappled"`).
   const escapes = (derivationKind === "skill_check" || derivationKind === "ability_check") && extras?.escapeDie && extras.escapeDie.against.includes(named(args.against) ?? "") ? extras.escapeDie : null;
   const bonusDie = `${riders.dice}${effects.diceSuffix}${bond ? `+${bond.dice}` : ""}${escapes ? `+${escapes.dice}` : ""}${genreAura.dice}`;
+  // Difference Engine Mind's calculated answer: this INT check's d20 counts
+  // as a 20, and the check spends it (genre-gb-calculated.ts).
+  const calculated = sheet && derivationKind ? calculatedAnswer(sheet, derivationKind, derivationAbility) : false;
   // All one-shot carriers are spent the same way: the caller clears them.
   const spent = [
+    calculated ? CALCULATED_ANSWER : null,
     riders.inspirationCondition,
     riders.peerless,
     helped,
@@ -683,7 +688,7 @@ function resolveUnfloored(
     // Silver Tongue, Ear for Deceit: a skill's own floor (authored-effects-more.ts).
     // Starry Form's Dragon: a floor on every Intelligence and Wisdom check.
     // Ear for Deceit's floor holds only on a check about a lie (args.about).
-    const floor = Math.max(reliable ? 10 : 0, mightFloor ?? 0, authoredCheckFloor(sheet, skill.id, checkAbility, named(args.about)));
+    const floor = Math.max(reliable ? 10 : 0, mightFloor ?? 0, authoredCheckFloor(sheet, skill.id, checkAbility, named(args.about)), calculated ? 20 : 0);
     // Reroll (Lucky) comes before floor (Reliable Talent): the 1 is rerolled,
     // then the surviving face is raised to 10 if still low.
     const d20Mods = `${lucky ? "r1" : ""}${floor > 1 ? `f${floor}` : ""}`;
@@ -697,6 +702,7 @@ function resolveUnfloored(
       ...(sightRot ? [`sight rot: -${sightRot} on a check that relies on sight`] : []),
       ...(checkAbility !== skill.ability ? [`a ${checkAbility.toUpperCase()} (${skill.name}) check: ${checkAbility.toUpperCase()} in place of ${skill.ability.toUpperCase()}, the skill's proficiency kept`] : []),
       ...(reliable ? ["Reliable Talent: a d20 face below 10 counts as 10"] : []),
+      ...(calculated ? ["Difference Engine Mind: the calculated answer, the d20 counted as a 20"] : []),
       ...(armorStealth ? ["their armor imposes disadvantage on Stealth"] : []),
       ...(featRider ? [featRider.note] : []),
       ...((veiledBy && !veiled) || (spares && bySight && extras?.light === "dim") ? [`${spares}: dim light costs their Perception nothing`] : []),
@@ -787,10 +793,11 @@ function resolveUnfloored(
       ...(auraBonus && extras?.saveNote ? [extras.saveNote] : []),
       ...(extras?.effectNote ? [extras.effectNote] : []),
       ...(mightFloor ? ["Indomitable Might: the check totals at least their Strength score"] : []),
+      ...(calculated ? ["Difference Engine Mind: the calculated answer, the d20 counted as a 20"] : []),
     ];
     const luckyBase = withLuck(d20Expression(modifier, advantage)).replace(
       /^(\d+d20(?:k[hl]\d+)?)/,
-      `$1${lucky ? "r1" : ""}${mightFloor ? `f${mightFloor}` : ""}`,
+      `$1${lucky ? "r1" : ""}${calculated ? "f20" : mightFloor ? `f${mightFloor}` : ""}`,
     );
     return {
       expression: `${luckyBase}${bonusDie}`,

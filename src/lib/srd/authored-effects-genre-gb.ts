@@ -90,6 +90,13 @@ export const GENRE_GB_AUTHORED: GenreRow[] = [
     reactions: [{ name: "Road Rage", pool: { id: "post_apocalyptic_road_rage" }, gate: { condition: ROAD_RAGE }, does: { kind: "attack", rangeFt: 5, weaponRange: true } }],
   }),
 
+  // Difference Engine Mind: "1/rest, take the calculated answer: treat one
+  // INT-based check as a natural 20" (src/lib/dm/genre-gb-calculated.ts).
+  row("Difference Engine Mind", ["machinist"], {
+    counter: "steampunk_difference_engine_mind",
+    spends: [{ name: "Difference Engine Mind", pool: { id: "steampunk_difference_engine_mind" }, action: "none", does: { kind: "buff", condition: "calculated answer", rounds: 600 } }],
+  }),
+
   // ---- the alchemist's formulae (src/lib/dm/genre-gb-alchemy.ts) ----
   // Corrosive Focus: "you may change any formula's damage type to acid": a
   // free card, the choice the text gives, for the turn.

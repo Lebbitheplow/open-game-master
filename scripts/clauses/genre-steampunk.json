@@ -363,13 +363,9 @@
    },
    {
     "c": "take the calculated answer: treat one INT-based check as a natural 20",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Difference Engine Mind#1:spend_moves",
-    "k": "spend_moves",
-    "p": {
-     "id": "steampunk_difference_engine_mind"
-    },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Difference Engine Mind\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, take the calculated answer: treat one INT-based check as a natural 2"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Difference Engine Mind: the spent use counts the next Intelligence check's d20 as a 20, a Wisdom check keeps its own, and the check spends it",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Difference Engine Mind (the calculated answer), src/lib/dm/genre-gb-calculated.ts calculatedAnswer from src/lib/dm/rolls.ts (the d20 floored at 20, spent as a carrier)"
    }
   ]
  },
