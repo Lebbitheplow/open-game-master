@@ -273,5 +273,28 @@ await run("Powder Discipline: a Sky Corsair fires a loading firearm with every a
   assert.match(off, /load/i, `without it the second shot: ${off}`);
 });
 
+// ---- GB14: Greater Daring ----
+
+await run("Greater Daring: an aeronaut's ranged shot from the air carries Daring Maneuver's 2d6 with no run, a shot from the ground does not, and the die is once a turn", async () => {
+  const row = feature("aeronaut", "Greater Daring", 11);
+  const hero = rig.holder(row, { gear: "firearm" });
+  const { near } = await rig.fight(hero);
+  kit.place(near.id, 10, 2);
+  const { setTokenMovement } = await load("lib/db/battle-maps.ts");
+  const shoot = async () => {
+    const out = await kit.swing(hero.id, near.id, [15, 3, 3, 3, 3, 3, 3], { weapon: "Pistol" });
+    if (!out.ok) throw new Error(`pc_attack: ${out.error}`);
+    return out.damage?.expression ?? "";
+  };
+  rig.myTurn(hero);
+  const grounded = await shoot();
+  setTokenMovement(kit.token(hero.id).id, "fly");
+  rig.myTurn(hero);
+  const aloft = await shoot();
+  assert.ok(aloft.includes("2d6") && !grounded.includes("2d6"), `the shot from the air rolled ${aloft} and from the ground ${grounded}`);
+  const again = await shoot();
+  assert.ok(!again.includes("2d6"), `a second shot from the air in the same turn rolled ${again}, the die again`);
+});
+
 rig.world.close();
 finish();

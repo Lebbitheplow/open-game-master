@@ -32,9 +32,15 @@ export const GENRE_C_AUTHORED: GenreRow[] = [
   }),
   // Aeronaut 1: "1/turn, add +1d6 damage to an attack made after moving at
   // least 15 ft in a straight or swinging line"; Greater Daring (11) makes it
-  // +2d6. A swing's line is a run at the creature on the board.
+  // +2d6. A swing's line is a run at the creature on the board. Greater
+  // Daring also lays it on "ranged attacks made while airborne or elevated":
+  // a shot from a flying token, the height standing in for the swing. One
+  // feature, so the melee and the ranged die share the once a turn.
   row("Daring Maneuver", ["aeronaut"], {
-    effects: [{ kind: "hit_rider", dice: [[1, "1d6"], [11, "2d6"]], when: "melee", oncePerTurn: true, afterRunFt: 15 }],
+    effects: [
+      { kind: "hit_rider", dice: [[1, "1d6"], [11, "2d6"]], when: "melee", oncePerTurn: true, afterRunFt: 15 },
+      { kind: "hit_rider", dice: "2d6", when: "ranged", oncePerTurn: true, airborne: true, gate: { level: 11 } },
+    ],
   }),
   // Witch hunter 3: "Your ranged attacks count as silvered and magical."
   row("Blessed Ammunition", ["witch_hunter"], { effects: [{ kind: "ranged_material", silvered: true, magical: true }] }),

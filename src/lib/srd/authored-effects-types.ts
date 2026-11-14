@@ -488,6 +488,9 @@ export type AuthoredEffect = Base &
         // Only a hit on a creature that carries this condition (No Witnesses
         // Left: the record of the creature that downed an ally).
         vsCondition?: string;
+        // Only while the attacker is aloft on the board, a flying token
+        // (Greater Daring: "ranged attacks made while airborne or elevated").
+        airborne?: true;
         weapons?: string[];
       }
     // A bonus to the holder's attack rolls, all or only melee or ranged ones.
