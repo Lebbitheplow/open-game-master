@@ -140,7 +140,10 @@ export function handleCastBuff(
   }
   // A spell an item paid for needs no Spellcasting feature, as it runs on too.
   // So does a later target of a casting an item made this turn (item-casts.ts).
-  if (!castsSpells(sheet) && !paidByItem(sheet, args.spell ?? "") && !itemCastOpen(campaign.id, sheet, args.spell ?? "")) {
+  // A species' or feat's own spell (a duergar's Enlarge/Reduce, a tiefling
+  // fighter's Darkness) needs none either: cast-rules.ts judges its use.
+  const grantedSpell = grantedCastOf(sheet, args.spell ?? "", spellFactsFor(args.spell ?? "", spellAuthorsFor(campaign)));
+  if (!castsSpells(sheet) && !grantedSpell && !paidByItem(sheet, args.spell ?? "") && !itemCastOpen(campaign.id, sheet, args.spell ?? "")) {
     return { error: `${sheet.name} cannot cast spells.`, refused: "rules" };
   }
   const barred = castBarred(campaign, turn.id, { characterId: sheet.id, spell: args.spell, ...(args.level ? { level: args.level } : {}), via: "buff" }, sheets, sheetsById);
@@ -312,7 +315,7 @@ export function handleCastBuff(
   const selfOnly = granted?.selfOnly;
   if (selfOnly && (targetRows.length || targetSheets.some((target) => target.id !== sheet.id))) {
     return {
-      error: `${sheet.name} casts ${resolvedMech.name} through an invocation on themselves only; another creature takes it from a slot of a spell they know. Nothing was spent.`,
+      error: `${sheet.name} casts ${resolvedMech.name} through ${granted?.source ?? "an invocation"} on themselves only; another creature takes it from a slot of a spell they know. Nothing was spent.`,
       refused: "rules",
     };
   }

@@ -2240,7 +2240,7 @@
     "lib/dm/zone-triggers.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/dm/zone-triggers.ts#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/dm/zone-triggers.ts#partial": [["key",1,"the SRD row's English immunity line"],["key",1,"a stat block's creature type holding one of an area's type ids (The Last Dawn Rises)"],["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
-    "lib/dm/zone-triggers.ts#whole": [["identity",1,"condition instances by whole name or key"],["identity",1,"conditions by whole name"]],
+    "lib/dm/zone-triggers.ts#whole": [["identity",1,"condition instances by whole name or key"],["identity",1,"conditions by whole name"],["key",1,"the conditions a zone reveals (invisible, hidden), by textKey (engine vocabulary)"]],
     "lib/dm/zone-walls.ts#first": [["key",1,"a wall section's first cell"]],
     "lib/dm/zone-walls.ts#whole": [["identity",1,"walls by whole spell key"]],
     "lib/dm/zone-walls.ts#whole-single": [["key",1,"damage type keys"]],
@@ -3150,8 +3150,7 @@
     "lib/dm/genre-gb-familiars.ts#first": [["key",1,"the first familiar form's hit points, which the merged Juggernaut doubles (every form shares them)"]],
     "lib/dm/genre-b-steampunk-defenses.ts#whole": [["key",1,"a damage type among an effect's types (engine vocabulary)"]],
     "lib/dm/genre-b-steampunk-defenses.ts#partial": [["key",3,"a damage type word (engine vocabulary) in a stat block's immunity line, cut from it"]],
-    "lib/dm/orcish-fury-logic.ts#partial": [["key",3,"ODM's own weapon-die turn mark, by its prefix and split into its fields"],["parse",1,"dice: a damage expression's die"]],
-    "lib/dm/orcish-fury-logic.ts#number": [["key",1,"the die sides ODM's own mark stores"]],
+    "lib/dm/orcish-fury-logic.ts#partial": [["parse",1,"dice: a damage expression's die"]],
     "lib/dm/genre-gb-gore-drift.ts#partial": [["key",1,"ODM's own once-per-turn mark prefix"]],
     "lib/dm/genre-gb-broadside.ts#partial": [["key",2,"ODM's own once-per-turn mark prefixes"]],
     "lib/dm/genre-gh-hunted.ts#whole": [["key",1,"cult creature slugs (engine vocabulary)"]],
@@ -3163,6 +3162,10 @@
     "lib/dm/transmute-armor.ts#fallback": [["identity",2,"the suit worn, else the only suit carried"]],
     "lib/dm/transmute-armor.ts#whole": [["identity",1,"a carried suit by its whole name (textKey on both sides)"],["key",2,"the transmuted mark a feature left, by the feature's whole name (textKey)"]],
     "lib/dm/transmute-armor.ts#first": [["identity",1,"the only suit carried, when none is worn or named"]],
-    "lib/dm/genre-gb-hook.ts#whole-single": [["identity",1,"the Chained Hook weapon by its whole name (textKey on both sides)"]]
+    "lib/dm/genre-gb-hook.ts#whole-single": [["identity",1,"the Chained Hook weapon by its whole name (textKey on both sides)"]],
+    "lib/dm/genre-gh-quarry.ts#whole": [["key",1,"token refs (ids)"]],
+    "lib/srd/genre-gh-warded.ts#partial": [["key",2,"an attacker's creature type cut into words, and the type a Warded condition names in its bracket (engine vocabulary)"]],
+    "lib/srd/genre-gh-warded.ts#whole": [["key",1,"a creature type among the attacker's type words (engine vocabulary)"]],
+    "lib/dm/genre-gh-wards.ts#whole": [["key",1,"a warding creature type by its whole name (textKey on both sides); a miss is refused"],["identity",1,"a held condition replaced by its whole name (textKey on both sides)"]]
   }
 }

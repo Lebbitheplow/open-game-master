@@ -78,7 +78,11 @@ export function normalizeRaceData(source: Raw, data: Raw & { desc: string }): { 
   const asiChoice = (source.asiChoice ?? null) as Raw | null;
   if (asiChoice && clamp(asiChoice.count, 0, 3, 0)) {
     const from = Array.isArray(asiChoice.from) ? asiChoice.from.filter((a) => SHORT_IDS.includes(a as (typeof SHORT_IDS)[number])) : [];
-    data.asiChoice = { count: clamp(asiChoice.count, 1, 3, 1), amount: clamp(asiChoice.amount, 1, 2, 1), ...(from.length ? { from } : {}) };
+    const count = clamp(asiChoice.count, 1, 3, 1);
+    // Each pick's own amount, in order (a fairy's +2 then +1, race-asi.ts
+    // asiPickAmount); kept only when it names one for every pick.
+    const amounts = Array.isArray(asiChoice.amounts) ? asiChoice.amounts.map((value) => clamp(value, 1, 2, 1)) : [];
+    data.asiChoice = { count, amount: clamp(asiChoice.amount, 1, 2, 1), ...(amounts.length === count ? { amounts } : {}), ...(from.length ? { from } : {}) };
   }
   const skills = words(source.skills, RACE_LIMITS.skills, 30)?.map((skill) => skill.toLowerCase().replace(/\s+/g, "_"));
   if (skills) data.skills = skills;

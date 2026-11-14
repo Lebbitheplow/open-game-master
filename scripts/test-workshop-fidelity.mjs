@@ -400,17 +400,27 @@ function copiedSpecies(row, option = null) {
   const copyRow = { slug: "homebrew:copy", name: "Copy", documentSlug: "homebrew", document: "Homebrew", data: stored.data };
   // A shade is offered once per Living Origin, and so is its copy.
   const origin = option && option.id.startsWith(`${option.slug}-`) && option.id.endsWith("-origin") ? option.id.slice(option.slug.length) : null;
-  return origin
-    ? (packRaceOptions([copyRow]).find((entry) => entry.id === `homebrew:copy${origin}`) ?? null)
-    : (packRaceOptions([copyRow], ["homebrew:copy"])[0] ?? null);
+  // Read beside the published rows, as a table holds both: the race the
+  // copy was started from names its own parent there (lineage).
+  const read = (keep) => packRaceOptions([...raceRows, copyRow], keep).filter((entry) => entry.slug === "homebrew:copy");
+  return origin ? (read(undefined).find((entry) => entry.id === `homebrew:copy${origin}`) ?? null) : (read(["homebrew:copy"])[0] ?? null);
 }
 
 // What the option says, less what names it; a size the row leaves unstated
 // is Medium at the table either way.
 const OPTION_LABELS = ["id", "name", "slug", "documentSlug", "source", "note", "traitsSummary", "choiceTraitNames"];
+// The races a species counts as: a copy is its source and that source's
+// line, beside its own workshop slug (race-options.ts lineageOf).
+const lineageView = (option) => [...new Set((option.lineage ?? []).filter((slug) => slug !== "homebrew:copy"))].sort();
 const optionView = (option) => {
   const view = { ...option, size: option.size ?? "Medium" };
   for (const key of OPTION_LABELS) delete view[key];
+  if (view.lineage) view.lineage = lineageView(option);
+  // An option with no trait lines reads the same whether it stores none or
+  // an empty list (the workshop keeps only what is written).
+  if (view.variants?.options) {
+    view.variants = { ...view.variants, options: view.variants.options.map(({ lines, ...rest }) => (lines?.length ? { ...rest, lines } : rest)) };
+  }
   return sorted(view);
 };
 

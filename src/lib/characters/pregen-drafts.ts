@@ -1,3 +1,4 @@
+import { withSpeciesVariant } from "@/lib/content/species-variants";
 import { rollHeroName } from "@/app/characters/builder/heroNames";
 import type { PlaystyleId } from "@/app/characters/builder/playstyles";
 import {
@@ -212,11 +213,16 @@ function fill(
   rng: () => number,
 ): { sheet: CreateSheetInput; level: number } | { refused: string } {
   let fields = freshFields(proposal, level, ids);
-  const pick = () => ({
-    race: offered.races.find((entry) => entry.id === fields.raceId),
-    klass: offered.classes.find((entry) => entry.id === fields.classId),
-    background: offered.backgrounds.find((entry) => entry.id === fields.backgroundId),
-  });
+  // The race with its picked option folded in, as CharacterBuilder.tsx hands
+  // it on: a shifter's subtype brings its own bonuses, which the scores carry.
+  const pick = () => {
+    const race = offered.races.find((entry) => entry.id === fields.raceId);
+    return {
+      race: race && fields.racialVariant ? withSpeciesVariant(race, fields.racialVariant) : race,
+      klass: offered.classes.find((entry) => entry.id === fields.classId),
+      background: offered.backgrounds.find((entry) => entry.id === fields.backgroundId),
+    };
+  };
   const answers = answersFor(proposal.role);
   for (let round = 0; round < FILL_ROUNDS + 1; round += 1) {
     const chosen = pick();

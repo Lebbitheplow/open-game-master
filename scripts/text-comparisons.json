@@ -1227,7 +1227,7 @@
     "lib/dm/ability-entries.ts#toLowerCase": [["table-language",3,"meaning reader: a section of a pack row's entries split into its abilities (options, breaths an entry announces, a second save) and its legendary count"]],
     "lib/dm/action-budget.ts#re-word": [["english-source",1,"the action labels the engine itself writes (Haste's choices)"]],
     "lib/dm/action-common.ts#toLowerCase": [["key",1,"condition label (engine vocabulary)"]],
-    "lib/dm/action-tools.ts#str-eq": [["key",4,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/action-tools.ts#str-eq": [["key",4,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"],["english-source",1,"reference: ODM's own genre feature name (Adrenaline Surge) a price names"]],
     "lib/dm/action-tools.ts#str-list": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/action-walk.ts#str-list": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/action-walk.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
@@ -2327,7 +2327,7 @@
     "lib/dm/genre-a-horror-hits.ts#str-replace": [["english-source",1,"the engine's own result line relabelled: Stunning Strike's save played for Piercing the Heart"]],
     "lib/srd/genre-a-horror-holds.ts#str-list": [["key",1,"tool schema enums and field names,statuses,condition labels and ids (engine vocabulary)"]],
     "lib/srd/authored-effects-genre-a-horror.ts#str-list": [["english-source",5,"ODM's authored effect rows (bundled data)"]],
-    "lib/srd/genre-a-horror-holds.ts#str-eq": [["key",8,"tool schema enums and field names,statuses,condition labels and ids (engine vocabulary)"]],
+    "lib/srd/genre-a-horror-holds.ts#str-eq": [["key",10,"tool schema enums and field names,statuses,condition labels and ids (engine vocabulary)"]],
     "lib/srd/authored-effects-channel.ts#str-list": [["english-source",3,"ODM's authored effect rows (bundled data)"]],
     "lib/srd/authored-effects-data.ts#str-key": [["english-source",1,"ODM's authored effect rows (bundled data)"]],
     "lib/srd/authored-effects-data.ts#str-list": [["english-source",14,"ODM's authored effect rows (bundled data)"]],
@@ -3181,6 +3181,9 @@
     "lib/srd/genre-gh-horror-spells.ts#str-includes": [["key",1,"class ids"]],
     "lib/dm/genre-gh-hunted.ts#str-eq": [["key",1,"condition labels (engine vocabulary)"]],
     "lib/dm/genre-gb-fabricator.ts#str-includes": [["key",1,"spell list ids"]],
-    "lib/srd/genre-gb-device.ts#re-word": [["english-source",1,"ODM's own \"Fabricated Device: <spell> (DC n, +n)\" item name, as deviceName writes it"]]
+    "lib/srd/genre-gb-device.ts#re-word": [["english-source",1,"ODM's own \"Fabricated Device: <spell> (DC n, +n)\" item name, as deviceName writes it"]],
+    "lib/battlemap/zones-genre-gh.ts#str-list": [["key",1,"zone trigger events (engine vocabulary)"]],
+    "lib/dm/genre-gh-last-one-out.ts#str-list": [["key",1,"move action ids (dash, disengage)"]],
+    "lib/srd/genre-gh-warded.ts#str-list": [["key",1,"creature types (engine vocabulary)"]]
   }
 }

@@ -480,7 +480,7 @@ test("every racial trait is enforced, a resource, or acknowledged", () => {
     "Longtooth (shifted: a Fangs attack as a bonus action)",
     "Fangs (while shifted, 1d6 piercing unarmed strike)",
     "Swiftstride (shifted: 10 more feet of speed, and a 10-foot step as a reaction)",
-    "Wildhunt (shifted: advantage on Wisdom checks; no attack within 30 ft of you has advantage)",
+    "Wildhunt (shifted: advantage on Wisdom checks; no attack within 30 ft has it)",
   ]);
   const uncovered = [];
   for (const race of races) {

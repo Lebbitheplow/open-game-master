@@ -326,11 +326,15 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
   const save = dc !== null && mech.save ? { ability: SAVE_LABEL[mech.save] ?? mech.save.toUpperCase(), dc } : null;
   const type: HandCardType =
     mech.resolution === "heal" ? "mend" : mech.resolution === "buff" ? "ward" : mech.condition ? "control" : "spell";
+  // A grant cast on its holder alone (Armor of Shadows, a duergar's
+  // Enlarge/Reduce and Invisibility) offers no other target: cast_buff
+  // refuses one (cast-buff.ts selfOnly).
+  const selfOnly = grantedCastOf(sheet, name, facts)?.selfOnly === true;
   const target: HandTarget =
     mech.resolution === "heal"
       ? "ally"
       : mech.resolution === "buff"
-        ? mech.buff?.target === "self" ? "self" : "ally"
+        ? mech.buff?.target === "self" || selfOnly ? "self" : "ally"
         : mech.resolution === "attack" || mech.resolution === "save" || mech.resolution === "auto"
           ? "enemy"
           : "none";
