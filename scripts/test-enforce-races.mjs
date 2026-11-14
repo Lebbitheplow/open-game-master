@@ -167,6 +167,10 @@ const BOOKS = {
   fairy: { asi: {}, asiChoice: { count: 2, amount: 1, amounts: [2, 1] }, languages: ["Common"], bonusLanguages: 1 },
   owlfolk: { asi: {}, asiChoice: { count: 2, amount: 1, amounts: [2, 1] }, languages: ["Common"], bonusLanguages: 1 },
   rabbitfolk: { asi: {}, asiChoice: { count: 2, amount: 1, amounts: [2, 1] }, languages: ["Common"], bonusLanguages: 1 },
+  // Mordenkainen's Tome of Foes: an eladrin has the elf's traits and Fey
+  // Step, and none of the high elf's or wood elf's weapon training.
+  eladrin: { notTraits: ["Elf Weapon Training"], weapons: null },
+  // END OF BOOKS
 };
 
 await test("every added lineage carries what its book prints", () => {

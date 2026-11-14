@@ -260,7 +260,6 @@
         "Fey Ancestry (adv. vs charm, immune to magical sleep)",
         "Trance",
         "Perception proficiency (Keen Senses)",
-        "Elf Weapon Training (longsword, shortsword, shortbow, longbow)",
         "Fey Step (misty step, 1/short rest)"
       ],
       "languages": [
@@ -269,12 +268,6 @@
       ],
       "skills": [
         "perception"
-      ],
-      "weapons": [
-        "longswords",
-        "shortswords",
-        "shortbows",
-        "longbows"
       ],
       "innateSpells": {
         "trait": "Fey Step",

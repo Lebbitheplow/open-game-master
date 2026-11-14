@@ -531,7 +531,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "20b9e72b249c",
+  "sha": "8b3034dc021d",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -582,12 +582,6 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.eladrin.grants"
    },
    {
-    "c": "Elf Weapon Training (longsword, shortsword, shortbow, longbow)",
-    "is": "held",
-    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
-    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.eladrin.grants"
-   },
-   {
     "c": "Fey Step (misty step, 1/short rest)",
     "is": "held",
     "by": "src/lib/srd/racial-grants.ts innateSpellsFor and innateSpellCounters (the row's innateSpells), cast by use_spell_slot without a slot",
@@ -601,12 +595,6 @@
    },
    {
     "c": "\"skills\":[\"perception\"]",
-    "is": "held",
-    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
-    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.eladrin.grants"
-   },
-   {
-    "c": "\"weapons\":[\"longswords\",\"shortswords\",\"shortbows\",\"longbows\"]",
     "is": "held",
     "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.eladrin.grants"
