@@ -286,5 +286,32 @@ await run("Road Rage: when an ally within 30 feet drops to 0, the road warrior m
   assert.ok(!world.sheet(hero.id).conditions.includes("road rage"), "an ally 35 feet off woke the rage");
 });
 
+// ---- GB21: Field Fabricator ----
+
+await run("Field Fabricator: once a long rest the salvage tech builds a device holding a 2nd-level wizard spell with their DC and attack; an ally who is no caster triggers it once with use_item, and the next long rest takes an unused one apart", async () => {
+  const row = feature("salvage_tech", "Field Fabricator", 11);
+  const hero = rig.holder(row);
+  await kit.endFight();
+  const build = (variant) => world.invoke("use_resource", { characterId: hero.id, resource: "Field Fabricator", variant, reason: "test" });
+  assert.equal((await build("Fireball")).ok, false, "a 3rd-level spell was built");
+  assert.equal(used(hero, "post_apocalyptic_field_fabricator"), 0, "the refused build spent the use");
+  rig.must(await build("Web"), "Field Fabricator");
+  assert.equal(used(hero, "post_apocalyptic_field_fabricator"), 1, "the build spent no use");
+  // Proficiency 4 at 11th and INT 3 (the rig's scores): DC 15, +7.
+  const name = "Fabricated Device: Web (DC 15, +7)";
+  assert.ok(world.sheet(hero.id).equipment.some((item) => item.name === name), `the tech's pack: ${world.sheet(hero.id).equipment.map((item) => item.name)}`);
+  // Handed to the fighter, who casts no spells.
+  world.patch(hero.id, { equipment: world.sheet(hero.id).equipment.filter((item) => item.name !== name) });
+  world.patch(rig.ally.id, { equipment: [...world.sheet(rig.ally.id).equipment, { name, qty: 1 }] });
+  const out = await world.invoke("use_item", { characterId: rig.ally.id, item: name, spell: "Web" });
+  assert.ok(out.ok, `the fighter could not trigger the device: ${out.error}`);
+  assert.ok(!world.sheet(rig.ally.id).equipment.some((item) => item.name === name), "the device outlived its one use");
+  // A second one, never used, is gone after the next long rest.
+  world.patch(hero.id, { resources: { ...world.sheet(hero.id).resources, post_apocalyptic_field_fabricator: { ...world.sheet(hero.id).resources.post_apocalyptic_field_fabricator, used: 0 } } });
+  rig.must(await build("Web"), "Field Fabricator again");
+  rig.must(await world.invoke("take_rest", { kind: "long" }), "take_rest long");
+  assert.ok(!world.sheet(hero.id).equipment.some((item) => item.name === name), "the device outlasted the next long rest");
+});
+
 rig.world.close();
 finish();

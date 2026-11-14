@@ -1779,16 +1779,15 @@
   "clauses": [
    {
     "c": "During a long rest, build one temporary device that duplicates a 2nd-level tech effect",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Field Fabricator#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Field Fabricator: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Field Fabricator: once a long rest the salvage tech builds a device holding a 2nd-level wizard spell with their DC and attack; an ally who is no caster triggers it once with use_item, and the next long rest takes an unused one apart",
+    "by": "src/lib/dm/genre-gb-fabricator.ts fieldFabricator (the build), src/lib/srd/genre-gb-device.ts (the device's one cast, read by src/lib/srd/item-spells.ts itemSpellsOf; gone at the next long rest in src/lib/srd/ar-ws-conjured.ts)"
    },
    {
     "c": "anyone can trigger it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Field Fabricator#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Field Fabricator: once a long rest the salvage tech builds a device holding a 2nd-level wizard spell with their DC and attack; an ally who is no caster triggers it once with use_item, and the next long rest takes an unused one apart",
+    "by": "src/lib/dm/genre-gb-fabricator.ts fieldFabricator (the build), src/lib/srd/genre-gb-device.ts (the device's one cast, read by src/lib/srd/item-spells.ts itemSpellsOf; gone at the next long rest in src/lib/srd/ar-ws-conjured.ts)"
    }
   ]
  },

@@ -144,6 +144,14 @@ export const GENRE_GB_AUTHORED: GenreRow[] = [
     spends: [{ name: "Broadside", pool: { id: "steampunk_broadside" }, action: "none", does: { kind: "buff", condition: "broadside", rounds: 1 } }],
   }),
 
+  // Field Fabricator (salvage tech 11): "During a long rest, build one
+  // temporary device that duplicates a 2nd-level tech effect; anyone can
+  // trigger it" (src/lib/dm/genre-gb-fabricator.ts, src/lib/srd/genre-gb-device.ts).
+  row("Field Fabricator", ["salvage_tech"], {
+    counter: "post_apocalyptic_field_fabricator",
+    spends: [{ name: "Field Fabricator", pool: { id: "post_apocalyptic_field_fabricator" }, action: "none", fight: "out", does: { kind: "steampunk", what: "fabricate" } }],
+  }),
+
   // Difference Engine Mind: "1/rest, take the calculated answer: treat one
   // INT-based check as a natural 20" (src/lib/dm/genre-gb-calculated.ts).
   row("Difference Engine Mind", ["machinist"], {

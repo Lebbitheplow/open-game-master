@@ -2586,6 +2586,17 @@
    "action": "none"
   },
   {
+   "id": "post_apocalyptic_field_fabricator",
+   "displayName": "Field Fabricator",
+   "match": [
+    "field fabricator"
+   ],
+   "uses": 1,
+   "recharge": "long",
+   "guidance": "Field Fabricator: once a long rest, out of a fight, the salvage tech builds one device holding a 2nd-level wizard spell (named in variant) with their save DC and spell attack; anyone carrying it casts that spell once from it with use_item, and it falls apart at the next long rest.",
+   "action": "none"
+  },
+  {
    "id": "steampunk_clockwork_familiar",
    "displayName": "Familiar's Help",
    "match": [

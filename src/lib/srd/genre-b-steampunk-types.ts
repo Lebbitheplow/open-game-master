@@ -13,4 +13,7 @@ export type SteampunkSpend =
   // disarm, Legend of the Skies' extra turn, Boarding Action's opening move.
   | { what: "grapnel"; mode: "trip" | "disarm" }
   | { what: "extra_turn" }
-  | { what: "boarding" };
+  | { what: "boarding" }
+  // The salvage tech's Field Fabricator build rides this union too, the
+  // genre-b pass's one shape (src/lib/dm/genre-gb-fabricator.ts).
+  | { what: "fabricate" };

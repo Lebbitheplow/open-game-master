@@ -39,6 +39,7 @@ export const KNOWN = {
 };
 
 export const RULINGS = {
+  "counter:post_apocalyptic_field_fabricator": { UNREACHED: "src/lib/dm/genre-gb-fabricator.ts fieldFabricator: the build needs the 2nd-level wizard spell it duplicates named in variant, which no staging names; scripts/test-genre-gb-post-apocalyptic.mjs builds the device, hands it to an ally who triggers it, and sees the next long rest take an unused one apart" },
   "counter:steampunk_boarding_action": { TRIGGER_AS_CARD: "src/lib/dm/genre-gb-aeronaut.ts boardingAction: \"when combat starts, immediately move your speed and make one attack\" is taken on the aeronaut's own turn in the first round, so the card is rightly open there; scripts/test-genre-gb-steampunk.mjs shows it refused after the first round" },
   "reaction:genre::road rage::Road Rage": { TRIGGER_UNCHECKED: "src/lib/dm/genre-gb-road-rage.ts: the reaction's gate is the road rage mark, which only an ally dropping to 0 within 30 feet lays (src/lib/dm/death.ts roadRageWakes); the untriggered staging that accepts it is one that holds the gate's mark, and scripts/test-genre-gb-post-apocalyptic.mjs shows it refused before any drop" },
   "counter:post_apocalyptic_road_rage": { TRIGGER_UNCHECKED: "src/lib/dm/genre-gb-road-rage.ts: the reaction's gate is the road rage mark, which only an ally dropping to 0 within 30 feet lays (src/lib/dm/death.ts roadRageWakes); the untriggered staging that accepts it is one that holds the gate's mark, and scripts/test-genre-gb-post-apocalyptic.mjs shows it refused before any drop" },
