@@ -55,7 +55,19 @@ const RACE_FAMILY: Record<string, string> = {
   eladrin: "elf",
   sea_elf: "elf",
   duergar: "dwarf",
-
+  // The eleven lineages painted by Smoebo on 2026-11-13
+  // (docs/art/species-portraits-2026-11-13.json), each its own people's face.
+  triton: "triton",
+  serpentfolk: "serpentfolk",
+  kobold: "kobold",
+  aarakocra: "aarakocra",
+  hobgoblin: "hobgoblin",
+  satyr: "satyr",
+  fairy: "fairy",
+  owlfolk: "owlfolk",
+  centaur: "centaur",
+  rabbitfolk: "rabbitfolk",
+  shifter: "shifter",
   drow: "drow",
   lightfoot_halfling: "halfling",
   stout_halfling: "stout-halfling",
@@ -179,12 +191,6 @@ const RACE_FAMILY: Record<string, string> = {
 };
 
 // Every race id with a plate of its own, for the test that walks them.
-// The bundled lineages with no plate painted yet. Another people's face
-// would show the wrong creature on a token (docs/art/creature-art-guidance.md,
-// token-readability.md), so until the art pass paints them each draws the
-// neutral adventurer plate (characterPlaceholder), as any race without art.
-export const LINEAGES_AWAITING_ART = ["triton", "serpentfolk", "kobold", "aarakocra", "hobgoblin", "satyr", "fairy", "owlfolk", "centaur", "rabbitfolk", "shifter"] as const;
-
 export function raceFamilyIds(): string[] {
   return Object.keys(RACE_FAMILY);
 }
@@ -269,16 +275,17 @@ export type CharacterLook = {
 };
 
 // The species whose plate shows a head no human face can stand in for: a
-// bull's, a cat's, a bird's, a reptile's, a mushroom's, a machine's. The class
-// plates are all painted human, so a minotaur fighter drew a human fighter
-// (0.31.1 playtest). An elf, a dwarf or a tiefling still reads true enough in
-// the class's gear, and keeps it.
+// bull's, a cat's, a bird's, a hare's, a reptile's, a goblin's, a mushroom's,
+// a machine's. The class plates are all painted human, so a minotaur fighter
+// drew a human fighter (0.31.1 playtest). An elf, a dwarf, a tiefling, a satyr
+// or a triton still reads true enough in the class's gear, and keeps it.
 const OWN_FACE_FAMILIES = new Set([
-  "acid-cap", "bhain-kwai", "boghaid", "bugbear", "catfolk",
+  "aarakocra", "acid-cap", "bhain-kwai", "boghaid", "bugbear", "catfolk",
   "darakhul-dragonborn", "darakhul-kobold", "darakhul-ravenfolk",
   "dragonborn", "erina", "favored", "gearforged", "gearforged-dwarf",
-  "gearforged-gnome", "gearforged-kobold", "goblin", "kenku", "lizardfolk",
-  "malkin", "minotaur", "morel", "mushroomfolk", "pantheran", "satarre",
+  "gearforged-gnome", "gearforged-kobold", "goblin", "hobgoblin", "kenku",
+  "kobold", "lizardfolk", "malkin", "minotaur", "morel", "mushroomfolk",
+  "owlfolk", "pantheran", "rabbitfolk", "satarre", "serpentfolk",
   "tabaxi", "tortle", "warforged",
 ]);
 

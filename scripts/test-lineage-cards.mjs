@@ -30,7 +30,6 @@ const {
   wrapIndex,
 } = await import("../src/app/characters/builder/lineage.ts");
 const { SRD_RACES, SRD_CLASSES } = await import("../src/lib/srd/index.ts");
-const { LINEAGES_AWAITING_ART } = await import("../src/lib/placeholders.ts");
 const { CUSTOM_CLASSES } = await import("../src/lib/classes/index.ts");
 
 const publicDir = path.resolve(import.meta.dirname, "../public");
@@ -203,15 +202,34 @@ test("a list with groups keeps its leading group whole; a single list folds by c
 
 // ---- the plates ----
 
-test("every bundled race resolves to its own family plate, in all three genders; one awaiting art draws the neutral adventurer, never another people's face", () => {
+test("every bundled race resolves to its own family plate, in all three genders", () => {
   for (const race of SRD_RACES) {
     for (const gender of ["", "Male", "Female"]) {
       const art = lineageArt(race.id, race.name, gender);
-      if (LINEAGES_AWAITING_ART.includes(race.id)) {
-        assert.match(art, /\/placeholders\/character\/[a-z]+\.webp$/, `${race.id} awaits its plate: ${art}`);
-      } else {
-        assert.match(art, /\/character-race\//, race.id);
-      }
+      assert.match(art, /\/character-race\//, race.id);
+      assert.ok(exists(art), `${art} exists`);
+    }
+  }
+});
+
+// The eleven lineages painted 2026-11-13 (docs/art/species-portraits-2026-11-13.json)
+// each show their own people, by id and by a pack row's name alone, never a
+// kin's face: a hobgoblin is no goblin, an aarakocra no kenku, a kobold no
+// dragonborn, a serpentfolk no lizardfolk, a triton no water genasi.
+const PAINTED_2026_11_13 = [
+  "triton", "serpentfolk", "kobold", "aarakocra", "hobgoblin", "satyr",
+  "fairy", "owlfolk", "centaur", "rabbitfolk", "shifter",
+];
+
+test("the eleven lineages painted 2026-11-13 each draw their own plate in all three genders", () => {
+  for (const id of PAINTED_2026_11_13) {
+    assert.ok(SRD_RACES.some((race) => race.id === id), `${id} is a bundled race`);
+    assert.equal(lineageFamily(id), id, id);
+    const name = id[0].toUpperCase() + id.slice(1);
+    assert.equal(lineageFamily("x", name), id, `by name ${name}`);
+    for (const [gender, look] of [["Male", "masculine"], ["Female", "feminine"], ["Nonbinary", "neutral"]]) {
+      const art = lineageArt(id, name, gender);
+      assert.equal(art, `/assets/placeholders/character-race/${id}-${look}.webp`, `${id}/${gender}`);
       assert.ok(exists(art), `${art} exists`);
     }
   }
