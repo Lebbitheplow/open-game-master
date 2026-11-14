@@ -2639,7 +2639,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "526990d2ff44",
+  "sha": "63e57c673200",
   "clauses": [
    {
     "c": "\"speed\":35",
@@ -2658,6 +2658,12 @@
     "is": "held",
     "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.satyr.grants"
+   },
+   {
+    "c": "Fey (your creature type is fey, not humanoid)",
+    "is": "held",
+    "by": "src/lib/srd/races.json type 'fey', read by src/lib/srd/index.ts creatureTypeForRace through src/lib/dm/summon-rules.ts sheetCreatureType; src/lib/dm/cast-at-player.ts passes a humanoid-only spell (Hold Person) over the character",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.satyr.fey"
    },
    {
     "c": "Ram (1d4 bludgeoning unarmed strike)",
@@ -2684,6 +2690,12 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.satyr.choices"
    },
    {
+    "c": "Mirthful Leaps (roll a d8 and add that many feet to each long or high jump)",
+    "is": "held",
+    "by": "src/lib/dm/jump-reach.ts jumpReach (leapDie), rolled by src/lib/dm/jump-move.ts jumpMove and added after the reach (src/lib/srd/jump.ts planLongJump)",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.satyr.mirthful-leaps"
+   },
+   {
     "c": "\"languages\":[\"Common\",\"Sylvan\"]",
     "is": "held",
     "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
@@ -2702,10 +2714,10 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.satyr.choices"
    },
    {
-    "c": "Mirthful Leaps (roll a d8 and add that many feet to each long or high jump)",
+    "c": "\"type\":\"fey\"",
     "is": "held",
-    "by": "src/lib/dm/jump-reach.ts jumpReach (leapDie), rolled by src/lib/dm/jump-move.ts jumpMove and added after the reach (src/lib/srd/jump.ts planLongJump)",
-    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.satyr.mirthful-leaps"
+    "by": "src/lib/srd/index.ts creatureTypeForRace through src/lib/dm/summon-rules.ts sheetCreatureType",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.satyr.fey"
    }
   ]
  },
@@ -2713,7 +2725,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "fae5fc5983c4",
+  "sha": "c25d98231c9c",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -2738,6 +2750,12 @@
     "is": "held",
     "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.fairy.choices"
+   },
+   {
+    "c": "Fey (your creature type is fey, not humanoid)",
+    "is": "held",
+    "by": "src/lib/srd/races.json type 'fey', read by src/lib/srd/index.ts creatureTypeForRace through src/lib/dm/summon-rules.ts sheetCreatureType; src/lib/dm/cast-at-player.ts passes a humanoid-only spell (Hold Person) over the character",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.fairy.fey"
    },
    {
     "c": "Flight (flying speed of 30 ft, not while wearing medium or heavy armor)",
@@ -2768,6 +2786,12 @@
     "is": "held",
     "by": "src/lib/srd/racial-grants.ts innateSpellsFor and innateSpellCounters (the row's innateSpells), cast by use_spell_slot without a slot",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits.mjs: species.fairy.innate"
+   },
+   {
+    "c": "\"type\":\"fey\"",
+    "is": "held",
+    "by": "src/lib/srd/index.ts creatureTypeForRace through src/lib/dm/summon-rules.ts sheetCreatureType",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.fairy.fey"
    }
   ]
  },
@@ -2843,7 +2867,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "739cd5f5dfd8",
+  "sha": "113c1133eb1c",
   "clauses": [
    {
     "c": "\"speed\":40",
@@ -2864,10 +2888,22 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.centaur.grants"
    },
    {
+    "c": "Fey (your creature type is fey, not humanoid)",
+    "is": "held",
+    "by": "src/lib/srd/races.json type 'fey', read by src/lib/srd/index.ts creatureTypeForRace through src/lib/dm/summon-rules.ts sheetCreatureType; src/lib/dm/cast-at-player.ts passes a humanoid-only spell (Hold Person) over the character",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.centaur.fey"
+   },
+   {
     "c": "Hooves (1d4 bludgeoning unarmed strike)",
     "is": "held",
     "by": "src/lib/srd/racial-weapons.ts racialNaturalWeapon, read by pc_attack",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.centaur.natural-weapon"
+   },
+   {
+    "c": "Charge (after a 30-foot run straight at a creature and a melee weapon hit on it, a Hooves attack on it as a bonus action)",
+    "is": "held",
+    "by": "src/lib/dm/feature-bonus-attacks.ts featureBonusAttack (Charge: the run kept by src/lib/dm/mt-fb-charge.ts and the turn's weapon hit), read by pc_attack's bonus attack",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.centaur.charge"
    },
    {
     "c": "Equine Build (count as one size larger for carrying)",
@@ -2894,10 +2930,10 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.centaur.choices"
    },
    {
-    "c": "Charge (after a 30-foot run straight at a creature and a melee weapon hit on it, a Hooves attack on it as a bonus action)",
+    "c": "\"type\":\"fey\"",
     "is": "held",
-    "by": "src/lib/dm/feature-bonus-attacks.ts featureBonusAttack (Charge: the run kept by src/lib/dm/mt-fb-charge.ts and the turn's weapon hit), read by pc_attack's bonus attack",
-    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.centaur.charge"
+    "by": "src/lib/srd/index.ts creatureTypeForRace through src/lib/dm/summon-rules.ts sheetCreatureType",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.centaur.fey"
    }
   ]
  },

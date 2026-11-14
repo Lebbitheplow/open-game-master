@@ -165,7 +165,8 @@ const BOOKS = {
   // The Wild Beyond the Witchlight (fairy, harengon) and Strixhaven (owlin):
   // +2 to one score and +1 to another, the player's, and Common with one
   // other language of the player's.
-  fairy: { asi: {}, asiChoice: { count: 2, amount: 1, amounts: [2, 1] }, languages: ["Common"], bonusLanguages: 1 },
+  // A fairy is fey, not humanoid.
+  fairy: { asi: {}, asiChoice: { count: 2, amount: 1, amounts: [2, 1] }, languages: ["Common"], bonusLanguages: 1, type: "fey", traits: ["Fey (your creature type is fey, not humanoid)"] },
   owlfolk: { asi: {}, asiChoice: { count: 2, amount: 1, amounts: [2, 1] }, languages: ["Common"], bonusLanguages: 1 },
   rabbitfolk: { asi: {}, asiChoice: { count: 2, amount: 1, amounts: [2, 1] }, languages: ["Common"], bonusLanguages: 1 },
   // Mordenkainen's Tome of Foes: an eladrin has the elf's traits and Fey
@@ -192,6 +193,9 @@ const BOOKS = {
   },
   // Elemental Evil Player's Companion: an aarakocra speaks its own tongue too.
   aarakocra: { languages: ["Common", "Aarakocra", "Auran"] },
+  // Mythic Odysseys of Theros: a satyr and a centaur are fey, not humanoid.
+  satyr: { type: "fey", traits: ["Fey (your creature type is fey, not humanoid)"] },
+  centaur: { type: "fey", traits: ["Fey (your creature type is fey, not humanoid)"] },
   // END OF BOOKS
 };
 

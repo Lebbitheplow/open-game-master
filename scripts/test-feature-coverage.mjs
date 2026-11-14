@@ -457,6 +457,7 @@ test("every racial trait is enforced, a resource, or acknowledged", () => {
     "Talons (1d4 slashing unarmed strike)",
     "Martial Training (light armor and two martial weapons of your choice)",
     "Ram (1d4 bludgeoning unarmed strike)",
+    "Fey (your creature type is fey, not humanoid)",
     "Reveler (Performance and Persuasion proficiency, and one musical instrument of your choice)",
     "Fairy Magic (druidcraft cantrip, then faerie fire from 3rd level and enlarge/reduce from 5th, 1/long rest each)",
     "Stealth proficiency (Silent Feathers)",

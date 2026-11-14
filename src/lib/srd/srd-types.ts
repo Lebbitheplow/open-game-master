@@ -39,6 +39,8 @@ export type SrdRace = {
   // `amounts`: each pick's own amount, in order (a fairy's +2 then +1:
   // src/lib/srd/race-asi.ts).
   asiChoice?: { count: number; amount: number; amounts?: number[] };
+  // The creature type, when it is not humanoid (a satyr's fey).
+  type?: string;
   traits: string[];
   languages: string[];
   // Extra languages of the player's choice (SRD: human, half-elf, high elf).

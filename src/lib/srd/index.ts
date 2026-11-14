@@ -82,6 +82,12 @@ export function sizeForRace(raceId: string, rules?: SpeciesRules | null): "Small
   return /^(small|tiny)$/i.test(speciesRulesFor(raceId, rules)?.size ?? "") ? "Small" : "Medium";
 }
 
+// A character's creature type by their lineage: humanoid unless the row
+// says otherwise (a satyr, centaur or fairy is fey).
+export function creatureTypeForRace(raceId: string): string {
+  return findRace(raceId.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_"))?.type ?? "humanoid";
+}
+
 export function findSkill(id: string) {
   return SRD_SKILLS.find((entry) => entry.id === id) ?? null;
 }

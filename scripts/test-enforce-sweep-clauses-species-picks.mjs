@@ -264,6 +264,24 @@ for (const row of RACES) {
       same([before, seen, near, away], [1, [true, true, 1], 2, 1], `${row.name}: an ally's d20s before the grovel, the grovel, then on a foe beside the kobold and on one 10 feet beyond it (${grovel.error ?? ""})`);
     });
   }
+  // Fey: a satyr, centaur or fairy is no humanoid, so a foe's Hold Person
+  // passes over them, nothing spent, while a human beside them is held.
+  if (holds(row, "fey (your creature type is fey")) {
+    probe("fey", async () => {
+      const t = await rig.table();
+      const who = t.hero(of());
+      const other = t.hero(plain());
+      await t.fight([who, other]);
+      const hold = (target) => t.invoke("cast_at_player", { characterId: target.id, spell: "Hold Person", saveAbility: "wis", dc: 25, condition: "paralyzed" }, [2, 2, 2]);
+      const fey = await hold(who);
+      const human = await hold(other);
+      same(
+        [Boolean(fey.ok), /humanoid/.test(fey.error ?? ""), t.has(who, "paralyzed"), Boolean(human.ok), t.has(other, "paralyzed")],
+        [false, true, false, true, true],
+        `${row.name}: a foe's Hold Person at them, then at a human (${fey.error ?? ""} ${human.error ?? ""})`,
+      );
+    });
+  }
 }
 
 // The probes above by name, for the ledger's probe check (it finds a probe
@@ -272,6 +290,9 @@ const NAMES = [
   "species.satyr.mirthful-leaps", "species.centaur.charge", "species.hobgoblin.saving-face",
   "species.rabbitfolk.lucky-footwork", "species.shifter.subtypes", "species.duergar.illusions",
   "species.kobold.grovel",
+  "species.satyr.fey",
+  "species.centaur.fey",
+  "species.fairy.fey",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
 
