@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 import { UserAvatar, ui } from "@/lib/ui";
 import { EmptyState } from "@/components/EmptyState";
 import { DateTimePicker } from "@/components/ui/DateTimePicker";
+import { LobbyIcon } from "@/components/ui/LobbyIcon";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import type { RsvpResponse, ScheduledSession } from "@/lib/db/scheduling";
@@ -259,7 +260,7 @@ export function ScheduleSection({
       style={style}
     >
       <div className="lobby-head mb-3">
-        <GameIcon icon={{ kind: "glyph", key: "tab-session" }} size="size-7" />
+        <LobbyIcon glyph="tab-session" />
         <h2 className="lobby-head-title">Next session</h2>
         <span className="lobby-head-rule motion-rule" aria-hidden="true" />
         {isLead ? (

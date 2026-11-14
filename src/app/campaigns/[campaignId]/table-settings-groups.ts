@@ -233,7 +233,7 @@ const KEYWORDS: Record<TableGroupId, string> = {
   world: "world pack setting genre universe language length saga custom",
   character: "dice real dice digital hit points hp level wealth gold kit gear stats ability scores reroll 4d6 multiclass multiclassing class",
   narration: "narration narrator voice voices read aloud speech tts speak pace character voices volume",
-  atmosphere: "maps map ambience music sound audio scene theatre inserts faces portraits",
+  atmosphere: "theme appearance woodland gothic arcane maps map ambience music sound audio scene theatre inserts faces portraits",
   safety: "safety x-card lines veils boundaries content tone strictness dc family mature",
   ai: "ai story setup plot outcome check prose narration length short rich verbose style notes voice pacing living world simulation allies companions guests party members assist monsters cover",
   memory: "memory history compaction recall retrieval rules lore chapter summaries stages model advanced",

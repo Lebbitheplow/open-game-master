@@ -1,0 +1,60 @@
+/* Shared geometry. Assets come from appearance-themes.ts, not theme names.
+   An absent slot is explicitly `none`, including inside picker previews. */
+.theme-table, .theme-lobby-shell { position: relative; }
+.theme-ornaments {
+  display: none;
+  position: absolute;
+  pointer-events: none;
+}
+html[data-theme-ornaments="true"] .theme-ornaments { display: block; }
+.theme-ornaments > span {
+  position: absolute;
+  background: var(--theme-art-corner, none) center / contain no-repeat;
+}
+.theme-ornaments > :nth-child(1) { top: 0; left: 0; }
+.theme-ornaments > :nth-child(2) { top: 0; right: 0; transform: rotate(90deg); }
+.theme-ornaments > :nth-child(3) { bottom: 0; right: 0; transform: rotate(180deg); }
+.theme-ornaments > :nth-child(4) { bottom: 0; left: 0; transform: rotate(270deg); }
+.theme-ornaments[data-surface="lobby"] {
+  inset: var(--theme-lobby-ornament-inset, -34px);
+  z-index: 2;
+}
+.theme-ornaments[data-surface="lobby"] > span {
+  width: var(--theme-lobby-corner-size, 196px);
+  height: var(--theme-lobby-corner-size, 196px);
+  filter: drop-shadow(0 3px 3px #0006);
+}
+.theme-ornaments[data-surface="table"] {
+  inset: var(--theme-table-ornament-inset, -10px);
+  z-index: 21;
+}
+.theme-ornaments[data-surface="table"]::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border: 12px solid transparent;
+  border-image: var(--theme-art-frame, none) var(--theme-frame-slice, 22%) / var(--theme-table-frame-width, 40px) / 0 round;
+}
+.theme-ornaments[data-surface="table"] > span {
+  width: var(--theme-table-corner-size, 128px);
+  height: var(--theme-table-corner-size, 128px);
+  filter: drop-shadow(0 2px 3px #0005);
+}
+@media (max-width: 1023px) {
+  .theme-ornaments[data-surface="table"] { inset: var(--theme-table-ornament-inset-small, -4px); }
+  .theme-ornaments[data-surface="table"]::before { inset: 1px; border-image-width: var(--theme-table-frame-width-small, 28px); }
+  .theme-ornaments[data-surface="table"] > span {
+    width: var(--theme-table-corner-size-small, 84px);
+    height: var(--theme-table-corner-size-small, 84px);
+  }
+}
+@media (max-width: 540px) {
+  .theme-ornaments[data-surface="lobby"] { inset: var(--theme-lobby-ornament-inset-small, -16px); }
+  .theme-ornaments[data-surface="lobby"] > span {
+    width: var(--theme-lobby-corner-size-small, 112px);
+    height: var(--theme-lobby-corner-size-small, 112px);
+  }
+}
+@media (forced-colors: active) {
+  html[data-theme-ornaments] .theme-ornaments { display: none; }
+}

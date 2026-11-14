@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { backdropCovered, onBackdropCover } from "@/lib/backdrop-cover";
+import { useThemePrefs } from "@/lib/theme-mode";
 
 // Living topographic backdrop: faint gold contour lines traced from a 3D
 // value-noise field whose time axis creeps forward, so the terrain slowly
@@ -60,6 +61,7 @@ function fbm(x: number, y: number, z: number): number {
 
 export default function TopoBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { appearance, mode } = useThemePrefs();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -69,6 +71,7 @@ export default function TopoBackground() {
     }
 
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const contourColor = getComputedStyle(document.documentElement).getPropertyValue("--color-amber-500").trim() || "#d4ab3a";
     let raf = 0;
     let lastDraw = 0;
     let cols = 0;
@@ -111,9 +114,8 @@ export default function TopoBackground() {
 
       LEVELS.forEach((iso, levelIndex) => {
         const isIndexLine = levelIndex % INDEX_EVERY === 1;
-        ctx.strokeStyle = isIndexLine
-          ? "rgba(212, 171, 58, 0.115)"
-          : "rgba(212, 171, 58, 0.065)";
+        ctx.strokeStyle = contourColor;
+        ctx.globalAlpha = isIndexLine ? 0.115 : 0.065;
         ctx.beginPath();
 
         for (let row = 0; row < rows - 1; row += 1) {
@@ -215,7 +217,7 @@ export default function TopoBackground() {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("resize", onResize);
     };
-  }, []);
+  }, [appearance, mode]);
 
   return (
     <canvas

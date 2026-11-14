@@ -16,6 +16,8 @@ import { CharacterVoices } from "@/app/campaigns/[campaignId]/CharacterVoices";
 import { VoicePreviewButton } from "@/components/VoicePreviewButton";
 import { SafetyToneFields } from "@/components/SafetyToneFields";
 import type { GameSettings } from "@/lib/schemas/game-settings";
+import { APPEARANCE_THEMES, type CampaignAppearance } from "@/lib/appearance-themes";
+import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 import { REROLL_LOW_DEFAULT, rerollBelowFor, rerollChoiceOf, type RerollChoice } from "@/lib/srd/ability-rerolls";
 import {
   CAMPAIGN_LENGTH_LABELS,
@@ -301,8 +303,21 @@ export function AtmosphereGroup({
   ambienceInstalled: boolean;
   ambienceCounts: Record<"bed" | "music" | "sting", { installed: number; total: number }> | null;
 }) {
+  const capabilities = useCapabilities();
   return (
     <>
+      {hostOffers(capabilities, "appearanceThemes") ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="pk-rowlabel">Visual theme</span>
+          <Select<CampaignAppearance>
+            value={settings.appearanceTheme ?? "genre"}
+            onChange={(appearanceTheme) => patch({ appearanceTheme })}
+            options={[{ value: "genre", label: "Follow genre" }, ...APPEARANCE_THEMES.map((theme) => ({ value: theme.id, label: theme.name }))]}
+            label="Campaign visual theme"
+          />
+          <span className="text-stone-500">Sets the table’s appearance. Each player keeps their own brightness and can choose a personal theme.</span>
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-center gap-2">
         <span className="pk-rowlabel">Maps</span>
         <SettingToggle on={settings.mapsEnabled} onToggle={() => patch({ mapsEnabled: !settings.mapsEnabled })}>

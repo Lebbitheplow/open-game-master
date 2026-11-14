@@ -1,5 +1,7 @@
 "use client";
 
+import { ThemeOrnaments } from "@/components/ThemeOrnaments";
+
 import Link from "next/link";
 import { appConfirm } from "@/components/ui/ConfirmDialog";
 import { ArrowLeft, Play } from "lucide-react";
@@ -495,12 +497,13 @@ export function Lobby({
         </Link>
       )}
 
-      <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-start lg:gap-x-8">
-        <div className="contents lg:flex lg:min-w-0 lg:flex-col">
+      <div className="theme-lobby-shell lobby-layout flex flex-col lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-start lg:gap-x-8">
+        <ThemeOrnaments surface="lobby" />
+        <div className="lobby-primary contents lg:flex lg:min-w-0 lg:flex-col">
           {/* A player taking a seat, for everyone here (F27): the banner
               rides on the lobby card's art, so it never covers another
               card's words. */}
-          <div className="relative order-1">
+          <div className="lobby-hero-slot relative order-1">
             <LobbyHero
               campaign={campaign}
               eyebrow={prep ? "The adventure is under way" : undefined}
@@ -538,7 +541,7 @@ export function Lobby({
             />
           ) : null}
 
-          <div className={cn("lobby-enter order-4", prep ? "mb-4" : "mb-8")} style={enter(3)}>
+          <div className={cn("lobby-actions lobby-enter order-4", prep ? "mb-4" : "mb-8")} style={enter(3)}>
             {campaign.gameSettings.multiCharacter !== "off" && mySheets.length > 1 ? (
               <div className="mb-3 flex flex-wrap justify-center gap-2" aria-label="Your characters">
                 {mySheets.map((sheet) => (
@@ -642,7 +645,7 @@ export function Lobby({
           </section>
         </div>
 
-        <div className="contents lg:flex lg:min-w-0 lg:flex-col">
+        <div className="lobby-secondary contents lg:flex lg:min-w-0 lg:flex-col">
           {showRoomCode ? (
             <LobbyRoomCode
               campaignId={campaign.id}

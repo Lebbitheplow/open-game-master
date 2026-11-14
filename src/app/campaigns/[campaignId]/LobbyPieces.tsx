@@ -1,10 +1,11 @@
 "use client";
 
-import { Dices, Pencil } from "lucide-react";
+import { Dices, Leaf, Pencil } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { CampaignCover } from "@/components/CampaignCover";
 import { GameIcon } from "@/components/ui/GameIcon";
+import { LobbyIcon } from "@/components/ui/LobbyIcon";
 import { GoldTitle } from "@/components/ui/GoldTitle";
 import { Switch } from "@/components/ui/Switch";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -36,7 +37,7 @@ export function LobbyGroupHead({
 }) {
   return (
     <div className={cn("lobby-head mb-3", className)} style={style}>
-      <GameIcon icon={{ kind: "glyph", key: glyph }} size="size-7" />
+      <LobbyIcon glyph={glyph} />
       <h2 className="lobby-head-title">{title}</h2>
       <span className="lobby-head-rule motion-rule" aria-hidden="true" />
     </div>
@@ -72,7 +73,7 @@ export function LobbyHero({
 }) {
   return (
     <div className={cn(ui.card, "lobby-hero ornate texture-noise mb-6", className)} style={style}>
-      <div className="lobby-hero-art">
+      <div className={cn("lobby-hero-art", !campaign.cover && "theme-default-cover")}>
         <CampaignCover
           cover={campaign.cover}
           title={campaign.title}
@@ -81,7 +82,8 @@ export function LobbyHero({
           className="aspect-[16/7] rounded-b-none border-0 shadow-none"
         />
       </div>
-      <div className="relative -mt-1 px-4 pb-4 sm:px-5 sm:pb-5">
+      <div className="lobby-hero-caption relative -mt-1 px-4 pb-4 sm:px-5 sm:pb-5">
+        <span className="theme-crest" aria-hidden="true"><Leaf /></span>
         <p className={ui.sectionEyebrow}>{eyebrow}</p>
         <div className="mt-1 flex items-start gap-2">
           <GoldTitle className="min-w-0 text-balance break-words leading-tight">{campaign.title}</GoldTitle>
@@ -117,7 +119,7 @@ export function LobbyHero({
 
 function HeroChip({ children }: { children: ReactNode }) {
   return (
-    <span className="rounded-full border border-amber-400/25 bg-amber-400/10 px-2.5 py-0.5 text-amber-100">
+    <span className="lobby-hero-chip rounded-full border border-amber-400/25 bg-amber-400/10 px-2.5 py-0.5 text-amber-100">
       {children}
     </span>
   );

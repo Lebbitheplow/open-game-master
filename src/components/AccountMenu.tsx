@@ -3,19 +3,20 @@
 import { forgetBrowserTableFeats } from "@/lib/srd/feat-effects";
 import { forgetBrowserSpecies } from "@/lib/srd/race-id";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { AppWindow, BookOpen, CircleHelp, Info, LogOut, SlidersHorizontal, UserRound } from "lucide-react";
+import { AppWindow, BookOpen, CircleHelp, Info, LogOut, Palette, SlidersHorizontal, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 import { AboutDialog } from "@/components/AboutDialog";
 import { HelpDialog } from "@/components/HelpDialog";
+import { Dialog } from "@/components/ui/Dialog";
+import { AppearancePicker } from "@/components/AppearancePicker";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { headerButtonClass } from "@/app/campaigns/[campaignId]/headerButton";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { cn } from "@/lib/cn";
 import { shellHost, type ShellHost } from "@/lib/shell-host";
-import { useThemePrefs, writeThemeChoice } from "@/lib/theme-mode";
 
 // window.odmShell is set once before any page script runs and never changes.
 const subscribeNever = () => () => {};
@@ -104,6 +105,7 @@ export function AccountMenu({
 }) {
   const [helpOpen, setHelpOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
   const pathname = usePathname();
   // Inside the desktop or Android app the menu grows a door back to the
   // app's server list. The host object is a client-only global, so it is
@@ -111,7 +113,6 @@ export function AccountMenu({
   // client markup agree, and the entry appears right after hydration.
   const shell = useSyncExternalStore<ShellHost | null>(subscribeNever, shellHost, () => null);
   const router = useRouter();
-  const theme = useThemePrefs();
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -196,17 +197,9 @@ export function AccountMenu({
             </DropdownMenu.Item>
             <DropdownMenu.Item
               className={itemClass}
-              onSelect={(event) => {
-                // Stays open so a second press can cycle again.
-                event.preventDefault();
-                writeThemeChoice(theme.mode === "light" ? "dark" : "light");
-              }}
+              onSelect={() => setAppearanceOpen(true)}
             >
-              <GameIcon icon={{ kind: "glyph", key: theme.mode === "light" ? "daypart-night" : "daypart-day" }} size="size-6" />
-              <span className="grow">{theme.mode === "light" ? "Arcane night" : "Parchment day"}</span>
-              <span className="kit-switch pointer-events-none" aria-checked={theme.mode === "light"} aria-hidden="true">
-                <span className="kit-switch-knob" />
-              </span>
+              <Palette className="size-4" /> Appearance
             </DropdownMenu.Item>
             <DropdownMenu.Item asChild>
               <Link href="/settings" className={itemClass}>
@@ -266,6 +259,9 @@ export function AccountMenu({
       </DropdownMenu.Root>
       {onHelp ? null : <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} />}
       <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} isAdmin={Boolean(user.isAdmin)} />
+      <Dialog open={appearanceOpen} onOpenChange={setAppearanceOpen} title="Appearance" width="w-[min(92vw,46rem)]">
+        <AppearancePicker />
+      </Dialog>
     </>
   );
 }

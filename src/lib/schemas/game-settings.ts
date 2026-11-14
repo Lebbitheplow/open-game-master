@@ -11,6 +11,7 @@ import {
   TABLE_LANGUAGES,
 } from "@/lib/schemas/game-settings-options";
 import { parseKeepingValid } from "@/lib/schemas/parse-keeping-valid";
+import { APPEARANCE_THEME_IDS } from "@/lib/appearance-themes";
 
 // The option lists and their labels live in ./game-settings-options (no
 // zod) so the campaign wizard can draw them without the validator; the
@@ -51,6 +52,7 @@ export const gameSettingsSchema = z.object({
     })
     .default({ monsters: true, narration: true, cover: true }),
   genre: z.enum(GENRES).default("high_fantasy"),
+  appearanceTheme: z.enum(["genre", ...APPEARANCE_THEME_IDS]).default("genre"),
   customGenreText: z.string().trim().max(500).default(""),
   // The language the table plays in (game-settings-options.ts).
   tableLanguage: z.enum(TABLE_LANGUAGES).default("english"),

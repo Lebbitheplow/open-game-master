@@ -32,10 +32,13 @@ export const PIXEL_ICONS = {
 export const ui = {
   // Buttons
   btnPrimary:
+    "theme-key theme-key-primary " +
     "inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-gradient-to-b from-amber-100 via-amber-200 to-amber-400 px-4 font-display text-[13px] font-semibold uppercase tracking-[0.14em] text-amber-950 shadow-[0_1px_0_rgba(253,247,231,0.6)_inset,0_2px_8px_rgba(4,2,12,0.5)] hover:shadow-[0_1px_0_rgba(253,247,231,0.6)_inset,0_4px_16px_rgba(212,171,58,0.35)] active:shadow-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:shadow-none motion-magnet",
   btnSecondary:
+    "theme-key " +
     "inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-amber-500/25 bg-stone-900/50 px-3 font-display text-[13px] uppercase tracking-[0.12em] text-stone-200 shadow-[0_1px_0_rgba(233,230,244,0.06)_inset,0_2px_6px_rgba(4,2,12,0.4)] hover:border-amber-500/50 hover:bg-stone-800/70 hover:text-amber-100 hover:shadow-glow-gold disabled:opacity-50 motion-magnet",
   btnSmall:
+    "theme-key " +
     "inline-flex items-center gap-1.5 rounded-lg border border-stone-600/60 bg-stone-900/50 px-3 py-1.5 text-sm text-stone-300 shadow-[0_1px_0_rgba(233,230,244,0.05)_inset] hover:border-amber-500/40 hover:bg-stone-800/70 hover:text-amber-100 disabled:opacity-50 motion-press",
   // Small icon action pinned to a card or message. Fades in on hover for mouse
   // users and stays visible on touch (see .reveal-on-hover in globals.css).

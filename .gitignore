@@ -74,3 +74,6 @@ public/generated-audio
 
 # local audit handoff
 /docs/app-usability-audit-2026-10-16.md
+
+# Disposable theme fixtures, browser profiles, screenshots and reports
+/.theme-preview/

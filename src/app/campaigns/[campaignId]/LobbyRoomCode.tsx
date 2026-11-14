@@ -6,7 +6,7 @@ import { cn } from "@/lib/cn";
 import { copyText } from "@/lib/clipboard";
 import { buildShareLinks } from "@/lib/share-link";
 import { CopyTick, InviteQr, InviteShareDialog, RoomCodeHeldNotice, RoomCodeSigils } from "@/components/InviteShareDialog";
-import { GameIcon } from "@/components/ui/GameIcon";
+import { LobbyIcon } from "@/components/ui/LobbyIcon";
 import { ui } from "@/lib/ui";
 
 // The room code card: the QR on the card itself (scanning is the fastest way
@@ -86,7 +86,7 @@ export function LobbyRoomCode({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/assets/ui/wax-seal-gold.webp" alt="" className="lobby-code-seal" />
       <div className="lobby-head mb-3 pr-12">
-        <GameIcon icon={{ kind: "glyph", key: "tab-friends" }} size="size-7" />
+        <LobbyIcon glyph="tab-friends" />
         <h2 className="lobby-head-title">Room code</h2>
         <span className="lobby-head-rule motion-rule" aria-hidden="true" />
       </div>
