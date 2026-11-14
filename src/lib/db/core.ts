@@ -918,6 +918,21 @@ function ensureSchema(db: SqliteDatabase) {
     CREATE INDEX IF NOT EXISTS idx_npc_memories
       ON npc_memories(campaign_id, npc_id, created_at);
 
+    -- A seat from which someone outside the table plays a first-tier mind
+    -- through their own agent (docs/specs/ogm-mind-seats.md): the code the
+    -- lead shares, who claimed it ('' until then) and the mind the server
+    -- gave it ('' until one needed it). Table settings, not play.
+    CREATE TABLE IF NOT EXISTS mind_seats (
+      id TEXT PRIMARY KEY,
+      campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+      code TEXT NOT NULL UNIQUE,
+      user_id TEXT NOT NULL DEFAULT '',
+      npc_id TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      claimed_at TEXT NOT NULL DEFAULT ''
+    );
+    CREATE INDEX IF NOT EXISTS idx_mind_seats_campaign ON mind_seats(campaign_id);
+
     -- Each time a mind was asked to answer, and how it went: proposed and
     -- committed answers, and failures (a timeout, an invalid reply) that
     -- left no words and no memories behind. Flags are names it used without

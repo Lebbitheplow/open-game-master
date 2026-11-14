@@ -6874,5 +6874,6 @@
   "{name} stands ready to hold {name2}'s spirit: if they die within the minute, for 24 hours a spell that returns the dead finds them as if freshly dead.": "{name} è pronto a trattenere lo spirito di {name2}: se muore entro il minuto, per 24 ore un incantesimo che riporta in vita i morti lo trova come se fosse appena morto.",
   "{name}'s rage ends at 0 hit points with three death saves failed, and they die.": "L'ira di {name} termina a 0 punti ferita con tre tiri salvezza contro la morte falliti, e {name} muore.",
   "{name}'s rage ends at 0 hit points, and they fall unconscious, dying.": "L'ira di {name} termina a 0 punti ferita, e {name} cade privo di sensi, morente.",
-  "{name}'s rage ends at 0 hit points: stable, they fall unconscious.": "L'ira di {name} termina a 0 punti ferita: stabile, {name} cade privo di sensi."
+  "{name}'s rage ends at 0 hit points: stable, they fall unconscious.": "L'ira di {name} termina a 0 punti ferita: stabile, {name} cade privo di sensi.",
+  "This table already has {MAX_MIND_SEATS} mind seats.": "Questo tavolo ha già {MAX_MIND_SEATS} posti mente."
 }

@@ -16443,5 +16443,12 @@
   "•••••••• (set)": "•••••••• (impostato)",
   "← Back to your characters": "← Torna ai tuoi personaggi",
   "✓ Chosen": "✓ Scelto",
-  "✓ Selected": "✓ Selezionato"
+  "✓ Selected": "✓ Selezionato",
+  "No such seat at this table.": "A questo tavolo non c'è un posto del genere.",
+  "Say something (speech) or do something (intent).": "Di' qualcosa (speech) o fai qualcosa (intent).",
+  "Send requestId with speech and/or intent.": "Invia requestId con speech e/o intent.",
+  "Send the seat's code.": "Invia il codice del posto.",
+  "That question is no longer waiting: it was answered, or the server's mind answered it after the wait ran out.": "Quella domanda non è più in attesa: ha già avuto risposta, oppure ha risposto la mente del server allo scadere dell'attesa.",
+  "The server gives you a character the first time the story needs one. Wait for questions with odm_mind_wait.": "Il server ti assegna un personaggio la prima volta che la storia ne ha bisogno. Attendi le domande con odm_mind_wait.",
+  "wait is a number of seconds from 0 to 25.": "wait è un numero di secondi da 0 a 25."
 }

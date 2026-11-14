@@ -55,7 +55,7 @@ const testTable = createCampaign(author.id, {
   difficulty: "normal",
   kind: "playtest",
 });
-const grant = createConnectionGrant({ userId: author.id, name: "author's agent", scopes: ["read"] }).grant;
+const grant = createConnectionGrant({ userId: author.id, name: "author's agent", scopes: ["read"], campaignId: null }).grant;
 
 // workbenchCall reaches routes over loopback fetch; here fetch goes straight
 // to the list route, signed in with the session the grant minted.
@@ -93,7 +93,7 @@ try {
   // The invite route only rotates the code (POST): the tool's GET there was
   // a 405 on every call.
   await test("odm_get_invite reads the campaign's invite code", async () => {
-    const lead = createConnectionGrant({ userId: author.id, name: "lead's agent", scopes: ["campaigns"] }).grant;
+    const lead = createConnectionGrant({ userId: author.id, name: "lead's agent", scopes: ["campaigns"], campaignId: null }).grant;
     const outcome = await workbenchCall(lead, "odm_get_invite", { campaignId: campaign.id });
     assert.equal(outcome.isError, false, outcome.text.slice(0, 300));
     assert.equal(JSON.parse(outcome.text).inviteCode, campaign.inviteCode);
@@ -103,7 +103,7 @@ try {
   // The other tools held to their routes the same way: each promise below
   // was one the route behind the tool did not keep.
   await test("no other tool's description promises what its route does not do", () => {
-    const every = createConnectionGrant({ userId: author.id, name: "every scope", scopes: [...AGENT_SCOPES] }).grant;
+    const every = createConnectionGrant({ userId: author.id, name: "every scope", scopes: [...AGENT_SCOPES], campaignId: null }).grant;
     const said = Object.fromEntries(workbenchTools(every).map((tool) => [tool.name, tool.description]));
     const property = (name, field) => workbenchTools(every).find((tool) => tool.name === name).inputSchema.properties[field].description;
     // requireStoryAuthority: a lead at a table a person runs is refused.

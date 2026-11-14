@@ -88,6 +88,7 @@ export const OUTSIDE_TABLES: Readonly<Record<string, string>> = {
   player_webhook_deliveries: "a player's agent hook-up",
   player_webhook_writes: "a player's agent hook-up",
   agent_grants: "a player's agent hook-up",
+  mind_seats: "who outside the table plays a mind (docs/specs/ogm-mind-seats.md)",
   world_paint_jobs: "art queued for a world",
   world_pack_drafts: "the world pack editor",
   world_forge: "the WorldForge editor",
