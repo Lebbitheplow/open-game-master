@@ -19,7 +19,7 @@ import { thrownAtRange } from "@/lib/dm/attack-rules";
 import { attackSightVerdict } from "@/lib/dm/attack-sight";
 import {
   characterFlanks,
-  characterHasPackmate,
+  characterHasPackmate, grovelingAllyNear,
   characterShootsInMelee,
   creatureCover,
   tilesBetween,
@@ -31,7 +31,7 @@ import { pcAttackSpatials } from "@/lib/dm/map-tools";
 import type { FeatureRider } from "@/lib/dm/pc-attack-damage";
 import type { ManeuverPick } from "@/lib/dm/pc-attack-plan";
 import type { BuiltAttack } from "@/lib/dm/pc-attack-profile";
-import { sizeForRace } from "@/lib/srd";
+import { sheetSize } from "@/lib/srd";
 import { wearsUntrainedArmor } from "@/lib/srd/armor";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
 import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
@@ -206,6 +206,12 @@ export function attackSituation(input: {
   if (packTactics) {
     conditionContext.notes.push("Pack Tactics: an ally beside the target, advantage");
   }
+  // Grovel, Cower, and Beg: a groveling ally (a kobold) within 10 feet of the
+  // target, which can see it; any attack roll, a spell's too.
+  const groveler = grovelingAllyNear(encounter.id, sheet.id, enemy.id);
+  if (groveler) {
+    conditionContext.notes.push(`${groveler} grovels within 10 feet of the target: advantage`);
+  }
   // A held Help: advantage on this attack, which spends it.
   // Only a Help given against this enemy (src/lib/dm/help-logic.ts).
   const helped = heldHelp(sheet, { enemyId: enemy.id });
@@ -263,7 +269,7 @@ export function attackSituation(input: {
   // SRD heavy property: Small creatures swing oversized weapons at
   // disadvantage.
   // Giant Foe lifts the Small character's heavy-weapon disadvantage (feat-combat.ts).
-  const smallWithHeavy = profile.heavy && sizeForRace(sheet.race) === "Small" && !liftsSmallHeavyPenalty(sheet);
+  const smallWithHeavy = profile.heavy && sheetSize(sheet) === "Small" && !liftsSmallHeavyPenalty(sheet);
   // Sunlight Sensitivity: in direct sunlight, disadvantage (sunlight.ts).
   const sunlit = hasSunlightSensitivity(sheet) && inDirectSunlight(campaign.id);
   if (sunlit) {
@@ -328,6 +334,7 @@ export function attackSituation(input: {
     ...(helped ? ["advantage" as const] : []),
     ...(flanking ? ["advantage" as const] : []),
     ...(packTactics ? ["advantage" as const] : []),
+    ...(groveler ? ["advantage" as const] : []),
     ...(input.recklessAdvantage ? ["advantage" as const] : []),
     ...(input.inspired ? ["advantage" as const] : []),
     ...light.sources,

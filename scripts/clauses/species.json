@@ -157,7 +157,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "b8b27717c0e5",
+  "sha": "2329fe6d8fc8",
   "clauses": [
    {
     "c": "\"speed\":25",
@@ -214,9 +214,9 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.duergar.illusions"
    },
    {
-    "c": "Duergar Magic (enlarge/reduce on yourself from 3rd level, invisibility on yourself from 5th, 1/long rest each)",
+    "c": "Duergar Magic (enlarge on yourself from 3rd level, invisibility on yourself from 5th, 1/long rest each, no material components)",
     "is": "held",
-    "by": "src/lib/srd/racial-grants.ts innateSpellsFor and innateSpellCounters (the row's innateSpells), cast by use_spell_slot without a slot",
+    "by": "src/lib/srd/racial-grants.ts innateSpellsFor (the row's innateSpells, on the duergar alone, no material components: granted-casts.ts selfOnly and noMaterial, held by cast-buff.ts), cast by use_spell_slot without a slot",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits.mjs: species.duergar.innate"
    },
    {
@@ -244,7 +244,7 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.duergar.grants"
    },
    {
-    "c": "\"innateSpells\":{\"trait\":\"Duergar Magic\",\"ability\":\"int\",\"spells\":[{\"name\":\"Enlarge/Reduce\",\"level\":3,\"per\":\"long\"},{\"name\":\"Invisibility\",\"level\":5,\"per\":\"long\"}]}",
+    "c": "\"innateSpells\":{\"trait\":\"Duergar Magic\",\"ability\":\"int\",\"spells\":[{\"name\":\"Enlarge/Reduce\",\"level\":3,\"per\":\"long\",\"self\":true,\"noMaterial\":true},{\"name\":\"Invisibility\",\"level\":5,\"per\":\"long\",\"self\":true,\"noMaterial\":true}]}",
     "is": "held",
     "by": "src/lib/srd/racial-grants.ts innateSpellsFor and innateSpellCounters (the row's innateSpells), cast by use_spell_slot without a slot",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits.mjs: species.duergar.innate"
@@ -531,7 +531,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "20b9e72b249c",
+  "sha": "8b3034dc021d",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -582,12 +582,6 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.eladrin.grants"
    },
    {
-    "c": "Elf Weapon Training (longsword, shortsword, shortbow, longbow)",
-    "is": "held",
-    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
-    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.eladrin.grants"
-   },
-   {
     "c": "Fey Step (misty step, 1/short rest)",
     "is": "held",
     "by": "src/lib/srd/racial-grants.ts innateSpellsFor and innateSpellCounters (the row's innateSpells), cast by use_spell_slot without a slot",
@@ -601,12 +595,6 @@
    },
    {
     "c": "\"skills\":[\"perception\"]",
-    "is": "held",
-    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
-    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.eladrin.grants"
-   },
-   {
-    "c": "\"weapons\":[\"longswords\",\"shortswords\",\"shortbows\",\"longbows\"]",
     "is": "held",
     "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.eladrin.grants"
@@ -2348,7 +2336,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "a225e10c999f",
+  "sha": "d7a58d4dea1a",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -2369,12 +2357,6 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.triton.grants"
    },
    {
-    "c": "Darkvision 60 ft",
-    "is": "held",
-    "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
-    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.triton.darkvision"
-   },
-   {
     "c": "30 ft swim speed",
     "is": "held",
     "by": "src/lib/battlemap/types.ts swimsFrom, read by the board's walking cost (moveTraitsFrom)",
@@ -2393,9 +2375,9 @@
     "probe": "scripts/test-enforce-sweep-clauses-species.mjs: species.triton.resistance"
    },
    {
-    "c": "Control Air and Water (fog cloud, then gust of wind from 3rd level and water breathing from 5th, 1/long rest each)",
+    "c": "Control Air and Water (fog cloud, then gust of wind from 3rd level and wall of water from 5th, 1/long rest each)",
     "is": "held",
-    "by": "src/lib/srd/racial-grants.ts innateSpellsFor and innateSpellCounters (the row's innateSpells), cast by use_spell_slot without a slot",
+    "by": "src/lib/srd/racial-grants.ts innateSpellsFor and innateSpellCounters (the row's innateSpells, wall of water a 3rd-level spell), cast by use_spell_slot without a slot",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits.mjs: species.triton.innate"
    },
    {
@@ -2410,7 +2392,7 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.triton.grants"
    },
    {
-    "c": "\"innateSpells\":{\"trait\":\"Control Air and Water\",\"ability\":\"cha\",\"spells\":[{\"name\":\"Fog Cloud\",\"level\":1,\"per\":\"long\"},{\"name\":\"Gust of Wind\",\"level\":3,\"per\":\"long\"},{\"name\":\"Water Breathing\",\"level\":5,\"per\":\"long\"}]}",
+    "c": "\"innateSpells\":{\"trait\":\"Control Air and Water\",\"ability\":\"cha\",\"spells\":[{\"name\":\"Fog Cloud\",\"level\":1,\"per\":\"long\"},{\"name\":\"Gust of Wind\",\"level\":3,\"per\":\"long\"},{\"name\":\"Wall of Water\",\"level\":5,\"per\":\"long\",\"circle\":3}]}",
     "is": "held",
     "by": "src/lib/srd/racial-grants.ts innateSpellsFor and innateSpellCounters (the row's innateSpells), cast by use_spell_slot without a slot",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits.mjs: species.triton.innate"
@@ -2421,7 +2403,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "2ac090fa430f",
+  "sha": "5ddeb7938f1e",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -2466,9 +2448,9 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.serpentfolk.poison-immunity"
    },
    {
-    "c": "Serpent Magic (poison spray cantrip, then suggestion from 3rd level, 1/long rest)",
+    "c": "Serpent Magic (poison spray cantrip and animal friendship at will on snakes only, then suggestion from 3rd level, 1/long rest)",
     "is": "held",
-    "by": "src/lib/srd/racial-grants.ts innateSpellsFor and innateSpellCounters (the row's innateSpells), cast by use_spell_slot without a slot",
+    "by": "src/lib/srd/racial-grants.ts innateSpellsFor (the row's innateSpells: animal friendship at will, no counter), cast by use_spell_slot without a slot",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits.mjs: species.serpentfolk.innate"
    },
    {
@@ -2478,7 +2460,7 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.serpentfolk.grants"
    },
    {
-    "c": "\"innateSpells\":{\"trait\":\"Serpent Magic\",\"ability\":\"cha\",\"spells\":[{\"name\":\"Poison Spray\",\"level\":1},{\"name\":\"Suggestion\",\"level\":3,\"per\":\"long\"}]}",
+    "c": "\"innateSpells\":{\"trait\":\"Serpent Magic\",\"ability\":\"cha\",\"spells\":[{\"name\":\"Poison Spray\",\"level\":1},{\"name\":\"Animal Friendship\",\"level\":1,\"atWill\":true},{\"name\":\"Suggestion\",\"level\":3,\"per\":\"long\"}]}",
     "is": "held",
     "by": "src/lib/srd/racial-grants.ts innateSpellsFor and innateSpellCounters (the row's innateSpells), cast by use_spell_slot without a slot",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits.mjs: species.serpentfolk.innate"
@@ -2489,7 +2471,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "272a322e11c8",
+  "sha": "6508ef841262",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -2504,7 +2486,7 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.kobold.grants"
    },
    {
-    "c": "\"asi\":{\"dex\":2,\"int\":1}",
+    "c": "\"asi\":{\"dex\":2,\"str\":-2}",
     "is": "held",
     "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.kobold.grants"
@@ -2514,6 +2496,12 @@
     "is": "held",
     "by": "src/lib/db/sheets.ts createSheet (racial traits granted) read by src/lib/battlemap/view.ts sheetDarkvisionTiles",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.kobold.darkvision"
+   },
+   {
+    "c": "Grovel, Cower, and Beg (an action: until the end of your next turn, allies' attacks on foes within 10 ft of you have advantage, 1/short rest)",
+    "is": "held",
+    "by": "src/lib/srd/authored-resources.json race_grovel (once a short rest, an action), spent by use_resource through src/lib/dm/mt-species-spends.ts grovel (the groveling mark until the end of the kobold's next turn), read by src/lib/dm/pc-attack-situation.ts (an ally's attack on a foe within 10 feet of the kobold has advantage)",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.kobold.grovel"
    },
    {
     "c": "Pack Tactics (advantage on an attack against a creature an ally stands within 5 feet of)",
@@ -2539,7 +2527,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "d52f376d69f6",
+  "sha": "46dd13e69969",
   "clauses": [
    {
     "c": "\"speed\":25",
@@ -2572,7 +2560,7 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.aarakocra.natural-weapon"
    },
    {
-    "c": "\"languages\":[\"Common\",\"Auran\"]",
+    "c": "\"languages\":[\"Common\",\"Aarakocra\",\"Auran\"]",
     "is": "held",
     "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.aarakocra.grants"
@@ -2651,7 +2639,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "526990d2ff44",
+  "sha": "63e57c673200",
   "clauses": [
    {
     "c": "\"speed\":35",
@@ -2670,6 +2658,12 @@
     "is": "held",
     "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.satyr.grants"
+   },
+   {
+    "c": "Fey (your creature type is fey, not humanoid)",
+    "is": "held",
+    "by": "src/lib/srd/races.json type 'fey', read by src/lib/srd/index.ts creatureTypeForRace through src/lib/dm/summon-rules.ts sheetCreatureType; src/lib/dm/cast-at-player.ts passes a humanoid-only spell (Hold Person) over the character",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.satyr.fey"
    },
    {
     "c": "Ram (1d4 bludgeoning unarmed strike)",
@@ -2696,6 +2690,12 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.satyr.choices"
    },
    {
+    "c": "Mirthful Leaps (roll a d8 and add that many feet to each long or high jump)",
+    "is": "held",
+    "by": "src/lib/dm/jump-reach.ts jumpReach (leapDie), rolled by src/lib/dm/jump-move.ts jumpMove and added after the reach (src/lib/srd/jump.ts planLongJump)",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.satyr.mirthful-leaps"
+   },
+   {
     "c": "\"languages\":[\"Common\",\"Sylvan\"]",
     "is": "held",
     "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
@@ -2714,10 +2714,10 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.satyr.choices"
    },
    {
-    "c": "Mirthful Leaps (roll a d8 and add that many feet to each long or high jump)",
+    "c": "\"type\":\"fey\"",
     "is": "held",
-    "by": "src/lib/dm/jump-reach.ts jumpReach (leapDie), rolled by src/lib/dm/jump-move.ts jumpMove and added after the reach (src/lib/srd/jump.ts planLongJump)",
-    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.satyr.mirthful-leaps"
+    "by": "src/lib/srd/index.ts creatureTypeForRace through src/lib/dm/summon-rules.ts sheetCreatureType",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.satyr.fey"
    }
   ]
  },
@@ -2725,7 +2725,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "c3b31a1c487d",
+  "sha": "42cfbc7bafdd",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -2740,34 +2740,70 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.fairy.grants"
    },
    {
-    "c": "\"asi\":{\"dex\":2,\"cha\":1}",
+    "c": "\"asi\":{}",
     "is": "held",
     "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.fairy.grants"
    },
    {
-    "c": "Flight (flying speed of 30 ft, not while wearing medium or heavy armor)",
+    "c": "\"asiChoice\":{\"count\":2,\"amount\":1,\"amounts\":[2,1]}",
     "is": "held",
-    "by": "src/lib/battlemap/types.ts flyingSpeedOf (bulkyArmor), read by src/lib/dm/token-state.ts flightOf and the board's flying move",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.fairy.choices"
+   },
+   {
+    "c": "Fey (your creature type is fey, not humanoid)",
+    "is": "held",
+    "by": "src/lib/srd/races.json type 'fey', read by src/lib/srd/index.ts creatureTypeForRace through src/lib/dm/summon-rules.ts sheetCreatureType; src/lib/dm/cast-at-player.ts passes a humanoid-only spell (Hold Person) over the character",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.fairy.fey"
+   },
+   {
+    "c": "Flight (flying speed equal to your walking speed, not while wearing medium or heavy armor)",
+    "is": "held",
+    "by": "src/lib/battlemap/types.ts flyingSpeedOf (a feature naming a flying speed with no number flies at walkingFeet, the sheet's speed; bulkyArmor grounds it), read by src/lib/dm/token-state.ts flightOf and the board's flying move",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.fairy.flight"
    },
    {
-    "c": "Fairy Magic (druidcraft cantrip, then faerie fire from 3rd level and enlarge/reduce from 5th, 1/long rest each)",
+    "c": "Fairy Magic (druidcraft cantrip, then faerie fire from 3rd level and enlarge/reduce from 5th",
     "is": "held",
     "by": "src/lib/srd/racial-grants.ts innateSpellsFor and innateSpellCounters (the row's innateSpells), cast by use_spell_slot without a slot",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits.mjs: species.fairy.innate"
    },
    {
-    "c": "\"languages\":[\"Common\",\"Sylvan\"]",
+    "c": "each free once a long rest or cast with your spell slots, using Intelligence, Wisdom or Charisma as you pick",
+    "is": "held",
+    "by": "src/lib/srd/racial-grants.ts speciesSpellRows (innateSpells.abilityChoice: the ability the sheet's Fairy Magic pick names, racialChoices.variant or the race feature's variant id) and slotsToo (a row's slots: true), read by src/lib/srd/granted-casts.ts and src/lib/dm/cast-rules.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.fairy.fairy-magic"
+   },
+   {
+    "c": "\"languages\":[\"Common\"]",
     "is": "held",
     "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.fairy.grants"
    },
    {
-    "c": "\"innateSpells\":{\"trait\":\"Fairy Magic\",\"ability\":\"cha\",\"spells\":[{\"name\":\"Druidcraft\",\"level\":1},{\"name\":\"Faerie Fire\",\"level\":3,\"per\":\"long\"},{\"name\":\"Enlarge/Reduce\",\"level\":5,\"per\":\"long\"}]}",
+    "c": "\"bonusLanguages\":1",
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.fairy.choices"
+   },
+   {
+    "c": "\"innateSpells\":{\"trait\":\"Fairy Magic\",\"ability\":\"cha\",\"abilityChoice\":[\"int\",\"wis\",\"cha\"],\"spells\":[{\"name\":\"Druidcraft\",\"level\":1},{\"name\":\"Faerie Fire\",\"level\":3,\"per\":\"long\",\"slots\":true},{\"name\":\"Enlarge/Reduce\",\"level\":5,\"per\":\"long\",\"slots\":true}]}",
     "is": "held",
     "by": "src/lib/srd/racial-grants.ts innateSpellsFor and innateSpellCounters (the row's innateSpells), cast by use_spell_slot without a slot",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits.mjs: species.fairy.innate"
+   },
+   {
+    "c": "\"type\":\"fey\"",
+    "is": "held",
+    "by": "src/lib/srd/index.ts creatureTypeForRace through src/lib/dm/summon-rules.ts sheetCreatureType",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.fairy.fey"
+   },
+   {
+    "is": "held",
+    "by": "src/lib/content/species-variants.ts (the builder asks which ability casts Fairy Magic and writes its line on the sheet); src/lib/srd/racial-grants.ts speciesSpellRows (innateSpells.abilityChoice: the ability the sheet's Fairy Magic pick names, racialChoices.variant or the race feature's variant id) and slotsToo (a row's slots: true), read by src/lib/srd/granted-casts.ts and src/lib/dm/cast-rules.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.fairy.fairy-magic",
+    "c": "\"variants\":{\"label\":\"Fairy Magic ability\",\"options\":[{\"id\":\"int\",\"name\":\"Intelligence\",\"lines\":[]},{\"id\":\"wis\",\"name\":\"Wisdom\",\"lines\":[]},{\"id\":\"cha\",\"name\":\"Charisma\",\"lines\":[]}]}"
    }
   ]
  },
@@ -2775,7 +2811,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "d7d05fe069a8",
+  "sha": "e76feeed6f5d",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -2790,10 +2826,16 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.owlfolk.grants"
    },
    {
-    "c": "\"asi\":{\"dex\":2,\"wis\":1}",
+    "c": "\"asi\":{}",
     "is": "held",
     "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.owlfolk.grants"
+   },
+   {
+    "c": "\"asiChoice\":{\"count\":2,\"amount\":1,\"amounts\":[2,1]}",
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.owlfolk.choices"
    },
    {
     "c": "Superior Darkvision 120 ft",
@@ -2802,9 +2844,9 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.owlfolk.darkvision"
    },
    {
-    "c": "Flight (flying speed of 30 ft, not while wearing medium or heavy armor)",
+    "c": "Flight (flying speed equal to your walking speed, not while wearing medium or heavy armor)",
     "is": "held",
-    "by": "src/lib/battlemap/types.ts flyingSpeedOf (bulkyArmor), read by src/lib/dm/token-state.ts flightOf and the board's flying move",
+    "by": "src/lib/battlemap/types.ts flyingSpeedOf (a feature naming a flying speed with no number flies at walkingFeet, the sheet's speed; bulkyArmor grounds it), read by src/lib/dm/token-state.ts flightOf and the board's flying move",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.owlfolk.flight"
    },
    {
@@ -2814,16 +2856,28 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.owlfolk.grants"
    },
    {
-    "c": "\"languages\":[\"Common\",\"Sylvan\"]",
+    "c": "\"languages\":[\"Common\"]",
     "is": "held",
     "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.owlfolk.grants"
+   },
+   {
+    "c": "\"bonusLanguages\":1",
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.owlfolk.choices"
    },
    {
     "c": "\"skills\":[\"stealth\"]",
     "is": "held",
     "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.owlfolk.grants"
+   },
+   {
+    "c": "\"variants\":{\"label\":\"Size\",\"options\":[{\"id\":\"medium\",\"name\":\"Medium\",\"lines\":[]},{\"id\":\"small\",\"name\":\"Small\",\"lines\":[]}]}",
+    "is": "held",
+    "by": "src/lib/content/species-variants.ts (the builder asks Small or Medium and writes the pick's record, \"Size (Small)\", among the race features), read by src/lib/srd/index.ts sheetSize at every size reader (heavy weapons, grapple and shove reach, squeezing, carrying, the board's footprint)",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.owlfolk.size"
    }
   ]
  },
@@ -2831,7 +2885,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "739cd5f5dfd8",
+  "sha": "44b4bc72ddc3",
   "clauses": [
    {
     "c": "\"speed\":40",
@@ -2852,16 +2906,34 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.centaur.grants"
    },
    {
+    "c": "Fey (your creature type is fey, not humanoid)",
+    "is": "held",
+    "by": "src/lib/srd/races.json type 'fey', read by src/lib/srd/index.ts creatureTypeForRace through src/lib/dm/summon-rules.ts sheetCreatureType; src/lib/dm/cast-at-player.ts passes a humanoid-only spell (Hold Person) over the character",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.centaur.fey"
+   },
+   {
     "c": "Hooves (1d4 bludgeoning unarmed strike)",
     "is": "held",
     "by": "src/lib/srd/racial-weapons.ts racialNaturalWeapon, read by pc_attack",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.centaur.natural-weapon"
    },
    {
-    "c": "Equine Build (count as one size larger for carrying)",
+    "c": "Charge (after a 30-foot run straight at a creature and a melee weapon hit on it, a Hooves attack on it as a bonus action)",
+    "is": "held",
+    "by": "src/lib/dm/feature-bonus-attacks.ts featureBonusAttack (Charge: the run kept by src/lib/dm/mt-fb-charge.ts and the turn's weapon hit), read by pc_attack's bonus attack",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.centaur.charge"
+   },
+   {
+    "c": "Equine Build (count as one size larger for carrying",
     "is": "held",
     "by": "src/lib/srd/mt-species-traits.ts carrySize (Equine Build), read by src/lib/dm/load-rules.ts liftLimits",
     "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.centaur.powerful-build"
+   },
+   {
+    "c": "each foot of climbing costs 4 extra feet",
+    "is": "held",
+    "by": "src/lib/battlemap/passage.ts pcMoveTraits (hardClimb for Equine Build) through src/lib/battlemap/types.ts moveCost: a climb square costs 5 for a centaur with no climbing speed, 2 for another walker",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.centaur.climbing"
    },
    {
     "c": "Survivor (one skill from Animal Handling, Medicine, Nature, Survival)",
@@ -2882,10 +2954,10 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.centaur.choices"
    },
    {
-    "c": "Charge (after a 30-foot run straight at a creature and a melee weapon hit on it, a Hooves attack on it as a bonus action)",
+    "c": "\"type\":\"fey\"",
     "is": "held",
-    "by": "src/lib/dm/feature-bonus-attacks.ts featureBonusAttack (Charge: the run kept by src/lib/dm/mt-fb-charge.ts and the turn's weapon hit), read by pc_attack's bonus attack",
-    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.centaur.charge"
+    "by": "src/lib/srd/index.ts creatureTypeForRace through src/lib/dm/summon-rules.ts sheetCreatureType",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.centaur.fey"
    }
   ]
  },
@@ -2893,7 +2965,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "866cb3231073",
+  "sha": "7d0d49f8fbf7",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -2908,10 +2980,16 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.rabbitfolk.grants"
    },
    {
-    "c": "\"asi\":{\"dex\":2,\"wis\":1}",
+    "c": "\"asi\":{}",
     "is": "held",
     "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.rabbitfolk.grants"
+   },
+   {
+    "c": "\"asiChoice\":{\"count\":2,\"amount\":1,\"amounts\":[2,1]}",
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.rabbitfolk.choices"
    },
    {
     "c": "Hare-Trigger (add your proficiency bonus to initiative)",
@@ -2932,10 +3010,22 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.rabbitfolk.rabbit-hop"
    },
    {
-    "c": "\"languages\":[\"Common\",\"Sylvan\"]",
+    "c": "Lucky Footwork (on a failed Dexterity save, use your reaction to add 1d4; not while prone or at speed 0)",
+    "is": "held",
+    "by": "src/lib/dm/lineage-after-roll.ts lineageChoicesFor (offered on the after-the-roll card of a Dexterity save, after-roll.ts allyChoicesFor) and spendLineageAfterRoll (the reaction and the d4)",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.rabbitfolk.lucky-footwork"
+   },
+   {
+    "c": "\"languages\":[\"Common\"]",
     "is": "held",
     "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.rabbitfolk.grants"
+   },
+   {
+    "c": "\"bonusLanguages\":1",
+    "is": "held",
+    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.rabbitfolk.choices"
    },
    {
     "c": "\"skills\":[\"perception\"]",
@@ -2944,10 +3034,10 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.rabbitfolk.grants"
    },
    {
-    "c": "Lucky Footwork (on a failed Dexterity save, use your reaction to add 1d4; not while prone or at speed 0)",
+    "c": "\"variants\":{\"label\":\"Size\",\"options\":[{\"id\":\"medium\",\"name\":\"Medium\",\"lines\":[]},{\"id\":\"small\",\"name\":\"Small\",\"lines\":[]}]}",
     "is": "held",
-    "by": "src/lib/dm/lineage-after-roll.ts lineageChoicesFor (offered on the after-the-roll card of a Dexterity save, after-roll.ts allyChoicesFor) and spendLineageAfterRoll (the reaction and the d4)",
-    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.rabbitfolk.lucky-footwork"
+    "by": "src/lib/content/species-variants.ts (the builder asks Small or Medium and writes the pick's record, \"Size (Small)\", among the race features), read by src/lib/srd/index.ts sheetSize at every size reader (heavy weapons, grapple and shove reach, squeezing, carrying, the board's footprint)",
+    "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.rabbitfolk.size"
    }
   ]
  },
@@ -2955,7 +3045,7 @@
   "source": "src/lib/srd/races.json",
   "group": "species",
   "level": null,
-  "sha": "6369e86714d6",
+  "sha": "439f29ad4461",
   "clauses": [
    {
     "c": "\"speed\":30",
@@ -2970,7 +3060,7 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.shifter.grants"
    },
    {
-    "c": "\"asi\":{\"dex\":2,\"wis\":1}",
+    "c": "\"asi\":{}",
     "is": "held",
     "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.shifter.grants"
@@ -2982,33 +3072,33 @@
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.shifter.darkvision"
    },
    {
-    "c": "Bestial Instincts (one skill from Acrobatics, Athletics, Intimidation, Survival)",
-    "is": "held",
-    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
-    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.shifter.choices"
-   },
-   {
-    "c": "Shifting (a bonus action for 1 minute of temporary hit points twice your proficiency bonus, as many times a long rest as your proficiency bonus)",
-    "is": "held",
-    "by": "src/lib/srd/authored-resources.json race_shifting (proficiency-bonus uses, the shifted form and its temporary hit points), spent by use_resource",
-    "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.shifter.shifting"
-   },
-   {
-    "c": "\"languages\":[\"Common\",\"Sylvan\"]",
+    "c": "Perception proficiency (Keen Senses)",
     "is": "held",
     "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
     "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.shifter.grants"
    },
    {
-    "c": "\"skillChoice\":{\"count\":1,\"from\":[\"acrobatics\",\"athletics\",\"intimidation\",\"survival\"]}",
+    "c": "Shifting (a bonus action for 1 minute of temporary hit points equal to your level plus your Constitution modifier, once a short rest)",
     "is": "held",
-    "by": "the builder refuses the save with the pick unmade (enforce-builder.mjs build blocker), and src/lib/srd/sheet-legality.ts legalizeSheet stores the pick made",
-    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.shifter.choices"
+    "by": "src/lib/srd/authored-resources.json race_shifting (one use, short rest, temporary hit points of the level plus the Constitution modifier), spent by use_resource; with a subtype, src/lib/dm/mt-species-spends.ts shifting",
+    "probe": "scripts/test-enforce-sweep-clauses-species-traits-more.mjs: species.shifter.shifting"
    },
    {
-    "c": "\"variants\":{\"label\":\"Shifter subtype\",\"options\":[{\"id\":\"beasthide\",\"name\":\"Beasthide\",\"lines\":[\"Beasthide (shifted: an extra 1d6 temporary hit points and 1 more AC)\"]},{\"id\":\"longtooth\",\"name\":\"Longtooth\",\"lines\":[\"Longtooth (shifted: a Fangs attack as a bonus action)\",\"Fangs (while shifted, 1d6 piercing unarmed strike)\"]},{\"id\":\"swiftstride\",\"name\":\"Swiftstride\",\"lines\":[\"Swiftstride (shifted: 10 more feet of speed, and a 10-foot step as a reaction)\"]},{\"id\":\"wildhunt\",\"name\":\"Wildhunt\",\"lines\":[\"Wildhunt (shifted: advantage on Wisdom checks; attacks on you lose advantage)\"]}]}",
+    "c": "\"languages\":[\"Common\"]",
     "is": "held",
-    "by": "src/lib/content/species-variants.ts (the subtype the builder asks for, its lines written on the sheet by variantFeatureNames); src/lib/dm/mt-species-spends.ts shifting lays the subtype's form, read from src/lib/srd/authored-conditions-mt-species.ts (AC, speed, Wisdom checks), src/lib/dm/enemy-swing-odds.ts (no advantage against Wildhunt), src/lib/dm/feature-bonus-attacks.ts (Longtooth's fangs) and src/lib/dm/lineage-reactions.ts (Swiftstride's step)",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.shifter.grants"
+   },
+   {
+    "c": "\"skills\":[\"perception\"]",
+    "is": "held",
+    "by": "src/lib/srd/sheet-legality.ts legalizeSheet (the stored sheet's abilities, training, speed) and src/lib/srd/index.ts sizeForRace",
+    "probe": "scripts/test-enforce-sweep-clauses-species-grants.mjs: species.shifter.grants"
+   },
+   {
+    "c": "\"variants\":{\"label\":\"Shifter subtype\",\"options\":[{\"id\":\"beasthide\",\"name\":\"Beasthide\",\"asi\":{\"con\":2,\"str\":1},\"skills\":[\"athletics\"],\"lines\":[\"Beasthide (shifted: an extra 1d6 temporary hit points and 1 more AC)\"]},{\"id\":\"longtooth\",\"name\":\"Longtooth\",\"asi\":{\"str\":2,\"dex\":1},\"skills\":[\"intimidation\"],\"lines\":[\"Longtooth (shifted: a Fangs attack as a bonus action)\",\"Fangs (while shifted, 1d6 piercing unarmed strike)\"]},{\"id\":\"swiftstride\",\"name\":\"Swiftstride\",\"asi\":{\"dex\":2,\"cha\":1},\"skills\":[\"acrobatics\"],\"lines\":[\"Swiftstride (shifted: 10 more feet of speed, and a 10-foot step as a reaction)\"]},{\"id\":\"wildhunt\",\"name\":\"Wildhunt\",\"asi\":{\"wis\":2,\"dex\":1},\"skills\":[\"survival\"],\"lines\":[\"Wildhunt (shifted: advantage on Wisdom checks; no attack within 30 ft of you has advantage)\"]}]}",
+    "is": "held",
+    "by": "src/lib/content/species-variants.ts (the subtype the builder asks for: its ability bonuses, its skill and its lines on the sheet); src/lib/dm/mt-species-spends.ts shifting lays the subtype's form, read from src/lib/srd/authored-conditions-mt-species.ts (AC, speed, Wisdom checks), src/lib/dm/enemy-swing-odds.ts (no advantage within 30 feet against Wildhunt), src/lib/dm/feature-bonus-attacks.ts (Longtooth's fangs) and src/lib/dm/lineage-reactions.ts (Swiftstride's step)",
     "probe": "scripts/test-enforce-sweep-clauses-species-picks.mjs: species.shifter.subtypes"
    }
   ]

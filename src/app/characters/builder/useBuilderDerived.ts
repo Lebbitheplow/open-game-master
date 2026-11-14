@@ -1,4 +1,5 @@
 import type { Genre } from "@/lib/schemas/game-settings";
+import { asiPickAmount } from "@/lib/srd/race-asi";
 import { expertiseAllowed, expertiseSlotsFor, subclassExpandedSpellsFor, subclassSpellListsFor } from "@/lib/srd/features";
 import { multiclassGrantsFor, type MulticlassGrant } from "@/lib/srd/multiclass";
 import { useMemo as useReactMemo, type DependencyList } from "react";
@@ -353,11 +354,12 @@ export function useBuilderDerived({
   const racialBonus = useMemo(() => {
     const bonus: Partial<Record<Ability, number>> = { ...(race?.asi ?? {}) };
     if (race?.asiChoice) {
-      for (const ability of racialAsi) {
+      // Each pick its own amount, in order (a fairy's +2 then +1).
+      racialAsi.forEach((ability, index) => {
         if (ability) {
-          bonus[ability] = (bonus[ability] ?? 0) + race.asiChoice.amount;
+          bonus[ability] = (bonus[ability] ?? 0) + asiPickAmount(race.asiChoice!, index);
         }
-      }
+      });
     }
     return bonus;
   }, [race, racialAsi]);

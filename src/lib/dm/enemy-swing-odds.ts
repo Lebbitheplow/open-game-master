@@ -141,7 +141,12 @@ export function enemySwingOdds(input: {
   // advantage" while the trance holds, as Elusive's.
   // A wildhunt shifter's form likewise ("attacks on you lose advantage",
   // src/lib/srd/authored-conditions-mt-species.ts).
-  const wildhunt = liveTarget.conditions.some((entry) => isConditionNamed(entry, WILDHUNT_SHIFT));
+  // Wildhunt: "no creature within 30 feet of you can make an attack roll with
+  // advantage against you, unless you're incapacitated".
+  const wildhunt =
+    liveTarget.conditions.some((entry) => isConditionNamed(entry, WILDHUNT_SHIFT)) &&
+    (distance === null || distance * 5 <= 30) &&
+    !isIncapacitated(upright ?? liveTarget.conditions);
   const elusive =
     (hasFeatureNamed(liveTarget, /^elusive$/i) && !isIncapacitated(upright ?? liveTarget.conditions)) ||
     liveTarget.conditions.some((entry) => isConditionNamed(entry, TRANCE_OF_ORDER)) ||

@@ -81,6 +81,26 @@ export function sizeForRace(raceId: string, rules?: SpeciesRules | null): "Small
   return /^(small|tiny)$/i.test(speciesRulesFor(raceId, rules)?.size ?? "") ? "Small" : "Medium";
 }
 
+// A character's size: the one their lineage lets them pick (an owlin or a
+// harengon is Small or Medium, the pick's record a race feature "Size
+// (Small)", src/lib/content/species-variants.ts), else their race's.
+export function sheetSize(sheet: { race?: string; features?: ReadonlyArray<{ name: string }> }, rules?: SpeciesRules | null): "Small" | "Medium" {
+  const race = sheet.race ?? "";
+  if (findRace(race.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_"))?.variants?.label === "Size") {
+    const picked = (sheet.features ?? []).map((feature) => /^size \((small|medium)\)$/i.exec(feature.name.trim())).find(Boolean);
+    if (picked) {
+      return picked[1].toLowerCase() === "small" ? "Small" : "Medium";
+    }
+  }
+  return sizeForRace(race, rules);
+}
+
+// A character's creature type by their lineage: humanoid unless the row
+// says otherwise (a satyr, centaur or fairy is fey).
+export function creatureTypeForRace(raceId: string): string {
+  return findRace(raceId.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_"))?.type ?? "humanoid";
+}
+
 export function findSkill(id: string) {
   return SRD_SKILLS.find((entry) => entry.id === id) ?? null;
 }
@@ -364,7 +384,7 @@ export function speedFor(
         strength: source.abilities.str,
         equipment,
         coins: purseCoins({ gold: source.gold ?? 0, copper: source.copper ?? 0 }),
-        size: source.race ? sizeForRace(source.race) : undefined,
+        size: source.race ? sheetSize(source) : undefined,
         wearer: source,
         // Peerless Athlete's doubled capacity, the one load-rules.ts refuses by.
         carryFactor: authoredCarryFactor(source),

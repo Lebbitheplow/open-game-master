@@ -77,6 +77,7 @@ import { applySubclassTraining, autoSubclassPicks, grantsForHeldTraining, subcla
 import { castingClassesOf, judgeSpellcasting } from "@/lib/srd/legality/spells";
 import { judgeRacialCantrips } from "@/lib/srd/legality/racial-cantrips";
 import { judgeSpeciesVariant, withoutOldVariant } from "@/lib/srd/legality/species-variant";
+import { asiPickAmount } from "@/lib/srd/race-asi";
 import { carriedCantrips, carriedVariant } from "@/lib/srd/legality/older-builder";
 import { withHeldVariant, withVariantRecordId } from "@/lib/content/species-variants";
 import { racialCantripFields } from "@/lib/srd/racial-cantrips";
@@ -248,8 +249,9 @@ function racialIncrease(
       );
       continue;
     }
+    // A pick's own amount, in order (a fairy's +2 then +1).
+    racial[ability] = (racial[ability] ?? 0) + asiPickAmount(choice, picks.length);
     picks.push(ability);
-    racial[ability] = (racial[ability] ?? 0) + choice.amount;
   }
   return { racial, picks };
 }

@@ -10,7 +10,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, listEnemies, patchEnemyConditions } from "@/lib/db/encounters";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { sizeForRace } from "@/lib/srd";
+import { sheetSize } from "@/lib/srd";
 import { sizeRank, watchfulPassivePerception } from "@/lib/bestiary/enemy-numbers";
 import type { TurnBudget } from "@/lib/dm/action-budget";
 import { addSheetCondition, enemyContestTag, rollEnemyContest } from "@/lib/dm/action-common";
@@ -215,9 +215,9 @@ export function contest(
     return { error: `${enemy.displayName} fights on ${sheet.name}'s side: a ${action} here is aimed at a creature of the other side. Nothing was spent.`, refused: "rules" };
   }
   // SRD: the target can be at most one size larger than the attacker.
-  if (sizeRank(enemy.stats.size) > sizeRank(sizeForRace(sheet.race)) + 1) {
+  if (sizeRank(enemy.stats.size) > sizeRank(sheetSize(sheet)) + 1) {
     return {
-      error: `${enemy.displayName} is ${enemy.stats.size}: too large for ${sheet.name} (${sizeForRace(sheet.race)}) to ${action}. A creature can only ${action} a target at most one size larger than itself.`,
+      error: `${enemy.displayName} is ${enemy.stats.size}: too large for ${sheet.name} (${sheetSize(sheet)}) to ${action}. A creature can only ${action} a target at most one size larger than itself.`,
       refused: "rules",
     };
   }

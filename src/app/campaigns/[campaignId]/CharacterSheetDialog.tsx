@@ -15,7 +15,7 @@ import {
   acBreakdownFor,
   computeSheetDerived,
   formatModifier,
-  sizeForRace,
+  sheetSize,
   type DerivedPart,
 } from "@/lib/srd";
 import { attunementSlotsFor } from "@/lib/srd/armor";
@@ -144,7 +144,7 @@ export function CharacterSheetDialog({
     strength: sheet.abilities.str,
     equipment: sheet.equipment,
     coins: purseCoins(sheet),
-    size: sizeForRace(sheet.race),
+    size: sheetSize(sheet),
     wearer: sheet,
     // A feature's doubled capacity (Peerless Athlete), as speedFor reads it.
     carryFactor: authoredCarryFactor(sheet),

@@ -187,6 +187,8 @@ function withParent(
     sub.asiChoice &&
     parent.asiChoice &&
     sub.asiChoice.amount === parent.asiChoice.amount &&
+    !sub.asiChoice.amounts &&
+    !parent.asiChoice.amounts &&
     !sub.asiChoice.from &&
     !parent.asiChoice.from
   ) {

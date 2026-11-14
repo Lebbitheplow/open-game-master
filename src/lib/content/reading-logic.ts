@@ -64,7 +64,13 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 //      table knows. The bundled satyr, centaur, hobgoblin and rabbitfolk
 //      carry the trait lines their moments are played by (Mirthful Leaps,
 //      Charge, Saving Face, Lucky Footwork), the shifter its subtype pick, and
-//      a pack option's reaction burst (Tainted Blood) reads as a line.
+//      a pack option's reaction burst (Tainted Blood) reads as a line. The
+//      bundled lineages match their books: a kobold's Strength drops by 2 and
+//      it can grovel, a shifter's bonuses and skill come from its subtype, a
+//      fairy, owlin and harengon place +2 and +1 and pick a language (an owlin
+//      and a harengon their size, a fairy its Fairy Magic ability), a satyr,
+//      centaur and fairy are fey, and the eladrin, triton, serpentfolk,
+//      duergar, aarakocra and centaur lines changed.
 export const READER_REVISION = 11;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";

@@ -19,15 +19,16 @@ import { deriveCr } from "@/lib/bestiary/derive-cr";
 import { resolveAttackWeapon, weaponAttackProfile } from "@/lib/dm/attack-logic";
 import { enemyStatsFromSummon } from "@/lib/dm/summon-rules";
 import { attacksAllowedFor } from "@/lib/dm/turn-budget";
-import { acBreakdownFor, computeSheetDerived, sizeForRace } from "@/lib/srd";
+import { acBreakdownFor, computeSheetDerived, sheetSize as lineageSize } from "@/lib/srd";
 import { combatRiders } from "@/lib/srd/feature-effects";
 import { magicItemRiders } from "@/lib/srd/magic-items";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
-// ODM keeps no size on a sheet: the race says it (srd sizeForRace).
-export function sheetSize(sheet: Pick<CharacterSheet, "race">): string {
-  return sizeForRace(sheet.race);
+// ODM keeps no size on a sheet: the race says it, or the size its lineage
+// let the player pick (srd sheetSize).
+export function sheetSize(sheet: Pick<CharacterSheet, "race" | "features">): string {
+  return lineageSize(sheet);
 }
 
 // The best weapon the sheet carries as the block's attack, or an unarmed

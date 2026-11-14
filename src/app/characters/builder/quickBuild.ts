@@ -17,6 +17,7 @@
 // score order (#330, classAbilities.ts), the class skills' "Suggest the
 // rest" (playstyles.ts), the spell step's starter spells, and a companion's
 // improvements and spell ranking (src/lib/srd/companion-build.ts).
+import { asiPickAmount } from "@/lib/srd/race-asi";
 import { ALL_SKILLS, STANDARD_LANGUAGES } from "@/lib/content/mechanics";
 import { textKey } from "@/lib/language/text-logic";
 import { featChoice, withFeatChoice, type Ability, type AsiChoice } from "@/lib/schemas/sheet";
@@ -164,9 +165,9 @@ export function raceFit(race: RaceOption, klass: ClassOption): number {
   }
   if (race.asiChoice) {
     const free = order.filter((ability) => !(race.asi[ability] ?? 0) && (!race.asiChoice?.from || race.asiChoice.from.includes(ability)));
-    for (const ability of free.slice(0, race.asiChoice.count)) {
-      score += race.asiChoice.amount * weight(ability);
-    }
+    free.slice(0, race.asiChoice.count).forEach((ability, index) => {
+      score += asiPickAmount(race.asiChoice!, index) * weight(ability);
+    });
   }
   return score;
 }

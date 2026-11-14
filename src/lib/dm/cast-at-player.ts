@@ -1,4 +1,5 @@
 import { canAct } from "@/lib/dm/can-act";
+import { sheetCreatureType } from "@/lib/dm/summon-rules";
 import { castFromFoeSheet } from "@/lib/dm/sheet-foe-cast";
 import { hasDungeonDelver, shieldMasterSaveBonus, spellSaveAdvantageReach } from "@/lib/srd/feat-combat";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
@@ -349,6 +350,13 @@ export function handleCastAtPlayer(
   const inside = swallowCover(casterRef ? { kind: "enemy", id: casterRef } : null, { kind: "sheet", id: sheet.id });
   if (inside) {
     return { error: `${inside} Nothing was spent.`, retry: true };
+  }
+  // A spell for some creature types only (Hold Person: a humanoid) passes
+  // over a character of another type: a satyr, centaur or fairy is fey.
+  const kinds = args.spell ? spellMechanicsFor({ spell: args.spell, userIds: spellAuthorsFor(campaign) })?.mech.targetTypes : undefined;
+  const kind = sheetCreatureType(sheet).toLowerCase();
+  if (kinds?.length && !kinds.some((type) => kind.includes(type))) {
+    return { error: `${args.spell} affects only ${kinds.join(" or ")} creatures, and ${sheet.name} is ${kind}. Nothing was spent; the enemy may target someone else or take another action.`, retry: true };
   }
 
   // An enemy caster acts through the enemy guard and its own block: its

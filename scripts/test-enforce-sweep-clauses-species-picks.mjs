@@ -160,7 +160,8 @@ for (const row of RACES) {
     });
   }
   // The shifter's subtype, picked in the builder: Shifting lays that
-  // subtype's form. Beasthide: 1d6 more temporary hit points and +1 AC.
+  // subtype's form. Beasthide: 1d6 more temporary hit points (on the level
+  // plus the Constitution modifier, 5 + 2) and +1 AC.
   // Longtooth: no fangs until shifted, then a bonus-action bite. Swiftstride:
   // 10 more feet of speed, and a 10-foot step as a reaction when a foe stands
   // within 5 feet. Wildhunt: advantage on Wisdom checks, and a prone wildhunt
@@ -212,7 +213,7 @@ for (const row of RACES) {
       const wildhunt = [wisBefore, wisAfter, await proneFaces(hunt), await proneFaces(stride)];
       same(
         [longtooth, beasthide, swiftstride, wildhunt],
-        [[false, true, true, true, true], [true, 10, 1], [10, true, true, 6, 8], [1, 2, 1, 2]],
+        [[false, true, true, true, true], [true, 11, 1], [10, true, true, 6, 8], [1, 2, 1, 2]],
         `${row.name}: Longtooth's fangs before and after the shift, Beasthide's hit points and AC, Swiftstride's speed and step, Wildhunt's Wisdom check and a prone attack (${early.error ?? ""} ${fangs.error ?? ""} ${step.error ?? ""})`,
       );
     });
@@ -233,6 +234,128 @@ for (const row of RACES) {
       same([await saveFaces(who, "Phantasmal Force"), await saveFaces(who, "Feeblemind"), await saveFaces(other, "Phantasmal Force")], [2, 1, 1], `${row.name}: d20s on an Intelligence save against Phantasmal Force, against Feeblemind, and a human's against Phantasmal Force`);
     });
   }
+  // Grovel, Cower, and Beg: the kobold's action, and until the end of its
+  // next turn an ally's attack on a foe within 10 feet of it has advantage;
+  // a foe farther off gets none of it.
+  if (holds(row, "grovel, cower, and beg")) {
+    probe("grovel", async () => {
+      const t = await rig.table();
+      const who = t.hero(of());
+      const ally = t.hero(plain({ equipment: [{ name: "Shortsword", equipped: true }] }));
+      const [foe, far] = await t.fight([who, ally], { foes: 2 });
+      // Under a roof: a kobold's Sunlight Sensitivity is its own probe.
+      const { getDatabase } = await import("../src/lib/db/core.ts");
+      getDatabase().prepare("UPDATE battle_maps SET outdoors = 0 WHERE id = ?").run(t.kit.map().id);
+      const d20s = async (enemy) => {
+        t.kit.giveTurn(ally.id);
+        const swing = await t.swing(ally, enemy, [15, 3, 4], { weapon: "Shortsword" });
+        return swing.toHit?.breakdown.terms.find((term) => term.sides === 20)?.dice.length;
+      };
+      // The ally steps to the foe's far side, (7,5); the kobold stays at (5,5).
+      t.kit.place(ally.id, 7, 5);
+      const before = await d20s(foe);
+      t.kit.giveTurn(who.id);
+      const grovel = await t.use(who, "Grovel, Cower, and Beg");
+      const seen = [grovel.ok, t.budget()?.actionUsed, t.used(who, "race_grovel")];
+      const near = await d20s(foe);
+      t.kit.place(far.id, 7, 6);
+      t.kit.place(who.id, 2, 2);
+      const away = await d20s(far);
+      same([before, seen, near, away], [1, [true, true, 1], 2, 1], `${row.name}: an ally's d20s before the grovel, the grovel, then on a foe beside the kobold and on one 10 feet beyond it (${grovel.error ?? ""})`);
+    });
+  }
+  // Fey: a satyr, centaur or fairy is no humanoid, so a foe's Hold Person
+  // passes over them, nothing spent, while a human beside them is held.
+  if (holds(row, "fey (your creature type is fey")) {
+    probe("fey", async () => {
+      const t = await rig.table();
+      const who = t.hero(of());
+      const other = t.hero(plain());
+      await t.fight([who, other]);
+      const hold = (target) => t.invoke("cast_at_player", { characterId: target.id, spell: "Hold Person", saveAbility: "wis", dc: 25, condition: "paralyzed" }, [2, 2, 2]);
+      const fey = await hold(who);
+      const human = await hold(other);
+      same(
+        [Boolean(fey.ok), /humanoid/.test(fey.error ?? ""), t.has(who, "paralyzed"), Boolean(human.ok), t.has(other, "paralyzed")],
+        [false, true, false, true, true],
+        `${row.name}: a foe's Hold Person at them, then at a human (${fey.error ?? ""} ${human.error ?? ""})`,
+      );
+    });
+  }
+  // Equine Build: each foot a centaur climbs costs 4 more, so a climb
+  // square costs 25 feet; two of them and a step (55 feet) are past a
+  // centaur's 40, while a human (two climb squares at 10 feet, one step)
+  // makes it in 25 of 30.
+  if (row.traits.some((line) => line.includes("each foot of climbing costs 4 extra feet"))) {
+    probe("climbing", async () => {
+      const t = await rig.table();
+      const who = t.hero(of());
+      const other = t.hero(plain());
+      const up = async (mover) => {
+        await t.fight([mover]);
+        const walls = [];
+        for (let x = 0; x < 20; x += 1) walls.push([x, 1, "#"], [x, 3, "#"]);
+        walls.push([3, 2, "^"], [4, 2, "^"]);
+        t.kit.openField(walls);
+        t.kit.place(mover.id, 2, 2);
+        t.kit.place(mover.id === who.id ? other.id : who.id, 18, 10);
+        return (await walkTo(t, mover, 5, 2)).status;
+      };
+      const centaur = await up(who);
+      const human = await up(other);
+      same([centaur >= 400, human], [true, 200], `${row.name}: two climb squares and a step, then a human on the same climb`);
+    });
+  }
+  // Fairy Magic: the player picks Intelligence, Wisdom or Charisma to cast
+  // it with, and faerie fire, once free a long rest, is cast with a spell
+  // slot after that.
+  if (row.variants?.label === "Fairy Magic ability") {
+    probe("fairy-magic", async () => {
+      const { racialSpellAbility } = await import("../src/lib/srd/racial-grants.ts");
+      const t = await rig.table();
+      // The pick's record among the race features, as the sheet door writes it.
+      const recordOf = (id) => `${row.variants.label} (${row.variants.options.find((option) => option.id === id).name})`;
+      const fairy = (id) => t.hero(of({ class: "wizard", spells: ["Magic Missile"], racialChoices: { variant: id }, features: [{ name: recordOf(id), source: "race" }], equipment: [{ name: "Component pouch", qty: 1 }] }));
+      const wise = fairy("wis");
+      const clever = fairy("int");
+      await t.fight([wise, clever]);
+      const abilities = [racialSpellAbility(t.sheet(wise), "Faerie Fire"), racialSpellAbility(t.sheet(clever), "Faerie Fire"), racialSpellAbility(t.sheet(wise), "Druidcraft")];
+      const slotsLeft = () => JSON.stringify(t.sheet(wise).spellcasting?.slots ?? null);
+      const before = slotsLeft();
+      const cast = () => t.invoke("use_spell_slot", { characterId: wise.id, spell: "Faerie Fire" });
+      const free = await cast();
+      const afterFree = slotsLeft();
+      t.freshTurn();
+      const slotted = await cast();
+      const afterSlot = slotsLeft();
+      same(
+        [abilities, Boolean(free.ok), t.used(wise, "racial_faerie_fire"), afterFree === before, Boolean(slotted.ok), afterSlot !== afterFree],
+        [["wis", "int", "wis"], true, 1, true, true, true],
+        `${row.name}: the ability picked for Fairy Magic, a free faerie fire, then one from a slot (${free.error ?? ""} ${slotted.error ?? ""})`,
+      );
+    });
+  }
+  // A size the player picks (an owlin or a harengon is Small or Medium): a
+  // Small one swings a heavy weapon (a greatsword) at disadvantage, a Medium
+  // one does not.
+  if (row.variants?.label === "Size") {
+    probe("size", async () => {
+      const t = await rig.table();
+      // The pick's record among the race features, as the sheet door writes it.
+      const recordOf = (id) => `${row.variants.label} (${row.variants.options.find((option) => option.id === id).name})`;
+      const hero = (id) => t.hero(of({ racialChoices: { variant: id }, features: [{ name: recordOf(id), source: "race" }], equipment: [{ name: "Greatsword", equipped: true }] }));
+      const small = hero("small");
+      const medium = hero("medium");
+      const [foe] = await t.fight([small, medium]);
+      t.kit.place(medium.id, 7, 5);
+      const d20s = async (who) => {
+        t.kit.giveTurn(who.id);
+        const swing = await t.swing(who, foe, [15, 3, 4], { weapon: "Greatsword" });
+        return swing.toHit?.breakdown.terms.find((term) => term.sides === 20)?.dice.length;
+      };
+      same([await d20s(small), await d20s(medium)], [2, 1], `${row.name}: d20s on a greatsword swing, picked Small, then Medium`);
+    });
+  }
 }
 
 // The probes above by name, for the ledger's probe check (it finds a probe
@@ -240,6 +363,14 @@ for (const row of RACES) {
 const NAMES = [
   "species.satyr.mirthful-leaps", "species.centaur.charge", "species.hobgoblin.saving-face",
   "species.rabbitfolk.lucky-footwork", "species.shifter.subtypes", "species.duergar.illusions",
+  "species.kobold.grovel",
+  "species.satyr.fey",
+  "species.centaur.fey",
+  "species.fairy.fey",
+  "species.centaur.climbing",
+  "species.fairy.fairy-magic",
+  "species.owlfolk.size",
+  "species.rabbitfolk.size",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
 

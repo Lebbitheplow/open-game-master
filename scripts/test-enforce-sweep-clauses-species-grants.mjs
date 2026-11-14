@@ -89,9 +89,11 @@ function picksFor(row) {
   if (row.asiChoice) picks.racialAsi = ["int", "wis", "dex"].filter((ability) => !row.asi?.[ability]).slice(0, row.asiChoice.count);
   if (row.cantripChoice) picks.racialCantrips = ["Fire Bolt"].slice(0, row.cantripChoice.count);
   if (row.ancestryChoice) picks.racialAncestry = "red";
-  // A pick among packages (a shifter's subtype): the first.
+  if (!Object.keys(picks).length) return null;
+  // A pick among packages (a shifter's subtype) beside them: the first. A
+  // row whose only pick it is is checked by scripts/test-enforce-races.mjs.
   if (row.variants) picks.racialVariant = row.variants.options[0].id;
-  return Object.keys(picks).length ? picks : null;
+  return picks;
 }
 
 const P = {};
@@ -125,7 +127,8 @@ for (const row of RACES) {
         weapons: picks.racialWeapons ? missing(picks.racialWeapons, sheet.proficiencies.weapons) : [],
         skills: missing(picks.racialSkills, sheet.proficiencies.skills),
         languages: missing(picks.bonusLanguages, sheet.proficiencies.languages),
-        asi: (picks.racialAsi ?? []).filter((ability) => sheet.abilities[ability] !== SCORES[ability] + row.asiChoice.amount),
+        // Each pick its own amount, in order (a fairy's +2 then +1).
+        asi: (picks.racialAsi ?? []).filter((ability, index) => sheet.abilities[ability] !== SCORES[ability] + (row.asiChoice.amounts?.[index] ?? row.asiChoice.amount)),
         cantrip: picks.racialCantrips ? missing(picks.racialCantrips.map((name) => `Racial cantrip: ${name}`), sheet.features.map((feature) => feature.name)) : [],
         ancestry: picks.racialAncestry && sheet.racialChoices?.ancestry !== picks.racialAncestry ? [String(sheet.racialChoices?.ancestry)] : [],
       };
@@ -219,11 +222,11 @@ const NAMES = [
   "species.eladrin.grants", "species.sea_elf.grants", "species.duergar.grants",
   "species.eladrin.darkvision", "species.sea_elf.darkvision", "species.duergar.darkvision", "species.duergar.choices",
   "species.triton.grants", "species.serpentfolk.grants", "species.kobold.grants", "species.aarakocra.grants",
-  "species.triton.darkvision", "species.serpentfolk.darkvision", "species.kobold.darkvision",
+  "species.serpentfolk.darkvision", "species.kobold.darkvision",
   "species.hobgoblin.grants", "species.satyr.grants", "species.fairy.grants", "species.owlfolk.grants",
   "species.hobgoblin.darkvision", "species.owlfolk.darkvision", "species.hobgoblin.choices", "species.satyr.choices",
   "species.centaur.grants", "species.rabbitfolk.grants", "species.shifter.grants", "species.shifter.darkvision",
-  "species.centaur.choices", "species.shifter.choices",
+  "species.centaur.choices", "species.fairy.choices", "species.owlfolk.choices", "species.rabbitfolk.choices",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
 

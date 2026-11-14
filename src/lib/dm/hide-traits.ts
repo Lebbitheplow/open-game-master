@@ -22,7 +22,7 @@ import { blockedLines } from "@/lib/battlemap/sight-lines";
 import { chebyshev } from "@/lib/battlemap/types";
 import { conditionSeesInvisible } from "@/lib/srd/condition-effect-queries";
 import { normalizeClock } from "@/lib/dm/calendar";
-import { sizeForRace } from "@/lib/srd";
+import { sheetSize } from "@/lib/srd";
 import { holdsFeature } from "@/lib/srd/trait-rules";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { weatherPerceptionRider } from "@/lib/srd/weather";
@@ -85,7 +85,7 @@ export function seenClearlyDespiteTraits(
     return null;
   }
   const stealthy = holdsFeature(sheet, "naturally stealthy");
-  const mySize = rank(sizeForRace(sheet.race));
+  const mySize = rank(sheetSize(sheet));
   const tokens = listTokens(map.id);
   // A creature one size larger than the hider standing in the sight lines.
   const screened = (fromX: number, fromY: number) =>
@@ -95,7 +95,7 @@ export function seenClearlyDespiteTraits(
       }
       const other = getSheetById(token.refId);
       const enemy = other ? null : listEnemies(encounterId).find((entry) => entry.id === token.refId);
-      const size = other ? sizeForRace(other.race) : (enemy?.stats.size as string | undefined);
+      const size = other ? sheetSize(other) : (enemy?.stats.size as string | undefined);
       return (
         rank(size) > mySize &&
         blockedLines([{ x: fromX, y: fromY }], [{ x: hider.x, y: hider.y }], (x, y) => x === token.x && y === token.y) > 0
