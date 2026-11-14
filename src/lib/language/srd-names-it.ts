@@ -42,6 +42,14 @@ for (const group of ALL_GROUPS) {
   }
 }
 
+// The same, by the English name's key: "scimitar" reads as "Scimitar".
+const ITALIAN_BY_KEY = new Map<string, string[]>();
+for (const [english, italian] of ITALIAN) {
+  const key = textKey(english);
+  const known = ITALIAN_BY_KEY.get(key) ?? [];
+  ITALIAN_BY_KEY.set(key, [...known, ...italian.filter((name) => !known.includes(name))]);
+}
+
 // An item's Italian key -> its English name, or null when two English items
 // share the Italian name.
 const ITEM_BY_ITALIAN = new Map<string, string | null>();
@@ -69,6 +77,25 @@ export function englishItemName(name: string): string | undefined {
   const [base, plus] = bonus[1].startsWith("+") ? [bonus[2], bonus[1]] : [bonus[1], bonus[2]];
   const english = ITEM_BY_ITALIAN.get(textKey(base));
   return english ? `${english} ${plus}` : undefined;
+}
+
+// A thing's official Italian name from its English one, whole, for the
+// server's own lines on an Italian page: "Scimitar" is "Scimitarra", "Bandit
+// 2" "Bandito 2", "Longsword +1" "Spada lunga +1". Undefined for a name the
+// Italian SRD does not give or translates two ways.
+export function italianName(english: string): string | undefined {
+  const one = (name: string) => {
+    const italian = ITALIAN_BY_KEY.get(textKey(name));
+    return italian?.length === 1 ? italian[0] : undefined;
+  };
+  const whole = one(english);
+  if (whole !== undefined) {
+    return whole;
+  }
+  // A count or a magic bonus after the name stays with it.
+  const tail = /^(.+?)(\s+(?:\+[1-3]|\d+))$/u.exec(english);
+  const base = tail ? one(tail[1]) : undefined;
+  return base !== undefined && tail ? base + tail[2] : undefined;
 }
 
 // Every English name with an Italian name of its own, longest first, so

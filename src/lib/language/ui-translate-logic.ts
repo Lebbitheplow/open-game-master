@@ -61,7 +61,37 @@ function compilePattern(english: string, translated: string): CompiledPattern | 
 
 // One translator for a catalog and its patterns. The catalog wins over a
 // pattern; a pattern's slot is copied as it was written (a name, a number).
-export function uiTranslator(catalog: UiCatalog, patterns: UiPatterns = {}): UiTranslator {
+//
+// `names`, for the server's own lines: a slot that is a name (or a list of
+// them, "Bandit 1 and Bandit 2") reads each name through it, and the list's
+// "and"/"or" through the catalog's own "{value} and {value2}" pattern.
+export function uiTranslator(
+  catalog: UiCatalog,
+  patterns: UiPatterns = {},
+  names?: (english: string) => string | undefined,
+): UiTranslator {
+  const joiner = (word: string) => {
+    const into = patterns[`{value} ${word} {value2}`];
+    const middle = into && /^\{value\}(.+)\{value2\}$/.exec(into);
+    return middle ? middle[1] : ` ${word} `;
+  };
+  const joiners: Record<string, string> = { and: joiner("and"), or: joiner("or") };
+  const nameSlot = (part: string): string => {
+    if (!names) {
+      return part;
+    }
+    const pieces = part.split(/(,\s+and\s+|,\s+or\s+|,\s+|\s+and\s+|\s+or\s+)/u);
+    return pieces
+      .map((piece, index) => {
+        if (index % 2 === 0) {
+          return names(piece) ?? piece;
+        }
+        // ", and" reads as the joiner alone ("A, B e C").
+        const word = piece.replace(/[,\s]/g, "");
+        return Object.hasOwn(joiners, word) ? joiners[word] : piece;
+      })
+      .join("");
+  };
   const compiled = Object.entries(patterns)
     .map(([english, translated]) => compilePattern(english, translated))
     .filter((pattern): pattern is CompiledPattern => pattern !== null)
@@ -94,7 +124,7 @@ export function uiTranslator(catalog: UiCatalog, patterns: UiPatterns = {}): UiT
       // Prose in a slot is read on its own ("18 vs AC 19: miss"), and the
       // match only stands if that reads too. Each part is shorter than the
       // whole, so this ends.
-      const values = parts?.slice(1).map((part) => (holdsProse(part) ? proseInSlot(part.trim()) : part));
+      const values = parts?.slice(1).map((part) => (holdsProse(part) ? proseInSlot(part.trim()) : nameSlot(part)));
       if (values && values.every((value) => value !== undefined)) {
         const bySlot = new Map(pattern.slots.map((slot, index) => [slot, values[index]]));
         return pattern.into.replace(SLOT, (whole, slot: string) => bySlot.get(slot) ?? whole);
