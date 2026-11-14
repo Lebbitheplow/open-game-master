@@ -1,10 +1,10 @@
 "use client";
 
-import { Check, Leaf, Sparkles, Church } from "lucide-react";
-import { APPEARANCE_THEMES, themeArtStyle, type AppearanceChoice, type ThemeArt } from "@/lib/appearance-themes";
+import { Check } from "lucide-react";
+import { ThemeIcon } from "@/components/ThemeIcon";
+import { APPEARANCE_THEMES, appearanceDefinition, themeArtStyle, type AppearanceChoice } from "@/lib/appearance-themes";
 import { useThemePrefs, writeAppearanceChoice, writeThemeChoice, type ThemeChoice } from "@/lib/theme-mode";
 
-const ICONS = { sparkles: Sparkles, leaf: Leaf, church: Church };
 const BRIGHTNESS: Array<{ id: ThemeChoice; label: string }> = [
   { id: "auto", label: "System" }, { id: "light", label: "Light" }, { id: "dark", label: "Dark" },
 ];
@@ -27,13 +27,12 @@ export function AppearancePicker() {
       </div>
       <div className="appearance-grid" role="group" aria-label="Visual theme">
         {APPEARANCE_THEMES.map((entry) => {
-          const Icon = ICONS[entry.icon];
           const selected = appearanceChoice === entry.id;
-          const art: ThemeArt | undefined = entry.art;
+          const art = appearanceDefinition(entry.id).art;
           return (
             <button type="button" key={entry.id} aria-pressed={selected} onClick={() => pick(entry.id)} className="appearance-option">
               <span className="appearance-preview" data-appearance={entry.id} data-theme={mode} data-theme-ornaments={Boolean(art?.frame || art?.corner)} style={themeArtStyle(entry.id)} aria-hidden="true">
-                <span className="appearance-preview-frame"><Icon size={28} strokeWidth={1.2} /><span className="appearance-preview-title">The adventure awaits</span><span className="appearance-preview-line" /><span className="appearance-preview-line appearance-preview-line-short" /></span>
+                <span className="appearance-preview-frame"><ThemeIcon icon={entry.icon} size={28} strokeWidth={1.2} /><span className="appearance-preview-title">The adventure awaits</span><span className="appearance-preview-line" /><span className="appearance-preview-line appearance-preview-line-short" /></span>
               </span>
               <span className="appearance-option-copy"><span className="appearance-option-title">{entry.name}{selected ? <Check size={16} aria-hidden="true" /> : null}</span><span className="appearance-option-description">{entry.description}</span></span>
             </button>

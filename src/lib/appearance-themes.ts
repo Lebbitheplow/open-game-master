@@ -1,5 +1,9 @@
 // Visual identity is independent of brightness and the campaign's story theme.
 // This catalog is safe to import in both client components and server schemas.
+import type { Genre } from "@/lib/schemas/game-settings-options";
+
+export const APPEARANCE_ICONS = ["sparkles", "leaf", "church"] as const;
+export type AppearanceIcon = (typeof APPEARANCE_ICONS)[number];
 export const THEME_ART_SLOTS = {
   texture: "--theme-art-texture",
   frame: "--theme-art-frame",
@@ -11,8 +15,14 @@ export interface AppearanceDefinition {
   id: string;
   name: string;
   description: string;
-  icon: "sparkles" | "leaf" | "church";
+  icon: AppearanceIcon;
   stylesheet: string;
+  genres?: readonly Genre[];
+  // Plain surfaces replace the app's original celestial furniture.
+  baseStyle?: "celestial" | "plain";
+  // A scaled corner reads the top-left 1/scale portion along each image axis.
+  cornerScale?: number;
+  frameSlice?: number;
   art?: ThemeArt;
   provenance?: string;
 }
@@ -22,6 +32,7 @@ export interface AppearanceDefinition {
 export const APPEARANCE_THEMES = [
   {
     id: "arcane", name: "Arcane", description: "Indigo stone, celestial brass, and amethyst fittings.", icon: "sparkles", stylesheet: "src/app/styles/themes/arcane.css",
+    baseStyle: "celestial", cornerScale: 4,
     art: {
       texture: "/assets/themes/arcane/indigo-stone-v1.webp",
       frame: "/assets/themes/arcane/celestial-brass-frame-v1.webp",
@@ -42,6 +53,7 @@ export const APPEARANCE_THEMES = [
   },
   {
     id: "gothic", name: "Gothic", description: "Cathedral stone, silver tracery, and garnet glass.", icon: "church", stylesheet: "src/app/styles/themes/gothic.css",
+    genres: ["dark_fantasy", "horror"], cornerScale: 4,
     art: {
       texture: "/assets/themes/gothic/cathedral-slate-v1.webp",
       frame: "/assets/themes/gothic/cathedral-iron-frame-v1.webp",
@@ -62,8 +74,14 @@ export function appearanceDefinition(id: AppearanceTheme): AppearanceDefinition 
 
 // Explicit none values prevent artwork leaking when switching themes or when
 // a picker thumbnail is nested inside a different theme. Safe during SSR too.
-export function themeArtStyle(id: AppearanceTheme): Record<`--theme-art-${string}`, string> {
-  return artSlotStyle(appearanceDefinition(id).art);
+export function themeArtStyle(id: AppearanceTheme): Record<`--theme-${string}`, string> {
+  const definition = appearanceDefinition(id);
+  return {
+    ...artSlotStyle(definition.art),
+    "--theme-frame-slice": `${definition.frameSlice ?? 22}%`,
+    "--theme-corner-background-size": definition.cornerScale ? `${definition.cornerScale * 100}%` : "contain",
+    "--theme-corner-background-position": definition.cornerScale ? "top left" : "center",
+  };
 }
 
 export function artSlotStyle(art?: ThemeArt): Record<`--theme-art-${string}`, string> {
@@ -79,7 +97,11 @@ export function isAppearanceTheme(value: unknown): value is AppearanceTheme {
 
 export function campaignAppearance(settings?: { appearanceTheme?: string; genre?: string } | null): AppearanceTheme {
   if (isAppearanceTheme(settings?.appearanceTheme)) return settings.appearanceTheme;
-  return settings?.genre === "dark_fantasy" || settings?.genre === "horror" ? "gothic" : "arcane";
+  return genreAppearance(settings?.genre, APPEARANCE_THEMES, "arcane");
+}
+
+export function genreAppearance<T extends { id: string; genres?: readonly string[] }>(genre: string | undefined, catalog: readonly T[], fallback: T["id"]): T["id"] {
+  return catalog.find(entry => entry.genres?.includes(genre ?? ""))?.id ?? fallback;
 }
 
 export function resolveAppearance(choice: AppearanceChoice, campaignTheme: AppearanceTheme): AppearanceTheme {

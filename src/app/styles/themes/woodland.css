@@ -51,3 +51,42 @@
   --color-amber-100: #182b14;
   --color-amber-50: #10200e;
 }
+
+[data-appearance="woodland"] {
+  --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='240' viewBox='0 0 180 240'%3E%3Cg fill='none' stroke='%23879773' stroke-width='1'%3E%3Cpath d='M90 240C45 180 135 120 90 0M90 180Q20 170 45 110Q95 115 90 180ZM90 100Q155 90 135 35Q85 40 90 100Z'/%3E%3C/g%3E%3C/svg%3E");
+  --appearance-motif-size: 180px 240px;
+  --appearance-corner: 1.25rem 0.4rem 1.25rem 0.4rem;
+}
+html[data-appearance="woodland"] :is(.ornate::before, .ornate::after) { border-radius: 80% 0; width: 22px; height: 22px; }
+[data-appearance="woodland"] {
+  --material-grain: var(--theme-art-texture);
+  --material-frame: var(--theme-art-frame);
+  --material-panel-wash: linear-gradient(#131d168c, #101b14b3);
+  --material-control-wash: linear-gradient(#343c29ba, #202b1cdb);
+  --material-frame-width: 64px;
+  --material-inset: #14241c;
+  --material-paper: #1b2c21;
+  --material-metal: #c4cebc;
+  --material-edge: #82907c;
+  --material-body-wash: linear-gradient(#09140cf0, #0d170ff0);
+  --material-rail-wash: linear-gradient(#231c1280, #231c1280);
+  --material-primary-wash: linear-gradient(#50703bcc, #283e22e8);
+  --material-metal-finish: linear-gradient(135deg, #e2e5d1, #8b947a 48%, #d1d5c0 51%, #778168);
+  --material-metal-ink: #203327;
+  --material-fitting-radius: 50% 5px 50% 5px;
+  --material-control-radius: 15px 4px 15px 4px;
+  --material-panel-radius: 18px 4px 18px 4px;
+  --material-crest-tilt: -12deg;
+  --material-scrim: linear-gradient(#102316a6, #10231666 45%, #102316cc);
+}
+[data-appearance="woodland"][data-theme="light"] {
+  --material-panel-wash: linear-gradient(#faf5e2e8, #eee7cfe8);
+  --material-control-wash: linear-gradient(#f7eed9db, #ddcdaedb);
+  --material-inset: #f0eedc;
+  --material-paper: #e7e7d2;
+  --material-metal: #41553f;
+  --material-edge: #7c8972;
+  --material-body-wash: linear-gradient(#e4e7d4eb, #d3d8bfeb);
+  --material-primary-wash: linear-gradient(#456332e8, #233b1df0);
+  --material-scrim: linear-gradient(#dbe5cd99, #dbe5cd40 45%, #dbe5cdbb);
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
-import { campaignAppearance, isAppearanceTheme, resolveAppearance, themeArtStyle, type AppearanceChoice, type AppearanceTheme } from "@/lib/appearance-themes";
+import { appearanceDefinition, campaignAppearance, isAppearanceTheme, resolveAppearance, themeArtStyle, type AppearanceChoice, type AppearanceTheme } from "@/lib/appearance-themes";
 
 // Brightness, visual identity and scale belong to this reader and device.
 // Brightness follows the OS by default; identity follows the current campaign.
@@ -129,6 +129,7 @@ export function applyTheme() {
   const mode = resolveTheme(readThemeChoice());
   root.dataset.theme = mode;
   root.dataset.appearance = readAppearance();
+  root.dataset.themeBase = appearanceDefinition(readAppearance()).baseStyle ?? "plain";
   const art = themeArtStyle(readAppearance());
   for (const [property, value] of Object.entries(art)) root.style.setProperty(property, value);
   root.dataset.themeOrnaments = String(art["--theme-art-frame"] !== "none" || art["--theme-art-corner"] !== "none");

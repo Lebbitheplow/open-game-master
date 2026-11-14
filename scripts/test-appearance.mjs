@@ -4,7 +4,8 @@ import { register } from "node:module";
 import { readFileSync, existsSync, statSync } from "node:fs";
 register("./lib/register-alias.mjs", import.meta.url);
 
-const { APPEARANCE_THEMES, APPEARANCE_THEME_IDS, THEME_ART_SLOTS, themeArtStyle, artSlotStyle, campaignAppearance, resolveAppearance } = await import("../src/lib/appearance-themes.ts");
+const { APPEARANCE_THEMES, APPEARANCE_THEME_IDS, THEME_ART_SLOTS, themeArtStyle, artSlotStyle, campaignAppearance, genreAppearance, resolveAppearance, appearanceDefinition } = await import("../src/lib/appearance-themes.ts");
+const { GENRES } = await import("../src/lib/schemas/game-settings-options.ts");
 const { gameSettingsSchema, normalizeGameSettings } = await import("../src/lib/schemas/game-settings.ts");
 const prefs = await import("../src/lib/theme-mode.ts");
 const { hostOffers } = await import("../src/lib/use-capabilities.ts");
@@ -33,6 +34,20 @@ test("campaign identity overrides the genre suggestion; a personal choice overri
   assert.equal(resolveAppearance("arcane", campaignAppearance(restored)), "arcane");
   assert.equal(gameSettingsSchema.safeParse({ appearanceTheme: "invalid" }).success, false);
   assert.equal(normalizeGameSettings({ appearanceTheme: "invalid", genre: "horror" }).genre, "horror");
+});
+
+test("genre claims belong to the catalog and new entries need no resolver branch", () => {
+  const claims = new Set();
+  for (const definition of APPEARANCE_THEMES) for (const genre of definition.genres ?? []) {
+    assert.ok(GENRES.includes(genre), `${definition.id}: unknown genre ${genre}`);
+    assert.ok(!claims.has(genre), `${genre}: two themes claim the same genre`);
+    claims.add(genre);
+    assert.equal(campaignAppearance({ genre }), definition.id);
+  }
+  const extended = [...APPEARANCE_THEMES, { id: "test-forge", genres: ["steampunk"] }];
+  assert.equal(genreAppearance("steampunk", extended, "arcane"), "test-forge");
+  assert.equal(genreAppearance("unknown", extended, "arcane"), "arcane");
+  assert.equal(genreAppearance(undefined, extended, "arcane"), "arcane");
 });
 test("server rendering reads defaults without browser APIs", () => {
   assert.equal(prefs.readAppearanceChoice(), "campaign");
@@ -138,7 +153,8 @@ try {
     assert.equal(document.documentElement.dataset.themeOrnaments, "true");
     for (const theme of APPEARANCE_THEME_IDS) {
       prefs.writeAppearanceChoice(theme);
-      assert.deepEqual(Object.fromEntries(Object.values(THEME_ART_SLOTS).map(key => [key, properties.get(key)])), themeArtStyle(theme));
+      for (const [key,value] of Object.entries(themeArtStyle(theme))) assert.equal(properties.get(key), value);
+      assert.equal(document.documentElement.dataset.themeBase, appearanceDefinition(theme).baseStyle ?? "plain");
     }
     assert.equal(document.documentElement.dataset.themeOrnaments, "true");
     const empty = artSlotStyle();

@@ -21,7 +21,7 @@
     "coverage": "vitest run --coverage",
     "resources:generate": "node scripts/generate-class-resources.mjs",
     "test:dice": "node scripts/test-dice.mjs",
-    "test:appearance": "node scripts/test-appearance.mjs",
+    "test:appearance": "node scripts/test-appearance.mjs && node scripts/test-appearance-contracts.mjs",
     "theme:preview": "node scripts/appearance/preview.mjs",
     "theme:check": "node scripts/appearance/browser-check.mjs",
     "setup": "node scripts/setup.mjs",

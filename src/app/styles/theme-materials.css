@@ -20,40 +20,6 @@
   --material-panel-radius: 12px 4px;
   --material-crest-tilt: 0deg;
   --material-scrim: linear-gradient(color-mix(in srgb, var(--background) 65%, transparent), color-mix(in srgb, var(--background) 40%, transparent) 45%, color-mix(in srgb, var(--background) 80%, transparent));
-  --theme-corner-background-size: contain;
-  --theme-corner-background-position: center;
-}
-[data-appearance="woodland"] {
-  --material-grain: var(--theme-art-texture);
-  --material-frame: var(--theme-art-frame);
-  --material-panel-wash: linear-gradient(#131d168c, #101b14b3);
-  --material-control-wash: linear-gradient(#343c29ba, #202b1cdb);
-  --material-frame-width: 64px;
-  --material-inset: #14241c;
-  --material-paper: #1b2c21;
-  --material-metal: #c4cebc;
-  --material-edge: #82907c;
-  --material-body-wash: linear-gradient(#09140cf0, #0d170ff0);
-  --material-rail-wash: linear-gradient(#231c1280, #231c1280);
-  --material-primary-wash: linear-gradient(#50703bcc, #283e22e8);
-  --material-metal-finish: linear-gradient(135deg, #e2e5d1, #8b947a 48%, #d1d5c0 51%, #778168);
-  --material-metal-ink: #203327;
-  --material-fitting-radius: 50% 5px 50% 5px;
-  --material-control-radius: 15px 4px 15px 4px;
-  --material-panel-radius: 18px 4px 18px 4px;
-  --material-crest-tilt: -12deg;
-  --material-scrim: linear-gradient(#102316a6, #10231666 45%, #102316cc);
-}
-[data-appearance="woodland"][data-theme="light"] {
-  --material-panel-wash: linear-gradient(#faf5e2e8, #eee7cfe8);
-  --material-control-wash: linear-gradient(#f7eed9db, #ddcdaedb);
-  --material-inset: #f0eedc;
-  --material-paper: #e7e7d2;
-  --material-metal: #41553f;
-  --material-edge: #7c8972;
-  --material-body-wash: linear-gradient(#e4e7d4eb, #d3d8bfeb);
-  --material-primary-wash: linear-gradient(#456332e8, #233b1df0);
-  --material-scrim: linear-gradient(#dbe5cd99, #dbe5cd40 45%, #dbe5cdbb);
 }
 
 html[data-theme-ornaments="true"][data-theme] body {
@@ -97,7 +63,7 @@ html[data-theme-ornaments="true"][data-theme] .cine-rail {
 html[data-theme-ornaments="true"][data-theme] .theme-framed {
   border: 24px solid transparent;
   border-image-source: var(--material-frame);
-  border-image-slice: 22%;
+  border-image-slice: var(--theme-frame-slice, 22%);
   border-image-width: var(--material-frame-width);
   border-image-outset: 8px;
   border-image-repeat: stretch;
@@ -165,7 +131,7 @@ html[data-theme-ornaments="true"][data-theme] :is(.section-head-rule, .lobby-hea
 }
 .appearance-preview[data-theme-ornaments="true"][data-theme] > .appearance-preview-frame {
   border: 12px solid transparent;
-  border-image: var(--material-frame) 24% / 26px / 3px stretch;
+  border-image: var(--material-frame) var(--theme-frame-slice, 22%) / 26px / 3px stretch;
   border-radius: 0;
   background-image: var(--material-panel-wash), var(--material-grain);
   background-size: auto, 360px;

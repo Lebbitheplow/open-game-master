@@ -1,5 +1,58 @@
 # Appearance infrastructure validation
 
+## Follow-up to the theme infrastructure review
+
+Fable's handoff reviewed `e21a63844`. The later painted-theme extension had
+already supplied shared material styles, theme-specific emblems and picker
+screenshots. This follow-up addresses the remaining extension and validation
+gaps while retaining the three themes' artwork:
+
+- Theme-owned motifs, corners and material overrides now live in their registered
+  stylesheets. Shared styles read the declared base style instead of theme IDs.
+- The catalog declares genre claims and artwork geometry. One typed icon map
+  serves the picker and lobby. A new genre-specific entry needs no resolver edit.
+- CSS guards reject unscoped selectors, escaping siblings, global at-rules and
+  theme IDs in shared styles. Image guards decode the shipped files and check
+  transparent interiors and opaque surfaces, using the same crop/inset as rendering.
+- Negative fixtures prove the guards reject defective CSS and artwork. The picker
+  browser checks cover keyboard selection, Follow campaign, neighboring preview
+  isolation, small screens with enlarged text and four/six-choice layouts.
+- The [theme progress and ideas list](appearance-theme-ideas.md) records future
+  concepts, reported unfinished work, completion criteria and open product decisions.
+- The 29 existing review images were preserved byte-for-byte on a dedicated
+  [screenshot branch](https://github.com/Smoebo/open-dungeon-master/tree/97ad9ffb8045f4a446e5145021d70c2bfa843a2b),
+  alongside the new narrow-phone picker capture. Removing that gallery from the
+  app source tree avoids about 20.8 MB of review-only files. Production artwork
+  and provenance remain in `public/assets/themes/`.
+
+| Check | Result |
+| --- | --- |
+| Appearance behavior and catalog checks | 12 passed |
+| CSS/artwork contracts, including rejection fixtures | 5 passed |
+| Text-comparison and name-lookup audits | 6 and 4 passed |
+| Focused ESLint | Passed |
+| Woodland browser matrix | 43 passed, including 6 picker checks |
+| Arcane browser matrix | 43 passed |
+| Gothic browser matrix | 42 passed; enlarged-map timing failure resolved in a 3-check interaction rerun |
+| Final picker rerun after aligning preview frame geometry | 6 passed |
+| Production build and TypeScript | Passed |
+| Bundle budgets | Passed: 106.7 KiB shared CSS, 113.3 KiB rulebook CSS; JavaScript budgets unchanged |
+| Full repository lint | Passed with 313 warnings and no errors |
+| Full repository test suite | Running; not yet a passing result |
+
+The picker test uses Space to activate native buttons, waits for the selected
+state, and groups grid rows by layout position rather than a hover-transformed
+screen coordinate. At 320px the cards stack their thumbnail above the description
+to avoid one-word lines with enlarged text. Layout fixture cards are temporary
+browser-only copies, not additional registered themes.
+
+Gothic's enlarged-map check first timed out while reopening across breakpoints;
+its initial rerun also sampled the opening animation's temporary overshoot.
+The harness now waits for the dialog's finite animations to finish and for the
+previous portal to unmount before resizing/reopening. All three focused checks
+then passed. Full lint excludes `.theme-preview/`, whose disposable Chromium
+profiles contain generated third-party extension code rather than app source.
+
 ## Painted Arcane and Gothic extension
 
 The 2026-11-14 extension gives all three themes painted materials and artwork.
@@ -28,7 +81,7 @@ than Woodland's open leaves. They now use 48px corners on desktop and 32px on
 phones. The enlarged map keeps its own painted border, while its day-mode
 surround uses the selected theme's light palette. Only the starfield board keeps
 night text; the phone's initiative label outside it uses readable day ink without
-the night shadow. Screenshots in [images/appearance](images/appearance) use fictional
+the night shadow. The [review gallery](https://github.com/Smoebo/open-dungeon-master/tree/97ad9ffb8045f4a446e5145021d70c2bfa843a2b/images) uses fictional
 data and show both brightness modes on desktop and 390px phone viewports.
 
 The preceding PR commit's CI identified the creation-option omission, missing
@@ -64,8 +117,8 @@ now renders its own four corners and frame inside its dialog. Its checks cover
 day/night at 390px and desktop, and confirm decorations do not intercept input.
 The updated component and browser script also passed focused ESLint.
 
-Reviewed screenshots are saved in [images/appearance](images/appearance),
-including the [enlarged battle map](images/appearance/woodland-map-enlarged-night.png).
+Reviewed screenshots are preserved in the [review gallery](https://github.com/Smoebo/open-dungeon-master/tree/97ad9ffb8045f4a446e5145021d70c2bfa843a2b/images),
+including the [enlarged battle map](https://raw.githubusercontent.com/Smoebo/open-dungeon-master/97ad9ffb8045f4a446e5145021d70c2bfa843a2b/images/woodland-map-enlarged-night.png).
 The PR description embeds the desktop and phone captures. All data is fictional.
 
 The production build measured 105.9 KiB of compressed shared CSS and 112.5 KiB

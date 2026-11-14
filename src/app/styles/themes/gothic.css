@@ -1,7 +1,5 @@
 /* gothic: both brightness palettes. See docs/appearance-themes.md. */
 [data-appearance="gothic"] {
-  --theme-corner-background-size: 400%;
-  --theme-corner-background-position: top left;
   --theme-table-corner-size: 48px;
   --theme-table-corner-size-small: 32px;
   --material-fitting-radius: 50% 50% 3px 3px;
@@ -65,3 +63,11 @@
   --color-amber-100: #321022;
   --color-amber-50: #230a17;
 }
+
+[data-appearance="gothic"] {
+  --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='240' viewBox='0 0 160 240'%3E%3Cg fill='none' stroke='%23ad7f94' stroke-width='1'%3E%3Cpath d='M20 240V100Q20 45 80 12Q140 45 140 100V240M34 240V105Q34 62 80 30Q126 62 126 105V240M80 30V240M34 130H126'/%3E%3Ccircle cx='80' cy='100' r='17'/%3E%3C/g%3E%3C/svg%3E");
+  --appearance-motif-size: 160px 240px;
+  --appearance-corner: 0.3rem;
+}
+html[data-appearance="gothic"] :is(.ornate::before, .ornate::after) { width: 20px; height: 20px; border-style: double; }
+[data-appearance="gothic"] > .appearance-preview-frame { border-radius: 48% 48% 0.2rem 0.2rem; }

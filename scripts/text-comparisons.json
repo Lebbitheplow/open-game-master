@@ -14,10 +14,8 @@
     "lib/db/core.ts"
   ],
   "sites": {
-    "lib/appearance-themes.ts#str-eq": [["key",1,"exact registered appearance IDs and fixed genre keys choose visual identity, not player-written story text"]],
     "components/ui/LobbyIcon.tsx#str-key": [["key",1,"fixed heading-glyph keys select decorative fittings"]],
-    "components/ThemeEmblem.tsx#str-key": [["key",1,"the appearance catalog's fixed icon key selects its lobby emblem"]],
-    "components/AppearancePicker.tsx#str-key": [["key",1,"the appearance catalog's fixed icon key selects its picker symbol"]],
+    "lib/appearance-themes.ts#str-list": [["key",1,"registered icon keys define the checked picker and lobby symbol vocabulary, not player-written text"]],
     "lib/dm/genre-cc-a-drones.ts#str-eq": [["key",2,"a gas's damage type and condition, the engine's own vocabulary (zone rows)"]],
     "lib/dm/genre-cc-a-saves.ts#str-eq": [["key",1,"a save's against, one of the engine's own condition names (src/lib/dm/roll-about.ts SAVE_AGAINST)"]],
     "lib/dm/genre-cc-a-saves.ts#str-includes": [["key",1,"a save's against, one of the engine's own condition names (src/lib/dm/roll-about.ts SAVE_AGAINST)"]],

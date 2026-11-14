@@ -8,6 +8,8 @@ stone, silver tracery and garnet glass.
 
 The [implementation validation record](appearance-validation.md) lists the checks
 completed for all three themes and the shared infrastructure.
+The [theme progress and ideas list](appearance-theme-ideas.md) tracks proposed
+themes, reported work in progress, delivery status and open design decisions.
 
 ## How the pieces fit
 
@@ -16,7 +18,7 @@ written story theme. A player can use Woodland in either day or night mode.
 
 | Piece | Location | Responsibility |
 | --- | --- | --- |
-| Catalog | `src/lib/appearance-themes.ts` | IDs, names, picker symbols, stylesheet paths and optional artwork slots |
+| Catalog | `src/lib/appearance-themes.ts` | IDs, names, symbols, genre associations, base style, corner crop and artwork slots |
 | Preferences | `src/lib/theme-mode.ts` | Campaign choice, personal override, brightness, scale and root artwork variables |
 | Personal picker | `src/components/AppearancePicker.tsx` | Catalog-driven choices with independent day/night previews |
 | Campaign picker | `src/app/campaigns/[campaignId]/GameSettingsGroups.tsx` | Visual theme in Atmosphere, saved through the existing settings schema |
@@ -24,7 +26,7 @@ written story theme. A player can use Woodland in either day or night mode.
 | Shared surfaces | `src/app/styles/appearance.css` | Controls, dialogs, preview layout and common color rules |
 | Painted ornaments | `src/components/ThemeOrnaments.tsx`, `src/app/styles/theme-ornaments.css` | Four rotated corners, table/overlay border, phone sizing and forced-colors behavior |
 | Shared materials | `src/app/styles/theme-materials.css`, `theme-session.css` | Textured controls, metal fittings, lobby arrangement, active table and enlarged-map treatment |
-| Lobby emblem | `src/components/ThemeEmblem.tsx` | The catalog's symbol in the theme's metal fitting |
+| Symbols | `src/components/ThemeIcon.tsx`, `ThemeEmblem.tsx` | One checked icon map serves the picker and lobby fitting |
 | Artwork | `public/assets/themes/<id>/` | Versioned images and their provenance record |
 | Automated checks | `scripts/test-appearance.mjs`, `scripts/appearance/` | Catalog checks and a disposable browser preview |
 
@@ -61,14 +63,24 @@ It is not the app appearance registry. Leave it alone when adding an appearance.
    ```
 
    The pickers and schema now include it. Existing symbols are `sparkles`, `leaf`
-   and `church`. To introduce another symbol, extend `AppearanceDefinition.icon`
-   and the symbol maps in `AppearancePicker.tsx` and `ThemeEmblem.tsx` together.
+   and `church`. To introduce another symbol, add its key to `APPEARANCE_ICONS`
+   and its component to the single map in `ThemeIcon.tsx`. Type checking catches
+   a missing mapping.
 
 4. Import the new stylesheet in `src/app/globals.css`, alongside the other
    `./styles/themes/` imports. Put treatment styles after the shared surface
    styles. Scope rules to `[data-appearance="moonlit"]`, adding
    `[data-theme="light"]` or `[data-theme="dark"]` where needed. Keep selectors
    rooted on `html` for dialogs rendered outside the campaign's main element.
+
+   Keep every theme-specific rule, including material overrides, in that one
+   registered stylesheet. Start each selector with `[data-appearance="moonlit"]`
+   or `html[data-appearance="moonlit"]`. Comma-separated selectors each need
+   their own prefix. Media, support and container queries can contain these
+   rules. The checker rejects sibling selectors, nested CSS rules and global
+   declarations such as `@font-face`, `@keyframes` and `@import` in theme files.
+   Put genuinely shared behavior in shared styles, using variables or declared
+   options rather than naming a theme.
 
 5. Add artwork if the design needs it, following the next section. A palette-only
    theme can omit `art` and `provenance`. Test both brightness modes before
@@ -77,11 +89,18 @@ It is not the app appearance registry. Leave it alone when adding an appearance.
 6. Run the checks below and inspect the captured views. Include the guide link,
    theme ID, commands run and remaining limitations in the PR description.
 
-Changing genre defaults is a separate choice. `campaignAppearance()` currently
-suggests Gothic for horror and dark fantasy, and Arcane for other genres. An
+Changing genre defaults is a separate choice. Add an optional `genres` list to
+the catalog entry to claim supported genre keys, such as `genres: ["steampunk"]`.
+The checks reject unknown keys and duplicate claims. Gothic claims horror and
+dark fantasy; unclaimed genres and unknown saved genres fall back to Arcane. An
 explicit campaign selection takes precedence, and a personal selection takes
 precedence over the campaign. Leaving a campaign restores Arcane when following
 the campaign. Brightness and size remain the player's choices.
+
+The optional `baseStyle` defaults to `"plain"`, which replaces the original
+celestial controls and backgrounds with the theme palette. Arcane declares
+`"celestial"` to retain that existing furniture. This choice is separate from
+painted artwork: either base can use the shared materials and ornament renderer.
 
 ## Add painted materials and borders
 
@@ -130,11 +149,14 @@ Defaults use the theme's palette, and overrides also apply inside picker preview
 | `--material-body-wash`, `--material-rail-wash`, `--material-scrim` | Page, rail and scenery shading |
 | `--material-crest-tilt` | Rotation of the decorative lobby emblem |
 
-Arcane and Gothic reuse their frame image for the `corner` slot. Their CSS sets
-`--theme-corner-background-size: 400%` and
-`--theme-corner-background-position: top left`, displaying the top-left quarter
-before the renderer rotates it. Keep that quarter's inner area transparent.
-For a separate corner image, retain the defaults `contain` and `center` instead.
+Arcane and Gothic reuse their frame image for the `corner` slot. Their catalog
+entries set `cornerScale: 4`, which displays the top-left 25% of each image axis
+(one sixteenth of its area) before rotation. The registry writes the matching
+background size and position for both the page and picker; do not override those
+geometry variables in CSS. The optional `frameSlice` sets the nine-slice inset as
+a percentage (default 22). The art checker reads the same scale and inset. Keep that
+crop's lower-right interior transparent. For a separate complete corner image,
+omit `cornerScale` to use the defaults `contain` and `center`.
 This avoids generating a second fitting that does not match its frame.
 
 The neutral hooks already exist in the components:
@@ -172,7 +194,6 @@ Shared ornament measurements can be overridden in the theme selector:
 
 | Variable | Default |
 | --- | --- |
-| `--theme-frame-slice` | `22%` |
 | `--theme-table-ornament-inset` / `-small` | `-10px` / `-4px` |
 | `--theme-table-frame-width` / `-small` | `40px` / `28px` |
 | `--theme-table-corner-size` / `-small` | `128px` / `84px` |
@@ -203,9 +224,21 @@ npm run test:appearance
 npx tsc --noEmit
 ```
 
-The appearance check enumerates the catalog. It checks registration, stylesheet
-imports, both complete palettes, selected text contrast pairs, asset paths and
-size, provenance entries, preference precedence, and artwork reset behavior.
+The appearance command runs both preference/palette checks and theme contracts.
+It checks registration, imports, genre claims, stylesheet ownership, complete
+palettes, selected contrast pairs, asset paths and size, provenance, preference
+precedence, and artwork reset behavior. It also decodes the production images:
+
+- Frames and corners must be square and contain visible artwork.
+- A frame's centre inside its declared inset must be transparent (central 56%
+  along both axes with the default 22% inset). A corner's lower-right 40% along both axes must be transparent
+  within the displayed crop. At most 0.5% of those pixels may have alpha above
+  16 out of 255, allowing faint edge antialiasing.
+- Textures and scenery must be opaque (alpha at least 250 out of 255).
+
+Failure messages identify the theme and slot. Correct the asset or its declared
+crop rather than loosening the test for a single image. Deliberately invalid
+CSS and image fixtures verify that the guards reject defects.
 This is not a full accessibility audit of every rendered control.
 
 The campaign picker checks the `appearanceThemes` server capability. Older
@@ -249,6 +282,13 @@ The current browser matrix covers:
 - Dice dialog sizing, a roll, and Escape dismissal.
 - Map keyboard zoom, enlarged-map opening and closing, and combat-card selection.
 - Artwork replacement across all registered themes and hiding in forced-colors mode.
+- The actual account Appearance dialog at desktop/phone widths, day/night and
+  enlarged text: keyboard theme selection, Follow campaign, isolated preview
+  colors/artwork, and layout-only fixtures with four and six choices.
+
+Use `npm run theme:check -- --theme woodland --picker-only` for the six picker
+checks alone. Its results are saved to `results-picker.json`; extra cards are
+temporary browser fixtures and are never registered or saved as real themes.
 
 These checks validate interface behavior and geometry, not full combat rules,
 multiplayer synchronization, mobile Safari, or screen-reader usability. Also
@@ -258,7 +298,11 @@ with pleasant colors is not proof that all controls remain usable.
 
 Stop the preview with Ctrl+C when finished. `.theme-preview/` is ignored; do not
 commit databases or browser profiles. Preserve only the screenshots and summary
-needed for the PR. If styles appear stale, restart the preview and rerun the
+needed for the PR. Publish review screenshots on a separate evidence branch and
+link them from the PR; keep production artwork and provenance with the code.
+The [PR 962 gallery](https://github.com/Smoebo/open-dungeon-master/tree/97ad9ffb8045f4a446e5145021d70c2bfa843a2b)
+is an example. Use a commit link so later captures cannot silently change the
+review evidence. If styles appear stale, restart the preview and rerun the
 check. This occurred with imported CSS during Woodland development. A missing
 stylesheet import or a stale compiled stylesheet can otherwise hide new art.
 

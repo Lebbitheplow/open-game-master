@@ -6,11 +6,13 @@ import { theme, definition, origin, output, browserPath } from './options.mjs';
 import { themeArtStyle, APPEARANCE_THEME_IDS } from '../../src/lib/appearance-themes.ts';
 import { openBrowser, pause } from './browser.mjs';
 import { writeReview } from './review.mjs';
+import { checkPicker } from './picker-check.mjs';
 const browser = await openBrowser({browserPath,output});
 const {send,evaluate}=browser;
 try {
   const checks = [], failures = [], screenshots = [];
   const interactionsOnly = process.argv.includes('--interactions-only');
+  const pickerOnly = process.argv.includes('--picker-only');
   const waitFor = async (expression, timeout = 20000) => {
     const end = Date.now() + timeout;
     while (Date.now() < end) { if (await evaluate(expression)) return; await pause(200); }
@@ -26,6 +28,7 @@ try {
     await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
     await pause(250);
   };
+  const settleOverlay = () => evaluate(`Promise.all([...document.querySelector('.theme-overlay').getAnimations()].filter(a=>a.effect?.getTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{}))).then(()=>true)`);
   const shot = async name => {
     const image = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
     const filename = 'validation-' + name + '.png';
@@ -61,6 +64,13 @@ try {
   const combatId = campaigns.find(c => c.title === 'Theme validation · Combat').id;
   const lobbyId = campaigns.find(c => c.title === 'Theme validation · Lobby')?.id;
   assert.ok(lobbyId, 'Use the disposable theme:preview server, with the same --theme and --port');
+  if (!interactionsOnly) await checkPicker({send,evaluate,click,waitFor,dimensions,run,shot,origin});
+  if (pickerOnly) {
+    await fs.writeFile(path.join(output,'results-picker.json'),JSON.stringify({theme,createdAt:new Date().toISOString(),checks,failures},null,2));
+    await writeReview(output,theme,screenshots);
+    if(failures.length) process.exitCode=1;
+    console.log(JSON.stringify({passed:checks.length,failed:failures.length}));
+  } else {
   const go = async id => {
     await send('Page.navigate', { url: origin + '/campaigns/' + id });
     await waitFor(`!!document.querySelector('.theme-table') && document.documentElement.dataset.appearance === ${JSON.stringify(theme)}`);
@@ -179,7 +189,7 @@ try {
       assert.notEqual(await transform(),before,'Keyboard zoom changes map camera');
       await click('button[aria-label="Enlarge battle map"]');
       await waitFor(`!!document.querySelector('button[aria-label="Close the board"]')`);
-      await pause(500);
+      await settleOverlay();
       const g=await geometry();
       try {
         assert.ok(g.dialog && g.dialog.x>=-1 && g.dialog.y>=-1 && g.dialog.right<=1361 && g.dialog.bottom<=901,'Enlarged map fits: '+JSON.stringify(g.dialog));
@@ -194,13 +204,15 @@ try {
         await shot('map-enlarged');
         for (const [width,height,mode] of [[390,844,'dark'],[390,844,'light'],[1360,900,'light']]) {
           await click('button[aria-label="Close the board"]');
+          await waitFor(`!document.querySelector('.theme-overlay')`);
           await dimensions(width,height,mode,1);
           // Crossing the phone breakpoint remounts the board in its tab.
           // Open the dialog at each size, rather than resize an unmounted one.
           if (width<1024) { await click('.cine-bottombar [data-tour="tab-battle"]'); await pause(650); }
+          await waitFor(`[...document.querySelectorAll('button[aria-label="Enlarge battle map"]')].some(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&r.top>=0&&r.bottom<=innerHeight})`);
           await click('button[aria-label="Enlarge battle map"]');
           await waitFor(`!!document.querySelector('.theme-overlay .theme-ornaments[data-surface="overlay"]')`);
-          await pause(650);
+          await settleOverlay();
           const resized=await geometry();
           assert.ok(resized.dialog && resized.dialog.x>=-1 && resized.dialog.y>=-1 && resized.dialog.right<=width+1 && resized.dialog.bottom<=height+1,'Resized enlarged map fits: '+JSON.stringify(resized.dialog));
           await shot(`map-enlarged-${width}-${mode}`);
@@ -235,4 +247,5 @@ try {
   if (!interactionsOnly) await writeReview(output, theme, screenshots);
   if (failures.length) process.exitCode=1;
   console.log(JSON.stringify({passed:checks.length,failed:failures.length}));
+  }
 } finally { await browser.close(); }
