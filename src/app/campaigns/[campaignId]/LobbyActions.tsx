@@ -153,7 +153,7 @@ export function LobbyActions({
             No character, no party slot. Ready up when the table is set and the adventure is
             yours to open.
           </p>
-          <button type="button" onClick={onToggleReady} className={cn(ui.btnPrimary, "mt-1 px-6")}>
+          <button type="button" onClick={onToggleReady} aria-pressed={Boolean(myMember?.ready)} className={cn(ui.btnPrimary, "lobby-ready mt-1 px-6")}>
             {myMember?.ready ? "Not ready" : "Ready"}
           </button>
         </div>
@@ -199,10 +199,11 @@ export function LobbyActions({
           <button
             type="button"
             onClick={onToggleReady}
+            aria-pressed={Boolean(myMember?.ready)}
             disabled={busy}
             className={cn(
               "flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 font-medium transition-colors disabled:opacity-60",
-              "motion-press font-display uppercase tracking-[0.12em]",
+              "lobby-ready theme-key theme-key-primary motion-press font-display uppercase tracking-[0.12em]",
               myMember?.ready
                 ? "border border-amber-500/40 bg-amber-400/10 text-amber-200 hover:bg-amber-400/15"
                 : "border border-amber-400/60 bg-gradient-to-b from-amber-100 via-amber-200 to-amber-400 text-amber-950 shadow-glow-gold hover:brightness-105",

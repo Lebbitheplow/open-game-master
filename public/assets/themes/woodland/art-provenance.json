@@ -1,0 +1,28 @@
+{
+  "generator": "OpenAI built-in image_gen",
+  "encoding": "Frames and grain: lossless WebP. Canopy: WebP quality 88, original PNG retained in workspace art-source.",
+  "date": "2026-11-14",
+  "assets": [
+    {
+      "file": "ivy-oak-frame-v1.webp",
+      "transparent": true,
+      "prompt": "Use case: stylized-concept. Asset type: production game-interface border, a single reusable nine-slice panel frame for a woodland fantasy roleplaying app. Create one square image, front-facing orthographic, with a completely transparent large rectangular central opening and transparent space outside the frame. The frame is made from richly hand-painted, warm weathered oak carved with subtle flowing elven grooves, with ivy vines physically wrapping around the wooden rails and clusters of small forest-green leaves at the four corners. Small aged silver leaf-shaped fasteners accent the joints. Material depth, visible wood grain, moss in crevices, soft dimensional highlights: the tactile artistic UI craft of a classic fantasy strategy game, not a flat vector border. Frame aligned square to the canvas, no perspective. Each wooden rail stays narrow, within the outer 12 percent of the image; corner foliage can fill the outer 18 percent. Keep the middle stretches of all four rails relatively simple and continuous so they can stretch in a responsive UI. The central 64 percent in each dimension must be entirely transparent and empty, no texture or ornaments crossing it. Frame nearly fills the canvas with 3 percent transparent outer margin; all leaves and shadows fully inside the image, nothing cropped. Soft neutral top-left light, warm midtone oak, olive and emerald leaves, muted silver. No words, no letters, no buttons, no icons, no scenery, no watermark. Real alpha transparency."
+    },
+    {
+      "file": "oak-grain-v1.webp",
+      "transparent": false,
+      "prompt": "Use case: stylized-concept. Asset type: production seamless material texture for the panels and buttons of a woodland fantasy game UI. A square, edge-to-edge close-up of finely worked ancient oak wood. Straight-on orthographic surface, no perspective, no objects, no border or frame. Rich hand-painted game-art material with tangible shallow carved grain, long gently flowing horizontal fibers, small knots, warm brown heartwood and muted olive-brown pores, soft neutral lighting evenly across the whole image. A tactile crafted surface rather than a photograph. Color and contrast should be restrained enough to sit beneath readable UI text: medium-dark brown, no bright highlights, no black holes, no large cracks. Seamless repeating tile in both axes, no vignette, no directional lighting gradients, no letters, no emblems, no leaves, no metal, no scenery, no watermark. Output 1024 square."
+    },
+    {
+      "file": "elderwood-canopy-v1.webp",
+      "transparent": false,
+      "prompt": "Use case: stylized-concept. Production wide 3:1 landscape banner artwork for an ancient woodland fantasy game's campaign lobby. Hand-painted premium strategy-game environment art, tactile carved wood and living forest, atmospheric depth. A vast old oak on the right with intertwined roots and a softly luminous hollow doorway; a winding moss path leads from the left foreground into a tranquil misty emerald forest. Ivy and small silver-green leaves hang from overhead branches forming a natural shallow arch across the top; aged silver leaf-shaped fittings discreetly clasp two branches, linking the scene to crafted elven interface furniture. Warm amber light from the hollow, cool jade haze, restrained fireflies. Rich detailed foreground bark and moss, softer layered distant trees. Composition reads well as a very wide shallow header, largest tree on right third, peaceful open left third. Painterly realism, evocative and beautiful, no characters, no letters, no labels, no logos, no UI widgets, no rectangular picture frame, no watermark. Entire canvas opaque edge-to-edge scenery."
+    },
+    {
+      "file": "root-silver-joint-v1.webp",
+      "transparent": true,
+      "encoding": "Lossless WebP, source PNG retained in workspace art-source.",
+      "prompt": "Use case: stylized-concept. One production fantasy game interface corner fitting, square transparent PNG, front-facing orthographic. An L-shaped TOP LEFT corner of substantial weathered dark walnut-oak timber, its two rails running along the TOP and LEFT edges only. The timber joint is held by a beautiful aged SILVER leaf-shaped metal clasp, with fine engraved veins and small rivets. Gnarled roots curl around the corner, a few restrained deep green ivy leaves and moss grow from the joint. Rich hand-painted realistic strategy-game UI art, sculpted volume and tactile grain, restrained highlights, no gold. IMPORTANT composition: the top rail occupies only the top 18 percent of the image; the left rail occupies only the left 18 percent. Ornament at their junction may occupy the top-left 35 percent square. The entire lower-right 65 percent square must be completely transparent and EMPTY for interface content. Rails taper naturally toward the right edge and bottom edge, ending within the canvas with a small transparent margin, so this can sit over continuous wood rails. No right or bottom border. Transparent exterior and empty interior, real alpha, no background, no scenery, no text, no symbols, no frame around the entire image, no shadow on a background. All foliage fully inside canvas. This is a practical small detailed corner asset, not an illustration of a room."
+    }
+  ]
+}

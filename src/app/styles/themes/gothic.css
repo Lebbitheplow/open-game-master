@@ -1,0 +1,53 @@
+/* gothic: both brightness palettes. See docs/appearance-themes.md. */
+[data-appearance="gothic"][data-theme="dark"] {
+  --background: #160e13;
+  --foreground: #efe3e7;
+  --color-stone-950: #170f15;
+  --color-stone-900: #271a22;
+  --color-stone-800: #3a2832;
+  --color-stone-700: #523b48;
+  --color-stone-600: #816774;
+  --color-stone-500: #b098a5;
+  --color-stone-400: #c5afba;
+  --color-stone-300: #dac6cf;
+  --color-stone-200: #e9d8e0;
+  --color-stone-100: #f4eaf0;
+  --color-stone-50: #fcf6f9;
+  --color-amber-950: #30111e;
+  --color-amber-900: #4d1e31;
+  --color-amber-800: #70324a;
+  --color-amber-700: #974c68;
+  --color-amber-600: #b7758e;
+  --color-amber-500: #cf97ad;
+  --color-amber-400: #e0b7c6;
+  --color-amber-300: #ebccd7;
+  --color-amber-200: #f2dfe7;
+  --color-amber-100: #f9edf2;
+  --color-amber-50: #fff7fa;
+}
+[data-appearance="gothic"][data-theme="light"] {
+  --background: #f1e8e7;
+  --foreground: #33212a;
+  --color-stone-950: #faf5f2;
+  --color-stone-900: #eee4e1;
+  --color-stone-800: #e1d2d0;
+  --color-stone-700: #c7b3b5;
+  --color-stone-600: #967b85;
+  --color-stone-500: #745965;
+  --color-stone-400: #5f4452;
+  --color-stone-300: #4a313e;
+  --color-stone-200: #38222d;
+  --color-stone-100: #291821;
+  --color-stone-50: #1d0f17;
+  --color-amber-950: #faeaf0;
+  --color-amber-900: #f0d6e0;
+  --color-amber-800: #dcb1c2;
+  --color-amber-700: #bb819a;
+  --color-amber-600: #965b74;
+  --color-amber-500: #7b405c;
+  --color-amber-400: #692e4b;
+  --color-amber-300: #54223b;
+  --color-amber-200: #43192e;
+  --color-amber-100: #321022;
+  --color-amber-50: #230a17;
+}

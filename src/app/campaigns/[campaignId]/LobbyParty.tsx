@@ -4,6 +4,7 @@ import { Bot, Check, Crown, Trash2, UserPlus, Users, Volume2, VolumeX } from "lu
 import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { GameIcon } from "@/components/ui/GameIcon";
+import { LobbyIcon } from "@/components/ui/LobbyIcon";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { UserAvatar, ui } from "@/lib/ui";
 import type { CampaignMember } from "@/lib/campaign-types";
@@ -14,7 +15,7 @@ import { classLevelWords, speciesAndClassWords } from "@/lib/characters/class-wo
 // Small gold badge on a party row: DM, co-DM, party lead, owner, real dice.
 function SeatBadge({ children, tip }: { children: ReactNode; tip?: string }) {
   const badge = (
-    <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[11px] text-amber-200">
+    <span className="lobby-seat-badge inline-flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[11px] text-amber-200">
       {children}
     </span>
   );
@@ -116,9 +117,9 @@ export function LobbyParty({
   return (
     <>
       {showParty ? (
-      <section className={cn("reveal mb-6", className)} style={style}>
+      <section className={cn("lobby-party reveal mb-6", className)} style={style}>
         <div className="lobby-head mb-3">
-          <GameIcon icon={{ kind: "glyph", key: "tab-party" }} size="size-7" />
+          <LobbyIcon glyph="tab-party" />
           <h2 className="lobby-head-title">
             Party · {members.length}/{campaign.maxPlayers}
           </h2>
@@ -293,7 +294,7 @@ export function LobbyParty({
       {showCompanions ? (
         <section className={cn("reveal mb-6", companionsClassName ?? className)} style={companionsStyle ?? style}>
           <div className="lobby-head mb-3">
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-sky-500/40 bg-stone-950 text-sky-300">
+            <span aria-hidden="true" className="flex size-7 shrink-0 items-center justify-center rounded-full border border-sky-500/40 bg-stone-950 text-sky-300">
               {humanDmTable ? <Users className="size-3.5" /> : <Bot className="size-3.5" />}
             </span>
             <h2 className="lobby-head-title">Companions</h2>

@@ -23,6 +23,13 @@
 @import "./styles/setup.css";
 @import "./styles/world.css";
 @import "./styles/table-layout.css";
+@import "./styles/appearance.css";
+@import "./styles/themes/arcane.css";
+@import "./styles/themes/woodland.css";
+@import "./styles/themes/gothic.css";
+@import "./styles/woodland-materials.css";
+@import "./styles/woodland-session.css";
+@import "./styles/theme-ornaments.css";
 
 /*
   Arcane night theme. The neutral ramp (stone-*) is redefined as deep

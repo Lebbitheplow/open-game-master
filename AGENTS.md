@@ -95,3 +95,9 @@ have started (the client repository's `PUBLISH_AS_BETA` variable is `true`),
 publish every server release with `--prerelease`, never `--latest`, and make
 a release stable only by promoting a beta that meets the doc's checks. Never
 promote a release, or set that variable, unless the maintainer asks for it.
+
+## Appearance themes
+
+Before changing app themes, read [docs/appearance-themes.md](docs/appearance-themes.md).
+Use the central catalog, neutral theme hooks and shared ThemeOrnaments renderer.
+Run npm run test:appearance and the documented disposable browser preview.

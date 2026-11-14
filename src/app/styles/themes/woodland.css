@@ -1,0 +1,53 @@
+/* woodland: both brightness palettes. See docs/appearance-themes.md. */
+[data-appearance="woodland"][data-theme="dark"] {
+  --background: #0a1410;
+  --foreground: #e1ece3;
+  --color-stone-950: #0c1711;
+  --color-stone-900: #14241a;
+  --color-stone-800: #203528;
+  --color-stone-700: #354d3c;
+  --color-stone-600: #607664;
+  --color-stone-500: #a7b9a6;
+  --color-stone-400: #acbfb0;
+  --color-stone-300: #c6d6c9;
+  --color-stone-200: #dce8de;
+  --color-stone-100: #eaf2ec;
+  --color-stone-50: #f5f9f5;
+  --color-amber-950: #12251c;
+  --color-amber-900: #223e2e;
+  --color-amber-800: #385c43;
+  --color-amber-700: #52785a;
+  --color-amber-600: #73977a;
+  --color-amber-500: #9bbb9e;
+  --color-amber-400: #bdd5ba;
+  --color-amber-300: #cee0cb;
+  --color-amber-200: #dfeadb;
+  --color-amber-100: #edf3e8;
+  --color-amber-50: #f8faf4;
+}
+[data-appearance="woodland"][data-theme="light"] {
+  --background: #eaf0e5;
+  --foreground: #1b3023;
+  --color-stone-950: #f5f8ef;
+  --color-stone-900: #e9efdf;
+  --color-stone-800: #dae4d1;
+  --color-stone-700: #b8c9af;
+  --color-stone-600: #7a9075;
+  --color-stone-500: #465e44;
+  --color-stone-400: #40583f;
+  --color-stone-300: #30472f;
+  --color-stone-200: #233721;
+  --color-stone-100: #182a18;
+  --color-stone-50: #0e1e10;
+  --color-amber-950: #eef5e8;
+  --color-amber-900: #ddebd4;
+  --color-amber-800: #bdd6b0;
+  --color-amber-700: #8aae7c;
+  --color-amber-600: #608451;
+  --color-amber-500: #46683d;
+  --color-amber-400: #36552e;
+  --color-amber-300: #2a4523;
+  --color-amber-200: #21371c;
+  --color-amber-100: #182b14;
+  --color-amber-50: #10200e;
+}
