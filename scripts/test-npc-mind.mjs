@@ -620,6 +620,15 @@ await test("the mind's fight view says what its shield rules out, as the server'
   assert.doesNotMatch(logic.renderFightView({ round: 2, foes: [], allies: [], hands: { shield: null, blocked: [] } }), /arm/);
 });
 
+await test("staying alive is every mind's first goal, and a fighting companion sees how close to death it is", async () => {
+  assert.match(logic.MIND_SYSTEM, /Above all your goals stands one: staying alive/);
+  const text = logic.renderFightView({ round: 3, foes: [], allies: [], self: { hp: 4, maxHp: 22, conditions: ["poisoned"] } });
+  assert.match(text, /You: 4 of 22 hit points \(near death\), poisoned\. Staying alive comes first/);
+  const { NPC_MINDS_RULES } = await import("../src/lib/dm/npc-mind-tools.ts");
+  assert.match(NPC_MINDS_RULES, /wants above all to stay alive/);
+  assert.match(NPC_MINDS_RULES, /enemy_flees for one, end_encounter for a surrender/);
+});
+
 await test("a new party companion at a table with minds follows its own mind, not the one player (ticket 08 follow-up)", async () => {
   const { defaultCommander } = await import("../src/lib/dm/companion-command.ts");
   assert.equal(defaultCommander(world.campaign(), "party"), null);

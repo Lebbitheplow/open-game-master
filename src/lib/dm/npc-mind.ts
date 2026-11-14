@@ -357,7 +357,13 @@ function fightView(campaign: Campaign, sheet: CharacterSheet): string {
     const ally = entry.kind === "pc" && entry.characterId !== sheet.id ? getSheetById(entry.characterId) : null;
     return ally ? [{ name: ally.name, health: healthWord(ally.currentHp, ally.maxHp), conditions: ally.conditions, feet: feet(ally.id) }] : [];
   });
-  return renderFightView({ round: encounter.round, foes, allies, hands: fightHands(sheet) });
+  return renderFightView({
+    round: encounter.round,
+    foes,
+    allies,
+    hands: fightHands(sheet),
+    self: { hp: sheet.currentHp, maxHp: sheet.maxHp, conditions: sheet.conditions },
+  });
 }
 
 // The shield on the companion's arm and the carried two-handed weapons it
