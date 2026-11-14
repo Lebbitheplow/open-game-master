@@ -357,6 +357,38 @@ await test("a past and an inspiration are laid down before the first act, and re
   assert.equal(memories("Thessaly").some((entry) => /letters/.test(entry.content)), false);
 });
 
+await test("the story's key characters get their own minds through npc_past firstTier, four at most", async () => {
+  const names = ["Prisoner Vael", "Warden Osk", "Clerk Imma", "Hunter Ro", "Sister Pell"];
+  for (const name of names) {
+    npc(name, {}, "secondary");
+  }
+  const set = (name, firstTier) => mind.handleNpcPast(world.campaign(), JSON.stringify({ name, firstTier }));
+  const already = world.campaign();
+  const primaries = () => names.filter((name) => mind.tierOfNpc(getNpcByName(already.id, name)) === "primary");
+  // The earlier scenarios' NPCs step aside for this one.
+  const existing = (await import("../src/lib/db/npcs.ts")).listNpcs(already.id).filter((entry) => !entry.companionSheetId && !names.includes(entry.name) && mind.tierOfNpc(entry) === "primary");
+  for (const other of existing) {
+    minds.setNpcTier(other.id, "secondary");
+  }
+  assert.equal(set("Prisoner Vael", true).tier, "primary");
+  set("Warden Osk", true);
+  set("Clerk Imma", true);
+  assert.equal(set("Hunter Ro", true).tier, "primary");
+  const refused = set("Sister Pell", true);
+  assert.equal(refused.refused, "limit");
+  assert.deepEqual(primaries(), ["Prisoner Vael", "Warden Osk", "Clerk Imma", "Hunter Ro"]);
+  assert.equal(set("Clerk Imma", false).tier, "secondary");
+  assert.equal(set("Sister Pell", true).tier, "primary");
+  for (const name of names) {
+    minds.setNpcTier(getNpcByName(already.id, name).id, "secondary");
+  }
+  for (const other of existing) {
+    minds.setNpcTier(other.id, "primary");
+  }
+  const { NPC_MINDS_RULES } = await import("../src/lib/dm/npc-mind-tools.ts");
+  assert.match(NPC_MINDS_RULES, /npc_past with their past and firstTier: true/);
+});
+
 // ---- Ticket 07: companions ------------------------------------------------
 
 await test("a companion's mind knows its company from the start and is bound by its sheet (A4, A7)", async () => {
