@@ -174,16 +174,22 @@ The storyteller runs on the GPU, and the GPU's memory decides which model plays:
 
 | Graphics memory | Storyteller | File |
 |---|---|---|
-| about 28 GB or more | Qwen3.6-35B-A3B, recommended (above): Q4_K_M from about 28 GB, Q8 from about 45 GB | 22 to 38 GB |
+| about 45 GB or more | Qwen3.6-35B-A3B at Q8, recommended (above) | 38.5 GB |
+| about 38 GB | Qwen3.6-35B-A3B at Q6 | 31.9 GB |
+| about 28 GB (a 32 GB card) | Qwen3.6-35B-A3B at Q4_K_M | 22.2 GB |
+| about 22 GB (a 24 GB card) | Qwen3.6-35B-A3B at UD-Q3_K_XL | 16.9 GB |
 | 16 GB, the minimum | gpt-oss-20b, MXFP4 | 12.1 GB |
 | under 16 GB | not supported | |
 
 Graphics memory is a card's own memory or, on a machine whose CPU and GPU share
 one pool (Apple silicon, AMD Ryzen AI Max), the share the system leaves the GPU: a
-Mac needs 24 GB or more for the minimum. The 35B is a mixture of experts, so on a
-PC its experts can wait in system memory (llama-server's `--n-cpu-moe`): a 16 GB
-card with 32 GB of system memory runs it at Q4, and the desktop app sets that up
-itself. gpt-oss-20b fits a 16 GB card whole.
+Mac needs 24 GB or more for the minimum. The desktop app recommends the tier that
+fits the card whole. The 35B is a mixture of experts, so on a PC its experts can
+wait in system memory (llama-server's `--n-cpu-moe`), and the app still lets a
+bigger tier be picked that way, but every turn then reads its 35 to 40K token
+prompt through system memory: a 16 GB card with 64 GB of system memory was once
+recommended the 35B at Q8 like that, and its fights crawled (issue 954).
+gpt-oss-20b fits a 16 GB card whole.
 
 Below the minimum is not supported, and problems there are not treated as bugs. A
 smaller model may limp through a scene on the short rules (below), but it skips
