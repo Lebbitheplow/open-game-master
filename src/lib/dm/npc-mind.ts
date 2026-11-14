@@ -36,6 +36,8 @@ import { ownTurnOf } from "@/lib/dm/held-turn";
 import { getActiveEncounter, listEnemies } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, listTokens } from "@/lib/db/battle-maps";
 import { chebyshev } from "@/lib/battlemap/types";
+import { acBreakdownFor } from "@/lib/srd";
+import { weaponOf } from "@/lib/dm/attack-logic";
 import {
   MIND_SYSTEM,
   attemptOutcome,
@@ -55,6 +57,7 @@ import {
   turnActorOf,
   healthWord,
   renderFightView,
+  type FightHands,
   type FightSeen,
   type NpcAway,
   type NpcTier,
@@ -318,6 +321,18 @@ function mindsFightTurn(campaign: Campaign, sheetId: string | null | undefined):
   return npc && tierOfNpc(npc) === "primary" && !getNpcAway(npc.id) ? { sheet, npc } : null;
 }
 
+// Whether the companion whose fight turn it is still waits on its own mind:
+// its mind chooses this turn (mindsFightTurn) and gave no choice in the DM
+// turn `turnId`. The fight's backstop then wakes the narrator to ask it
+// rather than play the companion's basic turn (encounter-tools.ts).
+export function mindTurnUnplayed(campaign: Campaign, sheetId: string, turnId: string): boolean {
+  const turn = mindsFightTurn(campaign, sheetId);
+  if (!turn) {
+    return false;
+  }
+  return !listNpcProposals(campaign.id, turn.npc.id).some((proposal) => proposal.status === "committed" && proposal.turnId === turnId);
+}
+
 // The fight as the companion sees it from its square: foes by how hurt they
 // look and where, never their hit points or stat blocks; hidden ones not at all.
 function fightView(campaign: Campaign, sheet: CharacterSheet): string {
@@ -340,7 +355,18 @@ function fightView(campaign: Campaign, sheet: CharacterSheet): string {
     const ally = entry.kind === "pc" && entry.characterId !== sheet.id ? getSheetById(entry.characterId) : null;
     return ally ? [{ name: ally.name, health: healthWord(ally.currentHp, ally.maxHp), conditions: ally.conditions, feet: feet(ally.id) }] : [];
   });
-  return renderFightView({ round: encounter.round, foes, allies });
+  return renderFightView({ round: encounter.round, foes, allies, hands: fightHands(sheet) });
+}
+
+// The shield on the companion's arm and the carried two-handed weapons it
+// rules out, as the server's own hands rule reads the sheet (attack-logic.ts).
+function fightHands(sheet: CharacterSheet): FightHands {
+  const shield = acBreakdownFor(sheet).shieldName;
+  if (!shield) {
+    return { shield: null, blocked: [] };
+  }
+  const blocked = (sheet.equipment ?? []).filter((item) => (weaponOf(item)?.properties ?? []).includes("two-handed")).map((item) => item.name);
+  return { shield, blocked: [...new Set(blocked)] };
 }
 
 const FIGHT_TURN_NOTE =

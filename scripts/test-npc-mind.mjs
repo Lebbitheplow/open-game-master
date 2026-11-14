@@ -614,6 +614,37 @@ await test("a whole fight turn: the narrator's action for the companion is refus
   await world.invoke("end_encounter", { outcome: "victory" });
 });
 
+await test("the mind's fight view says what its shield rules out, as the server's hands rule does (ticket 08 follow-up)", () => {
+  const text = logic.renderFightView({ round: 2, foes: [], allies: [], hands: { shield: "Shield", blocked: ["Light Crossbow"] } });
+  assert.match(text, /Your Shield is on your arm: while it is, you cannot use Light Crossbow \(they need both hands\)/);
+  assert.doesNotMatch(logic.renderFightView({ round: 2, foes: [], allies: [], hands: { shield: null, blocked: [] } }), /arm/);
+});
+
+await test("a new party companion at a table with minds follows its own mind, not the one player (ticket 08 follow-up)", async () => {
+  const { defaultCommander } = await import("../src/lib/dm/companion-command.ts");
+  assert.equal(defaultCommander(world.campaign(), "party"), null);
+  const { commandingPlayers } = await import("../src/lib/dm/companion-command.ts");
+  const off = { ...world.campaign(), gameSettings: { ...world.campaign().gameSettings, npcMinds: false } };
+  const players = commandingPlayers(off);
+  assert.equal(defaultCommander(off, "party"), players.length === 1 ? players[0] : null, "without minds the one-player rule stands, as before");
+});
+
+await test("a companion's own fight turn waits on its mind until asked in this DM turn (ticket 08 follow-up)", async () => {
+  await world.beginFight([{ monster: "goblin" }]);
+  onTobin();
+  const turn = createDmTurn(world.campaignId, [], "human_dm");
+  assert.equal(mind.mindTurnUnplayed(world.campaign(), tobinSheet.id, turn.id), true, "not asked in this turn");
+  await runInTurnScope(turn.id, async () => {
+    model.script([answer({ speech: "", intent: "strike the goblin with my battleaxe" })]);
+    await speak({ name: "Tobin", perceives: "The goblin circles." });
+  });
+  assert.equal(mind.mindTurnUnplayed(world.campaign(), tobinSheet.id, turn.id), false, "asked in this turn: the basic turn is the safety net");
+  setCompanionCommander(tobinSheet.id, world.owner.id);
+  assert.equal(mind.mindTurnUnplayed(world.campaign(), tobinSheet.id, "another-turn"), false, "a commanded companion waits for its commander");
+  setCompanionCommander(tobinSheet.id, null);
+  await world.invoke("end_encounter", { outcome: "victory" });
+});
+
 await test("system: a short investigation with an absent NPC, a late messenger and a lying witness survives a restart (ticket 07, A2 A5 A6 A13)", async () => {
   const { closeDatabaseForRestore } = await import("../src/lib/db/core.ts");
   npc("Inspector Vale", { location: "the Watch House" });

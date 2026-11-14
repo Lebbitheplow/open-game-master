@@ -420,14 +420,28 @@ export function healthWord(current: number, max: number): string {
 
 export type FightSeen = { name: string; health: string; conditions: string[]; feet: number | null };
 
+// What the companion's hands allow (attack-rules.ts handsRuling): the
+// shield on its arm, and the carried two-handed weapons it cannot use with it.
+export type FightHands = { shield: string | null; blocked: string[] };
+
+function handsLine(hands: FightHands | undefined): string {
+  if (!hands?.shield) {
+    return "";
+  }
+  return hands.blocked.length
+    ? `Your ${hands.shield} is on your arm: while it is, you cannot use ${hands.blocked.join(", ")} (they need both hands). Doffing a shield takes your action.`
+    : `Your ${hands.shield} is on your arm.`;
+}
+
 // The fight as the companion sees it from where it stands.
-export function renderFightView(view: { round: number; foes: FightSeen[]; allies: FightSeen[] }): string {
+export function renderFightView(view: { round: number; foes: FightSeen[]; allies: FightSeen[]; hands?: FightHands }): string {
   const line = (seen: FightSeen) =>
     `- ${seen.name}: ${seen.health}${seen.conditions.length ? `, ${seen.conditions.join(", ")}` : ""}${seen.feet === null ? "" : `, ${seen.feet} ft from you`}`;
   return [
     `It is your turn in the fight (round ${view.round}). Choose what you do with it from your sheet: movement, an action, perhaps a bonus action. Name the target and the weapon or spell.`,
     view.foes.length ? `Foes you see:\n${view.foes.map(line).join("\n")}` : "You see no foe standing.",
     view.allies.length ? `Your side:\n${view.allies.map(line).join("\n")}` : "",
+    handsLine(view.hands),
   ]
     .filter(Boolean)
     .join("\n");
