@@ -33,7 +33,8 @@
     "legerdemain_spell_2": { "label": "Improved Smuggler's Legerdemain spell", "prefix": "Improved Legerdemain: ", "grantedBy": "Improved Smuggler's Legerdemain", "stored": true, "spellLevel": 2, "spellList": "wizard", "schools": ["illusion", "transmutation"], "anyBook": true, "swapAtLevel": "rogue" },
     "spell_mastery_1": { "label": "Spell Mastery: 1st-level spell", "prefix": "Spell Mastery: ", "grantedBy": "Spell Mastery", "stored": true, "split": true, "spellLevel": 1, "spellList": "wizard" },
     "spell_mastery_2": { "label": "Spell Mastery: 2nd-level spell", "prefix": "Spell Mastery: ", "grantedBy": "Spell Mastery", "stored": true, "split": true, "spellLevel": 2, "spellList": "wizard" },
-    "signature_spell": { "label": "Signature Spells", "prefix": "Signature Spells: ", "grantedBy": "Signature Spells", "stored": true, "split": true, "spellLevel": 3, "spellList": "wizard" }
+    "signature_spell": { "label": "Signature Spells", "prefix": "Signature Spells: ", "grantedBy": "Signature Spells", "stored": true, "split": true, "spellLevel": 3, "spellList": "wizard" },
+    "gadget": { "label": "Gadget", "prefix": "Gadget: ", "grantedBy": "Utility Gadgets", "stored": true }
   },
   "options": [
     { "k": "invocation", "n": "Agonizing Blast", "d": "Add your Charisma modifier to the damage of each Eldritch Blast beam. Usually the first invocation a warlock takes.", "req": "Eldritch Blast cantrip" },
@@ -281,6 +282,12 @@
     { "k": "animal_lord", "n": "Queen of Cats", "d": "Your patron rules cats, a lord of earth: its earth spells join the spells you may learn beside every animal lord's own." },
     { "k": "animal_lord", "n": "Queen of Serpents", "d": "Your patron rules reptiles, a lord of earth: its earth spells join the spells you may learn beside every animal lord's own." },
     { "k": "animal_lord", "n": "Queen of Scorpions", "d": "Your patron rules spiders, scorpions and their kin, a lord of earth: its earth spells join the spells you may learn beside every animal lord's own." },
-    { "k": "animal_lord", "n": "Toad King", "d": "Your patron rules toads, frogs and their kin, a lord of water: its water spells join the spells you may learn beside every animal lord's own." }
+    { "k": "animal_lord", "n": "Toad King", "d": "Your patron rules toads, frogs and their kin, a lord of water: its water spells join the spells you may learn beside every animal lord's own." },
+    { "k": "gadget", "n": "Grapnel", "d": "A spring-loaded hook and line: for a round, climbing costs no extra movement. Used as a bonus action, a number of times equal to your Intelligence modifier (at least once) between rests." },
+    { "k": "gadget", "n": "Smoke Bomb", "d": "Thrown up to 30 feet, it fills a 10-foot radius with smoke that blocks sight for a minute (15 feet, and you see through it, with Smoke Discipline). Used as a bonus action, a number of times equal to your Intelligence modifier (at least once) between rests." },
+    { "k": "gadget", "n": "Arc Lamp", "d": "A crackling lamp you carry that sheds bright light for 30 feet and dim light for 30 more. Or flash it at one creature within 30 feet that can see it: a Constitution save against 8 + your proficiency bonus + your Intelligence modifier, or it is blinded until the end of its next turn. Used as a bonus action, a number of times equal to your Intelligence modifier (at least once) between rests." },
+    { "k": "gadget", "n": "Ear Trumpet", "d": "For a minute, advantage on Perception checks. Used as a bonus action, a number of times equal to your Intelligence modifier (at least once) between rests." },
+    { "k": "gadget", "n": "Skeleton Key", "d": "For a round, advantage on Dexterity checks, such as picking a lock with thieves' tools. Used as a bonus action, a number of times equal to your Intelligence modifier (at least once) between rests." },
+    { "k": "gadget", "n": "Pocket Shield", "d": "A folding plate that snaps open: +2 AC until the start of your next turn. Used as a bonus action, a number of times equal to your Intelligence modifier (at least once) between rests." }
   ]
 }

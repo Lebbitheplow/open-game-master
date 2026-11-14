@@ -141,6 +141,7 @@ export const AUTHORED_READERS: Record<string, { file: string; call: string }> = 
   skill_prof: { file: "src/lib/srd/index.ts", call: "authoredConditionalTraining(" },
   crit_immune: { file: "src/lib/dm/enemy-swing-odds.ts", call: "authoredIncomingAttack(" },
   ignore_resist: { file: "src/lib/dm/enemy-damage.ts", call: "authoredIgnoresResistance(" },
+  soften_immune: { file: "src/lib/dm/enemy-defenses.ts", call: "authoredSoftensImmunity(" },
   attacked_disadv: { file: "src/lib/dm/enemy-swing-odds.ts", call: "authoredIncomingAttack(" },
   fall_resist: { file: "src/lib/dm/hazard-tools.ts", call: "fallResistances(" },
   program_rider: { file: "src/lib/dm/attack-damage-riders.ts", call: "programRiders(" },

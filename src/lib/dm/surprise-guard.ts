@@ -8,6 +8,7 @@
 //
 // Pure.
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { oneWithTheRuins } from "@/lib/dm/genre-gb-ruins";
 import { holdsFeat } from "@/lib/srd/feat-effects";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { optionFeatureName } from "@/lib/srd/options";
@@ -28,6 +29,10 @@ export function cannotBeSurprised(sheet: CharacterSheet, foes: readonly LyingInW
   // The Alert feat, a Rune Knight carrying the Storm Rune, an artificer's
   // Helm of Awareness worn ("can't be surprised, provided it isn't
   // incapacitated": src/lib/srd/infusions.ts).
+  // One With the Ruins: never surprised in ruins (genre-gb-ruins.ts).
+  if (oneWithTheRuins(sheet)) {
+    return true;
+  }
   if (holdsFeat(sheet, "Alert") || holdsFeature(sheet, optionFeatureName("rune", "Storm Rune")) || infusionWorn(sheet.equipment ?? [], "Helm of Awareness")) {
     return true;
   }

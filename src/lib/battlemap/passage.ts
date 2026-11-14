@@ -10,6 +10,8 @@
 
 import { adaptedSpeeds } from "@/lib/srd/genre-b-post-apocalyptic";
 import { climbsFreely } from "@/lib/srd/feat-combat";
+import { steampunkStride } from "@/lib/srd/genre-b-steampunk-moves";
+import { SWARM_SHAPE } from "@/lib/srd/genre-gb-conditions";
 import { earthUnderfoot, hasEarthWalk } from "@/lib/srd/mt-species-traits";
 import { footprintIndexes, type Footprint } from "@/lib/battlemap/footprint";
 import { moveTraitsFrom, TERRAIN, tileIndex, type BattleToken, type MoveTraits } from "@/lib/battlemap/types";
@@ -95,7 +97,7 @@ export function pcMoveTraits(input: {
   width: number;
   tokens: BattleToken[];
   mover: BattleToken;
-  sheet: { race: string; features: Array<{ name: string }>; equipment?: WornMagicItem[]; speed?: number; conditions?: string[] } & Wearer;
+  sheet: { race: string; features: Array<{ name: string }>; equipment?: WornMagicItem[]; speed?: number; conditions?: string[]; class?: string; classes?: Array<{ id: string }> } & Wearer;
   footprintOf: (token: BattleToken) => Footprint;
   enemySize: (refId: string) => string | undefined;
   sideOf?: TokenSide;
@@ -109,10 +111,14 @@ export function pcMoveTraits(input: {
   // crossesAnyGround): difficult terrain costs no extra.
   anyGround?: boolean;
 }): MoveTraits {
-  const moverSize = sheetSize(input.sheet);
+  // Splintered Form's swarm shape moves as a Tiny creature (genre-gb-conditions.ts).
+  const moverSize = (input.sheet.conditions ?? []).some((entry) => isConditionNamed(entry, SWARM_SHAPE)) ? "tiny" : sheetSize(input.sheet);
   // Athlete: climbing costs no extra movement (src/lib/srd/feat-combat.ts).
   const base = moveTraitsFrom(input.sheet.features);
-  const freely = typeof base === "object" && base !== null && climbsFreely(input.sheet) ? { ...base, climbs: true } : base;
+  // Rigging Runner climbs the same way; Master of the High Wire and an armored
+  // Juggernaut Frame cross any ground (src/lib/srd/genre-b-steampunk-moves.ts).
+  const stride = steampunkStride(input.sheet);
+  const freely = typeof base === "object" && base !== null && (climbsFreely(input.sheet) || stride.climbs) ? { ...base, climbs: true } : base;
   // A worn item's swimming or climbing speed (SRD 5.1, Ring of Swimming,
   // Slippers of Spider Climbing) moves through water and up walls at cost.
   const worn = input.sheet.equipment?.length ? itemSpeeds(input.sheet.equipment, input.sheet, input.sheet.speed ?? 30) : {};
@@ -144,7 +150,7 @@ export function pcMoveTraits(input: {
     ...(typeof traits === "object" ? traits : { swims: traits }),
     ...earthen,
     ...equine,
-    ...(input.anyGround ? { anyGround: true } : {}),
+    ...(input.anyGround || stride.anyGround ? { anyGround: true } : {}),
     passable: everything && input.drawnTerrain ? new Set([...spaces, ...objectTiles(input.drawnTerrain)]) : spaces,
   };
 }

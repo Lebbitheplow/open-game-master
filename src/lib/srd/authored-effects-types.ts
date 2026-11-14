@@ -145,6 +145,10 @@ export type AuthoredEffect = Base &
     // The holder's damage of these types ignores resistance.
     // `spells`: only the damage of the holder's spells (Perfected Instability's mutations).
     | { kind: "ignore_resist"; types: string[]; spells?: boolean }
+    // The holder's damage of these types treats a creature's immunity as
+    // resistance (Universal Solvent, Heart of the Storm). `spells`: only a
+    // spell's damage (src/lib/dm/genre-b-steampunk-defenses.ts).
+    | { kind: "soften_immune"; types: string[]; spells?: boolean }
     // Attacks against the holder by creatures of these types are at
     // disadvantage.
     // `besideDowned`: while an ally at 0 HP stands within 5 feet (Shield the Fallen).
@@ -493,6 +497,9 @@ export type AuthoredEffect = Base &
         // Only a hit on a creature that carries this condition (No Witnesses
         // Left: the record of the creature that downed an ally).
         vsCondition?: string;
+        // Only while the attacker is aloft on the board, a flying token
+        // (Greater Daring: "ranged attacks made while airborne or elevated").
+        airborne?: true;
         weapons?: string[];
       }
     // A bonus to the holder's attack rolls, all or only melee or ranged ones.
@@ -888,7 +895,7 @@ export type SpendDoes =
   | { kind: "light"; brightFt: number; dimFt: number; condition: string }
   // A genre class's companion with the text's stats (src/lib/dm/genre-a-summons.ts):
   // the rigger's drones, the vermin lord's dire rat, King Below the Streets' rats.
-  | { kind: "genre_summon"; companion: "drones" | "dire_rat" | "rat_pack" }
+  | { kind: "genre_summon"; companion: "drones" | "dire_rat" | "rat_pack" | "familiar" | "familiar_help" | "juggernaut" }
   // A cyberpunk counter's own spend (src/lib/dm/genre-a-cyberpunk-spends.ts).
   | { kind: "cyber_spend"; what: "ghost_protocol" | "lazarus" | "whirl" | "synaptic" | "grease" }
   // A mark on the holder that pays for their next spell it fits with no slot
@@ -1035,7 +1042,9 @@ export type SpendNeed = "shadows" | "unarmed_in_action" | "flurry_harm" | "attac
 // reach; without it the area stands on the holder. `dcAbility`: its save DC is
 // 8 + proficiency + this modifier. `upgrade`: the row laid instead while the
 // holder has that feature (The Last Dawn Rises' burning light).
-export type GenreZoneSpec = { lays: string; rangeFt?: number; dcAbility?: Ability; upgrade?: { feature: string; lays: string } };
+// `upgrade.seesThrough`: with the upgrade held the area is laid seen through
+// by its holder (Smoke Discipline: "you see through your own smoke").
+export type GenreZoneSpec = { lays: string; rangeFt?: number; dcAbility?: Ability; upgrade?: { feature: string; lays: string; seesThrough?: boolean } };
 
 export type SpendAction = "action" | "bonus" | "reaction" | "none";
 
@@ -1133,7 +1142,9 @@ export type ReactionDoes =
   // `nearZone`: the creature it covers, the holder too, must stand within
   // `feet` of the holder's zone of that spell (Guardian Coil's tentacle:
   // src/lib/dm/zone-reach.ts), in place of a reach from the holder.
-  | { kind: "reduce"; amount: Formula | "half" | "slot5" | "psionic_int" | "ward"; who: "self" | "ally" | "either"; rangeFt?: number; nearZone?: { spell: string; feet: number }; types?: string[]; reflect?: { feature: string; type: string }; whole?: boolean; regainSlot?: number }
+  | { kind: "reduce"; amount: Formula | "half" | "slot5" | "psionic_int" | "ward"; who: "self" | "ally" | "either"; rangeFt?: number; nearZone?: { spell: string; feet: number }; types?: string[]; reflect?: { feature: string; type: string }; whole?: boolean; regainSlot?: number; form?: string }
+  // `form`: a shape the holder takes until their next turn, laid as this
+  // condition (Splintered Form's swarm: src/lib/srd/genre-gb-conditions.ts).
   // `whole`: the whole blow, whatever `amount` says (Capacitor Soul), and
   // `regainSlot`: the holder then regains one expended spell slot of that level.
   // A bonus to AC (the Bardic Inspiration die, or the holder's Charisma modifier,

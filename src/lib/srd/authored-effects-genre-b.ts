@@ -24,6 +24,7 @@
 // Pure data; no database.
 import type { AuthoredEntry, ReactionDoes, SpendAction, SpendDoes } from "@/lib/srd/authored-effects-types";
 import type { GenreRow } from "@/lib/srd/authored-effects-genre";
+import { SWARM_SHAPE } from "@/lib/srd/genre-gb-conditions";
 
 const row = (feature: string, classes: string[], entry: Omit<AuthoredEntry, "subclass">): GenreRow => ({
   feature,
@@ -108,7 +109,9 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
 
   // ---- passives on the engine's own readers (wave 2, second pass) ----
   // "Darkvision 60 ft" (src/lib/srd/authored-effects-more.ts authoredDarkvisionFeet).
-  row("Predator Senses", ["aberrant"], { effects: [{ kind: "darkvision", feet: 60 }] }),
+  // "Darkvision 60 ft; advantage on Perception checks using smell" (the
+  // check names what it is about: src/lib/dm/roll-about.ts).
+  row("Predator Senses", ["aberrant"], { effects: [{ kind: "darkvision", feet: 60 }, { kind: "check_adv", skills: ["perception"], about: "smell" }] }),
   // "While conscious, regain 5 HP at the start of your turn if below half HP"
   // (src/lib/dm/authored-turns.ts authoredTurnStart): at 0 hit points the
   // knight is unconscious, and regains nothing.
@@ -306,7 +309,8 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
   // "Reaction when hit: gain resistance to that instance of damage."
   react("Ectoplasmic Shield", ["spirit_medium"], "mystery_ectoplasmic_shield", { kind: "reduce", amount: "half", who: "self" }),
   // "reaction when hit: split into a swarm shape until your next turn, taking half damage from the attack".
-  react("Splintered Form", ["aberrant"], "post_apocalyptic_splintered_form", { kind: "reduce", amount: "half", who: "self" }),
+  // The swarm shape lasts until the aberrant's next turn (genre-gb-conditions.ts).
+  react("Splintered Form", ["aberrant"], "post_apocalyptic_splintered_form", { kind: "reduce", amount: "half", who: "self", form: SWARM_SHAPE }),
   // "Reaction when hit in melee: the attacker takes 2d6 acid as an ampoule bursts."
   react("Vitriol Ampoule", ["alchemist"], "steampunk_vitriol_ampoule", { kind: "strike_back", amount: "2d6", type: "acid", melee: true }),
 ];
@@ -346,6 +350,11 @@ export const GENRE_B_FEATURE_DEFS: Def[] = [
   // src/lib/srd/genre-b-combat.ts genreWornRiders).
   { match: ["masterwork arsenal"], classes: ["gadgeteer"], effects: [{ kind: "crit_range", low: 19 }], guidance: "Masterwork Arsenal: weapon attacks score a critical hit on a 19 or 20, which the server applies." },
   { match: ["reinforced chassis"], classes: ["machinist"], effects: [{ kind: "ac_bonus", amount: 1, requiresArmor: true }], guidance: "Reinforced Chassis: +1 AC while armored, which the server adds." },
+  // Heart of the Storm (aether channeler): its own row, so the Storm Sorcery
+  // feature of the same name (lightning and thunder resistance, parsed from
+  // subclasses.json) never answers for it. What it does is its authored row
+  // (authored-effects-genre-b-steampunk.ts).
+  { match: ["heart of the storm"], classes: ["aether_channeler"], effects: [], guidance: "Heart of the Storm: the channeler's lightning spells ignore resistance and treat immunity as resistance, which the server applies." },
 ];
 
 // What a trigger-shaped genre counter answers (src/lib/srd/trigger-table.ts

@@ -2720,6 +2720,112 @@
    "action": "none",
    "guidance": "Orcish Fury (a half-orc's feat): once until a short or long rest, a weapon hit rolls one of the weapon's damage dice once more as extra damage, chosen on the card the hit waits on, which spends it. The reaction attack right after Relentless Endurance is use_reaction 'orcish fury' with targetEnemyId, and costs no use.",
    "passive": true
+  },
+  {
+   "id": "steampunk_grapnel_line",
+   "displayName": "Grapnel Line",
+   "match": [
+    "grapnel line"
+   ],
+   "uses": 1,
+   "ability": "int",
+   "recharge": "short",
+   "guidance": "Grapnel Line: a number of times equal to the aeronaut's Intelligence modifier (at least once) between rests, swing or pull 30 feet as part of their move, or with Grapnel Ace trip or disarm a creature within 30 feet.",
+   "action": "none"
+  },
+  {
+   "id": "post_apocalyptic_field_fabricator",
+   "displayName": "Field Fabricator",
+   "match": [
+    "field fabricator"
+   ],
+   "uses": 1,
+   "recharge": "long",
+   "guidance": "Field Fabricator: once a long rest, out of a fight, the salvage tech builds one device holding a 2nd-level wizard spell (named in variant) with their save DC and spell attack; anyone carrying it casts that spell once from it with use_item, and it falls apart at the next long rest.",
+   "action": "none"
+  },
+  {
+   "id": "steampunk_clockwork_familiar",
+   "displayName": "Familiar's Help",
+   "match": [
+    "clockwork familiar"
+   ],
+   "uses": 1,
+   "recharge": "short",
+   "guidance": "Clockwork Familiar: once between rests, the brass familiar helps its machinist, who has advantage on their next ability check.",
+   "action": "none"
+  },
+  {
+   "id": "steampunk_gadget_grapnel",
+   "displayName": "Grapnel",
+   "match": [
+    "gadget: grapnel"
+   ],
+   "uses": 1,
+   "ability": "int",
+   "recharge": "short",
+   "guidance": "Utility Gadgets (Grapnel): a bonus action, a number of times equal to the gadgeteer's Intelligence modifier (at least once) between rests; with Chain Deployment a second, different gadget rides the same bonus action.",
+   "action": "bonus"
+  },
+  {
+   "id": "steampunk_gadget_smoke_bomb",
+   "displayName": "Smoke Bomb",
+   "match": [
+    "gadget: smoke bomb"
+   ],
+   "uses": 1,
+   "ability": "int",
+   "recharge": "short",
+   "guidance": "Utility Gadgets (Smoke Bomb): a bonus action, a number of times equal to the gadgeteer's Intelligence modifier (at least once) between rests; with Chain Deployment a second, different gadget rides the same bonus action.",
+   "action": "bonus"
+  },
+  {
+   "id": "steampunk_gadget_arc_lamp",
+   "displayName": "Arc Lamp",
+   "match": [
+    "gadget: arc lamp"
+   ],
+   "uses": 1,
+   "ability": "int",
+   "recharge": "short",
+   "guidance": "Utility Gadgets (Arc Lamp): a bonus action, a number of times equal to the gadgeteer's Intelligence modifier (at least once) between rests; with Chain Deployment a second, different gadget rides the same bonus action.",
+   "action": "bonus"
+  },
+  {
+   "id": "steampunk_gadget_ear_trumpet",
+   "displayName": "Ear Trumpet",
+   "match": [
+    "gadget: ear trumpet"
+   ],
+   "uses": 1,
+   "ability": "int",
+   "recharge": "short",
+   "guidance": "Utility Gadgets (Ear Trumpet): a bonus action, a number of times equal to the gadgeteer's Intelligence modifier (at least once) between rests; with Chain Deployment a second, different gadget rides the same bonus action.",
+   "action": "bonus"
+  },
+  {
+   "id": "steampunk_gadget_skeleton_key",
+   "displayName": "Skeleton Key",
+   "match": [
+    "gadget: skeleton key"
+   ],
+   "uses": 1,
+   "ability": "int",
+   "recharge": "short",
+   "guidance": "Utility Gadgets (Skeleton Key): a bonus action, a number of times equal to the gadgeteer's Intelligence modifier (at least once) between rests; with Chain Deployment a second, different gadget rides the same bonus action.",
+   "action": "bonus"
+  },
+  {
+   "id": "steampunk_gadget_pocket_shield",
+   "displayName": "Pocket Shield",
+   "match": [
+    "gadget: pocket shield"
+   ],
+   "uses": 1,
+   "ability": "int",
+   "recharge": "short",
+   "guidance": "Utility Gadgets (Pocket Shield): a bonus action, a number of times equal to the gadgeteer's Intelligence modifier (at least once) between rests; with Chain Deployment a second, different gadget rides the same bonus action.",
+   "action": "bonus"
   }
  ]
 }

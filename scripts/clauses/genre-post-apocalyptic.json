@@ -133,16 +133,15 @@
   "clauses": [
    {
     "c": "Advantage to spot traps, ambushes, and unstable ground",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Trap Eye#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Trap Eye: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-checks.mjs Trap Eye: a check with the circumstance or creature named throws two d20",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts (check_adv perception and investigation about traps), read by src/lib/dm/roll-feature-riders.ts authoredRollRiders from request_roll"
    },
    {
     "c": "+2 initiative in ruins",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Trap Eye#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Trap Eye: a scavenger's initiative is +2 where the place's ambience is ruins",
+    "by": "src/lib/dm/genre-gb-ruins.ts ruinsInitiative (the current location's ambience bed ruins), read by src/lib/dm/forced-save.ts rollExtrasFor"
    }
   ]
  },
@@ -414,11 +413,9 @@
   "clauses": [
    {
     "c": "Advantage on Stealth while in ruins or wreckage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::Silent Salvage#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Silent Salvage: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-checks.mjs Silent Salvage: a check with the circumstance or creature named throws two d20",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts (check_adv stealth about ruins), read by src/lib/dm/roll-feature-riders.ts authoredRollRiders from request_roll"
    }
   ]
  },
@@ -544,11 +541,9 @@
   "clauses": [
    {
     "c": "In ruins you cannot be surprised, tracked, or flanked, and your Scrap Sense recharges on any rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap scavenger::One With the Ruins#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to One With the Ruins: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs One With the Ruins: in ruins a scavenger is not surprised and not flanked, and Scrap Sense comes back on a short rest",
+    "by": "src/lib/dm/genre-gb-ruins.ts oneWithTheRuins (src/lib/dm/surprise-guard.ts, src/lib/dm/attack-spatial.ts enemyFlanks) and scrapOnAnyRest (src/lib/dm/rest-logic.ts); being tracked is a creature's Survival check the GM calls, nothing tracks a character on the engine"
    },
    {
     "c": "your Scrap Sense recharges on any rest",
@@ -846,13 +841,15 @@
    },
    {
     "c": "when an ally within 30 ft drops to 0 HP, immediately move your speed and make one attack",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_road_rage#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Road Rage: when an ally within 30 feet drops to 0, the road warrior may move off their turn and make one attack",
+    "by": "src/lib/dm/genre-gb-road-rage.ts roadRageWakes (from src/lib/dm/death.ts at the drop: the road rage mark within 30 feet), the reaction attack in src/lib/srd/authored-effects-genre-gb.ts, the off-turn move in src/lib/dm/map-tools.ts move_token"
    },
    {
     "c": "within 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_road_rage#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Road Rage: when an ally within 30 feet drops to 0, the road warrior may move off their turn and make one attack",
+    "by": "src/lib/dm/genre-gb-road-rage.ts roadRageWakes (from src/lib/dm/death.ts at the drop: the road rage mark within 30 feet), the reaction attack in src/lib/srd/authored-effects-genre-gb.ts, the off-turn move in src/lib/dm/map-tools.ts move_token"
    }
   ]
  },
@@ -901,13 +898,15 @@
    },
    {
     "c": "when you drop to 0 HP, keep fighting: you remain conscious at 0 for 1 minute, then fall",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_witnessed#SPENT_FOR_NOTHING"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Witnessed: a road warrior dropped to 0 stays conscious and on their feet for a minute",
+    "by": "src/lib/dm/death.ts (the drop: Witnessed's use spent, the witnessed mark laid in place of unconscious, stable), src/lib/dm/vitals-logic.ts holdsOn, src/lib/dm/condition-tick.ts (the minute ends at 0: down and dying)"
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_witnessed#SPENT_FOR_NOTHING"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Witnessed: a road warrior dropped to 0 stays conscious and on their feet for a minute",
+    "by": "src/lib/dm/death.ts (the drop: Witnessed's use spent, the witnessed mark laid in place of unconscious, stable), src/lib/dm/vitals-logic.ts holdsOn, src/lib/dm/condition-tick.ts (the minute ends at 0: down and dying)"
    }
   ]
  },
@@ -953,21 +952,21 @@
   "clauses": [
    {
     "c": "A hooked chain (1d8 piercing, 15-ft reach): on hit, drag the target 10 ft toward you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Chained Hook#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Chained Hook: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Chained Hook: the road warrior's chain strikes a creature 15 feet off for 1d8 piercing and drags it 10 feet toward them",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Chained Hook (natural_weapon 1d8 piercing) with src/lib/dm/genre-gb-hook.ts hookReachTiles (src/lib/dm/pc-attack-profile.ts) and hookDrag (src/lib/dm/attack-blow.ts, src/lib/dm/map-tools.ts pullTokenToward)"
    },
    {
     "c": "15-ft reach",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Chained Hook#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Chained Hook: the road warrior's chain strikes a creature 15 feet off for 1d8 piercing and drags it 10 feet toward them",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Chained Hook (natural_weapon 1d8 piercing) with src/lib/dm/genre-gb-hook.ts hookReachTiles (src/lib/dm/pc-attack-profile.ts) and hookDrag (src/lib/dm/attack-blow.ts, src/lib/dm/map-tools.ts pullTokenToward)"
    },
    {
     "c": "1d8 piercing",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Chained Hook#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Chained Hook: the road warrior's chain strikes a creature 15 feet off for 1d8 piercing and drags it 10 feet toward them",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Chained Hook (natural_weapon 1d8 piercing) with src/lib/dm/genre-gb-hook.ts hookReachTiles (src/lib/dm/pc-attack-profile.ts) and hookDrag (src/lib/dm/attack-blow.ts, src/lib/dm/map-tools.ts pullTokenToward)"
    }
   ]
  },
@@ -979,11 +978,9 @@
   "clauses": [
    {
     "c": "Advantage on Intimidation against travelers, traders, and rival crews",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Reaver's Toll#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Reaver's Toll: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-checks.mjs Reaver's Toll: a check with the circumstance or creature named throws two d20",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts (check_adv intimidation against a traveler, trader, merchant or crew), read by src/lib/dm/roll-feature-riders.ts authoredRollRiders from request_roll"
    }
   ]
  },
@@ -1027,11 +1024,9 @@
   "clauses": [
    {
     "c": "After you hit with Ram Speed, make one extra attack against a different creature within reach",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap road_warrior::Gore Drift#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Gore Drift: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Gore Drift: a Ram Speed hit grants one more attack this turn, which must go to a creature other than the one rammed",
+    "by": "src/lib/dm/genre-gb-gore-drift.ts goreDrift (src/lib/dm/attack-blow.ts, after the blow) and goreDriftRefusal (src/lib/dm/pc-attack-plan.ts)"
    }
   ]
  },
@@ -1055,18 +1050,21 @@
    },
    {
     "c": "for 1 minute your speed doubles, Ram Speed deals +4d6, and you resist all damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:post_apocalyptic_last_ride_of_the_reaver#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Last Ride of the Reaver: the spend lays a minute in which speed doubles, a Ram Speed hit rolls 4d6 more and every damage type is resisted",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Last Ride of the Reaver (buff spend, hit_rider 4d6 after a 20-foot run and resist all, gated on the condition) and src/lib/srd/genre-gb-conditions.ts (speed x2)"
    },
    {
     "c": "for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:post_apocalyptic_last_ride_of_the_reaver#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Last Ride of the Reaver: the spend lays a minute in which speed doubles, a Ram Speed hit rolls 4d6 more and every damage type is resisted",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Last Ride of the Reaver (buff spend, hit_rider 4d6 after a 20-foot run and resist all, gated on the condition) and src/lib/srd/genre-gb-conditions.ts (speed x2)"
    },
    {
     "c": "+4d6",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:post_apocalyptic_last_ride_of_the_reaver#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Last Ride of the Reaver: the spend lays a minute in which speed doubles, a Ram Speed hit rolls 4d6 more and every damage type is resisted",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Last Ride of the Reaver (buff spend, hit_rider 4d6 after a 20-foot run and resist all, gated on the condition) and src/lib/srd/genre-gb-conditions.ts (speed x2)"
    }
   ]
  },
@@ -1153,8 +1151,9 @@
    },
    {
     "c": "advantage on Perception checks using smell",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Predator Senses#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-checks.mjs Predator Senses: a perception check with about smell throws two d20",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Predator Senses (check_adv perception about smell), read by src/lib/dm/roll-feature-riders.ts authoredRollRiders from request_roll"
    }
   ]
  },
@@ -1294,11 +1293,9 @@
   "clauses": [
    {
     "c": "Learn two spells from any spell list",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Grafted Power#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Grafted Power: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-any-list-picks.mjs An aberrant reaching 13th learns Grafted Power's two spells from any class on top of the mutations the class's count gives, and the level-up takes them",
+    "by": "src/lib/srd/class-spell-grants.ts classSpellGrants (aberrant 13: two from any list, on top), read by src/lib/srd/level-up-spells.ts, src/lib/srd/any-list-picks-logic.ts and the creation check's offListProblems"
    },
    {
     "c": "they count as mutations for you",
@@ -1472,14 +1469,15 @@
    },
    {
     "c": "split into a swarm shape until your next turn, taking half damage from the attack and moving through gaps freely",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_splintered_form#GUIDANCE_ONLY",
-    "note": "The half damage is built (use_reaction reduce half); moving through gaps until the next turn is not."
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Splintered Form: the reaction halves the hit and lays the swarm shape until the aberrant's next turn",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Splintered Form (reduce half, form swarm shape), laid by src/lib/dm/authored-reactions.ts for a round; src/lib/battlemap/passage.ts pcMoveTraits walks its holder as Tiny (src/lib/srd/genre-gb-conditions.ts)"
    },
    {
     "c": "until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:post_apocalyptic_splintered_form#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Splintered Form: the reaction halves the hit and lays the swarm shape until the aberrant's next turn",
+    "by": "src/lib/srd/authored-effects-genre-b.ts Splintered Form (reduce half, form swarm shape), laid by src/lib/dm/authored-reactions.ts for a round; src/lib/battlemap/passage.ts pcMoveTraits walks its holder as Tiny (src/lib/srd/genre-gb-conditions.ts)"
    }
   ]
  },
@@ -1781,16 +1779,15 @@
   "clauses": [
    {
     "c": "During a long rest, build one temporary device that duplicates a 2nd-level tech effect",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Field Fabricator#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Field Fabricator: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Field Fabricator: once a long rest the salvage tech builds a device holding a 2nd-level wizard spell with their DC and attack; an ally who is no caster triggers it once with use_item, and the next long rest takes an unused one apart",
+    "by": "src/lib/dm/genre-gb-fabricator.ts fieldFabricator (the build), src/lib/srd/genre-gb-device.ts (the device's one cast, read by src/lib/srd/item-spells.ts itemSpellsOf; gone at the next long rest in src/lib/srd/ar-ws-conjured.ts)"
    },
    {
     "c": "anyone can trigger it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap salvage_tech::Field Fabricator#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-post-apocalyptic.mjs Field Fabricator: once a long rest the salvage tech builds a device holding a 2nd-level wizard spell with their DC and attack; an ally who is no caster triggers it once with use_item, and the next long rest takes an unused one apart",
+    "by": "src/lib/dm/genre-gb-fabricator.ts fieldFabricator (the build), src/lib/srd/genre-gb-device.ts (the device's one cast, read by src/lib/srd/item-spells.ts itemSpellsOf; gone at the next long rest in src/lib/srd/ar-ws-conjured.ts)"
    }
   ]
  },
@@ -2299,11 +2296,9 @@
   "clauses": [
    {
     "c": "Advantage on Intimidation and Persuasion against raiders, cultists, and the desperate",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap waste_preacher::Shepherd's Stare#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Shepherd's Stare: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-checks.mjs Shepherd's Stare: a check with the circumstance or creature named throws two d20",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts (check_adv intimidation and persuasion against a raider, bandit, cultist or the desperate), read by src/lib/dm/roll-feature-riders.ts authoredRollRiders from request_roll"
    }
   ]
  },

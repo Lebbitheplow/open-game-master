@@ -123,7 +123,23 @@ const FREE_HEAD_OF_STEAM = "head of steam:free";
 // of the turn, or null when it costs what it always does. `marks`: the
 // holder's own turn's (absent off their turn, where nothing is waived).
 // src/lib/dm/authored-spends.ts charges by it and the Hand's card prices by it.
+// The gadgets a gadgeteer picks (src/lib/srd/options.json "gadget").
+export const GADGET_NAMES = ["Grapnel", "Smoke Bomb", "Arc Lamp", "Ear Trumpet", "Skeleton Key", "Pocket Shield"];
+const CHAINED = "chain deployment";
+
+// Whether this spend can ever be free (asked before the turn's budget is read).
+export function mayBeFree(sheet: Holder, spendName: string): boolean {
+  return Boolean(freeSpendKey(sheet, spendName, [])) || (GADGET_NAMES.some((name) => textKey(name) === textKey(spendName)) && holdsGenreFeature(sheet, "gadgeteer", "Chain Deployment"));
+}
+
 export function freeSpendKey(sheet: Holder, spendName: string, marks: readonly string[] | undefined): string | null {
+  // Chain Deployment (gadgeteer 15): "Use two different gadgets with the same
+  // bonus action": a gadget used after another this turn costs nothing more,
+  // once a turn. Each gadget's use leaves its mark (authored-effects-genre-gb.ts).
+  if (marks && GADGET_NAMES.some((name) => textKey(name) === textKey(spendName))) {
+    const other = GADGET_NAMES.some((name) => textKey(name) !== textKey(spendName) && marks.includes(`authored:${textKey(name)}`));
+    return other && !marks.includes(CHAINED) && holdsGenreFeature(sheet, "gadgeteer", "Chain Deployment") ? CHAINED : null;
+  }
   if (!marks || textKey(spendName) !== textKey("Head of Steam") || marks.includes(FREE_HEAD_OF_STEAM)) {
     return null;
   }

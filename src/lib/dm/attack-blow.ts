@@ -5,6 +5,8 @@
 // (pc-attack-resolve.ts); real dice reach it when the player's damage roll
 // lands (pc-attack-parked.ts).
 
+import { goreDrift } from "@/lib/dm/genre-gb-gore-drift";
+import { hookDrag } from "@/lib/dm/genre-gb-hook";
 import { ballistaPush } from "@/lib/dm/cannon-board-dra";
 import { runPush } from "@/lib/dm/genre-run-hits";
 import { empoweredLine } from "@/lib/dm/mt-srd-metamagic";
@@ -240,6 +242,16 @@ export function landSwingBlow(
     const rammed = runPush(scene, record);
     if (rammed) {
       notes.push(rammed);
+    }
+    // Chained Hook's drag toward the warrior (genre-gb-hook.ts).
+    const dragged = hookDrag(scene, record);
+    if (dragged) {
+      notes.push(dragged);
+    }
+    // Gore Drift's extra attack after a Ram Speed hit (genre-gb-gore-drift.ts).
+    const drift = goreDrift(scene, record);
+    if (drift) {
+      notes.push(drift);
     }
     if (ask.maneuver && record.maneuver) {
       out.maneuver = maneuverRiderSave(scene, record.maneuver);

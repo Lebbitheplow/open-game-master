@@ -6,6 +6,7 @@
 // Must not import encounter-tools, pc-attack or action-tools: all three
 // call in here.
 
+import { oneWithTheRuins } from "@/lib/dm/genre-gb-ruins";
 import { fortifiedCover } from "@/lib/dm/cannon-board-dra";
 import { getBattleMapForEncounter, getTokenByRef, listTokens } from "@/lib/db/battle-maps";
 import { getEncounter, getEnemy, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
@@ -192,6 +193,11 @@ export function enemyFlanks(encounterId: string, enemyId: string, characterId: s
   const attacker = map ? getTokenByRef(map.id, enemyId) : null;
   const target = map ? getTokenByRef(map.id, characterId) : null;
   if (!map || !attacker || !target) {
+    return false;
+  }
+  // One With the Ruins: a scavenger in ruins is never flanked (genre-gb-ruins.ts).
+  const struck = getSheetById(characterId);
+  if (struck && oneWithTheRuins(struck)) {
     return false;
   }
   const mine = sideOf(sidesOf(encounterId), "enemy", enemyId);

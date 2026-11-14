@@ -11,13 +11,15 @@ import { luckPointsLeft } from "@/lib/srd/class-resources";
 import { ownTurnOf } from "@/lib/dm/held-turn";
 import { mergeAdvantage } from "@/lib/dm/condition-logic";
 import { mountedAdvantage } from "@/lib/dm/ar-wbf-feat-doors";
+import { steampunkAttackCover } from "@/lib/dm/genre-b-steampunk-cover";
+import { goreDriftRefusal } from "@/lib/dm/genre-gb-gore-drift";
 import { coverFeatName, damageShakesConcentration, elementalAdeptApplies, flamesOfPhlegethosApplies, floorDamageDice, rerollOnesDice, hasSkulker, polearmButtDamage, powerAttackFeat, shotIgnoresCover, shotIgnoresLongRange, spellIgnoresCover, stunningSniperApplies } from "@/lib/srd/feat-combat";
 import { underwaterRangeMiss } from "@/lib/dm/underwater";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { listEnemies, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import type { Advantage } from "@/lib/dice";
-import { spendAction, spendAttack, type TurnBudget } from "@/lib/dm/action-budget";
+import { budgetApplies, spendAction, spendAttack, type TurnBudget } from "@/lib/dm/action-budget";
 import type { AttackProfile } from "@/lib/dm/attack-logic";
 import { dualWields, isUndeadOrFiend, offHandProblem, slotFree, smiteDice } from "@/lib/dm/attack-rules";
 import { drawRow, gearKindOf, guessedRehand, handsFor, handsFullError, rehandLine, spendInteraction } from "@/lib/dm/gear-hands";
@@ -317,6 +319,11 @@ export function planPcAttack(input: {
       return { refused: shell };
     }
   }
+  // Gore Drift's extra attack goes to another creature (genre-gb-gore-drift.ts).
+  const drift = weaponAttack && budgetApplies(encounter.turnBudget, sheet.id, encounter.round) ? goreDriftRefusal(encounter.turnBudget, enemy.id, enemy.displayName) : null;
+  if (drift) {
+    return { refused: { error: drift, refused: "rules" as const } };
+  }
   const featNotes: string[] = [];
   // Sharpshooter's shot and Spell Sniper's spell pass half and
   // three-quarters cover; Sharpshooter's shot takes no disadvantage at long
@@ -332,6 +339,13 @@ export function planPcAttack(input: {
   if (focus) {
     featNotes.push(`${focus.name} (Enhanced Arcane Focus): ${enemy.displayName}'s half cover does not count`);
     geometry = { ...geometry, effectiveAc: geometry.effectiveAc - geometry.cover, cover: 0, screen: null };
+  }
+  // Powder Discipline's shot and Precision Engineering's schematic
+  // (src/lib/dm/genre-b-steampunk-cover.ts).
+  const steamCover = steampunkAttackCover(sheet, { spell: kind === "spell", weapon: weaponAttack, base: profile.base }, geometry.cover, enemy.displayName);
+  if (steamCover) {
+    featNotes.push(steamCover.note);
+    geometry = { ...geometry, effectiveAc: geometry.effectiveAc - (geometry.cover - steamCover.cover), cover: steamCover.cover, screen: steamCover.cover ? geometry.screen : null };
   }
   if (weaponAttack && atRange && geometry.spatials.longRange && shotIgnoresLongRange(sheet)) {
     featNotes.push("Sharpshooter: no disadvantage at long range");

@@ -34,6 +34,9 @@ export type StrikeTarget = {
   // How many feet straight at the creature the attacker ran this turn
   // (mt-fb-charge.ts runToward), for an afterRunFt rider.
   ranFt?: number;
+  // The attacker is aloft on the board (genre-gb-airborne.ts), for an
+  // airborne rider.
+  airborne?: boolean;
 };
 
 const mods = (sheet: Pick<CharacterSheet, "abilities">) =>
@@ -77,6 +80,7 @@ export function genreStrikeRiders(
     if (effect.vsTypes && !(type && effect.vsTypes.some((kind) => type.includes(kind)))) continue;
     if (effect.vsNotActed && !target?.notActed) continue;
     if (effect.afterRunFt && (target?.ranFt ?? 0) < effect.afterRunFt) continue;
+    if (effect.airborne && !target?.airborne) continue;
     if (effect.vsMark && !markRides(sheet, effect.vsMark, target)) continue;
     if (effect.vsCondition && !target?.conditions?.some((entry) => isConditionNamed(entry, effect.vsCondition!))) continue;
     out.push({

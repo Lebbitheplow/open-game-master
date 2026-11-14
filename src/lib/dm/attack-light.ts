@@ -16,6 +16,7 @@
 // invisible, hidden) are the whole answer, as before.
 
 import { horrorVeilTiles } from "@/lib/srd/genre-a-horror-holds";
+import { candleSightTiles } from "@/lib/dm/genre-gb-horror";
 import { getClock } from "@/lib/db/clock";
 import { getBattleMapForEncounter, getTokenByRef, listTokens } from "@/lib/db/battle-maps";
 import { getEnemy, type EncounterEnemy } from "@/lib/db/encounters";
@@ -56,8 +57,9 @@ export function characterSenses(sheet: Pick<CharacterSheet, "features" | "race">
   // Revelation in Flesh's sight of the invisible (ar-ws-revelation.ts).
   const unveils = revelationSightTiles(sheet.conditions);
   // A monk subclass's blindsight and Astral Sight (mt-mr-senses.ts).
-  // Veilsight sees the invisible within 30 feet (genre-a-horror-holds.ts).
-  return { ...mrSensesOver(sheet, { ...senses, darkvision: Math.max(named, authored), truesight: Math.max(senses.truesight, seeing, horrorVeilTiles(sheet)) }), ...(unveils ? { unveils } : {}) };
+  // Veilsight sees the invisible within 30 feet (genre-a-horror-holds.ts);
+  // Light Against the Dark within 10 by a carried light (genre-gb-horror.ts).
+  return { ...mrSensesOver(sheet, { ...senses, darkvision: Math.max(named, authored), truesight: Math.max(senses.truesight, seeing, horrorVeilTiles(sheet), candleSightTiles(sheet)) }), ...(unveils ? { unveils } : {}) };
 }
 
 export function enemySenses(enemy: Pick<EncounterEnemy, "stats"> & { conditions?: string[] }): Senses {

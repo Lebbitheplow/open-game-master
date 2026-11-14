@@ -36,7 +36,11 @@ const { AUTHORED_TABLE } = await import("../../src/lib/srd/authored-effects.ts")
 // An option pick that carries its own authored row (a Rune Knight's runes,
 // "fighter::Rune: Stone Rune"): held from the grant's first level, as a
 // player who picked it holds it.
-const OPTION_ROWS = optionGrantFeatures().filter((pick) => AUTHORED_TABLE[`${pick.classId}::${pick.name}`]);
+// A genre class's pick (a gadgeteer's gadgets) carries its row in the genre
+// table, found by its held name (src/lib/srd/authored-effects-genre-gb.ts).
+const { GENRE_AUTHORED } = await import("../../src/lib/srd/authored-effects-genre.ts");
+const GENRE_PICKS = new Set(GENRE_AUTHORED.map((row) => `${(row.classes ?? [""])[0]}::${row.feature}`));
+const OPTION_ROWS = optionGrantFeatures().filter((pick) => AUTHORED_TABLE[`${pick.classId}::${pick.name}`] || GENRE_PICKS.has(`${pick.classId}::${pick.name}`));
 export const optionPicks = (build, level) =>
   OPTION_ROWS.filter((pick) => pick.classId === build.classId && (!pick.subclass || pick.subclass === build.subclass) && level >= pick.level).map((pick) => ({ name: pick.name, source: "choice", classId: pick.classId }));
 

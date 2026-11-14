@@ -30,13 +30,23 @@ import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { DISARMED } from "@/lib/srd/genre-b-steampunk-attacks";
 import type { SteampunkSpend } from "@/lib/srd/genre-b-steampunk-types";
+import { boardingAction, extraTurn, grapnelAce } from "@/lib/dm/genre-gb-aeronaut";
+import { fieldFabricator } from "@/lib/dm/genre-gb-fabricator";
 
-type Outcome = ToolError | { result: Record<string, unknown> };
+type Outcome = ToolError | { result: Record<string, unknown>; patch?: import("@/lib/schemas/sheet").FullPatchSheetInput };
 
 export function steampunkSpend(ctx: SpendContext, does: SteampunkSpend): Outcome {
   switch (does.what) {
     case "rearm":
       return rearm(ctx);
+    case "grapnel":
+      return grapnelAce(ctx, does.mode);
+    case "extra_turn":
+      return extraTurn(ctx, ctx.spend.name);
+    case "boarding":
+      return boardingAction(ctx);
+    case "fabricate":
+      return fieldFabricator(ctx);
   }
 }
 

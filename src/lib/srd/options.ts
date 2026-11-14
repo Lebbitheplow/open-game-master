@@ -53,7 +53,11 @@ export type OptionKind =
   | "animal_lord"
   | "legerdemain_cantrip"
   | "legerdemain_spell"
-  | "legerdemain_spell_2";
+  | "legerdemain_spell_2"
+  // The gadgeteer's gadgets (steampunk): Utility Gadgets picks two, Third,
+  // Fourth and Fifth Gadget one more each (src/lib/srd/authored-effects-genre-gb.ts
+  // gives each pick its use).
+  | "gadget";
 
 export type OptionDef = {
   k: OptionKind;
@@ -387,6 +391,19 @@ const GRANTS: Grant[] = [
   { kind: "legerdemain_cantrip", classId: "rogue", subclass: "Smuggler", steps: [[3, 2]] },
   { kind: "legerdemain_spell", classId: "rogue", subclass: "Smuggler", steps: [[7, 1]] },
   { kind: "legerdemain_spell_2", classId: "rogue", subclass: "Smuggler", steps: [[13, 1]] },
+  // "Pick two gadgets (grapnel, smoke bomb, arc lamp, ear trumpet, skeleton
+  // key, pocket shield)", then "Learn a third gadget" (6), a fourth (10) and
+  // a fifth (14).
+  {
+    kind: "gadget",
+    classId: "gadgeteer",
+    steps: [
+      [14, 5],
+      [10, 4],
+      [6, 3],
+      [1, 2],
+    ],
+  },
   {
     kind: "discipline",
     classId: "monk",

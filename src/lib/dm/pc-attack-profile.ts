@@ -4,6 +4,7 @@
 // module describes. Nothing is spent here and nothing is rolled: every
 // return is either a refusal or a profile.
 
+import { hookReachTiles } from "@/lib/dm/genre-gb-hook";
 import { activeAuthored } from "@/lib/srd/authored-effects";
 import { isPactWeapon } from "@/lib/srd/pact-weapon";
 import { genreStrike } from "@/lib/srd/genre-b-combat";
@@ -486,6 +487,11 @@ export function buildAttackProfile(
   const reach = kind === "weapon" && !profile.ranged ? authoredReachBonus(sheet, profile.unarmed === true) : null;
   if (reach) {
     profile = { ...profile, reachTiles: profile.reachTiles + reach.tiles, riderNotes: [...profile.riderNotes, `${reach.feature}: ${reach.tiles * 5} more feet of reach`] };
+  }
+  // Chained Hook: the chain reaches 15 feet (genre-gb-hook.ts).
+  const hookTiles = kind === "weapon" ? hookReachTiles(sheet, profile.weapon) : null;
+  if (hookTiles && hookTiles > profile.reachTiles) {
+    profile = { ...profile, reachTiles: hookTiles };
   }
   // Long-Limbed (bugbear): 5 more feet on a melee attack of their own turn
   // (src/lib/srd/mt-species-traits.ts).

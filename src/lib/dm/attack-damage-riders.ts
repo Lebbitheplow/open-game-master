@@ -77,6 +77,8 @@ export function attackDamageRiders(input: {
   notActed?: boolean;
   // How far the attacker ran straight at it this turn (mt-fb-charge.ts runToward).
   ranFt?: number;
+  // The attacker is aloft on the board (genre-gb-airborne.ts).
+  airborne?: boolean;
 }): AttackDamageRiders {
   const { sheet, profile, riders, kind, marked } = input;
   const rageBonus = ragingMeleeBonus(sheet, profile);
@@ -104,7 +106,7 @@ export function attackDamageRiders(input: {
           ...heldConditionRiders(sheet),
           ...lineageRiders(sheet, { surprised: input.surprised }),
           ...graveTouchedDie(sheet, profile),
-          ...genreStrikeRiders(sheet, profile, input.enemy ? { type: input.enemy.stats?.type, notActed: input.notActed, marked, conditions: input.enemy.conditions, ranFt: input.ranFt } : undefined),
+          ...genreStrikeRiders(sheet, profile, input.enemy ? { type: input.enemy.stats?.type, notActed: input.notActed, marked, conditions: input.enemy.conditions, ranFt: input.ranFt, airborne: input.airborne } : undefined),
           ...genreBRiders(sheet, profile, input.enemy),
         ]
           // Read as feature riders: a lineage's rider names no weapon of its own.

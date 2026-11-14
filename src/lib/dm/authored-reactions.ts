@@ -545,7 +545,12 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       }
       // Capacitor Soul: the slot the absorbed charge gives back (genre-b-steampunk-reactions.ts).
       const regained = does.regainSlot ? regainSlot(ctx.campaign, holder.id, does.regainSlot) : null;
-      return { ...(rolled ? { rolled } : {}), applied: `${reaction.name} takes ${reduction} off the ${swing.attack ?? hit.record.attack} hit on ${target.name}: ${settled.given} hit points come back. HP ${settled.hp}.`, ...(regained ? { regained } : {}), ...reflected };
+      // Splintered Form: the swarm shape held until the holder's next turn.
+      const shaped = does.form ? getSheetById(holder.id) : null;
+      if (shaped && does.form) {
+        reactionPatch(ctx.campaign, ctx.turn.id, shaped.id, { conditions: [...shaped.conditions.filter((entry) => entry !== does.form), does.form], conditionMeta: { ...(shaped.conditionMeta ?? {}), [does.form]: { rounds: 1, source: reaction.name } } }, `${reaction.name}: ${does.form} until the next turn`);
+      }
+      return { ...(rolled ? { rolled } : {}), ...(does.form ? { form: `${holder.name} takes the ${does.form} until their next turn: a Tiny mover on the board, through any creature's space at least two sizes larger.` } : {}), applied: `${reaction.name} takes ${reduction} off the ${swing.attack ?? hit.record.attack} hit on ${target.name}: ${settled.given} hit points come back. HP ${settled.hp}.`, ...(regained ? { regained } : {}), ...reflected };
     }
     // Unstable Backlash: the Wild Surge rolled again (mt-fb-wild-surge.ts).
     case "resurge": {

@@ -8,6 +8,7 @@
 
 import { textKey } from "@/lib/language/text-logic";
 import { runToward } from "@/lib/dm/mt-fb-charge";
+import { airborneNow } from "@/lib/dm/genre-gb-airborne";
 import { authoredNaturalWeapon, authoredSneakBonus } from "@/lib/srd/authored-effects-more";
 import { horrorSampled } from "@/lib/dm/genre-a-horror-hits";
 import { pactWeaponAttack } from "@/lib/srd/pact-weapon";
@@ -78,7 +79,9 @@ export function foldDamageRiders(input: {
   // attack-damage-riders.ts, which the Hand's attack cards print from too.
   // The server folds them into the damage dice so both the digital and
   // physical-dice paths carry them.
-  const { rageBonus, abilityRiders, onHit, featureRiders, toHitRiders } = attackDamageRiders({ ...input, notActed, ranFt });
+  // Aloft on the board, for a rider that rides a shot from the air (Greater Daring).
+  const airborne = Boolean(fight) && airborneNow(campaignId, sheet.id);
+  const { rageBonus, abilityRiders, onHit, featureRiders, toHitRiders } = attackDamageRiders({ ...input, notActed, ranFt, airborne });
   for (const rider of toHitRiders) {
     profile = { ...profile, toHit: profile.toHit + rider.amount, riderNotes: [...profile.riderNotes, `${rider.feature}: +${rider.amount} to hit`] };
   }

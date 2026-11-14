@@ -24,6 +24,7 @@ import { GENRE_B_CONDITION_EFFECTS } from "@/lib/srd/genre-b-conditions";
 import { GENRE_B_MYSTERY_CONDITION_EFFECTS } from "@/lib/srd/genre-b-mystery-conditions";
 import { GENRE_B_PA_CONDITION_EFFECTS } from "@/lib/srd/genre-b-post-apocalyptic-conditions";
 import { GENRE_B_STEAMPUNK_CONDITION_EFFECTS } from "@/lib/srd/genre-b-steampunk-conditions";
+import { GENRE_GB_CONDITION_EFFECTS } from "@/lib/srd/genre-gb-conditions";
 import { NUMBERED_CONDITION_EFFECTS, STRIKE_CONDITION_EFFECTS } from "@/lib/srd/condition-effects-spells";
 import type { ConditionEffectRow, SaveAbilityId } from "@/lib/srd/condition-effect-types";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -834,6 +835,7 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
   ...LAST_CONDITION_EFFECTS,
   ...GENRE_A_CONDITIONS,
   ...GENRE_B_STEAMPUNK_CONDITION_EFFECTS,
+  ...GENRE_GB_CONDITION_EFFECTS,
   ...GENRE_B_CONDITION_EFFECTS,
   ...GENRE_B_MYSTERY_CONDITION_EFFECTS,
   ...GENRE_B_PA_CONDITION_EFFECTS,

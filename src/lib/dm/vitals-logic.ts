@@ -22,6 +22,12 @@ export const PRONE = "prone";
 // their feet for the extra turn the reaction gives; the fall comes when that
 // turn ends (src/lib/dm/reaction-counters.ts, turn-end.ts).
 export const HOLDING_ON = "strength before death";
+// Witnessed (road warrior 17): "when you drop to 0 HP, keep fighting: you
+// remain conscious at 0 for 1 minute, then fall". Laid in place of
+// unconscious and prone at the drop (src/lib/dm/death.ts), stable for the
+// minute; as it runs out at 0 hit points the warrior falls, dying
+// (src/lib/dm/condition-tick.ts).
+export const WITNESSED = "witnessed";
 // Rage Beyond Death (Path of the Zealot 14): at 0 hit points and on their feet
 // while the rage lasts (src/lib/dm/mt-fb-rage-death-logic.ts lays it as they
 // drop; it ends with the rage, src/lib/dm/rage-bound.ts).
@@ -70,7 +76,7 @@ export function conditionsOf(sheet: {
 // Up at 0 hit points: for Strength before Death's extra turn, or raging on
 // under Rage Beyond Death.
 export function holdsOn(sheet: { conditions: string[]; deathSaves?: { dead: boolean } | null }): boolean {
-  return !sheet.deathSaves?.dead && sheet.conditions.some((entry) => [HOLDING_ON, RAGING_ON].includes(entry.trim().toLowerCase()));
+  return !sheet.deathSaves?.dead && sheet.conditions.some((entry) => [HOLDING_ON, RAGING_ON, WITNESSED].includes(entry.trim().toLowerCase()));
 }
 
 // Hit points are back: the creature wakes and is still on the ground.

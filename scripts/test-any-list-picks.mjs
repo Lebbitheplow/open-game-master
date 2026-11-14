@@ -295,4 +295,26 @@ test("A Pact of the Chain warlock built at 3rd holds find familiar free of the s
   assert.ok(built.sheet?.spellcasting?.known?.includes("Find Familiar"), "the saved sheet does not carry find familiar");
 });
 
+// Grafted Power (aberrant 13): "Learn two spells from any spell list; they
+// count as mutations for you." The aberrant casts from the sorcerer's list.
+test("An aberrant reaching 13th learns Grafted Power's two spells from any class on top of the mutations the class's count gives, and the level-up takes them", () => {
+  const grants = classSpellGrants({ classId: "aberrant", level: 13 });
+  assert.deepEqual([grants.anyList, grants.extraSpells, grants.feature], [2, 2, "Grafted Power"], `Grafted Power's grant: ${JSON.stringify(grants)}`);
+  assert.equal(classSpellGrants({ classId: "aberrant", level: 12 }).anyList, 0, "a 12th-level aberrant was offered Grafted Power");
+  const capAt = (level) => casterPreview({ classId: "aberrant", subclass: "", level, abilitiesAfter: ABILITIES }).spellCap.count;
+  const sorcerer = listOf("sorcerer", 1, 6);
+  const known = sorcerer.slice(0, capAt(12));
+  const fresh = sorcerer.filter((name) => !known.includes(name)).slice(0, capAt(13) - capAt(12));
+  assert.ok(!onList("sorcerer")("Cure Wounds") && !onList("sorcerer")("Guardian of Faith"), "the off-list picks are on the sorcerer's list");
+  const take = (picks) => levelUpSpells({
+    before: { classId: "aberrant", ability: "cha", level: 12, subclass: "", style: "known", known, prepared: [], cantrips: listOf("sorcerer", 0, 0).slice(0, 5), pending: [], spellbook: [], features: [] },
+    level: 13, subclass: "", list: "sorcerer", firstLevel: false, abilities: ABILITIES, freeCantrips: 0, features: [], spellOf: checklistSpell,
+    picks: { kind: "picks", spells: picks },
+  });
+  const taken = take([...fresh, "Cure Wounds", "Guardian of Faith"]);
+  assert.ok("view" in taken, `the level-up refused Grafted Power's two: ${taken.error}`);
+  const third = take([...fresh, "Cure Wounds", "Guardian of Faith", "Bless"]);
+  assert.ok(!("view" in third), "a third spell off the list was taken");
+});
+
 console.log(`test-any-list-picks: ${passed} passed`);

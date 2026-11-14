@@ -1,3 +1,7 @@
+import { roadRageWakes } from "@/lib/dm/genre-gb-road-rage";
+import { WITNESSED } from "@/lib/dm/vitals-logic";
+import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { holdsGenreFeature } from "@/lib/srd/genre-b-combat";
 import { recordSteadied, recordTrigger } from "@/lib/dm/last-save";
 import { currentActor } from "@/lib/dm/acting-party";
 import { deathSaveFeat } from "@/lib/srd/feat-combat";
@@ -215,6 +219,24 @@ export function applyDamageDeathHook(
       tableNote(campaign, `${fresh.name} is killed outright by massive damage.`, "cue-death");
       return { dead: true, note: `${fresh.name} is killed INSTANTLY (massive damage). This death is real; narrate it.` };
     }
+    // Road Rage: a road warrior within 30 feet answers the drop (genre-gb-road-rage.ts).
+    const raged = roadRageWakes(campaign, fresh);
+    if (raged.length) {
+      tableNote(campaign, raged.join(" "), "cue-death");
+    }
+    // Witnessed: a road warrior with the day's use keeps fighting at 0 for a
+    // minute, the use spent, stable while it lasts (vitals-logic.ts WITNESSED).
+    const witnessed = !ragesBeyondDeath(fresh) ? witnessedUse(fresh) : null;
+    if (witnessed) {
+      writeDeathState(campaign, turnId, { ...fresh, resources: witnessed }, { ...freshDeathTrack(), stable: true }, "death_state", "dropped to 0 HP, Witnessed", {
+        conditions: [...fresh.conditions.filter((entry) => entry !== WITNESSED), WITNESSED],
+        conditionMeta: { ...((fresh.conditionMeta as ConditionMetaMap | undefined) ?? {}), [WITNESSED]: { rounds: 10, source: "Witnessed" } },
+      });
+      patchSheet(fresh.id, { resources: witnessed });
+      return {
+        note: `${fresh.name} is at 0 HP and Witnessed keeps them fighting: conscious and on their feet for 1 minute (10 rounds), making no death saves; when the minute ends, still at 0, they fall unconscious and dying. Healing any amount ends it.`,
+      };
+    }
     // A raging zealot stays on their feet (Rage Beyond Death), dying all the same.
     const ragingOn = ragesBeyondDeath(fresh);
     writeDeathState(
@@ -239,6 +261,17 @@ export function applyDamageDeathHook(
   }
   return {};
 }
+
+// Witnessed's use, spent: the resources after it, or null when the warrior
+// holds no use of it.
+function witnessedUse(sheet: CharacterSheet): CharacterSheet["resources"] | null {
+  const pool = sheet.resources?.[WITNESSED_POOL];
+  if (!pool || pool.used >= pool.max || !holdsGenreFeature(sheet, "road_warrior", "Witnessed")) {
+    return null;
+  }
+  return { ...sheet.resources, [WITNESSED_POOL]: { ...pool, used: pool.used + 1 } };
+}
+const WITNESSED_POOL = "post_apocalyptic_witnessed";
 
 // Called from heal after HP is restored: any healing ends the dying state.
 export function healDeathHook(

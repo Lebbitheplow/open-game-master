@@ -35,6 +35,7 @@ import { holdsCantripAttack } from "@/lib/dm/ar-ws-cantrip-attack";
 import { deflectionCastProblem } from "@/lib/dm/ar-ws-deflection-mark";
 import { eruptOnCast } from "@/lib/dm/ar-ws-heart-storm";
 import { genreFreeCast as genreBFreeCast } from "@/lib/dm/genre-b-free-cast";
+import { capstoneMarks } from "@/lib/dm/genre-gb-alchemy";
 import { removeConditions, incapacitatedBy, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { subclassExtrasForTable } from "@/lib/db/subclass-extras";
 import { enemyCounterspell } from "@/lib/dm/enemy-reactions";
@@ -759,6 +760,13 @@ export function castSpell(
     const left = removeConditions(held, patch.conditionMeta ?? sheet.conditionMeta, held.filter((entry) => isConditionNamed(entry, genreFree.condition)));
     patch.conditions = left.conditions;
     patch.conditionMeta = left.meta;
+  }
+  // The Great Work's and Magnum Opus's marks belong to the cast their slotless
+  // mark paid for: the last cast's go, this one's is laid (genre-gb-alchemy.ts).
+  const capstone = capstoneMarks(sheet, patch.conditions ?? sheet.conditions, patch.conditionMeta ?? sheet.conditionMeta, genreFree?.spent ? genreFree.condition : null);
+  if (capstone) {
+    patch.conditions = capstone.conditions;
+    patch.conditionMeta = capstone.conditionMeta;
   }
   // The grant's use (Thief of Five Fates' with its slot, Infernal Legacy's
   // without one). A cast a slot paid for, its free uses spent, spends none.

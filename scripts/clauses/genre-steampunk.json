@@ -120,11 +120,9 @@
   "clauses": [
    {
     "c": "A small brass automaton assists you: it carries, fetches, and grants advantage on one check per rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Clockwork Familiar#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Clockwork Familiar: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Clockwork Familiar: the free card builds a brass familiar on the board out of a fight, and its help, once a rest, gives the machinist advantage on their next check",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Clockwork Familiar and The Great Work Walks (genre_summon), src/lib/dm/genre-gb-familiars.ts familiarForms, juggernautForm and familiarWork (from src/lib/dm/authored-spend-effects.ts)"
    }
   ]
  },
@@ -220,11 +218,9 @@
   "clauses": [
    {
     "c": "Your schematics ignore half cover and treat three-quarters cover as half",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Precision Engineering#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Precision Engineering: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Precision Engineering: a machinist's spell attack meets no half cover, and a schematic's DEX save counts three-quarters cover as half",
+    "by": "src/lib/dm/genre-b-steampunk-cover.ts steampunkAttackCover (src/lib/dm/pc-attack-plan.ts) and schematicSaveCover (src/lib/dm/cast-at-enemy.ts)"
    }
   ]
  },
@@ -365,13 +361,9 @@
    },
    {
     "c": "take the calculated answer: treat one INT-based check as a natural 20",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Difference Engine Mind#1:spend_moves",
-    "k": "spend_moves",
-    "p": {
-     "id": "steampunk_difference_engine_mind"
-    },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Difference Engine Mind\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, take the calculated answer: treat one INT-based check as a natural 2"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Difference Engine Mind: the spent use counts the next Intelligence check's d20 as a 20, a Wisdom check keeps its own, and the check spends it",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Difference Engine Mind (the calculated answer), src/lib/dm/genre-gb-calculated.ts calculatedAnswer from src/lib/dm/rolls.ts (the d20 floored at 20, spent as a carrier)"
    }
   ]
  },
@@ -432,8 +424,9 @@
    },
    {
     "c": "constructs and machines cannot resist it",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Magnum Opus#1:spend_moves"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Magnum Opus: a construct fails its save against the spell the slotless mark pays for, and a creature of another kind saves",
+    "by": "src/lib/dm/genre-gb-alchemy.ts capstoneMarks (src/lib/dm/cast-guard.ts) and magnumOpusBinds (src/lib/dm/forced-save.ts rollEnemySave)"
    }
   ]
  },
@@ -445,16 +438,15 @@
   "clauses": [
    {
     "c": "Your familiar gains a sting (1d8 + INT piercing, 30 ft) and HP equal to 3 x your level",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Improved Familiar Frame#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Improved Familiar Frame: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Improved Familiar Frame and Twin Automata: a savant's familiar has 3 x level hit points and a 30-foot sting of 1d8 + INT, and from 11th two stand",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Clockwork Familiar and The Great Work Walks (genre_summon), src/lib/dm/genre-gb-familiars.ts familiarForms, juggernautForm and familiarWork (from src/lib/dm/authored-spend-effects.ts)"
    },
    {
     "c": "1d8 + INT piercing",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Improved Familiar Frame#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Improved Familiar Frame and Twin Automata: a savant's familiar has 3 x level hit points and a 30-foot sting of 1d8 + INT, and from 11th two stand",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Clockwork Familiar and The Great Work Walks (genre_summon), src/lib/dm/genre-gb-familiars.ts familiarForms, juggernautForm and familiarWork (from src/lib/dm/authored-spend-effects.ts)"
    }
   ]
  },
@@ -534,16 +526,15 @@
   "clauses": [
    {
     "c": "Build a second familiar",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Twin Automata#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Twin Automata: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Improved Familiar Frame and Twin Automata: a savant's familiar has 3 x level hit points and a 30-foot sting of 1d8 + INT, and from 11th two stand",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Clockwork Familiar and The Great Work Walks (genre_summon), src/lib/dm/genre-gb-familiars.ts familiarForms, juggernautForm and familiarWork (from src/lib/dm/authored-spend-effects.ts)"
    },
    {
     "c": "both act on your command",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap machinist::Twin Automata#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Improved Familiar Frame and Twin Automata: a savant's familiar has 3 x level hit points and a 30-foot sting of 1d8 + INT, and from 11th two stand",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Clockwork Familiar and The Great Work Walks (genre_summon), src/lib/dm/genre-gb-familiars.ts familiarForms, juggernautForm and familiarWork (from src/lib/dm/authored-spend-effects.ts)"
    }
   ]
  },
@@ -567,18 +558,21 @@
    },
    {
     "c": "your familiars merge into a brass juggernaut for 10 minutes (double HP, 2d10 + INT slam, you may ride it)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_the_great_work_walks#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs The Great Work Walks: the familiars merge into a juggernaut of twice a familiar's hit points with a 2d10 + INT slam for 10 minutes, once a long rest",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Clockwork Familiar and The Great Work Walks (genre_summon), src/lib/dm/genre-gb-familiars.ts familiarForms, juggernautForm and familiarWork (from src/lib/dm/authored-spend-effects.ts)"
    },
    {
     "c": "for 10 minutes",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_the_great_work_walks#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs The Great Work Walks: the familiars merge into a juggernaut of twice a familiar's hit points with a 2d10 + INT slam for 10 minutes, once a long rest",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Clockwork Familiar and The Great Work Walks (genre_summon), src/lib/dm/genre-gb-familiars.ts familiarForms, juggernautForm and familiarWork (from src/lib/dm/authored-spend-effects.ts)"
    },
    {
     "c": "2d10 + INT",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs ruling counter:steampunk_the_great_work_walks#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs The Great Work Walks: the familiars merge into a juggernaut of twice a familiar's hit points with a 2d10 + INT slam for 10 minutes, once a long rest",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Clockwork Familiar and The Great Work Walks (genre_summon), src/lib/dm/genre-gb-familiars.ts familiarForms, juggernautForm and familiarWork (from src/lib/dm/authored-spend-effects.ts)"
    }
   ]
  },
@@ -590,11 +584,9 @@
   "clauses": [
    {
     "c": "Advantage on checks to climb, balance, and keep footing",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Sky Legs#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Sky Legs: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-checks.mjs Sky Legs: a check with the circumstance or creature named throws two d20",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts (check_adv athletics and acrobatics about footing), read by src/lib/dm/roll-feature-riders.ts authoredRollRiders from request_roll"
    },
    {
     "c": "falling damage you take is halved",
@@ -642,9 +634,9 @@
   "clauses": [
    {
     "c": "Climbing costs no extra movement",
-    "is": "gap",
-    "probe": "not run: the scratch board has no surface to climb; read from src/lib/srd/authored-effects-genre.ts, where the Rigging Runner row carries the bonus-action Dash and nothing about climbing",
-    "read_only": true
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Rigging Runner: an aeronaut climbs at a foot a foot",
+    "by": "src/lib/srd/genre-b-steampunk-moves.ts steampunkStride (climbs), read by src/lib/battlemap/passage.ts pcMoveTraits"
    },
    {
     "c": "Dash as a bonus action",
@@ -706,23 +698,15 @@
   "clauses": [
    {
     "c": "A launcher and line: swing or pull yourself 30 ft as part of your movement",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Grapnel Line#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Grapnel Line: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Grapnel Line: INT-mod uses back on any rest, each carrying the aeronaut 30 feet to the square named and no farther",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Grapnel Line (teleport 30), src/lib/srd/authored-resources.json steampunk_grapnel_line"
    },
    {
     "c": "INT-mod uses per rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Grapnel Line#1:uses",
-    "k": "uses",
-    "p": {
-     "id": "steampunk_grapnel_line",
-     "ability": "int",
-     "rest": "any"
-    },
-    "observed": "a level 6 aeronaut holds no counter steampunk_grapnel_line (counters: none)"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Grapnel Line: INT-mod uses back on any rest, each carrying the aeronaut 30 feet to the square named and no farther",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Grapnel Line (teleport 30), src/lib/srd/authored-resources.json steampunk_grapnel_line"
    }
   ]
  },
@@ -796,11 +780,9 @@
   "clauses": [
    {
     "c": "Daring Maneuver rises to +2d6 and also applies to ranged attacks made while airborne or elevated",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Greater Daring#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Greater Daring: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Greater Daring: an aeronaut's ranged shot from the air carries Daring Maneuver's 2d6 with no run, a shot from the ground does not, and the die is once a turn",
+    "by": "src/lib/srd/authored-effects-genre-c.ts Daring Maneuver (the ranged airborne hit_rider from 11th), src/lib/dm/genre-a-strikes.ts genreStrikeRiders (airborne), src/lib/dm/genre-gb-airborne.ts airborneNow from src/lib/dm/pc-attack-damage.ts"
    },
    {
     "c": "+2d6",
@@ -830,8 +812,9 @@
    },
    {
     "c": "when combat starts, immediately move your speed and make one attack",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-b.mjs gap counter:steampunk_boarding_action#GUIDANCE_ONLY"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Boarding Action: in the first round the aeronaut gets their speed again and one weapon attack beside their action, once a rest; after the first round it is refused",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts (the aeronaut's rows), src/lib/dm/genre-gb-aeronaut.ts (kind steampunk, src/lib/dm/genre-b-steampunk-spends.ts) boardingAction"
    }
   ]
  },
@@ -866,11 +849,9 @@
   "clauses": [
    {
     "c": "Grapnel Line can also disarm or trip (contested by STR) at 30 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Grapnel Ace#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Grapnel Ace: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Grapnel Ace: the line trips or disarms a creature within 30 feet on a won Athletics against Strength contest, a lost one leaves it be, and one 65 feet off is out of reach",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts (the aeronaut's rows), src/lib/dm/genre-gb-aeronaut.ts (kind steampunk, src/lib/dm/genre-b-steampunk-spends.ts) grapnelAce"
    }
   ]
  },
@@ -907,12 +888,9 @@
    },
    {
     "c": "difficult terrain never slows you",
-    "is": "gap",
-    "probe": "not run: no movement reader skips difficult terrain for a feature (src/lib/battlemap/view.ts and the move cost).",
-    "observed": "nothing in the engine answers to Master of the High Wire: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low",
-    "note": "The feature's other clauses are built, so the unhooked probe (any hook on the feature) no longer tells this one apart: no movement reader skips difficult terrain for a feature (src/lib/battlemap/view.ts and the move cost).",
-    "read_only": true
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Master of the High Wire: difficult ground costs an aeronaut nothing extra",
+    "by": "src/lib/srd/genre-b-steampunk-moves.ts steampunkStride (anyGround), read by src/lib/battlemap/passage.ts pcMoveTraits and src/lib/dm/zone-rules.ts withZoneSteps"
    }
   ],
   "name": {
@@ -929,11 +907,9 @@
   "clauses": [
    {
     "c": "When you roll initiative, gain a full extra turn before the first round begins",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Legend of the Skies#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Legend of the Skies: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Legend of the Skies: the aeronaut's first-round turn is followed by a full fresh one, once a fight, and not after the first round",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts (the aeronaut's rows), src/lib/dm/genre-gb-aeronaut.ts (kind steampunk, src/lib/dm/genre-b-steampunk-spends.ts) extraTurn"
    }
   ]
  },
@@ -960,11 +936,9 @@
   "clauses": [
    {
     "c": "Advantage on Intimidation and Persuasion aboard ships and in ports",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Corsair's Swagger#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Corsair's Swagger: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-checks.mjs Corsair's Swagger: a check with the circumstance or creature named throws two d20",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts (check_adv intimidation and persuasion about ships), read by src/lib/dm/roll-feature-riders.ts authoredRollRiders from request_roll"
    }
   ]
  },
@@ -976,16 +950,15 @@
   "clauses": [
    {
     "c": "Your firearm attacks ignore half cover",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Powder Discipline#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Powder Discipline: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Powder Discipline: a firearm shot meets no half cover",
+    "by": "src/lib/dm/genre-b-steampunk-cover.ts steampunkAttackCover, read by src/lib/dm/pc-attack-plan.ts"
    },
    {
     "c": "reloading never costs you an attack",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Powder Discipline#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Powder Discipline: a Sky Corsair fires a loading firearm with every attack of the Attack action",
+    "by": "src/lib/srd/genre-b-steampunk-moves.ts reloadsFreely, read by src/lib/dm/pc-attack-spend.ts before loadingProblem"
    }
   ]
  },
@@ -1009,18 +982,15 @@
    },
    {
     "c": "fire at up to three targets in a 15-ft cone with a single attack roll each",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Broadside#1:spend_moves",
-    "k": "spend_moves",
-    "p": {
-     "id": "steampunk_broadside"
-    },
-    "observed": "the spend moved the counter and nothing else; the result is the text handed back: {\"ok\":true,\"resource\":\"Broadside\",\"spent\":1,\"left\":\"0/1\",\"refills\":\"on any rest\",\"effect\":\"1/rest, fire at up to three targets in a 15-ft cone with a single attack roll each.\"}"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Broadside: the spent use lets the Attack action fire once at each creature in a 15-foot cone, a creature outside the cone or struck already is refused, and without it volley is refused",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Broadside (the turn's mark), src/lib/dm/genre-gb-broadside.ts broadsideAttack and inBroadsideCone from src/lib/dm/pc-attack-spend.ts (pc_attack volley)"
    },
    {
     "c": "15-ft cone",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aeronaut::Broadside#1:spend_moves"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Broadside: the spent use lets the Attack action fire once at each creature in a 15-foot cone, a creature outside the cone or struck already is refused, and without it volley is refused",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Broadside (the turn's mark), src/lib/dm/genre-gb-broadside.ts broadsideAttack and inBroadsideCone from src/lib/dm/pc-attack-spend.ts (pc_attack volley)"
    }
   ]
  },
@@ -1378,11 +1348,9 @@
   "clauses": [
    {
     "c": "Catalyst Stone can instead reroll all of a formula's dice, keeping the better total",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Stone of the Magnum Opus#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Stone of the Magnum Opus: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Stone of the Magnum Opus: the stone's reroll card throws the formula's dice twice and keeps the better, from the stone's uses",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Stone of the Magnum Opus (Catalyst Stone (reroll) from the stone's pool), src/lib/dm/genre-gb-alchemy.ts catalystRerolls from src/lib/dm/cast-at-enemy-damage.ts"
    }
   ]
  },
@@ -1467,8 +1435,9 @@
    },
    {
     "c": "its dice are maximized",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::The Great Work#1:spend_moves"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs The Great Work: the formula its slotless mark pays for deals its dice at their maximum, and the next spell is rolled",
+    "by": "src/lib/dm/genre-gb-alchemy.ts capstoneMarks (from src/lib/dm/cast-guard.ts as the 7th-level slotless mark is spent) and greatWorkAtMaximum (src/lib/dm/genre-b-spell-hits.ts genreBSpellAtMaximum)"
    }
   ]
  },
@@ -1498,8 +1467,9 @@
    },
    {
     "c": "you may change any formula's damage type to acid",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Corrosive Focus#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Corrosive Focus: the free card turns the alchemist's formula to acid for the turn, so a fire-immune creature takes it, and a weapon's fire stays fire",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Corrosive Focus (the free card, acid formula), src/lib/dm/genre-gb-alchemy.ts formulaDamageType from src/lib/dm/enemy-defenses.ts meetEnemyPart"
    }
   ]
  },
@@ -1632,11 +1602,9 @@
   "clauses": [
    {
     "c": "Your acid formulae treat immunity as resistance",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap alchemist::Universal Solvent#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Universal Solvent: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Universal Solvent: an alchemist's acid spell halves on a creature immune to acid",
+    "by": "src/lib/srd/authored-effects-genre-b-steampunk.ts (soften_immune acid, spells), read by src/lib/dm/genre-b-steampunk-defenses.ts authoredSoftensImmunity from src/lib/dm/enemy-defenses.ts enemyDefenseLines"
    },
    {
     "c": "Etching Acid stacks to -3 AC",
@@ -1654,23 +1622,15 @@
   "clauses": [
    {
     "c": "Pick two gadgets (grapnel, smoke bomb, arc lamp, ear trumpet, skeleton key, pocket shield)",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Utility Gadgets#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Utility Gadgets: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-gadgets.mjs Utility Gadgets, Third, Fourth and Fifth Gadget (the picks) and A picked gadget is a bonus action with INT-mod uses back on any rest",
+    "by": "src/lib/srd/options.ts (kind gadget, granted to the gadgeteer: 2/3/4/5 picks at 1/6/10/14) with src/lib/srd/options.json, each pick's counter in src/lib/srd/authored-resources.json and its use in src/lib/srd/authored-effects-genre-gb.ts"
    },
    {
     "c": "each usable INT-mod times per rest with sensible effects",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Utility Gadgets#1:uses",
-    "k": "uses",
-    "p": {
-     "id": "steampunk_utility_gadgets",
-     "ability": "int",
-     "rest": "any"
-    },
-    "observed": "a level 1 gadgeteer holds no counter steampunk_utility_gadgets (counters: steampunk_overclock)"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-gadgets.mjs Utility Gadgets, Third, Fourth and Fifth Gadget (the picks) and A picked gadget is a bonus action with INT-mod uses back on any rest",
+    "by": "src/lib/srd/options.ts (kind gadget, granted to the gadgeteer: 2/3/4/5 picks at 1/6/10/14) with src/lib/srd/options.json, each pick's counter in src/lib/srd/authored-resources.json and its use in src/lib/srd/authored-effects-genre-gb.ts"
    }
   ]
  },
@@ -1768,16 +1728,15 @@
   "clauses": [
    {
     "c": "Learn a third gadget",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Third Gadget#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Third Gadget: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-gadgets.mjs Utility Gadgets, Third, Fourth and Fifth Gadget: three at 6th",
+    "by": "src/lib/srd/options.ts GRANTS (gadget, gadgeteer)"
    },
    {
     "c": "gadget saves against your effects use 8 + proficiency + INT",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Third Gadget#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-gadgets.mjs Third Gadget: the Arc Lamp's flash makes one creature within 30 feet save on CON against 8 + proficiency + INT or be blinded, from the lamp's uses",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Arc Lamp Flash (save_effect, dcAbility int), src/lib/srd/options.json the lamp's line"
    }
   ]
  },
@@ -1789,11 +1748,9 @@
   "clauses": [
    {
     "c": "Your jump distance triples",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Spring Heels#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Spring Heels: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Spring Heels: a gadgeteer's long and high jumps triple",
+    "by": "src/lib/srd/genre-b-steampunk-moves.ts springHeelsFactor, read by src/lib/dm/jump-reach.ts jumpReach"
    },
    {
     "c": "ignore the first 20 ft of any fall",
@@ -1815,16 +1772,15 @@
   "clauses": [
    {
     "c": "Your smoke bombs fill a 15-ft radius and you see through your own smoke",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Smoke Discipline#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Smoke Discipline: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-gadgets.mjs Smoke Discipline: the gadgeteer's smoke bomb fills a 15-foot radius they see through",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Gadget: Smoke Bomb (zone, upgrade Smoke Discipline seen through), src/lib/battlemap/zones-genre-b.ts (smoke bomb, disciplined smoke), src/lib/dm/genre-b-zones.ts layGenreZone"
    },
    {
     "c": "15-ft radius",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Smoke Discipline#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-gadgets.mjs Smoke Discipline: the gadgeteer's smoke bomb fills a 15-foot radius they see through",
+    "by": "src/lib/srd/authored-effects-genre-gb.ts Gadget: Smoke Bomb (zone, upgrade Smoke Discipline seen through), src/lib/battlemap/zones-genre-b.ts (smoke bomb, disciplined smoke), src/lib/dm/genre-b-zones.ts layGenreZone"
    }
   ]
  },
@@ -1836,11 +1792,9 @@
   "clauses": [
    {
     "c": "Learn a fourth gadget",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Fourth Gadget#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Fourth Gadget: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-gadgets.mjs Utility Gadgets, Third, Fourth and Fifth Gadget: four at 10th",
+    "by": "src/lib/srd/options.ts GRANTS (gadget, gadgeteer)"
    },
    {
     "c": "Overclock has 2 uses per rest",
@@ -1921,11 +1875,9 @@
   "clauses": [
    {
     "c": "Learn a fifth gadget",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Fifth Gadget#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Fifth Gadget: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-gadgets.mjs Utility Gadgets, Third, Fourth and Fifth Gadget: five at 14th",
+    "by": "src/lib/srd/options.ts GRANTS (gadget, gadgeteer)"
    }
   ]
  },
@@ -1937,11 +1889,9 @@
   "clauses": [
    {
     "c": "Use two different gadgets with the same bonus action",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Chain Deployment#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Chain Deployment: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-gadgets.mjs Chain Deployment: a second, different gadget rides the bonus action the first spent",
+    "by": "src/lib/srd/genre-b-steampunk-attacks.ts freeSpendKey and mayBeFree, read by src/lib/dm/genre-b-steampunk-turn.ts freeSpendThisTurn"
    }
   ]
  },
@@ -1971,11 +1921,9 @@
   "clauses": [
    {
     "c": "All gadget uses recharge on a short rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap gadgeteer::Perpetual Toolkit#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Perpetual Toolkit: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-gadgets.mjs A picked gadget ...: the uses come back on a short rest",
+    "by": "every gadget counter in src/lib/srd/authored-resources.json recharges on a short rest (recharge short)"
    }
   ]
  },
@@ -2589,12 +2537,9 @@
   "clauses": [
    {
     "c": "Your lightning arts ignore resistance and treat immunity as resistance",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap aether_channeler::Heart of the Storm#0:stray",
-    "k": "stray",
-    "observed": "by its name the engine also gives Heart of the Storm: effect resistance(lightning,thunder)",
-    "note": "the Storm Sorcery feature of the same name (src/lib/srd/feature-effects.ts, parsed from src/lib/srd/subclasses.json) answers for it: the aether channeler gains resistance to lightning and thunder damage, which this text does not give, and nothing does what it does say",
-    "kind": "rule-wrong"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Heart of the Storm: a channeler's lightning spell deals full damage through resistance and half through immunity",
+    "by": "src/lib/srd/authored-effects-genre-b-steampunk.ts (ignore_resist and soften_immune lightning, spells), read by src/lib/dm/authored-saves.ts authoredIgnoresResistance and src/lib/dm/genre-b-steampunk-defenses.ts from src/lib/dm/enemy-defenses.ts; its own GENRE_B_FEATURE_DEFS row (src/lib/srd/authored-effects-genre-b.ts) keeps Storm Sorcery's resistance off it"
    }
   ]
  },
@@ -2606,12 +2551,9 @@
   "clauses": [
    {
     "c": "Your tuned armor grants +1 AC and immunity to being pushed while conscious",
-    "is": "gap",
-    "probe": "not run: the +1 AC is built (GENRE_B_FEATURE_DEFS); no forced-movement path asks for an immunity to being pushed.",
-    "observed": "nothing in the engine answers to Boiler Plate: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium",
-    "note": "The feature's other clauses are built, so the unhooked probe (any hook on the feature) no longer tells this one apart: the +1 AC is built (GENRE_B_FEATURE_DEFS); no forced-movement path asks for an immunity to being pushed.",
-    "read_only": true
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Boiler Plate: an armored, conscious steam knight is not pushed (the +1 AC: test steam_knight::Boiler Plate#1:ac)",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_FEATURE_DEFS (+1 AC while armored) and src/lib/srd/genre-b-steampunk-moves.ts pushImmune, read by src/lib/dm/map-tools.ts pushTokenAway"
    },
    {
     "c": "Your tuned armor grants +1 AC",
@@ -2627,8 +2569,9 @@
    },
    {
     "c": "immunity to being pushed while conscious",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Boiler Plate#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Boiler Plate: an armored, conscious steam knight is not pushed (the +1 AC: test steam_knight::Boiler Plate#1:ac)",
+    "by": "src/lib/srd/authored-effects-genre-b.ts GENRE_B_FEATURE_DEFS (+1 AC while armored) and src/lib/srd/genre-b-steampunk-moves.ts pushImmune, read by src/lib/dm/map-tools.ts pushTokenAway"
    }
   ],
   "name": {
@@ -2968,16 +2911,15 @@
   "clauses": [
    {
     "c": "Your speed cannot be reduced",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Juggernaut Frame#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Juggernaut Frame: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Juggernaut Frame: a slowed knight keeps their speed",
+    "by": "src/lib/srd/genre-b-steampunk-moves.ts frameSpeedWhole, read by src/lib/srd/genre-b-post-apocalyptic.ts speedCannotBeReduced (src/lib/battlemap/view.ts pcMoveBudget)"
    },
    {
     "c": "difficult terrain never slows you while armored",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Juggernaut Frame#0:unhooked"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Juggernaut Frame: an armored steam knight crosses difficult ground at no extra cost and an unarmored one does not",
+    "by": "src/lib/srd/genre-b-steampunk-moves.ts steampunkStride (anyGround while armored), read by src/lib/battlemap/passage.ts pcMoveTraits"
    }
   ]
  },
@@ -3084,11 +3026,9 @@
   "clauses": [
    {
     "c": "Enemies within your reach treat the area as difficult terrain",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Hold the Line#0:unhooked",
-    "k": "unhooked",
-    "note": "No longer borrows the Cavalier's Hold the Line (heldAuthored keeps a genre feature to its own rows); nothing makes the ground within the knight's reach difficult for enemies.",
-    "kind": "rule-wrong"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Hold the Line: a creature fighting the knight pays double for the squares within their reach",
+    "by": "src/lib/dm/genre-b-steampunk-hold.ts withHoldTheLine, from src/lib/dm/zone-rules.ts withZoneSteps"
    }
   ]
  },
@@ -3164,11 +3104,9 @@
   "clauses": [
    {
     "c": "Allies behind you have three-quarters cover against ranged attacks",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-steampunk.mjs gap steam_knight::Bulwark Advance#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Bulwark Advance: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gb-steampunk.mjs Bulwark Advance: a creature's ranged attack at an ally behind the knight meets three-quarters cover",
+    "by": "src/lib/dm/genre-b-steampunk-cover.ts bulwarkCoverRaise, read for each ranged swing by src/lib/dm/enemy-attack.ts"
    }
   ]
  },

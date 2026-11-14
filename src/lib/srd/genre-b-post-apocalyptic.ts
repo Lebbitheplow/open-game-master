@@ -6,6 +6,7 @@
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { holdsGenreFeature } from "@/lib/srd/genre-b-combat";
+import { frameSpeedWhole } from "@/lib/srd/genre-b-steampunk-moves";
 import { ADAPTED } from "@/lib/srd/genre-b-post-apocalyptic-conditions";
 
 type Uses = Record<string, { max: number; used: number }>;
@@ -44,7 +45,9 @@ export function adaptedSpeeds(conditions: readonly string[] | undefined): { clim
 // grapple or a restraint holds them where they are: that speed is 0 because
 // they are held, which the text's own next clause (prone) shows it lists apart.
 export function speedCannotBeReduced(sheet: Holder & Pick<CharacterSheet, "currentHp">): boolean {
-  return sheet.currentHp > 0 && holdsGenreFeature(sheet, "road_warrior", "Unstoppable");
+  // Juggernaut Frame (steam knight 14): "Your speed cannot be reduced"
+  // (src/lib/srd/genre-b-steampunk-moves.ts).
+  return sheet.currentHp > 0 && (holdsGenreFeature(sheet, "road_warrior", "Unstoppable") || frameSpeedWhole(sheet));
 }
 
 // Packrat: "Carry capacity doubles" (src/lib/srd/encumbrance.ts encumbranceFor).

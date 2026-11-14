@@ -39,6 +39,7 @@ import type { EnemyAttack } from "@/lib/bestiary/statblock";
 import { planAttackFx } from "@/lib/battlemap/fx-plan";
 import { acWithEffects } from "@/lib/dm/ac-effects";
 import { coverFor } from "@/lib/dm/attack-spatial";
+import { bulwarkCoverRaise } from "@/lib/dm/genre-b-steampunk-cover";
 import { canEnemyAct, markEnemyActed, markEnemyBonus } from "@/lib/dm/can-act";
 import { enemyStrikesEcho } from "@/lib/dm/mt-fb-echo";
 import { enemyStrikesBody } from "@/lib/dm/spirit-projection";
@@ -478,13 +479,16 @@ export function handleEnemyAttack(
   const boardForWeather = getBattleMapForEncounter(encounter.id);
   // Cover protects whoever stands behind it.
   const cover = coverFor(encounter.id, enemy.id, target.id);
+  // Bulwark Advance: a ranged swing at an ally behind the knight meets
+  // three-quarters cover (genre-b-steampunk-cover.ts), set for each swing.
+  let bulwark = 0;
   // Multiattack Defense (a Hunter's Defensive Tactics): once this creature
   // hits, +4 AC against its later attacks this turn.
   const multiattackDefense = hasFeatureNamed(target, /multiattack defense/i);
   let defended = 0;
   const targetAc = () => {
     const fresh = getSheetById(target.id) ?? target;
-    return acWithEffects(campaign.id, fresh) + cover + defended;
+    return acWithEffects(campaign.id, fresh) + cover + bulwark + defended;
   };
   // A spell a character left on the creature (Bane's d4 off, Bless's d4 on)
   // counts on every swing, as it would on a character's attack.
@@ -616,6 +620,7 @@ export function handleEnemyAttack(
     }
     shots += mode.ranged ? 1 : 0;
     const ranged = mode.ranged;
+    bulwark = ranged ? bulwarkCoverRaise(encounter.id, enemy.id, target.id, cover) : 0;
     // What the block deals instead at half its hit points or at range (a
     // swarm's weaker bite, a spear thrown), from here on the swing's blow.
     attack = alternativeBlow(plannedAttack, { ranged, bloodied: standing.currentHp <= standing.maxHp / 2 });
