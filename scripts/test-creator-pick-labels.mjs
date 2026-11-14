@@ -19,6 +19,7 @@ register("./lib/register-alias.mjs", import.meta.url);
 const { toolLabel, toolKind, toolPickOptions, KNOWN_TOOLS, MUSICAL_INSTRUMENTS } = await import("../src/lib/srd/tool-choices.ts");
 const { variantGivesAnything, variantShort } = await import("../src/lib/content/species-variants.ts");
 const { optionKindRule, optionPicksSpells, optionsOfKind } = await import("../src/lib/srd/options.ts");
+const { describeContentEntry } = await import("../src/lib/help/index.ts");
 const optionsJson = (await import("../src/lib/srd/options.json", { with: { type: "json" } })).default;
 const races = (await import("../src/lib/srd/races.json", { with: { type: "json" } })).default.races;
 
@@ -74,6 +75,21 @@ test("a kind that picks spells says its rule once and its options are spells; an
   assert.ok(optionsOfKind("legerdemain_cantrip").some((option) => option.n === "Mending"));
   assert.equal(optionPicksSpells("invocation"), false);
   assert.equal(optionKindRule("invocation"), null);
+});
+
+test("a pack background's feature chip opens the feature, not the background's story with the feature at its foot", () => {
+  const row = {
+    name: "Crime Syndicate Member",
+    desc: "Three paragraphs of how you came to the syndicate.",
+    feature: "A Favor In Turn",
+    feature_desc: "You can call in a favor from your contacts.",
+  };
+  const focused = describeContentEntry(row, "A Favor In Turn");
+  assert.match(focused, /^\*\*Feature: A Favor In Turn\.\*\* You can call in a favor/);
+  assert.doesNotMatch(focused, /Three paragraphs/);
+  // The background itself, asked by its own name, still reads whole.
+  assert.match(describeContentEntry(row, "Crime Syndicate Member"), /^Three paragraphs[\s\S]*Feature: A Favor In Turn/);
+  assert.match(describeContentEntry(row), /^Three paragraphs/);
 });
 
 console.log(`${passed} passed`);
