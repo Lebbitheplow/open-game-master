@@ -3,6 +3,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { offerCorrectionReason } from "@/lib/correction-offer";
+import { appConfirm } from "@/components/ui/ConfirmDialog";
 import { MessageList } from "@/app/campaigns/[campaignId]/MessageList";
 import { HaltedTurnBanner } from "@/app/campaigns/[campaignId]/HaltedTurnBanner";
 import { stagedHaltedTurn } from "@/lib/chronicle-logic";
@@ -41,6 +42,7 @@ export function SessionChatColumn({
   onRenarrate,
   onBrowseShop,
   onPinned,
+  onRetracted,
   onConfirm,
   stage,
   keepTranscript = false,
@@ -68,6 +70,8 @@ export function SessionChatColumn({
   onBrowseShop: (shopId: string) => void;
   // A memory pin landed, so the pins panel should refetch.
   onPinned: () => void;
+  // A move taken back: its words go back into the composer to correct.
+  onRetracted: (text: string) => void;
   // A save that leaves nothing on screen (a pin, a fact) says it happened.
   onConfirm: (confirmation: { glyph: string; text: string }) => void;
   // The fight stage (the board and the chronicle scroll) in place of the
@@ -172,6 +176,26 @@ export function SessionChatColumn({
                   const data = await response.json().catch(() => ({}));
                   onError(data.error || "Could not continue the scene.");
                 }
+              }
+            : undefined
+        }
+        onRetract={
+          steersStory
+            ? async (message) => {
+                const sure = await appConfirm(
+                  "The GM's answer to this move is taken back with it, and its words come back to you to correct and send again.",
+                  { title: "Take back and rewrite?", actionLabel: "Take it back", tone: "danger" },
+                );
+                if (!sure) {
+                  return;
+                }
+                const response = await fetch(`/api/campaigns/${campaignId}/messages/${message.id}/retract`, { method: "POST" });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                  onError(data.error || "Could not take that move back.");
+                  return;
+                }
+                onRetracted(typeof data.text === "string" ? data.text : message.content);
               }
             : undefined
         }

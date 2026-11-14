@@ -1476,6 +1476,7 @@ export function SessionView({
                 onRenarrate={setRenarrate}
                 onBrowseShop={browseShop}
                 onPinned={bumpPins}
+                 onRetracted={setInput}
                 onConfirm={confirm}
               >
                 {needsCharacter ? (
