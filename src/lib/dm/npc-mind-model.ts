@@ -30,9 +30,20 @@ export async function mindModelOffer(campaign: Campaign): Promise<MindModelOffer
   }
   return {
     models,
-    tableModel: config.utilityModel || config.model,
-    tableEffort: config.utilityEffort || config.effort,
+    tableModel: config.mindModel || config.utilityModel || config.model,
+    tableEffort: config.mindEffort || config.utilityEffort || config.effort,
   };
+}
+
+// What one mind's call asks for: its own choice, field by field over the
+// characters' model and effort the admin set beside the story's. Null runs
+// on the bookkeeping route as before. The program's own list is checked as
+// the run starts (src/lib/harness/bridge.ts chosenRun).
+export function mindCallChoice(own: MindModelChoice | null): MindModelChoice | null {
+  const config = harnessConfig();
+  const model = own?.model || config.mindModel;
+  const effort = own?.effort || config.mindEffort;
+  return model || effort ? { model, effort } : null;
 }
 
 // The refusal for a choice the program does not offer, or null.

@@ -204,6 +204,12 @@ export const globalConfigSchema = z.object({
       // The bookkeeping model's effort; blank = the story's (the context
       // audit's F11: a short extraction needs less reasoning than a turn).
       utilityEffort: z.enum(["", ...HARNESS_EFFORTS]).default(""),
+      // What the first-tier characters' own minds think with (src/lib/dm/
+      // npc-mind-model.ts, ticket 09): the narrator stays on the story
+      // model. Blank = the bookkeeping model and its effort, as before. A
+      // companion's own choice on its card wins over these.
+      mindModel: z.string().trim().max(200).default(""),
+      mindEffort: z.enum(["", ...HARNESS_EFFORTS]).default(""),
       // Processing speed for the story and bookkeeping models (issue 255).
       speed: z.enum(["", "fast"]).default(""),
       utilitySpeed: z.enum(["", "fast"]).default(""),

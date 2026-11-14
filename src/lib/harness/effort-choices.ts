@@ -25,8 +25,21 @@ export function utilityEffortChoices(program: Program, config: Pick<HarnessConfi
   return ["", ...HARNESS_EFFORTS.filter((effort) => !efforts || efforts.includes(effort))];
 }
 
+// The characters' minds' effort choices: what their model lists (the
+// bookkeeping model, then the story model, when none is set), blank being the
+// bookkeeping effort.
+export function mindEffortChoices(program: Program, config: Pick<HarnessConfig, "model" | "utilityModel"> & Partial<Pick<HarnessConfig, "mindModel">>): HarnessConfig["mindEffort"][] {
+  const listed = (id: string) => program.models.find((entry) => entry.id === id)?.efforts;
+  const id = config.mindModel || config.utilityModel || config.model;
+  const efforts = id ? listed(id) : program.defaultEfforts;
+  return ["", ...HARNESS_EFFORTS.filter((effort) => !efforts || efforts.includes(effort))];
+}
+
 // A model change keeps the effort only where the new models still offer it.
-export function withOfferedEffort<T extends Pick<HarnessConfig, "model" | "utilityModel" | "effort"> & Partial<Pick<HarnessConfig, "utilityEffort">>>(program: Program, config: T): T {
+export function withOfferedEffort<
+  T extends Pick<HarnessConfig, "model" | "utilityModel" | "effort"> & Partial<Pick<HarnessConfig, "utilityEffort" | "mindModel" | "mindEffort">>,
+>(program: Program, config: T): T {
   const story = effortChoices(program, config).includes(config.effort) ? config : { ...config, effort: "" };
-  return !story.utilityEffort || utilityEffortChoices(program, story).includes(story.utilityEffort) ? story : { ...story, utilityEffort: "" };
+  const utility = !story.utilityEffort || utilityEffortChoices(program, story).includes(story.utilityEffort) ? story : { ...story, utilityEffort: "" };
+  return !utility.mindEffort || mindEffortChoices(program, utility).includes(utility.mindEffort) ? utility : { ...utility, mindEffort: "" };
 }

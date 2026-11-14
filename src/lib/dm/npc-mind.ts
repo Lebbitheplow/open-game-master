@@ -38,6 +38,7 @@ import { getActiveEncounter, listEnemies } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, listTokens } from "@/lib/db/battle-maps";
 import { chebyshev } from "@/lib/battlemap/types";
 import { acBreakdownFor } from "@/lib/srd";
+import { mindCallChoice } from "@/lib/dm/npc-mind-model";
 import { weaponOf } from "@/lib/dm/attack-logic";
 import {
   MIND_SYSTEM,
@@ -274,7 +275,7 @@ async function askMind(
         { role: "system", content: withLanguage(MIND_SYSTEM, campaign.gameSettings.tableLanguage) },
         { role: "user", content: prompt },
       ],
-      { meta: { task: offscreen ? "npc_mind_offscreen" : "npc_mind" }, timeoutMs: MIND_TIMEOUT_MS(), mindChoice: getNpcMindModel(npc.id) },
+      { meta: { task: offscreen ? "npc_mind_offscreen" : "npc_mind" }, timeoutMs: MIND_TIMEOUT_MS(), mindChoice: mindCallChoice(getNpcMindModel(npc.id)) },
     );
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "the model call failed", latencyMs: Date.now() - started };

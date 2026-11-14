@@ -144,6 +144,38 @@ await test("a model the program stopped offering falls back to the table's, with
   assert.ok(warned.some((line) => /gpt-deep" is no longer offered/.test(line)), warned.join("\n"));
 });
 
+await test("the characters' model set beside the story's is what minds without their own choice think with; a companion's own wins", async () => {
+  const harness = { id: "codex", model: "gpt-table", utilityModel: "", effort: "medium", campaigns: "all", maxConcurrent: 4, turnTimeoutSec: 60 };
+  saveGlobalConfig({ harness: { ...harness, mindModel: "gpt-deep", mindEffort: "high" } });
+  try {
+    const plain = await speakAs("Tobin");
+    assert.deepEqual({ model: plain.model, effort: plain.effort }, { model: "gpt-deep", effort: "high" }, "no choice of its own: the characters' model");
+    assert.equal((await patch(tobin, { model: "", effort: "low" })).status, 200);
+    const effortOnly = await speakAs("Tobin");
+    assert.deepEqual({ model: effortOnly.model, effort: effortOnly.effort }, { model: "gpt-deep", effort: "low" }, "its own effort on the characters' model");
+    assert.equal((await patch(tobin, { model: "", effort: "" })).status, 200);
+    const own = await speakAs("Brann");
+    assert.deepEqual({ model: own.model, effort: own.effort }, { model: "gpt-deep", effort: "xhigh" }, "its own choice wins");
+    runs.length = 0;
+    await requestDmMessage(world.campaign().settings, [{ role: "user", content: "Narrate." }], {});
+    assert.equal(runs.at(-1)?.model, "gpt-table", "the narrator stays on the story model");
+    runs.length = 0;
+    await requestUtilityMessage(world.campaign().settings, [{ role: "user", content: "Summarize." }], {});
+    assert.equal(runs.at(-1)?.model, "gpt-table", "bookkeeping stays on its own model");
+  } finally {
+    saveGlobalConfig({ harness: { ...harness, mindModel: "", mindEffort: "" } });
+  }
+});
+
+await test("the characters' effort lists what their model offers, and a model change drops an effort it lacks", async () => {
+  const { mindEffortChoices, withOfferedEffort } = await import("../src/lib/harness/effort-choices.ts");
+  const program = { models: OFFERED };
+  assert.deepEqual(mindEffortChoices(program, { model: "gpt-table", utilityModel: "", mindModel: "gpt-deep" }), ["", "low", "high", "xhigh"]);
+  assert.deepEqual(mindEffortChoices(program, { model: "gpt-table", utilityModel: "", mindModel: "" }), ["", "low", "medium", "high"], "blank follows the bookkeeping, here the story model");
+  const moved = withOfferedEffort(program, { model: "gpt-table", utilityModel: "", effort: "", mindModel: "gpt-table", mindEffort: "xhigh" });
+  assert.equal(moved.mindEffort, "");
+});
+
 await test("the narrator's own calls are untouched by a mind's choice", async () => {
   runs.length = 0;
   await requestDmMessage(world.campaign().settings, [{ role: "user", content: "Narrate." }], {});

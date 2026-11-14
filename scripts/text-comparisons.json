@@ -188,7 +188,7 @@
     "app/admin/AdminAddonsPanel.tsx#str-key": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/admin/AdminBackupSection.tsx#toUpperCase": [["display",1,"capitalised phase"]],
     "app/admin/AdminHarnessSection.tsx#str-eq": [["key",4,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
-    "app/admin/AdminHarnessSection.tsx#toUpperCase": [["display",2,"capitalised effort"]],
+    "app/admin/AdminHarnessSection.tsx#toUpperCase": [["display",3,"capitalised effort"]],
     "app/admin/AdminImagesSection.tsx#str-eq": [["key",5,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/admin/AdminPlayerAgentsSection.tsx#str-eq": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],
     "app/admin/AdminReportsPanel.tsx#str-key": [["key",1,"UI: ids, fixed choices, DOM and keyboard names, stored values"]],

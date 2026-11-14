@@ -104,6 +104,10 @@ export type HarnessConfig = {
   // The bookkeeping model's effort (summaries, compaction, the reader,
   // Ask). Blank = the story's effort, as it was before there were two.
   utilityEffort: "" | HarnessEffort;
+  // The first-tier characters' minds (src/lib/dm/npc-mind-model.ts). Blank =
+  // the bookkeeping model and effort.
+  mindModel: string;
+  mindEffort: "" | HarnessEffort;
   speed: "" | "fast";
   utilitySpeed: "" | "fast";
   images: "off" | "native";
