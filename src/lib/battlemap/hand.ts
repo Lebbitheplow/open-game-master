@@ -55,6 +55,7 @@ import { gearCards, guessDrawNote, undrawnGate, wieldOf } from "@/lib/battlemap/
 import { grantedAttackCards } from "@/lib/battlemap/hand-granted";
 import { textKey } from "@/lib/language/text-logic";
 import { magicItemRiders } from "@/lib/srd/magic-items";
+import { autoLoaderOpen } from "@/lib/srd/genre-b-steampunk-attacks";
 
 export * from "@/lib/battlemap/hand-core";
 
@@ -157,7 +158,7 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
     );
     // The damage and the roll as pc_attack makes them (hand-attack-lines.ts).
     const line = attackDamageLine({ sheet, turn, profile, riders, kind: "weapon" });
-    const rolled = attackRollLine(sheet, profile.toHit);
+    const rolled = attackRollLine(sheet, profile.toHit, options.board?.attackAura, profile);
     const damage = line.damage;
     const notes: string[] = [];
     // Which weapon is out, on the card itself (held-default.ts): a player
@@ -244,20 +245,22 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
       const opened: Gate = rule ? { reason: rule.error, spent: false } : null;
       return gated(card, standing, costGate("bonus", turn, sheet, `an off-hand attack with ${name}`), opened, undrawnGate(sheet, turn, name));
     }
-    return gated(card, standing, handsGate, attackGate(turn, allowed, sheet, { unarmed: srd === null }), ammoGate, undrawnGate(sheet, turn, name));
+    // The Auto-Loader Harness's extra firearm attack keeps its card open
+    // (src/lib/srd/genre-b-steampunk-attacks.ts, as pc_attack spends it).
+    return gated(card, standing, handsGate, attackGate(turn, allowed + autoLoaderOpen(sheet, profile, turn.marks ?? []), sheet, { unarmed: srd === null }), ammoGate, undrawnGate(sheet, turn, name));
   };
 
   for (const weapon of carried) cards.push(build(weapon.name, weapon.srd, false, weapon.gear));
   // A lineage's bite or claws (src/lib/srd/racial-weapons.ts), proficient.
   for (const term of ["bite", "claws"]) {
-    const natural = racialNaturalWeapon(sheet.features, term);
+    const natural = racialNaturalWeapon(sheet.features, term, sheet.feats);
     if (natural && !carried.some((weapon) => textKey(weapon.name) === textKey(natural.srd.name))) {
       cards.push(build(natural.srd.name, natural.srd, false, null, true));
     }
   }
   cards.push(build("Unarmed strike", null, false));
   // The bonus-action strikes a feature grants (Martial Arts, Frenzy).
-  cards.push(...bonusStrikeCards(sheet, turn, riders, carried.map((weapon) => ({ name: weapon.name, srd: weapon.srd }))));
+  cards.push(...bonusStrikeCards(sheet, turn, riders, carried.map((weapon) => ({ name: weapon.name, srd: weapon.srd })), options.board?.attackAura));
   // The attacks a held condition grants (Spiritual Weapon's weapon).
   cards.push(...grantedAttackCards(sheet, turn, allowed));
 

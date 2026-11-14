@@ -1,15 +1,18 @@
 "use client";
 
+import { asiPickAmount } from "@/lib/srd/race-asi";
 import type { Gender } from "@/lib/gender";
 import { normalizeAttraction, type Attraction } from "@/lib/attraction";
 import { authoredFeatDesc } from "@/lib/srd/feat-effects";
 import { toolChoiceOf } from "@/lib/srd/tool-choices";
+import { EMPTY_PERSONA } from "@/lib/backgrounds/persona-logic";
 import { useEffect, useRef, useState } from "react";
 import type {
   Ability,
   AbilityScores,
   AsiChoice,
   CreateSheetInput,
+  Persona,
   SheetAttachment,
 } from "@/lib/schemas/sheet";
 import { applyAsiChoices, earnedAsiCountFor, removeAsiChoices } from "@/lib/srd/asi";
@@ -107,6 +110,9 @@ export type BuilderDraftFields = {
   racialSkills: string[];
   racialCantrips: string[];
   racialTool: string;
+  racialWeapons: string[];
+  racialTraining: string[];
+  racialExpertise: string;
   racialAncestry: string;
   racialVariant: string;
   racialFeatAbility: Ability | "";
@@ -118,6 +124,10 @@ export type BuilderDraftFields = {
   backstory: string;
   // The player's hopes for the story (src/lib/schemas/sheet.ts HOPES_MAX).
   hopes: string;
+  // Trait, ideal, bond and flaw (src/lib/backgrounds/persona-logic.ts).
+  // Optional only for a state written before the field (a saved draft, a
+  // test's double).
+  persona?: Persona;
   gender: Gender;
   attraction: Attraction;
   appearance: string;
@@ -280,6 +290,9 @@ export function useBuilderState({
   // be more than one holds its pick in `cantrip`.
   const [racialCantrips, setRacialCantrips] = useState<string[]>(() => racialCantripsOf(initial?.racialChoices));
   const [racialTool, setRacialTool] = useState(initial?.racialChoices?.tool ?? "");
+  const [racialWeapons, setRacialWeapons] = useState<string[]>(initial?.racialChoices?.weapons ?? []);
+  const [racialTraining, setRacialTraining] = useState<string[]>(initial?.racialChoices?.training ?? []);
+  const [racialExpertise, setRacialExpertise] = useState(initial?.racialChoices?.expertise ?? "");
   // A dragonborn's draconic ancestry ("red").
   const [racialAncestry, setRacialAncestry] = useState(initial?.racialChoices?.ancestry ?? "");
   // The option of a workshop species' choice ("ashen"), checked like the
@@ -335,6 +348,7 @@ export function useBuilderState({
   const [spellWarningAck, setSpellWarningAck] = useState(false);
   const [backstory, setBackstory] = useState(initial?.backstory ?? "");
   const [hopes, setHopes] = useState(initial?.hopes ?? "");
+  const [persona, setPersona] = useState<Persona>(initial?.persona ?? EMPTY_PERSONA);
   const [gender, setGender] = useState<Gender>(initial?.gender ?? "");
   // Who they are drawn to (issue 501), kept through an edit like the gender.
   const [attraction, setAttraction] = useState<Attraction>(() => normalizeAttraction(initial?.attraction));
@@ -380,7 +394,7 @@ export function useBuilderState({
   // (reconcile.ts). Read from the render's values: every caller is an event
   // handler or an effect of this render.
   const picks: BuilderPicks = {
-    racialVariant, chosenSkills, racialSkills, racialAsi, racialCantrips, racialTool, repeatSkills, backgroundSkills, bonusLanguages,
+    racialVariant, chosenSkills, racialSkills, racialAsi, racialCantrips, racialTool, racialWeapons, racialTraining, racialExpertise, repeatSkills, backgroundSkills, bonusLanguages,
     subclass, expertisePicks, stylePicks, optionPicks, spells, bookPrepared, cantrips,
   };
   function applyPicks(next: BuilderPicks) {
@@ -391,6 +405,9 @@ export function useBuilderState({
     setRacialAsi(next.racialAsi);
     setRacialCantrips(next.racialCantrips);
     setRacialTool(next.racialTool);
+    setRacialWeapons(next.racialWeapons);
+    setRacialTraining(next.racialTraining);
+    setRacialExpertise(next.racialExpertise);
     setBackgroundSkills(next.backgroundSkills);
     setBonusLanguages(next.bonusLanguages);
     setSubclass(next.subclass);
@@ -487,6 +504,7 @@ export function useBuilderState({
       level: total,
       extras: fitted.map((entry) => ({ ...entry, klass: classes.find((row) => row.id === entry.classId) })),
       pickIds,
+      feats: [...feats, ...asiChoices.flatMap((choice) => (choice?.mode === "feat" ? [choice.feat] : []))],
     });
     let { picks } = result;
     const drops = [...result.drops];
@@ -578,9 +596,9 @@ export function useBuilderState({
       base[ability as Ability] += bonus ?? 0;
     }
     if (shaped?.asiChoice) {
-      for (const ability of now.racialAsi) {
-        if (ability) base[ability] += shaped.asiChoice.amount;
-      }
+      now.racialAsi.forEach((ability, index) => {
+        if (ability) base[ability] += asiPickAmount(shaped.asiChoice!, index);
+      });
     }
     const slots = builderAsiSlotLevels(entries.map((entry) => ({ id: entry.row?.id ?? "", level: entry.level }))).length;
     return applyAsiChoices(base, asiChoices.slice(0, slots));
@@ -689,9 +707,9 @@ export function useBuilderState({
       }
       // Racial bumps of the player's choice were baked in the same way.
       if (initialRace?.asiChoice) {
-        for (const ability of initial.racialChoices?.asi ?? []) {
-          base[ability] -= initialRace.asiChoice.amount;
-        }
+        (initial.racialChoices?.asi ?? []).forEach((ability, index) => {
+          base[ability] -= asiPickAmount(initialRace.asiChoice!, index);
+        });
       }
       setScores(base);
       // A saved sheet opens on the roll method: its six scores become the
@@ -780,7 +798,7 @@ export function useBuilderState({
     applyChange(
       "race",
       { raceId: id },
-      { ...picks, racialVariant: "", racialAsi: [], racialSkills: [], racialCantrips: [], racialTool: "", repeatSkills: [] },
+      { ...picks, racialVariant: "", racialAsi: [], racialSkills: [], racialCantrips: [], racialTool: "", racialWeapons: [], racialTraining: [], racialExpertise: "", repeatSkills: [] },
     );
     setRacialAncestry("");
     // The old race's own feats lead the list (submit.ts reads the racial
@@ -956,6 +974,9 @@ export function useBuilderState({
     racialSkills: setRacialSkills,
     racialCantrips: setRacialCantrips,
     racialTool: setRacialTool,
+    racialWeapons: setRacialWeapons,
+    racialTraining: setRacialTraining,
+    racialExpertise: setRacialExpertise,
     racialAncestry: setRacialAncestry,
     racialVariant: setRacialVariant,
     racialFeatAbility: setRacialFeatAbility,
@@ -966,6 +987,7 @@ export function useBuilderState({
     optionPicks: setOptionPicks,
     backstory: setBackstory,
     hopes: setHopes,
+    persona: (value) => setPersona(value ?? EMPTY_PERSONA),
     gender: setGender,
     attraction: setAttraction,
     appearance: setAppearance,
@@ -1042,6 +1064,9 @@ export function useBuilderState({
     racialSkills,
     racialCantrips,
     racialTool,
+    racialWeapons,
+    racialTraining,
+    racialExpertise,
     racialAncestry,
     racialVariant,
     racialFeatAbility,
@@ -1052,6 +1077,7 @@ export function useBuilderState({
     optionPicks,
     backstory,
     hopes,
+    persona,
     gender,
     attraction,
     appearance,
@@ -1122,6 +1148,9 @@ export function useBuilderState({
     racialSkills, setRacialSkills,
     racialCantrips, setRacialCantrips,
     racialTool, setRacialTool,
+    racialWeapons, setRacialWeapons,
+    racialTraining, setRacialTraining,
+    racialExpertise, setRacialExpertise,
     racialAncestry, setRacialAncestry,
     racialVariant, chooseRacialVariant,
     racialFeatAbility, setRacialFeatAbility,
@@ -1134,6 +1163,7 @@ export function useBuilderState({
     spellWarningAck, setSpellWarningAck,
     backstory, setBackstory,
     hopes, setHopes,
+    persona, setPersona,
     gender, setGender,
     attraction, setAttraction,
     appearance, setAppearance,

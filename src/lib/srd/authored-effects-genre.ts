@@ -10,7 +10,18 @@
 // Before this every one of them cost nothing: Afterimage's Dash took the
 // action, Target Lock was a sentence, Feedback Loop spent the reaction and
 // dealt nothing.
+import { GENRE_C_AUTHORED } from "@/lib/srd/authored-effects-genre-c";
+import { PACK_CLASS_AUTHORED } from "@/lib/srd/authored-effects-pack-classes";
+import { GENRE_CC_A_AUTHORED } from "@/lib/srd/authored-effects-genre-cc-a";
 import type { AuthoredEntry } from "@/lib/srd/authored-effects-types";
+import { GENRE_A_AUTHORED } from "@/lib/srd/authored-effects-genre-a";
+import { QUARRY_LADDER } from "@/lib/srd/authored-effects-genre-a-horror";
+import { GENRE_B_AUTHORED } from "@/lib/srd/authored-effects-genre-b";
+import { GENRE_B_MYSTERY_AUTHORED } from "@/lib/srd/authored-effects-genre-b-mystery";
+import { GENRE_B_PA_AUTHORED } from "@/lib/srd/authored-effects-genre-b-post-apocalyptic";
+import { GENRE_B_STEAMPUNK_AUTHORED } from "@/lib/srd/authored-effects-genre-b-steampunk";
+import { GENRE_GB_AUTHORED } from "@/lib/srd/authored-effects-genre-gb";
+import { GENRE_GH_AUTHORED } from "@/lib/srd/authored-effects-genre-gh";
 
 export type GenreRow = { feature: string; classes?: string[]; entry: AuthoredEntry };
 
@@ -18,7 +29,8 @@ const note = (text: string) => ({ kind: "note" as const, text });
 
 export const GENRE_AUTHORED: GenreRow[] = [
   // ---- the move as a bonus action ----
-  { feature: "Afterimage", entry: { subclass: "genre", effects: [{ kind: "bonus_route", action: "dash" }, { kind: "bonus_route", action: "disengage" }] } },
+  // "opportunity attacks against you have disadvantage" (the opportunity attack's roll reads oa_disadv).
+  { feature: "Afterimage", entry: { subclass: "genre", effects: [{ kind: "bonus_route", action: "dash" }, { kind: "bonus_route", action: "disengage" }, { kind: "oa_disadv" }] } },
   { feature: "Slippery", entry: { subclass: "genre", effects: [{ kind: "bonus_route", action: "disengage" }, { kind: "bonus_route", action: "hide" }] } },
   { feature: "Escape Artist", entry: { subclass: "genre", effects: [{ kind: "bonus_route", action: "disengage" }, { kind: "bonus_route", action: "hide" }] } },
   { feature: "Rigging Runner", entry: { subclass: "genre", effects: [{ kind: "bonus_route", action: "dash" }] } },
@@ -26,20 +38,24 @@ export const GENRE_AUTHORED: GenreRow[] = [
   // ---- marks: the bonus action, then every attack on the creature ----
   {
     feature: "Target Lock",
-    entry: { subclass: "genre", spends: [{ name: "Target Lock", action: "bonus", does: { kind: "buff", condition: "target lock", rounds: 600, quarry: true } }] },
+    entry: { subclass: "genre", spends: [{ name: "Target Lock", action: "bonus", does: { kind: "buff", condition: "target lock", rounds: 600, quarry: true, sight: true } }] },
   },
   {
     feature: "Hunter's Brand",
-    entry: { subclass: "genre", spends: [{ name: "Hunter's Brand", action: "bonus", does: { kind: "buff", condition: "hunter's brand", rounds: 600, quarry: true } }] },
+    // "brand a creature you can see", and with Twin Brand two at once
+    // (src/lib/dm/genre-a-dark-fantasy-spends.ts).
+    entry: { subclass: "genre", spends: [{ name: "Hunter's Brand", action: "bonus", does: { kind: "dark_fantasy", play: "brand" } }] },
   },
   {
     feature: "Quarry",
-    entry: { subclass: "genre", spends: [{ name: "Quarry", action: "bonus", does: { kind: "buff", condition: "quarry", rounds: 600, quarry: true } }] },
+    entry: { subclass: "genre", effects: QUARRY_LADDER, spends: [{ name: "Quarry", action: "bonus", does: { kind: "buff", condition: "quarry", rounds: 600, quarry: true } }] },
   },
   // ---- bonus actions ----
   {
     feature: "Deathly Pact Blade",
-    entry: { subclass: "genre", spends: [{ name: "Deathly Pact Blade", action: "bonus", does: note("The bonded weapon is in hand, wherever it was, and it counts as magical.") }] },
+    // The bonded weapon in hand, as a condition the strikes read: it counts
+    // as magical (genre-a-conditions.ts) and carries Reaping Blade's necrotic.
+    entry: { subclass: "genre", spends: [{ name: "Deathly Pact Blade", action: "bonus", does: { kind: "buff", condition: "deathly pact blade", rounds: 600 } }] },
   },
   {
     feature: "Ashen Hymn",
@@ -47,7 +63,16 @@ export const GENRE_AUTHORED: GenreRow[] = [
   },
   {
     feature: "Candlelight Vigil",
-    entry: { subclass: "genre", spends: [{ name: "Candlelight Vigil", action: "bonus", does: { kind: "buff", condition: "candlelight vigil", rounds: 10 } }] },
+    // "allies in 10 ft add +1d4 to saves against the supernatural": a fear
+    // or a charm, or any save against magic (src/lib/dm/genre-a-auras.ts).
+    entry: {
+      subclass: "genre",
+      spends: [{ name: "Candlelight Vigil", action: "bonus", does: { kind: "buff", condition: "candlelight vigil", rounds: 10 } }],
+      effects: [
+        { kind: "aura_roll", rangeFt: 10, roll: "save", against: ["frightened", "charmed"], die: "1d4", gate: { condition: "candlelight vigil" } },
+        { kind: "aura_roll", rangeFt: 10, roll: "save", magical: true, die: "1d4", gate: { condition: "candlelight vigil" } },
+      ],
+    },
   },
   {
     feature: "Head of Steam",
@@ -81,13 +106,31 @@ export const GENRE_AUTHORED: GenreRow[] = [
     entry: { subclass: "genre", spends: [{ name: "Field Instruments", action: "action", does: note("The GM says whether the supernatural is present within 60 feet, and its rough direction.") }] },
   },
   // ---- reactions ----
-  { feature: "ICE Pick", entry: { subclass: "genre", reactions: [{ name: "ICE Pick", does: { kind: "ac_vs_hit", amount: 2 } }] } },
+  // "+2 AC or +2 to the save": the save's half is Arcane Deflection's
+  // (orSave: the failed save just rolled, turned when +2 reaches the DC).
+  { feature: "ICE Pick", entry: { subclass: "genre", reactions: [{ name: "ICE Pick", does: { kind: "ac_vs_hit", amount: 2, spellOnly: true, orSave: 2 } }] } },
   { feature: "Feedback Loop", entry: { subclass: "genre", reactions: [{ name: "Feedback Loop", does: { kind: "strike_back", amount: "cha", type: "psychic" } }] } },
   { feature: "Barrow Ward", entry: { subclass: "genre", reactions: [{ name: "Barrow Ward", does: { kind: "reduce", amount: "cha+prof", who: "ally", rangeFt: 10 } }] } },
   { feature: "Penance Shared", entry: { subclass: "genre", reactions: [{ name: "Penance Shared", does: { kind: "take_for_ally", rangeFt: 5, share: "halved" } }] } },
   { feature: "The Mark Burns Back", entry: { subclass: "genre", reactions: [{ name: "The Mark Burns Back", does: { kind: "strike_back", amount: "cha+level", type: "necrotic" } }] } },
-  { feature: "Bodyguard", entry: { subclass: "genre", reactions: [{ name: "Bodyguard", does: { kind: "take_for_ally", rangeFt: 5 } }] } },
+  // Meat Shield (6th level): "Bodyguard works for allies within 10 ft".
+  { feature: "Bodyguard", entry: { subclass: "genre", reactions: [{ name: "Bodyguard", does: { kind: "take_for_ally", rangeFt: [[1, 5], [6, 10]] } }] } },
   { feature: "Duelist's Flourish", entry: { subclass: "genre", reactions: [{ name: "Duelist's Flourish", does: { kind: "attack", rangeFt: 5 } }] } },
-  { feature: "Intercept Protocol", entry: { subclass: "genre", reactions: [{ name: "Intercept Protocol", does: { kind: "take_for_ally", rangeFt: 5 } }] } },
-  { feature: "Blood Bond", entry: { subclass: "genre", reactions: [{ name: "Blood Bond", does: { kind: "take_for_ally", rangeFt: 30, share: "split" } }] } },
+  { feature: "Intercept Protocol", entry: { subclass: "genre", reactions: [{ name: "Intercept Protocol", does: { kind: "take_for_ally", rangeFt: 5, swap: true } }] } },
+  { feature: "Blood Bond", entry: { subclass: "genre", reactions: [{ name: "Blood Bond", does: { kind: "take_for_ally", rangeFt: 30, share: "split", ownSummon: true } }] } },
+  ...GENRE_A_AUTHORED,
+  // The horror classes' features of the cc1113 genre-c pass.
+  ...GENRE_GH_AUTHORED,
+  // The mystery, post-apocalyptic and steampunk classes' own (wave 2).
+  ...GENRE_B_AUTHORED,
+  ...GENRE_B_MYSTERY_AUTHORED,
+  ...GENRE_B_PA_AUTHORED,
+  ...GENRE_B_STEAMPUNK_AUTHORED,
+  ...GENRE_GB_AUTHORED,
+  // The fight features the 2026-11-13 creator audit built.
+  ...GENRE_C_AUTHORED,
+  // A content-pack class's (Black Flag's Mechanist).
+  ...PACK_CLASS_AUTHORED,
+  // The cyberpunk, dark fantasy and mystery features the second pass of that audit built.
+  ...GENRE_CC_A_AUTHORED,
 ];

@@ -65,6 +65,7 @@ import { activeAuthored } from "@/lib/srd/authored-effects";
 import { enemySpeedTiles } from "@/lib/dm/enemy-speed";
 import { opportunityAnswer } from "@/lib/dm/opportunity-ask";
 import { letGoNote, timedOutNote, type OpportunityTrigger } from "@/lib/dm/opportunity-ask-logic";
+import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // Opportunity attacks: walking out of an enemy's reach is not free. Before
 // this, a player could stroll away from a troll with no consequence at all,
@@ -247,7 +248,7 @@ export function resolveOpportunityAttacks(
       ...(attackEffect.disadvantage ? ["disadvantage" as const] : []),
       ...own.sources,
     ]);
-    const targetAc = acWithEffects(campaign.id, sheet);
+    const targetAc = acWithEffects(campaign.id, sheet, enemy);
     const hitOutcome = rollExpression(`${d20Expression(attack.toHit + attackEffect.bonus, advantage)}${own.riders.diceSuffix}`, undefined, {
       purpose: { roller: "enemy", kind: "attack", who: enemy.displayName },
     });
@@ -433,8 +434,11 @@ export function resolvePcOpportunityAttacks(
   // (src/lib/srd/feat-moves.ts). Every caller passes it rather than skipping
   // this door, or the Sentinel is skipped with everyone else.
   disengaged = false,
+  // Who strikes a walker that Disengaged besides a Sentinel: Picket Stance
+  // answers it all the same (src/lib/dm/genre-b-mystery-enforcer.ts).
+  alsoStrikesDisengaged?: (sheet: CharacterSheet) => boolean,
 ): string[] {
-  return resolvePcOpportunityWalk(campaign, enemyId, from, to, path, disengaged).notes;
+  return resolvePcOpportunityWalk(campaign, enemyId, from, to, path, disengaged, alsoStrikesDisengaged).notes;
 }
 
 // The same swings, and where the walk ends when one of them ends it: a hit
@@ -450,6 +454,7 @@ export function resolvePcOpportunityWalk(
   to: XY,
   path?: XY[],
   disengaged = false,
+  alsoStrikesDisengaged?: (sheet: CharacterSheet) => boolean,
 ): { notes: string[]; stoppedAt?: XY } {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
@@ -489,7 +494,7 @@ export function resolvePcOpportunityWalk(
     if (sheet.id === enemyId || sideOf(encounter, "sheet", sheet.id, sheet) === moverSide) {
       continue;
     }
-    if (disengaged && !strikesTheDisengaged(sheet)) {
+    if (disengaged && !strikesTheDisengaged(sheet) && !alsoStrikesDisengaged?.(sheet)) {
       continue;
     }
     const token = getTokenByRef(map.id, sheet.id);

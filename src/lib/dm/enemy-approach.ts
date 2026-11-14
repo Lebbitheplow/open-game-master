@@ -1,4 +1,5 @@
 import type { Campaign } from "@/lib/db/campaigns";
+import { COWERING } from "@/lib/srd/genre-b-conditions";
 import { tokenSides } from "@/lib/dm/combatant";
 import { allyBeside } from "@/lib/dm/side-allies";
 import { getEncounter, listEnemies, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
@@ -13,7 +14,7 @@ import { tokenFootprint } from "@/lib/dm/board-reach";
 
 import { passableTiles } from "@/lib/battlemap/passage";
 import { getSheetById } from "@/lib/db/sheets";
-import { sizeForRace } from "@/lib/srd";
+import { sheetSize } from "@/lib/srd";
 import { removeConditions } from "@/lib/dm/condition-logic";
 import { resolvePcOpportunityWalk } from "@/lib/dm/opportunity";
 import { publishEphemeral } from "@/lib/events";
@@ -53,13 +54,14 @@ export type Approach = {
 
 // Where the creature it fears stands, when it fears one on the board: the
 // source of its frightened, the cleric who turned it, or the caster it flees
-// at Command's word (none of them walks closer, SRD 5.1; issue #621).
+// at Command's word (none of them walks closer, SRD 5.1; issue #621), or the
+// packmaster whose Alpha's Roar it cowers from ("no move toward you").
 export function fearSourceAt(
   mapId: string,
   conditions: string[],
   meta: Record<string, { source?: string } | undefined>,
 ): (XY & { footprint?: number }) | null {
-  const held = ["frightened", TURNED, FLEEING].map((name) => conditions.find((entry) => entry.toLowerCase() === name)).filter((entry): entry is string => Boolean(entry));
+  const held = ["frightened", TURNED, FLEEING, COWERING].map((name) => conditions.find((entry) => entry.toLowerCase() === name)).filter((entry): entry is string => Boolean(entry));
   const source = held.map((name) => meta?.[name]?.source).find(Boolean);
   if (!source) {
     return null;
@@ -373,7 +375,7 @@ export function enemyMoveTraits(width: number, tokens: BattleToken[], mover: Bat
     }
     if (token.kind === "pc") {
       const sheet = getSheetById(token.refId);
-      return sheet ? sizeForRace(sheet.race) : undefined;
+      return sheet ? sheetSize(sheet) : undefined;
     }
     return undefined;
   };

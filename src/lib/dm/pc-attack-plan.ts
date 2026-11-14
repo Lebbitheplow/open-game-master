@@ -6,25 +6,28 @@
 // the quiver is only counted, the maneuver's pool and the smite's slot are
 // only looked at, and the budget is a copy until pc-attack.ts stores it.
 
+import { silverTideRider } from "@/lib/dm/genre-cc-a-dark-fantasy";
 import { secondSneakKey } from "@/lib/dm/mt-mr-turn";
 import { luckPointsLeft } from "@/lib/srd/class-resources";
 import { ownTurnOf } from "@/lib/dm/held-turn";
 import { mergeAdvantage } from "@/lib/dm/condition-logic";
 import { mountedAdvantage } from "@/lib/dm/ar-wbf-feat-doors";
-import { coverFeatName, damageShakesConcentration, elementalAdeptApplies, floorDamageDice, hasSkulker, polearmButtDamage, powerAttackFeat, shotIgnoresCover, shotIgnoresLongRange, spellIgnoresCover, stunningSniperApplies } from "@/lib/srd/feat-combat";
+import { steampunkAttackCover } from "@/lib/dm/genre-b-steampunk-cover";
+import { goreDriftRefusal } from "@/lib/dm/genre-gb-gore-drift";
+import { coverFeatName, damageShakesConcentration, elementalAdeptApplies, flamesOfPhlegethosApplies, floorDamageDice, rerollOnesDice, hasSkulker, polearmButtDamage, powerAttackFeat, shotIgnoresCover, shotIgnoresLongRange, spellIgnoresCover, stunningSniperApplies } from "@/lib/srd/feat-combat";
 import { underwaterRangeMiss } from "@/lib/dm/underwater";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { listEnemies, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import type { Advantage } from "@/lib/dice";
-import { spendAction, spendAttack, type TurnBudget } from "@/lib/dm/action-budget";
+import { budgetApplies, spendAction, spendAttack, type TurnBudget } from "@/lib/dm/action-budget";
 import type { AttackProfile } from "@/lib/dm/attack-logic";
 import { dualWields, isUndeadOrFiend, offHandProblem, slotFree, smiteDice } from "@/lib/dm/attack-rules";
 import { drawRow, gearKindOf, guessedRehand, handsFor, handsFullError, rehandLine, spendInteraction } from "@/lib/dm/gear-hands";
 import { aiPlaysSheet } from "@/lib/dm/companion-command";
 import { askPlayerWords, noteHandsFullAsk } from "@/lib/dm/hands-full-ask";
 import { wearingIsExplicit } from "@/lib/srd/armor";
-import type { EquipmentItem } from "@/lib/schemas/sheet";
+import type { EquipmentItem, CharacterSheet } from "@/lib/schemas/sheet";
 import { planMarks, type MarkPlan } from "@/lib/dm/attack-marks";
 import type { TypedRider } from "@/lib/dm/damage-parts";
 import { itemRidersAgainst } from "@/lib/dm/gear-attack";
@@ -67,10 +70,12 @@ import { spendAmmo } from "@/lib/srd/ammunition";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { conditionsSpentAgainst } from "@/lib/srd/condition-effect-queries";
 import type { ConditionRollRiders } from "@/lib/srd/condition-effects";
-import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { toolError, type ToolError } from "@/lib/dm/tool-errors";
 import { spentSlotRefusal } from "@/lib/dm/cast-rules";
 import { infusionWorn, makesOwnAmmunition } from "@/lib/srd/infusions";
+import { genreCastsAtMaximum } from "@/lib/dm/genre-a-casts";
+import { maximumOf } from "@/lib/dm/heal-spell";
+import { bundledSpellFacts } from "@/lib/srd/spell-facts";
 
 // A Battle Master maneuver riding the swing.
 export type ManeuverPick = {
@@ -315,6 +320,11 @@ export function planPcAttack(input: {
       return { refused: shell };
     }
   }
+  // Gore Drift's extra attack goes to another creature (genre-gb-gore-drift.ts).
+  const drift = weaponAttack && budgetApplies(encounter.turnBudget, sheet.id, encounter.round) ? goreDriftRefusal(encounter.turnBudget, enemy.id, enemy.displayName) : null;
+  if (drift) {
+    return { refused: { error: drift, refused: "rules" as const } };
+  }
   const featNotes: string[] = [];
   // Sharpshooter's shot and Spell Sniper's spell pass half and
   // three-quarters cover; Sharpshooter's shot takes no disadvantage at long
@@ -330,6 +340,13 @@ export function planPcAttack(input: {
   if (focus) {
     featNotes.push(`${focus.name} (Enhanced Arcane Focus): ${enemy.displayName}'s half cover does not count`);
     geometry = { ...geometry, effectiveAc: geometry.effectiveAc - geometry.cover, cover: 0, screen: null };
+  }
+  // Powder Discipline's shot and Precision Engineering's schematic
+  // (src/lib/dm/genre-b-steampunk-cover.ts).
+  const steamCover = steampunkAttackCover(sheet, { spell: kind === "spell", weapon: weaponAttack, base: profile.base }, geometry.cover, enemy.displayName);
+  if (steamCover) {
+    featNotes.push(steamCover.note);
+    geometry = { ...geometry, effectiveAc: geometry.effectiveAc - (geometry.cover - steamCover.cover), cover: steamCover.cover, screen: steamCover.cover ? geometry.screen : null };
   }
   if (weaponAttack && atRange && geometry.spatials.longRange && shotIgnoresLongRange(sheet)) {
     featNotes.push("Sharpshooter: no disadvantage at long range");
@@ -377,9 +394,23 @@ export function planPcAttack(input: {
   // Mage Slayer's melee hit, or any damage from a Spellbreaker, shakes the
   // target's concentration (enemy-damage.ts).
   const mageSlayer = damageShakesConcentration(sheet, { weaponAttack, melee: !atRange, withinFiveFeet: geometry.withinFiveFeet }) !== null;
+  // Flames of Phlegethos: a fire spell's 1s on its damage dice are rolled
+  // again, before Elemental Adept's floor reads them.
+  if (kind === "spell" && flamesOfPhlegethosApplies(sheet, profile.damageType)) {
+    profile = { ...profile, damageExpression: rerollOnesDice(profile.damageExpression) };
+    featNotes.push("Flames of Phlegethos: every 1 on the fire damage dice is rolled again");
+  }
   if (elementalAdept || adeptOthers.length) {
     profile = { ...profile, damageExpression: floorDamageDice(profile.damageExpression) };
     featNotes.push(`Elemental Adept: ${[...(elementalAdept ? [profile.damageType] : []), ...adeptOthers].join(" and ")} ignores resistance and every 1 on the dice is a 2`);
+  }
+  // Their Power, Your Hands: the stigmata it pays for at its maximum (genre-a-casts.ts).
+  // A cast no slot pays for names no slot level: the spell's own level.
+  const castLevel = spell.spellSlotLevel ?? (args.spell ? bundledSpellFacts(args.spell)?.level : undefined);
+  const genreMaximum = kind === "spell" && castLevel ? genreCastsAtMaximum(sheet, castLevel) : null;
+  if (genreMaximum) {
+    profile = { ...profile, damageExpression: String(maximumOf(profile.damageExpression)) };
+    featNotes.push(`${genreMaximum}: the spell deals its maximum damage`);
   }
 
   // A Battle Master maneuver riding this swing. The pick and the pool are
@@ -645,6 +676,11 @@ export function planPcAttack(input: {
   if (curse) {
     profile = { ...profile, damageExpression: `${profile.damageExpression}+${curse.dice}` };
   }
+  // Silver Tide's radiant on a witch hunter's branded quarry (genre-cc-a-dark-fantasy.ts).
+  const tide = silverTideRider(campaign.id, encounter.id, sheet, enemy, weaponAttack);
+  if (tide) {
+    profile = { ...profile, damageExpression: `${profile.damageExpression}+${tide.dice}`, riderNotes: [...profile.riderNotes, tide.note] };
+  }
   const situation = attackSituation({
     campaign,
     encounter,
@@ -784,7 +820,7 @@ export function planPcAttack(input: {
     // Curving Shot's reroll is the same arrow.
     ammo: options.featureBonus?.noAmmo ? null : ammo,
     drawn,
-    typedRiders: [...folded.typedRiders, ...gear.typed, ...(curse ? [curse] : [])],
+    typedRiders: [...folded.typedRiders, ...gear.typed, ...(curse ? [curse] : []), ...(tide ? [{ dice: tide.dice, type: tide.type }] : [])],
     droppedRiders,
     hitClaims,
     effectiveAc: geometry.effectiveAc,

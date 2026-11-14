@@ -123,6 +123,11 @@ export type ConditionMeta = {
   // world clock between fights (foe-carry-logic.ts, issue #667). Not a count
   // of rounds, which the fight would tick away and the tracker would show.
   wakeAfterHours?: number;
+  // The location a ward was set at (src/lib/dm/genre-gh-wards.ts).
+  place?: string;
+  // A once-a-turn or once-a-fight use spent: the turn or the fight it went in
+  // (Emboldening Bond's die, Whispered Names: src/lib/dm/genre-gh-names.ts).
+  usedTurn?: string;
   // The temporary hit points this effect granted, which go when it ends
   // (False Life, Heroism): src/lib/db/sheets.ts patchSheet.
   tempHp?: number;
@@ -454,10 +459,12 @@ export function incapacitatedBy(conditions: string[]): string | null {
   return has(conditions, INCAPACITATING);
 }
 
-export function effectiveSpeed(conditions: string[], baseSpeed: number): number {
+// `whole`: a speed nothing reduces (conditionSpeed), which the hard zeroes
+// still hold.
+export function effectiveSpeed(conditions: string[], baseSpeed: number, whole = false): number {
   // Effect conditions adjust the speed (haste x2, longstrider +10) before
   // the hard zeroes (grappled, restrained, incapacitated) override.
-  return has(conditions, SPEED_ZERO) ? 0 : conditionSpeed(conditions, baseSpeed);
+  return has(conditions, SPEED_ZERO) ? 0 : conditionSpeed(conditions, baseSpeed, whole);
 }
 
 // Merges advantage sources 5e-style: any advantage plus any disadvantage

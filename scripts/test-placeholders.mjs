@@ -36,7 +36,13 @@ const SET_DIR = path.join(PUBLIC, "assets", "placeholders");
 // race/class portraits (the largest is 26 KiB); scenes top out at 102 KiB.
 // The total leaves room for another batch at these sizes, not for a return
 // to the painted ones.
-const BUDGET_TOTAL_BYTES = 12 * 1024 * 1024;
+//
+// Raised from 12 MiB to 12.5 MiB on 2026-11-13 for the eleven lineages
+// Smoebo painted (33 plates, 320 KB: docs/art/species-portraits-2026-11-13.json),
+// which took the set to 11.98 MiB, 21 KB under the old ceiling. Every byte
+// here ships in the desktop and Android app payloads, so the ceiling moves
+// only by the half MiB that leaves room for one more batch of this size.
+const BUDGET_TOTAL_BYTES = 12.5 * 1024 * 1024;
 const BUDGET_FILE_BYTES = 48 * 1024;
 const BUDGET_SCENE_FILE_BYTES = 128 * 1024;
 const BUDGET_PAINTED_SQUARE_BYTES = 48 * 1024;
@@ -110,6 +116,20 @@ for (const gender of GENDER_INPUTS) {
     ["toh_minotaur", "barbarian", "character-race/minotaur-"],
     ["dragonborn", "wizard", "character-race/dragonborn-"],
     ["tortle", "monk", "character-race/tortle-"],
+    // The 2026-11-13 lineages: a beast's, a bird's, a reptile's or a
+    // goblin's head keeps its own plate; a satyr, a triton, a fairy, a
+    // centaur or a shifter reads true in the class's gear.
+    ["aarakocra", "monk", "character-race/aarakocra-"],
+    ["owlfolk", "wizard", "character-race/owlfolk-"],
+    ["rabbitfolk", "rogue", "character-race/rabbitfolk-"],
+    ["kobold", "sorcerer", "character-race/kobold-"],
+    ["serpentfolk", "warlock", "character-race/serpentfolk-"],
+    ["hobgoblin", "fighter", "character-race/hobgoblin-"],
+    ["satyr", "bard", "character-class/bard-"],
+    ["triton", "paladin", "character-class/paladin-"],
+    ["fairy", "druid", "character-class/druid-"],
+    ["centaur", "ranger", "character-class/ranger-"],
+    ["shifter", "barbarian", "character-class/barbarian-"],
     ["human", "fighter", "character-class/fighter-"],
     ["high_elf", "wizard", "character-class/wizard-"],
     ["hill_dwarf", "cleric", "character-class/cleric-"],

@@ -15,6 +15,7 @@
 //
 // Imports mutations (for the slot spend) and must never be imported by it.
 
+import { spendRealityRend } from "@/lib/dm/genre-a-cyberpunk-spends";
 import { markAffinityCast } from "@/lib/dm/affinity-cast";
 import { areaProblem, spellAreaShape } from "@/lib/dm/aoe-shape";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -40,6 +41,7 @@ import { maximumOf } from "@/lib/dm/heal-spell";
 import { splitDamageExpression } from "@/lib/dm/aoe-parts";
 import { toolError, type ToolError } from "@/lib/dm/tool-errors";
 import { spellHeldProblem } from "@/lib/dm/cast-rules";
+import { genreCastsAtMaximum } from "@/lib/dm/genre-a-casts";
 
 const FEET_PER_TILE = 5;
 
@@ -340,10 +342,19 @@ export function planAoeSpell(
     corrections.push("Potent Cantrip: a successful save still takes half.");
   }
   // Overchannel: the dice at their maximum, and its price after the cast.
-  if (input.overchannel && damage) {
+  // Reality Rend: the next damaging psionic at its maximum (genre-a-cyberpunk-spends.ts).
+  const rend = damage && !input.overchannel ? spendRealityRend(campaign, caster) : null;
+  if ((input.overchannel || rend) && damage) {
     damageParts = damageParts ? [String(maximumOf(damageParts[0])), String(maximumOf(damageParts[1]))] : null;
     damage = damageParts ? damageParts.join("+") : String(maximumOf(damage));
-    corrections.push(payOverchannel(campaign, turn, caster.id, spellLevel));
+    corrections.push(rend ?? payOverchannel(campaign, turn, caster.id, spellLevel));
+  }
+  // Their Power, Your Hands: the stigmata it pays for at its maximum (genre-a-casts.ts).
+  const genreMaximum = !input.overchannel && damage ? genreCastsAtMaximum(caster, spellLevel) : null;
+  if (genreMaximum && damage) {
+    damageParts = damageParts ? [String(maximumOf(damageParts[0])), String(maximumOf(damageParts[1]))] : null;
+    damage = damageParts ? damageParts.join("+") : String(maximumOf(damage));
+    corrections.push(`${genreMaximum}: the spell deals its maximum damage.`);
   }
   const condition = mech?.condition ?? null;
   const runsAs = resolved?.runsAs ?? facts?.runsAs;

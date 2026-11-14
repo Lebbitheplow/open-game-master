@@ -6,8 +6,13 @@
 // pc-attack.ts, which decides and rolls the attack these dice belong to.
 // Nothing here refuses the attack.
 
+import { besideSwarm } from "@/lib/dm/genre-cc-a-turns";
+import { holdsGenreFeature } from "@/lib/srd/genre-b-combat";
 import { textKey } from "@/lib/language/text-logic";
-import { authoredNaturalWeapon } from "@/lib/srd/authored-effects-more";
+import { runToward } from "@/lib/dm/mt-fb-charge";
+import { airborneNow } from "@/lib/dm/genre-gb-airborne";
+import { authoredNaturalWeapon, authoredSneakBonus } from "@/lib/srd/authored-effects-more";
+import { horrorSampled } from "@/lib/dm/genre-a-horror-hits";
 import { pactWeaponAttack } from "@/lib/srd/pact-weapon";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { poisonerIgnoresResistance } from "@/lib/srd/feat-combat";
@@ -17,9 +22,10 @@ import type { AttackProfile } from "@/lib/dm/attack-logic";
 import { damageParts, type TypedRider } from "@/lib/dm/damage-parts";
 import type { BlowSource } from "@/lib/dm/damage-logic";
 import { effectOutcome } from "@/lib/dm/effect-tools";
-import type { Encounter, EncounterEnemy } from "@/lib/db/encounters";
+import { getActiveEncounter, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { genreBAuraAttack } from "@/lib/dm/genre-b-auras";
+import { attackAuraExtras } from "@/lib/dm/attack-roll-extras";
 import { authoredSneakEdge } from "@/lib/dm/authored-hooks";
-import { authoredSneakBonus } from "@/lib/srd/authored-effects-more";
 import { getSheetById } from "@/lib/db/sheets";
 import { summonStrikesAsMagic } from "@/lib/dm/mighty-summoner";
 import { applyEnemyDamage, applySheetFoeBlow } from "@/lib/dm/enemy-damage";
@@ -32,6 +38,8 @@ import type { AttackPlan } from "@/lib/dm/pc-attack-plan";
 import type { AttackKind } from "@/lib/dm/pc-attack-profile";
 import type { OnHitSpends } from "@/lib/dm/pc-attack-riders";
 import { attackDamageRiders, type FeatureRider } from "@/lib/dm/attack-damage-riders";
+import { enemyNotActed } from "@/lib/dm/genre-a-strikes";
+import { horrorMagicalAgainst } from "@/lib/srd/genre-a-horror-holds";
 import { cursedAgainst } from "@/lib/srd/magic-items";
 import { conditionStrikesMagical } from "@/lib/srd/condition-effect-queries";
 import { effectsFor, type CombatRiders } from "@/lib/srd/feature-effects";
@@ -62,6 +70,12 @@ export function foldDamageRiders(input: {
   atRange?: boolean;
 }) {
   const { campaignId, sheet } = input;
+  // Gutter Fighting's "a creature that has not acted yet this combat".
+  const fight = input.enemy?.id ? getActiveEncounter(campaignId) : null;
+  // Greater Gutter Fighting: "also applies to creatures adjacent to your swarm".
+  const notActed = Boolean(fight && input.enemy?.id && (enemyNotActed(fight, input.enemy.id) || (holdsGenreFeature(sheet, "vermin_lord", "Greater Gutter Fighting") && besideSwarm(fight, sheet.id, input.enemy.id))));
+  // The run straight at it this turn, for a rider that rides one (Ram Speed).
+  const ranFt = fight && input.enemy?.id ? runToward(fight, sheet.id, input.enemy.id) : 0;
   let profile = input.profile;
 
   // Rage, an ability a feature adds (Aura of Hate), the dice a held
@@ -70,7 +84,12 @@ export function foldDamageRiders(input: {
   // attack-damage-riders.ts, which the Hand's attack cards print from too.
   // The server folds them into the damage dice so both the digital and
   // physical-dice paths carry them.
-  const { rageBonus, abilityRiders, onHit, featureRiders } = attackDamageRiders(input);
+  // Aloft on the board, for a rider that rides a shot from the air (Greater Daring).
+  const airborne = Boolean(fight) && airborneNow(campaignId, sheet.id);
+  const { rageBonus, abilityRiders, onHit, featureRiders, toHitRiders } = attackDamageRiders({ ...input, notActed, ranFt, airborne });
+  for (const rider of toHitRiders) {
+    profile = { ...profile, toHit: profile.toHit + rider.amount, riderNotes: [...profile.riderNotes, `${rider.feature}: +${rider.amount} to hit`] };
+  }
   if (rageBonus) {
     profile = {
       ...profile,
@@ -115,6 +134,12 @@ export function foldDamageRiders(input: {
   const damageEffect = effectOutcome(campaignId, { kind: "character", id: sheet.id }, "damage");
   if (attackEffect.bonus) {
     profile = { ...profile, toHit: profile.toHit + attackEffect.bonus };
+  }
+  // An ally's genre aura on the attack roll (Warlord of the Wastes).
+  // attackAuraExtras is the one reading of it, which the Hand's cards print.
+  const aura = attackAuraExtras(genreBAuraAttack(campaignId, sheet));
+  if (aura) {
+    profile = { ...profile, toHit: profile.toHit + aura.flat, riderNotes: [...profile.riderNotes, aura.note] };
   }
   if (damageEffect.bonus) {
     profile = {
@@ -297,8 +322,10 @@ export function strikeDamage(plan: AttackPlan) {
 
 // A spell, a magic weapon and strikes that count as magical pass
 // resistance to nonmagical attacks.
-export function strikesAsMagic(plan: Pick<AttackPlan, "kind" | "profile" | "riders" | "sheet">): boolean {
+export function strikesAsMagic(plan: Pick<AttackPlan, "kind" | "profile" | "riders" | "sheet"> & { enemy?: { stats?: { type?: string }; conditions?: string[] } }): boolean {
   return (
+    // Ectoplasmic Sample: the party's attacks on the sampled spirit (genre-a-horror-hits.ts).
+    horrorSampled(plan.enemy) ||
     plan.kind === "spell" ||
     plan.kind === "granted" ||
     plan.profile.magicBonus > 0 ||
@@ -309,7 +336,9 @@ export function strikesAsMagic(plan: Pick<AttackPlan, "kind" | "profile" | "ride
     pactWeaponAttack(plan.sheet, plan.kind, plan.profile) ||
     magicalStrikeApplies(plan) ||
     // Mighty Summoner: a Shepherd's summoned beast or fey (mighty-summoner.ts).
-    summonStrikesAsMagic(plan.sheet)
+    summonStrikesAsMagic(plan.sheet) ||
+    // Consecrated Tools: magical against fiends and undead (genre-a-horror-holds.ts).
+    (plan.kind === "weapon" && horrorMagicalAgainst(plan.sheet, plan.enemy?.stats?.type))
   );
 }
 

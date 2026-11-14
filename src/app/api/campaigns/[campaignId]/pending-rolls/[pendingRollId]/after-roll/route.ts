@@ -150,18 +150,19 @@ export async function POST(
   // Combat Inspiration is the bard's die on an attack's damage (after-roll.ts);
   // a monk's or a rogue's choice never carries it.
   const combatInspiration = "combatInspiration" in paid ? paid.combatInspiration : undefined;
+  const orcishFury = "orcishFury" in paid ? paid.orcishFury : undefined;
   // A Bardic Inspiration die that made the roll succeed is on record as its
   // bard's (last-save.ts recordInspiredSuccess): Infectious Inspiration answers it.
   const mark = pending.dc ?? (pending.attack as AttackRecord | null)?.targetAc ?? null;
   if (bard && typeof mark === "number" && paid.outcome.total >= mark) {
     runInTurnScope(pending.turnId, () => recordInspiredSuccess(context.campaign.id, { id: sheet.id, name: sheet.name }, bard, pending.attack ? "attack" : pending.kind === "saving_throw" ? "save" : "check"));
   }
-  if ((paid.touchOfDeath || paid.destructiveWrath || combatInspiration) && pending.attack) {
+  if ((paid.touchOfDeath || paid.destructiveWrath || combatInspiration || orcishFury) && pending.attack) {
     // No die is thrown: the roll stays the player's, and the hit carries the
     // necrotic and pays its use once it stands (attack-swing.ts), or its
     // lightning and thunder at their maximum. A hit waits on one cleric's
     // Channel Divinity, so it lands with the choice.
-    const attack = { ...pending.attack, ...(paid.touchOfDeath ? { touchOfDeath: paid.touchOfDeath } : {}), ...(paid.destructiveWrath ? { destructiveWrath: true } : {}), ...(combatInspiration ? { combatInspiration: true } : {}) };
+    const attack = { ...pending.attack, ...(paid.touchOfDeath ? { touchOfDeath: paid.touchOfDeath } : {}), ...(paid.destructiveWrath ? { destructiveWrath: true } : {}), ...(combatInspiration ? { combatInspiration: true } : {}), ...(orcishFury ? { orcishFury: true } : {}) };
     return land(paid.outcome, thrown.landing, { ...pending, attack });
   }
   if ("helperHit" in paid && paid.helperHit && pending.attack && wizard) {

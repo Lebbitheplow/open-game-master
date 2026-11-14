@@ -16,7 +16,9 @@
 //     start halves the Strength part and never these;
 //   - the multipliers: the Jump spell's tripling (a condition on the sheet)
 //     and Step of the Wind's doubling for the turn (windStepOn), on the whole
-//     distance.
+//     distance;
+//   - a jump die (a satyr's Mirthful Leaps, a d8), rolled by the jump door
+//     as the jump is made and added after everything above (leapDie).
 // Pure: no database.
 
 import type { Encounter } from "@/lib/db/encounters";
@@ -26,6 +28,7 @@ import { authoredJump, jumpStrength } from "@/lib/srd/authored-mt-fb";
 import { authoredJumpFeet } from "@/lib/srd/carry-jump-effects";
 import { conditionJumpMultiplier } from "@/lib/srd/condition-effect-queries";
 import { holdsFeature } from "@/lib/srd/feature-names";
+import { springHeelsFactor } from "@/lib/srd/genre-b-steampunk-moves";
 import { highJumpFeet, longJumpFeet } from "@/lib/srd/jump";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -65,7 +68,13 @@ export type JumpReach = {
   // The reach in feet, long and high.
   longFeet: number;
   highFeet: number;
+  // The sides of the die a jump adds feet from (Mirthful Leaps' 8), or null.
+  leapDie: number | null;
 };
+
+// "Mirthful Leaps (roll a d8 and add that many feet to each long or high
+// jump)": the satyr's jump die.
+export const leapDieOf = (sheet: CharacterSheet): number | null => (holdsFeature(sheet, "Mirthful Leaps") ? 8 : null);
 
 // `windStep`: whether Step of the Wind is on this turn (windStepOn; never in
 // an exploration scene, which has no turns).
@@ -73,7 +82,8 @@ export function jumpReach(sheet: CharacterSheet, runningStart: boolean, windStep
   const score = computeAbilityScore(sheet, "str");
   // The Jump spell triples the distance (condition-effects-last.ts), and
   // Step of the Wind doubles it for the turn.
-  const leap = conditionJumpMultiplier(sheet.conditions) * (windStep ? 2 : 1);
+  // Spring Heels triples it (genre-b-steampunk-moves.ts).
+  const leap = conditionJumpMultiplier(sheet.conditions) * (windStep ? 2 : 1) * springHeelsFactor(sheet);
   const extra = runningJumpFeet(sheet, runningStart);
   // Feet a feature adds to any jump, standing too (Totem Spirit's tiger).
   const totem = authoredJump(sheet);
@@ -88,5 +98,6 @@ export function jumpReach(sheet: CharacterSheet, runningStart: boolean, windStep
     extraFeet,
     longFeet: longJumpFeet(strength, runningStart) + extraFeet,
     highFeet: (highJumpFeet(score, runningStart) + extra.high + totem.high + flat) * leap,
+    leapDie: leapDieOf(sheet),
   };
 }

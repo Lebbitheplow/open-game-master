@@ -15,13 +15,15 @@
 // Off the map there is nothing to measure: the conditions (blinded,
 // invisible, hidden) are the whole answer, as before.
 
+import { horrorVeilTiles } from "@/lib/srd/genre-a-horror-holds";
+import { candleSightTiles } from "@/lib/dm/genre-gb-horror";
 import { getClock } from "@/lib/db/clock";
 import { getBattleMapForEncounter, getTokenByRef, listTokens } from "@/lib/db/battle-maps";
 import { getEnemy, type EncounterEnemy } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
 import { effectiveAmbient } from "@/lib/battlemap/daylight";
 import { cachedLitTiles } from "@/lib/battlemap/lit-cache";
-import { darkvisionTilesFromText, hasLineOfSight } from "@/lib/battlemap/los";
+import { darkvisionTilesFromText, hasLineOfSight, hasLineOfSightBetween } from "@/lib/battlemap/los";
 import { ambientAt, magicalDarknessAt } from "@/lib/battlemap/scene";
 import { chebyshev, tileIndex, type BattleToken, type XY } from "@/lib/battlemap/types";
 import { breakDown } from "@/lib/dm/calendar";
@@ -37,7 +39,6 @@ import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { instancesOf, type ConditionMetaMap, type PastSight } from "@/lib/dm/condition-logic";
 import { spaceOf, tilesApart } from "@/lib/dm/board-reach";
 import { revelationSightTiles, unveilsAt, type UnveilingSense } from "@/lib/dm/ar-ws-revelation";
-import { hasLineOfSightBetween } from "@/lib/battlemap/los";
 
 export function characterSenses(sheet: Pick<CharacterSheet, "features" | "race"> & { conditions?: string[]; wildShape?: CharacterSheet["wildShape"] }): Senses & UnveilingSense {
   // A worn form sees by its own senses alone (mt-srd-form-senses.ts); True
@@ -56,7 +57,9 @@ export function characterSenses(sheet: Pick<CharacterSheet, "features" | "race">
   // Revelation in Flesh's sight of the invisible (ar-ws-revelation.ts).
   const unveils = revelationSightTiles(sheet.conditions);
   // A monk subclass's blindsight and Astral Sight (mt-mr-senses.ts).
-  return { ...mrSensesOver(sheet, { ...senses, darkvision: Math.max(named, authored), truesight: Math.max(senses.truesight, seeing) }), ...(unveils ? { unveils } : {}) };
+  // Veilsight sees the invisible within 30 feet (genre-a-horror-holds.ts);
+  // Light Against the Dark within 10 by a carried light (genre-gb-horror.ts).
+  return { ...mrSensesOver(sheet, { ...senses, darkvision: Math.max(named, authored), truesight: Math.max(senses.truesight, seeing, horrorVeilTiles(sheet), candleSightTiles(sheet)) }), ...(unveils ? { unveils } : {}) };
 }
 
 export function enemySenses(enemy: Pick<EncounterEnemy, "stats"> & { conditions?: string[] }): Senses {

@@ -18,7 +18,7 @@
 import { itemWeightByName } from "@/lib/content";
 import { carryMultiplier, encumbranceFor, type CarriedItem } from "@/lib/srd/encumbrance";
 import { densityCarryFactor } from "@/lib/srd/ar-ws-density";
-import { sizeForRace } from "@/lib/srd";
+import { sheetSize } from "@/lib/srd";
 import { itemAbilityScore, type Wearer } from "@/lib/srd/magic-items";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
@@ -55,7 +55,7 @@ function loadOf(sheet: Carrier, equipment: CarriedItem[], purse?: Purse) {
     strength: sheet.abilities.str,
     equipment: weighed(equipment),
     coins: purseCoins(purse ?? { gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
-    size: sheet.race ? sizeForRace(sheet.race) : undefined,
+    size: sheet.race ? sheetSize(sheet) : undefined,
     wearer: sheet as Wearer,
     carryFactor: carryFactorOf(sheet),
   });
@@ -81,13 +81,18 @@ export function capacityProblem(
   return { error: `${sheet.name} can carry ${then.capacityLb} lb (Strength x 15${powerful ? ", doubled by Powerful Build" : ""}${factor > 1 ? `, x ${factor} by a feature of theirs` : ""}) and would be carrying ${then.carriedLb} lb with ${what}. They cannot carry it: give it to someone else, leave something behind, or drag it (the lift tool) at 5 feet. Ask the player which.`, retry: true };
 }
 
-// A character's carrying capacity and push, drag or lift limit, in pounds.
-export function liftLimits(sheet: Carrier & { equipment: CarriedItem[] }): { capacityLb: number; liftLb: number } {
+// A character's carrying capacity, lift limit and push or drag limit, in
+// pounds. The lift and the push part only where Equine Build doubles the
+// push and the drag and not the lift (mt-species-traits.ts carrySize).
+export function liftLimits(sheet: Carrier & { equipment: CarriedItem[] }): { capacityLb: number; liftLb: number; pushLb: number } {
   // A Belt of Giant Strength's score, or an Ioun Stone of Strength's +2.
   const set = itemAbilityScore("str", Math.floor(sheet.abilities.str || 1), sheet.equipment ?? [], sheet as Wearer);
   const strength = Math.max(1, set);
   // The same size and factor loadOf weighs by, so the lift and the capacity
   // agree; Adjust Density doubles or halves both (src/lib/srd/ar-ws-density.ts).
-  const multiplier = carryMultiplier(carrySize(sheet.race ? sizeForRace(sheet.race) : undefined, sheet as Wearer)) * carryFactorOf(sheet) * densityCarryFactor(sheet.conditions);
-  return { capacityLb: strength * 15 * multiplier, liftLb: strength * 30 * multiplier };
+  const size = sheet.race ? sheetSize(sheet) : undefined;
+  const factor = carryFactorOf(sheet) * densityCarryFactor(sheet.conditions);
+  const multiplier = carryMultiplier(carrySize(size, sheet as Wearer)) * factor;
+  const lifting = carryMultiplier(carrySize(size, sheet as Wearer, "lift")) * factor;
+  return { capacityLb: strength * 15 * multiplier, liftLb: strength * 30 * lifting, pushLb: strength * 30 * multiplier };
 }

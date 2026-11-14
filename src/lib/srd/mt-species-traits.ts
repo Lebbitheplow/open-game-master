@@ -12,8 +12,19 @@
 // walking cost. Pure and database-free, like the rest of src/lib/srd.
 import { holdsFeature } from "@/lib/srd/feature-names";
 
-type Held = { features?: ReadonlyArray<{ name: string }> | null };
-const linesOf = (sheet: Held | null | undefined) => (sheet?.features ?? []).map((feature) => feature.name.trim());
+type Held = { features?: ReadonlyArray<{ name: string }> | null; feats?: ReadonlyArray<string> | null };
+// A feat that gives the body what a lineage's trait does (Dragon Hide's
+// scales and claws), as the trait lines the readers below and
+// racial-weapons.ts already read.
+export function featTraitLines(feats: ReadonlyArray<string> | null | undefined): string[] {
+  return (feats ?? []).some((feat) => feat.trim().toLowerCase() === "dragon hide")
+    ? ["Natural Armor (AC 13 + DEX)", "Claws (1d4 slashing unarmed strike)"]
+    : [];
+}
+const linesOf = (sheet: Held | null | undefined) => [
+  ...(sheet?.features ?? []).map((feature) => feature.name.trim()),
+  ...featTraitLines(sheet?.feats),
+];
 
 // ---- Natural Armor ----
 
@@ -37,8 +48,12 @@ export function naturalArmorOf(sheet: Held | null | undefined): NaturalArmor | n
 const SIZES = ["Tiny", "Small", "Medium", "Large", "Huge", "Gargantuan"];
 // "Powerful Build (count as one size larger for carrying)": the size the
 // carrying capacity and the push, drag and lift limit are worked from.
-export function carrySize(size: string | undefined, sheet: Held | null | undefined): string | undefined {
-  if (!holdsFeature({ features: sheet?.features ?? [] }, "powerful build")) {
+// `use`: what the size is for. A centaur's Equine Build counts one size
+// larger for "carrying capacity and the weight you can push or drag" and not
+// for a lift, which Powerful Build's "push, drag, or lift" covers too.
+export function carrySize(size: string | undefined, sheet: Held | null | undefined, use: "carry" | "lift" = "carry"): string | undefined {
+  const holder = { features: sheet?.features ?? [] };
+  if (!holdsFeature(holder, "powerful build") && (use === "lift" || !holdsFeature(holder, "equine build"))) {
     return size;
   }
   const at = SIZES.findIndex((entry) => entry.toLowerCase() === (size ?? "Medium").trim().toLowerCase());

@@ -1,5 +1,6 @@
 import { ABILITIES, fitName, LANGUAGE_NAME_MAX, type Ability } from "@/lib/schemas/sheet";
 import { textKey } from "@/lib/language/text-logic";
+import { canonicalToolName } from "@/lib/srd/tool-choices";
 import type { SpeciesVariantGroup } from "@/lib/content/species-variants";
 import type { SpeciesSpellGroup } from "@/lib/content/species-spells";
 
@@ -31,13 +32,20 @@ export type RaceMechanics = {
   skills?: string[];
   // `from` names the skills it picks among; unset, any skill.
   skillChoice?: { count: number; from?: string[] };
-  asiChoice?: { count: number; amount: number; from?: Ability[] };
+  asiChoice?: { count: number; amount: number; from?: Ability[]; amounts?: number[] };
   cantripChoice?: { list: string; count: number };
   tools?: string[];
   toolChoice?: { count: number; from: string[] };
   // Race-taught combat training (mountain dwarf armor, drow weapons).
   armor?: string[];
   weapons?: string[];
+  // Weapons the player names from a list ("two martial weapons of your
+  // choice": a hobgoblin, a Tome of Heroes derro), by their SRD names.
+  weaponChoice?: { count: number; from: string[] };
+  // Skills or tools in any mix, the player's choice ("two skills or tools of
+  // your choice": a gearforged human chassis), and expertise in a skill held.
+  trainingChoice?: { count: number };
+  expertiseChoice?: number;
   // The size the row states ("Your size is Small."), undefined when it
   // leaves it to a subrace or says nothing; and the dwarf's "Your speed is
   // not reduced by wearing heavy armor."
@@ -48,6 +56,10 @@ export type RaceMechanics = {
   variants?: SpeciesVariantGroup;
   // A workshop species' own spells (issue #833), src/lib/content/species-spells.ts.
   spells?: SpeciesSpellGroup;
+  // A pack species whose text sends the player to another race for its
+  // size, speed and a language (a shade's Living Origin): race-options.ts
+  // offers one option per origin.
+  livingOrigin?: boolean;
 };
 
 export const RACE_SIZES = ["Tiny", "Small", "Medium", "Large"] as const;
@@ -392,7 +404,11 @@ export function raceMechanics(data: Record<string, unknown>): RaceMechanics {
   }
   const speedRaw =
     typeof data.speed === "number" ? data.speed : (data.speed as { walk?: unknown } | undefined)?.walk;
-  const parsedSpeed = Number.isFinite(Number(speedRaw)) && Number(speedRaw) > 0 ? Number(speedRaw) : 30;
+  // The speed the text states wins over the field beside it: Tome of
+  // Heroes' drow prints "Your base walking speed is 30 feet." over a field of
+  // 25, and walked 25.
+  const statedSpeed = Number(/\bwalking speed (?:is|of) (\d+) feet\b/i.exec(String(data.speed_desc ?? ""))?.[1]);
+  const parsedSpeed = statedSpeed > 0 ? statedSpeed : Number.isFinite(Number(speedRaw)) && Number(speedRaw) > 0 ? Number(speedRaw) : 30;
 
   // A 2024-rules species (the srd-2024 rows) carries its traits as objects
   // with a type, its speed among them, and no languages of its own: under
@@ -470,7 +486,7 @@ export function raceMechanics(data: Record<string, unknown>): RaceMechanics {
 
 type StructuredGrants = Pick<
   RaceMechanics,
-  "skills" | "skillChoice" | "asiChoice" | "cantripChoice" | "tools" | "toolChoice" | "armor" | "weapons"
+  "skills" | "skillChoice" | "asiChoice" | "cantripChoice" | "tools" | "toolChoice" | "armor" | "weapons" | "weaponChoice" | "livingOrigin" | "trainingChoice" | "expertiseChoice"
 >;
 
 function stringList(value: unknown): string[] | undefined {
@@ -488,10 +504,12 @@ function structuredGrants(data: Record<string, unknown>): StructuredGrants {
     const from = stringList(skillChoice.from)?.filter((skill) => (ALL_SKILLS as readonly string[]).includes(skill));
     out.skillChoice = { count: Number(skillChoice.count), ...(from?.length ? { from } : {}) };
   }
-  const asiChoice = data.asiChoice as { count?: unknown; amount?: unknown; from?: unknown } | undefined;
+  const asiChoice = data.asiChoice as { count?: unknown; amount?: unknown; from?: unknown; amounts?: unknown } | undefined;
   if (asiChoice && Number(asiChoice.count) > 0) {
     const from = Array.isArray(asiChoice.from) ? (asiChoice.from.filter((entry) => (ABILITIES as readonly unknown[]).includes(entry)) as Ability[]) : [];
-    out.asiChoice = { count: Number(asiChoice.count), amount: Number(asiChoice.amount) || 1, ...(from.length ? { from } : {}) };
+    // Each pick's own amount (a fairy's +2 then +1), when the row names them.
+    const amounts = Array.isArray(asiChoice.amounts) ? asiChoice.amounts.map(Number).filter((value) => value === 1 || value === 2) : [];
+    out.asiChoice = { count: Number(asiChoice.count), amount: Number(asiChoice.amount) || 1, ...(from.length ? { from } : {}), ...(amounts.length === Number(asiChoice.count) ? { amounts } : {}) };
   }
   const cantripChoice = data.cantripChoice as { list?: unknown; count?: unknown } | undefined;
   if (cantripChoice && typeof cantripChoice.list === "string") {
@@ -513,6 +531,21 @@ function structuredGrants(data: Record<string, unknown>): StructuredGrants {
   const weapons = stringList(data.weapons);
   if (weapons?.length) {
     out.weapons = weapons;
+  }
+  if (data.livingOrigin === true) {
+    out.livingOrigin = true;
+  }
+  const training = data.trainingChoice as { count?: unknown } | undefined;
+  if (training && Number(training.count) > 0) {
+    out.trainingChoice = { count: Math.min(4, Number(training.count)) };
+  }
+  if (Number(data.expertiseChoice) > 0) {
+    out.expertiseChoice = Math.min(2, Number(data.expertiseChoice));
+  }
+  const weaponChoice = data.weaponChoice as { count?: unknown; from?: unknown } | undefined;
+  const weaponFrom = stringList(weaponChoice?.from);
+  if (weaponChoice && weaponFrom?.length && Number(weaponChoice.count) > 0) {
+    out.weaponChoice = { count: Number(weaponChoice.count), from: weaponFrom };
   }
   return out;
 }
@@ -550,6 +583,19 @@ function v2ProficiencyFields(data: Record<string, unknown>): Record<string, stri
     }
   }
   return fields;
+}
+
+// A class's tools as entries the builder can ask for: a v2 row writes its
+// pick into the same sentence as the tool it names ("Tinker tools and two
+// additional tools your choice", Black Flag's Mechanist), which was stored as
+// one proficiency named by that sentence. The choice is split off and the
+// tool is spelled as the SRD spells it.
+function classTools(value: unknown): string[] {
+  return proficiencyList(value)
+    .flatMap((entry) => (/\bchoice\b/i.test(entry) ? entry.split(/\s+and\s+/i) : [entry]))
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => (/^tinker(?:'s|s)? tools$/i.test(entry) ? "tinker's tools" : entry));
 }
 
 const FULL_CASTERS = new Set(["bard", "cleric", "druid", "sorcerer", "wizard"]);
@@ -602,7 +648,7 @@ export function classMechanics(slug: string, row: Record<string, unknown>): Clas
     skillChoices: { count, from: from.length ? from : [...ALL_SKILLS] },
     armor: proficiencyList(data.prof_armor),
     weapons: proficiencyList(data.prof_weapons),
-    tools: proficiencyList(data.prof_tools),
+    tools: classTools(data.prof_tools),
     spellAbility: spellAbility && casterType !== "none" ? spellAbility : spellAbility,
     casterType,
   };
@@ -636,6 +682,24 @@ export function backgroundField(data: Record<string, unknown>, field: string): s
   return String(data[field] ?? "");
 }
 
+// The feature a background row names and what it does. A v1 row carries
+// them as `feature` and `feature_desc`; a v2 row (Level Up's Adventurer's
+// Guide and its kin) as a benefit of type "feature", named by its heading,
+// so without this a Cultist or a Guard reached the sheet with no feature.
+export function backgroundFeatureOf(data: Record<string, unknown>): { feature: string; featureDesc: string } {
+  const feature = String(data.feature ?? "").trim();
+  if (feature) {
+    return { feature, featureDesc: String(data.feature_desc ?? "").trim() };
+  }
+  if (Array.isArray(data.benefits)) {
+    const benefit = (data.benefits as Array<{ type?: unknown; name?: unknown; desc?: unknown }>).find((entry) => entry.type === "feature");
+    if (benefit) {
+      return { feature: String(benefit.name ?? "").trim(), featureDesc: String(benefit.desc ?? "").trim() };
+    }
+  }
+  return { feature: "", featureDesc: "" };
+}
+
 function backgroundSkills(text: string): Pick<BackgroundMechanics, "skills" | "skillChoice"> {
   // Where the fixed skills end and the pick begins: "and either Insight or
   // History", "plus one of your choice from among ...", "Your choice of two
@@ -664,7 +728,7 @@ function backgroundTools(text: string): string[] {
   if (bare) {
     return [`${bare[1]} ${bare[1].toLowerCase() === "one" ? "tool" : "tools"} of your choice`];
   }
-  return /\bchoice\b|\bor\b/i.test(plain) ? [plain] : proficiencyList(plain);
+  return /\bchoice\b|\bor\b/i.test(plain) ? [plain] : proficiencyList(plain).map(canonicalToolName);
 }
 
 // Items split at the commas outside parentheses and numbers ("a bag of 1,000

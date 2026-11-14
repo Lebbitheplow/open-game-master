@@ -16,6 +16,7 @@
 // roll row and its damage lands through spell-aura.ts hurtEnemy. Returns
 // the lines for the table.
 
+import { maskKeepsOut } from "@/lib/dm/genre-cc-a-drones";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import type { Campaign } from "@/lib/db/campaigns";
 import { closeStandInTurn, openStandInTurn, type DmTurn } from "@/lib/db/dm-turns";
@@ -60,6 +61,7 @@ import { footprintIndexes } from "@/lib/battlemap/footprint";
 function spaceIn(width: number, mover: { kind: string; refId: string }, at: XY, cells: readonly number[] | undefined): boolean {
   return Boolean(cells?.length) && footprintIndexes(width, at, mover.kind === "enemy" ? tokenFootprint({ kind: "enemy", refId: mover.refId }) : 1).some((cell) => cells!.includes(cell));
 }
+import { textKey } from "@/lib/language/text-logic";
 
 // A turn for a character's saves and damage, closed once used, as an
 // opportunity attack's is (src/lib/dm/opportunity-strike.ts).
@@ -195,6 +197,7 @@ function strike(
       }
     }
     zone.dealt = (zone.dealt ?? 0) + dealt;
+    lines.push(...afterStrike(row, trigger, zone, enemy));
     const standing = getEnemy(enemy.id);
     if (failed && standing?.status === "alive" && zoneStands(map, zone)) {
       lines.push(...afterFailOnEnemy(map, zone, trigger, standing));
@@ -215,6 +218,10 @@ function strike(
   const sheet = getSheetById(victim.id);
   if (!sheet || sheet.deathSaves?.dead) {
     return [];
+  }
+  // Beaked Mask: a poison gas the plague doctor would breathe passes them by (genre-cc-a-drones.ts).
+  if (maskKeepsOut(sheet, row.gas === true, trigger.type, trigger.condition, trigger.losesAction)) {
+    return [`${sheet.name}'s beaked mask keeps out ${zone.spell}.`];
   }
   const held = Boolean(trigger.condition && holds(sheet.conditions, trigger.condition) && !dice);
   if (held && !trigger.concentrationSave) {
@@ -254,6 +261,7 @@ function strike(
         lines.push(`${sheet.name} takes ${amount} ${trigger.type ?? ""} damage from ${why}.`.replace("  ", " "));
       }
     }
+    lines.push(...afterStrike(row, trigger, zone, null));
     const standing = getSheetById(sheet.id);
     if (failed && standing && !standing.deathSaves?.dead && zoneStands(map, zone)) {
       lines.push(...afterFailOnCharacter(campaign, turn, map, zone, trigger, standing));
@@ -271,6 +279,22 @@ function strike(
     }
     return lines;
   });
+}
+
+// What striking a creature does to the area and to the creature whatever
+// the save: a sigil spent by its first (its budget used up, settle() clears
+// it), a spirit seen as it comes in.
+function afterStrike(row: ZoneRow, trigger: ZoneTrigger, zone: SpellZone, enemy: EncounterEnemy | null): string[] {
+  if (trigger.firstOnly) {
+    zone.dealt = Math.max(zone.dealt ?? 0, row.budget ?? 1);
+  }
+  const now = enemy && trigger.reveals ? getEnemy(enemy.id) : null;
+  const shown = now ? now.conditions.filter((entry) => trigger.reveals!.some((name) => textKey(entry) === name)) : [];
+  if (!now || !shown.length) {
+    return [];
+  }
+  patchEnemyConditions(now.id, now.conditions.filter((entry) => !shown.includes(entry)), now.conditionMeta);
+  return [`${now.displayName} is seen as it enters ${zone.spell}.`];
 }
 
 // "Creatures that ... are immune to poison automatically succeed on this
@@ -344,6 +368,12 @@ function afterFailOnCharacter(campaign: Campaign, turn: DmTurn, map: BattleMap, 
 function touches(zone: SpellZone, trigger: ZoneTrigger, victim: Victim): boolean {
   if (victim.id === zone.casterId && (zoneRowFor(zone)?.shape === "aura" || trigger.others)) {
     return false;
+  }
+  if (trigger.types) {
+    const type = victim.kind === "enemy" ? textKey(getEnemy(victim.id)?.stats.type ?? "") : "";
+    if (!trigger.types.some((kind) => type.includes(kind))) {
+      return false;
+    }
   }
   return trigger.who !== "hostile" || hostileTo(zone, victim.kind);
 }

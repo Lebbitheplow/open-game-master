@@ -124,6 +124,24 @@ await test("Changing a workshop species' size in the workshop changes it at the 
   assert.equal(sizeForRace(smallkin.id), "Medium");
 });
 
+// Every door writes a species' walking speed onto the sheet (sheet-legality
+// takes the race's), and its size and spells already follow an edit. Its
+// speed did not: a DM who fixed a species' 25 feet to 35 left every hero
+// already at the table at 25 until their next level.
+await test("Changing a workshop species' speed in the workshop changes it for the heroes at the table.", async () => {
+  const swiftkin = await brew("Swiftkin", { asi: [{ attributes: ["Dexterity"], value: 2 }], speed: { walk: 25 }, size: "Medium", languages: ["Common"], traits: "" });
+  become(swiftkin);
+  assert.equal(world.sheet(hero.id).speed, 25);
+  world.signIn(world.owner);
+  const response = await homebrewEntry.PATCH(
+    new Request("http://test/", { method: "PATCH", body: JSON.stringify({ data: { ...swiftkin.data, speed: { walk: 35 } } }) }),
+    { params: Promise.resolve({ id: swiftkin.entryId }) },
+  );
+  assert.equal(response.status, 200, JSON.stringify(await response.json()));
+  assert.equal(world.sheet(hero.id).speed, 35);
+  assert.equal(speedFor(world.sheet(hero.id)), 35);
+});
+
 await test("A workshop copy of the Dwarf keeps its speed in heavy armor too heavy for its Strength; a copy of the Human loses 10 feet.", async () => {
   const plate = [{ name: "Plate Armor", qty: 1, equipped: true }];
   const dwarf = become(stonefolk, { str: 10, equipment: plate });
@@ -178,6 +196,25 @@ await test("A species of the DM's own that picks Draconic Ancestry and Breath We
 await test("A resistance picked in the species editor is resisted at the table.", async () => {
   assert.match(pcResistances(become(emberkin)), /\bfire\b/, "the Emberkin does not resist fire");
   assert.doesNotMatch(pcResistances(become(plainsfolk)), /\bfire\b/);
+});
+
+// A feat's race prerequisite is met by the race and its subraces (SRD 5.1,
+// legality/features.ts): a species started from a published race carries
+// that race as its parent, so a copied Hill Dwarf is a dwarf and a copied
+// Lightfoot a halfling; one written from nothing is neither. A species saved
+// before the parent was kept has it from the source its copy recorded.
+await test("A workshop species started from a published race is that race for a feat's prerequisite.", async () => {
+  const { unmetPrerequisite } = await import("../src/lib/srd/legality/features.ts");
+  const scores = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
+  const meets = (species, prerequisite) => unmetPrerequisite(prerequisite, { abilities: scores, armor: [], casts: false, raceId: species.id, raceName: species.name ?? "" }) === null;
+  assert.equal(stonefolk.data.parentRace, "hill-dwarf", "the copy keeps the race it was started from");
+  const legacy = { ...stonefolk.data, copiedFrom: { name: "Hill Dwarf", source: "published", slug: "hill-dwarf" } };
+  delete legacy.parentRace;
+  const oldStonefolk = await brew("Old Stonefolk", legacy);
+  assert.deepEqual(
+    { stonefolk: meets(stonefolk, "Dwarf"), old: meets(oldStonefolk, "Dwarf"), smallkinHalfling: meets(smallkin, "Halfling"), smallkinDwarf: meets(smallkin, "Dwarf"), plainsfolk: meets(plainsfolk, "Dwarf") },
+    { stonefolk: true, old: true, smallkinHalfling: true, smallkinDwarf: false, plainsfolk: false },
+  );
 });
 
 await test("A content-pack species is the size its text says (Tome of Heroes' Derro: \"Your size is Small.\").", async () => {

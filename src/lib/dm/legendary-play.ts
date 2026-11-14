@@ -33,7 +33,7 @@ import { legendaryMoveFor } from "@/lib/dm/legendary-move";
 import { closeLegendaryPurchase, refundLegendaryPurchase } from "@/lib/dm/legendary-purchase";
 import { charmedBy } from "@/lib/dm/enemy-profile";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
-import { sizeForRace } from "@/lib/srd";
+import { sheetSize } from "@/lib/srd";
 import { NEGATIVE_ENERGY, regainBlockedBy } from "@/lib/dm/vitals-logic";
 import { dmRoll } from "@/lib/dm/roll-card";
 import { blocksMove, inBounds, tileAt } from "@/lib/battlemap/types";
@@ -101,7 +101,7 @@ const idOf = (target: Target) => (target.kind === "sheet" ? target.sheet.id : ta
 const conditionsOf = (target: Target) => (target.kind === "sheet" ? target.sheet.conditions : target.enemy.conditions);
 const metaOf = (target: Target) =>
   (target.kind === "sheet" ? target.sheet.conditionMeta : target.enemy.conditionMeta) as Record<string, { source?: string } | undefined>;
-const sizeOf = (target: Target) => (target.kind === "sheet" ? sizeForRace(target.sheet.race) : (target.enemy.stats.size ?? "Medium"));
+const sizeOf = (target: Target) => (target.kind === "sheet" ? sheetSize(target.sheet) : (target.enemy.stats.size ?? "Medium"));
 
 function grappledBy(target: Target, holderId: string): boolean {
   const meta = metaOf(target);

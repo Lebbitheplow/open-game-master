@@ -18,6 +18,7 @@ import { describeBackgroundFeature } from "@/lib/backgrounds";
 import { classFeatureDescription, spellClassFor } from "@/lib/classes";
 import { srdRaceFor } from "@/lib/content/race-options";
 import { normalizeRulesText } from "@/lib/help/rules-text";
+import { textKey } from "@/lib/language/text-logic";
 import { matchResource } from "@/lib/srd/class-resources";
 import { guidanceFor } from "@/lib/srd/feature-effects";
 import { subclassFeatureDescription } from "@/lib/srd/features";
@@ -117,6 +118,24 @@ export function describeFeature(classId: string, subclass: string, name: string)
   return stripLeadingLabel(found, name);
 }
 
+// Where a sheet's feature chip finds text the bundled tables do not hold: a
+// content-pack background's feature ("Servant's Invisibility (Court
+// Servant)") is written on the pack's background row, so the chip opens that
+// row, which shows the background and its feature. Null when the bundled
+// text answers, or the feature is not the background's.
+export function backgroundFeatureReference(
+  feature: { name: string; source?: string },
+  background: string | null | undefined,
+  classId = "",
+  subclass = "",
+): { kind: "backgrounds"; slug: string; name: string } | null {
+  const slug = (background ?? "").trim();
+  if (feature.source !== "background" || !slug || describeFeature(classId, subclass, feature.name)) {
+    return null;
+  }
+  return { kind: "backgrounds", slug, name: baseName(feature.name) };
+}
+
 // The bundled lineage lines. Racial traits are written to describe themselves
 // ("Darkvision 60 ft", "Powerful Build (count as one size larger for
 // carrying)"), so the trait list IS the description. A pack slug or the
@@ -167,9 +186,17 @@ function textOf(value: unknown): string {
 // layer, so every spelling is tried, and the pieces some sources keep apart
 // (a feat's benefits, a background's feature, a 2024 species' trait list)
 // are put back together. Null when there is nothing to show.
-export function describeContentEntry(data: Record<string, unknown> | undefined): string | null {
+// `focus` names the part asked about: a background's feature chip on a sheet
+// opens the feature alone, not three paragraphs of the background's story
+// with the feature at their foot.
+export function describeContentEntry(data: Record<string, unknown> | undefined, focus?: string): string | null {
   if (!data) {
     return null;
+  }
+  const focusFeature = typeof data.feature === "string" ? data.feature.trim() : "";
+  const focusText = textOf(data.feature_desc).trim();
+  if (focus && focusFeature && focusText && textKey(focus) === textKey(focusFeature)) {
+    return normalizeRulesText(`**Feature: ${focusFeature}.** ${focusText}`) || null;
   }
   const parts: string[] = [];
   for (const key of ["desc", "description", "traits", "benefits"]) {

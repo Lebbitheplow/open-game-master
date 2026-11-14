@@ -18,7 +18,9 @@
 import subclassesJson from "@/lib/srd/subclasses.json";
 import authoredFeatsJson from "@/lib/srd/authored-feats.json";
 import { authoredFeatureDefs } from "@/lib/srd/authored-feature-defs";
-import { tableFeat } from "@/lib/srd/feat-effects";
+import { GENRE_A_FEATURE_DEFS, GENRE_A_MARK_ATTACKS } from "@/lib/srd/genre-a-feature-defs";
+import { GENRE_B_FEATURE_DEFS } from "@/lib/srd/authored-effects-genre-b";
+import { featTwinOf, tableFeat } from "@/lib/srd/feat-effects";
 import { textKey } from "@/lib/language/text-logic";
 import { choiceIn, isConditionNamed, isNamed } from "@/lib/srd/feature-names";
 
@@ -81,7 +83,8 @@ export type FeatureEffect =
   // Half the proficiency bonus (rounded down) on ability checks that do not
   // already use it, initiative included. Jack of All Trades covers every
   // ability; Remarkable Athlete only STR, DEX, and CON.
-  | { kind: "half_proficiency"; scope: "all" | "physical" }
+  // "mental": Intelligence and Wisdom checks (Sharpened Logic).
+  | { kind: "half_proficiency"; scope: "all" | "physical" | "mental" }
   // Extra damage dice on landed attacks (Divine Strike, Improved Divine
   // Smite, Divine Fury). `when` restricts the carrier; oncePerTurn rides the
   // turn budget; requiresCondition gates it (Divine Fury: raging).
@@ -232,7 +235,15 @@ export const FEATURE_EFFECTS: FeatureDef[] = ([
   },
   {
     // The warforged lineage's built-in plating, applied by the AC engine.
-    match: ["integrated protection"],
+    // A rabbitfolk's Hare-Trigger: the proficiency bonus added to initiative.
+    match: ["hare-trigger"],
+    effects: [{ kind: "initiative_proficiency" }],
+    guidance: "Hare-Trigger: the proficiency bonus is added to initiative rolls. The server adds it.",
+  },
+  {
+    // And a Tome of Heroes derro's Tenebrous Flesh, "a +1 bonus to your
+    // Armor Class" (src/lib/content/species-prose-logic.ts).
+    match: ["integrated protection", "tenebrous flesh"],
     effects: [{ kind: "ac_bonus", amount: 1 }],
     guidance: "Integrated Protection: +1 AC from armor built into the warforged's body.",
   },
@@ -601,10 +612,18 @@ const AUTHORED_PARSED = new Map<string, { effects: FeatureEffect[]; guidance: st
   // (walking speed, an ability on initiative, a damage rider), typed by hand
   // in src/lib/srd/authored-effects-data*.ts where the phrasing does not
   // parse. A name the table already answers keeps its entry.
+  // The genre classes' own (src/lib/srd/genre-a-feature-defs.ts), each
+  // naming its class.
+  FEATURE_EFFECTS.push(...GENRE_A_FEATURE_DEFS);
   for (const def of authoredFeatureDefs()) {
     if (!FEATURE_EFFECTS.some((existing) => existing.match.some((term) => def.match.includes(term)))) {
       FEATURE_EFFECTS.push(def);
     }
+  }
+  // The mystery, post-apocalyptic and steampunk classes' features of these
+  // shapes, each held to its class (src/lib/srd/authored-effects-genre-b.ts).
+  for (const def of GENRE_B_FEATURE_DEFS) {
+    FEATURE_EFFECTS.push({ ...def, match: def.match.map(textKey), classes: def.classes.map(textKey) });
   }
 }
 
@@ -629,6 +648,31 @@ const CLASS_FEATURE_NAMES = new Set<string>();
 
 export function clashesWithClassFeature(name: string): boolean {
   return CLASS_FEATURE_NAMES.has(textKey(name));
+}
+
+const REGISTERED_CLASS_FEATURES = new Set<string>();
+
+// A content pack class's feature, read into this table for that class
+// alone (src/lib/classes/pack-class-registry.ts): what its words say the
+// engine can hold, and an attack count by another name ("Multiattack: you
+// can make two attacks when you take the Attack action"). Its text is the
+// guidance either way. Called as the pack opens (src/lib/content/db.ts).
+export function registerPackClassFeature(classId: string, name: string, desc: string, extraAttacks: number): boolean {
+  const key = textKey(name);
+  const id = textKey(classId);
+  if (!key || REGISTERED_CLASS_FEATURES.has(`${id}|${key}`)) {
+    return false;
+  }
+  REGISTERED_CLASS_FEATURES.add(`${id}|${key}`);
+  const effects: FeatureEffect[] = [
+    ...parseFeatureEffects(desc),
+    ...(extraAttacks > 0 ? [{ kind: "extra_attack" as const, attacks: extraAttacks }] : []),
+  ];
+  if (!effects.length) {
+    return false;
+  }
+  FEATURE_EFFECTS.push({ match: [key], classes: [id], effects, guidance: desc });
+  return true;
 }
 
 const REGISTERED_FEATS = new Set<string>();
@@ -706,7 +750,9 @@ export function effectsFor(input: {
           (term) => term.length,
         ),
       );
-      if (length > bestLength) {
+      // At an equal match the entry written for the holder's class wins: the
+      // esper's Thought Shield is not the Great Old One's.
+      if (length > bestLength || (length === bestLength && def.classes && !best?.classes)) {
         best = def;
         bestLength = length;
       }
@@ -746,6 +792,8 @@ export function guidanceFor(input: {
 export type CombatRiders = {
   acBonus: number;
   acBonusRequiresArmor: boolean;
+  // The part of acBonus that holds only in armor (the Defense style).
+  acBonusArmored: number;
   rangedAttackBonus: number;
   meleeAttackBonus: number;
   oneHandedMeleeDamageBonus: number;
@@ -794,6 +842,9 @@ export function combatRiders(sheet: {
   classes?: Array<{ id: string; level: number }>;
   // The table, for its workshop feats.
   campaignId?: string | null;
+  // The marks a spend lays that add an attack to the Attack action while they
+  // hold (genre-a-feature-defs.ts GENRE_A_MARK_ATTACKS: Storm of Blades).
+  conditions?: string[];
 }): CombatRiders {
   const level = clampLevel(sheet.level);
   // The level a feature's scaling resolves at: its granting class's when
@@ -810,6 +861,7 @@ export function combatRiders(sheet: {
   const riders: CombatRiders = {
     acBonus: 0,
     acBonusRequiresArmor: false,
+    acBonusArmored: 0,
     rangedAttackBonus: 0,
     meleeAttackBonus: 0,
     oneHandedMeleeDamageBonus: 0,
@@ -838,6 +890,9 @@ export function combatRiders(sheet: {
       case "ac_bonus":
         riders.acBonus += effect.amount;
         riders.acBonusRequiresArmor = riders.acBonusRequiresArmor || Boolean(effect.requiresArmor);
+        if (effect.requiresArmor) {
+          riders.acBonusArmored += effect.amount;
+        }
         break;
       case "attack_bonus":
         if (effect.when === "ranged") {
@@ -918,6 +973,13 @@ export function combatRiders(sheet: {
         break;
     }
   }
+  // "One additional attack" on top of Extra Attack, which does not add to
+  // itself: the hand, the turn budget and the board all read this sum.
+  for (const [mark, attacks] of Object.entries(GENRE_A_MARK_ATTACKS)) {
+    if (sheet.conditions?.some((entry) => isConditionNamed(entry, mark))) {
+      riders.extraAttacks += attacks;
+    }
+  }
   return riders;
 }
 
@@ -955,6 +1017,20 @@ function slotStyles(feature: { name: string; classId?: string }, classId?: strin
     return only;
   }
   return byClass ? (CLASS_STYLES[textKey(feature.classId ?? classId ?? "")] ?? null) : null;
+}
+
+// Fighting Initiate (src/lib/srd/authored-feats.json): one more fighting
+// style slot, open to every style a fighter may take, beside the slots the
+// classes open. Each door that counts slots adds these to the class's
+// (style-slots.ts, the regrant in features.ts, the builder), so a style the
+// feat chose is offered, kept and played like a class's.
+export function featStyleSlotFeatures(
+  feats: ReadonlyArray<string> | undefined,
+  campaignId?: string | null,
+): Array<{ name: string; classId: string }> {
+  return (feats ?? []).some((feat) => featTwinOf(feat, campaignId) === "fighting initiate")
+    ? [{ name: "Fighting Style", classId: "fighter" }]
+    : [];
 }
 
 export function fightingStyleSlots(features: Array<{ name: string }>): number {
@@ -1091,7 +1167,7 @@ export type DefenseRiders = {
   // Half proficiency on ability checks that lack it: "all" (Jack of All
   // Trades) or "physical" for STR/DEX/CON only (Remarkable Athlete). The
   // broader scope wins when a sheet somehow carries both.
-  halfProficiency: "all" | "physical" | null;
+  halfProficiency: "all" | "physical" | "mental" | null;
 };
 
 // SRD 5.1 paladin, Aura of Protection: "You must be conscious to grant this
@@ -1162,11 +1238,14 @@ export function defenseRiders(
 
 // Whether a half-proficiency scope covers checks of this ability.
 export function halfProficiencyCovers(
-  scope: "all" | "physical" | null,
+  scope: "all" | "physical" | "mental" | null,
   ability: string,
 ): boolean {
   if (scope === "all") {
     return true;
+  }
+  if (scope === "mental") {
+    return ability === "int" || ability === "wis";
   }
   return scope === "physical" && (ability === "str" || ability === "dex" || ability === "con");
 }
@@ -1175,11 +1254,17 @@ export function halfProficiencyCovers(
 // throw is rerolled once and the new face must be used. Detected from the
 // racial trait ("Lucky (reroll nat 1 on d20)") the builder grants, kept
 // distinct from the "Lucky" feat (luck points, different mechanic) by its
-// race source.
+// race source. Set aside while the halfling's Bountiful Luck has been lent
+// (bountiful-luck.ts lays the mark until the end of their next turn).
+export const BOUNTIFUL_LUCK_LENT = "bountiful luck lent";
 export function hasHalflingLuck(sheet: {
   features?: Array<{ name: string; source?: string }>;
+  conditions?: readonly string[];
 }): boolean {
-  return (sheet.features ?? []).some((feature) => feature.source === "race" && isNamed(feature.name, "Lucky"));
+  return (
+    (sheet.features ?? []).some((feature) => feature.source === "race" && isNamed(feature.name, "Lucky")) &&
+    !(sheet.conditions ?? []).some((condition) => condition.trim().toLowerCase() === BOUNTIFUL_LUCK_LENT)
+  );
 }
 
 // Brave (Halfling racial trait): advantage on saving throws against being

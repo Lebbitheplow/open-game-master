@@ -77,6 +77,10 @@ export function customListRules(casterType: WorkshopClassData["casterType"], sty
   if (casterType === "half") return style === "known" ? "ranger" : "paladin";
   return null;
 }
+// How each list's own class casts.
+function casterKindOfList(list: string): WorkshopClassData["casterType"] {
+  return list === "paladin" || list === "ranger" ? "half" : list === "warlock" ? "pact" : "full";
+}
 // The ability each list's own class casts with, the default for a new caster.
 export const LIST_ABILITY: Record<(typeof SPELL_LISTS)[number], "int" | "wis" | "cha"> = {
   bard: "cha",
@@ -285,6 +289,11 @@ export function workshopClassFrom(entry: { id: string; name: string; data: Recor
       spellListFrom: custom ? id : data.spellListFrom,
       knownCaster: custom ? style === "known" : data.spellListFrom !== null && KNOWN_LISTS.has(data.spellListFrom),
       ...(custom ? { customSpells: data.spellList ?? [], spellRules: customListRules(data.casterType, style) ?? "wizard" } : {}),
+      // A borrowed list of a caster of another kind (a half caster on the
+      // wizard's list) counts its cantrips by the class's own kind.
+      ...(!custom && data.spellListFrom && casterKindOfList(data.spellListFrom) !== data.casterType
+        ? { cantripRules: customListRules(data.casterType, KNOWN_LISTS.has(data.spellListFrom) ? "known" : "prepared") ?? "none" }
+        : {}),
       castingLabel: null,
     },
     features: { subclassLevel: data.subclassLevel, levels, subclasses: [] },

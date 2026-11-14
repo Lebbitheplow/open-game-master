@@ -11,6 +11,7 @@
 import { READ_THOUGHTS, isSuggestion, thoughtsReadBy } from "@/lib/dm/read-thoughts";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { extendedMeta, factsAsCast, heightenedSave, secondTargetProblem } from "@/lib/dm/mt-srd-metamagic";
+import { spendRealityRend } from "@/lib/dm/genre-a-cyberpunk-spends";
 import { magicImmunityNote } from "@/lib/dm/monster-traits";
 import { describeConditionDuration, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
@@ -19,6 +20,7 @@ import { placeSpellZone } from "@/lib/dm/zone-cast";
 import { commitZoneMove, planZoneMove } from "@/lib/dm/zone-move";
 import { zoneRowFor } from "@/lib/battlemap/zones-spells";
 import { coverFor } from "@/lib/dm/attack-spatial";
+import { schematicSaveCover } from "@/lib/dm/genre-b-steampunk-cover";
 import { zoneArgsSchema, zonePlacement } from "@/lib/dm/zone-args";
 import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -58,8 +60,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { areaShareProblem, markRepeatStruck, openAreaCast, recordAreaShare, repeatStrikeProblem } from "@/lib/dm/area-casting";
 import { castShares } from "@/lib/srd/spell-mechanics";
 // What the spell does beyond damage and condition (src/lib/dm/spell-riders.ts).
-import { afterEnemySave, chosenCondition, conditionMetaFor, heatMetalGrip } from "@/lib/dm/spell-riders";
-import { layOnEnemy, spellAutoSave, spellSaveOptions, turnEndMark } from "@/lib/dm/spell-riders";
+import { afterEnemySave, chosenCondition, conditionMetaFor, heatMetalGrip, layOnEnemy, spellAutoSave, spellSaveOptions, turnEndMark } from "@/lib/dm/spell-riders";
 import { sleepPool } from "@/lib/dm/spell-pool";
 import { handleDispelMagic } from "@/lib/dm/dispel";
 import { overchannelProblem, payOverchannel } from "@/lib/dm/caster-features";
@@ -73,6 +74,8 @@ import { itemCastOpen } from "@/lib/dm/item-casts";
 import { scrollNumbers } from "@/lib/dm/consumables";
 import { conditionNameRefusal } from "@/lib/dm/set-condition";
 import { swallowCover } from "@/lib/dm/swallow";
+import { genreCastsAtMaximum } from "@/lib/dm/genre-a-casts";
+import { proofUnresisted } from "@/lib/dm/genre-gh-proof";
 
 const castArgsSchema = z.object({
   characterId: z.string(),
@@ -330,6 +333,19 @@ export function handleCastAtEnemy(
       refused: "rules",
     };
   }
+  // A free casting held to some creatures (a serpentfolk's animal friendship
+  // "on snakes only", counter-casts.ts FreeLimit onlyOn): another beast is
+  // refused with nothing spent, unless the caster's own slots cast it too,
+  // when a slot pays as for any casting (cast-guard.ts freeFits).
+  const grant = grantedCastOf(sheet, spellName, facts);
+  const onlyOn = grant?.freeLimit?.onlyOn;
+  const outsideFree = Boolean(onlyOn?.length) && !freeLimitHolds(onlyOn!, enemy);
+  if (outsideFree && !grant?.slotsToo) {
+    return {
+      error: `${sheet.name} casts ${spellName} through ${grant!.source} only ${grant!.freeLimit!.words}, and ${enemy.displayName} is not one. Nothing was spent; pick another target or another spell.`,
+      retry: true,
+    };
+  }
   // Hold Monster and Command on the undead, Blight on a construct: cast, and
   // spent, to no effect (SRD 5.1).
   const spared = creatureType && mech?.immuneTypes?.some((type) => creatureType.includes(type)) ? `${spellName} has no effect on ${creatureType} creatures, and ${enemy.displayName} is one.` : null;
@@ -396,6 +412,7 @@ export function handleCastAtEnemy(
       ...(mech?.darts ? { uses: args.darts ?? 20 } : {}),
       // A Scribe's damage type swap is the guard's to judge (ar-ws-awakened.ts).
       ...(args.damageType ? { swapType: args.damageType } : {}),
+      ...(outsideFree ? { freeFits: false } : {}),
       via,
       reason: (args.reason ?? "").slice(0, 200),
     }),
@@ -474,8 +491,15 @@ export function handleCastAtEnemy(
   // dice stay written (landSpellDamage maximizes them) so a spell of two types
   // keeps both: collapsed to one number here, Ice Storm landed all as hail.
   const overchannel = Boolean(args.overchannel && damageExpression);
+  // Their Power, Your Hands: the stigmata it pays for at its maximum (genre-a-casts.ts).
+  const genreMaximum = Boolean(damageExpression) && genreCastsAtMaximum(sheet, spellLevel) !== null;
   if (overchannel) {
     base.overchannel = payOverchannel(campaign, turn, sheet.id, spellLevel);
+  }
+  // Reality Rend: the next damaging psionic at its maximum (genre-a-cyberpunk-spends.ts).
+  const rend = damageExpression ? spendRealityRend(campaign, sheet) : null;
+  if (rend) {
+    base.realityRend = rend;
   }
 
   // The enemy's save, from its real stat block with its conditions and
@@ -510,11 +534,13 @@ export function handleCastAtEnemy(
     const resist = bindsWorthResisting(conditions, Boolean(mechCondition?.endsWith));
     const save = rollEnemySave(campaign.id, enemy, ability, dc, {
       magical: true,
-      resist,
+      // Proof's spell is not resisted by Legendary Resistance (genre-gh-proof.ts).
+      resist: proofUnresisted(resist, sheet),
       against: conditions,
       // Cover between the caster and the target counts on a DEX save,
       // unless the spell says it does not (Sacred Flame): SRD 5.1, Cover.
-      cover: mech?.ignoresCover ? 0 : coverFor(encounter.id, sheet.id, enemy.id),
+      // Precision Engineering's schematic counts less of it (genre-b-steampunk-cover.ts).
+      cover: mech?.ignoresCover ? 0 : schematicSaveCover(sheet, coverFor(encounter.id, sheet.id, enemy.id)),
       // Corona of Light leans only against fire and radiant spells.
       ...(damageType ? { damageType } : {}),
       ...spellSaveOptions(mech, enemy),
@@ -569,7 +595,7 @@ export function handleCastAtEnemy(
         sheetsById,
         ...(sharedRoll !== undefined ? { sharedRoll } : {}),
         ...(sharedSecond !== undefined ? { sharedSecond } : {}),
-        ...(overchannel ? { atMaximum: true } : {}),
+        ...(overchannel || rend || genreMaximum ? { atMaximum: true } : {}),
       })
     : null;
   const damageDealt = landed?.dealt ?? 0;
@@ -683,4 +709,11 @@ export function handleCastAtEnemy(
     markRepeatStruck(campaign, spellName, sheet.id, [enemy.id]);
   }
   return { ok: true, ...base, ...(zone ? { area: zone } : moved ? { area: moved } : {}) };
+}
+
+// Whether the creature is one a free casting held to these bestiary rows
+// reaches, read from the row it was made from (its slug), never its name: a
+// "Hissing Viper" made from the poisonous snake is a snake.
+function freeLimitHolds(slugs: readonly string[], enemy: { slug?: string }): boolean {
+  return Boolean(enemy.slug) && slugs.includes(enemy.slug!);
 }

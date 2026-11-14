@@ -578,7 +578,8 @@
             "martial weapons"
           ],
           "tools": [
-            "Tinker tools and two additional tools your choice"
+            "tinker's tools",
+            "two additional tools your choice"
           ],
           "spellAbility": null,
           "casterType": "none"

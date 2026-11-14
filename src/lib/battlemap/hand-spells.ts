@@ -11,7 +11,7 @@ import { deflectionCastProblem } from "@/lib/dm/ar-ws-deflection-mark";
 import { bonusCastOf, castComponents, casterStateProblem, grantCastsFree, grantedCastOf, materialPlan, silenceRefusal, slotPlan, turnCharge } from "@/lib/dm/cast-rules";
 import { castingAbilityMod, healAdditions, healModifier } from "@/lib/dm/heal-bonus";
 import { spellAttackLines, toHitWords } from "@/lib/battlemap/hand-attack-lines";
-import { freeCastResourceId, isFreeCastResource } from "@/lib/srd/feat-spells";
+import { freeCastResourceId, freeCastRestOf, heldFreeCastId, isFreeCastResource } from "@/lib/srd/feat-spells";
 import { RACIAL_COUNTER_PREFIX } from "@/lib/srd/racial-grants";
 import { breathChoices } from "@/lib/battlemap/mt-mr-hand";
 import { grantUses } from "@/lib/srd/granted-casts";
@@ -326,11 +326,15 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
   const save = dc !== null && mech.save ? { ability: SAVE_LABEL[mech.save] ?? mech.save.toUpperCase(), dc } : null;
   const type: HandCardType =
     mech.resolution === "heal" ? "mend" : mech.resolution === "buff" ? "ward" : mech.condition ? "control" : "spell";
+  // A grant cast on its holder alone (Armor of Shadows, a duergar's
+  // Enlarge/Reduce and Invisibility) offers no other target: cast_buff
+  // refuses one (cast-buff.ts selfOnly).
+  const selfOnly = grantedCastOf(sheet, name, facts)?.selfOnly === true;
   const target: HandTarget =
     mech.resolution === "heal"
       ? "ally"
       : mech.resolution === "buff"
-        ? mech.buff?.target === "self" ? "self" : "ally"
+        ? mech.buff?.target === "self" || selfOnly ? "self" : "ally"
         : mech.resolution === "attack" || mech.resolution === "save" || mech.resolution === "auto"
           ? "enemy"
           : "none";
@@ -346,7 +350,7 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
   }
   // A spell attack carries what pc_attack adds to any attack its caster
   // makes (hand-attack-lines.ts): Bless's die on the roll, Hex's on the hit.
-  const struck = toHit !== null ? spellAttackLines(sheet, toHit, isMeleeSpellAttack(engine, facts?.range.kind)) : null;
+  const struck = toHit !== null ? spellAttackLines(sheet, toHit, isMeleeSpellAttack(engine, facts?.range.kind), options.board?.attackAura) : null;
   if (struck?.onHit && damage) damage = `${damage}${struck.onHit}`;
   const dice = heals
     ? damage ? `heals ${damage}` : "heals"
@@ -585,10 +589,15 @@ export function freeUseOf(sheet: CharacterSheet, name: string, facts: ReturnType
       ? { free: false, line: "" }
       : { free: false, line: "", spent: `${name} is spent until a ${grant.rest ?? "long"} rest.` };
   }
-  const id = freeCastResourceId(facts?.name ?? name);
+  // A feat's free cast: at will (no counter), or a short or long rest's.
+  const held = heldFreeCastId(sheet.features, facts?.name ?? name);
+  if (held && freeCastRestOf(held) === "at will") {
+    return { free: true, castAt: facts?.level, line: "Free · at will" };
+  }
+  const id = held ?? freeCastResourceId(facts?.name ?? name);
   const state = sheet.resources?.[id];
   return state && state.used < state.max
-    ? { free: true, castAt: facts?.level, line: `Free ${state.max - state.used}/${state.max}`, note: `No slot: ${state.max - state.used} of ${state.max} free uses left until a long rest.` }
+    ? { free: true, castAt: facts?.level, line: `Free ${state.max - state.used}/${state.max}`, note: `No slot: ${state.max - state.used} of ${state.max} free uses left until a ${freeCastRestOf(id)} rest.` }
     : null;
 }
 
@@ -670,7 +679,7 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
     // A feat's pour-in (Inner Resilience's ki) lives under the class counter's id, never its own card.
     // Channel Divinity and Psionic Energy are one card per option, each at its
     // own cost (hand-options.ts).
-    if (!def || def.passive || def.into || id === "sub_superiority_dice" || id === "ki" || def.effect.kind === "recover_slots") continue;
+    if (!def || def.passive || def.into || id === "sub_superiority_dice" || id === "ki" || (def.effect.kind === "recover_slots" && !def.effect.now)) continue;
     if (id === "channel_divinity" || (id === "sub_psionic_energy" && psionicOptions(sheet).length)) continue;
     // Spent by the bonus attack itself (hand-class.ts bonusStrikeCards).
     if (BONUS_ATTACK_COUNTERS.includes(id)) continue;

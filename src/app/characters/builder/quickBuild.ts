@@ -17,6 +17,7 @@
 // score order (#330, classAbilities.ts), the class skills' "Suggest the
 // rest" (playstyles.ts), the spell step's starter spells, and a companion's
 // improvements and spell ranking (src/lib/srd/companion-build.ts).
+import { asiPickAmount } from "@/lib/srd/race-asi";
 import { ALL_SKILLS, STANDARD_LANGUAGES } from "@/lib/content/mechanics";
 import { textKey } from "@/lib/language/text-logic";
 import { featChoice, withFeatChoice, type Ability, type AsiChoice } from "@/lib/schemas/sheet";
@@ -42,7 +43,7 @@ import { rollHeroName } from "./heroNames";
 import { EASY_CLASSES, PLAYSTYLES, fillClassSkills, type PlaystyleId } from "./playstyles";
 import { TARGET_WORDS } from "./owed";
 import { spellOnSavedList } from "./spellSupply";
-import { bonusLanguageCount, srdClass, type BlockerTarget } from "./submit";
+import { bonusLanguageCount, classSkillsRequired, srdClass, type BlockerTarget } from "./submit";
 import type { BuilderDerived } from "./useBuilderDerived";
 import type { BackgroundOption, ClassOption, RaceOption } from "./useBuilderOptions";
 import type { BuilderDraftFields } from "./useBuilderState";
@@ -164,9 +165,9 @@ export function raceFit(race: RaceOption, klass: ClassOption): number {
   }
   if (race.asiChoice) {
     const free = order.filter((ability) => !(race.asi[ability] ?? 0) && (!race.asiChoice?.from || race.asiChoice.from.includes(ability)));
-    for (const ability of free.slice(0, race.asiChoice.count)) {
-      score += race.asiChoice.amount * weight(ability);
-    }
+    free.slice(0, race.asiChoice.count).forEach((ability, index) => {
+      score += asiPickAmount(race.asiChoice!, index) * weight(ability);
+    });
   }
   return score;
 }
@@ -409,7 +410,7 @@ export function fillRound(ctx: FillContext): FillRound {
   const tools = new Set((derived.training.tools ?? []).map((tool) => textKey(tool)));
   // A pick that is not the class's own spares the class's list while the
   // class still has picks to make (skillOrderSparingClass).
-  const classSkills = klass && srdClass(klass) ? klass.skillChoices : undefined;
+  const classSkills = klass?.skillChoices?.count ? klass.skillChoices : undefined;
   const freeSkillOrder = (held: ReadonlySet<string>, from: readonly string[] = ALL_SKILLS) =>
     skillOrderSparingClass(skillOrder(ctx, held, from), held, classSkills, (patch.chosenSkills ?? fields.chosenSkills).filter(Boolean).length);
 
@@ -475,6 +476,29 @@ export function fillRound(ctx: FillContext): FillRound {
       note("racialSkills", added.map(skillName).join(", "));
     }
   }
+  if (race.trainingChoice && (fields.racialTraining ?? []).filter(Boolean).length < race.trainingChoice.count && wants("racialTraining")) {
+    const held = (fields.racialTraining ?? []).filter(Boolean);
+    const added = freeSkillOrder(proficient, ALL_SKILLS).filter((skill) => !held.includes(skill)).slice(0, race.trainingChoice.count - held.length);
+    if (added.length) {
+      patch.racialTraining = [...held, ...added];
+      note("racialTraining", added.map(skillName).join(", "));
+    }
+  }
+  if (race.expertiseChoice && !fields.racialExpertise && wants("racialExpertise")) {
+    const pick = [...(patch.racialTraining ?? fields.racialTraining ?? []), ...(race.skills ?? [])].find((entry) => (ALL_SKILLS as readonly string[]).includes(entry));
+    if (pick) {
+      patch.racialExpertise = pick;
+      note("racialExpertise", skillName(pick));
+    }
+  }
+  if (race.weaponChoice && (fields.racialWeapons ?? []).filter(Boolean).length < race.weaponChoice.count && wants("racialWeapons")) {
+    const held = (fields.racialWeapons ?? []).filter(Boolean);
+    const added = race.weaponChoice.from.filter((weapon) => !held.includes(weapon)).slice(0, race.weaponChoice.count - held.length);
+    if (added.length) {
+      patch.racialWeapons = [...held, ...added];
+      note("racialWeapons", added.join(", "));
+    }
+  }
   if (race.toolChoice && !fields.racialTool && wants("racialTool")) {
     const pick = race.toolChoice.from.find((tool) => !tools.has(textKey(tool)) && !has(fields.toolPicks, tool));
     if (pick) {
@@ -524,8 +548,13 @@ export function fillRound(ctx: FillContext): FillRound {
     }
   }
 
-  // The class's picks.
-  if (wants("classSkills") && srdClass(klass) && fields.chosenSkills.length < klass.skillChoices.count) {
+  // The class's picks, for every class with a count: the save asks them of
+  // a core or setting class (submit.ts classSkillsRequired), and a hero
+  // built for a workshop class still takes them. Filled for core classes alone, a
+  // drafted netrunner or detective carried no class skills at all, and a
+  // detective from 10th level could not be drafted, its four expertise
+  // picks having two skills to double.
+  if (wants("classSkills") && klass.skillChoices?.count && fields.chosenSkills.length < klass.skillChoices.count) {
     const lean = QUIZ_OUTSIDE.find((entry) => entry.id === ctx.answers?.outside)?.skills ?? [];
     const granted = new Set([...proficient].filter((skill) => !fields.chosenSkills.includes(skill)));
     const leaning = lean.filter((skill) => klass!.skillChoices.from.includes(skill) && !granted.has(skill) && !fields.chosenSkills.includes(skill));
@@ -667,6 +696,8 @@ export function fillRound(ctx: FillContext): FillRound {
       favored_enemy: ["Undead", "Fiends", "Monstrosities"],
       favored_terrain: ["Forest", "Mountain", "Grassland"],
       land_circle: ["Forest"],
+      // Disciple of the Elements: Elemental Attunement and one other.
+      discipline: ["Elemental Attunement"],
     };
     for (const slot of derived.optionSlots) {
       const first = preferred[slot.kind] ?? [];
@@ -836,6 +867,22 @@ export function fillSpells(
       spells = [...spells, ...add];
       patch.spells = spells;
       words.push(...add);
+    }
+  }
+  // A warlock's Mystic Arcanum: one spell of each level reached, from its own
+  // list, beside the spells known (src/lib/srd/mystic-arcanum.ts arcanumSplit).
+  // The step's pool stops at the pact slots' level, so the checklist answers.
+  for (const level of derived.arcanumLevels ?? []) {
+    if (spells.some((name) => spellLevelOf(name) === level)) {
+      continue;
+    }
+    const pick = preferredSpellOrder(checklistSpellsOn(derived.spellSearchClass).filter((spell) => spell.level === level))
+      .map((spell) => spell.name)
+      .find((name) => !has(spells, name) && spellOnSavedList(name, { third, spellClass: derived.spellSearchClass }));
+    if (pick) {
+      spells = [...spells, pick];
+      patch.spells = spells;
+      words.push(pick);
     }
   }
   if (wizard && derived.spellAdvice) {

@@ -13,6 +13,7 @@ import { suite } from "./lib/enforce-harness.mjs";
 const { test, finish } = suite("test-subclass-training");
 
 const training = await import("../src/lib/srd/subclass-training.ts");
+const srd = await import("../src/lib/srd/index.ts");
 const features = await import("../src/lib/srd/features.ts");
 const { wearsUntrainedArmor } = await import("../src/lib/srd/armor.ts");
 const { casterStateProblem } = await import("../src/lib/dm/cast-rules.ts");
@@ -271,6 +272,127 @@ await test("The boot resync repairs a Life Domain cleric already in play, and a 
   const repaired = JSON.parse(getDatabase().prepare(`SELECT sheet_json FROM library_characters WHERE id = ?`).get(made.character.id).sheet_json);
   assert.ok(repaired.proficiencies.armor.includes("heavy"), "the library character was not repaired");
 });
+
+await test("A03 A subclass language given 'or another if you already know it' becomes a pick of another for a character who speaks it (Path of the Giant's Giant, a Drakewarden's Draconic).", async () => {
+  const subclassesJson = (await import("../src/lib/srd/subclasses.json", { with: { type: "json" } })).default;
+  const problems = [];
+  let walked = 0;
+  for (const [classId, entries] of Object.entries(subclassesJson.classes)) {
+    for (const entry of entries) {
+      for (const [level, rows] of Object.entries(entry.levels)) {
+        for (const row of rows) {
+          const named = /\b(?:learn|speak, read and write)\s+(?:to speak, read and write\s+)?([A-Z][a-z]+),? or another language if you already (?:know|speak) it/.exec(row.d);
+          if (!named) continue;
+          walked += 1;
+          const grants = training.subclassGrants([{ id: classId, subclass: entry.name, level: Number(level) }]).filter((grant) => grant.name === row.n);
+          const settled = training.grantsForHeldTraining(grants, { skills: [], languages: ["Common", named[1]] });
+          const spec = settled[0]?.spec;
+          if (!spec || spec.fixedLanguages.includes(named[1]) || spec.languages !== 1) {
+            problems.push(`${entry.name}: ${row.n} gives ${named[1]} again to one who speaks it`);
+          }
+        }
+      }
+    }
+  }
+  assert.ok(walked >= 2, `only ${walked} such features were walked`);
+  assert.deepEqual(problems, []);
+});
+
+// SRD 5.1, Backgrounds: a proficiency gained twice is a different one of the
+// same kind instead. A Peace cleric whose class, background and race already
+// gave Insight, Performance and Persuasion owed Implement of Peace's skill
+// with nothing on its list left (the merged builder sweep found it on a pack
+// species that trains Performance).
+await test("A training pick whose whole list is held already is a pick of any skill.", () => {
+  const grants = training.subclassGrants([{ id: "cleric", subclass: "Peace Domain", level: 1 }]).filter((grant) => grant.name === "Implement of Peace");
+  assert.equal(grants.length, 1);
+  const full = training.grantsForHeldTraining(grants, { skills: ["insight", "performance", "persuasion", "religion"] });
+  assert.deepEqual(full[0].spec.skillsFrom, [], "every listed skill held: any skill");
+  const open = training.grantsForHeldTraining(grants, { skills: ["insight", "religion"] });
+  assert.deepEqual(open[0].spec.skillsFrom, ["insight", "performance", "persuasion"], "one still open: the list stands");
+});
+
+// Black Flag's Metallurgist (Juggernaut, Mechanist 11): "While wearing the
+// armor from your Mystic Metal feature, you have proficiency in the Athletics
+// skill." Athletics while the suit is on and not otherwise: the derived sheet
+// adds the proficiency only in it and lists the training as conditional, and
+// it never lands in proficiencies.skills, where it would hold out of armor.
+await test("The Metallurgist's Athletics holds while its armor is worn, and only then.", () => {
+  const { computeSheetDerived, proficiencyBonus } = srd;
+  const sheet = (equipped, transmuted = "Mystic Metal") => ({
+    class: "mechanist",
+    subclass: "Metallurgist",
+    level: 11,
+    abilities: { str: 16, dex: 12, con: 14, int: 16, wis: 10, cha: 10 },
+    proficiencies: { saves: [], skills: [], expertise: [], languages: [], tools: [], armor: ["light", "medium", "heavy"], weapons: [] },
+    features: [{ name: "Juggernaut", source: "class", classId: "mechanist" }],
+    equipment: [{ name: "Chain Mail", qty: 1, equipped, ...(transmuted ? { transmuted } : {}) }],
+    conditions: [],
+  });
+  const worn = computeSheetDerived(sheet(true));
+  const bare = computeSheetDerived(sheet(false));
+  assert.equal(worn.skills.athletics, 3 + proficiencyBonus(11), "in the suit: Strength and proficiency");
+  assert.equal(bare.skills.athletics, 3, "out of it: Strength alone");
+  const listed = (derived) => (derived.conditionalTraining ?? []).map((entry) => `${entry.skill}:${entry.by}:${entry.active}`);
+  assert.deepEqual(listed(worn), ["athletics:Juggernaut:true"]);
+  assert.deepEqual(listed(bare), ["athletics:Juggernaut:false"], "the sheet still lists the training, as conditional");
+  assert.match(worn.conditionalTraining[0].while, /armor/i);
+  const other = computeSheetDerived({ ...sheet(true), class: "fighter", features: [{ name: "Juggernaut", source: "class", classId: "fighter" }] });
+  assert.equal(other.skills.athletics, 3, "another class's feature of the same name trains nothing");
+  // "The armor from your Mystic Metal feature": a suit never transformed is
+  // not it, worn or not.
+  assert.equal(computeSheetDerived(sheet(true, null)).skills.athletics, 3, "an untransformed suit trains nothing");
+});
+
+// Mystic Metal is used on a suit (use_resource "Mystic Metal", an hour of
+// focus outside a fight): that row carries the mark, a second use moves it,
+// and Juggernaut reads the mark.
+if (hasPack) {
+  await test("Mystic Metal marks the suit it transforms, and Juggernaut reads that suit.", async () => {
+    const { clauseRig, d20Faces } = await import("./lib/sweep-clauses-srd-rig.mjs");
+    const t = await (await clauseRig()).table();
+    const who = t.hero({
+      class: "mechanist",
+      subclass: "Metallurgist",
+      level: 11,
+      equipment: [{ name: "Chain Mail", qty: 1, equipped: true }, { name: "Scale Mail", qty: 1, equipped: false }],
+      proficiencies: { saves: [], skills: [], expertise: [], languages: ["Common"], tools: [], armor: ["light", "medium", "heavy", "shields"], weapons: ["simple"] },
+    });
+    const marked = () => t.sheet(who).equipment.filter((item) => item.transmuted).map((item) => item.name);
+    const athletics = () => t.derived(who).skills.athletics;
+    assert.deepEqual(marked(), [], "no suit is transformed yet");
+    assert.equal(athletics(), 3, "nothing applies before a suit is transformed");
+    const out = await t.use(who, "Mystic Metal");
+    assert.equal(out.ok, true, out.error);
+    assert.deepEqual(marked(), ["Chain Mail"], "the suit worn is the one transformed");
+    assert.equal(athletics(), 3 + srd.proficiencyBonus(11));
+    const moved = await t.use(who, "Mystic Metal", { variant: "Scale Mail" });
+    assert.equal(moved.ok, true, moved.error);
+    assert.deepEqual(marked(), ["Scale Mail"], "a second use moves the transformation");
+    assert.equal(athletics(), 3, "the chain mail worn is no longer the transformed suit");
+    // Juggernaut's other half: advantage on a check to grapple or shove, and
+    // on a weapon option's Strength check, in the transformed suit only.
+    const d20s = async (equipment) => {
+      t.patch(who, { equipment });
+      const [foe] = await t.fight([who]);
+      const grapple = await t.act(who, "grapple", { targetEnemyId: foe.id }, [12, 12, 5, 5]);
+      assert.equal(grapple.ok, true, grapple.error);
+      const check = t.lastRolls(6).find((roll) => /athletics to grapple/i.test(String(roll.detail ?? "")));
+      const option = await t.roll(who, { kind: "ability_check", ability: "str", dc: 30, about: "weapon_option" }, [6, 6]);
+      return { grapple: check ? d20Faces(check).length : "no roll", option: option.ok ? option.faces.length : option.error };
+    };
+    const suit = t.sheet(who).equipment;
+    const inMystic = suit.map((item) => ({ ...item, equipped: item.name === "Scale Mail" }));
+    const inPlain = suit.map((item) => ({ ...item, equipped: item.name === "Chain Mail" }));
+    assert.deepEqual(await d20s(inMystic), { grapple: 2, option: 2 }, "in the mystic metal suit");
+    assert.deepEqual(await d20s(inPlain), { grapple: 1, option: 1 }, "in another suit");
+    await t.fight([who]);
+    const busy = await t.use(who, "Mystic Metal", { variant: "Chain Mail" });
+    assert.notEqual(busy.ok, true, "an hour of focus is not taken in a fight");
+    assert.match(String(busy.error), /hour/);
+    assert.deepEqual(marked(), ["Scale Mail"]);
+  });
+}
 
 creation.world.close();
 finish();

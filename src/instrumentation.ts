@@ -45,6 +45,17 @@ export async function register() {
         console.error("[workshop] could not register the workshop's classes", error);
       }
 
+      // The content pack's own classes and feats, registered with the
+      // engines as it opens (src/lib/content/db.ts), before the first
+      // request reads a sheet that holds one: a Mechanist read before any
+      // request opened the pack had no class features.
+      try {
+        const { getContentDb } = await import("@/lib/content/db");
+        getContentDb();
+      } catch (error) {
+        console.error("[content] could not open the content pack", error);
+      }
+
       // What the last process held in memory and a restart took from the
       // DM, put right from the database before the first request
       // (src/lib/dm/restart-recovery.ts). A failure must not stop the server.

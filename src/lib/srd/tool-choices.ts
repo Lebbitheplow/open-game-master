@@ -45,7 +45,101 @@ export const MUSICAL_INSTRUMENTS = [
 
 export const GAMING_SETS = ["dice set", "dragonchess set", "playing card set", "three-dragon ante set"];
 
-export type ToolChoice = { count: number; from: string[]; label: string };
+// The SRD's other tools and kits.
+export const OTHER_TOOLS = [
+  "thieves' tools", "disguise kit", "forgery kit", "herbalism kit", "navigator's tools", "poisoner's kit",
+  "vehicles (land)", "vehicles (water)",
+];
+// Every tool the SRD's equipment chapter names: what "two tools of your
+// choice" picks from.
+export const KNOWN_TOOLS = [...new Set([...ARTISANS_TOOLS, ...MUSICAL_INSTRUMENTS, ...GAMING_SETS, ...OTHER_TOOLS])];
+
+// A tool's name as a pick list shows it: the first letter raised, the rest
+// as the SRD writes it ("Smith's tools", "Three-dragon ante set"). A word
+// boundary rule would raise the s after an apostrophe ("Smith'S").
+export function toolLabel(name: string): string {
+  return name ? name.charAt(0).toUpperCase() + name.slice(1) : name;
+}
+
+// The kind of tool, as the SRD's equipment chapter sorts them.
+export function toolKind(name: string): string {
+  const key = textKey(name);
+  if (ARTISANS_TOOLS.some((tool) => textKey(tool) === key)) return "Artisan's tools";
+  if (MUSICAL_INSTRUMENTS.some((tool) => textKey(tool) === key)) return "Musical instruments";
+  if (GAMING_SETS.some((tool) => textKey(tool) === key)) return "Gaming sets";
+  return "Other tools";
+}
+
+// A pick list of tools: each named as toolLabel says, and, when the list
+// holds more than one kind (a warforged's 39), sorted under the kind's
+// heading so a player finds the lute among the instruments rather than
+// thirty rows down a flat list.
+export function toolPickOptions(from: readonly string[]): Array<{ value: string; label: string; group?: string }> {
+  const kinds = new Set(from.map(toolKind));
+  if (kinds.size < 2) {
+    return from.map((tool) => ({ value: tool, label: toolLabel(tool) }));
+  }
+  const order = ["Artisan's tools", "Musical instruments", "Gaming sets", "Other tools"];
+  return order.flatMap((kind) => from.filter((tool) => toolKind(tool) === kind).map((tool) => ({ value: tool, label: toolLabel(tool), group: kind })));
+}
+
+// Names compared without their apostrophes and plural or possessive s, so
+// "Cartographers' tools" and "Thieves' tools" find the SRD's tools.
+const looseKey = (name: string) => textKey(name.replace(/['‘’`]/g, "")).replace(/s\b/g, "");
+// A pack's other word for a tool the SRD names (Tome of Heroes' Desert Runner).
+const TOOL_ALIASES: Record<string, string> = { [looseKey("herbalist kit")]: "herbalism kit", [looseKey("herbalist's kit")]: "herbalism kit" };
+const BY_LOOSE_KEY = new Map(KNOWN_TOOLS.map((tool) => [looseKey(tool), tool]));
+
+// The SRD's name for a tool a row spells its own way, or the entry as it
+// came when it names no SRD tool (a setting's "electronics kit"). A sheet
+// proficient in "Herbalist kit" was never proficient with a herbalism kit.
+export function canonicalToolName(entry: string): string {
+  const key = looseKey(entry);
+  return BY_LOOSE_KEY.get(key) ?? TOOL_ALIASES[key] ?? entry;
+}
+
+// `optional`: a choice the player is owed but a stored sheet may lack (the
+// tool in place of one given twice, below): a character made before it was
+// offered still joins without it.
+// `instead`: the tools a replacement stands in for.
+export type ToolChoice = { count: number; from: string[]; label: string; optional?: boolean; instead?: string[] };
+
+export const REPLACEMENT_TOOL_LABEL = "replacement tool";
+
+// SRD 5.1, Backgrounds: "If a character would gain the same proficiency from
+// two different sources, he or she can choose a different proficiency of the
+// same kind instead." The tools the class, the background and the race each
+// name outright (a rogue's thieves' tools and a criminal's, a druid's
+// herbalism kit and a hermit's): one tool of the player's choice for each
+// name given twice, from every tool none of them names. Null when none
+// repeats. Without it the second grant was simply lost.
+export function repeatedToolChoice(...grants: Array<string[] | undefined>): ToolChoice | null {
+  const seen = new Set<string>();
+  const instead: string[] = [];
+  for (const list of grants) {
+    const named = new Map(splitToolGrants(list ?? []).fixed.map((entry) => [textKey(entry), entry.trim()] as const));
+    for (const [key, tool] of named) {
+      if (!key) {
+        continue;
+      }
+      if (seen.has(key)) {
+        instead.push(tool);
+      } else {
+        seen.add(key);
+      }
+    }
+  }
+  if (!instead.length) {
+    return null;
+  }
+  return {
+    count: instead.length,
+    from: KNOWN_TOOLS.filter((tool) => !seen.has(textKey(tool))),
+    label: REPLACEMENT_TOOL_LABEL,
+    optional: true,
+    instead,
+  };
+}
 
 const COUNTS: Record<string, number> = { one: 1, two: 2, three: 3, a: 1, any: 1 };
 
@@ -60,6 +154,12 @@ export function toolChoiceOf(entry: string): ToolChoice | null {
     if (tools.length > 1) {
       return { count: COUNTS[named[1]], from: tools, label: "tool" };
     }
+  }
+  // Any tool at all: "two additional tools your choice" (Black Flag's
+  // Mechanist), "two tools of your choice" (the open5e Con Artist).
+  const any = /^(one|two|three|a|any) (?:additional |more |other )?tools? (?:of )?(?:your )?choice\.?$/.exec(text);
+  if (any) {
+    return { count: COUNTS[any[1]], from: [...KNOWN_TOOLS], label: "tool" };
   }
   const kinds: Array<[RegExp, string[], string]> = [
     [/artisan'?s? tools?/, ARTISANS_TOOLS, "artisan's tools"],
@@ -114,7 +214,7 @@ export function toolPicksOwed(choices: ToolChoice[], tools: string[]): string | 
   }
   const owed = choices
     .map((choice, index) => ({ choice, left: left[index] }))
-    .filter((entry) => entry.left > 0);
+    .filter((entry) => entry.left > 0 && !entry.choice.optional);
   return owed.length
     ? `Choose ${owed.map((entry) => `${entry.left} ${entry.choice.label}${entry.left === 1 ? "" : "s"}`).join(" and ")} to be proficient with.`
     : null;
@@ -135,7 +235,7 @@ export function toolPickProblem(choices: ToolChoice[], picks: string[]): string 
   }
   const owed = choices
     .map((choice, index) => ({ choice, left: left[index] }))
-    .filter((entry) => entry.left > 0);
+    .filter((entry) => entry.left > 0 && !entry.choice.optional);
   if (owed.length) {
     return `Choose ${owed.map((entry) => `${entry.left} more ${entry.choice.label}`).join(" and ")}.`;
   }

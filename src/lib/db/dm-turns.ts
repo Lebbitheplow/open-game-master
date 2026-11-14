@@ -353,6 +353,9 @@ export type PendingAttack = {
   // A Valor bard's Bardic Inspiration die on this hit's damage, chosen on
   // the hit (after-roll.ts, ar-wbf-bard-dice.ts).
   combatInspiration?: boolean;
+  // Orcish Fury, chosen on the hit (after-roll.ts): one more of the weapon's
+  // damage dice, its use paid when the hit stands (attack-swing.ts).
+  orcishFury?: boolean;
   attacker: string;
   weapon: string;
   targetEnemyId: string;

@@ -60,6 +60,8 @@ export const CONDITION_GLYPHS: Record<string, ConditionGlyph> = {
   // Command's grovel and approach, and Turn Undead's turned (issue #621):
   // conditions the engine now enforces, so the token says which holds it.
   groveling: { id: "groveling", label: "Groveling", tone: HARM, path: "M2 12h12M4 12c0-2 1-4 3-4h2c2 0 3 2 3 4M7 6a1.5 1.5 0 1 0 2 0" },
+  // A kobold's Grovel, Cower, and Beg (authored-conditions-mt-species.ts).
+  pleading: { id: "pleading", label: "Pleading", tone: HARM, path: "M2 12h12M4 12c0-2 1-4 3-4h2c2 0 3 2 3 4M7 6a1.5 1.5 0 1 0 2 0" },
   approaching: { id: "approaching", label: "Approaching", tone: HARM, path: "M2 8h9M8 5l3 3-3 3M13 3v10" },
   turned: { id: "turned", label: "Turned", tone: HARM, path: "M5 3a1.5 1.5 0 1 0 0 .1M5 6v4M3 14l2-4 2 4M9 8h5M12 6l2 2-2 2" },
   enclosed: { id: "enclosed", label: "Enclosed", tone: WARD, path: "M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2zM4 6c2-1 6-1 8 0" },
@@ -198,6 +200,7 @@ const GLYPH_ICON: Record<string, string> = {
   dazed: "stunned",
   commanded: "charmed",
   groveling: "prone",
+  pleading: "frightened",
   approaching: "charmed",
   turned: "frightened",
   enclosed: "shielded",

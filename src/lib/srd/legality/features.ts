@@ -9,7 +9,7 @@
 // may add none, because the engines read features by name and a name like
 // "Extra Attack (3)" carries the real mechanic whatever its source says.
 import type { Ability, AbilityScores, SheetFeature } from "@/lib/schemas/sheet";
-import { ALL_CLASSES, SRD_RACES } from "@/lib/srd";
+import { ALL_CLASSES, SRD_RACES, sizeForRace } from "@/lib/srd";
 import { ALL_SKILLS } from "@/lib/content/mechanics";
 import { readsAsRules } from "@/lib/srd/feat-text";
 import { SRD_ARMOR, isArmorProficient } from "@/lib/srd/armor";
@@ -28,6 +28,7 @@ import { choiceDamageTypeOf } from "@/lib/srd/chosen-element";
 import type { SubclassExtras } from "@/lib/srd/subclass-tables";
 import { ABILITY_NAMES, type FeatFacts } from "@/lib/srd/legality/types";
 import { textKey } from "@/lib/language/text-logic";
+import { speciesLineage } from "@/lib/srd/race-id";
 import { isSwapRecord } from "@/lib/dm/ar-ws-spell-swap-record";
 
 let tableNames: Set<string> | null = null;
@@ -224,6 +225,9 @@ export type FeatCandidate = {
   tools?: string[];
   weapons?: string[];
   level?: number;
+  // The species' size where the caller has its row (the builder's option);
+  // read from the race id otherwise (sizeForRace).
+  size?: "Small" | "Medium";
 };
 
 const ABILITY_BY_NAME = Object.fromEntries(
@@ -287,6 +291,47 @@ export type PrerequisiteCheck = {
   requirements: RequirementCheck[];
 };
 
+// The species a prerequisite may name, as race ids. A race prerequisite is
+// met by that race or a subrace of it (SRD 5.1), read off the species'
+// lineage (src/lib/srd/race-id.ts speciesLineage: a drow, an eladrin or a
+// high elf is an elf; a half-elf is a half-elf and meets "elf" only where the
+// feat also names half-elf), never off words in its id or name: a gearforged
+// on a dwarf chassis is a gearforged, not a dwarf.
+const SPECIES_KEYS = new Set([
+  "elf", "high_elf", "wood_elf", "drow", "half_elf", "half_orc", "human", "dwarf", "hill_dwarf", "mountain_dwarf",
+  "halfling", "gnome", "dragonborn", "tiefling", "orc", "goblin", "hobgoblin", "bugbear", "kobold", "aasimar",
+  "genasi", "goliath", "firbolg", "tabaxi", "kenku", "tortle", "lizardfolk", "changeling", "warforged",
+]);
+
+// A species (or size) requirement read as a test of the candidate: "Elf or
+// half-elf", "Half-elf, half-orc, or human", "A Small or smaller race",
+// "Dwarf or a Small race". Null for anything else, which the readers after
+// this one take. Every alternative must be a species or a size this table
+// knows, or the requirement is not read as one.
+function speciesRequirement(part: string): ((who: FeatCandidate) => boolean) | null {
+  const text = part.replace(/\bsmall or smaller\b/g, "small").replace(/-/g, " ");
+  const alternatives = text
+    .split(/\s*,\s*(?:or\s+)?|\s+or\s+/)
+    .map((entry) => entry.replace(/^(?:a|an|the)\s+/, "").trim())
+    .filter(Boolean);
+  const tests = alternatives.map((alternative): ((who: FeatCandidate) => boolean) | null => {
+    if (/^(?:small|tiny)(?: race| species| creature)?$/.test(alternative)) {
+      return (who) => (who.size ?? sizeForRace(who.raceId)) === "Small";
+    }
+    const key = [alternative.replace(/(?<=[a-z])s$/, "").replace(/ (?:race|species)$/, ""), alternative]
+      .map((form) => form.replace(/\s+/g, "_"))
+      .find((form) => SPECIES_KEYS.has(form));
+    if (!key) {
+      return null;
+    }
+    return (who) => speciesLineage(who.raceId).includes(key);
+  });
+  if (!tests.length || tests.some((entry) => entry === null)) {
+    return null;
+  }
+  return (who) => tests.some((entry) => entry!(who));
+}
+
 const sentence = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 const phrase = (text: string) => text.charAt(0).toLowerCase() + text.slice(1);
 const orList = (items: string[]) =>
@@ -341,8 +386,9 @@ function requirementCheck(requirement: string, who: FeatCandidate, waiting: Feat
   if (/^(?:ability to cast (?:at least )?one spell|ability to cast spells|spellcasting or pact magic)$/.test(part)) {
     return held(who.casts, waiting.casts, "your class");
   }
-  if (/^elf or half-elf$/.test(part)) {
-    return held(/elf|drow/i.test(`${who.raceId} ${who.raceName}`), waiting.race, "your race");
+  const species = speciesRequirement(part);
+  if (species) {
+    return held(Boolean(who.raceId || who.raceName) && species(who), waiting.race, "your race");
   }
   const level = /^(\d+)(?:st|nd|rd|th) level or higher$/.exec(part);
   if (level) {
@@ -371,7 +417,9 @@ function requirementCheck(requirement: string, who: FeatCandidate, waiting: Feat
   }
   const weapon = /^(?:one |a )?(martial|simple|ranged|melee)(?: (ranged|melee))? weapons?$/.exec(wanted);
   if (weapon && who.weapons !== undefined) {
-    const owned = who.weapons.map(textKey);
+    // A class row names its weapons in the plural ("longswords",
+    // "scimitars"), a species' training in the singular.
+    const owned = who.weapons.flatMap((entry) => [textKey(entry), textKey(entry).replace(/s$/, "")]);
     const names = weapon[1] === "martial" ? MARTIAL_WEAPONS : weapon[1] === "ranged" || weapon[2] === "ranged" ? RANGED_WEAPONS : [];
     const broad = weapon[1] === "simple" ? ["simple", "martial"] : weapon[1] === "martial" ? ["martial"] : ["simple", "martial"];
     return held(

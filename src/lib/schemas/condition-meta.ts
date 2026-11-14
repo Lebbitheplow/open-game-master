@@ -100,6 +100,8 @@ const conditionInstanceSchema = z.object({
     turnEndBeyondFeet: z.number().int().min(5).max(600).optional(),
     // Lasts while this barbarian rages (Call the Hunt): src/lib/dm/rage-bound.ts.
     whileRagingOf: z.string().trim().min(1).max(80).optional(),
+    // The location a ward was set at (src/lib/dm/genre-gh-wards.ts).
+    place: z.string().trim().min(1).max(120).optional(),
     // A knocked-out creature's 1d4 hours to coming to (foe-carry-logic.ts).
     wakeAfterHours: z.number().int().min(1).max(4).optional(),
     // The clock instant (in-world minutes) a commanding charm's running hour

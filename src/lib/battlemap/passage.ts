@@ -8,11 +8,14 @@
 //
 // Pure: the caller hands in the tokens, their footprints and their sizes.
 
+import { adaptedSpeeds } from "@/lib/srd/genre-b-post-apocalyptic";
 import { climbsFreely } from "@/lib/srd/feat-combat";
+import { steampunkStride } from "@/lib/srd/genre-b-steampunk-moves";
+import { SWARM_SHAPE } from "@/lib/srd/genre-gb-conditions";
 import { earthUnderfoot, hasEarthWalk } from "@/lib/srd/mt-species-traits";
 import { footprintIndexes, type Footprint } from "@/lib/battlemap/footprint";
 import { moveTraitsFrom, TERRAIN, tileIndex, type BattleToken, type MoveTraits } from "@/lib/battlemap/types";
-import { sizeForRace } from "@/lib/srd";
+import { sheetSize } from "@/lib/srd";
 import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { movesThroughEverything } from "@/lib/dm/ar-ws-umbral-logic";
 import { itemSpeeds, type Wearer, type WornMagicItem } from "@/lib/srd/magic-items";
@@ -94,7 +97,7 @@ export function pcMoveTraits(input: {
   width: number;
   tokens: BattleToken[];
   mover: BattleToken;
-  sheet: { race: string; features: Array<{ name: string }>; equipment?: WornMagicItem[]; speed?: number; conditions?: string[] } & Wearer;
+  sheet: { race: string; features: Array<{ name: string }>; equipment?: WornMagicItem[]; speed?: number; conditions?: string[]; class?: string; classes?: Array<{ id: string }> } & Wearer;
   footprintOf: (token: BattleToken) => Footprint;
   enemySize: (refId: string) => string | undefined;
   sideOf?: TokenSide;
@@ -108,19 +111,29 @@ export function pcMoveTraits(input: {
   // crossesAnyGround): difficult terrain costs no extra.
   anyGround?: boolean;
 }): MoveTraits {
-  const moverSize = sizeForRace(input.sheet.race);
+  // Splintered Form's swarm shape moves as a Tiny creature (genre-gb-conditions.ts).
+  const moverSize = (input.sheet.conditions ?? []).some((entry) => isConditionNamed(entry, SWARM_SHAPE)) ? "tiny" : sheetSize(input.sheet);
   // Athlete: climbing costs no extra movement (src/lib/srd/feat-combat.ts).
   const base = moveTraitsFrom(input.sheet.features);
-  const freely = typeof base === "object" && base !== null && climbsFreely(input.sheet) ? { ...base, climbs: true } : base;
+  // Rigging Runner climbs the same way; Master of the High Wire and an armored
+  // Juggernaut Frame cross any ground (src/lib/srd/genre-b-steampunk-moves.ts).
+  const stride = steampunkStride(input.sheet);
+  const freely = typeof base === "object" && base !== null && (climbsFreely(input.sheet) || stride.climbs) ? { ...base, climbs: true } : base;
   // A worn item's swimming or climbing speed (SRD 5.1, Ring of Swimming,
   // Slippers of Spider Climbing) moves through water and up walls at cost.
   const worn = input.sheet.equipment?.length ? itemSpeeds(input.sheet.equipment, input.sheet, input.sheet.speed ?? 30) : {};
-  const traits = typeof freely === "object" && freely !== null && (worn.swim || worn.climb)
-    ? { ...freely, ...(worn.swim ? { swims: true } : {}), ...(worn.climb ? { climbs: true } : {}) }
+  // Second Adaptation's hour of a climbing or a swimming speed (genre-b-post-apocalyptic.ts).
+  const adapted = adaptedSpeeds(input.sheet.conditions);
+  const swim = worn.swim || adapted.swim;
+  const climb = worn.climb || adapted.climb;
+  const traits = typeof freely === "object" && freely !== null && (swim || climb)
+    ? { ...freely, ...(swim ? { swims: true } : {}), ...(climb ? { climbs: true } : {}) }
     : freely;
   // Earth Walk (earth genasi): difficult ground of earth or stone costs no
   // extra movement (src/lib/srd/mt-species-traits.ts).
   const earthen = hasEarthWalk(input.sheet) && earthUnderfoot(input.theme) ? { landStride: true } : {};
+  // Equine Build (centaur): each foot of climbing costs 4 extra feet.
+  const equine = holdsFeature(input.sheet, "equine build") ? { hardClimb: true } : {};
   // Umbral Form's holder and a Phantom on its Ghost Walk both pass.
   const everything = movesThroughEverything(input.sheet.conditions) || (input.sheet.conditions ?? []).some((entry) => isConditionNamed(entry, GHOST_WALK));
   const spaces = passableTiles({
@@ -136,7 +149,8 @@ export function pcMoveTraits(input: {
   return {
     ...(typeof traits === "object" ? traits : { swims: traits }),
     ...earthen,
-    ...(input.anyGround ? { anyGround: true } : {}),
+    ...equine,
+    ...(input.anyGround || stride.anyGround ? { anyGround: true } : {}),
     passable: everything && input.drawnTerrain ? new Set([...spaces, ...objectTiles(input.drawnTerrain)]) : spaces,
   };
 }

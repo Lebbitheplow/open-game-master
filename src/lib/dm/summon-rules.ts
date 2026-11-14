@@ -11,6 +11,7 @@ import type { SummonForm } from "@/lib/srd/summon-forms";
 import { noneNamed, type ToolError } from "@/lib/dm/tool-errors";
 import { naturalAttackProfile, pickNaturalAttack } from "@/lib/dm/natural-attack";
 import { attackSummary, enemyAttackOf } from "@/lib/srd/creature-attacks";
+import { creatureTypeForRace } from "@/lib/srd";
 
 export const SUMMONED = "summoned";
 
@@ -69,11 +70,11 @@ export function summonVulnerabilities(sheet: Pick<CharacterSheet, "summon">): st
 // Evil and Good, Antilife Shell, a spell that touches only some): the form
 // it wears (a druid's bear is a beast), a summoned creature's record (Find
 // Steed's celestial, fey or fiend), or a humanoid.
-export function sheetCreatureType(sheet: Pick<CharacterSheet, "summon" | "wildShape">): string {
+export function sheetCreatureType(sheet: Pick<CharacterSheet, "summon" | "wildShape"> & { race?: string }): string {
   if (sheet.wildShape) {
     return sheet.wildShape.type || "beast";
   }
-  return sheet.summon?.creatureType || "humanoid";
+  return sheet.summon?.creatureType || (sheet.race ? creatureTypeForRace(sheet.race) : "humanoid");
 }
 
 // The record a stat block becomes when a spell makes it.

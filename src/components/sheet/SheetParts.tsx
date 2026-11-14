@@ -9,7 +9,7 @@ import { CountPop } from "@/components/ui/Reveal";
 import { cn } from "@/lib/cn";
 import { conditionIconKey } from "@/lib/battlemap/condition-glyphs";
 import { describeConditionDuration } from "@/lib/dm/condition-logic";
-import { contentSlug, describeFeature } from "@/lib/help";
+import { backgroundFeatureReference, contentSlug, describeFeature } from "@/lib/help";
 import { useClassFeatureText } from "@/lib/classes/use-feature-text";
 import { ABILITIES } from "@/lib/schemas/sheet";
 import { formatModifier, SRD_SKILLS } from "@/lib/srd";
@@ -248,8 +248,13 @@ export function HpBar({
 // (issue #125). Ids read as names; an empty kind says so.
 export function TrainingLines({
   proficiencies,
+  conditional = [],
 }: {
   proficiencies: { languages: string[]; tools: string[]; armor: string[]; weapons: string[] };
+  // Training that holds only while a condition does (SheetDerived
+  // conditionalTraining): "Athletics while wearing the armor from Mystic
+  // Metal (Juggernaut)", marked when it holds now.
+  conditional?: Array<{ skill: string; by: string; while: string; active: boolean }>;
 }) {
   const nice = (value: string) =>
     // A word's first letter, or the letter after a quote that opens one: never
@@ -269,6 +274,19 @@ export function TrainingLines({
           <dd className="text-stone-200">{values.length ? [...new Set(values.map(nice))].join(", ") : <span className="text-stone-600">none</span>}</dd>
         </div>
       ))}
+      {conditional.length ? (
+        <div className="contents">
+          <dt className="text-stone-500">Conditional</dt>
+          <dd className="text-stone-200">
+            {conditional.map((entry, at) => (
+              <span key={`${entry.by}-${entry.skill}`}>
+                {at ? ", " : ""}
+                {nice(entry.skill)} {entry.while} ({entry.by}){entry.active ? ": holds now" : ": not now"}
+              </span>
+            ))}
+          </dd>
+        </div>
+      ) : null}
     </dl>
   );
 }
@@ -345,10 +363,14 @@ export function FeatureChips({
   features,
   classId,
   subclass,
+  background,
 }: {
   features: Array<{ name: string; source?: string; level?: number; classId?: string }>;
   classId: string;
   subclass?: string | null;
+  // The sheet's background id: a content-pack background's feature opens
+  // its row for the text the bundled tables lack.
+  background?: string | null;
 }) {
   // A genre class's feature text arrives on demand (issue 411).
   useClassFeatureText([classId, ...features.map((feature) => feature.classId)]);
@@ -360,6 +382,7 @@ export function FeatureChips({
         note: feature.source === "story" ? "(story)" : undefined,
         meta: feature.level ? `Level ${feature.level}` : undefined,
         text: describeFeature(classId, subclass ?? "", feature.name) ?? undefined,
+        reference: backgroundFeatureReference(feature, background, classId, subclass ?? "") ?? undefined,
       }))}
     />
   );

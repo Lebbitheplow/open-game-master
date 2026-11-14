@@ -27,6 +27,7 @@ import { suite } from "./lib/enforce-harness.mjs";
 const { test, finish } = suite("test-enforce-genre-classes");
 const { CUSTOM_CLASSES, CUSTOM_CLASS_FEATURES } = await import("../src/lib/classes/index.ts");
 const { resourceDef } = await import("../src/lib/srd/class-resources.ts");
+const { authoredSpendFor } = await import("../src/lib/srd/authored-effects.ts");
 const { canMulticlassInto, slotTableFor, pactSlotsFor } = await import("../src/lib/srd/multiclass.ts");
 const { createSheet } = await import("../src/lib/db/sheets.ts");
 
@@ -196,7 +197,12 @@ await test("a setting class's counter is spent by use_resource and returns at it
   const empty = await spend("Adrenal Override");
   assert.equal(empty.ok, false, "a third use of two");
   assert.deepEqual(held().cyberpunk_adrenal_override, { max: 2, used: 2 });
-  assert.equal((await spend("Bullet Time")).ok, true);
+  // Bullet Time is a reaction, spent by use_reaction after a ranged attack
+  // (src/lib/srd/genre-counter-terms.ts): use_resource refuses it, so its use
+  // is marked here and the rests are asked what they give back.
+  assert.equal((await spend("Bullet Time")).ok, false, "a reaction counter is no plain spend");
+  const { patchSheet } = await import("../src/lib/db/sheets.ts");
+  patchSheet(hero.id, { resources: { ...held(), cyberpunk_bullet_time: { max: 3, used: 1 } } });
 
   // Adrenal Override is "1/short rest"; Bullet Time is "3/long rest".
   assert.equal((await table.invoke("take_rest", { kind: "short" })).ok, true);
@@ -214,7 +220,11 @@ await test("A limited-use counter belongs to a feature the character has, and on
     const seen = new Set();
     for (const id of Object.keys(sheet.resources)) {
       const name = resourceDef(id).displayName.toLowerCase();
-      if (!features.includes(name)) {
+      // A counter named for one of its feature's spends (a machinist's
+      // Familiar's Help, the second card of Clockwork Familiar) belongs to
+      // the feature that spend is authored on.
+      const owner = authoredSpendFor(sheet, name)?.held.feature.toLowerCase();
+      if (!features.includes(name) && !(owner && features.includes(owner))) {
         wrong.push(`${klass.id} holds ${id}, and has no feature called ${name}`);
       }
       if (seen.has(name)) {

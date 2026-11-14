@@ -11,7 +11,7 @@
 // stays the table's. Pure; src/lib/srd/feat-grants.ts applies the result.
 import { ALL_SKILLS, STANDARD_LANGUAGES } from "@/lib/content/mechanics";
 import { featSpellSpec, type FeatSpellSpec } from "@/lib/srd/feat-spells";
-import { ARTISANS_TOOLS, GAMING_SETS, MUSICAL_INSTRUMENTS } from "@/lib/srd/tool-choices";
+import { ARTISANS_TOOLS, GAMING_SETS, KNOWN_TOOLS, MUSICAL_INSTRUMENTS } from "@/lib/srd/tool-choices";
 import { SRD_WEAPONS } from "@/lib/srd/weapons";
 import { textKey } from "@/lib/language/text-logic";
 
@@ -74,11 +74,7 @@ const EMPTY: FeatGrantSpec = {
 const COUNTS: Record<string, number> = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5 };
 const count = (word: string | undefined) => (word ? (COUNTS[word.toLowerCase()] ?? Number(word) ?? 0) : 0);
 
-const OTHER_TOOLS = [
-  "thieves' tools", "disguise kit", "forgery kit", "herbalism kit", "navigator's tools", "poisoner's kit",
-  "vehicles (land)", "vehicles (water)", "tinker's tools",
-];
-export const KNOWN_TOOLS = [...new Set([...ARTISANS_TOOLS, ...MUSICAL_INSTRUMENTS, ...GAMING_SETS, ...OTHER_TOOLS])];
+export { KNOWN_TOOLS };
 // A pack's name for a tool the table knows by another.
 const TOOL_ALIASES: Record<string, string> = { "navigator's kit": "navigator's tools", "thieves' kit": "thieves' tools" };
 const toolNamed = (words: string): string | null => {

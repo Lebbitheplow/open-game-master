@@ -1,6 +1,9 @@
+import { legendEnded } from "@/lib/dm/genre-b-post-apocalyptic-beast";
+import { ccTurnStart } from "@/lib/dm/genre-cc-a-turns";
 import { settleFrenzies } from "@/lib/dm/frenzy";
 import { regainHitPoints } from "@/lib/dm/regain";
 import { endRageBound } from "@/lib/dm/rage-bound";
+import { settleFullThrottle } from "@/lib/dm/genre-b-steampunk-ends";
 import { type Campaign } from "@/lib/db/campaigns";
 import type { TurnBudget } from "@/lib/dm/action-budget";
 import {
@@ -13,7 +16,7 @@ import {
 } from "@/lib/db/encounters";
 import { RAGING } from "@/lib/srd/class-resources";
 import { activePublicEncounter } from "@/lib/db/encounter-view";
-import { getSheetById, listSheets } from "@/lib/db/sheets";
+import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
@@ -37,7 +40,8 @@ import { settleDying, wakeStable } from "@/lib/dm/death";
 import { deathSavesInMinutes, isDying } from "@/lib/dm/death-logic";
 import { breakConcentration, endLethargicConcentration, lethargyMeta, withLethargy } from "@/lib/dm/concentration";
 import { endConcentrationOnFadedSummons, endSpentConcentration } from "@/lib/dm/concentration-upkeep";
-import { PRONE, STABLE_SOURCE, STABLE_WAKE_HOURS_MAX, UNCONSCIOUS, standAsTimePasses } from "@/lib/dm/vitals-logic";
+import { PRONE, STABLE_SOURCE, STABLE_WAKE_HOURS_MAX, UNCONSCIOUS, WITNESSED, downConditions, standAsTimePasses } from "@/lib/dm/vitals-logic";
+import { freshDeathTrack } from "@/lib/dm/death-logic";
 import { holdsFeature } from "@/lib/srd/trait-rules";
 import { listEffects, tickEffectRound } from "@/lib/db/active-effects";
 import { rollEffectSaves } from "@/lib/dm/effect-saves";
@@ -114,6 +118,8 @@ export function tickEncounterConditions(campaign: Campaign, encounter: Encounter
   lines.push(...settleFrenzies(campaign));
   // And what lasted until a rage now over (rage-bound.ts).
   lines.push(...endRageBound(campaign.id).lines);
+  // Full Throttle that has ended burns its knight (genre-b-steampunk-ends.ts).
+  lines.push(...settleFullThrottle(campaign));
 
   if (lines.length || expired.length) {
     publishPersisted(campaign.id, "encounter_updated", {
@@ -151,6 +157,8 @@ export function tickClockConditions(campaign: Campaign, minutes: number, started
   // stretch runs: one that wakes on its last round has had no time to get up.
   const downFor = new Map(listSheets(campaign.id).map((sheet) => [sheet.id, roundsSenseless(sheet)]));
   tickSheetConditions(campaign, rounds, lines, { endTurnBound: true });
+  // Full Throttle that the stretch ended burns its knight (genre-b-steampunk-ends.ts).
+  lines.push(...settleFullThrottle(campaign));
   rollEffectSaves(campaign, null, () => true, lines);
   // A concentration spell lasts no longer than its duration on the road
   // either (src/lib/dm/concentration-clock.ts).
@@ -303,6 +311,8 @@ export function startTurnConditions(
   const spellLines = [...spellTurnStart(campaign, encounter, combatantIds), ...authoredTurnStart(campaign, encounter, combatantIds)];
   // The spell areas on the board: those that ran out go, the rest strike (zone-triggers.ts).
   spellLines.push(...zoneTurnStart(campaign, encounter, combatantIds));
+  // The vermin lord's swarms and the grave knight's garden (genre-cc-a-turns.ts).
+  spellLines.push(...ccTurnStart(campaign, encounter, combatantIds));
   // Prismatic Spray's violet ray asks its WIS save as the caster's turn starts (prismatic.ts).
   spellLines.push(...violetRayTurnStart(campaign, combatantIds));
   if (enemiesChanged || spellLines.length) {
@@ -688,6 +698,19 @@ function tickSheetConditions(
     // turn starts: it takes effect now (long-casting.ts), once the tick is
     // written below.
     const finishing = tick.expired.some((name) => name.toLowerCase() === CASTING) ? castingOf(sheet) : null;
+    // Witnessed's minute ran out at 0 hit points: the road warrior falls,
+    // unconscious and dying (vitals-logic.ts WITNESSED).
+    const fallsNow = tick.expired.some((name) => name.toLowerCase() === WITNESSED) && sheet.currentHp <= 0 && !sheet.deathSaves?.dead;
+    if (fallsNow) {
+      ({ conditions, conditionMeta: meta } = downConditions({ conditions, conditionMeta: meta }));
+      patchSheet(sheet.id, { deathSaves: freshDeathTrack() });
+      lines.push(`${sheet.name}'s Witnessed minute ends at 0 hit points: they fall unconscious and are dying.`);
+    }
+    // Legend of the Pack's minute ran out: the beast's doubled hit points go.
+    const shrunk = legendEnded(campaign, sheet, tick.expired);
+    if (shrunk) {
+      lines.push(shrunk);
+    }
     for (const name of tick.expired) {
       if (finishing && name.toLowerCase() === CASTING) {
         continue;

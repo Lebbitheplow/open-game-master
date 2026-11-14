@@ -1732,6 +1732,10 @@ function ensureSchema(db: SqliteDatabase) {
     // notes only by the owner and a DM seat at the table. Per table: an edit
     // here never syncs to the library.
     ["hopes", `TEXT NOT NULL DEFAULT ''`],
+    // The character's trait, ideal, bond and flaw (src/lib/schemas/sheet.ts
+    // personaSchema) as JSON; '' = none given. Party-visible like the
+    // backstory, and synced back to the library with it.
+    ["persona_json", `TEXT NOT NULL DEFAULT ''`],
   ]);
 
   if (sheetsNeedAcOverride) {

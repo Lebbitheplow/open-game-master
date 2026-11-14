@@ -18,15 +18,14 @@
    },
    {
     "c": "needs their cyberdeck as a focus",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs a cast of a material-component spell by a genre caster with and without the named focus carried (src/lib/dm/cast-materials.ts focusProblem); not staged",
     "run": {
-     "k": "hook"
+     "k": "focus",
+     "want": "cyberdeck",
+     "ability": "int"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Deck Interface#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/genre-a-cyberpunk-focus.ts genreFocusOf, read by src/lib/dm/cast-materials.ts focusProblem (the cast guard and the Hand's spell cards): the deck is a line named Cyberdeck or an arcane focus, the wizard's focus under the setting's name; a component pouch holds the materials themselves (SRD 5.1) and still serves",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Deck Interface#1"
    }
   ]
  },
@@ -38,15 +37,12 @@
   "clauses": [
    {
     "c": "May run any known program with the ritual tag over 10 minutes without spending a slot",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "ritual casting by a genre caster is not staged by this sweep",
     "run": {
-     "k": "hook"
+     "k": "cc_ritual"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Hot-Sim Focus#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/cast-rules.ts canCastRituals (Hot-Sim Focus), read by the ritual guard ritualProblem",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Hot-Sim Focus#0"
    }
   ]
  },
@@ -103,13 +99,12 @@
     "run": {
      "k": "check",
      "skill": "stealth",
-     "want": "adv"
+     "want": "adv",
+     "creature": "construct"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Ghost in the Feed#0",
-    "where": "src/lib/srd/trait-rules.ts check keys (src/lib/dm/roll-about.ts CHECK_ABOUT has no circumstance for it) and src/lib/dm/roll-riders.ts",
-    "sev": "medium",
-    "observed": "d20s thrown for the stealth check"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts check_adv (stealth, creatures construct), read by src/lib/dm/roll-feature-riders.ts authoredRollRiders",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Ghost in the Feed#0"
    }
   ]
  },
@@ -121,26 +116,22 @@
   "clauses": [
    {
     "c": "Stores one program of level 1-3",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "a stored program is not a state any tool of the catalog writes; there is no call to make",
     "run": {
-     "k": "hook"
+     "k": "cc_daemon",
+     "level": 5
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Daemon Cache#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts Daemon Cache, resolved by src/lib/dm/genre-cc-a-spends.ts daemonCache (slotless cast (3rd), read by src/lib/dm/genre-b-free-cast.ts genreFreeCast)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Daemon Cache#0"
    },
    {
     "c": "cast it once without a slot per long rest",
     "run": {
      "k": "limit_tracked"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Daemon Cache#1",
-    "where": "scripts/generate-class-resources.mjs parseUses (reads N/rest, N per rest, once per day, once per rest; not N/week, per day in words, or rounds per rest)",
-    "sev": "medium",
-    "observed": "the text limits its use and a level 5 netrunner holds no counter for it (it holds cyberpunk_signal_tap)"
+    "is": "held",
+    "by": "the cyberpunk_daemon_cache counter (src/lib/srd/genre-a-counter-terms.ts GENRE_A_EXTRA_COUNTERS), one use a long rest",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Daemon Cache#1"
    }
   ]
  },
@@ -153,19 +144,19 @@
    {
     "c": "Reaction",
     "run": {
-     "k": "spend_cost",
-     "cost": "reaction",
-     "id": "cyberpunk_overwatch"
+     "k": "reaction_cost",
+     "id": "cyberpunk_overwatch",
+     "ally": true
     },
     "is": "held",
-    "by": "the row's action in src/lib/classes/resources.json or the spend's action in src/lib/srd/authored-effects-genre.ts",
+    "by": "the reaction row of src/lib/srd/authored-effects-genre-a.ts, spending the reaction through use_reaction (src/lib/dm/authored-reactions.ts); the counter is passive to use_resource (src/lib/srd/genre-a-counter-terms.ts)",
     "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Overwatch#0"
    },
    {
     "c": "impose disadvantage on an attack against an ally you can see",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:cyberpunk_overwatch#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-cyberpunk-overwatch"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts SPENDS row on the feature's counter, resolved by src/lib/dm/authored-spends.ts / authored-reactions.ts: disadv_vs_hit on a hit on the holder or an ally they see",
+    "probe": "scripts/test-genre-a-spends.mjs"
    },
    {
     "c": "2/rest",
@@ -202,15 +193,13 @@
   "clauses": [
    {
     "c": "Cache holds two programs of level 1-5",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "a stored program is not a state any tool of the catalog writes; there is no call to make",
     "run": {
-     "k": "hook"
+     "k": "cc_daemon",
+     "level": 11
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Daemon Cache (2 programs)#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-spends.ts daemonCache (slotless cast (5th) with Daemon Cache (2 programs)) and the counter's upgrade to two uses (src/lib/srd/genre-a-counter-terms.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Daemon Cache (2 programs)#0"
    }
   ]
  },
@@ -222,23 +211,23 @@
   "clauses": [
    {
     "c": "Learn two programs from any spell list",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs the level-up offer of the builder for this class and level (the builder sweep's rig), not staged here",
     "run": {
-     "k": "hook"
+     "k": "cc_firmware",
+     "part": "learn"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Black Market Firmware#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/class-spell-grants.ts classSpellGrants (two any-list picks on top at netrunner 13), read by the level-up route (src/lib/srd/level-up-spells.ts), the level-up offer (level-up-options.ts), the builder's spell step and the campaign's level-up dialog (any-list-picks-logic.ts) and the creation check (legality/spells.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Black Market Firmware#0"
    },
    {
     "c": "they count as wizard-list for you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Black Market Firmware#0 (a table check only: no engine table answers to the feature)",
-    "read_only": true,
-    "stopped": "needs the level-up offer of the builder for this class and level (the builder sweep's rig), not staged here",
-    "same_probe_as": 0
+    "run": {
+     "k": "cc_firmware",
+     "part": "count"
+    },
+    "is": "held",
+    "by": "src/lib/srd/spell-prep.ts spellCapWithGrantsOf and changePreparation: the programs are held as the netrunner's own, on top of what they prepare, and stay ready at a rest",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Black Market Firmware#1"
    }
   ]
  },
@@ -255,11 +244,9 @@
      "ability": "int,wis,cha",
      "magical": true
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Neural Firewall#0",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium",
-    "observed": "d20s thrown for the int,wis,cha save against a spell"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts save_adv (INT, WIS, CHA, magical), read by src/lib/srd/trait-rules.ts authoredSaveTraits",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Neural Firewall#0"
    }
   ]
  },
@@ -283,14 +270,15 @@
    },
    {
     "c": "control a construct or networked system for 1 minute",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:cyberpunk_root_access#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-cyberpunk-root-access"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts SPENDS row on the feature's counter, resolved by src/lib/dm/authored-spends.ts / authored-reactions.ts: save_effect commands a construct for a minute (a network is no creature the app models: the construct is the nearest SRD mechanic, WAVE2 D5)",
+    "probe": "scripts/test-genre-a-spends.mjs"
    },
    {
     "c": "INT save negates",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:cyberpunk_root_access#GUIDANCE_ONLY",
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts SPENDS row on the feature's counter, resolved by src/lib/dm/authored-spends.ts / authored-reactions.ts: save_effect INT against the spell save DC",
+    "probe": "scripts/test-genre-a-spends.mjs",
     "same_probe_as": 1
    }
   ]
@@ -303,10 +291,10 @@
   "clauses": [
    {
     "c": "Regain 4 expended slot levels on a short rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs ruling counter:cyberpunk_the_net_remembers#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-cyberpunk-the-net-remembers",
-    "ruling": "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\""
+    "is": "held",
+    "probe": "scripts/test-genre-a-slots.mjs",
+    "ruling": "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\"",
+    "by": "src/lib/dm/genre-a-slots.ts recoverSlotLevels, read by take_rest (rest-tools.ts applySlotRecovery) for every recover_slots counter; the term in genre-a-counter-terms.ts"
    },
    {
     "c": "once per day",
@@ -334,11 +322,9 @@
      "k": "ice",
      "part": "trigger"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::ICE Pick#0",
-    "where": "src/lib/dm/authored-reactions.ts (ac_vs_hit answers any hit; the trigger the text names is not checked)",
-    "sev": "medium",
-    "observed": "ICE Pick answered a club, which is neither a program nor a spell"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts ICE Pick (ac_vs_hit, spellOnly), refused in src/lib/dm/authored-reactions.ts for a hit that was no spell's attack or missile; the Hand's card reads the same off the hit's view (src/lib/battlemap/hand-react.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::ICE Pick#0"
    },
    {
     "c": "+2 AC",
@@ -352,9 +338,12 @@
    },
    {
     "c": "+2 to the save",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages"
+    "run": {
+     "k": "cc_ice_save"
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts ICE Pick (ac_vs_hit orSave 2), resolved by src/lib/dm/ar-ws-deflection.ts deflectSaveHalf and src/lib/dm/save-turned.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::ICE Pick#2"
    }
   ]
  },
@@ -366,21 +355,23 @@
   "clauses": [
    {
     "c": "1/turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
     "run": {
-     "k": "hook"
+     "k": "program_once",
+     "n": 3
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Lethal Payload#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts program_rider oncePerTurn, claimed on the turn budget (src/lib/dm/pc-attack-damage.ts claimOncePerTurnRiders); a save spell through cast_at_enemy takes the same claim in src/lib/dm/genre-a-cyberpunk-spell-hits.ts programSpellLanded (called by cast-at-enemy-damage.ts landSpellDamage)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Lethal Payload#0"
    },
    {
     "c": "a damaging program deals +1d8 lightning damage to one target",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the probe's setup broke: error: Error: the Fire Bolt was refused: Fire Bolt is an attack-roll spell; resolve it with pc_attack (spell=\"Fire Bolt\"). |     at must (file:///home/lebbi/.cache/odm-sweep/scripts/lib/sweep-clauses-"
+    "run": {
+     "k": "spell_dmg",
+     "dice": 1
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts program_rider 1d8 lightning, read by src/lib/dm/genre-a-cyberpunk-programs.ts programRiders in src/lib/dm/attack-damage-riders.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Lethal Payload#1"
    }
   ]
  },
@@ -392,15 +383,12 @@
   "clauses": [
    {
     "c": "When you succeed on a save against a spell, deal 2d8 psychic damage to the caster",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "intrusion"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Counter-Intrusion#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-cyberpunk-defenses.ts counterIntrusion, called where a creature's forced save lands (src/lib/dm/forced-save.ts rollCharacterSave): a made save against magic burns the creature for 2d8 psychic, no reaction and no counter",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Counter-Intrusion#0"
    }
   ]
  },
@@ -412,9 +400,14 @@
   "clauses": [
    {
     "c": "Your programs score a critical on 19-20 against constructs and spellcasters",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the probe's setup broke: error: Error: the Fire Bolt was refused: Fire Bolt is an attack-roll spell; resolve it with pc_attack (spell=\"Fire Bolt\"). |     at must (file:///home/lebbi/.cache/odm-sweep/scripts/lib/sweep-clauses-"
+    "run": {
+     "k": "spell_dmg",
+     "crit": true,
+     "face": 19
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts program_crit 19 against constructs and spellcasters, read by src/lib/dm/genre-a-cyberpunk-programs.ts programCritRange in src/lib/dm/attack-record.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Flatline Protocol#0"
    }
   ]
  },
@@ -442,11 +435,9 @@
      "k": "spend_moves",
      "id": "cyberpunk_daemon_swarm"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap netrunner::Daemon Swarm#1",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium",
-    "observed": "spending cyberpunk_daemon_swarm moved its counter and the turn's cost and nothing else; the result was its guidance: 1/long rest, split one single-target damaging program among up to three targets."
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts Daemon Swarm: the spend lays a mark for the turn, and twin_spell with targets 3 opens a share for a second and a third creature of one casting (src/lib/dm/authored-reaper.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: netrunner::Daemon Swarm#1"
    }
   ]
  },
@@ -462,16 +453,18 @@
      "k": "init",
      "n": 2
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Chrome Reflexes#0",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no initiative_bonus for the feature (parseFeatureEffects would read \"+2 to initiative\" and is never given the genre text)",
-    "sev": "medium",
-    "observed": "initiative on a 10"
+    "is": "held",
+    "by": "src/lib/srd/genre-a-feature-defs.ts initiative_bonus (+2), read by src/lib/srd/feature-effects.ts effectsFor",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Chrome Reflexes#0"
    },
    {
     "c": "cannot be surprised while conscious",
-    "is": "gap",
-    "read_only": true,
+    "run": {
+     "k": "no_surprise"
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts no_surprise, read by src/lib/dm/surprise-guard.ts cannotBeSurprised (start_encounter and an ambush)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Chrome Reflexes#1",
     "stopped": "the probe's setup broke: error: Error: the staged surprise caught nobody |     at no_surprise (file:///home/lebbi/.cache/odm-sweep/scripts/lib/sweep-clauses-genre-a-probes.mjs:223:56) |     at async play (file:///home/lebbi/."
    }
   ]
@@ -484,53 +477,47 @@
   "clauses": [
    {
     "c": "Pick one",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs the builder's owed-pick list for the class; not staged here",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Combat Wetware#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts: the Combat Wetware row and its choose spend (use_resource \"Combat Wetware\" with the option as the variant, out of a fight), the pick kept as \"Combat Wetware (Smartlink)\"",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Combat Wetware#0"
    },
    {
     "c": "+2 to ranged attack rolls",
     "run": {
      "k": "atk",
      "n": 2,
-     "mode": "ranged"
+     "mode": "ranged",
+     "choice": "Smartlink"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Combat Wetware#1",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (attack_bonus) and src/lib/dm/pc-attack-profile.ts",
-    "sev": "medium",
-    "observed": "what Combat Wetware adds to the attack roll (8 with it, 8 without)"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts attack_bonus gated on the Smartlink pick, read by src/lib/dm/genre-a-strikes.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Combat Wetware#1"
    },
    {
     "c": "+1 AC in light or medium armor",
     "run": {
      "k": "ac",
      "n": 1,
-     "wear": "light"
+     "wear": "light",
+     "choice": "Dermal Weave"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Combat Wetware#2",
-    "where": "src/lib/srd/index.ts acBreakdownFor and src/lib/srd/feature-effects.ts ac_bonus: no entry for the feature",
-    "sev": "medium",
-    "observed": "armor class (light worn)"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts ac gated on the Dermal Weave pick and light or medium armor",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Combat Wetware#2"
    },
    {
     "c": "+2 melee damage",
     "run": {
      "k": "dmg",
-     "flat": 2
+     "flat": 2,
+     "choice": "Muscle Graft"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Combat Wetware#3",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (weapon_damage_rider) and src/lib/dm/pc-attack-damage.ts: nothing answers to the feature",
-    "sev": "medium",
-    "observed": "damage Combat Wetware adds to a hit (8 with it, 8 without)"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts hit_rider of 2 on melee hits, gated on the Muscle Graft pick, read by src/lib/dm/attack-damage-riders.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Combat Wetware#3"
    }
   ]
  },
@@ -554,9 +541,9 @@
    },
    {
     "c": "take one additional action on your turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:cyberpunk_adrenal_override#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-cyberpunk-adrenal-override"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts SPENDS row on the feature's counter, resolved by src/lib/dm/authored-spends.ts / authored-reactions.ts: Action Surge's grant (ResourceDef.extraAction, src/lib/dm/resource-turn.ts)",
+    "probe": "scripts/test-genre-a-spends.mjs"
    }
   ]
  },
@@ -607,11 +594,9 @@
      "k": "ac",
      "n": 1
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Subdermal Plating#0",
-    "where": "src/lib/srd/index.ts acBreakdownFor and src/lib/srd/feature-effects.ts ac_bonus: no entry for the feature",
-    "sev": "medium",
-    "observed": "armor class (none worn)"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts ac (gate notHeavy), read by src/lib/srd/index.ts authoredAcBonus",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Subdermal Plating#0"
    }
   ]
  },
@@ -660,11 +645,9 @@
      "k": "mark_sight",
      "res": "Target Lock"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Target Lock#3",
-    "observed": "Target Lock on an invisible creature the holder cannot see was accepted: the engine gives true, the text false",
-    "where": "the quarry spend in src/lib/dm/resource-tools.ts computeUseResource: the target's visibility is not checked",
-    "sev": "medium"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts Target Lock buff with sight, refused by src/lib/dm/authored-spend-effects.ts unseenBecause",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Target Lock#3"
    }
   ]
  },
@@ -688,9 +671,9 @@
    },
    {
     "c": "reroll a failed saving throw",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:cyberpunk_indomitable_firmware#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-cyberpunk-indomitable-firmware"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts SPENDS row on the feature's counter, resolved by src/lib/dm/authored-spends.ts / authored-reactions.ts: reroll_save",
+    "probe": "scripts/test-genre-a-spends.mjs"
    }
   ]
  },
@@ -706,11 +689,9 @@
      "k": "init",
      "n": 4
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Reflex Booster II#0",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no initiative_bonus for the feature (parseFeatureEffects would read \"+2 to initiative\" and is never given the genre text)",
-    "sev": "medium",
-    "observed": "initiative on a 10"
+    "is": "held",
+    "by": "src/lib/srd/genre-a-feature-defs.ts initiative_bonus (+2 on Chrome Reflexes' +2), read by src/lib/srd/feature-effects.ts effectsFor",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Reflex Booster II#0"
    }
   ]
  },
@@ -741,19 +722,19 @@
    {
     "c": "Reaction",
     "run": {
-     "k": "spend_cost",
-     "cost": "reaction",
-     "id": "cyberpunk_bullet_time"
+     "k": "reaction_cost",
+     "id": "cyberpunk_bullet_time",
+     "ranged": true
     },
     "is": "held",
-    "by": "the row's action in src/lib/classes/resources.json or the spend's action in src/lib/srd/authored-effects-genre.ts",
+    "by": "the reaction row of src/lib/srd/authored-effects-genre-a.ts, spending the reaction through use_reaction (src/lib/dm/authored-reactions.ts); the counter is passive to use_resource (src/lib/srd/genre-a-counter-terms.ts)",
     "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Bullet Time#0"
    },
    {
     "c": "+3 AC against one ranged attack you can see",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:cyberpunk_bullet_time#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-cyberpunk-bullet-time"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts SPENDS row on the feature's counter, resolved by src/lib/dm/authored-spends.ts / authored-reactions.ts: ac_vs_hit +3, rangedOnly, sees the attacker",
+    "probe": "scripts/test-genre-a-spends.mjs"
    },
    {
     "c": "3/long rest",
@@ -801,11 +782,9 @@
      "k": "save_adv",
      "ability": "con"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Chrome Constitution#0",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium",
-    "observed": "d20s thrown for the con save"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts save_adv (CON), read by src/lib/srd/trait-rules.ts authoredSaveTraits",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Chrome Constitution#0"
    },
    {
     "c": "resistance to poison damage",
@@ -813,11 +792,9 @@
      "k": "resist",
      "type": "poison"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Chrome Constitution#1",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium",
-    "observed": "hit points lost to 10 poison"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts resist (poison), read by src/lib/dm/pc-defenses.ts authoredResistances",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Chrome Constitution#1"
    }
   ]
  },
@@ -832,11 +809,9 @@
     "run": {
      "k": "crit"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Killing Instinct#0",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no crit_range for the feature",
-    "sev": "medium",
-    "observed": "a 19 on the die is a critical hit"
+    "is": "held",
+    "by": "src/lib/srd/genre-a-feature-defs.ts crit_range (19), read by src/lib/srd/feature-effects.ts combat riders",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Killing Instinct#0"
    }
   ]
  },
@@ -867,18 +842,17 @@
      "hp": 100,
      "refused": "at full hit points"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Wired Soul#1",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium",
-    "observed": "cyberpunk_wired_soul was accepted (at full hit points)"
+    "is": "held",
+    "by": "requires below_half on cyberpunk_wired_soul (genre-a-counter-terms.ts), read by src/lib/srd/counter-rules.ts counterGate",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Wired Soul#1"
    },
    {
     "c": "bonus action",
     "run": {
      "k": "spend_cost",
      "cost": "bonus",
-     "id": "cyberpunk_wired_soul"
+     "id": "cyberpunk_wired_soul",
+     "hp": 40
     },
     "is": "held",
     "by": "the row's action in src/lib/classes/resources.json or the spend's action in src/lib/srd/authored-effects-genre.ts",
@@ -906,26 +880,21 @@
   "clauses": [
    {
     "c": "1/turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
     "run": {
-     "k": "hook"
+     "k": "apex_once"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Apex Predator#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-cyberpunk-hits.ts apexAttack, once a turn on the turn budget",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Apex Predator#0"
    },
    {
     "c": "dropping a foe to 0 HP grants one extra weapon attack immediately",
     "run": {
      "k": "apex"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Apex Predator#1",
-    "where": "src/lib/dm/pc-attack-spend.ts / turn-budget.ts: no extra attack on a kill",
-    "sev": "medium",
-    "observed": "attacks allowed after dropping a foe to 0 (three from Extra Attack and one more)"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts kill_attack, read by src/lib/dm/genre-a-cyberpunk-hits.ts apexAttack at the hit (src/lib/dm/attack-blow.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Apex Predator#1"
    }
   ]
  },
@@ -937,15 +906,12 @@
   "clauses": [
    {
     "c": "Two-weapon fighting with blades adds your ability mod to off-hand damage",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Twin Chrome#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "the two_weapon_ability entry of src/lib/srd/genre-a-feature-defs.ts, read by src/lib/dm/attack-logic.ts offHandModifier",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Twin Chrome#0"
    },
    {
     "c": "+1 AC while dual-wielding",
@@ -954,11 +920,9 @@
      "n": 1,
      "wear": "dual"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Twin Chrome#1",
-    "where": "src/lib/srd/index.ts acBreakdownFor and src/lib/srd/feature-effects.ts ac_bonus: no entry for the feature",
-    "sev": "medium",
-    "observed": "armor class (dual worn)"
+    "is": "held",
+    "by": "the ac row gated dualWield in src/lib/srd/authored-effects-genre-a.ts (src/lib/srd/genre-a-gates.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Twin Chrome#1"
    }
   ]
  },
@@ -973,17 +937,18 @@
     "run": {
      "k": "no_door"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Whirl of Edges#0",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (no row) and src/lib/classes/resources.json (no counter): no tool plays the feature",
-    "sev": "medium",
-    "observed": "no call plays it: use_resource answers \"No resource called \"whirl of edges\" is known. Their resources: cyberpunk_adrenal_override. Send the one meant, by the name on the sheet. / No resource called \"w\""
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts the Whirl of Edges spend (cyber_spend whirl), one attack of the Attack action spent by src/lib/dm/genre-a-cyberpunk-spends.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Whirl of Edges#0"
    },
    {
     "c": "weapon damage to every foe within 5 ft",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Whirl of Edges#0",
-    "same_probe_as": 0
+    "run": {
+     "k": "whirl"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-a-cyberpunk-spends.ts whirl: the held melee weapon damage rolled once and dealt to each enemy within 5 feet",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Whirl of Edges#1"
    }
   ]
  },
@@ -1008,9 +973,12 @@
    },
    {
     "c": "opportunity attacks against you have disadvantage",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "an opportunity attack against the holder is not staged by this sweep (it needs the holder to leave a foe's reach on the holder's own turn through the move route)"
+    "run": {
+     "k": "cc_oa"
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre.ts Afterimage (oa_disadv), read by src/lib/dm/opportunity.ts resolveOpportunityAttacks (activeAuthored(sheet, \"oa_disadv\"))",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: street_samurai::Afterimage#1"
    }
   ]
  },
@@ -1034,15 +1002,9 @@
    },
    {
     "c": "for 1 minute make one additional blade attack on each of your turns",
-    "run": {
-     "k": "spend_moves",
-     "id": "cyberpunk_storm_of_blades"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap street_samurai::Storm of Blades#1",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium",
-    "observed": "spending cyberpunk_storm_of_blades moved its counter and the turn's cost and nothing else; the result was its guidance: 1/long rest, for 1 minute make one additional blade attack on each of your turns."
+    "is": "held",
+    "probe": "scripts/test-genre-a-capstones.mjs",
+    "by": "src/lib/srd/authored-effects-genre-a-capstones.ts: the spend's mark adds one attack to the Attack action (combatRiders, GENRE_A_MARK_ATTACKS)"
    }
   ]
  },
@@ -1054,26 +1016,15 @@
   "clauses": [
    {
     "c": "A small drone obeys you",
-    "run": {
-     "k": "companion"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Drone Companion#0",
-    "where": "src/lib/db/sheets.ts createSheet and src/lib/dm/summon-store.ts: no pet or summon is made for the class",
-    "sev": "medium",
-    "observed": "the sheet holds no companion: no pet, no summon"
+    "is": "held",
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    },
    {
     "c": "AC 13, HP 5 + level, moves 30 ft, acts on your command",
-    "run": {
-     "k": "companion",
-     "stats": 1
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Drone Companion#1",
-    "where": "src/lib/db/sheets.ts createSheet and src/lib/dm/summon-store.ts: no pet or summon is made for the class",
-    "sev": "medium",
-    "observed": "the sheet holds no companion: no pet, no summon"
+    "is": "held",
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    }
   ]
  },
@@ -1097,10 +1048,12 @@
    },
    {
     "c": "10 minutes of tinkering restores a broken device or gives a tool user +1d4 for 1 hour",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs ruling counter:cyberpunk_jury_rig#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-cyberpunk-jury-rig",
-    "ruling": "scripts/test-feature-coverage.mjs NARRATIVE_WITH_DICE: \"Narrative counters whose dice ride a FOLLOW-UP tool the model must call ... or whose payload has no engine shape yet. Deliberate, not forgotten.\""
+    "run": {
+     "k": "cc_jury"
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts Jury-Rig (src/lib/dm/genre-cc-a-spends.ts juryRig, the jury-rigged mark for 600 rounds), read by src/lib/dm/rolls.ts on a check made with a tool",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: rigger::Jury-Rig#1"
    }
   ]
  },
@@ -1123,15 +1076,14 @@
    },
    {
     "c": "the drone is the focus",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs a cast of a material-component spell by a genre caster with and without the named focus carried (src/lib/dm/cast-materials.ts focusProblem); not staged",
     "run": {
-     "k": "hook"
+     "k": "focus",
+     "want": "drone",
+     "ability": "int"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Machine Codex#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-cyberpunk-drones.ts droneFocusProblem, asked by the cast guard (src/lib/dm/cast-guard.ts): a drone of the rigger's standing on the board, or a component pouch; no focus item serves",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: rigger::Machine Codex#1"
    }
   ]
  },
@@ -1173,23 +1125,19 @@
   "clauses": [
    {
     "c": "A second drone",
-    "is": "gap",
-    "read_only": true,
+    "is": "held",
     "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Drone Swarm#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    },
    {
     "c": "command all your drones with a single action",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Drone Swarm#0 (a table check only: no engine table answers to the feature)",
-    "read_only": true,
-    "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
-    "same_probe_as": 0
+    "run": {
+     "k": "cc_drone_command"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-a-summons.ts summonGenreCompanion (each drone a summoned ally with its own place in the order, acting on its own turn, so no command spends the rigger's action)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: rigger::Drone Swarm#1"
    }
   ]
  },
@@ -1201,15 +1149,12 @@
   "clauses": [
    {
     "c": "Drone command and Remote Eyes range extends to 1 mile",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
     "run": {
-     "k": "hook"
+     "k": "cc_drone_command"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Signal Boost#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-summons.ts summonGenreCompanion (a drone acts on its own turn wherever it stands on the board: no command range binds it, so a mile's reach holds)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: rigger::Signal Boost#0"
    }
   ]
  },
@@ -1221,15 +1166,10 @@
   "clauses": [
    {
     "c": "Your drones add your INT modifier to their damage",
-    "is": "gap",
-    "read_only": true,
+    "is": "held",
     "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Overclocked Servos#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    }
   ]
  },
@@ -1242,28 +1182,22 @@
    {
     "c": "Each drone regains 2d6 HP at the start of your turn",
     "run": {
-     "k": "heal",
-     "id": "cyberpunk_self_repair_protocol",
-     "target": "ally",
-     "dice": 2,
-     "want": "nobody"
+     "k": "drone_repair"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Self-Repair Protocol#0",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium",
-    "observed": "it healed a character; the text heals each drone"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-cyberpunk-drones.ts selfRepairDrones at the rigger turn start (src/lib/dm/authored-turns.ts), one use of cyberpunk_self_repair_protocol per drone mended",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: rigger::Self-Repair Protocol#0"
    },
    {
     "c": "once per rest each",
     "run": {
      "k": "counter",
      "id": "cyberpunk_self_repair_protocol",
-     "n": 1,
+     "n": 2,
      "rest": "short"
     },
     "is": "held",
-    "by": "src/lib/classes/resources.json row (uses, ability, recharge, upgrades), read by src/lib/srd/class-resources.ts populateResources and take_rest",
+    "by": "the cyberpunk_self_repair_protocol counter, one use per drone (two at 9th level with Drone Swarm, three with Drone Legion: src/lib/srd/genre-a-counter-terms.ts upgrades), back on a short rest; each drone keeps a mark of its use (src/lib/dm/genre-a-cyberpunk-drones.ts)",
     "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: rigger::Self-Repair Protocol#1"
    }
   ]
@@ -1276,15 +1210,17 @@
   "clauses": [
    {
     "c": "Advantage on saves against effects that would sever or hijack control of your drones",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
     "run": {
-     "k": "hook"
+     "k": "save_adv",
+     "ability": "wis,con",
+     "against": [
+      "charmed",
+      "stunned"
+     ]
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Hardened Uplink#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-cc-a.ts Hardened Uplink (save_adv against charmed, stunned, paralyzed, incapacitated, unconscious), read by the save's roll keys",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: rigger::Hardened Uplink#0"
    }
   ]
  },
@@ -1296,15 +1232,10 @@
   "clauses": [
    {
     "c": "Your drones improve to AC 16 and HP 15 + twice your level",
-    "is": "gap",
-    "read_only": true,
+    "is": "held",
     "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Improved Chassis#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    }
   ]
  },
@@ -1316,9 +1247,12 @@
   "clauses": [
    {
     "c": "Rebuild a destroyed drone on a long rest for free",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on"
+    "run": {
+     "k": "cc_backup_frame"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-a-summons.ts summonGenreCompanion (Drone Companion builds the drones again outside a fight with no counter spent)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: rigger::Backup Frame#0"
    },
    {
     "c": "once per day",
@@ -1348,11 +1282,9 @@
      "n": 4,
      "rest": "long"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Omni-Tool Mastery#0",
-    "where": "scripts/generate-class-resources.mjs parseUses and the row in src/lib/classes/resources.json",
-    "sev": "medium",
-    "observed": "uses of cyberpunk_jury_rig at level 14"
+    "is": "held",
+    "by": "the upgrade of cyberpunk_jury_rig to 4 uses (genre-a-counter-terms.ts), read by populateResources",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: rigger::Omni-Tool Mastery#0"
    },
    {
     "c": "can affect magical or exotic devices",
@@ -1369,15 +1301,10 @@
   "clauses": [
    {
     "c": "A third drone joins your swarm",
-    "is": "gap",
-    "read_only": true,
+    "is": "held",
     "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Drone Legion#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    }
   ]
  },
@@ -1421,13 +1348,11 @@
    {
     "c": "one drone turns invisible for 1 minute",
     "run": {
-     "k": "ghost"
+     "k": "drone_ghost"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Ghost Protocol#1",
-    "where": "scripts/generate-class-resources.mjs parseFx (\"turns invisible\" becomes a buff on the spender) and src/lib/dm/resource-tools.ts",
-    "sev": "medium",
-    "observed": "the rigger turned invisible; the text turns one drone invisible"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-cyberpunk-spends.ts ghost_protocol: the drone named (or the first) invisible for ten rounds",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: rigger::Ghost Protocol#1"
    }
   ]
  },
@@ -1455,11 +1380,9 @@
      "k": "spend_moves",
      "id": "cyberpunk_deus_in_machina"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Deus in Machina#1",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium",
-    "observed": "spending cyberpunk_deus_in_machina moved its counter and the turn's cost and nothing else; the result was its guidance: 1/long rest, for 1 minute your drones act independently and you may cast one routine through each."
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts Deus in Machina: a minute mark (ten rounds) on the rigger; the drones act as allies on the board with no command to wait for (src/lib/dm/genre-a-summons.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: rigger::Deus in Machina#1"
    }
   ]
  },
@@ -1471,23 +1394,18 @@
   "clauses": [
    {
     "c": "Your primary drone mounts a weapon",
-    "is": "gap",
-    "read_only": true,
+    "is": "held",
     "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Combat Chassis#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    },
    {
     "c": "on your command it attacks for 1d8 + INT force damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Combat Chassis#0 (a table check only: no engine table answers to the feature)",
-    "read_only": true,
+    "is": "held",
+    "probe": "scripts/test-genre-a-summons.mjs",
     "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
-    "same_probe_as": 0
+    "same_probe_as": 0,
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    }
   ]
  },
@@ -1499,15 +1417,12 @@
   "clauses": [
    {
     "c": "Your drones take half damage from area effects, none on a successful DEX save",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
     "run": {
-     "k": "hook"
+     "k": "cc_drone_evasion"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Evasive Subroutines#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-drones.ts droneEvades, read by src/lib/dm/aoe-characters.ts (Evasion on a DEX save for half, half of any other area)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: rigger::Evasive Subroutines#0"
    }
   ]
  },
@@ -1519,15 +1434,10 @@
   "clauses": [
    {
     "c": "Two drones attack when you command an attack",
-    "is": "gap",
-    "read_only": true,
+    "is": "held",
     "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Twinned Strike#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    }
   ]
  },
@@ -1539,15 +1449,10 @@
   "clauses": [
    {
     "c": "Primary drone doubles its HP, deals +1d8 damage, and can carry a rider",
-    "is": "gap",
-    "read_only": true,
+    "is": "held",
     "stopped": "the drone or beast the clause changes is not an entity the engine holds for this class (see the gap on the companion feature), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap rigger::Titan Frame#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "probe": "scripts/test-genre-a-summons.mjs",
+    "by": "src/lib/dm/genre-a-summons.ts: the companion as an ally with the text's stats (the drone built as the steel defender is; WAVE2 D5 maps the drone to a summoned construct)"
    }
   ]
  },
@@ -1606,9 +1511,12 @@
    },
    {
     "c": "reroll a failed CHA-based check",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:cyberpunk_grease_the_wheels#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-cyberpunk-grease-the-wheels"
+    "run": {
+     "k": "grease"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-a-cyberpunk-spends.ts grease: the fixer last failed Charisma check or Charisma skill check rolled again through rollCharacterCheck",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: fixer::Grease the Wheels#1"
    }
   ]
  },
@@ -1681,11 +1589,9 @@
      "n": 2,
      "rest": "long"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap fixer::Favor Network#0",
-    "where": "scripts/generate-class-resources.mjs parseUses and the row in src/lib/classes/resources.json",
-    "sev": "medium",
-    "observed": "uses of cyberpunk_street_contacts at level 5"
+    "is": "held",
+    "by": "the upgrade of cyberpunk_street_contacts to 2 uses (genre-a-counter-terms.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: fixer::Favor Network#0"
    },
    {
     "c": "reaches contacts in other cities",
@@ -1702,15 +1608,12 @@
   "clauses": [
    {
     "c": "Sell goods at full value",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs the shop's sell route with a priced item; not staged here",
     "run": {
-     "k": "hook"
+     "k": "cc_full_value"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap fixer::Silver Ledger#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-fixer.ts sellsAtFullValue, read by src/lib/dm/shop-tools.ts handleSellItem",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: fixer::Silver Ledger#0"
    },
    {
     "c": "you can always find a buyer or seller within a day",
@@ -1727,15 +1630,12 @@
   "clauses": [
    {
     "c": "When you roll initiative, move up to your speed without provoking opportunity attacks",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "cc_exit"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap fixer::Exit Strategy#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-fixer.ts exitAtInitiative (src/lib/dm/feature-hooks.ts, as initiative is rolled) and src/lib/dm/genre-cc-a-spends.ts exitStrategy (src/lib/dm/authored-reactions-more.ts reactionMove: full speed, no opportunity attack)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: fixer::Exit Strategy#0"
    }
   ]
  },
@@ -1780,11 +1680,9 @@
     "run": {
      "k": "limit_tracked"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap fixer::The Big Favor#0",
-    "where": "scripts/generate-class-resources.mjs parseUses (reads N/rest, N per rest, once per day, once per rest; not N/week, per day in words, or rounds per rest)",
-    "sev": "medium",
-    "observed": "the text limits its use and a level 11 fixer holds no counter for it (it holds cyberpunk_grease_the_wheels, cyberpunk_street_contacts)"
+    "is": "held",
+    "by": "the cyberpunk_the_big_favor counter, back after seven long rests (recovers 7)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: fixer::The Big Favor#0"
    },
    {
     "c": "a contact performs a genuinely dangerous service for you",
@@ -1801,15 +1699,12 @@
   "clauses": [
    {
     "c": "A creature that accepts your parley cannot attack you until your next turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "cc_parley"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap fixer::Neutral Ground#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/dm/genre-cc-a-spends.ts parley (the neutral ground mark until the fixer's next turn), read by src/lib/dm/enemy-attack.ts through src/lib/dm/genre-cc-a-fixer.ts parleyHolds",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: fixer::Neutral Ground#0"
    }
   ]
  },
@@ -1847,11 +1742,9 @@
      "n": 3,
      "rest": "long"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap fixer::Shadow Network#0",
-    "where": "scripts/generate-class-resources.mjs parseUses and the row in src/lib/classes/resources.json",
-    "sev": "medium",
-    "observed": "uses of cyberpunk_street_contacts at level 15"
+    "is": "held",
+    "by": "the upgrade of cyberpunk_street_contacts to 3 uses (genre-a-counter-terms.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: fixer::Shadow Network#0"
    },
    {
     "c": "favors arrive in half the usual time",
@@ -1898,11 +1791,9 @@
      "skill": "persuasion",
      "want": "d4"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap fixer::Master of the Board#0",
-    "where": "src/lib/srd/trait-rules.ts check keys (src/lib/dm/roll-about.ts CHECK_ABOUT has no circumstance for it) and src/lib/dm/roll-riders.ts",
-    "sev": "medium",
-    "observed": "d4s added to the persuasion check"
+    "is": "held",
+    "by": "the aura_roll row (CHA checks, +1d4, 30 ft, the holder too), read by src/lib/dm/genre-a-auras.ts in forced-save.ts rollExtrasFor and roll-feature-riders.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: fixer::Master of the Board#0"
    }
   ]
  },
@@ -1958,15 +1849,13 @@
    {
     "c": "Advantage on Investigation checks to gather information",
     "run": {
-     "k": "check",
+     "k": "check_about",
      "skill": "investigation",
-     "want": "adv"
+     "about": "gathering_information"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap fixer::Ear to the Ground#0",
-    "where": "src/lib/srd/trait-rules.ts check keys (src/lib/dm/roll-about.ts CHECK_ABOUT has no circumstance for it) and src/lib/dm/roll-riders.ts",
-    "sev": "medium",
-    "observed": "d20s thrown for the investigation check"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts check_adv (investigation, about gathering_information), read by src/lib/srd/authored-effects.ts authoredCheckTraits; the GM's call names the circumstance in request_roll's about (src/lib/dm/roll-about.ts CHECK_ABOUT)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: fixer::Ear to the Ground#0"
    }
   ]
  },
@@ -1979,15 +1868,13 @@
    {
     "c": "Advantage on CHA checks against anyone whose secret you know",
     "run": {
-     "k": "check",
+     "k": "check_about",
      "skill": "persuasion",
-     "want": "adv"
+     "about": "known_secret"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap fixer::Blackmail Files#0",
-    "where": "src/lib/srd/trait-rules.ts check keys (src/lib/dm/roll-about.ts CHECK_ABOUT has no circumstance for it) and src/lib/dm/roll-riders.ts",
-    "sev": "medium",
-    "observed": "d20s thrown for the persuasion check"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts check_adv (CHA checks, about known_secret), read by src/lib/srd/authored-effects.ts authoredCheckTraits; whether the fixer knows the creature's secret is the GM's to say, in request_roll's about",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: fixer::Blackmail Files#0"
    }
   ]
  },
@@ -2053,15 +1940,14 @@
    },
    {
     "c": "needs no material focus",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs a cast of a material-component spell by a genre caster with and without the named focus carried (src/lib/dm/cast-materials.ts focusProblem); not staged",
     "run": {
-     "k": "hook"
+     "k": "focus",
+     "want": "none",
+     "ability": "cha"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap esper::Wetware Surge#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/genre-a-cyberpunk-focus.ts genreFocusOf, read by src/lib/dm/cast-materials.ts focusProblem: an unpriced material asks an esper for no pouch and no focus; a priced one is still the material plan's",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Wetware Surge#1"
    }
   ]
  },
@@ -2096,9 +1982,9 @@
    },
    {
     "c": "+2 AC until the start of your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:cyberpunk_static_shield#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-cyberpunk-static-shield"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts SPENDS row on the feature's counter, resolved by src/lib/dm/authored-spends.ts / authored-reactions.ts: buff static shield, +2 AC (src/lib/srd/genre-a-conditions.ts)",
+    "probe": "scripts/test-genre-a-spends.mjs"
    }
   ]
  },
@@ -2113,11 +1999,9 @@
     "run": {
      "k": "psi_font"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap esper::Psi Font#0",
-    "where": "src/lib/dm/rest-tools.ts take_rest (short): no slot comes back for the feature",
-    "sev": "medium",
-    "observed": "1st-level slots used after the short rest (two were)"
+    "is": "held",
+    "by": "the cyberpunk_psi_font counter (src/lib/srd/genre-a-counter-terms.ts GENRE_A_EXTRA_COUNTERS, recover_slots of one 1st-level slot), given back by take_rest (src/lib/dm/rest-tools.ts applySlotRecovery)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Psi Font#0"
    }
   ]
  },
@@ -2176,23 +2060,18 @@
      "type": "bludgeoning",
      "via": "fall"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap esper::Kinetic Buffer#0",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium",
-    "observed": "hit points lost to a 20 foot fall for 10"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts fall_resist, read by src/lib/dm/genre-a-cyberpunk-defenses.ts fallResistances at the fall in src/lib/dm/hazard-tools.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Kinetic Buffer#0"
    },
    {
     "c": "1/turn, shove a target 10 ft with a psionic hit",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
     "run": {
-     "k": "hook"
+     "k": "spell_shove"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap esper::Kinetic Buffer#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts spell_push (10 feet, once a turn), read by src/lib/dm/genre-a-cyberpunk-hits.ts kineticShove at the hit (src/lib/dm/attack-blow.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Kinetic Buffer#1"
    }
   ]
  },
@@ -2214,11 +2093,9 @@
      "ability": "wis",
      "n": 2
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap esper::Thought Shield#1",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no save bonus for the feature",
-    "sev": "medium",
-    "observed": "the wis save on a 10"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts save_bonus (+2, WIS), read by src/lib/srd/index.ts authoredSaveModifier",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Thought Shield#1"
    }
   ]
  },
@@ -2242,15 +2119,9 @@
    },
    {
     "c": "fly 30 ft for 10 minutes",
-    "run": {
-     "k": "spend_moves",
-     "id": "cyberpunk_psychic_flight"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap esper::Psychic Flight#1",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium",
-    "observed": "spending cyberpunk_psychic_flight moved its counter and the turn's cost and nothing else; the result was its guidance: 1/long rest, fly 30 ft for 10 minutes."
+    "is": "held",
+    "probe": "scripts/test-genre-a-capstones.mjs",
+    "by": "src/lib/srd/authored-effects-genre-a-capstones.ts: the spend lays the mark; move fly 30 gated on it"
    }
   ]
  },
@@ -2265,11 +2136,9 @@
     "run": {
      "k": "conc"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap esper::Split Focus#0",
-    "where": "src/lib/dm/concentration.ts (the save on damage): no rider for the feature",
-    "sev": "medium",
-    "observed": "d20s thrown for the concentration save"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts concentration_adv, read by src/lib/dm/genre-a-cyberpunk-defenses.ts concentrationAdvantage at the concentration save (src/lib/dm/concentration.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Split Focus#0"
    }
   ]
  },
@@ -2293,9 +2162,9 @@
    },
    {
     "c": "regain expended slot levels equal to your CHA modifier",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:cyberpunk_overmind#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-cyberpunk-overmind"
+    "is": "held",
+    "probe": "scripts/test-genre-a-slots.mjs",
+    "by": "src/lib/dm/genre-a-slots.ts recoverSlotLevels, given back by the use_resource spend itself (resource-tools.ts, recover_slots with now), refused with nothing spent when no slot is spent"
    }
   ]
  },
@@ -2319,9 +2188,12 @@
    },
    {
     "c": "your next damaging psionic deals maximum damage",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:cyberpunk_reality_rend#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-cyberpunk-reality-rend"
+    "run": {
+     "k": "rend"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-a-cyberpunk-spends.ts spendRealityRend, read by cast_at_enemy and aoe_damage as Overchannel is",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Reality Rend#1"
    }
   ]
  },
@@ -2338,11 +2210,9 @@
      "type": "psychic",
      "immune": true
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap esper::Ascendant Mind#0",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium",
-    "observed": "hit points lost to 10 psychic"
+    "is": "held",
+    "by": "the immune_damage row of src/lib/srd/authored-effects-genre-a.ts, read by src/lib/dm/pc-damage.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Ascendant Mind#0"
    },
    {
     "c": "mind reading",
@@ -2371,15 +2241,9 @@
    },
    {
     "c": "cast a psionic of 5th level or lower without a slot at two targets",
-    "run": {
-     "k": "spend_moves",
-     "id": "cyberpunk_singularity"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap esper::Singularity#1",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium",
-    "observed": "spending cyberpunk_singularity moved its counter and the turn's cost and nothing else; the result was its guidance: 1/long rest, cast a psionic of 5th level or lower without a slot at two targets."
+    "is": "held",
+    "probe": "scripts/test-genre-a-capstones.mjs",
+    "by": "src/lib/dm/genre-a-casts.ts genreFreeCast (cast guard, no slot while the mark holds) and the twin_spell the mark switches on (authored-reaper.ts, any distance)"
    }
   ]
  },
@@ -2391,21 +2255,24 @@
   "clauses": [
    {
     "c": "1/turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
     "run": {
-     "k": "hook"
+     "k": "program_once",
+     "n": 2,
+     "ability": "cha"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap esper::Neural Spike#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts program_rider oncePerTurn, claimed on the turn budget; a save spell through cast_at_enemy takes the same claim in src/lib/dm/genre-a-cyberpunk-spell-hits.ts programSpellLanded (called by cast-at-enemy-damage.ts landSpellDamage)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Neural Spike#0"
    },
    {
     "c": "add your CHA modifier as psychic damage to a damaging psionic",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the probe's setup broke: error: Error: the Fire Bolt was refused: Fire Bolt is an attack-roll spell; resolve it with pc_attack (spell=\"Fire Bolt\"). |     at must (file:///home/lebbi/.cache/odm-sweep/scripts/lib/sweep-clauses-"
+    "run": {
+     "k": "spell_dmg",
+     "ability": "cha"
+    },
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts program_rider CHA psychic, read by src/lib/dm/genre-a-cyberpunk-programs.ts programRiders",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Neural Spike#1"
    }
   ]
  },
@@ -2417,9 +2284,12 @@
   "clauses": [
    {
     "c": "Reaction when a creature damages you",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-reactions.mjs gap reaction:genre::feedback loop::Feedback Loop#TRIGGER_UNCHECKED",
-    "recorded_as": "spends-trigger-unchecked-reaction-genre-feedback-loop-feedback-loop"
+    "run": {
+     "k": "feedback"
+    },
+    "is": "held",
+    "by": "src/lib/srd/trigger-table.ts \"feedback loop\" (damaged), read by src/lib/dm/reaction-triggers.ts triggerRefusal: an open hit, a save that dealt damage, or a \"damaged\" record (src/lib/dm/last-save.ts recordDamage, written by src/lib/dm/aoe-characters.ts for a creature's area)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Feedback Loop#0"
    },
    {
     "c": "it takes psychic damage equal to your CHA modifier",
@@ -2454,9 +2324,12 @@
    },
    {
     "c": "a creature hit by your psionic saves (WIS) or is stunned until your next turn",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:cyberpunk_synaptic_overload#HANDS_BACK",
-    "recorded_as": "spends-hands-back-counter-cyberpunk-synaptic-overload"
+    "run": {
+     "k": "synaptic"
+    },
+    "is": "held",
+    "by": "src/lib/dm/genre-a-cyberpunk-spends.ts synaptic: a creature a spell attack hit this turn (the spell-hit mark of src/lib/dm/attack-swing.ts) saves WIS against the esper spell save DC or is stunned, through save_effect",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Synaptic Overload#1"
    }
   ]
  },
@@ -2472,11 +2345,9 @@
      "k": "resist",
      "type": "psychic"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap esper::Mind Fortress#0",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS (parseFeatureEffects reads only subclasses.json and feats, never the genre catalogs) and src/lib/dm/pc-damage.ts",
-    "sev": "medium",
-    "observed": "10 psychic is cut without Mind Fortress too: something else on the sheet answers, not this feature"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts resist (psychic), read by src/lib/dm/pc-defenses.ts authoredResistances",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Mind Fortress#0"
    },
    {
     "c": "advantage against charm and fear",
@@ -2488,11 +2359,9 @@
       "frightened"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap esper::Mind Fortress#1",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium",
-    "observed": "d20s thrown for the wis save against charmed"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a.ts save_adv (against charmed, frightened), read by src/lib/srd/trait-rules.ts authoredSaveTraits",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: esper::Mind Fortress#1"
    }
   ]
  },
@@ -2522,11 +2391,9 @@
      "feet": 30,
      "refused": "an ally 30 feet away is not touched"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Stim Injector#1",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium",
-    "observed": "cyberpunk_stim_injector was accepted (an ally 30 feet away is not touched)"
+    "is": "held",
+    "by": "the stim's touch reach (5 ft, 30 ft with Stim Injector (ranged)) in src/lib/dm/genre-a-heals.ts, called by resource-tools.ts computeUseResource",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Stim Injector#1"
    },
    {
     "c": "an ally regains 1d6 + WIS HP",
@@ -2626,11 +2493,9 @@
      "k": "stabilize",
      "want": "wake"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Field Surgeon#1",
-    "where": "src/lib/dm/stabilize.ts and src/lib/dm/death.ts rollStableTimer (1d4 hours for everybody)",
-    "sev": "medium",
-    "observed": "the stabilized creature wakes after a minute; the engine wrote [{\"ok\":true,\"stabilized\":true,\"rolled\":18,\"dc\":10,\"note\":\"Holder's Medicine check (18) meets DC 10. Ally Down is stable: no more death saves, but still unconscious at 0 HP. They regain 1 hit point in 2 hours, or sooner i"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-cyberpunk-defenses.ts fieldSurgeonWait at src/lib/dm/stabilize.ts: ten rounds on the stable creature unconscious condition, the clock death.ts wakeStable answers with 1 hit point",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Field Surgeon#1"
    }
   ]
  },
@@ -2649,11 +2514,9 @@
      "dice": 2,
      "plus": "wis"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Boosted Dosage#0",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium",
-    "observed": "hit points cyberpunk_stim_injector restored"
+    "is": "held",
+    "by": "the stim's dice ladder (2d6 + WIS from 6th level) on cyberpunk_stim_injector's effect (genre-a-counter-terms.ts)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Boosted Dosage#0"
    }
   ]
  },
@@ -2673,11 +2536,9 @@
       "disease"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Immuno-Shield#0",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium",
-    "observed": "d20s thrown for the con save against poisoned"
+    "is": "held",
+    "by": "the aura_roll row (advantage against poison and disease, 5 ft, the holder too), src/lib/dm/genre-a-auras.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Immuno-Shield#0"
    }
   ]
  },
@@ -2696,11 +2557,9 @@
      "conditions": "prone",
      "want": "stands"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Adrenal Protocol#0",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium",
-    "observed": "the stimmed ally is still prone"
+    "is": "held",
+    "by": "the stim rider in src/lib/dm/genre-a-heals.ts: a prone ally stands",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Adrenal Protocol#0"
    }
   ]
  },
@@ -2730,11 +2589,9 @@
      "target": "ally",
      "refused": "the ally stands at 20 hit points"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Miracle Worker#1",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium",
-    "observed": "cyberpunk_miracle_worker was accepted (the ally stands at 20 hit points)"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-heals.ts: refused on an ally above 0 hit points, nothing spent",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Miracle Worker#1"
    },
    {
     "c": "within 30 ft",
@@ -2745,11 +2602,9 @@
      "feet": 35,
      "refused": "the ally lies 35 feet away"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Miracle Worker#2",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium",
-    "observed": "cyberpunk_miracle_worker was accepted (the ally lies 35 feet away)"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-heals.ts: refused beyond 30 feet, nothing spent",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Miracle Worker#2"
    },
    {
     "c": "regains 3d6 + WIS HP",
@@ -2781,11 +2636,9 @@
      "dice": 3,
      "plus": "wis"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Stim Injector (ranged)#0",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium",
-    "observed": "hit points cyberpunk_stim_injector restored"
+    "is": "held",
+    "by": "the stim's dice ladder (3d6 + WIS from 11th level)",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Stim Injector (ranged)#0"
    },
    {
     "c": "can be fired as a dart at 30 ft",
@@ -2822,9 +2675,9 @@
    },
    {
     "c": "regain one expended spell slot of 3rd level or lower on a short rest",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:cyberpunk_nanite_reserve#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-cyberpunk-nanite-reserve"
+    "is": "held",
+    "probe": "scripts/test-genre-a-slots.mjs",
+    "by": "src/lib/dm/genre-a-slots.ts recoverSlotLevels with most 1 and maxLevel 3, read by take_rest as a short rest ends"
    }
   ]
  },
@@ -2843,11 +2696,9 @@
       "frightened"
      ]
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Combat Calm#0",
-    "where": "src/lib/srd/trait-rules.ts (the save keys read by request_roll and forced saves) and src/lib/srd/feature-effects.ts FEATURE_EFFECTS: no entry answers to the feature",
-    "sev": "medium",
-    "observed": "d20s thrown for the wis save against frightened"
+    "is": "held",
+    "by": "the aura_roll row (advantage against fear, 10 ft, the holder too), src/lib/dm/genre-a-auras.ts; scripts/test-genre-a-auras.mjs",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Combat Calm#0"
    }
   ]
  },
@@ -2859,26 +2710,21 @@
   "clauses": [
    {
     "c": "While below half HP, regain WIS-mod HP at the start of your turn",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "a start-of-turn tick needs the order walked through every other seat's End Turn; not staged",
     "run": {
      "k": "hook"
     },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Autodoc Implant#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "by": "the turn_heal row (start of turn, WIS, below half and conscious) spending a round of cyberpunk_autodoc_implant, read by src/lib/dm/authored-turns.ts; scripts/test-genre-a-counters.mjs",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Autodoc Implant#0"
    },
    {
     "c": "5 rounds per long rest",
     "run": {
      "k": "limit_tracked"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Autodoc Implant#1",
-    "where": "scripts/generate-class-resources.mjs parseUses (reads N/rest, N per rest, once per day, once per rest; not N/week, per day in words, or rounds per rest)",
-    "sev": "medium",
-    "observed": "the text limits its use and a level 15 trauma_doc holds no counter for it (it holds cyberpunk_miracle_worker, cyberpunk_nanite_reserve, cyberpunk_one_more_dawn, cyberpunk_stim_injector)"
+    "is": "held",
+    "by": "the cyberpunk_autodoc_implant counter, 5 rounds a long rest, spent by the turn heal",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Autodoc Implant#1"
    }
   ]
  },
@@ -2899,11 +2745,9 @@
      "face": 1,
      "floor": 3
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Perfected Formula#0",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium",
-    "observed": "hit points cyberpunk_stim_injector restored"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts heal_floor, read by src/lib/dm/genre-a-cyberpunk-programs.ts healDiceFloor in src/lib/dm/resource-tools.ts heal_target and src/lib/dm/heal-spell.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Perfected Formula#0"
    }
   ]
  },
@@ -2934,11 +2778,9 @@
      "conditions": "poisoned|blinded",
      "want": "cured"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Plague Breaker#1",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium",
-    "observed": "conditions left on the creature touched"
+    "is": "held",
+    "by": "src/lib/dm/genre-a-heals.ts cures: disease, poison, blindness, deafness, paralysis on the touched creature",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Plague Breaker#1"
    }
   ]
  },
@@ -2953,22 +2795,19 @@
     "run": {
      "k": "limit_tracked"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Lazarus Protocol#0",
-    "where": "scripts/generate-class-resources.mjs parseUses (reads N/rest, N per rest, once per day, once per rest; not N/week, per day in words, or rounds per rest)",
-    "sev": "medium",
-    "observed": "the text limits its use and a level 20 trauma_doc holds no counter for it (it holds cyberpunk_miracle_worker, cyberpunk_nanite_reserve, cyberpunk_one_more_dawn, cyberpunk_plague_breaker, cyberpunk_stim_injector)"
+    "is": "held",
+    "by": "the cyberpunk_lazarus_protocol counter, back after seven long rests",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Lazarus Protocol#0"
    },
    {
     "c": "restore a creature dead less than 1 minute to life at half HP",
     "run": {
-     "k": "no_door"
+     "k": "revive",
+     "id": "cyberpunk_lazarus_protocol"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Lazarus Protocol#1",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (no row) and src/lib/classes/resources.json (no counter): no tool plays the feature",
-    "sev": "medium",
-    "observed": "no call plays it: use_resource answers \"No resource called \"lazarus protocol\" is known. Their resources: cyberpunk_miracle_worker, cyberpunk_nanite_reserve, cyberpunk_one_more_dawn, cyberpunk_plague_b\""
+    "is": "held",
+    "by": "src/lib/dm/genre-a-cyberpunk-spends.ts lazarus: a dead character named stands at half its maximum, death saves cleared; the time of death is the GM to say outside the fight running",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Lazarus Protocol#1"
    }
   ]
  },
@@ -3018,11 +2857,9 @@
     "run": {
      "k": "foe_disadv"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Shield the Fallen#0",
-    "where": "src/lib/dm/enemy-attack (the attack's advantage state)",
-    "sev": "medium",
-    "observed": "d20s the foe threw at a holder standing beside a downed ally"
+    "is": "held",
+    "by": "src/lib/srd/authored-effects-genre-a-cyberpunk.ts attacked_disadv besideDowned, read by src/lib/dm/authored-hooks.ts authoredIncomingAttack through besideDownedAlly",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Shield the Fallen#0"
    }
   ]
  },
@@ -3034,15 +2871,8 @@
   "clauses": [
    {
     "c": "Carry or drag allies at full speed",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Extraction#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "left",
+    "why": "A position the engine does not track for any class: no character carries or drags an ally on the board (src/lib/dm/drag-move.ts drags only a grappled foe), so the speed of carrying one is the GM's to narrate. The nearest written reason is docs/rules-enforcement-audit.md, \"What stays narrated, and why\": \"Authored features, 11. Roleplay or information (Master of Nature, Know Your Enemy, ...), a position or companion the engine does not track\"."
    },
    {
     "c": "allies you stabilize or heal gain 1d6 temp HP",
@@ -3053,11 +2883,9 @@
      "dice": 3,
      "want": "temp"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Extraction#1",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium",
-    "observed": "temporary hit points on the healed ally"
+    "is": "held",
+    "by": "genreStimTemp (src/lib/dm/genre-a-heals.ts): 1d6 temporary hit points after the stim's heal",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Extraction#1"
    }
   ]
  },
@@ -3076,11 +2904,9 @@
      "dice": 3,
      "want": "ac"
     },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs gap trauma_doc::Covering Stim#0",
-    "where": "scripts/generate-class-resources.mjs parseFx and src/lib/dm/resource-tools.ts (heal_target): the fx carries the dice of the base line only, and none of the text's gate, range or upgrades",
-    "sev": "medium",
-    "observed": "what the heal added to the ally's armor class"
+    "is": "held",
+    "by": "the covering stim condition (+2 AC until the start of the trauma doc's next turn, src/lib/srd/genre-a-conditions.ts) laid by genre-a-heals.ts",
+    "probe": "scripts/test-enforce-sweep-clauses-genre-a-cyberpunk.mjs: trauma_doc::Covering Stim#0"
    }
   ]
  },
@@ -3104,9 +2930,9 @@
    },
    {
     "c": "an ally within 30 ft that would drop to 0 HP drops to 1 instead",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:cyberpunk_one_more_dawn#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-cyberpunk-one-more-dawn"
+    "is": "held",
+    "by": "src/lib/dm/genre-drop-holds.ts, called by src/lib/dm/pc-damage.ts before the death engine; the counter is passive (src/lib/srd/genre-a-counter-terms.ts)",
+    "probe": "scripts/test-genre-drop-holds.mjs"
    }
   ]
  }

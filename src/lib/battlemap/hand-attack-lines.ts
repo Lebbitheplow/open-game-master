@@ -12,7 +12,7 @@
 // Pure; scripts/test-hand-attack-lines.mjs drives it.
 import type { AttackProfile } from "@/lib/dm/attack-logic";
 import { attackDamageRiders, attackOnHitDice } from "@/lib/dm/attack-damage-riders";
-import { attackRollExtras, splitRollSuffix } from "@/lib/dm/attack-roll-extras";
+import { attackAuraExtras, attackRollExtras, splitRollSuffix, type AttackAura } from "@/lib/dm/attack-roll-extras";
 import { longRangeTilesOf } from "@/lib/dm/attack-rules";
 import type { AttackKind } from "@/lib/dm/pc-attack-profile";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -62,22 +62,26 @@ export function attackDamageLine(input: {
 // The to-hit line: the profile's bonus with the flat part of the held
 // conditions, and their dice beside it (Bless's +1d4), with the advantage
 // they give, as the roll is made.
-export function attackRollLine(sheet: CharacterSheet, toHit: number): Pick<HandCard, "toHit" | "toHitDice" | "rollAdvantage"> & { notes: string[] } {
-  const extras = attackRollExtras(sheet);
+// `aura`: what an ally's aura adds where this character stands, as the board
+// view sends it (HandBoardFacts.attackAura: Warlord of the Wastes' +1).
+// `swing`: the weapon the card swings, for a feature's die on a weapon's roll.
+export function attackRollLine(sheet: CharacterSheet, toHit: number, aura?: AttackAura | null, swing?: { base?: string }): Pick<HandCard, "toHit" | "toHitDice" | "rollAdvantage"> & { notes: string[] } {
+  const extras = attackRollExtras(sheet, null, swing);
   const split = splitRollSuffix(extras.diceSuffix);
+  const shed = attackAuraExtras(aura);
   return {
-    toHit: toHit + split.flat,
+    toHit: toHit + split.flat + (shed?.flat ?? 0),
     ...(split.dice ? { toHitDice: split.dice } : {}),
     ...(extras.advantageSources.length ? { rollAdvantage: extras.advantageSources } : {}),
-    notes: extras.notes.map((note) => `${note}.`),
+    notes: [...extras.notes, ...(shed ? [shed.note] : [])].map((note) => `${note}.`),
   };
 }
 
 // A spell attack's lines: the roll as a weapon's (Bless), and the dice a
 // held condition rides on its hit (Hex), which pc_attack adds to a spell
 // attack too. Chill Touch's card said 4d8 while the hexed target took 4d8+1d6.
-export function spellAttackLines(sheet: CharacterSheet, toHit: number, melee: boolean): ReturnType<typeof attackRollLine> & { onHit: string } {
-  const rolled = attackRollLine(sheet, toHit);
+export function spellAttackLines(sheet: CharacterSheet, toHit: number, melee: boolean, aura?: AttackAura | null): ReturnType<typeof attackRollLine> & { onHit: string } {
+  const rolled = attackRollLine(sheet, toHit, aura);
   const onHit = attackOnHitDice(sheet, "spell", melee);
   return { ...rolled, notes: [...rolled.notes, ...onHit.notes.map((note) => `${note}.`)], onHit: onHit.suffix };
 }

@@ -1,5 +1,7 @@
 import { dominationOrderOf, otherSide } from "@/lib/dm/combat-sides-logic";
+import { layStandingWards } from "@/lib/dm/genre-gh-wards";
 import { hiddenNow } from "@/lib/dm/board-hidden";
+import { cannotBeSurprised } from "@/lib/dm/surprise-guard";
 import { resolveCombatant, sheetsOnSide, sideOf, standingOn } from "@/lib/dm/combatant";
 import { attacksLeft, budgetApplies, paidSwingsLeft, type TurnBudget } from "@/lib/dm/action-budget";
 import { resolveTargetFoe, sheetFoeView } from "@/lib/dm/sheet-foe";
@@ -62,7 +64,7 @@ import { registerFightStarter } from "@/lib/dm/turncoat";
 import { askThoseTheOpeningLeft } from "@/lib/dm/fight-opening-ask";
 import { releaseGrapplesHeldByAny } from "@/lib/dm/grapple";
 import { hasHumanDm } from "@/lib/dm/viewer";
-import { decideAmbush, hasAlert, rollOpeningInitiative } from "@/lib/dm/encounter-open";
+import { decideAmbush, rollOpeningInitiative } from "@/lib/dm/encounter-open";
 import { heldRollUserIds } from "@/lib/dice/held-rolls";
 import { healthState } from "@/lib/bestiary/health";
 import {
@@ -224,6 +226,7 @@ function crLabel(cr: number): string {
 }
 
 // ---- start_encounter ----
+
 
 // Who is not at this fight. A weak caller's one string ("Alice" or "Alice,
 // Bob") counts as the list; any other shape is refused, because dropping it
@@ -464,7 +467,7 @@ function handleStartEncounter(
   } else if (args.surprised === "party") {
     // Alert: a character with the feat cannot be surprised while conscious.
     encounter.surprisedIds = sheets
-      .filter((sheet) => !(hasAlert(sheet) && sheet.currentHp > 0))
+      .filter((sheet) => !cannotBeSurprised(sheet, enemies))
       .map((sheet) => sheet.id);
   } else if (args.ambush) {
     // One lying knocked out lies in wait for nobody.
@@ -500,6 +503,8 @@ function handleStartEncounter(
     endEncounter(encounter.id, "the board could not be set");
     throw error;
   }
+  // A fight where a horror ward still holds is fought in it (genre-gh-wards.ts).
+  layStandingWards(campaign.id);
   // The characters named as foes take their side now the board exists.
   const against = foes.length ? fieldSheetFoes(campaign, foes) : [];
   // A mercenary wary of the party asks its share first (party-conduct.ts).

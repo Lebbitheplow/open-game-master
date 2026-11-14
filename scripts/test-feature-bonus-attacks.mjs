@@ -61,10 +61,12 @@ const champion = casters.addHero({
   class: "paladin", level: 20, maxHp: 150, abilities: { cha: 16 }, proficiencies: TRAINED,
   spellcasting: { ability: "cha", slots: slots(1, 4), prepared: ["Bless", "Cure Wounds"], known: [], cantrips: [] },
 });
+// Surge Casting is the aether channeler's (steampunk), and a counter called
+// by name is the holder's own class's (class-resources.ts matchResource).
 const artificer = casters.addHero({
-  class: "artificer", level: 5, maxHp: 30, abilities: { int: 16 }, proficiencies: TRAINED,
+  class: "aether_channeler", level: 5, maxHp: 30, abilities: { cha: 16 }, proficiencies: TRAINED,
   features: [{ name: "Surge Casting" }],
-  spellcasting: { ability: "int", slots: slots(1, 4), prepared: ["Cure Wounds"], known: [], cantrips: ["Fire Bolt"] },
+  spellcasting: { ability: "cha", slots: slots(1, 4), prepared: [], known: ["Magic Missile"], cantrips: ["Fire Bolt"] },
 });
 
 const POOLS = {
@@ -233,7 +235,7 @@ await test("Surge Casting casts a cantrip as the bonus action after a levelled s
   const early = await casters.invoke("use_resource", { characterId: artificer.id, resource: "Surge Casting" });
   assert.equal(early.ok, false, "the surge came before any levelled spell");
   assert.equal((casters.sheet(artificer.id).resources.steampunk_surge_casting?.used ?? 0), 0);
-  assert.equal((await casters.invoke("use_spell_slot", { characterId: artificer.id, spell: "Cure Wounds", level: 1 })).ok, true);
+  assert.equal((await casters.invoke("use_spell_slot", { characterId: artificer.id, spell: "Magic Missile", level: 1 })).ok, true);
   const surge = await casters.invoke("use_resource", { characterId: artificer.id, resource: "Surge Casting" });
   assert.equal(surge.ok, true, surge.error);
   const [enemy] = casters.enemies();

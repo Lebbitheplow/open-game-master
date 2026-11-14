@@ -55,6 +55,7 @@ import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { stepTakenThisExchange } from "@/lib/dm/step-exchange";
 import { fittedText } from "@/lib/dm/fitted-text";
+import { noteBelievedLie, socialEdge } from "@/lib/dm/genre-b-mystery-dossier";
 
 // The social-interaction engine: NPC disposition was pure narration with no
 // state, so a shopkeeper the party bullied yesterday greeted them warmly today
@@ -439,10 +440,12 @@ export function handleSocialCheck(
   // A faction's member leans on the party's standing with that faction
   // (docs/vtt-parity-implementation-plan.md section 6).
   const factionOffset = npc.factionId ? reputationDcOffset(getParty(campaign.id).reputation[npc.factionId] ?? 0) : 0;
-  const dc = Math.max(5, socialCheckDc(npc.attitude) + factionOffset);
+  // The files a mystery character keeps on this person (genre-b-mystery-dossier.ts).
+  const edge = socialEdge(campaign.id, sheet, npc.name, args.approach);
+  const dc = Math.max(5, socialCheckDc(npc.attitude) + factionOffset + edge.dcShift);
   const waits = heldDieWaits(sheet, dc);
   const resolved = resolveRollExpression(
-    { kind: "skill_check", skill } as unknown as RollArgs,
+    { kind: "skill_check", skill, ...(edge.advantage ? { advantage: "advantage", advantageReason: edge.notes[0] } : {}) } as unknown as RollArgs,
     sheet,
     { ...rollExtrasFor(campaign, sheet, "skill_check"), keepHeldDie: waits },
   );
@@ -492,7 +495,10 @@ export function handleSocialCheck(
     publishRelationshipsUpdated(campaign.id);
   }
 
-  const outcome = resolveSocialCheck(rolled.total, npc.attitude);
+  const outcome = resolveSocialCheck(rolled.total - edge.dcShift, npc.attitude);
+  if (outcome.success && args.approach === "deceive") {
+    noteBelievedLie(campaign, sheet, npc);
+  }
   // The one-shift-per-exchange guard: an attitude that already moved this
   // turn does not move again, so the model cannot ratchet a hostile NPC to
   // friendly with a burst of checks in a single reply. At the console every
@@ -547,6 +553,7 @@ export function handleSocialCheck(
     attitude: finalAttitude,
     attitudeShifted: shifted ? outcome.direction : null,
     standing: friendshipTier(approval),
+    ...(edge.notes.length ? { features: edge.notes } : {}),
     note: buildSocialNote(sheet.name, npc.name, outcome.success, shifted, finalAttitude, outcome.direction, alreadyShifted && outcome.shifted, approval, turn.actor === "human_dm"),
   };
 }

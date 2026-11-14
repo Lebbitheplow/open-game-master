@@ -1,3 +1,5 @@
+import { scrapOnAnyRest } from "@/lib/dm/genre-gb-ruins";
+import { packProvides } from "@/lib/srd/genre-b-post-apocalyptic";
 import { easeOrdeal } from "@/lib/dm/ordeal";
 import { PORTENT, rollForetold } from "@/lib/dm/foretold-logic";
 import { COSMIC_OMEN, omenOfFace, OMEN_SIDES } from "@/lib/dm/before-roll-logic";
@@ -49,15 +51,18 @@ function recoverPools(pools: HitDicePool[], count: number): HitDicePool[] {
 // it again (ar-wbf-feat-rally.ts). Both rest patches call this; the short
 // rest once cleared neither, so a kit never tended twice in a day of short
 // rests. Empty when the sheet carries no such mark.
-const REST_MARKS = [TENDED, RALLIED];
+// Read when a rest runs, never at load: stabilize.ts reaches this module
+// again through the genre packmaster's rules (genre-b-post-apocalyptic.ts),
+// and a list built at load found TENDED not yet set.
+const restMarks = () => [TENDED, RALLIED];
 function restMarksCleared(
   conditions: string[],
   meta: CharacterSheet["conditionMeta"],
 ): Pick<FullPatchSheetInput, "conditions" | "conditionMeta"> {
-  if (!conditions.some((condition) => REST_MARKS.includes(condition.toLowerCase()))) {
+  if (!conditions.some((condition) => restMarks().includes(condition.toLowerCase()))) {
     return {};
   }
-  const cleared = removeConditions(conditions, meta, REST_MARKS);
+  const cleared = removeConditions(conditions, meta, restMarks());
   return { conditions: cleared.conditions, conditionMeta: cleared.meta };
 }
 
@@ -258,7 +263,12 @@ export function slotsRefillOnShortRest(
 // write.
 export function shortRestResourcePatch(sheet: CharacterSheet): FullPatchSheetInput | null {
   // With the sheet, a counter's refill reads its level (Font of Inspiration).
-  const next = refillResources(sheet.resources, "short", sheet);
+  // The Pack Provides gives a spent Call the Wild back once a day
+  // (src/lib/srd/genre-b-post-apocalyptic.ts).
+  const refilled = refillResources(sheet.resources, "short", sheet);
+  const provided = packProvides(sheet, refilled) ?? refilled;
+  // One With the Ruins: Scrap Sense recharges on any rest (genre-gb-ruins.ts).
+  const next = scrapOnAnyRest(sheet, provided) ?? provided;
   const changed = Object.entries(next).some(
     ([id, state]) => state.used !== sheet.resources?.[id]?.used,
   );

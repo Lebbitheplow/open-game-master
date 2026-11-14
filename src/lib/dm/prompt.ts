@@ -12,7 +12,7 @@ import type { StoredRoll } from "@/lib/db/rolls";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { ADVENTURE_BEGINS_NOTE, haltedTurnPrefix, LEAD_NOTE_PREFIX, OPENING_SCENE_CUE, type CampaignMember } from "@/lib/campaign-types";
 import { heldRollUserIds } from "@/lib/dice/held-rolls";
-import { computeSheetDerived, findClass, findSkill, formatModifier, sizeForRace, spellAbilityFor, spellSaveDcFor, speedFor, SRD_SKILLS } from "@/lib/srd";
+import { computeSheetDerived, findClass, findSkill, formatModifier, sheetSize, spellAbilityFor, spellSaveDcFor, speedFor, SRD_SKILLS } from "@/lib/srd";
 import { innateSpellsFor } from "@/lib/srd/racial-grants";
 import { attackSummary } from "@/lib/srd/creature-attacks";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
@@ -111,6 +111,7 @@ import { conversationNote, type Conversation } from "@/lib/dm/conversation-logic
 import { ADVANTAGE_SOURCES } from "@/lib/dm/pc-attack-options";
 import { PLACE_DIRECTIONS, PLACE_DISTANCES } from "@/lib/overworld/places";
 import { heroFell } from "@/lib/characters/fallen-logic";
+import { personaLine } from "@/lib/backgrounds/persona-logic";
 
 // The rolls the moment shows have landed and been told (issue 931): under a
 // bare "Recent rolls" the model told last round's 6 damage on the hero again
@@ -698,7 +699,7 @@ export function describeSheet(
         strength: sheet.abilities.str,
         equipment: sheet.equipment ?? [],
         coins: purseCoins({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
-        size: sizeForRace(sheet.race),
+        size: sheetSize(sheet),
         // The capacity the pack is refused by (Peerless Athlete doubles it).
         carryFactor: authoredCarryFactor(sheet),
         wearer: sheet,
@@ -711,7 +712,7 @@ export function describeSheet(
   // Health raises it), as the sheet and heal read it: the stored one told the
   // storyteller a halved hero at full health was badly hurt.
   const lines = [
-    `- ${sheet.name} (${sizeForRace(sheet.race)} ${raceWords(sheet)} ${classLabel}) characterId=${sheet.id} played by ${playedBy}${realDice ? " (rolls PHYSICAL dice)" : ""}`,
+    `- ${sheet.name} (${sheetSize(sheet)} ${raceWords(sheet)} ${classLabel}) characterId=${sheet.id} played by ${playedBy}${realDice ? " (rolls PHYSICAL dice)" : ""}`,
     `  HP ${sheet.currentHp}/${effectiveMaxHp(sheet)}${sheet.tempHp ? ` (+${sheet.tempHp} temp)` : ""}${deathNote} | AC ${sheet.ac} | Speed ${speedFor(sheet, { encumbrance: options.encumbrance })} | Passive Perception ${derived.passivePerception} | Initiative ${formatModifier(derived.initiative)} | Hit Dice ${hitDiceLabel}`,
     `  ${abilities} | Save proficiencies: ${sheet.proficiencies.saves.map((save) => save.toUpperCase()).join(", ") || "none"}`,
     `  Skill proficiencies: ${proficientSkills || "none"}`,
@@ -904,6 +905,13 @@ export function describeSheet(
     // #429: the first 400 characters of 2,000 used to be all the DM saw).
     lines.push(`  Backstory: ${options.compact ? cutForRoom(sheet.backstory, COMPACT_TEXT_CHARS.backstory) : sheet.backstory}`);
   }
+  const personality = personaLine(sheet.persona);
+  if (personality) {
+    // The trait, ideal, bond and flaw the player chose: how the character
+    // talks, what moves them and what trips them up, for the GM to play
+    // their NPCs against and to give the flaw its moments.
+    lines.push(`  Personality: ${options.compact ? cutForRoom(personality, COMPACT_TEXT_CHARS.persona) : personality}`);
+  }
   if (sheet.hopes) {
     // What the player would love to see happen (a romance, a rival, a
     // redemption), said out of character: a direction to steer toward when
@@ -915,7 +923,7 @@ export function describeSheet(
 
 // What a compact call keeps of the text the table wrote for the DM, and
 // what each notes list carries whole before its notes keep only their start.
-const COMPACT_TEXT_CHARS = { backstory: 400, hopes: 200, note: 300 } as const;
+const COMPACT_TEXT_CHARS = { backstory: 400, persona: 300, hopes: 200, note: 300 } as const;
 const NOTES_SHARE_CHARS = 4_000;
 
 // The start of a text cut at a word, saying it was cut, so the model never
@@ -1534,7 +1542,7 @@ export const requestRollTool = {
   function: {
     name: "request_roll",
     description:
-      "Ask the server to roll dice for an uncertain outcome; it resolves the character's modifier from their sheet.",
+      "Roll dice for an uncertain outcome; the server takes the modifier from the sheet.",
     parameters: {
       type: "object",
       additionalProperties: false,
@@ -1569,7 +1577,7 @@ export const requestRollTool = {
           type: "string",
           enum: ["very_easy", "easy", "moderate", "hard", "very_hard", "nearly_impossible"],
           description:
-            "How hard the task is. The server turns it into the DC (5, 10, 15, 20, 25 or 30, in order). Prefer this over dc. Omit for damage or initiative.",
+            "How hard the task is; the server makes it the DC (5 to 30). Prefer it to dc. Omit for damage or initiative.",
         },
         dc: {
           type: "integer",
@@ -1579,12 +1587,12 @@ export const requestRollTool = {
         expression: {
           type: "string",
           description:
-            "damage and custom only: the dice expression ('2d6+3'). Never an enemy's attack or damage (enemy_attack rolls those) and never a party character's attack (pc_attack).",
+            "damage and custom only: the dice ('2d6+3'). Never an enemy's roll (enemy_attack) or a party attack (pc_attack).",
         },
         damageType: {
           type: "string",
           description:
-            "damage only: the damage type (fire, slashing), for resistances, immunities and vulnerabilities.",
+            "damage only: the damage type (fire, slashing), for resistance, immunity, vulnerability.",
         },
         advantage: {
           type: "string",
@@ -1601,12 +1609,12 @@ export const requestRollTool = {
         advantageReason: {
           type: "string",
           description:
-            "The circumstance behind it, in a few words. Without one, the server sets the claim aside.",
+            "The circumstance, in a few words; without one the server sets the claim aside.",
         },
         targetEnemyId: {
           type: "string",
           description:
-            "damage only, in combat, from someone with no sheet: the enemy struck, exact enemyId from GAME STATE. Someone with no sheet is an NPC ally never recruited. The server applies the total and reports it; never follow up with apply_damage. A party character's damage goes through pc_attack or the spell tools and is refused here.",
+            "damage only, in combat, by an NPC with no sheet: the enemy struck (enemyId). Exact enemyId from GAME STATE; the server applies the total, no apply_damage after. A party character's damage goes through pc_attack or the spell tools.",
         },
         reason: {
           type: "string",
@@ -1617,16 +1625,16 @@ export const requestRollTool = {
           type: "string",
           enum: [...SAVE_AGAINST, NONE],
           description:
-            "saving_throw only: what the save resists (a condition, a damage type, disease, dismount) or 'none'. dismount is being thrown from a mount. The server applies the traits keyed to it (Brave, Fey Ancestry, Countercharm).",
+            "saving_throw only: what it resists (a condition, damage type, disease, dismount) or 'none'. Traits keyed to it apply (Brave, Fey Ancestry).",
         },
         magical: {
           type: "boolean",
-          description: "saving_throw only: the effect is a spell or other magic (Gnome Cunning, Spell Resistance).",
+          description: "saving_throw only: a spell or other magic (Gnome Cunning, Spell Resistance).",
         },
         casterType: {
           type: "string",
           enum: [...CREATURE_TYPES],
-          description: "saving_throw against a spell: the caster's creature type, when known (Holy Nimbus).",
+          description: "saving_throw against a spell: its caster's creature type (Holy Nimbus).",
         },
         tool: {
           type: "string",

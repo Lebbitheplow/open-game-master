@@ -1,5 +1,8 @@
+import type { LentRoll } from "@/lib/srd/genre-a-lent";
+import { juryRigged } from "@/lib/dm/genre-cc-a-fixer";
 import { named } from "@/lib/dm/roll-about";
-import { LUCK_SPEND } from "@/lib/dm/roll-riders";
+import { LUCK_SPEND, computeAbilityScore, INSPIRATION_SPEND, toolProficiencyBonus } from "@/lib/dm/roll-riders";
+import { saveAuraRiders, type GenreSaveAura } from "@/lib/dm/genre-b-aura-logic";
 import { luckPointsLeft } from "@/lib/srd/class-resources";
 import { featCheckRider } from "@/lib/srd/feat-combat";
 import { dimLightSpares } from "@/lib/dm/dim-sight";
@@ -22,11 +25,11 @@ import {
   hasHalflingLuck,
 } from "@/lib/srd/feature-effects";
 import { strengthCheckFloor } from "@/lib/srd/trait-rules";
-import { computeAbilityScore, INSPIRATION_SPEND, toolProficiencyBonus } from "@/lib/dm/roll-riders";
 import { rollFeatureRiders } from "@/lib/dm/roll-feature-riders";
 import type { RollArgs } from "@/lib/dm/roll-args";
 import { DM_TOOL_NAME_PATTERN, invokeToolCallRegex, toolTextRegex, withoutIdArguments, withoutServerLines, xmlToolCallRegex } from "@/lib/dm/tool-text";
 import { acBreakdownFor, computeSheetDerived, findSkill, SRD_SKILLS } from "@/lib/srd";
+import { CALCULATED_ANSWER, calculatedAnswer } from "@/lib/dm/genre-gb-calculated";
 import { withoutSentences, type NarrationClaim } from "@/lib/dm/claims-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { Light } from "@/lib/dm/notice-logic";
@@ -38,6 +41,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { authoredCheckFloor } from "@/lib/srd/authored-effects-more";
 import { authoredCheckSwap } from "@/lib/srd/authored-effects";
 import { tranceResolved } from "@/lib/dm/ar-ws-trance-floor";
+import { horrorCheckRider } from "@/lib/srd/genre-a-horror-holds";
 
 export { rollArgsSchema, rollDcFor, type RollArgs } from "@/lib/dm/roll-args";
 
@@ -339,6 +343,10 @@ function resolveUnfloored(
     // A Spirit Totem's aura the roller stands in (src/lib/dm/spirit-totem.ts):
     // advantage on saves and checks of these abilities and on these skills.
     totemAdvantage?: { saves: string[]; checks: string[]; skills: string[]; note: string } | null;
+    // What allies' auras lend this roll (src/lib/dm/genre-a-auras.ts).
+    lent?: LentRoll[];
+    // An ally's genre aura on a save against one thing (src/lib/dm/genre-b-auras.ts).
+    saveAuras?: GenreSaveAura[];
     encumbrance?: boolean;
     // Active effects riding on the roller for THIS kind of roll
     // (src/lib/dm/effects-logic.ts). Passed in for the same reason the aura
@@ -476,6 +484,7 @@ function resolveUnfloored(
     ability: derivationAbility,
     movedLittle: extras?.movedLittle,
     keepHeldDie: extras?.keepHeldDie,
+    lent: extras?.lent,
   });
   if ("error" in riders) {
     return riders;
@@ -550,8 +559,12 @@ function resolveUnfloored(
         ? !extras?.death && totem.saves.includes(String(derivationAbility ?? ""))
         : (derivationKind === "skill_check" || derivationKind === "ability_check") && (totem.checks.includes(String(derivationAbility ?? "")) || Boolean(totemSkill && totem.skills.includes(totemSkill)))),
   );
+  // Steadying Presence, Fear No Rust, Walk Through the Valley: a die or
+  // advantage on a save against what the ally's aura names.
+  const genreAura = derivationKind === "saving_throw" ? saveAuraRiders(extras?.saveAuras, named(args.against)) : saveAuraRiders(undefined, undefined);
   const advantage: Advantage = mergeAdvantage([
     args.advantage ?? "none",
+    ...(genreAura.advantage ? ["advantage" as const] : []),
     ...(charming ? ["advantage" as const] : []),
     ...(extras?.effectAdvantage ? ["advantage" as const] : []),
     ...(extras?.effectDisadvantage ? ["disadvantage" as const] : []),
@@ -568,13 +581,18 @@ function resolveUnfloored(
   const bond = extras?.bondDie && derivationKind ? extras.bondDie : null;
   // A check named against the hold it escapes (`against: "grappled"`).
   const escapes = (derivationKind === "skill_check" || derivationKind === "ability_check") && extras?.escapeDie && extras.escapeDie.against.includes(named(args.against) ?? "") ? extras.escapeDie : null;
-  const bonusDie = `${riders.dice}${effects.diceSuffix}${bond ? `+${bond.dice}` : ""}${escapes ? `+${escapes.dice}` : ""}`;
+  const bonusDie = `${riders.dice}${effects.diceSuffix}${bond ? `+${bond.dice}` : ""}${escapes ? `+${escapes.dice}` : ""}${genreAura.dice}`;
+  // Difference Engine Mind's calculated answer: this INT check's d20 counts
+  // as a 20, and the check spends it (genre-gb-calculated.ts).
+  const calculated = sheet && derivationKind ? calculatedAnswer(sheet, derivationKind, derivationAbility) : false;
   // All one-shot carriers are spent the same way: the caller clears them.
   const spent = [
+    calculated ? CALCULATED_ANSWER : null,
     riders.inspirationCondition,
     riders.peerless,
     helped,
     ...effects.spent,
+    ...genreAura.spent,
     ...riders.authoredSpent,
     riders.inspired ? INSPIRATION_SPEND : null,
     bond?.spend ?? null,
@@ -593,6 +611,7 @@ function resolveUnfloored(
     ...riders.notes,
     ...(bond ? [bond.note] : []),
     ...(escapes ? [escapes.note] : []),
+    ...genreAura.notes,
     ...(armorUntrained
       ? ["wearing armor they are not trained in: disadvantage on STR and DEX rolls"]
       : []),
@@ -659,9 +678,12 @@ function resolveUnfloored(
         : 0;
     // Sight rot: its penalty rides the checks that rely on sight.
     const sightRot = skill.id === "perception" || skill.id === "investigation" ? sightRotPenalty(sheet.conditions) : 0;
+    // The horror classes' check riders (Forbidden Lore, Desperate Strength).
+    const horror = horrorCheckRider(sheet, skill.id, checkAbility);
+    const doubled = featRider?.expertise || horror.expertise;
     const featProficiency =
-      featRider?.expertise && !proficientSkill ? 2 * derived.proficiencyBonus : featRider?.expertise && !(sheet.proficiencies.expertise ?? []).includes(skill.id) ? derived.proficiencyBonus : 0;
-    const skillModifier = (derived.skills[skill.id] ?? 0) + abilitySwap + skillEffect - sightRot + featProficiency;
+      doubled && !proficientSkill ? 2 * derived.proficiencyBonus : doubled && !(sheet.proficiencies.expertise ?? []).includes(skill.id) ? derived.proficiencyBonus : 0;
+    const skillModifier = (derived.skills[skill.id] ?? 0) + abilitySwap + skillEffect - sightRot + featProficiency + horror.bonus;
     // Indomitable Might: a Strength check never totals below the score.
     const mightFloor =
       checkAbility === "str"
@@ -670,7 +692,7 @@ function resolveUnfloored(
     // Silver Tongue, Ear for Deceit: a skill's own floor (authored-effects-more.ts).
     // Starry Form's Dragon: a floor on every Intelligence and Wisdom check.
     // Ear for Deceit's floor holds only on a check about a lie (args.about).
-    const floor = Math.max(reliable ? 10 : 0, mightFloor ?? 0, authoredCheckFloor(sheet, skill.id, checkAbility, named(args.about)));
+    const floor = Math.max(reliable ? 10 : 0, mightFloor ?? 0, authoredCheckFloor(sheet, skill.id, checkAbility, named(args.about)), calculated ? 20 : 0);
     // Reroll (Lucky) comes before floor (Reliable Talent): the 1 is rerolled,
     // then the surviving face is raised to 10 if still low.
     const d20Mods = `${lucky ? "r1" : ""}${floor > 1 ? `f${floor}` : ""}`;
@@ -680,9 +702,11 @@ function resolveUnfloored(
     );
     const skillNotes = [
       ...(conditionNotes ?? []),
+      ...horror.notes,
       ...(sightRot ? [`sight rot: -${sightRot} on a check that relies on sight`] : []),
       ...(checkAbility !== skill.ability ? [`a ${checkAbility.toUpperCase()} (${skill.name}) check: ${checkAbility.toUpperCase()} in place of ${skill.ability.toUpperCase()}, the skill's proficiency kept`] : []),
       ...(reliable ? ["Reliable Talent: a d20 face below 10 counts as 10"] : []),
+      ...(calculated ? ["Difference Engine Mind: the calculated answer, the d20 counted as a 20"] : []),
       ...(armorStealth ? ["their armor imposes disadvantage on Stealth"] : []),
       ...(featRider ? [featRider.note] : []),
       ...((veiledBy && !veiled) || (spares && bySight && extras?.light === "dim") ? [`${spares}: dim light costs their Perception nothing`] : []),
@@ -737,7 +761,7 @@ function resolveUnfloored(
     // Jack of All Trades / Remarkable Athlete: raw ability checks never
     // carry proficiency, so a covered ability always gets the half bonus.
     const halfScope =
-      (defense as { halfProficiency?: "all" | "physical" | null }).halfProficiency ?? null;
+      (defense as { halfProficiency?: "all" | "physical" | "mental" | null }).halfProficiency ?? null;
     // Jack of All Trades rounds down; Remarkable Athlete (the physical
     // scope) rounds up.
     const halfBonus =
@@ -753,7 +777,7 @@ function resolveUnfloored(
     const tool =
       args.kind === "ability_check" && args.tool ? toolProficiencyBonus(sheet, args.tool, derived.proficiencyBonus) : null;
     const checkBonus =
-      args.kind === "ability_check" ? (tool ? tool.bonus : halfBonus) + riders.checkBonus : 0;
+      args.kind === "ability_check" ? (tool ? tool.bonus : halfBonus) + riders.checkBonus + horrorCheckRider(sheet, null, args.ability).bonus : 0;
     const modifier =
       (args.kind === "saving_throw"
         ? derived.saves[args.ability]
@@ -780,13 +804,15 @@ function resolveUnfloored(
       ...(auraBonus && extras?.saveNote ? [extras.saveNote] : []),
       ...(extras?.effectNote ? [extras.effectNote] : []),
       ...(mightFloor ? ["Indomitable Might: the check totals at least their Strength score"] : []),
+      ...(calculated ? ["Difference Engine Mind: the calculated answer, the d20 counted as a 20"] : []),
     ];
     const luckyBase = withLuck(d20Expression(modifier, advantage)).replace(
       /^(\d+d20(?:k[hl]\d+)?)/,
-      `$1${lucky ? "r1" : ""}${floor > 1 ? `f${floor}` : ""}`,
+      `$1${lucky ? "r1" : ""}${calculated ? "f20" : floor > 1 ? `f${floor}` : ""}`,
     );
     return {
-      expression: `${luckyBase}${bonusDie}`,
+      // Jury-Rig: "gives a tool user +1d4 for 1 hour" (genre-cc-a-spends.ts).
+      expression: `${luckyBase}${bonusDie}${args.kind === "ability_check" && args.tool && juryRigged(sheet) ? "+1d4" : ""}`,
       detail: args.ability,
       ...(abilityNotes.length ? { conditionNotes: abilityNotes } : {}),
       ...inspirationFields,

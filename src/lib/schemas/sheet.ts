@@ -229,6 +229,10 @@ export const equipmentItemSchema = z.object({
   // repaired (src/lib/dm/rock-gnome-tinker.ts): it works for 24 hours after.
   // Absent on every other row.
   madeAt: z.number().int().min(0).optional(),
+  // A class feature's lasting transformation of this suit, by the feature's
+  // name (Black Flag's Mystic Metal: src/lib/dm/transmute-armor.ts). One row
+  // carries it at a time; a later use moves it. Absent on every other row.
+  transmuted: z.string().trim().min(1).max(60).optional(),
   // An artificer's infusion laid in the item (src/lib/srd/infusions.ts,
   // src/lib/dm/infuse-item.ts): which, by whom, at what level and instant,
   // the mundane weapon or suit it is built on, and its one choice (Resistant
@@ -483,6 +487,20 @@ export const attractionSchema = z.object({
   open: z.boolean().optional(),
 });
 
+// A character's personality: one trait, one ideal, one bond and one flaw,
+// the four lines a 2014 background suggests (src/lib/backgrounds/
+// persona-logic.ts). Each optional; a blank one is none. Visible to the
+// party like the backstory, and read by the GM beside it every turn
+// (src/lib/dm/prompt.ts describeSheet).
+export const PERSONA_ENTRY_MAX = 300;
+export const personaSchema = z.object({
+  trait: z.string().trim().max(PERSONA_ENTRY_MAX).default(""),
+  ideal: z.string().trim().max(PERSONA_ENTRY_MAX).default(""),
+  bond: z.string().trim().max(PERSONA_ENTRY_MAX).default(""),
+  flaw: z.string().trim().max(PERSONA_ENTRY_MAX).default(""),
+});
+export type Persona = z.infer<typeof personaSchema>;
+
 export const createSheetSchema = z.object({
   name: z.string().trim().min(1).max(60),
   race: z.string().trim().min(1).max(60),
@@ -541,6 +559,13 @@ export const createSheetSchema = z.object({
       cantrip: z.string().trim().max(80).default(""),
       cantrips: z.array(z.string().trim().min(1).max(80)).max(6).default([]),
       tool: z.string().trim().max(60).default(""),
+      // The weapons a race lets the player name (a hobgoblin's two martial
+      // weapons), src/lib/srd/legality/proficiencies.ts.
+      weapons: z.array(z.string().trim().min(1).max(60)).max(4).default([]),
+      // Skills (by id) or tools (by name) a race's trainingChoice named, and
+      // the skill its expertiseChoice doubles.
+      training: z.array(z.string().trim().min(1).max(60)).max(4).default([]),
+      expertise: z.string().trim().max(40).default(""),
       // A dragonborn's draconic ancestry ("red"), src/lib/srd/racial-grants.ts.
       ancestry: z.string().trim().max(20).default(""),
       // The option of a workshop species' choice the player picked, by its
@@ -599,6 +624,9 @@ export const createSheetSchema = z.object({
   // Player-authored backstory, visible to the whole party and woven into
   // the DM prompt (unlike notes, which stay private to the owner).
   backstory: z.string().trim().max(2000).default(""),
+  // Trait, ideal, bond and flaw (personaSchema). Optional rather than
+  // defaulted: a sheet written before the field simply has none.
+  persona: personaSchema.optional(),
   // What the player hopes this story holds for the character: a romance, a
   // rival, a redemption. Out of character and private like the notes (only
   // the owner and a DM seat read it, src/lib/dm/sheet-view.ts); the GM reads
@@ -661,6 +689,9 @@ export const patchSheetSchema = z.object({
   // The one class-skill pick some multiclass grants offer (rogue, ranger,
   // bard); validated server-side against the grant's list.
   levelUpSkill: z.string().trim().max(40).optional(),
+  // The tools a new class's grant leaves to the player (a bard's one musical
+  // instrument): validated server-side against the grant's choices.
+  levelUpTools: z.array(z.string().trim().min(1).max(60)).max(3).optional(),
   // New spell picks for the class taking the level, on the multiclass path
   // only (the single-class flow patches spellcasting whole, as ever). The
   // server checks them against that class's own allowance at ITS level.
@@ -683,6 +714,8 @@ export const patchSheetSchema = z.object({
   portrait: attachmentSchema.nullable().optional(),
   notes: z.string().max(4000).optional(),
   backstory: z.string().trim().max(2000).optional(),
+  // The personality, the owner's to change any time like the backstory.
+  persona: personaSchema.optional(),
   hopes: z.string().trim().max(HOPES_MAX).optional(),
 });
 export type PatchSheetInput = z.infer<typeof patchSheetSchema>;
@@ -935,6 +968,8 @@ export type CharacterSheet = {
   portrait: SheetAttachment | null;
   notes: string;
   backstory: string;
+  // Trait, ideal, bond and flaw (personaSchema); absent when none was given.
+  persona?: Persona;
   // The player's hopes for this story (createSheetSchema). Blanked like the
   // notes for anyone but the owner and a DM seat; optional only for test
   // doubles, every stored sheet reads one.

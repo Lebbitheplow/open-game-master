@@ -127,7 +127,7 @@ for (const row of RACES) {
       same([80 - hurt, out.ok, t.sheet(who).currentHp, t.used(who, "race_stones_endurance"), again.ok], [6, true, 80, 1, false], `${row.name}: a blow of 6 answered with Stone's Endurance, then a second answer (${out.error ?? ""})`);
     });
   }
-  if (holds(row, "powerful build")) {
+  if (holds(row, "powerful build") || holds(row, "equine build")) {
     probe("powerful-build", async () => {
       const { liftLimits } = await import("../src/lib/dm/load-rules.ts");
       const t = await rig.table();
@@ -135,7 +135,18 @@ for (const row of RACES) {
       const other = t.hero(plain({ abilities: { str: 16 } }));
       // Strength times 15 and 30 for a human; twice that for one size larger.
       const [mine, theirs] = [t.sheet(who).abilities.str, t.sheet(other).abilities.str];
-      same([liftLimits(t.sheet(who)), liftLimits(t.sheet(other))], [{ capacityLb: mine * 30, liftLb: mine * 60 }, { capacityLb: theirs * 15, liftLb: theirs * 30 }], `${row.name}: carrying capacity and push, drag or lift, beside a human's`);
+      // Powerful Build counts for the push, the drag and the lift; Equine
+      // Build for the push and the drag alone, so a centaur lifts what a
+      // human does. The lift tool answers by how it is moved.
+      const equine = holds(row, "equine build");
+      const lift = (how, weightLb) => t.invoke("lift", { characterId: who.id, weightLb, how });
+      const heavy = mine * 30 + 10;
+      const [pushed, lifted] = [await lift("push", heavy), await lift("lift", heavy)];
+      same(
+        [liftLimits(t.sheet(who)), liftLimits(t.sheet(other)), Boolean(pushed.ok), Boolean(lifted.ok)],
+        [{ capacityLb: mine * 30, liftLb: mine * (equine ? 30 : 60), pushLb: mine * 60 }, { capacityLb: theirs * 15, liftLb: theirs * 30, pushLb: theirs * 30 }, true, !equine],
+        `${row.name}: carrying capacity, lift and push or drag, beside a human's, then ${heavy} lb pushed and lifted (${pushed.error ?? ""} ${lifted.error ?? ""})`,
+      );
     });
   }
   if (holds(row, "mountain born")) {
@@ -210,6 +221,113 @@ for (const row of RACES) {
       same([swing.ok, swing.damage?.expression.startsWith(natural[2]), swing.result.damageType ?? natural[3]], [true, true, natural[3]], `${row.name}: a strike with the ${name}: ${swing.error ?? swing.damage?.expression}`);
       // "Cat's Claws (20 ft climb speed, ...)": the same line gives the climb.
       if (/climb speed/i.test(natural[0])) await speedsOf(t);
+    });
+  }
+  // Magic Resistance: advantage on every save against magic, of any ability.
+  if (holds(row, "magic resistance")) {
+    probe("magic-resistance", async () => {
+      const t = await rig.table();
+      const who = t.hero(of());
+      const faces = {};
+      for (const ability of ["str", "dex", "wis"]) faces[ability] = (await t.roll(who, { kind: "saving_throw", ability, dc: 10, magical: true }, [15, 3])).faces.length;
+      faces.mundane = (await t.roll(who, { kind: "saving_throw", ability: "dex", dc: 10, magical: false }, [15, 3])).faces.length;
+      same(faces, { str: 2, dex: 2, wis: 2, mundane: 1 }, `${row.name}: d20s on saves against magic, and on a Dexterity save against none`);
+    });
+  }
+  // Poison Immunity: the poisoned condition never lands.
+  if (holds(row, "poison immunity")) {
+    probe("poison-immunity", async () => {
+      const t = await rig.table();
+      const who = t.hero(of());
+      const other = t.hero(plain());
+      const mine = await t.condition(who, "poisoned", { rounds: 3, reason: "a viper's bite" });
+      const theirs = await t.condition(other, "poisoned", { rounds: 3, reason: "a viper's bite" });
+      same([mine.ok, t.has(who, "poisoned"), theirs.ok, t.has(other, "poisoned")], [false, false, true, true], `${row.name}: poisoned, beside a human (${mine.error ?? ""})`);
+    });
+  }
+  // Pack Tactics: advantage on an attack against a creature with an ally of
+  // the attacker within 5 feet of it, and none without one.
+  if (holds(row, "pack tactics")) {
+    probe("pack-tactics", async () => {
+      const t = await rig.table();
+      const who = t.hero(of({ equipment: [{ name: "Shortsword", equipped: true }] }));
+      const ally = t.hero(plain());
+      const [foe] = await t.fight([who, ally]);
+      // Under a roof: a kobold's Sunlight Sensitivity is its own probe.
+      const { getDatabase } = await import("../src/lib/db/core.ts");
+      getDatabase().prepare("UPDATE battle_maps SET outdoors = 0 WHERE id = ?").run(t.kit.map().id);
+      const d20s = async () => {
+        t.kit.freshTurn();
+        const swing = await t.swing(who, foe, [15, 3, 4], { weapon: "Shortsword" });
+        return swing.toHit?.breakdown.terms.find((term) => term.sides === 20)?.dice.length;
+      };
+      const alone = await d20s();
+      // The ally steps to the foe's far side, (7,5).
+      t.kit.place(ally.id, 7, 5);
+      const beside = await d20s();
+      same([alone, beside], [1, 2], `${row.name}: d20s on a strike with no ally at the foe's side, then with one`);
+    });
+  }
+  // Flight: a flying speed of its own, grounded in medium or heavy armor;
+  // one "equal to your walking speed" follows that speed when it changes.
+  if (holds(row, "flight (flying speed")) {
+    probe("flight", async () => {
+      const { flightOf } = await import("../src/lib/dm/token-state.ts");
+      const t = await rig.table();
+      const who = t.hero(of());
+      const other = t.hero(plain());
+      await t.fight([who, other]);
+      const encounter = t.world.encounter().id;
+      const bare = flightOf(encounter, t.kit.token(who.id));
+      t.patch(who, { equipment: [{ name: "Leather", equipped: true }] });
+      const light = flightOf(encounter, t.kit.token(who.id));
+      t.patch(who, { equipment: [{ name: "Chain Mail", equipped: true }] });
+      const heavy = flightOf(encounter, t.kit.token(who.id));
+      const line = row.traits.find((entry) => entry.toLowerCase().startsWith("flight (flying speed"));
+      const follows = /equal to your walking speed/i.test(line);
+      const feet = follows ? row.speed : Number(/flying speed of (\d+)/.exec(line)[1]);
+      t.patch(who, { equipment: [], speed: row.speed + 10 });
+      const faster = flightOf(encounter, t.kit.token(who.id));
+      same(
+        [bare, light, heavy, faster, flightOf(encounter, t.kit.token(other.id))],
+        [feet, feet, null, follows ? row.speed + 10 : feet, null],
+        `${row.name}: flying speed bare, in leather, in chain mail, with 10 more feet of walking speed, and a human's`,
+      );
+    });
+  }
+  // Hare-Trigger: the proficiency bonus on initiative, beside a human's.
+  if (holds(row, "hare-trigger")) {
+    probe("hare-trigger", async () => {
+      const t = await rig.table();
+      const who = t.hero(of());
+      const other = t.hero(plain());
+      const dex = (sheet) => Math.floor((sheet.abilities.dex - 10) / 2);
+      same([t.derived(who).initiative, t.derived(other).initiative], [dex(t.sheet(who)) + 3, dex(t.sheet(other))], `${row.name}: initiative at 5th level (proficiency +3), beside a human's`);
+    });
+  }
+  // A use counted in proficiency bonuses, back on a long rest; Shifting also
+  // lays its form and twice the proficiency bonus in temporary hit points,
+  // and Rabbit Hop leaps the rabbitfolk 5 feet times the proficiency bonus
+  // (15 at 5th level) in a straight line, no farther, drawing no opportunity
+  // attack and spending none of the turn's movement.
+  for (const [trait, id, name, resource] of [["rabbit hop", "rabbit-hop", "Rabbit Hop", "race_rabbit_hop"], ["shifting (", "shifting", "Shifting", "race_shifting"]]) {
+    if (!holds(row, trait)) continue;
+    probe(id, async () => {
+      const t = await rig.table();
+      const who = t.hero(of());
+      await t.fight([who]);
+      const hops = resource === "race_rabbit_hop";
+      const far = hops ? await t.use(who, name, { x: 5, y: 9 }) : null;
+      const out = await t.use(who, name, hops ? { x: 5, y: 8 } : {});
+      const seen = [out.ok, t.max(who, resource), t.used(who, resource), t.budget()?.bonusUsed];
+      const token = t.kit.token(who.id);
+      const form = resource === "race_shifting" ? [t.has(who, "shifted"), t.sheet(who).tempHp] : [Boolean(far?.error), token.x, token.y, token.movedThisRound];
+      await t.kit.endFight();
+      await t.rest("long");
+      // Shifting (Eberron): one use a short rest, the level plus the
+      // Constitution modifier (5 + 2) in temporary hit points.
+      const uses = resource === "race_shifting" ? 1 : 3;
+      same([seen, form, t.used(who, resource)], [[true, uses, 1, true], resource === "race_shifting" ? [true, 7] : [true, 5, 8, 0], 0], `${row.name}: one use of ${uses} at 5th level (a bonus action), ${resource === "race_shifting" ? "the form and 7 temporary hit points, " : "a 20-foot hop refused and a 15-foot one landed, "}and every use back after a long rest (${out.error ?? ""})`);
     });
   }
   if (holds(row, "expert forgery")) {
@@ -441,6 +559,13 @@ const NAMES = [
   "species.lizardfolk.natural-armor", "species.lizardfolk.natural-weapon", "species.lizardfolk.breath", "species.lizardfolk.speeds", "species.lizardfolk.hungry-jaws",
   "species.orc.aggressive", "species.orc.powerful-build",
   "species.rock_gnome.tinker",
+  "species.sea_elf.speeds", "species.sea_elf.breath",
+  "species.triton.speeds", "species.triton.breath",
+  "species.serpentfolk.magic-resistance", "species.serpentfolk.poison-immunity",
+  "species.kobold.pack-tactics", "species.aarakocra.flight", "species.aarakocra.natural-weapon",
+  "species.satyr.magic-resistance", "species.satyr.natural-weapon", "species.fairy.flight", "species.owlfolk.flight",
+  "species.centaur.natural-weapon", "species.centaur.powerful-build",
+  "species.rabbitfolk.hare-trigger", "species.rabbitfolk.rabbit-hop", "species.shifter.shifting",
 ];
 assert.deepEqual(Object.keys(P).sort(), [...NAMES].sort(), "the table makes other probes than NAMES lists: a row of races.json was added or changed");
 

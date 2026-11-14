@@ -143,4 +143,15 @@ test("a content pack feat's flat numbers are read into the feature table, except
   assert.equal(registerFeatRules("Alert", "Add 5 to initiative."), false, "the static table's own");
 });
 
+// A feat's resistance reaches the damage engine: the parsed feature table
+// held it, but pcResistances read the sheet's features alone, so a feat in
+// sheet.feats (Infernal Constitution's cold and poison) resisted nothing.
+const { pcResistances } = await import("../src/lib/dm/pc-defenses.ts");
+test("a feat's damage resistance, taken as a feat, is one the damage engine applies", () => {
+  assert.equal(registerFeatRules("Frostbound", "You have resistance to cold damage."), true);
+  const base = { race: "human", class: "fighter", level: 4, features: [] };
+  assert.equal(pcResistances(base).includes("cold"), false);
+  assert.equal(pcResistances({ ...base, feats: ["Frostbound"] }).includes("cold"), true, "the feat's cold resistance");
+});
+
 console.log(`\ntest-feat-engine: ${passed} tests passed.`);

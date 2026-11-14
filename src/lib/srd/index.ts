@@ -1,6 +1,6 @@
 import { soulOfArtificeBonus } from "@/lib/srd/mt-srd-artificer";
 import { subclassSpellsFor } from "@/lib/srd/features";
-import { FEAT_ONLY_SPEED } from "@/lib/srd/feature-effects";
+import { FEAT_ONLY_SPEED, auraGranted, combatRiders, defenseRiders, halfProficiencyCovers } from "@/lib/srd/feature-effects";
 import { formSees } from "@/lib/srd/form-sees";
 import { hasMediumArmorMaster } from "@/lib/srd/feat-combat";
 import { dualWielderAcBonus } from "@/lib/srd/feat-ac";
@@ -12,10 +12,9 @@ import spellSlotsJson from "@/lib/srd/spell-slots.json";
 import { CUSTOM_CLASSES, findCustomClass } from "@/lib/classes";
 import { computeArmorClass, unarmoredFormulaFor, type AcBreakdown } from "@/lib/srd/armor";
 import { conditionAcRiders } from "@/lib/srd/condition-effects";
-import { auraGranted, combatRiders, defenseRiders, halfProficiencyCovers } from "@/lib/srd/feature-effects";
 import { featureSaveProficiencies, featureSkillProficiencies } from "@/lib/srd/trait-rules";
 import { borrowedProficiencies } from "@/lib/srd/borrowed-proficiency";
-import { authoredAcBonus, authoredCheckSwap, authoredSaveModifier, authoredSpeeds } from "@/lib/srd/authored-effects";
+import { authoredAcBonus, authoredCheckSwap, authoredSaveModifier, authoredSpeeds, authoredExpertise, authoredConditionalTraining } from "@/lib/srd/authored-effects";
 import { effectiveAbilities, itemSpeeds, magicItemRiders, type Wearer, type WornMagicItem } from "@/lib/srd/magic-items";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
 import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
@@ -82,6 +81,26 @@ export function sizeForRace(raceId: string, rules?: SpeciesRules | null): "Small
   return /^(small|tiny)$/i.test(speciesRulesFor(raceId, rules)?.size ?? "") ? "Small" : "Medium";
 }
 
+// A character's size: the one their lineage lets them pick (an owlin or a
+// harengon is Small or Medium, the pick's record a race feature "Size
+// (Small)", src/lib/content/species-variants.ts), else their race's.
+export function sheetSize(sheet: { race?: string; features?: ReadonlyArray<{ name: string }> }, rules?: SpeciesRules | null): "Small" | "Medium" {
+  const race = sheet.race ?? "";
+  if (findRace(race.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_"))?.variants?.label === "Size") {
+    const picked = (sheet.features ?? []).map((feature) => /^size \((small|medium)\)$/i.exec(feature.name.trim())).find(Boolean);
+    if (picked) {
+      return picked[1].toLowerCase() === "small" ? "Small" : "Medium";
+    }
+  }
+  return sizeForRace(race, rules);
+}
+
+// A character's creature type by their lineage: humanoid unless the row
+// says otherwise (a satyr, centaur or fairy is fey).
+export function creatureTypeForRace(raceId: string): string {
+  return findRace(raceId.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_"))?.type ?? "humanoid";
+}
+
 export function findSkill(id: string) {
   return SRD_SKILLS.find((entry) => entry.id === id) ?? null;
 }
@@ -142,6 +161,9 @@ export type AcSource = {
   feats?: string[];
   // The spell being concentrated on (Durable Magic's +2 AC holds while one is).
   concentratingOn?: string | null;
+  // Hit points, for a bonus that holds below half of them (Skin Like Scripture).
+  currentHp?: number;
+  maxHp?: number;
   // Extra flat adds on top of whatever the feature table already grants.
   bonus?: number;
   // Who wears the gear: a magic item that names who may attune to it gives
@@ -235,9 +257,10 @@ export function acBreakdownFor(source: AcSource): AcBreakdown {
     }
   }
   const armored = resolved.armorName !== null;
-  const featureBonus = riders.acBonus && (!riders.acBonusRequiresArmor || armored)
-    ? riders.acBonus
-    : 0;
+  // Only the bonuses that need armor wait for it: a warforged fighter with
+  // the Defense style lost Integrated Protection's +1 out of armor, since one
+  // armored bonus held the whole sum back.
+  const featureBonus = riders.acBonus - riders.acBonusArmored + (armored ? riders.acBonusArmored : 0);
   // Bracers of Defense: only while wearing no armor and no shield.
   const unarmoredBonus =
     !armored && !resolved.shieldName ? magic.acUnarmoredBonus : 0;
@@ -361,7 +384,7 @@ export function speedFor(
         strength: source.abilities.str,
         equipment,
         coins: purseCoins({ gold: source.gold ?? 0, copper: source.copper ?? 0 }),
-        size: source.race ? sizeForRace(source.race) : undefined,
+        size: source.race ? sheetSize(source) : undefined,
         wearer: source,
         // Peerless Athlete's doubled capacity, the one load-rules.ts refuses by.
         carryFactor: authoredCarryFactor(source),
@@ -401,6 +424,8 @@ export type SheetDerived = {
   abilityMods: Record<Ability, number>;
   saves: Record<Ability, number>;
   skills: Record<string, number>;
+  // Skills a feature trains only while a condition holds, and whether it does.
+  conditionalTraining: Array<{ skill: string; by: string; while: string; active: boolean }>;
   initiative: number;
   passivePerception: number;
   passiveInvestigation: number;
@@ -541,10 +566,23 @@ export function computeSheetDerived(
   // the Champion's, which covers the physical abilities only, rounds up.
   const halfScope = defense.halfProficiency ?? null;
   const halfPb = halfScope === "physical" ? Math.ceil(pb / 2) : Math.floor(pb / 2);
-  const expertise = sheet.proficiencies.expertise ?? [];
+  // A genre feature's doubled skill (authored-effects.ts authoredExpertise)
+  // doubles a proficiency the sheet has, as Expertise does.
+  const expertise = [
+    ...(sheet.proficiencies.expertise ?? []),
+    ...authoredExpertise(sheet).filter((skill) => sheet.proficiencies.skills.includes(skill)),
+  ];
   // Skills a feature trains (Beguiling Influence), as featureSaves above.
   // and a skill lent for a while (Knowledge of the Ages, borrowed-proficiency.ts).
-  const featureSkills = [...featureSkillProficiencies({ features: riderFeatures }), ...borrowedProficiencies(sheet.conditions).skills];
+  // A feature's training that holds only while its condition does (Black
+  // Flag's Juggernaut: Athletics in the Mystic Metal armor), listed whether
+  // or not it holds now.
+  const conditionalTraining = authoredConditionalTraining(sheet);
+  const featureSkills = [
+    ...featureSkillProficiencies({ features: riderFeatures }),
+    ...borrowedProficiencies(sheet.conditions).skills,
+    ...conditionalTraining.filter((entry) => entry.active).map((entry) => entry.skill),
+  ];
   const skillParts = Object.fromEntries(
     SRD_SKILLS.map((skill) => {
       const trained = expertise.includes(skill.id)
@@ -577,7 +615,8 @@ export function computeSheetDerived(
   const initiativeParts = keepMeaningful([
     { label: "DEX modifier", value: abilityMods.dex },
     { label: "features", value: defense.initiativeBonus },
-    { label: "half proficiency", value: halfScope ? halfPb : 0 },
+    // Sharpened Logic's Intelligence and Wisdom half does not reach it.
+    { label: "half proficiency", value: halfScope && halfProficiencyCovers(halfScope, "dex") ? halfPb : 0 },
   ]);
   const passiveParts = keepMeaningful([
     { label: "base", value: 10 },
@@ -614,6 +653,7 @@ export function computeSheetDerived(
     abilityMods,
     saves,
     skills,
+    conditionalTraining,
     initiative: sumParts(initiativeParts),
     passivePerception: sumParts(passiveParts),
     passiveInvestigation: sumParts(passiveInvestigationParts),

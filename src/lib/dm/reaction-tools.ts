@@ -14,12 +14,12 @@
 //     the map is resolved here as one attack with the reaction.
 // Split from action-tools.ts, which re-exports the handler.
 
-import { heldAuthored } from "@/lib/srd/authored-effects";
+import { heldAuthored, authoredReactionNamed, heldReaction } from "@/lib/srd/authored-effects";
 import { catchProblem } from "@/lib/dm/mt-srd-monk";
 import { cuttingWordsImmunity } from "@/lib/dm/mt-srd-reach";
 import { tranceFloored } from "@/lib/dm/ar-ws-trance-floor";
 import { getFoe, resolveTargetFoe } from "@/lib/dm/sheet-foe";
-import { defensiveDuelist, lucky, mageSlayer, reservesRecovery, sentinel } from "@/lib/dm/feat-reactions";
+import { defensiveDuelist, lucky, mageSlayer, orcishFury, reservesRecovery, sentinel, secondChance } from "@/lib/dm/feat-reactions";
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
@@ -45,7 +45,6 @@ import { petReaction, summonReaction } from "@/lib/dm/summon-reactions";
 import { hawkReaction } from "@/lib/dm/spirit-totem-hawk";
 import { openFailedSave, standingBeforeSave } from "@/lib/dm/save-turned";
 import { reactionTimingOf, timingOfDoes, type ReactionTiming, spendsNoReaction } from "@/lib/dm/reaction-kinds";
-import { authoredReactionNamed, heldReaction } from "@/lib/srd/authored-effects";
 import { removeConditions } from "@/lib/dm/condition-logic";
 import { answerKey, answeredBy, attackerFoeId, cutBlow, freshLastHit, heaviestHit, heaviestRaw, hitIdOf, openHitAimed, openHits, plainOfReroll, reactedLate, rerollAttacker, withHitAim, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import type { RollAttacker } from "@/lib/db/rolls";
@@ -56,14 +55,16 @@ import { reactionPatch, settleLastHit } from "@/lib/dm/reaction-refund";
 import { unseenRefusal } from "@/lib/dm/authored-saves";
 import { asReaction, lateReaction } from "@/lib/dm/held-turn";
 import { authoredReaction } from "@/lib/dm/authored-reactions";
+import { mysteryReaction } from "@/lib/dm/genre-b-mystery-reactions";
 import { freeAuthoredReaction } from "@/lib/dm/authored-reactions-more";
+import { lineageReaction } from "@/lib/dm/lineage-reactions";
 import { srdFeatureReaction } from "@/lib/dm/srd-reactions";
 import { maneuverReaction } from "@/lib/dm/maneuver-reactions";
 // For the counter reactions' spend; mutations never imports back.
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { handleTeleportToken, teleportSquareRefusal } from "@/lib/dm/map-tools";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
-import { matchResource } from "@/lib/srd/class-resources";
+import { matchResource, sheetCatalog } from "@/lib/srd/class-resources";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { standingForDeflection } from "@/lib/dm/ar-ws-deflection";
@@ -746,9 +747,25 @@ function useReaction(
   if (stride) {
     return stride;
   }
+  // Second Chance (a halfling's feat) rerolls the attack itself; its counter
+  // is spent there, never as a bare use_resource (feat-reactions.ts).
+  if (isNamed(feature, "second chance")) {
+    return secondChance(ctx);
+  }
+  // Orcish Fury's attack costs no use of the feat's counter, which the
+  // authored rows below would spend (feat-reactions.ts).
+  if (isNamed(feature, "orcish fury")) {
+    return orcishFury(ctx);
+  }
+  // A lineage's own reaction (a swiftstride shifter's step):
+  // src/lib/dm/lineage-reactions.ts.
+  const lineage = lineageReaction(ctx);
+  if (lineage) {
+    return lineage;
+  }
   // The authored subclass reactions (Spirit Shield, Spectral Defense, Storm's
   // Fury, Divine Allegiance...): src/lib/dm/authored-reactions.ts.
-  const authored = authoredReaction(ctx);
+  const authored = mysteryReaction(ctx) ?? authoredReaction(ctx);
   if (authored) {
     return authored;
   }
@@ -774,7 +791,7 @@ function useReaction(
   // Warding Maneuver, Strength before Death...) is a use_resource spend: the
   // use, the reaction and the effect go together there, where before this
   // branch let use_reaction spend the reaction and leave the counter full.
-  const counter = matchResource(feature);
+  const counter = matchResource(feature, sheetCatalog(sheet));
   if (counter?.action === "reaction" && sheet.resources?.[counter.id]) {
     // A reaction that teleports its holder (Misty Escape) moves them now when
     // the square is named, through move_token's teleport, which takes the

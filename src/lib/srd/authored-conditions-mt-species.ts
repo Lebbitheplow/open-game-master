@@ -12,6 +12,21 @@ export const FELINE_AGILITY_COUNTER = "race_feline_agility";
 export const WINGS = "celestial revelation: heavenly wings";
 export const RADIANCE = "celestial revelation: inner radiance";
 export const SHROUD = "celestial revelation: necrotic shroud";
+// A shifter's form, by the subtype picked in the builder (Shifting:
+// src/lib/dm/mt-species-spends.ts).
+export const SHIFTED = "shifted";
+export const SHIFT_FORMS = [
+  { subtype: "Beasthide", condition: "shifted (beasthide)", extraTempHp: "1d6" },
+  { subtype: "Longtooth", condition: "shifted (longtooth)" },
+  { subtype: "Swiftstride", condition: "shifted (swiftstride)" },
+  { subtype: "Wildhunt", condition: "shifted (wildhunt)" },
+] as const;
+export const WILDHUNT_SHIFT = "shifted (wildhunt)";
+// A kobold's Grovel, Cower, and Beg, until the end of its next turn.
+// Its own name: "groveling" is Command's Grovel (condition-effects-last.ts),
+// which ends the creature's turn.
+export const GROVELING = "pleading";
+export const GROVEL_COUNTER = "race_grovel";
 
 export const MT_SPECIES_CONDITIONS: ConditionEffectRow[] = [
   // Tortle: "Shell Defense (withdraw for +4 AC and save advantage, at the
@@ -37,6 +52,43 @@ export const MT_SPECIES_CONDITIONS: ConditionEffectRow[] = [
     match: [FELINE_AGILITY],
     summary: "Feline Agility: speed doubled until the end of this turn.",
     speedMultiplier: 2,
+  },
+  // The shifter's subtype forms: "Beasthide (shifted: an extra 1d6 temporary
+  // hit points and 1 more AC)", "Swiftstride (shifted: 10 more feet of
+  // speed...)", "Wildhunt (shifted: advantage on Wisdom checks...)". The
+  // Longtooth's fangs are the bonus attack's (feature-bonus-attacks.ts), the
+  // Wildhunt's denial of advantage the attack's (enemy-swing-odds.ts), the
+  // Swiftstride's step the reaction's (lineage-reactions.ts).
+  {
+    id: "shifted_beasthide",
+    match: ["shifted (beasthide)"],
+    summary: "Shifted (Beasthide): a tougher hide for a minute, +1 AC.",
+    acBonus: 1,
+  },
+  {
+    id: "shifted_longtooth",
+    match: ["shifted (longtooth)"],
+    summary: "Shifted (Longtooth): for a minute the fangs strike as a bonus action, 1d6 piercing.",
+  },
+  {
+    id: "shifted_swiftstride",
+    match: ["shifted (swiftstride)"],
+    summary: "Shifted (Swiftstride): 10 more feet of speed for a minute, and a 10-foot step as a reaction when a foe ends its turn within 5 feet.",
+    speedBonus: 10,
+  },
+  {
+    id: "shifted_wildhunt",
+    match: ["shifted (wildhunt)"],
+    summary: "Shifted (Wildhunt): for a minute, advantage on Wisdom checks, and no attack roll from within 30 feet has advantage against them while they are not incapacitated.",
+    advantageOn: [{ kind: "check", ability: "wis" }],
+  },
+  // Kobold: "Grovel, Cower, and Beg (an action: until the end of your next
+  // turn, allies' attacks on foes within 10 ft of you have advantage...)".
+  // The advantage is the ally's attack's (attack-spatial.ts grovelingAllyNear).
+  {
+    id: "pleading",
+    match: [GROVELING],
+    summary: "Pleading: groveling and cowering pitifully until the end of their next turn; allies' attack rolls against foes within 10 feet of them that can see them have advantage.",
   },
   {
     id: "shapechanged",
