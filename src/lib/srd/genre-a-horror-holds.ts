@@ -76,6 +76,31 @@ export function horrorSourcedSaves(
   return notes;
 }
 
+// Baseline Readings (parapsychologist 5): "After 1 minute of measurement,
+// grant the party advantage on the next save any of them makes against a
+// haunting or psychic effect". The grant is the condition "baseline
+// readings" on each of the party (src/lib/dm/genre-gh-wards.ts); a save
+// against psychic damage, or one an undead forces or casts for (a haunting
+// is a spirit's doing), takes the advantage and spends the condition, from
+// every one of them (src/lib/dm/forced-save.ts spendRollCarriers). Read by
+// src/lib/dm/roll-feature-riders.ts.
+export const BASELINE_READINGS = "baseline readings";
+export function baselineReadingsSave(
+  sheet: Pick<AuthoredSheet, "conditions">,
+  roll: { against?: string; casterType?: string; sourceType?: string },
+): { condition: string; note: string } | null {
+  const condition = (sheet.conditions ?? []).find((entry) => isConditionNamed(entry, BASELINE_READINGS));
+  if (!condition) {
+    return null;
+  }
+  const kind = roll.casterType ?? (roll.sourceType ? normalizeCreatureType(roll.sourceType) : null);
+  const psychic = roll.against === "psychic";
+  if (!psychic && kind !== "undead") {
+    return null;
+  }
+  return { condition, note: `Baseline Readings: advantage against ${psychic ? "a psychic effect" : "a haunting"}` };
+}
+
 // Turncoat's Insight against a cultist's spell: a cultist is a humanoid, so
 // its type says nothing and its stat block's slug does (the slugs Hunted
 // Instincts reads). src/lib/dm/forced-save.ts asks with the creature forcing

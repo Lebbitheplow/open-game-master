@@ -41,6 +41,7 @@ import { placeSpellZone } from "@/lib/dm/zone-cast";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import { computeSheetDerived } from "@/lib/srd";
 import { isConditionNamed, isNamed } from "@/lib/srd/feature-names";
+import { BASELINE_READINGS } from "@/lib/srd/genre-a-horror-holds";
 import { WARDED_AC, WARDING_TYPES, wardedCondition } from "@/lib/srd/genre-gh-warded";
 import { textKey } from "@/lib/language/text-logic";
 
@@ -161,7 +162,32 @@ function huntersKit(ctx: SpendContext): Resolution {
   return { result: { applied: `${covered.map((sheet) => sheet.name).join(", ")} ${covered.length === 1 ? "has" : "have"} +${WARDED_AC} AC against ${type} attacks for the night (${condition}).` } };
 }
 
+// Baseline Readings (parapsychologist 5): "After 1 minute of measurement,
+// grant the party advantage on the next save any of them makes against a
+// haunting or psychic effect". A minute on the clock, then the condition on
+// every living character of the party, kept until one save spends it
+// (src/lib/srd/genre-a-horror-holds.ts baselineReadingsSave).
+function baselineReadings(ctx: SpendContext): Resolution {
+  const moved = advanceClock(ctx.campaign.id, 1, "minutes");
+  if ("error" in moved) {
+    return moved;
+  }
+  const party = listSheets(ctx.campaign.id).filter((sheet) => !sheet.deathSaves?.dead);
+  for (const stale of party) {
+    const sheet = getSheetById(stale.id) ?? stale;
+    if (sheet.conditions.some((entry) => isConditionNamed(entry, BASELINE_READINGS))) {
+      continue;
+    }
+    const updated = patchSheet(sheet.id, { conditions: [...sheet.conditions, BASELINE_READINGS] });
+    if (updated) {
+      publishPersisted(ctx.campaign.id, "sheet_updated", { sheet: updated });
+    }
+  }
+  return { result: { applied: `${ctx.sheet.name} spends a minute measuring: the party (${party.map((sheet) => sheet.name).join(", ")}) has advantage on the next save any of them makes against a haunting or psychic effect.` } };
+}
+
 export const GH_WARD_PLAYS: Record<string, (ctx: SpendContext) => Resolution> = {
+  baseline_readings: baselineReadings,
   ...Object.fromEntries(Object.entries(GH_WARDS).map(([play, ward]) => [play, (ctx: SpendContext) => setWard(ctx, ward)])),
   hunters_kit: huntersKit,
 };

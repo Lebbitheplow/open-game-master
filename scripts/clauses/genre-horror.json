@@ -2186,14 +2186,9 @@
   "clauses": [
    {
     "c": "After 1 minute of measurement, grant the party advantage on the next save any of them makes against a haunting or psychic effect",
-    "run": {
-     "k": "no_door"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap parapsychologist::Baseline Readings#0",
-    "observed": "no call plays it: use_resource answers \"No resource called \"baseline readings\" is known. Their resources: horror_s_ance_protocol. Send the one meant, by the name on the sheet. / No resource called \"ba\": the engine gives false, the text true",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (no row) and src/lib/classes/resources.json (no counter): no tool plays the feature",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Baseline Readings: a minute's measurement out of a fight gives the party advantage on the next psychic or haunting save, which one ally's save spends for all; a fire save keeps it",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts Baseline Readings (fight: out), played by src/lib/dm/genre-gh-wards.ts baselineReadings (a minute on the clock, the baseline readings condition on the party); src/lib/srd/genre-a-horror-holds.ts baselineReadingsSave gives the advantage in src/lib/dm/roll-feature-riders.ts, and src/lib/dm/forced-save.ts spendRollCarriers spends it from every one of them"
    }
   ]
  },

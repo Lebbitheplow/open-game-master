@@ -60,5 +60,8 @@ export const GENRE_GH_AUTHORED: GenreRow[] = [
   // ally +2 AC against one monster type for a night" (the whole party with
   // Stake and Salt): src/lib/dm/genre-gh-wards.ts huntersKit.
   row("Hunter's Kit", ["slayer"], { spends: [{ name: "Hunter's Kit", aliases: ["Warding"], action: "none", fight: "out", outOfFightWhy: "is crafted during a rest, never in the middle of a fight", does: { kind: "horror_spend", play: "hunters_kit", aim: "ally" } }] }),
+  // "After 1 minute of measurement, grant the party advantage on the next
+  // save any of them makes against a haunting or psychic effect".
+  row("Baseline Readings", ["parapsychologist"], { spends: [{ name: "Baseline Readings", action: "none", fight: "out", outOfFightWhy: "is a minute of measurement, never taken in the middle of a fight", does: { kind: "horror_spend", play: "baseline_readings" } }] }),
   played("occultist", "Stitch the Tear", "horror_stitch_the_tear", "action", "stitch_the_tear", "enemy"),
 ];

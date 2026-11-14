@@ -360,5 +360,24 @@ await run("Improved Quarry: marking the creature that harmed an ally this round 
   assert.equal(rig.budget().bonusUsed, true, "the mark on a creature that harmed nobody cost nothing");
 });
 
+// ---- GH11: Baseline Readings ----
+
+await run("Baseline Readings: a minute's measurement out of a fight gives the party advantage on the next psychic or haunting save, which one ally's save spends for all; a fire save keeps it", async () => {
+  const hero = rig.holder(feature("parapsychologist", "Baseline Readings", 5));
+  await kit.endFight();
+  const before = minute();
+  rig.must(await spend(hero, "Baseline Readings"), "Baseline Readings");
+  assert.equal(minute() - before, 1, "the measurement's minute");
+  for (const who of [hero, rig.ally]) assert.ok(world.sheet(who.id).conditions.includes("baseline readings"), `${who.name} holds no reading`);
+  const save = (who, against) => rig.d20sOf(who, { kind: "saving_throw", ability: "wis", against });
+  assert.equal(await save(rig.ally, "fire"), 1, "a fire save took the advantage");
+  assert.ok(world.sheet(rig.ally.id).conditions.includes("baseline readings"), "a fire save spent the reading");
+  assert.equal(await save(rig.ally, "psychic"), 2, "the psychic save had no advantage");
+  for (const who of [hero, rig.ally]) assert.ok(!world.sheet(who.id).conditions.includes("baseline readings"), `${who.name} still holds the spent reading`);
+  assert.equal(await save(hero, "psychic"), 1, "a second psychic save had advantage");
+  await kit.fight(1);
+  assert.ok((await spend(hero, "Baseline Readings")).error, "a minute's measurement in a fight");
+});
+
 rig.world.close();
 finish();
