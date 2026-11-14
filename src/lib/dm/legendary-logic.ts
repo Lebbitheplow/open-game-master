@@ -83,6 +83,10 @@ export type LegendaryState = {
   // table was told it ran too long to keep waking the DM
   // (src/lib/dm/encounter-tools.ts idledOut).
   idle?: { since: number; told?: boolean };
+  // The companion turn the narrator was woken for so the companion's own
+  // mind chooses it (src/lib/dm/encounter-tools.ts mindWokenFor): once a
+  // turn, the basic turn standing in past that.
+  mindWake?: { round: number; turnIndex: number; characterId: string };
   // The enemies the pointer walked past last move: their turns, taken in
   // the DM turn since, end as the pointer moves again, with the saves their
   // conditions grant at the end of a turn (src/lib/dm/condition-tick.ts).
@@ -177,6 +181,7 @@ export function normalizeLegendaryState(raw: unknown): LegendaryState {
   const bonus = (record.bonus && typeof record.bonus === "object" ? record.bonus : null) as Record<string, unknown> | null;
   const backstop = (record.backstop && typeof record.backstop === "object" ? record.backstop : null) as Record<string, unknown> | null;
   const idle = (record.idle && typeof record.idle === "object" ? record.idle : null) as Record<string, unknown> | null;
+  const mindWake = (record.mindWake && typeof record.mindWake === "object" ? record.mindWake : null) as Record<string, unknown> | null;
   const rest = (record.rest && typeof record.rest === "object" ? record.rest : null) as Record<string, unknown> | null;
   const failed = (record.failedSave && typeof record.failedSave === "object" ? record.failedSave : null) as Record<string, unknown> | null;
   const opportunities = (record.opportunities && typeof record.opportunities === "object" ? record.opportunities : null) as Record<string, unknown> | null;
@@ -219,6 +224,9 @@ export function normalizeLegendaryState(raw: unknown): LegendaryState {
       ? { rest: { ...(rest.wrap === true ? { wrap: true as const } : {}), ...(stringList(rest.dying).length ? { dying: stringList(rest.dying) } : {}) } }
       : {}),
     ...(idle ? { idle: { since: Number(idle.since) || 0, ...(idle.told === true ? { told: true } : {}) } } : {}),
+    ...(mindWake && typeof mindWake.characterId === "string"
+      ? { mindWake: { round: Number(mindWake.round) || 0, turnIndex: Number(mindWake.turnIndex) || 0, characterId: mindWake.characterId } }
+      : {}),
     ...(stringList(record.walked).length ? { walked: stringList(record.walked) } : {}),
     ...(Array.isArray(record.walkedHolds) ? { walkedHolds: stringList(record.walkedHolds) } : {}),
     ...(heldMove && typeof heldMove.pendingId === "string" && typeof heldMove.characterId === "string"

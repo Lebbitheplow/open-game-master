@@ -28,6 +28,7 @@ import { CharacterSheetDialog } from "@/app/campaigns/[campaignId]/CharacterShee
 import { TradeDialog } from "@/app/campaigns/[campaignId]/TradeDialog";
 import { CompanionBuilderDialog } from "@/app/campaigns/[campaignId]/CompanionBuilderDialog";
 import { CompanionCommand } from "@/app/campaigns/[campaignId]/CompanionCommand";
+import { CompanionMind } from "@/app/campaigns/[campaignId]/CompanionMind";
 import { CompanionPaintButton } from "@/app/campaigns/[campaignId]/CompanionPaintButton";
 import { CompanionKeepButton } from "@/app/campaigns/[campaignId]/CompanionKeepButton";
 import { CompanionBondLine, useRomanceBonds } from "@/app/campaigns/[campaignId]/CompanionBondLine";
@@ -312,6 +313,7 @@ export function PartyPanel({
   onlineUserIds = [],
   embedded = false,
   steersStory = false,
+  npcMinds = false,
   leadUserId = "",
   canTransferLead = false,
   notes = [],
@@ -374,6 +376,8 @@ export function PartyPanel({
   onlineUserIds?: string[];
   embedded?: boolean;
   steersStory?: boolean;
+  // The table plays its companions with their own minds (gameSettings.npcMinds).
+  npcMinds?: boolean;
   leadUserId?: string;
   canTransferLead?: boolean;
   notes?: Note[];
@@ -907,7 +911,12 @@ export function PartyPanel({
                 members={members}
                 meUserId={meUserId}
                 canChoose={steersStory}
+                ownMind={npcMinds}
               />
+            ) : null}
+
+            {campaignId && npcMinds && steersStory && sheet.isCompanion && !sheet.summon ? (
+              <CompanionMind campaignId={campaignId} characterId={sheet.id} name={sheet.name} />
             ) : null}
 
             {campaignId && steersStory && !sheet.isCompanion && sheet.libraryRole === "companion" ? (

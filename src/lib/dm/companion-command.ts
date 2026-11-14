@@ -204,9 +204,11 @@ export function gmCompanionReactor(campaign: Campaign, userId: string, character
 // The player a companion joining this table follows in fights: the one
 // player at a table the AI runs. Nobody (the DM) when a person narrates,
 // when several players share the table, and for a guest who comes for one
-// scene or fight.
+// scene or fight. Nobody either at a table whose companions think for
+// themselves (gameSettings.npcMinds, src/lib/dm/npc-mind.ts): their own mind
+// plays their fight turns until a player takes command on their card.
 export function defaultCommander(campaign: Campaign, kind: "party" | "guest"): string | null {
-  if (kind !== "party" || hasHumanDm(campaignSeats(campaign))) {
+  if (kind !== "party" || hasHumanDm(campaignSeats(campaign)) || campaign.gameSettings.npcMinds) {
     return null;
   }
   const players = commandingPlayers(campaign);

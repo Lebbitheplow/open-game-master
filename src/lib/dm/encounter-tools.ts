@@ -116,6 +116,7 @@ import { companionShot, endTurnAsked } from "@/lib/dm/pc-attack-approach";
 import { backstopAttack, handleEnemyAttack } from "@/lib/dm/enemy-attack";
 import { isCompanionUserId } from "@/lib/db/users";
 import { commanderOf, dmPlaysTurn, dominatedRefusal, turnUserId, gmCompanionTurn } from "@/lib/dm/companion-command";
+import { mindTurnUnplayed } from "@/lib/dm/npc-mind";
 import { setInitiativeFloor } from "@/lib/dm/initiative-floor";
 import { wakeDm } from "@/lib/dm/wake";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
@@ -2453,6 +2454,16 @@ function advanceAfterNarration(campaign: Campaign, turn?: DmTurn) {
     // AI companion turn the model never adjudicated: the server takes the
     // basic action (like skipped enemies), so combat cannot wedge on a
     // combatant no human controls. One a player commands waits for them.
+    // A companion whose own mind chooses its turn (src/lib/dm/npc-mind.ts)
+    // and was not asked in this DM turn: the narrator is woken once for
+    // this very turn to ask it and carry it out; past that wake, or once
+    // it was asked, the basic turn is the safety net as before.
+    if (turn && dmPlaysTurn(campaign, current) && mindTurnUnplayed(campaign, current.characterId, turn.id) && !mindWokenFor(encounter, current.characterId)) {
+      encounter.legendary.mindWake = { round: encounter.round, turnIndex: encounter.turnIndex, characterId: current.characterId };
+      saveEncounter(encounter);
+      wake(campaign, encounter);
+      return;
+    }
     if (turn && dmPlaysTurn(campaign, current)) {
       companionAutoAct(campaign, turn, encounter, current.characterId);
     } else {
@@ -2511,6 +2522,13 @@ function followTurn(campaign: Campaign, turn?: DmTurn) {
       holdBackstop(campaign, turn, "follow");
     }
   }
+}
+
+// Whether the narrator was already woken for this companion's own mind on
+// this very turn of the fight (the backstop wakes it once a turn).
+function mindWokenFor(encounter: Encounter, characterId: string): boolean {
+  const woken = encounter.legendary.mindWake;
+  return Boolean(woken && woken.characterId === characterId && woken.round === encounter.round && woken.turnIndex === encounter.turnIndex);
 }
 
 // Whether the turn rests on a player character who cannot take it (down,

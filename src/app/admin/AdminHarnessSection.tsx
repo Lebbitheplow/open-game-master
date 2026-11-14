@@ -15,7 +15,7 @@ import { HarnessTestPanel } from "@/app/admin/HarnessTestPanel";
 import { SpeedField } from "@/app/admin/SpeedField";
 import { agentSpeedEligibility } from "@/lib/speed-tier";
 import type { SpeedChannel, SpeedNote } from "@/lib/speed-status";
-import { effortChoices, utilityEffortChoices, withOfferedEffort } from "@/lib/harness/effort-choices";
+import { effortChoices, mindEffortChoices, utilityEffortChoices, withOfferedEffort } from "@/lib/harness/effort-choices";
 import type { HarnessConfig, HarnessId, HarnessStatus } from "@/lib/harness/types";
 import { useRecheckOnReturn } from "@/app/admin/recheck-on-return";
 
@@ -27,7 +27,7 @@ type Payload = {
   recent: Array<{ tool: string; ok: boolean; ms: number; createdAt: string; campaignId: string | null }>;
 };
 
-const MARKS: Record<HarnessId, string> = { claude: "CC", codex: "Cx", opencode: "oc", grok: "Gk" };
+const MARKS: Record<HarnessId, string> = { claude: "CC", codex: "Cx", opencode: "oc", grok: "Gk", pi: "π" };
 
 // The efforts the chosen models offer (src/lib/harness/effort-choices.ts). A
 // saved effort they do not list, after the program's list changed, stays
@@ -78,6 +78,33 @@ function UtilityEffortField({
       options={(stale ? [...offered, draft.utilityEffort] : offered).map((effort) => ({
         value: effort,
         label: effort ? effort[0].toUpperCase() + effort.slice(1) : "The same as the story",
+      }))}
+    />
+  );
+}
+
+// The characters' minds' effort (ticket 09): their model's own list, blank
+// following the bookkeeping effort.
+function MindEffortField({
+  status,
+  draft,
+  onChange,
+}: {
+  status: HarnessStatus;
+  draft: HarnessConfig;
+  onChange: (effort: HarnessConfig["mindEffort"]) => void;
+}) {
+  const offered = mindEffortChoices(status, draft);
+  const stale = !offered.includes(draft.mindEffort);
+  return (
+    <SelectField
+      label="Characters effort"
+      hint={stale ? `The characters' model has no ${draft.mindEffort} setting and runs at its own default.` : "How hard the characters think before they answer: more is slower and spends more of the plan."}
+      value={draft.mindEffort}
+      onChange={onChange}
+      options={(stale ? [...offered, draft.mindEffort] : offered).map((effort) => ({
+        value: effort,
+        label: effort ? effort[0].toUpperCase() + effort.slice(1) : "The same as bookkeeping",
       }))}
     />
   );
@@ -246,7 +273,7 @@ export function AdminHarnessSection({
   return (
     <PageSection id="admin-harness" heading="Agent program" glyph="ui-agent">
       <p className="mb-3 text-xs text-stone-500">
-        Let an agent you already have, Claude Code, Codex, opencode or Grok Build, narrate the
+        Let an agent you already have, Claude Code, Codex, opencode, Grok Build or Pi, narrate the
         tables on its own sign-in. It is started with none of its own tools: the only thing it can
         touch is the table&apos;s rules engine, turn by turn, under the same rules and caps as the
         built-in storyteller. ODM never asks for or stores its password or key.
@@ -375,11 +402,27 @@ export function AdminHarnessSection({
                   />
                 </>
               ) : null}
-              {chosen.id === "claude" || chosen.id === "codex" || chosen.id === "opencode" ? (
+              {chosen.id === "claude" || chosen.id === "codex" || chosen.id === "opencode" || chosen.id === "pi" ? (
                 <>
                   <EffortField status={chosen} draft={draft} onChange={(effort) => setDraft({ ...draft, effort })} />
                   <UtilityEffortField status={chosen} draft={draft} onChange={(utilityEffort) => setDraft({ ...draft, utilityEffort })} />
                 </>
+              ) : null}
+              <SelectField
+                label="Characters model"
+                hint="The minds of the important characters and companions, at tables where they think for themselves. A companion's card can pick its own."
+                value={draft.mindModel}
+                onChange={(mindModel) => setDraft(withOfferedEffort(chosen, { ...draft, mindModel }))}
+                options={[
+                  { value: "", label: "The same as bookkeeping" },
+                  ...models.map((model) => ({ value: model.id, label: model.deprecated ? `${model.label} (deprecated)` : model.label })),
+                  ...(draft.mindModel && !models.some((model) => model.id === draft.mindModel)
+                    ? [{ value: draft.mindModel, label: draft.mindModel }]
+                    : []),
+                ]}
+              />
+              {chosen.id === "claude" || chosen.id === "codex" || chosen.id === "opencode" || chosen.id === "pi" ? (
+                <MindEffortField status={chosen} draft={draft} onChange={(mindEffort) => setDraft({ ...draft, mindEffort })} />
               ) : null}
               <SelectField
                 label="Who may use it"

@@ -69,6 +69,9 @@ const DELIBERATELY_OMITTED = new Set([
   "waitForTable",
   "waitForTableSeconds",
   "companionConscience",
+  // Not a choice: it marks every table made from this version on, so a
+  // table made before keeps its single narrator (src/app/api/campaigns/route.ts).
+  "npcMinds",
 ]);
 
 let passed = 0;

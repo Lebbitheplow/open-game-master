@@ -138,6 +138,12 @@ export const gameSettingsSchema = z.object({
   // dice, surprise/encounter sparks, and NPC goal simulation during
   // timeskips. Off preserves pre-engine behavior exactly.
   worldSimulation: z.boolean().default(true),
+  // Each named NPC and companion answers from their own mind, which knows
+  // only what they perceived or were told (src/lib/dm/npc-mind.ts). A new
+  // campaign starts with it (src/app/api/campaigns/route.ts); a campaign
+  // made before keeps the single narrator, whose NPCs' knowledge was never
+  // recorded and cannot be rebuilt.
+  npcMinds: z.boolean().default(false),
   // After each DM narration, block do and say for everyone until the party
   // lead opens responses. OOC and lead directions stay available.
   holdSubmissions: z.boolean().default(false),

@@ -99,6 +99,15 @@ export async function POST(request: Request) {
   // starts it on only where the server can read aloud, the rule the
   // new-campaign dialog applies for itself before it sends (issue 275).
   const gameSettings = { ...parsed.data.gameSettings };
+  // A new table's NPCs think for themselves (src/lib/dm/npc-mind.ts); only
+  // tables made before them keep the single narrator. Read off the raw body:
+  // zod fills npcMinds' default (false) through .partial(), so parsed.data
+  // cannot tell a caller who turned minds off from one who said nothing.
+  const namedMinds =
+    typeof raw === "object" && raw !== null && typeof raw.gameSettings === "object" && raw.gameSettings !== null && "npcMinds" in raw.gameSettings;
+  if (!namedMinds) {
+    gameSettings.npcMinds = true;
+  }
   if (gameSettings.ttsEnabled === undefined) {
     gameSettings.ttsEnabled = await narrationAvailable();
   }

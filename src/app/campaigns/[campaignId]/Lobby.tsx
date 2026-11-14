@@ -531,6 +531,7 @@ export function Lobby({
               canBuildCompanion={canBuildCompanion}
               onBuildCompanion={() => setBuildingCompanion(true)}
               onDismissCompanion={dismissCompanion}
+              mindsCampaignId={campaign.gameSettings.npcMinds ? campaign.id : null}
               inPlay={prep}
               joinsOpen={campaign.gameSettings.midGameJoinOpen}
               className="lobby-enter order-3"

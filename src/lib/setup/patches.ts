@@ -4,7 +4,7 @@
 // wizard chose. Pure, so scripts/test-setup-wizard.mjs checks each one.
 import { keyForListing, keyProvider, normalizeBaseUrl, type KeyProviderId } from "./discovery-logic.ts";
 
-export type HarnessChoiceId = "claude" | "codex" | "opencode" | "grok";
+export type HarnessChoiceId = "claude" | "codex" | "opencode" | "grok" | "pi";
 
 // The agent programs with an image tool of their own (src/lib/harness
 // adapters' `paints`), for the wizard, which cannot import the adapters.

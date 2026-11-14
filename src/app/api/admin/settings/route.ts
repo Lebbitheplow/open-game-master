@@ -219,12 +219,14 @@ const patchSchema = z.object({
   // (POST /api/admin/harness) may set it.
   harness: z
     .object({
-      id: z.enum(["", "claude", "codex", "opencode", "grok"]).optional(),
+      id: z.enum(["", "claude", "codex", "opencode", "grok", "pi"]).optional(),
       binaryPath: z.string().trim().max(500).optional(),
       model: z.string().trim().max(200).optional(),
       utilityModel: z.string().trim().max(200).optional(),
       effort: z.enum(["", ...HARNESS_EFFORTS]).optional(),
       utilityEffort: z.enum(["", ...HARNESS_EFFORTS]).optional(),
+      mindModel: z.string().trim().max(200).optional(),
+      mindEffort: z.enum(["", ...HARNESS_EFFORTS]).optional(),
       speed: z.enum(["", "fast"]).optional(),
       utilitySpeed: z.enum(["", "fast"]).optional(),
       images: z.enum(["off", "native"]).optional(),

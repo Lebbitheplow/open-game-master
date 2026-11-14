@@ -191,7 +191,7 @@ export const globalConfigSchema = z.object({
   // the program uses the sign-in it already has on this machine.
   harness: z
     .object({
-      id: z.enum(["", "claude", "codex", "opencode", "grok"]).default(""),
+      id: z.enum(["", "claude", "codex", "opencode", "grok", "pi"]).default(""),
       // Blank = find it (PATH, the login shell's PATH, the usual install
       // folders). Set when it lives somewhere unusual.
       binaryPath: z.string().trim().max(500).default(""),
@@ -204,6 +204,12 @@ export const globalConfigSchema = z.object({
       // The bookkeeping model's effort; blank = the story's (the context
       // audit's F11: a short extraction needs less reasoning than a turn).
       utilityEffort: z.enum(["", ...HARNESS_EFFORTS]).default(""),
+      // What the first-tier characters' own minds think with (src/lib/dm/
+      // npc-mind-model.ts, ticket 09): the narrator stays on the story
+      // model. Blank = the bookkeeping model and its effort, as before. A
+      // companion's own choice on its card wins over these.
+      mindModel: z.string().trim().max(200).default(""),
+      mindEffort: z.enum(["", ...HARNESS_EFFORTS]).default(""),
       // Processing speed for the story and bookkeeping models (issue 255).
       speed: z.enum(["", "fast"]).default(""),
       utilitySpeed: z.enum(["", "fast"]).default(""),

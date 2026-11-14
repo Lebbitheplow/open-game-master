@@ -469,6 +469,7 @@ export function SidePanelRouter({
                 spotlightUserIds={spotlightUserIds}
                 onlineUserIds={onlineUserIds}
                 steersStory={steersStory}
+                npcMinds={Boolean(campaign?.gameSettings?.npcMinds)}
                 leadUserId={leadUserId}
                 canTransferLead={canTransferLead}
                 notes={notes}

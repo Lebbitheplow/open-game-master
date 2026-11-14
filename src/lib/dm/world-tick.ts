@@ -12,6 +12,7 @@ import { advanceNpcAgency } from "@/lib/dm/npc-agency";
 import { listFactions } from "@/lib/db/factions";
 import { clampPower, factionsNamedBy } from "@/lib/dm/faction-logic";
 import { shiftFactionPower } from "@/lib/dm/faction-tools";
+import { offscreenMindIds, runOffscreenMinds } from "@/lib/dm/npc-mind";
 import {
   DEFAULT_TICK_CONFIG,
   drainSparks,
@@ -144,7 +145,11 @@ export function tickWorldTimeskip(campaignId: string, ticks: number) {
       pacedTickConfig(tickConfig(), campaign.gameSettings.combatPace),
     );
     persistTickResult(campaignId, result);
-    advanceNpcAgency(campaignId, "", { rounds: 1, tickPressureCounters: false });
+    advanceNpcAgency(campaignId, "", { rounds: 1, tickPressureCounters: false, mindsDecide: offscreenMindIds(campaign) });
+    // At a table with NPC minds, a few NPCs away from the scene pursue their
+    // goals from what they know (src/lib/dm/npc-mind.ts). Not awaited: the
+    // time passing never waits on a model, and a mind that fails acts not.
+    void runOffscreenMinds(campaign).catch((error) => console.error("[world-tick] off-screen minds failed", error));
   } catch (error) {
     console.error("[world-tick] timeskip failed", error);
   }

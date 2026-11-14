@@ -17,6 +17,7 @@ export function CompanionCommand({
   members,
   meUserId,
   canChoose,
+  ownMind = false,
 }: {
   campaignId: string;
   sheet: CharacterSheet;
@@ -26,6 +27,9 @@ export function CompanionCommand({
   // Whoever runs the story: the party lead at a table the AI runs, the DM
   // where a person does.
   canChoose: boolean;
+  // At a table with NPC minds, a companion nobody commands chooses its own
+  // fight turns with its own mind (src/lib/dm/npc-mind.ts); the GM carries them out.
+  ownMind?: boolean;
 }) {
   const [sending, setSending] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -35,12 +39,14 @@ export function CompanionCommand({
   const commander = players.some((member) => member.userId === sheet.commandedBy) ? sheet.commandedBy ?? null : null;
   const nameOf = (userId: string) => (userId === meUserId ? "You" : members.find((member) => member.userId === userId)?.username ?? "A player");
   const options: Array<{ id: string | null; label: string }> = [
-    { id: null, label: "The GM" },
+    { id: null, label: ownMind ? "Its own mind" : "The GM" },
     ...players.map((member) => ({ id: member.userId, label: nameOf(member.userId) })),
   ];
   const hint = commander
     ? `${commander === meUserId ? "You take" : `${nameOf(commander)} takes`} ${sheet.name}'s turns in fights. Out of fights the GM plays ${sheet.name}.`
-    : `The GM plays ${sheet.name}'s turns in fights, as everywhere else.`;
+    : ownMind
+      ? `${sheet.name} chooses their own turns in fights, from their own sheet and what they see; the GM carries them out.`
+      : `The GM plays ${sheet.name}'s turns in fights, as everywhere else.`;
 
   async function choose(next: string | null) {
     if (next === commander || sending !== null) {

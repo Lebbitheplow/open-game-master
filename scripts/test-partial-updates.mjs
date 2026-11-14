@@ -217,10 +217,12 @@ await test("a campaign created with empty settings still gets every default", as
   try {
     saveGlobalConfig({ speech: { ttsProvider: "kokoro", kokoroUrl: "http://127.0.0.1:1" } });
     const campaignId = await newCampaign({});
-    assert.deepEqual(getCampaignById(campaignId).gameSettings, gameSettingsSchema.parse({}));
+    // A new table's NPCs think for themselves (src/app/api/campaigns/route.ts):
+    // the schema's own default stays off for the tables made before minds.
+    assert.deepEqual(getCampaignById(campaignId).gameSettings, { ...gameSettingsSchema.parse({}), npcMinds: true });
     saveGlobalConfig({ speech: { ttsProvider: "off" } });
     const silent = await newCampaign({});
-    assert.deepEqual(getCampaignById(silent).gameSettings, { ...gameSettingsSchema.parse({}), ttsEnabled: false });
+    assert.deepEqual(getCampaignById(silent).gameSettings, { ...gameSettingsSchema.parse({}), ttsEnabled: false, npcMinds: true });
   } finally {
     saveGlobalConfig({ speech });
   }

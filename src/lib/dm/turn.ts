@@ -290,6 +290,8 @@ import { routeToolCall } from "@/lib/dm/tool-merge";
 import { acceptsCall, offeredAs } from "@/lib/dm/tool-merge-logic";
 import { petTools, PET_TOOL_NAMES } from "@/lib/dm/pet-tools";
 import { socialTools, SOCIAL_TOOL_NAMES, handleSetNpc, npcRosterForPrompt } from "@/lib/dm/social-tools";
+import { npcMindTools, NPC_MIND_TOOL_NAMES } from "@/lib/dm/npc-mind-tools";
+import { awayArrivalNote, handleNpcInform, handleNpcPast, handleNpcSpeak, mindRosterNotes, mindTurnRefusal, npcMindsOn } from "@/lib/dm/npc-mind";
 import { worldForPrompt } from "@/lib/dm/world-prompt";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import {
@@ -383,6 +385,7 @@ export const TURN_RUN_NAMES: ReadonlySet<string> = new Set<string>([
   ...SPLIT_DAMAGE_TOOL_NAMES,
   ...PET_TOOL_NAMES,
   ...SOCIAL_TOOL_NAMES,
+  ...NPC_MIND_TOOL_NAMES,
   ...RELATIONSHIP_TOOL_NAMES,
   ...WORLD_RUN_NAMES,
   "generate_image",
@@ -838,6 +841,8 @@ async function openTurn(
       absoluteCommand: "",
     });
   }
+  // Each tracked NPC's own register, at a table with NPC minds.
+  const mindNotes = npcMindsOn(campaign) ? mindRosterNotes(campaign) : null;
   // The table's WorldForge: what it says of who and what the newest messages
   // and the scene put in play, then hidden truths, ties and secrets.
   const world = worldForPrompt(campaignId, {
@@ -1037,7 +1042,13 @@ async function openTurn(
           ],
       withholdStorytellerSecrets: oocOnly,
       directorBlock,
-      npcs: npcRosterForPrompt(campaignId, { romance: romanceEnabled(campaign) }).map((npc) => ({ ...npc, world: world.npcNotes.get(npc.name) })),
+      npcs: npcRosterForPrompt(campaignId, { romance: romanceEnabled(campaign) }).map((npc) => ({
+        ...npc,
+        // At a table with NPC minds the witness caution is no longer the
+        // boundary: each NPC's own register is (src/lib/dm/npc-mind.ts).
+        witnessNote: mindNotes?.get(npc.name) ?? npc.witnessNote,
+        world: world.npcNotes.get(npc.name),
+      })),
       relationships:
         campaign.gameSettings.relationships === "off"
           ? []
@@ -1559,6 +1570,8 @@ export function dmTurnTools(
     ...hazardTools,
     ...petTools,
     ...socialTools,
+    // Each NPC answers from their own mind (src/lib/dm/npc-mind.ts).
+    ...(npcMindsOn(campaign) ? npcMindTools : []),
     // In a fight, deeds alone (issue 503): most executions happen there.
     ...relationshipTools(campaign, inEncounter),
     ...(inEncounter ? [] : worldTools),
@@ -2320,6 +2333,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     const eventCalls = runnable.filter((toolCall) => toolCall.name === "record_event");
     const beatCalls = runnable.filter((toolCall) => toolCall.name === "complete_beat");
     const recallCalls = runnable.filter((toolCall) => toolCall.name === "recall_story");
+    const mindCalls = runnable.filter((toolCall) => (NPC_MIND_TOOL_NAMES as readonly string[]).includes(toolCall.name));
     const searchLoreCalls = runnable.filter((toolCall) => toolCall.name === "search_lore");
     const readCardCalls = runnable.filter((toolCall) => toolCall.name === "read_card");
     const noteCalls = runnable.filter((toolCall) => toolCall.name === "write_campaign_note");
@@ -2397,6 +2411,18 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
         recallCall.id ?? "recall_story",
         await handleRecallStory(campaign, recallCall.rawArguments),
       );
+    }
+    // An NPC mind's answer, or its failure, is what the narration voices:
+    // asked in order, so a second NPC in the same reply hears the first.
+    const mindResults = new Map<string, Record<string, unknown>>();
+    for (const mindCall of mindCalls) {
+      const result =
+        mindCall.name === "npc_speak"
+          ? await handleNpcSpeak(campaign, mindCall.rawArguments)
+          : mindCall.name === "npc_inform"
+            ? await handleNpcInform(campaign, mindCall.rawArguments)
+            : handleNpcPast(campaign, mindCall.rawArguments);
+      mindResults.set(mindCall.id ?? mindCall.name, result);
     }
     const searchLoreResults = new Map<string, Record<string, unknown>>();
     for (const searchLoreCall of searchLoreCalls) {
@@ -2527,6 +2553,10 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
           return beatResults.get(toolCall.id ?? "complete_beat") ?? { ok: true };
         case "recall_story":
           return recallResults.get(toolCall.id ?? "recall_story") ?? { ok: true };
+        case "npc_speak":
+        case "npc_inform":
+        case "npc_past":
+          return mindResults.get(toolCall.id ?? toolCall.name) ?? { ok: true };
         case "search_lore":
           return searchLoreResults.get(toolCall.id ?? "search_lore") ?? { ok: true };
         case "read_card":
@@ -2584,6 +2614,8 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       // use the answer.
       recallCalls.length > 0 ||
       searchLoreCalls.length > 0 ||
+      // An NPC mind answered: the narration voices it.
+      mindCalls.length > 0 ||
       // more_tools was asked for actions the model means to use.
       moreToolsResults.size > 0 ||
       // A reply that was only a plan beside its calls told the table
@@ -3114,6 +3146,12 @@ async function resolveModelCall(
     return routed.refusal;
   }
   const { name, rawArguments } = routed;
+  // A first-tier companion's own fight turn is its mind's to choose
+  // (src/lib/dm/npc-mind.ts): its actions wait for npc_speak.
+  const mindTurn = mindTurnRefusal(campaign, name, rawArguments);
+  if (mindTurn) {
+    return mindTurn;
+  }
   // At a table in another language, the words of the character this call
   // names are read once before the gates below run (src/lib/dm/player-word.ts).
   await prepareWordFor(campaign, turn, rawArguments);
@@ -3975,7 +4013,10 @@ export function handleLocationCall(
     publishPersisted(campaign.id, "campaign_updated", { scene: location.name });
     // Some of the party went and the rest stayed (issue 563): a moment a
     // companion may slip away.
-    split = partySplit(campaign, args.characterIds, location.name);
+    split = partySplit(campaign, args.characterIds, location.name, previous && previous.id !== location.id ? previous.name : "");
+    // Companions left here before: their minds catch up when the narrator
+    // brings them back (src/lib/dm/npc-mind.ts).
+    split = [split, movedToNewLocation ? awayArrivalNote(campaign, location.name) : ""].filter(Boolean).join(" ");
   } else {
     previousLayout = getCurrentLocation(campaign.id)?.layoutDescription ?? "";
     location = updateCurrentLocationDetails(campaign.id, { layoutDescription, connections });
