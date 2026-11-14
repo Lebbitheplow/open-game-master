@@ -71,3 +71,6 @@ Decisioni per l'utente, in ordine di costo:
    per il narratore e riconoscimento degli oggetti per nome italiano intero.
 4. Interfaccia: approccio gettext (allineato a upstream, costoso) oppure catalogo/proxy
    alla ziomik (rapido, fuori dal codice, non accettabile upstream).
+   **Fatto** ([spec](../specs/ogm-italian-ui.md)): catalogo nel formato di ziomik dentro
+   l'app, scelta in Impostazioni → Aspetto; `scripts/extract-ui-strings.mjs` e
+   `scripts/translate-ui-catalog.mjs` per gli aggiornamenti.

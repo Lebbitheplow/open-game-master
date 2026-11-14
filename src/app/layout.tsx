@@ -1,4 +1,5 @@
 import { ThemeApplier } from "@/lib/theme-mode";
+import { UiLanguageApplier } from "@/lib/ui-language";
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import TopoBackground from "./TopoBackground";
@@ -81,6 +82,8 @@ export default function RootLayout({
         {/* The reader's theme and scale, applied to <html> before anything
             else paints (docs/vtt-parity-implementation-plan.md section 14). */}
         <ThemeApplier />
+        {/* The interface in the reader's language (docs/specs/ogm-italian-ui.md). */}
+        <UiLanguageApplier />
         {/* Dust motes first, so the contour canvas is drawn over them. */}
         <div className="ambient-dust" aria-hidden="true" />
         <TopoBackground />
