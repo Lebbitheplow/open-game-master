@@ -10,6 +10,9 @@ const SRC = new URL("../src/", import.meta.url);
 const load = (file) => import(new URL(file, SRC).href);
 const { focusProblem } = await load("lib/dm/cast-materials.ts");
 const { bundledSpellFacts } = await load("lib/srd/spell-facts.ts");
+const { classSpellGrants, offListProblems } = await load("lib/srd/class-spell-grants.ts");
+const { mysticArcanumTop } = await load("lib/srd/spell-prep.ts");
+const { marginaliaProblem } = await load("lib/srd/genre-gh-horror-spells.ts");
 
 const { test, finish } = suite("test-genre-gh-horror");
 const rig = await clausesRig();
@@ -56,6 +59,37 @@ await run("Hunted Instincts: an apostate rolls initiative with advantage while a
   const { on, off } = await rig.both(hero, row, async () => rig.initiative(hero));
   assert.match(on, /2d20/, `initiative ${on} with a cultist present`);
   assert.doesNotMatch(off, /2d20/, "advantage without the feature");
+});
+
+// ---- GH03: spells past the list and past the slots ----
+
+const offList = (grants, strays) => offListProblems({ grants, allowedBefore: grants.anyList, kept: 0, strays, list: "warlock", label: "level 10 occultist" });
+
+await test("Marginalia: a 10th-level occultist holds two rituals from any list on top of their spells known, and a non-ritual off the list is refused", () => {
+  const grants = classSpellGrants({ classId: "occultist", level: 10, features: [{ name: "Marginalia" }] });
+  assert.equal(grants.anyList, 2, "Marginalia's picks");
+  assert.equal(grants.extraSpells, 2, "the picks sit on top of the spells known");
+  assert.deepEqual(offList(grants, [{ name: "Detect Magic", cantrip: false, ritual: true }, { name: "Alarm", cantrip: false, ritual: true }]), []);
+  assert.equal(offList(grants, [{ name: "Fireball", cantrip: false, ritual: false }]).length, 1, "a non-ritual off the list was taken");
+  assert.equal(classSpellGrants({ classId: "occultist", level: 9 }).anyList, 0, "Marginalia before 10th level");
+});
+
+await test("Marginalia: a spell it brought is cast as a ritual only, and a warlock spell is cast as ever", () => {
+  const sheet = { name: "Inkwell", class: "occultist", classes: [], features: [{ name: "Marginalia" }] };
+  assert.match(marginaliaProblem(sheet, bundledSpellFacts("Detect Magic"), false) ?? "cast", /ritual only/);
+  assert.equal(marginaliaProblem(sheet, bundledSpellFacts("Detect Magic"), true), null);
+  assert.equal(marginaliaProblem(sheet, bundledSpellFacts("Hex"), false), null);
+});
+
+await test("Unified Theory: a 17th-level parapsychologist holds three spells from any list, cast as the class's own", () => {
+  const grants = classSpellGrants({ classId: "parapsychologist", level: 17, features: [{ name: "Unified Theory" }] });
+  assert.equal(grants.anyList, 3);
+  assert.deepEqual(offListProblems({ grants, allowedBefore: 3, kept: 0, strays: [{ name: "Bless", cantrip: false }, { name: "Cure Wounds", cantrip: false }, { name: "Hex", cantrip: false }], list: "wizard", label: "parapsychologist" }), []);
+  assert.equal(classSpellGrants({ classId: "parapsychologist", level: 16 }).anyList, 0);
+});
+
+await test("Apocrypha and Seventh Seal: an occultist's list reaches a 6th-level spell at 13th and a 7th-level one at 17th, and no further", () => {
+  assert.deepEqual([12, 13, 16, 17, 20].map((level) => mysticArcanumTop("occultist", level)), [0, 6, 6, 7, 7]);
 });
 
 rig.world.close();

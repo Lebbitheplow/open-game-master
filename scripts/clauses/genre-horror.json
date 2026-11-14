@@ -734,22 +734,15 @@
   "clauses": [
    {
     "c": "Learn two rituals from any spell list",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs the level-up offer of the builder for this class and level (the builder sweep's rig), not staged here",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Marginalia#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Marginalia: a 10th-level occultist holds two rituals from any list on top of their spells known, and a non-ritual off the list is refused",
+    "by": "src/lib/srd/genre-gh-horror-spells.ts horrorSpellGrants (two any-list picks on top, ritualsOnly), read by src/lib/srd/class-spell-grants.ts classSpellGrants and offListProblems (the builder, the level-up dialog and both routes)"
    },
    {
     "c": "cast them as rituals only",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs the level-up offer of the builder for this class and level (the builder sweep's rig), not staged here",
-    "same_probe_as": 0
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Marginalia: a spell it brought is cast as a ritual only, and a warlock spell is cast as ever",
+    "by": "src/lib/srd/genre-gh-horror-spells.ts marginaliaProblem, asked by src/lib/dm/cast-guard.ts"
    }
   ]
  },
@@ -793,9 +786,9 @@
   "clauses": [
    {
     "c": "Learn one 6th-level warlock spell",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the hook probe passes only on the horror_apocrypha counter; learning the spell is a builder or level-up pick, and no pick of a 6th-level warlock spell for a genre class was staged"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Apocrypha and Seventh Seal: an occultist's list reaches a 6th-level spell at 13th and a 7th-level one at 17th, and no further",
+    "by": "src/lib/srd/genre-gh-horror-spells.ts horrorArcanumTop, read by src/lib/srd/spell-prep.ts mysticArcanumTop (the builder's preview, levelUpSpells and spellListProblems)"
    },
    {
     "c": "1/long rest",
@@ -866,9 +859,9 @@
   "clauses": [
    {
     "c": "Learn one 7th-level warlock spell",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the hook probe passes only on the horror_seventh_seal counter; learning the spell is a builder or level-up pick, and no pick of a 7th-level warlock spell for a genre class was staged"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Apocrypha and Seventh Seal: an occultist's list reaches a 6th-level spell at 13th and a 7th-level one at 17th, and no further",
+    "by": "src/lib/srd/genre-gh-horror-spells.ts horrorArcanumTop, read by src/lib/srd/spell-prep.ts mysticArcanumTop"
    },
    {
     "c": "1/long rest",
@@ -2435,22 +2428,15 @@
   "clauses": [
    {
     "c": "Learn three spells from any spell list",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs the level-up offer of the builder for this class and level (the builder sweep's rig), not staged here",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap parapsychologist::Unified Theory#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Unified Theory: a 17th-level parapsychologist holds three spells from any list, cast as the class's own",
+    "by": "src/lib/srd/genre-gh-horror-spells.ts horrorSpellGrants (three any-list picks on top), read by src/lib/srd/class-spell-grants.ts classSpellGrants; the picks sit in the class's own spells, cast with its ability and slots"
    },
    {
     "c": "they count as wizard-list apparatus effects for you",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "needs the level-up offer of the builder for this class and level (the builder sweep's rig), not staged here",
-    "same_probe_as": 0
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Unified Theory: a 17th-level parapsychologist holds three spells from any list, cast as the class's own",
+    "by": "src/lib/srd/genre-gh-horror-spells.ts horrorSpellGrants (three any-list picks on top), read by src/lib/srd/class-spell-grants.ts classSpellGrants; the picks sit in the class's own spells, cast with its ability and slots"
    }
   ]
  },

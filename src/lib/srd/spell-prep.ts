@@ -17,6 +17,7 @@ import {
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { isNamed } from "@/lib/srd/feature-names";
+import { horrorArcanumTop } from "@/lib/srd/genre-gh-horror-spells";
 import { classSpellGrants } from "@/lib/srd/class-spell-grants";
 
 // How a caster's spell list works, and the 5e (SRD 5.1) timing for changing
@@ -462,7 +463,8 @@ export function cantripCapOf(
 export function mysticArcanumTop(classId: string, level: number): number {
   const held = textKey(classId) === "warlock" || classFeaturesFor(classId, "", 20).some((feature) => isNamed(feature.name, "Mystic Arcanum"));
   if (!held) {
-    return 0;
+    // The occultist's Apocrypha and Seventh Seal (genre-gh-horror-spells.ts).
+    return horrorArcanumTop(classId, level, classFeaturesFor(classId, "", 20));
   }
   return level >= 17 ? 9 : level >= 15 ? 8 : level >= 13 ? 7 : level >= 11 ? 6 : 0;
 }

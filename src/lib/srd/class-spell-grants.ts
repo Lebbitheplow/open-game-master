@@ -27,6 +27,7 @@ import { chosenOptions } from "@/lib/srd/options";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { subclassNamedBare } from "@/lib/srd/subclass-name";
 import { textKey } from "@/lib/language/text-logic";
+import { horrorSpellGrants } from "@/lib/srd/genre-gh-horror-spells";
 
 export type ClassSpellGrants = {
   // Spells (or cantrips) this caster may take from any class's list.
@@ -49,6 +50,9 @@ export type ClassSpellGrants = {
   // brings Magical Secrets, not Additional Magical Secrets again). `onTop`:
   // held on top of the class's count rather than inside it.
   sources: Array<{ feature: string; count: number; onTop: boolean }>;
+  // The any-list picks must be rituals (Marginalia: "Learn two rituals from
+  // any spell list"); offListProblems refuses another.
+  ritualsOnly?: boolean;
 };
 
 const NONE: ClassSpellGrants = {
@@ -77,6 +81,11 @@ function magicalSecrets(level: number): number {
 export function classSpellGrants(view: GrantView): ClassSpellGrants {
   const classId = textKey(view.classId);
   const features = [...(view.features ?? [])];
+  // Marginalia and Unified Theory (src/lib/srd/genre-gh-horror-spells.ts).
+  const horror = horrorSpellGrants(view, NONE);
+  if (horror) {
+    return horror;
+  }
   if (classId === "bard") {
     const secrets = magicalSecrets(view.level);
     // The College of Lore's two, or a workshop subclass that borrowed the
@@ -183,7 +192,8 @@ export function offListProblems(input: {
   // The features' number before this change (the same number at creation).
   allowedBefore: number;
   kept: number;
-  strays: Array<{ name: string; cantrip: boolean }>;
+  // `ritual`: the pick is a ritual, read where the grant takes rituals only.
+  strays: Array<{ name: string; cantrip: boolean; ritual?: boolean }>;
   list: string;
   label: string;
 }): string[] {
@@ -192,8 +202,10 @@ export function offListProblems(input: {
     stray.cantrip
       ? `${stray.name} is not a ${input.list} cantrip, so a ${input.label} cannot learn it`
       : `${stray.name} is not on the ${input.list} spell list, so a ${input.label} cannot learn or prepare it`;
-  const takes = (stray: { cantrip: boolean }) => grants.anyList > 0 && (stray.cantrip || grants.anyListSpells);
-  const problems = input.strays.filter((stray) => !takes(stray)).map((stray) => `${offList(stray)}.`);
+  const takes = (stray: { cantrip: boolean; ritual?: boolean }) => grants.anyList > 0 && (stray.cantrip || grants.anyListSpells) && (!grants.ritualsOnly || stray.ritual === true);
+  const problems = input.strays
+    .filter((stray) => !takes(stray))
+    .map((stray) => (grants.ritualsOnly && grants.anyList > 0 && !stray.cantrip ? `${offList(stray)}: ${grants.feature} takes rituals only, and it is not one.` : `${offList(stray)}.`));
   const taken = input.strays.filter(takes);
   const used = Math.min(input.allowedBefore, input.kept);
   if (taken.length && used + taken.length > grants.anyList) {

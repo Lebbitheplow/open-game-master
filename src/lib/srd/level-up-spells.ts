@@ -206,7 +206,7 @@ export function levelUpSpells(input: SpellLevelUp): SpellLevelUpResult {
   // (spell-prep.ts spellOnCasterList), a workshop class's own list included.
   const onList = (spell: SpellFacts) => spellOnCasterList(after, spell);
   const grants = classSpellGrants(after);
-  const strays: Array<{ name: string; cantrip: boolean }> = [];
+  const strays: Array<{ name: string; cantrip: boolean; ritual?: boolean }> = [];
   for (const name of newCantrips) {
     const spell = input.spellOf(name);
     if (!spell) {
@@ -234,7 +234,7 @@ export function levelUpSpells(input: SpellLevelUp): SpellLevelUpResult {
       if (!grants.anyListSpells) {
         return { error: `${spell.name} is not on the ${listName} spell list, so a ${label} cannot learn or prepare it.` };
       }
-      strays.push({ name: spell.name, cantrip: false });
+      strays.push({ name: spell.name, cantrip: false, ritual: Boolean(spell.ritual) });
     }
     if (spell.level > top) {
       return {
