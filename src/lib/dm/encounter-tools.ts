@@ -1,4 +1,5 @@
 import { dominationOrderOf, otherSide } from "@/lib/dm/combat-sides-logic";
+import { layStandingWards } from "@/lib/dm/genre-gh-wards";
 import { hiddenNow } from "@/lib/dm/board-hidden";
 import { cannotBeSurprised } from "@/lib/dm/surprise-guard";
 import { resolveCombatant, sheetsOnSide, sideOf, standingOn } from "@/lib/dm/combatant";
@@ -499,6 +500,8 @@ function handleStartEncounter(
     endEncounter(encounter.id, "the board could not be set");
     throw error;
   }
+  // A fight where a horror ward still holds is fought in it (genre-gh-wards.ts).
+  layStandingWards(campaign.id);
   // The characters named as foes take their side now the board exists.
   const against = foes.length ? fieldSheetFoes(campaign, foes) : [];
   // A mercenary wary of the party asks its share first (party-conduct.ts).

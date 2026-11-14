@@ -58,6 +58,7 @@ import { handlePcAttack } from "@/lib/dm/pc-attack";
 import { allyOf, noHit, settle, SPENT, spendReaction, type Ctx } from "@/lib/dm/reaction-tools";
 import { unseenRefusal, withinFeet } from "@/lib/dm/authored-saves";
 import { reactionMove, resolveMoreReaction } from "@/lib/dm/authored-reactions-more";
+import { lastOneOut } from "@/lib/dm/genre-gh-last-one-out";
 import { bodyguardExtras } from "@/lib/dm/genre-b-mystery-enforcer";
 import { projectWard } from "@/lib/dm/arcane-ward";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -1172,7 +1173,8 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if (!swing.hit) return landTurnedMiss(ctx, encounter, hit, target, reaction.name, label);
       const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, hit: false, raw: 0 } : entry)), label);
       // The attack now targets that creature: its roll meets their AC.
-      const meets = blowLandsOn(ctx.campaign.id, target, swing);
+      const swingerId = hit.record.attacker.kind === "enemy" ? hit.record.attacker.id : null;
+      const meets = blowLandsOn(ctx.campaign.id, target, swing, swingerId ? getEnemy(swingerId) : null);
       if (!meets.lands || swing.raw < 1) {
         publishEncounter(ctx.campaign.id);
         return { applied: `The attack turns onto ${target.name} and misses (${swing.total} against AC ${meets.ac}): ${settled.given} hit points come back to ${covered.name}.` };
@@ -1275,5 +1277,8 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
     case "move":
     case "redirect_miss":
       return resolveMoreReaction(ctx, reaction);
+    // Last One Out (src/lib/dm/genre-gh-last-one-out.ts).
+    case "surge_follow":
+      return lastOneOut(ctx, found.holder, reaction.name, does.rangeFt);
   }
 }

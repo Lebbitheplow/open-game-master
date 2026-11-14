@@ -18,6 +18,13 @@ const row = (feature: string, classes: string[], entry: Omit<AuthoredEntry, "sub
 const played = (classId: string, feature: string, counter: string, action: SpendAction, play: string, aim?: "enemy" | "ally", more: Omit<AuthoredEntry, "subclass" | "counter" | "spends"> = {}): GenreRow =>
   row(feature, [classId], { counter, ...more, spends: [{ name: feature, pool: { id: counter }, action, does: { kind: "horror_spend", play, ...(aim ? { aim } : {}) } }] });
 
+// A ward set out of a fight; `counter`: its uses (Grounding Rig's one a long rest).
+const ward = (classId: string, feature: string, play: string, why: string, counter?: string): GenreRow =>
+  row(feature, [classId], {
+    ...(counter ? { counter } : {}),
+    spends: [{ name: feature, ...(counter ? { pool: { id: counter } } : {}), action: "none", fight: "out", outOfFightWhy: why, does: { kind: "horror_spend", play } }],
+  });
+
 export const GENRE_GH_AUTHORED: GenreRow[] = [
   // "1/rest, when an ally fails an INT, WIS, or CHA save within 30 ft, let
   // them reroll with your guidance": no action is named, so it costs none.
@@ -44,5 +51,24 @@ export const GENRE_GH_AUTHORED: GenreRow[] = [
   // "1/long rest, for 1 minute your stigmata cost no verbal or somatic
   // components and cannot be counterspelled" (src/lib/dm/genre-gh-proof.ts).
   row("The Rite Completed", ["apostate"], { counter: "horror_the_rite_completed", spends: [{ name: "The Rite Completed", pool: { id: "horror_the_rite_completed" }, action: "none", does: { kind: "buff", condition: "the rite completed", rounds: 10 } }] }),
+  // The wards (src/lib/dm/genre-gh-wards.ts): minutes of work, so never in a
+  // fight; the area holds at the place it was set for the hours given.
+  ward("exorcist", "Sanctified Ground", "sanctified_ground", "is ten minutes of ritual (one with Wax and Wick), never made in the middle of a fight"),
+  ward("occultist", "Warding Sigil", "warding_sigil", "is a minute of chalk-work, never made in the middle of a fight"),
+  ward("parapsychologist", "Grounding Rig", "grounding_rig", "is a ten-minute setup, never made in the middle of a fight", "horror_grounding_rig"),
+  // "Craft stakes, salt lines, and wardings during a rest; a warding gives one
+  // ally +2 AC against one monster type for a night" (the whole party with
+  // Stake and Salt): src/lib/dm/genre-gh-wards.ts huntersKit.
+  row("Hunter's Kit", ["slayer"], { spends: [{ name: "Hunter's Kit", aliases: ["Warding"], action: "none", fight: "out", outOfFightWhy: "is crafted during a rest, never in the middle of a fight", does: { kind: "horror_spend", play: "hunters_kit", aim: "ally" } }] }),
+  // "After 1 minute of measurement, grant the party advantage on the next
+  // save any of them makes against a haunting or psychic effect".
+  row("Baseline Readings", ["parapsychologist"], { spends: [{ name: "Baseline Readings", action: "none", fight: "out", outOfFightWhy: "is a minute of measurement, never taken in the middle of a fight", does: { kind: "horror_spend", play: "baseline_readings" } }] }),
+  // "Knowing a creature's true or use-name gives you advantage on your first
+  // spell attack or its first save against you each combat": the spend
+  // records the name known (src/lib/dm/genre-gh-names.ts).
+  row("Whispered Names", ["occultist"], { spends: [{ name: "Whispered Names", action: "none", does: { kind: "horror_spend", play: "whispered_names", aim: "enemy" } }] }),
+  // "Allies within 10 ft may use your Adrenaline Surge movement options as a
+  // reaction when you do, 1/rest each": an ally's reaction, the survivor's use.
+  row("Last One Out", ["survivor"], { counter: "horror_last_one_out", reactions: [{ name: "Last One Out", usedBy: "party", pool: { id: "horror_last_one_out" }, does: { kind: "surge_follow", rangeFt: 10 } }] }),
   played("occultist", "Stitch the Tear", "horror_stitch_the_tear", "action", "stitch_the_tear", "enemy"),
 ];

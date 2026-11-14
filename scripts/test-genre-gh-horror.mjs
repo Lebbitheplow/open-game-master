@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { dice, clearDice } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { clausesRig } from "./lib/sweep-clauses-genre-b-probes.mjs";
+import { afterRollKit } from "./lib/sweep-clauses-mt-mr.mjs";
 
 const SRC = new URL("../src/", import.meta.url);
 const load = (file) => import(new URL(file, SRC).href);
@@ -179,6 +180,253 @@ await run("The Rite Completed: for a minute no enemy's Counterspell is tried on 
   const sheet = world.sheet(hero.id);
   assert.ok(sheet.conditions.includes("the rite completed"), `conditions ${sheet.conditions}`);
   assert.equal(enemyCounterspell(world.campaign().id, null, { id: "none" }, sheet, "Hold Person", 2), null);
+});
+
+// ---- GH07: the wards ----
+
+const { getClock } = await load("lib/db/clock.ts");
+const { getCampaignById } = await load("lib/db/campaigns.ts");
+const { getBattleMapForEncounter, listTokens } = await load("lib/db/battle-maps.ts");
+const { layStandingWards } = await load("lib/dm/genre-gh-wards.ts");
+const { liveZones, saveZones } = await load("lib/dm/zone-store.ts");
+const { zonesAfterMove } = await load("lib/dm/zone-triggers.ts");
+const { horrorTeleportRefusal } = await load("lib/dm/genre-a-horror-wards.ts");
+const { withEdges, BARRED } = await load("lib/battlemap/zones-movers.ts");
+const { tileIndex } = await load("lib/battlemap/types.ts");
+
+const minute = () => getClock(world.campaignId).instant;
+const boardMap = () => getBattleMapForEncounter(world.encounter().id);
+const zones = () => liveZones(boardMap(), world.encounter());
+const lost = (enemy) => 300 - kit.enemy(enemy.id).currentHp;
+const typed = (enemy, type) => kit.setEnemy(enemy.id, { stats: { ...kit.enemy(enemy.id).stats, type } });
+const withFeature = (hero, name) => world.patch(hero.id, { features: [...world.sheet(hero.id).features, { ...world.sheet(hero.id).features[0], name }] });
+// The ward set out of a fight, the minutes it took on the clock.
+async function setWard(hero, name) {
+  await kit.endFight();
+  const before = minute();
+  rig.must(await spend(hero, name), name);
+  return minute() - before;
+}
+// The fight begun at the ward's place, its board's areas laid again where
+// the setter now stands (the fight's opening placed everyone at random).
+async function fightInWard(hero) {
+  // kit.fight, not rig.fight: rig.fight clears every condition first.
+  await kit.fight(2, { heroFaces: { [hero.id]: 19, [rig.ally.id]: 3 } });
+  const [near, far] = world.enemies();
+  for (const enemy of [near, far]) kit.setEnemy(enemy.id, { maxHp: 300, currentHp: 300 });
+  assert.ok(zones().length, "the fight's board holds no ward");
+  saveZones(boardMap().id, []);
+  kit.place(hero.id, 5, 2);
+  kit.place(rig.ally.id, 5, 3);
+  kit.place(near.id, 6, 2);
+  kit.place(far.id, 18, 2);
+  rig.myTurn(hero);
+  return { near: kit.enemy(near.id), far: kit.enemy(far.id) };
+}
+const lay = () => layStandingWards(world.campaignId);
+function walk(enemy, from, path) {
+  kit.place(enemy.id, from.x, from.y);
+  return zonesAfterMove(getCampaignById(world.campaignId), world.encounter().id, { kind: "enemy", refId: enemy.id }, from, path);
+}
+
+await run("Sanctified Ground: ten minutes of ritual (one with Wax and Wick), refused in a fight; a fight begun there holds it, and a hostile spirit walking in is seen and takes 1d8 radiant while a humanoid takes nothing", async () => {
+  const hero = rig.holder(feature("exorcist", "Sanctified Ground", 5));
+  world.patch(hero.id, { features: world.sheet(hero.id).features.filter((entry) => entry.name !== "Wax and Wick") });
+  assert.equal(await setWard(hero, "Sanctified Ground"), 10, "the ritual's minutes");
+  assert.ok(world.sheet(hero.id).conditions.includes("sanctified ground"), "the ward holds nowhere");
+  const { near, far } = await fightInWard(hero);
+  assert.ok((await spend(hero, "Sanctified Ground")).error, "a ten-minute ritual made in a fight");
+  lay();
+  typed(far, "undead");
+  kit.setEnemy(far.id, { conditions: ["invisible"] });
+  clearDice();
+  dice(5);
+  walk(far, { x: 10, y: 2 }, [{ x: 9, y: 2 }, { x: 8, y: 2 }, { x: 7, y: 2 }]);
+  clearDice();
+  assert.equal(lost(far), 5, `the spirit entering lost ${lost(far)}`);
+  assert.deepEqual(kit.enemy(far.id).conditions, [], "the spirit is still unseen inside");
+  typed(near, "humanoid");
+  dice(5);
+  walk(near, { x: 10, y: 4 }, [{ x: 9, y: 4 }, { x: 8, y: 4 }, { x: 7, y: 4 }]);
+  clearDice();
+  assert.equal(lost(near), 0, "a humanoid walking in was burned");
+  rig.must(await world.invoke("end_encounter", { outcome: "truce" }), "end_encounter");
+  assert.ok(world.sheet(hero.id).conditions.includes("sanctified ground"), "the eight-hour ward ended with the fight");
+  withFeature(hero, "Wax and Wick");
+  assert.equal(await setWard(hero, "Sanctified Ground"), 1, "Wax and Wick's minute");
+});
+
+await run("Warding Sigil: a minute's chalk-work; the first hostile creature crossing makes an INT save or takes 2d6 psychic, half on a success, and the sigil is spent; Rite of the Threshold covers 15 feet an ethereal creature cannot cross", async () => {
+  const hero = rig.holder(feature("occultist", "Warding Sigil", 9));
+  world.patch(hero.id, { features: world.sheet(hero.id).features.filter((entry) => entry.name !== "Rite of the Threshold") });
+  assert.equal(await setWard(hero, "Warding Sigil"), 1, "the chalk-work's minutes");
+  const { near, far } = await fightInWard(hero);
+  kit.place(near.id, 12, 2);
+  kit.place(far.id, 9, 2);
+  lay();
+  const [sigil] = zones();
+  assert.deepEqual([sigil?.cells.length, sigil?.origin.x], [1, 6], "the sigil is not the square beside the occultist toward the foe");
+  clearDice();
+  dice(2, 4, 4);
+  walk(far, { x: 9, y: 2 }, [{ x: 8, y: 2 }, { x: 7, y: 2 }, { x: 6, y: 2 }]);
+  clearDice();
+  assert.equal(lost(far), 8, `the first across lost ${lost(far)}`);
+  assert.equal(zones().length, 0, "the sigil outlasted its first");
+  withFeature(hero, "Rite of the Threshold");
+  lay();
+  const [threshold] = zones();
+  assert.ok(threshold && threshold.cells.length > 9, "Rite of the Threshold's sigil covers no radius");
+  const inside = tileIndex(boardMap().width, 5, 2);
+  const outside = tileIndex(boardMap().width, 15, 2);
+  assert.equal(withEdges(null, zones(), { conditions: ["ethereal"] })(inside, outside, 5), BARRED, "an ethereal creature crossed the sigil");
+  assert.equal(withEdges(null, zones(), { conditions: [] })?.(inside, outside, 5) ?? 5, 5, "a creature on foot was barred");
+});
+
+await run("Grounding Rig: a ten-minute setup, one a long rest; a fight there lays 20 feet nothing teleports into or out of, and an ethereal creature cannot cross", async () => {
+  const hero = rig.holder(feature("parapsychologist", "Grounding Rig", 11));
+  assert.equal(await setWard(hero, "Grounding Rig"), 10, "the setup's minutes");
+  assert.equal(used(hero, "horror_grounding_rig"), 1);
+  const { far } = await fightInWard(hero);
+  lay();
+  const map = boardMap();
+  const token = listTokens(map.id).find((entry) => entry.refId === far.id);
+  assert.match(horrorTeleportRefusal(world.campaignId, map, token, { x: 6, y: 3 }, undefined)?.error ?? "allowed", /cannot teleport into/);
+  assert.equal(horrorTeleportRefusal(world.campaignId, map, token, { x: 17, y: 4 }, undefined), null, "a jump far from the rig was refused");
+  const inside = tileIndex(map.width, 5, 2);
+  assert.equal(withEdges(null, zones(), { conditions: ["ethereal"] })(inside, tileIndex(map.width, 15, 2), 5), BARRED, "a phasing creature crossed the rig");
+});
+
+// ---- GH08: Hunter's Kit wardings ----
+
+const { acWithEffects } = await load("lib/dm/ac-effects.ts");
+
+await run("Hunter's Kit: a warding made out of a fight gives the ally +2 AC against the monster type named for the night, not against another type; with Stake and Salt it covers the whole party", async () => {
+  const hero = rig.holder(feature("slayer", "Hunter's Kit", 2));
+  await kit.endFight();
+  assert.ok((await spend(hero, "Hunter's Kit", { targetCharacterId: rig.ally.id })).error, "a warding against no type");
+  rig.must(await spend(hero, "Hunter's Kit", { targetCharacterId: rig.ally.id, variant: "undead" }), "Hunter's Kit");
+  assert.ok(world.sheet(rig.ally.id).conditions.includes("warded (undead)"), `conditions ${world.sheet(rig.ally.id).conditions}`);
+  assert.deepEqual(world.sheet(hero.id).conditions, [], "the slayer warded themself too");
+  await kit.fight(2);
+  const [near, far] = world.enemies();
+  typed(near, "undead");
+  typed(far, "humanoid (goblinoid)");
+  const ac = (enemy) => acWithEffects(world.campaignId, world.sheet(rig.ally.id), kit.enemy(enemy.id));
+  assert.equal(ac(near) - ac(far), 2, `AC ${ac(near)} against the undead, ${ac(far)} against the goblin`);
+  assert.ok((await spend(hero, "Hunter's Kit", { variant: "undead" })).error, "a warding crafted in a fight");
+  await kit.endFight();
+  withFeature(hero, "Stake and Salt");
+  rig.must(await spend(hero, "Hunter's Kit", { variant: "fiend" }), "Hunter's Kit with Stake and Salt");
+  for (const who of [hero, rig.ally]) assert.ok(world.sheet(who.id).conditions.includes("warded (fiend)"), `${who.name} is not warded`);
+});
+
+// ---- GH09: Extinction's reroll ----
+
+await run("Extinction: once on each of the slayer's turns a missed attack on their Quarry is rolled again and the new roll stands; a second miss that turn, or a miss on another creature, is not offered it", async () => {
+  const hero = rig.holder(feature("slayer", "Extinction", 20));
+  const card = await afterRollKit(world);
+  const { near, far } = await rig.fight(hero);
+  rig.must(await spend(hero, "Quarry", { targetEnemyId: near.id }), "Quarry");
+  kit.place(far.id, 5, 1);
+  const miss = async (enemy) => {
+    const out = await kit.swing(hero.id, enemy.id, [2, 3, 3, 3, 3]);
+    assert.ok(!out.error, `pc_attack: ${out.error}`);
+  };
+  await miss(near);
+  assert.ok(card.offered().includes("extinction"), `offered ${card.offered()} on a missed Quarry`);
+  const again = await card.choose(hero, "extinction", 19, 3, 3, 3, 3);
+  assert.match(again.note, /HIT/, `the reroll (a 19) stands: ${again.note}`);
+  await card.keepAll(hero);
+  await miss(near);
+  assert.ok(!card.offered().includes("extinction"), "a second reroll the same turn");
+  await card.keepAll(hero);
+  rig.myTurn(hero);
+  await miss(far);
+  assert.ok(!card.offered().includes("extinction"), "a reroll on a creature that is not the Quarry");
+  await card.keepAll(hero);
+});
+
+// ---- GH10: Improved Quarry's free mark ----
+
+await run("Improved Quarry: marking the creature that harmed an ally this round costs no bonus action; marking one that harmed nobody still does", async () => {
+  const hero = rig.holder(feature("slayer", "Improved Quarry", 11));
+  const { near, far } = await rig.fight(hero);
+  await rig.clubbed(near, rig.ally, 16);
+  assert.ok(world.sheet(rig.ally.id).currentHp < 100, "the club did not land on the ally");
+  kit.giveTurn(hero.id);
+  rig.must(await spend(hero, "Quarry", { targetEnemyId: near.id }), "Quarry on the creature that hurt the ally");
+  assert.notEqual(rig.budget().bonusUsed, true, "the free mark cost a bonus action");
+  rig.must(await spend(hero, "Quarry", { targetEnemyId: far.id }), "Quarry on a creature that hurt nobody");
+  assert.equal(rig.budget().bonusUsed, true, "the mark on a creature that harmed nobody cost nothing");
+});
+
+// ---- GH11: Baseline Readings ----
+
+await run("Baseline Readings: a minute's measurement out of a fight gives the party advantage on the next psychic or haunting save, which one ally's save spends for all; a fire save keeps it", async () => {
+  const hero = rig.holder(feature("parapsychologist", "Baseline Readings", 5));
+  await kit.endFight();
+  const before = minute();
+  rig.must(await spend(hero, "Baseline Readings"), "Baseline Readings");
+  assert.equal(minute() - before, 1, "the measurement's minute");
+  for (const who of [hero, rig.ally]) assert.ok(world.sheet(who.id).conditions.includes("baseline readings"), `${who.name} holds no reading`);
+  const save = (who, against) => rig.d20sOf(who, { kind: "saving_throw", ability: "wis", against });
+  assert.equal(await save(rig.ally, "fire"), 1, "a fire save took the advantage");
+  assert.ok(world.sheet(rig.ally.id).conditions.includes("baseline readings"), "a fire save spent the reading");
+  assert.equal(await save(rig.ally, "psychic"), 2, "the psychic save had no advantage");
+  for (const who of [hero, rig.ally]) assert.ok(!world.sheet(who.id).conditions.includes("baseline readings"), `${who.name} still holds the spent reading`);
+  assert.equal(await save(hero, "psychic"), 1, "a second psychic save had advantage");
+  await kit.fight(1);
+  assert.ok((await spend(hero, "Baseline Readings")).error, "a minute's measurement in a fight");
+});
+
+// ---- GH12: Whispered Names ----
+
+const { rollEnemySave } = await load("lib/dm/forced-save.ts");
+const { diceLog } = await import("./lib/enforce-world.mjs");
+
+await run("Whispered Names: a creature whose name the occultist knows makes its first save against them each fight at disadvantage, the next at none, and another creature at none; the first spell attack on a named creature has advantage", async () => {
+  const hero = rig.holder(feature("occultist", "Whispered Names", 5));
+  const { near, far } = await rig.fight(hero);
+  assert.ok((await spend(hero, "Whispered Names")).error, "a name known of no creature");
+  rig.must(await spend(hero, "Whispered Names", { targetEnemyId: near.id }), "Whispered Names");
+  const d20s = (enemy) => {
+    clearDice();
+    diceLog();
+    rollEnemySave(world.campaignId, kit.enemy(enemy.id), "wis", 15, { origin: { ref: hero.id } });
+    return diceLog().filter((die) => die.sides === 20).length;
+  };
+  assert.equal(d20s(far), 1, "a creature whose name is unknown saved at disadvantage");
+  assert.equal(d20s(near), 2, "the named creature's first save was not at disadvantage");
+  assert.equal(d20s(near), 1, "the second save this fight was at disadvantage too");
+  await kit.endFight();
+  world.patch(hero.id, { spellcasting: { ability: "cha", slots: { 1: { max: 2, used: 0 } }, prepared: [], known: [], cantrips: ["Eldritch Blast"] } });
+  const again = await rig.fight(hero);
+  rig.must(await spend(hero, "Whispered Names", { targetEnemyId: again.near.id }), "Whispered Names");
+  const named = async () => {
+    const out = await kit.swing(hero.id, again.near.id, [15, 15, 3, 3, 3, 3], { spell: "Eldritch Blast" });
+    assert.ok(!out.error, `the spell attack: ${out.error}`);
+    return (out.result?.conditionEffects ?? []).some((note) => /Whispered Names: advantage/.test(note));
+  };
+  assert.equal(await named(), true, "the first spell attack on the named creature had no advantage");
+  rig.myTurn(hero);
+  assert.equal(await named(), false, "the second spell attack this fight had advantage too");
+});
+
+// ---- GH13: Last One Out ----
+
+await run("Last One Out: when the survivor Dashes with Adrenaline Surge, an ally within 10 feet moves their speed as a reaction without drawing opportunity attacks, the survivor's use spent; before the surge, or from farther off, it is refused", async () => {
+  const hero = rig.holder(feature("survivor", "Last One Out", 13));
+  await rig.fight(hero);
+  const follow = (x, y) => world.invoke("use_reaction", { characterId: rig.ally.id, feature: "Last One Out", x, y, reason: "probe" });
+  assert.ok((await follow(5, 8)).error, "followed a surge never made");
+  rig.must(await world.invoke("take_action", { characterId: hero.id, action: "dash", bonus: true, reason: "probe" }), "Adrenaline Surge Dash");
+  kit.place(rig.ally.id, 5, 6);
+  assert.ok((await follow(5, 9)).error, "followed from 20 feet off");
+  kit.place(rig.ally.id, 5, 3);
+  rig.must(await follow(5, 8), "Last One Out");
+  const at = listTokens(boardMap().id).find((entry) => entry.refId === rig.ally.id);
+  assert.deepEqual([at.x, at.y], [5, 8], "the ally did not move");
+  assert.equal(used(hero, "horror_last_one_out"), 1, "the survivor's use was not spent");
 });
 
 rig.world.close();

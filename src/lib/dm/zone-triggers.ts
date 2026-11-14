@@ -187,6 +187,7 @@ function strike(
       }
     }
     zone.dealt = (zone.dealt ?? 0) + dealt;
+    lines.push(...afterStrike(row, trigger, zone, enemy));
     const standing = getEnemy(enemy.id);
     if (failed && standing?.status === "alive" && zoneStands(map, zone)) {
       lines.push(...afterFailOnEnemy(map, zone, trigger, standing));
@@ -250,6 +251,7 @@ function strike(
         lines.push(`${sheet.name} takes ${amount} ${trigger.type ?? ""} damage from ${why}.`.replace("  ", " "));
       }
     }
+    lines.push(...afterStrike(row, trigger, zone, null));
     const standing = getSheetById(sheet.id);
     if (failed && standing && !standing.deathSaves?.dead && zoneStands(map, zone)) {
       lines.push(...afterFailOnCharacter(campaign, turn, map, zone, trigger, standing));
@@ -267,6 +269,22 @@ function strike(
     }
     return lines;
   });
+}
+
+// What striking a creature does to the area and to the creature whatever
+// the save: a sigil spent by its first (its budget used up, settle() clears
+// it), a spirit seen as it comes in.
+function afterStrike(row: ZoneRow, trigger: ZoneTrigger, zone: SpellZone, enemy: EncounterEnemy | null): string[] {
+  if (trigger.firstOnly) {
+    zone.dealt = Math.max(zone.dealt ?? 0, row.budget ?? 1);
+  }
+  const now = enemy && trigger.reveals ? getEnemy(enemy.id) : null;
+  const shown = now ? now.conditions.filter((entry) => trigger.reveals!.some((name) => textKey(entry) === name)) : [];
+  if (!now || !shown.length) {
+    return [];
+  }
+  patchEnemyConditions(now.id, now.conditions.filter((entry) => !shown.includes(entry)), now.conditionMeta);
+  return [`${now.displayName} is seen as it enters ${zone.spell}.`];
 }
 
 // "Creatures that ... are immune to poison automatically succeed on this

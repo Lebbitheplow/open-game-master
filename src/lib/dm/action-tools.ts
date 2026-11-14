@@ -3,6 +3,7 @@ import { z } from "zod";
 import { normalizeAbility } from "@/lib/dm/arg-coerce";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
+import { markSurge } from "@/lib/dm/genre-gh-last-one-out";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { publishPersisted } from "@/lib/events";
@@ -454,6 +455,11 @@ export function handleTakeAction(
           publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
         }
         costs.uses = `1 use (${price.counter.feature})`;
+        // Adrenaline Surge's Dash or Disengage opens Last One Out to the
+        // survivor's allies (genre-gh-last-one-out.ts).
+        if (price.counter.feature === "Adrenaline Surge") {
+          markSurge(campaign.id, args.action);
+        }
       }
     }
     if (price.note) {

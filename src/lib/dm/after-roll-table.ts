@@ -384,6 +384,21 @@ export const AFTER_ROLL_ROWS = [
     note: "Once on each of your turns: roll this missed monk-weapon attack again, and the new roll stands.",
   },
   {
+    // Extinction (slayer 20): "1/turn against your Quarry, reroll a missed
+    // attack", once on each of the slayer's turns (mt-mr-offers-logic.ts).
+    id: "extinction",
+    feature: "Extinction",
+    cost: "own",
+    reaction: false,
+    kinds: ["attack"],
+    whose: "own",
+    effect: "own",
+    module: "mt-mr-offers-logic.ts",
+    when: "short",
+    label: "Extinction: roll it again",
+    note: "Once on each of your turns: roll this missed attack on your Quarry again, and the new roll stands.",
+  },
+  {
     // Homing Strikes (Soulknife 9): a Psionic Energy die added to a missed
     // Psychic Blades attack, spent only if it makes the hit. {amount}: the die.
     id: "homing_strikes",

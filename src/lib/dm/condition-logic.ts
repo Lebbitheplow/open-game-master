@@ -117,6 +117,11 @@ export type ConditionMeta = {
   // world clock between fights (foe-carry-logic.ts, issue #667). Not a count
   // of rounds, which the fight would tick away and the tracker would show.
   wakeAfterHours?: number;
+  // The location a ward was set at (src/lib/dm/genre-gh-wards.ts).
+  place?: string;
+  // A once-a-turn or once-a-fight use spent: the turn or the fight it went in
+  // (Emboldening Bond's die, Whispered Names: src/lib/dm/genre-gh-names.ts).
+  usedTurn?: string;
   // The temporary hit points this effect granted, which go when it ends
   // (False Life, Heroism): src/lib/db/sheets.ts patchSheet.
   tempHp?: number;

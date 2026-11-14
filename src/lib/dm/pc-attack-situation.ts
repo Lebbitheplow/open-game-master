@@ -6,6 +6,7 @@
 // nothing is written and nothing is refused.
 
 import { attackRollExtras } from "@/lib/dm/attack-roll-extras";
+import { whisperedNameHolds } from "@/lib/dm/genre-gh-names";
 import { bondRider } from "@/lib/dm/emboldening-bond";
 import { liftsSmallHeavyPenalty, shootsFreelyInMelee } from "@/lib/srd/feat-combat";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -322,6 +323,12 @@ export function attackSituation(input: {
   if (underwater?.note) {
     conditionContext.notes.push(underwater.note);
   }
+  // Whispered Names: the occultist's first spell attack this fight on a
+  // creature whose name they know (genre-gh-names.ts).
+  const whispered = kind === "spell" && whisperedNameHolds(encounter, sheet, enemy);
+  if (whispered) {
+    conditionContext.notes.push("Whispered Names: advantage, knowing its name");
+  }
   // Every source, kept for the plan's last ones (a feint, Powerful
   // Attacker): advantage and disadvantage cancel once over them all.
   const sources: Advantage[] = [
@@ -337,6 +344,7 @@ export function attackSituation(input: {
     ...(groveler ? ["advantage" as const] : []),
     ...(input.recklessAdvantage ? ["advantage" as const] : []),
     ...(input.inspired ? ["advantage" as const] : []),
+    ...(whispered ? ["advantage" as const] : []),
     ...light.sources,
     ...(grappling ? ["advantage" as const] : []),
     ...authored.sources,

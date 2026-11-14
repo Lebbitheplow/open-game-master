@@ -26,14 +26,19 @@ import type { AfterRollId, AfterRollOption } from "@/lib/dm/after-roll-logic";
 import { rowWords } from "@/lib/dm/after-roll-table";
 import { holdsRow } from "@/lib/dm/mt-mr-turn";
 import { textKey } from "@/lib/language/text-logic";
+import { holdsFeature } from "@/lib/srd/feature-names";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 export const PSIONIC_ENERGY = "sub_psionic_energy";
 export const DRACONIC_PRESENCE = "sub_draconic_presence";
 // Unerring Accuracy's once a turn, in the turn's once-per-turn marks.
 export const ACCURACY_MARK = "mr:unerring-accuracy";
+// Extinction's once a turn (slayer 20, the horror class: "1/turn against
+// your Quarry, reroll a missed attack"), offered and spent as Unerring
+// Accuracy is.
+export const EXTINCTION_MARK = "horror:extinction";
 
-export const MR_AFTER_ROLL: readonly AfterRollId[] = ["unerring_accuracy", "homing_strikes", "psi_knack", "draconic_presence"];
+export const MR_AFTER_ROLL: readonly AfterRollId[] = ["unerring_accuracy", "homing_strikes", "psi_knack", "draconic_presence", "extinction"];
 export const isMrAfterRoll = (id: AfterRollId) => MR_AFTER_ROLL.includes(id);
 
 // A Psionic Energy die by the level of the class that holds it: "d6s, d8s
@@ -56,6 +61,10 @@ export type MrSwing = {
   // already rerolled one this turn.
   ownTurn: boolean;
   accuracyUsed: boolean;
+  // The creature attacked carries the attacker's Quarry mark, and whether
+  // Extinction has already rerolled one this turn.
+  quarry?: boolean;
+  extinctionUsed?: boolean;
 };
 
 // A missed attack. `natural` is the kept d20, `total` the roll as it stands.
@@ -67,6 +76,9 @@ export function mrAttackOffers(sheet: CharacterSheet, roll: { total: number; nat
   // A fresh d20 can always save a miss: a natural 20 hits.
   if (swing.monkWeapon && swing.ownTurn && !swing.accuracyUsed && !roll.taken.has("unerring_accuracy") && holdsRow(sheet, "monk::Unerring Accuracy")) {
     options.push({ id: "unerring_accuracy", ...rowWords("unerring_accuracy", {}) });
+  }
+  if (swing.quarry && swing.ownTurn && !swing.extinctionUsed && !roll.taken.has("extinction") && holdsFeature(sheet, "Extinction")) {
+    options.push({ id: "extinction", ...rowWords("extinction", {}) });
   }
   const blades = swing.psychicBlade ? holdsRow(sheet, "rogue::Soul Blades") : null;
   if (blades && !roll.taken.has("homing_strikes") && left(sheet, PSIONIC_ENERGY) > 0) {

@@ -27,7 +27,9 @@ import { allocateSeq, getCampaignById, type Campaign } from "@/lib/db/campaigns"
 import type { DmTurn } from "@/lib/db/dm-turns";
 import type { EncounterEnemy } from "@/lib/db/encounters";
 import { insertRoll } from "@/lib/db/rolls";
-import { getSheetById } from "@/lib/db/sheets";
+import { getSheetById, listSheets } from "@/lib/db/sheets";
+import { isConditionNamed } from "@/lib/srd/feature-names";
+import { spendWhisperedName } from "@/lib/dm/genre-gh-names";
 import { patchSheetAudited, type AuditActor } from "@/lib/dm/audited-patch";
 import { currentTurnId } from "@/lib/dm/job-control";
 import { d20Expression, rollExpression, type RollResult } from "@/lib/dice";
@@ -69,7 +71,7 @@ import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { bondRider, bondStamped } from "@/lib/dm/emboldening-bond";
 import { BOND_SPEND } from "@/lib/dm/emboldening-bond-logic";
 import { magicalStrengthSave } from "@/lib/dm/infusion-charges";
-import { horrorCultSave } from "@/lib/srd/genre-a-horror-holds";
+import { BASELINE_READINGS, horrorCultSave } from "@/lib/srd/genre-a-horror-holds";
 import { nemesisClaim, treatmentUndoes } from "@/lib/dm/genre-b-mystery-dossier";
 import { huntedInstinctsAdvantage } from "@/lib/dm/genre-gh-hunted";
 
@@ -184,6 +186,17 @@ export function spendRollCarriers(campaignId: string, sheetId: string, spent: st
     delta: { resource: carriers.map(carrierWords).join(" and "), spent: 1 },
     actor: actor ?? (currentTurnId() ? "dm" : "player"),
   });
+  // Baseline Readings is the party's one advantage: spent by one, it is gone
+  // from them all (genre-a-horror-holds.ts).
+  if (carriers.some((carrier) => isConditionNamed(carrier, BASELINE_READINGS))) {
+    for (const other of listSheets(campaignId)) {
+      const held = other.id === sheet.id ? [] : other.conditions.filter((entry) => isConditionNamed(entry, BASELINE_READINGS));
+      if (held.length) {
+        const rest = removeConditions(other.conditions, other.conditionMeta, held);
+        patchSheetAudited(campaignId, other.id, { conditions: rest.conditions, conditionMeta: rest.meta }, { kind: "use_resource", reason: "spent on a roll", delta: { resource: "Baseline Readings", spent: 1 }, actor: actor ?? (currentTurnId() ? "dm" : "player") });
+      }
+    }
+  }
 }
 
 // A held Bardic Inspiration or Dark One's Own Luck die on a roll that cannot
@@ -604,6 +617,10 @@ export function rollEnemySave(
   const riders = conditionRollRiders(enemy.conditions, "save", ability);
   // Authored subclass features (Magical Ambush, Hound of Ill Omen, Unsettling Words): authored-saves.ts.
   const authored = authoredEnemySave(campaignId, enemy, { channel: options.channel, magical: options.magical, damageType: options.damageType });
+  // Whispered Names: its first save this fight against the occultist who
+  // knows its name is at disadvantage (genre-gh-names.ts).
+  const namer = options.origin && "ref" in options.origin ? getSheetById(options.origin.ref) : null;
+  const named = spendWhisperedName(getActiveEncounter(campaignId), namer, enemy.id);
   const resistsMagic = options.magical === true && hasTrait(enemy.stats, "magicResistance");
   const against = conditionSaveLean(enemy.stats, options.against);
   // Sunlight Weakness: its saves are at disadvantage in sunlight.
@@ -619,6 +636,7 @@ export function rollEnemySave(
     ...(sunWeak ? ["disadvantage" as const] : []),
     ...(options.advantage ? ["advantage" as const] : []),
     ...(options.disadvantage ? ["disadvantage" as const] : []),
+    ...(named ? ["disadvantage" as const] : []),
     ...riders.advantageSources,
     ...authored.sources,
     // Ashen Hymn: the first save against fear each turn beside the chant (genre-cc-a-saves.ts).

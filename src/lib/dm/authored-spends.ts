@@ -8,6 +8,7 @@
 // Called from the use_resource arm of src/lib/dm/mutations.ts before the
 // generic path. Must not import mutations.ts (which imports it).
 
+import { improvedQuarryFree } from "@/lib/dm/genre-gh-quarry";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getDmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter } from "@/lib/db/encounters";
@@ -388,7 +389,9 @@ export function authoredFeatureSpend(
   const onceKey = spend.oncePerTurn ? (spend.onceKey ?? `authored:${textKey(spend.name)}`) : swapping ? `authored:${textKey(spend.name)} swap` : null;
   // A spend a feature makes free once a turn (The Engine Eternal's Head of
   // Steam, src/lib/dm/genre-b-steampunk-turn.ts): no cost, and its own mark.
-  const free = freeSpendThisTurn(sheet, spend.name, encounter);
+  // Improved Quarry: a Quarry on the creature that just harmed an ally is free
+  // (src/lib/dm/genre-gh-quarry.ts).
+  const free = freeSpendThisTurn(sheet, spend.name, encounter) ?? improvedQuarryFree(campaign.id, sheet, spend.name, args.targetEnemyId, inFight ? encounter : null);
   const charge = prepareCost(campaign, sheet, free ? "none" : picked.action, spend.name, free ?? onceKey, picked.afterWeaponHit ?? spend.afterWeaponHit, spend.afterSpellDamage);
   if ("error" in charge) {
     return charge;

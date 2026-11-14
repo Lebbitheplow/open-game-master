@@ -7,7 +7,7 @@
 // Split from rolls.ts, which folds these into the expression. Pure.
 
 import { inspirationDie } from "@/lib/dm/genre-cc-a-saves";
-import { horrorSourcedSaves } from "@/lib/srd/genre-a-horror-holds";
+import { baselineReadingsSave, horrorSourcedSaves } from "@/lib/srd/genre-a-horror-holds";
 import { lentFor, type LentRoll } from "@/lib/srd/genre-a-lent";
 import type { Advantage } from "@/lib/dice";
 import { named } from "@/lib/dm/roll-about";
@@ -144,12 +144,16 @@ export function rollFeatureRiders(
   // caller names what it resists through `against`, `magical` and
   // `casterType`; the recurring save-ends re-roll reads the same rules
   // (condition-tick.ts).
+  // Baseline Readings: the party's one advantage on a haunting or psychic
+  // save, spent by it (genre-a-horror-holds.ts).
+  const baseline = sheet && derivationKind === "saving_throw" ? baselineReadingsSave(sheet, { against: named(args.against), casterType: args.casterType, sourceType: args.sourceType }) : null;
   const traitSaves =
     sheet && derivationKind === "saving_throw"
       ? [
           ...traitSaveAdvantages(sheet, derivationAbility, { against: named(args.against), magical: args.magical, casterType: args.casterType, school: args.school }),
           // The horror classes' saves keyed to who forces them (genre-a-horror-holds.ts).
           ...horrorSourcedSaves(sheet, { against: named(args.against), magical: args.magical, casterType: args.casterType, sourceType: args.sourceType }),
+          ...(baseline ? [baseline.note] : []),
         ]
       : [];
   // A cursed item against the creature forcing the save (Demon Armor
@@ -250,7 +254,7 @@ export function rollFeatureRiders(
     checkBonus: itemChecks.bonus + traitChecks.bonus + checkMod.bonus + authoredChecks.bonus,
     inspirationCondition: inspiration?.condition,
     peerless,
-    authoredSpent: authoredRolls.spent,
+    authoredSpent: [...authoredRolls.spent, ...(baseline ? [baseline.condition] : [])],
     inspired,
     inspirationNotes: inspiration
       ? [`spends their ${inspiration.label}: +1${inspiration.die}${moteCheck ? " (Mote of Potential: rolled twice, the higher kept)" : ""}`]

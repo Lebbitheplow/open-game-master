@@ -104,21 +104,15 @@
   "clauses": [
    {
     "c": "10 minutes of ritual wards a 30-ft area for 8 hours",
-    "run": {
-     "k": "no_door"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap exorcist::Sanctified Ground#0",
-    "observed": "no call plays it: use_resource answers \"No resource called \"sanctified ground\" is known. Their resources: horror_rite_of_repulsion. Send the one meant, by the name on the sheet. / No resource called \"\": the engine gives false, the text true",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (no row) and src/lib/classes/resources.json (no counter): no tool plays the feature",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Sanctified Ground: ten minutes of ritual (one with Wax and Wick), refused in a fight; a fight begun there holds it, and a hostile spirit walking in is seen and takes 1d8 radiant while a humanoid takes nothing",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts Sanctified Ground (fight: out), played by src/lib/dm/genre-gh-wards.ts: the clock moves ten minutes, the ward is an 8-hour condition at the place it was set, laid on the board by layStandingWards when a fight begins there (src/lib/dm/encounter-tools.ts)"
    },
    {
     "c": "hostile spirits entering it are visible and take 1d8 radiant on entry",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "follows clause #0 (gap exorcist::Sanctified Ground#0), which fails: no call plays the feature; with nothing on the table there is no state this clause could be read on",
-    "same_probe_as": 0
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Sanctified Ground: ten minutes of ritual (one with Wax and Wick), refused in a fight; a fight begun there holds it, and a hostile spirit walking in is seen and takes 1d8 radiant while a humanoid takes nothing",
+    "by": "src/lib/battlemap/zones-genre-gh.ts sanctified ground (a hostile undead entering: 1d8 radiant, its invisible and hidden end), resolved by src/lib/dm/zone-triggers.ts"
    }
   ]
  },
@@ -457,15 +451,9 @@
   "clauses": [
    {
     "c": "Your Sanctified Ground ritual takes 1 minute instead of 10",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap exorcist::Wax and Wick#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Sanctified Ground: ten minutes of ritual (one with Wax and Wick), refused in a fight; a fight begun there holds it, and a hostile spirit walking in is seen and takes 1d8 radiant while a humanoid takes nothing",
+    "by": "src/lib/dm/genre-gh-wards.ts GH_WARDS sanctified_ground quicker (wardMinutes): the clock moves one minute for a holder of Wax and Wick"
    }
   ]
  },
@@ -561,28 +549,21 @@
   "clauses": [
    {
     "c": "1 minute of chalk-work wards a doorway or 5-ft line for 8 hours",
-    "run": {
-     "k": "no_door"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Warding Sigil#0",
-    "observed": "no call plays it: use_resource answers \"No resource called \"warding sigil\" is known. They have no limited-use resources. Send the one meant, by the name on the sheet. / No resource called \"warding sig\": the engine gives false, the text true",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (no row) and src/lib/classes/resources.json (no counter): no tool plays the feature",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Warding Sigil: a minute's chalk-work; the first hostile creature crossing makes an INT save or takes 2d6 psychic, half on a success, and the sigil is spent; Rite of the Threshold covers 15 feet an ethereal creature cannot cross",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts Warding Sigil (fight: out), played by src/lib/dm/genre-gh-wards.ts: a minute on the clock, an 8-hour condition at the place, laid as one square beside the occultist toward the nearest foe when a fight begins there"
    },
    {
     "c": "the first hostile creature crossing takes 2d6 psychic",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "follows clause #0 (gap occultist::Warding Sigil#0), which fails: no call plays the feature; with nothing on the table there is no state this clause could be read on",
-    "same_probe_as": 0
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Warding Sigil: a minute's chalk-work; the first hostile creature crossing makes an INT save or takes 2d6 psychic, half on a success, and the sigil is spent; Rite of the Threshold covers 15 feet an ethereal creature cannot cross",
+    "by": "src/lib/battlemap/zones-genre-gh.ts warding sigil (INT save, 2d6 psychic, half on a success, firstOnly), resolved by src/lib/dm/zone-triggers.ts afterStrike"
    },
    {
     "c": "INT save halves",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "follows clause #0 (gap occultist::Warding Sigil#0), which fails: no call plays the feature; with nothing on the table there is no state this clause could be read on",
-    "same_probe_as": 1
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Warding Sigil: a minute's chalk-work; the first hostile creature crossing makes an INT save or takes 2d6 psychic, half on a success, and the sigil is spent; Rite of the Threshold covers 15 feet an ethereal creature cannot cross",
+    "by": "src/lib/battlemap/zones-genre-gh.ts warding sigil (INT save, 2d6 psychic, half on a success, firstOnly), resolved by src/lib/dm/zone-triggers.ts afterStrike"
    }
   ]
  },
@@ -636,15 +617,9 @@
   "clauses": [
    {
     "c": "Knowing a creature's true or use-name gives you advantage on your first spell attack or its first save against you each combat",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Whispered Names#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Whispered Names: a creature whose name the occultist knows makes its first save against them each fight at disadvantage, the next at none, and another creature at none; the first spell attack on a named creature has advantage",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts Whispered Names (the spend records the name known, src/lib/dm/genre-gh-names.ts), read once a fight by src/lib/dm/pc-attack-situation.ts (advantage on a spell attack, spent in pc-attack-resolve.ts) and src/lib/dm/forced-save.ts rollEnemySave (disadvantage on its save against the occultist)"
    }
   ]
  },
@@ -714,15 +689,9 @@
   "clauses": [
    {
     "c": "Your Warding Sigil can cover a 15-ft radius and also blocks ethereal passage",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap occultist::Rite of the Threshold#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Warding Sigil: a minute's chalk-work; the first hostile creature crossing makes an INT save or takes 2d6 psychic, half on a success, and the sigil is spent; Rite of the Threshold covers 15 feet an ethereal creature cannot cross",
+    "by": "src/lib/dm/genre-gh-wards.ts GH_WARDS warding_sigil upgrade: the threshold sigil of src/lib/battlemap/zones-genre-gh.ts (15-ft radius, barsEthereal, read by src/lib/battlemap/zones-movers.ts withEdges)"
    }
   ]
  },
@@ -1356,15 +1325,9 @@
   "clauses": [
    {
     "c": "Allies within 10 ft may use your Adrenaline Surge movement options as a reaction when you do",
-    "run": {
-     "k": "spend_moves",
-     "id": "horror_last_one_out"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap survivor::Last One Out#0",
-    "observed": "spending horror_last_one_out moved its counter and the turn's cost and nothing else; the result was its guidance: Allies within 10 ft may use your Adrenaline Surge movement options as a reaction when you do, 1/rest each.",
-    "where": "src/lib/dm/resource-tools.ts computeUseResource (the narrative arm) and the row in src/lib/classes/resources.json (no fx)",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Last One Out: when the survivor Dashes with Adrenaline Surge, an ally within 10 feet moves their speed as a reaction without drawing opportunity attacks, the survivor's use spent; before the surge, or from farther off, it is refused",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts Last One Out (a party reaction on the survivor's counter), resolved by src/lib/dm/genre-gh-last-one-out.ts lastOneOut after src/lib/dm/action-tools.ts marks an Adrenaline Surge Dash or Disengage (markSurge); found for an ally by src/lib/srd/authored-effects.ts authoredReactionNamed"
    },
    {
     "c": "1/rest each",
@@ -1658,14 +1621,9 @@
    },
    {
     "c": "a warding gives one ally +2 AC against one monster type for a night",
-    "run": {
-     "k": "no_door"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap slayer::Hunter's Kit#1",
-    "observed": "no call plays it: use_resource answers \"No resource called \"hunter's kit\" is known. They have no limited-use resources. Send the one meant, by the name on the sheet. / No resource called \"hunter's kit\": the engine gives false, the text true",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (no row) and src/lib/classes/resources.json (no counter): no tool plays the feature",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Hunter's Kit: a warding made out of a fight gives the ally +2 AC against the monster type named for the night, not against another type; with Stake and Salt it covers the whole party",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts Hunter's Kit (fight: out), played by src/lib/dm/genre-gh-wards.ts huntersKit: the ally named carries warded (<type>) for eight hours; src/lib/srd/genre-gh-warded.ts wardedAc adds +2 in src/lib/dm/ac-effects.ts acWithEffects against an attacker of that type (enemy-attack.ts, opportunity.ts)"
    }
   ]
  },
@@ -1843,15 +1801,9 @@
    },
    {
     "c": "marking is free when a creature harms an ally",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap slayer::Improved Quarry#1 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Improved Quarry: marking the creature that harmed an ally this round costs no bonus action; marking one that harmed nobody still does",
+    "by": "src/lib/dm/genre-gh-quarry.ts improvedQuarryFree (the round's attack lines and the creature's damage rolls on an ally), asked by src/lib/dm/authored-spends.ts beside freeSpendThisTurn: the Quarry spend costs no action"
    }
   ]
  },
@@ -1993,15 +1945,9 @@
   "clauses": [
    {
     "c": "1/turn against your Quarry, reroll a missed attack",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the trigger or the creature the clause names (a possession, a curse, a spirit, a teleport, a hidden or ethereal creature, an opportunity attack, a start-of-turn tick) is not something a probe of this sweep stages",
-    "run": {
-     "k": "hook"
-    },
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap slayer::Extinction#0 (a table check only: no engine table answers to the feature)",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Extinction: once on each of the slayer's turns a missed attack on their Quarry is rolled again and the new roll stands; a second miss that turn, or a miss on another creature, is not offered it",
+    "by": "src/lib/dm/mt-mr-offers-logic.ts mrAttackOffers (the extinction row of src/lib/dm/after-roll-table.ts, offered on a missed attack at a creature the slayer's Quarry mark names), spent by src/lib/dm/mt-mr-offers.ts mrSpendAfterRoll with Unerring Accuracy's reroll (EXTINCTION_MARK once a turn)"
    },
    {
     "c": "Quarry marks two creatures at once",
@@ -2023,12 +1969,9 @@
   "clauses": [
    {
     "c": "Your Hunter's Kit wardings cover the whole party",
-    "is": "gap",
-    "read_only": true,
-    "stopped": "the feature or the entity this clause modifies is itself not applied by the engine (see the gap on the clause or feature it builds on), so there is nothing to play it on",
-    "probe": "none of its own: the Hunter's Kit wardings are not built (Hunter's Kit#1); the hook probe now answers for the counter of clause #1",
-    "where": "src/lib/srd/feature-effects.ts FEATURE_EFFECTS, src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED and src/lib/classes/resources.json: none answers to the feature",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Hunter's Kit: a warding made out of a fight gives the ally +2 AC against the monster type named for the night, not against another type; with Stake and Salt it covers the whole party",
+    "by": "src/lib/dm/genre-gh-wards.ts huntersKit: a holder of Stake and Salt wards every living character of the party"
    },
    {
     "c": "craft two per rest",
@@ -2231,14 +2174,9 @@
   "clauses": [
    {
     "c": "After 1 minute of measurement, grant the party advantage on the next save any of them makes against a haunting or psychic effect",
-    "run": {
-     "k": "no_door"
-    },
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-a-horror.mjs gap parapsychologist::Baseline Readings#0",
-    "observed": "no call plays it: use_resource answers \"No resource called \"baseline readings\" is known. Their resources: horror_s_ance_protocol. Send the one meant, by the name on the sheet. / No resource called \"ba\": the engine gives false, the text true",
-    "where": "src/lib/srd/authored-effects-genre.ts GENRE_AUTHORED (no row) and src/lib/classes/resources.json (no counter): no tool plays the feature",
-    "sev": "medium"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Baseline Readings: a minute's measurement out of a fight gives the party advantage on the next psychic or haunting save, which one ally's save spends for all; a fire save keeps it",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts Baseline Readings (fight: out), played by src/lib/dm/genre-gh-wards.ts baselineReadings (a minute on the clock, the baseline readings condition on the party); src/lib/srd/genre-a-horror-holds.ts baselineReadingsSave gives the advantage in src/lib/dm/roll-feature-riders.ts, and src/lib/dm/forced-save.ts spendRollCarriers spends it from every one of them"
    }
   ]
  },
@@ -2345,9 +2283,9 @@
    },
    {
     "c": "a 10-minute setup makes a 20-ft radius immune to teleportation and phasing for 1 hour",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-spends-genre-a.mjs gap counter:horror_grounding_rig#GUIDANCE_ONLY",
-    "recorded_as": "spends-guidance-only-counter-horror-grounding-rig"
+    "is": "held",
+    "probe": "scripts/test-genre-gh-horror.mjs Grounding Rig: a ten-minute setup, one a long rest; a fight there lays 20 feet nothing teleports into or out of, and an ethereal creature cannot cross",
+    "by": "src/lib/srd/authored-effects-genre-gh.ts Grounding Rig (fight: out), played by src/lib/dm/genre-gh-wards.ts; the grounding rig area of src/lib/battlemap/zones-genre-gh.ts (noTeleport, read by src/lib/dm/genre-a-horror-wards.ts horrorTeleportRefusal; barsEthereal, read by zones-movers.ts withEdges)"
    }
   ]
  },

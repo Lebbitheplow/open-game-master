@@ -242,7 +242,7 @@ export function resolveOpportunityAttacks(
       ...(attackEffect.advantage ? ["advantage" as const] : []),
       ...(attackEffect.disadvantage ? ["disadvantage" as const] : []),
     ]);
-    const targetAc = acWithEffects(campaign.id, sheet);
+    const targetAc = acWithEffects(campaign.id, sheet, enemy);
     const hitOutcome = rollExpression(d20Expression(attack.toHit + attackEffect.bonus, advantage), undefined, {
       purpose: { roller: "enemy", kind: "attack", who: enemy.displayName },
     });
