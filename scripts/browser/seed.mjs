@@ -4099,8 +4099,10 @@ const creatorAudit = {};
       background: "crime-syndicate-member",
       level: 11,
       abilities: { str: 16, dex: 12, con: 14, int: 16, wis: 10, cha: 10 },
+      // Common and the background's Thieves' Cant; the owlfolk's own
+      // language of choice is not named yet.
       proficiencies: {
-        saves: [], skills: ["deception", "sleight_of_hand"], expertise: [], languages: ["Common", "Thieves' Cant"],
+        saves: [], skills: ["deception", "sleight_of_hand"], expertise: [], languages: ["Common"],
         tools: [], armor: ["light", "medium", "heavy", "shields"], weapons: ["simple"],
       },
       features: [
@@ -4202,7 +4204,7 @@ const creatorAudit = {};
         tools: [], armor: ["light", "medium", "heavy", "shields"], weapons: ["simple", "martial"],
       },
       feats: ["Fighting Initiate"],
-      features: [{ name: "Fighting Style (Defense)", source: "class", classId: "fighter", level: 1 }],
+      features: [{ name: "Fighting Style: Defense", source: "class", classId: "fighter", level: 1 }],
     }),
   );
   getDatabase().prepare(`UPDATE character_sheets SET xp = ? WHERE id = ?`).run(6500, brisk.id);

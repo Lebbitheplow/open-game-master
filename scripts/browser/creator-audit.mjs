@@ -236,6 +236,17 @@ export function consoleErrors(page) {
     if (/favicon|net::ERR_ABORTED/.test(text)) return;
     seen.push(text.slice(0, 200));
   };
+  // Which load failed: the console names only the status.
+  const failed = (response) => {
+    if (response.status() >= 400) seen.push(`${response.status()} ${response.url().replace(/^https?:\/\/[^/]+/, "").slice(0, 120)}`);
+  };
   page.on("console", listen);
-  return { seen, stop: () => page.off("console", listen) };
+  page.on("response", failed);
+  return {
+    seen,
+    stop: () => {
+      page.off("console", listen);
+      page.off("response", failed);
+    },
+  };
 }
