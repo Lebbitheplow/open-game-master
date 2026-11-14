@@ -13,7 +13,7 @@ import { ChevronDown, Dices, Loader2, Search, Sparkles, X } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
 import { InfoButton, InfoChipList } from "@/components/ui/InfoDialog";
-import { describeFeature, describeSkill } from "@/lib/help";
+import { contentSlug, describeFeature, describeSkill } from "@/lib/help";
 import { useClassFeatureText } from "@/lib/classes/use-feature-text";
 import { settingClassIds, splitBySetting } from "@/lib/classes";
 import type { Genre } from "@/lib/schemas/game-settings";
@@ -22,6 +22,8 @@ import {
   findOptionByFeatureName,
   openOptionSlots,
   optionFeatureName,
+  optionKindRule,
+  optionPicksSpells,
   optionSlotsFor,
   slotTakes,
   type OptionSlot,
@@ -1062,7 +1064,9 @@ export function LevelUpDialog({
               <Sparkles className="size-5 text-amber-200" />
               Level {targetLevel}!
             </Dialog.Title>
-            <Dialog.Close className="rounded p-1 text-stone-400 hover:bg-stone-900">
+            {/* Named, and a finger's size on a phone, as the other dialogs'
+                closes are (CharacterNotesDialog, LeadEditDialog). */}
+            <Dialog.Close aria-label="Close" className="pk-tap rounded p-1 text-stone-400 hover:bg-stone-900">
               <X className="size-4" />
             </Dialog.Close>
           </div>
@@ -1368,8 +1372,17 @@ export function LevelUpDialog({
                   {needsToolPick ? (
                     <>
                       <p className="text-stone-300">
-                        {chosenKlass?.name ?? classChoice} grants {toolCount === 1 ? "a tool" : `${toolCount} tools`} of your choice. Pick{" "}
-                        {toolCount === 1 ? "it" : "them"}:
+                        {/* Named for its kind ("a musical instrument"), as the
+                            builder's tool panels name theirs. */}
+                        {chosenKlass?.name ?? classChoice} grants{" "}
+                        {toolChoicesOpen.length === 1
+                          ? toolCount === 1
+                            ? `a ${toolChoicesOpen[0].label}`
+                            : `${toolCount} ${toolChoicesOpen[0].label}s`
+                          : toolCount === 1
+                            ? "a tool"
+                            : `${toolCount} tools`}{" "}
+                        of your choice. Pick {toolCount === 1 ? "it" : "them"}:
                       </p>
                       <div className="stagger-pop flex flex-wrap gap-1.5" role="group" aria-label={`${chosenKlass?.name ?? classChoice} tool proficiency`}>
                         {toolOptions.map((tool) => {
@@ -1504,6 +1517,9 @@ export function LevelUpDialog({
                         <p className="mb-1 mt-2 text-xs uppercase tracking-wide text-amber-200/80">
                           {slot.label}: {slot.total - slot.remaining}/{slot.total} chosen
                         </p>
+                        {/* A pick of spells says its rule once; each spell's
+                            info opens the spell (as on the builder's class step). */}
+                        {optionKindRule(slot.kind) ? <p className="mb-1 text-[11px] text-stone-400">{optionKindRule(slot.kind)}</p> : null}
                         <div className="max-h-56 space-y-1.5 overflow-y-auto pr-1">
                           {slot.options.map((option) => {
                             const picked = slot.chosen.some(
@@ -1530,17 +1546,23 @@ export function LevelUpDialog({
                                   className="grow text-left"
                                 >
                                   <span className="block">{option.n}</span>
-                                  <span className="block text-[11px] text-stone-500">
-                                    {already ? "Already known. " : ""}
-                                    {option.req ? `Requires ${option.req}. ` : ""}
-                                    {option.d}
-                                  </span>
+                                  {already || option.req || !optionPicksSpells(slot.kind) ? (
+                                    <span className="block text-[11px] text-stone-500">
+                                      {already ? "Already known. " : ""}
+                                      {option.req ? `Requires ${option.req}. ` : ""}
+                                      {optionPicksSpells(slot.kind) ? "" : option.d}
+                                    </span>
+                                  ) : null}
                                 </button>
-                                <InfoButton
-                                  label={option.n}
-                                  meta={option.req ? `Requires ${option.req}` : undefined}
-                                  text={option.d}
-                                />
+                                {optionPicksSpells(slot.kind) ? (
+                                  <InfoButton label={option.n} note={option.d} reference={{ kind: "spells", slug: contentSlug(option.n), name: option.n }} />
+                                ) : (
+                                  <InfoButton
+                                    label={option.n}
+                                    meta={option.req ? `Requires ${option.req}` : undefined}
+                                    text={option.d}
+                                  />
+                                )}
                               </div>
                             );
                           })}
@@ -1739,7 +1761,9 @@ export function LevelUpDialog({
                       </p>
                       <div className="stagger-pop flex flex-wrap gap-1.5">
                         {knownList
-                          .filter((name) => !grantedFree.has(textKey(name)))
+                          // A Mystic Arcanum is not a spell known, so it is
+                          // not one to trade away here.
+                          .filter((name) => !grantedFree.has(textKey(name)) && !heldArcanumKeys.has(textKey(name)))
                           .map((name) => {
                             const picked = forgetPick === name;
                             return (
@@ -1759,7 +1783,7 @@ export function LevelUpDialog({
                                   }
                                 }}
                                 className={cn(
-                                  "rounded-full border px-3 py-1 text-xs",
+                                  "rounded-full border px-3 py-1 text-xs pointer-coarse:min-h-10",
                                   picked
                                     ? "border-red-700 bg-red-950/40 text-red-200 line-through"
                                     : "border-stone-700 text-stone-300 hover:border-amber-800 hover:bg-stone-900",
@@ -1786,6 +1810,17 @@ export function LevelUpDialog({
                               label: bookGain !== null ? "Spellbook" : levelStyle === "known" ? "Known" : "Prepared",
                               value: regularPicks.length,
                               max: remainingPicks,
+                            },
+                          ]
+                        : []),
+                      // The arcanum's own count beside the spells known, as
+                      // the builder's spell step shows it.
+                      ...(heldArcana.open.length
+                        ? [
+                            {
+                              label: arcanumName(classChoice),
+                              value: heldArcana.open.filter((level) => arcanumPickOf(level)).length,
+                              max: heldArcana.open.length,
                             },
                           ]
                         : []),

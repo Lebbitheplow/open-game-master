@@ -489,6 +489,18 @@ export function variantSummary(option: SpeciesVariantOption, baseAsi?: Partial<R
 
 // The same, short enough for a pick list: "+1 CON, fire, fire breath".
 export function variantShort(option: SpeciesVariantOption): string {
+  return variantShortParts(option).join(", ") || "its words only";
+}
+
+// Whether an option's own fields grant anything. A pick whose effect the
+// species' rules read from the pick itself (an owlfolk's Size, a fairy's
+// Fairy Magic ability) holds none, and the builder names it alone rather
+// than as "its words only".
+export function variantGivesAnything(option: SpeciesVariantOption): boolean {
+  return variantShortParts(option).length > 0;
+}
+
+function variantShortParts(option: SpeciesVariantOption): string[] {
   const asi = option.asi ?? {};
   const parts = [
     ...ABILITIES.filter((ability) => asi[ability]).map((ability) => `+${asi[ability]} ${ability.toUpperCase()}`),
@@ -500,5 +512,5 @@ export function variantShort(option: SpeciesVariantOption): string {
     ...(option.spells?.spells ?? []).map((row) => row.spell),
     ...(option.lines ?? []).map((line) => line.replace(/\s*\(.*$/, "")),
   ];
-  return parts.join(", ") || "its words only";
+  return parts;
 }

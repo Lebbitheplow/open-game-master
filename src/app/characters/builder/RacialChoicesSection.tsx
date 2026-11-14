@@ -10,7 +10,8 @@ import { InfoButton } from "@/components/ui/InfoDialog";
 import { Select } from "@/components/ui/Select";
 import { ALL_SKILLS } from "@/lib/content/mechanics";
 import { KNOWN_TOOLS } from "@/lib/srd/feat-grant-text";
-import { contentSlug, describeSkill } from "@/lib/help";
+import { toolLabel, toolPickOptions } from "@/lib/srd/tool-choices";
+import { contentSlug, describeSkill, glossaryTerm } from "@/lib/help";
 import { SRD_SKILLS } from "@/lib/srd";
 import { ABILITIES, type Ability } from "@/lib/schemas/sheet";
 import { featAbilityIncrease } from "@/lib/srd/feat-effects";
@@ -20,7 +21,7 @@ import { SelectedPrerequisite } from "./AsiFeatEditor";
 import { judgeEntry, useFeatJudge } from "./featPrereqs";
 import { racialFeatCount } from "@/lib/srd/race-id";
 import { DRACONIC_ANCESTRIES, takesDraconicAncestry } from "@/lib/srd/racial-grants";
-import { variantShort, variantSummary } from "@/lib/content/species-variants";
+import { variantGivesAnything, variantShort, variantSummary } from "@/lib/content/species-variants";
 import { Chip } from "./steps/shared";
 import { RacialCantripPicker } from "./RacialCantripPicker";
 import { featChoice } from "@/lib/schemas/sheet";
@@ -174,14 +175,19 @@ export function RacialChoicesSection({
               placeholder="Choose one..."
               options={[
                 { value: "", label: "Choose one..." },
-                ...race.variants.options.map((option) => ({ value: option.id, label: `${option.name} (${variantShort(option)})` })),
+                ...race.variants.options.map((option) => ({
+                  value: option.id,
+                  label: variantGivesAnything(option) ? `${option.name} (${variantShort(option)})` : option.name,
+                })),
               ]}
             />
           </label>
-          {chosen ? (
+          {/* What the pick gives, when its own fields give anything: a pick
+              the species' rules read from itself (a size, an ability) says
+              nothing more than its name. */}
+          {chosen && (variantGivesAnything(chosen) || chosen.description) ? (
             <p className="live-in mt-1 whitespace-pre-line text-xs text-stone-400" data-variant-summary>
-              {variantSummary(chosen)}
-              {chosen.description ? `\n${chosen.description}` : ""}
+              {[variantGivesAnything(chosen) ? variantSummary(chosen) : "", chosen.description ?? ""].filter(Boolean).join("\n")}
             </p>
           ) : null}
         </div>
@@ -189,7 +195,9 @@ export function RacialChoicesSection({
 
       {race.asiChoice ? (
         <div data-builder-target="racialAsi">
-          <span className="mb-1 flex flex-wrap items-center gap-1 text-stone-400">
+          {/* One line of words that wraps as words do: as a flex row the
+              glossary term stood alone on a phone's first line. */}
+          <span className="mb-1 block text-stone-400">
             <GameTerm id="ability_score">Ability</GameTerm> increases ({race.asiChoice.amounts ? asiPickWords(race.asiChoice) : `+${race.asiChoice.amount}`} to{" "}
             {asiFrom
               ? asiFrom.map((ability) => ABILITY_NAMES[ability]).join(" or ")
@@ -216,11 +224,10 @@ export function RacialChoicesSection({
                     ).map((ability) => ({ value: ability, label: ABILITY_NAMES[ability] })),
                   ]}
                 />
-                {asi[index] ? (
-                  <GameTerm id={asi[index] as Ability} className="shrink-0 text-xs text-stone-500">
-                    what is this?
-                  </GameTerm>
-                ) : null}
+                {/* The ability's glossary entry as the skills' ⓘ: the words
+                    "what is this?" squeezed the pick beside them to two
+                    letters on a phone. */}
+                {asi[index] ? <AbilityInfo ability={asi[index] as Ability} /> : null}
               </span>
             ))}
           </div>
@@ -229,7 +236,7 @@ export function RacialChoicesSection({
 
       {race.skillChoice ? (
         <div data-builder-target="racialSkills">
-          <span className="mb-1 flex flex-wrap items-center gap-1 text-stone-400">
+          <span className="mb-1 block text-stone-400">
             <GameTerm id="skill">Skill</GameTerm> proficiencies ({race.skillChoice.count} of your
             choice)
           </span>
@@ -398,7 +405,7 @@ export function RacialChoicesSection({
             className="w-full"
             label="Tool proficiency"
             placeholder="Choose a tool..."
-            options={[{ value: "", label: "Choose a tool..." }, ...race.toolChoice.from.map((entry) => ({ value: entry, label: entry }))]}
+            options={[{ value: "", label: "Choose a tool..." }, ...toolPickOptions(race.toolChoice.from)]}
           />
         </label>
       ) : null}
@@ -448,7 +455,7 @@ export function RacialChoicesSection({
                   ...ALL_SKILLS.filter((skill) => training[index] === skill || (!training.includes(skill) && !grantedSkills.includes(skill) && !skills.includes(skill))).map(
                     (skill) => ({ value: skill as string, label: skillName(skill) }),
                   ),
-                  ...KNOWN_TOOLS.filter((tool) => training[index] === tool || !training.includes(tool)).map((tool) => ({ value: tool, label: tool })),
+                  ...toolPickOptions(KNOWN_TOOLS.filter((tool) => training[index] === tool || !training.includes(tool))),
                 ]}
               />
             ))}
@@ -476,7 +483,7 @@ export function RacialChoicesSection({
               // The tools the lineage trains (Adaptable Acumen's picks, its own list).
               ...[...new Set([...(race.tools ?? []), ...(tool ? [tool] : []), ...training.filter((pick) => KNOWN_TOOLS.includes(pick))])].map((held) => ({
                 value: held,
-                label: held.replace(/\b\w/g, (letter) => letter.toUpperCase()),
+                label: toolLabel(held),
               })),
             ]}
           />
@@ -486,4 +493,10 @@ export function RacialChoicesSection({
       <RacialCantripPicker race={race} cantrips={cantrips} onChange={onCantripsChange} />
     </div>
   );
+}
+
+// An ability's glossary entry behind an ⓘ, as a skill pick's is.
+function AbilityInfo({ ability }: { ability: Ability }) {
+  const entry = glossaryTerm(ability);
+  return entry ? <InfoButton label={entry.term} text={[entry.short, entry.long].filter(Boolean).join("\n\n")} /> : null;
 }

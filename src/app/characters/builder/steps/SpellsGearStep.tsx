@@ -245,6 +245,7 @@ export function SpellsSection({
     spellbookAdvice,
     arcanumLevels,
     chosenArcanum,
+    requiredCantrip,
   } = derived;
   // Every class holds to the 5e tables: a setting class borrows an SRD
   // class's spell list and its counts with it, the same counts the server
@@ -418,6 +419,10 @@ export function SpellsSection({
       setCantrips((current) => current.filter((entry) => textKey(entry) !== textKey(name)));
       return;
     }
+    if (keptForNamed(name)) {
+      setLimitNote(`Your subclass's Spellcasting teaches ${requiredCantrip}: choose it as one of your cantrips, then ${name} if there is room.`);
+      return;
+    }
     if (cantripCap !== null && chosenCantrips.length >= cantripCap) {
       if (offerSwap("cantrip", name)) {
         return;
@@ -518,6 +523,17 @@ export function SpellsSection({
   // full list reads as full before anyone taps (issue 66: taps past the cap
   // did nothing a player could see).
   const cantripsFull = cantripCap !== null && chosenCantrips.length >= cantripCap;
+  // An Arcane Trickster's Mage Hand: the last open cantrip is kept for it,
+  // as the level-up keeps it (src/lib/srd/third-caster.ts
+  // thirdCasterCantripProblem). Without this the step let all three go to
+  // other cantrips and only then, behind the spells still to pick, said
+  // Mage Hand was owed.
+  const keptForNamed = (name: string) =>
+    Boolean(requiredCantrip) &&
+    textKey(name) !== textKey(requiredCantrip ?? "") &&
+    !chosenCantrips.some((entry) => textKey(entry) === textKey(requiredCantrip ?? "")) &&
+    cantripCap !== null &&
+    chosenCantrips.length >= cantripCap - 1;
   const listCap = wizard ? bookCap : spellCap;
   const listFull = listCap !== null && chosenSpells.length >= listCap;
   const preparedFull = spellCap !== null && chosenPrepared.length >= spellCap;
@@ -543,7 +559,7 @@ export function SpellsSection({
       return undefined;
     }
     if (level === 0) {
-      return cantripsFull ? "Cantrips full" : undefined;
+      return cantripsFull ? "Cantrips full" : keptForNamed(name) ? `${requiredCantrip} first` : undefined;
     }
     if (isArcanum(level) && level !== null) {
       return arcanumAt(level, name) ? "Arcanum chosen" : undefined;

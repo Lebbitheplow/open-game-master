@@ -54,6 +54,35 @@ export const OTHER_TOOLS = [
 // choice" picks from.
 export const KNOWN_TOOLS = [...new Set([...ARTISANS_TOOLS, ...MUSICAL_INSTRUMENTS, ...GAMING_SETS, ...OTHER_TOOLS])];
 
+// A tool's name as a pick list shows it: the first letter raised, the rest
+// as the SRD writes it ("Smith's tools", "Three-dragon ante set"). A word
+// boundary rule would raise the s after an apostrophe ("Smith'S").
+export function toolLabel(name: string): string {
+  return name ? name.charAt(0).toUpperCase() + name.slice(1) : name;
+}
+
+// The kind of tool, as the SRD's equipment chapter sorts them.
+export function toolKind(name: string): string {
+  const key = textKey(name);
+  if (ARTISANS_TOOLS.some((tool) => textKey(tool) === key)) return "Artisan's tools";
+  if (MUSICAL_INSTRUMENTS.some((tool) => textKey(tool) === key)) return "Musical instruments";
+  if (GAMING_SETS.some((tool) => textKey(tool) === key)) return "Gaming sets";
+  return "Other tools";
+}
+
+// A pick list of tools: each named as toolLabel says, and, when the list
+// holds more than one kind (a warforged's 39), sorted under the kind's
+// heading so a player finds the lute among the instruments rather than
+// thirty rows down a flat list.
+export function toolPickOptions(from: readonly string[]): Array<{ value: string; label: string; group?: string }> {
+  const kinds = new Set(from.map(toolKind));
+  if (kinds.size < 2) {
+    return from.map((tool) => ({ value: tool, label: toolLabel(tool) }));
+  }
+  const order = ["Artisan's tools", "Musical instruments", "Gaming sets", "Other tools"];
+  return order.flatMap((kind) => from.filter((tool) => toolKind(tool) === kind).map((tool) => ({ value: tool, label: toolLabel(tool), group: kind })));
+}
+
 // Names compared without their apostrophes and plural or possessive s, so
 // "Cartographers' tools" and "Thieves' tools" find the SRD's tools.
 const looseKey = (name: string) => textKey(name.replace(/['‘’`]/g, "")).replace(/s\b/g, "");

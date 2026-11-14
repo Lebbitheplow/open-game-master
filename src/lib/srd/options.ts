@@ -136,6 +136,19 @@ function spellOptionsOf(kind: OptionKind): OptionDef[] {
   return list;
 }
 
+// A kind whose options are spells (Smuggler's Legerdemain, Spell Mastery,
+// Signature Spells): each option's own entry is the spell's, and the rule it
+// is picked under is the same for every one, so a list says it once above
+// the spells rather than on every card.
+export function optionPicksSpells(kind: OptionKind): boolean {
+  return KINDS[kind]?.spellLevel !== undefined;
+}
+
+// That rule, for a kind that picks spells; null for any other kind.
+export function optionKindRule(kind: OptionKind): string | null {
+  return optionPicksSpells(kind) ? (SPELL_PICK_TEXT[kind] ?? null) : null;
+}
+
 export function optionsOfKind(kind: OptionKind): OptionDef[] {
   return KINDS[kind]?.spellLevel !== undefined ? spellOptionsOf(kind) : LISTED.filter((option) => option.k === kind);
 }

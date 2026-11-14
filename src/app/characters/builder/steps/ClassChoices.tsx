@@ -12,7 +12,8 @@ import type { BuilderState } from "../useBuilderState";
 import { PickPill, StepPanel } from "./shared";
 import { textKey } from "@/lib/language/text-logic";
 import { splitToolGrants } from "@/lib/srd/tool-choices";
-import { optionFeatureName, remainingWords } from "@/lib/srd/options";
+import { optionFeatureName, optionKindRule, optionPicksSpells, remainingWords } from "@/lib/srd/options";
+import { contentSlug } from "@/lib/help";
 import { subclassChoiceSummary } from "@/lib/content/subclass-choices";
 import { featChoice } from "@/lib/schemas/sheet";
 import FeatChoicesFields, { knownTraining } from "../FeatChoicesFields";
@@ -24,6 +25,13 @@ const optionCard = (selected: boolean) =>
       ? "border-amber-500/60 bg-amber-400/10 text-amber-100"
       : "border-stone-600/60 text-stone-300 hover:border-amber-500/40 hover:bg-stone-900/70",
   );
+
+// A card that holds its pick and an info button side by side: the ring a
+// key press brings goes round the whole card, as on a card that is one
+// button (the fighting styles), rather than the browser's square tight
+// round the words inside it.
+const splitCard =
+  "has-[>button:first-child:focus-visible]:outline-2 has-[>button:first-child:focus-visible]:outline-offset-2 has-[>button:first-child:focus-visible]:outline-amber-400 [&>button:first-child]:focus-visible:outline-none";
 
 // The class-specific pick lists that only appear when the class and level
 // earn them: expertise, fighting styles, and the option slots (invocations,
@@ -146,7 +154,13 @@ export function ClassChoices({
         </StepPanel>
       ) : null}
 
-      {optionSlots.map((slot) => (
+      {optionSlots.map((slot) => {
+        // A pick of spells (a Smuggler's Legerdemain cantrips) says its rule
+        // once, here, and each spell's info opens the spell itself: the same
+        // line on every card told a player nothing about Gust or Mold Earth.
+        const spells = optionPicksSpells(slot.kind);
+        const rule = optionKindRule(slot.kind);
+        return (
         <StepPanel
           key={slot.kind}
           anchor="options"
@@ -156,8 +170,10 @@ export function ClassChoices({
               {slot.remaining > 0 ? (
                 <span className="text-amber-300">{remainingWords(slot)}. </span>
               ) : null}
-              These are real abilities your character gets. Tap the info button on any one to
-              read what it does.
+              {rule ? `${rule} ` : null}
+              {spells
+                ? "Tap the info button on any one to read the spell."
+                : "These are real abilities your character gets. Tap the info button on any one to read what it does."}
             </>
           }
         >
@@ -171,31 +187,40 @@ export function ClassChoices({
               // still be let go.
               const notYet = selected ? undefined : derived.optionUnmet?.[optionFeatureName(slot.kind, option.n)];
               return (
-                <div key={option.n} className={cn(optionCard(selected), "flex items-start gap-1", notYet && "opacity-60")}>
+                <div key={option.n} className={cn(optionCard(selected), "flex items-start gap-1", splitCard, notYet && "opacity-60")}>
                   <button
                     type="button"
                     aria-pressed={selected}
                     disabled={Boolean(notYet)}
                     onClick={() => actions.toggleOption(slot, option.n)}
-                    className="grow text-left disabled:cursor-not-allowed"
+                    // A finger's height even when the card holds only a
+                    // spell's name (a Legerdemain cantrip).
+                    className="min-h-10 grow text-left disabled:cursor-not-allowed"
                   >
                     <span className="block text-xs">{option.n}</span>
-                    <span className="block text-sm text-stone-500">
-                      {notYet ? `Not yet: ${notYet} ` : option.req ? `Requires ${option.req}. ` : ""}
-                      {option.d}
-                    </span>
+                    {notYet || option.req || !spells ? (
+                      <span className="block text-sm text-stone-500">
+                        {notYet ? `Not yet: ${notYet} ` : option.req ? `Requires ${option.req}. ` : ""}
+                        {spells ? "" : option.d}
+                      </span>
+                    ) : null}
                   </button>
-                  <InfoButton
-                    label={option.n}
-                    meta={option.req ? `Requires ${option.req}` : undefined}
-                    text={option.d}
-                  />
+                  {spells ? (
+                    <InfoButton label={option.n} note={option.d} reference={{ kind: "spells", slug: contentSlug(option.n), name: option.n }} />
+                  ) : (
+                    <InfoButton
+                      label={option.n}
+                      meta={option.req ? `Requires ${option.req}` : undefined}
+                      text={option.d}
+                    />
+                  )}
                 </div>
               );
             })}
           </div>
         </StepPanel>
-      ))}
+        );
+      })}
 
       {/* A workshop subclass's own choice (issue #833): a bloodline, an
           element. One option, picked like the lists above; what it gives is
@@ -217,7 +242,7 @@ export function ClassChoices({
               const selected = slot.chosen?.name === option.name;
               const gives = subclassChoiceSummary(option);
               return (
-                <div key={option.id} className={cn(optionCard(selected), "flex items-start gap-1")}>
+                <div key={option.id} className={cn(optionCard(selected), "flex items-start gap-1", splitCard)}>
                   <button
                     type="button"
                     aria-pressed={selected}

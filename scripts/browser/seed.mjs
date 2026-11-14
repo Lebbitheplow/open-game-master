@@ -4073,7 +4073,177 @@ const bench2Titles = {};
   }
 }
 
+// The character creator audit's screens (cc1113, 138-creator-*): what a
+// player meets on the sheet and in the level-up once the builder has made
+// them. None of these levels is taken by a scenario, so every viewport
+// opens the same tables.
+//   - Hoot, an owlfolk Metallurgist mechanist of 11th level who picked
+//     Small, with a personality and the owlfolk's language of choice not
+//     yet named: in the library, from the Tal'Dorei Crime Syndicate Member
+//     background, the page shows the size, the conditional Athletics, the
+//     pack background's feature chip and the Personality lines; at the
+//     table, as an acolyte, the sheet shows the same and owes the languages.
+//   - Morrow, a Fiend warlock of 10th level with 11th earned: the level-up's
+//     spell step asks for the 6th-level Mystic Arcanum.
+//   - Brisk, a fighter of 4th level holding Fighting Initiate with no style
+//     named yet, and 5th earned: the class step offers bard with its musical
+//     instrument, and the fighter's own step asks for the feat's style.
+const creatorAudit = {};
+{
+  const hoot = (overrides = {}) =>
+    heroInput({
+      name: "Hoot Ashfeather",
+      race: "owlfolk",
+      class: "mechanist",
+      subclass: "Metallurgist",
+      background: "crime-syndicate-member",
+      level: 11,
+      abilities: { str: 16, dex: 12, con: 14, int: 16, wis: 10, cha: 10 },
+      // Common and the background's Thieves' Cant; the owlfolk's own
+      // language of choice is not named yet.
+      proficiencies: {
+        saves: [], skills: ["deception", "sleight_of_hand"], expertise: [], languages: ["Common"],
+        tools: [], armor: ["light", "medium", "heavy", "shields"], weapons: ["simple"],
+      },
+      features: [
+        { name: "Size (Small)", source: "race" },
+        { name: "Juggernaut", source: "class", classId: "mechanist", level: 11 },
+        { name: "A Favor In Turn", source: "background" },
+      ],
+      equipment: [{ name: "Chain Mail", qty: 1, equipped: true, transmuted: "Mystic Metal" }],
+      persona: {
+        trait: "I watch the exits before I watch the room.",
+        ideal: "Loyalty. The syndicate kept me fed; I keep my word.",
+        bond: "The brand on my wrist is a debt, and I pay my debts.",
+        flaw: "",
+      },
+      ...overrides,
+    });
+  const sheetTable = campaigns.createCampaign(world.owner.id, {
+    title: "Creator Sheet Table",
+    description: "A workshop loft above the docks.",
+    theme: "high-fantasy",
+    maxPlayers: 6,
+    startingLevel: 11,
+    difficulty: "normal",
+    gameSettings: { ttsEnabled: false, genre: "high_fantasy" },
+  });
+  campaigns.setCampaignStatus(sheetTable.id, "active");
+  // At the table Hoot is an acolyte, a background the server carries, so the
+  // sheet owes the owlfolk's language and the acolyte's two (a content
+  // pack's background owes nothing there: owed-languages.ts). The pack
+  // background's feature chip is the library copy's.
+  const hootSheet = sheets.createSheet(
+    sheetTable.id,
+    world.owner.id,
+    11,
+    hoot({
+      background: "acolyte",
+      features: [
+        { name: "Size (Small)", source: "race" },
+        { name: "Juggernaut", source: "class", classId: "mechanist", level: 11 },
+        { name: "Shelter of the Faithful", source: "background" },
+      ],
+    }),
+  );
+  getDatabase().prepare(`UPDATE character_sheets SET xp = ? WHERE id = ?`).run(85000, hootSheet.id);
+  messages.insertCampaignMessage({
+    campaignId: sheetTable.id,
+    seq: campaigns.allocateSeq(sheetTable.id),
+    authorType: "dm",
+    speech: [],
+    content: "The loft smells of oil and feathers. Hoot's suit hangs ready on its frame.",
+  });
+  const hootCharacter = createCharacter(world.owner.id, 11, hoot());
+
+  const arcanumTable = campaigns.createCampaign(world.owner.id, {
+    title: "Arcanum Table",
+    description: "A pact that asks for more.",
+    theme: "high-fantasy",
+    maxPlayers: 6,
+    startingLevel: 10,
+    difficulty: "normal",
+    gameSettings: { ttsEnabled: false, genre: "high_fantasy" },
+  });
+  campaigns.setCampaignStatus(arcanumTable.id, "active");
+  const morrow = sheets.createSheet(
+    arcanumTable.id,
+    world.owner.id,
+    10,
+    heroInput({
+      name: "Morrow Vane",
+      class: "warlock",
+      subclass: "The Fiend",
+      level: 10,
+      abilities: { str: 8, dex: 14, con: 14, int: 10, wis: 12, cha: 18 },
+      features: withAsiLedger([], 2),
+      spellcasting: {
+        ability: "cha",
+        slots: {},
+        known: ["Hex", "Armor of Agathys", "Misty Step", "Hold Person", "Counterspell", "Fly", "Banishment", "Dimension Door", "Hunger of Hadar", "Scorching Ray"],
+        prepared: [],
+        cantrips: ["Eldritch Blast", "Minor Illusion", "Mage Hand", "Prestidigitation"],
+      },
+    }),
+  );
+  getDatabase().prepare(`UPDATE character_sheets SET xp = ? WHERE id = ?`).run(85000, morrow.id);
+  messages.insertCampaignMessage({
+    campaignId: arcanumTable.id,
+    seq: campaigns.allocateSeq(arcanumTable.id),
+    authorType: "dm",
+    speech: [],
+    content: "The patron's voice is closer tonight. Morrow feels a new word settle behind the teeth.",
+  });
+
+  const initiateTable = campaigns.createCampaign(world.owner.id, {
+    title: "Initiate Table",
+    description: "A drill yard at dawn.",
+    theme: "high-fantasy",
+    maxPlayers: 6,
+    startingLevel: 4,
+    difficulty: "normal",
+    gameSettings: { ttsEnabled: false, genre: "high_fantasy" },
+  });
+  campaigns.setCampaignStatus(initiateTable.id, "active");
+  const brisk = sheets.createSheet(
+    initiateTable.id,
+    world.owner.id,
+    4,
+    heroInput({
+      name: "Brisk Halloran",
+      class: "fighter",
+      subclass: "Champion",
+      level: 4,
+      abilities: { str: 16, dex: 13, con: 14, int: 10, wis: 10, cha: 13 },
+      proficiencies: {
+        saves: ["str", "con"], skills: ["athletics", "perception"], expertise: [], languages: ["Common"],
+        tools: [], armor: ["light", "medium", "heavy", "shields"], weapons: ["simple", "martial"],
+      },
+      feats: ["Fighting Initiate"],
+      // A pick is kept as a "choice" feature, which the regrant keeps.
+      features: [{ name: "Fighting Style: Defense", source: "choice", classId: "fighter", level: 1 }],
+    }),
+  );
+  getDatabase().prepare(`UPDATE character_sheets SET xp = ? WHERE id = ?`).run(6500, brisk.id);
+  messages.insertCampaignMessage({
+    campaignId: initiateTable.id,
+    seq: campaigns.allocateSeq(initiateTable.id),
+    authorType: "dm",
+    speech: [],
+    content: "The sergeant nods once. Brisk has earned the next lesson.",
+  });
+
+  Object.assign(creatorAudit, {
+    sheetTableId: sheetTable.id,
+    hootSheetId: hootSheet.id,
+    hootCharacterId: hootCharacter.id,
+    arcanumTableId: arcanumTable.id,
+    initiateTableId: initiateTable.id,
+  });
+}
+
 const ids = {
+  creatorAudit,
   fallenTables,
   clockTables,
   resolveTables,
@@ -4199,6 +4369,9 @@ const ids = {
   // Every campaign a scenario opens, by id, for the app's home tiles.
   titles: {
     [levelTable.id]: "Level Table",
+    [creatorAudit.sheetTableId]: "Creator Sheet Table",
+    [creatorAudit.arcanumTableId]: "Arcanum Table",
+    [creatorAudit.initiateTableId]: "Initiate Table",
     [secretsTable.id]: "Secrets Table",
     ...Object.fromEntries(Object.entries(dragonTables).map(([viewport, table]) => [table.id, `Dragon Table (${viewport})`])),
     [commandTable.id]: COMMAND_TITLE,

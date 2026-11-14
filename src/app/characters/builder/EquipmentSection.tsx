@@ -133,7 +133,8 @@ export default function EquipmentSection({
                 <button
                   type="button"
                   onClick={() => onAdd({ name: entry.name })}
-                  className="py-1 hover:text-amber-100"
+                  // A finger's size on a phone, as the builder's pills are.
+                  className="py-1 hover:text-amber-100 pointer-coarse:min-h-10"
                 >
                   + {itemLabel(entry.name)}
                   <span className="ml-1 text-amber-200/50">{entry.note}</span>

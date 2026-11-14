@@ -18,6 +18,7 @@ import { describeBackgroundFeature } from "@/lib/backgrounds";
 import { classFeatureDescription, spellClassFor } from "@/lib/classes";
 import { srdRaceFor } from "@/lib/content/race-options";
 import { normalizeRulesText } from "@/lib/help/rules-text";
+import { textKey } from "@/lib/language/text-logic";
 import { matchResource } from "@/lib/srd/class-resources";
 import { guidanceFor } from "@/lib/srd/feature-effects";
 import { subclassFeatureDescription } from "@/lib/srd/features";
@@ -185,9 +186,17 @@ function textOf(value: unknown): string {
 // layer, so every spelling is tried, and the pieces some sources keep apart
 // (a feat's benefits, a background's feature, a 2024 species' trait list)
 // are put back together. Null when there is nothing to show.
-export function describeContentEntry(data: Record<string, unknown> | undefined): string | null {
+// `focus` names the part asked about: a background's feature chip on a sheet
+// opens the feature alone, not three paragraphs of the background's story
+// with the feature at their foot.
+export function describeContentEntry(data: Record<string, unknown> | undefined, focus?: string): string | null {
   if (!data) {
     return null;
+  }
+  const focusFeature = typeof data.feature === "string" ? data.feature.trim() : "";
+  const focusText = textOf(data.feature_desc).trim();
+  if (focus && focusFeature && focusText && textKey(focus) === textKey(focusFeature)) {
+    return normalizeRulesText(`**Feature: ${focusFeature}.** ${focusText}`) || null;
   }
   const parts: string[] = [];
   for (const key of ["desc", "description", "traits", "benefits"]) {
