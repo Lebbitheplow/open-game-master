@@ -144,6 +144,24 @@ lontano viene interpellato come farebbe un master con un giocatore umano separat
 - Il passaggio fuori scena automatico del timeskip resta per i PNG di primo grado non
   compagni; oggi non ce ne sono in gioco reale.
 
+### 11. Turno di combattimento del compagno (decisione dell'utente: «la mente decide, il narratore esegue»)
+- Un compagno di primo grado che nessun giocatore comanda sceglie il proprio turno con la
+  propria mente. Nella sua scheda, l'opzione «The GM» diventa «Its own mind»; un giocatore
+  può ancora prenderne il comando come oggi.
+- La mente conosce tutta sé stessa: la sua scheda come il server la tiene (`describeSheet`:
+  punti ferita, CA, caratteristiche, abilità, armi, oggetti, incantesimi e slot, risorse,
+  privilegi, condizioni). Del combattimento vede ciò che vedrebbe al tavolo: nemici visibili
+  con salute a parole (illeso, ferito, sanguinante, quasi morto) e condizioni, alleati, distanze
+  dalla mappa; mai punti ferita o statistiche dei nemici, né nemici nascosti.
+- Il server rifiuta le azioni del compagno nel suo turno (attacchi, incantesimi, movimento,
+  azioni, oggetti, risorse, `end_turn`) finché la sua mente non ha scelto con `npc_speak`
+  in quel turno del narratore. Il narratore esegue l'intenzione con gli strumenti normali;
+  se il motore ne rifiuta una parte, richiama `npc_speak` con il motivo e la mente sceglie
+  di nuovo. Regole e dadi restano del server.
+- Esclusi: compagno comandato da un giocatore, a terra (0 PF), lontano dal party, campagna
+  senza menti, Comparse. La rete di sicurezza esistente (`companionAutoAct`) resta.
+- Non fatto (opzione 2 scartata): la mente che chiama da sola gli strumenti di combattimento.
+
 ## Implementazione (branch `npc-agents`)
 - Logica pura: `src/lib/dm/npc-mind-logic.ts` (nomi appresi, memorie per PNG e tempo,
   bande, prompt, parsing della proposta, destinatari, nomi non appresi, gradi, roster).

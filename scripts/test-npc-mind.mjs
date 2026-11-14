@@ -543,6 +543,77 @@ await test("a catch-up that fails keeps the steps played, writes nothing for the
   minds.setNpcAway(seren().id, null);
 });
 
+// ---- Ticket 08: a companion's own fight turn ------------------------------
+
+const { setCompanionCommander } = await import("../src/lib/db/sheets.ts");
+const tobinSheet = world.addHero({ name: "Tobin", race: "dwarf", class: "fighter" });
+markSheetAsCompanion(tobinSheet.id, "party", "Gruff and steady.");
+companionNpcFor(getSheetById(tobinSheet.id));
+setCompanionCommander(tobinSheet.id, null);
+// The initiative resting on Tobin, whatever the dice gave.
+const onTobin = () => {
+  const fight = world.encounter();
+  const at = fight.order.findIndex((entry) => entry.characterId === tobinSheet.id);
+  getDatabase().prepare("UPDATE encounters SET turn_index = ? WHERE id = ?").run(at, fight.id);
+};
+const attack = (characterId) => JSON.stringify({ characterId, targetEnemyId: world.enemies()[0]?.id ?? "x" });
+
+await test("on its own fight turn a companion's actions wait for its mind; the mind sees all of itself and the foes only as they look (ticket 08)", async () => {
+  await world.beginFight([{ monster: "goblin" }]);
+  onTobin();
+  const turn = createDmTurn(world.campaignId, [], "human_dm");
+  await runInTurnScope(turn.id, async () => {
+    const refused = mind.mindTurnRefusal(world.campaign(), "pc_attack", attack(tobinSheet.id));
+    assert.match(refused?.error ?? "", /call npc_speak for Tobin first/);
+    assert.equal(refused.retry, true);
+    assert.equal(mind.mindTurnRefusal(world.campaign(), "end_turn", JSON.stringify({ characterId: tobinSheet.id }))?.retry, true, "nor may the turn be skipped");
+    assert.equal(mind.mindTurnRefusal(world.campaign(), "pc_attack", attack(aria.id)), null, "another character is not held");
+    model.requests.length = 0;
+    model.script([answer({ speech: "For the hold!", intent: "close on the goblin and strike it with my battleaxe" })]);
+    const chose = await speak({ name: "Tobin", perceives: "A goblin snarls across the clearing." });
+    assert.equal(chose.intends, "close on the goblin and strike it with my battleaxe");
+    assert.match(chose.fightTurn, /carry it out with the combat tools/);
+    const text = mindText(mindRequests()[0]);
+    assert.match(text, /Your character sheet, as the rules hold it now/);
+    assert.match(text, /It is your turn in the fight \(round \d+\)/);
+    assert.match(text, /Foes you see:\n- Goblin[^\n]*: unhurt/);
+    const goblin = world.enemies()[0];
+    assert.doesNotMatch(text, new RegExp(`Goblin[^\\n]*\\b${goblin.currentHp}\\s*/\\s*${goblin.maxHp}`), "never a foe's hit points");
+    assert.equal(mind.mindTurnRefusal(world.campaign(), "pc_attack", attack(tobinSheet.id)), null, "once chosen, the narrator carries it out");
+  });
+});
+
+await test("a commanded, fallen or mindless companion's turn is not held (ticket 08)", async () => {
+  onTobin();
+  const turn = createDmTurn(world.campaignId, [], "human_dm");
+  await runInTurnScope(turn.id, async () => {
+    const off = { ...world.campaign(), gameSettings: { ...world.campaign().gameSettings, npcMinds: false } };
+    assert.equal(mind.mindTurnRefusal(off, "pc_attack", attack(tobinSheet.id)), null, "a table without minds");
+    setCompanionCommander(tobinSheet.id, world.owner.id);
+    assert.equal(mind.mindTurnRefusal(world.campaign(), "pc_attack", attack(tobinSheet.id)), null, "its commander plays it");
+    setCompanionCommander(tobinSheet.id, null);
+    world.patch(tobinSheet.id, { currentHp: 0 });
+    assert.equal(mind.mindTurnRefusal(world.campaign(), "end_turn", JSON.stringify({ characterId: tobinSheet.id })), null, "a fallen companion chooses nothing");
+    world.patch(tobinSheet.id, { currentHp: getSheetById(tobinSheet.id).maxHp });
+  });
+});
+
+await test("a whole fight turn: the narrator's action for the companion is refused until its mind chose, then voiced (ticket 08)", async () => {
+  onTobin();
+  model.script([
+    reply({ calls: [call("pc_attack", { characterId: tobinSheet.id, targetEnemyId: world.enemies()[0].id })] }),
+    reply({ calls: [call("npc_speak", { name: "Tobin", perceives: "The goblin circles." })] }),
+    answer({ speech: "Come here, then.", intent: "strike the goblin with my battleaxe" }),
+    reply({ text: '"Come here, then," Tobin growls, hefting his battleaxe.' }),
+  ]);
+  const dm = await model.turn(world, "Tobin's turn.", aria.id);
+  assert.ok(dm, "the turn narrated");
+  const results = model.requests.flatMap((request) => model.results(request)).map((entry) => entry.result);
+  assert.ok(results.some((result) => /call npc_speak for Tobin first/.test(String(result?.error ?? ""))), "the first attack was held");
+  assert.ok(results.some((result) => result?.npc === "Tobin" && result.fightTurn), "the mind chose the turn");
+  await world.invoke("end_encounter", { outcome: "victory" });
+});
+
 await test("system: a short investigation with an absent NPC, a late messenger and a lying witness survives a restart (ticket 07, A2 A5 A6 A13)", async () => {
   const { closeDatabaseForRestore } = await import("../src/lib/db/core.ts");
   npc("Inspector Vale", { location: "the Watch House" });

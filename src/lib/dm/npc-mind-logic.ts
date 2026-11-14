@@ -382,3 +382,53 @@ export function offscreenCandidates<T extends { id: string; name: string; locati
     .sort((a, b) => a.lastActedAt - b.lastActedAt)
     .slice(0, Math.max(0, budget));
 }
+
+// ---- A companion's own turn in a fight ------------------------------------
+
+// The calls by which a character spends their own turn, and the argument
+// naming who acts. A first-tier companion nobody commands chooses that turn
+// with its own mind: until it has, these calls for it are refused.
+const TURN_ACTOR_ARG: Record<string, string> = {
+  pc_attack: "characterId",
+  take_action: "characterId",
+  move_token: "characterId",
+  use_item: "characterId",
+  use_resource: "characterId",
+  use_spell_slot: "characterId",
+  cast_at_enemy: "characterId",
+  cast_buff: "characterId",
+  aoe_damage: "casterCharacterId",
+  end_turn: "characterId",
+};
+
+export function turnActorOf(name: string, args: Record<string, unknown>): string | null {
+  const key = TURN_ACTOR_ARG[name];
+  const value = key ? args[key] : undefined;
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+// How hurt a creature looks to someone fighting beside or against it: what
+// the table sees, never the number.
+export function healthWord(current: number, max: number): string {
+  if (current <= 0) return "down";
+  const share = max > 0 ? current / max : 1;
+  if (share >= 1) return "unhurt";
+  if (share > 0.5) return "hurt";
+  if (share > 0.25) return "bloodied";
+  return "near death";
+}
+
+export type FightSeen = { name: string; health: string; conditions: string[]; feet: number | null };
+
+// The fight as the companion sees it from where it stands.
+export function renderFightView(view: { round: number; foes: FightSeen[]; allies: FightSeen[] }): string {
+  const line = (seen: FightSeen) =>
+    `- ${seen.name}: ${seen.health}${seen.conditions.length ? `, ${seen.conditions.join(", ")}` : ""}${seen.feet === null ? "" : `, ${seen.feet} ft from you`}`;
+  return [
+    `It is your turn in the fight (round ${view.round}). Choose what you do with it from your sheet: movement, an action, perhaps a bonus action. Name the target and the weapon or spell.`,
+    view.foes.length ? `Foes you see:\n${view.foes.map(line).join("\n")}` : "You see no foe standing.",
+    view.allies.length ? `Your side:\n${view.allies.map(line).join("\n")}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}

@@ -312,6 +312,7 @@ export function PartyPanel({
   onlineUserIds = [],
   embedded = false,
   steersStory = false,
+  npcMinds = false,
   leadUserId = "",
   canTransferLead = false,
   notes = [],
@@ -374,6 +375,8 @@ export function PartyPanel({
   onlineUserIds?: string[];
   embedded?: boolean;
   steersStory?: boolean;
+  // The table plays its companions with their own minds (gameSettings.npcMinds).
+  npcMinds?: boolean;
   leadUserId?: string;
   canTransferLead?: boolean;
   notes?: Note[];
@@ -907,6 +910,7 @@ export function PartyPanel({
                 members={members}
                 meUserId={meUserId}
                 canChoose={steersStory}
+                ownMind={npcMinds}
               />
             ) : null}
 

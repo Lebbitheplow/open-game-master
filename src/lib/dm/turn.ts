@@ -291,7 +291,7 @@ import { acceptsCall, offeredAs } from "@/lib/dm/tool-merge-logic";
 import { petTools, PET_TOOL_NAMES } from "@/lib/dm/pet-tools";
 import { socialTools, SOCIAL_TOOL_NAMES, handleSetNpc, npcRosterForPrompt } from "@/lib/dm/social-tools";
 import { npcMindTools, NPC_MIND_TOOL_NAMES } from "@/lib/dm/npc-mind-tools";
-import { awayArrivalNote, handleNpcInform, handleNpcPast, handleNpcSpeak, mindRosterNotes, npcMindsOn } from "@/lib/dm/npc-mind";
+import { awayArrivalNote, handleNpcInform, handleNpcPast, handleNpcSpeak, mindRosterNotes, mindTurnRefusal, npcMindsOn } from "@/lib/dm/npc-mind";
 import { worldForPrompt } from "@/lib/dm/world-prompt";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import {
@@ -3146,6 +3146,12 @@ async function resolveModelCall(
     return routed.refusal;
   }
   const { name, rawArguments } = routed;
+  // A first-tier companion's own fight turn is its mind's to choose
+  // (src/lib/dm/npc-mind.ts): its actions wait for npc_speak.
+  const mindTurn = mindTurnRefusal(campaign, name, rawArguments);
+  if (mindTurn) {
+    return mindTurn;
+  }
   // At a table in another language, the words of the character this call
   // names are read once before the gates below run (src/lib/dm/player-word.ts).
   await prepareWordFor(campaign, turn, rawArguments);

@@ -28,8 +28,14 @@ import { resolveMonster } from "@/lib/bestiary";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { advanceSessionGoal, agencyFragment } from "@/lib/dm/npc-logic";
 import { rollExpression } from "@/lib/dice";
-import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
+import { badArguments, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { clipText, textKey } from "@/lib/language/text-logic";
+import { describeSheet } from "@/lib/dm/prompt";
+import { aiPlaysSheet } from "@/lib/dm/companion-command";
+import { ownTurnOf } from "@/lib/dm/held-turn";
+import { getActiveEncounter, listEnemies } from "@/lib/db/encounters";
+import { getBattleMapForEncounter, listTokens } from "@/lib/db/battle-maps";
+import { chebyshev } from "@/lib/battlemap/types";
 import {
   MIND_SYSTEM,
   attemptOutcome,
@@ -46,6 +52,10 @@ import {
   overheard,
   rosterNote,
   tierOf,
+  turnActorOf,
+  healthWord,
+  renderFightView,
+  type FightSeen,
   type NpcAway,
   type NpcTier,
   type MindPerson,
@@ -199,7 +209,7 @@ function scoresFor(campaign: Campaign, npc: Npc) {
 
 // Who they are, as the narrator's own records say: no facts about the
 // world, only the person.
-function identityOf(npc: Npc): string[] {
+function identityOf(campaign: Campaign, npc: Npc): string[] {
   const sheet = npc.companionSheetId ? getSheetById(npc.companionSheetId) : null;
   return [
     [npc.race, npc.role].filter(Boolean).length ? `You are ${[npc.race, npc.role].filter(Boolean).join(", ")}.` : "",
@@ -209,6 +219,10 @@ function identityOf(npc: Npc): string[] {
     npc.agency.goals.scene ? `What you want right now: ${npc.agency.goals.scene}` : "",
     npc.location ? `You are usually found at ${npc.location}.` : "",
     `Your attitude toward the heroes in general: ${npc.attitude}.`,
+    // A companion knows all of itself, as a player reads their own sheet.
+    sheet
+      ? `Your character sheet, as the rules hold it now (only you and the rules know these numbers):\n${describeSheet(sheet, "you", false, { encumbrance: campaign.gameSettings.variantRules?.encumbrance, compact: true })}`
+      : "",
   ];
 }
 
@@ -238,7 +252,7 @@ async function askMind(
   const memories = memoriesFor(npc.id, listNpcMemories(campaign.id, npc.id), nowInstant(campaign.id));
   const prompt = renderMindPrompt({
     name: npc.name,
-    identity: identityOf(npc),
+    identity: identityOf(campaign, npc),
     inspiration: getNpcInspiration(npc.id),
     scores: scoresFor(campaign, npc),
     memories,
@@ -287,6 +301,73 @@ function worldNames(campaignId: string): string[] {
     ...listSheets(campaignId).map((sheet) => sheet.name),
     ...listLocations(campaignId).map((location) => location.name),
   ];
+}
+
+// The companion whose own fight turn its mind chooses: minds on, the
+// initiative resting on it, nobody at the table commanding it, standing,
+// and with the party. A commanded companion's turn is its commander's.
+function mindsFightTurn(campaign: Campaign, sheetId: string | null | undefined): { sheet: CharacterSheet; npc: Npc } | null {
+  if (!npcMindsOn(campaign) || !sheetId || !ownTurnOf(getActiveEncounter(campaign.id), sheetId)) {
+    return null;
+  }
+  const sheet = getSheetById(sheetId);
+  if (!sheet?.isCompanion || sheet.currentHp <= 0 || !aiPlaysSheet(campaign, sheet)) {
+    return null;
+  }
+  const npc = listNpcs(campaign.id).find((entry) => entry.companionSheetId === sheet.id && !entry.archived);
+  return npc && tierOfNpc(npc) === "primary" && !getNpcAway(npc.id) ? { sheet, npc } : null;
+}
+
+// The fight as the companion sees it from its square: foes by how hurt they
+// look and where, never their hit points or stat blocks; hidden ones not at all.
+function fightView(campaign: Campaign, sheet: CharacterSheet): string {
+  const encounter = getActiveEncounter(campaign.id);
+  if (!encounter) {
+    return "";
+  }
+  const map = getBattleMapForEncounter(encounter.id);
+  const tokens = map ? listTokens(map.id) : [];
+  const tokenOf = (ref: string) => tokens.find((token) => token.refId === ref);
+  const own = tokenOf(sheet.id);
+  const feet = (ref: string) => {
+    const token = tokenOf(ref);
+    return own && token ? chebyshev(own.x, own.y, token.x, token.y) * 5 : null;
+  };
+  const foes: FightSeen[] = listEnemies(encounter.id)
+    .filter((enemy) => enemy.status === "alive" && !tokenOf(enemy.id)?.hidden)
+    .map((enemy) => ({ name: enemy.displayName, health: healthWord(enemy.currentHp, enemy.maxHp), conditions: enemy.conditions, feet: feet(enemy.id) }));
+  const allies: FightSeen[] = encounter.order.flatMap((entry) => {
+    const ally = entry.kind === "pc" && entry.characterId !== sheet.id ? getSheetById(entry.characterId) : null;
+    return ally ? [{ name: ally.name, health: healthWord(ally.currentHp, ally.maxHp), conditions: ally.conditions, feet: feet(ally.id) }] : [];
+  });
+  return renderFightView({ round: encounter.round, foes, allies });
+}
+
+const FIGHT_TURN_NOTE =
+  "This is their own turn in the fight and this is their choice: carry it out with the combat tools (move_token, pc_attack, the cast tools, take_action, use_item), then end_turn. Keep their target and their means. If a tool refuses part of it, call npc_speak for them again with the reason, so they choose again; never choose for them.";
+
+// A call that spends a mind-chosen companion's fight turn before its mind
+// chose it this turn: refused, with the way through.
+export function mindTurnRefusal(campaign: Campaign, name: string, rawArguments: string): ToolError | null {
+  let args: unknown;
+  try {
+    args = JSON.parse(rawArguments || "{}");
+  } catch {
+    return null;
+  }
+  const actor = args && typeof args === "object" && !Array.isArray(args) ? turnActorOf(name, args as Record<string, unknown>) : null;
+  const turn = mindsFightTurn(campaign, actor);
+  if (!turn) {
+    return null;
+  }
+  const turnId = currentTurnId() ?? "";
+  if (listNpcProposals(campaign.id, turn.npc.id).some((proposal) => proposal.status === "committed" && proposal.turnId === turnId)) {
+    return null;
+  }
+  return {
+    error: `It is ${turn.npc.name}'s own turn, and their own mind chooses it: call npc_speak for ${turn.npc.name} first (say what they perceive; the server adds their sheet and the fight as they see it), then carry out the intent it returns.`,
+    retry: true,
+  };
 }
 
 const speakSchema = z.object({
@@ -355,7 +436,11 @@ export async function handleNpcSpeak(campaign: Campaign, rawArguments: string): 
     ...others.map((entry) => ({ name: entry.name, description: clipText(entry.role || entry.trait || "a person", 80) })),
   ];
   const where = apart ? `You are at ${args.place || away?.place || "a place of your own"}, apart from the party.\n` : "";
-  const outcome = await askMind(campaign, actor, `${where}${args.perceives}`, present, false);
+  // Its own turn in a fight: the mind chooses it, seeing the fight as it does.
+  const fightTurn = apart ? null : mindsFightTurn(campaign, npc.companionSheetId);
+  const ownTurn = fightTurn?.npc.id === npc.id ? fightTurn : null;
+  const fight = ownTurn ? `\n\n${fightView(campaign, ownTurn.sheet)}` : "";
+  const outcome = await askMind(campaign, actor, `${where}${args.perceives}${fight}`, present, false);
   if (!outcome.ok) {
     recordNpcProposal(campaign.id, { npcId: npc.id, turnId, mode: "scene", status: "failed", speech: "", intent: "", error: outcome.error, flags: [], latencyMs: outcome.latencyMs, inputTokens: 0, outputTokens: 0 });
     return {
@@ -394,6 +479,7 @@ export async function handleNpcSpeak(campaign: Campaign, rawArguments: string): 
     intends: proposal.intent,
     ...(whileApart.length ? { whileApart, apartNote: APART_NOTE } : {}),
     ...(apart ? { apartAt: args.place || away?.place || "" } : away ? { rejoined: true } : {}),
+    ...(ownTurn ? { fightTurn: FIGHT_TURN_NOTE } : {}),
     ...(unknown.length ? { notTracked: unknown } : {}),
     ...(flags.length
       ? { unlearned: flags, flagNote: `${npc.name} named ${flags.join(", ")} without having learned it: treat it as their guess or lie, never as a fact of the world.` }
