@@ -135,6 +135,38 @@ export function scheduleNextTurnCheck(campaignId: string, check: () => void): vo
   timers.set(campaignId, timer);
 }
 
+// A turn's first message as the table stands now: the rules, and the
+// fight's own while one runs. What a warm-up sends ahead and what a turn
+// whose fight began or ended swaps in (rulesAcrossFight), so the two agree
+// to the letter.
+function rulesNow(campaignId: string, inFight: boolean): string | null {
+  const campaign = getCampaignById(campaignId);
+  if (!campaign) {
+    return null;
+  }
+  return turnRulesMessage({
+    campaign,
+    members: listMembers(campaignId),
+    sheets: listSheets(campaignId),
+    relationships: campaign.gameSettings.relationships === "off" ? [] : relationshipRosterForPrompt(campaignId),
+    ruleContext: null,
+    // Only whether a fight runs is read (turnRuleParts).
+    encounter: inFight ? ({} as never) : null,
+  });
+}
+
+// The rules for the side of a fight the turn's tools are now for, when its
+// first message holds the other side's: a fight that began or ended in the
+// turn. Null when the message is already right, or is neither side's as the
+// table stands (a sheet changed in the turn), which is then left alone.
+export function rulesAcrossFight(campaignId: string, current: string, inFight: boolean): string | null {
+  const wanted = rulesNow(campaignId, inFight);
+  if (!wanted || wanted === current) {
+    return null;
+  }
+  return rulesNow(campaignId, !inFight) === current ? wanted : null;
+}
+
 // After a turn: sends the next turn's first message ahead when the narrator
 // does not hold it. Never throws and is never waited on.
 export function warmNextTurn(campaignId: string, next: NextTurnCall): void {
@@ -151,15 +183,7 @@ export function warmNextTurn(campaignId: string, next: NextTurnCall): void {
     if (!warmable(campaign.settings, next)) {
       return;
     }
-    const encounter = getActiveEncounter(campaignId);
-    const rules = turnRulesMessage({
-      campaign,
-      members: listMembers(campaignId),
-      sheets: listSheets(campaignId),
-      relationships: campaign.gameSettings.relationships === "off" ? [] : relationshipRosterForPrompt(campaignId),
-      ruleContext: null,
-      encounter: encounter ? ({} as never) : null,
-    });
+    const rules = rulesNow(campaignId, Boolean(getActiveEncounter(campaignId)));
     if (!rules) {
       return;
     }

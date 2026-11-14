@@ -1762,7 +1762,7 @@ export const movePartyTool = {
         characterIds: {
           type: "array",
           items: { type: "string" },
-          description: "Only when the party splits up: exact characterIds of who goes; the rest stay behind.",
+          description: "Only when the party splits up: exact characterIds (GAME STATE) of who goes; the rest stay behind.",
         },
       },
       required: ["name", "visionClear"],
@@ -1770,11 +1770,13 @@ export const movePartyTool = {
   },
 } as const;
 
-// move_party before the table has any place: no partOf, direction or
-// distance (issue 548), since a direction reads from where the party set out
-// and partOf files the next room of where they are, and no characterIds: a
-// party that has not set out yet has not split. The first scene of a 16K
-// table has no room to spare for them (scripts/test-tool-profiles.mjs).
+// move_party without partOf, direction, distance (issue 548) and
+// characterIds, where there is no room to spare for them: the compact set
+// before the table has any place (a direction reads from where the party set
+// out, partOf files the next room of where they are, and a party that has
+// not set out has not split; scripts/test-tool-profiles.mjs holds a 16K
+// table's first scene to its size), and a fight's trimmed set (turn.ts
+// dmTurnTools).
 const firstMoveProperties = Object.fromEntries(
   Object.entries(movePartyTool.function.parameters.properties).filter(
     ([key]) => !["partOf", "direction", "distance", "characterIds"].includes(key),

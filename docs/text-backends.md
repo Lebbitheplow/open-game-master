@@ -153,8 +153,12 @@ again. llama-server's default checkpoint settings are enough; nothing needs sett
 | Qwen3.6-35B at Q2, AMD BC-250 | about 145 s | 14 to 33 s |
 | Qwen3.5 9B at Q4, AMD BC-250 | about 55 s | 13 to 26 s |
 
-A turn that starts a fight still reads it all once, for the fight's own tools and
-rules; every turn of the fight after that reuses them.
+A fight has its own tools and rules, so the prompt's start changes when a fight
+begins and when it ends, and the server reads the whole prompt once each time.
+The app keeps that to once: the rules change together with the tools, in the
+middle of the turn where the fight begins or ends, and the tool list changes at
+no other time. (Up to 0.35.1 each end of a fight read the prompt twice, and the
+first turn of a campaign did too.)
 
 ### presence_penalty
 
