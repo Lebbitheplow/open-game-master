@@ -91,13 +91,22 @@ also present in the unchanged base commit from PR #961. The visual checks
 therefore used a development server; the separate client app-shell build passed.
 No build configuration or shops route was changed to suppress the error.
 
-CI's standard production builds passed on Windows and Linux; the Linux job
-then failed its JavaScript bundle budgets. PR #961 already exceeded those
-same four route budgets. The final resolver removes the catalogue imports:
+Before the resolver was reduced, CI's standard production builds passed on
+Windows and Linux; the Linux job then failed its JavaScript bundle budgets.
+PR #961 already exceeded those same four route budgets. The final resolver
+removes the catalogue imports:
 an isolated esbuild measurement fell from 76,329 to 17,454 gzip bytes. This
 measurement is for the resolver, not a substitute for the CI route budgets.
-The final CI budget result is pending.
+For final code commit `b7a1459b7`, [Linux CI](https://github.com/Lebbitheplow/open-game-master/actions/runs/43647417089/job/132608199036)
+passed the production build and every route budget. Home measured 304.8 KiB
+against 317, workshop 393.6 against 406, workshop detail 373.1 against 387,
+and rulebook 294.3 against 306. The table passed narrowly at 824.9 against
+825 KiB; no budget was raised.
 
-The full test suite is still running. Its completed file results are retained
-across resumed runs so unfinished files can finish without rerunning those
-already passed.
+All 1,218 test files were exercised across resumed runs. The first 321 passed;
+the remaining run finished with 893 passed and four failures. All four passed
+targeted reruns: two backup tests needed Windows' `tar` rather than GNU `tar`,
+the receiver setup test needed Windows PowerShell on its process PATH, and
+the name-lookup audit needed classifications for the final resolver. No global
+environment setting was changed. Affected artwork, icon, card and Hand tests,
+lint, and all component image checks were rerun after the resolver change.
