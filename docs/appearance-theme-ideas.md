@@ -17,7 +17,7 @@ or session to coordinate with; it does not mean that session is still running.
 
 | Work | Owner / last contributor | Branch, commit or work location | State and next step | Last update |
 | --- | --- | --- | --- | --- |
-| Shared framework; Arcane, Woodland, Gothic | Codex, PR 962 session | `codex/genre-appearance-themes`, PR 962; local worktree `theme-infrastructure-pr` | Safeguards and guide pushed. Full repository tests running; record their result before closing validation. | 2026-11-14 |
+| Shared framework; Arcane, Woodland, Gothic | Codex, PR 962 session | `codex/genre-appearance-themes`, PR 962; local worktree `theme-infrastructure-pr` | Ready for review. Local build, lint, theme checks and all 1,218 test files passed across batches/reruns; see validation record. Final CI, native-shell and real-device checks remain before delivery. | 2026-11-14 |
 | Deep Forge | Fable; successor not yet assigned | Reported commit `c92039a08`; reference repo `C:\dev\tabletop-companion`, worktree `C:\dev\ogm-appearance-themes` | Groundwork already exists. Continue from Fable's implementation and port to the current framework; locate that work before starting another version. | 2026-11-14 |
 | Sunken Tide | Fable; successor not yet assigned | Stopped session; worktree/branch and handoff link still to record | Groundwork already exists per Albert/Fable. Next session should locate and preserve that work, then record what remains. | 2026-11-14 |
 

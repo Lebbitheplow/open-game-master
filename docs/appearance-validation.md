@@ -38,7 +38,7 @@ gaps while retaining the three themes' artwork:
 | Production build and TypeScript | Passed |
 | Bundle budgets | Passed: 106.7 KiB shared CSS, 113.3 KiB rulebook CSS; JavaScript budgets unchanged |
 | Full repository lint | Passed with 313 warnings and no errors |
-| Full repository test suite | Running; not yet a passing result |
+| Full repository test suite | All 1,218 files passed across two batches and a four-file corrective rerun; file coverage reconciled against `scripts/test-*.mjs` |
 
 The picker test uses Space to activate native buttons, waits for the selected
 state, and groups grid rows by layout position rather than a hover-transformed
@@ -52,6 +52,20 @@ The harness now waits for the dialog's finite animations to finish and for the
 previous portal to unmount before resizing/reopening. All three focused checks
 then passed. Full lint excludes `.theme-preview/`, whose disposable Chromium
 profiles contain generated third-party extension code rather than app source.
+
+The full suite was completed in batches: 142 files passed in the first run,
+then 1,072 passed and four failed in the remaining run. The lobby-arrival source
+check still expected the wrapper without its new `lobby-hero-slot` class; its
+expectation now includes that class while retaining the same nesting check.
+Two backup tests picked up GNU tar, which interpreted a Windows drive path as a
+remote host, and the receiver setup test could not find `powershell.exe`.
+Putting Windows System32 and Windows PowerShell first on the rerun process's
+PATH resolved those three environment failures. All four rerun files passed.
+This is complete file coverage with corrective reruns, not a single clean run.
+The last crop-guard change also passed the focused appearance checks and lint.
+
+Final-commit CI, native-shell and real-device validation remain outstanding.
+The PR stays draft.
 
 ## Painted Arcane and Gothic extension
 
