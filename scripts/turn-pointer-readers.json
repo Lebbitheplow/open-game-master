@@ -58,8 +58,8 @@
       "why": "the public encounter's current entry: shows whose place the pointer is at (a screen, a name in a sentence), asking nothing of the turn"
     },
     "lib/db/encounters.ts": {
-      "count": 1,
-      "why": "turnKey: the pointer's own mechanics: advancing it, splicing the order, the turn's key"
+      "count": 2,
+      "why": "turnKey: the pointer's own mechanics: advancing it, splicing the order, the turn's key; turnCounterFor: whose turn counts a duration begun now, the pointer's own place, asking nothing of whose turn it is"
     },
     "lib/dm/attack-record.ts": {
       "count": 1,

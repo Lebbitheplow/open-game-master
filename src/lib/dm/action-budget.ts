@@ -457,6 +457,15 @@ export function attacksLeft(budget: TurnBudget): number {
   return Math.max(0, budget.attacksAllowed - budget.attacksMade);
 }
 
+// Swings the turn has already paid for and not yet made: the rest of an
+// Attack action begun (Extra Attack), and Flurry of Blows strikes bought
+// with ki. The turn's other parts (movement, a bonus action never begun) are
+// the player's to leave unused; these are a declared action still under way.
+export function paidSwingsLeft(budget: TurnBudget): number {
+  const action = budget.attacksMade > 0 ? attacksLeft(budget) : 0;
+  return action + Math.max(0, budget.flurryStrikes ?? 0);
+}
+
 // Once-per-turn riders (Sneak Attack). Returns null when already spent.
 export function claimOncePerTurn(budget: TurnBudget, key: string): TurnBudget | null {
   if (budget.oncePerTurn.includes(key)) {

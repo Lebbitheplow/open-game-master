@@ -21,7 +21,7 @@ export function hudGates(sheet: CharacterSheet, turn: HandTurn): Record<HudGateI
   const action = (name: string) => first(standingGate(sheet, turn, "action"), costGate("action", turn, sheet, name));
   const casting = casterStateProblem(sheet);
   return {
-    attack: first(standingGate(sheet, turn, "attack"), attackGate(turn, attacksAllowed(sheet), sheet)),
+    attack: first(standingGate(sheet, turn, "attack"), attackGate(turn, attacksAllowed(sheet, turn), sheet)),
     cast: spellNames(sheet).length
       ? first(standingGate(sheet, turn, "cast"), casting ? { reason: casting.error, spent: false } : null)
       : `${sheet.name} has no spells to cast.`,

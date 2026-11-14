@@ -5,9 +5,9 @@
 //
 // Called from feature-spends.ts, whose spend() checks, charges the turn and spends
 // the use around it, so a refusal here costs nothing. Must not import mutations.ts.
+import { classSaveDc } from "@/lib/dm/command-undead";
 import { getActiveEncounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
-import { computeSheetDerived } from "@/lib/srd";
 import { unseenBecause, withinFeet } from "@/lib/dm/authored-saves";
 import type { ConditionMeta } from "@/lib/dm/condition-logic";
 import { layEnemyConditionInstance } from "@/lib/dm/enemy-condition-lay";
@@ -111,8 +111,9 @@ export function channelFear(
     }
     targets = chosen;
   }
-  const derived = computeSheetDerived(sheet);
-  const dc = derived.spellSaveDc ?? 8 + derived.proficiencyBonus + derived.abilityMods.cha;
+  // The class's own spell save DC (command-undead.ts classSaveDc): a
+  // multiclass sheet's first casting ability is another class's.
+  const dc = classSaveDc(sheet, "cha");
   const outcomes: string[] = [];
   for (const enemy of targets) {
     if (cannotFear(campaign, enemy)) {

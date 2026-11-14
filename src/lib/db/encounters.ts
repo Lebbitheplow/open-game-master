@@ -60,6 +60,12 @@ export function turnKey(encounter: Pick<Encounter, "round" | "order" | "turnInde
   return `${encounter.round}:${owner}`;
 }
 
+// The fight as the open rolls are held against it (open-roll-logic.ts): when
+// it began, its round, and whose turn of that round the pointer rests on.
+export function fightNow(encounter: Pick<Encounter, "createdAt" | "round" | "order" | "turnIndex">): { createdAt: string; round: number; turnKey: string } {
+  return { createdAt: encounter.createdAt, round: encounter.round, turnKey: turnKey(encounter) };
+}
+
 export type EncounterStatus = "active" | "ended";
 export type EnemyStatus = "alive" | "dead" | "fled";
 
@@ -388,6 +394,19 @@ export function getEncounter(id: string): Encounter | null {
 // "Is a fight running?" Scenes are deliberately invisible here: every combat
 // rule in the engine asks this question, and none of them should fire because
 // the party is standing on an exploration map.
+// Whose turn counts a duration begun now that has no combatant of this
+// fight for its source: the combatant whose turn it is (condition-logic.ts
+// countsOn, active-effects.ts). Undefined outside a fight, or when the
+// source is in the order and counts it itself.
+export function turnCounterFor(campaignId: string, source?: string): string | undefined {
+  const encounter = getActiveEncounter(campaignId);
+  if (!encounter || (source && encounter.order.some((entry) => orderEntryId(entry) === source))) {
+    return undefined;
+  }
+  const entry = encounter.order[encounter.turnIndex];
+  return entry ? orderEntryId(entry) : undefined;
+}
+
 export function getActiveEncounter(campaignId: string): Encounter | null {
   const row = getDatabase()
     .prepare(

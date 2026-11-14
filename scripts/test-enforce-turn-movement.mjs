@@ -214,8 +214,9 @@ await test("A prone goblin slowed to 15 ft stands for half of that and walks the
   kit.place(goblin.id, 2, 10);
   await world.invoke("move_token", { token: goblin.id, x: 16, y: 10 });
   assert.equal(kit.enemy(goblin.id).conditions.includes("prone"), false, "the goblin stayed down");
-  // Three squares slowed: one to stand, two to walk.
-  assert.equal(kit.token(goblin.id).x - 2, 2);
+  // Three squares slowed (15 feet): standing spends 7.5 feet, two squares of
+  // it, and the 7.5 feet left walk one square (SRD 5.1, Being Prone).
+  assert.equal(kit.token(goblin.id).x - 2, 1);
 });
 
 await test("The board's intent for an enemy reads the speed it really has: a slowed goblin seven squares off reaches for its bow.", async () => {
@@ -284,6 +285,30 @@ await test("The walk's result gives the new distances and the movement left, so 
   assert.equal(moved.result.distancesNow, `PCs: ${world.sheet(thief.id).name} 35 ft; Kara 15 ft.`);
 });
 
+// Every rule measures between the nearest squares of two creatures
+// (board-reach.ts tilesApart): a Large goblin fills (4..5, 0..1), so Kara at
+// (6,2) is toe to toe with its corner at (5,1). The distances the model is told are
+// authoritative read it anchor to anchor, 10 feet.
+await test("The distances the walk reports and the prompt's map are measured to a Large creature's nearest square, as attacks measure them.", async () => {
+  await typedMoveStage();
+  const [goblin] = world.enemies();
+  kit.setEnemy(goblin.id, { stats: { size: "Large" } });
+  try {
+    kit.place(goblin.id, 4, 0);
+    say("player", "Kara hurries 20 feet east.", fighter);
+    const out = await ai.invoke("move_token", { token: fighter.id, x: 6, y: 2 });
+    assert.equal(out.ok, true, out.error);
+    assert.match(out.result.distancesNow, /Goblin ADJACENT/, out.result.distancesNow);
+    const { serializeMapForPrompt } = await import("../src/lib/battlemap/serialize.ts");
+    const { tokenFootprint } = await import("../src/lib/dm/board-reach.ts");
+    const { listTokens } = await import("../src/lib/db/battle-maps.ts");
+    const text = serializeMapForPrompt({ ...kit.map(), terrain: kit.map().drawnTerrain }, listTokens(kit.map().id), undefined, tokenFootprint);
+    assert.match(text, /- Kara: Enemies: Goblin ADJACENT/, text);
+  } finally {
+    kit.setEnemy(goblin.id, { stats: { size: "Small" } });
+  }
+});
+
 await test("A walk refused for want of movement says where the mover still stands and the board's distances from there.", async () => {
   await typedMoveStage();
   const [goblin] = world.enemies();
@@ -345,6 +370,22 @@ await test("The AI clearing a prone character on their own turn stands them up f
   assert.equal(out.ok, true, out.error);
   assert.equal(prone(fighter), false);
   assert.equal(lit(fighter), 3, "standing up cost no movement");
+});
+
+// SRD 5.1, Being Prone: standing "costs an amount of movement equal to half
+// your speed". A 25-foot dwarf spends 12.5 feet and has 12.5 left: two
+// squares. Half rounded down in squares charged two and left them three.
+await test("A 25-foot character standing up keeps two squares of their walk, not three, on the board and through the AI.", async () => {
+  await typedMoveStage();
+  world.patch(fighter.id, { speed: 25, conditions: ["prone"] });
+  try {
+    assert.equal(lit(fighter), 2, "the board lit three squares past a 12.5-foot stand");
+    const out = await ai.invoke("clear_condition", { characterId: fighter.id, condition: "prone" });
+    assert.equal(out.ok, true, out.error);
+    assert.equal(lit(fighter), 2, "standing up from a 25-foot speed left three squares");
+  } finally {
+    world.patch(fighter.id, { speed: 30, conditions: [] });
+  }
 });
 
 await test("A character cannot stand up with less than half their speed left, at speed 0, or off their own turn; the human DM's console still clears prone freely.", async () => {

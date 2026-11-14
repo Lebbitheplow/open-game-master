@@ -300,6 +300,10 @@ export function describeKnownEntry(entry: { kind: string; delta: Delta }, name: 
     // revert can put it back with the hours.
     case "wild_shape":
       return `${name} returns to their own form`;
+    // The once-a-turn mark of Spirit Projection's Form of Dread heal
+    // (spirit-projection.ts), written apart from the heal itself.
+    case "spirit_projection":
+      return `${name} draws on Form of Dread for this turn`;
     case "condition_clock": {
       const ended = words(delta.ended);
       return ended.length ? `${name} is no longer ${ended.join(" or ")}` : `Time runs on ${name}'s conditions`;

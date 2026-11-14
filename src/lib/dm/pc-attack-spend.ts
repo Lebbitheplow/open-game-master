@@ -177,7 +177,9 @@ export function spendAttackEconomy(input: {
     }
     // A melee weapon attack this turn opens Pistol and Blade's shot
     // (src/lib/dm/feature-bonus-attacks.ts).
-    if (weaponAttack && !profile.ranged && holdsPistolAndBlade(sheet) && !budget.oncePerTurn.includes(MELEE_ATTACKED)) {
+    // Melee is where the attack is made from: a dagger thrown at range is a
+    // ranged attack, whatever its kind.
+    if (weaponAttack && !atRange && holdsPistolAndBlade(sheet) && !budget.oncePerTurn.includes(MELEE_ATTACKED)) {
       budget = { ...budget, oncePerTurn: [...budget.oncePerTurn, MELEE_ATTACKED] };
     }
     // Who was attacked this turn, for Horde Breaker's second target (kept
@@ -191,7 +193,7 @@ export function spendAttackEconomy(input: {
     // Mobile and Skirmisher: the creature attacked in melee makes no
     // opportunity attack against them this turn (opportunity.ts).
     // Fancy Footwork is the same rule for a Swashbuckler (mt-mr-turn.ts).
-    if (!profile.ranged && (evadesOpportunityAttacksAfterMelee(sheet) || holdsRow(sheet, "rogue::Fancy Footwork")) && !budget.oncePerTurn.includes(`${MOBILE_ATTACKED}${enemyId}`)) {
+    if (!atRange && (evadesOpportunityAttacksAfterMelee(sheet) || holdsRow(sheet, "rogue::Fancy Footwork")) && !budget.oncePerTurn.includes(`${MOBILE_ATTACKED}${enemyId}`)) {
       budget = { ...budget, oncePerTurn: [...budget.oncePerTurn, `${MOBILE_ATTACKED}${enemyId}`] };
     }
     if (usesAttackAction) {

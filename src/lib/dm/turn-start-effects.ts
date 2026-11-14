@@ -6,7 +6,8 @@
 // refills its legendary actions. The lines go to the table as one note.
 
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
-import type { Encounter, EncounterEnemy } from "@/lib/db/encounters";
+import { getEnemy, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { REGENERATION_STOPPED } from "@/lib/dm/monster-abilities";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { publishWithSeq } from "@/lib/events";
 import { holyNimbusTurnStart } from "@/lib/dm/combat-features";
@@ -55,9 +56,15 @@ export function turnStartEffects(
     ...laughterTurnStart(campaign, encounter.id, starting.filter((id) => !enemiesById.has(id))),
   ];
   for (const id of starting) {
-    const enemy = enemiesById.get(id);
+    const before = enemiesById.get(id);
     // Alchemist's fire burns the creature whose turn starts (gear-weapon-hit.ts).
-    turnStartLines.push(...burningTurnStart(campaign, encounter, id, enemy));
+    turnStartLines.push(...burningTurnStart(campaign, encounter, id, now(before)));
+    // Read again after the fire: each hook works from the hit points the
+    // creature has now. The rows of `enemiesById` were read before this turn's
+    // start dealt anything (Spirit Guardians, a zone, the fire above), and a
+    // troll's Regeneration counted from them put back the damage it had just
+    // taken, raising it from 0 when that damage dropped it.
+    const enemy = now(before);
     if (enemy?.status === "alive") {
       // A troll down at 0 rises or dies as its turn starts (regeneration-turn.ts).
       turnStartLines.push(...regenerationTurnStart(campaign, encounter, enemy));
@@ -87,4 +94,18 @@ export function turnStartEffects(
     });
     publishWithSeq(campaign.id, seq, "message_added", { message });
   }
+}
+
+// The creature as it stands now, but with what stopped its Regeneration as
+// it was when the turn began: the stop lasts until the start of this turn
+// (enemy-damage.ts) and has ended by now, and fire taken at this turn's start
+// stops the next turn's, not this one's (SRD 5.1, Troll).
+function now(before: EncounterEnemy | undefined): EncounterEnemy | undefined {
+  const row = before ? getEnemy(before.id) : null;
+  if (!before || !row) {
+    return before;
+  }
+  const stopped = before.conditions.includes(REGENERATION_STOPPED);
+  const conditions = row.conditions.filter((name) => name !== REGENERATION_STOPPED);
+  return { ...row, conditions: stopped ? [...conditions, REGENERATION_STOPPED] : conditions };
 }

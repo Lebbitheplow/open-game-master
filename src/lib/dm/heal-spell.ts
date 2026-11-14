@@ -22,6 +22,7 @@
 //
 // This module does not import mutations.ts: the cast is handed in.
 
+import { regainHitPoints } from "@/lib/dm/regain";
 import { spellBreaker } from "@/lib/dm/spell-breaker";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { recordCast } from "@/lib/dm/last-save";
@@ -34,7 +35,7 @@ import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { rollOwnDiceStored } from "@/lib/dm/character-roll";
 import { authoredHealMax } from "@/lib/srd/authored-economy";
 import { noteHealingRoll } from "@/lib/dm/ar-ws-empowered-healing";
-import { healAdditions, healModifier } from "@/lib/dm/heal-bonus";
+import { castingAbilityMod, healAdditions, healModifier } from "@/lib/dm/heal-bonus";
 import { publishEphemeral, publishPersisted } from "@/lib/events";
 import { openJoinerBonds } from "@/lib/dm/party-bonds";
 import { computeSheetDerived, spellSaveDcFor } from "@/lib/srd";
@@ -236,11 +237,12 @@ export function castHealingSpell(
   // The modifier, Disciple of Life and an authored feature's die (Enhanced
   // Bond, Alchemical Savant) are heal-bonus.ts's, which the Hand's healing
   // cards print from too.
+  const fromItem = itemCastNumbers(caster.id, input.spell) ?? runningItemSpell(caster, input.spell);
   const modifier = healModifier({
     dc,
     proficiencyBonus: derived.proficiencyBonus,
     noModifier: mech?.healNoModifier,
-    abilityMod: itemCastNumbers(caster.id, input.spell)?.abilityMod ?? runningItemSpell(caster, input.spell)?.abilityMod,
+    abilityMod: fromItem?.abilityMod ?? (fromItem?.saveDc ? undefined : castingAbilityMod(caster, input.spell, derived.abilityMods)),
   });
   const added = healAdditions(caster, slotLevel, derived.abilityMods);
   const riders: string[] = [...added.notes];
@@ -285,13 +287,11 @@ export function castHealingSpell(
   // cleric 2 + the slot's level.
   if (slotLevel >= 1 && target.id !== caster.id && holdsFeature(caster, "blessed healer")) {
     const self = getSheetById(caster.id) ?? caster;
-    const currentHp = Math.min(effectiveMaxHp(self), self.currentHp + 2 + slotLevel);
-    if (currentHp > self.currentHp && self.currentHp > 0) {
-      const healed = patchSheet(self.id, { currentHp });
-      if (healed) {
-        publishPersisted(campaign.id, "sheet_updated", { sheet: healed });
-      }
-      riders.push(`Blessed Healer: ${caster.name} regains ${currentHp - self.currentHp}`);
+    // Through the healing door (regain.ts): a cursed or chilled cleric
+    // regains nothing.
+    const regained = self.currentHp > 0 ? regainHitPoints(campaign, null, self, 2 + slotLevel, "Blessed Healer") : 0;
+    if (regained > 0) {
+      riders.push(`Blessed Healer: ${caster.name} regains ${regained}`);
     }
   }
   // Spell Breaker (Arcana 6): one spell of the slot's level or lower ends.

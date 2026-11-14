@@ -9,7 +9,7 @@ import { BONUS_SPELL, LEVELLED_SPELL } from "@/lib/dm/cast-rules";
 import type { PastSight } from "@/lib/dm/condition-logic";
 import { asPercent, averageDetail } from "@/lib/srd/odds";
 import type { TargetSight } from "@/lib/battlemap/view-tactics";
-import { attackOddsWithDice, previewAdvantage } from "@/lib/battlemap/hand-odds";
+import { attackOddsWithDice, previewAdvantage, shotRange } from "@/lib/battlemap/hand-odds";
 import { weaponNamed } from "@/lib/srd/weapons";
 import {
   budgetOf,
@@ -223,11 +223,17 @@ export function previewRows(
   choices: HandChoices = {},
 ): PreviewRow[] {
   const rows: PreviewRow[] = [];
+  // Aimed past a thrown weapon's reach, the throw rolls without the melee
+  // bonuses (hand.ts thrownDamage), so the preview reads that sum.
+  const feet = aim && aim.kind === "enemy" ? aim.edge?.feet : undefined;
+  const thrownNow = card.thrownDamage && card.shot && feet !== undefined && shotRange(card.shot, feet) !== "reach";
+  const damage = thrownNow ? card.thrownDamage! : card.damage;
   if (card.dice) {
-    rows.push({ key: card.heals ? "Restores" : card.damage ? "Damage" : "Effect", value: card.dice, tone: card.heals ? "heal" : card.damage ? "damage" : "plain" });
+    const dice = thrownNow ? `${card.thrownDamage} ${card.damageType}`.trim() : card.dice;
+    rows.push({ key: card.heals ? "Restores" : card.damage ? "Damage" : "Effect", value: dice, tone: card.heals ? "heal" : card.damage ? "damage" : "plain" });
   }
-  if (card.damage) {
-    const expected = mean(card.damage);
+  if (damage) {
+    const expected = mean(damage);
     if (expected) rows.push({ key: card.heals ? "Expected" : "Expected dmg", value: card.heals ? `+${expected}` : expected, tone: "plain" });
   }
   if (card.save) {

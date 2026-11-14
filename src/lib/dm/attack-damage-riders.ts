@@ -68,9 +68,16 @@ export function attackDamageRiders(input: {
   // bugbear's Surprise Attack, src/lib/srd/mt-species-traits.ts). Absent
   // (the Hand): the rider is left out.
   surprised?: boolean;
+  // The attack is made at range: a melee weapon thrown past its reach is a
+  // ranged weapon attack (SRD 5.1, Thrown), so Rage and the riders of a
+  // melee hit stay off it. Absent (the Hand, the opportunity attack): the
+  // weapon's own kind decides.
+  atRange?: boolean;
 }): AttackDamageRiders {
-  const { sheet, profile, riders, kind, marked } = input;
-  const rageBonus = ragingMeleeBonus(sheet, profile);
+  const { sheet, riders, kind, marked } = input;
+  // A thrown handaxe 20 feet off took Rage's bonus as a melee swing did.
+  const profile = input.atRange && !input.profile.ranged ? { ...input.profile, ranged: true } : input.profile;
+  const rageBonus = ragingMeleeBonus(sheet, profile, { thrownAtRange: profile !== input.profile });
   const abilityRiders =
     kind === "weapon" || kind === "natural"
       ? authoredDamageAbility(sheet, { melee: !profile.ranged }, Object.fromEntries(Object.entries(sheet.abilities).map(([key, score]) => [key, Math.floor((score - 10) / 2)])))
@@ -83,7 +90,7 @@ export function attackDamageRiders(input: {
   const featureRiders: FeatureRider[] =
     kind === "spell" || kind === "granted"
       ? [...riders.damageRiders.filter((rider) => rider.when === "attack"), ...graveTouchedDie(sheet, profile)].map((rider) => ({ ...rider, type: riderType(sheet, rider, input.enemy?.stats) }))
-      : [...riders.damageRiders, ...hunterRiders(sheet, input.enemy), ...pactRiders(sheet, kind, profile), ...heldConditionRiders(sheet), ...lineageRiders(sheet, { surprised: input.surprised }), ...graveTouchedDie(sheet, profile)]
+      : [...riders.damageRiders, ...hunterRiders(sheet, input.enemy), ...pactRiders(sheet, kind, input.profile), ...heldConditionRiders(sheet), ...lineageRiders(sheet, { surprised: input.surprised }), ...graveTouchedDie(sheet, input.profile)]
           // Read as feature riders: a lineage's rider names no weapon of its own.
           .filter((rider: FeatureRider) => {
             if (rider.when === "melee" && profile.ranged) {

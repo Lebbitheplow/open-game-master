@@ -1,4 +1,5 @@
 import { tickEffectMinutes } from "@/lib/db/active-effects";
+import { mummyRotClock } from "@/lib/dm/mummy-rot";
 import { getCampaignById } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { gutterBurntLights } from "@/lib/dm/light-timers";
@@ -154,6 +155,8 @@ export function advanceClock(
   // its midnight (src/lib/dm/afflictions.ts, affliction-poisons.ts).
   afflictionClockTick(campaignId, moved.instant);
   poisonClockTick(campaignId, moved.instant);
+  // Mummy rot's 3d6 off the maximum for every 24 hours (mummy-rot.ts).
+  mummyRotClock(campaignId, current.instant, moved.instant);
   // A companion's ultimatum whose deadline it passed (issue 503).
   if (conscienceClockTick(campaignId)) {
     publishEphemeral(campaignId, "relationships_updated", {});

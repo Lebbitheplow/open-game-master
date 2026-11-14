@@ -171,8 +171,13 @@ test("a round passing counts down round-scoped effects, and a minute's worth the
   assert.deepEqual(result.expired.map((entry) => entry.id), ["b"]);
   assert.equal(result.kept.find((entry) => entry.id === "a").remaining, 1);
   assert.equal(result.kept.find((entry) => entry.id === "c").remaining, 60);
-  const tenth = tickRound(effects, true);
+  // A minute is ten of the effect's own rounds, not the fight's tenth.
+  let tenth = { kept: effects };
+  for (let round = 0; round < 10; round += 1) {
+    tenth = tickRound(tenth.kept);
+  }
   assert.equal(tenth.kept.find((entry) => entry.id === "c").remaining, 59);
+  assert.equal(tickRound(effects, () => false).kept.find((entry) => entry.id === "a").remaining, 2, "an effect another turn counts is left alone");
   assert.equal(tenth.kept.find((entry) => entry.id === "d").remaining, effects[3].remaining);
 });
 

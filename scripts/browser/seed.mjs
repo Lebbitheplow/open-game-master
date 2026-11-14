@@ -2996,6 +2996,62 @@ for (const viewport of ["desktop", "phone"]) {
   twoHandsTables[viewport] = { id: table.id, roller: roller.id, wizard: wizard.id };
 }
 
+// The ask before a character's opportunity attack (src/lib/dm/opportunity-ask.ts):
+// a table the player runs, in a fight, one goblin beside the lead's fighter
+// on an open board. The GM walks it away and the lead is asked Strike or
+// Let it go (scripts/browser/scenarios/138-opportunity-ask.mjs).
+const OPPORTUNITY_TITLE = "Breakaway Table";
+const opportunityTables = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const { dice, clearDice } = await import("../lib/enforce-world.mjs");
+  const maps = await import("../../src/lib/db/battle-maps.ts");
+  const encounterRows = await import("../../src/lib/db/encounters.ts");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(player.id, {
+      title: `${OPPORTUNITY_TITLE} (${viewport})`,
+      description: "A goblin that would rather not stay.",
+      theme: "high-fantasy",
+      maxPlayers: 6,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    const seated = campaigns.joinByInviteCode(world.owner.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the lead at the breakaway table: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const hero = sheets.createSheet(table.id, world.owner.id, 5, heroInput({
+      name: "Wren Ashby", class: "fighter", level: 5, abilities: { str: 16, dex: 12, con: 14, int: 10, wis: 10, cha: 10 },
+      proficiencies: { saves: [], skills: [], expertise: [], languages: ["Common"], tools: [], armor: ["light", "medium", "heavy", "shields"], weapons: ["simple", "martial"] },
+      equipment: [{ name: "Longsword", qty: 1, equipped: true }],
+    }));
+    // The goblin's initiative, then the fighter's.
+    clearDice();
+    dice(1, 18);
+    const started = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: player.id }, {
+      name: "start_encounter",
+      args: { enemies: [{ monster: "goblin", count: 1 }] },
+    });
+    clearDice();
+    if (!started.ok) {
+      throw new Error(`the breakaway table's fight did not start: ${started.error}`);
+    }
+    const encounter = encounterRows.getActiveEncounter(table.id);
+    const board = maps.getBattleMapForEncounter(encounter.id);
+    maps.setBattleMapTerrain(board.id, ".".repeat(board.width * board.height));
+    getDatabase().prepare("UPDATE battle_maps SET doors_json = '{}' WHERE id = ?").run(board.id);
+    const [goblin] = encounterRows.listEnemies(encounter.id);
+    // Hardy enough that a Strike never ends the fight under the scenario.
+    getDatabase().prepare("UPDATE encounter_enemies SET max_hp = 200, current_hp = 200 WHERE id = ?").run(goblin.id);
+    for (const token of maps.listTokens(board.id)) {
+      maps.moveToken(token.id, token.refId === hero.id ? 2 : 3, 6, 0);
+    }
+    opportunityTables[viewport] = { id: table.id, hero: hero.id, goblin: goblin.id, goblinName: goblin.displayName };
+  }
+}
+
 // The damage roll card on real dice (play-test 2026-11-07, B5): a table the
 // player runs, at real_allowed, in a fight with one goblin beside the lead's
 // fighter, whose Piercer and Savage Attacker change the damage dice. It is
@@ -4107,6 +4163,7 @@ const ids = {
   shiftTables,
   chronalWatchTables,
   twoHandsTables,
+  opportunityTables,
   damageStepTables,
   healingDiceTables,
   hitDiceTables,
@@ -4241,6 +4298,7 @@ const ids = {
     ...Object.fromEntries(Object.entries(shiftTables).map(([viewport, table]) => [table.id, `${SHIFT_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(chronalWatchTables).map(([viewport, table]) => [table.id, `${CHRONAL_WATCH_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(twoHandsTables).map(([viewport, table]) => [table.id, `${TWO_HANDS_TITLE} (${viewport})`])),
+    ...Object.fromEntries(Object.entries(opportunityTables).map(([viewport, table]) => [table.id, `${OPPORTUNITY_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(damageStepTables).map(([viewport, table]) => [table.id, `${DAMAGE_STEPS_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(healingDiceTables).map(([viewport, table]) => [table.id, `${HEALING_DICE_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(hitDiceTables).map(([viewport, table]) => [table.id, `${HIT_DICE_TITLE} (${viewport})`])),

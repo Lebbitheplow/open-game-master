@@ -13,6 +13,7 @@ import {
 } from "@/lib/dm/condition-logic";
 import type { DeathTrack } from "@/lib/dm/death-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { MUMMY_ROT } from "@/lib/dm/mummy-rot-logic";
 import { textKey } from "@/lib/language/text-logic";
 
 export const UNCONSCIOUS = "unconscious";
@@ -120,6 +121,10 @@ export function regainBlockedBy(sheet: { conditions: string[]; currentHp: number
   }
   if (held.includes(NEGATIVE_ENERGY)) {
     return NEGATIVE_ENERGY;
+  }
+  // "The cursed target can't regain hit points" (mummy-rot-logic.ts).
+  if (held.includes(MUMMY_ROT)) {
+    return "mummy rot";
   }
   return sheet.currentHp <= 0 && held.includes(SUFFOCATING) ? SUFFOCATING : null;
 }

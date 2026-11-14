@@ -226,7 +226,9 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
         kind: "reach",
         tiles: 1,
         gate: RAGING,
-        note: "Crushing Throw's Rage damage on a Strength thrown hit, and growing Large, are the GM's to add.",
+        // Crushing Throw's Rage damage on a Strength thrown hit is the
+        // attack engine's (attack-logic.ts ragingMeleeBonus).
+        note: "Growing Large is the GM's to add.",
       },
     ],
   },

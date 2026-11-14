@@ -1,4 +1,5 @@
 import { armsWatchRow } from "@/lib/dm/after-roll-table";
+import { tokenFootprint } from "@/lib/dm/board-reach";
 import { emptyTurnLine, type EmptyTurnPlayer } from "@/lib/dm/empty-turn";
 import { noteToolCallHealth } from "@/lib/tool-call-health";
 import { foesAboutBlock } from "@/lib/dm/foe-return";
@@ -496,7 +497,13 @@ export function buildEncounterState(campaignId: string, sheets: CharacterSheet[]
     // Named while they stay away, so the GM can still bring them in: nothing
     // else in the state says they exist once the order has closed.
     ...(encounter.awayIds.length ? { away: sheets.filter((sheet) => encounter.awayIds.includes(sheet.id)).map((sheet) => sheet.name) } : {}),
-    turnBudget: encounter.turnBudget ? describeBudget(encounter.turnBudget) : null,
+    // A reaction is spent in reactionsUsed (turn-budget.ts markReactionUsed),
+    // never on the budget's own flag: read from the budget alone, a hero who
+    // took Shield on their own turn was told to the model as still holding
+    // their reaction.
+    turnBudget: encounter.turnBudget
+      ? describeBudget({ ...encounter.turnBudget, reactionUsed: encounter.turnBudget.reactionUsed || encounter.reactionsUsed.includes(encounter.turnBudget.ownerId) })
+      : null,
     // The printed lair options lair_action takes by number: a block's own
     // list never reaches its traits whole.
     ...(lair.length ? { lairOptions: lair.map((line, at) => `${at + 1}. ${line}`) } : {}),
@@ -640,7 +647,7 @@ function buildMapText(encounterId: string, sheets: CharacterSheet[]): string | n
     }
   }
   // The drawn board, so the model sees the doors, with the shut ones named.
-  return serializeMapForPrompt({ ...map, terrain: map.drawnTerrain }, listTokens(map.id), statuses);
+  return serializeMapForPrompt({ ...map, terrain: map.drawnTerrain }, listTokens(map.id), statuses, tokenFootprint);
 }
 
 function loadContext(campaign: Campaign): TurnContext {

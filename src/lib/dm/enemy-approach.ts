@@ -3,12 +3,12 @@ import { tokenSides } from "@/lib/dm/combatant";
 import { allyBeside } from "@/lib/dm/side-allies";
 import { getEncounter, listEnemies, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, getTokenByRef, listTokens, moveToken, resetTurnBudgets } from "@/lib/db/battle-maps";
-import { findPath, walkPathWithBudget } from "@/lib/battlemap/movement";
+import { findPath, reachableTiles, walkPathWithBudget } from "@/lib/battlemap/movement";
 import { hasLineOfSight } from "@/lib/battlemap/los";
 import { bestFiringPosition } from "@/lib/battlemap/tactics";
 import { occupiedTiles } from "@/lib/battlemap/view";
-import { chebyshev, climbsFrom, swimsFrom, type BattleToken, type MoveTraits } from "@/lib/battlemap/types";
-import { footprintDistance, footprintForSize, nearestFootprintTile } from "@/lib/battlemap/footprint";
+import { climbsFrom, swimsFrom, type BattleToken, type MoveTraits } from "@/lib/battlemap/types";
+import { footprintDistance, footprintForSize, nearestFootprintTile, type Footprint } from "@/lib/battlemap/footprint";
 import { tokenFootprint } from "@/lib/dm/board-reach";
 
 import { passableTiles } from "@/lib/battlemap/passage";
@@ -21,7 +21,7 @@ import { swingMode, type EnemyAttackProfile } from "@/lib/dm/enemy-profile";
 import { enemyMoveBudget, enemySpeedTiles } from "@/lib/dm/enemy-speed";
 import { endsOwedTurn, markEnemyActed } from "@/lib/dm/can-act";
 import { forgetEnemyTurns } from "@/lib/dm/enemy-turn-logic";
-import { FLEEING, TURNED } from "@/lib/dm/flee-logic";
+import { FLEEING, TURNED, fearDistance } from "@/lib/dm/flee-logic";
 import { aggressiveSteps } from "@/lib/dm/enemy-aggressive";
 import { missileDeflection, zoneStepsFor } from "@/lib/dm/zone-rules";
 import { zonesAfterMove } from "@/lib/dm/zone-triggers";
@@ -58,26 +58,27 @@ export function fearSourceAt(
   mapId: string,
   conditions: string[],
   meta: Record<string, { source?: string } | undefined>,
-): XY | null {
+): (XY & { footprint?: number }) | null {
   const held = ["frightened", TURNED, FLEEING].map((name) => conditions.find((entry) => entry.toLowerCase() === name)).filter((entry): entry is string => Boolean(entry));
   const source = held.map((name) => meta?.[name]?.source).find(Boolean);
   if (!source) {
     return null;
   }
   const token = getTokenByRef(mapId, source);
-  return token ? { x: token.x, y: token.y } : null;
+  // Its size goes with it: fear is measured to the nearest square it fills.
+  return token ? { x: token.x, y: token.y, footprint: tokenFootprint(token) } : null;
 }
 
 // The steps of a walk a frightened creature may take: it stops before the
 // first square that is closer to the source of its fear than where it began.
-export function awayFromFear(from: XY, steps: XY[], source: XY | null): XY[] {
+export function awayFromFear(from: XY, steps: XY[], source: (XY & { footprint?: number }) | null): XY[] {
   if (!source) {
     return steps;
   }
-  const start = chebyshev(from.x, from.y, source.x, source.y);
+  const start = fearDistance(from, source);
   const allowed: XY[] = [];
   for (const step of steps) {
-    if (chebyshev(step.x, step.y, source.x, source.y) < start) {
+    if (fearDistance(step, source) < start) {
       break;
     }
     allowed.push(step);
@@ -114,7 +115,8 @@ export function standUpCost(encounterId: string, enemy: EncounterEnemy): number 
   const token = map ? getTokenByRef(map.id, enemy.id) : null;
   const budget = token ? enemyMoveBudget(getEncounter(encounterId), enemy, token) : null;
   const full = budget ? budget.speedTiles : enemySpeedTiles(enemy);
-  const half = Math.floor(full / 2);
+  // Rounded up in squares, as a character's is (authored-effects-more.ts standUpTiles).
+  const half = Math.ceil(full / 2);
   if (full <= 0 || (budget && budget.tilesLeft < half)) {
     return null;
   }
@@ -141,6 +143,28 @@ export function standUpIfProne(encounterId: string, enemy: EncounterEnemy): { en
 }
 
 // The squares of a path up to and including the one landed on.
+// The way a creature larger than a square walks toward a reach: to the
+// cheapest square its whole space can stand on and strike from, squeezing
+// where it must. Null when no such square is open.
+function largeApproach(
+  map: { terrain: string; width: number; height: number },
+  occupied: Set<number>,
+  origin: XY,
+  footprint: Footprint,
+  traits: MoveTraits,
+  reachesFrom: (at: XY) => boolean,
+): XY[] | null {
+  const costs = reachableTiles(map.terrain, map.width, map.height, occupied, origin, map.width * map.height * 4, footprint, false, traits);
+  let best: { at: XY; cost: number } | null = null;
+  for (const [idx, cost] of costs) {
+    const at = { x: idx % map.width, y: Math.floor(idx / map.width) };
+    if ((!best || cost < best.cost) && reachesFrom(at)) {
+      best = { at, cost };
+    }
+  }
+  return best ? findPath(map.terrain, map.width, map.height, occupied, origin, best.at, footprint, false, traits) : null;
+}
+
 function walkedPart(path: XY[], landing: XY) {
   const at = path.findIndex((step) => step.x === landing.x && step.y === landing.y);
   return at >= 0 ? path.slice(0, at + 1) : path;
@@ -214,7 +238,8 @@ export function approachTarget(
   const standing = options.dryRun ? (standUpCost(encounterId, enemy) ?? 0) : 0;
   const budget = Math.max(0, move.tilesLeft - standing);
   const fear = fearSourceAt(map.id, enemy.conditions, enemy.conditionMeta as Record<string, { source?: string }>);
-  const occupied = occupiedTiles(map, listTokens(map.id), attacker);
+  // Every square of a large creature on the board is taken, not its corner.
+  const occupied = occupiedTiles(map, listTokens(map.id), attacker, tokenFootprint);
   let landing: XY = origin;
   let cost = 0;
   let walked: XY[] = [];
@@ -222,14 +247,18 @@ export function approachTarget(
     // Toward the target, stopping at the first square its reach covers.
     // Through its allies' spaces, and a character's two sizes apart.
     const swims = enemyMoveTraits(map.width, listTokens(map.id), attacker, enemy.encounterId);
-    const path = findPath(map.terrain, map.width, map.height, occupied, attacker, target, 1, false, swims);
-    const approach = path ? path.slice(0, -1) : [];
+    // A creature larger than a square walks as its whole space: it squeezes
+    // a one-square gap at double cost and stops where all of it fits, as
+    // move_token walks it. Walked as one square, an ogre slipped through a
+    // doorway at full speed and could stop half inside a wall.
+    const path = mine > 1 ? largeApproach(map, occupied, origin, mine, swims, reachesFrom) : findPath(map.terrain, map.width, map.height, occupied, attacker, target, 1, false, swims);
+    const approach = path ? (mine > 1 ? path : path.slice(0, -1)) : [];
     const stopAt = approach.findIndex((step) => reachesFrom(step));
     const unafraid = awayFromFear(origin, stopAt >= 0 ? approach.slice(0, stopAt + 1) : approach, fear);
     // Aggressive's speed goes only toward a hostile it can see (enemy-aggressive.ts).
     const live = getEncounter(encounterId);
     const wanted = live ? aggressiveSteps(live, map, enemy, attacker, unafraid, swims).steps : unafraid;
-    const walk = walkPathWithBudget(map.terrain, map.width, wanted, budget, swims, origin);
+    const walk = walkPathWithBudget(map.terrain, map.width, wanted, budget, swims, origin, mine > 1 ? { height: map.height, occupied, footprint: mine } : undefined);
     if (walk.at) {
       landing = walk.at;
       cost = walk.spent;
@@ -241,7 +270,7 @@ export function approachTarget(
       bestFiringPosition(map.terrain, map.width, map.height, occupied, attacker, target, budget, profile.rangeTiles) ??
       bestFiringPosition(map.terrain, map.width, map.height, occupied, attacker, target, budget, profile.longRangeTiles);
     const allowed =
-      spot && (!fear || chebyshev(spot.at.x, spot.at.y, fear.x, fear.y) >= chebyshev(origin.x, origin.y, fear.x, fear.y));
+      spot && (!fear || fearDistance(spot.at, fear) >= fearDistance(origin, fear));
     const route = spot && allowed ? (findPath(map.terrain, map.width, map.height, occupied, attacker, spot.at) ?? []) : [];
     // A firing position Aggressive's speed would carry it away from a hostile to is not taken.
     const live = getEncounter(encounterId);

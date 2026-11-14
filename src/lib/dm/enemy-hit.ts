@@ -1,4 +1,6 @@
 import { maxHpCannotFall } from "@/lib/dm/ar-ws-inured-logic";
+import { MUMMY_ROT } from "@/lib/dm/mummy-rot-logic";
+import { startMummyRot } from "@/lib/dm/mummy-rot";
 import { tieToTurn } from "@/lib/dm/turn-tie";
 import type { Campaign } from "@/lib/db/campaigns";
 import { saveDamageTaken } from "@/lib/srd/trait-rules";
@@ -230,6 +232,10 @@ export function resolveOnHit(
         ).result;
     if (!("error" in applied)) {
       out.riderCondition = [...((out.riderCondition as string[] | undefined) ?? []), condition];
+      // Mummy rot's days count from this hour (mummy-rot.ts).
+      if (condition === MUMMY_ROT) {
+        startMummyRot(campaign.id, target.id);
+      }
       // "Until the end of the otyugh's next turn": tied to that turn (turn-tie.ts).
       if (rider.until && !rider.untilLongRest) {
         tieToTurn(

@@ -266,6 +266,19 @@ await test("a ki route with no ki left is refused and spends nothing", async () 
   assert.equal(world.sheet(monk.id).resources.ki.used, 5);
 });
 
+// GAME STATE's action economy line is what the model reads before it plays
+// a reaction: a reaction spent on the hero's own turn is gone from it.
+await test("GAME STATE's action economy names no reaction once the hero spent theirs on their own turn", async () => {
+  const enemy = await stage(fighter);
+  assert.equal((await swing(fighter, enemy)).ok, true);
+  const { buildEncounterState } = await import("../src/lib/dm/turn.ts");
+  const { markReactionUsed } = await import("../src/lib/dm/turn-budget.ts");
+  assert.match(buildEncounterState(world.campaignId, world.sheets()).turnBudget, /reaction/);
+  markReactionUsed(world.encounter(), fighter.id);
+  const line = buildEncounterState(world.campaignId, world.sheets()).turnBudget;
+  assert.ok(line && !/reaction/.test(line), `the spent reaction was told as left: ${line}`);
+});
+
 await test("with the action spent, a fighter's second action is refused, never moved to the bonus action", async () => {
   const enemy = await stage(fighter);
   assert.equal((await swing(fighter, enemy)).ok, true);

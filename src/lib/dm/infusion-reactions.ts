@@ -15,6 +15,7 @@
 //
 // use_reaction reaches these after the SRD feature reactions (reaction-tools.ts);
 // a refusal spends nothing.
+import { classSaveDc } from "@/lib/dm/command-undead";
 import { getEnemy, patchEnemyConditions } from "@/lib/db/encounters";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { pushStraightAway } from "@/lib/dm/ar-ws-storm-fury";
@@ -28,7 +29,6 @@ import { noHit, SPENT, spendReaction, type Ctx } from "@/lib/dm/reaction-tools";
 import { publishSheet } from "@/lib/dm/combat-features";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
-import { computeSheetDerived } from "@/lib/srd";
 import { isNamed } from "@/lib/srd/feature-names";
 
 export function infusionReaction(ctx: Ctx): ToolResult | null {
@@ -70,8 +70,9 @@ function answerHit(ctx: Ctx, infusion: "Radiant Weapon" | "Repulsion Shield", me
     }
     // The save is against the artificer's spell save DC, wherever the weapon went.
     const artificer = getSheetById(held.row.infusion!.by) ?? sheet;
-    const derived = computeSheetDerived(artificer);
-    const dc = derived.spellSaveDc ?? 8 + derived.proficiencyBonus + derived.abilityMods.int;
+    // The class's own spell save DC (command-undead.ts classSaveDc): a
+  // multiclass sheet's first casting ability is another class's.
+  const dc = classSaveDc(artificer, "int");
     const save = rollEnemySave(campaign.id, enemy, "con", dc, { magical: true, resist: true, record: { turn: ctx.turn, detail: `${enemy.displayName}: Constitution save against ${held.row.name}'s flash` } });
     out.save = `${enemy.displayName} rolled ${save.total} against DC ${dc}: ${save.success ? "not blinded" : "blinded until the end of its next turn"}`;
     if (!save.success) {

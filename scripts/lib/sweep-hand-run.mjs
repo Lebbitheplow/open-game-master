@@ -202,6 +202,11 @@ export function judge({ state, card, played, variant, heroId, riderCards = [] })
       }
     }
   }
+  // A melee weapon thrown at a foe past its reach rolls the card's thrown
+  // line: a ranged attack, without Rage or a melee hit's riders.
+  if (card.thrownDamage && feet !== undefined && card.shot && feet > card.shot.reachFt) {
+    card = { ...card, damage: card.thrownDamage };
+  }
   if (card.damage && !card.heals && card.intent.card !== "rider") {
     const riderDice = riderCards.flatMap((rider) => (rider.damage ? [...rider.damage.matchAll(/(\d+)d(\d+)/g)].map((match) => ({ count: Number(match[1]), size: match[2] })) : []));
     const damageRolls = played.rolls.filter((roll) => roll.kind === "damage" && mine(roll));

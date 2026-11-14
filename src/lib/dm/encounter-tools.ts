@@ -1,7 +1,7 @@
 import { dominationOrderOf, otherSide } from "@/lib/dm/combat-sides-logic";
 import { hiddenNow } from "@/lib/dm/board-hidden";
 import { resolveCombatant, sheetsOnSide, sideOf, standingOn } from "@/lib/dm/combatant";
-import { attacksLeft, budgetApplies, type TurnBudget } from "@/lib/dm/action-budget";
+import { attacksLeft, budgetApplies, paidSwingsLeft, type TurnBudget } from "@/lib/dm/action-budget";
 import { resolveTargetFoe, sheetFoeView } from "@/lib/dm/sheet-foe";
 import { lashOutTarget } from "@/lib/dm/confusion";
 import type { SystemGlyph } from "@/lib/system-glyphs";
@@ -26,6 +26,7 @@ import {
   type InitiativeFloor,
 } from "@/lib/db/campaigns";
 import {
+  fightNow,
   createEncounter,
   endEncounter,
   getActiveEncounter,
@@ -45,7 +46,7 @@ import { feralInstinctOpening } from "@/lib/dm/mt-srd-barbarian";
 import { getRoll, insertRoll } from "@/lib/db/rolls";
 import { getLatestDmMessage, insertCampaignMessage, listRecentMessages } from "@/lib/db/messages";
 import { closeStandInTurn, getDmTurn, listOpenPendingRolls, listPendingForTurn, openStandInTurn, saveDmTurn, setPendingAttack, type DmTurn } from "@/lib/db/dm-turns";
-import { endTurnToolLine, endTurnWaitsLine, toHitRollWithPlayer } from "@/lib/dm/open-roll-logic";
+import { endTurnToolLine, endTurnWaitsLine, attackRollWithPlayer } from "@/lib/dm/open-roll-logic";
 import { rollExpression } from "@/lib/dice";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
@@ -79,6 +80,7 @@ import { holdsThiefsReflexes } from "@/lib/dm/bonus-routes";
 import {
   actingCombatantId,
   canEnemyAct,
+  markEnemyActed,
   oweEnemiesAnAction,
 } from "@/lib/dm/can-act";
 import { acWithEffects, enemyAcWithEffects } from "@/lib/dm/ac-effects";
@@ -104,7 +106,8 @@ import { enemyFalls } from "@/lib/dm/enemy-fall";
 import { enemyCallOutOfTurn } from "@/lib/dm/enemy-turn-order";
 import { forgetEnemyTurns } from "@/lib/dm/enemy-turn-logic";
 import { approachTurn, fleeTurn } from "@/lib/dm/enemy-flight";
-import { characterCallUnasked } from "@/lib/dm/player-word";
+import { characterCallUnasked, wordsThisTurn } from "@/lib/dm/player-word";
+import { englishEndsTurn } from "@/lib/dm/claims-logic";
 import {
   applyExtraEncounterCall,
   EXTRA_ENCOUNTER_TOOL_NAMES,
@@ -1219,7 +1222,7 @@ function handleEndTurn(
   // now, the swing would never land, and what they chose would be spent on
   // nothing. The resumed turn ends it once the roll lands.
   // Nor would one whose dice the player has yet to enter (open-roll-logic.ts).
-  const withPlayer = toHitRollWithPlayer(listOpenPendingRolls(campaign.id), sheet.id, encounter);
+  const withPlayer = attackRollWithPlayer(listOpenPendingRolls(campaign.id), sheet.id, fightNow(encounter));
   if (withPlayer) {
     return { error: endTurnToolLine(sheet.name, withPlayer), retry: true };
   }
@@ -1310,6 +1313,13 @@ function handleEndTurn(
   };
 }
 
+// The swings a character's live turn has paid for and not made.
+function swingsLeftFor(campaignId: string, characterId: string): number {
+  const encounter = getActiveEncounter(campaignId);
+  const budget = encounter?.turnBudget ?? null;
+  return encounter && budgetApplies(budget, characterId, encounter.round) ? paidSwingsLeft(budget) : 0;
+}
+
 // pc_attack's endTurn: the player said the attack ends their turn
 // (src/lib/dm/pc-attack-approach.ts). Once the attack resolved, or the walk
 // toward the target spent the turn's movement without reaching it
@@ -1362,6 +1372,18 @@ function endTurnAfterAttack(
     return {
       ...result,
       turnNotEnded: `Entr${again.length === 1 ? "y" : "ies"} ${again.join(", ")} can be sent again (at another creature, or with the id put right), so the turn stays open: end it with end_turn once those attacks are made or given up.`,
+    };
+  }
+  // The model's endTurn on an Attack action with Extra Attack's swings
+  // still to make: one swing declared as "I attack the goblin" ended a level
+  // 5 fighter's turn with the second attack unmade. Unless the player's own
+  // words end the turn, it stays open, and end_turn ends it if they give the
+  // swings up.
+  const left = turn.actor === "ai" ? swingsLeftFor(campaign.id, characterId) : 0;
+  if (left > 0 && !(campaign.gameSettings.tableLanguage === "english" && englishEndsTurn(wordsThisTurn(campaign.id, characterId)))) {
+    return {
+      ...result,
+      turnNotEnded: `${sheetsById.get(characterId)?.name ?? "They"} still ${left === 1 ? "has 1 attack" : `has ${left} attacks`} of this turn's Attack action to make, so the turn stays open: make ${left === 1 ? "it" : "them"} with pc_attack, or call end_turn if the player gives ${left === 1 ? "it" : "them"} up.`,
     };
   }
   const ended = handleEndTurn(campaign, turn, JSON.stringify({ characterId }), sheets, sheetsById);
@@ -1878,7 +1900,7 @@ function advancePointer(
   encounter.reactionsUsed = encounter.reactionsUsed.filter(
     (id) => !startsNow.includes(id) && !startsNow.some((owner) => id.startsWith(`${VIGILANT_PREFIX}${owner}:`) || id.startsWith(`${PET_REACTION_PREFIX}${owner}:`)),
   );
-  startTurnConditions(campaign, encounter, starting, endedTurn, heldTurn ? [heldTurn] : []);
+  const { lostTurns } = startTurnConditions(campaign, encounter, starting, endedTurn, heldTurn ? [heldTurn] : []);
   if (heldTurn) {
     encounter.legendary.turnStart = heldTurn;
   }
@@ -1918,6 +1940,15 @@ function advancePointer(
       resetTurnBudgets(map.id, starting);
       publishBattleMapUpdate(campaign.id);
     }
+  }
+  // An enemy handed its turn while it could not act lost that turn, though
+  // what held it may end as the turn landed on begins (condition-tick.ts):
+  // a stun of one round from that character's turn has cost the turn it was
+  // meant to cost, and the creature does not take it once freed. Marked now
+  // the round the turn belongs to is the encounter's.
+  for (const id of lostTurns.filter((each) => handedOut.includes(each))) {
+    markEnemyActed(encounter, id);
+    encounter.legendary.lost = [...new Set([...(encounter.legendary.lost ?? []), id])];
   }
   // The saves rolled in this move write the encounter row themselves (a
   // Legendary Resistance spent, the failed save legendary_resist answers);
@@ -2446,7 +2477,7 @@ function advanceAfterNarration(campaign: Campaign, turn?: DmTurn) {
   // narration that handed the turn on, or their own words ending it, waits
   // for it as End Turn and end_turn do. A turn told while the card was open
   // (another player posted) moved the pointer here, and the swing was lost.
-  if (resolved && !stuck && toHitRollWithPlayer(listOpenPendingRolls(campaign.id), current.characterId, encounter)) {
+  if (resolved && !stuck && attackRollWithPlayer(listOpenPendingRolls(campaign.id), current.characterId, fightNow(encounter))) {
     return;
   }
   if (!resolved && !stuck) {
@@ -2926,7 +2957,7 @@ function endOwnTurnNow(campaignId: string, userId: string): boolean | "held" {
   }
   // Their attack's d20 is still with them: ended now, the swing would never
   // land (open-roll-logic.ts). endTurnRefusal says which card to answer.
-  if (toHitRollWithPlayer(listOpenPendingRolls(campaignId), current.characterId, encounter)) {
+  if (attackRollWithPlayer(listOpenPendingRolls(campaignId), current.characterId, fightNow(encounter))) {
     return false;
   }
   // A watcher who could answer a save this move rolls: the move waits on
@@ -2988,7 +3019,7 @@ export function endTurnRefusal(campaignId: string, userId: string): string {
     return dominated;
   }
   if (encounter && campaign && current?.kind === "pc" && turnUserId(campaign, current) === userId) {
-    const withPlayer = toHitRollWithPlayer(listOpenPendingRolls(campaignId), current.characterId, encounter);
+    const withPlayer = attackRollWithPlayer(listOpenPendingRolls(campaignId), current.characterId, fightNow(encounter));
     if (withPlayer && !enemiesOwedTurn(encounter).length) {
       return endTurnWaitsLine(withPlayer);
     }

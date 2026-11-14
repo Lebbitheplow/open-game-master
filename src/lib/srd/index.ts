@@ -715,7 +715,9 @@ export function spellSaveDcFor(
   // or not (SRD 5.1, Infernal Legacy; High Elf, Cantrip; Fey Touched).
   const racial = grantedSpellAbility(sheet, spellName);
   if (racial) {
-    return 8 + derived.proficiencyBonus + derived.abilityMods[racial];
+    // A worn item's bonus is to the spell save DC, every spell's (Robe of the
+    // Archmagi): a tiefling's Hellish Rebuke left it off.
+    return 8 + derived.proficiencyBonus + derived.abilityMods[racial] + itemPart(derived.parts.spellSaveDc);
   }
   if (!sheet.spellcasting) {
     return derived.spellSaveDc;
@@ -741,7 +743,7 @@ export function spellAttackFor(
   const derived = computeSheetDerived(sheet);
   const racial = grantedSpellAbility(sheet, spellName);
   if (racial) {
-    return derived.proficiencyBonus + derived.abilityMods[racial];
+    return derived.proficiencyBonus + derived.abilityMods[racial] + itemPart(derived.parts.spellAttack);
   }
   if (!sheet.spellcasting) {
     return derived.spellAttack;

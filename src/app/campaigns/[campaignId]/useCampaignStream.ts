@@ -2,6 +2,7 @@
 
 import type { ThrownRoll } from "@/lib/dm/after-roll-logic";
 import type { WatchPower } from "@/lib/dm/after-roll-table";
+import type { OpportunityAsk } from "@/lib/dm/opportunity-ask-logic";
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { isHaltedTurnNotice, type CampaignMember, type SessionUser } from "@/lib/campaign-types";
 import type { CoordinationPhase } from "@/lib/dm/coordination-logic";
@@ -92,7 +93,8 @@ export type PendingRoll = {
   watch?: { line: string; deadline: string; power?: WatchPower; choices?: Array<{ name: string; when: string }> } | null;
   // What the roll carries that its card reads: the before-the-roll features
   // already used on it (src/lib/dm/before-roll-logic.ts).
-  carry?: { before?: Array<"cosmic_omen" | "restore_balance"> } | null;
+  // `ask`: the question before an opportunity attack (src/lib/dm/opportunity-ask-logic.ts).
+  carry?: { before?: Array<"cosmic_omen" | "restore_balance">; ask?: OpportunityAsk } | null;
   userId: string;
   characterId: string | null;
   kind: string;

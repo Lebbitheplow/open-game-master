@@ -217,6 +217,22 @@ await test("Moonbeam: a creature that starts its turn in the beam makes a CON sa
   assert.equal(enemyOf(world, goblin.id).currentHp, 80);
 });
 
+// A creature is in an area when any square of its space is: the blast catch
+// reads a Large enemy by all four of its squares (aoe-shape.ts), and the
+// turn's start read only its top-left one.
+await test("Moonbeam: a Large creature with one of its four squares in the beam makes the save when its turn starts, as the anchor square alone would not.", async () => {
+  const { world, sheets: [druid, fighter], enemies: [goblin] } = await board([caster("druid", "wis", ["Moonbeam"]), FIGHTER], { 0: { x: 2, y: 4 }, 1: { x: 4, y: 8 }, e0: { x: 12, y: 2 } }, { stats: { size: "Large" } });
+  const cast = await world.invoke("use_spell_slot", { characterId: druid.id, spell: "Moonbeam", level: 2, atX: 14, atY: 4 });
+  assert.equal(cast.ok, true, cast.error);
+  // The beam's squares are (13..15, 3..5); the goblin stands on (12..13, 2..3).
+  assert.equal(zonesOf(world).find((zone) => zone.spell === "Moonbeam").cells.includes(3 * 24 + 13), true, "the beam does not reach the goblin's corner");
+  holdTurn(world, fighter.id);
+  world.dice(1, 5, 5);
+  nextTurn(world);
+  world.clearDice();
+  assert.equal(enemyOf(world, goblin.id).currentHp, 80, "a Large creature partly in the beam took nothing");
+});
+
 await test("Cloudkill: a creature that starts its turn in the cloud makes a CON save against 5d8 poison, a character's save on the record.", async () => {
   const { world, sheets: [wizard, fighter] } = await board([caster("wizard", "int", ["Cloudkill"]), FIGHTER], [{ x: 2, y: 4 }, { x: 14, y: 4 }]);
   const cast = await world.invoke("use_spell_slot", { characterId: wizard.id, spell: "Cloudkill", level: 5, atX: 14, atY: 4 });
