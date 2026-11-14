@@ -1293,11 +1293,9 @@
   "clauses": [
    {
     "c": "Learn two spells from any spell list",
-    "is": "gap",
-    "probe": "scripts/test-enforce-sweep-clauses-genre-b-post-apocalyptic.mjs gap aberrant::Grafted Power#0:unhooked",
-    "k": "unhooked",
-    "observed": "nothing in the engine answers to Grafted Power: no typed effect, no authored row, no typed counter (its counter: none)",
-    "sev": "low"
+    "is": "held",
+    "probe": "scripts/test-any-list-picks.mjs An aberrant reaching 13th learns Grafted Power's two spells from any class on top of the mutations the class's count gives, and the level-up takes them",
+    "by": "src/lib/srd/class-spell-grants.ts classSpellGrants (aberrant 13: two from any list, on top), read by src/lib/srd/level-up-spells.ts, src/lib/srd/any-list-picks-logic.ts and the creation check's offListProblems"
    },
    {
     "c": "they count as mutations for you",

@@ -121,6 +121,20 @@ export function classSpellGrants(view: GrantView): ClassSpellGrants {
   if (classId === "cleric") {
     return clericGrants(view, features);
   }
+  // Grafted Power (aberrant 13, src/lib/classes/post-apocalyptic-features.json):
+  // "Learn two spells from any spell list; they count as mutations for you."
+  // Learned, so on top of the mutations the class's count gives, as
+  // Additional Magical Secrets' two sit on top of a Lore bard's.
+  if (classId === "aberrant" && view.level >= 13) {
+    return {
+      ...NONE,
+      anyList: 2,
+      anyListSpells: true,
+      extraSpells: 2,
+      feature: "Grafted Power",
+      sources: [{ feature: "Grafted Power", count: 2, onTop: true }],
+    };
+  }
   // SRD 5.1, Circle of the Land, Bonus Cantrip: "When you choose this circle
   // at 2nd level, you learn one additional druid cantrip of your choice."
   if (view.level >= 2 && subclassNamedBare(view.subclass ?? "", "Circle of the Land")) {
