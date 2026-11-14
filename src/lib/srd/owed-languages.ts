@@ -59,21 +59,25 @@ export function grantedSkillsOf(sheet: LanguageSheet): Set<string> {
 
 // How many languages of the player's choice the species and background give
 // that the sheet does not hold: their count, less the languages held beyond
-// the ones they, the class or anything else names outright. Null when the
-// species or the background is one this module does not know.
+// the ones they, the class or anything else names outright. When one of the
+// two is a row this module does not know (a content pack's), only the known
+// one's picks are counted, and every language held beyond the named ones
+// counts toward them: the unknown row may have granted it, so the sheet is
+// never asked for more than it can owe (a pack-background owlfolk is still
+// asked for its own language, a pack-background owlfolk who has it is not).
 export function bonusLanguagesOwed(sheet: LanguageSheet): number {
   const race = raceOf(sheet.race);
   const background = backgroundOf(sheet.background);
-  if (!race || !background) {
+  if (!race && !background) {
     return 0;
   }
-  const slots = (race.bonusLanguages ?? 0) + (background.languages ?? 0);
+  const slots = (race?.bonusLanguages ?? 0) + (background?.languages ?? 0);
   if (slots <= 0) {
     return 0;
   }
   const classIds = [sheet.class ?? "", ...(sheet.classes ?? []).map((entry) => entry.id)].filter(Boolean);
   const named = new Set(
-    [...race.languages, ...(background.knownLanguages ?? []), ...classIds.flatMap((id) => classOptionOf(id)?.languages ?? [])].map(textKey),
+    [...(race?.languages ?? []), ...(background?.knownLanguages ?? []), ...classIds.flatMap((id) => classOptionOf(id)?.languages ?? [])].map(textKey),
   );
   const chosen = new Set(sheet.proficiencies.languages.map(textKey).filter((language) => language && !named.has(language)));
   return Math.max(0, slots - chosen.size);

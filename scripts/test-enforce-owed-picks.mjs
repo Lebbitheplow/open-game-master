@@ -69,8 +69,10 @@ await test("A Draconic sorcerer with no dragon owes the pick, at 6th level, as t
 
 await test("Choices owed says where each is made: the next level-up takes the class's own, a class feature's pick is made on the sheet; the join confirmation says the same.", async () => {
   const { owedChoiceGroups, owedChoicesSentences, joinOwedNote, joinOwedLeft } = await import("../src/lib/srd/owed-choices.ts");
-  // A Draconic sorcerer 6 with no dragon and none of the class's skills.
+  // A Draconic sorcerer 6 with no dragon and none of the class's skills
+  // (a human who speaks the language the species leaves to choose).
   const both = sheetOf({
+    proficiencies: { ...PROF, languages: ["Common", "Elvish"] },
     class: "sorcerer",
     subclass: "Draconic Bloodline",
     level: 6,
@@ -292,6 +294,13 @@ await test("Choices owed: the class's skills leave out the species' and backgrou
   assert.equal(spoken.ok, false, "a language already spoken is no pick");
   const full = sheetOf({ ...acolyte, proficiencies: prof(acolyte.proficiencies.skills, ["Common", "Elvish", "Dwarvish", "Giant"]) });
   assert.ok(!owedChoiceGroups(full).onSheet.some((line) => /Languages/.test(line)), "a legal acolyte owes no language");
+  // A background this module cannot read (a content pack's) still leaves the
+  // species' own language owed; a language held beyond the named ones may be
+  // the background's, so it counts toward the species' and nothing is over-asked.
+  const packBackground = sheetOf({ ...acolyte, background: "a-pack-only-background", proficiencies: prof(acolyte.proficiencies.skills) });
+  assert.ok(owedChoiceGroups(packBackground).onSheet.includes("Languages to choose: a language"), owedChoiceGroups(packBackground).onSheet.join(" | "));
+  const packSpoken = sheetOf({ ...packBackground, proficiencies: prof(acolyte.proficiencies.skills, ["Common", "Sylvan"]) });
+  assert.ok(!owedChoiceGroups(packSpoken).onSheet.some((line) => /Languages/.test(line)), "a held extra language answers the species' pick");
 });
 
 world.close?.();
