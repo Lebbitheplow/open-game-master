@@ -451,6 +451,12 @@ export function InfoChipList({
     note?: string;
     // The painted icon that leads the chip, when the thing has one.
     icon?: IconRef;
+    // What leads the chip in the painting's place, when the painting cannot
+    // be read at the chip's size (a carried item: src/lib/srd/
+    // item-category-logic.ts). The painting stays in the hover, where it has
+    // room, and the label is said for the picture.
+    // Its tone tints the chip (globals.css [data-tone]).
+    lead?: { icon: IconRef; label: string; tone?: string };
   }>;
   emptyText?: string;
 }) {
@@ -462,21 +468,29 @@ export function InfoChipList({
       {items.map((item) => {
         const line = firstLine(item.text);
         return (
-          <span key={item.name} className="info-chip">
+          <span key={item.name} className="info-chip" data-tone={item.lead?.tone}>
             <Tooltip
               content={
                 <span className="flex items-start gap-2.5">
-                  {item.icon ? <GameIcon icon={item.icon} size="size-12" className="shrink-0" /> : null}
+                  {/* A Hand card's painting is twice as wide as it is tall. */}
+                  {item.icon ? <GameIcon icon={item.icon} size={item.icon.kind === "action" ? "h-12 w-24" : "size-12"} className="shrink-0" /> : null}
                   <span className="min-w-0">
                     <span className="block font-display text-[13px] tracking-wide text-amber-100">{item.name}</span>
-                    {item.meta ? <span className="block text-[10px] uppercase tracking-wider text-stone-500">{item.meta}</span> : null}
+                    {(item.meta ?? item.lead?.label) ? <span className="block text-[10px] uppercase tracking-wider text-stone-500">{item.meta ?? item.lead?.label}</span> : null}
                     <span className="mt-0.5 block text-stone-300">{line ?? "Select the mark beside it for the full entry."}</span>
                   </span>
                 </span>
               }
             >
               <span className="flex min-w-0 items-center gap-1.5" tabIndex={-1}>
-                {item.icon ? <GameIcon icon={item.icon} size="size-8" /> : null}
+                {item.lead ? (
+                  <>
+                    <GameIcon icon={item.lead.icon} size="size-8" className="tone-rim" />
+                    <span className="sr-only">{item.lead.label}:</span>
+                  </>
+                ) : item.icon ? (
+                  <GameIcon icon={item.icon} size="size-8" />
+                ) : null}
                 <span className="truncate">{item.name}</span>
                 {item.note ? <span className="text-stone-500">{item.note}</span> : null}
               </span>

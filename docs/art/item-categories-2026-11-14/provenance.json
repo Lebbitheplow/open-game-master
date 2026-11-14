@@ -1,0 +1,94 @@
+{
+ "date": "2026-11-14",
+ "encoding": "128x128 WebP with alpha, sharp quality 90, alpha quality 100.",
+ "glyphs": [
+  {
+   "category": "melee",
+   "file": "public/assets/icons/glyph/item-melee.webp",
+   "source": "Hand-card painting, reused",
+   "from": "public/assets/icons/action/weapon-dagger.webp (docs/art/gear-cards-2026-10-24.json)",
+   "edit": "Turned 22 degrees so the blade runs corner to corner, trimmed to the object, fitted inside 102px and centred in a 128x128 square. Nothing repainted.",
+   "sourceSha256": "b52633e865e16c400e8d993cfad467a0a028f455f5699d23d9ee6200c9c91ed8",
+   "sha256": "d648e896f8e8c3214401b583e9c76608937879d4d451fca8058c0fe78f0c3dd4",
+   "bytes": 4788
+  },
+  {
+   "category": "ranged",
+   "file": "public/assets/icons/glyph/item-ranged.webp",
+   "source": "New painting, in the manner of the Hand's item cards",
+   "generator": "Codex CLI built-in image_gen (model gpt-6-astra), 14 November 2026",
+   "styleReferences": [
+    "public/assets/icons/action/weapon-dagger.webp",
+    "public/assets/icons/action/weapon-shortbow.webp",
+    "public/assets/icons/action/gear-potion-of-healing.webp",
+    "public/assets/icons/action/gear-rope.webp"
+   ],
+   "prompt": "A single fantasy RPG item painted in exactly the style of the reference set: realistic digital oil painting of one real object, earthy palette, soft even studio lighting from the upper left that lights the whole object clearly with no part lost in shadow, fine painted material texture, restrained highlights, no outline, no rim glow, not a cartoon, not a glossy mobile game icon. Square 1:1 composition, the ONE object centred and filling about 85 percent of the frame, complete with no cropped ends. The object will be shown 24 pixels wide on a dark brown disc, so its main shapes must be broad, light in tone and clearly separated. Perfectly flat solid pure magenta background (#FF00FF) with no gradient, no shadow and no glow. No medallion, border, frame, label, text, scenery, hands, people or extra objects. Subject: a short, stout horn-and-wood recurve bow of a horse archer, strung, seen side on and set upright with a slight lean to the right. The limbs are broad flat staves of pale honey-coloured wood, as wide as a thumb, deeply recurved so the whole bow is nearly as wide as it is tall, with a wrapped tan leather grip and dull brass bands. A clearly visible pale cream string. One arrow nocked on the string and resting on the grip, pointing right, with a thick pale wooden shaft, a broad steel head and white feather fletching. Realistic, sturdy, no red parts.",
+   "edit": "Magenta ground keyed out in code with the magenta cast removed, trimmed to the object, fitted inside 100px and centred in a 128x128 square.",
+   "sourceSha256": "f3bbee9b070a3f6172205cbf4429dae48ffff689dfa348ab794f5a4acb49e5bc",
+   "sha256": "bc05907ef2b4ee2a28948823a7b0db1c5a0aeefc44b029a5156436efaf7a0190",
+   "bytes": 4960
+  },
+  {
+   "category": "armor",
+   "file": "public/assets/icons/glyph/item-armor.webp",
+   "source": "New painting, in the manner of the Hand's item cards",
+   "generator": "Codex CLI built-in image_gen (model gpt-6-astra), 14 November 2026",
+   "styleReferences": [
+    "public/assets/icons/action/weapon-dagger.webp",
+    "public/assets/icons/action/weapon-shortbow.webp",
+    "public/assets/icons/action/gear-potion-of-healing.webp",
+    "public/assets/icons/action/gear-rope.webp"
+   ],
+   "prompt": "A single fantasy RPG item painted in exactly the style of the reference set: realistic digital oil painting of one real object, natural believable proportions, earthy muted palette of worn steel, brown wood, tan leather and dull brass, soft even studio lighting from the upper left, fine painted material texture, restrained highlights, no outline, no rim glow, not a cartoon, not a glossy mobile game icon. Square 1:1 composition, the ONE object centred and filling about 80 percent of the frame, complete with no cropped ends, with a compact silhouette that still reads when shrunk to 24 pixels. Perfectly flat solid pure magenta background (#FF00FF) with no gradient, no shadow on the background and no glow. No medallion, border, frame, label, text, scenery, hands, people or extra objects. Subject: a worn steel breastplate with two plain shoulder plates, seen from the front, empty, no helmet, grey steel with a few rivets, plain brown leather straps and dull brass buckles, slight scratches, no gold trim.",
+   "edit": "Magenta ground keyed out in code with the magenta cast removed, trimmed to the object, fitted inside 100px and centred in a 128x128 square.",
+   "sourceSha256": "24ee553263ed28992b9b843c9a67c959d2784234f8c058e865318f5693673729",
+   "sha256": "8a7d41dc89379ccb77ed378c8faa680e1d39825fda67626f990e2f1f52317f60",
+   "bytes": 4796
+  },
+  {
+   "category": "consumable",
+   "file": "public/assets/icons/glyph/item-consumable.webp",
+   "source": "Hand-card painting, reused",
+   "from": "public/assets/icons/action/gear-potion-of-healing.webp (docs/art/gear-cards-2026-10-24.json)",
+   "edit": "trimmed to the object, fitted inside 104px and centred in a 128x128 square. Nothing repainted.",
+   "sourceSha256": "fa354fffbfbddb79dd4470bded72ca25cd58df0398e30d124e0e66dc18227879",
+   "sha256": "3382cb667ab6f250ec1b6d1718a5c13922e1464646440bd644508864ad66fe91",
+   "bytes": 6556
+  },
+  {
+   "category": "magic",
+   "file": "public/assets/icons/glyph/item-magic.webp",
+   "source": "New painting, in the manner of the Hand's item cards",
+   "generator": "Codex CLI built-in image_gen (model gpt-6-astra), 14 November 2026",
+   "styleReferences": [
+    "public/assets/icons/action/weapon-dagger.webp",
+    "public/assets/icons/action/weapon-shortbow.webp",
+    "public/assets/icons/action/gear-potion-of-healing.webp",
+    "public/assets/icons/action/gear-rope.webp"
+   ],
+   "prompt": "A single fantasy RPG item painted in exactly the style of the reference set: realistic digital oil painting of one real object, natural believable proportions, earthy muted palette of worn steel, brown wood, tan leather and dull brass, soft even studio lighting from the upper left, fine painted material texture, restrained highlights, no outline, no rim glow, not a cartoon, not a glossy mobile game icon. Square 1:1 composition, the ONE object centred and filling about 80 percent of the frame, complete with no cropped ends, with a compact silhouette that still reads when shrunk to 24 pixels. Perfectly flat solid pure magenta background (#FF00FF) with no gradient, no shadow on the background and no glow. No medallion, border, frame, label, text, scenery, hands, people or extra objects. Subject: a plain gold ring set with one deep blue oval gemstone that gives a faint soft inner light, the ring standing upright at a three-quarter angle, with two or three tiny pale sparkles right at the gem (like the gentle magic of the reference potion, but quieter). Realistic goldsmith work, a slightly worn band, not oversized or bulbous.",
+   "edit": "Magenta ground keyed out in code with the magenta cast removed, trimmed to the object, fitted inside 100px and centred in a 128x128 square.",
+   "sourceSha256": "58185a334ec5bf251ec2087cea0d7f1c5a56c8a0966b824b7e4bada9bdb6ddaf",
+   "sha256": "48ce1e775c58f69fcca8a64e82cd919e4fcf9d0ba055b8a5c6977fc8ed66af2b",
+   "bytes": 5736
+  },
+  {
+   "category": "gear",
+   "file": "public/assets/icons/glyph/item-gear.webp",
+   "source": "New painting, in the manner of the Hand's item cards",
+   "generator": "Codex CLI built-in image_gen (model gpt-6-astra), 14 November 2026",
+   "styleReferences": [
+    "public/assets/icons/action/weapon-dagger.webp",
+    "public/assets/icons/action/weapon-shortbow.webp",
+    "public/assets/icons/action/gear-potion-of-healing.webp",
+    "public/assets/icons/action/gear-rope.webp"
+   ],
+   "prompt": "A single fantasy RPG item painted in exactly the style of the reference set: realistic digital oil painting of one real object, natural believable proportions, earthy muted palette of worn steel, brown wood, tan leather and dull brass, soft even studio lighting from the upper left, fine painted material texture, restrained highlights, no outline, no rim glow, not a cartoon, not a glossy mobile game icon. Square 1:1 composition, the ONE object centred and filling about 80 percent of the frame, complete with no cropped ends, with a compact silhouette that still reads when shrunk to 24 pixels. Perfectly flat solid pure magenta background (#FF00FF) with no gradient, no shadow on the background and no glow. No medallion, border, frame, label, text, scenery, hands, people or extra objects. Subject: a plain adventurer's backpack of tan-brown leather and canvas with a rolled grey-brown blanket strapped on top and one dull brass buckle on the flap, seen from the front at a slight angle, used and a little scuffed.",
+   "edit": "Magenta ground keyed out in code with the magenta cast removed, trimmed to the object, fitted inside 100px and centred in a 128x128 square.",
+   "sourceSha256": "8ac4490abe08dfb2d2dbbbb363080ba740260684159481c8c8f786db466fb267",
+   "sha256": "950a7b11a0784b06549101f44fa500e83f5e330322d6dbd564be633664bf223e",
+   "bytes": 5488
+  }
+ ]
+}

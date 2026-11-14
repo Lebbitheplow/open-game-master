@@ -24,6 +24,7 @@
     "lib/srd/infusion-picks.ts#str-includes": [["english-source",2,"a mundane helmet, boots, ring, robes or gem has no field naming what it is (the wear-slot table lists magic items, gems carry no tag): its wear slot is read first, its own word for itself after; the weapon properties"]],
     "lib/srd/infusion-picks.ts#str-eq": [["english-source",3,"a mundane helmet, boots, ring, robes or gem has no field naming what it is (the wear-slot table lists magic items, gems carry no tag): its wear slot is read first, its own word for itself after; the weapon properties"]],
     "lib/srd/infusion-picks.ts#str-list": [["english-source",4,"a mundane helmet, boots, ring, robes or gem has no field naming what it is (the wear-slot table lists magic items, gems carry no tag): its wear slot is read first, its own word for itself after; the weapon properties"]],
+    "lib/srd/item-category-logic.ts#str-list": [["key",1,"the six kinds a sheet's item pill shows (the sheet's own vocabulary, read from fields and tags, never from an item's name)"]],
     "lib/dm/infusion-reactions.ts#str-key": [["key",1,"the conditions the reactions lay and lift (engine vocabulary)"]],
     "lib/dm/infusion-reactions.ts#str-eq": [["key",2,"the conditions the reactions lay and lift (engine vocabulary)"]],
     "lib/dm/infusion-charges.ts#str-eq": [["key",1,"the documented variant words for Radiant Weapon's light (engine vocabulary)"]],
