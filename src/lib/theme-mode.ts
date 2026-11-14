@@ -1,22 +1,39 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
+import { campaignAppearance, isAppearanceTheme, resolveAppearance, themeArtStyle, type AppearanceChoice, type AppearanceTheme } from "@/lib/appearance-themes";
 
-// The light theme and the interface scale (docs/vtt-parity-implementation-plan.md
-// section 14). Both are the reader's own: they live in localStorage, follow
-// the OS by default, and are applied to <html> so every token below reads
-// them. The board and its canvases size themselves in pixels and ignore the
-// scale on purpose.
+// Brightness, visual identity and scale belong to this reader and device.
+// Brightness follows the OS by default; identity follows the current campaign.
+// Canvases size themselves in pixels and intentionally ignore interface scale.
 
 export type ThemeChoice = "auto" | "dark" | "light";
 export type ThemeMode = "dark" | "light";
 
 const THEME_KEY = "odm.theme";
+const APPEARANCE_KEY = "odm.appearance";
 const SCALE_KEY = "odm.ui-scale";
 export const UI_SCALE_MIN = 0.9;
 export const UI_SCALE_MAX = 1.25;
 
 const listeners = new Set<() => void>();
+let currentCampaignTheme: AppearanceTheme = "arcane";
+// Storage may be blocked in an embedded browser. Changes still work for this visit.
+const memoryPrefs = new Map<string, string | null>();
+function readPreference(key: string): string | null {
+  if (typeof window === "undefined") return null;
+  if (memoryPrefs.has(key)) return memoryPrefs.get(key) ?? null;
+  try { return window.localStorage.getItem(key); } catch { return null; }
+}
+function writePreference(key: string, value: string | null) {
+  memoryPrefs.set(key, value);
+  try {
+    if (value === null) window.localStorage.removeItem(key);
+    else window.localStorage.setItem(key, value);
+  } catch { /* Keep the in-memory preference when storage is unavailable. */ }
+  applyTheme();
+  emit();
+}
 function emit() {
   for (const listener of listeners) {
     listener();
@@ -36,7 +53,7 @@ export function readThemeChoice(): ThemeChoice {
   if (typeof window === "undefined") {
     return "auto";
   }
-  const stored = window.localStorage.getItem(THEME_KEY);
+  const stored = readPreference(THEME_KEY);
   return stored === "dark" || stored === "light" ? stored : "auto";
 }
 
@@ -51,13 +68,36 @@ export function resolveTheme(choice: ThemeChoice): ThemeMode {
 }
 
 export function writeThemeChoice(choice: ThemeChoice) {
-  if (choice === "auto") {
-    window.localStorage.removeItem(THEME_KEY);
-  } else {
-    window.localStorage.setItem(THEME_KEY, choice);
-  }
-  applyTheme();
-  emit();
+  writePreference(THEME_KEY, choice === "auto" ? null : choice);
+}
+
+export function readAppearanceChoice(): AppearanceChoice {
+  const stored = readPreference(APPEARANCE_KEY);
+  return isAppearanceTheme(stored) ? stored : "campaign";
+}
+
+export function writeAppearanceChoice(choice: AppearanceChoice) {
+  writePreference(APPEARANCE_KEY, choice === "campaign" ? null : choice);
+}
+
+function readAppearance(): AppearanceTheme {
+  return resolveAppearance(readAppearanceChoice(), currentCampaignTheme);
+}
+
+// Bound to the campaign stream so lobby and full-screen table agree, including
+// live settings updates. Leaving the campaign restores the app's default.
+export function useCampaignAppearance(settings?: { appearanceTheme?: string; genre?: string } | null) {
+  const theme = campaignAppearance(settings);
+  useEffect(() => {
+    currentCampaignTheme = theme;
+    applyTheme();
+    emit();
+    return () => {
+      currentCampaignTheme = "arcane";
+      applyTheme();
+      emit();
+    };
+  }, [theme]);
 }
 
 export function clampScale(value: number): number {
@@ -71,18 +111,12 @@ export function readUiScale(): number {
   if (typeof window === "undefined") {
     return 1;
   }
-  return clampScale(Number(window.localStorage.getItem(SCALE_KEY)) || 1);
+  return clampScale(Number(readPreference(SCALE_KEY)) || 1);
 }
 
 export function writeUiScale(scale: number) {
   const clamped = clampScale(scale);
-  if (clamped === 1) {
-    window.localStorage.removeItem(SCALE_KEY);
-  } else {
-    window.localStorage.setItem(SCALE_KEY, String(clamped));
-  }
-  applyTheme();
-  emit();
+  writePreference(SCALE_KEY, clamped === 1 ? null : String(clamped));
 }
 
 // Writes the choice onto <html>: data-theme for the token set, the scale
@@ -94,6 +128,10 @@ export function applyTheme() {
   const root = document.documentElement;
   const mode = resolveTheme(readThemeChoice());
   root.dataset.theme = mode;
+  root.dataset.appearance = readAppearance();
+  const art = themeArtStyle(readAppearance());
+  for (const [property, value] of Object.entries(art)) root.style.setProperty(property, value);
+  root.dataset.themeOrnaments = String(art["--theme-art-frame"] !== "none" || art["--theme-art-corner"] !== "none");
   root.style.colorScheme = mode;
   const scale = readUiScale();
   root.style.setProperty("--ui-scale", String(scale));
@@ -102,19 +140,33 @@ export function applyTheme() {
 
 const SERVER_SNAPSHOT = { choice: "auto" as ThemeChoice, mode: "dark" as ThemeMode, scale: 1 };
 
-export function useThemePrefs(): { choice: ThemeChoice; mode: ThemeMode; scale: number } {
+export function useThemePrefs() {
   const choice = useSyncExternalStore(subscribe, readThemeChoice, () => SERVER_SNAPSHOT.choice);
   const scale = useSyncExternalStore(subscribe, readUiScale, () => SERVER_SNAPSHOT.scale);
   const mode = useSyncExternalStore(subscribe, () => resolveTheme(readThemeChoice()), () => SERVER_SNAPSHOT.mode);
-  return { choice, mode, scale };
+  const appearanceChoice = useSyncExternalStore(subscribe, readAppearanceChoice, (): AppearanceChoice => "campaign");
+  const appearance = useSyncExternalStore(subscribe, readAppearance, (): AppearanceTheme => "arcane");
+  return { choice, mode, scale, appearanceChoice, appearance };
 }
 
-// Mounted once in the root layout: applies the stored choice before the
-// first paint settles and again whenever the OS preference moves.
+// Mounted once in the root layout: applies preferences on hydration, then
+// follows OS brightness and changes from other tabs.
 export function ThemeApplier() {
   useEffect(() => {
     applyTheme();
-    return subscribe(applyTheme);
+    const unsubscribe = subscribe(applyTheme);
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== null && ![THEME_KEY, APPEARANCE_KEY, SCALE_KEY].includes(event.key)) return;
+      if (event.key === null) memoryPrefs.clear();
+      else memoryPrefs.delete(event.key);
+      applyTheme();
+      emit();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => {
+      unsubscribe();
+      window.removeEventListener("storage", onStorage);
+    };
   }, []);
   return null;
 }
