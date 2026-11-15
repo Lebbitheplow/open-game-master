@@ -143,9 +143,9 @@ export function spendHitDice(input: {
   // Sewer plague: hit dice heal half the normal number (afflictions.ts).
   // Durable floors each die at twice the Constitution modifier; Stalwart
   // adds it (src/lib/srd/feat-combat.ts).
-  const rolled = hitDiceHealing(outcome, conMod, (input.songDie ? 1 : 0) + (input.chefDie ? 1 : 0));
   const floored = hitDieHealingFloor(sheet, conMod);
-  const withFeat = (floored ? Math.max(rolled, count * floored.floor) + count * floored.extra : rolled) + count * (sanctuary?.bonus ?? 0);
+  const rolled = hitDiceHealing(outcome, conMod, (input.songDie ? 1 : 0) + (input.chefDie ? 1 : 0), floored ? { floor: floored.floor, add: floored.extra } : {});
+  const withFeat = rolled + count * (sanctuary?.bonus ?? 0);
   const healed = Math.floor(withFeat * hitDiceHealingFactor(sheet));
   // Pale Tincture's damage is beyond what hit dice heal (afflictions.ts).
   const ceiling = healCeiling(campaign.id, sheet);
