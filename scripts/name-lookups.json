@@ -2195,6 +2195,8 @@
     "lib/dm/trap-escape.ts#whole": [["identity",1,"conditions by whole name (ODM's lowercase keys)"]],
     "lib/dm/trap-run.ts#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/dm/trap-run.ts#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
+    "lib/dm/enemy-trap.ts#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
+    "lib/dm/enemy-trap.ts#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/dm/turn-defiance.ts#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/dm/turn-defiance.ts#partial": [["parse",11,"a block's turning lines cut into who they shield and how far (stat-block text)"]],
     "lib/dm/turn-defiance.ts#whole": [["search",1,"a Turn Defiance aura's creature word (\"any ghouls\") found among the words of an ally's name and slug"]],

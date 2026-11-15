@@ -319,5 +319,116 @@ await test("N09: the Javelin of Lightning's power tells the GM a made save still
   assert.match(power, /half/, power);
 });
 
+// ---- N10: an enemy caught by a trap ----
+// SRD 5.1, Hunting Trap: "A creature that steps on the plate must succeed on
+// a DC 13 Dexterity saving throw or take 1d4 piercing damage and stop
+// moving ... A creature can use its action to make a DC 13 Strength check,
+// freeing itself ... Each failed check deals 1 piercing damage to the
+// trapped creature." A trap is the same trap whoever steps in it, and a
+// monster saves with its own stat block (Monsters: Saving Throws; Magic
+// Resistance: "advantage on saving throws against spells and other magical
+// effects"). apply_hazard named only characters, so a goblin in the
+// party's hunting trap took whatever save, damage and escape DC the GM made
+// up through apply_damage.
+
+const { combatKit, DUMMY } = await import("./lib/enforce-combat.mjs");
+const kit = await combatKit(world);
+const { enemySpeedTiles } = await import("../src/lib/dm/enemy-speed.ts");
+const trapFight = async (stats = {}) => {
+  await kit.endFight();
+  await kit.fight(1);
+  const [enemy] = world.enemies();
+  kit.setEnemy(enemy.id, { maxHp: 40, stats: { ...DUMMY, ...stats } });
+  kit.freshRound();
+  world.clearDice();
+  return enemy;
+};
+const foe = (id) => kit.enemy(id);
+
+await test("N10: an enemy in a hunting trap makes the DC 13 Dexterity save from its block, takes 1d4 and stops; its escape is a DC 13 Strength check that bites for 1 on a failure", async () => {
+  const enemy = await trapFight({ saveMods: { ...DUMMY.saveMods, dex: 0 }, abilities: { ...DUMMY.abilities, str: 12 } });
+  // Its Dexterity save +0: a 12 misses DC 13; 1d4 = 3.
+  world.dice(12, 3);
+  const sprung = await world.invoke("apply_hazard", { type: "trap", trap: "Hunting Trap", enemyIds: [enemy.id] });
+  assert.equal(sprung.ok, true, sprung.error);
+  assert.equal(world.clearDice(), 0, "the engine did not roll the enemy's save and damage");
+  assert.equal(foe(enemy.id).currentHp, 37);
+  assert.ok(foe(enemy.id).conditions.includes("caught in a hunting trap"), JSON.stringify(foe(enemy.id).conditions));
+  assert.equal(enemySpeedTiles(foe(enemy.id)), 0, "a creature caught in the jaws still walks");
+  // Strength 12 (+1): an 11 is 12, short of 13, and the jaws bite for 1.
+  world.dice(11);
+  const strain = await world.invoke("take_action", { action: "escape", enemyId: enemy.id });
+  assert.equal(strain.ok, true, strain.error);
+  assert.equal(strain.result.success, false, JSON.stringify(strain.result));
+  assert.equal(foe(enemy.id).currentHp, 36);
+  kit.freshRound();
+  world.dice(12);
+  const free = await world.invoke("take_action", { action: "escape", enemyId: enemy.id });
+  assert.equal(free.ok, true, free.error);
+  assert.equal(free.result.success, true, JSON.stringify(free.result));
+  assert.equal(world.clearDice(), 0);
+  assert.equal(foe(enemy.id).conditions.includes("caught in a hunting trap"), false);
+  assert.equal(foe(enemy.id).currentHp, 36);
+});
+
+await test("N10: a magic trap's save is at advantage for a creature with Magic Resistance, and its resistance halves what the save leaves", async () => {
+  const enemy = await trapFight({
+    traits: ["Magic Resistance: The creature has advantage on saving throws against spells and other magical effects."],
+    resist: "fire",
+  });
+  // Advantage: a 5 and a 15, so 15 makes DC 13; 4d10 = 40, half on the
+  // save is 20, and resistance to fire halves it to 10.
+  world.dice(5, 15, 10, 10, 10, 10);
+  const out = await world.invoke("apply_hazard", { type: "trap", trap: "Fire-Breathing Statue", enemyIds: [enemy.id] });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.clearDice(), 0, "Magic Resistance's second d20 was not rolled");
+  assert.equal(40 - foe(enemy.id).currentHp, 10);
+});
+
+await test("N10: a Poison Needle poisons an enemy for the trap's hour unless it is immune, and its Constitution save is its block's", async () => {
+  const pricked = await trapFight({ saveMods: { ...DUMMY.saveMods, con: 0 } });
+  // 1 piercing, 2d10 poison = 10, then the DC 15 Constitution save at +0: 14.
+  world.dice(5, 5, 14);
+  const out = await world.invoke("apply_hazard", { type: "trap", trap: "Poison Needle", enemyIds: [pricked.id] });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.clearDice(), 0);
+  assert.equal(40 - foe(pricked.id).currentHp, 11);
+  assert.ok(foe(pricked.id).conditions.includes("poisoned"));
+  const meta = foe(pricked.id).conditionMeta.poisoned;
+  assert.equal(meta?.rounds, 600, JSON.stringify(meta));
+  assert.equal(meta?.saveEnds, undefined, JSON.stringify(meta));
+  // Proficient in Constitution saves (+6): a 9 is 15 and makes it.
+  const hardy = await trapFight({ saveMods: { ...DUMMY.saveMods, con: 6 } });
+  world.dice(5, 5, 9);
+  await world.invoke("apply_hazard", { type: "trap", trap: "Poison Needle", enemyIds: [hardy.id] });
+  assert.equal(world.clearDice(), 0);
+  assert.equal(foe(hardy.id).conditions.includes("poisoned"), false);
+  // Immune to poison and to being poisoned: no damage, no condition.
+  const golem = await trapFight({ immune: "poison", conditionImmune: "poisoned", saveMods: { ...DUMMY.saveMods, con: 0 } });
+  world.dice(5, 5, 1);
+  await world.invoke("apply_hazard", { type: "trap", trap: "Poison Needle", enemyIds: [golem.id] });
+  world.clearDice();
+  assert.equal(40 - foe(golem.id).currentHp, 1);
+  assert.equal(foe(golem.id).conditions.includes("poisoned"), false);
+});
+
+await test("N10: a hazard of the GM's own and a fall land on an enemy through apply_hazard, its save rolled from its block", async () => {
+  const enemy = await trapFight({ saveMods: { ...DUMMY.saveMods, con: 3 } });
+  // DC 12 Constitution save at +3: a 9 makes it; 3d6 = 12, half 6.
+  world.dice(9, 4, 4, 4);
+  const gout = await world.invoke("apply_hazard", { type: "generic", saveAbility: "con", dc: 12, damage: "3d6", damageType: "acid", enemyIds: [enemy.id] });
+  assert.equal(gout.ok, true, gout.error);
+  assert.equal(world.clearDice(), 0);
+  assert.equal(40 - foe(enemy.id).currentHp, 6);
+  // A 20-foot fall: 2d6 bludgeoning and prone.
+  world.dice(3, 4);
+  const fall = await world.invoke("apply_hazard", { type: "falling", feet: 20, enemyIds: [enemy.id] });
+  assert.equal(fall.ok, true, fall.error);
+  assert.equal(world.clearDice(), 0);
+  assert.equal(40 - foe(enemy.id).currentHp, 13);
+  assert.ok(foe(enemy.id).conditions.includes("prone"));
+});
+
+await kit.endFight();
 world.close();
 finish();

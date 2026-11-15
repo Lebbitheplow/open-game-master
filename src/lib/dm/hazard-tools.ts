@@ -32,7 +32,7 @@ import {
 } from "@/lib/srd/hazards";
 import { pcResistances } from "@/lib/dm/condition-logic";
 import { computeAbilityScore } from "@/lib/dm/roll-riders";
-import type { CharacterSheet } from "@/lib/schemas/sheet";
+import type { Ability, CharacterSheet } from "@/lib/schemas/sheet";
 import { rollCard } from "@/lib/dm/roll-card";
 import { rollOn } from "@/lib/roll-labels";
 import { springTrapOn } from "@/lib/dm/trap-run";
@@ -41,6 +41,9 @@ import { SAMPLE_TRAPS } from "@/lib/srd/trap-specs";
 import { hazardNamesAt, trapAt } from "@/lib/srd/table-hazards";
 import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { hasItemTag } from "@/lib/srd/item-tags";
+import { getEnemy, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { enemyFalls } from "@/lib/dm/enemy-fall";
+import { ENEMY_HAZARDS, enemiesCaught, springOnEnemy } from "@/lib/dm/enemy-trap";
 import { breathOf, coldAdapted } from "@/lib/srd/mt-species-traits";
 
 // Traps and environmental hazards used to be pure narration routed through the
@@ -114,6 +117,12 @@ export const hazardTools: ToolDef[] = [
             minItems: 1,
             description: "Exact characterIds from GAME STATE caught by the hazard. Or pass rank instead.",
           },
+          enemyIds: {
+            type: "array",
+            items: { type: "string" },
+            minItems: 1,
+            description: "Exact enemyIds from GAME STATE caught by a trap, a fall or a generic hazard.",
+          },
           rank: {
             type: "string",
             enum: ["front", "rear"],
@@ -179,6 +188,9 @@ const hazardSchema = z.object({
     "frigid_water",
   ]),
   characterIds: z.array(z.string()).min(1).optional(),
+  // Enemies caught in a trap, a fall or a hazard of the GM's own
+  // (src/lib/dm/enemy-trap.ts).
+  enemyIds: z.array(z.string()).min(1).optional(),
   // The front or the rear of the travel formation instead of named ids
   // (issue 230).
   rank: z.enum(["front", "rear"]).optional(),
@@ -239,9 +251,9 @@ export function handleApplyHazard(
   // Who walks first or last, from the formation in force (issue 230).
   let named = args.characterIds ?? [];
   let rankLine = "";
-  if (!named.length) {
+  if (!named.length && (args.rank || !args.enemyIds?.length)) {
     if (!args.rank) {
-      return { error: "apply_hazard needs characterIds, or rank 'front' or 'rear' for whoever walks there in the travel formation.", retry: true };
+      return { error: "apply_hazard needs characterIds (or enemyIds), or rank 'front' or 'rear' for whoever walks there in the travel formation.", retry: true };
     }
     const { placed } = formationView(getParty(campaign.id).marchingOrder, formationPartyIds(campaign, sheets));
     const walker = args.rank === "front" ? placed[0] : placed[placed.length - 1];
@@ -252,7 +264,20 @@ export function handleApplyHazard(
     rankLine = `${sheetsById.get(walker)?.name ?? "The character"} walks at the ${args.rank} of the travel formation, so the hazard catches them first.`;
   }
 
-  const result = resolveHazard(campaign, turn, args, named, sheets, sheetsById);
+  // An enemy is caught by a trap, a fall or a hazard of the GM's own; the
+  // air, the weather and frigid water are the characters' (enemy-trap.ts).
+  let caught: { encounter: Encounter; enemies: EncounterEnemy[] } | null = null;
+  if (args.enemyIds?.length) {
+    if (!(ENEMY_HAZARDS as readonly string[]).includes(args.type)) {
+      return { error: `apply_hazard's enemyIds take a trap, a fall or a generic hazard; ${args.type.replace(/_/g, " ")} is for characters. Nothing was rolled.`, retry: true };
+    }
+    const found = enemiesCaught(campaign.id, args.enemyIds);
+    if ("error" in found) {
+      return found;
+    }
+    caught = found;
+  }
+  const result = resolveHazard(campaign, turn, args, named, sheets, sheetsById, caught);
   return rankLine && !("error" in result) ? { ...result, formation: rankLine } : result;
 }
 
@@ -263,7 +288,10 @@ function resolveHazard(
   named: string[],
   sheets: CharacterSheet[],
   sheetsById: Map<string, CharacterSheet>,
+  caught: { encounter: Encounter; enemies: EncounterEnemy[] } | null,
 ): ToolResult {
+  const enemies = caught?.enemies ?? [];
+  const ctx = caught ? { campaign, turn, encounter: caught.encounter, sheets, sheetsById } : null;
   // Resolve the victims once; bad ids are reported, not silently dropped.
   const targets: CharacterSheet[] = [];
   const unknown: string[] = [];
@@ -276,7 +304,7 @@ function resolveHazard(
       unknown.push(id);
     }
   }
-  if (!targets.length) {
+  if (!targets.length && (!enemies.length || unknown.length)) {
     return { error: `No valid characterIds${unknown.length ? `: ${unknown.join(", ")}` : ""}.`, retry: true };
   }
 
@@ -339,7 +367,7 @@ function resolveHazard(
       type: "falling",
       feet: args.feet ?? 0,
       dice,
-      results: perTarget,
+      results: [...perTarget, ...(ctx ? enemies.map((enemy) => enemyFalls(ctx.campaign, turn, ctx.encounter, enemy, args.feet ?? 0, sheets, sheetsById)) : [])],
       note: `${dice} bludgeoning to each; the server applied it.${partyCanSlowAFall(sheets) ? " A character who declared Feather Fall or Slow Fall answers it now: use_reaction." : ""}`,
     };
   }
@@ -515,12 +543,19 @@ function resolveHazard(
     // creatures named, each missile its own attack, hit and save (SRD 5.1
     // Traps; issue #570, EQP-20: one dart per victim was all that flew).
     const volley = found.trap.volley ?? 0;
-    const results = volley > 0 && targets.length
+    // Characters and enemies alike, each by their own engine (an enemy's
+    // save from its stat block: enemy-trap.ts).
+    const victims = [...targets, ...enemies];
+    const spring = (victim: CharacterSheet | EncounterEnemy) =>
+      ctx && "displayName" in victim
+        ? springOnEnemy(ctx, getEnemy(victim.id) ?? victim, found.name, found.trap, fromOf(args))
+        : springTrapOn(campaign, turn, victim as CharacterSheet, found.name, found.trap, sheets, sheetsById, fromOf(args));
+    const results = volley > 0 && victims.length
       ? Array.from({ length: volley }, (_, dart) => {
-          const pick = targets.length > 1 ? rollExpression(`1d${targets.length}`).total - 1 : 0;
-          return { dart: dart + 1, ...springTrapOn(campaign, turn, targets[pick], found.name, found.trap, sheets, sheetsById, fromOf(args)) };
+          const pick = victims.length > 1 ? rollExpression(`1d${victims.length}`).total - 1 : 0;
+          return { dart: dart + 1, ...spring(victims[pick]) };
         })
-      : targets.map((sheet) => springTrapOn(campaign, turn, sheet, found.name, found.trap, sheets, sheetsById, fromOf(args)));
+      : victims.map(spring);
     return {
       ok: true,
       type: "trap",
@@ -570,12 +605,38 @@ function resolveHazard(
     );
     return { name: sheet.name, ...result };
   });
+  // An enemy in the same trap or hazard: the severity's DC and the party's
+  // tier for the damage (the trap was built against them), or the GM's own
+  // numbers, its save rolled from its stat block.
+  const enemyRows = ctx
+    ? enemies.map((enemy) => {
+        const level = Math.max(1, ...sheets.map((sheet) => sheet.level ?? 1));
+        const profile = args.type === "trap" ? trapProfile(args.severity ?? "dangerous", level) : null;
+        const ability = (args.saveAbility ?? profile?.saveAbility ?? "dex") as Ability;
+        const dice = profile ? profile.damageDice : (args.damage ?? "");
+        return springOnEnemy(
+          ctx,
+          getEnemy(enemy.id) ?? enemy,
+          source,
+          {
+            kind: "mechanical",
+            trigger: source,
+            save: { ability, dc: profile?.saveDc ?? args.dc ?? 13, halfOnSave },
+            ...(dice ? { damage: { dice, type: damageType } } : {}),
+            ...(args.condition ? { condition: args.condition } : {}),
+            summary: source,
+          },
+          fromOf(args),
+          "saveEnds",
+        );
+      })
+    : [];
 
   return {
     ok: true,
     type: args.type,
     ...(args.type === "trap" ? { severity: args.severity ?? "dangerous" } : {}),
-    results: perTarget,
+    results: [...perTarget, ...enemyRows],
     note: "Saves and damage applied by the server; narrate the outcome per character.",
   };
 }

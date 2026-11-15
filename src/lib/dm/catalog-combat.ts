@@ -586,7 +586,8 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
           { value: "frigid_water", label: "Frigid water" },
         ],
       },
-      { name: "characterIds", label: "Caught in it", kind: "characters", requiredUnless: "rank" },
+      { name: "characterIds", label: "Caught in it", kind: "characters", requiredUnless: ["rank", "enemyIds"] },
+      { name: "enemyIds", label: "Enemies caught in it", kind: "enemies", help: "A trap, a fall or a hazard of your own: the server rolls each enemy's save from its stat block." },
       {
         name: "rank",
         label: "Or whoever walks",

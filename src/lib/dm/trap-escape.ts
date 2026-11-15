@@ -24,9 +24,10 @@ import { rollOn } from "@/lib/roll-labels";
 
 type TrapHold = { condition: string; trap: string; ability: "str" | "dex"; dc: number; hurts?: { dice: string; type: string } };
 
-export function trapHoldOn(campaign: Campaign, sheet: CharacterSheet): TrapHold | null {
-  const meta = sheet.conditionMeta as ConditionMetaMap;
-  for (const condition of sheet.conditions) {
+// A character's or an enemy's (enemy-trap.ts enemyTrapEscape).
+export function trapHoldOn(campaign: Campaign, held: { conditions: string[]; conditionMeta?: unknown }): TrapHold | null {
+  const meta = (held.conditionMeta ?? {}) as ConditionMetaMap;
+  for (const condition of held.conditions) {
     for (const instance of instancesOf(meta[condition])) {
       const found = instance.source ? trapAt(instance.source, campaign.id) : null;
       const holds = found?.trap.conditionsAlways?.some((name) => name.toLowerCase() === condition.toLowerCase())
