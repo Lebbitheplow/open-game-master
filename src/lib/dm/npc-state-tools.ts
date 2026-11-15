@@ -1,6 +1,8 @@
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
-import { getNpcByName, listNpcs, nearestNpcName, renameNpc, setNpcState, touchCast } from "@/lib/db/npcs";
+import { getCurrentLocation } from "@/lib/db/locations";
+import { getNpcAway } from "@/lib/db/npc-minds";
+import { getNpcByName, listNpcs, nearestNpcName, renameNpc, setNpcPlace, setNpcState, touchCast } from "@/lib/db/npcs";
 import { planRename } from "@/lib/dm/entity-review-logic";
 import { textKey } from "@/lib/language/text-logic";
 import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
@@ -115,6 +117,12 @@ export function handleNpcState(campaign: Campaign, rawArguments: string): ToolRe
     return { error: `${npc.name}: ${applied.error}`, retry: true };
   }
   setNpcState(npc.id, applied.state);
+  // Travelling with the party means being where it is now: a prisoner the
+  // record left at the mill joins the party's place when it is taken along.
+  const here = applied.state.withParty ? (getCurrentLocation(campaign.id)?.name ?? "") : "";
+  if (here && npc.location !== here && !getNpcAway(npc.id)) {
+    setNpcPlace(npc.id, { location: here });
+  }
   const name = renameTo ? (renameNpc(npc.id, renameTo.name, renameTo.aliases)?.name ?? npc.name) : npc.name;
   if (renameTo) {
     touchCast(campaign.id);
