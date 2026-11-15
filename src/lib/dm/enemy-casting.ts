@@ -8,6 +8,7 @@ import { spellDamageFor, spellFactsFor, spellMechanicsFor } from "@/lib/content"
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { canEnemyAct, markEnemyBonus } from "@/lib/dm/can-act";
 import { spendEnemyAction } from "@/lib/dm/enemy-approach";
+import { enemyTurnEntry, recordEnemyTurn, routineUseLeft } from "@/lib/dm/enemy-turn-logic";
 import { castingHold } from "@/lib/dm/spell-planes";
 import { heldTurnRefusal } from "@/lib/dm/flee-logic";
 import { antimagicProblem } from "@/lib/dm/zone-rules";
@@ -19,6 +20,7 @@ import {
   abilityRefusal,
   findMonsterAbility,
   findMonsterSpell,
+  multiattackAbilities,
   slotFor,
   spellUsesLeft,
   spendAbility,
@@ -143,6 +145,10 @@ export function prepareEnemyUse(campaign: Campaign, input: Input): EnemyUse | To
   let partOf = false;
   // An ability printed among the Bonus Actions is the creature's bonus action.
   let bonus = false;
+  // An ability its Multiattack folds in (a dragon's Frightful Presence): its
+  // key, so the routine's attacks and this use are one action
+  // (monster-abilities.ts multiattackAbilities).
+  let routineKey: string | null = null;
   const use: Omit<EnemyUse, "commit"> = { enemy, name: "", magical: false, fromBlock: false, corrections: [] };
   let spend: (ledger: AbilityLedger | undefined) => AbilityLedger | undefined = (ledger) => ledger;
 
@@ -259,6 +265,8 @@ export function prepareEnemyUse(campaign: Campaign, input: Input): EnemyUse | To
         partOf = true;
       } else if (ability.bonusAction) {
         bonus = true;
+      } else if (!legendary && multiattackAbilities(enemy.stats).includes(key)) {
+        routineKey = key;
       }
       spend = (next) => spendAbility(ability, next, now);
       const second = (enemy.stats.specials ?? []).find((entry) => entry.partOf && abilityKey(entry.partOf) === key);
@@ -294,7 +302,10 @@ export function prepareEnemyUse(campaign: Campaign, input: Input): EnemyUse | To
   // second save is part of the action already taken, so it is held only to
   // what stops any act (incapacitated, surprised).
   const allowed = canEnemyAct({ enemy, encounter, kind: legendary || partOf ? "legendary" : bonus ? "bonus" : "action" });
-  if (!allowed.ok) {
+  // After its Multiattack's attacks, the ability the routine folds in is
+  // still that action's, once.
+  const routineFree = !allowed.ok && allowed.reason === "already_acted" && routineKey !== null && routineUseLeft(enemyTurnEntry(encounter, enemy.id), routineKey);
+  if (!allowed.ok && !routineFree) {
     return toolError(allowed);
   }
   // Its own turn spent on Command's word or Fear's flight has no spell or
@@ -335,7 +346,12 @@ export function prepareEnemyUse(campaign: Campaign, input: Input): EnemyUse | To
       } else if (bonus) {
         markEnemyBonus(live, enemy.id);
       } else if (!partOf) {
-        spendEnemyAction(live, enemy.id);
+        if (!routineFree) {
+          spendEnemyAction(live, enemy.id);
+        }
+        if (routineKey) {
+          recordEnemyTurn(live, enemy.id, { routineUses: [...(enemyTurnEntry(live, enemy.id).routineUses ?? []), routineKey] });
+        }
       }
       if (ledger) {
         abilities[enemy.id] = ledger;

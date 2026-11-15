@@ -93,4 +93,56 @@ await test("E01 the area form passes over the immune hero and asks the other, wh
   assert.ok(world.sheet(bram.id).conditions.includes("immune to frightful presence"), "and is immune once the fear ends");
 });
 
+const swingsOf = (out) => (out.result?.swings ?? []).filter((swing) => !swing.skipped).map((swing) => swing.attack);
+
+await test("E02 a dragon that uses its Frightful Presence then makes its Multiattack's three attacks, all one action", async () => {
+  const dragon = await stage("Adult Red Dragon");
+  world.dice(20);
+  const presence = await world.invoke("cast_at_player", { casterEnemyId: dragon.id, enemyAbility: "Frightful Presence", characterId: kara.id });
+  world.clearDice();
+  assert.equal(presence.ok, true, presence.error);
+  world.dice(1, 1, 1);
+  const routine = await world.invoke("enemy_attack", { enemyId: dragon.id, targetCharacterId: kara.id });
+  world.clearDice();
+  assert.equal(routine.ok, true, routine.error);
+  assert.deepEqual(swingsOf(routine), ["Bite", "Claw", "Claw"]);
+  world.dice(1, 1, 1);
+  const more = await world.invoke("enemy_attack", { enemyId: dragon.id, targetCharacterId: kara.id });
+  world.clearDice();
+  assert.equal(more.ok, false, "the action is spent once the routine is made");
+  world.dice(1);
+  const presenceAgain = await world.invoke("cast_at_player", { casterEnemyId: dragon.id, enemyAbility: "Frightful Presence", characterId: bram.id });
+  world.clearDice();
+  assert.equal(presenceAgain.ok, false, "and the presence is not its own action again");
+});
+
+await test("E02 the attacks may come first: the Frightful Presence after them is the same action, once", async () => {
+  const dragon = await stage("Adult Red Dragon");
+  world.dice(1, 1, 1);
+  const routine = await world.invoke("enemy_attack", { enemyId: dragon.id, targetCharacterId: kara.id });
+  world.clearDice();
+  assert.equal(routine.ok, true, routine.error);
+  world.dice(1);
+  const presence = await world.invoke("cast_at_player", { casterEnemyId: dragon.id, enemyAbility: "Frightful Presence", characterId: bram.id });
+  world.clearDice();
+  assert.equal(presence.ok, true, presence.error);
+  assert.ok(world.sheet(bram.id).conditions.includes("frightened"));
+  world.dice(1);
+  const breath = await world.invoke("cast_at_player", { casterEnemyId: dragon.id, enemyAbility: "Fire Breath", characterId: kara.id });
+  world.clearDice();
+  assert.equal(breath.ok, false, "a breath is an action of its own, already spent");
+});
+
+await test("E02 an ability the Multiattack does not name still spends the action: a young dragon's breath, then no bite", async () => {
+  const dragon = await stage("Young Red Dragon");
+  world.dice(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
+  const breath = await world.invoke("cast_at_player", { casterEnemyId: dragon.id, enemyAbility: "Fire Breath", characterId: kara.id });
+  world.clearDice();
+  assert.equal(breath.ok, true, breath.error);
+  world.dice(1, 1, 1);
+  const routine = await world.invoke("enemy_attack", { enemyId: dragon.id, targetCharacterId: kara.id });
+  world.clearDice();
+  assert.equal(routine.ok, false, "the breath was its action");
+});
+
 finish();

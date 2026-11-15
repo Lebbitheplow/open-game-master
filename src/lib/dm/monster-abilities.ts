@@ -1,5 +1,5 @@
 import type { ToolError } from "@/lib/dm/tool-errors";
-import { textKey } from "@/lib/language/text-logic";
+import { containsPhrase, textKey } from "@/lib/language/text-logic";
 import { REGENERATION_NAME } from "@/lib/dm/regeneration-text";
 import { parseSaveEffect, type SaveEffect } from "@/lib/dm/save-effect";
 
@@ -172,6 +172,22 @@ export function abilityNames(stats: AbilityHolder): string[] {
     ...(stats.traits ?? []).map(abilityFromLine).filter((entry): entry is MonsterAbility => entry !== null).map((entry) => entry.name),
   ];
   return [...new Set(names)];
+}
+
+// The abilities a block's Multiattack folds into its one action, by key:
+// "The dragon can use its Frightful Presence. It then makes three attacks",
+// "The mummy can use its Dreadful Glare and makes one attack with its
+// rotting fist" (SRD 5.1). Using one of them and making the routine's
+// attacks is the one action, in either order (enemy-casting.ts,
+// enemy-attack.ts): before this, a dragon's Frightful Presence spent the
+// action and its bite and claws were refused.
+export function multiattackAbilities(stats: AbilityHolder & { fullTraits?: string[] }): string[] {
+  const line = [...(stats.fullTraits ?? []), ...(stats.traits ?? [])].find((entry) => /^multiattack\s*[:.]/i.test(entry.trim()));
+  if (!line) {
+    return [];
+  }
+  const text = line.replace(/^multiattack\s*[:.]\s*/i, "");
+  return abilityNames(stats).filter((name) => containsPhrase(text, name)).map(abilityKey);
 }
 
 // ---- the per-fight ledger ----

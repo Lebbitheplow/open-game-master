@@ -46,7 +46,7 @@ import { enemyStrikesEcho } from "@/lib/dm/mt-fb-echo";
 import { enemyStrikesBody } from "@/lib/dm/spirit-projection";
 import { hasteActionOpen, slowedOut } from "@/lib/dm/enemy-actions";
 import { heldTurnRefusal } from "@/lib/dm/flee-logic";
-import { rangedBackstop, recordEnemyTurn } from "@/lib/dm/enemy-turn-logic";
+import { enemyTurnEntry, rangedBackstop, recordEnemyTurn, routineAttacksLeft } from "@/lib/dm/enemy-turn-logic";
 import { attackHold, spellAttackHold } from "@/lib/dm/spell-planes";
 import { reachThroughProblem } from "@/lib/dm/zone-rules";
 import { critDamageExpression, ordinaryOfCritical } from "@/lib/dm/encounter-logic";
@@ -60,7 +60,7 @@ import { effectOutcome } from "@/lib/dm/effect-tools";
 import { hateAuraDamage } from "@/lib/dm/divine-auras";
 import { alternativeBlow, attackNamed, charmedBy, enemyAttackProfile, pastRangedLimit, plannedSwings, swingMode, type EnemyAttackProfile } from "@/lib/dm/enemy-profile";
 import { publishFx, tokenPosition } from "@/lib/dm/fx";
-import { hasTrait } from "@/lib/dm/monster-abilities";
+import { hasTrait, multiattackAbilities } from "@/lib/dm/monster-abilities";
 import { enemySwingOdds, hasFeatureNamed } from "@/lib/dm/enemy-swing-odds";
 import { openLastHit } from "@/lib/dm/last-hit";
 import { authoredAfterHit } from "@/lib/dm/authored-hooks";
@@ -219,8 +219,12 @@ export function handleEnemyAttack(
   // Haste's extra action, once its own is spent, is one weapon attack
   // (enemy-actions.ts, issue #621).
   const allowed = cast ? ({ ok: true } as const) : canEnemyAct({ enemy: found, encounter, kind: bonus ? "bonus" : "action" });
-  const hasteSwing = !allowed.ok && !bonus && allowed.reason === "already_acted" && hasteActionOpen(encounter, found);
-  if (!allowed.ok && !hasteSwing) {
+  // Its Multiattack folds in an ability it used this turn ("The dragon can
+  // use its Frightful Presence. It then makes three attacks"): the routine's
+  // attacks are that same action (monster-abilities.ts multiattackAbilities).
+  const routineSwing = !allowed.ok && !bonus && !cast && allowed.reason === "already_acted" && routineAttacksLeft(enemyTurnEntry(encounter, found.id));
+  const hasteSwing = !routineSwing && !allowed.ok && !bonus && allowed.reason === "already_acted" && hasteActionOpen(encounter, found);
+  if (!allowed.ok && !hasteSwing && !routineSwing) {
     return toolError(allowed);
   }
   // Slow: an action or a bonus action on its turn, not both (SRD 5.1).
@@ -527,6 +531,8 @@ export function handleEnemyAttack(
     markEnemyBonus(live, enemy.id);
   } else if (hasteSwing) {
     recordEnemyTurn(live, enemy.id, { hasteUsed: true });
+  } else if (routineSwing) {
+    recordEnemyTurn(live, enemy.id, { routineSwung: true });
   } else if (single) {
     if (strike) {
       spendLegendaryStrike(live, enemy.id);
@@ -534,6 +540,10 @@ export function handleEnemyAttack(
     markEnemyActed(live, enemy.id);
   } else {
     spendEnemyAction(live, enemy.id);
+    // The ability the routine folds in is still to come in this action.
+    if (multiattackAbilities(found.stats).length) {
+      recordEnemyTurn(live, enemy.id, { routineSwung: true });
+    }
   }
   saveEncounter(live);
   // At the mount: its own AC, hit points and Dodge (mount-combat.ts). The
