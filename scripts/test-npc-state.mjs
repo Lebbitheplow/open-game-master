@@ -219,5 +219,42 @@ await test("a revealed name another NPC already answers to is refused and nothin
   assert.equal(still.state.condition, "up", "the state was not written either");
 });
 
+// ---- What a mind sees (ticket 05) ----------------------------------------
+
+const mindRequests = () => model.requests.filter((request) => String(request.messages?.[0]?.content ?? "").startsWith("You are one character"));
+const mindText = (request) => request.messages.map((message) => String(message.content ?? "")).join("\n");
+const answer = (fields) => reply({ text: JSON.stringify({ speech: "", intent: "", conclusion: "", lie: false, ...fields }) });
+
+await test("a mind sees who is tied or down beside it, and its own bonds, never what others carry or a keeper it cannot name", async () => {
+  upsertCurrentLocation({ campaignId: world.campaignId, name: "the well square" });
+  const watcher = upsertNpc({ campaignId: world.campaignId, name: "Watcher", location: "the well square" });
+  minds.setNpcTier(watcher.id, "primary");
+  upsertNpc({ campaignId: world.campaignId, name: "Bound man", location: "the well square" });
+  state({ name: "Bound man", custody: "captive", heldBy: "Keeper Ilse", restraint: "bound", carries: ["a forged writ"] });
+  upsertNpc({ campaignId: world.campaignId, name: "Elsewhere", location: "the mill" });
+  state({ name: "Elsewhere", condition: "unconscious" });
+  upsertNpc({ campaignId: world.campaignId, name: "Idle farmer", location: "the well square" });
+  state({ name: "Watcher", custody: "captive", heldBy: "Brakk", restraint: "chained" });
+  const before = mindRequests().length;
+  model.script([answer({ speech: "Who is that man?" })]);
+  const said = await mind.handleNpcSpeak(world.campaign(), JSON.stringify({ name: "Watcher", perceives: "Morning in the square." }));
+  assert.equal(said.ok, true, JSON.stringify(said));
+  const text = mindText(mindRequests()[before]);
+  assert.match(text, /You yourself are a prisoner, in chains\./, "its own state, with a keeper it has not learned the name of");
+  assert.match(text, /now a prisoner, bound/);
+  assert.doesNotMatch(text, /forged writ/, "what another carries is not seen");
+  assert.doesNotMatch(text, /Keeper Ilse/, "a keeper's name is not read off the sheet");
+  assert.doesNotMatch(text, /unconscious/, "someone elsewhere is not seen");
+  assert.doesNotMatch(text, /Idle farmer|someone you do not know by name: a person$/m, "a free, standing bystander adds nothing");
+  assert.doesNotMatch(text, /first tier|tier/i);
+});
+
+await test("an unconscious or dead mind is owed no turn in the scene", async () => {
+  const { mindsOwedTurn } = await import("../src/lib/dm/npc-mind-logic.ts");
+  const base = { tier: "primary", archived: false, away: false, companionInFight: false, actedLastTurn: true, onStageRecently: true };
+  const owed = mindsOwedTurn([{ id: "a", name: "Awake", ...base }, { id: "b", name: "Knocked out", ...base, silenced: true }], new Set());
+  assert.deepEqual(owed.map((entry) => entry.id), ["a"]);
+});
+
 model.close();
 finish();

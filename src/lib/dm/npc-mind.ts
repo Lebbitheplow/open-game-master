@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { npcSilencedBy } from "@/lib/dm/npc-state-logic";
+import { npcSeenStateWords, npcSilencedBy } from "@/lib/dm/npc-state-logic";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getClock } from "@/lib/db/clock";
 import { getNpcById, listNpcs, patchNpcAgency, setNpcPlace, type Npc } from "@/lib/db/npcs";
@@ -54,6 +54,7 @@ import {
   awayRosterNote,
   backgroundOpen,
   catchUpSteps,
+  knowsName,
   memoriesFor,
   mindsOwedTurn,
   mentalScoresOf,
@@ -160,6 +161,7 @@ export function mindsWithinEarshot(
       companionInFight: inFight && Boolean(npc.companionSheetId),
       actedLastTurn: acted.has(npc.id),
       onStageRecently: recent.has(npc.id),
+      silenced: Boolean(npcSilencedBy(npc.state)),
     })),
     touched,
     true,
@@ -204,6 +206,7 @@ export function mindsAwaitingTurn(
       companionInFight: inFight && Boolean(npc.companionSheetId),
       actedLastTurn: acted.has(npc.id),
       onStageRecently: recent.has(npc.id),
+      silenced: Boolean(npcSilencedBy(npc.state)),
     })),
     touched,
     timeSkipped,
@@ -602,11 +605,26 @@ export async function handleNpcSpeak(campaign: Campaign, rawArguments: string): 
   // a listener in it.
   const others = cast.filter((entry) => ids.includes(entry.id) && entry.id !== npc.id && (apart || !getNpcAway(entry.id)));
   addNpcMemories(campaign.id, [npc.id, ...others.map((entry) => entry.id)], { kind: "knowledge", sourceKind: "perceived", sourceName: "", content: args.perceives, learnedAt: now }, turnId);
+  // What the mind sees of the others' bodies (docs/specs/ogm-npc-state.md):
+  // the listeners, and anyone else here whose state shows (tied, down,
+  // dead), never what they carry, and a keeper by name only if it knows it.
+  const ownMemories = listNpcMemories(campaign.id, npc.id);
+  const looks = (entry: Npc) => npcSeenStateWords(entry.state, knowsName(entry.state.heldBy, ownMemories) || textKey(entry.state.heldBy) === textKey(npc.name));
+  const here = apart ? "" : (getCurrentLocation(campaign.id)?.name ?? "");
+  const visible = here
+    ? cast.filter((entry) => entry.id !== npc.id && !others.includes(entry) && !entry.archived && entry.location === here && !getNpcAway(entry.id) && looks(entry))
+    : [];
+  const described = (entry: Npc) => {
+    const seen = looks(entry);
+    return { name: entry.name, description: clipText(`${entry.role || entry.trait || "a person"}${seen ? `; now ${seen}` : ""}`, 140) };
+  };
   const present: MindPerson[] = [
     ...(apart ? [] : heroesOf(campaign.id).filter((hero) => textKey(hero.name) !== textKey(npc.name))),
-    ...others.map((entry) => ({ name: entry.name, description: clipText(entry.role || entry.trait || "a person", 80) })),
+    ...others.map(described),
+    ...visible.map(described),
   ];
-  const where = apart ? `You are at ${args.place || away?.place || "a place of your own"}, apart from the party.\n` : "";
+  const own = npcSeenStateWords(actor.state, knowsName(actor.state.heldBy, ownMemories));
+  const where = `${apart ? `You are at ${args.place || away?.place || "a place of your own"}, apart from the party.\n` : ""}${own ? `You yourself are ${own}.\n` : ""}`;
   // Its own turn in a fight: the mind chooses it, seeing the fight as it does.
   const fightTurn = apart ? null : mindsFightTurn(campaign, npc.companionSheetId);
   const ownTurn = fightTurn?.npc.id === npc.id ? fightTurn : null;

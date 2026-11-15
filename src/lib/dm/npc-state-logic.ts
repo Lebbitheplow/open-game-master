@@ -217,3 +217,11 @@ export function npcSilencedBy(state: NpcState): string {
 export function npcVisibleStateWords(state: NpcState): string {
   return npcStateWords({ ...state, carries: [] });
 }
+
+// What a mind looking at them sees, in its own context: as above, with the
+// keeper's name only when the onlooker knows it (a name is learned, never
+// read off the sheet), and nothing for someone free and standing.
+export function npcSeenStateWords(state: NpcState, knowsKeeper: boolean): string {
+  const seen = npcVisibleStateWords({ ...state, withParty: false });
+  return state.custody === "captive" && !knowsKeeper ? seen.replace(`prisoner of ${state.heldBy}`, "a prisoner") : seen;
+}
