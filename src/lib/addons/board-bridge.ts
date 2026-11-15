@@ -302,11 +302,12 @@ export function nativeBoardHud(hud: BoardHud): BoardHud {
 }
 
 export function offeredBoardControl(hud: Pick<BoardHud, "controls" | "panel" | "pending">, id: BoardControlId, value?: string): BoardControl | null {
-  const control = (hud.panel ? hud.panel.controls : hud.controls).find(entry => entry.id === id);
-  if (!control || control.disabled !== null || hud.pending) return null;
-  if (control.options && !control.options.some(option => option.value === value && option.disabled === null)) return null;
-  if (control.input && (typeof value !== "string" || value.length > 200)) return null;
-  return control;
+  if (hud.pending) return null;
+  return (hud.panel?.controls ?? hud.controls).find(entry =>
+    entry.id === id && entry.disabled === null
+    && (!entry.options || entry.options.some(option => option.value === value && option.disabled === null))
+    && (!entry.input || (typeof value === "string" && value.length <= 200)),
+  ) ?? null;
 }
 export type HostMessage =
   | { odm: number; type: "battlefield-ui"; mapId: string; revision: number; hud: BoardHud }

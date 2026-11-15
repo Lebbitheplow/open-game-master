@@ -51,6 +51,16 @@ await test("native controls accept only the bounded offer sent to the renderer",
   assert.equal(source.controls.length, 21, "projection must not mutate the host's controls");
   assert.equal(choice.options.length, 2049);
 });
+await test("native pickers check the chosen option across all groups of the same action", () => {
+  const cantrips = { id: "hand-card", label: "Cantrips", disabled: null, options: [{ value: "fire-bolt", disabled: null }] };
+  const levelOne = { id: "hand-card", label: "Level 1", disabled: null, options: [{ value: "shield", disabled: "No slots" }, { value: "bless", disabled: null }] };
+  const hud = { panel: { controls: [cantrips, levelOne] }, controls: [], pending: false };
+  assert.equal(offeredBoardControl(hud, "hand-card", "fire-bolt"), cantrips);
+  assert.equal(offeredBoardControl(hud, "hand-card", "bless"), levelOne);
+  assert.equal(offeredBoardControl(hud, "hand-card", "shield"), null);
+  assert.equal(offeredBoardControl(hud, "hand-card", "unknown"), null);
+  assert.equal(offeredBoardControl({ ...hud, pending: true }, "hand-card", "bless"), null);
+});
 await test("native portrait bytes survive JSON and reject oversized transfers", () => {
   const packet={type:"file",requestId:"face-1",ok:true,name:"pc",mime:"image/png",bytes:Uint8Array.from([0,1,127,255]).buffer};
   const encoded=JSON.parse(JSON.stringify(nativeFilePacket(packet)));
