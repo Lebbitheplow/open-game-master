@@ -586,5 +586,32 @@ await test("S15: a ranger holding a druidic focus but no component pouch is refu
   assert.equal(knight?.refused, "rules", JSON.stringify(knight));
 });
 
+// ---- S16: Destructive Wave's second 5d6 is radiant or necrotic, the caster's choice ----
+
+// SRD 5.1, Destructive Wave: "5d6 thunder damage and 5d6 radiant or necrotic
+// damage (your choice)". S05 dealt the second 5d6 as radiant always; a
+// paladin who chose necrotic had no way to say so. Each share meets its own
+// resistance: a creature resistant to necrotic halves only that share.
+async function waveAt(stats, args = {}) {
+  const { world, sheets: [paladin], enemies: [foe] } = await table([caster("paladin", "cha", ["Destructive Wave"], [], 17)], 1, stats);
+  // Every d6 a 2: 10 thunder and 10 of the chosen type; the save a 1.
+  world.dice(2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1);
+  const wave = await world.invoke("aoe_damage", { casterCharacterId: paladin.id, spell: "Destructive Wave", enemyIds: [foe.id], level: 5, ...args });
+  world.clearDice();
+  assert.equal(wave.ok, true, wave.error);
+  return { wave, lost: hpLost(world, foe.id) };
+}
+
+await test("S16: Destructive Wave cast as necrotic deals its second 5d6 as necrotic, halved by a resistance to necrotic", async () => {
+  const { wave, lost } = await waveAt({ resist: "necrotic" }, { type: "necrotic" });
+  assert.equal(lost, 10 + 5, JSON.stringify(wave.result?.results));
+  assert.match(JSON.stringify(wave.result), /necrotic/);
+});
+
+await test("S16: Destructive Wave with no choice named stays radiant, which a resistance to necrotic does not touch", async () => {
+  const { lost } = await waveAt({ resist: "necrotic" });
+  assert.equal(lost, 20);
+});
+
 closeTables();
 finish();

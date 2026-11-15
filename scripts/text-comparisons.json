@@ -2537,7 +2537,7 @@
     "lib/srd/spell-facts.ts#toUpperCase": [["key",2,"spell component letters"]],
     "lib/srd/spell-lists.ts#str-list": [["english-source",2,"SRD class spell lists (bundled data)"]],
     "lib/srd/spell-lists.ts#toLowerCase": [["key",2,"class slug"],["english-source",1,"SRD class spell lists (bundled data)"]],
-    "lib/srd/spell-mech-last-rows.ts#str-list": [["english-source",3,"ODM's spell mechanics rows (bundled data)"]],
+    "lib/srd/spell-mech-last-rows.ts#str-list": [["english-source",4,"ODM's spell mechanics rows (bundled data)"]],
     "lib/srd/spell-mech-overrides.ts#str-list": [["english-source",3,"ODM's spell mechanics rows (bundled data)"]],
     "lib/srd/spell-mech-rows.ts#str-list": [["english-source",1,"ODM's spell mechanics rows (bundled data)"]],
     "lib/srd/spell-mech-tail-rows.ts#str-list": [["english-source",10,"ODM's spell mechanics rows (bundled data)"]],

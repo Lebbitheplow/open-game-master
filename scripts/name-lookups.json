@@ -9,6 +9,7 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
+    "lib/dm/aoe-spell.ts#whole": [["identity",1,"a spell row's damage type choice by textKey on both sides (Destructive Wave's radiant or necrotic)"]],
     "lib/dm/genre-cc-a-squire.ts#whole": [["identity",1,"a record by its whole name (textKey on both sides): the creature size the foe's block names"]],
     "lib/dm/genre-cc-a-squire.ts#partial": [["parse",1,"an attack's own damage type, the first of the types its stored line joins with a slash"]],
     "lib/dm/genre-cc-a-saves.ts#partial": [["parse",1,"a die's faces read from its dice notation"]],
@@ -18,6 +19,7 @@
     "lib/dm/invoke-roll.ts#partial": [["pattern",1,"a fixed pattern over the model's roll reason that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/srd/infusion-picks.ts#bypass": [["identity",2,"a record by its whole name (textKey on both sides): the infusion option names and the carried rows that take them"]],
     "lib/srd/infusion-picks.ts#helper": [["identity",1,"a record by its whole name (textKey on both sides): the infusion option names and the carried rows that take them"]],
+    "lib/dm/aoe-spell.ts#fallback": [["identity",1,"a record by its whole name (textKey on both sides): the second damage type the cast names among the spell row's choices, else the row's own (Destructive Wave: radiant)"]],
     "lib/dm/infusion-servant.ts#fallback": [["identity",1,"a record by its whole name (textKey on both sides): the square named, else the turn's first, among the squares stood in"]],
     "lib/dm/infusion-reactions.ts#whole": [["identity",1,"a record by its whole name (textKey on both sides): the blinded and prone conditions"]],
     "lib/dm/infusion-charges.ts#whole": [["identity",3,"a record by its whole name (textKey on both sides): the infused row and the radiant light mark"]],

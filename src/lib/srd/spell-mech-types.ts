@@ -138,6 +138,10 @@ export type SpellMech = {
   // cold): the last dice of the damage expression deal this type, the rest
   // `damageType`, and each meets its own resistance (src/lib/dm/aoe-parts.ts).
   secondType?: string;
+  // The types the caster picks the second one from, `secondType` when none is
+  // named (Destructive Wave: "radiant or necrotic damage (your choice)"); the
+  // cast names it as its damage type (aoe-spell.ts).
+  secondTypeChoice?: string[];
   // A melee or ranged spell attack (Inflict Wounds is melee, Fire Bolt is
   // ranged): a melee one is made at touch reach.
   attack?: "melee" | "ranged";
