@@ -56,6 +56,7 @@ import { choiceIn, isConditionNamed } from "@/lib/srd/feature-names";
 import { genreGateHolds } from "@/lib/srd/genre-a-gates";
 import type { CheckAbout } from "@/lib/dm/roll-about";
 import { keyFits, type RollKey } from "@/lib/srd/roll-keys";
+import { levelProficiencyBonus } from "@/lib/srd/proficiency";
 
 export type { Ability, AuthoredEffect, AuthoredEntry, AuthoredReaction, AuthoredSpend, Formula, Gate };
 
@@ -352,6 +353,10 @@ export function gateHolds(gate: Gate | undefined, sheet: AuthoredSheet, held: He
 
 // A formula at a class level: a ladder's last row reached, a function, or an
 // expression whose words ("level", "half", "prof", "wis") become numbers.
+// "level" and "half" are the class level the caller passes; "prof" is the
+// character's proficiency bonus, `mods.prof` (srd/proficiency.ts
+// formulaMods): SRD 5.1 Multiclassing, "always based on your total character
+// level". Only a caller with no sheet falls back to the level's own bonus.
 export function resolveFormula(formula: Formula, level: number, mods: Record<string, number> = {}): string {
   if (typeof formula === "function") {
     return String(formula(level, mods));
@@ -367,7 +372,7 @@ export function resolveFormula(formula: Formula, level: number, mods: Record<str
   } else {
     text = formula;
   }
-  const prof = 2 + Math.floor((Math.max(1, Math.min(20, level)) - 1) / 4);
+  const prof = mods.prof ?? levelProficiencyBonus(level);
   return text
     .replace(/\b(level|half|prof|str|dex|con|int|wis|cha)\b/g, (token) => {
       if (token === "level") return String(level);

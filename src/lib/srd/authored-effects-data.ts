@@ -512,8 +512,10 @@ export const AUTHORED_DATA_A: Record<string, AuthoredEntry> = {
           condition: "emboldening bond",
           rounds: 100,
           rangeFt: 30,
-          // The cleric and one fewer than their proficiency bonus of others.
-          count: (level) => 1 + Math.floor((Math.max(1, Math.min(20, level)) - 1) / 4),
+          // The cleric and one fewer than their proficiency bonus of others:
+          // the character's bonus (mods.prof), not the cleric level's, so a
+          // cleric 1 / fighter 4 bonds three, not two.
+          count: (level, mods) => (mods.prof ?? 2 + Math.floor((Math.max(1, Math.min(20, level)) - 1) / 4)) - 1,
         },
       },
     ],

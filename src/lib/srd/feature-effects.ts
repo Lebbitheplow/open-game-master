@@ -92,7 +92,9 @@ export type FeatureEffect =
   // turn budget; requiresCondition gates it (Divine Fury: raging).
   | {
       kind: "weapon_damage_rider";
-      dice: (level: number) => string;
+      // `mods.prof`: the character's proficiency bonus, which combatRiders
+      // passes (an authored rider's "prof": Genie's Wrath).
+      dice: (level: number, mods?: Record<string, number>) => string;
       type: string;
       when: "weapon" | "melee" | "ranged" | "attack";
       oncePerTurn?: boolean;
@@ -847,6 +849,11 @@ export function combatRiders(sheet: {
   // The marks a spend lays that add an attack to the Attack action while they
   // hold (genre-a-feature-defs.ts GENRE_A_MARK_ATTACKS: Storm of Blades).
   conditions?: string[];
+  // What the proficiency bonus a rider's dice read is made of (an Ioun
+  // Stone of Mastery worn and attuned: srd/proficiency.ts).
+  equipment?: WornMagicItem[];
+  race?: string;
+  alignment?: string;
 }): CombatRiders {
   const level = clampLevel(sheet.level);
   // The level a feature's scaling resolves at: its granting class's when
@@ -951,7 +958,10 @@ export function combatRiders(sheet: {
       case "weapon_damage_rider":
         riders.damageRiders.push({
           feature,
-          dice: effect.dice(scaledLevel),
+          // "level" the granting class's; "prof" the character's (SRD 5.1
+          // Multiclassing: the total level's, so a warlock 1 / fighter 4's
+          // Genie's Wrath adds +3, not the warlock level's +2).
+          dice: effect.dice(scaledLevel, { prof: proficiencyBonusOf(sheet) }),
           type: effect.type,
           when: effect.when,
           oncePerTurn: Boolean(effect.oncePerTurn),

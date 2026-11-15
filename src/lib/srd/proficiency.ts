@@ -35,3 +35,14 @@ export function itemProficiencyBonus(equipment: WornMagicItem[] | undefined, wea
 export function proficiencyBonusOf(sheet: { level?: number; equipment?: WornMagicItem[] } & Wearer): number {
   return levelProficiencyBonus(sheet.level ?? 1) + itemProficiencyBonus(sheet.equipment, sheet);
 }
+
+// What a feature's own formula reads off its holder (authored-effects.ts
+// resolveFormula, class-resources.ts resolveDiceFormula): the ability
+// modifiers, and "prof", the character's proficiency bonus as the sheet's
+// derived numbers hold it (proficiencyBonusOf, the stone in it; a Polymorph's
+// beast bonus while one holds, as its attacks read). Without it the readers
+// took the bonus from the level their door passed, a subclass feature's class
+// level: a warlock 1 / fighter 4's Genie's Wrath added +2 where +3 is due.
+export function formulaMods(derived: { abilityMods: Record<string, number>; proficiencyBonus: number }): Record<string, number> {
+  return { ...derived.abilityMods, prof: derived.proficiencyBonus };
+}

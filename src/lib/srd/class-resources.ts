@@ -77,7 +77,7 @@ export type ResourceEffect =
   | { kind: "inspire"; die: (level: number) => string; othersOnly?: boolean }
   // A save-for-half area: the spend rolls each creature it names
   // (src/lib/dm/counter-saves.ts).
-  | ({ kind: "aoe"; dice: (level: number) => string; save: SaveAbilityId } & SaveTerms)
+  | ({ kind: "aoe"; dice: (level: number, abilityMods?: Record<string, number>) => string; save: SaveAbilityId } & SaveTerms)
   // A save-or-suffer: the spend rolls each creature it names, the dice and
   // the condition landing on a failure (src/lib/dm/counter-saves.ts).
   | ({
@@ -169,11 +169,17 @@ export type ResourceFx =
 
 // "1d8+level" at level 5 -> "1d8+5"; "2d6+wis" with WIS +3 -> "2d6+3".
 // Negative modifiers fold into the sign so the dice grammar stays valid.
+// "level" is the level the counter is held at (resourceLevel: the owning
+// class's); "prof" and "profd4" read the character's proficiency bonus,
+// `abilityMods.prof` (srd/proficiency.ts formulaMods), since SRD 5.1 takes
+// it from the total level and an Ioun Stone of Mastery adds to it. Only a
+// caller with no sheet falls back to the level's own bonus.
 export function resolveDiceFormula(
   formula: DiceFormula,
   level: number,
   abilityMods: Record<string, number>,
 ): string {
+  const prof = abilityMods.prof ?? levelProficiencyBonus(level);
   let text = typeof formula === "string" ? formula : (formula[0]?.[1] ?? "0");
   if (Array.isArray(formula)) {
     for (const [atLevel, value] of formula) {
@@ -185,13 +191,13 @@ export function resolveDiceFormula(
   return text
     // A number of dice equal to the proficiency bonus ("profd4": Healing
     // Hands, MotM).
-    .replace(/\bprofd(\d+)\b/g, (_, die) => `${levelProficiencyBonus(level)}d${die}`)
+    .replace(/\bprofd(\d+)\b/g, (_, die) => `${prof}d${die}`)
     .replace(/\b(level|prof|str|dex|con|int|wis|cha)\b/g, (token) => {
       if (token === "level") {
         return String(Math.max(1, level));
       }
       if (token === "prof") {
-        return String(levelProficiencyBonus(level));
+        return String(prof);
       }
       return String(abilityMods[token] ?? 0);
     })
@@ -256,7 +262,7 @@ export function effectFromFx(fx: ResourceFx | undefined): ResourceEffect {
       return {
         ...saveTermsOf(fx),
         kind: "aoe",
-        dice: (level) => resolveDiceFormula(fx.dice, level, {}),
+        dice: (level, mods) => resolveDiceFormula(fx.dice, level, mods ?? {}),
         save: fx.save,
       };
     case "enemy_save":
@@ -553,7 +559,8 @@ const SRD_RESOURCE_DEFS: ResourceDef[] = [
     maxFor: (level, _mods, _classId, characterLevel, proficiency) => proficiency ?? levelProficiencyBonus(characterLevel ?? level),
     recharge: "long",
     action: "bonus",
-    effect: { kind: "temp_hp", dice: (level) => `${2 + Math.floor((Math.max(1, level) - 1) / 4)}` },
+    // The cook's own proficiency bonus (the spend passes it as mods.prof).
+    effect: { kind: "temp_hp", dice: (level, mods) => `${mods.prof ?? levelProficiencyBonus(level)}` },
     guidance:
       "Chef: the treats made as a long rest ends, as many as the cook's proficiency bonus, keeping 8 hours. The creature that eats one (targetCharacterId, else the cook) gains temporary hit points equal to the cook's proficiency bonus, for the eater's own bonus action in a fight.",
   },

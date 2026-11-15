@@ -29,6 +29,7 @@ import { getActiveEncounter, getEnemy, patchEnemyConditions, type EncounterEnemy
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
+import { formulaMods } from "@/lib/srd/proficiency";
 import {
   authoredReactionNamed,
   gateHolds,
@@ -238,8 +239,10 @@ export function rollHitAgainAtDisadvantage(
   return { missed: true, record: hit.record, applied: `Rolled again at disadvantage: ${total} against AC ${swing.vsAc} misses, and ${settled.given} hit points come back. HP ${settled.hp}.` };
 }
 
-function modsOf(sheet: CharacterSheet) {
-  return computeSheetDerived(sheet).abilityMods;
+// The modifiers and the character's proficiency bonus a reaction's formula
+// reads (srd/proficiency.ts formulaMods): Barrow Ward's "cha+prof".
+function modsOf(sheet: CharacterSheet): Record<string, number> {
+  return formulaMods(computeSheetDerived(sheet));
 }
 
 function saveDc(holder: CharacterSheet, ability: string): number {

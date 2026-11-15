@@ -53,6 +53,7 @@ import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import type { Advantage } from "@/lib/dice";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
+import { formulaMods } from "@/lib/srd/proficiency";
 import { activeAuthored, resolveFormula } from "@/lib/srd/authored-effects";
 import { hitSavesOnHit } from "@/lib/dm/hit-save";
 import { effectiveMaxHp, isIncapacitated, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
@@ -78,8 +79,10 @@ function fielded(campaignId: string): CharacterSheet[] {
     .filter((sheet) => !sheet.deathSaves?.dead && sheet.currentHp > 0);
 }
 
+// The modifiers and the character's proficiency bonus a feature's formula
+// reads (srd/proficiency.ts formulaMods).
 function modsOf(sheet: CharacterSheet): Record<string, number> {
-  return computeSheetDerived(sheet).abilityMods;
+  return formulaMods(computeSheetDerived(sheet));
 }
 
 function metaOf(enemy: EncounterEnemy, condition: string) {

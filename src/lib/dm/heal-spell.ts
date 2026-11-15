@@ -43,6 +43,7 @@ import { castingAbilityMod, healAdditions, healModifier } from "@/lib/dm/heal-bo
 import { publishEphemeral, publishPersisted } from "@/lib/events";
 import { openJoinerBonds } from "@/lib/dm/party-bonds";
 import { computeSheetDerived, spellSaveDcFor } from "@/lib/srd";
+import { formulaMods } from "@/lib/srd/proficiency";
 import { findSpellByName, spellDamageFor, spellFactsFor, spellMechanicsFor } from "@/lib/content";
 import { factsAsCast, twinExtra } from "@/lib/dm/mt-srd-metamagic";
 import { castShares } from "@/lib/srd/spell-mechanics";
@@ -248,7 +249,7 @@ export function castHealingSpell(
     noModifier: mech?.healNoModifier,
     abilityMod: fromItem?.abilityMod ?? (fromItem?.saveDc ? undefined : castingAbilityMod(caster, input.spell, derived.abilityMods)),
   });
-  const added = healAdditions(caster, slotLevel, derived.abilityMods);
+  const added = healAdditions(caster, slotLevel, formulaMods(derived));
   const riders: string[] = [...added.notes];
   // Signed: a WIS 8 cleric's Cure Wounds is 1d8 - 1 (the floor is on the total).
   const bonus = modifier + added.flat;
