@@ -247,5 +247,21 @@ await test("P03: a lasting area strikes the pet in its owner's square at every m
   await kit.endFight();
 });
 
+// P01, continued. What lasts until the creature "finishes a long rest" (a
+// block's poison with no count or save) ends with the rest its owner takes,
+// as the pet's hit points come back with it (rest-logic.ts longRestPatch).
+await test("P01: a pet's condition that lasts until a long rest ends with its owner's long rest", async () => {
+  const { longRestPatch } = await import("../src/lib/dm/rest-logic.ts");
+  const owner = world.addHero({ class: "ranger", subclass: "Beast Master", level: 3, maxHp: 30, proficiencies: { ...TRAINED } });
+  const summoned = await world.invoke("summon_pet", { characterId: owner.id, kind: "beast_companion", form: "wolf" });
+  assert.equal(summoned.ok, true, summoned.error);
+  const sheet = world.sheet(owner.id);
+  const pets = sheet.pets.map((pet) => ({ ...pet, conditions: [...(pet.conditions ?? []), "poisoned"], conditionMeta: { ...(pet.conditionMeta ?? {}), poisoned: { source: "e1", untilLongRest: true } } }));
+  const patch = longRestPatch({ ...sheet, pets });
+  const rested = (patch.pets ?? pets)[0];
+  assert.ok(!rested.conditions.includes("poisoned"), `the night ends it: ${JSON.stringify(rested.conditions)}`);
+  assert.equal(rested.conditionMeta?.poisoned, undefined);
+});
+
 world.close();
 finish();

@@ -127,9 +127,20 @@ export function longRestPatch(
     patch.equipment = recharged;
   }
   // Bound creatures rest with their owner: a night restores a downed
-  // companion or drake to full (a vanished familiar is already gone).
-  if ((sheet.pets ?? []).some((pet) => pet.hp < pet.maxHp)) {
-    patch.pets = sheet.pets.map((pet) => ({ ...pet, hp: pet.maxHp }));
+  // companion or drake to full (a vanished familiar is already gone), and
+  // ends what lasts until it finishes a long rest, as below for the owner
+  // (a block's poison with no count, pet-condition-lay.ts).
+  const restedPets = (sheet.pets ?? []).map((pet) => {
+    let conditions = pet.conditions ?? [];
+    let meta = (pet.conditionMeta ?? {}) as ConditionMetaMap;
+    for (const name of conditions) {
+      ({ conditions, meta } = removeConditionInstances(conditions, meta, name, (instance) => instance.untilLongRest === true || instance.untilRestEnds === true));
+    }
+    const ended = conditions.length !== (pet.conditions ?? []).length || JSON.stringify(meta) !== JSON.stringify(pet.conditionMeta ?? {});
+    return pet.hp < pet.maxHp || ended ? { ...pet, hp: pet.maxHp, ...(ended ? { conditions, conditionMeta: meta } : {}) } : pet;
+  });
+  if (restedPets.some((pet, index) => pet !== sheet.pets[index])) {
+    patch.pets = restedPets;
   }
   if (sheet.spellcasting) {
     // Slots created by Font of Magic vanish at the end of a long rest: for
