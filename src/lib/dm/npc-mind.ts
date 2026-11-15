@@ -135,10 +135,19 @@ export function mindsWithinEarshot(
     .reverse();
   const acted = npcsActedInTurn(campaign.id, earlier[0] ?? "");
   const recent = npcsOnStageRecently(campaign.id, earlier.slice(0, 4));
+  const cast = listNpcs(campaign.id);
+  // Whoever travels with the party and is here walks beside every word said
+  // on the road, spoken to or not: Aldren, chained at the head of the column,
+  // stood a step from a question put to the captain and was never asked.
+  const here = getCurrentLocation(campaign.id)?.name ?? "";
+  for (const npc of cast) {
+    if (here && npc.state.withParty && npc.location === here) {
+      recent.add(npc.id);
+    }
+  }
   if (!acted.size && !recent.size) {
     return [];
   }
-  const cast = listNpcs(campaign.id);
   const named = (value: unknown) => recipientsOf(String(value ?? ""), [], cast).ids;
   const touched = new Set(
     calls.flatMap((call) => {
