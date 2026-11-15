@@ -79,6 +79,15 @@
   --material-fitting-radius: 4px;
   --material-control-radius: 3px;
   --material-panel-radius: 4px;
+  --material-bubble-radius: 3px;
+  --material-tab-radius: 3px;
+  --material-chip-radius: 2px;
+  --material-sigil-radius: 3px;
+  /* Ember keys and a brass health bar in place of the shared leaf greens. */
+  --material-send-wash: linear-gradient(#a4521a, #6a2e0e);
+  --material-send-edge: #f2b978;
+  --material-chosen-wash: linear-gradient(#8a4416, #58260c);
+  --material-vital-fill: linear-gradient(90deg, #c9912f, #f6dd9a);
   --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23a9743c' stroke-width='1'%3E%3Cpath d='M0 30H30V0M120 30H90V0M0 90H30V120M120 90H90V120M45 45H75V75H45ZM60 30V45M60 75V90M30 60H45M75 60H90'/%3E%3C/g%3E%3C/svg%3E");
   --appearance-motif-size: 120px 120px;
   --appearance-corner: 0.2rem;
@@ -96,18 +105,3 @@ html[data-appearance="forge"] :is(.ornate::before, .ornate::after) { width: 18px
   --theme-table-frame-width-small: 18px;
   --theme-table-corner-size-small: 60px;
 }
-/* The shared table furniture paints these four in leaf green and gives
-   bubbles and chips a leaf-cut corner. Forge keeps ember and a square cut. */
-html[data-appearance="forge"][data-theme-ornaments="true"][data-theme] .theme-table .cine-send,
-html[data-appearance="forge"][data-theme-ornaments="true"][data-theme] .theme-table .cine-desk .session-mode[data-on] {
-  background: var(--material-primary-wash), var(--material-grain) center / 420px;
-  color: #fff3e0;
-  border-color: #f2b978;
-}
-html[data-appearance="forge"][data-theme-ornaments="true"][data-theme] .theme-table .cine-party-fill:not([data-low="true"]) {
-  background: linear-gradient(90deg, #c9912f, #f6dd9a);
-}
-html[data-appearance="forge"][data-theme-ornaments="true"][data-theme] .theme-table .session-bubble,
-html[data-appearance="forge"][data-theme-ornaments="true"][data-theme] .theme-table [aria-current="page"],
-html[data-appearance="forge"][data-theme-ornaments="true"][data-theme] .lobby-code .lobby-sigil { border-radius: 3px; }
-html[data-appearance="forge"][data-theme-ornaments="true"][data-theme] :is(.lobby-seat-badge, .lobby-hero-chip) { border-radius: 2px; }

@@ -63,13 +63,14 @@ It is not the app appearance registry. Leave it alone when adding an appearance.
    ```
 
    The pickers and schema now include it. Existing symbols are `sparkles`, `leaf`,
-   `church` and `waves`. To introduce another symbol, add its key to `APPEARANCE_ICONS`
+   `church`, `waves` and `anvil`. To introduce another symbol, add its key to `APPEARANCE_ICONS`
    and its component to the single map in `ThemeIcon.tsx`. Type checking catches
    a missing mapping.
 
 4. Import the new stylesheet in `src/app/globals.css`, alongside the other
-   `./styles/themes/` imports. Put treatment styles after the shared surface
-   styles. Scope rules to `[data-appearance="moonlit"]`, adding
+   `./styles/themes/` imports. Those load before the shared surface styles,
+   so set a material variable where one exists; a rule that must replace a
+   shared one needs a more specific selector. Scope rules to `[data-appearance="moonlit"]`, adding
    `[data-theme="light"]` or `[data-theme="dark"]` where needed. Keep selectors
    rooted on `html` for dialogs rendered outside the campaign's main element.
 
@@ -150,6 +151,7 @@ Defaults use the theme's palette, and overrides also apply inside picker preview
 | `--material-fitting-radius`, `--material-control-radius`, `--material-panel-radius` | Circular Arcane, pointed Gothic or asymmetric Woodland shapes |
 | `--material-body-wash`, `--material-rail-wash`, `--material-scrim` | Page, rail and scenery shading |
 | `--material-crest-tilt` | Rotation of the decorative lobby emblem |
+| `--material-bubble-radius`, `--material-tab-radius`, `--material-chip-radius`, `--material-sigil-radius` | Chat bubbles, the current rail tab, lobby seat and hero chips, and the join-code tiles; leaf cuts unless a theme sets them |
 
 The send and chosen-action defaults preserve Woodland's green controls. Arcane
 and Gothic override them with opaque brass/indigo and garnet gradients. Keep

@@ -24,6 +24,12 @@
   --material-fitting-radius: 50%;
   --material-control-radius: 6px;
   --material-panel-radius: 12px 4px;
+  /* Small shapes on the table and in the lobby. The defaults are the leaf
+     cuts every painted theme had before these were variables. */
+  --material-bubble-radius: 12px 3px;
+  --material-tab-radius: 16px 3px;
+  --material-chip-radius: 9px 2px;
+  --material-sigil-radius: 8px 2px;
   --material-crest-tilt: 0deg;
   --material-scrim: linear-gradient(color-mix(in srgb, var(--background) 65%, transparent), color-mix(in srgb, var(--background) 40%, transparent) 45%, color-mix(in srgb, var(--background) 80%, transparent));
 }
@@ -271,7 +277,7 @@ html[data-theme-ornaments="true"][data-theme] .lobby-head-rule {
   background: linear-gradient(90deg, var(--material-edge), transparent);
 }
 html[data-theme-ornaments="true"][data-theme] :is(.lobby-seat-badge, .lobby-hero-chip) {
-  border-radius: 9px 2px;
+  border-radius: var(--material-chip-radius);
   border-color: var(--material-edge);
   color: var(--material-metal);
   background: var(--material-inset);
@@ -320,7 +326,7 @@ html[data-theme-ornaments="true"][data-theme] .lobby-code .lobby-sigil {
   min-width: 1.5rem;
   height: 2rem;
   font-size: 1.15rem;
-  border-radius: 8px 2px;
+  border-radius: var(--material-sigil-radius);
   border-color: var(--material-edge);
   background: var(--material-paper);
   color: var(--material-metal);
