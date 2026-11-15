@@ -1,5 +1,32 @@
 # Appearance infrastructure validation
 
+## Hearth & Haven after the November 15 shared CI fixes (PR 967)
+
+Hearth integrates PR 962 at `cab3070dc` in implementation
+`d0f70d3b37779dc9635ef65f2640bb818a60d957`. Its theme assets, palette, oak action
+materials and map-hand label fix are unchanged. No duplicate shared fixes were
+added. The imported corrections restore readable labels, hostile-card borders,
+laptop map room and narration accessibility measurement while retaining visible
+painted frames and corners.
+
+On this integrated source, appearance checks (12 + 5), four targeted component
+suites, full lint (0 errors, 313 existing warnings), production build/TypeScript
+and existing budgets passed. Shared CSS is 107.5 KiB and rulebook CSS 114.1 KiB.
+Hearth passed all 59 appearance-browser checks and 20 focused readability cases.
+The 21 affected shared browser cases passed in one production run, superseding
+the previous 6/9 investigation result. This is not a full-suite pass.
+
+Manual review still finds a crowded 1024px combat board at 125% text with both
+side panels open. Hearth and Arcane have identical measured geometry after the
+tutorial is dismissed. This shared limitation is documented with screenshots;
+the passing header check does not establish board usability there.
+
+The [refreshed gallery](https://github.com/Smoebo/open-dungeon-master/tree/ed856d3903aab26717a2026584e573fe514529de) and [handoff](appearance-hearth-handoff.md)
+record exact commands, scope and source. The preceding published head's GitHub
+builds and all six unit-test groups passed; final CI for this correction remains
+separate. Native-shell, real-device/mobile Safari and screen-reader review remain
+open. PR 967 stays draft and depends on PR 962.
+
 ## GitHub browser failures, November 15
 
 At `10729d588`, both builds and all six Linux/Windows test shards passed on
