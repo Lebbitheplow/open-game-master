@@ -288,6 +288,10 @@ export const equipmentItemSchema = z.object({
   // ("curing"): each casts once a day (src/lib/srd/prayer-beads.ts). Absent
   // on every other row.
   beadsSpent: z.array(z.string().trim().min(1).max(20)).max(12).optional(),
+  // The campaign clock's minute this item's last charge was spent, for one
+  // whose charges come back days after it empties (ChargeRule.regainDays, a
+  // Horn of Valhalla's 7). Absent on every other row.
+  emptiedAt: z.number().int().min(0).optional(),
   // Pounds per unit, for the optional encumbrance rule. Filled in from the
   // content pack when a sheet is read (src/lib/db/sheets.ts), so rows
   // written before the field still get weighed; a value a player typed

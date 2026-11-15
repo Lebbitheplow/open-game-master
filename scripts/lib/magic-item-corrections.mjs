@@ -188,4 +188,19 @@ export const ADDED = [
   ].map(([stone, ability]) =>
     attuned(`Ioun Stone of ${stone}`, [{ kind: "increase_ability", ability, amount: 2, max: 20 }], [`Ioun Stone (${stone})`]),
   ),
+  // The other stones of the SRD's Ioun Stone entry, each attuned as the
+  // stone is. Left out, a sheet's "Ioun Stone of Regeneration" matched no
+  // row: it took no attunement and its 15 hit points an hour had nothing to
+  // read (src/lib/dm/regeneration-ring.ts). Absorption: "Once the stone has
+  // canceled 20 levels of spells, it burns out and turns dull gray, losing
+  // its magic" (50 for the greater stone), each spell spending its level.
+  ...[
+    ["Absorption", { max: 20, spentAway: true }],
+    ["Greater Absorption", { max: 50, spentAway: true }],
+    ["Awareness"],
+    ["Mastery"],
+    ["Regeneration"],
+    ["Reserve"],
+    ["Sustenance"],
+  ].map(([stone, charges]) => ({ ...attuned(`Ioun Stone of ${stone}`, [], [`Ioun Stone (${stone})`]), ...(charges ? { charges } : {}) })),
 ];

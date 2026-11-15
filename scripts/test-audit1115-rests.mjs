@@ -5,7 +5,7 @@
 // The table helpers come first: they point the database at a scratch
 // directory before anything from src/ loads.
 import assert from "node:assert/strict";
-import { openTable, rolled } from "./lib/enforce-resources.mjs";
+import { clockOf, openTable, rolled } from "./lib/enforce-resources.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 
 const { test, finish } = suite("test-audit1115-rests");
@@ -267,6 +267,99 @@ await test("R10 a Potion of Heroism's temporary hit points end with its hour, as
   await table.invoke("pass_time", { amount: 31, unit: "minutes" });
   assert.equal(table.sheet(drinker.id).conditions.includes("blessed"), false, "bless ran out");
   assert.equal(table.sheet(drinker.id).tempHp, 0);
+});
+
+await test("R11 the SRD items whose text counts their uses in its own words are in the item table, spend those uses and refill them as the text says", async () => {
+  // SRD 5.1: Chime of Opening, "The chime can be used ten times. After the
+  // tenth time, it cracks and becomes useless"; Bag of Tricks, "Once three
+  // fuzzy objects have been pulled from the bag, the bag can't be used again
+  // until the next dawn"; Horn of Valhalla, "Once you use the horn, it can't
+  // be used again until 7 days have passed"; Restorative Ointment "contains
+  // 1d4 + 1 doses"; Dust of Dryness "contains 1d6 + 4 pinches"; Bag of Beans
+  // "3d4 dry beans"; Robe of Useful Items, two each of six patches and 4d4
+  // others; Rod of Security "can't be used again until ten days have
+  // passed". None of them was in the table, so nothing counted a use.
+  const { chargeRuleOf } = await import("../src/lib/srd/item-charge-rules.ts");
+  const { magicItemNamed } = await import("../src/lib/srd/magic-items.ts");
+  const rule = (name) => chargeRuleOf({ name });
+  assert.deepEqual(rule("Chime of Opening"), { max: 10, spentAway: true });
+  assert.deepEqual(rule("Bag of Tricks"), { max: 3, regain: "all" });
+  assert.deepEqual(rule("Horn of Valhalla"), { max: 1, regainDays: 7 });
+  assert.deepEqual(rule("Rod of Security"), { max: 1, regainDays: 10 });
+  assert.deepEqual(rule("Restorative Ointment"), { max: "1d4+1", spentAway: true });
+  assert.deepEqual(rule("Dust of Dryness"), { max: "1d6+4", spentAway: true });
+  assert.deepEqual(rule("Bag of Beans"), { max: "3d4", spentAway: true });
+  assert.deepEqual(rule("Robe of Useful Items"), { max: "4d4+12", spentAway: true });
+  // SRD 5.1, Ioun Stone: every stone asks for attunement, and each is named
+  // for its kind. Absorption: "Once the stone has canceled 20 levels of
+  // spells, it burns out" (50 for the greater stone).
+  for (const stone of ["Absorption", "Greater Absorption", "Awareness", "Mastery", "Regeneration", "Reserve", "Sustenance"]) {
+    assert.equal(magicItemNamed(`Ioun Stone of ${stone}`)?.requiresAttunement, true, stone);
+    assert.equal(magicItemNamed(`Ioun Stone (${stone})`)?.name, `Ioun Stone of ${stone}`, stone);
+  }
+  assert.deepEqual(rule("Ioun Stone of Absorption"), { max: 20, spentAway: true });
+  assert.deepEqual(rule("Ioun Stone of Greater Absorption"), { max: 50, spentAway: true });
+
+  const table = await openTable();
+  const hero = table.addHero({
+    class: "fighter", level: 5, maxHp: 40,
+    equipment: [{ name: "Bag of Tricks", qty: 1 }, { name: "Horn of Valhalla", qty: 1 }, { name: "Chime of Opening", qty: 1 }],
+  });
+  const use = (item) => table.invoke("use_item", { characterId: hero.id, item });
+  for (let pull = 1; pull <= 3; pull += 1) {
+    const out = await use("Bag of Tricks");
+    assert.equal(out.ok, true, `pull ${pull}: ${out.error}`);
+  }
+  const fourth = await use("Bag of Tricks");
+  assert.equal(fourth.refused, "rules", "a fourth pull waits for dawn");
+  assert.match(fourth.error, /dawn/);
+  const blown = await use("Horn of Valhalla");
+  assert.equal(blown.ok, true, blown.error);
+  const again = await use("Horn of Valhalla");
+  assert.equal(again.refused, "rules", "the horn waits 7 days");
+  assert.match(again.error, /7 days/);
+  await table.invoke("pass_time", { amount: 1, unit: "days" });
+  assert.equal((await use("Bag of Tricks")).ok, true, "the bag is back at dawn");
+  assert.equal((await use("Horn of Valhalla")).refused, "rules", "a day is not 7");
+  await table.invoke("pass_time", { amount: 6, unit: "days" });
+  const week = await use("Horn of Valhalla");
+  assert.equal(week.ok, true, `7 days on: ${week.error}`);
+  for (let strike = 1; strike <= 10; strike += 1) {
+    const out = await use("Chime of Opening");
+    assert.equal(out.ok, true, `strike ${strike}: ${out.error}`);
+  }
+  assert.equal(table.sheet(hero.id).equipment.some((item) => item.name === "Chime of Opening"), false, "the tenth strike cracks it");
+});
+
+await test("R11 a worn, attuned Ioun Stone of Regeneration heals 15 at the end of every hour, from 1 hit point up", async () => {
+  // SRD 5.1, Ioun Stone, Regeneration: "You regain 15 hit points at the end
+  // of each hour this pearly white spindle orbits your head, provided that
+  // you have at least 1 hit point." A stone "is considered to be an object
+  // that is being worn while it orbits your head."
+  const table = await openTable();
+  const stone = { name: "Ioun Stone of Regeneration", qty: 1, attuned: true, equipped: true };
+  const wearer = table.addHero({ class: "fighter", level: 5, maxHp: 60, equipment: [stone] });
+  const down = table.addHero({ class: "fighter", level: 5, maxHp: 60, equipment: [stone] });
+  const loose = table.addHero({ class: "fighter", level: 5, maxHp: 60, equipment: [{ ...stone, attuned: false }] });
+  assert.equal(table.sheet(wearer.id).equipment[0]?.attuned, true, "the stone is stored attuned");
+  table.patch(wearer.id, { currentHp: 10 });
+  table.patch(loose.id, { currentHp: 10 });
+  table.patch(down.id, { currentHp: 0, deathSaves: { successes: 0, failures: 0, stable: true, dead: false } });
+  // From the top of an hour: 59 minutes end no hour; 121 more end three, 45.
+  const past = clockOf(table) % 60;
+  if (past) {
+    await table.invoke("pass_time", { amount: 60 - past, unit: "minutes" });
+    table.patch(wearer.id, { currentHp: 10 });
+    table.patch(loose.id, { currentHp: 10 });
+  }
+  await table.invoke("pass_time", { amount: 59, unit: "minutes" });
+  assert.equal(table.sheet(wearer.id).currentHp, 10, "no hour has ended");
+  await table.invoke("pass_time", { amount: 121, unit: "minutes" });
+  assert.equal(table.sheet(wearer.id).currentHp, 10 + 45);
+  assert.equal(table.sheet(loose.id).currentHp, 10, "an unattuned stone does nothing");
+  assert.equal(table.sheet(down.id).currentHp, 0, "at 0 hit points the stone does nothing");
+  await table.invoke("pass_time", { amount: 2, unit: "hours" });
+  assert.equal(table.sheet(wearer.id).currentHp, 60, "never past the maximum");
 });
 
 finish();

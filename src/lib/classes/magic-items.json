@@ -761,6 +761,35 @@
       }
     },
     {
+      "name": "Bag of Beans",
+      "match": "bag of beans",
+      "slugs": [
+        "bag-of-beans",
+        "bag-of-beans-a5e"
+      ],
+      "requiresAttunement": false,
+      "effects": [],
+      "charges": {
+        "max": "3d4",
+        "spentAway": true
+      }
+    },
+    {
+      "name": "Bag of Tricks",
+      "match": "bag of tricks",
+      "slugs": [
+        "bag-of-tricks",
+        "bag-of-tricks-a5e"
+      ],
+      "requiresAttunement": false,
+      "noWear": true,
+      "effects": [],
+      "charges": {
+        "max": 3,
+        "regain": "all"
+      }
+    },
+    {
       "name": "Bagpipes of Battle",
       "match": "bagpipes of battle",
       "slugs": [
@@ -1986,6 +2015,21 @@
       }
     },
     {
+      "name": "Chime of Opening",
+      "match": "chime of opening",
+      "slugs": [
+        "chime-of-opening",
+        "chime-of-opening-a5e"
+      ],
+      "requiresAttunement": false,
+      "noWear": true,
+      "effects": [],
+      "charges": {
+        "max": 10,
+        "spentAway": true
+      }
+    },
+    {
       "name": "Chronomancer's Pocket Clock",
       "match": "chronomancer's pocket clock",
       "slugs": [
@@ -3156,6 +3200,21 @@
       "requiresAttunement": true,
       "noWear": true,
       "effects": []
+    },
+    {
+      "name": "Dust of Dryness",
+      "match": "dust of dryness",
+      "slugs": [
+        "dust-of-dryness",
+        "dust-of-dryness-a5e"
+      ],
+      "requiresAttunement": false,
+      "noWear": true,
+      "effects": [],
+      "charges": {
+        "max": "1d6+4",
+        "spentAway": true
+      }
     },
     {
       "name": "Dwarven Plate",
@@ -4681,6 +4740,21 @@
       "effects": []
     },
     {
+      "name": "Horn of Valhalla",
+      "match": "horn of valhalla",
+      "slugs": [
+        "horn-of-valhalla",
+        "horn-of-valhalla-a5e"
+      ],
+      "requiresAttunement": false,
+      "noWear": true,
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regainDays": 7
+      }
+    },
+    {
       "name": "Howling Rod",
       "match": "howling rod",
       "slugs": [
@@ -4817,6 +4891,20 @@
       "effects": []
     },
     {
+      "name": "Ioun Stone of Absorption",
+      "match": "ioun stone of absorption",
+      "slugs": [],
+      "requiresAttunement": true,
+      "aliases": [
+        "Ioun Stone (Absorption)"
+      ],
+      "effects": [],
+      "charges": {
+        "max": 20,
+        "spentAway": true
+      }
+    },
+    {
       "name": "Ioun Stone of Agility",
       "match": "ioun stone of agility",
       "slugs": [],
@@ -4834,6 +4922,16 @@
       ]
     },
     {
+      "name": "Ioun Stone of Awareness",
+      "match": "ioun stone of awareness",
+      "slugs": [],
+      "requiresAttunement": true,
+      "aliases": [
+        "Ioun Stone (Awareness)"
+      ],
+      "effects": []
+    },
+    {
       "name": "Ioun Stone of Fortitude",
       "match": "ioun stone of fortitude",
       "slugs": [],
@@ -4849,6 +4947,20 @@
           "max": 20
         }
       ]
+    },
+    {
+      "name": "Ioun Stone of Greater Absorption",
+      "match": "ioun stone of greater absorption",
+      "slugs": [],
+      "requiresAttunement": true,
+      "aliases": [
+        "Ioun Stone (Greater Absorption)"
+      ],
+      "effects": [],
+      "charges": {
+        "max": 50,
+        "spentAway": true
+      }
     },
     {
       "name": "Ioun Stone of Insight",
@@ -4902,6 +5014,16 @@
       ]
     },
     {
+      "name": "Ioun Stone of Mastery",
+      "match": "ioun stone of mastery",
+      "slugs": [],
+      "requiresAttunement": true,
+      "aliases": [
+        "Ioun Stone (Mastery)"
+      ],
+      "effects": []
+    },
+    {
       "name": "Ioun Stone of Protection",
       "match": "ioun stone of protection",
       "slugs": [],
@@ -4915,6 +5037,26 @@
           "amount": 1
         }
       ]
+    },
+    {
+      "name": "Ioun Stone of Regeneration",
+      "match": "ioun stone of regeneration",
+      "slugs": [],
+      "requiresAttunement": true,
+      "aliases": [
+        "Ioun Stone (Regeneration)"
+      ],
+      "effects": []
+    },
+    {
+      "name": "Ioun Stone of Reserve",
+      "match": "ioun stone of reserve",
+      "slugs": [],
+      "requiresAttunement": true,
+      "aliases": [
+        "Ioun Stone (Reserve)"
+      ],
+      "effects": []
     },
     {
       "name": "Ioun Stone of Strength",
@@ -4932,6 +5074,16 @@
           "max": 20
         }
       ]
+    },
+    {
+      "name": "Ioun Stone of Sustenance",
+      "match": "ioun stone of sustenance",
+      "slugs": [],
+      "requiresAttunement": true,
+      "aliases": [
+        "Ioun Stone (Sustenance)"
+      ],
+      "effects": []
     },
     {
       "name": "Iron Foe Mace",
@@ -6667,6 +6819,21 @@
       "effects": []
     },
     {
+      "name": "Restorative Ointment",
+      "match": "restorative ointment",
+      "slugs": [
+        "restorative-ointment",
+        "restorative-ointment-a5e"
+      ],
+      "requiresAttunement": false,
+      "noWear": true,
+      "effects": [],
+      "charges": {
+        "max": "1d4+1",
+        "spentAway": true
+      }
+    },
+    {
       "name": "Retribution Armor",
       "match": "retribution armor",
       "slugs": [
@@ -7449,6 +7616,20 @@
       ]
     },
     {
+      "name": "Robe of Useful Items",
+      "match": "robe of useful items",
+      "slugs": [
+        "robe-of-useful-items",
+        "robe-of-useful-items-a5e"
+      ],
+      "requiresAttunement": false,
+      "effects": [],
+      "charges": {
+        "max": "4d4+12",
+        "spentAway": true
+      }
+    },
+    {
       "name": "Rod of Absorption",
       "match": "rod of absorption",
       "slugs": [
@@ -7610,6 +7791,20 @@
       ],
       "requiresAttunement": true,
       "effects": []
+    },
+    {
+      "name": "Rod of Security",
+      "match": "rod of security",
+      "slugs": [
+        "rod-of-security",
+        "rod-of-security-a5e"
+      ],
+      "requiresAttunement": false,
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regainDays": 10
+      }
     },
     {
       "name": "Rod of Swarming Skulls",

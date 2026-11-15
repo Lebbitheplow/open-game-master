@@ -134,6 +134,10 @@ export const COUNTED_USES = {
   // of not working and tearing into useless, nonmagical tatters." One use a
   // dawn, and a use past it rolls the tearing (src/lib/dm/item-charges.ts).
   "wind fan": { max: 1, regain: "all", daily: "the gust of wind spell", overuseRisk: 20 },
+  // "The robe has two of each of the following patches" (six kinds), "In
+  // addition, the robe has 4d4 other patches ... Once the last patch is
+  // removed, the robe becomes an ordinary garment."
+  "robe of useful items": { max: "4d4+12", spentAway: true },
 };
 
 // The last charge's d20 where a 1 leaves an item its text describes rather
