@@ -751,6 +751,8 @@ const REQUIRED_ANOTHER_WAY = {
   // A slot burned with no spell named still spends (Divine Smite, ODM's
   // rule), so the console leaves the spell optional.
   use_spell_slot: ["spell"],
+  // Each listener's name and reach: a person lists who heard, by name.
+  npc_hear: ["name", "reach"],
 };
 
 test("every other form requires what its handler requires", () => {

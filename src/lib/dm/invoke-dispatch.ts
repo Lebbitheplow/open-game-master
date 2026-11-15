@@ -34,7 +34,7 @@ import {
 } from "@/lib/dm/relationship-tools";
 import { handleTakeRest } from "@/lib/dm/rest-tools";
 import { handleNpcReaction, handleSetNpc, handleSocialCheck } from "@/lib/dm/social-tools";
-import { handleNpcInform, handleNpcPast, handleNpcSpeak } from "@/lib/dm/npc-mind";
+import { handleNpcHear, handleNpcInform, handleNpcPast, handleNpcSpeak } from "@/lib/dm/npc-mind";
 import { handlePartyStash } from "@/lib/dm/party-tools";
 import { handleClearEffect, handleSetEffect } from "@/lib/dm/effect-tools";
 import { handleEndScene, handleSceneCheck, handleStartScene } from "@/lib/dm/scene-tools";
@@ -261,6 +261,8 @@ function engineCall(
       return handleNpcInform(campaign, rawArguments);
     case "npc_past":
       return handleNpcPast(campaign, rawArguments);
+    case "npc_hear":
+      return handleNpcHear(campaign, rawArguments);
     case "social_check":
       return handleSocialCheck(campaign, turn, rawArguments, sheets, sheetsById);
     case "relationship_beat":

@@ -76,6 +76,9 @@ import {
   type NpcMemory,
   type NpcProposal,
   firstTierLimit,
+  hears,
+  heardMemory,
+  mutedMemory,
   MAX_FIRST_TIER_NPCS,
 } from "@/lib/dm/npc-mind-logic";
 
@@ -112,6 +115,57 @@ export function offscreenMindIds(campaign: Campaign): Set<string> {
 // The first-tier minds owed a turn in DM turn `turnId` and not yet given one:
 // on stage because they acted in the previous turn, and named by no
 // npc_speak or npc_inform among `calls` (npc-mind-logic.ts mindsOwedTurn).
+// The first-tier minds on stage (acting in the last few turns, with the
+// party, out of a fight's turn order) whom no npc_speak or npc_hear among
+// `calls` reached: who might have heard words said aloud this turn.
+export function mindsWithinEarshot(
+  campaign: Campaign,
+  turnId: string,
+  calls: ReadonlyArray<{ name: string; args: Record<string, unknown> }>,
+): Npc[] {
+  if (!npcMindsOn(campaign) || !turnId) {
+    return [];
+  }
+  const earlier = listRecentDmTurns(campaign.id, 6)
+    .filter((turn) => turn.id !== turnId && !turn.revertedAt)
+    .map((turn) => turn.id)
+    .reverse();
+  const acted = npcsActedInTurn(campaign.id, earlier[0] ?? "");
+  const recent = npcsOnStageRecently(campaign.id, earlier.slice(0, 4));
+  if (!acted.size && !recent.size) {
+    return [];
+  }
+  const cast = listNpcs(campaign.id);
+  const named = (value: unknown) => recipientsOf(String(value ?? ""), [], cast).ids;
+  const touched = new Set(
+    calls.flatMap((call) => {
+      if (call.name === "npc_speak") {
+        return [...named(call.args.name), ...(Array.isArray(call.args.alsoPresent) ? call.args.alsoPresent.flatMap(named) : [])];
+      }
+      if (call.name === "npc_hear" && Array.isArray(call.args.listeners)) {
+        return call.args.listeners.flatMap((entry) => named(typeof entry === "string" ? entry : (entry as { name?: unknown })?.name));
+      }
+      return [];
+    }),
+  );
+  const inFight = Boolean(getActiveEncounter(campaign.id));
+  const reached = mindsOwedTurn(
+    cast.map((npc) => ({
+      id: npc.id,
+      name: npc.name,
+      tier: tierOfNpc(npc),
+      archived: Boolean(npc.archived),
+      away: Boolean(getNpcAway(npc.id)),
+      companionInFight: inFight && Boolean(npc.companionSheetId),
+      actedLastTurn: acted.has(npc.id),
+      onStageRecently: recent.has(npc.id),
+    })),
+    touched,
+    true,
+  );
+  return reached.map((entry) => cast.find((npc) => npc.id === entry.id)).filter((npc): npc is Npc => Boolean(npc));
+}
+
 export function mindsAwaitingTurn(
   campaign: Campaign,
   turnId: string,
@@ -591,6 +645,79 @@ export async function handleNpcSpeak(campaign: Campaign, rawArguments: string): 
       : {}),
     narrate:
       "Voice their words as given and show their intent. The intent is only an attempt: resolve it through the engine's tools when it needs a roll or changes anything. Add nothing they know beyond their words.",
+  };
+}
+
+const hearSchema = z.object({
+  speaker: z.string().trim().min(1).max(120),
+  words: z.string().trim().min(1).max(1200),
+  place: z.string().trim().max(160).optional(),
+  // A bare name (the console's list, where the GM decides who heard) is
+  // someone close by.
+  listeners: z
+    .array(
+      z.union([
+        z.string().trim().min(1).max(120).transform((name) => ({ name, reach: "near" as const, dc: undefined, listening: undefined })),
+        z.object({
+          name: z.string().trim().min(1).max(120),
+          reach: z.enum(["near", "far", "out_of_earshot"]),
+          dc: z.number().int().min(5).max(30).optional(),
+          listening: z.boolean().optional(),
+        }),
+      ]),
+    )
+    .min(1)
+    .max(12),
+});
+
+// The difficulty of hearing words from across the scene when the narrator
+// names none: a weak voice across a room in the rain.
+const HEARING_DC = 13;
+
+// npc_hear: words said in the scene reach the tracked NPCs around as far as
+// they could hear them (npc-mind-logic.ts hears). The rolls are hidden, like
+// the GM's behind the screen; the result tells only the narrator who heard.
+export function handleNpcHear(campaign: Campaign, rawArguments: string): ToolResult {
+  let args: z.infer<typeof hearSchema>;
+  try {
+    args = hearSchema.parse(JSON.parse(rawArguments || "{}"));
+  } catch (error) {
+    return badArguments("Invalid arguments: npc_hear needs who spoke, their words, and each listener with how far they are.", error, rawArguments);
+  }
+  const cast = listNpcs(campaign.id);
+  const turnId = currentTurnId() ?? "";
+  const now = nowInstant(campaign.id);
+  const heard: string[] = [];
+  const missed: string[] = [];
+  const unknown: string[] = [];
+  for (const listener of args.listeners) {
+    const { ids } = recipientsOf(listener.name, [], cast);
+    const npc = cast.find((entry) => entry.id === ids[0]);
+    if (!npc || textKey(npc.name) === textKey(args.speaker)) {
+      if (!npc) unknown.push(listener.name);
+      continue;
+    }
+    const d20 = listener.reach === "far" && listener.listening ? rollExpression("1d20").total : null;
+    const outcome = hears(listener.reach, listener.dc ?? HEARING_DC, scoresFor(campaign, npc).wis, d20);
+    if (listener.reach === "out_of_earshot") {
+      missed.push(npc.name);
+      continue;
+    }
+    seedBackground(campaign, npc, listNpcMemories(campaign.id, npc.id));
+    addNpcMemories(
+      campaign.id,
+      [npc.id],
+      { kind: "knowledge", sourceKind: "perceived", sourceName: "", content: outcome.heard ? heardMemory(args.speaker, args.words, args.place ?? "") : mutedMemory(args.speaker, args.place ?? ""), learnedAt: now },
+      turnId,
+    );
+    (outcome.heard ? heard : missed).push(npc.name);
+  }
+  return {
+    ok: true,
+    heard,
+    missed,
+    ...(unknown.length ? { unknown, unknownNote: "No tracked NPC has these names; register them with set_npc if they matter." } : {}),
+    note: "Only those in heard know the words; those in missed know at most that someone spoke. Narrate and voice everyone accordingly.",
   };
 }
 
