@@ -258,5 +258,44 @@ await test("K07: a mount's save against an area takes its paladin rider's Aura o
   await kit.endFight();
 });
 
+// K08. SRD 5.1, Vision and Light (as K05): the light decides a check that
+// relies on sight, and the engine reads it only when the call names the
+// sense (`by`). The model is asked for a field a trait reads before the dice
+// roll; it was never asked for this one, so in dim light or in the dark a
+// Perception check that named no sense rolled as in daylight.
+await test("K08: a Perception check in the dark that names no sense is asked for it before anything is rolled", async () => {
+  await kit.endFight();
+  const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
+  const { dispatchAdjudication } = await import("../src/lib/dm/invoke-dispatch.ts");
+  const ai = (name, args, actor) => {
+    world.say("player", "I look around.", actor);
+    const turn = createDmTurn(world.campaignId, []);
+    const sheets = world.sheets();
+    return dispatchAdjudication(name, JSON.stringify(args), { campaign: world.campaign(), turn, sheets, sheetsById: new Map(sheets.map((sheet) => [sheet.id, sheet])), realDiceUserIds: new Set() });
+  };
+  const human = world.addHero({ class: "fighter", level: 1, race: "human", abilities: { wis: 10 }, proficiencies: { ...TRAINED } });
+  await kit.fight(1);
+  kit.place(human.id, 2, 2);
+  darkBoard();
+  const look = { kind: "skill_check", characterId: human.id, skill: "perception", difficulty: "moderate", reason: "anything moving?" };
+  const asked = await ai("request_roll", look, human);
+  assert.equal(asked.retry, true, `rolled in the dark without asking: ${JSON.stringify(asked).slice(0, 200)}`);
+  assert.match(asked.error, /by: sight, hearing, or 'none'/, asked.error);
+  const grouped = await ai("group_check", { skill: "perception", characterIds: [human.id], difficulty: "moderate", reason: "a sweep of the room" }, human);
+  assert.equal(grouped.retry, true, "the group check asks too");
+  const bySight = await ai("request_roll", { ...look, by: "sight" }, human);
+  assert.equal(bySight.ok, true, bySight.error);
+  assert.equal(bySight.autoFailed, true, "by sight in the dark the check fails");
+  const byEar = await forced([12], () => ai("request_roll", { ...look, by: "hearing" }, human));
+  assert.equal(byEar.ok, true, byEar.error);
+  assert.notEqual(byEar.autoFailed, true, "by ear the light decides nothing");
+  // In bright light nothing is asked.
+  getDatabase().prepare(`UPDATE battle_maps SET ambient = 'bright' WHERE id = ?`).run(kit.map().id);
+  clearLitTilesCache();
+  const lit = await forced([12], () => ai("request_roll", look, human));
+  assert.equal(lit.ok, true, `asked in bright light: ${lit.error}`);
+  await kit.endFight();
+});
+
 world.close();
 finish();

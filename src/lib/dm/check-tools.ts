@@ -1,5 +1,5 @@
 import { dungeonDelverNotices, hasDungeonDelver } from "@/lib/srd/feat-combat";
-import { CHECK_KEY_PROPERTIES, named, NONE } from "@/lib/dm/roll-about";
+import { CHECK_KEY_PROPERTIES, CHECK_SENSES, named, NONE } from "@/lib/dm/roll-about";
 import { CHECK_KEY_FIELDS } from "@/lib/dm/roll-args";
 import { askedFields, unnamedTraitFields } from "@/lib/dm/roll-feature-riders";
 import { z } from "zod";
@@ -24,8 +24,8 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { getActiveBattleMap } from "@/lib/battlemap/view";
 import { normalizeClock } from "@/lib/dm/calendar";
 import { getClock } from "@/lib/db/clock";
-import { sightPassiveShift, unawareReason } from "@/lib/dm/notice-logic";
-import { boardLightFor, lightForSheet, offBoardAmbient } from "@/lib/dm/place-light";
+import { lightHangsOnSense, sightPassiveShift, unawareReason } from "@/lib/dm/notice-logic";
+import { boardLightFor, lightForSheet, offBoardAmbient, rollerLight } from "@/lib/dm/place-light";
 import { dimLightSpares } from "@/lib/dm/dim-sight";
 import { contestOpponent, marchStealthProblem, rollContest } from "@/lib/dm/roll-gates";
 import { weatherPerceptionRider } from "@/lib/srd/weather";
@@ -252,6 +252,15 @@ export function handleGroupCheck(
     if (holders.length) {
       return {
         error: `${holders.map((entry) => entry.sheet.name).join(" and ")} ${holders.length > 1 ? "hold" : "holds"} a trait this check can call on. Name ${askedFields(holders.flatMap((entry) => entry.gaps))}, as the fiction is, and send the check again. Nothing was rolled.`,
+        retry: true,
+      };
+    }
+    // The light a participant stands in decides a check by sight, read only
+    // when the call names the sense (invoke-roll.ts asks request_roll alike).
+    const unlit = args.by === undefined ? targets.filter((sheet) => lightHangsOnSense(rollerLight(campaign.id, getSheetById(sheet.id) ?? sheet), args.skill, Boolean(dimLightSpares(sheet)))) : [];
+    if (unlit.length) {
+      return {
+        error: `${unlit.map((sheet) => sheet.name).join(" and ")} ${unlit.length > 1 ? "stand" : "stands"} in dim light or darkness, which a check by sight reads. Name ${askedFields([{ field: "by", values: [...CHECK_SENSES] }])}, as the fiction is, and send the check again. Nothing was rolled.`,
         retry: true,
       };
     }

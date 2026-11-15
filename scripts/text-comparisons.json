@@ -786,6 +786,7 @@
     "lib/dm/legendary-steps.ts#str-key": [["key",1,"ability ids to their names, shown"]],
     "lib/dm/legendary-steps.ts#toUpperCase": [["display",1,"a skill's name capitalised, shown"]],
     "lib/dm/notice-logic.ts#str-key": [["key",1,"scene ids, the ambience beds the location tools store (engine vocabulary)"]],
+    "lib/dm/notice-logic.ts#str-eq": [["key",3,"skill ids, as srd findSkill names them (engine vocabulary)"]],
     "lib/dm/party-bonds-logic.ts#str-eq": [["key",1,"fixed choices: a companion's kind and a bond's status"]],
     "lib/dm/romance-held-logic.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/romance-stage-logic.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
