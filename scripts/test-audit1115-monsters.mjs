@@ -267,6 +267,19 @@ test("E06 a ghoul's claws are read as sparing elves and undead", async () => {
   assert.equal(claws.onHit?.condition, "paralyzed");
 });
 
+// A server with no content pack builds its ghoul from the bundled SRD table
+// (srd-creatures.json), whose rider names the same exception as `exempt`.
+// The enemy's rider handed all of it to the GM, so the claws rolled no save.
+await test("E06 the bundled table's ghoul keeps its claws' save and spares elves and undead, as the pack's reading does", async () => {
+  const { SRD_CREATURES } = await import("../src/lib/srd/srd-creatures.ts");
+  const { enemyAttackOf } = await import("../src/lib/srd/creature-attacks.ts");
+  const ghoul = SRD_CREATURES.find((entry) => entry.name === "Ghoul");
+  const claws = enemyAttackOf(ghoul.attacks.find((entry) => entry.name === "Claws"));
+  assert.deepEqual(claws.onHit?.spares, ["elf", "undead"]);
+  assert.deepEqual([claws.onHit?.save, claws.onHit?.dc, claws.onHit?.condition, claws.onHit?.rounds, claws.onHit?.repeatSave], ["con", 10, "paralyzed", 10, true]);
+  assert.equal(claws.onHit?.manual, undefined, JSON.stringify(claws.onHit));
+});
+
 await test("E06 a ghoul's claws paralyze a human who fails the save, and pass over an elf", async () => {
   const sylvi = world.addHero({ name: "Sylvi", race: "elf", class: "fighter", level: 3, maxHp: 60, abilities: { con: 10 }, proficiencies: TRAINED });
   await kit.endFight();
