@@ -22,7 +22,7 @@ import { budgetApplies, paidSwingsLeft } from "@/lib/dm/action-budget";
 import { exchangeWords } from "@/lib/dm/story-moves";
 import type { GuardKind, GuardOutcome, GuardReport } from "@/lib/narrator-quality";
 import { readVoiceLeaks } from "@/lib/dm/voice-knowledge";
-import { knowledgeCorrectionPrompt } from "@/lib/dm/voice-knowledge-logic";
+import { droppedMindLines, knowledgeCorrectionPrompt, mindSpeeches } from "@/lib/dm/voice-knowledge-logic";
 
 // The DB/model rim of the engine-boundary guard. The ruling lives in
 // dm/engine-boundary.ts (pure) and the reading in dm/claims.ts; this file
@@ -304,6 +304,14 @@ export async function enforceEngineBoundary(
     );
     cutContradictions(turn, contradictions, summary);
     return kept("kept_short");
+  }
+  // A rewrite that lost what a mind said took that character's turn away:
+  // the narration stands, with only the faulty sentences cut.
+  const dropped = droppedMindLines(narration, corrected, mindSpeeches(turn.conversation));
+  if (dropped.length) {
+    console.warn(`[engine-boundary] turn ${turn.id}: correction dropped ${dropped.length} line(s) a mind said; kept the narration (${summary})`);
+    cutContradictions(turn, contradictions, summary);
+    return kept("kept_unresolved");
   }
   // A rewrite is only an improvement if it actually removes contradictions. A
   // model that swapped one wrong claim for another keeps its original text,

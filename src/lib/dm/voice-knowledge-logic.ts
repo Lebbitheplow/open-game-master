@@ -90,6 +90,19 @@ export function narratorLines(narration: string, minds: readonly string[]): stri
   });
 }
 
+// The minds' lines a rewrite of the narration lost: each one the narration
+// held that the rewrite no longer does. A mind's words are its own turn
+// (npc_speak); asked to fix the narrator's line beside one, the rewrite
+// dropped Nera's whole answer and the table read only the line it fixed.
+export function droppedMindLines(before: string, after: string, minds: readonly string[]): string[] {
+  const held = key(before);
+  const kept = key(after);
+  return minds.filter((speech) => {
+    const words = key(speech);
+    return Boolean(words) && held.includes(words) && !kept.includes(words);
+  });
+}
+
 const clip = (text: string, chars: number) => (text.length > chars ? `${text.slice(0, chars - 1)}…` : text);
 
 // The reading the utility model is asked. The transcript is the evidence of
@@ -195,5 +208,5 @@ export function knowledgeCorrectionPrompt(leaks: readonly Contradiction[]): stri
   const lines = leaks.map((entry) => `- ${entry.detail}. You wrote: "${entry.clause}"`).join("\n");
   return `[System] A character you voiced says something they cannot know: only you, the narrator, know it.
 ${lines}
-Rewrite the whole narration so each of them says only what they saw, heard or were told, or what anyone of their role and place would know; a guess may stay if it is plainly a guess. Keep everything else: the same scene, the same length, the same voice, the same closing beat. Do not call any tool, do not mention this correction, and reply with the corrected narration only.`;
+Rewrite the whole narration so each of them says only what they saw, heard or were told, or what anyone of their role and place would know; a guess may stay if it is plainly a guess. Keep everything else: the same scene, the same length, the same voice, the same closing beat, and every other character's lines word for word. Do not call any tool, do not mention this correction, and reply with the corrected narration only.`;
 }

@@ -127,5 +127,26 @@ await test("the guard rewrites a leaking line once, and keeps a clean one", asyn
   assert.equal(clean.text, CLEAN);
 });
 
+await test("a rewrite that drops what a mind said is not taken: the mind's line stays, the leak is cut", async () => {
+  const NERA = "Portate queste testimonianze a chi può costringere gli uomini di Vargo a rispondere. E fate arrivare cibo al villaggio: i malati non mangiano le prove.";
+  const MINDS = `Nera indica le carte nelle tue mani. «${NERA}»`;
+  const leak = { speaker: "Sentinella del cordone", quote: "il problema del carro", fact: "il carro mai visto" };
+  const turn = createDmTurn(world.campaignId, [{ role: "system", content: "system prompt" }], "ai");
+  turn.conversation.push(
+    { role: "assistant", content: "", tool_calls: [{ id: "speak_1", type: "function", function: { name: "npc_speak", arguments: "{}" } }] },
+    { role: "tool", tool_call_id: "speak_1", content: JSON.stringify({ ok: true, npc: "Nera", says: NERA }) },
+  );
+  turn.narrationParts = [MINDS, LEAKY];
+  model.script([reply({ text: CLEAN })]);
+  model.claims([]);
+  model.leaks([[leak]]);
+  const out = await enforceEngineBoundary(world.campaign(), turn, world.sheets(), new Map());
+  const text = turn.narrationParts.join("\n\n");
+  assert.equal(out.guard.outcome, "kept_unresolved");
+  assert.ok(text.includes(NERA), text);
+  assert.ok(!text.includes("problema del carro"), text);
+  assert.equal(logic.droppedMindLines(`${MINDS}\n\n${CLEAN}`, `«${NERA}» ${CLEAN}`, [NERA]).length, 0, "a mind's line kept in other prose is not dropped");
+});
+
 model.close();
 finish();
