@@ -221,6 +221,11 @@ export const SERVER_FEATURES = {
   // apply_hazard's frigid_water type and its `minutes`: an older host knows
   // no such hazard and refuses it, so the choice stays hidden there.
   frigidWater: true,
+  // A workshop item's checks.lockBonus (the item editor's "picking locks"
+  // chip under "A bonus to these checks", Gloves of Thievery's lock pick).
+  // An older host's item schema strips it unread, so the bonus an author set
+  // would be gone on save without a word: the chip stays hidden there.
+  itemLockBonus: true,
   // A test fight's moment saved as its prepared fight's set-up (issue 685):
   // "Save as set-up" on the test table (POST /api/campaigns/[id]/fight-setup)
   // and "Remove its set-up" on the fight, which an older host answers with

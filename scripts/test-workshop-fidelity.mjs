@@ -627,4 +627,19 @@ test("every SRD trap, poison and disease copied into the workshop runs by its ne
   assert.deepEqual(changed, [], changed.join("\n"));
 });
 
+// The item editor's "picking locks" chip (checks.lockBonus) is offered only
+// by a host that keeps it: an older host's item schema strips it unread, so
+// the app's workshop showed a chip whose bonus vanished on save.
+{
+  const { SERVER_FEATURES } = await import("../src/lib/capabilities.ts");
+  const { hostOffers } = await import("../src/lib/use-capabilities.ts");
+  test("the item editor's picking-locks chip asks for the host", () => {
+    assert.equal(SERVER_FEATURES.itemLockBonus, true);
+    assert.equal(hostOffers({ features: { frigidWater: true } }, "itemLockBonus"), false, "an older host was offered the lock chip");
+    assert.equal(hostOffers({ features: { itemLockBonus: true } }, "itemLockBonus"), true);
+    const editor = fs.readFileSync(new URL("../src/app/workshop/homebrew/ItemMagicFields.tsx", import.meta.url), "utf8");
+    assert.match(editor, /options=\{offersLocks \? CHECK_TARGETS : SKILL_IDS\}/, "the chip list reads the host's flag");
+  });
+}
+
 console.log(`test-workshop-fidelity: ${passed} passed${db ? "" : " (fixture rows, no content pack)"}`);
