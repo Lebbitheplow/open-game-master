@@ -283,5 +283,24 @@ await test("N07: a Potion of Hill Giant Strength's Strength 21 lifts 630 pounds 
   assert.equal(out.result.capacityLb, 315);
 });
 
+// ---- N08: days without food read the Constitution an item sets ----
+// SRD 5.1, Food and Water: "A character can go without food for a number of
+// days equal to 3 + his or her Constitution modifier (minimum 1)." Amulet of
+// Health: "Your Constitution score is 19 while you wear this amulet." The
+// count read the sheet's own score, so the amulet bought no extra day.
+
+await test("N08: an Amulet of Health's Constitution 19 is seven days without food, not three", async () => {
+  const { dayOfUpkeep } = await import("../src/lib/dm/supplies.ts");
+  const wearer = {
+    abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
+    equipment: [{ name: "Amulet of Health", qty: 1, equipped: true, attuned: true }, { name: "Waterskin", qty: 1 }],
+    exhaustion: 0,
+  };
+  // The fourth day without food: past 3 + 0, within 3 + 4.
+  const day = dayOfUpkeep(wearer, { food: 3, water: 0 });
+  assert.equal(day.hunger.food, 4);
+  assert.equal(day.exhaustion, 0);
+});
+
 world.close();
 finish();
