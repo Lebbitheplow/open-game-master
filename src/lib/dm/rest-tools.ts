@@ -26,7 +26,7 @@ import { tickWorldTimeskip } from "@/lib/dm/world-tick";
 import { departureNote, departureOpenings } from "@/lib/dm/departure";
 import { pactMoment } from "@/lib/dm/pacts";
 import { readUneaseTells } from "@/lib/dm/conscience-voice";
-import { advanceClock, getClock, inShortRestWindow, openShortRestWindow, recordLongRests, setTravelPace } from "@/lib/db/clock";
+import { advanceClock, getClock, inShortRestWindow, openShortRestWindow, recordLongRests, recordRestEnds, setTravelPace } from "@/lib/db/clock";
 import { getDmTurn } from "@/lib/db/dm-turns";
 import { claimWindowRestDice, partyChefDie, partySongOfRestDie, playerChoosesHitDice, spendHitDice, windowRestDice } from "@/lib/dm/hit-dice";
 import { declaredThisTurn } from "@/lib/dm/player-word";
@@ -395,6 +395,7 @@ export function handleTakeRest(
       }
     }
     recordLongRests(campaign.id, resting, endsAt);
+    recordRestEnds(campaign.id, resting);
     // The saves a disease asks at the end of a long rest.
     const afflictions = afflictionsAfterLongRest(campaign, turnId, resting);
     // A lifestyle is paid for each dawn the rest crosses (lifestyle.ts).
@@ -524,6 +525,7 @@ export function handleTakeRest(
   // moves again.
   const waiting = choosers.filter((sheet) => !plan.has(sheet.id));
   openShortRestWindow(campaign.id, waiting.map((sheet) => sheet.id));
+  recordRestEnds(campaign.id, standing.map((sheet) => sheet.id));
   // Short-recharge resources (Ki, Second Wind, Action Surge...) refill for
   // everyone, hit dice spent or not.
   const refilled: string[] = [];

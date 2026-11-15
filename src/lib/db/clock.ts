@@ -258,6 +258,27 @@ export function recordLongRests(campaignId: string, characterIds: string[], ende
   setClock(campaignId, { ...current, longRests });
 }
 
+// Where the clock stood as each of these characters' rest ended, short or
+// long (CampaignClock.restEnds).
+export function recordRestEnds(campaignId: string, characterIds: string[]) {
+  if (!characterIds.length) {
+    return;
+  }
+  const current = getClock(campaignId);
+  const restEnds = { ...(current.restEnds ?? {}) };
+  for (const id of characterIds) {
+    restEnds[id] = current.instant;
+  }
+  setClock(campaignId, { ...current, restEnds });
+}
+
+// Whether this character's last rest ended at the clock's instant now: no
+// time has passed since it.
+export function justRested(campaignId: string, characterId: string): boolean {
+  const clock = getClock(campaignId);
+  return clock.restEnds?.[characterId] === clock.instant;
+}
+
 // The pace the party travels at, until they stop (src/lib/dm/check-tools.ts
 // reads it for passive Perception).
 export function setTravelPace(campaignId: string, pace: CampaignClock["travelPace"] | null) {

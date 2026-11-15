@@ -8,6 +8,7 @@
 import { exitAtInitiative } from "@/lib/dm/genre-cc-a-fixer";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
+import { justRested } from "@/lib/db/clock";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
@@ -119,6 +120,12 @@ export function chooseFiendishResilience(
   const encounter = getActiveEncounter(campaign.id);
   if (encounter && (encounter.kind ?? "fight") === "fight") {
     return { error: "Fiendish Resilience's type is chosen when a rest ends, not in the middle of a fight.", refused: "rules" };
+  }
+  // "when you finish a short or long rest" (SRD 5.1, The Fiend): while the
+  // clock stands where the rest left it. Chosen at will out of a fight, a
+  // warlock swapped to fire on the threshold of every fire room.
+  if (!justRested(campaign.id, sheet.id)) {
+    return { error: `Fiendish Resilience's type is chosen as a short or long rest ends, and ${sheet.name} has not just finished one: it stays as it is until the next rest. Nothing was changed.`, refused: "rules" };
   }
   const features = sheet.features.map((feature, at) =>
     at === index ? { ...feature, name: `Fiendish Resilience (${type})` } : feature,

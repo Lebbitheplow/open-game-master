@@ -204,4 +204,29 @@ await test("R07 a barbarian or monk with Draconic Resilience stands at the bette
   assert.equal(tough.ac, 16, tough.parts.join(", "));
 });
 
+await test("R08 Fiendish Resilience's damage type is chosen as a rest ends, not whenever the warlock likes", async () => {
+  // SRD 5.1, The Fiend, Fiendish Resilience: "you can choose one damage
+  // type when you finish a short or long rest. You gain resistance to that
+  // damage type until you choose a different one with this feature."
+  const table = await openTable();
+  const fiend = table.addHero({
+    class: "warlock", subclass: "The Fiend", level: 10, abilities: { cha: 16 },
+    features: [{ name: "Fiendish Resilience", classId: "warlock" }],
+    hitDice: { die: "d8", total: 10, spent: 10 },
+  });
+  const choose = (type) => table.invoke("use_resource", { characterId: fiend.id, resource: "Fiendish Resilience", variant: type });
+  const early = await choose("fire");
+  assert.notEqual(early.ok, true, `no rest has ended: nothing to choose yet ${JSON.stringify(early)}`);
+  assert.equal(early.refused, "rules");
+  const rest = await shortRest(table);
+  assert.equal(rest.ok, true, rest.error);
+  const chosen = await choose("fire");
+  assert.equal(chosen.ok, true, chosen.error);
+  // An hour on, the choice is set until the next rest ends.
+  await table.invoke("pass_time", { amount: 1, unit: "hours" });
+  const swapped = await choose("cold");
+  assert.equal(swapped.refused, "rules");
+  assert.ok(table.sheet(fiend.id).features.some((feature) => feature.name === "Fiendish Resilience (fire)"));
+});
+
 finish();
