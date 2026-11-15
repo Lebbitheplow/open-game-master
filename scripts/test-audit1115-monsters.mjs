@@ -1110,4 +1110,42 @@ await test("E22 a brown bear Bram conjured, drained by a shadow, bites with its 
   assert.equal(bite.result.damage, 7);
 });
 
+// E23: what a spell on a creature makes it immune to.
+await test("E23 a goblin under Heroism cannot be frightened, one under Mind Blank cannot be charmed", async () => {
+  await kit.endFight();
+  await kit.fight(2, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+  const [brave, guarded] = world.enemies();
+  kit.setEnemy(brave.id, { conditions: ["heroism"], conditionMeta: { heroism: { rounds: 10, spell: "Heroism" } } });
+  kit.setEnemy(guarded.id, { conditions: ["mind blank"], conditionMeta: { "mind blank": { rounds: 14400, spell: "Mind Blank" } } });
+  const fear = await world.invoke("set_enemy_condition", { enemyId: brave.id, condition: "frightened", sourceCharacterId: kara.id });
+  assert.equal(fear.ok, false, "Heroism: immune to being frightened");
+  assert.ok(!kit.enemy(brave.id).conditions.includes("frightened"));
+  const charm = await world.invoke("set_enemy_condition", { enemyId: guarded.id, condition: "charmed", sourceCharacterId: kara.id });
+  assert.equal(charm.ok, false, "Mind Blank: immune to being charmed");
+  assert.ok(!kit.enemy(guarded.id).conditions.includes("charmed"));
+});
+
+await test("E23 a goblin under Freedom of Movement is not paralyzed by a spell, but a giant spider's web still holds it", async () => {
+  await kit.endFight();
+  await kit.fight(2, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+  const [goblin, spider] = world.enemies();
+  const stats = srd("Giant Spider");
+  kit.setEnemy(spider.id, { ac: stats.ac, maxHp: stats.maxHp, stats });
+  kit.setEnemy(goblin.id, { conditions: ["freedom of movement"], conditionMeta: { "freedom of movement": { rounds: 600, spell: "Freedom of Movement" } } });
+  const held = await world.invoke("set_enemy_condition", { enemyId: goblin.id, condition: "paralyzed", sourceCharacterId: kara.id, magical: true });
+  assert.equal(held.ok, false, "magic cannot paralyze it");
+  assert.ok(!kit.enemy(goblin.id).conditions.includes("paralyzed"));
+  kit.place(kara.id, 2, 2);
+  kit.place(goblin.id, 6, 5);
+  kit.place(spider.id, 9, 5);
+  const encounters = await import("../src/lib/db/encounters.ts");
+  encounters.patchEnemyConditions(spider.id, ["charmed"], { charmed: { spell: "Dominate Monster", source: kara.id } });
+  kit.enemyTurn(spider.id);
+  world.dice(19);
+  const web = await world.invoke("enemy_attack", { enemyId: spider.id, targetCharacterId: goblin.id, attack: "Web" });
+  world.clearDice();
+  assert.equal(web.ok, true, web.error);
+  assert.ok(kit.enemy(goblin.id).conditions.includes("restrained"), `the web is no magic: ${JSON.stringify(web.result)}`);
+});
+
 finish();

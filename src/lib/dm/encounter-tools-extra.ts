@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { conditionGrantedImmunity } from "@/lib/srd/condition-effect-queries";
 import type { Campaign } from "@/lib/db/campaigns";
 import { releaseLostPins } from "@/lib/dm/grappler-pin";
 import { getActiveEncounter, getEnemy, listEnemies, patchEnemyConditions, patchEnemyHp, turnCounterFor } from "@/lib/db/encounters";
@@ -286,6 +287,13 @@ function handleEnemyCondition(
     const stone = petrifiedRefusal(enemy.conditions, named);
     if (stone) {
       return { error: `${enemy.displayName} cannot be ${named}: ${stone}.`, refused: "rules" };
+    }
+    // What a spell on it makes it immune to (Heroism, Mind Blank, Freedom of
+    // Movement against magic), as on a character (set-condition.ts): magical
+    // unless the call says it is not.
+    const warded = conditionGrantedImmunity(enemy.conditions, named, undefined, args.magical !== false);
+    if (warded) {
+      return { error: `${enemy.displayName} cannot be ${named}: ${warded} protects it. Nothing was set.`, refused: "rules" };
     }
     // Aura of Courage or Devotion over a creature fighting for the party
     // (aura.ts), as over a character.

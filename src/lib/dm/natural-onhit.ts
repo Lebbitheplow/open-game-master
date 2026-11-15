@@ -133,9 +133,10 @@ function layConditions(campaign: Campaign, hit: NaturalHit, failedBy: number, to
     (onHit.unconsciousFailBy !== undefined && failedBy >= onHit.unconsciousFailBy) ||
     (onHit.unconsciousAtMost !== undefined && (total === null || total <= onHit.unconsciousAtMost));
   const wanted = [onHit.condition, ...(onHit.alsoCondition ? [onHit.alsoCondition] : []), ...(unconscious ? ["unconscious"] : [])];
-  // Its own immunities, and a petrified creature's to poison.
-  const laid = wanted.filter((name) => !immuneToCondition(fresh, name) && !fresh.conditions.includes(name));
-  const skipped = wanted.filter((name) => immuneToCondition(fresh, name));
+  // Its own immunities, a petrified creature's to poison, and a spell's on
+  // it; a creature's bite or web is no magic (Freedom of Movement).
+  const laid = wanted.filter((name) => !immuneToCondition(fresh, name, false) && !fresh.conditions.includes(name));
+  const skipped = wanted.filter((name) => immuneToCondition(fresh, name, false));
   const meta: ConditionMetaMap = { ...(fresh.conditionMeta as ConditionMetaMap) };
   for (const name of laid) {
     const entry: ConditionMeta = {
