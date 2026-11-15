@@ -76,13 +76,16 @@ export function attachNativeBoard(frame: HTMLIFrameElement, api: ShellNativeBoar
   // combobox's list (the composer's @ menu), and the banners that float over
   // the table (a table break with its Resume, a session's end), besides
   // anything marked data-native-board-occluder.
+  const MODAL_LAYERS = 'dialog[open],[role="dialog"],[role="alertdialog"]';
   const OCCLUDERS = '[data-native-board-occluder],dialog[open],[role="dialog"],[role="alertdialog"],[role="menu"],[role="tooltip"],[role="listbox"],.session-banner';
   const layout = () => {
     if (!id || disposed) return;
     const bounds = rect(frame);
     const occlusions = [...document.querySelectorAll(OCCLUDERS)]
       // Dialogs can hide background controls without removing their rectangles.
-      .filter(e => !e.closest('[aria-hidden="true"],[inert]'))
+      // A dialog under another modal (a menu or alert opened from it marks it
+      // aria-hidden) is still painted on screen, so it keeps its cutout.
+      .filter(e => e.matches(MODAL_LAYERS) || !e.closest('[aria-hidden="true"],[inert]'))
       .filter(e => e.getAttribute("role") !== "menu" || getComputedStyle(e).pointerEvents !== "none")
       .filter(e => !e.contains(frame) && e.getClientRects().length && getComputedStyle(e).visibility !== "hidden")
       .filter(e => {

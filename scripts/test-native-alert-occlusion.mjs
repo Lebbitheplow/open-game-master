@@ -17,6 +17,7 @@ const element = (selector, box) => {
     contains: () => false,
     getClientRects: () => [node.box],
     closest: () => null,
+    matches: (selectors) => selectors.split(",").includes(selector),
     getBoundingClientRect: () => node.box,
   };
   return node;
@@ -27,10 +28,14 @@ const names = element('[role="listbox"]', { x: 50, y: 60, width: 30, height: 30 
 const status = element('[role="status"]', { x: 5, y: 5, width: 10, height: 10 });
 const background = element("[data-native-board-occluder]", { x: 70, y: 20, width: 20, height: 20 });
 const inertMenu = element('[role="menu"]', { x: 5, y: 55, width: 20, height: 20 });
+// A sheet dialog the alert was opened over: the alert's modal marks it
+// aria-hidden, yet it is still drawn on screen under the alert.
+const sheet = element('[role="dialog"]', { x: 30, y: 30, width: 40, height: 40 });
 let modalOpen = true;
 background.closest = (selector) => modalOpen && selector.includes('[aria-hidden="true"]') ? background : null;
 inertMenu.closest = (selector) => modalOpen && selector.includes("[inert]") ? inertMenu : null;
-const page = [alert, banner, names, status, background, inertMenu];
+sheet.closest = (selector) => modalOpen && selector.includes('[aria-hidden="true"]') ? sheet : null;
+const page = [alert, banner, names, status, background, inertMenu, sheet];
 
 const listeners = new Map();
 const frame = { getBoundingClientRect: () => ({ x: 0, y: 0, width: 100, height: 100 }), toggleAttribute() {}, contentWindow: { postMessage() {} } };
@@ -65,8 +70,8 @@ assert(receive, "native board opened");
 receive({ odm: 1, type: "ready" });
 assert.deepEqual(
   layout.occlusions,
-  [alert.box, banner.box, names.box],
-  "visible overlays stay above the board; suppressed controls and a bare status line leave the board intact",
+  [alert.box, banner.box, names.box, sheet.box],
+  "visible overlays stay above the board, a dialog under the alert included; suppressed controls and a bare status line leave the board intact",
 );
 
 // The banner slides in: measured as it mounts, it is measured again when its
@@ -79,7 +84,7 @@ assert.deepEqual(layout.occlusions[1], banner.box, "re-measured where its entran
 assert.ok(observedAttributes.includes("aria-hidden") && observedAttributes.includes("inert"));
 modalOpen = false;
 mutation();
-assert.deepEqual(layout.occlusions, [alert.box, banner.box, names.box, background.box, inertMenu.box],
+assert.deepEqual(layout.occlusions, [alert.box, banner.box, names.box, background.box, inertMenu.box, sheet.box],
   "background controls reserve their space again after the modal releases them");
 
 detach();
