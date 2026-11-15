@@ -830,7 +830,11 @@ function travelStretch(
       weatherOutcome.distanceFactor = factor;
     }
     const exposure = weatherExposure(sky.weather);
-    if (exposure && legHours >= 4) {
+    // The save comes "at the end of each hour" of exposure, so every whole
+    // hour on the road counts. Only legs of four hours or more once rolled
+    // any, and two 3-hour legs through a frigid pass cost nothing.
+    const exposedHours = Math.min(48, Math.floor(legHours));
+    if (exposure && exposedHours >= 1) {
       const hazard = handleApplyHazard(
         campaign,
         turn,
@@ -838,7 +842,7 @@ function travelStretch(
           type: exposure,
           characterIds: travellers.map((sheet) => sheet.id),
           // One save for every hour on the road in it.
-          hours: legHours,
+          hours: exposedHours,
           reason: exposure === "extreme_cold" ? "hours in the bitter cold" : "hours in the heat",
         }),
         sheets,

@@ -51,5 +51,37 @@ await test("N01: a made save on drinking is the 3d6 and nothing more", async () 
   assert.equal(sheet(drinker.id).conditions.includes("poisoned"), false);
 });
 
+// ---- N02: a short leg in extreme cold or heat ----
+// The weather rule the engine plays (src/lib/srd/hazards.ts): exposed to
+// extreme cold, a creature makes a DC 10 Constitution save "at the end of
+// each hour"; extreme heat the same, DC 5 rising by 1 an hour. A leg of
+// travel under four hours rolled none, so two 3-hour legs through a frigid
+// pass cost nothing.
+
+const { getDatabase } = await import("../src/lib/db/core.ts");
+const savesOf = (id) =>
+  getDatabase()
+    .prepare(`SELECT dc FROM rolls WHERE character_id = ? AND roll_kind = 'saving_throw' ORDER BY created_at, rowid`)
+    .all(id)
+    .map((row) => row.dc);
+const { getClock, setClockInstant } = await import("../src/lib/db/clock.ts");
+// Six in the morning of the next day, so no leg crosses a dawn's new sky.
+const morning = () => setClockInstant(world.campaignId, (Math.floor(getClock(world.campaignId).instant / 1440) + 1) * 1440 + 6 * 60);
+
+await test("N02: three hours on the road in frigid air are three DC 10 Constitution saves", async () => {
+  const walker = world.addHero({ user: world.owner, class: "fighter", level: 3, maxHp: 40 });
+  morning();
+  await world.invoke("set_weather", { sky: "clear", temperature: "frigid", wind: "calm" });
+  world.clearDice();
+  world.dice(1, 1, 1);
+  const out = await world.invoke("travel", { hours: 3, pace: "normal", characterIds: [walker.id] });
+  const left = world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.deepEqual(savesOf(walker.id), [10, 10, 10]);
+  assert.equal(left, 0);
+  assert.equal(sheet(walker.id).exhaustion, 3);
+  await world.invoke("set_weather", { sky: "clear", temperature: "mild", wind: "calm" });
+});
+
 world.close();
 finish();
