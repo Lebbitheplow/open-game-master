@@ -96,7 +96,7 @@ test("a spotlight released mid-fight restores the fight's floor", () => {
 });
 
 test("the order still advances after a spotlight came and went", () => {
-  const turn = { resolvedCharacterIds: [karaSheet.id] };
+  const turn = { id: "floor-turn", resolvedCharacterIds: [karaSheet.id] };
   advanceAfterTurn(live(), turn);
   assert.equal(pointerName(), "Brom");
   assert.deepEqual(getFloor(campaign.id).userIds, [brom.id]);
@@ -110,7 +110,7 @@ test("a hold wrapping the fight keeps the fight: the pointer moves under it and 
   assert.equal(floor.mode, "hold", "still held for discussion");
   assert.equal(floor.next.mode, "initiative");
   assert.deepEqual(floor.next.userIds, [kara.id], "the hold now opens into the new turn");
-  advanceAfterTurn(live(), { resolvedCharacterIds: [karaSheet.id] });
+  advanceAfterTurn(live(), { id: "floor-turn", resolvedCharacterIds: [karaSheet.id] });
   assert.equal(pointerName(), "Brom", "an end_turn under the hold still moves the order");
   const released = floorAfterRelease(campaign.id);
   assert.deepEqual(released.userIds, [brom.id], "release reads the pointer, not the stale snapshot");
