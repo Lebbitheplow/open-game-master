@@ -2,6 +2,7 @@ import { z } from "zod";
 import { isErrorResponse, requireAdmin } from "@/lib/admin-api";
 import { speedStatus } from "@/lib/speed-status";
 import { toolCallHealth } from "@/lib/tool-call-health";
+import { listCampaignLanguages } from "@/lib/db/campaigns";
 import { getGlobalConfig, saveGlobalConfig } from "@/lib/db/app-settings";
 import { isDeviceWorld, serverEnv } from "@/lib/server-env";
 import { isComfyPreset } from "@/lib/image-models/catalog";
@@ -141,6 +142,9 @@ export async function GET() {
     speedStatus: speedStatus(),
     // Whether the GM's last call kept its tools (src/lib/tool-call-health.ts).
     toolCallHealth: toolCallHealth(),
+    // The campaigns the embedding model must read in another language, for
+    // the warning when it cannot (src/lib/embedding-language.ts).
+    tableLanguageCampaigns: listCampaignLanguages(),
   });
 }
 

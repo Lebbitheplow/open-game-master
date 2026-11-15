@@ -11,6 +11,7 @@ import { GENRE_PRESETS, type GenrePreset } from "@/lib/genres";
 import type { WorldPackSummary } from "@/lib/worlds/types";
 import { WorldPackGallery } from "@/components/WorldPackGallery";
 import { NarratorLanguageNote, VoicePicker } from "@/components/VoicePicker";
+import { EmbeddingLanguageLine } from "@/components/EmbeddingLanguageLine";
 import { NarrationNote } from "@/app/campaigns/[campaignId]/NarrationNote";
 import { CharacterVoices } from "@/app/campaigns/[campaignId]/CharacterVoices";
 import { VoicePreviewButton } from "@/components/VoicePreviewButton";
@@ -141,7 +142,7 @@ export function WorldGroup({
           />
         </div>
       ) : null}
-      <div className="flex flex-wrap items-center gap-2">
+      <div data-settings-row="table-language" className="flex flex-wrap items-center gap-2">
         <span className="pk-rowlabel">Language</span>
         <Select<TableLanguage>
           size="sm"
@@ -153,6 +154,7 @@ export function WorldGroup({
         />
         <span className="text-stone-500">{TABLE_LANGUAGE_HELP}</span>
       </div>
+      <EmbeddingLanguageLine languages={[settings.tableLanguage]} />
       {aiNarrates ? (
         <div className="reveal flex flex-wrap items-center gap-2">
           <span className="pk-rowlabel">Length</span>

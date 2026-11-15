@@ -98,6 +98,10 @@ import {
   useNarrationStatus,
 } from "@/app/campaigns/[campaignId]/NarrationFailureBanner";
 import { AudioWaitingBanner } from "@/app/campaigns/[campaignId]/AudioWaitingBanner";
+import { EmbeddingLanguageBanner } from "@/app/campaigns/[campaignId]/EmbeddingLanguageBanner";
+import { revealSettingsRow } from "@/app/campaigns/[campaignId]/reveal-settings-row";
+import { seesEmbeddingWarning } from "@/lib/embedding-language-logic";
+import { useEmbeddingWarning } from "@/lib/use-embedding-warning";
 import { turnCharacterId, turnFromEncounter, turnHudBudget } from "@/lib/battlemap/hand-table";
 
 import { TabPane } from "@/app/campaigns/[campaignId]/SidePanel";
@@ -1015,6 +1019,38 @@ export function SessionView({
     },
     [openTab, setMobileView],
   );
+  // A table in a language this server's embedding model cannot read, said
+  // above the composer to whoever can fix it (EmbeddingLanguageBanner), and
+  // on a phone's other views as the sound banner is.
+  const embeddingWarning = useEmbeddingWarning(
+    campaign && seesEmbeddingWarning({ steersStory, isAdmin }) ? [campaign.gameSettings.tableLanguage] : [],
+  );
+  const embeddingBanner = useMemo(
+    () =>
+      embeddingWarning ? (
+        <EmbeddingLanguageBanner
+          warning={embeddingWarning}
+          onChangeLanguage={
+            steersStory
+              ? () => {
+                  selectPanelView("settings");
+                  revealSettingsRow("table-language");
+                }
+              : undefined
+          }
+        />
+      ) : null,
+    [embeddingWarning, steersStory, selectPanelView],
+  );
+  const tableNotice = useMemo(
+    () => (
+      <>
+        {embeddingBanner}
+        {narrationNotice}
+      </>
+    ),
+    [embeddingBanner, narrationNotice],
+  );
   // A shop's Browse wares in the chat: the Market on that shop, in the side
   // panel at a desk and in place of the table on a phone.
   const [marketRequest, setMarketRequest] = useState<MarketRequest | null>(null);
@@ -1540,7 +1576,7 @@ export function SessionView({
                     encounter={state.encounter}
                     onReleaseFloor={releaseFloor}
                     joinBanner={joinBanner}
-                    notice={narrationNotice}
+                    notice={tableNotice}
                     composerRef={composerRef}
                     highlight={composerPulse}
                     directorArm={state.directorArm}
@@ -1593,8 +1629,11 @@ export function SessionView({
 
       <RollToast staged={stagedRoll} sheets={sheets} />
 
-      {mobileView !== "chat" && (narrationHeld > 0 || ambienceWaiting) ? (
-        <div className="px-2 pb-1 lg:hidden">{audioWaiting}</div>
+      {mobileView !== "chat" && (embeddingBanner || narrationHeld > 0 || ambienceWaiting) ? (
+        <div className="px-2 pb-1 lg:hidden">
+          {embeddingBanner}
+          {audioWaiting}
+        </div>
       ) : null}
       <BottomTabBar
         tabs={panelTabs}

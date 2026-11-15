@@ -3,6 +3,7 @@ import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { normalizeSettings, scrubStorySettings } from "@/lib/db/settings";
 import { configuredDefaultStorySettings } from "@/lib/runtime-defaults";
 import { normalizeGameSettings, type GameSettings, type TableLanguage } from "@/lib/schemas/game-settings";
+import type { ProbedLanguage } from "@/lib/embedding-language-logic";
 import { normalizeCampaignKind, type CampaignKind } from "@/lib/workshop/kind";
 import type {
   CampaignCover,
@@ -461,6 +462,25 @@ export function listCampaignsForUser(userId: string): CampaignSummary[] {
     const campaign = mapCampaign(row);
     campaign.role = row.owner_user_id === userId ? "owner" : "player";
     return campaign;
+  });
+}
+
+// Every campaign still in play whose table language is not English, for the
+// admin page's warning when the embedding model cannot read it
+// (src/lib/embedding-language.ts). An ended campaign recalls nothing more.
+export type CampaignLanguage = { id: string; title: string; language: ProbedLanguage };
+
+export function listCampaignLanguages(): CampaignLanguage[] {
+  const rows = getDatabase()
+    .prepare(
+      `SELECT id, title, game_settings_json FROM campaigns
+       WHERE kind = 'campaign' AND status != 'ended'
+       ORDER BY title`,
+    )
+    .all() as { id: string; title: string; game_settings_json: string }[];
+  return rows.flatMap((row) => {
+    const language = normalizeGameSettings(parseJson(row.game_settings_json, {})).tableLanguage;
+    return language === "english" ? [] : [{ id: row.id, title: row.title, language }];
   });
 }
 

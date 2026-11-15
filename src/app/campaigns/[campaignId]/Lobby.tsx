@@ -33,6 +33,9 @@ import type { CampaignState } from "@/app/campaigns/[campaignId]/useCampaignStre
 import { navigateTo } from "@/lib/navigation";
 import { SceneBackdrop } from "@/app/campaigns/[campaignId]/CinematicParts";
 import { ArrivalBanner } from "@/app/campaigns/[campaignId]/ArrivalBanner";
+import { EmbeddingLanguageNotice } from "@/app/campaigns/[campaignId]/EmbeddingLanguageBanner";
+import { revealSettingsRow } from "@/app/campaigns/[campaignId]/reveal-settings-row";
+import { seesEmbeddingWarning } from "@/lib/embedding-language-logic";
 import { StorySetupNotice } from "@/components/StorySetupNotice";
 import {
   STORY_SETUP_WARNING,
@@ -511,6 +514,16 @@ export function Lobby({
             />
             <ArrivalBanner sheets={sheets} />
           </div>
+
+          {/* A table in a language this server's embedding model cannot
+              read, said to whoever can fix it before play starts. */}
+          {seesEmbeddingWarning({ steersStory, isAdmin: Boolean(me.isAdmin) }) ? (
+            <EmbeddingLanguageNotice
+              language={campaign.gameSettings.tableLanguage}
+              className="order-1"
+              onChangeLanguage={steersStory ? () => revealSettingsRow("table-language") : undefined}
+            />
+          ) : null}
 
           {!isSolo || showCompanions ? (
             <LobbyParty
