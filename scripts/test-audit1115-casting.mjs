@@ -613,5 +613,27 @@ await test("S16: Destructive Wave with no choice named stays radiant, which a re
   assert.equal(lost, 20);
 });
 
+// ---- S17: Heroism from a Ring of Spell Storing gives the original caster's modifier ----
+
+// SRD 5.1, Ring of Spell Storing: the spell "uses the slot level, spell save
+// DC, spell attack bonus, and spellcasting ability of the original caster";
+// Heroism: temporary hit points "equal to your spellcasting ability modifier
+// at the start of each of its turns". The turn-start grant read the
+// wearer's own sheet, so a fighter casting a cleric's stored Heroism gained
+// none at all (the fighter has no spellcasting ability).
+await test("S17: a fighter casting a cleric's Heroism from a Ring of Spell Storing gains the cleric's 4 temporary hit points each turn", async () => {
+  const ringRow = { name: "Ring of Spell Storing", qty: 1, equipped: true, attuned: true, storedSpells: [{ spell: "Heroism", level: 1, saveDc: 15, attackBonus: 7, abilityMod: 4, by: "Priest" }] };
+  const { world, sheets: [fighter] } = await table([{ class: "fighter", level: 5, abilities: { str: 16 }, equipment: [ringRow] }]);
+  const drawn = await world.invoke("use_item", { characterId: fighter.id, item: "Ring of Spell Storing", spell: "Heroism" });
+  assert.equal(drawn.ok, true, JSON.stringify(drawn));
+  const cast = await world.invoke("cast_buff", { characterId: fighter.id, spell: "Heroism", targetCharacterIds: [fighter.id] });
+  assert.equal(cast.ok, true, JSON.stringify(cast));
+  // The goblin's turn, then the fighter's own: Heroism's grant as it starts.
+  assert.equal(skipCurrentTurn(world.campaignId), true);
+  assert.equal(skipCurrentTurn(world.campaignId), true);
+  world.clearDice();
+  assert.equal(world.sheet(fighter.id).tempHp, 4);
+});
+
 closeTables();
 finish();
