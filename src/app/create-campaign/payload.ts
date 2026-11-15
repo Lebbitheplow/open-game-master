@@ -146,6 +146,10 @@ export function campaignPayload(draft: CampaignDraft, { solo, aiNarrates }: Pick
       // creates (src/app/api/campaigns/route.ts), so first-tier characters
       // answer from their own minds; only tables made before it keep the
       // single narrator, whose NPCs' knowledge was never recorded.
+      //
+      // `npcMindLimit`: how many key characters get a mind of their own.
+      // Four is a safe default, it matters only once the story raises
+      // someone, and the campaign's narration settings own it.
     },
   };
 }
