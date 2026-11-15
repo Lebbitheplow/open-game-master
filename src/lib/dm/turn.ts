@@ -292,8 +292,9 @@ import { acceptsCall, offeredAs } from "@/lib/dm/tool-merge-logic";
 import { petTools, PET_TOOL_NAMES } from "@/lib/dm/pet-tools";
 import { socialTools, SOCIAL_TOOL_NAMES, handleSetNpc, npcRosterForPrompt } from "@/lib/dm/social-tools";
 import { npcMindTools, NPC_MIND_TOOL_NAMES } from "@/lib/dm/npc-mind-tools";
-import { awayArrivalNote, handleNpcInform, handleNpcPast, handleNpcSpeak, mindRosterNotes, mindTurnRefusal, mindsAwaitingTurn, npcMindsOn } from "@/lib/dm/npc-mind";
-import { sceneMindsPrompt, TIME_SKIP_TOOLS } from "@/lib/dm/npc-mind-logic";
+import { awayArrivalNote, handleNpcInform, handleNpcPast, handleNpcSpeak, mindRosterNotes, mindTurnRefusal, mindsAwaitingTurn, mindsWithinEarshot, npcMindsOn } from "@/lib/dm/npc-mind";
+import { hearingPrompt, sceneMindsPrompt, TIME_SKIP_TOOLS } from "@/lib/dm/npc-mind-logic";
+import { mindSpeeches, narratorLines } from "@/lib/dm/voice-knowledge-logic";
 import { worldForPrompt } from "@/lib/dm/world-prompt";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import {
@@ -2043,6 +2044,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
   // One shot at a turn that closed without the turn owed to a first-tier
   // mind still on stage (npc-mind.ts mindsAwaitingTurn, design §9).
   let sceneMindsNudged = false;
+  let hearingNudged = false;
   // What the current call streamed to the draft, and how many narration
   // parts the turn held before it. Settled once the call's text is kept or
   // withheld for good: before the next call (a correction sends the model
@@ -2813,6 +2815,28 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
           role: "user",
           content: intentCorrection(card.intent, card.characterId, card.name, card.resolution),
         });
+        saveDmTurn(turn);
+        continue;
+      }
+      // Words said aloud in the prose (a line the narrator voiced, not a
+      // mind's own) with first-tier characters on stage whom nothing told:
+      // who heard them is the dice's to say (npc_hear, D&D Perception), not
+      // the narrator's guess a turn later. Sent back once; the narration
+      // stands.
+      const spokenAloud = !finalCall && !hearingNudged && turn.narrationParts.length > 0
+        ? narratorLines(turn.narrationParts.join("\n\n"), mindSpeeches(turn.conversation))
+        : [];
+      const listeners = spokenAloud.length ? mindsWithinEarshot(campaign, turn.id, turnCalls(turn.conversation, toolCalls)) : [];
+      if (listeners.length) {
+        hearingNudged = true;
+        turn.conversation.push({
+          role: "assistant",
+          ...carried,
+          content: visibleText || "",
+          ...(toolCalls.length ? { tool_calls: echoedToolCalls } : {}),
+        });
+        answerRanAbove(fightOwnsFloor(campaignId), false);
+        turn.conversation.push({ role: "user", content: hearingPrompt(listeners.map((npc) => npc.name), spokenAloud[0].slice(0, 120)) });
         saveDmTurn(turn);
         continue;
       }

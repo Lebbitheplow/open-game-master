@@ -436,6 +436,77 @@ await test("the story promotes a second-tier character mid-way, who remembers th
   }
 });
 
+await test("words said in the scene reach the NPCs around as far as they could hear them (npc_hear, D&D Perception)", async () => {
+  npc("Healer Wenna", { trait: "tired healer" }, "secondary");
+  npc("Guard Tobb", { trait: "bored guard" }, "secondary");
+  npc("Sentry Alm", { trait: "on the far tower" }, "secondary");
+  const hear = (listeners) =>
+    mind.handleNpcHear(world.campaign(), JSON.stringify({ speaker: "Daro", words: "They took the sacks to the old mill.", place: "the well house", listeners }));
+  // Close by: heard. Across the room, passive 10 + Wis 0 against 13: missed.
+  // Out of earshot: nothing at all.
+  const out = hear([
+    { name: "Guard Tobb", reach: "near" },
+    { name: "Healer Wenna", reach: "far", dc: 13 },
+    { name: "Sentry Alm", reach: "out_of_earshot" },
+  ]);
+  assert.deepEqual(out.heard, ["Guard Tobb"]);
+  assert.deepEqual(out.missed, ["Healer Wenna", "Sentry Alm"]);
+  assert.ok(memories("Guard Tobb").some((entry) => entry.content.includes("«They took the sacks to the old mill.»")));
+  assert.ok(!memories("Healer Wenna").some((entry) => /mill/.test(entry.content)), "a missed check leaves no words");
+  assert.ok(memories("Healer Wenna").some((entry) => /too low or too far/.test(entry.content)), "only that someone spoke");
+  assert.equal(memories("Sentry Alm").length, 0);
+  // An easy one (DC 10) is heard on passive Perception.
+  assert.deepEqual(hear([{ name: "Healer Wenna", reach: "far", dc: 10 }]).heard, ["Healer Wenna"]);
+  // The rule itself: Wisdom moves it, a roll replaces the passive 10.
+  assert.equal(logic.hears("far", 13, 14, null).heard, false, "passive 10 + 2 = 12, under 13");
+  assert.equal(logic.hears("far", 13, 16, null).heard, true, "passive 10 + 3 = 13");
+  assert.equal(logic.hears("far", 13, 10, 7).heard, false, "7 on the die, Wis +0");
+  assert.equal(logic.hears("far", 13, 16, 12).heard, true, "12 + 3");
+  assert.ok(mind.handleNpcHear(world.campaign(), JSON.stringify({ speaker: "Daro", words: "x", listeners: [{ name: "Nobody Here", reach: "near" }] })).unknown.includes("Nobody Here"));
+  assert.deepEqual(mind.handleNpcHear(world.campaign(), JSON.stringify({ speaker: "Daro", words: "The miller.", listeners: ["Sentry Alm"] })).heard, ["Sentry Alm"], "the console names who heard");
+  const { npcMindTools, NPC_MINDS_RULES } = await import("../src/lib/dm/npc-mind-tools.ts");
+  assert.ok(npcMindTools.some((tool) => tool.function.name === "npc_hear"));
+  assert.match(NPC_MINDS_RULES, /call npc_hear/);
+});
+
+await test("words said aloud with a mind on stage send the narrator back once to ask who heard; the dice decide", async () => {
+  const { listNpcs } = await import("../src/lib/db/npcs.ts");
+  const others = listNpcs(world.campaignId).filter((entry) => mind.tierOfNpc(entry) === "primary" && !entry.companionSheetId);
+  for (const other of others) {
+    minds.setNpcTier(other.id, "secondary");
+  }
+  npc("Healer Imre", { trait: "watching the sick" });
+  npc("Patient Ost", { trait: "weak in bed" }, "secondary");
+  const nudges = () => model.requests.filter((request) => String(request.messages?.at(-1)?.content ?? "").includes("nobody asked whether they heard")).length;
+  try {
+    model.script([
+      reply({ calls: [call("npc_speak", { name: "Healer Imre", perceives: "Aria comes into the sick house." })] }),
+      answer({ speech: "Quietly, please.", intent: "" }),
+      reply({ text: '"Quietly, please," Imre says, and points to the beds.' }),
+    ]);
+    await model.turn(world, "I step into the sick house.", aria.id);
+    const before = nudges();
+    model.script([
+      reply({ text: 'Ost turns his face to you. "They took the sacks to the old mill," he whispers.' }),
+      reply({ calls: [call("npc_hear", { speaker: "Patient Ost", words: "They took the sacks to the old mill.", listeners: [{ name: "Healer Imre", reach: "far", dc: 13 }] })] }),
+      reply({ text: "" }),
+      reply({ calls: [call("npc_speak", { name: "Healer Imre", perceives: "Across the room Aria bends over Ost's bed; he whispers something you cannot make out." })] }),
+      answer({ speech: "Don't tire him.", intent: "" }),
+      reply({ text: 'From the doorway Imre calls softly: "Don\'t tire him."' }),
+    ]);
+    const dm = await model.turn(world, "I ask Ost where the thugs went.", aria.id);
+    assert.equal(nudges() - before, 1, "sent back once to ask who heard");
+    assert.equal(dm.content.match(/old mill/g)?.length, 1, dm.content);
+    assert.ok(!memories("Healer Imre").some((entry) => /old mill/.test(entry.content)), "passive 10 against 13: the healer did not hear");
+    assert.ok(memories("Healer Imre").some((entry) => /too low or too far/.test(entry.content)));
+  } finally {
+    for (const other of others) {
+      minds.setNpcTier(other.id, "primary");
+    }
+    minds.setNpcTier(getNpcByName(world.campaignId, "Healer Imre").id, "secondary");
+  }
+});
+
 await test("a mind played from a mind seat answers the same isolated question, and silence falls to the server's mind", async () => {
   const { createUser } = await import("../src/lib/db/users.ts");
   const seats = await import("../src/lib/db/mind-seats.ts");

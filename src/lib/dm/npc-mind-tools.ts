@@ -1,7 +1,7 @@
 // The narrator's three doors into the NPC minds (src/lib/dm/npc-mind.ts),
 // offered only at a table that has them (gameSettings.npcMinds).
 
-export const NPC_MIND_TOOL_NAMES = ["npc_speak", "npc_inform", "npc_past"] as const;
+export const NPC_MIND_TOOL_NAMES = ["npc_speak", "npc_inform", "npc_past", "npc_hear"] as const;
 
 export const npcMindTools = [
   {
@@ -53,6 +53,38 @@ export const npcMindTools = [
   {
     type: "function",
     function: {
+      name: "npc_hear",
+      description:
+        "Words said aloud in the scene (by a character you voice, or by a hero) reach the tracked NPCs around only as far as they could hear them. For each listener say how far: near (heard for sure), far (across the room, a weak voice, noise: their Perception decides against dc, rolled in secret) or out_of_earshot. Those who hear remember the words verbatim; the rest know at most that someone spoke. Not for a first-tier character you are about to give a turn with npc_speak: put the words in their perceives instead.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          speaker: { type: "string", description: "Who spoke." },
+          words: { type: "string", description: "Their words, verbatim." },
+          place: { type: "string", description: "Where it was said." },
+          listeners: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                name: { type: "string", description: "A tracked NPC nearby." },
+                reach: { type: "string", enum: ["near", "far", "out_of_earshot"] },
+                dc: { type: "integer", description: "With far: how hard to make out (10 easy, 13 a weak voice across a room, 15 whispered or through rain and walls). Default 13." },
+                listening: { type: "boolean", description: "With far: true if they are listening on purpose (a roll instead of passive Perception)." },
+              },
+              required: ["name", "reach"],
+            },
+          },
+        },
+        required: ["speaker", "words", "listeners"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "npc_past",
       description:
         "Set a new NPC's past and the figure whose manner inspires them, before they first speak or act, and their tier at any point of the story. A past cannot be added once they have lived part of the story. The inspiration lends temperament and voice only, never that figure's names, world or powers.",
@@ -77,7 +109,7 @@ export const npcMindTools = [
 // What the narrator is told at a table with minds.
 export const NPC_MINDS_RULES =
   "NPC tiers: first-tier characters (party companions, and NPCs the roster marks first tier) are played by their own minds, like players at the table: whenever one is in the scene, give them a turn with npc_speak after the players act and before you narrate the outcome. When time passes over the scene (take_rest, pass_time, travel, downtime), each first-tier character on stage lives that stretch too: call npc_speak telling them how long passes and what goes on around them, and narrate the stretch from what they choose, never deciding it for them. Second-tier NPCs (everyone else) you voice yourself, from their personality and only what the roster says they learned; they know a hero's name only once the roster lists it. " +
-  "A first-tier mind knows only what they perceived or were told: call npc_speak with what they perceive right now, then voice exactly what it returns; never write their lines yourself. Never give an NPC of either tier knowledge they have no source for: news reaches someone absent only through npc_inform, from a named source. Lay down a new NPC's past with npc_past before they first act; never invent a past relationship later. Their intent is an attempt: resolve it with the engine's tools. " +
+  "A first-tier mind knows only what they perceived or were told: call npc_speak with what they perceive right now, then voice exactly what it returns; never write their lines yourself. Words said aloud reach only those who could hear them: when a character you voice or a hero speaks with tracked NPCs around who are not the ones answering, call npc_hear with each listener's distance (near, far or out_of_earshot), never deciding yourself that someone far off heard; whatever it says, they know only that. Never give an NPC of either tier knowledge they have no source for: news reaches someone absent only through npc_inform, from a named source. Lay down a new NPC's past with npc_past before they first act; never invent a past relationship later. Their intent is an attempt: resolve it with the engine's tools. " +
   "A first-tier character apart from the party (left behind when it split) is still a player: when the story cuts to them, or reaches anyone from where they are, call npc_speak with away: true; when the party is back with them, call it without away and they rejoin. Either way they first live the time apart on the engine's dice: apply what they did to others with your usual tools before narrating. " +
   "In a fight, a first-tier companion nobody at the table commands chooses its own turn: when the initiative reaches it, call npc_speak first (the server gives it its own sheet and the fight as it sees it), then carry out exactly the intent it returns with the combat tools and end_turn; the server refuses that companion's actions until its mind has chosen. " +
   "The few characters the story hinges on (whoever holds its secret, a prisoner, a rival, a patron) deserve their own minds: when one first appears, set them up with set_npc, then npc_past with their past and firstTier: true, before they first speak. Tiers follow the story: when a second-tier character grows into one the story hinges on (they become an ally at the heroes' side, a rival, the keeper of a lead), promote them with npc_past and firstTier: true alone (no past: they keep what they lived, and remember what you had them say); when a first-tier character's part is over (they leave the story for good, or it no longer turns on them), give them back to you with firstTier: false, which frees their place. " +
