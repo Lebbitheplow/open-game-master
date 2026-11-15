@@ -25,7 +25,7 @@ export const npcStateTools = [
     function: {
       name: "npc_state",
       description:
-        "When a tracked NPC is taken prisoner, tied, freed, wounded, knocked out or killed on screen, record it here; their roster line then says it every turn. Give only what changed.",
+        "When a tracked NPC is taken prisoner, tied, freed, wounded, knocked out or killed on screen, or sets out with the party or leaves it, record it here; their roster line then says it every turn. Give only what changed.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -35,6 +35,7 @@ export const npcStateTools = [
           heldBy: { type: "string", description: "with captive: who holds them" },
           restraint: { type: "string", enum: [...NPC_RESTRAINTS] },
           condition: { type: "string", enum: [...NPC_CONDITIONS] },
+          withParty: { type: "boolean", description: "travels with the party: goes where they go" },
         },
         required: ["name"],
       },
@@ -48,6 +49,7 @@ const stateSchema = z.object({
   heldBy: z.string().trim().max(80).optional(),
   restraint: z.enum(NPC_RESTRAINTS).optional(),
   condition: z.enum(NPC_CONDITIONS).optional(),
+  withParty: z.boolean().optional(),
 });
 
 export function handleNpcState(campaign: Campaign, rawArguments: string): ToolResult {
@@ -67,14 +69,15 @@ export function handleNpcState(campaign: Campaign, rawArguments: string): ToolRe
       retry: true,
     };
   }
-  if (!args.custody && !args.heldBy && !args.restraint && !args.condition) {
-    return { error: "npc_state needs at least one of custody, heldBy, restraint or condition: what changed.", retry: true };
+  if (!args.custody && !args.heldBy && !args.restraint && !args.condition && args.withParty === undefined) {
+    return { error: "npc_state needs at least one of custody, heldBy, restraint, condition or withParty: what changed.", retry: true };
   }
   const applied = applyNpcStatePatch(npc.state, {
     custody: args.custody,
     heldBy: args.heldBy,
     restraint: args.restraint,
     condition: args.condition,
+    withParty: args.withParty,
   });
   if ("error" in applied) {
     return { error: `${npc.name}: ${applied.error}`, retry: true };

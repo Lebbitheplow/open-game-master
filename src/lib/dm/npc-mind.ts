@@ -2,7 +2,7 @@ import { z } from "zod";
 import { npcSilencedBy } from "@/lib/dm/npc-state-logic";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getClock } from "@/lib/db/clock";
-import { getNpcById, listNpcs, patchNpcAgency, type Npc } from "@/lib/db/npcs";
+import { getNpcById, listNpcs, patchNpcAgency, setNpcPlace, type Npc } from "@/lib/db/npcs";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { listSheets, getSheetById } from "@/lib/db/sheets";
 import { listRelationships } from "@/lib/db/relationships";
@@ -594,6 +594,9 @@ export async function handleNpcSpeak(campaign: Campaign, rawArguments: string): 
     whileApart = done.lines;
     setNpcAway(npc.id, apart ? { place: args.place || away.place, since: now } : null);
   }
+  if (!apart) {
+    bringToScene(campaign, npc);
+  }
   const actor = getNpcById(npc.id) ?? npc;
   // Only those really with them hear it: a mind apart from the scene is not
   // a listener in it.
@@ -657,6 +660,16 @@ export async function handleNpcSpeak(campaign: Campaign, rawArguments: string): 
   };
 }
 
+// Someone who speaks in the scene, or hears it from close by, is in it: a
+// record that still puts them somewhere else is brought to where the party
+// is (docs/specs/ogm-npc-state.md, rule 3). A mind apart is left where it is.
+function bringToScene(campaign: Campaign, npc: Npc) {
+  const here = getCurrentLocation(campaign.id)?.name ?? "";
+  if (here && npc.location !== here && !getNpcAway(npc.id)) {
+    setNpcPlace(npc.id, { location: here });
+  }
+}
+
 const hearSchema = z.object({
   speaker: z.string().trim().min(1).max(120),
   words: z.string().trim().min(1).max(1200),
@@ -712,6 +725,9 @@ export function handleNpcHear(campaign: Campaign, rawArguments: string): ToolRes
     if (listener.reach === "out_of_earshot" || npcSilencedBy(npc.state)) {
       missed.push(npc.name);
       continue;
+    }
+    if (listener.reach === "near") {
+      bringToScene(campaign, npc);
     }
     seedBackground(campaign, npc, listNpcMemories(campaign.id, npc.id));
     addNpcMemories(

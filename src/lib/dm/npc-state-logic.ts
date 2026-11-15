@@ -10,6 +10,8 @@
 //
 // Dependency-free so scripts/test-npc-state.mjs can drive it.
 
+import { textKey } from "../language/text-logic.ts";
+
 export const NPC_CUSTODY = ["free", "captive"] as const;
 export const NPC_RESTRAINTS = ["none", "bound", "chained", "locked_up"] as const;
 export const NPC_CONDITIONS = ["up", "wounded", "unconscious", "dead"] as const;
@@ -24,9 +26,11 @@ export type NpcState = {
   heldBy: string;
   restraint: NpcRestraint;
   condition: NpcCondition;
+  // Travels with the party: their place follows the party's (followers).
+  withParty: boolean;
 };
 
-export const DEFAULT_NPC_STATE: NpcState = { custody: "free", heldBy: "", restraint: "none", condition: "up" };
+export const DEFAULT_NPC_STATE: NpcState = { custody: "free", heldBy: "", restraint: "none", condition: "up", withParty: false };
 
 // A declared change; a field left out stays as it was.
 export type NpcStatePatch = Partial<NpcState>;
@@ -54,6 +58,7 @@ export function parseNpcState(raw: string | null | undefined): NpcState {
     heldBy: custody === "captive" && typeof record.heldBy === "string" ? record.heldBy.trim().slice(0, 80) : "",
     restraint: oneOf(NPC_RESTRAINTS, record.restraint, DEFAULT_NPC_STATE.restraint),
     condition: oneOf(NPC_CONDITIONS, record.condition, DEFAULT_NPC_STATE.condition),
+    withParty: record.withParty === true,
   };
 }
 
@@ -61,7 +66,8 @@ export function isDefaultNpcState(state: NpcState): boolean {
   return (
     state.custody === DEFAULT_NPC_STATE.custody &&
     state.restraint === DEFAULT_NPC_STATE.restraint &&
-    state.condition === DEFAULT_NPC_STATE.condition
+    state.condition === DEFAULT_NPC_STATE.condition &&
+    state.withParty === DEFAULT_NPC_STATE.withParty
   );
 }
 
@@ -93,6 +99,9 @@ export function applyNpcStatePatch(current: NpcState, patch: NpcStatePatch): { s
   if (patch.restraint) {
     next.restraint = patch.restraint;
   }
+  if (typeof patch.withParty === "boolean") {
+    next.withParty = patch.withParty;
+  }
   if (current.condition === "dead" && next.condition !== "dead") {
     return { error: "they are dead on the record; the dead do not get up. Leave condition dead." };
   }
@@ -113,6 +122,7 @@ export function npcStateWords(state: NpcState): string {
     state.custody === "captive" ? `prisoner of ${state.heldBy}` : "",
     RESTRAINT_WORDS[state.restraint],
     CONDITION_WORDS[state.condition],
+    state.withParty ? "with the party" : "",
   ]
     .filter(Boolean)
     .join(", ");
@@ -121,7 +131,44 @@ export function npcStateWords(state: NpcState): string {
 // Whether the roster keeps them near its head wherever the record puts them:
 // a prisoner goes where their captor goes, and must not slide off the list.
 export function npcStateKeepsInView(state: NpcState): boolean {
-  return state.custody === "captive";
+  return state.custody === "captive" || state.withParty;
+}
+
+export type FollowerCandidate = { id: string; name: string; aliases?: readonly string[]; state: NpcState; away: boolean };
+
+// Who goes where the party goes, by id: whoever travels with them, and every
+// prisoner whose keeper does (a character of the party, or an NPC who is
+// followed in turn). A prisoner held by someone staying behind stays with
+// them; nobody apart from the party (a mind left elsewhere) is moved.
+export function partyFollowers(npcs: readonly FollowerCandidate[]): string[] {
+  const byName = new Map<string, FollowerCandidate>();
+  for (const npc of npcs) {
+    for (const name of [npc.name, ...(npc.aliases ?? [])]) {
+      if (name && !byName.has(textKey(name))) {
+        byName.set(textKey(name), npc);
+      }
+    }
+  }
+  const decided = new Map<string, boolean>();
+  const follows = (npc: FollowerCandidate, path: Set<string>): boolean => {
+    const known = decided.get(npc.id);
+    if (known !== undefined) {
+      return known;
+    }
+    let result = false;
+    if (!npc.away) {
+      if (npc.state.withParty) {
+        result = true;
+      } else if (npc.state.custody === "captive") {
+        const keeper = byName.get(textKey(npc.state.heldBy));
+        // Kept by someone not tracked as an NPC: a hero of the party.
+        result = !keeper ? true : keeper.id !== npc.id && !path.has(keeper.id) && follows(keeper, new Set([...path, npc.id]));
+      }
+    }
+    decided.set(npc.id, result);
+    return result;
+  };
+  return npcs.filter((npc) => follows(npc, new Set([npc.id]))).map((npc) => npc.id);
 }
 
 // Why this NPC cannot speak now, or '' if they can.

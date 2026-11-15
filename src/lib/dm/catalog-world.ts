@@ -457,7 +457,7 @@ export const SOCIAL_ADJUDICATIONS: CatalogEntry[] = [
         label: "Custody",
         kind: "select",
         options: [
-          { value: "free", label: "Free" },
+          { value: "free", label: "Not held" },
           { value: "captive", label: "Prisoner" },
         ],
       },
@@ -484,6 +484,7 @@ export const SOCIAL_ADJUDICATIONS: CatalogEntry[] = [
           { value: "dead", label: "Dead" },
         ],
       },
+      { name: "withParty", label: "Travels with the party", kind: "boolean", help: "Their place follows the party's." },
     ],
   },
   {

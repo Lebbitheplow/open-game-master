@@ -38,12 +38,12 @@ await test("a row written before the sheet reads as free, unbound and standing",
 
 await test("a declared change keeps what it does not name, and freeing removes the bonds", () => {
   const taken = logic.applyNpcStatePatch(logic.DEFAULT_NPC_STATE, { custody: "captive", heldBy: "Mara", restraint: "bound" });
-  assert.deepEqual(taken.state, { custody: "captive", heldBy: "Mara", restraint: "bound", condition: "up" });
+  assert.deepEqual(taken.state, { custody: "captive", heldBy: "Mara", restraint: "bound", condition: "up", withParty: false });
   const hurt = logic.applyNpcStatePatch(taken.state, { condition: "wounded" });
   assert.equal(hurt.state.heldBy, "Mara");
   assert.equal(logic.npcStateWords(hurt.state), "prisoner of Mara, bound, wounded");
   const freed = logic.applyNpcStatePatch(hurt.state, { custody: "free" });
-  assert.deepEqual(freed.state, { custody: "free", heldBy: "", restraint: "none", condition: "wounded" });
+  assert.deepEqual(freed.state, { custody: "free", heldBy: "", restraint: "none", condition: "wounded", withParty: false });
   const handed = logic.applyNpcStatePatch(taken.state, { heldBy: "Brakk" });
   assert.equal(handed.state.heldBy, "Brakk", "a new keeper alone hands the prisoner over");
 });
@@ -119,6 +119,59 @@ await test("the GM sees the prisoner on the roster on the next turn, with the to
   const system = model.requests.at(-1).messages.map((message) => String(message.content ?? "")).join("\n");
   assert.match(system, /- Aldren: [a-z]+, prisoner of Mara, in chains/);
   assert.match(system, /call npc_state in the same reply/);
+});
+
+// ---- Who travels with the party (ticket 02) ------------------------------
+
+const { upsertCurrentLocation } = await import("../src/lib/db/locations.ts");
+const placeOf = (name) => getNpcByName(world.campaignId, name).location;
+const candidate = (id, state, extra = {}) => ({ id, name: id, state: { ...logic.DEFAULT_NPC_STATE, ...state }, away: false, ...extra });
+
+await test("who follows the party: its travellers, its prisoners, and the prisoners of those who travel with it", () => {
+  const followers = logic.partyFollowers([
+    candidate("Mara", { withParty: true }),
+    candidate("Aldren", { custody: "captive", heldBy: "Mara" }),
+    candidate("Rugo", { custody: "captive", heldBy: "Brakk" }),
+    candidate("Nera", {}),
+    candidate("Held by Nera", { custody: "captive", heldBy: "Nera" }),
+    candidate("Left apart", { withParty: true }, { away: true }),
+    candidate("Loop A", { custody: "captive", heldBy: "Loop B" }),
+    candidate("Loop B", { custody: "captive", heldBy: "Loop A" }),
+  ]);
+  assert.deepEqual(followers.sort(), ["Aldren", "Mara", "Rugo"]);
+});
+
+await test("when the party moves, its travellers and prisoners are moved with it and nobody else is", async () => {
+  upsertCurrentLocation({ campaignId: world.campaignId, name: "Malfosso" });
+  for (const name of ["Capitana Mara", "Prigioniero", "Nera"]) {
+    upsertNpc({ campaignId: world.campaignId, name, location: "Malfosso" });
+  }
+  state({ name: "Capitana Mara", withParty: true });
+  state({ name: "Prigioniero", custody: "captive", heldBy: "Capitana Mara", restraint: "bound" });
+  upsertCurrentLocation({ campaignId: world.campaignId, name: "Roccanera road" });
+  assert.equal(placeOf("Capitana Mara"), "Roccanera road");
+  assert.equal(placeOf("Prigioniero"), "Roccanera road");
+  assert.equal(placeOf("Nera"), "Malfosso");
+  state({ name: "Prigioniero", custody: "free" });
+  upsertCurrentLocation({ campaignId: world.campaignId, name: "Roccanera" });
+  assert.equal(placeOf("Prigioniero"), "Roccanera road", "freed, he stays where he was let go");
+  assert.equal(placeOf("Capitana Mara"), "Roccanera");
+  assert.match(logic.npcStateWords(sheetOf("Capitana Mara")), /with the party/);
+});
+
+await test("whoever speaks in the scene or hears it close by is in it; a mind apart is not moved", async () => {
+  upsertCurrentLocation({ campaignId: world.campaignId, name: "the gatehouse" });
+  const guard = upsertNpc({ campaignId: world.campaignId, name: "Gate guard", location: "the barracks" });
+  minds.setNpcTier(guard.id, "primary");
+  mind.handleNpcHear(world.campaign(), JSON.stringify({ speaker: "Brakk", words: "Open up.", listeners: [{ name: "Gate guard", reach: "near" }] }));
+  assert.equal(placeOf("Gate guard"), "the gatehouse");
+  const far = upsertNpc({ campaignId: world.campaignId, name: "Far sentry", location: "the wall" });
+  mind.handleNpcHear(world.campaign(), JSON.stringify({ speaker: "Brakk", words: "Open up.", listeners: [{ name: "Far sentry", reach: "far" }] }));
+  assert.equal(placeOf("Far sentry"), "the wall", "a far listener is not dragged into the scene");
+  minds.setNpcAway(far.id, { place: "the wall", since: 0 });
+  state({ name: "Far sentry", withParty: true });
+  upsertCurrentLocation({ campaignId: world.campaignId, name: "the keep" });
+  assert.equal(placeOf("Far sentry"), "the wall", "a mind apart from the party stays apart");
 });
 
 model.close();
