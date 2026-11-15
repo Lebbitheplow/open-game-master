@@ -1107,7 +1107,7 @@
     "lib/bestiary/attack-parse.ts#whole": [["parse",3,"dice terms of the pack's damage fields"]],
     "lib/bestiary/attack-text.ts#first": [["key",1,"the SRD's English attack and multiattack text parsed (a workshop monster's text: authoring)"]],
     "lib/bestiary/attack-text.ts#number": [["key",12,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
-    "lib/bestiary/attack-text.ts#partial": [["pattern",30,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["key",34,"the SRD's English attack and multiattack text parsed (a workshop monster's text: authoring)"],["parse",2,"the Hit: clause's own damage, read before any saving-throw clause"]],
+    "lib/bestiary/attack-text.ts#partial": [["pattern",30,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["key",35,"the SRD's English attack and multiattack text parsed (a workshop monster's text: authoring)"],["parse",2,"the Hit: clause's own damage, read before any saving-throw clause"]],
     "lib/bestiary/attack-text.ts#whole": [["key",2,"damage types"],["identity",1,"the kinds a rider spares against the target's species and creature type, textKey on both sides"]],
     "lib/bestiary/block-check.ts#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/bestiary/block-check.ts#partial": [["key",2,"size words and dedupe keys in the workshop's block check"]],
@@ -1644,7 +1644,7 @@
     "lib/dm/critical-raise.ts#partial": [["parse",5,"a damage dice expression cut into its terms and signs, no record's name"]],
     "lib/dm/critical-raise.ts#whole": [["key",1,"the attack's own stored name, kept on the hit record it was written to"]],
     "lib/dm/cure-spell.ts#first": [["key",1,"with no condition named, the first held one the cure ends (the caster's choice); a named one by its key"]],
-    "lib/dm/cure-spell.ts#partial": [["key",1,"the cure list's own words (disease, a kind of madness), ODM's data"],["key",1,"a reduced-maximum drain by the label the engine stores it under (Greater Restoration)"]],
+    "lib/dm/cure-spell.ts#partial": [["key",1,"the cure list's own words (disease, a kind of madness), ODM's data"],["key",2,"a reduced-maximum drain and a drained score by the labels the engine stores them under (Greater Restoration)"]],
     "lib/dm/cure-spell.ts#whole": [["identity",2,"a cured condition by whole name"]],
     "lib/dm/damage-logic.ts#normalizer": [["key",1,"slugs, hosts, file names, ids, env values, display text, throttle keys, model ids (src/: every site read)"]],
     "lib/dm/damage-logic.ts#partial": [["key",7,"damage-type words in the SRD's English resistance lines"],["key",1,"the SRD row's English condition-immunity line against canonical condition names"],["pattern",4,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
@@ -1721,7 +1721,7 @@
     "lib/dm/enemy-exhaustion.ts#partial": [["identity",1,"exhaustion and its level, anchored"]],
     "lib/dm/enemy-defenses.ts#partial": [["key",1,"damage types"]],
     "lib/dm/enemy-hit.ts#first": [["key",3,"a hit's first damage part takes the rounding"]],
-    "lib/dm/enemy-hit.ts#keyed": [["key",3,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
+    "lib/dm/enemy-hit.ts#keyed": [["key",5,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/dm/enemy-hit.ts#partial": [["parse",5,"an attack's damage and types"],["authoring",1,"size read from the race's words"]],
     "lib/dm/enemy-hit-rows.ts#partial": [["parse",1,"a creature type's base word and the subtype its brackets name (\"humanoid (elf)\"), for the kinds a rider spares"]],
     "lib/dm/enemy-polymorph-logic.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
@@ -3198,6 +3198,11 @@
     "lib/dm/enemy-charge.ts#first": [["parse",1,"an attack's own damage type, the first of the types its stored line joins with a slash"]],
     "lib/dm/enemy-charge.ts#partial": [["parse",2,"an attack's own damage types, split on the slash its stored line joins them with"]],
     "lib/dm/enemy-charge.ts#whole-single": [["key",1,"damage types"]],
-    "lib/dm/enemy-charge.ts#whole": [["key",1,"damage types"]]
+    "lib/dm/enemy-charge.ts#whole": [["key",1,"damage types"]],
+    "lib/srd/ability-drain-logic.ts#partial": [["key",2,"a drained score by the label the engine stores it under (\"strength reduced (-3)\")"]],
+    "lib/srd/ability-drain-logic.ts#number": [["key",2,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
+    "lib/bestiary/score-drain-text.ts#partial": [["pattern",6,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
+    "lib/bestiary/score-drain-text.ts#keyed": [["key",1,"an ability's English name a regex already captured, read in a fixed table"]],
+    "lib/dm/enemy-hit.ts#whole": [["key",1,"a drained score's condition by the label the engine wrote it under"]]
   }
 }

@@ -81,7 +81,11 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 //      hours"), and an attack's rider the kinds it spares ("a creature other
 //      than an elf or undead", a ghoul's claws; rules audit 2026-11-15,
 //      monsters).
-export const READER_REVISION = 14;
+// 15:  an attack's rider reads the ability score it drains, its dice, death
+//      at 0 and the rest that ends it ("the target's Strength score is
+//      reduced by 1d4", a shadow's Strength Drain; rules audit 2026-11-15,
+//      monsters).
+export const READER_REVISION = 15;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";
 

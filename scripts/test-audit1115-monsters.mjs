@@ -484,4 +484,69 @@ await test("E10 a minotaur that charges Kara gores her for its extra 2d8, and on
   assert.ok(!world.sheet(kara.id).conditions.includes("prone"));
 });
 
+await test("E11 a shadow's Strength Drain is read: 1d4 off Strength, death at 0, until a short or long rest", async () => {
+  const { readAttackText } = await import("../src/lib/bestiary/attack-text.ts");
+  const drain = readAttackText(
+    "Melee Weapon Attack: +4 to hit, reach 5 ft., one creature. Hit: 9 (2d6 + 2) necrotic damage, and the target's Strength score is reduced by 1d4. The target dies if this reduces its Strength to 0. Otherwise, the reduction lasts until the target finishes a short or long rest. If a non-evil humanoid dies from this attack, a new shadow rises from the corpse 1d4 hours later.",
+  );
+  assert.deepEqual(drain.onHit?.scoreDrain, { ability: "str", dice: "1d4", diesAtZero: true, until: "short" });
+  assert.ok(!(drain.onHit?.manual ?? []).some((line) => /Strength score is reduced/.test(line)), "no longer the GM's");
+  assert.deepEqual(
+    readAttackText("Melee Weapon Attack: +5 to hit, reach 5 ft., one creature. Hit: 10 (3d6) necrotic damage, and the target's Charisma score is reduced by 1d4. The target dies if this reduces its Charisma to 0. Otherwise, the reduction lasts until the target finishes a long rest.").onHit?.scoreDrain,
+    { ability: "cha", dice: "1d4", diesAtZero: true, until: "long" },
+  );
+});
+
+await test("E11 a shadow's touch takes 1d4 from Kara's Strength (her attacks and checks feel it) until a short rest; at 0 Strength a hero dies", async () => {
+  const { computeSheetDerived } = await import("../src/lib/srd/index.ts");
+  const { effectiveAbilities } = await import("../src/lib/srd/magic-items.ts");
+  const strength = (sheet) => effectiveAbilities(sheet.abilities, sheet.equipment ?? [], sheet).str;
+  await kit.endFight();
+  await kit.fight(1, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+  const [shade] = world.enemies();
+  // Out of the sun: its Sunlight Weakness is no part of this.
+  const printed = srd("Shadow");
+  const indoors = (lines) => (lines ?? []).filter((line) => !/^sunlight/i.test(line));
+  const stats = { ...printed, traits: indoors(printed.traits), fullTraits: indoors(printed.fullTraits) };
+  kit.setEnemy(shade.id, { ac: stats.ac, maxHp: stats.maxHp, stats });
+  kit.place(kara.id, 5, 5);
+  kit.place(bram.id, 7, 5);
+  kit.place(shade.id, 6, 5);
+  kit.enemyTurn(shade.id);
+  assert.equal(computeSheetDerived(world.sheet(kara.id)).abilityMods.str, 3);
+  // A hit, 2d6 + 2, and the drain's d4 a 4: Strength 16 to 12.
+  world.dice(19, 3, 3, 4);
+  const out = await world.invoke("enemy_attack", { enemyId: shade.id, targetCharacterId: kara.id, attack: "Strength Drain" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(strength(world.sheet(kara.id)), 12, JSON.stringify(out.result.swings));
+  assert.equal(computeSheetDerived(world.sheet(kara.id)).abilityMods.str, 1);
+
+  // Bram at Strength 3: the d4's 4 takes it to 0, and he dies.
+  const abilities = world.sheet(bram.id).abilities;
+  world.patch(bram.id, { abilities: { ...abilities, str: 3 } });
+  kit.freshRound();
+  kit.enemyTurn(shade.id);
+  world.dice(19, 3, 3, 4);
+  const fatal = await world.invoke("enemy_attack", { enemyId: shade.id, targetCharacterId: bram.id, attack: "Strength Drain" });
+  world.clearDice();
+  assert.equal(fatal.ok, true, fatal.error);
+  assert.equal(world.sheet(bram.id).deathSaves?.dead, true, "Strength 0: dead");
+  world.patch(bram.id, { abilities, currentHp: 90, deathSaves: null, conditions: [], conditionMeta: {} });
+
+  // The suite's end of a fight wipes conditions; the drain is put back.
+  const drained = world.sheet(kara.id);
+  await kit.endFight();
+  world.patch(kara.id, { conditions: drained.conditions, conditionMeta: drained.conditionMeta });
+  assert.equal(strength(world.sheet(kara.id)), 12, "it outlasts the fight");
+  // Greater Restoration ends "one reduction to one of the target's ability scores".
+  const { curePlan } = await import("../src/lib/dm/cure-spell.ts");
+  const { spellMechanicsFor } = await import("../src/lib/content/index.ts");
+  const restoration = spellMechanicsFor({ spell: "Greater Restoration" })?.mech.cures;
+  assert.deepEqual(curePlan(restoration, world.sheet(kara.id), "ability reduced").conditions, ["strength reduced (-4)"]);
+  const rested = await world.invoke("take_rest", { kind: "short" });
+  assert.equal(rested.ok, true, rested.error);
+  assert.equal(strength(world.sheet(kara.id)), 16, "the reduction ends with the short rest");
+});
+
 finish();

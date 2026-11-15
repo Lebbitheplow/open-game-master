@@ -19,6 +19,7 @@
 //     its text lets attune (a Staff of Power: a sorcerer, warlock or wizard);
 //   - a second copy of the same item adds nothing.
 
+import { drainedScores } from "@/lib/srd/ability-drain-logic";
 import { ignoresItemRequirements } from "@/lib/srd/mt-srd-artificer";
 import { genreWornRiders } from "@/lib/srd/genre-b-combat";
 import magicItemsJson from "@/lib/classes/magic-items.json";
@@ -414,7 +415,9 @@ export function effectiveAbilities(
   // Belt of Dwarvenkind): a score at the maximum already gains nothing. The
   // raises count from the sheet's own score, and an item that sets the score
   // (an Amulet of Health's 19) wins only where it is higher still.
-  let raised = abilities;
+  // A score a creature's touch drained (a shadow's Strength Drain) is lower
+  // first, as the sheet's own score is (ability-drain-logic.ts).
+  let raised = drainedScores(abilities, wearer?.conditions);
   for (const increase of riders.abilityIncreases) {
     const score = raised[increase.ability];
     if (score < increase.max) {
@@ -448,7 +451,7 @@ export function itemAbilityScore(
   wearer?: Wearer,
 ): number {
   const riders = magicItemRiders(equipment, wearer);
-  let out = score;
+  let out = drainedScores({ [ability]: score }, wearer?.conditions)[ability] ?? score;
   for (const increase of riders.abilityIncreases) {
     if (increase.ability === ability && out < increase.max) {
       out = Math.min(increase.max, out + increase.amount);

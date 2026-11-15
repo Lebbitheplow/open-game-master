@@ -169,6 +169,14 @@ function checkOnHit(raw: unknown, attack: string): Checked<OnHitRider | null> {
   if (source.wakesOnDamage === true) {
     rider.wakesOnDamage = true;
   }
+  // A drained ability score (score-drain-text.ts): a shadow copied into the
+  // workshop still drains Strength.
+  const drain = (source.scoreDrain ?? null) as Raw | null;
+  const drained = drain ? ability(drain.ability) : null;
+  const drainDice = drain ? dice(drain.dice) : null;
+  if (drain && drained && drainDice && (drain.until === "short" || drain.until === "long")) {
+    rider.scoreDrain = { ability: drained, dice: drainDice, diesAtZero: drain.diesAtZero === true, until: drain.until };
+  }
   const manual = (Array.isArray(source.manual) ? source.manual : [])
     .slice(0, MANUAL_CLAUSES)
     .map((clause) => text(clause, MANUAL_CLAUSE_MAX))
