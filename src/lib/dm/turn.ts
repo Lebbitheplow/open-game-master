@@ -297,7 +297,7 @@ import { listNpcs } from "@/lib/db/npcs";
 import { readStateGuard } from "@/lib/dm/npc-state-guard";
 import { stateGuardPrompt } from "@/lib/dm/npc-state-guard-logic";
 import { awayArrivalNote, handleNpcInform, hearUnasked, handleNpcPast, handleNpcSpeak, mindRosterNotes, mindTurnRefusal, mindsAwaitingTurn, mindsWithinEarshot, npcMindsOn } from "@/lib/dm/npc-mind";
-import { hearingPrompt, sceneMindsPrompt, TIME_SKIP_TOOLS } from "@/lib/dm/npc-mind-logic";
+import { hearingPrompt, MAX_HEARING_CALLS, sceneMindsPrompt, TIME_SKIP_TOOLS } from "@/lib/dm/npc-mind-logic";
 import { mindSpeeches, narratorLines, quotedLines } from "@/lib/dm/voice-knowledge-logic";
 import { worldForPrompt } from "@/lib/dm/world-prompt";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
@@ -2913,7 +2913,12 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
         if (owedToo.length) {
           sceneMindsNudged = true;
         }
-        tableNoteCalls(owedToo.length ? 2 : 1);
+        // One call per speaker to hear and per mind owed its turn: a small
+        // model makes one tool call a reply, and a fixed two spent both on
+        // npc_hear for a whispered question and its answer, leaving the
+        // captain's turn to a closing reply that only narrated her silence.
+        const speakers = new Set(spokenBy.map((line) => line.speaker)).size + mindSpeeches(turn.conversation).length;
+        tableNoteCalls(Math.min(speakers, MAX_HEARING_CALLS) + owedToo.length);
         turn.conversation.push({
           role: "assistant",
           ...carried,
@@ -2944,7 +2949,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       const owedMinds = asksMinds ? mindsAwaitingTurn(campaign, turn.id, callsSoFar) : [];
       if (owedMinds.length) {
         sceneMindsNudged = true;
-        tableNoteCalls();
+        tableNoteCalls(owedMinds.length);
         turn.conversation.push({
           role: "assistant",
           ...carried,

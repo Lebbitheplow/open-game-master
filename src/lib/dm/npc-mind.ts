@@ -777,7 +777,7 @@ export function handleNpcHear(campaign: Campaign, rawArguments: string): ToolRes
     heard,
     missed,
     ...(unknown.length ? { unknown, unknownNote: "No tracked NPC has these names; register them with set_npc if they matter." } : {}),
-    note: "Only those in heard know the words; those in missed know at most that someone spoke. Narrate and voice everyone accordingly.",
+    note: "Only those in heard know the words; those in missed know at most that someone spoke. Narrate and voice everyone accordingly. The roll is secret: never tell the players who heard or missed; let it show only in what each later says or does.",
   };
 }
 

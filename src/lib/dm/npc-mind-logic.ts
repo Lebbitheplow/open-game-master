@@ -600,6 +600,10 @@ export function hears(reach: HearingReach, dc: number, wisdom: number | undefine
 
 // The note that sends the narrator back once when words were said aloud
 // with first-tier characters on stage and nobody asked who heard them.
+// At most this many npc_hear calls are budgeted for one hearing note (one per
+// speaker); a crowded scene's remaining lines wait for the next turn.
+export const MAX_HEARING_CALLS = 3;
+
 export function hearingPrompt(names: readonly string[], quote: string): string {
   return [
     `[Table note] Words were said aloud this turn ("${quote}") with ${names.join(", ")} on stage, and nobody asked whether they heard.`,
