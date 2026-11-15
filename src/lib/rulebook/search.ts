@@ -6,8 +6,8 @@
 // Grappling in Combat before the monsters that grapple.
 //
 // Words are compared by Snowball's stem and stop list for the book's own
-// language (src/lib/language): the index is built for one book — the English
-// SRD, or the French Document de Référence du Système 5.1 — and carries that
+// language (src/lib/language): the index is built for one book (the English
+// SRD, or the French Document de Référence du Système 5.1) and carries that
 // language, so a French book's passages stem as French and a query against it
 // stems as French too. Each hit carries the page's words that matched, which
 // the reader marks as written: the browser never stems anything.
@@ -262,7 +262,7 @@ export function searchRulebook(index: RulebookIndex, query: string, limit = 40):
       numeral: chapter?.numeral ?? "",
       heading: item.heading,
       at: item.at,
-      snippet: snippetFor(item.text, terms),
+      snippet: snippetFor(item.text, terms, undefined, index.language),
       words: pageWords(),
       score,
     };

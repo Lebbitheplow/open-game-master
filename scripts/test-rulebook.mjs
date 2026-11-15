@@ -401,6 +401,11 @@ try {
     // A French hit carries the French words the reader marks.
     const [hit] = rulebookSearch("lutte", undefined, "fr").hits;
     assert.ok(hit.words.includes("lutte"), hit.words.join(","));
+    // The snippet finds the matching word by the book's stems too: the
+    // English stem of « travaux » is not a prefix of the French one, so an
+    // English-stemmed snippet opened at the passage's first words instead.
+    const work = rulebookSearch("travaux", undefined, "fr").hits.find((item) => item.at === "tests-de-constitution");
+    assert.match(work.snippet, /travaux/, work.snippet);
   });
 
   await test("the request's Accept-Language picks the book", () => {
