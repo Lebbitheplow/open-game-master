@@ -36,6 +36,8 @@ export const npcStateTools = [
           restraint: { type: "string", enum: [...NPC_RESTRAINTS] },
           condition: { type: "string", enum: [...NPC_CONDITIONS] },
           withParty: { type: "boolean", description: "travels with the party: goes where they go" },
+          disarmed: { type: "boolean" },
+          carries: { type: "array", items: { type: "string" }, description: "replaces the list: only things that matter to the story (proof, a key), not ordinary gear" },
         },
         required: ["name"],
       },
@@ -50,6 +52,9 @@ const stateSchema = z.object({
   restraint: z.enum(NPC_RESTRAINTS).optional(),
   condition: z.enum(NPC_CONDITIONS).optional(),
   withParty: z.boolean().optional(),
+  disarmed: z.boolean().optional(),
+  // Measured by applyNpcStatePatch, which says what to shorten.
+  carries: z.array(z.string().max(400)).max(40).optional(),
 });
 
 export function handleNpcState(campaign: Campaign, rawArguments: string): ToolResult {
@@ -69,8 +74,8 @@ export function handleNpcState(campaign: Campaign, rawArguments: string): ToolRe
       retry: true,
     };
   }
-  if (!args.custody && !args.heldBy && !args.restraint && !args.condition && args.withParty === undefined) {
-    return { error: "npc_state needs at least one of custody, heldBy, restraint, condition or withParty: what changed.", retry: true };
+  if (!args.custody && !args.heldBy && !args.restraint && !args.condition && args.withParty === undefined && args.disarmed === undefined && !args.carries) {
+    return { error: "npc_state needs at least one of custody, heldBy, restraint, condition, withParty, disarmed or carries: what changed.", retry: true };
   }
   const applied = applyNpcStatePatch(npc.state, {
     custody: args.custody,
@@ -78,6 +83,8 @@ export function handleNpcState(campaign: Campaign, rawArguments: string): ToolRe
     restraint: args.restraint,
     condition: args.condition,
     withParty: args.withParty,
+    disarmed: args.disarmed,
+    carries: args.carries,
   });
   if ("error" in applied) {
     return { error: `${npc.name}: ${applied.error}`, retry: true };

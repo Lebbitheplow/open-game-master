@@ -20,6 +20,10 @@ export type NpcCustody = (typeof NPC_CUSTODY)[number];
 export type NpcRestraint = (typeof NPC_RESTRAINTS)[number];
 export type NpcCondition = (typeof NPC_CONDITIONS)[number];
 
+// Story things they carry (a ledger, a key, a seal), not ordinary gear.
+export const NPC_CARRIES_MAX = 8;
+export const NPC_CARRIED_MAX_CHARS = 60;
+
 export type NpcState = {
   custody: NpcCustody;
   // Who holds them, by name: a character or another NPC. "" while free.
@@ -28,9 +32,13 @@ export type NpcState = {
   condition: NpcCondition;
   // Travels with the party: their place follows the party's (followers).
   withParty: boolean;
+  // Their weapons taken from them.
+  disarmed: boolean;
+  // What they carry that matters to the story; notes, not an inventory.
+  carries: string[];
 };
 
-export const DEFAULT_NPC_STATE: NpcState = { custody: "free", heldBy: "", restraint: "none", condition: "up", withParty: false };
+export const DEFAULT_NPC_STATE: NpcState = { custody: "free", heldBy: "", restraint: "none", condition: "up", withParty: false, disarmed: false, carries: [] };
 
 // A declared change; a field left out stays as it was.
 export type NpcStatePatch = Partial<NpcState>;
@@ -59,6 +67,10 @@ export function parseNpcState(raw: string | null | undefined): NpcState {
     restraint: oneOf(NPC_RESTRAINTS, record.restraint, DEFAULT_NPC_STATE.restraint),
     condition: oneOf(NPC_CONDITIONS, record.condition, DEFAULT_NPC_STATE.condition),
     withParty: record.withParty === true,
+    disarmed: record.disarmed === true,
+    carries: Array.isArray(record.carries)
+      ? record.carries.filter((item): item is string => typeof item === "string" && Boolean(item.trim())).map((item) => item.trim().slice(0, NPC_CARRIED_MAX_CHARS)).slice(0, NPC_CARRIES_MAX)
+      : [],
   };
 }
 
@@ -67,7 +79,9 @@ export function isDefaultNpcState(state: NpcState): boolean {
     state.custody === DEFAULT_NPC_STATE.custody &&
     state.restraint === DEFAULT_NPC_STATE.restraint &&
     state.condition === DEFAULT_NPC_STATE.condition &&
-    state.withParty === DEFAULT_NPC_STATE.withParty
+    state.withParty === DEFAULT_NPC_STATE.withParty &&
+    !state.disarmed &&
+    state.carries.length === 0
   );
 }
 
@@ -102,6 +116,20 @@ export function applyNpcStatePatch(current: NpcState, patch: NpcStatePatch): { s
   if (typeof patch.withParty === "boolean") {
     next.withParty = patch.withParty;
   }
+  if (typeof patch.disarmed === "boolean") {
+    next.disarmed = patch.disarmed;
+  }
+  if (patch.carries) {
+    const carries = patch.carries.map((item) => item.trim()).filter(Boolean);
+    if (carries.length > NPC_CARRIES_MAX) {
+      return { error: `carries lists ${carries.length} things, over the limit of ${NPC_CARRIES_MAX}: keep only what matters to the story.` };
+    }
+    const long = carries.find((item) => item.length > NPC_CARRIED_MAX_CHARS);
+    if (long) {
+      return { error: `"${long.slice(0, 40)}..." is over ${NPC_CARRIED_MAX_CHARS} characters: name the thing, not its story.` };
+    }
+    next.carries = carries;
+  }
   if (current.condition === "dead" && next.condition !== "dead") {
     return { error: "they are dead on the record; the dead do not get up. Leave condition dead." };
   }
@@ -123,6 +151,8 @@ export function npcStateWords(state: NpcState): string {
     RESTRAINT_WORDS[state.restraint],
     CONDITION_WORDS[state.condition],
     state.withParty ? "with the party" : "",
+    state.disarmed ? "disarmed" : "",
+    state.carries.length ? `carries ${state.carries.join("; ")}` : "",
   ]
     .filter(Boolean)
     .join(", ");
@@ -180,4 +210,10 @@ export function npcSilencedBy(state: NpcState): string {
     return "unconscious";
   }
   return "";
+}
+
+// What anyone looking at them sees: the sheet without what they carry,
+// which may be hidden on them (docs/specs/ogm-npc-state.md, what a mind sees).
+export function npcVisibleStateWords(state: NpcState): string {
+  return npcStateWords({ ...state, carries: [] });
 }

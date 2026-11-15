@@ -38,12 +38,12 @@ await test("a row written before the sheet reads as free, unbound and standing",
 
 await test("a declared change keeps what it does not name, and freeing removes the bonds", () => {
   const taken = logic.applyNpcStatePatch(logic.DEFAULT_NPC_STATE, { custody: "captive", heldBy: "Mara", restraint: "bound" });
-  assert.deepEqual(taken.state, { custody: "captive", heldBy: "Mara", restraint: "bound", condition: "up", withParty: false });
+  assert.deepEqual(taken.state, { custody: "captive", heldBy: "Mara", restraint: "bound", condition: "up", withParty: false, disarmed: false, carries: [] });
   const hurt = logic.applyNpcStatePatch(taken.state, { condition: "wounded" });
   assert.equal(hurt.state.heldBy, "Mara");
   assert.equal(logic.npcStateWords(hurt.state), "prisoner of Mara, bound, wounded");
   const freed = logic.applyNpcStatePatch(hurt.state, { custody: "free" });
-  assert.deepEqual(freed.state, { custody: "free", heldBy: "", restraint: "none", condition: "wounded", withParty: false });
+  assert.deepEqual(freed.state, { custody: "free", heldBy: "", restraint: "none", condition: "wounded", withParty: false, disarmed: false, carries: [] });
   const handed = logic.applyNpcStatePatch(taken.state, { heldBy: "Brakk" });
   assert.equal(handed.state.heldBy, "Brakk", "a new keeper alone hands the prisoner over");
 });
@@ -172,6 +172,23 @@ await test("whoever speaks in the scene or hears it close by is in it; a mind ap
   state({ name: "Far sentry", withParty: true });
   upsertCurrentLocation({ campaignId: world.campaignId, name: "the keep" });
   assert.equal(placeOf("Far sentry"), "the wall", "a mind apart from the party stays apart");
+});
+
+// ---- What they carry (ticket 04) -----------------------------------------
+
+await test("what an NPC carries is a short list of story things, replaced whole, and disarming is noted", () => {
+  upsertNpc({ campaignId: world.campaignId, name: "Sergente" });
+  const carried = state({ name: "Sergente", carries: ["the magistrate's order", "a cell key"], disarmed: true });
+  assert.equal(carried.state, "disarmed, carries the magistrate's order; a cell key");
+  assert.equal(state({ name: "Sergente", carries: ["the magistrate's order"] }).state, "disarmed, carries the magistrate's order", "the list is replaced, not added to");
+  const tooMany = state({ name: "Sergente", carries: Array.from({ length: 9 }, (_, index) => `thing ${index}`) });
+  assert.match(tooMany.error, /limit of 8/);
+  const tooLong = state({ name: "Sergente", carries: ["x".repeat(61)] });
+  assert.match(tooLong.error, /over 60 characters/);
+  assert.deepEqual(sheetOf("Sergente").carries, ["the magistrate's order"], "a refusal wrote nothing");
+  assert.equal(logic.npcVisibleStateWords(sheetOf("Sergente")), "disarmed", "what they carry is not what anyone sees");
+  state({ name: "Sergente", carries: [], disarmed: false });
+  assert.equal(logic.serializeNpcState(sheetOf("Sergente")), "", "emptied, the column is empty again");
 });
 
 model.close();
