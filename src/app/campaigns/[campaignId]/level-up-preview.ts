@@ -10,7 +10,6 @@
 // allowance read the scores from before the Ability Score Improvement.
 //
 // Pure, no JSX, so scripts/test-enforce-ui-dm.mjs drives it.
-import { abilityCapsOf } from "@/lib/srd/studied-books";
 import { mysticArcanumTop } from "@/lib/srd/mystic-arcanum";
 import { spellPoolKeyFor } from "@/lib/classes";
 import type { AbilityScores, AsiChoice, CharacterSheet } from "@/lib/schemas/sheet";
@@ -60,8 +59,7 @@ export function abilitiesAfterLevel(
   // The text of a feat where known, for a content pack half-feat's score.
   descOf?: (feat: string) => string,
 ): { abilities: AbilityScores; feats: string[]; primalChampion: boolean } {
-  // A manual or tome read raised that score's maximum (studied-books.ts).
-  let abilities = applyChoices(sheet.abilities, choices, abilityCapsOf(sheet));
+  let abilities = applyChoices(sheet.abilities, choices);
   const feats: string[] = [];
   for (const choice of choices) {
     if (choice.mode !== "feat") {

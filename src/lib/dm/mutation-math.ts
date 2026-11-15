@@ -52,8 +52,8 @@ export function sheetBuffViolation(
     return { error: `Coin moves through purchases, loot, and roll_treasure, not a direct sheet edit; ${sheet.name}'s gold is unchanged.`, retry: true };
   }
   // Past 20 a score rises only by a manual or tome read (use_item,
-  // src/lib/srd/studied-books.ts) or a level-up the book's maximum allows;
-  // one already past it keeps its number.
+  // src/lib/srd/studied-books.ts) or Primal Champion; one already past it
+  // keeps its number.
   if (patch.abilities) {
     for (const [ability, score] of Object.entries(patch.abilities)) {
       const cap = Math.max(20, sheet.abilities?.[ability] ?? 0);

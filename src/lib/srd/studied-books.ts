@@ -12,9 +12,12 @@
 // and what it raised ("Manual of Bodily Health (studied: +2 Constitution)"),
 // written only by use_item (src/lib/dm/item-use.ts): a player's edit may not
 // add a mechanical story feature (src/lib/srd/legality/features.ts), and
-// update_sheet refuses one (src/lib/dm/mutations.ts). The cap every door
-// reads is 20 plus what these records raise (featureAbilityGrants in
-// src/lib/srd/trait-rules.ts, abilityCapsOf below).
+// update_sheet refuses one (src/lib/dm/mutations.ts). The highest score a
+// sheet may hold is 20 plus what these records raise (featureAbilityGrants
+// in src/lib/srd/trait-rules.ts, for the legality check). An Ability Score
+// Improvement or a feat's point is still held at 20 ("you can't increase an
+// ability score above 20 using this feature", src/lib/srd/asi.ts
+// raisedTowardCap): it keeps the book's 22 and never adds to it.
 //
 // Pure and import-light: the builder and the sheet read it too.
 
@@ -62,11 +65,4 @@ export function studiedRaises(features: ReadonlyArray<{ name: string }> | undefi
 // what an edit sends with what the sheet holds.
 export function studiedRecords(features: ReadonlyArray<{ name: string }> | undefined): string[] {
   return (features ?? []).map((feature) => feature.name.trim()).filter((name) => studiedRaise(name)).sort();
-}
-
-// The most an Ability Score Improvement may take each score to: 20, and
-// what a book read raised the maximum by.
-export function abilityCapsOf(sheet: { features?: ReadonlyArray<{ name: string }> }, base = 20): Record<Ability, number> {
-  const raises = studiedRaises(sheet.features);
-  return Object.fromEntries((Object.keys(ABILITY_WORDS) as Ability[]).map((ability) => [ability, base + (raises[ability] ?? 0)])) as Record<Ability, number>;
 }

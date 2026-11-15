@@ -13,6 +13,12 @@ const CLASS_ASI_LEVELS: Record<string, readonly number[]> = {
 
 export const ABILITY_SCORE_CAP = 20;
 
+// A score after an improvement's (or a feat's) points: up to 20, and a score
+// already past 20 (a manual's or tome's, Primal Champion's) stays where it is.
+export function raisedTowardCap(score: number, points: number): number {
+  return Math.max(score, Math.min(ABILITY_SCORE_CAP, score + points));
+}
+
 // The levels of this class that grant an improvement. With no class named
 // the answer is the common five, which is what callers from before the
 // per-class tables still ask for.
@@ -58,18 +64,18 @@ export function crossedAsiLevels(
   );
 }
 
-// Bake ASI choices into ability scores, capping each at 20, or at the
-// maximum a manual or tome read raised (`caps`, src/lib/srd/studied-books.ts
-// abilityCapsOf). An improvement never lowers a score already past its cap.
-// Null slots (still undecided in the UI) are skipped.
+// Bake ASI choices into ability scores, capping each at 20. SRD 5.1: "you
+// can't increase an ability score above 20 using this feature", and that
+// holds after a manual or tome raised the score's maximum
+// (src/lib/srd/studied-books.ts); the 22 such a book gave is kept, never
+// lowered to 20. Null slots (still undecided in the UI) are skipped.
 export function applyAsiChoices(
   scores: AbilityScores,
   choices: Array<AsiChoice | null | undefined>,
-  caps?: Partial<Record<keyof AbilityScores, number>>,
 ): AbilityScores {
   const next = { ...scores };
   const raise = (ability: keyof AbilityScores, points: number) => {
-    next[ability] = Math.max(next[ability], Math.min(caps?.[ability] ?? ABILITY_SCORE_CAP, next[ability] + points));
+    next[ability] = raisedTowardCap(next[ability], points);
   };
   for (const choice of choices) {
     if (!choice) {

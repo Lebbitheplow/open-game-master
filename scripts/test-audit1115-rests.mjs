@@ -516,17 +516,63 @@ await test("R13 reading a manual or tome raises the score and its maximum by 2, 
   const forged = await table.invoke("update_sheet", { characterId: friend.id, features: [...table.sheet(friend.id).features, { name: "Manual of Bodily Health (studied: +2 Constitution)", source: "story" }], reason: "read it" });
   assert.notEqual(forged.ok, true, `only reading the book writes its record: ${JSON.stringify(forged)}`);
 
-  // A fighter at CON 18 who reads it stands at 20 with a maximum of 22, and
-  // the 8th-level improvement takes it to 22.
-  table.patch(reader.id, { abilities: { ...table.sheet(reader.id).abilities, con: 20 }, xp: 34000 });
+  // The 8th-level improvement keeps the book's 22 (the improvement itself
+  // is held at 20: R14).
+  table.patch(reader.id, { xp: 34000 });
   const sheet = table.sheet(reader.id);
   const context = { hpMethod: "average", multiclassAllowed: true, classOf: classGrantsFor, racialCantrips: 0, spellOf: () => null, featOf: () => null, subclassOffered: () => true, rollDie: () => 1 };
-  const leveled = buildLevelUp(sheet, { level: 8, maxHp: sheet.maxHp, currentHp: sheet.currentHp, hitDice: sheet.hitDice, asiChoices: [{ mode: "plus2", ability: "con" }] }, context);
+  const leveled = buildLevelUp(sheet, { level: 8, maxHp: sheet.maxHp, currentHp: sheet.currentHp, hitDice: sheet.hitDice, asiChoices: [{ mode: "plus2", ability: "str" }] }, context);
   assert.ok(!("error" in leveled), leveled.error);
   assert.equal(leveled.patch.abilities.con, 22);
-  // Without the book the same improvement stops at 20.
-  const plain = buildLevelUp({ ...sheet, features: sheet.features.filter((feature) => !/studied/.test(feature.name)) }, { level: 8, maxHp: sheet.maxHp, currentHp: sheet.currentHp, hitDice: sheet.hitDice, asiChoices: [{ mode: "plus2", ability: "con" }] }, context);
-  assert.equal("error" in plain ? 20 : plain.patch.abilities.con, 20);
+});
+
+await test("R14 an Ability Score Improvement or a feat's point never takes a score past 20, and keeps a book's 22", async () => {
+  // SRD 5.1, Ability Score Improvement: "you can't increase an ability score
+  // above 20 using this feature." A manual or tome raises the score and its
+  // maximum by 2, but an improvement (or a feat's +1) is still held at 20:
+  // a 22 the book gave stays 22, a 20 with the book's raised maximum stays
+  // 20, and an 18 rises to 20 at most. R13 had read the book's maximum in
+  // place of the improvement's 20, so a 20 went to 22; and a feat's point on
+  // a 22 lowered it to 20.
+  const { buildLevelUp } = await import("../src/lib/srd/level-up.ts");
+  const { classGrantsFor } = await import("../src/lib/characters/catalog.ts");
+  const { applyAsiChoices } = await import("../src/lib/srd/asi.ts");
+  const { applyFeatIncrease } = await import("../src/lib/srd/feat-effects.ts");
+  const { abilitiesAfterLevel } = await import("../src/app/campaigns/[campaignId]/level-up-preview.ts");
+  const { featureAbilityGrants } = await import("../src/lib/srd/trait-rules.ts");
+  const { abilityProblems } = await import("../src/lib/srd/legality/abilities.ts");
+  const record = { name: "Manual of Bodily Health (studied: +2 Constitution)", source: "story" };
+  const table = await openTable();
+  const hero = table.addHero({ class: "fighter", level: 7, maxHp: 70, abilities: { str: 16, dex: 12, con: 20, int: 10, wis: 10, cha: 10 } });
+  table.patch(hero.id, { xp: 34000, features: [...table.sheet(hero.id).features, record] });
+  const resilient = { name: "Resilient", prerequisite: "", desc: "Increase the chosen ability score by 1, to a maximum of 20. You gain proficiency in saving throws using the chosen ability." };
+  const context = { hpMethod: "average", multiclassAllowed: true, classOf: classGrantsFor, racialCantrips: 0, spellOf: () => null, featOf: (name) => (/^resilient$/i.test(name) ? resilient : null), subclassOffered: () => true, rollDie: () => 1 };
+  const levelUp = (sheet, ask) => buildLevelUp(sheet, { level: 8, maxHp: sheet.maxHp, currentHp: sheet.currentHp, hitDice: sheet.hitDice, ...ask }, context);
+  const at = (con) => ({ ...table.sheet(hero.id), abilities: { ...table.sheet(hero.id).abilities, con } });
+
+  // A 20 with the book's raised maximum: the improvement adds nothing to it.
+  const twenty = levelUp(at(20), { asiChoices: [{ mode: "plus2", ability: "con" }] });
+  assert.ok(!("error" in twenty), twenty.error);
+  assert.equal(twenty.patch.abilities.con, 20, "an improvement never takes a score past 20");
+  const asked = levelUp(at(20), { abilities: { ...at(20).abilities, con: 22 } });
+  assert.ok("error" in asked, "asking for 22 by an improvement is refused");
+  assert.match(asked.error, /above 20/);
+  // An 18 rises to 20 at most, even with a maximum of 22.
+  assert.equal(levelUp(at(18), { asiChoices: [{ mode: "plus2", ability: "con" }] }).patch.abilities.con, 20);
+  assert.equal(abilitiesAfterLevel(at(19), [{ mode: "plus2", ability: "con" }], { id: "fighter", level: 8 }).abilities.con, 20, "the level-up preview agrees");
+  // The book's 22 is kept by an improvement and by a feat's point.
+  assert.equal(levelUp(at(22), { asiChoices: [{ mode: "plus2", ability: "con" }] }).patch.abilities.con, 22);
+  const feat = levelUp(at(22), { asiChoices: [{ mode: "feat", feat: "Resilient", ability: "con" }] });
+  assert.ok(!("error" in feat), feat.error);
+  assert.equal(feat.patch.abilities.con, 22, "Resilient's point does not lower the book's 22 to 20");
+  assert.equal(applyFeatIncrease({ str: 10, dex: 10, con: 22, int: 10, wis: 10, cha: 10 }, "Resilient", "con").abilities.con, 22);
+  // A companion's level-up takes the same improvement.
+  assert.equal(applyAsiChoices({ str: 10, dex: 10, con: 22, int: 10, wis: 10, cha: 10 }, [{ mode: "plus2", ability: "con" }]).con, 22);
+  assert.equal(applyAsiChoices({ str: 10, dex: 10, con: 20, int: 10, wis: 10, cha: 10 }, [{ mode: "plus1x2", abilities: ["con", "str"] }]).con, 20);
+  // The legality check still takes the book's 22 as a score the sheet may hold.
+  const sheet = at(22);
+  const problems = abilityProblems({ scores: sheet.abilities, racial: {}, recorded: [], freePoints: 0, mode: "bounds", pools: [], grants: featureAbilityGrants(sheet) });
+  assert.deepEqual(problems.filter((line) => /passes/.test(line)), []);
 });
 
 finish();
