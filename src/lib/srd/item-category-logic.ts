@@ -76,3 +76,35 @@ export function itemCategory(item: CategoryItem): ItemCategory {
 export function itemCategoryIcon(category: ItemCategory): IconRef {
   return { kind: "glyph", key: `item-${category}` };
 }
+
+// The colour each kind's pill and its plate's rim take, so a long list sorts
+// itself by eye on a phone, where the picture is the only other cue. The
+// picture and its spoken label still say the kind; the colour only repeats it.
+const TONE: Record<ItemCategory, string> = {
+  melee: "#e2685c",
+  ranged: "#5cbd78",
+  armor: "#62a3e6",
+  consumable: "#3fc4b4",
+  magic: "#a987f2",
+  gear: "#a8a29e",
+};
+
+// Inline styles rather than rules in globals.css: the shared stylesheet every
+// page loads sits at its budget, and the build wrote each colour-mix rule
+// twice (with a fallback), so six kinds of rules cost 0.2 KiB there. The
+// rim (globals.css .tone-rim) reads --rim, the tone at 85%. The pill mixes
+// the tone into the chip's own plate for the night theme and the day one
+// (light-dark() follows the color-scheme each theme sets on <html>); a
+// browser without light-dark() keeps the plain chip.
+export function itemToneStyle(category: ItemCategory, surface: "chip" | "row"): Record<string, string> {
+  const tone = TONE[category];
+  const rim = { "--rim": `${tone}d9` };
+  if (surface === "row") {
+    return rim;
+  }
+  return {
+    ...rim,
+    borderColor: `light-dark(color-mix(in srgb,${tone} 75%,#44403c),${tone}99)`,
+    background: `light-dark(color-mix(in srgb,${tone} 20%,#fffcf4bf),color-mix(in srgb,${tone} 13%,#0a07148c))`,
+  };
+}

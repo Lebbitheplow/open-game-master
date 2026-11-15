@@ -5,7 +5,7 @@ import { Info, Loader2 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { GameIcon } from "@/components/ui/GameIcon";
 import type { IconRef } from "@/lib/icons";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { Dialog } from "@/components/ui/Dialog";
 import type { ItemSheet } from "@/lib/help/item-sheet";
@@ -455,8 +455,9 @@ export function InfoChipList({
     // be read at the chip's size (a carried item: src/lib/srd/
     // item-category-logic.ts). The painting stays in the hover, where it has
     // room, and the label is said for the picture.
-    // Its tone tints the chip (globals.css [data-tone]).
-    lead?: { icon: IconRef; label: string; tone?: string };
+    // Its tone names the kind on the chip (data-tone) and its style tints it
+    // (src/lib/srd/item-category-logic.ts itemToneStyle).
+    lead?: { icon: IconRef; label: string; tone?: string; style?: CSSProperties };
   }>;
   emptyText?: string;
 }) {
@@ -468,7 +469,7 @@ export function InfoChipList({
       {items.map((item) => {
         const line = firstLine(item.text);
         return (
-          <span key={item.name} className="info-chip" data-tone={item.lead?.tone}>
+          <span key={item.name} className="info-chip" data-tone={item.lead?.tone} style={item.lead?.style}>
             <Tooltip
               content={
                 <span className="flex items-start gap-2.5">

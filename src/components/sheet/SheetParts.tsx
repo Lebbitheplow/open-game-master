@@ -18,7 +18,7 @@ import { oneOfKind, wornButIdle } from "@/lib/srd/wear-slots";
 import { rowName, srdNameWithBonus } from "@/lib/srd/item-row";
 import { matchWeapon } from "@/lib/srd/weapons";
 import { cardArtwork } from "@/lib/battlemap/card-art";
-import { ITEM_CATEGORY_LABEL, itemCategory, itemCategoryIcon, type CategoryItem } from "@/lib/srd/item-category-logic";
+import { ITEM_CATEGORY_LABEL, itemCategory, itemCategoryIcon, itemToneStyle, type CategoryItem } from "@/lib/srd/item-category-logic";
 
 // The pieces of the character sheet (docs/visual-overhaul-plan.md 8b.5), one
 // implementation drawn by both the session's sheet dialog and the character
@@ -350,7 +350,7 @@ export function EquipmentChips({
         return {
           name: item.qty > 1 ? `${item.name} x${item.qty}` : item.name,
           icon: cardArtwork({ kind: "item" as const, key: item.name, family: "item-gear" }),
-          lead: { icon: itemCategoryIcon(category), label: ITEM_CATEGORY_LABEL[category], tone: category },
+          lead: { icon: itemCategoryIcon(category), label: ITEM_CATEGORY_LABEL[category], tone: category, style: itemToneStyle(category, "chip") },
           note:
             [
               wornNote(item),
