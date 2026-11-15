@@ -94,7 +94,7 @@ export const petTools: ToolDef[] = [
     function: {
       name: "pet_attack",
       description:
-        "Resolve a character's pet attacking an enemy; in a fight it happens on the owner's own turn, and the server rolls and applies it with the pet's real numbers. The server checks the pet may attack at all (plain familiars cannot) and, in a fight, that the owner can act, and charges the owner's action, bonus action or attack the pet's kind costs. A refusal spends nothing.",
+        "Resolve a character's pet attacking an enemy, on the owner's turn in a fight; the server rolls it with the pet's real numbers. It checks the pet may attack (plain familiars cannot) and charges the owner what the pet's kind costs; a refusal spends nothing.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -103,7 +103,7 @@ export const petTools: ToolDef[] = [
           petName: { type: "string", description: "Which pet, when they have several." },
           targetEnemyId: { type: "string", description: "The enemy being attacked: exact enemyId from GAME STATE." },
           attack: { type: "string", description: "Named attack when the pet has several." },
-          charged: { type: "boolean", description: "No board only: it ran straight at the target first (Charge, Pounce)." },
+          charged: { type: "boolean", description: "No board: it ran straight at the target first (Charge, Pounce)." },
           reason: { type: "string", description: "Short in-fiction cause." },
         },
         required: ["characterId", "targetEnemyId"],

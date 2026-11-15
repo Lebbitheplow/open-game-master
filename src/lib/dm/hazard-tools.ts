@@ -74,7 +74,7 @@ export const hazardTools: ToolDef[] = [
     function: {
       name: "apply_hazard",
       description:
-        "Resolve a trap, a fall, or an environmental hazard against one or more characters with real 5e numbers. The server takes the damage and save DC from the book and applies them; never invent them. Use this, never apply_damage, for any harm from the environment to a character. Call it BEFORE narrating the result; narrate exactly what it reports.",
+        "Resolve a trap, a fall or an environmental hazard against characters or enemies with real 5e numbers. The server takes the damage and DC from the book; never invent them, and never use apply_damage for the environment's harm. Call it BEFORE narrating; narrate what it reports.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -92,14 +92,14 @@ export const hazardTools: ToolDef[] = [
               "frigid_water",
             ],
             description:
-              "Which hazard. Feet for falling; severity or a trap by name for trap; for generic, a bespoke hazard (a gout of flame) with your own damage, saveAbility and dc; roundsWithoutAir for suffocation and drowning; hours for extreme cold and heat; minutes for frigid water.",
+              "Which hazard. Each other field names the type it is for; generic is a bespoke hazard with your own damage, saveAbility and dc.",
           },
           hours: {
             type: "integer",
             minimum: 1,
             maximum: 48,
             description:
-              "extreme_cold/extreme_heat only: hours of exposure. The server rolls the hourly CON saves (gear and resistances count) and applies exhaustion for each failure.",
+              "extreme_cold/extreme_heat only: hours of exposure. The server rolls each hour's save.",
           },
           minutes: {
             type: "integer",
@@ -122,13 +122,13 @@ export const hazardTools: ToolDef[] = [
             type: "array",
             items: { type: "string" },
             minItems: 1,
-            description: "Exact enemyIds from GAME STATE caught by a trap, a fall or a generic hazard.",
+            description: "Exact enemyIds from GAME STATE caught by it.",
           },
           rank: {
             type: "string",
             enum: ["front", "rear"],
             description:
-              "Instead of characterIds: whoever walks first ('front') or last ('rear') in the travel formation. For a trap or hazard the party walks into; refused when GAME STATE shows no formation, then name the characterIds.",
+              "Instead of characterIds: the first ('front') or last ('rear') in GAME STATE's travel formation.",
           },
           feet: {
             type: "integer",
@@ -165,10 +165,10 @@ export const hazardTools: ToolDef[] = [
           },
           trap: {
             type: "string",
-            description: `trap only: an SRD sample trap or one of the table's own workshop traps, by its listed name. SRD traps: ${SAMPLE_TRAPS.map((trap) => trap.name).join(", ")}; workshop traps are named under GAME STATE. A named trap runs by its own numbers instead of the severity table.`,
+            description: `trap only: a trap by its listed name, run by its own numbers instead of severity. SRD: ${SAMPLE_TRAPS.map((trap) => trap.name).join(", ")}; workshop traps are in GAME STATE.`,
           },
           fromX: { type: "integer", description: "trap and generic: x of the square it fires from, for cover on a DEX save." },
-          place: { type: "boolean", description: "trap only: set it hidden on the square fromX, fromY; the first creature to step there springs it." },
+          place: { type: "boolean", description: "trap only: set it hidden at fromX, fromY, to spring on the first creature there." },
           fromY: { type: "integer", description: "Its y." },
           reason: { type: "string", description: "Short note on the hazard." },
         },

@@ -86,7 +86,7 @@ export const actionTools: ToolDef[] = [
     function: {
       name: "take_action",
       description:
-        "Resolve a character or an enemy taking a 5e action that is not an attack or a spell. Pin is the Grappler feat's, on the creature they grapple. Improvise: a fight action no other tool names, the deed in reason; never a blow at a creature (weapon, thrown thing, punch, kick), which is pc_attack. One call rolls it, a contest against targetEnemyId or a check against difficulty, and a win lands condition and damage. The server spends the action, rolls any check or contest it calls for and applies the real effect. Grapple and Shove each replace ONE attack of the Attack action, so a character with Extra Attack can grapple and still swing. Ready commits ONE action (`readied`, or a spell in `spell`) to their reaction until their next turn; its result says how to release it. Call it BEFORE narrating the action; narrate exactly what it reports.",
+        "Resolve a character or an enemy taking a 5e action that is not an attack or a spell. Pin is the Grappler feat's, on the creature they grapple. Improvise: a fight action no other tool names, the deed in reason; never a blow at a creature (weapon, thrown thing, punch, kick), which is pc_attack. One call rolls it, a contest against targetEnemyId or a check against difficulty, and a win lands condition and damage. Grapple and Shove each replace ONE attack of the Attack action, so a character with Extra Attack can grapple and still swing. Ready commits ONE action (`readied`, or a spell in `spell`) to their reaction until their next turn; its result says how to release it. Call it BEFORE narrating the action; narrate exactly what it reports.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -137,12 +137,12 @@ export const actionTools: ToolDef[] = [
           distanceFt: { type: "integer", minimum: 0, description: "Improvise on the battle map (required): feet to the thing used, as narrated, never a guess." },
           item: {
             type: "string",
-            description: "Use an Object only: the object, when it is one they carry. For consumables, use use_item. Manacles or Thieves' Tools on a target bind, unlock or pick; captors out of a fight send Manacles and targetCharacterId alone.",
+            description: "Use an Object only: a carried object (consumables are use_item). Manacles or Thieves' Tools on a target bind, unlock or pick; captors out of a fight send Manacles and targetCharacterId alone.",
           },
           scene: { type: "string", description: "Improvise (required): the thing used, in the narration's words." },
           enemyId: {
             type: "string",
-            description: "The enemy taking Dash, Disengage, Dodge or Escape: exact enemyId from GAME STATE. Omit characterId then. Use an Object with Manacles binds targetCharacterId.",
+            description: "The enemy taking Dash, Disengage, Dodge or Escape: exact enemyId from GAME STATE. Omit characterId; with Manacles it binds targetCharacterId.",
           },
           toward: { type: "string", description: "Dash or Disengage: who to move beside (id or name); the server walks them there." },
           spell: {

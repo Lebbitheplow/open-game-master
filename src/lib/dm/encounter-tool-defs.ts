@@ -118,7 +118,7 @@ export const enemyAttackTool: ToolDef = {
   function: {
     name: "enemy_attack",
     description:
-      "Resolve an enemy's attack on a character, on the enemy's own turn: once end_turn hands it to you (or it acts first in the round); before its turn comes it only reacts or takes a legendary action. The server rolls it from the enemy's stat block against the target's real AC, applies the damage, and reads what bears on the roll (conditions, light, Pack Tactics, Sanctuary). Never invent an enemy's numbers or use request_roll for enemy attacks.",
+      "Resolve an enemy's attack on a character, on the enemy's own turn: once end_turn hands it to you (or it acts first in the round); before its turn comes it only reacts or takes a legendary action. The server rolls it from the enemy's stat block against the target's real AC and applies the damage. Never invent an enemy's numbers or use request_roll for enemy attacks.",
     parameters: {
       type: "object",
       additionalProperties: false,
@@ -150,7 +150,7 @@ export const enemyAttackTool: ToolDef = {
         },
         targetMount: { type: "boolean", description: "At the target's mount instead." },
         targetPet: { type: "string", description: "At the target's pet instead, by name." },
-        charged: { type: "boolean", description: "No board only: it ran straight at the target first (Charge, Pounce)." },
+        charged: { type: "boolean", description: "No board: it ran straight at the target first (Charge, Pounce)." },
       },
       required: ["enemyId", "targetCharacterId"],
     },
