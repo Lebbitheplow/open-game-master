@@ -370,5 +370,46 @@ await test("K10: Gloves of Thievery add +5 to a Dexterity check to pick a lock, 
   assert.equal(pick.total, 10 + 9, `rollCharacterCheck picks the lock with the tools and the gloves: ${JSON.stringify(pick)}`);
 });
 
+// K11. SRD 5.1, Paladin, Aura of Protection: "Whenever you or a friendly
+// creature within 10 feet of you must make a saving throw, the creature
+// gains a bonus to the saving throw equal to your Charisma modifier (with a
+// minimum bonus of +1). You must be conscious to grant this bonus." Aura of
+// Courage: "you and friendly creatures within 10 feet of you can't be
+// frightened while you are conscious." A creature of the fight moved to the
+// party's side (combat-sides.ts) saved on its stat block alone and could be
+// frightened beside the paladin; the party's sheets, summons and companions
+// already had both. A creature the party holds by a domination spell is
+// charmed into serving, not friendly, and is left out.
+await test("K11: a creature fighting on the party's side saves with the paladin's Aura of Protection and is kept from fear by Aura of Courage", async () => {
+  await kit.endFight();
+  const { moveToSide } = await import("../src/lib/dm/combat-sides.ts");
+  const paladin = world.addHero({ class: "paladin", level: 10, maxHp: 80, abilities: { cha: 16 }, features: klass("paladin", "Aura of Protection", "Aura of Courage"), proficiencies: { ...TRAINED } });
+  world.patch(paladin.id, { currentHp: 80 });
+  const [ally, held] = (await kit.fight(2), world.enemies());
+  moveToSide(world.campaign(), ally.id, "party", { quiet: true });
+  kit.place(paladin.id, 3, 3);
+  kit.place(ally.id, 4, 3);
+  kit.place(held.id, 3, 4);
+  const saveOf = async (enemy) => {
+    // The damage's two dice first, then the save's d20.
+    const out = await forced([3, 3, 10], () => world.invoke("aoe_damage", { enemyIds: [enemy.id], saveAbility: "dex", dc: 25, damage: "2d6", damageType: "fire", halfOnSave: true, reason: "a fire trap" }));
+    const caught = out.result?.results?.find((entry) => entry.target === enemy.displayName);
+    assert.ok(caught, `the staging: ${enemy.displayName} saved: ${JSON.stringify(out).slice(0, 400)}`);
+    return { total: caught.save };
+  };
+  const beside = await saveOf(ally);
+  assert.equal(beside.total, 10 + 0 + 3, `the paladin's aura (CHA +3) on the ally's save: ${beside.total}`);
+  kit.place(ally.id, 12, 12);
+  assert.equal((await saveOf(ally)).total, 10, "15 feet off the paladin's aura does not reach");
+  kit.place(ally.id, 4, 3);
+  // A goblin the paladin's side dominates fights for the party but is no friend.
+  kit.setEnemy(held.id, { conditions: ["charmed"], conditionMeta: { charmed: { source: paladin.id, spell: "Dominate Monster", rounds: 10 } } });
+  assert.equal((await saveOf(held)).total, 10, "a dominated creature's save takes no aura");
+  const scared = await world.invoke("set_condition", { enemyId: ally.id, condition: "frightened", rounds: 2 });
+  assert.equal(scared.ok, false, `Aura of Courage keeps fear off the ally: ${JSON.stringify(scared).slice(0, 200)}`);
+  assert.match(String(scared.error), /aura/i);
+  await kit.endFight();
+});
+
 world.close();
 finish();

@@ -12,6 +12,7 @@ import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import { elementalAdeptApplies, flamesOfPhlegethosApplies, floorDamageDice, rerollOnesDice } from "@/lib/srd/feat-combat";
 import { z } from "zod";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
+import { allyCreatureConditionAura } from "@/lib/dm/aura";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, getEnemy, listEnemies, type EncounterEnemy } from "@/lib/db/encounters";
 import { insertRoll, type RollAttacker } from "@/lib/db/rolls";
@@ -674,7 +675,9 @@ export function handleAoeDamage(
     }
     let laid: string[] = [];
     if (!success && plan?.conditions.length) {
-      const landed = layAreaConditions(plan, enemy.id, { ability, dc: saveDc });
+      // Aura of Courage or Devotion over a creature fighting for the party
+      // keeps its condition off (aura.ts).
+      const landed = layAreaConditions({ ...plan, conditions: plan.conditions.filter((name) => !allyCreatureConditionAura(campaign.id, enemy, name)) }, enemy.id, { ability, dc: saveDc });
       laid = landed;
       if (landed.length) {
         row.conditionApplied = landed.join(", ");
@@ -683,8 +686,11 @@ export function handleAoeDamage(
     }
     if (!success && laysCondition) {
       // Its own immunities, and a petrified creature's to poison.
+      const shielded = allyCreatureConditionAura(campaign.id, enemy, laysCondition);
       if (immuneToCondition(enemy, laysCondition)) {
         row.conditionRefused = `${enemy.displayName} is immune to ${laysCondition}.`;
+      } else if (shielded) {
+        row.conditionRefused = `${shielded} keeps ${laysCondition} off ${enemy.displayName}.`;
       } else {
         const incoming = {
           ...(awayCaster ? { source: awayCaster.id } : {}),
