@@ -206,23 +206,23 @@ export function pregenById(id: string, locale: Locale = "en"): Pregen | null {
 const PREGEN_TEXT_FR: Record<string, { tagline: string; blurb: string; backstory: string }> = {
   brakk: {
     tagline: "Brakk, barbare humain",
-    blurb: "Frappe d'abord, demande ensuite. Brandis la hache à deux mains, encaisse les coups et garde les autres en vie en te tenant devant eux.",
-    backstory: "Né dans les hauts cols, Brakk est redescendu dans les terres basses quand les troupeaux ont péri, et il n'a jamais trouvé de raison d'y remonter.",
+    blurb: "Frappe d’abord, demande ensuite. Brandis la hache à deux mains, encaisse les coups et garde les autres en vie en te tenant devant eux.",
+    backstory: "Né dans les hauts cols, Brakk est redescendu dans les terres basses quand les troupeaux ont péri, et il n’a jamais trouvé de raison d’y remonter.",
   },
   kara: {
     tagline: "Kara, guerrière humaine",
-    blurb: "Bouclier, épée et cotte de mailles. La main la plus sûre de la table : difficile à toucher, plus difficile encore à déplacer, et toujours un plan pour la porte.",
-    backstory: "Dix ans dans la garde d'un baron du fleuve, renvoyée quand le baron n'a plus eu d'argent. Elle salue encore par habitude.",
+    blurb: "Bouclier, épée et cotte de mailles. La main la plus sûre de la table : difficile à toucher, plus difficile encore à déplacer, et toujours un plan face à une porte.",
+    backstory: "Dix ans dans la garde d’un baron du fleuve, renvoyée quand le baron n’a plus eu d’argent. Elle salue encore par habitude.",
   },
   vex: {
     tagline: "Vex, roublard humain",
-    blurb: "Serrures, ombres et rapière. Éclaire le groupe, trouve le piège avant qu'il ne te trouve, et frappe où ça fait mal.",
-    backstory: "Une guilde de la ville quittée à temps, une dette aux basques. Vex tient la liste de ceux à qui on doit quelque chose, et une plus courte de ceux à qui Vex en doit.",
+    blurb: "Serrures, ombres et rapière. Pars en éclaireur, trouve le piège avant qu’il ne te trouve, et frappe où ça fait mal.",
+    backstory: "A quitté une guilde citadine juste avant qu’une dette ne le rattrape. Vex tient la liste de ceux à qui l’on doit quelque chose, et une plus courte de ceux à qui Vex doit.",
   },
   sera: {
     tagline: "Sera, clerc humaine de la Vie",
-    blurb: "Masse d'armes, bouclier et des mains de soigneuse. Elle garde le groupe debout avec Mot de guérison et Bénédiction, et sait se tenir en ligne elle-même.",
-    backstory: "Orpheline de la chapelle, elle a appris qu'une voix posée et une main plus posée encore font plus de bien qu'un sermon.",
+    blurb: "Masse d’armes, bouclier et des mains de soigneuse. Elle garde le groupe debout avec Mot de guérison et Bénédiction, et sait tenir la ligne elle-même.",
+    backstory: "Orpheline de la chapelle, elle a appris qu’une voix posée et une main plus ferme encore font plus de bien qu’un sermon.",
   },
 };
 
