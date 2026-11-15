@@ -63,5 +63,65 @@ await test("S01: a spell cast with the bonus action (Healing Word) still bars a 
   assert.equal(wave.refused, "rules", JSON.stringify(wave));
 });
 
+// ---- S02: a spell cast from a scroll or a wand is a spell cast ----
+
+// SRD 5.1, Casting Time, Bonus Action: the limit counts every spell cast
+// that turn, and a spell read from a scroll or let loose from a wand is one
+// (Magic Items, Spells: the user casts the spell from the item). A cleric
+// who cast Healing Word with the bonus action read a scroll of Bless with the
+// action, and one who read the scroll first cast Healing Word after it.
+const scroll = (spell) => ({ name: `Spell Scroll (${spell})`, qty: 1, tags: ["consumable", "scroll", "carried"], spell });
+
+async function scrollCleric(equipment) {
+  const { world, sheets: [priest] } = await table([caster("cleric", "wis", ["Healing Word", "Bless"], ["Sacred Flame"], 5, { equipment })]);
+  await freshTurn(world);
+  return { world, priest };
+}
+
+const heldItems = (world, id) => world.sheet(id).equipment.map((item) => item.name);
+
+await test("S02: after Healing Word with the bonus action, a scroll of a levelled spell cannot be read that turn, and the scroll is kept", async () => {
+  const { world, priest } = await scrollCleric([scroll("Bless")]);
+  world.dice(4);
+  const word = await world.invokeAsIs("heal", { casterId: priest.id, characterId: priest.id, spell: "Healing Word", level: 1 });
+  world.clearDice();
+  assert.equal(word.ok, true, word.error);
+  const read = await world.invokeAsIs("use_item", { characterId: priest.id, item: "Spell Scroll (Bless)" });
+  assert.equal(read.refused, "rules", JSON.stringify(read));
+  assert.ok(heldItems(world, priest.id).includes("Spell Scroll (Bless)"), "the scroll is not spent");
+});
+
+await test("S02: a scroll of a levelled spell read with the action leaves no room for Healing Word that turn", async () => {
+  const { world, priest } = await scrollCleric([scroll("Bless")]);
+  const read = await world.invokeAsIs("use_item", { characterId: priest.id, item: "Spell Scroll (Bless)" });
+  assert.equal(read.ok, true, read.error);
+  world.dice(4);
+  const word = await world.invokeAsIs("heal", { casterId: priest.id, characterId: priest.id, spell: "Healing Word", level: 1 });
+  world.clearDice();
+  assert.equal(word.refused, "rules", JSON.stringify(word));
+});
+
+await test("S02: a scroll of a cantrip with a casting time of one action still goes beside a bonus action spell", async () => {
+  const { world, priest } = await scrollCleric([scroll("Sacred Flame")]);
+  world.dice(4);
+  const word = await world.invokeAsIs("heal", { casterId: priest.id, characterId: priest.id, spell: "Healing Word", level: 1 });
+  world.clearDice();
+  assert.equal(word.ok, true, word.error);
+  const read = await world.invokeAsIs("use_item", { characterId: priest.id, item: "Spell Scroll (Sacred Flame)" });
+  assert.equal(read.ok, true, read.error);
+});
+
+await test("S02: after Healing Word with the bonus action, a wand's levelled spell cannot be cast that turn, and no charge is spent", async () => {
+  const { world, priest } = await scrollCleric([{ name: "Wand of Magic Missiles", qty: 1, equipped: true, charges: 7 }]);
+  world.dice(4);
+  const word = await world.invokeAsIs("heal", { casterId: priest.id, characterId: priest.id, spell: "Healing Word", level: 1 });
+  world.clearDice();
+  assert.equal(word.ok, true, word.error);
+  const before = JSON.stringify(world.sheet(priest.id).equipment);
+  const zap = await world.invokeAsIs("use_item", { characterId: priest.id, item: "Wand of Magic Missiles", spell: "Magic Missile", charges: 1 });
+  assert.equal(zap.refused, "rules", JSON.stringify(zap));
+  assert.equal(JSON.stringify(world.sheet(priest.id).equipment), before, "the wand keeps its charges");
+});
+
 closeTables();
 finish();

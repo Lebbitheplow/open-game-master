@@ -716,20 +716,9 @@ export function turnCharge(input: {
       : false;
   const time = quickened || featured ? "bonus" : printed;
   const levelled = (facts ? facts.level : (input.slotLevel ?? 0)) > 0;
-  // SRD 5.1, Casting Time, Bonus Action: a spell cast with a bonus action
-  // leaves the turn room for one other spell only, a cantrip with a casting
-  // time of one action.
-  if (time === "bonus" && marks.includes(LEVELLED_SPELL) && !(featured && bonusCast?.afterLevelled)) {
-    return {
-      error: `${who} has already cast a levelled spell this turn, so ${name} cannot be cast with the bonus action: beside a bonus action spell the only other spell of the turn is a cantrip.`,
-      refused: "rules",
-    };
-  }
-  if (time !== "bonus" && levelled && marks.includes(BONUS_SPELL)) {
-    return {
-      error: `${who} has cast a spell with their bonus action this turn, so the only other spell they can cast is a cantrip with a casting time of one action. ${name} waits for another turn.`,
-      refused: "rules",
-    };
+  const ruled = bonusSpellProblem(marks, { who, name, time, levelled, afterLevelled: Boolean(featured && bonusCast?.afterLevelled) });
+  if (ruled) {
+    return ruled;
   }
   if (time === "reaction") {
     if (input.reactionSpent) {
@@ -747,14 +736,12 @@ export function turnCharge(input: {
   if (!budget) {
     return { kind: "free" };
   }
-  const mark = (next: TurnBudget): TurnBudget => ({
-    ...next,
-    oncePerTurn: [
-      ...next.oncePerTurn.filter((entry) => !(quickened && entry === QUICKENED) && !(featured && entry === bonusCast?.mark)),
-      ...(time === "bonus" && !next.oncePerTurn.includes(BONUS_SPELL) ? [BONUS_SPELL] : []),
-      ...(time !== "bonus" && levelled && !next.oncePerTurn.includes(LEVELLED_SPELL) ? [LEVELLED_SPELL] : []),
-    ],
-  });
+  const mark = (next: TurnBudget): TurnBudget =>
+    withSpellMarks(
+      { ...next, oncePerTurn: next.oncePerTurn.filter((entry) => !(quickened && entry === QUICKENED) && !(featured && entry === bonusCast?.mark)) },
+      time,
+      levelled,
+    );
   const spent =
     time === "bonus"
       ? spendAction(budget, "bonus", `casting ${name}`, who)
@@ -772,6 +759,44 @@ export function turnCharge(input: {
     budget: mark(spent.budget),
     cost: time === "bonus" ? "bonus action" : "action",
     ...(note ? { note } : {}),
+  };
+}
+
+// SRD 5.1, Casting Time, Bonus Action: a spell cast with a bonus action
+// leaves the turn room for one other spell only, a cantrip with a casting
+// time of one action. Every casting on the caster's own turn is asked it: a
+// slot's (turnCharge above) and one read from a scroll or let loose from a
+// wand (use_item), which is a spell cast all the same; before a scroll's
+// counted, a cleric who cast Healing Word read a scroll of Bless with the
+// action. `time` is what the casting takes of the turn.
+export function bonusSpellProblem(
+  marks: readonly string[],
+  cast: { who: string; name: string; time: string; levelled: boolean; afterLevelled?: boolean },
+): CastRefusal | null {
+  if (cast.time === "bonus" && marks.includes(LEVELLED_SPELL) && !cast.afterLevelled) {
+    return {
+      error: `${cast.who} has already cast a levelled spell this turn, so ${cast.name} cannot be cast with the bonus action: beside a bonus action spell the only other spell of the turn is a cantrip.`,
+      refused: "rules",
+    };
+  }
+  if (cast.time !== "bonus" && cast.levelled && marks.includes(BONUS_SPELL)) {
+    return {
+      error: `${cast.who} has cast a spell with their bonus action this turn, so the only other spell they can cast is a cantrip with a casting time of one action. ${cast.name} waits for another turn.`,
+      refused: "rules",
+    };
+  }
+  return null;
+}
+
+// What a casting leaves on the turn for the rule above to read.
+export function withSpellMarks(budget: TurnBudget, time: string, levelled: boolean): TurnBudget {
+  return {
+    ...budget,
+    oncePerTurn: [
+      ...budget.oncePerTurn,
+      ...(time === "bonus" && !budget.oncePerTurn.includes(BONUS_SPELL) ? [BONUS_SPELL] : []),
+      ...(time !== "bonus" && levelled && !budget.oncePerTurn.includes(LEVELLED_SPELL) ? [LEVELLED_SPELL] : []),
+    ],
   };
 }
 
