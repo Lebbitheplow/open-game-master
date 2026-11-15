@@ -13,6 +13,7 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import { listRecentMessages } from "@/lib/db/messages";
 import { listNpcMemories } from "@/lib/db/npc-minds";
 import { listNpcs } from "@/lib/db/npcs";
+import { searchKey } from "@/lib/language/text-logic";
 import type { Contradiction } from "@/lib/dm/engine-boundary";
 import { requestUtilityMessage } from "@/lib/dm/model";
 import {
@@ -30,14 +31,13 @@ import { stripReasoningArtifacts } from "@/lib/story-prompt";
 
 export type LeakReader = (messages: { role: "system" | "user"; content: string }[]) => Promise<string | null>;
 
-const fold = (text: string) => text.normalize("NFKD").replace(/\p{M}/gu, "").toLocaleLowerCase();
 
 // A person is in the reading when a word of their name (or an alias), or
 // their role, appears in the narration or the scene: "la sentinella" finds
 // "Sentinella del cordone".
 function peopleIn(campaign: Campaign, text: string): VoicedPerson[] {
-  const haystack = fold(text);
-  const words = (value: string) => fold(value).split(/[^\p{L}\p{N}]+/u).filter((word) => word.length >= 4);
+  const haystack = searchKey(text);
+  const words = (value: string) => searchKey(value).split(" ").filter((word) => word.length >= 4);
   const out: VoicedPerson[] = [];
   for (const npc of listNpcs(campaign.id)) {
     const names = [npc.name, ...npc.aliases, npc.role];

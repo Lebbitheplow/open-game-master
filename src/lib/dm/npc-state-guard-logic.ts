@@ -31,7 +31,7 @@ const CHANGE_WORDS = [
 ];
 
 export function showsStateChange(narration: string): boolean {
-  const text = narration.toLocaleLowerCase();
+  const text = ` ${textKey(narration)} `;
   return CHANGE_WORDS.some((word) => text.includes(word));
 }
 

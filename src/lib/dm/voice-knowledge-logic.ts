@@ -13,6 +13,7 @@
 // (src/lib/dm/narration-guard.ts) asks the narrator to rewrite it, once.
 
 import { QUOTE, quotedText } from "@/lib/dm/speech-prose";
+import { textKey } from "@/lib/language/text-logic";
 import type { Contradiction } from "@/lib/dm/engine-boundary";
 
 export const MAX_LEAKS = 4;
@@ -34,13 +35,8 @@ export type VoicedPerson = {
 
 export type TranscriptLine = { author: "player" | "narration"; who: string; text: string };
 
-const key = (text: string) =>
-  text
-    .normalize("NFKC")
-    .toLocaleLowerCase()
-    .replace(/[’‘`]/g, "'")
-    .replace(/\s+/g, " ")
-    .trim();
+// Quotes are compared as keys: case, apostrophes and punctuation aside.
+const key = textKey;
 
 // The quoted lines of a narration, as written.
 export function quotedLines(narration: string): string[] {
