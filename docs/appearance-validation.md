@@ -2,8 +2,10 @@
 
 ## Hearth & Haven after the November 15 shared CI fixes (PR 967)
 
-Hearth integrates PR 962 at `cab3070dc` in implementation
-`d0f70d3b37779dc9635ef65f2640bb818a60d957`. Its theme assets, palette, oak action
+This section records the source before the November 15 rebase; Hearth now sits
+on PR 962 at `c07f60504`, and its [handoff](appearance-hearth-handoff.md) lists
+the checks repeated there. At the time of these results, Hearth integrated PR 962
+at `cab3070dc` in implementation `d0f70d3b37779dc9635ef65f2640bb818a60d957`. Its theme assets, palette, oak action
 materials and map-hand label fix are unchanged. No duplicate shared fixes were
 added. The imported corrections restore readable labels, hostile-card borders,
 laptop map room and narration accessibility measurement while retaining visible

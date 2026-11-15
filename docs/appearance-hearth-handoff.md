@@ -7,17 +7,55 @@ amber ink. It is a fantasy variant selected explicitly, with no genre claim.
 
 ## Location and dependency
 
-- Owner: Codex Hearth session `01a1dc7c-174e-7d53-8359-175b5c09ae65`.
-- Worktree: `theme-hearth-haven`; branch: `codex/hearth-haven-theme`.
-- Corrected implementation commit: `d0f70d3b37779dc9635ef65f2640bb818a60d957`.
-- Previous implementation commit: `11ddc89e20c7913c7a79c4ffaf986b566ee9f6ad`
-  (initial artwork and treatment: `2b815657967915c4eaf222cd6242425bcd118298`).
+- Built by: Codex Hearth session `01a1dc7c-174e-7d53-8359-175b5c09ae65`, in
+  worktree `theme-hearth-haven`. Rebased on 2026-11-15 by a Claude session.
+- Branch: `codex/hearth-haven-theme`.
+- Current implementation commit: `d0de4ba04` (artwork and treatment `987114c15`,
+  phone titles and map label `b74fa3a77`). The documentation commit follows it.
 - Draft delivery: [PR 967](https://github.com/Lebbitheplow/open-game-master/pull/967).
-- Required base: PR 962, commit `cab3070dc96c895a1d8aae8d6dd34b05c1a6ef65`,
-  integrated with the shared header/material fixes and November 15 accessibility,
-  foe-card and laptop-map corrections.
+- Required base: PR 962, commit `c07f60504`, which holds the shared
+  header/material fixes, the November 15 accessibility, foe-card and laptop-map
+  corrections, and the contrast check that waits for fade-ins.
 - Delivery remains draft. Do not merge before the shared framework is ready.
-- Browser port: 3031. Preview databases contain only generated fictional data.
+- Browser port: 3031 for the original validation, 3033 for the rebase checks.
+  No preview is running. Preview databases contain only generated fictional data.
+
+## November 15 rebase
+
+PR 962 was rebased onto main 0.36.0 and then gained one commit. Hearth now sits
+on that head as four commits; its two merges of PR 962 are gone and its
+documentation commits are folded into one. Hearth's own change is the same 13
+files as before, with no change to the theme's look or content.
+
+Commit hashes in the sections below (`d0f70d3b3`, `11ddc89e2`, `2b8156579`,
+`23cfd41cb`) and the base `cab3070dc` name the source before the rebase. Those
+commits are no longer on the branch. The results in those sections were measured
+on that earlier source and were not all repeated.
+
+Repeated on the rebased source:
+
+| Check | Result |
+| --- | --- |
+| Type check (`npx tsc --noEmit`) | Passed |
+| Appearance catalog / artwork contracts | 12 + 5 passed |
+| Full lint | 0 errors, 316 warnings |
+| Production build | Passed |
+| Hearth appearance matrix, development preview on port 3033 | 59 passed, 0 failed |
+| Hearth readability checks, same preview | 20 passed |
+| `spell-desk` shared browser scenario, production build | 2 of 2 passed in each of four runs |
+
+Lint, the build, the matrix and the readability checks ran on the first rebased
+head, before PR 962's last commit, which changes only the shared browser helper
+`scripts/browser/lib.mjs`. The type check, appearance checks and one `spell-desk`
+run were repeated after it. Bundle budgets, the full unit suite, the full shared
+browser suite and a production-server Hearth matrix were not repeated.
+
+On GitHub, the first rebased head `c1bdaf91a` passed both builds, all six
+Linux/Windows test groups and five of six browser groups. Browser (1/6) failed
+one case, `spell-desk-phone`: a contrast measurement on the spell swap question.
+That case uses the default appearance and the same group passed on PR 962. PR
+962's last commit makes the contrast check wait for fade-ins, which may be the
+cause; that is not confirmed. CI on the current head is a separate result.
 
 The only shared code edits are the catalog entry, `flame` icon mapping and
 stylesheet import. The renderer, shared material system, genre defaults and
