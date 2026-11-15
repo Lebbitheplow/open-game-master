@@ -82,7 +82,8 @@ import { spendAction } from "@/lib/dm/action-budget";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { payToStand } from "@/lib/dm/stand-up";
-import { copyCost, learnProblem } from "@/lib/dm/learn-rules";
+import { copyCost, learnProblem, scrollCopyDc, scrollHolding, withoutOneScroll } from "@/lib/dm/learn-rules";
+import { rollScrollCopy } from "@/lib/dm/scroll-copy";
 import { getAuditPreImage, listAuditForTurn, listAuditSince } from "@/lib/db/sheet-audit";
 import { autoLevelCompanion } from "@/lib/dm/companion-tools";
 import {
@@ -377,6 +378,7 @@ export const mutationTools: ToolDef[] = [
     {
       action: { type: "string", enum: ["add", "remove"] },
       spell: { type: "string", description: "Exact spell name." },
+      from: { type: "string", enum: ["scroll", "book"], description: "A wizard's copy: scroll (a Spell Scroll they carry; the server rolls the Arcana check and uses the scroll up) or book (another spellbook, a teacher)." },
     },
     ["action", "spell"],
   ),
@@ -560,6 +562,8 @@ const argsSchema = z.object({
   casterId: z.string().optional(),
   // learn_spell: add|remove; purchase: buy|sell.
   action: z.enum(["add", "remove", "buy", "sell"]).optional(),
+  // learn_spell: where a wizard copies the spell from (scroll-copy.ts).
+  from: z.enum(["scroll", "book"]).optional(),
   reason: z.string().optional(),
 });
 
@@ -1933,6 +1937,9 @@ function dmMutation(
         const casters = sheet.spellcasting.casters ?? [];
         // Cantrips have their own list and never touch the spell allowance.
         if (spellLevel === 0 || (spellLevel === undefined && isCantripName(spell))) {
+          if (args.from === "scroll") {
+            return { result: { error: `${spell} is a cantrip, and only a spell of 1st level or higher is copied from a scroll into a spellbook. Nothing changed.`, refused: "rules" } };
+          }
           if (cantrips.length >= 40) {
             return { result: { error: `${sheet.name}'s cantrip list is full. They must give one up first: ask the player which, then call learn_spell with action=remove for it.`, retry: true } };
           }
@@ -1974,6 +1981,20 @@ function dmMutation(
             : checklistClassSpell(spell, "wizard", 9) !== null);
         const bookView = onWizardList ? views.find((view) => view.style === "spellbook") : undefined;
         if (bookView) {
+          // A copy from a scroll the wizard carries needs their Intelligence
+          // (Arcana) check against 10 + the spell's level, which the server
+          // rolls (scroll-copy.ts): left to the GM, a See Invisibility scroll
+          // was copied against DC 8, not 12. With the scroll in the pack and
+          // no source named, the GM says which, so a scroll is never used up
+          // for a copy made from a book.
+          const copyLevel = facts?.level ?? spellLevel ?? 1;
+          const scrollRow = scrollHolding(sheet.equipment, facts?.name ?? spell);
+          if (args.from === "scroll" && !scrollRow) {
+            return { result: { error: `${sheet.name} carries no Spell Scroll of ${spell} to copy from. Give them the scroll first, or name from "book" for a copy from another spellbook or a teacher. Nothing changed.`, retry: true } };
+          }
+          if (!args.from && scrollRow) {
+            return { result: { error: `${sheet.name} carries a scroll of ${spell}. Copied from the scroll, call learn_spell again with from "scroll": the server rolls their Intelligence (Arcana) check against DC ${scrollCopyDc(copyLevel)}, and the scroll is used up whatever the roll; never ask for that check yourself. From another spellbook or a teacher, from "book". Nothing changed.`, retry: true } };
+          }
           // Copying costs 50 gp and two hours a spell level, paid now; the
           // hours are not something a fight has room for.
           const cost = facts ? copyCost(facts, { features: sheet.features, school: spellSchoolFor(facts.name, spellAuthorsFor(campaign)) }) : { gold: 0, hours: 0 };
@@ -1995,6 +2016,17 @@ function dmMutation(
               },
             };
           }
+          // The check is rolled before anything is written (scroll-copy.ts).
+          // SRD 5.1: the scroll is destroyed whether the check succeeds or
+          // fails, and the time and the inks are spent in the attempt (the
+          // wizard's cost "represents material components you expend as you
+          // experiment with the spell").
+          const fromScroll = args.from === "scroll" ? scrollRow : null;
+          const check = fromScroll ? rollScrollCopy(campaign, sheet, facts?.name ?? spell, copyLevel, turn) : null;
+          if (check && "error" in check) {
+            return { result: check };
+          }
+          const copied = !check || check.passed;
           const left = fromCopper(purse - cost.gold * COPPER_PER_GOLD);
           const nextSpellcasting = withCasterViews(
             sheet.spellcasting,
@@ -2003,14 +2035,26 @@ function dmMutation(
             ),
           );
           const bookPatch = {
-            spellcasting: nextSpellcasting,
+            ...(copied ? { spellcasting: nextSpellcasting } : {}),
             ...(cost.gold ? { gold: left.gold, copper: left.copper } : {}),
+            ...(fromScroll ? { equipment: withoutOneScroll(sheet.equipment, fromScroll) } : {}),
           };
           patchSheet(sheet.id, bookPatch);
-          audit(campaign, turnId, sheet, "learn_spell", { action, spell, ...(cost.gold ? { cost } : {}) }, reason, bookPatch);
+          audit(campaign, turnId, sheet, "learn_spell", { action, spell, ...(cost.gold ? { cost } : {}), ...(check ? { from: "scroll", check } : {}) }, reason, bookPatch);
           publishSheet(campaign, sheet.id);
           if (cost.hours) {
             advanceClock(campaign.id, cost.hours, "hours");
+          }
+          if (check && !check.passed) {
+            return {
+              result: {
+                ok: true,
+                copied: false,
+                rolled: check.rolled,
+                dc: check.dc,
+                note: `${sheet.name}'s Arcana check (${check.rolled}) misses DC ${check.dc}: ${spell} is not written, and the scroll is destroyed in the attempt${cost.gold ? `, with the ${cost.gold} gp and ${cost.hours} hours of work spent` : ""}.`,
+              },
+            };
           }
           insertCharacterEvent({
             libraryCharacterId: sheet.libraryCharacterId,
@@ -2025,9 +2069,15 @@ function dmMutation(
               ok: true,
               learned: spell,
               spellbook: true,
-              note: `${spell} is written in the spellbook${cost.gold ? `, for ${cost.gold} gp and ${cost.hours} hours of work` : ""}. ${sheet.name} can prepare it after a long rest.`,
+              ...(check ? { rolled: check.rolled, dc: check.dc } : {}),
+              note: `${check ? `${sheet.name}'s Arcana check (${check.rolled}) meets DC ${check.dc}, and the scroll is used up. ` : ""}${spell} is written in the spellbook${cost.gold ? `, for ${cost.gold} gp and ${cost.hours} hours of work` : ""}. ${sheet.name} can prepare it after a long rest.`,
             },
           };
+        }
+        // Only a wizard's book takes a spell copied from a scroll; a
+        // sorcerer, a bard or a cleric learns from levels and the story.
+        if (args.from === "scroll") {
+          return { result: { error: `Only a wizard copies a scroll's spell into a spellbook, and ${sheet.name} keeps no spellbook for ${spell}. A spell the story teaches them is learned without from. Nothing changed.`, refused: "rules" } };
         }
         let targetCaster: (typeof casters)[number] | null = null;
         // The ceilings as the sheet's views read them: an Eldritch Knight's

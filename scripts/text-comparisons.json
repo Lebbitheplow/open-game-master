@@ -1670,7 +1670,7 @@
     "lib/dm/mutation-math.ts#toUpperCase": [["display",1,"ability abbreviation shown"]],
     "lib/dm/mutations.ts#str-case": [["key",3,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/mutations.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"],["key",1,"tool names: heal and use_item ask a companion's conduct first (issue 503 Phase 4)"],["key",1,"tool names: a heal list is one casting, resolved inside its call (healList, issue 902)"]],
-    "lib/dm/mutations.ts#str-list": [["key",5,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/mutations.ts#str-list": [["key",6,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/mutations.ts#toLowerCase": [["key",6,"condition labels (engine vocabulary, tool argument); class ids"]],
     "lib/dm/narration-tidy-logic.ts#re-word": [["english-extra",1,"a net for a small model's English fight bookkeeping in bold (ENGLISH_COMBAT_HEADING: a turn, a round, the fight, initiative), read only at an English table (withoutCombatBookkeeping); the cut of a recited order and a bulleted summary by the fight's own names works in every language, and at any other table a heading is only left in the prose"]],
     "lib/dm/natural-onhit.ts#[a-z]": [["english-source",1,"a stat block's creature type line cut into its words"]],
