@@ -148,7 +148,7 @@ await test("A turn handed on in a question ends nothing, at a table in any langu
   const system = readerSystem([], false);
   assert.match(system, /"kind":"turn_over".*Never for: a question, whether about what they do next or about ending the turn/);
   assert.match(system, /"kind":"turn_over".*a turn that ends only later or not yet/);
-  assert.match(system, /"kind":"turn_over".*an action taken on its own, such as an attack, a spell, a Dash or a Dodge/);
+  assert.match(system, /"kind":"turn_over".*an action or a bonus action taken on its own, such as an attack, a spell, Second Wind, a Dash or a Dodge/);
 });
 
 await test("The request lists the kinds, the refs and the narration; the instructions name every skill id.", () => {

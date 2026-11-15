@@ -266,6 +266,7 @@ import {
   mutationTools,
 } from "@/lib/dm/mutations";
 import { describeBudget } from "@/lib/dm/action-budget";
+import { turnStillOwes } from "@/lib/dm/turn-budget";
 import { castBuffTool } from "@/lib/dm/cast-tools";
 import {
   advanceAfterTurn,
@@ -477,6 +478,10 @@ export function buildEncounterState(campaignId: string, sheets: CharacterSheet[]
   const due = enemiesOwedTurn(encounter);
   const board = getBattleMapForEncounter(encounter.id);
   const lair = encounter.legendary.lair ? legendaryLairLines(enemies) : [];
+  // The bonus swing the acting hero's Attack action earned (issue 966): told
+  // here, the turn's end waits for it rather than the narration's say-so.
+  const actingSheet = encounter.turnBudget ? sheets.find((sheet) => sheet.id === encounter.turnBudget?.ownerId) : undefined;
+  const bonusSwing = actingSheet ? turnStillOwes(campaignId, actingSheet.id).bonusSwing : null;
   const staged = new Set(
     encounter.order
       .filter((entry) => entry.kind === "pc")
@@ -504,6 +509,7 @@ export function buildEncounterState(campaignId: string, sheets: CharacterSheet[]
     turnBudget: encounter.turnBudget
       ? describeBudget({ ...encounter.turnBudget, reactionUsed: encounter.turnBudget.reactionUsed || encounter.reactionsUsed.includes(encounter.turnBudget.ownerId) })
       : null,
+    ...(actingSheet && bonusSwing ? { bonusSwingOpen: `${actingSheet.name}'s Attack action earned ${bonusSwing}. Their turn is not over until their player makes it or ends the turn: never narrate the turn ending or the next combatant acting.` } : {}),
     // The printed lair options lair_action takes by number: a block's own
     // list never reaches its traits whole.
     ...(lair.length ? { lairOptions: lair.map((line, at) => `${at + 1}. ${line}`) } : {}),
