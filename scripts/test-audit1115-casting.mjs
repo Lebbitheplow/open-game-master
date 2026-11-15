@@ -1348,5 +1348,63 @@ await test("S29: a drag on the board lands the waiting flame before the move res
   assert.equal(world.sheet(mage.id).currentHp, hurt, "no opportunity attack struck the wizard");
 });
 
+// ---- S30: the wait reads every reaction that could turn the hit ----
+
+// S26's check of who could still turn a hit (retort-wait.ts
+// reactionCouldTurn) read the struck character's own Shield from a slot,
+// Cutting Words, Defensive Duelist and their own feature's reactions, and an
+// ally's Cutting Words or Protection anywhere. A Shield stored in a Ring of
+// Spell Storing and an ally's own reaction for a hit on someone else (Runic
+// Shield's reroll) were not read: the flame slew the goblin at once, and the
+// reaction that then turned the hit could not bring it back. An ally out of
+// the reaction's reach (Protection's 5 feet and shield, Cutting Words' 60
+// feet) still made the flame wait, telling the GM it might never come.
+async function flameNoShield(hp, allies, positions) {
+  const { world, sheets: [mage, ...rest], enemies: [goblin, other] } = await table([caster("wizard", "int", ["Fire Shield"]), ...allies], 2);
+  const cast = await world.invoke("cast_buff", { characterId: mage.id, spell: "Fire Shield", variant: "fire shield (cold)", level: 4 });
+  assert.equal(cast.ok, true, cast.error);
+  world.patch(mage.id, { ac: 12, acOverride: true });
+  encounterRows.patchEnemyHp(goblin.id, hp, "alive");
+  if (positions) {
+    await layMap(world, field(), positions({ mage, rest, goblin, other }));
+  }
+  return { world, mage, rest, goblin };
+}
+
+await test("S30: a flame that would slay waits on the Shield a Ring of Spell Storing holds", async () => {
+  const { world, mage, goblin } = await flameNoShield(5, []);
+  world.patch(mage.id, { equipment: [...world.sheet(mage.id).equipment, { name: "Ring of Spell Storing", qty: 1, equipped: true, attuned: true, storedSpells: [{ spell: "Shield", level: 1, by: "Hero 1" }] }] });
+  const swing = await swingAt(world, goblin, mage, [10, 3, 4, 4]);
+  assert.equal(statusOf(world, goblin.id).status, "alive", JSON.stringify(swing.result));
+});
+
+await test("S30: a flame that would slay waits on an ally Rune Knight's Runic Shield", async () => {
+  const { world, mage, rest: [knight], goblin } = await flameNoShield(5, [{ class: "fighter", level: 7, subclass: "Rune Knight", abilities: { str: 16, con: 14 } }]);
+  assert.ok(world.sheet(knight.id).resources?.sub_runic_shield, JSON.stringify(world.sheet(knight.id).resources));
+  const swing = await swingAt(world, goblin, mage, [10, 3, 4, 4]);
+  assert.equal(statusOf(world, goblin.id).status, "alive", JSON.stringify(swing.result));
+});
+
+const GUARD = { class: "fighter", level: 5, abilities: { str: 16, con: 14 }, features: [{ name: "Protection", source: "choice" }], equipment: [{ name: "Shield", qty: 1 }, { name: "Longsword", qty: 1 }] };
+
+await test("S30: Protection from a fighter beyond 5 feet holds nothing back: the flame slays at once", async () => {
+  const { world, mage, goblin } = await flameNoShield(5, [GUARD], ({ mage, rest: [guard], goblin, other }) => ({ [mage.id]: { x: 2, y: 2 }, [goblin.id]: { x: 3, y: 2 }, [guard.id]: { x: 20, y: 2 }, [other.id]: { x: 30, y: 2 } }));
+  const swing = await swingAt(world, goblin, mage, [10, 3, 4, 4]);
+  assert.equal(statusOf(world, goblin.id).status, "dead", JSON.stringify(swing.result));
+});
+
+await test("S30: Protection from a fighter beside the wizard still holds the flame back", async () => {
+  const { world, mage, goblin } = await flameNoShield(5, [GUARD], ({ mage, rest: [guard], goblin, other }) => ({ [mage.id]: { x: 2, y: 2 }, [goblin.id]: { x: 3, y: 2 }, [guard.id]: { x: 2, y: 3 }, [other.id]: { x: 30, y: 2 } }));
+  const swing = await swingAt(world, goblin, mage, [10, 3, 4, 4]);
+  assert.equal(statusOf(world, goblin.id).status, "alive", JSON.stringify(swing.result));
+});
+
+await test("S30: Cutting Words from a bard beyond 60 feet of the goblin holds nothing back: the flame slays at once", async () => {
+  const { world, mage, rest: [bard], goblin } = await flameNoShield(5, [loreBard], ({ mage, rest: [bard], goblin, other }) => ({ [mage.id]: { x: 2, y: 2 }, [goblin.id]: { x: 3, y: 2 }, [bard.id]: { x: 30, y: 2 }, [other.id]: { x: 35, y: 2 } }));
+  world.patch(bard.id, { resources: { ...world.sheet(bard.id).resources, bardic_inspiration: { max: 3, used: 0 } } });
+  const swing = await swingAt(world, goblin, mage, [10, 3, 4, 4]);
+  assert.equal(statusOf(world, goblin.id).status, "dead", JSON.stringify(swing.result));
+});
+
 closeTables();
 finish();

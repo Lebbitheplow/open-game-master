@@ -952,7 +952,7 @@ export function handleEnemyAttack(
     // takes it back (spell-retort.ts measureRetort).
     // A reaction that could still turn this swing into a miss holds an answer
     // that would slay the creature until the hit is settled (retort-wait.ts).
-    const waits = reactionCouldTurn(campaign.id, struck, { total: hitOutcome.total, natural20: natCrit, vsAc: targetAc(), melee: !ranged });
+    const waits = reactionCouldTurn(campaign.id, struck, { total: hitOutcome.total, natural20: natCrit, vsAc: targetAc(), melee: !ranged, attackerId: enemy.id });
     const psychicBack = measureRetort(enemy.id, () => thoughtShieldBack(campaign, turn, struck, enemy.id, { amount: Math.min(dealt, 200), type: blow.type, parts: blow.parts ? scaledParts(blow.parts, dealt) : undefined, flags }, sheets, sheetsById, waits), (back) => (back.thoughtShield && !back.waiting ? ["Thought Shield"] : []));
     Object.assign(applied, psychicBack.result);
     totalDamage += dealt;

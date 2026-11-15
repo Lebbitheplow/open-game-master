@@ -421,7 +421,7 @@ export function resolveOpportunityAttacks(
       // miss takes it back (spell-retort.ts measureRetort).
       // An answer that would slay it waits on a reaction that could still
       // turn this swing into a miss (retort-wait.ts).
-      const waits = reactionCouldTurn(campaign.id, sheet, { total: hitOutcome.total, natural20: hitOutcome.crit === "nat20", vsAc: targetAc, melee: true });
+      const waits = reactionCouldTurn(campaign.id, sheet, { total: hitOutcome.total, natural20: hitOutcome.crit === "nat20", vsAc: targetAc, melee: true, attackerId: enemy.id });
       const psychicBack = measureRetort(enemy.id, () => (rolled > 0 ? thoughtShieldBack(campaign, turn, sheet, enemy.id, { amount: rolled, type: blow.type, parts: blow.parts ? scaledParts(blow.parts, rolled) : undefined, flags: magical ? { magical: true } : {} }, hitSheets, hitSheetsById, waits) : {}), (back) => (back.thoughtShield && !back.waiting ? ["Thought Shield"] : []));
       const unridden = getSheetById(sheet.id);
       const grips = attack.onHit?.swallow ? gripsHeldBy(campaign.id, sheet.id) : null;
