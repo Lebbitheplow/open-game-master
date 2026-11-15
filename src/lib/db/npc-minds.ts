@@ -211,8 +211,37 @@ export function setNpcMindModel(npcId: string, choice: MindModelChoice | null) {
   getDatabase().prepare(`UPDATE npcs SET mind_model_json = ?, updated_at = ? WHERE id = ?`).run(value, nowIso(), npcId);
 }
 
-// Set where an adventure is made, never by the narrator in play: for now no
-// NPC is promoted by the story.
+// The lines the narrator voiced for an NPC (campaign_messages speech_json),
+// the newest `limit`, oldest first: what a second-tier character said in
+// its own words before the story gave it a mind of its own.
+export function npcVoicedLines(campaignId: string, npcId: string, limit: number): string[] {
+  const rows = getDatabase()
+    .prepare(`SELECT speech_json FROM campaign_messages WHERE campaign_id = ? AND author_type = 'dm' AND speech_json LIKE ? ORDER BY seq DESC LIMIT 400`)
+    .all(campaignId, `%${npcId}%`) as { speech_json: string }[];
+  const lines: string[] = [];
+  for (const row of rows) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(row.speech_json);
+    } catch {
+      continue;
+    }
+    const spoken = Array.isArray(parsed) ? (parsed as { line?: unknown; speaker?: { kind?: unknown; id?: unknown } }[]) : [];
+    for (const entry of [...spoken].reverse()) {
+      if (entry?.speaker?.kind === "npc" && entry.speaker.id === npcId && typeof entry.line === "string" && entry.line.trim()) {
+        lines.push(entry.line.trim());
+      }
+    }
+    if (lines.length >= limit) {
+      break;
+    }
+  }
+  return lines.slice(0, limit).reverse();
+}
+
+// Set by the narrator as the story goes (npc_past firstTier): a character
+// the story comes to hinge on is promoted, one it leaves behind gives its
+// place back.
 export function setNpcTier(npcId: string, tier: "primary" | "secondary") {
   getDatabase().prepare(`UPDATE npcs SET tier = ?, updated_at = ? WHERE id = ?`).run(tier, nowIso(), npcId);
 }

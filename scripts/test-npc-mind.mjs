@@ -398,6 +398,44 @@ await test("the story's key characters get their own minds through npc_past firs
   assert.match(NPC_MINDS_RULES, /npc_past with their past and firstTier: true/);
 });
 
+await test("the story promotes a second-tier character mid-way, who remembers the lines the narrator gave them, and gives the place back later", async () => {
+  const messages = await import("../src/lib/db/messages.ts");
+  const campaigns = await import("../src/lib/db/campaigns.ts");
+  const captain = npc("Captain Lira", { role: "escort captain" }, "secondary");
+  const others = (await import("../src/lib/db/npcs.ts")).listNpcs(world.campaignId).filter((entry) => entry.id !== captain.id && !entry.companionSheetId && mind.tierOfNpc(entry) === "primary");
+  for (const other of others) {
+    minds.setNpcTier(other.id, "secondary");
+  }
+  const voiced = (line) =>
+    messages.insertCampaignMessage({
+      campaignId: world.campaignId,
+      seq: campaigns.allocateSeq(world.campaignId),
+      authorType: "dm",
+      content: `Lira says: «${line}»`,
+      speech: [{ line, speaker: { kind: "npc", id: captain.id, name: "Captain Lira" } }],
+    });
+  voiced("I have an order to deliver him alive, and I will.");
+  voiced("Brakk, you are right about that: those were Vargo's men.");
+  minds.addNpcMemories(world.campaignId, [captain.id], { kind: "knowledge", sourceKind: "perceived", sourceName: "", content: "Brakk read the depositions aloud at the well.", learnedAt: 1 }, "");
+  try {
+    const promoted = mind.handleNpcPast(world.campaign(), JSON.stringify({ name: "Captain Lira", firstTier: true }));
+    assert.equal(promoted.tier, "primary");
+    const said = memories("Captain Lira").filter((entry) => entry.kind === "said" && entry.sourceKind === "self").map((entry) => entry.content);
+    assert.deepEqual(said, ["I have an order to deliver him alive, and I will.", "Brakk, you are right about that: those were Vargo's men."]);
+    assert.ok(memories("Captain Lira").some((entry) => /depositions aloud/.test(entry.content)), "what she lived stays");
+    mind.handleNpcPast(world.campaign(), JSON.stringify({ name: "Captain Lira", firstTier: true }));
+    assert.equal(memories("Captain Lira").filter((entry) => entry.kind === "said").length, 2, "promoted again, nothing is doubled");
+    assert.equal(mind.handleNpcPast(world.campaign(), JSON.stringify({ name: "Captain Lira", firstTier: false })).tier, "secondary", "her part over, the narrator voices her again");
+    const { NPC_MINDS_RULES } = await import("../src/lib/dm/npc-mind-tools.ts");
+    assert.match(NPC_MINDS_RULES, /Tiers follow the story/);
+  } finally {
+    minds.setNpcTier(captain.id, "secondary");
+    for (const other of others) {
+      minds.setNpcTier(other.id, "primary");
+    }
+  }
+});
+
 await test("a mind played from a mind seat answers the same isolated question, and silence falls to the server's mind", async () => {
   const { createUser } = await import("../src/lib/db/users.ts");
   const seats = await import("../src/lib/db/mind-seats.ts");
