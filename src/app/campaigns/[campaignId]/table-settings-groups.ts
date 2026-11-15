@@ -188,6 +188,7 @@ export function tableGroupSummary(id: TableGroupId, settings: GameSettings, cont
         aiNarrates && settings.styleNotes ? "style notes set" : null,
         aiNarrates && (settings.combatPace ?? "balanced") !== "balanced" ? (settings.combatPace === "rare" ? "fewer fights" : "more fights") : null,
         aiNarrates ? `living world ${onOff(settings.worldSimulation)}` : null,
+        aiNarrates && settings.npcMinds && (settings.npcMindLimit ?? 4) !== 4 ? `up to ${settings.npcMindLimit} key characters` : null,
         alliesShown(settings) ? `allies: ${ALLY_WORDS[settings.companions]}` : null,
       ]
         .filter(Boolean)

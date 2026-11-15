@@ -556,3 +556,12 @@ export function sceneMindsPrompt(names: readonly string[], timeSkipped = false):
     "If one of them is no longer in the scene at all, call npc_inform for them instead with what, if anything, reached them.",
   ].join(" ");
 }
+
+// First-tier NPCs besides the party's companions: each is a mind the table
+// pays for every time they act. The table sets the ceiling
+// (gameSettings.npcMindLimit); a campaign made before it keeps four.
+export const MAX_FIRST_TIER_NPCS = 4;
+
+export function firstTierLimit(campaign: { gameSettings: { npcMindLimit?: number } }): number {
+  return campaign.gameSettings.npcMindLimit ?? MAX_FIRST_TIER_NPCS;
+}

@@ -17,6 +17,14 @@ import {
 } from "@/lib/dm/narration-style-logic";
 import type { GameSettings } from "@/lib/schemas/game-settings";
 
+// The ceiling on the NPCs with a mind of their own (gameSettings.npcMindLimit).
+// A campaign whose value is not one of these still shows it.
+const MIND_LIMITS = [4, 10, 15, 20];
+
+function mindLimitOptions(current: number) {
+  return [...new Set([...MIND_LIMITS, current])].sort((a, b) => a - b).map((limit) => ({ value: String(limit), label: `Up to ${limit}` }));
+}
+
 // The table's say over how the AI DM writes (issue #383): how long its
 // narration runs, and the lead's own notes on voice and pacing. Fits the
 // prose to the model and the table without touching the DM's instructions
@@ -83,6 +91,24 @@ export function NarrationStyleRows({
           {COMBAT_PACE_HINTS[settings.combatPace ?? "balanced"]}
         </span>
       </div>
+      {settings.npcMinds ? (
+        <div data-settings-row="npc-mind-limit" className="reveal flex flex-wrap items-center gap-2">
+          <span className="pk-rowlabel">Key characters</span>
+          <Tooltip content="How many characters besides your companions the GM may give a mind of their own: they know only what they saw or were told, and act like players. A ceiling, not a quota: the GM uses as many as the story needs. Each one in the scene adds a few seconds to the GM's answer.">
+            <span className="inline-flex min-w-0 max-w-full">
+              <Select<string>
+                size="sm"
+                label="Key characters with their own mind"
+                value={String(settings.npcMindLimit ?? 4)}
+                onChange={(limit) => patch({ npcMindLimit: Number(limit) })}
+                options={mindLimitOptions(settings.npcMindLimit ?? 4)}
+                className="min-w-0 max-w-full"
+              />
+            </span>
+          </Tooltip>
+          <span className="text-stone-500">with their own mind, besides your companions</span>
+        </div>
+      ) : null}
       <div data-settings-row="style-notes" className="reveal space-y-1">
         <label htmlFor={notesId} className="pk-rowlabel block">
           Style notes

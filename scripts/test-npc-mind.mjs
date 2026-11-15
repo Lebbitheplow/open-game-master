@@ -379,6 +379,15 @@ await test("the story's key characters get their own minds through npc_past firs
   assert.deepEqual(primaries(), ["Prisoner Vael", "Warden Osk", "Clerk Imma", "Hunter Ro"]);
   assert.equal(set("Clerk Imma", false).tier, "secondary");
   assert.equal(set("Sister Pell", true).tier, "primary");
+  // The table raises the ceiling (gameSettings.npcMindLimit): a fifth fits.
+  const { updateGameSettings } = await import("../src/lib/db/campaigns.ts");
+  const { firstTierLimit } = await import("../src/lib/dm/npc-mind-logic.ts");
+  assert.equal(firstTierLimit(world.campaign()), 4, "a table that never chose keeps four");
+  updateGameSettings(already.id, { npcMindLimit: 10 });
+  assert.equal(firstTierLimit(world.campaign()), 10);
+  assert.equal(set("Clerk Imma", true).tier, "primary", "a fifth key character fits under a ceiling of ten");
+  assert.deepEqual(primaries(), ["Prisoner Vael", "Warden Osk", "Clerk Imma", "Hunter Ro", "Sister Pell"]);
+  updateGameSettings(already.id, { npcMindLimit: 4 });
   for (const name of names) {
     minds.setNpcTier(getNpcByName(already.id, name).id, "secondary");
   }

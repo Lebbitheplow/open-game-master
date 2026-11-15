@@ -109,6 +109,12 @@ Nomi al tavolo: **Personaggi** (primo grado) e **Comparse** (secondo grado); nel
   creazione dell'avventura. Il dato `npcs.tier = 'primary'` permette anche PNG di primo grado
   non compagni (es. il nemico principale), ma l'interfaccia per marcarli alla creazione
   non esiste ancora: oggi nel gioco reale il primo grado sono i compagni di party.
+- **Tetto dei personaggi chiave** (decisione dell'utente): oltre ai compagni, il narratore può
+  rendere di primo grado al massimo `gameSettings.npcMindLimit` PNG (`npc_past` con
+  `firstTier: true`); predefinito 4, scelto nelle impostazioni del tavolo tra 4, 10, 15 e 20,
+  visibile solo con le menti accese. È un tetto, non una quota: le istruzioni del narratore
+  riportano il numero e il server rifiuta oltre il tetto. Il tavolo non vede quanti ne sono
+  in uso né chi, per non rivelare chi conta nella storia.
 - **Turno garantito in scena** (applicato dal server): il server non vede chi sta dove,
   quindi "in scena" si eredita di turno in turno. Una mente di primo grado che ha agito
   (detto o fatto qualcosa) nel turno GM precedente è ancora in scena e deve avere il suo
