@@ -3,7 +3,7 @@
 // because both callers reach the same engine
 // (src/lib/dm/invoke.ts). The board's entries (pets, tokens, legendary
 // creatures) live in catalog-board.ts and are spread in at the end.
-import type { CatalogEntry } from "@/lib/dm/catalog-types";
+import { CHARGED_RUN, type CatalogEntry } from "@/lib/dm/catalog-types";
 import { ATTACK_FEATURE_NAMES } from "@/lib/dm/action-parts-logic";
 import { sceneOptions } from "@/lib/ambience/catalog";
 import { BOARD_ADJUDICATIONS } from "@/lib/dm/catalog-board";
@@ -214,7 +214,14 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
       { name: "powerAttack", label: "Power attack", kind: "boolean", help: "Great Weapon Master (heavy melee) or Sharpshooter (ranged): -5 to hit for +10 damage. Powerful Attacker: disadvantage for +10. Deadeye: the proficiency bonus off the roll for twice it on the damage." },
       { name: "luck", label: "Spend a luck point", kind: "boolean", help: "Lucky: an extra d20 on this attack roll, the best kept; the point is spent." },
       { name: "stunShot", label: "Stun on a crit (Stunning Sniper)", kind: "boolean", help: "A ranged weapon critical hit stuns the target until the shooter's next turn instead of doubling the damage." },
-      { name: "charged", label: "Charged 10 ft straight (Charger)", kind: "boolean", help: "Charger's bonus-action attack after a Dash: +5 damage when they ran at least 10 feet straight at the target." },
+      {
+        name: "charged",
+        label: "Ran straight at the target first",
+        kind: "boolean",
+        help: "Charger's bonus-action attack after a Dash: +5 damage after 10 feet. With no board, also a form's or summoned creature's Charge or Pounce (on a board the squares decide).",
+        // An older host reads the run for Charger alone (party-charge.ts).
+        host: { feature: "chargeRuns", older: { label: "Charged 10 ft straight (Charger)", help: "Charger's bonus-action attack after a Dash: +5 damage when they ran at least 10 feet straight at the target." } },
+      },
       { name: "reckless", label: "Reckless Attack", kind: "boolean", help: "Barbarian 2+, first attack of the turn. Attacks against them have advantage until their next turn." },
       { name: "nonlethal", label: "Knock out", kind: "boolean", help: "Melee only. A creature dropped to 0 falls unconscious instead of dying." },
       { name: "useInspiration", label: "Spend their Inspiration", kind: "boolean", help: "Advantage on this attack roll. Refused when they hold none." },
@@ -256,6 +263,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
       { name: "attack", label: "Attack", kind: "text", help: "Blank picks from the stat block." },
       ...advantageFields(),
       { name: "nonlethal", label: "Knock out", kind: "boolean", help: "Melee only. A player dropped to 0 falls unconscious and stable instead of dying." },
+      CHARGED_RUN,
     ],
   },
   {
