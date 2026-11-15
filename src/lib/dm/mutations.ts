@@ -378,7 +378,7 @@ export const mutationTools: ToolDef[] = [
     {
       action: { type: "string", enum: ["add", "remove"] },
       spell: { type: "string", description: "Exact spell name." },
-      from: { type: "string", enum: ["scroll", "book"], description: "A wizard's copy: scroll (a Spell Scroll they carry; the server rolls the Arcana check and uses the scroll up) or book (another spellbook, a teacher)." },
+      from: { type: "string", enum: ["scroll", "book"], description: "A wizard's copy: scroll (one they carry; the server rolls the check) or book (or a teacher)." },
     },
     ["action", "spell"],
   ),
