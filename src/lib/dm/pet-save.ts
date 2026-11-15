@@ -12,117 +12,40 @@
 //     ability or by a hazard: cast_at_player with petName
 //     (src/lib/dm/cast-at-player.ts).
 //
-// The save is the pet's own (pet-save-logic.ts): its block's bonus, its
+// The save is the pet's own (pet-save-roll.ts): its block's bonus, its
 // state, Magic Resistance, and a paladin's Aura of Protection over its
 // owner's square. What it leaves lands through apply_damage's own pet path
-// (pet-tools.ts hurtPet): resistances, immunities, a familiar's vanishing.
-// A failed save's condition is not laid on the pet: its record keeps no
-// condition with a clock to end it (nothing ticks a pet's turn), so the
-// result names it for the GM to narrate.
+// (pet-tools.ts hurtPet): resistances, immunities, a familiar's vanishing. A
+// failed save's condition is laid on the pet as on a character
+// (pet-condition-lay.ts) and ends on the pet's clock (pet-conditions.ts).
 
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { insertRoll, type RollAttacker } from "@/lib/db/rolls";
+import type { RollAttacker } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
-import { d20Expression, isValidExpression, rollExpression } from "@/lib/dice";
-import { publishWithSeq } from "@/lib/events";
+import { isValidExpression } from "@/lib/dice";
 import { rollAgainst } from "@/lib/roll-labels";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
-import { saveModFor } from "@/lib/bestiary/enemy-numbers";
-import { findTableMonster } from "@/lib/bestiary/homebrew-monsters";
 import { spellFactsFor, spellMechanicsFor } from "@/lib/content";
-import { proficiencyBonus } from "@/lib/srd";
-import { findShapeForm } from "@/lib/srd/beast-forms";
 import type { CharacterSheet, SheetPet } from "@/lib/schemas/sheet";
 import { partsTaken, partsTotal, splitDamageExpression, type DamagePart } from "@/lib/dm/aoe-parts";
-import { saveAuraBeside } from "@/lib/dm/aura";
 import { castToNoEffect, spellWardOn } from "@/lib/dm/cast-reach";
+import type { ConditionMeta } from "@/lib/dm/condition-logic";
 import { secondTypeShare } from "@/lib/dm/damage-parts";
 import { prepareEnemyUse, type EnemyUse } from "@/lib/dm/enemy-casting";
-import type { ForcedSave } from "@/lib/dm/forced-save";
 import { petCreatureType } from "@/lib/dm/pet-build";
-import { blockSaveMods, drakeSaveMods, hasEvasion, petDamageShare, petSaveShape, PET_SAVE_ABILITIES, PLAIN_SAVE_MODS, type PetSaveBlock, type PetSaveMods } from "@/lib/dm/pet-save-logic";
+import { layPetFailedSave, layPetSpellConditions, type PetLaid } from "@/lib/dm/pet-condition-lay";
+import { petDamageShare } from "@/lib/dm/pet-save-logic";
+import { rollPetSave, type PetSave } from "@/lib/dm/pet-save-roll";
 import { findPet, hurtPet, noPet } from "@/lib/dm/pet-tools";
 import { rollCard } from "@/lib/dm/roll-card";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 
-// The block a pet saves from. A drake's is its own (pet-save-logic.ts); a
-// story pet the table built in the workshop is that monster, as summon_pet
-// reads it (pet-build.ts storyPetBlock); every other pet is its form in the
-// SRD creature table (a familiar's owl or imp, a companion's wolf). A Beast
-// Master's beast adds the ranger's proficiency bonus to its proficient saves
-// (Ranger's Companion), kept on its record since summon_pet built it; one
-// stored before that adds it here.
-export function petSaveBlockFor(campaign: Campaign, owner: CharacterSheet, pet: SheetPet): PetSaveBlock {
-  const pb = proficiencyBonus(owner.level);
-  if (pet.kind === "drake") {
-    return { saveMods: drakeSaveMods(pb), traits: [], from: "its drake block" };
-  }
-  const table = pet.kind === "other" ? findTableMonster(spellAuthorsFor(campaign), pet.form) : null;
-  const form = table ? null : findShapeForm(pet.form);
-  const traits = table?.draft.stats.traits ?? form?.traitLines ?? [];
-  const own: PetSaveMods = table
-    ? (Object.fromEntries(PET_SAVE_ABILITIES.map((ability) => [ability, saveModFor(table.draft.stats, ability)])) as PetSaveMods)
-    : form
-      ? blockSaveMods(form)
-      : PLAIN_SAVE_MODS;
-  const from = table || form ? `the ${table?.draft.name ?? form?.name ?? pet.form} block` : "no block (+0)";
-  if (pet.kind === "beast_companion") {
-    const raised = pet.saves ?? Object.fromEntries(PET_SAVE_ABILITIES.map((ability) => [ability, own[ability] + (form?.saves?.includes(ability) ? pb : 0)]));
-    return { saveMods: { ...own, ...raised }, traits, from };
-  }
-  return { saveMods: own, traits, from };
-}
-
-export type PetSave = ForcedSave & { evasion: boolean };
-
-// The pet's save, rolled and shown as a dice card. The pet stands in its
-// owner's square, so a paladin's aura that reaches the owner, or the owner's
-// own, covers it (aura.ts saveAuraBeside).
-export function rollPetSave(
-  campaign: Campaign,
-  turn: DmTurn | null,
-  owner: CharacterSheet,
-  pet: SheetPet,
-  input: { ability: SaveAbility; dc: number; magical: boolean; source: string },
-): PetSave {
-  const block = petSaveBlockFor(campaign, owner, pet);
-  const evasion = hasEvasion(block.traits);
-  const shape = petSaveShape({ block, conditions: pet.conditions ?? [], ability: input.ability, magical: input.magical });
-  if (shape.autoFail) {
-    return { success: false, total: null, autoFailed: true, notes: shape.notes, evasion };
-  }
-  const aura = saveAuraBeside(campaign.id, getSheetById(owner.id) ?? owner);
-  const expression = `${d20Expression(shape.bonus + (aura?.bonus ?? 0), shape.advantage)}${shape.diceSuffix}`;
-  // Tagged as an ally's save, as the pet's attack is tagged as an ally's
-  // attack (pet-tools.ts), for what a watcher sets on the party's rolls.
-  const outcome = rollExpression(expression, undefined, { purpose: { roller: "hero", kind: "save", who: pet.name } });
-  const roll = insertRoll({
-    campaignId: campaign.id,
-    characterId: null,
-    requestedBy: "dm",
-    kind: "saving_throw",
-    detail: `${pet.name}: ${input.ability.toUpperCase()} save vs ${input.source}`.slice(0, 200),
-    dc: input.dc,
-    ...(shape.advantage === "none" ? {} : { advantage: shape.advantage }),
-    result: outcome,
-  });
-  publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
-  turn?.rollIds.push(roll.id);
-  return {
-    success: outcome.total >= input.dc,
-    total: outcome.total,
-    autoFailed: false,
-    ...(outcome.natural !== undefined ? { natural: outcome.natural } : {}),
-    result: outcome,
-    notes: [...shape.notes, ...(aura ? [aura.note] : []), `its save from ${block.from}`],
-    evasion,
-  };
-}
+export { petSaveBlockFor, rollPetSave, type PetSave } from "@/lib/dm/pet-save-roll";
 
 // The row a pet's save and damage leave on a result.
-function petRow(pet: SheetPet, save: PetSave, hurt: Record<string, unknown> | null): Record<string, unknown> {
+function petRow(pet: SheetPet, save: PetSave, hurt: Record<string, unknown> | null, laid: PetLaid | null): Record<string, unknown> {
   const { ok: _ok, pet: _name, ...landed } = hurt ?? {};
   void _ok;
   void _name;
@@ -133,13 +56,27 @@ function petRow(pet: SheetPet, save: PetSave, hurt: Record<string, unknown> | nu
     ...(save.notes.length && !save.autoFailed ? { saveNotes: save.notes } : {}),
     ...(save.evasion ? { evasion: save.success ? "no damage" : "half damage" } : {}),
     ...(hurt ? landed : { damage: 0 }),
+    ...(laid?.laid.length ? { conditionApplied: laid.laid.join(", ") } : {}),
+    ...(laid?.refused.length ? { conditionRefused: laid.refused.join(" ") } : {}),
   };
 }
 
+// What an area lays on a creature that fails its save, as aoe_damage lays it
+// on a character (aoe-damage.ts): a player's spell's conditions with its
+// record, an enemy's use by its block's words, or the condition the caller
+// named for a hazard, timed by `rounds` or ended by a save each turn.
+export type AreaLays = {
+  spell?: { conditions: readonly string[]; meta: ConditionMeta } | null;
+  use?: EnemyUse | null;
+  named?: { condition: string; rounds?: number } | null;
+};
+
+const laysAny = (lays: AreaLays | undefined) => Boolean(lays?.spell?.conditions.length || lays?.use?.condition || lays?.use?.failBy || lays?.named);
+
 // An area that caught this character caught their pets beside them (ruling
-// D2): each makes the area's save and takes what it leaves. Only an effect
-// with damage is rolled for: a condition the area lays is not laid on a pet
-// (see the head of this file). Null when the owner has no pet standing.
+// D2): each makes the area's save, takes what it leaves and, on a failure,
+// what it lays. Null when the owner has no pet standing or the area neither
+// hurts nor lays anything.
 export function areaOnPets(input: {
   campaign: Campaign;
   turn: DmTurn;
@@ -150,8 +87,11 @@ export function areaOnPets(input: {
   blast: DamagePart[];
   magical: boolean;
   source: string;
+  lays?: AreaLays;
 }): Array<Record<string, unknown>> | null {
-  if (partsTotal(input.blast) <= 0) {
+  // A net, a web or a dragon's paralyzing breath deals nothing and binds:
+  // before, a pet caught in one rolled no save and stayed free.
+  if (partsTotal(input.blast) <= 0 && !laysAny(input.lays)) {
     return null;
   }
   const owner = getSheetById(input.owner.id) ?? input.owner;
@@ -164,8 +104,24 @@ export function areaOnPets(input: {
     const share = petDamageShare({ saved: save.success, halfOnSave: input.halfOnSave, ability: input.ability, evasion: save.evasion });
     const parts = partsTaken(input.blast, share).filter((part) => part.amount > 0);
     const hurt = parts.length ? hurtPet(input.campaign, owner, pet, { parts, magical: input.magical }) : null;
-    return petRow(pet, save, hurt);
+    const laid = save.success ? null : areaLaysOnPet(input, owner, pet, save);
+    return petRow(pet, save, hurt, laid);
   });
+}
+
+function areaLaysOnPet(input: Parameters<typeof areaOnPets>[0], owner: CharacterSheet, pet: SheetPet, save: PetSave): PetLaid | null {
+  const lays = input.lays;
+  const failed = { ability: input.ability, dc: input.dc, total: save.total };
+  if (lays?.spell?.conditions.length) {
+    return layPetSpellConditions(input.campaign, owner, pet, lays.spell.conditions, lays.spell.meta);
+  }
+  if (lays?.use && (lays.use.condition || lays.use.failBy)) {
+    return layPetFailedSave(input.campaign, owner, pet, { use: lays.use, condition: lays.use.condition, save: failed, timing: { rounds: lays.use.rounds, saveEnds: Boolean(lays.use.saveEnds) }, magical: lays.use.magical });
+  }
+  if (lays?.named) {
+    return layPetFailedSave(input.campaign, owner, pet, { use: null, condition: lays.named.condition, save: failed, timing: { rounds: lays.named.rounds, saveEnds: !lays.named.rounds }, magical: input.magical });
+  }
+  return null;
 }
 
 export type CastAtPetArgs = {
@@ -177,6 +133,7 @@ export type CastAtPetArgs = {
   damageType?: string;
   halfOnSave?: boolean;
   condition?: string;
+  rounds?: number;
   casterEnemyId?: string;
   enemyAbility?: string;
   spell?: string;
@@ -298,9 +255,25 @@ export function castAtPet(campaign: Campaign, turn: DmTurn, args: CastAtPetArgs,
       base.damage = 0;
     }
   }
-  if (conditionName && !save.success) {
-    base.conditionNotLaid = `${pet.name} failed against ${conditionName}: a pet's record keeps no condition with a duration, so narrate it, lasting as the effect says.`;
-  } else if (conditionName) {
+  // What the failure lays, timed as on a character (cast-at-player.ts): the
+  // block's count and repeat save, or the hazard's rounds, else a save at the
+  // end of each of its owner's turns.
+  const standing = findPet(getSheetById(owner.id) ?? owner, pet.name);
+  if (!save.success && standing && standing.hp > 0 && (conditionName || (byBlock && use?.failBy))) {
+    const laid = layPetFailedSave(campaign, owner, standing, {
+      use,
+      condition: conditionName,
+      save: { ability, dc, total: save.total },
+      timing: { rounds: byBlock ? use?.rounds : args.rounds, saveEnds: byBlock ? Boolean(use?.saveEnds) : !args.rounds },
+      magical,
+    });
+    if (laid.laid.length) {
+      base.conditionApplied = laid.laid.join(", ");
+    }
+    if (laid.refused.length) {
+      base.conditionRefused = laid.refused.join(" ");
+    }
+  } else if (conditionName && save.success) {
     base.note = `${pet.name} shakes it off: no ${conditionName}.`;
   }
   if (use?.followUp) {

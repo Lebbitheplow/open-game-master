@@ -54,6 +54,10 @@ export function aoeOnCharacters(input: {
   sheetsById: Map<string, CharacterSheet>;
   // The cover each character has against the area's origin, for a DEX save.
   coverOf?: (refId: string) => number;
+  // The condition the caller named for an effect with no spell and no
+  // creature (a net, a gas), with its rounds: aoe-damage.ts lays it on the
+  // characters who failed, and the pets beside them take it the same way.
+  named?: { condition: string; rounds?: number } | null;
 }): Array<Record<string, unknown>> {
   const { campaign, turn, pcTargets, plan, enemyUse, conditionMeta, ability, halfOnSave, blast, sheets, sheetsById } = input;
   const results: Array<Record<string, unknown>> = [];
@@ -261,6 +265,12 @@ export function aoeOnCharacters(input: {
         blast,
         magical: Boolean(input.spell) || Boolean(enemyUse?.magical),
         source: (input.reason ?? input.spell ?? enemyUse?.name ?? "the area").slice(0, 120),
+        // What a failure lays, as on the character beside them.
+        lays: {
+          spell: plan?.conditions.length && conditionMeta ? { conditions: plan.conditions, meta: conditionMeta } : null,
+          use: plan ? null : enemyUse,
+          named: input.named ?? null,
+        },
       });
       if (pets && results[index]) {
         results[index].pets = pets;

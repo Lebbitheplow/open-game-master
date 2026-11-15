@@ -27,7 +27,7 @@ import { publishWithSeq } from "@/lib/events";
 import { rollAgainst } from "@/lib/roll-labels";
 import { canEnemyAct } from "@/lib/dm/can-act";
 import { sideOf } from "@/lib/dm/combatant";
-import { attackContext, mergeAdvantage } from "@/lib/dm/condition-logic";
+import { attackContext, effectiveSpeed, mergeAdvantage } from "@/lib/dm/condition-logic";
 import { fearAsRolled } from "@/lib/dm/attack-light";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { effectOutcome } from "@/lib/dm/effect-tools";
@@ -46,10 +46,15 @@ import type { SheetPet } from "@/lib/schemas/sheet";
 type XY = { x: number; y: number };
 
 // Whether the pet's walk with its owner provokes: not while it flies by
-// (Flyby, with a flying speed to fly by on) or has Disengaged.
+// (Flyby, with a flying speed to fly by on) or has Disengaged, and not when
+// it never walked: a pet held where it is (paralyzed, restrained, grappled:
+// speed 0, SRD 5.1 Conditions) stays behind as its owner goes.
 export function petProvokes(pet: SheetPet): boolean {
   const flies = Boolean(pet.fly) || /\bfly \d+ ft\b/i.test(pet.notes ?? "");
   if (flies && /\bflyby\b/i.test(pet.notes ?? "")) {
+    return false;
+  }
+  if (effectiveSpeed(pet.conditions ?? [], Math.max(pet.speed, pet.fly ?? 0, 5), true) === 0) {
     return false;
   }
   return pet.hp > 0 && !(pet.conditions ?? []).some((entry) => isConditionNamed(entry, "disengaging"));

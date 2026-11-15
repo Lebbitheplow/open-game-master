@@ -345,6 +345,40 @@ export type SetConditionArgs = {
   magical?: boolean;
 };
 
+// The instance a condition is laid with. Duration metadata: timed conditions
+// tick down at round wrap in combat and against the in-world clock outside it
+// (condition-tick.ts); save-ends conditions re-save server-side each round.
+// Minutes and hours become rounds so there is one unit to count down. A pet's
+// condition is laid with the same (pet-conditions.ts), so the two are timed
+// alike.
+export function incomingConditionMeta(
+  campaignId: string,
+  normalized: string,
+  args: SetConditionArgs,
+  options: { spellEffect?: ConditionMeta; currentHp: number },
+): ConditionMeta | undefined {
+  const rounds = conditionRoundsFrom(args);
+  const saveEnds =
+    args.saveAbility && args.saveDc ? { ability: args.saveAbility, dc: args.saveDc } : undefined;
+  const source = (args.sourceEnemyId ?? args.sourceCharacterId ?? "").trim().slice(0, 80);
+  // An effect's own meta says whether damage ends it; only a sleep laid by
+  // name has the rule to go by.
+  const wakes = !options.spellEffect && wakesOnDamage(normalized, options.currentHp);
+  // A count with no combatant to count it is counted on the turn it began
+  // on (condition-logic.ts countsOn), not at the round's wrap.
+  const countsOn = rounds && !options.spellEffect?.source ? turnCounterFor(campaignId, source || undefined) : undefined;
+  return rounds || saveEnds || source || options.spellEffect || wakes
+    ? {
+        ...(rounds ? { rounds } : {}),
+        ...(saveEnds ? { saveEnds } : {}),
+        ...(source ? { source } : {}),
+        ...(countsOn ? { countsOn } : {}),
+        ...(options.spellEffect ?? {}),
+        ...(wakes ? { endsOnDamage: true } : {}),
+      }
+    : undefined;
+}
+
 export function handleSetCondition(
   campaign: Campaign,
   turnId: string,
@@ -393,31 +427,10 @@ export function handleSetCondition(
       refused: "rules",
     };
   }
-  // Duration metadata: timed conditions tick down at round wrap in combat
-  // and against the in-world clock outside it (condition-tick.ts); save-ends
-  // conditions re-save server-side each round. Minutes and hours become
-  // rounds so there is one unit to count down.
   const rounds = conditionRoundsFrom(args);
   const saveEnds =
     args.saveAbility && args.saveDc ? { ability: args.saveAbility, dc: args.saveDc } : undefined;
-  const source = (args.sourceEnemyId ?? args.sourceCharacterId ?? "").trim().slice(0, 80);
-  // An effect's own meta says whether damage ends it; only a sleep laid by
-  // name has the rule to go by.
-  const wakes = !options?.spellEffect && wakesOnDamage(normalized, sheet.currentHp);
-  // A count with no combatant to count it is counted on the turn it began
-  // on (condition-logic.ts countsOn), not at the round's wrap.
-  const countsOn = rounds && !options?.spellEffect?.source ? turnCounterFor(campaign.id, source || undefined) : undefined;
-  const incoming: ConditionMeta | undefined =
-    rounds || saveEnds || source || options?.spellEffect || wakes
-      ? {
-          ...(rounds ? { rounds } : {}),
-          ...(saveEnds ? { saveEnds } : {}),
-          ...(source ? { source } : {}),
-          ...(countsOn ? { countsOn } : {}),
-          ...(options?.spellEffect ?? {}),
-          ...(wakes ? { endsOnDamage: true } : {}),
-        }
-      : undefined;
+  const incoming = incomingConditionMeta(campaign.id, normalized, args, { spellEffect: options?.spellEffect, currentHp: sheet.currentHp });
   const meta = sheet.conditionMeta as ConditionMetaMap;
   const already = sheet.conditions.includes(normalized);
 

@@ -17,8 +17,10 @@ export const PET_SAVE_ABILITIES: readonly SaveAbility[] = ["str", "dex", "con", 
 export type PetSaveMods = Record<SaveAbility, number>;
 
 // What a pet's save is made from: a bonus for each ability, and the lines of
-// its block a save reads (Magic Resistance, Evasion).
-export type PetSaveBlock = { saveMods: PetSaveMods; traits: readonly string[]; from: string };
+// its block a save reads (Magic Resistance, Evasion). With them the
+// conditions the block shrugs off ("poisoned" for an imp), which keep a
+// failed save's condition off it (pet-conditions.ts).
+export type PetSaveBlock = { saveMods: PetSaveMods; traits: readonly string[]; from: string; conditionImmune?: string };
 
 const modifier = (score: number | undefined) => Math.floor(((score ?? 10) - 10) / 2);
 
@@ -64,7 +66,7 @@ export const hasEvasion = (traits: readonly string[]) => traitNamed(traits, /^ev
 // die (a Bless the ranger's Share Spells gave it), and Magic Resistance leans
 // a save against magic. One merge, so any advantage and any disadvantage
 // cancel whatever their counts.
-export function petSaveShape(input: { block: PetSaveBlock; conditions: readonly string[]; ability: SaveAbility; magical: boolean }): {
+export function petSaveShape(input: { block: PetSaveBlock; conditions: readonly string[]; ability: SaveAbility; magical: boolean; advantage?: boolean }): {
   autoFail: boolean;
   bonus: number;
   advantage: AdvantageState;
@@ -81,7 +83,7 @@ export function petSaveShape(input: { block: PetSaveBlock; conditions: readonly 
   return {
     autoFail: false,
     bonus: input.block.saveMods[input.ability] ?? 0,
-    advantage: mergeAdvantage([...derivation.sources, ...riders.advantageSources, ...(resists ? ["advantage" as const] : [])]),
+    advantage: mergeAdvantage([...derivation.sources, ...riders.advantageSources, ...(resists || input.advantage ? ["advantage" as const] : [])]),
     diceSuffix: riders.diceSuffix,
     notes: [...derivation.notes, ...riders.notes, ...(resists ? ["Magic Resistance: advantage against magic"] : [])],
   };

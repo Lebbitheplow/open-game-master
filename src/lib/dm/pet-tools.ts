@@ -25,7 +25,10 @@ import { landBlow } from "@/lib/dm/pc-attack-damage";
 import { badArguments, noneNamed, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCoverError } from "@/lib/dm/swallow";
 import { buildPet, defenseWords, DRAKE_ESSENCES, petCreatureType } from "@/lib/dm/pet-build";
-import { attackContext } from "@/lib/dm/condition-logic";
+import { attackContext, incapacitatedBy, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { charmedBy } from "@/lib/dm/enemy-profile";
+import { rollPetSave } from "@/lib/dm/pet-save-roll";
+import { settleOnDamage } from "@/lib/dm/spell-effects";
 import { damageAdjust } from "@/lib/dm/damage-logic";
 import { findTableMonster } from "@/lib/bestiary/homebrew-monsters";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
@@ -283,6 +286,13 @@ export function handlePetAttack(
   if (pet.hp <= 0) {
     return { error: `${pet.name} is down; it cannot attack.`, refused: "rules" };
   }
+  // SRD 5.1, Conditions: an incapacitated creature "can't take actions or
+  // reactions" (paralyzed, stunned, unconscious, petrified are incapacitated
+  // too). A familiar held by Hold Monster went on biting.
+  const stopped = incapacitatedBy(pet.conditions ?? []);
+  if (stopped) {
+    return { error: `${pet.name} is ${stopped} and cannot attack. Nothing was spent.`, refused: "rules" };
+  }
   if (!pet.attacks.length) {
     return {
       error:
@@ -327,6 +337,10 @@ export function handlePetAttack(
   const tooFar = petReachProblem(encounter.id, sheet, pet.name, attack, { id: enemy.id, name: enemy.displayName });
   if (tooFar) {
     return tooFar;
+  }
+  // SRD 5.1, Charmed: "can't attack the charmer".
+  if (charmedBy(pet.conditions ?? [], (pet.conditionMeta ?? {}) as ConditionMetaMap, enemy.id)) {
+    return { error: `${pet.name} is charmed by ${enemy.displayName} and cannot attack it. Nothing was spent.`, refused: "rules" };
   }
   if (attack.proneTargetsOnly && !enemy.conditions.includes("prone")) {
     return { error: `${pet.name}'s ${attack.name} strikes only a prone creature, and ${enemy.displayName} is not prone. Nothing was spent.`, refused: "rules" };
@@ -526,7 +540,15 @@ export function hurtPet(
       vanished: `${current.name} drops and dissolves into shimmering mist. ${sheet.name} can resummon it by casting Find Familiar again (10 gp of incense, one hour).`,
     };
   }
-  const pets = sheet.pets.map((entry, index) => (index === at ? { ...entry, hp } : entry));
+  // A hurt creature wakes from Sleep, and gets the save Hideous Laughter
+  // gives when it takes damage: what the effect's instance says, read as a
+  // character's is (spell-effects.ts settleOnDamage), the save its own.
+  const settled = dealt > 0 && current.conditions?.length
+    ? settleOnDamage(current.conditions, (current.conditionMeta ?? {}) as ConditionMetaMap, (entry, name) =>
+        Boolean(entry.saveOnDamage) && rollPetSave(campaign, null, sheet, current, { ability: entry.saveOnDamage!.ability, dc: entry.saveOnDamage!.dc, magical: Boolean(entry.spell), source: name, advantage: entry.saveOnDamage!.advantage, detail: `${current.name}: ${entry.saveOnDamage!.ability.toUpperCase()} save to end ${name}, hurt` }).success)
+    : null;
+  const ended = settled?.changed ? (current.conditions ?? []).filter((name) => !settled.conditions.includes(name)) : [];
+  const pets = sheet.pets.map((entry, index) => (index === at ? { ...entry, hp, ...(settled?.changed ? { conditions: settled.conditions, conditionMeta: settled.meta } : {}) } : entry));
   patchSheet(sheet.id, { pets });
   publishSheet(campaign, sheet.id);
   // Damage to a pet is the trigger its owner's reaction answers (a drake's
@@ -542,6 +564,7 @@ export function hurtPet(
     ...defended,
     hp: `${hp}/${current.maxHp}`,
     ...(hp <= 0 ? { down: `${current.name} falls unconscious at 0 HP.` } : {}),
+    ...(ended.length ? { conditionEnded: `${current.name} is no longer ${ended.join(" or ")}.` } : {}),
   };
 }
 

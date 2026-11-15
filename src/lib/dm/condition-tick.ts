@@ -22,9 +22,11 @@ import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { rollCharacterSave, rollEnemySave } from "@/lib/dm/forced-save";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
+import { endPetTurnStartHolds, tickPetConditions } from "@/lib/dm/pet-conditions";
 import {
   ROUNDS_PER_MINUTE,
   effectiveMaxHp,
+  endInstancesBoundTo,
   incapacitatedBy,
   instanceIdentity,
   instancesOf,
@@ -242,6 +244,8 @@ export function endTurnBoundAtFightEnd(campaign: Campaign): void {
       delta: { ended: tick.expired, added: [] },
     });
   }
+  // The pets' too, which wait on their owners' turns (pet-conditions.ts).
+  tickPetConditions(campaign, 0, [], { endTurnBound: true, saves: () => false });
 }
 
 // The rounds a creature stays senseless from now: none awake, its
@@ -392,6 +396,7 @@ export function endTurnStartHolds(campaign: Campaign, encounterId: string, start
       delta: { ended: ending, added: [] },
     });
   }
+  endPetTurnStartHolds(campaign, starting);
   return enemiesChanged;
 }
 
@@ -845,6 +850,16 @@ function tickSheetConditions(
       lines.push(finished);
     }
   }
+  // The pets beside them, whose turn is their owner's (pet-conditions.ts):
+  // the same counts, and their saves as their owner's turn ends. Before, a
+  // condition on a pet had no clock at all.
+  tickPetConditions(campaign, by, lines, {
+    endTurnBound: options?.endTurnBound,
+    counts: options?.counts,
+    saves: options?.saves,
+    only: options?.only,
+    due: options?.due ? (ownerId, name, key, dc) => options.due!(ownerId, holdKey(ownerId, name, key, dc)) : undefined,
+  });
 }
 
 // These combatants' turns have ended: each makes the saves its save-ends
@@ -879,34 +894,6 @@ export function endTurnSaves(
     });
     noteAtTable(campaign.id, lines);
   }
-}
-
-// The instances that end because these combatants' turns are starting
-// (Dodge, Shield, the Protection style: untilTurnOf). A condition another
-// source still holds stays.
-function endInstancesBoundTo(
-  conditions: string[],
-  meta: ConditionMetaMap,
-  starting: Set<string>,
-): { conditions: string[]; meta: ConditionMetaMap; ended: string[]; changed: boolean } {
-  let nextConditions = conditions;
-  let nextMeta = meta;
-  const ended: string[] = [];
-  let changed = false;
-  for (const name of conditions) {
-    const result = removeConditionInstances(nextConditions, nextMeta, name, (instance) =>
-      Boolean(instance.untilTurnOf && starting.has(instance.untilTurnOf)),
-    );
-    if (result.removed) {
-      changed = true;
-      nextConditions = result.conditions;
-      nextMeta = result.meta;
-      if (result.ended) {
-        ended.push(name);
-      }
-    }
-  }
-  return { conditions: nextConditions, meta: nextMeta, ended, changed };
 }
 
 function noteAtTable(campaignId: string, lines: string[]) {

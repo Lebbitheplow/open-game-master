@@ -367,6 +367,35 @@ export function removeConditionInstances(
   return { conditions, meta: nextMeta, ended: false, removed: list.length - kept.length };
 }
 
+// The instances that end because these combatants' turns are starting
+// (Dodge, Shield, the Protection style: untilTurnOf). A condition another
+// source still holds stays. The pointer runs it over the creatures' rows, the
+// sheets and the pets (condition-tick.ts endTurnStartHolds, pet-conditions.ts).
+export function endInstancesBoundTo(
+  conditions: string[],
+  meta: ConditionMetaMap,
+  starting: Set<string>,
+): { conditions: string[]; meta: ConditionMetaMap; ended: string[]; changed: boolean } {
+  let nextConditions = conditions;
+  let nextMeta = meta;
+  const ended: string[] = [];
+  let changed = false;
+  for (const name of conditions) {
+    const result = removeConditionInstances(nextConditions, nextMeta, name, (instance) =>
+      Boolean(instance.untilTurnOf && starting.has(instance.untilTurnOf)),
+    );
+    if (result.removed) {
+      changed = true;
+      nextConditions = result.conditions;
+      nextMeta = result.meta;
+      if (result.ended) {
+        ended.push(name);
+      }
+    }
+  }
+  return { conditions: nextConditions, meta: nextMeta, ended, changed };
+}
+
 const INCAPACITATING = ["incapacitated", "paralyzed", "stunned", "unconscious", "petrified"];
 // Each of these says "can't move" (or speed 0) in its own text (SRD 5.1,
 // Conditions); bare "incapacitated" takes actions and reactions only.

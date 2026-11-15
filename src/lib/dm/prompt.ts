@@ -598,6 +598,17 @@ function companionCommandNote(campaign: Campaign, sheet: CharacterSheet, command
   return `; in fights ${name} commands them: on their turn wait for ${name}'s orders and resolve them as a player's`;
 }
 
+// A condition with what is left of it: its count, or the save that ends it.
+function conditionWords(condition: string, meta: { rounds?: number; saveEnds?: { ability: string; dc: number } } | undefined): string {
+  if (meta?.rounds) {
+    return `${condition} (${describeConditionDuration(meta.rounds)} left)`;
+  }
+  if (meta?.saveEnds) {
+    return `${condition} (save ends: ${meta.saveEnds.ability.toUpperCase()} DC ${meta.saveEnds.dc})`;
+  }
+  return condition;
+}
+
 export function describeSheet(
   sheet: CharacterSheet,
   playedBy: string,
@@ -768,8 +779,11 @@ export function describeSheet(
       : " Cannot attack.";
     // What it shrugs off, so the damage the DM routes at it carries a type.
     const defenses = defenseWords(pet);
+    // What holds it, as a character's conditions read: a paralyzed familiar
+    // read as free, and the GM played it so.
+    const held = (pet.conditions ?? []).map((condition) => conditionWords(condition, pet.conditionMeta?.[condition]));
     lines.push(
-      `  Pet: ${pet.name} (${pet.form}, ${pet.creatureType ? `a ${pet.creatureType} ` : ""}${pet.kind.replaceAll("_", " ")}): ${pet.hp}/${pet.maxHp} HP, AC ${pet.ac}, speed ${pet.speed} ft.${attacks}${defenses ? ` Defenses: ${defenses}.` : ""}${pet.notes ? ` ${pet.notes}` : ""}`,
+      `  Pet: ${pet.name} (${pet.form}, ${pet.creatureType ? `a ${pet.creatureType} ` : ""}${pet.kind.replaceAll("_", " ")}): ${pet.hp}/${pet.maxHp} HP, AC ${pet.ac}, speed ${pet.speed} ft.${attacks}${defenses ? ` Defenses: ${defenses}.` : ""}${held.length ? ` Conditions: ${held.join(", ")}.` : ""}${pet.notes ? ` ${pet.notes}` : ""}`,
     );
   }
   // A creature a spell made: its stat block's attacks and how it ends
@@ -815,13 +829,7 @@ export function describeSheet(
           return `readied: ${READIED_WORDS[held.holds]}${held.spell ? ` (${held.spell})` : ""}, for when ${held.trigger}; you judge the trigger and release it off their turn with ${RELEASE_TOOLS[held.holds]}`;
         }
       }
-      if (meta?.rounds) {
-        return `${condition} (${describeConditionDuration(meta.rounds)} left)`;
-      }
-      if (meta?.saveEnds) {
-        return `${condition} (save ends: ${meta.saveEnds.ability.toUpperCase()} DC ${meta.saveEnds.dc})`;
-      }
-      return condition;
+      return conditionWords(condition, meta);
     });
     lines.push(`  Conditions: ${described.join(", ")}`);
     // Effect conditions (Bless, Haste, Starry Form...) carry enforced
