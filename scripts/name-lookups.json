@@ -1837,7 +1837,7 @@
     "lib/dm/last-hit.ts#whole": [["identity",2,"condition instances by whole name or key"],["key",4,"turn keys, a revert's undo entries by turn"]],
     "lib/dm/last-hit.ts#whole-single": [["key",2,"turn keys"]],
     "lib/dm/last-save.ts#whole": [["key",1,"turn keys and record ids"]],
-    "lib/dm/learn-rules.ts#whole": [["identity",1,"a spell by whole name"],["identity",1,"a savant's feature named whole through textKey: the school's name and the word Savant (SRD feature names)"]],
+    "lib/dm/learn-rules.ts#whole": [["identity",1,"a spell by whole name"],["identity",1,"a savant's feature named whole through textKey: the school's name and the word Savant (SRD feature names)"],["identity",1,"a carried scroll by the spell it holds (textKey on both sides), the one a wizard copies from"]],
     "lib/dm/learn-rules.ts#partial": [["identity",1,"a granted cantrip by its whole name (textKey on both sides), outside the cap"]],
     "lib/dm/legendary-logic.ts#number": [["key",2,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/dm/legendary-logic.ts#partial": [["pattern",3,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["key",2,"ODM's English list of effects worth resisting, over SRD condition names"]],
