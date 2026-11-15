@@ -2951,6 +2951,19 @@ button.cine-chronicle-earlier:focus-visible { outline: 2px solid #f4e0a6; outlin
   .cine-fight-board[data-hand-on-board] .board-corner { bottom: max(0px, calc(var(--hand-foot, 0px) - 0.75rem)); transition: bottom var(--dur-move) var(--ease-settle); }
   .cine-fight-board[data-hand-on-board] .board-keys-strip,
   .cine-fight-board[data-hand-on-board] .board-foot-note { bottom: calc(var(--hand-foot, 0px) - 0.25rem); transition: bottom var(--dur-move) var(--ease-settle); }
+  /* On a laptop the strip of board above the cards is low (data-foot-band,
+     useBoardCamera.ts). End turn stood over the camera's row there, on the
+     turn's own plate or cut by the board's top edge: it takes its place in
+     the row, to the row's left. */
+  .cine-fight-board[data-foot-band] .board-corner { display: flex; justify-content: flex-end; align-items: flex-end; gap: 0.5rem; padding: 0 0.5rem 0.125rem; }
+  .cine-fight-board[data-foot-band] .board-corner > * { position: relative; inset: auto; }
+  /* The Hand's hint is a second sentence beside its heading. On a narrow
+     board it pushed the pips and Hide to a second row, and the Hand stood
+     21px further up the map for it. */
+  .cine-fight-hand .hand > :first-child { container: hand-head / inline-size; }
+  @container hand-head (max-width: 46rem) {
+    .cine-fight-hand .hand-hint { display: none; }
+  }
   @media (prefers-reduced-motion: reduce) {
     .cine-fight-board[data-hand-on-board] :is(.board-corner, .board-keys-strip, .board-foot-note),
     .cine-fight-hand::before,
@@ -2963,6 +2976,11 @@ button.cine-chronicle-earlier:focus-visible { outline: 2px solid #f4e0a6; outlin
    are the one place the order is in words. */
 @media (min-width: 1180px) {
   .cine-stage:has(.cine-ribbon) .cine-chat-staged .cine-fight-board .board-order-strip { display: none; }
+  /* The board's own plates are those faces a third time. Where the strip
+     above the cards is too low to hold them they lay under the Hand's
+     heading, so the ribbon shows the faces there and the board keeps the
+     round's line, which is still the button that opens the order. */
+  .cine-stage:has(.cine-ribbon) .cine-fight-board[data-foot-band="tight"] .board-view [data-tour="battle-initiative"] > :last-child { display: none; }
 }
 .cine-fight-controls { display: contents; }
 .cine-fight { display: flex; flex: 1; min-height: 0; gap: 12px; padding: 12px 12px 4px; }
