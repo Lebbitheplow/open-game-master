@@ -217,6 +217,12 @@ const CLASSIFIED = {
   "src/lib/dm/npc-mind.ts": { prose: 1, machine: 0 },
   "src/lib/dm/renarrate.ts": { prose: 1, machine: 0 },
   "src/lib/dm/narration-guard.ts": { prose: 1, machine: 0 },
+  // The body-state read of a narration (src/lib/dm/npc-state-guard.ts): a
+  // JSON list of who the prose holds, frees or downs, read by the server.
+  "src/lib/dm/npc-state-guard.ts": { prose: 0, machine: 1 },
+  // The knowledge read of voiced lines (src/lib/dm/voice-knowledge.ts): a
+  // JSON list of quotes that say what the speaker could not know.
+  "src/lib/dm/voice-knowledge.ts": { prose: 0, machine: 1 },
   // A delegated monster turn's narration (buildDmSystem) and its decision,
   // a JSON pick of action and target.
   "src/lib/dm/delegate.ts": { prose: 1, machine: 1 },
