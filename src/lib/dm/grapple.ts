@@ -23,6 +23,7 @@ import { holdsFeat } from "@/lib/srd/feat-effects";
 import { genreEscapeAdvantage, genreGripDisadvantage } from "@/lib/srd/genre-b-combat";
 import { characterNetEscape, enemyNetEscape, netHolds } from "@/lib/dm/net-hold";
 import { characterTrapEscape, trapHoldOn } from "@/lib/dm/trap-escape";
+import { enemyTrapEscape } from "@/lib/dm/enemy-trap";
 import { characterExtinguish, enemyBurning, enemyExtinguish, sheetBurning } from "@/lib/dm/gear-weapon-hit";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
@@ -211,12 +212,15 @@ export function enemyEscape(
       saveEncounter(encounter);
       return enemyExtinguish(campaign, turn, enemy);
     }
-    // A net's hold (net-hold.ts): the action and a DC 10 Strength check.
+    // A net's hold (net-hold.ts): the action and a DC 10 Strength check. A
+    // trap's (a hunting trap's jaws): the trap's own check (enemy-trap.ts).
     return enemySpellHold(campaign, enemy)
       ? enemySpellEscape(campaign, turn, enemy)
       : netHolds(enemy)
         ? enemyNetEscape(campaign, turn, enemy)
-        : { error: `${enemy.displayName} is not grappled; there is nothing to escape.`, retry: true };
+        : trapHoldOn(campaign, enemy)
+          ? enemyTrapEscape(campaign, turn, enemy)
+          : { error: `${enemy.displayName} is not grappled; there is nothing to escape.`, retry: true };
   }
   const allowed = canEnemyAct({ enemy, encounter, kind: "action" });
   if (!allowed.ok) {

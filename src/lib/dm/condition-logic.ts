@@ -359,7 +359,10 @@ export function removeConditionInstances(
 const INCAPACITATING = ["incapacitated", "paralyzed", "stunned", "unconscious", "petrified"];
 // Each of these says "can't move" (or speed 0) in its own text (SRD 5.1,
 // Conditions); bare "incapacitated" takes actions and reactions only.
-const SPEED_ZERO = ["grappled", "restrained", "paralyzed", "stunned", "unconscious", "petrified"];
+// A hunting trap's jaws too (src/lib/srd/trap-specs.ts): the creature
+// caught must "stop moving", held after by a chain "typically 3 feet long",
+// so it cannot leave its square; it walked off with the trap on its leg.
+const SPEED_ZERO = ["grappled", "restrained", "paralyzed", "stunned", "unconscious", "petrified", "caught in a hunting trap"];
 const AUTO_FAIL_STR_DEX = ["paralyzed", "stunned", "unconscious", "petrified"];
 // Attacks against these have advantage. Each of them says so in its own
 // text; bare "incapacitated" only takes away actions and reactions.

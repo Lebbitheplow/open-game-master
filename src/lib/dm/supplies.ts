@@ -36,13 +36,16 @@ import { listSheets } from "@/lib/db/sheets";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { exhaustionPatch } from "@/lib/dm/vitals-logic";
 import { abilityMod } from "@/lib/srd";
+import { computeAbilityScore } from "@/lib/dm/roll-riders";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import { hasItemTag } from "@/lib/srd/item-tags";
 
 // How many days a character can go without food before each further day
-// costs a level of exhaustion.
-export function daysWithoutFood(sheet: Pick<CharacterSheet, "abilities">): number {
-  return Math.max(1, 3 + abilityMod(sheet.abilities.con));
+// costs a level of exhaustion: 3 + the Constitution modifier, at least 1,
+// from the score an item sets or raises (an Amulet of Health's 19). The
+// sheet's own score once counted alone, so the amulet bought no extra day.
+export function daysWithoutFood(sheet: Pick<CharacterSheet, "abilities" | "equipment">): number {
+  return Math.max(1, 3 + abilityMod(computeAbilityScore({ abilities: sheet.abilities, equipment: sheet.equipment }, "con")));
 }
 
 // One day's upkeep for one character: what they ate from the pack, whether
