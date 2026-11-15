@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
-import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
+import { combatKit, d20Faces, TRAINED } from "./lib/enforce-combat.mjs";
 
 const { test, finish } = suite("test-audit1115-checks");
 const world = await openWorld({ campaign: { maxPlayers: 30 } });
@@ -204,6 +204,34 @@ await test("K05: on a battle map a check by sight reads the light on the charact
   clearLitTilesCache();
   assert.equal(resolved(human.id, look).expression, "2d20kl1", "dim light: disadvantage on Perception by sight");
   assert.equal(resolved(dwarf.id, look).expression, "1d20", "darkvision sees dim light as bright");
+  await kit.endFight();
+});
+
+// K06. SRD 5.1, Gnome Cunning: "advantage on all Intelligence, Wisdom, and
+// Charisma saving throws against magic"; Hold Person: "At the end of each of
+// its turns, the target can make another Wisdom saving throw." The repeat
+// save is a save against the same spell. An enemy's repeat save was told the
+// hold was a spell (Magic Resistance kept its advantage); a character's was
+// not, so Gnome Cunning, Magic Resistance and the cloaks and robes that ward
+// against spells helped with the first save and never with the ones after.
+await test("K06: a character's save to end a spell's hold at the end of their turn is a save against magic", async () => {
+  await kit.endFight();
+  const gnome = world.addHero({
+    class: "wizard", level: 3, race: "gnome", abilities: { wis: 10 },
+    features: [{ name: "Gnome Cunning", source: "race" }], proficiencies: { ...TRAINED },
+  });
+  const [enemy] = (await kit.fight(1), world.enemies());
+  kit.setEnemy(enemy.id, { stats: { spells: ["Hold Person"], type: "humanoid", abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 14, cha: 10 } } });
+  enemyHoldsTheFloor();
+  const held = await forced([2, 3], () => world.invoke("cast_at_player", { characterId: gnome.id, casterEnemyId: enemy.id, spell: "Hold Person", level: 2, saveAbility: "wis", dc: 13, condition: "paralyzed" }));
+  assert.equal(held.ok, true, held.error);
+  assert.equal(d20Faces(kit.lastRolls(1)[0]).length, 2, "the staging: Gnome Cunning on the first save");
+  assert.ok(world.sheet(gnome.id).conditions.includes("paralyzed"), "the staging: the hold took");
+  const { endTurnSaves } = await import("../src/lib/dm/condition-tick.ts");
+  await forced([2, 3], () => endTurnSaves(world.campaign(), world.encounter(), [gnome.id]));
+  const again = kit.lastRolls(1)[0];
+  assert.equal(again.kind, "saving_throw");
+  assert.equal(d20Faces(again).length, 2, `Gnome Cunning on the save to end Hold Person: ${again.detail}`);
   await kit.endFight();
 });
 

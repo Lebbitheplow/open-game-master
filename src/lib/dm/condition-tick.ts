@@ -55,7 +55,9 @@ import { CASTING, castingOf } from "@/lib/dm/long-casting-logic";
 import { sweepSummons } from "@/lib/dm/summon-store";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
-import { listedAgainst } from "@/lib/dm/roll-about";
+import { listedAgainst, saveAgainst } from "@/lib/dm/roll-about";
+import { spellSchoolFor } from "@/lib/content";
+import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 import { withinFeet } from "@/lib/dm/authored-saves";
@@ -729,7 +731,8 @@ function tickSheetConditions(
       }
       // A hold that lets the character pick its save (Nature's Wrath).
       const due = listed.or ? { ...listed, ability: likelierSave(conditions, listed.ability, listed.or, listed.dc, (each) => computeSheetDerived(sheet).saves[each]) } : listed;
-      if (heldClose(options?.encounter, sheet.id, instancesOf((meta as ConditionMetaMap)[due.name]).find((instance) => instanceIdentity(instance) === due.key && instance.saveEnds?.dc === due.dc))) {
+      const holding = instancesOf((meta as ConditionMetaMap)[due.name]).find((instance) => instanceIdentity(instance) === due.key && instance.saveEnds?.dc === due.dc);
+      if (heldClose(options?.encounter, sheet.id, holding)) {
         continue;
       }
       const effect = effectOf(listed);
@@ -748,6 +751,13 @@ function tickSheetConditions(
       // die, a halfling's Lucky, and the traits keyed to what it resists
       // (Brave against fear, Fey Ancestry against charm).
       const heldBefore = new Set(getSheetById(sheet.id)?.conditions ?? sheet.conditions);
+      // A spell's hold is a save against that spell, as its first save was
+      // (cast-at-player.ts): Gnome Cunning, Magic Resistance and a Mantle of
+      // Spell Resistance answer it, and so do the traits keyed to the
+      // caster's type and the spell's school. An enemy's repeat save was
+      // told so; a character's was not, so those traits helped with the
+      // first save against Hold Person and none after (finding K06).
+      const forcer = forcerOf(due.key);
       const save = rollCharacterSave(
         campaign,
         null,
@@ -755,9 +765,11 @@ function tickSheetConditions(
         due.ability,
         due.dc,
         `${due.ability.toUpperCase()} save to end ${due.name}`,
-        { against: listedAgainst(due.name) },
+        holding?.spell
+          ? saveAgainst({ condition: due.name, magical: true, spellBy: forcer?.stats?.type, school: spellSchoolFor(holding.spell, spellAuthorsFor(campaign)) })
+          : { against: listedAgainst(due.name) },
         // The creature whose effect it is (its source), which forced it.
-        forcerOf(due.key),
+        forcer,
       );
       // A carrier the save spent (an inspiration die) is gone from the
       // stored sheet; the conditions this tick writes back must not restore it.
