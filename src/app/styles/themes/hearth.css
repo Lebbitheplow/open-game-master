@@ -77,3 +77,32 @@ html[data-appearance="hearth"] :is(.ornate::before, .ornate::after) {
   border-style: double;
   border-radius: 3px;
 }
+
+/* The hand stays over the dark map painting even when surrounding paper is
+   light. Keep the player's label bright; monster-hand semantic red is separate. */
+html[data-appearance="hearth"] .cine-fight-hand [data-tour="battle-hand"] .hand-label {
+  color: #f7dfae;
+}
+
+/* The shared phone grid predates the leading Back link. Give that link its
+   own column so a wrapped title cannot paint over its arrow or touch target. */
+@media (max-width: 639px) {
+  html[data-appearance="hearth"][data-theme-ornaments="true"][data-theme] .theme-table header.cine-header {
+    grid-template-columns: 2.5rem minmax(0, 1fr);
+    padding-left: 16px;
+  }
+  html[data-appearance="hearth"] .theme-table .cine-header > a:first-child {
+    grid-column: 1;
+    grid-row: 1;
+    margin-left: 0;
+  }
+  html[data-appearance="hearth"] .theme-table .cine-header > div:nth-child(2) {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+  }
+  html[data-appearance="hearth"] .theme-table .cine-header > div:last-child {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
