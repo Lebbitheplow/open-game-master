@@ -22,6 +22,7 @@ import {
   setNpcAway,
   setNpcInspiration,
   setNpcTier,
+  npcVoicedLines,
 } from "@/lib/db/npc-minds";
 import { requestUtilityMessage } from "@/lib/dm/model";
 import { seatForMind } from "@/lib/db/mind-seats";
@@ -663,6 +664,9 @@ const pastSchema = z.object({
 
 export { MAX_FIRST_TIER_NPCS };
 
+// How many of their own voiced lines a character promoted mid-story keeps.
+const PROMOTION_LINES = 12;
+
 // npc_past: who someone was before play, laid down before they first act.
 // Refused once they have lived anything, so a companion cannot suddenly
 // have written letters to a victim the party is investigating.
@@ -695,7 +699,22 @@ export function handleNpcPast(campaign: Campaign, rawArguments: string): ToolRes
         refused: "limit",
       };
     }
+    const promoted = args.firstTier && tierOfNpc(npc) !== "primary";
     setNpcTier(npc.id, args.firstTier ? "primary" : "secondary");
+    // Promoted in the middle of the story: the mind remembers what the
+    // narrator had them say, in their own words, as it remembers what they
+    // saw and were told. Without it a captain promoted after a long road at
+    // the hero's side would not know a word she had spoken.
+    if (promoted) {
+      const known = new Set(memories.map((memory) => textKey(memory.content)));
+      const now = nowInstant(campaign.id);
+      for (const line of npcVoicedLines(campaign.id, npc.id, PROMOTION_LINES)) {
+        if (!known.has(textKey(line))) {
+          known.add(textKey(line));
+          addNpcMemories(campaign.id, [npc.id], { kind: "said", sourceKind: "self", sourceName: "", content: line, learnedAt: now }, currentTurnId() ?? "");
+        }
+      }
+    }
   }
   if (args.inspiration !== undefined) {
     setNpcInspiration(npc.id, args.inspiration);

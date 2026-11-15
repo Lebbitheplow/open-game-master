@@ -55,7 +55,7 @@ export const npcMindTools = [
     function: {
       name: "npc_past",
       description:
-        "Set a new NPC's past and the figure whose manner inspires them, before they first speak or act. A past cannot be added once they have lived part of the story. The inspiration lends temperament and voice only, never that figure's names, world or powers.",
+        "Set a new NPC's past and the figure whose manner inspires them, before they first speak or act, and their tier at any point of the story. A past cannot be added once they have lived part of the story. The inspiration lends temperament and voice only, never that figure's names, world or powers.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -65,7 +65,7 @@ export const npcMindTools = [
           past: { type: "array", items: { type: "string" }, description: "Facts of their life before play that they remember." },
           firstTier: {
             type: "boolean",
-            description: "True for a character the story hinges on (the prisoner, the rival, the patron, the one hiding the secret): they get their own mind and play like a player. At most as many as the table allows besides the party's companions (the rules say how many).",
+            description: "True for a character the story hinges on (the prisoner, the rival, the patron, the one hiding the secret): they get their own mind and play like a player. At most as many as the table allows besides the party's companions (the rules say how many). Set it whenever the story makes someone matter; false gives them back to you when their part is over.",
           },
         },
         required: ["name"],
@@ -80,5 +80,5 @@ export const NPC_MINDS_RULES =
   "A first-tier mind knows only what they perceived or were told: call npc_speak with what they perceive right now, then voice exactly what it returns; never write their lines yourself. Never give an NPC of either tier knowledge they have no source for: news reaches someone absent only through npc_inform, from a named source. Lay down a new NPC's past with npc_past before they first act; never invent a past relationship later. Their intent is an attempt: resolve it with the engine's tools. " +
   "A first-tier character apart from the party (left behind when it split) is still a player: when the story cuts to them, or reaches anyone from where they are, call npc_speak with away: true; when the party is back with them, call it without away and they rejoin. Either way they first live the time apart on the engine's dice: apply what they did to others with your usual tools before narrating. " +
   "In a fight, a first-tier companion nobody at the table commands chooses its own turn: when the initiative reaches it, call npc_speak first (the server gives it its own sheet and the fight as it sees it), then carry out exactly the intent it returns with the combat tools and end_turn; the server refuses that companion's actions until its mind has chosen. " +
-  "The few characters the story hinges on (whoever holds its secret, a prisoner, a rival, a patron) deserve their own minds: when one first appears, set them up with set_npc, then npc_past with their past and firstTier: true, before they first speak. Everyone else stays second tier. " +
+  "The few characters the story hinges on (whoever holds its secret, a prisoner, a rival, a patron) deserve their own minds: when one first appears, set them up with set_npc, then npc_past with their past and firstTier: true, before they first speak. Tiers follow the story: when a second-tier character grows into one the story hinges on (they become an ally at the heroes' side, a rival, the keeper of a lead), promote them with npc_past and firstTier: true alone (no past: they keep what they lived, and remember what you had them say); when a first-tier character's part is over (they leave the story for good, or it no longer turns on them), give them back to you with firstTier: false, which frees their place. " +
   "Every character in the world, first tier or second, friend or foe, wants above all to stay alive; their other goals come after. Play the foes and NPCs you voice that way: a thinking creature that is badly hurt, outnumbered or clearly losing retreats, hides, surrenders, bargains or flees (enemy_flees for one, end_encounter for a surrender or a rout) instead of fighting to the death. Only the mindless, the compelled, the cornered with no way out, or a nature that truly demands it (a zealot, a guardian bound to its post) fight on to the end.";
