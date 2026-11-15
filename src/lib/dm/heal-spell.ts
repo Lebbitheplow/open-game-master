@@ -422,7 +422,18 @@ export function returnToLife(
   const ordeal = rule.ordeal ? "returned from death (-4)" : null;
   const conditions = ordeal && !woke.conditions.includes(ordeal) ? [...woke.conditions, ordeal] : woke.conditions;
   const lifted = (before.exhaustion ?? 0) > exhaustion;
-  const patch = { deathSaves: null, currentHp: hp, conditions, conditionMeta: woke.conditionMeta, ...(lifted ? { exhaustion } : {}) };
+  // SRD 5.1, Attunement: "A creature's attunement to an item ends if ... the
+  // creature dies." Back among the living they attune again with a short
+  // rest; carried through, a revived hero's cloak still gave its +1.
+  const unattuned = before.equipment.some((item) => item.attuned || item.attuning)
+    ? before.equipment.map((item) => {
+        const { attuned: _held, attuning: _waiting, ...rest } = item;
+        void _held;
+        void _waiting;
+        return rest;
+      })
+    : null;
+  const patch = { deathSaves: null, currentHp: hp, conditions, conditionMeta: woke.conditionMeta, ...(lifted ? { exhaustion } : {}), ...(unattuned ? { equipment: unattuned } : {}) };
   const updated = patchSheet(fresh.id, patch);
   const entry = insertSheetAudit({
     campaignId: campaign.id,

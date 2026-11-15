@@ -113,4 +113,26 @@ await test("R04 for 24 hours after a Potion of Vitality every hit die spent heal
   assert.equal(table.sheet(fighter.id).currentHp, 10 + 3);
 });
 
+await test("R05 a character brought back from death is no longer attuned to anything", async () => {
+  // SRD 5.1, Attunement: "A creature's attunement to an item ends if ...
+  // the creature dies." Back from the dead, a hero attunes again with a
+  // short rest; the cloak's +1 does not come back with them.
+  const table = await openTable();
+  const cleric = table.addHero({
+    name: "Brother Tam", class: "cleric", level: 5, abilities: { wis: 16 },
+    spellcasting: { ability: "wis", slots: { 3: { max: 2, used: 0 } }, prepared: ["Revivify"], known: [], cantrips: [] },
+    equipment: [{ name: "Diamond", qty: 1, worth: 300 }, { name: "Component pouch", qty: 1 }],
+  });
+  const fallen = table.addHero({ name: "Lyra", equipment: [{ name: "Cloak of Protection", qty: 1, attuned: true, equipped: true }] });
+  assert.equal(table.sheet(fallen.id).equipment[0]?.attuned, true, "the cloak is stored attuned");
+  table.patch(fallen.id, { deathSaves: { successes: 0, failures: 3, stable: false, dead: true }, currentHp: 0 });
+  table.dice(4, 4);
+  const raised = await table.invoke("heal", { characterId: fallen.id, casterId: cleric.id, spell: "Revivify", level: 3 });
+  assert.equal(raised.ok, true, raised.error);
+  table.clearDice();
+  const cloak = table.sheet(fallen.id).equipment.find((item) => item.name === "Cloak of Protection");
+  assert.ok(cloak, "the cloak is still carried");
+  assert.equal(Boolean(cloak.attuned), false);
+});
+
 finish();
