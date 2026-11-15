@@ -85,6 +85,7 @@ const keyOf = (name: string) => textKey(name.trim().replace(/^\+\d\s+/, ""));
 type NamedRiders = {
   bonus?: number;
   skillBonus?: Record<string, number>;
+  lockBonus?: number;
   advantage?: string[];
   requiresAttunement: boolean;
   carried: boolean;
@@ -107,6 +108,8 @@ export function checkRidersNamed(name: string): NamedRiders | null {
     carried: row.carried === true,
     ...(row.bonus ? { bonus: row.bonus } : {}),
     ...(row.skillBonus ? { skillBonus: row.skillBonus } : {}),
+    // The gloves' lock: a copy kept their Sleight of Hand +5 alone.
+    ...(row.lockBonus ? { lockBonus: row.lockBonus } : {}),
     ...(row.advantage?.length ? { advantage: row.advantage } : {}),
   };
 }
@@ -120,7 +123,7 @@ function rowFor(name: string): CheckRiderRow | null {
 type CarriedItem = { name: string; srdName?: string; equipped?: boolean; attuned?: boolean; gear?: unknown };
 
 type RowGear = {
-  checks?: { bonus?: number; skillBonus?: Record<string, number>; advantage?: string[] };
+  checks?: { bonus?: number; skillBonus?: Record<string, number>; lockBonus?: number; advantage?: string[] };
   magic?: { requiresAttunement?: boolean; carried?: boolean };
 };
 
@@ -135,6 +138,7 @@ function homebrewRow(item: CarriedItem): CheckRiderRow | null {
   const bits = [
     checks.bonus ? `${checks.bonus >= 0 ? "+" : ""}${checks.bonus} to ability checks` : "",
     ...Object.entries(checks.skillBonus ?? {}).map(([skill, bonus]) => `${bonus >= 0 ? "+" : ""}${bonus} to ${skill.replace(/_/g, " ")} checks`),
+    checks.lockBonus ? `${checks.lockBonus >= 0 ? "+" : ""}${checks.lockBonus} to Dexterity checks to pick locks` : "",
     checks.advantage?.length ? `advantage on ${checks.advantage.map((skill) => skill.replace(/_/g, " ")).join(", ")} checks` : "",
   ].filter(Boolean);
   return {
@@ -143,6 +147,7 @@ function homebrewRow(item: CarriedItem): CheckRiderRow | null {
     ...(gear?.magic?.carried ? { carried: true } : {}),
     ...(checks.bonus ? { bonus: checks.bonus } : {}),
     ...(checks.skillBonus ? { skillBonus: checks.skillBonus } : {}),
+    ...(checks.lockBonus ? { lockBonus: checks.lockBonus } : {}),
     ...(checks.advantage?.length ? { advantage: checks.advantage } : {}),
     effect: `${item.name}: ${bits.join("; ")}`,
   };

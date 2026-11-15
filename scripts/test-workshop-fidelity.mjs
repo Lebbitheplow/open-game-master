@@ -45,7 +45,7 @@ const { armorOfRow, wornArmorTurnsCrits, SRD_ARMOR } = await import("../src/lib/
 const { SRD_WEAPONS } = await import("../src/lib/srd/weapons.ts");
 const { magicItemRiders, attunementProblem } = await import("../src/lib/srd/magic-items.ts");
 const { chargeRuleOf } = await import("../src/lib/srd/item-charge-rules.ts");
-const { itemCheckRiders } = await import("../src/lib/srd/item-check-riders.ts");
+const { itemCheckKeys, itemCheckRiders } = await import("../src/lib/srd/item-check-riders.ts");
 const { itemSpellsOfRow } = await import("../src/lib/srd/item-spells.ts");
 const { gearDefOfRow } = await import("../src/lib/srd/magic-gear.ts");
 const magicItemsJson = JSON.parse(fs.readFileSync(new URL("../src/lib/classes/magic-items.json", import.meta.url), "utf8"));
@@ -250,6 +250,10 @@ function engineView(row) {
       const out = itemCheckRiders(equipment, skill);
       return [out.bonus, out.advantage];
     }),
+    // A Dexterity check to pick a lock, with the tools or bare-handed (SRD
+    // 5.1 Gloves of Thievery), and whether the AI GM is asked what such a
+    // check is about: a copy kept the gloves' Sleight of Hand +5 alone.
+    locks: [itemCheckRiders(equipment, undefined, { ability: "dex", about: "locks" }).bonus, itemCheckKeys(equipment).length],
     spells: itemSpellsOfRow(row),
     cursed: Boolean(gearDefOfRow(row)?.cursed),
     attunes: attunementProblem({ ...row, attuned: false }, [], { ...WEARER, class: "fighter", spellcasting: null }) === null,

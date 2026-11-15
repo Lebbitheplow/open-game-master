@@ -102,10 +102,12 @@ export function itemMechanicsOf(row: Row): Record<string, unknown> | null {
   if (def?.cursed) {
     out.cursed = true;
   }
-  if (checks && (checks.bonus || checks.skillBonus || checks.advantage)) {
+  if (checks && (checks.bonus || checks.skillBonus || checks.lockBonus || checks.advantage)) {
     out.checks = {
       ...(checks.bonus ? { bonus: checks.bonus } : {}),
       ...(checks.skillBonus ? { skillBonus: checks.skillBonus } : {}),
+      // Gloves of Thievery's lock, which a copy otherwise lost.
+      ...(checks.lockBonus ? { lockBonus: checks.lockBonus } : {}),
       ...(checks.advantage ? { advantage: checks.advantage } : {}),
     };
   }
