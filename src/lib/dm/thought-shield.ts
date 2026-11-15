@@ -72,6 +72,14 @@ export function thoughtShieldBack(
   return { thoughtShield: `Thought Shield: ${enemy.displayName} takes the same ${taken} psychic damage ${sheet.name} took.` };
 }
 
+// A Thought Shield answer still waiting on a reaction (retort-wait.ts) deals
+// what the warlock takes of the blow as a reaction has now lessened it; none
+// left, it is gone.
+export function lessenWaitingPsychic(campaignId: string, held: CharacterSheet, waiting: WaitingAnswer[], now: Parameters<typeof psychicTaken>[2]): WaitingAnswer[] {
+  const taken = psychicTaken(campaignId, held, now);
+  return waiting.map((answer) => (answer.by === THOUGHT_SHIELD ? { ...answer, amount: Math.min(answer.amount, taken) } : answer)).filter((answer) => answer.amount > 0);
+}
+
 // A swing that still hits after a reaction lessened it (Uncanny Dodge's
 // half, Cutting Words off the damage): the warlock took less psychic, so the
 // creature takes less back. `was` and `now` are the blow before and after the

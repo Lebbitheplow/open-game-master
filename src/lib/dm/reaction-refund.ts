@@ -52,7 +52,7 @@ import {
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { AGATHYS, agathysAnew, giveShareBack, takeRetortBack } from "@/lib/dm/spell-retort";
 import { getDmTurn } from "@/lib/db/dm-turns";
-import { thoughtShieldLessened } from "@/lib/dm/thought-shield";
+import { lessenWaitingPsychic, thoughtShieldLessened } from "@/lib/dm/thought-shield";
 import { gripsBack } from "@/lib/dm/swallow";
 import { settleWaiting } from "@/lib/dm/retort-wait";
 import { joinRetorts, ridersBack, type RiderMark } from "@/lib/dm/retort-logic";
@@ -559,7 +559,7 @@ function retortsBack(campaign: Campaign, sheet: CharacterSheet, steps: Step[], n
   for (const step of steps) {
     const was = step.record.swings;
     step.corrected = step.corrected.map((swing, at) => {
-      if (was[at]?.hit && swing.hit && was[at].retort && swing.raw !== was[at].raw) {
+      if (was[at]?.hit && swing.hit && (was[at].retort || was[at].waiting) && swing.raw !== was[at].raw) {
         return lessenedAnswers(campaign, heldFor(sheet, step.record), step.record, was[at], swing, notes);
       }
       if (!was[at]?.hit || swing.hit || (!was[at].retort && !was[at].laid)) {
@@ -611,15 +611,23 @@ function blowOf(record: LastHit, swing: SwingRecord) {
 // that you do".
 function lessenedAnswers(campaign: Campaign, held: CharacterSheet, record: LastHit, was: SwingRecord, swing: SwingRecord, notes: string[]): SwingRecord {
   const psychic = was.retort ? thoughtShieldLessened(campaign, held, was.retort, blowOf(record, was), blowOf(record, swing)) : null;
-  if (!psychic) {
-    return swing;
+  let next = swing;
+  if (psychic) {
+    if (psychic.line) {
+      notes.push(psychic.line);
+    }
+    const kept = { ...swing };
+    delete kept.retort;
+    next = psychic.retort ? { ...kept, retort: psychic.retort } : kept;
   }
-  if (psychic.line) {
-    notes.push(psychic.line);
+  // Psychic that waits on a reaction (retort-wait.ts) waits at what is now taken.
+  if (next.waiting?.length) {
+    const waiting = lessenWaitingPsychic(campaign.id, held, next.waiting, blowOf(record, swing));
+    const kept = { ...next };
+    delete kept.waiting;
+    next = waiting.length ? { ...kept, waiting } : kept;
   }
-  const kept = { ...swing };
-  delete kept.retort;
-  return psychic.retort ? { ...kept, retort: psychic.retort } : kept;
+  return next;
 }
 
 // Armor of Agathys answers each melee hit "while you have these hit points"
