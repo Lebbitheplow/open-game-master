@@ -446,6 +446,47 @@ export const SOCIAL_ADJUDICATIONS: CatalogEntry[] = [
     ],
   },
   {
+    name: "npc_state",
+    label: "An NPC's state",
+    category: "social",
+    summary: "Records a tracked NPC taken prisoner, tied, freed, wounded, knocked out or killed; the roster shows it every turn.",
+    fields: [
+      { name: "name", label: "NPC", kind: "text", required: true },
+      {
+        name: "custody",
+        label: "Custody",
+        kind: "select",
+        options: [
+          { value: "free", label: "Free" },
+          { value: "captive", label: "Prisoner" },
+        ],
+      },
+      { name: "heldBy", label: "Held by", kind: "text", help: "With Prisoner: who holds them." },
+      {
+        name: "restraint",
+        label: "Held with",
+        kind: "select",
+        options: [
+          { value: "none", label: "Nothing" },
+          { value: "bound", label: "Bound" },
+          { value: "chained", label: "Chained" },
+          { value: "locked_up", label: "Locked up" },
+        ],
+      },
+      {
+        name: "condition",
+        label: "Condition",
+        kind: "select",
+        options: [
+          { value: "up", label: "On their feet" },
+          { value: "wounded", label: "Wounded" },
+          { value: "unconscious", label: "Unconscious" },
+          { value: "dead", label: "Dead" },
+        ],
+      },
+    ],
+  },
+  {
     name: "npc_speak",
     label: "Ask an NPC's mind",
     category: "social",

@@ -68,6 +68,7 @@ const TOOL_SOURCES = [
   "src/lib/dm/pet-tools.ts",
   "src/lib/dm/social-tools.ts",
   "src/lib/dm/npc-mind-tools.ts",
+  "src/lib/dm/npc-state-tools.ts",
   "src/lib/dm/relationship-tools.ts",
   "src/lib/dm/world-tools.ts",
   "src/lib/dm/party-tools.ts",

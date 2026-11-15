@@ -292,6 +292,7 @@ import { acceptsCall, offeredAs } from "@/lib/dm/tool-merge-logic";
 import { petTools, PET_TOOL_NAMES } from "@/lib/dm/pet-tools";
 import { socialTools, SOCIAL_TOOL_NAMES, handleSetNpc, npcRosterForPrompt } from "@/lib/dm/social-tools";
 import { npcMindTools, NPC_MIND_TOOL_NAMES } from "@/lib/dm/npc-mind-tools";
+import { handleNpcState, npcStateTools, NPC_STATE_TOOL_NAMES } from "@/lib/dm/npc-state-tools";
 import { awayArrivalNote, handleNpcInform, handleNpcPast, handleNpcSpeak, mindRosterNotes, mindTurnRefusal, mindsAwaitingTurn, mindsWithinEarshot, npcMindsOn } from "@/lib/dm/npc-mind";
 import { hearingPrompt, sceneMindsPrompt, TIME_SKIP_TOOLS } from "@/lib/dm/npc-mind-logic";
 import { mindSpeeches, narratorLines } from "@/lib/dm/voice-knowledge-logic";
@@ -388,6 +389,7 @@ export const TURN_RUN_NAMES: ReadonlySet<string> = new Set<string>([
   ...SPLIT_DAMAGE_TOOL_NAMES,
   ...PET_TOOL_NAMES,
   ...SOCIAL_TOOL_NAMES,
+  ...NPC_STATE_TOOL_NAMES,
   ...NPC_MIND_TOOL_NAMES,
   ...RELATIONSHIP_TOOL_NAMES,
   ...WORLD_RUN_NAMES,
@@ -1579,6 +1581,10 @@ export function dmTurnTools(
     ...hazardTools,
     ...petTools,
     ...socialTools,
+    // What has happened to an NPC's body (src/lib/dm/npc-state-tools.ts).
+    // A fight's trimmed set has no room for it, like complete_beat: it still
+    // runs when called by name, and through more_tools.
+    ...(leanTools && inEncounter ? [] : npcStateTools),
     // Each NPC answers from their own mind (src/lib/dm/npc-mind.ts).
     ...(npcMindsOn(campaign) ? npcMindTools : []),
     // In a fight, deeds alone (issue 503): most executions happen there.
@@ -2380,6 +2386,8 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     // from; a lone set_npc is bookkeeping like record_event.
     const socialRollCalls = socialCalls.filter((toolCall) => toolCall.name !== "set_npc");
     const setNpcCalls = socialCalls.filter((toolCall) => toolCall.name === "set_npc");
+    // npc_state is bookkeeping too: a prisoner taken beside the narration.
+    const npcStateCalls = runnable.filter((toolCall) => toolCall.name === "npc_state");
     const relationshipCalls = runnable.filter((toolCall) =>
       (RELATIONSHIP_TOOL_NAMES as readonly string[]).includes(toolCall.name),
     );
@@ -2493,6 +2501,16 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
         refused.add(npcCall);
       }
     }
+    const npcStateResults = new Map<string, Record<string, unknown>>();
+    for (const stateCall of npcStateCalls) {
+      const result = handleNpcState(campaign, stateCall.rawArguments);
+      npcStateResults.set(stateCall.id ?? "npc_state", result);
+      if (!("error" in result)) {
+        accepted.add(stateCall);
+      } else {
+        refused.add(stateCall);
+      }
+    }
     // Waypoints tick before the beat is judged, so an arrival and the beat
     // it lands in the same reply resolve in order (issue #31). The location
     // calls above already ran; the rest of the tools tick again below, and a
@@ -2590,6 +2608,8 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
           return whisperResults.get(toolCall.id ?? "send_whisper") ?? { ok: true };
         case "set_npc":
           return setNpcResults.get(toolCall.id ?? "set_npc") ?? { ok: true };
+        case "npc_state":
+          return npcStateResults.get(toolCall.id ?? "npc_state") ?? { ok: true };
         case MORE_TOOLS:
           return moreToolsResults.get(toolCall.id ?? MORE_TOOLS) ?? { ok: true };
         default:
@@ -2648,7 +2668,8 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
         eventCalls.length > 0 ||
         whisperCalls.length > 0 ||
         noteCalls.length > 0 ||
-        setNpcCalls.length > 0) &&
+        setNpcCalls.length > 0 ||
+        npcStateCalls.length > 0) &&
         !turn.narrationParts.length);
 
     if (!needsFollowUp) {

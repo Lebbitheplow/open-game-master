@@ -55,6 +55,7 @@ import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { stepTakenThisExchange } from "@/lib/dm/step-exchange";
 import { fittedText } from "@/lib/dm/fitted-text";
+import { npcStateKeepsInView, npcStateWords } from "@/lib/dm/npc-state-logic";
 import { noteBelievedLie, socialEdge } from "@/lib/dm/genre-b-mystery-dossier";
 
 // The social-interaction engine: NPC disposition was pure narration with no
@@ -600,6 +601,8 @@ export function npcRosterForPrompt(campaignId: string, options: { romance?: bool
   witnessNote: string;
   statBlock: string;
   identity: string;
+  state: string;
+  inView: boolean;
 }> {
   // Facts are read once for the whole roster; witness notes are per-NPC.
   const facts = listActiveFacts(campaignId).map((fact) => ({
@@ -631,6 +634,10 @@ export function npcRosterForPrompt(campaignId: string, options: { romance?: bool
     // narration does not call the elf whose face the board draws a human.
     // Blank says nothing.
     identity: npcIdentity(npc, options.romance ?? false),
+    // Prisoner, bound, down (npc_state): said every turn, so nobody
+    // forgets the man tied on the cart (src/lib/dm/npc-state-logic.ts).
+    state: npcStateWords(npc.state),
+    inView: npcStateKeepsInView(npc.state),
   }));
 }
 

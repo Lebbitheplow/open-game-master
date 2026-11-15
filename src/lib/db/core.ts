@@ -3209,6 +3209,10 @@ function ensureSchema(db: SqliteDatabase) {
   // A first-tier mind's own model and reasoning effort, {model, effort}
   // (src/lib/dm/npc-mind.ts, ticket 09). '' follows the table's mind route.
   addColumns("npcs", [["mind_model_json", `TEXT NOT NULL DEFAULT ''`]]);
+  // The NPC's body as the server keeps it: free or someone's prisoner, what
+  // holds them, standing or down (src/lib/dm/npc-state-logic.ts). '' is a
+  // free, unbound, standing NPC.
+  addColumns("npcs", [["state_json", `TEXT NOT NULL DEFAULT ''`]]);
   // When the party first dealt with an NPC (src/lib/db/npcs.ts Npc.metAt),
   // which a reaction roll reads: it is for strangers. The rows already
   // played get it once, from what play recorded about them.

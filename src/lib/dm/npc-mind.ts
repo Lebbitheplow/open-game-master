@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { npcSilencedBy } from "@/lib/dm/npc-state-logic";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getClock } from "@/lib/db/clock";
 import { getNpcById, listNpcs, patchNpcAgency, type Npc } from "@/lib/db/npcs";
@@ -554,6 +555,14 @@ export async function handleNpcSpeak(campaign: Campaign, rawArguments: string): 
   if (!npc) {
     return { error: `No tracked NPC is called "${args.name}". Register them with set_npc first.`, retry: true };
   }
+  // The body comes first (npc_state): the senseless and the dead say nothing.
+  const silenced = npcSilencedBy(npc.state);
+  if (silenced) {
+    return {
+      error: `${npc.name} is ${silenced} on the record and cannot speak or answer. Narrate them as they are; if the story has changed that, record it with npc_state first.`,
+      refused: "rules",
+    };
+  }
   // A second-tier NPC has no mind of their own: the narrator voices them.
   if (tierOfNpc(npc) !== "primary") {
     return {
@@ -699,7 +708,8 @@ export function handleNpcHear(campaign: Campaign, rawArguments: string): ToolRes
     }
     const d20 = listener.reach === "far" && listener.listening ? rollExpression("1d20").total : null;
     const outcome = hears(listener.reach, listener.dc ?? HEARING_DC, scoresFor(campaign, npc).wis, d20);
-    if (listener.reach === "out_of_earshot") {
+    // The senseless and the dead hear nothing (npc_state).
+    if (listener.reach === "out_of_earshot" || npcSilencedBy(npc.state)) {
       missed.push(npc.name);
       continue;
     }
