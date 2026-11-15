@@ -1963,7 +1963,7 @@
     "lib/dm/trap-escape.ts#toLowerCase": [["key",4,"condition labels (engine vocabulary)"]],
     "lib/dm/trap-escape.ts#toUpperCase": [["display",1,"ability abbreviation shown in a roll note"]],
     "lib/dm/enemy-trap.ts#toUpperCase": [["display",2,"ability abbreviation shown in a roll note"]],
-    "lib/dm/manacles.ts#toUpperCase": [["display",2,"ability abbreviation shown in a roll note"]],
+    "lib/dm/manacles.ts#toUpperCase": [["display",2,"ability abbreviation shown in a roll note"],["display",1,"a reply sentence's first letter, shown"]],
     "lib/dm/manacles.ts#str-list": [["display",1,"the size names, shown in a refusal"]],
     "lib/dm/manacles.ts#str-eq": [["key",4,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary); the catalogue row's own name"]],
     "lib/dm/enemy-trap.ts#str-list": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],

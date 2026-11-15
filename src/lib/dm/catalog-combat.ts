@@ -394,7 +394,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
     category: "combat",
     summary: "Dodge, Dash, Disengage, Hide, Help, Grapple, Shove, Ready, Search, Use an Object, Escape, a Grappler's Pin or an improvised action, with its real contest and effect, for a character or an enemy.",
     fields: [
-      { name: "characterId", label: "Character", kind: "character", help: "Blank when an enemy acts." },
+      { name: "characterId", label: "Character", kind: "character", help: "Blank when an enemy acts, or when captors out of a fight lock Manacles (Object) on an Ally." },
       {
         name: "action",
         label: "Action",
@@ -501,7 +501,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
         name: "enemyId",
         label: "Enemy acting",
         kind: "enemy",
-        help: "Instead of a character: an enemy taking Dash, Disengage, Dodge, or Escape from a grapple or a spell's hold (Web, Entangle, Maze, Irresistible Dance). It spends the enemy's action; move it afterward with Move a token.",
+        help: "Instead of a character: an enemy taking Dash, Disengage, Dodge, Escape from a grapple or a spell's hold (Web, Entangle, Maze, Irresistible Dance), or Use an Object with Manacles on an Ally. It spends the enemy's action; move it afterward with Move a token.",
         // Sent under the name that server reads: it knows escapingEnemyId,
         // and dropped enemyId, so an escape from the console failed there.
         host: {

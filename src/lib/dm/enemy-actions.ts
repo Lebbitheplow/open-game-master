@@ -34,6 +34,7 @@ import {
   type EnemyTakeAction,
 } from "@/lib/dm/enemy-turn-logic";
 import { enemyEscape } from "@/lib/dm/grapple";
+import { callsManacles, foesManacles } from "@/lib/dm/manacles";
 import { hostilesInSight } from "@/lib/dm/enemy-aggressive";
 import { heldTurnRefusal } from "@/lib/dm/flee-logic";
 import { hasTrait } from "@/lib/dm/monster-abilities";
@@ -290,11 +291,28 @@ function escape(campaign: Campaign, turn: DmTurn, enemy: EncounterEnemy, encount
   return result;
 }
 
+// Use an Object with a set of manacles (manacles.ts): a captor binding a
+// character, or opening its own set with the key. Every creature may take
+// Use an Object (SRD 5.1, Actions in Combat); here it takes the action.
+function manacleUse(campaign: Campaign, turn: DmTurn, enemy: EncounterEnemy, encounter: Encounter, bonus: boolean, args: { item?: string; targetCharacterId?: string; targetEnemyId?: string }): ToolResult {
+  const route = routeFor(encounter, enemy, bonus, null, false, "Use an Object");
+  if (typeof route !== "string") {
+    return route;
+  }
+  const done = foesManacles(campaign, turn, { kind: "enemy", enemy }, args, () => {
+    const live = getActiveEncounter(campaign.id) ?? encounter;
+    spendEnemyAction(live, enemy.id);
+    saveEncounter(live);
+  });
+  return done ?? { error: "Manacles need a target: targetCharacterId names the character bound or freed. Nothing was spent.", retry: true };
+}
+
 export function handleEnemyTakeAction(
   campaign: Campaign,
   turn: DmTurn,
   // `ability`: manacles' escape, "dex" to slip them or "str" to break them.
-  args: { enemyId: string; action: string; bonus?: boolean; ability?: string },
+  // `item` and the targets: Use an Object with manacles.
+  args: { enemyId: string; action: string; bonus?: boolean; ability?: string; item?: string; targetCharacterId?: string; targetEnemyId?: string },
 ): ToolResult {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
@@ -311,6 +329,10 @@ export function handleEnemyTakeAction(
     return early;
   }
   const bonus = args.bonus === true;
+  if (args.action === "use_object" && callsManacles(args.item)) {
+    const commandedUse = enemy.status === "alive" ? heldTurnRefusal(enemy, "use") : null;
+    return commandedUse ? { error: commandedUse, refused: "rules" } : manacleUse(campaign, turn, enemy, encounter, bonus, args);
+  }
   if (!isEnemyTakeAction(args.action)) {
     // What bars the act comes first (tool-errors.ts): a stunned goblin is
     // told it is stunned before it is told Help is no action of its.
@@ -319,7 +341,7 @@ export function handleEnemyTakeAction(
       return toolError(allowed);
     }
     return {
-      error: `An enemy's take_action is dash, disengage, dodge or escape; ${args.action.replace(/_/g, " ")} is a character's here. Its attacks are enemy_attack, its spells and abilities cast_at_player or aoe_damage. Nothing was spent.`,
+      error: `An enemy's take_action is dash, disengage, dodge, escape, or use_object with Manacles on a character; ${args.action.replace(/_/g, " ")} is a character's here. Its attacks are enemy_attack, its spells and abilities cast_at_player or aoe_damage. Nothing was spent.`,
       retry: true,
     };
   }

@@ -106,6 +106,9 @@ export type ConditionMeta = {
   mote?: boolean;
   // A monster's grapple: its printed escape DC (grapple.ts).
   escapeDc?: number;
+  // Manacles the party's foes put on: their one key is the foes', not the
+  // party's (manacles.ts).
+  keyWithFoes?: boolean;
   // The Grappler feat's pin, on the grappler's own restraint: the creature
   // they hold pinned (grappler-pin.ts).
   pinning?: string;

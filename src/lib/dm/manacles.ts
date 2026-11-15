@@ -17,9 +17,10 @@
 // it fight freely; a condition of our own ("bound") no rule reads.
 //
 // The doors: take_action use_object with the Manacles and a target binds
-// (or, on a creature already in a set, opens it with the key, which came
-// with the set the party put on); use_object with Thieves' Tools picks the
-// lock; take_action escape slips them (Dexterity) or breaks them
+// (or, on a creature already in a set, opens it with the key, which is with
+// the side that put the set on): a character's call, an enemy's (enemyId,
+// binding a character), or captors' out of a fight (no actor id);
+// use_object with Thieves' Tools picks the lock; take_action escape slips them (Dexterity) or breaks them
 // (Strength); damage_object on "Manacles" counts their 15 hit points
 // (object-damage.ts).
 
@@ -32,8 +33,8 @@ import { insertDroppedItem } from "@/lib/db/dropped-items";
 import { getActiveBattleMap } from "@/lib/battlemap/view";
 import { publishPersisted } from "@/lib/events";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
-import { instancesOf, isIncapacitated, removeConditionInstances, type ConditionMetaMap } from "@/lib/dm/condition-logic";
-import { afflictCondition } from "@/lib/dm/afflictions";
+import { instancesOf, isIncapacitated, removeConditionInstances, type ConditionMeta, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { handleSetCondition } from "@/lib/dm/set-condition";
 import { layEnemyConditionInstance } from "@/lib/dm/enemy-condition-lay";
 import { publishEncounter, resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
 import { rollEnemyAbilityCheck } from "@/lib/dm/enemy-trap";
@@ -69,8 +70,7 @@ type Held = { conditions: string[]; conditionMeta?: unknown };
 
 // Whether a set of manacles binds this creature.
 export function manaclesHold(held: Held): boolean {
-  const meta = (held.conditionMeta ?? {}) as ConditionMetaMap;
-  return held.conditions.some((name) => isConditionNamed(name, RESTRAINED) && instancesOf(meta[name]).some((entry) => entry.source === MANACLES_HOLD));
+  return setOn(held) !== null;
 }
 
 // The gear by its catalogue row (a carried line's slug when it has one), so
@@ -156,6 +156,34 @@ function resolveBound(campaign: Campaign, args: { targetEnemyId?: string; target
   return stale ? { kind: "pc", sheet: getSheetById(stale.id) ?? stale } : unknownSheetRef("targetCharacterId", args.targetCharacterId, sheets, " Nothing was spent.");
 }
 
+// Whose hands work the set: a character's (take_action with characterId),
+// an enemy's (enemyId), or captors' out of a fight (neither id: the GM's
+// people, who are no creature on record). "Each set of manacles comes with
+// one key": the key is with the side that put the set on, so a set the
+// party's foes lock on a hero is not the party's to open, and the restraint
+// says so (keyWithFoes).
+type Hands = { kind: "pc"; sheet: CharacterSheet } | { kind: "enemy"; enemy: EncounterEnemy } | { kind: "captors" };
+const handsName = (hands: Hands) => (hands.kind === "pc" ? hands.sheet.name : hands.kind === "enemy" ? hands.enemy.displayName : "the captors");
+const handsId = (hands: Hands) => (hands.kind === "pc" ? hands.sheet.id : hands.kind === "enemy" ? hands.enemy.id : null);
+const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+// The restraint a set of manacles lays on this creature, or null.
+function setOn(held: Held): ConditionMeta | null {
+  const meta = (held.conditionMeta ?? {}) as ConditionMetaMap;
+  for (const name of held.conditions) {
+    const found = isConditionNamed(name, RESTRAINED) ? instancesOf(meta[name]).find((entry) => entry.source === MANACLES_HOLD) : undefined;
+    if (found) {
+      return found;
+    }
+  }
+  return null;
+}
+
+// The foes' key, once the party has taken it: a line of the opener's pack by
+// this name (handle_item gives it).
+const MANACLES_KEY = "Manacles key";
+const carriesKey = (sheet: CharacterSheet) => findCarriedItem(sheet.equipment, MANACLES_KEY) !== null;
+
 // take_action use_object with the Manacles or Thieves' Tools on a creature.
 // Null when the call is about neither, so the plain Use an Object goes on.
 export function manaclesUse(
@@ -165,13 +193,49 @@ export function manaclesUse(
   args: { item?: string; targetEnemyId?: string; targetCharacterId?: string },
   spend: () => void,
 ): ToolResult | null {
+  return workSet(campaign, turn, { kind: "pc", sheet }, args, spend);
+}
+
+// The party's foes with a set: an enemy's take_action use_object
+// (enemy-actions.ts), or captors' out of a fight (action-tools.ts). They put
+// it on a character, or open one of their own with its key. Null when the
+// call is not about the manacles.
+export function foesManacles(
+  campaign: Campaign,
+  turn: DmTurn,
+  hands: Exclude<Hands, { kind: "pc" }>,
+  args: { item?: string; targetEnemyId?: string; targetCharacterId?: string },
+  spend: () => void,
+): ToolResult | null {
+  return workSet(campaign, turn, hands, args, spend);
+}
+
+export const callsManacles = (item: string | undefined) => Boolean(item?.trim()) && namesManacles({ name: item?.trim() ?? "" });
+
+function workSet(
+  campaign: Campaign,
+  turn: DmTurn,
+  hands: Hands,
+  args: { item?: string; targetEnemyId?: string; targetCharacterId?: string },
+  spend: () => void,
+): ToolResult | null {
   const item = args.item?.trim() ?? "";
-  const manacles = Boolean(item) && namesManacles({ name: item });
+  const manacles = callsManacles(item);
   const tools = Boolean(item) && rowIs({ name: item }, THIEVES_TOOLS_ROW);
   if ((!manacles && !tools) || (!args.targetEnemyId?.trim() && !args.targetCharacterId?.trim())) {
     return null;
   }
-  const bound = resolveBound(campaign, args);
+  if (hands.kind !== "pc") {
+    // A stat block names no tool proficiency, and the foes' sets go on the
+    // party (an enemy in the party's manacles is the party's to hold).
+    if (tools) {
+      return { error: `${capital(handsName(hands))} pick no lock here: a stat block names no tool proficiency. Nothing was spent.`, refused: "rules" };
+    }
+    if (!args.targetCharacterId?.trim()) {
+      return { error: "Manacles the party's foes hold go on a character: send targetCharacterId. Nothing was spent.", retry: true };
+    }
+  }
+  const bound = resolveBound(campaign, hands.kind === "pc" ? args : { targetCharacterId: args.targetCharacterId });
   if ("error" in bound) {
     return bound;
   }
@@ -179,63 +243,107 @@ export function manaclesUse(
   if (bound.kind === "enemy" && bound.enemy.status !== "alive") {
     return { error: `${name} is not alive to bind. Nothing was spent.`, refused: "rules" };
   }
-  if (!withinReach(campaign.id, sheet.id, boundId(bound))) {
-    return { error: `${name} is out of ${sheet.name}'s reach: manacles are put on, opened or picked from within 5 feet. Nothing was spent.`, refused: "rules" };
+  const by = handsId(hands);
+  if (by && !withinReach(campaign.id, by, boundId(bound))) {
+    return { error: `${name} is out of ${handsName(hands)}'s reach: manacles are put on, opened or picked from within 5 feet. Nothing was spent.`, refused: "rules" };
   }
-  const inSet = manaclesHold(heldOf(bound));
-  if (tools) {
-    return inSet ? pickLock(campaign, turn, sheet, bound, spend) : null;
+  const set = setOn(heldOf(bound));
+  if (tools && hands.kind === "pc") {
+    return set ? pickLock(campaign, turn, hands.sheet, bound, spend) : null;
   }
-  if (inSet) {
-    // The key came with the set the party put on: no roll, and the set is
-    // back in the opener's pack.
-    spend();
-    release(campaign, bound);
-    giveSet(campaign, turn, sheet, 1, `Unlocked the manacles on ${name}`);
-    return { ok: true, action: "Use an Object", applied: `${sheet.name} opens the manacles on ${name} with their key; ${name} is free and the set is back in ${sheet.name}'s pack.` };
+  if (set) {
+    return unlock(campaign, turn, hands, bound, set, spend);
   }
-  return bind(campaign, turn, sheet, bound, item, spend);
+  return bind(campaign, turn, hands, bound, item, spend);
 }
 
-function bind(campaign: Campaign, turn: DmTurn, sheet: CharacterSheet, bound: Bound, item: string, spend: () => void): ToolResult {
+// The key opens the set, with no roll: the key of the side that put it on.
+// A character's key goes back in the opener's pack with the set; the foes
+// keep theirs.
+function unlock(campaign: Campaign, turn: DmTurn, hands: Hands, bound: Bound, set: ConditionMeta, spend: () => void): ToolResult {
   const name = boundName(bound);
-  const carried = findCarriedItem(sheet.equipment, item);
-  if (!carried || !namesManacles(carried)) {
-    return { error: `${sheet.name} carries no manacles. Nothing was spent.`, refused: "rules" };
+  const foesSet = set.keyWithFoes === true;
+  if (hands.kind === "pc" && foesSet && !carriesKey(hands.sheet)) {
+    return {
+      error: `The key to the manacles on ${name} is with whoever locked them on, not the party. ${name} slips or breaks them with take_action escape (DC 20 Dexterity or Strength), or someone proficient picks the lock with use_object and Thieves' Tools (DC 15). A key taken from them is a "${MANACLES_KEY}" in the opener's pack (handle_item). Nothing was spent.`,
+      refused: "rules",
+    };
   }
-  if (boundId(bound) === sheet.id) {
-    return { error: `${sheet.name} cannot put manacles on themselves. Nothing was spent.`, retry: true };
+  if (hands.kind !== "pc" && !foesSet) {
+    return { error: `The key to the manacles on ${name} is the party's; ${handsName(hands)} hold none. Nothing was spent.`, refused: "rules" };
+  }
+  spend();
+  release(campaign, bound);
+  if (hands.kind === "pc") {
+    giveSet(campaign, turn, hands.sheet, 1, `Unlocked the manacles on ${name}`);
+    return { ok: true, action: "Use an Object", applied: `${hands.sheet.name} opens the manacles on ${name} with the key; ${name} is free and the set is in ${hands.sheet.name}'s pack.` };
+  }
+  return { ok: true, action: "Use an Object", applied: `${capital(handsName(hands))} open the manacles on ${name} with their key; ${name} is free.` };
+}
+
+// Whether the creature can be bound by these hands. SRD 5.1 gives no roll
+// for putting manacles on, and a creature that can fight them off is not
+// bound by a set held out at it; the nearest rule is the Dimensional
+// Shackles', placed "on an incapacitated creature". So: incapacitated,
+// restrained, or grappled by the binder. A character the party binds is
+// taken as willing (their player is at the table). Captors out of a fight
+// bind a character who has yielded or been beaten: a struggle is a fight,
+// and in one the binding is a captor's own action (enemyId).
+function cannotBeBound(hands: Hands, bound: Bound): string | null {
+  if (hands.kind === "captors" || (hands.kind === "pc" && bound.kind === "pc")) {
+    return null;
+  }
+  const held = heldOf(bound);
+  const meta = held.conditionMeta as ConditionMetaMap | undefined;
+  const by = handsId(hands);
+  const ok =
+    isIncapacitated(held.conditions) ||
+    held.conditions.some((entry) => isConditionNamed(entry, RESTRAINED)) ||
+    held.conditions.some((entry) => isConditionNamed(entry, "grappled") && instancesOf(meta?.[entry]).some((instance) => instance.source === by));
+  return ok ? null : `${boundName(bound)} is free to fight them off: manacles go on a creature that is incapacitated, restrained, or grappled by ${handsName(hands)}. Nothing was spent.`;
+}
+
+function bind(campaign: Campaign, turn: DmTurn, hands: Hands, bound: Bound, item: string, spend: () => void): ToolResult {
+  const name = boundName(bound);
+  if (hands.kind === "pc") {
+    const carried = findCarriedItem(hands.sheet.equipment, item);
+    if (!carried || !namesManacles(carried)) {
+      return { error: `${hands.sheet.name} carries no manacles. Nothing was spent.`, refused: "rules" };
+    }
+    if (boundId(bound) === hands.sheet.id) {
+      return { error: `${hands.sheet.name} cannot put manacles on themselves. Nothing was spent.`, retry: true };
+    }
   }
   const size = sizeFits(bound);
   if (size) {
     return { error: `${name} is ${size}: manacles bind only a Small or Medium creature. Nothing was spent.`, refused: "rules" };
   }
-  // A creature that can fight them off is not bound by a set held out at it.
-  // SRD 5.1 gives no roll for it; the nearest rule is the Dimensional
-  // Shackles', placed "on an incapacitated creature". An enemy that is
-  // incapacitated, restrained, or grappled by the binder can be bound; a
-  // character is taken as willing (their player is at the table).
-  if (bound.kind === "enemy") {
-    const meta = bound.enemy.conditionMeta as ConditionMetaMap;
-    const held =
-      isIncapacitated(bound.enemy.conditions) ||
-      bound.enemy.conditions.some((entry) => isConditionNamed(entry, RESTRAINED)) ||
-      bound.enemy.conditions.some((entry) => isConditionNamed(entry, "grappled") && instancesOf(meta?.[entry]).some((instance) => instance.source === sheet.id));
-    if (!held) {
-      return { error: `${name} is free to fight them off: manacles go on a creature that is incapacitated, restrained, or grappled by ${sheet.name}. Nothing was spent.`, refused: "rules" };
-    }
+  const free = cannotBeBound(hands, bound);
+  if (free) {
+    return { error: free, refused: "rules" };
   }
-  spend();
-  giveSet(campaign, turn, sheet, -1, `Put manacles on ${name}`);
+  const foes = hands.kind !== "pc";
   if (bound.kind === "enemy") {
     layEnemyConditionInstance(campaign, getEnemy(bound.enemy.id) ?? bound.enemy, RESTRAINED, { source: MANACLES_HOLD });
   } else {
-    afflictCondition(campaign, turn.id, bound.sheet.id, RESTRAINED, { source: MANACLES_HOLD });
+    // Laid before anything is spent: a character the restraint cannot hold
+    // (immune to it) keeps the set and the action.
+    const laid = handleSetCondition(campaign, turn.id, getSheetById(bound.sheet.id) ?? bound.sheet, { condition: RESTRAINED }, `Manacles put on by ${handsName(hands)}`, {
+      spellEffect: { source: MANACLES_HOLD, ...(foes ? { keyWithFoes: true } : {}) },
+    });
+    if ("error" in laid && laid.error) {
+      return { error: `${laid.error} Nothing was spent.`, refused: "rules" };
+    }
   }
+  spend();
+  if (hands.kind === "pc") {
+    giveSet(campaign, turn, hands.sheet, -1, `Put manacles on ${name}`);
+  }
+  const key = foes ? `${handsName(hands)}'s key` : "the key";
   return {
     ok: true,
     action: "Use an Object",
-    applied: `${sheet.name} locks a set of manacles on ${name}, who is restrained until the key opens them, a DC 15 Dexterity check with thieves' tools picks them, or ${name} uses an action on take_action escape: a DC 20 Dexterity check slips them, a DC 20 Strength check breaks them.`,
+    applied: `${capital(handsName(hands))} ${foes && hands.kind === "captors" ? "lock" : "locks"} a set of manacles on ${name}, who is restrained until ${key} opens them, a DC 15 Dexterity check with thieves' tools picks them, or ${name} uses an action on take_action escape: a DC 20 Dexterity check slips them, a DC 20 Strength check breaks them.`,
   };
 }
 

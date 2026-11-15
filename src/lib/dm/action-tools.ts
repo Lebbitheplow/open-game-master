@@ -24,7 +24,7 @@ import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
 import { charmedBy } from "@/lib/dm/enemy-profile";
 import { effectiveSpeed } from "@/lib/dm/condition-logic";
 import { characterEscape } from "@/lib/dm/grapple";
-import { manaclesUse } from "@/lib/dm/manacles";
+import { callsManacles, foesManacles, manaclesUse } from "@/lib/dm/manacles";
 import { squeezeSlip } from "@/lib/dm/ar-ws-squeeze";
 import { handleEnemyTakeAction } from "@/lib/dm/enemy-actions";
 import { pin } from "@/lib/dm/grappler-pin";
@@ -136,12 +136,12 @@ export const actionTools: ToolDef[] = [
           distanceFt: { type: "integer", minimum: 0, description: "Improvise on the battle map (required): feet to the thing used, as narrated, never a guess." },
           item: {
             type: "string",
-            description: "Use an Object only: the object, when it is one they carry. For consumables, use use_item. Manacles or Thieves' Tools on a target bind, unlock or pick.",
+            description: "Use an Object only: the object, when it is one they carry. For consumables, use use_item. Manacles or Thieves' Tools on a target bind, unlock or pick; captors out of a fight send Manacles and targetCharacterId alone.",
           },
           scene: { type: "string", description: "Improvise (required): the thing used, in the narration's words." },
           enemyId: {
             type: "string",
-            description: "The enemy taking Dash, Disengage, Dodge or Escape: exact enemyId from GAME STATE. Omit characterId then.",
+            description: "The enemy taking Dash, Disengage, Dodge or Escape: exact enemyId from GAME STATE. Omit characterId then. Use an Object with Manacles binds targetCharacterId.",
           },
           toward: { type: "string", description: "Dash or Disengage: who to move beside (id or name); the server walks them there." },
           spell: {
@@ -322,7 +322,15 @@ function enemyActionAndWalk(
   if (plan && "error" in plan) {
     return toolError(plan);
   }
-  const acted = handleEnemyTakeAction(campaign, turn, { enemyId, action: args.action, bonus: args.bonus, ability: args.ability });
+  const acted = handleEnemyTakeAction(campaign, turn, {
+    enemyId,
+    action: args.action,
+    bonus: args.bonus,
+    ability: args.ability,
+    item: args.item,
+    targetCharacterId: args.targetCharacterId,
+    targetEnemyId: args.targetEnemyId,
+  });
   if (acted.error || !enemy || !hasDestination(args)) {
     return acted;
   }
@@ -365,6 +373,11 @@ export function handleTakeAction(
       return { error: "take_action is one creature's action: characterId for a character or enemyId for an enemy, not both. Drop enemyId for the character's action, or characterId for the enemy's. Nothing was spent.", retry: true };
     }
     return enemyActionAndWalk(campaign, turn, args, sheets, sheetsById);
+  }
+  // Captors out of a fight manacling a character, or unlocking their own
+  // set (manacles.ts): the GM's people, who are no creature on record.
+  if (!args.characterId?.trim() && args.action === "use_object" && args.targetCharacterId?.trim() && callsManacles(args.item)) {
+    return captorsManacles(campaign, turn, args);
   }
   const staleSheet = resolveSheetRef(args.characterId, sheets, sheetsById);
   const sheet = staleSheet ? (getSheetById(staleSheet.id) ?? staleSheet) : null;
@@ -605,6 +618,16 @@ export function handleTakeAction(
   };
   const outcome = resolveAction();
   return "error" in outcome ? outcome : { ...costs, ...outcome, ...(slip ? { revelationInFlesh: slip.note } : {}) };
+}
+
+// In a fight a captor is a creature with a turn: its binding is its own
+// action, sent with its enemyId, so it is spent and its reach measured.
+function captorsManacles(campaign: Campaign, turn: DmTurn, args: z.infer<typeof takeActionSchema>): ToolResult {
+  const encounter = getActiveEncounter(campaign.id);
+  if (encounter && (encounter.kind ?? "fight") === "fight") {
+    return { error: "In a fight, a captor's manacles are its own Use an Object: send its enemyId with the call. Nothing was spent.", retry: true };
+  }
+  return foesManacles(campaign, turn, { kind: "captors" }, args, () => {}) ?? { error: "Manacles need targetCharacterId. Nothing was spent.", retry: true };
 }
 
 // Dwarven Fortitude: one hit die spent on the Dodge, rolled and added to

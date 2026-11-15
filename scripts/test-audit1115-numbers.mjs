@@ -580,6 +580,95 @@ await test("N11: manacles have 15 hit points: damage_object on them breaks them 
   assert.equal(foe(enemy.id).currentHp, 40);
 });
 
+// ---- N12: a captor manacling a hero ----
+// The same set, the other way round: the bandits who beat the party, or
+// the guards it surrendered to, manacle a hero. take_action took only a
+// character's binding, so the GM laid a plain restrained with a save of
+// its own choosing and the set's DC 20 and DC 15 were gone. "Each set of
+// manacles comes with one key": a set the party's foes put on is theirs to
+// open, not the party's.
+
+const bindHero = (enemyId, target = captive.id) => world.invoke("take_action", { enemyId, action: "use_object", item: "Manacles", targetCharacterId: target });
+
+await test("N12: an enemy manacles a character it grapples, the hero's escape is the set's DC 20, the party holds no key to it, and a thieves' tools pick is DC 15", async () => {
+  const captor = await trapFight();
+  world.patch(jailer.id, { equipment: [] });
+  world.patch(burglar.id, { equipment: [{ name: "Thieves' Tools", qty: 1 }] });
+  kit.place(captor.id, 2, 2);
+  kit.place(captive.id, 3, 2);
+  kit.place(jailer.id, 4, 2);
+  kit.place(burglar.id, 4, 3);
+  kit.enemyTurn(captor.id);
+  // Up and fighting: refused, its action kept.
+  const fighting = await bindHero(captor.id);
+  assert.equal(fighting.ok, false, JSON.stringify(fighting));
+  assert.equal(manacled(sheet(captive.id)), false);
+  // Grappled by the captor: bound, its action spent.
+  world.patch(captive.id, { conditions: ["grappled"], conditionMeta: { grappled: { source: captor.id } } });
+  const bound = await bindHero(captor.id);
+  assert.equal(bound.ok, true, bound.error);
+  assert.ok(manacled(sheet(captive.id)), JSON.stringify(sheet(captive.id).conditionMeta));
+  const again = await world.invoke("enemy_attack", { enemyId: captor.id, targetCharacterId: captive.id });
+  assert.equal(again.ok, false, "the captor's action was not spent on the binding");
+  // Let go of the grapple: the manacles still hold.
+  const held = sheet(captive.id);
+  const meta = { ...held.conditionMeta };
+  delete meta.grappled;
+  world.patch(captive.id, { conditions: held.conditions.filter((name) => name !== "grappled"), conditionMeta: meta });
+  assert.ok(manacled(sheet(captive.id)));
+  // The hero's escape: Dexterity 10, a 19 is 19 against the set's DC 20.
+  kit.giveTurn(captive.id);
+  world.dice(19);
+  const twist = await world.invoke("take_action", { characterId: captive.id, action: "escape", ability: "dex" });
+  assert.equal(twist.ok, true, twist.error);
+  assert.equal(twist.result.check, "19 vs DC 20", JSON.stringify(twist.result));
+  assert.ok(manacled(sheet(captive.id)));
+  // The key is the captors': an ally cannot open the set with it.
+  kit.giveTurn(jailer.id);
+  const keyless = await world.invoke("take_action", { characterId: jailer.id, action: "use_object", item: "Manacles", targetCharacterId: captive.id });
+  assert.equal(keyless.ok, false, JSON.stringify(keyless));
+  assert.ok(manacled(sheet(captive.id)));
+  // Picked: Dexterity +2 and proficiency +2, an 11 is 15.
+  kit.giveTurn(burglar.id);
+  world.dice(11);
+  const picked = await world.invoke("take_action", { characterId: burglar.id, action: "use_object", item: "Thieves' Tools", targetCharacterId: captive.id });
+  assert.equal(picked.ok, true, picked.error);
+  assert.equal(picked.result.check, "15 vs DC 15", JSON.stringify(picked.result));
+  assert.equal(manacled(sheet(captive.id)), false);
+  assert.equal(world.clearDice(), 0);
+});
+
+await test("N12: out of a fight, captors manacle a character with no actor named, the set is theirs to open, and the hero breaks it with the DC 20 Strength check", async () => {
+  await kit.endFight();
+  const captors = (target = captive.id) => world.invoke("take_action", { action: "use_object", item: "Manacles", targetCharacterId: target });
+  const bound = await captors();
+  assert.equal(bound.ok, true, bound.error);
+  assert.ok(manacled(sheet(captive.id)), JSON.stringify(sheet(captive.id).conditionMeta));
+  // The captors open their own set.
+  const opened = await captors();
+  assert.equal(opened.ok, true, opened.error);
+  assert.equal(manacled(sheet(captive.id)), false);
+  assert.equal((await captors()).ok, true);
+  // A key taken from them opens it for the party, and the set is theirs.
+  world.patch(jailer.id, { equipment: [{ name: "Manacles key", qty: 1 }] });
+  const keyed = await world.invoke("take_action", { characterId: jailer.id, action: "use_object", item: "Manacles", targetCharacterId: captive.id });
+  assert.equal(keyed.ok, true, keyed.error);
+  assert.equal(manacled(sheet(captive.id)), false);
+  assert.equal(carriedQty(jailer.id, "Manacles"), 1);
+  assert.equal((await captors()).ok, true);
+  // Strength 10: a 20 is 20, and the set breaks.
+  world.dice(20);
+  const broke = await world.invoke("take_action", { characterId: captive.id, action: "escape", ability: "str" });
+  assert.equal(broke.ok, true, broke.error);
+  assert.equal(broke.result.check, "20 vs DC 20", JSON.stringify(broke.result));
+  assert.equal(manacled(sheet(captive.id)), false);
+  // In a fight the binding is a captor's action: an enemyId is asked for.
+  await trapFight();
+  const unnamed = await captors();
+  assert.equal(unnamed.ok, false, JSON.stringify(unnamed));
+  assert.match(unnamed.error, /enemyId/);
+});
+
 await kit.endFight();
 world.close();
 finish();

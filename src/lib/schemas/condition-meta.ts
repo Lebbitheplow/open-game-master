@@ -84,6 +84,8 @@ const conditionInstanceSchema = z.object({
     // A monster's grapple prints its escape DC, which the escape is rolled
     // against instead of a contest (src/lib/dm/grapple.ts).
     escapeDc: z.number().int().min(1).max(40).optional(),
+    // Manacles the party's foes put on: the key is theirs (src/lib/dm/manacles.ts).
+    keyWithFoes: z.boolean().optional(),
     // The Grappler feat's pin: on the grappler's own restraint, the creature
     // they hold pinned; it lasts while that grapple does
     // (src/lib/dm/grappler-pin.ts).
