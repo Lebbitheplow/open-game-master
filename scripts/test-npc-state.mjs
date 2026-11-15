@@ -191,5 +191,33 @@ await test("what an NPC carries is a short list of story things, replaced whole,
   assert.equal(logic.serializeNpcState(sheetOf("Sergente")), "", "emptied, the column is empty again");
 });
 
+// ---- A name the story reveals (ticket 03) --------------------------------
+
+await test("a revealed name renames the same person: memories, tier and sheet stay, the old name still finds them", () => {
+  const row = upsertNpc({ campaignId: world.campaignId, name: "Uomo armato del mulino" });
+  minds.setNpcTier(row.id, "primary");
+  minds.addNpcMemories(world.campaignId, [row.id], { kind: "knowledge", sourceKind: "perceived", sourceName: "", content: "The sergeant gave the order.", learnedAt: 0 }, "");
+  const told = state({ name: "Uomo armato del mulino", revealedName: "Rugo", custody: "captive", heldBy: "Brakk", restraint: "bound" });
+  assert.equal(told.npc, "Rugo");
+  assert.equal(told.formerly, "Uomo armato del mulino");
+  const rugo = getNpcByName(world.campaignId, "Rugo");
+  assert.equal(rugo.id, row.id);
+  assert.ok(rugo.aliases.includes("Uomo armato del mulino"));
+  assert.equal(getNpcByName(world.campaignId, "Uomo armato del mulino").id, row.id, "the old name still finds him");
+  assert.equal(minds.listNpcMemories(world.campaignId, row.id).length, 1);
+  assert.equal(minds.getNpcTier(row.id), "primary");
+  assert.equal(rugo.state.heldBy, "Brakk");
+});
+
+await test("a revealed name another NPC already answers to is refused and nothing is written", () => {
+  upsertNpc({ campaignId: world.campaignId, name: "Daro" });
+  upsertNpc({ campaignId: world.campaignId, name: "Lo sconosciuto" });
+  const refused = state({ name: "Lo sconosciuto", revealedName: "Daro", condition: "wounded" });
+  assert.equal(refused.refused, "rules");
+  const still = getNpcByName(world.campaignId, "Lo sconosciuto");
+  assert.equal(still.name, "Lo sconosciuto");
+  assert.equal(still.state.condition, "up", "the state was not written either");
+});
+
 model.close();
 finish();

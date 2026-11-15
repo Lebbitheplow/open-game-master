@@ -485,6 +485,7 @@ export const SOCIAL_ADJUDICATIONS: CatalogEntry[] = [
         ],
       },
       { name: "withParty", label: "Travels with the party", kind: "boolean", help: "Their place follows the party's." },
+      { name: "revealedName", label: "Real name", kind: "text", help: "The name the story revealed; the old one is kept as another name." },
       { name: "disarmed", label: "Disarmed", kind: "boolean" },
       { name: "carries", label: "Carries", kind: "list", help: "Only what matters to the story: proof, a key, a seal." },
     ],

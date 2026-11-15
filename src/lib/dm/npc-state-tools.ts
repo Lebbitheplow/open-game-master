@@ -1,6 +1,8 @@
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
-import { getNpcByName, nearestNpcName, setNpcState } from "@/lib/db/npcs";
+import { getNpcByName, listNpcs, nearestNpcName, renameNpc, setNpcState, touchCast } from "@/lib/db/npcs";
+import { planRename } from "@/lib/dm/entity-review-logic";
+import { textKey } from "@/lib/language/text-logic";
 import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import {
   applyNpcStatePatch,
@@ -37,6 +39,7 @@ export const npcStateTools = [
           condition: { type: "string", enum: [...NPC_CONDITIONS] },
           withParty: { type: "boolean", description: "travels with the party: goes where they go" },
           disarmed: { type: "boolean" },
+          revealedName: { type: "string", description: "the name the story just revealed for someone tracked under a description; the old one stays an alias" },
           carries: { type: "array", items: { type: "string" }, description: "replaces the list: only things that matter to the story (proof, a key), not ordinary gear" },
         },
         required: ["name"],
@@ -55,6 +58,7 @@ const stateSchema = z.object({
   disarmed: z.boolean().optional(),
   // Measured by applyNpcStatePatch, which says what to shorten.
   carries: z.array(z.string().max(400)).max(40).optional(),
+  revealedName: z.string().trim().min(1).max(80).optional(),
 });
 
 export function handleNpcState(campaign: Campaign, rawArguments: string): ToolResult {
@@ -74,8 +78,29 @@ export function handleNpcState(campaign: Campaign, rawArguments: string): ToolRe
       retry: true,
     };
   }
-  if (!args.custody && !args.heldBy && !args.restraint && !args.condition && args.withParty === undefined && args.disarmed === undefined && !args.carries) {
-    return { error: "npc_state needs at least one of custody, heldBy, restraint, condition, withParty, disarmed or carries: what changed.", retry: true };
+  if (!args.custody && !args.heldBy && !args.restraint && !args.condition && args.withParty === undefined && args.disarmed === undefined && !args.carries && !args.revealedName) {
+    return { error: "npc_state needs at least one of custody, heldBy, restraint, condition, withParty, disarmed, carries or revealedName: what changed.", retry: true };
+  }
+  // A name the story revealed (the armed man at the mill is Rugo): the same
+  // person under it, memories, bonds and tier and all, the old one kept as
+  // an alias so the transcript still finds them. Checked before anything is
+  // written, so a refusal leaves the call to be sent again whole.
+  let renameTo: { name: string; aliases: string[] } | null = null;
+  if (args.revealedName && textKey(args.revealedName) !== textKey(npc.name)) {
+    const plan = planRename(npc, args.revealedName);
+    if ("error" in plan) {
+      return { error: `${npc.name}: ${plan.error}`, retry: true };
+    }
+    const clash = listNpcs(campaign.id).find(
+      (other) => other.id !== npc.id && [other.name, ...other.aliases].some((name) => textKey(name) === textKey(plan.name)),
+    );
+    if (clash) {
+      return {
+        error: `"${plan.name}" is already ${clash.name === plan.name ? "another tracked NPC" : `a name of ${clash.name}`}. If they are one person, the table merges them from the cast; otherwise send npc_state without revealedName.`,
+        refused: "rules",
+      };
+    }
+    renameTo = plan;
   }
   const applied = applyNpcStatePatch(npc.state, {
     custody: args.custody,
@@ -90,11 +115,16 @@ export function handleNpcState(campaign: Campaign, rawArguments: string): ToolRe
     return { error: `${npc.name}: ${applied.error}`, retry: true };
   }
   setNpcState(npc.id, applied.state);
+  const name = renameTo ? (renameNpc(npc.id, renameTo.name, renameTo.aliases)?.name ?? npc.name) : npc.name;
+  if (renameTo) {
+    touchCast(campaign.id);
+  }
   const words = npcStateWords(applied.state);
   return {
     ok: true,
-    npc: npc.name,
+    npc: name,
+    ...(renameTo ? { formerly: npc.name } : {}),
     state: words || "free and on their feet",
-    note: `${npc.name} is now ${words || "free and on their feet"} on the record; their roster line says so every turn until npc_state changes it.`,
+    note: `${name} is now ${words || "free and on their feet"} on the record; their roster line says so every turn until npc_state changes it.`,
   };
 }
