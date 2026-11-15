@@ -32,7 +32,7 @@ const DUSK_HOUR = 18;
 
 // The pure reads (the rule, the most, the count now) live in
 // src/lib/srd/item-charge-rules.ts so the sheet can show them too.
-import { chargeMax, chargeRuleOf, chargesLeft, chargesShort } from "@/lib/srd/item-charge-rules";
+import { chargeMax, chargeRuleOf, chargesLeft, chargesShort, powersRefilled } from "@/lib/srd/item-charge-rules";
 import type { ToolError } from "@/lib/dm/tool-errors";
 export { chargeMax, chargeRuleOf, chargesLeft };
 
@@ -216,8 +216,11 @@ export function rechargeAtDawn(campaignId: string, from: number, to: number): st
   for (const sheet of listSheets(campaignId)) {
     let changed = false;
     const equipment = sheet.equipment.map((row) => {
-      // A prayer bead used is whole again at dawn (src/lib/srd/prayer-beads.ts).
-      const item = dawns && row.beadsSpent ? withoutBeadsSpent(row) : row;
+      // A prayer bead used is whole again at dawn (src/lib/srd/prayer-beads.ts),
+      // and so is each property of an item used once a dawn (a Staff of
+      // Thunder and Lightning's Thunderclap).
+      const beaded = dawns && row.beadsSpent ? withoutBeadsSpent(row) : row;
+      const item = dawns ? powersRefilled(beaded, "dawn") : beaded;
       if (item !== row) {
         changed = true;
       }
@@ -227,7 +230,8 @@ export function rechargeAtDawn(campaignId: string, from: number, to: number): st
         recharged.push(`${sheet.name}'s ${item.name}: ${chargeMax(rule)}/${chargeMax(rule)}`);
         return { ...withoutEmptiedAt(item), charges: chargeMax(rule) };
       }
-      if (!rule?.regain || typeof item.charges !== "number" || (!dawns && !dusks)) {
+      // What comes back at a long rest (Boots of Speed) waits for the rest.
+      if (!rule?.regain || rule.regainOn === "long_rest" || typeof item.charges !== "number" || (!dawns && !dusks)) {
         return item;
       }
       const most = chargeMax(rule);

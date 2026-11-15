@@ -292,6 +292,10 @@ export const equipmentItemSchema = z.object({
   // whose charges come back days after it empties (ChargeRule.regainDays, a
   // Horn of Valhalla's 7). Absent on every other row.
   emptiedAt: z.number().int().min(0).optional(),
+  // What is left of each property with a count of its own (GearDef.powers),
+  // by the property's name: a Staff of Thunder and Lightning's "Thunderclap"
+  // at 0 until dawn. A property not listed is whole.
+  powerCharges: z.record(z.string().trim().min(1).max(40), z.number().int().min(0).max(50)).optional(),
   // Pounds per unit, for the optional encumbrance rule. Filled in from the
   // content pack when a sheet is read (src/lib/db/sheets.ts), so rows
   // written before the field still get weighed; a value a player typed

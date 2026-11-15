@@ -84,6 +84,9 @@ export const chargeRuleSchema = z.object({
   // Emptied, all back this many days on (SRD 5.1, Horn of Valhalla's 7):
   // carried so a copied SRD item keeps its wait (ChargeRule.regainDays).
   regainDays: int(1, 36500).optional(),
+  regainOn: z.literal("long_rest").optional(),
+  unit: z.enum(["minute", "use"]).optional(),
+  activation: z.enum(["bonus", "free"]).optional(),
   daily: z.string().trim().min(1).max(200).optional(),
   // A use past the last charge risks the item (SRD 5.1, Wind Fan).
   overuseRisk: int(1, 100).optional(),
@@ -135,6 +138,9 @@ export const itemMagicSchema = z.object({
   weaponRiders: weaponRidersSchema.optional(),
   armorRiders: armorRidersSchema.optional(),
   charges: chargeRuleSchema.optional(),
+  // Properties with a count of their own (ChargeRule per property name),
+  // carried so a copied Staff of Thunder and Lightning keeps them.
+  powers: z.record(z.string().trim().min(1).max(40), chargeRuleSchema).refine((powers) => Object.keys(powers).length <= 8, "at most 8 properties").optional(),
   checks: checkRidersSchema.optional(),
   spells: z.array(itemSpellSchema).max(24).optional(),
   attunedBy: attunedBySchema.optional(),
@@ -146,6 +152,7 @@ export type ItemMagic = {
   weaponRiders?: WeaponRiders;
   armorRiders?: ArmorRiders;
   charges?: ChargeRule;
+  powers?: Record<string, ChargeRule>;
   checks?: { bonus?: number; skillBonus?: Partial<Record<(typeof SKILL_IDS)[number], number>>; advantage?: string[] };
   spells?: ItemSpell[];
   attunedBy?: AttunementRule;
@@ -170,7 +177,7 @@ export function checkItemMagic(raw: Record<string, unknown>): { magic: ItemMagic
     source.charges = /dawn|day|long rest/i.test(String(recharge ?? "")) ? { ...rest, regain: "all" } : rest;
   }
   const picked = Object.fromEntries(
-    ["weaponRiders", "armorRiders", "charges", "checks", "spells", "attunedBy", "cursed", "carried"]
+    ["weaponRiders", "armorRiders", "charges", "powers", "checks", "spells", "attunedBy", "cursed", "carried"]
       .filter((key) => source[key] !== undefined && source[key] !== null)
       .map((key) => [key, source[key]]),
   );

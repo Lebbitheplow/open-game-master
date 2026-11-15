@@ -25,8 +25,8 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3-multiple-ciphers";
-import { ADDED, ALIASES, DROPPED, EXTRA, REPLACED } from "./lib/magic-item-corrections.mjs";
-import { categoryBase, COUNTED_USES, DAILY_POWERS, GEAR_RIDERS, LAST_CHARGE_BECOMES } from "./lib/magic-item-riders.mjs";
+import { ADDED, ALIASES, DROPPED, EXTRA, REPLACED, UNCHARGED } from "./lib/magic-item-corrections.mjs";
+import { categoryBase, COUNTED_USES, DAILY_POWERS, GEAR_RIDERS, LAST_CHARGE_BECOMES, POWERS } from "./lib/magic-item-riders.mjs";
 import { nameBase } from "./lib/name-base.mjs";
 import { PLAYED_DOCUMENTS_SQL } from "../src/lib/content/edition.ts";
 
@@ -458,7 +458,7 @@ function gearOf(row, desc, match, rawDesc) {
   if (authored?.cursed) {
     out.cursed = true;
   }
-  const charges = chargesOf(desc, srd ? match : null);
+  const charges = srd && UNCHARGED[match] ? null : chargesOf(desc, srd ? match : null);
   const dailyCast = srd && !charges && !DAILY_POWERS[match] ? dailyCastOf(rawDesc) : null;
   if (charges) {
     out.charges = charges;
@@ -466,6 +466,9 @@ function gearOf(row, desc, match, rawDesc) {
     out.charges = { max: 1, regain: "all", daily: DAILY_POWERS[match] };
   } else if (dailyCast) {
     out.charges = { max: 1, regain: "all", daily: dailyCast };
+  }
+  if (srd && POWERS[match]) {
+    out.powers = POWERS[match];
   }
   return out;
 }
@@ -560,6 +563,7 @@ function collect() {
       effects: added.effects,
       ...(added.base ? { base: added.base } : {}),
       ...(added.charges ? { charges: added.charges } : {}),
+      ...(added.noWear ? { noWear: true } : {}),
     });
   }
   return {

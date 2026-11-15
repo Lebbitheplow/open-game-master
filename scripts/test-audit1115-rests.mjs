@@ -5,7 +5,7 @@
 // The table helpers come first: they point the database at a scratch
 // directory before anything from src/ loads.
 import assert from "node:assert/strict";
-import { clockOf, openTable, rolled } from "./lib/enforce-resources.mjs";
+import { casting, clockOf, openTable, rolled } from "./lib/enforce-resources.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 
 const { test, finish } = suite("test-audit1115-rests");
@@ -360,6 +360,97 @@ await test("R11 a worn, attuned Ioun Stone of Regeneration heals 15 at the end o
   assert.equal(table.sheet(down.id).currentHp, 0, "at 0 hit points the stone does nothing");
   await table.invoke("pass_time", { amount: 2, unit: "hours" });
   assert.equal(table.sheet(wearer.id).currentHp, 60, "never past the maximum");
+});
+
+await test("R12 an item property usable once a dawn or until a long rest has a count the engine spends, refuses past and refills at that dawn or rest", async () => {
+  // SRD 5.1: Staff of Thunder and Lightning, "When one of these properties
+  // is used, it can't be used again until the next dawn"; Rod of Lordly
+  // Might's Drain Life, Paralyze and Terrify, each "can't be used again until
+  // the next dawn"; Boots of Speed, "When the boots' property has been used
+  // for a total of 10 minutes, the magic ceases to function until you finish
+  // a long rest"; Pearl of Power, "regain one expended spell slot ... Once
+  // you use the pearl, it can't be used again until the next dawn"; Rod of
+  // Rulership, Iron Bands of Binding and the Protective Aura of a Rod of
+  // Alertness likewise; Luck Blade, Luck and Wish each once a dawn. Nothing
+  // counted these, so the GM could use them as often as it liked.
+  const { chargeRuleOf, itemPowersOf } = await import("../src/lib/srd/item-charge-rules.ts");
+  for (const name of ["Pearl of Power", "Rod of Rulership", "Iron Bands of Binding"]) {
+    const rule = chargeRuleOf({ name });
+    assert.ok(rule?.max === 1 && rule.regain === "all" && rule.daily, `${name}: one use, back at dawn`);
+  }
+  assert.deepEqual(Object.keys(itemPowersOf({ name: "Staff of Thunder and Lightning" }) ?? {}), ["Lightning", "Thunder", "Lightning Strike", "Thunderclap", "Thunder and Lightning"]);
+  assert.deepEqual(Object.keys(itemPowersOf({ name: "Rod of Lordly Might" }) ?? {}), ["Drain Life", "Paralyze", "Terrify"]);
+  assert.deepEqual(Object.keys(itemPowersOf({ name: "Luck Blade" }) ?? {}), ["Luck", "Wish"]);
+  assert.ok(itemPowersOf({ name: "Rod of Alertness" })?.["Protective Aura"]);
+  assert.equal(chargeRuleOf({ name: "Boots of Speed" })?.max, 10);
+  assert.equal(chargeRuleOf({ name: "Boots of Speed" })?.regainOn, "long_rest");
+  // SRD 5.1, Figurine of Wondrous Power: each figurine waits its own days
+  // ("Bronze Griffon ... Once it has been used, it can't be used again until
+  // 5 days have passed"). The family's row held 24 charges, the goat of
+  // traveling's alone, so a griffon flew 24 times and never waited.
+  assert.deepEqual(chargeRuleOf({ name: "Figurine of Wondrous Power (Bronze Griffon)" }), { max: 1, regainDays: 5 });
+  assert.deepEqual(chargeRuleOf({ name: "Silver Raven Figurine" }), { max: 1, regainDays: 2 });
+  assert.deepEqual(chargeRuleOf({ name: "Ivory Goat of Traveling" }), { max: 24, regainDays: 7 });
+  assert.deepEqual(chargeRuleOf({ name: "Ivory Goat of Travail" }), { max: 1, regainDays: 30 });
+  assert.equal(chargeRuleOf({ name: "Figurine of Wondrous Power" }), null);
+
+  const table = await openTable();
+  const hero = table.addHero({
+    class: "wizard", level: 9, maxHp: 50, abilities: { int: 16 },
+    spellcasting: casting("int", { 1: [4, 0], 2: [3, 0], 3: [3, 0], 4: [3, 0], 5: [1, 0] }),
+    equipment: [
+      { name: "Staff of Thunder and Lightning", qty: 1, equipped: true, attuned: true },
+      { name: "Boots of Speed", qty: 1, equipped: true, attuned: true },
+      { name: "Pearl of Power", qty: 1, attuned: true },
+    ],
+  });
+  const use = (item, extra = {}) => table.invoke("use_item", { characterId: hero.id, item, ...extra });
+  const unnamed = await use("Staff of Thunder and Lightning");
+  assert.equal(unnamed.retry, true, "the staff asks which property");
+  const clap = await use("Staff of Thunder and Lightning", { spell: "Thunderclap" });
+  assert.equal(clap.ok, true, clap.error);
+  const twice = await use("Staff of Thunder and Lightning", { spell: "Thunderclap" });
+  assert.equal(twice.refused, "rules", "a second thunderclap waits for dawn");
+  assert.match(twice.error, /dawn/);
+  const strike = await use("Staff of Thunder and Lightning", { spell: "Lightning Strike" });
+  assert.equal(strike.ok, true, `each property has its own use: ${strike.error}`);
+
+  // Ten minutes of the boots, then nothing until a long rest.
+  const run = await use("Boots of Speed", { charges: 10 });
+  assert.equal(run.ok, true, run.error);
+  const more = await use("Boots of Speed");
+  assert.equal(more.refused, "rules", "the boots' ten minutes are spent");
+  assert.match(more.error, /long rest/);
+
+  // The pearl gives a spent slot back, once.
+  table.patch(hero.id, { spellcasting: { ...table.sheet(hero.id).spellcasting, slots: { ...table.sheet(hero.id).spellcasting.slots, 3: { max: 3, used: 2 } } } });
+  const pearl = await use("Pearl of Power");
+  assert.equal(pearl.ok, true, pearl.error);
+  assert.equal(table.sheet(hero.id).spellcasting.slots["3"].used, 1, "a 3rd-level slot is back");
+  assert.equal((await use("Pearl of Power")).refused, "rules", "the pearl waits for dawn");
+  table.patch(hero.id, { equipment: [...table.sheet(hero.id).equipment, { name: "Iron Bands of Binding", qty: 1 }] });
+  assert.equal((await use("Iron Bands of Binding")).ok, true, "the bands bind once");
+  assert.ok(table.sheet(hero.id).equipment.some((item) => item.name === "Iron Bands of Binding"), "and stay in the pack");
+  assert.equal((await use("Iron Bands of Binding")).refused, "rules", "the bands wait for dawn");
+
+  // Past a dawn the staff's and the pearl's uses are back, the boots' not.
+  await table.invoke("pass_time", { amount: 1, unit: "days" });
+  assert.equal((await use("Staff of Thunder and Lightning", { spell: "Thunderclap" })).ok, true, "the thunderclap is back at dawn");
+  assert.equal((await use("Pearl of Power")).ok, true, "the pearl is back at dawn");
+  assert.equal((await use("Boots of Speed")).refused, "rules", "a dawn is not a long rest");
+  table.patch(hero.id, { currentHp: 50 });
+  const rest = await table.invoke("take_rest", { kind: "long" });
+  assert.equal(rest.ok, true, rest.error);
+  assert.equal((await use("Boots of Speed")).ok, true, "the boots work again after a long rest");
+
+  // A Luck Blade with two wishes left still grants one a dawn.
+  table.patch(hero.id, { equipment: [{ name: "Luck Blade", qty: 1, equipped: true, attuned: true, charges: 2 }] });
+  const wish = await use("Luck Blade", { spell: "Wish" });
+  assert.equal(wish.ok, true, wish.error);
+  const second = await use("Luck Blade", { spell: "Wish" });
+  assert.equal(second.refused, "rules", "a second wish waits for dawn");
+  assert.equal(table.sheet(hero.id).equipment[0].charges, 1, "and spends no charge");
+  assert.equal((await use("Luck Blade", { spell: "Luck" })).ok, true, "Luck is its own use");
 });
 
 finish();

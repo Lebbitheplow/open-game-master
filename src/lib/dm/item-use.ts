@@ -40,7 +40,9 @@ import {
   spendChargesMath,
   writeCharges,
 } from "@/lib/dm/item-charges";
-import { chargesShort } from "@/lib/srd/item-charge-rules";
+import { chargeNoun, chargesShort, itemPowersOf, powerNamed, regainWhen } from "@/lib/srd/item-charge-rules";
+import { itemPowerUse, powerShort, withPowerSpent } from "@/lib/dm/item-powers";
+import { matchMagicItem } from "@/lib/srd/magic-items";
 import { linesNamed } from "@/lib/srd/item-row";
 import { beadForSpell, beadRefusal, beadsOf } from "@/lib/srd/prayer-beads";
 import { getSheetById } from "@/lib/db/sheets";
@@ -121,12 +123,19 @@ function equipmentWithPaymentBack(equipment: readonly EquipmentItem[], paid: Non
     if (charges === undefined) {
       return { ...item, qty: item.qty + 1 };
     }
-    // A prayer bead the cast never used is unused again, and an item that had
-    // emptied holds a charge again, so no wait runs (ChargeRule.regainDays).
-    const { beadsSpent: _spent, emptiedAt: _emptied, ...rest } = item;
+    // A prayer bead the cast never used is unused again, an item that had
+    // emptied holds a charge again, so no wait runs (ChargeRule.regainDays),
+    // and a property the cast spent (a Luck Blade's Wish) is unspent.
+    const { beadsSpent: _spent, emptiedAt: _emptied, powerCharges: _powers, ...rest } = item;
     void _spent;
     void _emptied;
-    return { ...rest, charges: (item.charges ?? 0) + charges, ...(row.beadsSpent ? { beadsSpent: row.beadsSpent } : {}) };
+    void _powers;
+    return {
+      ...rest,
+      charges: (item.charges ?? 0) + charges,
+      ...(row.beadsSpent ? { beadsSpent: row.beadsSpent } : {}),
+      ...(row.powerCharges ? { powerCharges: row.powerCharges } : {}),
+    };
   });
 }
 
@@ -176,7 +185,7 @@ export function chargedItemUse(
   // well is a guess: "healing" with a Staff of Healing and a potion in the
   // pack. Nothing is spent on a guess.
   const matching = carriedItemsMatching(sheet.equipment, itemName);
-  const magicMatches = matching.filter((item) => chargeRuleOf(item) || itemSpellsOfRow(item).length);
+  const magicMatches = matching.filter((item) => chargeRuleOf(item) || itemSpellsOfRow(item).length || itemPowersOf(item));
   if (magicMatches.length && matching.length > 1) {
     return {
       error: `"${itemName}" could mean ${matching.map((item) => item.name).join(" or ")}; name the item exactly. Nothing was spent.`,
@@ -192,10 +201,26 @@ export function chargedItemUse(
   // it has (an Elemental Gem's conjure elemental, a Hat of Disguise's
   // disguise self). One that casts several is asked which.
   const atWill = rule ? [] : itemSpellsOfRow(carried);
+  // A property with a count of its own, named in `spell` (Staff of Thunder
+  // and Lightning: Thunderclap), or the item's only one when it has nothing
+  // else to use (item-powers.ts). One named for a spell the item casts (a
+  // Luck Blade's Wish) is that cast, and its count gates it below.
+  const powers = Object.keys(itemPowersOf(carried) ?? {});
+  let power = powerNamed(carried, spell);
+  if (!power && powers.length && !rule && !atWill.length && !spell?.trim()) {
+    if (powers.length > 1) {
+      return { error: `${carried.name}: name the property used in spell (${powers.join(", ")}). Nothing was spent.`, retry: true };
+    }
+    power = powerNamed(carried, powers[0]);
+  }
+  const gatesCast = power ? itemSpellsOfRow(carried).some((entry) => textKey(entry.spell) === textKey(power.name)) : false;
+  if (power && !gatesCast) {
+    return itemPowerUse(campaign, turnId, sheet, carried, power, charges, { dryRun });
+  }
   const named = spell?.trim() || (atWill.length === 1 ? atWill[0].spell : "");
   if (!rule && !named) {
     return {
-      error: `${carried.name} casts ${atWill.map((entry) => entry.spell).join(", ")} at will; name the one cast in spell. Nothing was spent.`,
+      error: `${carried.name} casts ${atWill.map((entry) => entry.spell).join(", ")} at will${powers.length ? `, and has ${powers.join(", ")}` : ""}; name the one used in spell. Nothing was spent.`,
       retry: true,
     };
   }
@@ -222,9 +247,18 @@ export function chargedItemUse(
   if (beadless) {
     return { error: beadless, refused: "rules" };
   }
+  // SRD 5.1, Luck Blade: "expend 1 charge and cast the wish spell from it.
+  // This property can't be used again until the next dawn."
+  const gate = power && gatesCast ? powerShort(carried, power) : null;
+  if (gate) {
+    return { error: `${gate} Nothing was spent.`, refused: "rules" };
+  }
   // In a fight, activating the item is the character's action, or the bonus
   // action its text names (Ring of Jumping, a prayer bead).
-  const kind = cast?.bonusAction ? "bonus" : "action";
+  // An item whose charges its text spends with a bonus action (Boots of
+  // Speed) or with none takes that, not the action.
+  const kind = cast?.bonusAction || (!cast && rule?.activation === "bonus") ? "bonus" : "action";
+  const free = !cast && rule?.activation === "free";
   const encounter = getActiveEncounter(campaign.id);
   let budget: ReturnType<typeof budgetFor> = null;
   // A casting of a minute or more held from this item to its end: what it cost
@@ -244,7 +278,7 @@ export function chargedItemUse(
   // ring's is, unless the item's text makes it an action or a bonus action.
   const facts = cast && encounter && !readied && !finishing && !cast.bonusAction && !cast.asAction ? spellFactsFor(cast.spell, spellAuthorsFor(campaign)) : null;
   const rounds = facts ? castingRoundsOf(facts, false) : null;
-  if (encounter && !readied && !finishing) {
+  if (encounter && !readied && !finishing && !free) {
     const able = canAct({ sheet, encounter, kind });
     if (!able.ok) {
       return toolError(able);
@@ -286,7 +320,10 @@ export function chargedItemUse(
   // it up.
   // An artificer's Spell-Refueling Ring recovers a spent slot of 3rd level
   // or lower (src/lib/dm/infusion-charges.ts): with none spent it is not used.
-  const refuelling = infusionOf(carried)?.def.name === "Spell-Refueling Ring";
+  // SRD 5.1, Pearl of Power: "regain one expended spell slot. If the
+  // expended slot was of 4th level or higher, the new slot is 3rd level":
+  // read as the ring reads it, the highest spent slot of 3rd level or lower.
+  const refuelling = infusionOf(carried)?.def.name === "Spell-Refueling Ring" || matchMagicItem(carried)?.name === "Pearl of Power";
   const refuel = refuelling ? refuelLevel(sheet) : null;
   if (refuelling && !refuel) {
     return { error: `${sheet.name} has no spent spell slot of 3rd level or lower for ${carried.name} to recover. Nothing was spent.`, refused: "rules" };
@@ -324,9 +361,10 @@ export function chargedItemUse(
     const equipment = spent.map((item, index) => {
       if (index !== at) return item;
       const beaded = bead && !destroyed && !becomes ? { ...item, beadsSpent: [...(item.beadsSpent ?? []), bead] } : item;
-      return waits !== null ? { ...beaded, emptiedAt: waits } : beaded;
+      const powered = power && gatesCast && !destroyed && !becomes ? withPowerSpent(beaded, power) : beaded;
+      return waits !== null ? { ...powered, emptiedAt: waits } : powered;
     });
-    writeCharges(campaign.id, sheet, equipment, "use_item", rule ? `${carried.name}: ${count} charge${count === 1 ? "" : "s"}` : `${carried.name}: used up`, turnId);
+    writeCharges(campaign.id, sheet, equipment, "use_item", rule ? `${carried.name}: ${chargeNoun(rule, count)}` : `${carried.name}: used up`, turnId);
   }
   if (refuel) {
     recoverSlot(campaign, sheet.id, refuel);
@@ -380,14 +418,8 @@ export function chargedItemUse(
           : `No charge is spent: ${carried.name} casts it at will.`
         : count === 0
           ? `No charge is spent; ${math.charges} left.`
-          : `${count} charge${count === 1 ? "" : "s"} spent; ${destroyed ? "the item is gone" : becomes ? `the item is a ${becomes} now` : `${math.charges} left`}${
-              rule.regainDays && !destroyed && !becomes
-                ? `, all back ${rule.regainDays} days after the last is spent`
-                : rule.regain && !destroyed && !becomes
-                  ? rule.regain === "all"
-                    ? `, all back at ${rule.regainAtDusk ? "dusk" : "dawn"}`
-                    : `, ${rule.regain} back at ${rule.regainAtDusk ? "dusk" : "dawn"}`
-                  : ""
+          : `${chargeNoun(rule, count)} spent; ${destroyed ? "the item is gone" : becomes ? `the item is a ${becomes} now` : `${math.charges} left`}${
+              !destroyed && !becomes && regainWhen(rule) ? `, ${rule.regain && rule.regain !== "all" ? rule.regain : "all"} back ${regainWhen(rule)}` : ""
             }.`,
       ...math.notes,
       check && cast?.check

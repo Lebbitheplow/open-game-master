@@ -108,6 +108,7 @@ export type HomebrewGearDef = {
   weapon?: WeaponRiders;
   armor?: ArmorRiders;
   charges?: ChargeRule;
+  powers?: Record<string, ChargeRule>;
   cursed?: boolean;
 };
 
@@ -443,13 +444,14 @@ export function gearFromHomebrewData(name: string, data: unknown): HomebrewGear 
       ...(extra.carried ? { carried: true } : {}),
     };
   }
-  if (extra.weaponRiders || extra.armorRiders || extra.charges || extra.cursed) {
+  if (extra.weaponRiders || extra.armorRiders || extra.charges || extra.powers || extra.cursed) {
     gear.def = {
       requiresAttunement,
       ...(gear.weapon ? { base: { kind: "weapon" as const, name: gear.weapon.name } } : gear.armor ? { base: { kind: "armor" as const, name: gear.armor.name } } : {}),
       ...(extra.weaponRiders ? { weapon: extra.weaponRiders } : {}),
       ...(extra.armorRiders ? { armor: extra.armorRiders } : {}),
       ...(extra.charges ? { charges: extra.charges } : {}),
+      ...(extra.powers ? { powers: extra.powers } : {}),
       ...(extra.cursed ? { cursed: true } : {}),
     };
   }

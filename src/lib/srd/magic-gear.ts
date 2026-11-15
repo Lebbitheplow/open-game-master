@@ -72,6 +72,16 @@ export type ChargeRule = {
   // used again until 7 days have passed"). The row keeps the minute it
   // emptied (EquipmentItem.emptiedAt).
   regainDays?: number;
+  // What comes back returns when the owner finishes a long rest, not at dawn
+  // (SRD 5.1, Boots of Speed: "the magic ceases to function until you finish
+  // a long rest").
+  regainOn?: "long_rest";
+  // What one count is, in the words the GM is told: a minute of the Boots of
+  // Speed's ten, a use of a property's one. A charge otherwise.
+  unit?: "minute" | "use";
+  // Using it takes no action ("free": a property that rides a hit, a Luck
+  // Blade's luck) or the bonus action (Boots of Speed); an action otherwise.
+  activation?: "bonus" | "free";
   // A once-a-day power tracked as one charge: what it does.
   daily?: string;
   // The item may still be used with no charge left, at this percent chance
@@ -94,6 +104,10 @@ export type GearDef = {
   weapon?: WeaponRiders;
   armor?: ArmorRiders;
   charges?: ChargeRule;
+  // Properties that each keep a count of their own, by the name the SRD
+  // heads them with (Staff of Thunder and Lightning's Thunderclap, once a
+  // dawn). The row holds what is left of each (EquipmentItem.powerCharges).
+  powers?: Record<string, ChargeRule>;
   // Attuning curses the wearer: the attunement holds until remove curse.
   cursed?: boolean;
 };
