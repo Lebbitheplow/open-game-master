@@ -353,7 +353,7 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
     id: "armor_of_agathys",
     match: ["armor of agathys"],
     summary:
-      "Armor of Agathys: while its temporary hit points last, a creature that hits them with a melee attack takes 5 cold damage per slot level (apply_damage on the attacker).",
+      "Armor of Agathys: while its temporary hit points last, a creature that hits them with a melee attack takes 5 cold damage per slot level; the server deals it.",
   },
   {
     id: "gift_of_alacrity",

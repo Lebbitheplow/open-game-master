@@ -231,5 +231,48 @@ await test("S05: Destructive Wave rolls 5d6 thunder and 5d6 radiant, and a faile
   assert.ok(foe.conditions.includes("prone"));
 });
 
+// ---- S06: Armor of Agathys bites the creature that hits through it ----
+
+// SRD 5.1, Armor of Agathys: "If a creature hits you with a melee attack while
+// you have these hit points, the creature takes 5 cold damage", and "both the
+// temporary hit points and the cold damage increase by 5 for each slot level
+// above 1st." The engine gave the temporary hit points and left the cold to
+// the GM ("apply_damage on the attacker"), which apply_damage refuses for a
+// spell's harm to a foe: the frost never bit.
+async function frostWarlock() {
+  const { world, sheets: [lock], enemies: [goblin] } = await table([
+    caster("warlock", "cha", [], ["Eldritch Blast"], 5, { spellcasting: { known: ["Armor of Agathys"], slots: { 3: { max: 2, used: 0 } } } }),
+  ]);
+  const armored = await world.invoke("cast_buff", { characterId: lock.id, spell: "Armor of Agathys", level: 3 });
+  assert.equal(armored.ok, true, armored.error);
+  assert.equal(world.sheet(lock.id).tempHp, 15, "15 temporary hit points from a 3rd-level slot");
+  return { world, lock, goblin };
+}
+
+const hpLost = (world, id) => {
+  const foe = world.enemies().find((entry) => entry.id === id);
+  return foe.maxHp - foe.currentHp;
+};
+
+await test("S06: a creature that hits an Armor of Agathys cast at 3rd level with a melee attack takes 15 cold damage", async () => {
+  const { world, lock, goblin } = await frostWarlock();
+  world.dice(15, 3);
+  const swing = await world.invoke("enemy_attack", { enemyId: goblin.id, targetCharacterId: lock.id });
+  world.clearDice();
+  assert.equal(swing.ok, true, swing.error);
+  assert.equal(swing.result.hit, true, JSON.stringify(swing.result));
+  assert.equal(hpLost(world, goblin.id), 15, JSON.stringify(swing.result.swings));
+});
+
+await test("S06: once the spell's temporary hit points are gone, a melee hit takes no cold damage", async () => {
+  const { world, lock, goblin } = await frostWarlock();
+  world.patch(lock.id, { tempHp: 0 });
+  world.dice(15, 3);
+  const swing = await world.invoke("enemy_attack", { enemyId: goblin.id, targetCharacterId: lock.id });
+  world.clearDice();
+  assert.equal(swing.result.hit, true);
+  assert.equal(hpLost(world, goblin.id), 0);
+});
+
 closeTables();
 finish();

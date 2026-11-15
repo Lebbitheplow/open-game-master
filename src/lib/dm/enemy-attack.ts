@@ -935,8 +935,8 @@ export function handleEnemyAttack(
       ? byType.reduce((sum, part) => sum + (/^(\d+) necrotic\b/i.exec(part) ? Number(/^(\d+)/.exec(part)![1]) : 0), 0)
       : /necrotic/i.test(blow.type ?? attack.type) ? dealt : 0;
     const onHit = resolveOnHit(campaign, turn, standing, attack, target.id, { sheets, sheetsById, dealt: { total: dealt, necrotic } });
-    // Fire Shield and Holy Aura answer the blow (spell-retort.ts).
-    const retort = spellRetort(campaign, turn, standing, target.id, !ranged, spatial.distance === null || spatial.distance <= 1, sheets, sheetsById);
+    // Fire Shield, Armor of Agathys and Holy Aura answer the blow (spell-retort.ts).
+    const retort = spellRetort(campaign, turn, standing, target.id, !ranged, spatial.distance === null || spatial.distance <= 1, sheets, sheetsById, struck.tempHp ?? 0);
     if (typeof onHit?.targetHp === "string") {
       targetHp = onHit.targetHp;
     }
