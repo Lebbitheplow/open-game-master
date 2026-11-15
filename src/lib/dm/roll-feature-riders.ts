@@ -162,8 +162,10 @@ export function rollFeatureRiders(
   // Feral Instinct: advantage on initiative.
   const feral = sheet && derivationKind === "initiative" ? initiativeAdvantage(sheet) : null;
   // Magic items that ride checks (Stone of Good Luck, Cloak of Elvenkind).
+  // Initiative is a Dexterity check, which the Stone's "+1 bonus to ability
+  // checks" rides as well (SRD 5.1, Initiative).
   const itemChecks =
-    sheet && (derivationKind === "skill_check" || derivationKind === "ability_check")
+    sheet && (derivationKind === "skill_check" || derivationKind === "ability_check" || derivationKind === "initiative")
       ? itemCheckRiders(sheet.equipment, skillId)
       : { bonus: 0, advantage: false, notes: [] };
   // The traits keyed to what a check is about (Favored Enemy, Natural

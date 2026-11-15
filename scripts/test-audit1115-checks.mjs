@@ -12,6 +12,14 @@ const kit = await combatKit(world);
 const { getDatabase } = await import("../src/lib/db/core.ts");
 const maps = await import("../src/lib/db/battle-maps.ts");
 const { clearLitTilesCache } = await import("../src/lib/battlemap/lit-cache.ts");
+const { resolveRollExpression } = await import("../src/lib/dm/rolls.ts");
+const { rollExtrasFor } = await import("../src/lib/dm/forced-save.ts");
+
+// A roll as the engine builds it for this character, nothing rolled.
+function resolved(heroId, args) {
+  const sheet = world.sheet(heroId);
+  return resolveRollExpression({ characterId: heroId, ...args }, sheet, rollExtrasFor(world.campaign(), sheet, args.kind));
+}
 
 const klass = (classId, ...names) => names.map((name) => ({ name, source: "class", classId }));
 
@@ -111,6 +119,30 @@ await test("K02: a watcher with darkvision sees a hider in the dark, and a torch
   const lit = await hideNow();
   assert.equal(lit.ok, false, "the rogue stands in the fighter's torchlight");
   await kit.endFight();
+});
+
+// K03. SRD 5.1, Initiative: "each participant makes a Dexterity check", so
+// what rides a Dexterity check, or every ability check, rides initiative:
+// Enhance Ability's Cat's Grace ("advantage on Dexterity checks"), Foresight
+// and Bestow Curse on Dexterity, and the Stone of Good Luck ("+1 bonus to
+// ability checks and saving throws"). Each counted on a Dexterity check and
+// was lost on the initiative roll.
+await test("K03: initiative is a Dexterity check: Cat's Grace, a Dexterity curse and the Stone of Good Luck ride it", async () => {
+  await kit.endFight();
+  const quick = world.addHero({ class: "fighter", level: 1, abilities: { dex: 14 }, proficiencies: { ...TRAINED } });
+  world.patch(quick.id, { conditions: ["enhance ability (cat's grace)"] });
+  assert.equal(resolved(quick.id, { kind: "ability_check", ability: "dex" }).expression, "2d20kh1+2", "the staging: Cat's Grace on a Dexterity check");
+  assert.equal(resolved(quick.id, { kind: "initiative" }).expression, "2d20kh1+2", "Cat's Grace gives initiative advantage");
+  world.patch(quick.id, { conditions: ["cursed (dex)"] });
+  assert.equal(resolved(quick.id, { kind: "initiative" }).expression, "2d20kl1+2", "a Dexterity curse puts initiative at disadvantage");
+  world.patch(quick.id, { conditions: ["cursed (str)"] });
+  assert.equal(resolved(quick.id, { kind: "initiative" }).expression, "1d20+2", "a Strength curse leaves initiative alone");
+  world.patch(quick.id, { conditions: [], equipment: [{ name: "Stone of Good Luck (Luckstone)", qty: 1, attuned: true, equipped: true }] });
+  const encounter = await world.beginFight([{ monster: "goblin", count: 1 }], { heroFaces: { [quick.id]: 10 } });
+  const entry = encounter.order.find((row) => row.characterId === quick.id);
+  assert.equal(entry?.initiative, 10 + 2 + 1, `the Stone of Good Luck's +1 rides initiative: ${entry?.initiative}`);
+  await kit.endFight();
+  world.patch(quick.id, { equipment: [] });
 });
 
 world.close();

@@ -1034,6 +1034,12 @@ function matchesRollKind(
   kind: RollRiderKind,
   ability?: SaveAbilityId,
 ): boolean {
+  // Initiative is a Dexterity check (SRD 5.1, Initiative): a grant on every
+  // ability check or on Dexterity checks rides it (Foresight, Cat's Grace,
+  // a Dexterity curse), which the initiative roll used to lose.
+  if (grant.kind === "check" && kind === "initiative") {
+    return !grant.ability || grant.ability === "dex";
+  }
   if (grant.kind === "save" && kind !== "save") {
     return false;
   }

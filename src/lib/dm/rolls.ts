@@ -826,7 +826,9 @@ function resolveUnfloored(
     const derived = computeSheetDerived(sheet);
     // A lasting effect on initiative (Gift of Alacrity) adds to the roll.
     // An ally's Aura of the Sentinel adds to it too (extras.initiativeBonus).
-    const initiativeEffect = (extras?.effectBonus ?? 0) + (extras?.initiativeBonus ?? 0);
+    // What rides a Dexterity check flat rides initiative too (a Stone of
+    // Good Luck: roll-feature-riders.ts).
+    const initiativeEffect = (extras?.effectBonus ?? 0) + (extras?.initiativeBonus ?? 0) + riders.checkBonus;
     const luckyBase = withLuck(d20Expression(derived.initiative + initiativeEffect, advantage)).replace(
       /^(\d+d20(?:k[hl]\d+)?)/,
       lucky ? "$1r1" : "$1",
