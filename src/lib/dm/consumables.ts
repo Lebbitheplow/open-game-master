@@ -24,7 +24,8 @@ import { allocateSeq } from "@/lib/db/campaigns";
 import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
-import { removeConditions } from "@/lib/dm/condition-logic";
+import { removeConditions, withTempHpClaim, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import { VITAL_HIT_DICE } from "@/lib/dm/hit-dice";
 import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
@@ -147,6 +148,8 @@ export function consumableRefusal(sheet: CharacterSheet, item: ScrollItem): Tool
   return null;
 }
 
+const HEROISM_TEMP_HP = 10;
+
 function condition(campaign: Campaign, turnId: string, target: CharacterSheet, name: string, minutes: number, reason: string) {
   const fresh = getSheetById(target.id) ?? target;
   return handleSetCondition(campaign, turnId, fresh, { condition: name, minutes: Math.min(1440, minutes) }, reason, {
@@ -219,8 +222,17 @@ export function applyConsumable(
       return { effect: `${sheet.name} is cured of any disease, and no longer blinded, deafened, paralyzed or poisoned.` };
     }
     case "heroism": {
-      write(campaign, sheet, { tempHp: Math.max(sheet.tempHp ?? 0, 10) });
+      const pool = sheet.tempHp ?? 0;
+      write(campaign, sheet, { tempHp: Math.max(pool, HEROISM_TEMP_HP) });
       condition(campaign, turnId, sheet, "blessed", 60, reason);
+      // "10 temporary hit points that last for 1 hour" (SRD 5.1): the potion's
+      // bless claims the pool it gave, so the two end together
+      // (src/lib/db/sheets.ts). Unclaimed, they lasted until a long rest.
+      const blessed = getSheetById(sheet.id);
+      const laid = blessed?.conditions.find((name) => isConditionNamed(name, "blessed"));
+      if (pool < HEROISM_TEMP_HP && blessed && laid && blessed.tempHp === HEROISM_TEMP_HP) {
+        write(campaign, blessed, { conditionMeta: withTempHpClaim(blessed.conditionMeta as ConditionMetaMap, laid, { spell: "", source: "item" }, HEROISM_TEMP_HP) });
+      }
       return { effect: `${sheet.name} gains 10 temporary hit points and is blessed for an hour.` };
     }
     case "giant": {

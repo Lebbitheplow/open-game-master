@@ -249,4 +249,24 @@ await test("R09 from bard 5 the GM, the spend's result and the Hand say Bardic I
   assert.doesNotMatch(describeSheet(table.sheet(novice.id), "novice", false, {}), /Bardic Inspiration 3\/3 \(refills on any rest\)/);
 });
 
+await test("R10 a Potion of Heroism's temporary hit points end with its hour, as its bless does", async () => {
+  // SRD 5.1, Potion of Heroism: "you gain 10 temporary hit points that last
+  // for 1 hour. For the same duration, you are under the effect of the
+  // bless spell."
+  const table = await openTable();
+  const drinker = table.addHero({ class: "fighter", level: 5, maxHp: 44 });
+  table.patch(drinker.id, { equipment: [{ name: "Potion of Heroism", qty: 1 }] });
+  const drunk = await table.invoke("use_item", { characterId: drinker.id, item: "Potion of Heroism" });
+  assert.equal(drunk.ok, true, drunk.error);
+  assert.equal(table.sheet(drinker.id).tempHp, 10);
+  // Half an hour on, a blow takes 4 of them; the rest still hold.
+  await table.invoke("pass_time", { amount: 30, unit: "minutes" });
+  await table.invoke("apply_damage", { characterId: drinker.id, amount: 4, reason: "a falling stone" });
+  assert.equal(table.sheet(drinker.id).tempHp, 6);
+  // Past the hour, bless and what is left of the pool are gone together.
+  await table.invoke("pass_time", { amount: 31, unit: "minutes" });
+  assert.equal(table.sheet(drinker.id).conditions.includes("blessed"), false, "bless ran out");
+  assert.equal(table.sheet(drinker.id).tempHp, 0);
+});
+
 finish();
