@@ -32,6 +32,7 @@ import {
   claimKindsFor,
   englishEndsTurn,
   englishKeepsTurn,
+  englishOnlyDeclares,
   namedSpeakers,
   parseReaderReply,
   readerSystem,
@@ -189,7 +190,8 @@ export async function readTurnEndInWords(
   if (!text.trim()) {
     return false;
   }
-  if (campaign.gameSettings.tableLanguage === "english") {
+  const english = campaign.gameSettings.tableLanguage === "english";
+  if (english) {
     if (englishEndsTurn(text)) {
       return true;
     }
@@ -205,7 +207,7 @@ export async function readTurnEndInWords(
     sheets,
     heading: "Player's words",
   });
-  return claims.some((claim) => claim.kind === "turn_over");
+  return claims.some((claim) => claim.kind === "turn_over" && !(english && englishOnlyDeclares(claim.quote)));
 }
 
 // What the guard can rule on, from engine state alone: the part of the

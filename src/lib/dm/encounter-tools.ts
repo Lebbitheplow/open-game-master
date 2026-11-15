@@ -3,7 +3,8 @@ import { layStandingWards } from "@/lib/dm/genre-gh-wards";
 import { hiddenNow } from "@/lib/dm/board-hidden";
 import { cannotBeSurprised } from "@/lib/dm/surprise-guard";
 import { resolveCombatant, sheetsOnSide, sideOf, standingOn } from "@/lib/dm/combatant";
-import { attacksLeft, budgetApplies, paidSwingsLeft, type TurnBudget } from "@/lib/dm/action-budget";
+import { attacksLeft, budgetApplies, type TurnBudget } from "@/lib/dm/action-budget";
+import { turnStillOwes } from "@/lib/dm/turn-budget";
 import { resolveTargetFoe, sheetFoeView } from "@/lib/dm/sheet-foe";
 import { lashOutTarget } from "@/lib/dm/confusion";
 import type { SystemGlyph } from "@/lib/system-glyphs";
@@ -1318,13 +1319,6 @@ function handleEndTurn(
   };
 }
 
-// The swings a character's live turn has paid for and not made.
-function swingsLeftFor(campaignId: string, characterId: string): number {
-  const encounter = getActiveEncounter(campaignId);
-  const budget = encounter?.turnBudget ?? null;
-  return encounter && budgetApplies(budget, characterId, encounter.round) ? paidSwingsLeft(budget) : 0;
-}
-
 // pc_attack's endTurn: the player said the attack ends their turn
 // (src/lib/dm/pc-attack-approach.ts). Once the attack resolved, or the walk
 // toward the target spent the turn's movement without reaching it
@@ -1381,14 +1375,23 @@ function endTurnAfterAttack(
   }
   // The model's endTurn on an Attack action with Extra Attack's swings
   // still to make: one swing declared as "I attack the goblin" ended a level
-  // 5 fighter's turn with the second attack unmade. Unless the player's own
-  // words end the turn, it stays open, and end_turn ends it if they give the
-  // swings up.
-  const left = turn.actor === "ai" ? swingsLeftFor(campaign.id, characterId) : 0;
-  if (left > 0 && !(campaign.gameSettings.tableLanguage === "english" && englishEndsTurn(wordsThisTurn(campaign.id, characterId)))) {
+  // 5 fighter's turn with the second attack unmade. The same for the bonus
+  // swing the Attack action earned (issue 966: a two-weapon fighter's
+  // off-hand attack). Unless the player's own words end the turn, it stays
+  // open, and end_turn ends it if they give the swings up.
+  const owed = turn.actor === "ai" ? turnStillOwes(campaign.id, characterId) : { swings: 0, bonusSwing: null };
+  const left = owed.swings;
+  const endsInWords = campaign.gameSettings.tableLanguage === "english" && englishEndsTurn(wordsThisTurn(campaign.id, characterId));
+  if (left > 0 && !endsInWords) {
     return {
       ...result,
       turnNotEnded: `${sheetsById.get(characterId)?.name ?? "They"} still ${left === 1 ? "has 1 attack" : `has ${left} attacks`} of this turn's Attack action to make, so the turn stays open: make ${left === 1 ? "it" : "them"} with pc_attack, or call end_turn if the player gives ${left === 1 ? "it" : "them"} up.`,
+    };
+  }
+  if (owed.bonusSwing && !endsInWords) {
+    return {
+      ...result,
+      turnNotEnded: `${sheetsById.get(characterId)?.name ?? "They"} earned ${owed.bonusSwing} with this Attack action, so the turn stays open: their player makes it, or ends the turn (end_turn once they say so).`,
     };
   }
   const ended = handleEndTurn(campaign, turn, JSON.stringify({ characterId }), sheets, sheetsById);
