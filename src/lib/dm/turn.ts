@@ -293,6 +293,7 @@ import { petTools, PET_TOOL_NAMES } from "@/lib/dm/pet-tools";
 import { socialTools, SOCIAL_TOOL_NAMES, handleSetNpc, npcRosterForPrompt } from "@/lib/dm/social-tools";
 import { npcMindTools, NPC_MIND_TOOL_NAMES } from "@/lib/dm/npc-mind-tools";
 import { handleNpcState, npcStateTools, NPC_STATE_TOOL_NAMES } from "@/lib/dm/npc-state-tools";
+import { listNpcs } from "@/lib/db/npcs";
 import { readStateGuard } from "@/lib/dm/npc-state-guard";
 import { stateGuardPrompt } from "@/lib/dm/npc-state-guard-logic";
 import { awayArrivalNote, handleNpcInform, handleNpcPast, handleNpcSpeak, mindRosterNotes, mindTurnRefusal, mindsAwaitingTurn, mindsWithinEarshot, npcMindsOn } from "@/lib/dm/npc-mind";
@@ -1689,6 +1690,7 @@ export function profileSignals(campaign: Campaign, sheets: readonly CharacterShe
     inEncounter,
     shopOpen: !inEncounter && Boolean(shopsBlock(campaign)),
     mounts: Object.keys(getMounts(campaign.id)).length > 0,
+    trackedNpcs: !inEncounter && listNpcs(campaign.id).some((npc) => !npc.archived),
     pets: sheets.some((sheet) => (sheet.pets?.length ?? 0) > 0),
     scene: !inEncounter && Boolean(getSceneTracker(campaign.id)),
     quests: !inEncounter && listQuests(campaign.id).length > 0,

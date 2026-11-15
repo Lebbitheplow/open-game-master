@@ -118,7 +118,7 @@ await test("the GM sees the prisoner on the roster on the next turn, with the to
   await model.turn(world, "We walk on.", brakk.id);
   const system = model.requests.at(-1).messages.map((message) => String(message.content ?? "")).join("\n");
   assert.match(system, /- Aldren: [a-z]+, prisoner of Mara, in chains/);
-  assert.match(system, /call npc_state in the same reply/);
+  assert.match(system, /call npc_state when the story changes it/, "the custody group and its rule ride while someone is tracked");
 });
 
 // ---- Who travels with the party (ticket 02) ------------------------------
