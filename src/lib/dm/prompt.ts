@@ -843,9 +843,14 @@ export function describeSheet(
       lines.push(`  Spell slots (SHARED across their caster classes): ${slots || "none"}${pactLabel}`);
       for (const caster of sheet.spellcasting.casters) {
         const casterSpells = spellListLabel(caster);
+        // The sheet's derived DC with this class's ability in place of the
+        // first one's, so what a worn item adds (Robe of the Archmagi's +2)
+        // stays in, as the engine rolls it (spellSaveDcFor). Worked out as
+        // 8 + proficiency + the ability, the GM read out a DC 2 short.
+        const first = sheet.spellcasting.ability as keyof typeof derived.abilityMods;
         const dc =
-          8 +
-          derived.proficiencyBonus +
+          (derived.spellSaveDc ?? 8 + derived.proficiencyBonus + derived.abilityMods[first]) -
+          derived.abilityMods[first] +
           derived.abilityMods[caster.ability as keyof typeof derived.abilityMods];
         lines.push(
           `    As a ${caster.classId} (${caster.ability.toUpperCase()}, Save DC ${dc}): ${casterSpells}`,

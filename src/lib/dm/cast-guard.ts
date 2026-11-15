@@ -63,6 +63,7 @@ import { spendGrantUse } from "@/lib/srd/granted-casts";
 import { spellFactsFor, spellMechanicsFor, spellSchoolFor } from "@/lib/content";
 import { castShares } from "@/lib/srd/spell-mechanics";
 import { describeCastingTime, type SpellFacts } from "@/lib/srd/spell-facts";
+import { concentratesAtSlot } from "@/lib/srd/spell-duration";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
@@ -959,7 +960,8 @@ export function castSpell(
     result.stoneChange = stoneChange;
   }
 
-  const concentrates = !input.storing && (input.concentration === true || facts?.concentration === true);
+  // A higher slot frees some of them (spell-duration.ts concentratesAtSlot).
+  const concentrates = !input.storing && (input.concentration === true || concentratesAtSlot(engine, facts?.concentration === true, slotLevel));
   if (concentrates) {
     // The first spell ends, and with it every effect it held in place: an
     // earlier casting of this same spell too.

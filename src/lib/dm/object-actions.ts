@@ -43,6 +43,8 @@ import { saveEquipment } from "@/lib/dm/gear-store";
 import { lightOil, spreadGear } from "@/lib/dm/gear-zones";
 import { matchGear } from "@/lib/srd/adventuring-gear";
 import { scrollSpell } from "@/lib/srd/scrolls";
+import { checklistSpell } from "@/lib/srd/spell-lists";
+import { itemSpellTurnProblem } from "@/lib/dm/item-casts";
 
 // The tinderbox, by its catalog row: "using it to light a torch, or anything
 // else with abundant, exposed fuel, takes an action".
@@ -129,6 +131,12 @@ export function prepareUseItem(
         return {};
       },
     };
+  }
+  // A scroll's spell is cast with this action, and the bonus-action spell rule
+  // counts it (item-casts.ts): asked before the scroll is spent.
+  const ruled = scroll ? itemSpellTurnProblem(budget, sheet.name, checklistSpell(scroll)?.name ?? scroll, checklistSpell(scroll)?.level ?? 1, "action") : null;
+  if (ruled) {
+    return ruled;
   }
   const drinking = drinksAsBonusAction(sheet) && Boolean(carried && hasItemTag(carried, "potion"));
   const asBonus = drinking || (coatsAsBonusAction(sheet) && isBasicPoison(carried ?? { name }, sheet.campaignId));

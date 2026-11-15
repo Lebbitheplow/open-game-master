@@ -7,6 +7,7 @@
 // clock, a buff's condition and a failed save's condition.
 
 import { ROUND_CEILING } from "@/lib/schemas/condition-meta";
+import { textKey } from "@/lib/language/text-logic";
 
 // [the slot level it starts at, its rounds or null for "until dispelled"],
 // in ascending order.
@@ -56,6 +57,22 @@ export function slotDurationsFromText(text: string): { at: SlotDurations; each: 
     }
   }
   return { at: at.sort((a, b) => a[0] - b[0]), each };
+}
+
+// The slot from which a concentration spell is held without it (SRD 5.1):
+// Bestow Curse, "Using a spell slot of 5th level or higher grants a duration
+// that doesn't require concentration"; Major Image, from a 6th-level slot
+// "the spell lasts until dispelled, without requiring your concentration".
+// Keyed by the published name a workshop copy runs as.
+const HELD_WITHOUT_CONCENTRATION = new Map(Object.entries({ "bestow curse": 5, "major image": 6 }).map(([name, level]) => [textKey(name), level]));
+
+// Whether a casting from `slotLevel` holds the caster's concentration: the
+// spell's own flag, less the slots above that free it. The cast set it from
+// the flag alone, so a 5th-level Bestow Curse ended the caster's Bless and a
+// failed save on the next hit ended the eight-hour curse.
+export function concentratesAtSlot(spell: string, printed: boolean, slotLevel: number | null | undefined): boolean {
+  const from = HELD_WITHOUT_CONCENTRATION.get(textKey(spell));
+  return printed && !(from !== undefined && (slotLevel ?? 0) >= from);
 }
 
 // The rounds a spell lasts from `slotLevel`, given what it lasts at its own

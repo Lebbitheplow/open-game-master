@@ -52,6 +52,7 @@ import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import type { RollResult } from "@/lib/dice";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { recoverSlot, refuelLevel } from "@/lib/dm/infusion-charges";
+import { itemSpellTurnProblem, markItemSpellOnTurn } from "@/lib/dm/item-casts";
 import { infusionOf } from "@/lib/srd/infusions";
 
 function publishRoll(campaign: Campaign, sheet: CharacterSheet, detail: string, result: RollResult) {
@@ -254,6 +255,12 @@ export function chargedItemUse(
       return heldOff;
     }
     budget = budgetFor(encounter, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions));
+    // The item's spell is a spell cast: the bonus-action spell rule counts it
+    // (item-casts.ts), before a charge is spent.
+    const ruled = cast ? itemSpellTurnProblem(budget, sheet.name, cast.spell, cast.level, kind) : null;
+    if (ruled) {
+      return ruled;
+    }
     // The action was paid for this spell this turn, and what the item spent came
     // back when the cast did not happen (takeBackItemCast): this play is on it.
     const mark = cast ? spellDrawnMark(cast.spell) : "";
@@ -349,6 +356,9 @@ export function chargedItemUse(
       ...(fellToDie || !(given > 0 || destroyed) ? {} : { paid: { row: carried, ...(destroyed ? {} : { charges: given }) } }),
       turnId,
     });
+    if (encounter && !readied && !finishing) {
+      markItemSpellOnTurn(campaign.id, sheet, casts.level, kind);
+    }
   }
   const most = rule ? chargeMax(rule) : 0;
   const numbers = (entry: ItemSpellCast) => [entry.dc ? `save DC ${entry.dc}` : "", entry.attackBonus ? `spell attack +${entry.attackBonus}` : ""].filter(Boolean).join(", ");

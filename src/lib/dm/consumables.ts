@@ -37,6 +37,7 @@ import { highestSlotLevel, scrollCheckDc, scrollNumbers, scrollSpell, scrollUnre
 // The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
 import "@/lib/db/item-cast-credits";
 import { recordItemCast } from "@/lib/srd/item-cast-credit";
+import { markItemSpellOnTurn } from "@/lib/dm/item-casts";
 import { afflictCondition, afflictionConditionsFor } from "@/lib/dm/afflictions";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import { rollCard } from "@/lib/dm/roll-card";
@@ -354,6 +355,9 @@ function readScroll(campaign: Campaign, turnId: string, reader: CharacterSheet, 
   // The spell is cast from the scroll: the tool that resolves it next spends
   // no slot and uses the scroll's numbers (src/lib/srd/item-cast-credit.ts).
   recordItemCast(reader.id, { spell: name, level, item: `Spell Scroll (${name})`, saveDc: numbers.saveDc, attackBonus: numbers.attackBonus, paid: { row: scroll as EquipmentItem }, turnId });
+  // A spell cast, for the bonus-action spell rule (item-casts.ts); a failed
+  // check above cast nothing and marks nothing.
+  markItemSpellOnTurn(campaign.id, reader, own, "action");
   return {
     spellCast: name,
     spellLevel: level,

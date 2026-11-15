@@ -5,8 +5,9 @@
 //   - Ray of Enfeeblement halves the damage of the attacker's Strength
 //     weapon attacks;
 //   - Fire Shield answers a melee hit from within 5 feet with 2d8 of the
-//     shield's element, and Holy Aura answers a fiend's or an undead's with
-//     a Constitution save against blindness.
+//     shield's element, Armor of Agathys any melee hit with its cold, and
+//     Holy Aura a fiend's or an undead's with a Constitution save against
+//     blindness.
 // Ray of Enfeeblement's hit is laid by the spell attack's riders
 // (src/lib/dm/spell-attack-riders.ts) through layEnfeeblement.
 
@@ -18,7 +19,7 @@ import { getSheetById } from "@/lib/db/sheets";
 import { spellSaveDcFor } from "@/lib/srd";
 import type { EnemyAttack } from "@/lib/bestiary/statblock";
 import { conditionRollRiders, type ConditionRollRiders } from "@/lib/srd/condition-effects";
-import { removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { instancesOf, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -97,6 +98,8 @@ export function spellRetort(
   withinFive: boolean,
   sheets: CharacterSheet[],
   sheetsById: Map<string, CharacterSheet>,
+  // The temporary hit points the character held as the blow landed.
+  tempHpBefore = 0,
 ): string | null {
   const target = getSheetById(targetId);
   const encounter = getActiveEncounter(campaign.id);
@@ -104,6 +107,23 @@ export function spellRetort(
     return null;
   }
   const lines: string[] = [];
+  // Armor of Agathys: "If a creature hits you with a melee attack while you
+  // have these hit points, the creature takes 5 cold damage", 5 more for each
+  // slot level above 1st (SRD 5.1). The spell's hour outlasts its temporary
+  // hit points, so the ones held as the blow landed decide it. The line told
+  // the GM to deal it with apply_damage, which refuses a spell's harm to a
+  // foe, so the frost never bit.
+  const frost = target.conditions.find((entry) => isConditionNamed(entry, "armor of agathys"));
+  if (frost && tempHpBefore > 0) {
+    const live = getEnemy(attacker.id);
+    const slot = Math.max(1, ...instancesOf((target.conditionMeta as ConditionMetaMap)[frost]).map((instance) => instance.slotLevel ?? 1));
+    if (live?.status === "alive") {
+      const cold = 5 * slot;
+      const applied = applyEnemyDamage(campaign, turn, encounter, live, cold, sheets, sheetsById, "cold", { magical: true, spell: true });
+      lines.push(`${target.name}'s Armor of Agathys freezes ${live.displayName} for ${applied.damageApplied ?? cold} cold damage.`);
+      lines.push(...(applied.dead ? spellKill(campaign, encounter, live, target.id, { spell: "Armor of Agathys" }) : []));
+    }
+  }
   const shield = target.conditions.find((entry) => isConditionNamed(entry, "fire shield"));
   if (shield && withinFive) {
     // The warm shield resists cold and burns; the chill shield resists fire
