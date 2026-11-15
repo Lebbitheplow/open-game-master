@@ -103,7 +103,7 @@
     "lib/dm/pc-damage.ts#str-list": [["key",1,"weapon properties (engine vocabulary)"]],
     "lib/srd/feat-ac.ts#str-includes": [["key",1,"weapon properties (engine vocabulary)"]],
     "lib/dm/arg-coerce.ts#re-word": [["key",2,"tool-argument field names"]],
-    "lib/dm/hazard-tools.ts#str-includes": [["key",1,"condition labels (engine vocabulary)"]],
+    "lib/dm/hazard-tools.ts#str-includes": [["key",1,"condition labels (engine vocabulary)"],["key",1,"cold in the resistance list ODM writes (frigid water)"]],
     "lib/dm/load-rules.ts#str-eq": [["key",1,"a size (fixed choice)"]],
     "lib/dm/mt-species-spends.ts#re-word": [["english-source",1,"reference: ODM's own changeling trait line"],["key",2,"ODM's own counter id prefix and a variant's family prefix (engine vocabulary)"],["key",1,"the damage types a hit record carries (piercing, slashing; engine vocabulary)"],["key",1,"the spend's resource name as the tool sends it (\"Grovel, Cower, and Beg\", or \"grovel\" alone)"]],
     "lib/dm/mt-species-spends.ts#str-eq": [["key",14,"the documented variant keys (withdraw, emerge, appearance, revert), resource names and the conditions they lay (engine vocabulary)"]],
