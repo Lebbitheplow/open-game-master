@@ -324,6 +324,8 @@ export function knownSoFarRows({
     const skill = findSkill(id);
     return skill ? [skill.name] : [];
   });
+  // The level's bonus: a character being built is attuned to nothing yet
+  // (attuning takes a short rest in play), so no Ioun Stone of Mastery adds.
   return [
     { id: "proficiency", label: "Proficiency bonus", value: formatModifier(proficiencyBonus(level)), working: `level ${level}` },
     ...(klass

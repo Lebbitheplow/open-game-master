@@ -16,6 +16,7 @@ import { featureSaveProficiencies, featureSkillProficiencies } from "@/lib/srd/t
 import { borrowedProficiencies } from "@/lib/srd/borrowed-proficiency";
 import { authoredAcBonus, authoredCheckSwap, authoredSaveModifier, authoredSpeeds, authoredExpertise, authoredConditionalTraining } from "@/lib/srd/authored-effects";
 import { effectiveAbilities, itemSpeeds, magicItemRiders, type Wearer, type WornMagicItem } from "@/lib/srd/magic-items";
+import { itemProficiencyBonus, levelProficiencyBonus } from "@/lib/srd/proficiency";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
 import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
 import { purseCoins } from "@/lib/srd/currency";
@@ -109,8 +110,10 @@ export function abilityMod(score: number) {
   return Math.floor((score - 10) / 2);
 }
 
+// The level's proficiency bonus alone. A character's own number, with an
+// Ioun Stone of Mastery's +1, is proficiencyBonusOf (src/lib/srd/proficiency.ts).
 export function proficiencyBonus(level: number) {
-  return 2 + Math.floor((Math.max(1, Math.min(20, level)) - 1) / 4);
+  return levelProficiencyBonus(level);
 }
 
 export function formatModifier(value: number) {
@@ -504,7 +507,9 @@ export function computeSheetDerived(
   // A creature Polymorph, Animal Shapes or True Polymorph made has the
   // proficiency bonus its challenge rating carries, not the character's.
   const shape = sheet.wildShape;
-  const pb = shape?.kind === "polymorph" && !shape.keepsTraining && shape.cr !== undefined ? proficiencyBonus(Math.max(1, shape.cr)) : proficiencyBonus(sheet.level);
+  // The character's own adds an attuned Ioun Stone of Mastery's +1
+  // (src/lib/srd/proficiency.ts).
+  const pb = shape?.kind === "polymorph" && !shape.keepsTraining && shape.cr !== undefined ? proficiencyBonus(Math.max(1, shape.cr)) : proficiencyBonus(sheet.level) + itemProficiencyBonus(sheet.equipment, sheet);
   // Ability-setting magic items raise the scores every other number reads.
   const withItems = sheet.equipment
     ? effectiveAbilities(sheet.abilities, sheet.equipment, sheet)
@@ -531,7 +536,7 @@ export function computeSheetDerived(
   ];
   const defense =
     sheet.class && (sheet.features || sheet.feats)
-      ? defenseRiders({ class: sheet.class, level: sheet.level, features: riderFeatures, campaignId: sheet.campaignId }, abilityMods)
+      ? defenseRiders({ class: sheet.class, level: sheet.level, features: riderFeatures, campaignId: sheet.campaignId, proficiencyBonus: pb }, abilityMods)
       : { saveBonus: 0, initiativeBonus: 0, passiveBonus: 0, halfProficiency: null };
 
   // Saves a feature trains on top of the class table's (Diamond Soul,

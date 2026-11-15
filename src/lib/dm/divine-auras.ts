@@ -28,7 +28,8 @@ import { fieldedSheets } from "@/lib/dm/roster";
 import { withinFeet } from "@/lib/dm/authored-saves";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { incapacitatedBy, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
-import { computeSheetDerived, proficiencyBonus } from "@/lib/srd";
+import { computeSheetDerived } from "@/lib/srd";
+import { proficiencyBonusOf } from "@/lib/srd/proficiency";
 import { activeAuthored } from "@/lib/srd/authored-effects";
 import { auraGranted } from "@/lib/srd/feature-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -70,11 +71,11 @@ export function allyInitiativeAura(campaignId: string, sheet: CharacterSheet): A
       if (!inReach(encounter, holder.id, sheet.id, feet)) {
         continue;
       }
-      const bonus = proficiencyBonus(holder.level);
+      const bonus = proficiencyBonusOf(holder);
       offers.push({ bonus, note: `${holder.name}'s ${held.feature} (within ${feet} ft): +${bonus} to initiative` });
     }
   }
-  const own = activeAuthored(sheet, "init_prof").length ? proficiencyBonus(sheet.level) : 0;
+  const own = activeAuthored(sheet, "init_prof").length ? proficiencyBonusOf(sheet) : 0;
   return bestAuraOffer(offers, own);
 }
 

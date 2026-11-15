@@ -575,4 +575,49 @@ await test("R14 an Ability Score Improvement or a feat's point never takes a sco
   assert.deepEqual(problems.filter((line) => /passes/.test(line)), []);
 });
 
+await test("R15 an attuned Ioun Stone of Mastery orbiting its owner adds 1 to the proficiency bonus every number reads", async () => {
+  // SRD 5.1, Ioun Stone, Mastery: "Your proficiency bonus increases by 1
+  // while this pale green prism orbits your head." It was in the table for
+  // attunement only: every proficiency read took the level alone.
+  const { computeSheetDerived } = await import("../src/lib/srd/index.ts");
+  const { describeSheet } = await import("../src/lib/dm/prompt.ts");
+  const { matchMagicItem } = await import("../src/lib/srd/magic-items.ts");
+  const { proficiencyBonusOf } = await import("../src/lib/srd/proficiency.ts");
+  assert.equal(matchMagicItem({ name: "Ioun Stone of Mastery" })?.requiresAttunement, true);
+  const stone = { name: "Ioun Stone of Mastery", qty: 1, equipped: true, attuned: true };
+  const table = await openTable();
+  // A 5th-level bladesinger: proficiency +3, +4 with the stone.
+  const wizard = table.addHero({
+    class: "wizard", level: 5, maxHp: 30, abilities: { int: 16 },
+    spellcasting: casting("int", { 1: [4, 0], 2: [3, 0], 3: [2, 0] }),
+    feats: ["Chef"],
+    equipment: [stone],
+  });
+  table.patch(wizard.id, { proficiencies: { ...table.sheet(wizard.id).proficiencies, saves: ["int", "wis"] } });
+  const sheet = table.sheet(wizard.id);
+  assert.equal(proficiencyBonusOf(sheet), 4);
+  const derived = computeSheetDerived(sheet);
+  assert.equal(derived.proficiencyBonus, 4);
+  assert.equal(derived.spellSaveDc, 8 + 4 + 3, "the spell save DC");
+  assert.equal(derived.spellAttack, 4 + 3, "the spell attack");
+  assert.equal(derived.saves.int, 3 + 4, "a proficient save");
+  assert.match(describeSheet(sheet, "wizard", false, {}), /Save DC 15/, "GAME STATE");
+  // Chef: "a number of treats equal to your proficiency bonus"; Bladesong:
+  // "a number of times equal to your proficiency bonus".
+  assert.equal(sheet.resources.chef_treats?.max, 4, "a counter sized by the proficiency bonus");
+  assert.equal(populateResources([{ name: "Bladesong", classId: "wizard" }], 5, mods, undefined, undefined, undefined, undefined, undefined, proficiencyBonusOf(sheet)).sub_bladesong?.max, 4);
+  // Set down (not orbiting) or no longer attuned, it adds nothing.
+  table.patch(wizard.id, { equipment: [{ ...stone, equipped: false }] });
+  assert.equal(computeSheetDerived(table.sheet(wizard.id)).proficiencyBonus, 3);
+  assert.equal(table.sheet(wizard.id).resources.chef_treats?.max, 3, "the counter follows the stone");
+  table.patch(wizard.id, { equipment: [{ ...stone, attuned: false }] });
+  assert.equal(proficiencyBonusOf(table.sheet(wizard.id)), 3);
+  table.patch(wizard.id, { equipment: [stone] });
+  assert.equal(table.sheet(wizard.id).resources.chef_treats?.max, 4);
+  // A rabbitfolk's Hare-Trigger adds the bonus to initiative, the stone's too.
+  const rabbit = table.addHero({ class: "fighter", level: 5, abilities: { dex: 14 }, equipment: [stone] });
+  table.patch(rabbit.id, { features: [...table.sheet(rabbit.id).features, { name: "Hare-Trigger", source: "race" }] });
+  assert.equal(computeSheetDerived(table.sheet(rabbit.id)).initiative, 2 + 4);
+});
+
 finish();
