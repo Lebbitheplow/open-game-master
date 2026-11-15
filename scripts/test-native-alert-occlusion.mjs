@@ -25,7 +25,12 @@ const alert = element('[role="alertdialog"]', { x: 10, y: 20, width: 30, height:
 const banner = element(".session-banner", { x: 20, y: 0, width: 60, height: 12 });
 const names = element('[role="listbox"]', { x: 50, y: 60, width: 30, height: 30 });
 const status = element('[role="status"]', { x: 5, y: 5, width: 10, height: 10 });
-const page = [alert, banner, names, status];
+const background = element("[data-native-board-occluder]", { x: 70, y: 20, width: 20, height: 20 });
+const inertMenu = element('[role="menu"]', { x: 5, y: 55, width: 20, height: 20 });
+let modalOpen = true;
+background.closest = (selector) => modalOpen && selector.includes('[aria-hidden="true"]') ? background : null;
+inertMenu.closest = (selector) => modalOpen && selector.includes("[inert]") ? inertMenu : null;
+const page = [alert, banner, names, status, background, inertMenu];
 
 const listeners = new Map();
 const frame = { getBoundingClientRect: () => ({ x: 0, y: 0, width: 100, height: 100 }), toggleAttribute() {}, contentWindow: { postMessage() {} } };
@@ -41,7 +46,13 @@ globalThis.window = { addEventListener() {}, removeEventListener() {} };
 globalThis.getComputedStyle = () => ({ visibility: "visible", pointerEvents: "auto" });
 globalThis.devicePixelRatio = 1;
 globalThis.ResizeObserver = class { observe() {} disconnect() {} };
-globalThis.MutationObserver = class { observe() {} disconnect() {} };
+let mutation;
+let observedAttributes;
+globalThis.MutationObserver = class {
+  constructor(fn) { mutation = fn; }
+  observe(_element, options) { observedAttributes = options.attributeFilter; }
+  disconnect() {}
+};
 globalThis.requestAnimationFrame = () => 1;
 globalThis.cancelAnimationFrame = () => {};
 
@@ -55,7 +66,7 @@ receive({ odm: 1, type: "ready" });
 assert.deepEqual(
   layout.occlusions,
   [alert.box, banner.box, names.box],
-  "the X-card's pause, a table break's banner and the @ menu stay above the native board; a bare status line does not cut it",
+  "visible overlays stay above the board; suppressed controls and a bare status line leave the board intact",
 );
 
 // The banner slides in: measured as it mounts, it is measured again when its
@@ -64,6 +75,12 @@ banner.box = { x: 20, y: 8, width: 60, height: 12 };
 assert.ok(listeners.has("animationend") && listeners.has("transitionend"), "the end of an entrance is heard");
 listeners.get("animationend")();
 assert.deepEqual(layout.occlusions[1], banner.box, "re-measured where its entrance left it");
+
+assert.ok(observedAttributes.includes("aria-hidden") && observedAttributes.includes("inert"));
+modalOpen = false;
+mutation();
+assert.deepEqual(layout.occlusions, [alert.box, banner.box, names.box, background.box, inertMenu.box],
+  "background controls reserve their space again after the modal releases them");
 
 detach();
 assert.ok(!listeners.has("animationend") && !listeners.has("transitionend"), "nothing is heard once the view is gone");
