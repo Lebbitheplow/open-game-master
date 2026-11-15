@@ -11,6 +11,7 @@ import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { undoConflictLine } from "@/lib/sheet-audit-logic";
 import { forgetLongRest } from "@/lib/db/clock";
 import { forgetDeath } from "@/lib/dm/revival";
+import { regainedSettle } from "@/lib/dm/vitals-logic";
 import { recordTurnCorrection } from "@/lib/db/turn-ledger";
 import { publishPersisted } from "@/lib/events";
 import { fullPatchSheetSchema, type CharacterSheet } from "@/lib/schemas/sheet";
@@ -73,21 +74,25 @@ export function revertAuditEntry(campaign: Campaign, entry: SheetAuditEntry, by?
     return { ok: false, error: "Character not found." };
   }
 
+  // Hit points given back end a dying the sheet still shows (issue 968), and
+  // the undo's own row says so, so undoing it brings the track back too.
+  const settled = regainedSettle({ ...current, ...parsed.data });
+  const restore = settled ? { ...parsed.data, ...settled } : parsed.data;
   let compensating: SheetAuditEntry | null = null;
   let correctionId: string | null = null;
   getDatabase().transaction(() => {
-    patchSheet(entry.characterId, parsed.data, { restoring: true });
+    patchSheet(entry.characterId, restore, { restoring: true });
     compensating = insertSheetAudit({
       campaignId: campaign.id,
       characterId: entry.characterId,
       turnId: entry.turnId,
       actor: "lead",
       kind: "undo",
-      delta: parsed.data as Record<string, unknown>,
+      delta: restore as Record<string, unknown>,
       reason: `Undid ${entry.kind}${entry.reason ? ` (${entry.reason})` : ""}`,
       seq: allocateSeq(campaign.id),
       before: current,
-      patch: parsed.data as Record<string, unknown>,
+      patch: restore as Record<string, unknown>,
     });
     markReverted(entry.id, compensating.id);
     // The AI's change, undone: the correction ledger's row goes in with the

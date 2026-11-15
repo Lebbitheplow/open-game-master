@@ -269,7 +269,7 @@ function mapCampaign(row: CampaignRow): Campaign {
     gameSettings,
     dmOutline: row.dm_outline ?? "",
     storyArc: normalizeStoryArc(parseJson(row.story_arc_json ?? "", null)),
-    floor: normalizeFloor(parseJson(row.floor_json, null)),
+    floor: liveFloor(row.id, normalizeFloor(parseJson(row.floor_json, null))),
     dmCover: normalizeCover(parseJson(row.dm_cover_json ?? "", null)),
     clock: normalizeClock(parseJson(row.clock_json ?? "", null)),
     party: partyFromJson(row.party_json ?? ""),
@@ -836,7 +836,27 @@ export function getFloor(campaignId: string): Floor {
   const row = getDatabase()
     .prepare(`SELECT floor_json FROM campaigns WHERE id = ?`)
     .get(campaignId) as { floor_json?: string } | undefined;
-  return normalizeFloor(parseJson(row?.floor_json ?? null, null));
+  return liveFloor(campaignId, normalizeFloor(parseJson(row?.floor_json ?? null, null)));
+}
+
+// An initiative floor whose fight is no longer on is the open table (a hold
+// over it, a hold over the open table) until something sets the floor again.
+// A revert of an older turn put "Round 4, your turn" back over a fight that
+// had ended: the banner said it was the player's turn, End Turn said it was
+// not, and the lead's floor controls were refused for a fight that owned
+// nothing (issue 968).
+function liveFloor(campaignId: string, floor: Floor): Floor {
+  const initiative = floor.mode === "initiative" ? floor : floor.mode === "hold" && floor.next.mode === "initiative" ? floor.next : null;
+  if (!initiative) {
+    return floor;
+  }
+  const on = getDatabase()
+    .prepare(`SELECT 1 FROM encounters WHERE id = ? AND campaign_id = ? AND status = 'active'`)
+    .get(initiative.encounterId, campaignId);
+  if (on) {
+    return floor;
+  }
+  return floor.mode === "hold" ? { mode: "hold", next: { mode: "open" } } : { mode: "open" };
 }
 
 export function setFloor(campaignId: string, floor: Floor) {

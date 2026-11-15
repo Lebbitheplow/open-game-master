@@ -6,6 +6,8 @@ import { getDatabase } from "@/lib/db/core";
 import { previewTurnClockRewind, rewindTurnClock } from "@/lib/db/clock";
 import { getDmTurn, markDmTurnReverted } from "@/lib/db/dm-turns";
 import { listAuditForTurn } from "@/lib/db/sheet-audit";
+import { listSheets, patchSheet } from "@/lib/db/sheets";
+import { regainedSettle } from "@/lib/dm/vitals-logic";
 import { liveTurnChanges } from "@/lib/db/turn-changes";
 import { forgetTurnItemCasts } from "@/lib/db/item-cast-credits";
 import { REVERT_WINDOW_TURNS, revertWindowStart, turnHasKeptRows } from "@/lib/db/turn-rows";
@@ -160,6 +162,19 @@ export async function POST(
     if (takenBack) {
       // `reverted`: the event log stops offering what the turn kept.
       publishPersisted(campaignId, "turn_changed", { reverted: turnId });
+    }
+    // A sheet whose hit points came back with its row, its death-save track
+    // left from another turn, ends the dying it no longer has (issue 968,
+    // vitals-logic.ts regainedSettle): the rows are written as they stood,
+    // past the rule patchSheet keeps.
+    for (const sheet of listSheets(campaignId)) {
+      const settled = regainedSettle(sheet);
+      if (settled) {
+        const healed = patchSheet(sheet.id, settled, { restoring: true });
+        if (healed) {
+          publishPersisted(campaignId, "sheet_updated", { sheet: healed });
+        }
+      }
     }
     // The test fight's turn trace reads the turn as taken back from here on.
     markDmTurnReverted(turnId);

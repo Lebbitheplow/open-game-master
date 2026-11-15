@@ -4,6 +4,7 @@ import { rollExpression } from "@/lib/dice";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { touchCampaign } from "@/lib/db/campaigns";
 import { effectiveMaxHp, endedByRegain, maxHpRiders, removeConditions, tempHpClaims, withoutTempHpClaims, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { regainedSettle } from "@/lib/dm/vitals-logic";
 import { settlePact, vanishStrays } from "@/lib/dm/mt-srd-pact";
 import { endedByFallingUnconscious, endedByLosingWeapon, fellUnconscious, rageSuspension } from "@/lib/dm/mt-srd-unconscious";
 import { keptFromDrain } from "@/lib/dm/ar-ws-inured";
@@ -1084,6 +1085,13 @@ export function patchSheet(
     tempHpClaims(next.conditions, next.conditionMeta as ConditionMetaMap) < tempHpClaims(existing.conditions, existing.conditionMeta as ConditionMetaMap)
   ) {
     next.tempHp = 0;
+  }
+
+  // Hit points back end the dying, by whatever path (vitals-logic.ts
+  // regainedSettle, issue 968).
+  const settled = regainedSettle(next);
+  if (settled) {
+    Object.assign(next, settled);
   }
 
   // The armor engine owns the AC unless a human pinned it: buying a
