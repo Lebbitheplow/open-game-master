@@ -499,9 +499,13 @@ export function keepPageError(list: readonly PageError[], entry: PageError, limi
 // ticked. Cleaned again here: the kept list lives in the browser's storage.
 export function withPageErrors(bundle: ReportBundle, errors: readonly unknown[], include: boolean): ReportBundle {
   if (!include) return finishBundle({ ...bundle, pageErrors: undefined });
+  // The ring a browser kept before keepPageError dropped the ResizeObserver
+  // notices still holds them: a 0.35.1 report from the desktop app carried
+  // twenty and nothing else (issue 965's). They are left out here too.
   const pageErrors = errors
     .filter((entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === "object")
     .map((entry) => cleanPageError(entry))
+    .filter((entry) => !NOT_ERRORS.test(entry.message))
     .slice(-PAGE_ERROR_LIMIT);
   return finishBundle({ ...bundle, pageErrors });
 }
