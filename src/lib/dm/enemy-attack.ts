@@ -21,7 +21,7 @@ import { hitTraitDice } from "@/lib/dm/side-allies";
 import type { EncounterEnemy } from "@/lib/db/encounters";
 import { mirrorImageDecoy, sanctuaryRefusal } from "@/lib/dm/spell-defenses";
 import { enfeebledBlow, measureRetort, spellRetort, spendEnemyRiders } from "@/lib/dm/spell-retort";
-import { joinRetorts, riderMarkOf } from "@/lib/dm/retort-logic";
+import { joinRetorts, riderMarkOf, type WaitingAnswer } from "@/lib/dm/retort-logic";
 import { z } from "zod";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import {
@@ -658,6 +658,10 @@ export function handleEnemyAttack(
   // slew it.
   const answersLanded: string[] = [];
   let fallen: string | null = null;
+  // Whether a reaction could still turn every hit of the attack: a
+  // retaliation for the whole of it that would slay waits then too.
+  let hitAny = false;
+  let everyHitTurnable = true;
   planned.forEach((plannedAttack: EnemyAttack, index) => {
     let attack = plannedAttack;
     if (dropped) {
@@ -953,6 +957,8 @@ export function handleEnemyAttack(
     // A reaction that could still turn this swing into a miss holds an answer
     // that would slay the creature until the hit is settled (retort-wait.ts).
     const waits = reactionCouldTurn(campaign.id, struck, { total: hitOutcome.total, natural20: natCrit, vsAc: targetAc(), melee: !ranged, attackerId: enemy.id });
+    hitAny = true;
+    everyHitTurnable &&= waits;
     const psychicBack = measureRetort(enemy.id, () => thoughtShieldBack(campaign, turn, struck, enemy.id, { amount: Math.min(dealt, 200), type: blow.type, parts: blow.parts ? scaledParts(blow.parts, dealt) : undefined, flags }, sheets, sheetsById, waits), (back) => (back.thoughtShield && !back.waiting ? ["Thought Shield"] : []));
     Object.assign(applied, psychicBack.result);
     totalDamage += dealt;
@@ -1074,8 +1080,10 @@ export function handleEnemyAttack(
   });
   // A feature's retaliation for the attack as a whole, kept with its record:
   // a reaction that leaves none of its swings a hit takes it back.
-  const retaliation = measureRetort(standing.id, () => authoredAfterHit(campaign, { encounter, attacker: standing, target, dealt: totalDamage, taken: takenTotal, ranged: (lastSwing as { ranged: boolean } | null)?.ranged ?? false, attackName: closing?.attack.name }), (lines) => (lines.length ? ["A retaliation"] : []));
+  const retaliationWaits = hitAny && everyHitTurnable ? ([] as WaitingAnswer[]) : undefined;
+  const retaliation = measureRetort(standing.id, () => authoredAfterHit(campaign, { encounter, attacker: standing, target, dealt: totalDamage, taken: takenTotal, ranged: (lastSwing as { ranged: boolean } | null)?.ranged ?? false, attackName: closing?.attack.name, waiting: retaliationWaits }), (lines) => (lines.length > (retaliationWaits?.length ?? 0) ? ["A retaliation"] : []));
   hitLog.afterHit(retaliation.retort);
+  hitLog.afterWaiting(retaliationWaits);
   notes.push(...retaliation.result);
 
   const names = [...new Set(planned.map((attack) => attack.name))];

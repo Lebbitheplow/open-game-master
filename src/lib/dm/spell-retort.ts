@@ -180,7 +180,7 @@ export function wouldDrop(campaignId: string, enemy: EncounterEnemy, amount: num
 }
 
 // The line of an answer that waits.
-function waitLine(holder: string, by: string, enemy: string, amount: number, type: string): string {
+export function waitLine(holder: string, by: string, enemy: string, amount: number, type: string): string {
   return `${holder}'s ${by} would slay ${enemy} with ${amount} ${type} damage: it lands once the hit stands, and never if a reaction turns the hit into a miss.`;
 }
 

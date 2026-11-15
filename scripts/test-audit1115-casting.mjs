@@ -1406,5 +1406,43 @@ await test("S30: Cutting Words from a bard beyond 60 feet of the goblin holds no
   assert.equal(statusOf(world, goblin.id).status, "dead", JSON.stringify(swing.result));
 });
 
+// ---- S31: a retaliation that would slay waits on the reaction too ----
+
+// SRD-style retaliations answer only a creature that hits (Flames of
+// Phlegethos: "a creature within 5 feet of you hits you with a melee
+// attack"; the pack's retaliate rows the same). Dealt once the whole attack
+// was rolled (authored-hooks.ts authoredAfterHit), one that slew its
+// attacker stood when a reaction then turned the hit into a miss: S26 held
+// back only the spells' answers.
+async function wreathedFighter(hp) {
+  const { world, sheets: [fighter, bard], enemies: [goblin, other] } = await table([{ class: "fighter", level: 5, abilities: { str: 16, con: 14 } }, loreBard], 2);
+  world.patch(fighter.id, { ac: 12, acOverride: true, conditions: ["flames of phlegethos"] });
+  world.patch(bard.id, { resources: { ...world.sheet(bard.id).resources, bardic_inspiration: { max: 3, used: 0 } } });
+  encounterRows.patchEnemyHp(goblin.id, hp, "alive");
+  // 10 + 4 hits AC 12 for 3 + 2; the flames' 1d4 comes up 4.
+  const swing = await swingAt(world, goblin, fighter, [10, 3, 4]);
+  return { world, fighter, bard, goblin, other, swing };
+}
+
+await test("S31: Flames of Phlegethos that would slay wait on an ally's Cutting Words, and the words turning the hit leave the goblin unburnt", async () => {
+  const { world, fighter, bard, goblin, swing } = await wreathedFighter(2);
+  assert.deepEqual([statusOf(world, goblin.id).status, statusOf(world, goblin.id).currentHp], ["alive", 2], JSON.stringify(swing.result));
+  world.dice(8);
+  const words = await world.invoke("use_reaction", { characterId: bard.id, feature: "Cutting Words", targetCharacterId: fighter.id });
+  world.clearDice();
+  assert.equal(words.ok, true, words.error);
+  assert.deepEqual([statusOf(world, goblin.id).status, statusOf(world, goblin.id).currentHp], ["alive", 2], JSON.stringify(words.result));
+  assert.match(JSON.stringify(words.result), /Flames of Phlegethos never came/);
+});
+
+await test("S31: Flames of Phlegethos that waited land as the next thing is done, and the goblin falls", async () => {
+  const { world, goblin, other } = await wreathedFighter(2);
+  assert.equal(statusOf(world, goblin.id).status, "alive");
+  const next = await world.invoke("apply_damage", { enemyId: other.id, amount: 1, reason: "the next thing done" });
+  assert.equal(next.ok, true, next.error);
+  assert.equal(statusOf(world, goblin.id).status, "dead", JSON.stringify(next.result));
+  assert.match(JSON.stringify(next.result.answersLanded ?? []), /Flames of Phlegethos lands/);
+});
+
 closeTables();
 finish();

@@ -58,6 +58,8 @@ import { activeAuthored, resolveFormula } from "@/lib/srd/authored-effects";
 import { hitSavesOnHit } from "@/lib/dm/hit-save";
 import { effectiveMaxHp, isIncapacitated, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
+import { waitLine, wouldDrop } from "@/lib/dm/spell-retort";
+import type { WaitingAnswer } from "@/lib/dm/retort-logic";
 import { withinFeet } from "@/lib/dm/authored-saves";
 import { besideDownedAlly } from "@/lib/dm/genre-a-cyberpunk-defenses";
 import { genreBOnKill } from "@/lib/dm/genre-b-kills";
@@ -245,8 +247,11 @@ export function authoredIncomingAttack(input: {
 // character's features send back.
 export function authoredAfterHit(
   campaign: Campaign,
-  // `taken`: what the character took of it past their defenses.
-  input: { encounter: Encounter; attacker: EncounterEnemy; target: CharacterSheet; dealt: number; taken?: number; ranged?: boolean; attackName?: string },
+  // `taken`: what the character took of it past their defenses. `waiting`:
+  // a reaction could still turn every hit of the attack into a miss
+  // (retort-wait.ts), so a retaliation that would slay its maker is held
+  // there instead of dealt; it lands once the hit stands.
+  input: { encounter: Encounter; attacker: EncounterEnemy; target: CharacterSheet; dealt: number; taken?: number; ranged?: boolean; attackName?: string; waiting?: WaitingAnswer[] },
 ): string[] {
   const lines: string[] = [];
   if (input.dealt <= 0) {
@@ -293,7 +298,7 @@ export function authoredAfterHit(
         ? Math.floor((input.taken ?? input.dealt) / 2)
         : Number(rollCard(campaign, null, target.id, "damage", rollAgainst(held.feature, live.displayName), resolveFormula(effect.formula, held.level, modsOf(target)), sheetAttacker(target)).total);
     if (amount > 0) {
-      lines.push(hurtEnemy(campaign, input.encounter, live, amount, effect.type, held.feature));
+      lines.push(retaliate(campaign, input, target, live, amount, effect.type, held.feature));
     }
     if (effect.spends) {
       spendRetaliateMark(campaign, target.id, effect.spends);
@@ -305,10 +310,22 @@ export function authoredAfterHit(
   if (!input.ranged && live?.status === "alive" && target.conditions.some((entry) => textKey(entry) === FLAMES_OF_PHLEGETHOS)) {
     const burn = Number(rollCard(campaign, null, target.id, "damage", rollAgainst("Flames of Phlegethos", live.displayName), "1d4", sheetAttacker(target)).total);
     if (burn > 0) {
-      lines.push(hurtEnemy(campaign, input.encounter, live, burn, "fire", "Flames of Phlegethos"));
+      lines.push(retaliate(campaign, input, target, live, burn, "fire", "Flames of Phlegethos"));
     }
   }
   return lines;
+}
+
+// A retaliation dealt, or held when it would slay its maker while a
+// reaction could still turn the hit (`input.waiting`, retort-wait.ts): held,
+// a Shield or Cutting Words that turned the hit could not bring back the
+// creature it slew. Dealt as hurtEnemy deals it, magical and a spell's.
+function retaliate(campaign: Campaign, input: { encounter: Encounter; waiting?: WaitingAnswer[] }, target: CharacterSheet, live: EncounterEnemy, amount: number, type: string, feature: string): string {
+  if (input.waiting && wouldDrop(campaign.id, live, amount, type, true)) {
+    input.waiting.push({ by: feature, enemyId: live.id, holderId: target.id, amount, type, spell: true });
+    return waitLine(target.name, feature, live.displayName, amount, type);
+  }
+  return hurtEnemy(campaign, input.encounter, live, amount, type, feature);
 }
 
 // ---- a character attacks ----

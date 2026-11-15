@@ -265,10 +265,7 @@ export function settleWaiting(
           return swing;
         }
         if (!swing.hit) {
-          for (const answer of swing.waiting) {
-            const enemy = getEnemy(answer.enemyId);
-            notes.push(`${answer.by} never came: the hit it answered now misses, and ${enemy?.displayName ?? "the creature"} takes none of its ${answer.amount} ${answer.type} damage.`);
-          }
+          notes.push(...swing.waiting.map(neverCame));
           const plain = { ...swing };
           delete plain.waiting;
           return plain;
@@ -278,8 +275,36 @@ export function settleWaiting(
         }
         return landed(campaign, turn, swing, notes, sheets, sheetsById);
       });
+      // A retaliation for the whole attack: no hit of it left, it never
+      // came; one that no reaction could turn any longer, it lands.
+      const after = step.record.afterWaiting;
+      if (after?.length) {
+        const hits = step.corrected.filter((swing) => swing.hit);
+        if (!hits.length) {
+          notes.push(...after.map(neverCame));
+          step.record = withoutAfterWaiting(step.record, null);
+        } else if (turn && !hits.some((swing) => struck && reactionCouldTurn(campaign.id, struck, rollOf(step.record, swing)))) {
+          const out = landWaiting(campaign, turn, after, sheets, sheetsById, false);
+          notes.push(...out.lines);
+          step.record = withoutAfterWaiting(step.record, out.retort);
+        }
+      }
     }
   });
+}
+
+function neverCame(answer: WaitingAnswer): string {
+  const enemy = getEnemy(answer.enemyId);
+  return `${answer.by} never came: the hit it answered now misses, and ${enemy?.displayName ?? "the creature"} takes none of its ${answer.amount} ${answer.type} damage.`;
+}
+
+// The record with its waiting retaliation gone, and what it did on landing
+// kept with the attack's other retaliations (LastHit.afterHit).
+function withoutAfterWaiting(record: LastHit, retort: Retort | null): LastHit {
+  const plain = { ...record };
+  delete plain.afterWaiting;
+  const afterHit = joinRetorts(record.afterHit ?? null, retort);
+  return afterHit ? { ...plain, afterHit } : plain;
 }
 
 // The GM turn a landing is filed under: the one given, the one running, or
@@ -316,7 +341,12 @@ export function landWaits(campaign: Campaign, turn: DmTurn | null, options: { ho
       const sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
       const told: string[] = [];
       for (const record of waiting) {
-        writeLastHit(campaign.id, { ...record, swings: record.swings.map((swing) => (swing.waiting?.length ? landed(campaign, at, swing, told, sheets, sheetsById, options.holdVictory) : swing)) });
+        const swings = record.swings.map((swing) => (swing.waiting?.length ? landed(campaign, at, swing, told, sheets, sheetsById, options.holdVictory) : swing));
+        // The attack's retaliation lands with its swings' answers, while a
+        // hit of it stands.
+        const after = record.afterWaiting?.length && swings.some((swing) => swing.hit) ? landWaiting(campaign, at, record.afterWaiting, sheets, sheetsById, Boolean(options.holdVictory)) : null;
+        told.push(...(after?.lines ?? []));
+        writeLastHit(campaign.id, { ...withoutAfterWaiting(record, after?.retort ?? null), swings });
       }
       return told;
     });
