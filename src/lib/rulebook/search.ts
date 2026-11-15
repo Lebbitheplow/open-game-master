@@ -5,18 +5,20 @@
 // typed. Titles and headings outrank body text, so "grapple" lands on
 // Grappling in Combat before the monsters that grapple.
 //
-// Words are compared by Snowball's English stem and stop list
-// (src/lib/language): the rulebook is the English SRD at every table, so it
-// is read in English whatever language the table plays in. Each hit carries
-// the page's words that matched, which the reader marks as written: the
-// browser never stems anything.
+// Words are compared by Snowball's stem and stop list for the book's own
+// language (src/lib/language): the index is built for one book — the English
+// SRD, or the French Document de Référence du Système 5.1 — and carries that
+// language, so a French book's passages stem as French and a query against it
+// stems as French too. Each hit carries the page's words that matched, which
+// the reader marks as written: the browser never stems anything.
 import { blockText, parseBook, stripInline, type BookBlock } from "./markdown";
 import type { RulebookKind, RulebookPage, SearchHit } from "./types";
 import { stemmerWords, stemWord, stopWordsFor } from "../language/language";
+import type { TableLanguage } from "../schemas/game-settings-options.ts";
 import { compareNames, splitWords, textKey, words as textWords } from "../language/text-logic";
 
-export function stem(word: string): string {
-  return stemWord(word.toLowerCase(), "english");
+export function stem(word: string, language: TableLanguage = "english"): string {
+  return stemWord(word.toLowerCase(), language);
 }
 
 export function words(text: string): string[] {
@@ -25,11 +27,11 @@ export function words(text: string): string[] {
 
 // The query as the stems it will be matched by, stop words dropped unless
 // they are all there is.
-export function queryTerms(query: string): string[] {
+export function queryTerms(query: string, language: TableLanguage = "english"): string[] {
   const all = words(query);
-  const stop = stopWordsFor("english");
+  const stop = stopWordsFor(language);
   const kept = all.filter((word) => !stop.has(word));
-  return [...new Set((kept.length ? kept : all).map(stem))];
+  return [...new Set((kept.length ? kept : all).map((word) => stem(word, language)))];
 }
 
 type Passage = {
@@ -55,18 +57,20 @@ type PageEntry = {
 export type RulebookIndex = {
   pages: PageEntry[];
   chapters: Map<string, { numeral: string; title: string }>;
+  // The book's own language: the stems this index and its queries compare by.
+  language: TableLanguage;
 };
 
-function countStems(text: string): Map<string, number> {
+function countStems(text: string, language: TableLanguage): Map<string, number> {
   const counts = new Map<string, number>();
   for (const word of words(text)) {
-    const key = stem(word);
+    const key = stem(word, language);
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
   return counts;
 }
 
-function passage(page: RulebookPage, heading: string | undefined, at: string | undefined, parts: string[]): Passage {
+function passage(page: RulebookPage, heading: string | undefined, at: string | undefined, parts: string[], language: TableLanguage): Passage {
   const text = parts.filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
   return {
     page,
@@ -74,20 +78,20 @@ function passage(page: RulebookPage, heading: string | undefined, at: string | u
     at,
     text,
     lower: textKey(text),
-    counts: countStems(`${heading ?? ""} ${text}`),
-    headingStems: new Set(words(heading ?? "").map(stem)),
+    counts: countStems(`${heading ?? ""} ${text}`, language),
+    headingStems: new Set(words(heading ?? "").map((word) => stem(word, language))),
   };
 }
 
 // A page's passages: its opening text, then one per heading (and one per
 // titled sidebar, which is where the SRD keeps rules like Combat Step by Step).
-function passagesOf(page: RulebookPage, blocks: BookBlock[]): Passage[] {
+function passagesOf(page: RulebookPage, blocks: BookBlock[], language: TableLanguage): Passage[] {
   const out: Passage[] = [];
   let heading: string | undefined;
   let at: string | undefined;
   let parts: string[] = [];
   const close = () => {
-    if (heading || parts.length) out.push(passage(page, heading, at, parts));
+    if (heading || parts.length) out.push(passage(page, heading, at, parts, language));
   };
   for (const block of blocks) {
     if (block.kind === "heading") {
@@ -98,7 +102,7 @@ function passagesOf(page: RulebookPage, blocks: BookBlock[]): Passage[] {
       continue;
     }
     if (block.kind === "sidebar" && block.title && block.anchor) {
-      out.push(passage(page, stripInline(block.title), block.anchor, block.blocks.map(blockText)));
+      out.push(passage(page, stripInline(block.title), block.anchor, block.blocks.map(blockText), language));
       continue;
     }
     parts.push(blockText(block));
@@ -107,18 +111,18 @@ function passagesOf(page: RulebookPage, blocks: BookBlock[]): Passage[] {
   return out;
 }
 
-function indexPage(page: RulebookPage) {
-  const passages = passagesOf(page, parseBook(page.md));
+function indexPage(page: RulebookPage, language: TableLanguage) {
+  const passages = passagesOf(page, parseBook(page.md), language);
   const wordStems = new Map<string, string>();
   for (const text of [page.title, ...passages.flatMap((item) => [item.heading ?? "", item.text])]) {
     for (const word of words(text)) {
-      if (!wordStems.has(word)) wordStems.set(word, stem(word));
+      if (!wordStems.has(word)) wordStems.set(word, stem(word, language));
     }
   }
   return {
     page,
     wordStems,
-    titleStems: new Set(words(page.title).map(stem)),
+    titleStems: new Set(words(page.title).map((word) => stem(word, language))),
     titleLower: textKey(page.title),
     passages,
   };
@@ -131,8 +135,9 @@ function chapterMap(chapters: Array<{ id: string; numeral: string; title: string
 export function buildIndex(
   pages: RulebookPage[],
   chapters: Array<{ id: string; numeral: string; title: string }>,
+  language: TableLanguage = "english",
 ): RulebookIndex {
-  return { pages: pages.map(indexPage), chapters: chapterMap(chapters) };
+  return { pages: pages.map((page) => indexPage(page, language)), chapters: chapterMap(chapters), language };
 }
 
 // The same index, built a slice of pages at a time with the event loop
@@ -143,13 +148,14 @@ export async function buildIndexInSlices(
   pages: RulebookPage[],
   chapters: Array<{ id: string; numeral: string; title: string }>,
   slice = 24,
+  language: TableLanguage = "english",
 ): Promise<RulebookIndex> {
   const indexed: RulebookIndex["pages"] = [];
   for (let start = 0; start < pages.length; start += slice) {
-    for (const page of pages.slice(start, start + slice)) indexed.push(indexPage(page));
+    for (const page of pages.slice(start, start + slice)) indexed.push(indexPage(page, language));
     await new Promise<void>((resolve) => setImmediate(resolve));
   }
-  return { pages: indexed, chapters: chapterMap(chapters) };
+  return { pages: indexed, chapters: chapterMap(chapters), language };
 }
 
 // Rules text outranks an entry that merely mentions a word, all else equal.
@@ -171,11 +177,11 @@ function countTerm(counts: Map<string, number>, term: string, prefix: boolean): 
 }
 
 // About 200 characters around the first matching word, cut at word edges.
-export function snippetFor(text: string, terms: string[], width = 200): string {
+export function snippetFor(text: string, terms: string[], width = 200, language: TableLanguage = "english"): string {
   let first = -1;
   let at = 0;
   for (const [index, part] of splitWords(text).entries()) {
-    const keys = index % 2 ? [part, ...textKey(part).split(" ")].map(stem) : [];
+    const keys = index % 2 ? [part, ...textKey(part).split(" ")].map((word) => stem(word, language)) : [];
     if (keys.some((key) => terms.some((term) => key === term || key.startsWith(term)))) {
       first = at;
       break;
@@ -198,7 +204,7 @@ export function snippetFor(text: string, terms: string[], width = 200): string {
 }
 
 export function searchRulebook(index: RulebookIndex, query: string, limit = 40): SearchHit[] {
-  const terms = queryTerms(query);
+  const terms = queryTerms(query, index.language);
   if (!terms.length) return [];
   const phrase = textKey(query);
   // The last word may still be being typed.
