@@ -357,4 +357,94 @@ await test("the rules: a fight begun in the turn goes whole; one it ended opens 
   assert.equal(fightLine({ encounter_enemies: 2, battle_tokens: 1, encounters: 1 }), "The fight changes: 2 creatures, 1 token and the order of turns.");
 });
 
+
+// Issue 968: a fallen fighter's player reverted turns after the fight was
+// lost. An older turn's campaign row put "Round 4, your turn" back while the
+// fight stayed ended: the banner said it was his turn, End Turn said it was
+// not, and there was no board and no Hand. And the hit points came back with
+// the death-save track still on the sheet, which read "Dying" at full health.
+await test("a revert leaves out the floor of a fight that stays ended, and puts it back for one that is on or opens again", () => {
+  const floor = (encounterId) => JSON.stringify({ mode: "initiative", encounterId, userIds: ["u"], currentName: "Keltec", round: 4 });
+  const campaignRow = (before) => ({
+    table: "campaigns",
+    rowId: "c",
+    before: { id: "c", floor_json: before, scene: "the temple" },
+    after: { id: "c", floor_json: floor("e").replace("4", "5"), scene: "the vault" },
+    now: { id: "c", floor_json: JSON.stringify({ mode: "open" }), scene: "the vault" },
+    encounterId: null,
+  });
+  const values = (plan) => plan.updates.find((entry) => entry.table === "campaigns")?.values ?? {};
+  const ended = planRowsRevert([campaignRow(floor("e"))], new Map([["e", { active: false, begunInTurn: false, endedInTurn: false }]]));
+  assert.deepEqual(values(ended), { scene: "the temple" }, "the ended fight's floor came back");
+  const held = planRowsRevert([campaignRow(JSON.stringify({ mode: "hold", next: JSON.parse(floor("e")) }))], new Map([["e", { active: false, begunInTurn: false, endedInTurn: false }]]));
+  assert.equal("floor_json" in values(held), false, "a hold over the ended fight's floor came back");
+  const on = planRowsRevert([campaignRow(floor("e"))], new Map([["e", { active: true, begunInTurn: false, endedInTurn: false }]]));
+  assert.equal(values(on).floor_json, floor("e"), "the floor of a fight still on stayed");
+  const reopened = planRowsRevert([campaignRow(floor("e"))], new Map([["e", { active: false, begunInTurn: false, endedInTurn: true }]]));
+  assert.equal(values(reopened).floor_json, floor("e"), "the floor of a fight the revert opens again stayed");
+  const open = planRowsRevert([campaignRow(JSON.stringify({ mode: "open" }))], new Map());
+  assert.equal(values(open).floor_json, JSON.stringify({ mode: "open" }));
+});
+
+await test("a floor left naming a fight that is not on owns nothing: the lead can open the table", async () => {
+  const { getFloor, setFloor, staleFightFloor } = await import("../src/lib/db/campaigns.ts");
+  const { fightHoldsFloor } = await import("../src/lib/dm/encounter-tools.ts");
+  const before = getFloor(person.campaignId);
+  try {
+    setFloor(person.campaignId, { mode: "initiative", encounterId: "a-fight-long-over", userIds: [person.owner.id], currentName: "Vex", round: 4 });
+    assert.equal(staleFightFloor(person.campaignId), true);
+    assert.equal(fightHoldsFloor(person.campaignId), false, "the lead could not open a table whose fight is over");
+    setFloor(person.campaignId, { mode: "hold", next: { mode: "initiative", encounterId: "a-fight-long-over", userIds: [person.owner.id], currentName: "Vex", round: 4 } });
+    assert.equal(staleFightFloor(person.campaignId), true);
+    // What a revert does with it: no fight on, the table opens.
+    const { releaseStaleFightFloor } = await import("../src/lib/db/campaigns.ts");
+    const { getActiveEncounter } = await import("../src/lib/db/encounters.ts");
+    if (!getActiveEncounter(person.campaignId)) {
+      assert.deepEqual(releaseStaleFightFloor(person.campaignId), { mode: "open" });
+      assert.deepEqual(getFloor(person.campaignId), { mode: "open" });
+    }
+    setFloor(person.campaignId, { mode: "open" });
+    assert.equal(staleFightFloor(person.campaignId), false);
+    assert.equal(releaseStaleFightFloor(person.campaignId), null);
+  } finally {
+    setFloor(person.campaignId, before);
+  }
+});
+
+await test("hit points back end the dying on every path: a sheet with hit points keeps no death-save track", async () => {
+  const { regainedSettle } = await import("../src/lib/dm/vitals-logic.ts");
+  const dying = { currentHp: 0, deathSaves: { successes: 2, failures: 2, stable: false, dead: false }, conditions: ["Unconscious", "Prone"], conditionMeta: {} };
+  assert.equal(regainedSettle(dying), null, "a sheet at 0 keeps its track");
+  assert.deepEqual(regainedSettle({ ...dying, currentHp: 12 }), { deathSaves: null, conditions: ["Prone"], conditionMeta: {} });
+  assert.equal(regainedSettle({ ...dying, currentHp: 12, deathSaves: { ...dying.deathSaves, dead: true } }), null, "death stays death");
+  const hero = person.addHero({ name: "Keltec", class: "fighter", level: 3, maxHp: 28 });
+  try {
+    person.patch(hero.id, { currentHp: 0, deathSaves: dying.deathSaves, conditions: ["Unconscious", "Prone"] });
+    // An undo of the blow puts back the hit points alone (sheet-undo.ts).
+    const { getSheetById } = await import("../src/lib/db/sheets.ts");
+    const { insertSheetAudit } = await import("../src/lib/db/sheet-audit.ts");
+    const { revertAuditEntry } = await import("../src/lib/sheet-undo.ts");
+    const { allocateSeq, getCampaignById } = await import("../src/lib/db/campaigns.ts");
+    const blow = insertSheetAudit({
+      campaignId: person.campaignId,
+      characterId: hero.id,
+      turnId: null,
+      actor: "dm",
+      kind: "damage",
+      delta: { currentHp: 0 },
+      reason: "a blow",
+      seq: allocateSeq(person.campaignId),
+      before: { ...getSheetById(hero.id), currentHp: 28 },
+      patch: { currentHp: 0 },
+    });
+    assert.equal(revertAuditEntry(getCampaignById(person.campaignId), blow).ok, true);
+    const back = getSheetById(hero.id);
+    assert.equal(back?.currentHp, 28);
+    assert.equal(back?.deathSaves, null, "the track stayed beside full hit points");
+    assert.deepEqual(back?.conditions, ["Prone"]);
+  } finally {
+    person.patch(hero.id, { currentHp: 28, deathSaves: null, conditions: [] });
+  }
+});
+
 finish();

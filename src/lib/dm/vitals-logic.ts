@@ -88,6 +88,21 @@ export function wakeConditions(held: Held): { conditions: string[]; conditionMet
   return { conditions: cleared.conditions, conditionMeta: cleared.meta };
 }
 
+// What a sheet with hit points keeps of a death-save track: nothing. SRD 5.1,
+// Death Saving Throws: "The number of both is reset to zero when you regain
+// any hit points", and the Unconscious of the drop ends with the dying.
+// Whatever put the hit points back (a heal, an undo of the blow, a turn's
+// revert writing the sheet's row as it was), the track goes with it: a
+// revert gave a fallen fighter his hit points back and left the track, and
+// his sheet read "Dying" at full health (issue 968). Death stays death. Null
+// when there is nothing to settle.
+export function regainedSettle(sheet: Held & { currentHp: number; deathSaves?: { dead: boolean } | null }): { deathSaves: null; conditions: string[]; conditionMeta: ConditionMetaMap } | null {
+  if (sheet.currentHp <= 0 || !sheet.deathSaves || sheet.deathSaves.dead) {
+    return null;
+  }
+  return { deathSaves: null, ...wakeConditions(sheet) };
+}
+
 // Time passing out of a fight is time enough to get up. Standing costs half
 // a move (SRD 5.1, Being Prone), and outside a fight there is no turn to pay
 // it from, so nothing ever stood a character who woke on the ground: the

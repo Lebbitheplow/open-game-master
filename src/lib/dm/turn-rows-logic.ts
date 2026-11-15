@@ -220,6 +220,30 @@ function wordFor(table: string, count: number): string {
   return `${count} ${count === 1 ? one : more}`;
 }
 
+// The fight an initiative floor (or a hold over one) belongs to, from the
+// campaign row's stored floor_json; null for any other floor.
+export function initiativeFloorFight(raw: unknown): string | null {
+  let floor: unknown = raw;
+  if (typeof raw === "string") {
+    try {
+      floor = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+  const of = (value: unknown): string | null => {
+    const entry = value as { mode?: unknown; encounterId?: unknown; next?: unknown } | null;
+    if (!entry || typeof entry !== "object") {
+      return null;
+    }
+    if (entry.mode === "initiative") {
+      return typeof entry.encounterId === "string" ? entry.encounterId : null;
+    }
+    return entry.mode === "hold" ? of(entry.next) : null;
+  };
+  return of(floor);
+}
+
 export function planRowsRevert(
   rows: readonly RowState[],
   fights: ReadonlyMap<string, FightState>,
@@ -253,6 +277,13 @@ export function planRowsRevert(
       ? rows.filter((row) => isScene(row) && row.before?.status === "active" && row.now?.status === "ended").map((row) => row.rowId)
       : [],
   );
+  // Whether the fight a floor of turns names is on once the revert is done:
+  // on now and not one the turn began, or one the turn ended, opened again.
+  const onAfter = (floor: unknown) => {
+    const id = initiativeFloorFight(floor);
+    const fight = id ? fights.get(id) : undefined;
+    return id === null || Boolean(fight && ((fight.active && !goes(fight)) || reopens(fight)));
+  };
   const others = new Map<string, number>();
   for (const row of rows) {
     if (!isFightTable(row.table)) {
@@ -261,9 +292,15 @@ export function planRowsRevert(
       } else if (!row.before && row.now) {
         plan.deletes.push({ table: row.table, rowId: row.rowId });
       } else if (row.before && row.now) {
-        const columns = turnColumns(row.table, row.before, row.after ?? row.now);
+        // The floor is the fight's while the fight is on: put back for a
+        // fight that stays ended, it said "Round 4, your turn" over a table
+        // with no fight, no board and no cards (issue 968).
+        const before = row.before;
+        const columns = turnColumns(row.table, before, row.after ?? row.now).filter(
+          (column) => !(row.table === "campaigns" && column === "floor_json" && !onAfter(before.floor_json)),
+        );
         if (columns.length) {
-          plan.updates.push({ table: row.table, rowId: row.rowId, values: pick(row.before, columns) });
+          plan.updates.push({ table: row.table, rowId: row.rowId, values: pick(before, columns) });
           // A sheet's own fields are asked about by the sheet audit
           // (sheet-undo.ts undoConflictWarnings).
           if (row.after && row.table !== "character_sheets" && JSON.stringify(pick(row.after, columns)) !== JSON.stringify(pick(row.now, columns))) {

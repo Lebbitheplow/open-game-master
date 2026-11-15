@@ -23,6 +23,7 @@ import {
   setFloor,
   getFloor,
   combatOwnsFloor,
+  staleFightFloor,
   campaignSeats,
   type Campaign,
   type Floor,
@@ -49,6 +50,7 @@ import { feralInstinctOpening } from "@/lib/dm/mt-srd-barbarian";
 import { getRoll, insertRoll } from "@/lib/db/rolls";
 import { getLatestDmMessage, insertCampaignMessage, listRecentMessages } from "@/lib/db/messages";
 import { closeStandInTurn, getDmTurn, listOpenPendingRolls, listPendingForTurn, openStandInTurn, saveDmTurn, setPendingAttack, type DmTurn } from "@/lib/db/dm-turns";
+import { currentTurnId, runInTurnScope } from "@/lib/dm/job-control";
 import { endTurnToolLine, endTurnWaitsLine, attackRollWithPlayer } from "@/lib/dm/open-roll-logic";
 import { rollExpression } from "@/lib/dice";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
@@ -722,6 +724,13 @@ export function floorAfterRelease(campaignId: string): Floor {
 // floor row says. Spotlights and lead overrides are refused while this holds.
 export function fightOwnsFloor(campaignId: string): boolean {
   return combatOwnsFloor(getFloor(campaignId)) || initiativeFloorFor(campaignId) !== null;
+}
+
+// Whether a person may not set the floor because a fight owns it: as
+// fightOwnsFloor, but a floor left naming a fight that has ended owns nothing
+// (campaigns.ts staleFightFloor, issue 968), so the lead can open the table.
+export function fightHoldsFloor(campaignId: string): boolean {
+  return initiativeFloorFor(campaignId) !== null || (combatOwnsFloor(getFloor(campaignId)) && !staleFightFloor(campaignId));
 }
 
 function describeOrder(encounter: Encounter): string {
@@ -2752,9 +2761,19 @@ function partyFallen(campaign: Campaign, couldRise: boolean, orderBefore?: Order
     const sheets = listSheets(campaign.id);
     // A turn for the fight's end and its records, closed as soon as it is
     // used, as an opportunity attack's is (src/lib/dm/opportunity-strike.ts).
+    // Its writes are kept under the turn the fall came in, or, with none (a
+    // death save rolled as a player's End Turn passed, a blow from a token's
+    // own walk), under this one: written with no turn at all, the fight's end
+    // was kept nowhere, and no "Revert this turn" could open the fight again
+    // (issue 968), as fight-events.ts already scopes its stand-in.
     const turn = openStandInTurn(campaign.id);
+    const finish = () => finishEncounter(campaign, turn, encounter, "party_defeated", sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])));
     try {
-      finishEncounter(campaign, turn, encounter, "party_defeated", sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])));
+      if (currentTurnId()) {
+        finish();
+      } else {
+        runInTurnScope(turn.id, finish);
+      }
     } finally {
       closeStandInTurn(turn);
     }

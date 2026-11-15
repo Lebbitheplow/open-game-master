@@ -742,7 +742,10 @@ export function PartyPanel({
               </div>
             ))}
 
-            {sheet.deathSaves ? (
+            {/* A track beside hit points is no dying (death-logic.ts isDying):
+                a revert that gave the hit points back read "Dying" at full
+                health (issue 968). Death shows whatever the hit points. */}
+            {sheet.deathSaves && (sheet.deathSaves.dead || sheet.currentHp <= 0) ? (
               <div
                 className={cn(
                   "mt-1.5 flex items-center gap-2 rounded-lg border px-2 py-1.5",
