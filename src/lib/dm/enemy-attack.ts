@@ -21,11 +21,12 @@ import { hitTraitDice } from "@/lib/dm/side-allies";
 import type { EncounterEnemy } from "@/lib/db/encounters";
 import { mirrorImageDecoy, sanctuaryRefusal } from "@/lib/dm/spell-defenses";
 import { enfeebledBlow, measureRetort, spellRetort, spendEnemyRiders } from "@/lib/dm/spell-retort";
-import { joinRetorts, riderMarkOf } from "@/lib/dm/retort-logic";
+import { joinRetorts, riderMarkOf, type WaitingAnswer } from "@/lib/dm/retort-logic";
 import { z } from "zod";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import {
   getActiveEncounter,
+  getEnemy,
   recordEncounterTarget,
   saveEncounter,
 } from "@/lib/db/encounters";
@@ -83,7 +84,8 @@ import { mountTargetProblem, strikeMount } from "@/lib/dm/mount-combat";
 import { petTargetProblem, strikePet } from "@/lib/dm/pet-strike";
 import { riderTakesIt } from "@/lib/dm/ar-wbf-feat-doors";
 import { enemySpellAttack } from "@/lib/dm/enemy-casting";
-import { swallowCover, swallowRefusal } from "@/lib/dm/swallow";
+import { gripsHeldBy, swallowCover, swallowMark, swallowRefusal } from "@/lib/dm/swallow";
+import { landSwing, landWaits, reactionCouldTurn } from "@/lib/dm/retort-wait";
 import { swallowActionOf } from "@/lib/dm/swallow-logic";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import { sheetSize } from "@/lib/srd";
@@ -186,6 +188,12 @@ export function handleEnemyAttack(
   // scimitar and a shortbow never lashed out).
   engine: { anySide?: boolean; pickAttack?: boolean } = {},
 ): ToolResult {
+  // An answer still waiting on the reaction to an earlier hit lands before
+  // this attack: the attack is done after the hit, so a reaction's moment has
+  // passed (retort-wait.ts), and an attacker it slays makes none. A call
+  // through the dispatch door has landed it already; the server's own plays
+  // (the backstop, a legendary option's swings) come here first.
+  landWaits(campaign, turn, { tell: true });
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
     return { error: "No active encounter: enemy_attack works only in a fight. Call start_encounter first.", retry: true };
@@ -663,9 +671,34 @@ export function handleEnemyAttack(
   // The swings made at range, held to what a Multiattack of melee attacks
   // leaves room for (enemy-profile.ts rangedSwingsAllowed).
   let shots = 0;
+  // What a waiting answer said as it landed between swings (retort-wait.ts),
+  // and why the creature swings no more once one, or an answer at once,
+  // slew it.
+  const answersLanded: string[] = [];
+  let fallen: string | null = null;
+  // Whether a reaction could still turn every hit of the attack: a
+  // retaliation for the whole of it that would slay waits then too.
+  let hitAny = false;
+  let everyHitTurnable = true;
   planned.forEach((plannedAttack: EnemyAttack, index) => {
     let attack = plannedAttack;
     if (dropped) {
+      return;
+    }
+    // The swing before is past its reaction now (SRD 5.1, Reactions: taken
+    // right after the trigger): what waited on it lands before the creature
+    // swings again, and one an answer slew makes no more attacks. Before, the
+    // routine went on swinging: a goblin Fire Shield had burnt to death, or
+    // whose death waited on Shield, still made its second attack.
+    if (index > 0 && !fallen) {
+      hitLog.rewrite((swing) => landSwing(campaign, turn, swing, answersLanded, sheets, sheetsById));
+      const now = getEnemy(enemy.id);
+      if (!now || now.status !== "alive" || now.currentHp <= 0) {
+        fallen = `${enemy.displayName} fell to what answered its earlier swing and makes no more attacks`;
+      }
+    }
+    if (fallen) {
+      swings.push({ attack: attack.name, skipped: fallen });
       return;
     }
     // Swallowed by an earlier swing of this routine (or by anything since
@@ -939,7 +972,12 @@ export function handleEnemyAttack(
     // Thought Shield: the psychic damage a warlock took goes back to the
     // creature, kept with the swing so a reaction that turns it into a miss
     // takes it back (spell-retort.ts measureRetort).
-    const psychicBack = measureRetort(enemy.id, () => thoughtShieldBack(campaign, turn, struck, enemy.id, { amount: Math.min(dealt, 200), type: blow.type, parts: blow.parts ? scaledParts(blow.parts, dealt) : undefined, flags }, sheets, sheetsById), (back) => (back.thoughtShield ? ["Thought Shield"] : []));
+    // A reaction that could still turn this swing into a miss holds an answer
+    // that would slay the creature until the hit is settled (retort-wait.ts).
+    const waits = reactionCouldTurn(campaign.id, struck, { total: hitOutcome.total, natural20: natCrit, vsAc: targetAc(), melee: !ranged, attackerId: enemy.id });
+    hitAny = true;
+    everyHitTurnable &&= waits;
+    const psychicBack = measureRetort(enemy.id, () => thoughtShieldBack(campaign, turn, struck, enemy.id, { amount: Math.min(dealt, 200), type: blow.type, parts: blow.parts ? scaledParts(blow.parts, dealt) : undefined, flags }, sheets, sheetsById, waits), (back) => (back.thoughtShield && !back.waiting ? ["Thought Shield"] : []));
     Object.assign(applied, psychicBack.result);
     totalDamage += dealt;
     takenTotal += dealt > 0 ? meetDefenses(blowDefenses(campaign.id, struck, flags), Math.min(dealt, 200), blow.type, blow.parts ? scaledParts(blow.parts, dealt) : undefined, 0).amount : 0;
@@ -1009,12 +1047,15 @@ export function handleEnemyAttack(
       ? byType.reduce((sum, part) => sum + (/^(\d+) necrotic\b/i.exec(part) ? Number(/^(\d+)/.exec(part)![1]) : 0), 0)
       : /necrotic/i.test(blow.type ?? attack.type) ? dealt : 0;
     const unridden = getSheetById(target.id);
+    // A bite that may swallow ends the grapples its target holds: read first.
+    const grips = attack.onHit?.swallow ? gripsHeldBy(campaign.id, target.id) : null;
     const onHit = resolveOnHit(campaign, turn, standing, attack, target.id, { sheets, sheetsById, dealt: { total: dealt, necrotic } });
     // What the rider laid on the target, kept with the swing: a reaction
-    // that turns it into a miss takes it off (reaction-refund.ts). A
-    // creature swallowed is the swallow's to free (swallow.ts), not this.
+    // that turns it into a miss takes it off (reaction-refund.ts), a swallow
+    // with the grapples it ended (swallow.ts swallowMark).
     const ridden = getSheetById(target.id);
-    hitLog.laid(unridden && ridden && !onHit?.swallowed ? riderMarkOf(unridden, ridden, Array.isArray(onHit?.riderCondition) ? (onHit.riderCondition as string[]) : []) : null);
+    const own = Array.isArray(onHit?.riderCondition) ? (onHit.riderCondition as string[]) : [];
+    hitLog.laid(unridden && ridden ? (onHit?.swallowed ? swallowMark(campaign.id, unridden, ridden, target.id, grips, own) : riderMarkOf(unridden, ridden, own)) : null);
     // Charge, Pounce, Trampling Charge: the save the run and this hit force,
     // and a Pounce's bonus attack on a creature left prone (enemy-charge.ts).
     const charged = charge
@@ -1023,9 +1064,11 @@ export function handleEnemyAttack(
     // Fire Shield, Armor of Agathys and Holy Aura answer the blow
     // (spell-retort.ts), kept with the swing with Thought Shield's: a hit a
     // reaction turns into a miss never set them off (reaction-refund.ts).
-    const answered = measureRetort(standing.id, () => spellRetort(campaign, turn, standing, target.id, !ranged, spatial.distance === null || spatial.distance <= 1, sheets, sheetsById, struck.tempHp ?? 0), (out) => out.by);
-    const retort = answered.result.line;
+    const answered = measureRetort(standing.id, () => spellRetort(campaign, turn, standing, target.id, !ranged, spatial.distance === null || spatial.distance <= 1, sheets, sheetsById, struck.tempHp ?? 0, waits), (out) => out.by, (out) => out.shares);
+    // Thought Shield's line with the spells': the GM never heard it here.
+    const retort = [psychicBack.result.thoughtShield, answered.result.line].filter(Boolean).join(" ") || null;
     hitLog.retort(joinRetorts(psychicBack.retort, answered.retort));
+    hitLog.waiting([...(psychicBack.result.waiting ? [psychicBack.result.waiting] : []), ...answered.result.waiting]);
     if (typeof onHit?.targetHp === "string") {
       targetHp = onHit.targetHp;
     }
@@ -1055,8 +1098,10 @@ export function handleEnemyAttack(
   });
   // A feature's retaliation for the attack as a whole, kept with its record:
   // a reaction that leaves none of its swings a hit takes it back.
-  const retaliation = measureRetort(standing.id, () => authoredAfterHit(campaign, { encounter, attacker: standing, target, dealt: totalDamage, taken: takenTotal, ranged: (lastSwing as { ranged: boolean } | null)?.ranged ?? false, attackName: closing?.attack.name }), (lines) => (lines.length ? ["A retaliation"] : []));
+  const retaliationWaits = hitAny && everyHitTurnable ? ([] as WaitingAnswer[]) : undefined;
+  const retaliation = measureRetort(standing.id, () => authoredAfterHit(campaign, { encounter, attacker: standing, target, dealt: totalDamage, taken: takenTotal, ranged: (lastSwing as { ranged: boolean } | null)?.ranged ?? false, attackName: closing?.attack.name, waiting: retaliationWaits }), (lines) => (lines.length > (retaliationWaits?.length ?? 0) ? ["A retaliation"] : []));
   hitLog.afterHit(retaliation.retort);
+  hitLog.afterWaiting(retaliationWaits);
   notes.push(...retaliation.result);
 
   const names = [...new Set(planned.map((attack) => attack.name))];
@@ -1074,6 +1119,7 @@ export function handleEnemyAttack(
     ...(notes.length ? { conditionEffects: notes } : {}),
     ...(targetHp ? { targetHp } : {}),
     ...(dropped ? { dropped: true, note: `${target.name} falls to 0 HP.` } : {}),
+    ...(answersLanded.length ? { answersLanded } : {}),
   };
 }
 

@@ -42,7 +42,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { wardOf } from "@/lib/dm/arcane-ward";
 import { actedThisTurn, recordTurnEnd } from "@/lib/dm/last-save";
 import type { BlowFlags } from "@/lib/dm/pc-damage";
-import type { Retort, RiderMark } from "@/lib/dm/retort-logic";
+import type { Retort, RiderMark, WaitingAnswer } from "@/lib/dm/retort-logic";
 
 export type SwingRecord = {
   // The attack this swing was, when a multiattack swings several (a
@@ -128,6 +128,10 @@ export type SwingRecord = {
   // grapple, a drain of their maximum: retort-logic.ts RiderMark), taken off
   // when a reaction turns the swing into a miss. Absent when it laid nothing.
   laid?: RiderMark;
+  // An answer that would slay the attacker, held while a reaction could
+  // still turn this swing into a miss, landed when the hit is settled
+  // (retort-wait.ts). Absent when none waits.
+  waiting?: WaitingAnswer[];
 };
 
 export type CriticalRecipe = {
@@ -251,6 +255,10 @@ export type LastHit = {
   // taken back when a reaction leaves none of them a hit. Absent when it set
   // off nothing.
   afterHit?: Retort;
+  // A retaliation of the whole attack that would slay its maker, held while
+  // a reaction could still turn every hit of it into a miss, landed when the
+  // hit is settled (retort-wait.ts). Absent when none waits.
+  afterWaiting?: WaitingAnswer[];
   // The reactions already answered with it, so one cannot be taken twice.
   answered: string[];
   // When the attack began (the first swing) and when it was recorded.
@@ -358,6 +366,16 @@ function readHits(campaignId: string, characterId: string): LastHit[] {
     .prepare(`SELECT payload_json FROM last_hits WHERE campaign_id = ? AND character_id = ?`)
     .get(campaignId, characterId) as { payload_json: string } | undefined;
   return row ? hitsIn(row.payload_json) : [];
+}
+
+// Every kept hit in the campaign with an answer waiting on a reaction
+// (SwingRecord.waiting, retort-wait.ts), open or not.
+export function hitsWaiting(campaignId: string): LastHit[] {
+  // One row a character: read whole.
+  const rows = db()
+    .prepare(`SELECT payload_json FROM last_hits WHERE campaign_id = ?`)
+    .all(campaignId) as Array<{ payload_json: string }>;
+  return rows.flatMap((row) => hitsIn(row.payload_json).filter((record) => record.afterWaiting?.length || record.swings.some((swing) => swing.waiting?.length)));
 }
 
 // The newest hit kept on a character, open or not.
@@ -861,10 +879,29 @@ export function openLastHit(campaignId: string, characterId: string) {
         swings[swings.length - 1] = { ...last, laid: mark };
       }
     },
+    // The answers to the swing just logged that wait on a reaction.
+    waiting(answers: WaitingAnswer[]) {
+      const last = swings.at(-1);
+      if (last && last.hit && answers.length) {
+        swings[swings.length - 1] = { ...last, waiting: answers };
+      }
+    },
+    // Each swing logged so far, rewritten: what waited on a reaction lands
+    // before the attacker swings again (retort-wait.ts landSwing).
+    rewrite(change: (swing: SwingRecord) => SwingRecord) {
+      swings.splice(0, swings.length, ...swings.map(change));
+    },
     // What the whole attack set off once it was recorded, kept with it.
     afterHit(retort: Retort | null) {
       if (written && retort) {
         written = { ...written, afterHit: retort };
+        writeLastHit(campaignId, written);
+      }
+    },
+    // The whole attack's retaliations that wait on a reaction.
+    afterWaiting(answers: WaitingAnswer[] | undefined) {
+      if (written && answers?.length) {
+        written = { ...written, afterWaiting: answers };
         writeLastHit(campaignId, written);
       }
     },

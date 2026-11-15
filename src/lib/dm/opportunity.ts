@@ -62,7 +62,9 @@ import { hasTrait } from "@/lib/dm/monster-abilities";
 import { allyBeside } from "@/lib/dm/side-allies";
 import { targetSwingMarks } from "@/lib/dm/enemy-swing-odds";
 import { enfeebledBlow, measureRetort, spellRetort, spendEnemyRiders } from "@/lib/dm/spell-retort";
-import { joinRetorts, riderMarkOf } from "@/lib/dm/retort-logic";
+import { joinRetorts, riderMarkOf, type WaitingAnswer } from "@/lib/dm/retort-logic";
+import { gripsHeldBy, swallowMark } from "@/lib/dm/swallow";
+import { landWaits, reactionCouldTurn } from "@/lib/dm/retort-wait";
 import { thoughtShieldBack } from "@/lib/dm/thought-shield";
 import { authoredAfterHit } from "@/lib/dm/authored-hooks";
 import { holdsFeature } from "@/lib/srd/feature-names";
@@ -241,6 +243,20 @@ export function resolveOpportunityAttacks(
     if (sight && !sight.attackerSees) {
       continue;
     }
+    // An answer still waiting on the reaction to an earlier hit lands before
+    // this attack (retort-wait.ts): the moment to turn that hit has passed,
+    // and a creature it slays makes no opportunity attack. The fight is read
+    // again for what the landing changed; it stays open for the GM's next
+    // turn, as a fall to an opportunity attack leaves it.
+    const landedFirst = landWaits(campaign, null, { holdVictory: true });
+    if (landedFirst.length) {
+      notes.push(...landedFirst);
+      Object.assign(encounter, getActiveEncounter(campaign.id) ?? encounter);
+      const now = getEnemy(enemy.id);
+      if (!now || now.status !== "alive" || now.currentHp <= 0) {
+        continue;
+      }
+    }
     // The reaction is spent whether or not the swing lands.
     encounter.reactionsUsed = [...encounter.reactionsUsed, enemy.id];
     saveEncounter(encounter);
@@ -382,7 +398,7 @@ export function resolveOpportunityAttacks(
     const plainBlow = plainRoll ? blowByType(attack, plainRoll, false) : null;
     const plainRaw = plainBlow ? enfeebledBlow(enemy, attack, false, Math.max(0, plainBlow.amount)) : 0;
     const plain = plainBlow ? { raw: plainRaw, ...(plainBlow.parts ? { parts: scaledParts(plainBlow.parts, plainRaw) } : {}) } : undefined;
-    const { landed, onHit, answered, psychicBack, laid } = withOpportunityTurn(campaign.id, (turn) => {
+    const { landed, onHit, answered, psychicBack, laid, waits } = withOpportunityTurn(campaign.id, (turn) => {
       const hitSheets = listSheets(campaign.id);
       const hitSheetsById = new Map(hitSheets.map((entry) => [entry.id, entry]));
       const applied: Record<string, unknown> =
@@ -403,14 +419,19 @@ export function resolveOpportunityAttacks(
       // without them, the frost never bit here, and its line never reached
       // the GM. Each kept with the swing, so a Shield that turns it into a
       // miss takes it back (spell-retort.ts measureRetort).
-      const psychicBack = measureRetort(enemy.id, () => (rolled > 0 ? thoughtShieldBack(campaign, turn, sheet, enemy.id, { amount: rolled, type: blow.type, parts: blow.parts ? scaledParts(blow.parts, rolled) : undefined, flags: magical ? { magical: true } : {} }, hitSheets, hitSheetsById) : {}), (back) => (back.thoughtShield ? ["Thought Shield"] : []));
+      // An answer that would slay it waits on a reaction that could still
+      // turn this swing into a miss (retort-wait.ts).
+      const waits = reactionCouldTurn(campaign.id, sheet, { total: hitOutcome.total, natural20: hitOutcome.crit === "nat20", vsAc: targetAc, melee: true, attackerId: enemy.id });
+      const psychicBack = measureRetort(enemy.id, () => (rolled > 0 ? thoughtShieldBack(campaign, turn, sheet, enemy.id, { amount: rolled, type: blow.type, parts: blow.parts ? scaledParts(blow.parts, rolled) : undefined, flags: magical ? { magical: true } : {} }, hitSheets, hitSheetsById, waits) : {}), (back) => (back.thoughtShield && !back.waiting ? ["Thought Shield"] : []));
       const unridden = getSheetById(sheet.id);
+      const grips = attack.onHit?.swallow ? gripsHeldBy(campaign.id, sheet.id) : null;
       const rider = resolveOnHit(campaign, turn, enemy, attack, sheet.id, { sheets: hitSheets, sheetsById: hitSheetsById });
       // What the rider laid on them, kept with the swing (enemy-attack.ts).
       const ridden = getSheetById(sheet.id);
-      const laid = unridden && ridden && !rider?.swallowed ? riderMarkOf(unridden, ridden, Array.isArray(rider?.riderCondition) ? (rider.riderCondition as string[]) : []) : null;
-      const answered = measureRetort(enemy.id, () => spellRetort(campaign, turn, enemy, sheet.id, true, reach <= 1, hitSheets, hitSheetsById, sheet.tempHp ?? 0), (out) => out.by);
-      return { landed: applied, onHit: rider, answered, psychicBack, laid };
+      const own = Array.isArray(rider?.riderCondition) ? (rider.riderCondition as string[]) : [];
+      const laid = unridden && ridden ? (rider?.swallowed ? swallowMark(campaign.id, unridden, ridden, sheet.id, grips, own) : riderMarkOf(unridden, ridden, own)) : null;
+      const answered = measureRetort(enemy.id, () => spellRetort(campaign, turn, enemy, sheet.id, true, reach <= 1, hitSheets, hitSheetsById, sheet.tempHp ?? 0, waits), (out) => out.by, (out) => out.shares);
+      return { landed: applied, onHit: rider, answered, psychicBack, laid, waits };
     });
     const updated = getSheetById(sheet.id);
     // A critical's normal figure, for Sentinel at Death's Door (last-hit.ts).
@@ -423,11 +444,14 @@ export function resolveOpportunityAttacks(
     hitLog.swing(hitOutcome, targetAc, { hit: true, crit, raw: rolled, advantage, ...(blow.type ? { type: blow.type } : {}), ...(blow.parts ? { parts: scaledParts(blow.parts, rolled) } : {}), ...(plain ? { plain } : {}), ...(normal ? { normal } : {}), flags: wards.flags });
     hitLog.retort(joinRetorts(psychicBack.retort, answered.retort));
     hitLog.laid(laid);
+    hitLog.waiting([...(psychicBack.result.waiting ? [psychicBack.result.waiting] : []), ...answered.result.waiting]);
     hitLog.close({ attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName }, attack: `${attack.name} (opportunity attack)`, type: attack.type, ranged: false });
     // A feature's retaliation for a melee hit (Flames of Phlegethos, a
     // retaliate row), as enemy_attack's attack meets it.
-    const retaliation = measureRetort(enemy.id, () => authoredAfterHit(campaign, { encounter, attacker: enemy, target: sheet, dealt: rolled, ranged: false, attackName: attack.name }), (lines) => (lines.length ? ["A retaliation"] : []));
+    const retaliationWaits = waits ? ([] as WaitingAnswer[]) : undefined;
+    const retaliation = measureRetort(enemy.id, () => authoredAfterHit(campaign, { encounter, attacker: enemy, target: sheet, dealt: rolled, ranged: false, attackName: attack.name, waiting: retaliationWaits }), (lines) => (lines.length > (retaliationWaits?.length ?? 0) ? ["A retaliation"] : []));
     hitLog.afterHit(retaliation.retort);
+    hitLog.afterWaiting(retaliationWaits);
     const answers = [psychicBack.result.thoughtShield, answered.result.line, ...retaliation.result].filter((line): line is string => Boolean(line));
     if (updated && updated.currentHp <= 0 && !updated.wildShape) {
       downed = true;

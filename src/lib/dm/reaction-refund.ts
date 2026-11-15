@@ -50,8 +50,12 @@ import {
   type SwingOutcome,
 } from "@/lib/dm/hit-replay-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
-import { takeRetortBack } from "@/lib/dm/spell-retort";
-import { ridersBack, type RiderMark } from "@/lib/dm/retort-logic";
+import { AGATHYS, agathysAnew, giveShareBack, takeRetortBack } from "@/lib/dm/spell-retort";
+import { getDmTurn } from "@/lib/db/dm-turns";
+import { lessenWaitingPsychic, thoughtShieldLessened } from "@/lib/dm/thought-shield";
+import { gripsBack } from "@/lib/dm/swallow";
+import { settleWaiting } from "@/lib/dm/retort-wait";
+import { joinRetorts, ridersBack, type RiderMark } from "@/lib/dm/retort-logic";
 import { answerLabel, carryCuts, hitIdOf, openHits, wardHpOf, writeLastHit, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { applyDmMutation, audit } from "@/lib/dm/mutations";
 import { blowDefenses, meetDefenses, WILDFIRE_SPIRIT } from "@/lib/dm/pc-damage";
@@ -332,6 +336,12 @@ export function settleHits(
   if (freed.length) {
     notes.push(`${sheet.name} is no longer ${freed.map((name) => (maxHpRiders([name], sheet.conditionMeta as ConditionMetaMap).drain > 0 ? "drained of maximum hit points" : name)).join(" or ")}: the blow that laid it now misses.`);
   }
+  // What a swallow ended comes back (a grapple; SRD 5.1: "If the attack hits,
+  // the target is also swallowed, and the grapple ends").
+  const heldAgain = unlaid.flatMap((mark) => mark.ended).map((entry) => entry.name).filter((name) => !sheet.conditions.includes(name) && riderless.conditions.includes(name) && maxHpRiders([name], riderless.conditionMeta as ConditionMetaMap).drain <= 0);
+  if (heldAgain.length) {
+    notes.push(`${sheet.name} is ${heldAgain.join(" and ")} again, as before the blow that now misses.`);
+  }
   const first = chain[0];
   const nowStanding = standingOfSheet(sheet);
 
@@ -378,7 +388,10 @@ export function settleHits(
     });
   });
   const final = state;
-  retortsBack(campaign, steps, notes);
+  retortsBack(campaign, sheet, steps, notes);
+  frostReread(campaign, turnId, sheet, steps, notes, sheets, sheetsById);
+  // What waited on a reaction that could turn a swing lands or never comes.
+  settleWaiting(campaign, turnId, steps, notes, sheets, sheetsById);
 
   // Each hit of the chain is kept as the corrected fight has it: its
   // swings, where it found and left them (a later hit that found them down
@@ -512,6 +525,11 @@ export function settleHits(
   patch.conditions = conditions;
   patch.conditionMeta = meta as FullPatchSheetInput["conditionMeta"];
   reactionPatch(campaign, turnId, sheet.id, patch, `${answerLabel(label)}: the blow corrected`);
+  // The grapples they held that a swallow ended hold again (swallow.ts).
+  const regripped = unlaid.flatMap((mark) => (mark.released?.length ? gripsBack(campaign, sheet.id, mark.released) : []));
+  if (regripped.length) {
+    notes.push(`${regripped.join(" and ")} ${regripped.length === 1 ? "is" : "are"} still grappled by ${sheet.name}.`);
+  }
 
   bondShareBack(campaign, turnId, steps, label, sheets, sheetsById);
   concentrationBack(campaign, turnId, steps, final, notes, label);
@@ -537,10 +555,13 @@ function sameTrack(a: DeathTrack | null, b: DeathTrack | null): boolean {
 // Agathys and Holy Aura answer a creature that hits; a blow Shield or Cutting
 // Words turns away never hit. A swing that still hits keeps what it set off,
 // dealt the once.
-function retortsBack(campaign: Campaign, steps: Step[], notes: string[]) {
+function retortsBack(campaign: Campaign, sheet: CharacterSheet, steps: Step[], notes: string[]) {
   for (const step of steps) {
     const was = step.record.swings;
     step.corrected = step.corrected.map((swing, at) => {
+      if (was[at]?.hit && swing.hit && (was[at].retort || was[at].waiting) && swing.raw !== was[at].raw) {
+        return lessenedAnswers(campaign, heldFor(sheet, step.record), step.record, was[at], swing, notes);
+      }
       if (!was[at]?.hit || swing.hit || (!was[at].retort && !was[at].laid)) {
         return swing;
       }
@@ -565,6 +586,88 @@ function retortsBack(campaign: Campaign, steps: Step[], notes: string[]) {
       delete plain.afterHit;
       step.record = plain;
     }
+  }
+}
+
+// The character as a hit's blows met them: their conditions and form then.
+function heldFor(sheet: CharacterSheet, record: LastHit): CharacterSheet {
+  return { ...sheet, conditions: record.before.conditions, conditionMeta: record.before.conditionMeta, wildShape: record.before.wildShape ?? null };
+}
+
+// A swing's blow as the damage path met it, for an answer that reads what
+// landed: its damage, type, parts and flags, with a reaction's resistance.
+function blowOf(record: LastHit, swing: SwingRecord) {
+  return {
+    amount: swing.hit ? swing.raw : 0,
+    type: (swing.type ?? record.type) || undefined,
+    parts: swing.parts?.length ? scaledParts(swing.parts, swing.raw) : undefined,
+    flags: { ...(swing.flags ?? {}), ...(swing.resists?.length ? { resists: swing.resists } : {}) },
+  };
+}
+
+// A swing that still hits, with less of it landing (Uncanny Dodge, Cutting
+// Words off the damage): the answers that read what landed are lessened with
+// it. SRD 5.1, Thought Shield: the creature takes "the same amount of damage
+// that you do".
+function lessenedAnswers(campaign: Campaign, held: CharacterSheet, record: LastHit, was: SwingRecord, swing: SwingRecord, notes: string[]): SwingRecord {
+  const psychic = was.retort ? thoughtShieldLessened(campaign, held, was.retort, blowOf(record, was), blowOf(record, swing)) : null;
+  let next = swing;
+  if (psychic) {
+    if (psychic.line) {
+      notes.push(psychic.line);
+    }
+    const kept = { ...swing };
+    delete kept.retort;
+    next = psychic.retort ? { ...kept, retort: psychic.retort } : kept;
+  }
+  // Psychic that waits on a reaction (retort-wait.ts) waits at what is now taken.
+  if (next.waiting?.length) {
+    const waiting = lessenWaitingPsychic(campaign.id, held, next.waiting, blowOf(record, swing));
+    const kept = { ...next };
+    delete kept.waiting;
+    next = waiting.length ? { ...kept, waiting } : kept;
+  }
+  return next;
+}
+
+// Armor of Agathys answers each melee hit "while you have these hit points"
+// (SRD 5.1). After the replay a swing that still hits reads them as the
+// corrected fight left them: one a reaction left them for (an earlier swing
+// turned away, its blow given back) is frozen now; one that no longer finds
+// them (a reroll made an earlier blow a critical) gives its frost back. Each
+// is kept with its swing, so a later reaction finds it there.
+function frostReread(campaign: Campaign, turnId: string, sheet: CharacterSheet, steps: Step[], notes: string[], sheets: CharacterSheet[], sheetsById: Map<string, CharacterSheet>) {
+  const turn = getDmTurn(turnId);
+  for (const step of steps) {
+    const { record } = step;
+    const attackerId = record.attacker.kind === "enemy" ? record.attacker.id : null;
+    if (!turn || !attackerId || !record.before.conditions.some((entry) => isConditionNamed(entry, "armor of agathys"))) {
+      continue;
+    }
+    step.corrected = step.corrected.map((swing, at) => {
+      const met = (step.now.swings[at]?.temp ?? 0) > 0;
+      const fired = Boolean(swing.retort?.by.includes(AGATHYS));
+      if (!swing.hit || (swing.ranged ?? record.ranged) || met === fired) {
+        return swing;
+      }
+      if (met) {
+        const anew = agathysAnew(campaign, turn, attackerId, heldFor(sheet, record), sheets, sheetsById);
+        notes.push(...anew.lines.map((line) => `A blow that still hits now meets the temporary hit points: ${line}`));
+        const retort = joinRetorts(swing.retort ?? null, anew.retort);
+        return retort ? { ...swing, retort } : swing;
+      }
+      const share = swing.retort?.share?.[AGATHYS] ?? 0;
+      if (!swing.retort || share <= 0) {
+        return swing;
+      }
+      const back = giveShareBack(campaign, swing.retort, AGATHYS, share, `${AGATHYS}: ${sheet.name} no longer had its temporary hit points when that blow landed`);
+      if (back.line) {
+        notes.push(back.line);
+      }
+      const kept = { ...swing };
+      delete kept.retort;
+      return back.retort ? { ...kept, retort: back.retort } : kept;
+    });
   }
 }
 

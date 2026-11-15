@@ -21,6 +21,7 @@
 // swing, and taken back with it.
 
 import { maxHpRiders, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 
 export type RetortCreature = {
   currentHp: number;
@@ -47,11 +48,18 @@ export type Retort = {
   // with their meta (the oil Fire Shield's flame burnt off).
   laid: string[];
   ended: Array<{ name: string; meta?: unknown }>;
+  // The hit points each answer took, read apart (Thought Shield's psychic,
+  // Armor of Agathys's cold): a reaction that changes how much of the blow
+  // landed, or whether the temporary hit points were still there, corrects
+  // that answer alone (SRD 5.1: Thought Shield deals "the same amount of
+  // damage that you do"). Absent on records written before it.
+  share?: Record<string, number>;
 };
 
 // What the answers did, from the creature before and after them; null when
-// they did nothing to it.
-export function retortOf(enemyId: string, before: RetortCreature, after: RetortCreature, by: string[]): Retort | null {
+// they did nothing to it. One answer's share is the whole; several give
+// theirs in `share`.
+export function retortOf(enemyId: string, before: RetortCreature, after: RetortCreature, by: string[], share?: Record<string, number>): Retort | null {
   const laid = after.conditions.filter((name) => !before.conditions.includes(name));
   const ended = before.conditions
     .filter((name) => !after.conditions.includes(name))
@@ -61,7 +69,19 @@ export function retortOf(enemyId: string, before: RetortCreature, after: RetortC
   if (!hp && !fell && !laid.length && !ended.length) {
     return null;
   }
-  return { enemyId, by, hp, maxHp: before.maxHp, fell, laid, ended };
+  const shares = share ?? (by.length === 1 ? { [by[0]]: hp } : undefined);
+  return { enemyId, by, hp, maxHp: before.maxHp, fell, laid, ended, ...(shares ? { share: shares } : {}) };
+}
+
+function joinShares(first: Retort["share"], second: Retort["share"]): Retort["share"] {
+  if (!first && !second) {
+    return undefined;
+  }
+  const out: Record<string, number> = { ...(first ?? {}) };
+  for (const [name, hp] of Object.entries(second ?? {})) {
+    out[name] = (out[name] ?? 0) + hp;
+  }
+  return out;
 }
 
 // Two answers to the same swing (Thought Shield as the damage lands, the
@@ -70,6 +90,7 @@ export function joinRetorts(first: Retort | null, second: Retort | null): Retort
   if (!first || !second || first.enemyId !== second.enemyId) {
     return first ?? second;
   }
+  const share = joinShares(first.share, second.share);
   return {
     enemyId: first.enemyId,
     by: [...first.by, ...second.by.filter((name) => !first.by.includes(name))],
@@ -78,8 +99,26 @@ export function joinRetorts(first: Retort | null, second: Retort | null): Retort
     fell: first.fell || second.fell,
     laid: [...first.laid, ...second.laid.filter((name) => !first.laid.includes(name))],
     ended: [...first.ended, ...second.ended.filter((entry) => !first.ended.some((had) => had.name === entry.name))],
+    ...(share ? { share } : {}),
   };
 }
+
+// The answer kept with `given` of one answer's hit points taken back (a
+// reaction lessened what it answered); null when nothing it did is left.
+export function lessenedRetort(retort: Retort, by: string, given: number): Retort | null {
+  const share = { ...(retort.share ?? {}), [by]: Math.max(0, (retort.share?.[by] ?? 0) - given) };
+  const hp = retort.hp - given;
+  const left = retort.by.filter((name) => name !== by || share[name] > 0);
+  if (!hp && !retort.fell && !retort.laid.length && !retort.ended.length) {
+    return null;
+  }
+  return { ...retort, by: left, hp, share };
+}
+
+// An answer that would slay the creature that struck, held on the swing
+// until the hit is settled (retort-wait.ts): who answered, the creature, the
+// damage it deals and whether it is a spell's.
+export type WaitingAnswer = { by: string; enemyId: string; holderId: string; amount: number; type: string; spell: boolean };
 
 export type RetortBack = {
   currentHp: number;
@@ -123,9 +162,41 @@ export function retortBack(now: RetortCreature, retort: Retort): RetortBack | nu
 // the "Hit:" text is what the hit does): the conditions it laid, and the drain
 // of their maximum it raised (one "max hp reduced" mark grows with each
 // drain, so the smaller one it replaced is kept to put back).
-export type RiderMark = { laid: string[]; ended: Array<{ name: string; meta?: unknown }> };
+export type RiderMark = {
+  laid: string[];
+  ended: Array<{ name: string; meta?: unknown }>;
+  // A condition it held already that it changed (a swallow's restrained over
+  // a grapple's): the meta it found, put back while the rider's still stands.
+  changed?: Array<{ name: string; meta?: unknown; left?: unknown }>;
+  // The grapples a swallow ended that the character held on others (swallow.ts
+  // gripsHeldBy), put back by the refund when the bite no longer hits.
+  released?: Array<{ kind: "sheet" | "enemy"; id: string; meta: unknown }>;
+};
 
 type Conditioned = { conditions: string[]; conditionMeta: Record<string, unknown> };
+
+const heldName = (sheet: Conditioned, name: string) => sheet.conditions.find((entry) => isConditionNamed(entry, name));
+const sameMeta = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+// A swallow's mark (SRD 5.1: "the target is swallowed, and the grapple
+// ends"): every condition of `names` it laid, ended or changed on the
+// character, so a bite a reaction turns into a miss leaves them as it found
+// them, the grapple it ended holding again.
+export function swallowMarkOf(before: Conditioned, after: Conditioned, names: readonly string[]): RiderMark | null {
+  const mark: Required<Pick<RiderMark, "laid" | "ended" | "changed">> = { laid: [], ended: [], changed: [] };
+  for (const name of names) {
+    const was = heldName(before, name);
+    const now = heldName(after, name);
+    if (now && !was) {
+      mark.laid.push(now);
+    } else if (was && !now) {
+      mark.ended.push(was in before.conditionMeta ? { name: was, meta: before.conditionMeta[was] } : { name: was });
+    } else if (was && now && !sameMeta(before.conditionMeta[was], after.conditionMeta[now])) {
+      mark.changed.push({ name: now, meta: before.conditionMeta[was], left: after.conditionMeta[now] });
+    }
+  }
+  return mark.laid.length || mark.ended.length || mark.changed.length ? mark : null;
+}
 
 const drains = (sheet: Conditioned, name: string) => maxHpRiders([name], sheet.conditionMeta as ConditionMetaMap).drain > 0;
 
@@ -154,6 +225,14 @@ export function ridersBack<T extends Conditioned>(sheet: T, marks: readonly Ride
     for (const entry of mark.ended.filter((had) => !conditions.includes(had.name))) {
       conditions.push(entry.name);
       if (entry.meta !== undefined) {
+        meta[entry.name] = entry.meta;
+      }
+    }
+    // Only where nothing since has changed it again.
+    for (const entry of (mark.changed ?? []).filter((had) => conditions.includes(had.name) && sameMeta(meta[had.name], had.left))) {
+      if (entry.meta === undefined) {
+        delete meta[entry.name];
+      } else {
         meta[entry.name] = entry.meta;
       }
     }

@@ -36,8 +36,9 @@ import { getBattleMapForEncounter, getTokenByRef, listTokens, moveToken, type Ba
 import { footprintLookup, occupiedTiles, pcMoveBudget } from "@/lib/battlemap/view";
 import { footprintForSize } from "@/lib/battlemap/footprint";
 import { chebyshev, inBounds, tileIndex, type BattleToken } from "@/lib/battlemap/types";
-import { removeConditionInstances, type ConditionMeta, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { addConditionInstance, instancesOf, removeConditionInstances, type ConditionMeta, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { swallowRuleOf, type SwallowRule } from "@/lib/dm/swallow-logic";
+import { swallowMarkOf, type RiderMark } from "@/lib/dm/retort-logic";
 import { handleSetCondition } from "@/lib/dm/set-condition";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
@@ -254,6 +255,55 @@ export function swallowCreature(campaign: Campaign, turnId: string, enemy: Encou
     ? ` ${rule.regurgitate.damage} damage dealt it from inside in one turn makes it save (DC ${rule.regurgitate.dc} Constitution) at that turn's end or regurgitate them.`
     : "";
   return { swallowed: `${now.name} is swallowed: blinded and restrained inside ${enemy.displayName}, with total cover against everything outside it${acid}.${out}` };
+}
+
+// ---- a swallow a reaction takes back ----
+
+// The grapples `holderId` holds on others, each the holder's own instances of
+// the grappled entry: read before a bite that may swallow, so the refund can
+// give back the ones the swallow ended (swallowCreature: "every grapple it
+// held on another").
+export function gripsHeldBy(campaignId: string, holderId: string): Array<{ kind: Party["kind"]; id: string; meta: ConditionMeta[] }> {
+  return partiesOf(campaignId).flatMap((party) => {
+    const live = party.id === holderId ? null : read(party);
+    const name = live ? held(live, "grappled") : undefined;
+    const mine = live && name ? instancesOf(live.meta[name]).filter((entry) => entry.source === holderId) : [];
+    return mine.length ? [{ kind: party.kind, id: party.id, meta: mine }] : [];
+  });
+}
+
+// What a hit that swallowed did to the creature it swallowed, for the swing's
+// record (last-hit.ts SwingRecord.laid): the conditions swallowing laid and
+// the grapples it ended, theirs and the ones they held (`grips`, read before
+// it). A bite a reaction turns into a miss swallowed no one (SRD 5.1: "If the
+// attack hits, the target is also swallowed, and the grapple ends").
+export function swallowMark(campaignId: string, before: Holder, after: Holder, holderId: string, grips: ReturnType<typeof gripsHeldBy> | null, own: readonly string[] = []): RiderMark | null {
+  const asConditioned = (holder: Holder) => ({ conditions: holder.conditions, conditionMeta: metaOf(holder) as Record<string, unknown> });
+  const mark = swallowMarkOf(asConditioned(before), asConditioned(after), [...new Set([...INSIDE, "grappled", ...own])]);
+  const still = new Set(gripsHeldBy(campaignId, holderId).map((grip) => grip.id));
+  const released = (grips ?? []).filter((grip) => !still.has(grip.id));
+  return mark || released.length ? { ...(mark ?? { laid: [], ended: [] }), ...(released.length ? { released } : {}) } : null;
+}
+
+// The grapples a swallow ended on others that its bite, now a miss, never
+// ended: each held again by the character, where nothing has since freed
+// that creature of it. Returns their names.
+export function gripsBack(campaign: Campaign, holderId: string, released: NonNullable<RiderMark["released"]>): string[] {
+  const back: string[] = [];
+  for (const grip of released) {
+    const live = read({ kind: grip.kind, id: grip.id });
+    if (!live || (grip.kind === "enemy" && getEnemy(grip.id)?.status !== "alive")) {
+      continue;
+    }
+    let next = { conditions: live.conditions, meta: live.meta };
+    for (const instance of grip.meta as ConditionMeta[]) {
+      const added = addConditionInstance(next.conditions, next.meta, "grappled", instance);
+      next = { conditions: added.conditions, meta: added.meta };
+    }
+    write(campaign, live, next, { kind: "set_condition", delta: { condition: "grappled" }, reason: `still held: the bite that swallowed ${getSheetById(holderId)?.name ?? "its holder"} now misses` });
+    back.push(live.name);
+  }
+  return back;
 }
 
 // The acid at the start of each of the swallower's turns. A creature's row

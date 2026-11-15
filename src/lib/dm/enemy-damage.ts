@@ -61,6 +61,7 @@ import { outcomeShare, wakeHoursOf } from "@/lib/dm/foe-carry-logic";
 import { releaseHeldSteps } from "@/lib/dm/romance-held";
 import { finishCastingsAtFightEnd } from "@/lib/dm/long-casting";
 import { freeFromCorpse, noteBlowFromInside, swallowFightEnd } from "@/lib/dm/swallow";
+import { landWaits } from "@/lib/dm/retort-wait";
 import { projectionDreadHeal } from "@/lib/dm/spirit-projection";
 
 // The single server-side path for damage landing on an enemy. Used by the
@@ -121,6 +122,10 @@ export function finishEncounter(
   sheets: CharacterSheet[],
   sheetsById: Map<string, CharacterSheet>,
 ): Record<string, unknown> {
+  // An answer still waiting on the reaction to a hit lands before the fight
+  // ends (retort-wait.ts): the creature dies as the hit stood. Ended first,
+  // the answer was dropped and the creature left the fight alive.
+  landWaits(campaign, turn, { holdVictory: true, tell: true });
   const enemies = listEnemies(encounter.id);
   // Survivors scatter when the fight ends without their deaths. One lying
   // knocked out goes nowhere (issue #667): it stays where it fell, and a

@@ -23,13 +23,15 @@ import { spellSaveDcFor } from "@/lib/srd";
 import type { EnemyAttack } from "@/lib/bestiary/statblock";
 import { conditionRollRiders, type ConditionRollRiders } from "@/lib/srd/condition-effects";
 import { instancesOf, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
-import { retortBack, retortOf, type Retort, type RetortCreature } from "@/lib/dm/retort-logic";
+import { lessenedRetort, retortBack, retortOf, type Retort, type RetortCreature, type WaitingAnswer } from "@/lib/dm/retort-logic";
+import { meetEnemyPart } from "@/lib/dm/enemy-defenses";
+import { BURNING_OIL_DAMAGE, oilCatches } from "@/lib/srd/gear-weapons";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { rollCard, sheetAttacker } from "@/lib/dm/roll-card";
 import { rollAgainst } from "@/lib/roll-labels";
-import { isConditionNamed, nameChoice } from "@/lib/srd/feature-names";
+import { isConditionNamed, isNamed, nameChoice } from "@/lib/srd/feature-names";
 import { textKey } from "@/lib/language/text-logic";
 
 // The riders of the attacker's next swing, with what this one spent taken
@@ -98,13 +100,38 @@ function creatureNow(enemyId: string): RetortCreature | null {
 }
 
 // Runs an answer to a blow and reads what it did to the creature that struck
-// (`by` names the answers that fired, from what it returned).
-export function measureRetort<T>(enemyId: string, run: () => T, by: (result: T) => string[]): { result: T; retort: Retort | null } {
+// (`by` names the answers that fired, from what it returned; `share`, when
+// several fired, the hit points each took).
+export function measureRetort<T>(
+  enemyId: string,
+  run: () => T,
+  by: (result: T) => string[],
+  share?: (result: T) => Record<string, number>,
+): { result: T; retort: Retort | null } {
   const before = creatureNow(enemyId);
   const result = run();
   const after = creatureNow(enemyId);
   const fired = by(result);
-  return { result, retort: before && after && fired.length ? retortOf(enemyId, before, after, fired) : null };
+  return { result, retort: before && after && fired.length ? retortOf(enemyId, before, after, fired, share?.(result)) : null };
+}
+
+// A reaction lessened what one answer answered (Uncanny Dodge halving the
+// psychic Thought Shield gives back): the creature gets `given` of that
+// answer's hit points back, within the body that lost them. Returns the
+// answer as it now stands and the line for the reaction's result.
+export function giveShareBack(campaign: Campaign, retort: Retort, by: string, given: number, why: string): { retort: Retort | null; line: string | null } {
+  const enemy = getEnemy(retort.enemyId);
+  const now = enemy ? creatureNow(enemy.id) : null;
+  if (!enemy || !now || given <= 0) {
+    return { retort, line: null };
+  }
+  const back = retortBack(now, { ...retort, hp: given, laid: [], ended: [] });
+  if (!back || back.hp <= 0) {
+    return { retort, line: retort.fell && enemy.status !== "alive" ? `${why}, but ${by} already slew ${enemy.displayName}; a slain creature is not raised.` : null };
+  }
+  patchEnemyHp(enemy.id, back.currentHp, "alive");
+  publishEncounter(campaign.id);
+  return { retort: lessenedRetort(retort, by, back.hp), line: `${why}: ${enemy.displayName} gets back ${back.hp} hit point${back.hp === 1 ? "" : "s"}.` };
 }
 
 // A reaction turned the swing that set the answer off into a miss: the
@@ -134,8 +161,105 @@ export function takeRetortBack(campaign: Campaign, retort: Retort): string | nul
   return `${what} answered a blow that now misses, so it never came: ${enemy.displayName}${healed || freed ? `${healed}${freed}` : " is as it was"}.`;
 }
 
+export const AGATHYS = "Armor of Agathys";
+
+const hpOf = (enemyId: string) => getEnemy(enemyId)?.currentHp ?? 0;
+
+// Whether `amount` of `type` would drop the creature, its defenses met as
+// the damage path meets them (a resistance, an immunity, a golem drinking
+// it, the oil its fire lights): an answer that would, on a swing a reaction
+// could still turn, waits (retort-wait.ts). A save that may hold it up
+// (Undead Fortitude, Relentless) is made when it lands.
+export function wouldDrop(campaignId: string, enemy: EncounterEnemy, amount: number, type: string, spell: boolean): boolean {
+  if (enemy.status !== "alive" || amount <= 0) {
+    return false;
+  }
+  const met = meetEnemyPart(campaignId, enemy, amount, type, { magical: true, ...(spell ? { spell: true } : {}) });
+  const oil = oilCatches(enemy.conditions, isNamed(type, "fire"), met.amount) ? BURNING_OIL_DAMAGE : 0;
+  return met.absorbed === 0 && met.amount > 0 && met.amount + oil >= enemy.currentHp;
+}
+
+// The line of an answer that waits.
+export function waitLine(holder: string, by: string, enemy: string, amount: number, type: string): string {
+  return `${holder}'s ${by} would slay ${enemy} with ${amount} ${type} damage: it lands once the hit stands, and never if a reaction turns the hit into a miss.`;
+}
+
+// Armor of Agathys: "If a creature hits you with a melee attack while you
+// have these hit points, the creature takes 5 cold damage", 5 more for each
+// slot level above 1st (SRD 5.1). `held` is the character as the blow met
+// them, whose spell's slot sets the cold. Returns the lines (and the answer
+// that waits, `waits` on a swing a reaction could still turn), or null when
+// the spell is not on them or the creature is gone. The line once told the
+// GM to deal it with apply_damage, which refuses a spell's harm to a foe, so
+// the frost never bit.
+function agathysFrost(
+  campaign: Campaign,
+  turn: DmTurn,
+  encounter: NonNullable<ReturnType<typeof getActiveEncounter>>,
+  attackerId: string,
+  held: CharacterSheet,
+  sheets: CharacterSheet[],
+  sheetsById: Map<string, CharacterSheet>,
+  waits = false,
+): { lines: string[]; waiting?: WaitingAnswer } | null {
+  const frost = held.conditions.find((entry) => isConditionNamed(entry, "armor of agathys"));
+  const live = frost ? getEnemy(attackerId) : null;
+  if (!frost || !live || live.status !== "alive") {
+    return null;
+  }
+  const slot = Math.max(1, ...instancesOf((held.conditionMeta as ConditionMetaMap)[frost]).map((instance) => instance.slotLevel ?? 1));
+  const cold = 5 * slot;
+  if (waits && wouldDrop(campaign.id, live, cold, "cold", true)) {
+    return { lines: [waitLine(held.name, AGATHYS, live.displayName, cold, "cold")], waiting: { by: AGATHYS, enemyId: live.id, holderId: held.id, amount: cold, type: "cold", spell: true } };
+  }
+  const applied = applyEnemyDamage(campaign, turn, encounter, live, cold, sheets, sheetsById, "cold", { magical: true, spell: true });
+  return {
+    lines: [
+      `${held.name}'s Armor of Agathys freezes ${live.displayName} for ${applied.damageApplied ?? cold} cold damage.`,
+      ...(applied.dead ? spellKill(campaign, encounter, live, held.id, { spell: AGATHYS }) : []),
+    ],
+  };
+}
+
+// A waiting answer lands (retort-wait.ts): the damage it held, dealt as it
+// would have been, with what a kill sets off for its holder (Grim Harvest).
+// `holdVictory`: a last foe's fall leaves the fight's end to the GM's next
+// turn (enemy-damage.ts), for a landing amid code holding the encounter.
+export function landAnswer(campaign: Campaign, turn: DmTurn, answer: WaitingAnswer, sheets: CharacterSheet[], sheetsById: Map<string, CharacterSheet>, holdVictory = false): string[] {
+  const encounter = getActiveEncounter(campaign.id);
+  const live = getEnemy(answer.enemyId);
+  if (!encounter || !live || live.status !== "alive") {
+    return [];
+  }
+  const applied = applyEnemyDamage(campaign, turn, encounter, live, answer.amount, sheets, sheetsById, answer.type, { magical: true, ...(answer.spell ? { spell: true } : {}), ...(holdVictory ? { holdVictory: true } : {}) });
+  const holder = getSheetById(answer.holderId)?.name ?? "The character";
+  return [
+    `${holder}'s ${answer.by} lands now that the hit stands: ${live.displayName} takes ${applied.damageApplied ?? answer.amount} ${answer.type} damage${applied.dead ? " and falls" : ""}.`,
+    ...(applied.dead && answer.spell ? spellKill(campaign, encounter, live, answer.holderId, { spell: answer.by }) : []),
+  ];
+}
+
+// The frost dealt for a swing a reaction's correction now finds meeting the
+// temporary hit points (reaction-refund.ts), read as any answer is.
+export function agathysAnew(
+  campaign: Campaign,
+  turn: DmTurn,
+  attackerId: string,
+  held: CharacterSheet,
+  sheets: CharacterSheet[],
+  sheetsById: Map<string, CharacterSheet>,
+): { lines: string[]; retort: Retort | null } {
+  const encounter = getActiveEncounter(campaign.id);
+  if (!encounter) {
+    return { lines: [], retort: null };
+  }
+  const measured = measureRetort(attackerId, () => agathysFrost(campaign, turn, encounter, attackerId, held, sheets, sheetsById), (out) => (out ? [AGATHYS] : []));
+  return { lines: measured.result?.lines ?? [], retort: measured.retort };
+}
+
 // Fire Shield and Holy Aura answering a melee hit on the character. Returns
-// the line for the swing (or null) and the answers that fired.
+// the line for the swing (or null), the answers that fired and the hit
+// points each took (retort-logic.ts Retort.share).
 export function spellRetort(
   campaign: Campaign,
   turn: DmTurn,
@@ -147,30 +271,31 @@ export function spellRetort(
   sheetsById: Map<string, CharacterSheet>,
   // The temporary hit points the character held as the blow landed.
   tempHpBefore = 0,
-): { line: string | null; by: string[] } {
+  // A reaction could still turn this swing into a miss (retort-wait.ts
+  // reactionCouldTurn): an answer that would slay the creature waits.
+  waits = false,
+): { line: string | null; by: string[]; shares: Record<string, number>; waiting: WaitingAnswer[] } {
   const target = getSheetById(targetId);
   const encounter = getActiveEncounter(campaign.id);
+  const shares: Record<string, number> = {};
+  const waiting: WaitingAnswer[] = [];
   if (!target || !encounter || !melee) {
-    return { line: null, by: [] };
+    return { line: null, by: [], shares, waiting };
   }
   const lines: string[] = [];
   const by: string[] = [];
-  // Armor of Agathys: "If a creature hits you with a melee attack while you
-  // have these hit points, the creature takes 5 cold damage", 5 more for each
-  // slot level above 1st (SRD 5.1). The spell's hour outlasts its temporary
-  // hit points, so the ones held as the blow landed decide it. The line told
-  // the GM to deal it with apply_damage, which refuses a spell's harm to a
-  // foe, so the frost never bit.
-  const frost = target.conditions.find((entry) => isConditionNamed(entry, "armor of agathys"));
-  if (frost && tempHpBefore > 0) {
-    const live = getEnemy(attacker.id);
-    const slot = Math.max(1, ...instancesOf((target.conditionMeta as ConditionMetaMap)[frost]).map((instance) => instance.slotLevel ?? 1));
-    if (live?.status === "alive") {
-      const cold = 5 * slot;
-      const applied = applyEnemyDamage(campaign, turn, encounter, live, cold, sheets, sheetsById, "cold", { magical: true, spell: true });
-      by.push("Armor of Agathys");
-      lines.push(`${target.name}'s Armor of Agathys freezes ${live.displayName} for ${applied.damageApplied ?? cold} cold damage.`);
-      lines.push(...(applied.dead ? spellKill(campaign, encounter, live, target.id, { spell: "Armor of Agathys" }) : []));
+  // The spell's hour outlasts its temporary hit points, so the ones held as
+  // the blow landed decide it (agathysFrost).
+  if (tempHpBefore > 0) {
+    const hp = hpOf(attacker.id);
+    const frozen = agathysFrost(campaign, turn, encounter, attacker.id, target, sheets, sheetsById, waits);
+    if (frozen?.waiting) {
+      waiting.push(frozen.waiting);
+      lines.push(...frozen.lines);
+    } else if (frozen) {
+      by.push(AGATHYS);
+      lines.push(...frozen.lines);
+      shares[AGATHYS] = hp - hpOf(attacker.id);
     }
   }
   const shield = target.conditions.find((entry) => isConditionNamed(entry, "fire shield"));
@@ -182,11 +307,17 @@ export function spellRetort(
     if (live?.status === "alive") {
       // The shield's bearer deals it.
       const rolled = rollCard(campaign, turn, target.id, "damage", rollAgainst("Fire Shield", live.displayName), "2d8", sheetAttacker(target)).total;
-      const applied = applyEnemyDamage(campaign, turn, encounter, live, rolled, sheets, sheetsById, type, { magical: true, spell: true });
-      by.push("Fire Shield");
-      lines.push(`${target.name}'s Fire Shield sears ${live.displayName} for ${applied.damageApplied ?? rolled} ${type} damage.`);
-      // The shield killed it: Grim Harvest for its bearer (ar-ws-harvest.ts).
-      lines.push(...(applied.dead ? spellKill(campaign, encounter, live, target.id, { spell: "Fire Shield" }) : []));
+      if (waits && wouldDrop(campaign.id, live, rolled, type, true)) {
+        waiting.push({ by: "Fire Shield", enemyId: live.id, holderId: target.id, amount: rolled, type, spell: true });
+        lines.push(waitLine(target.name, "Fire Shield", live.displayName, rolled, type));
+      } else {
+        const applied = applyEnemyDamage(campaign, turn, encounter, live, rolled, sheets, sheetsById, type, { magical: true, spell: true });
+        by.push("Fire Shield");
+        shares["Fire Shield"] = live.currentHp - hpOf(live.id);
+        lines.push(`${target.name}'s Fire Shield sears ${live.displayName} for ${applied.damageApplied ?? rolled} ${type} damage.`);
+        // The shield killed it: Grim Harvest for its bearer (ar-ws-harvest.ts).
+        lines.push(...(applied.dead ? spellKill(campaign, encounter, live, target.id, { spell: "Fire Shield" }) : []));
+      }
     }
   }
   const aura = target.conditions.find((entry) => entry.toLowerCase() === "holy aura");
@@ -211,7 +342,7 @@ export function spellRetort(
       }
     }
   }
-  return { line: lines.length ? lines.join(" ") : null, by };
+  return { line: lines.length ? lines.join(" ") : null, by, shares, waiting };
 }
 
 // ---- Bestow Curse ----
