@@ -882,6 +882,11 @@ export function openLastHit(campaignId: string, characterId: string) {
         swings[swings.length - 1] = { ...last, waiting: answers };
       }
     },
+    // Each swing logged so far, rewritten: what waited on a reaction lands
+    // before the attacker swings again (retort-wait.ts landSwing).
+    rewrite(change: (swing: SwingRecord) => SwingRecord) {
+      swings.splice(0, swings.length, ...swings.map(change));
+    },
     // What the whole attack set off once it was recorded, kept with it.
     afterHit(retort: Retort | null) {
       if (written && retort) {

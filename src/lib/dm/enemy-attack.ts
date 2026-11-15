@@ -26,6 +26,7 @@ import { z } from "zod";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import {
   getActiveEncounter,
+  getEnemy,
   recordEncounterTarget,
   saveEncounter,
 } from "@/lib/db/encounters";
@@ -83,7 +84,7 @@ import { mountTargetProblem, strikeMount } from "@/lib/dm/mount-combat";
 import { riderTakesIt } from "@/lib/dm/ar-wbf-feat-doors";
 import { enemySpellAttack } from "@/lib/dm/enemy-casting";
 import { gripsHeldBy, swallowCover, swallowMark, swallowRefusal } from "@/lib/dm/swallow";
-import { reactionCouldTurn } from "@/lib/dm/retort-wait";
+import { landSwing, landWaits, reactionCouldTurn } from "@/lib/dm/retort-wait";
 import { swallowActionOf } from "@/lib/dm/swallow-logic";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import { sheetSize } from "@/lib/srd";
@@ -183,6 +184,12 @@ export function handleEnemyAttack(
   // scimitar and a shortbow never lashed out).
   engine: { anySide?: boolean; pickAttack?: boolean } = {},
 ): ToolResult {
+  // An answer still waiting on the reaction to an earlier hit lands before
+  // this attack: the attack is done after the hit, so a reaction's moment has
+  // passed (retort-wait.ts), and an attacker it slays makes none. A call
+  // through the dispatch door has landed it already; the server's own plays
+  // (the backstop, a legendary option's swings) come here first.
+  landWaits(campaign, turn, { tell: true });
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
     return { error: "No active encounter: enemy_attack works only in a fight. Call start_encounter first.", retry: true };
@@ -646,9 +653,30 @@ export function handleEnemyAttack(
   // The swings made at range, held to what a Multiattack of melee attacks
   // leaves room for (enemy-profile.ts rangedSwingsAllowed).
   let shots = 0;
+  // What a waiting answer said as it landed between swings (retort-wait.ts),
+  // and why the creature swings no more once one, or an answer at once,
+  // slew it.
+  const answersLanded: string[] = [];
+  let fallen: string | null = null;
   planned.forEach((plannedAttack: EnemyAttack, index) => {
     let attack = plannedAttack;
     if (dropped) {
+      return;
+    }
+    // The swing before is past its reaction now (SRD 5.1, Reactions: taken
+    // right after the trigger): what waited on it lands before the creature
+    // swings again, and one an answer slew makes no more attacks. Before, the
+    // routine went on swinging: a goblin Fire Shield had burnt to death, or
+    // whose death waited on Shield, still made its second attack.
+    if (index > 0 && !fallen) {
+      hitLog.rewrite((swing) => landSwing(campaign, turn, swing, answersLanded, sheets, sheetsById));
+      const now = getEnemy(enemy.id);
+      if (!now || now.status !== "alive" || now.currentHp <= 0) {
+        fallen = `${enemy.displayName} fell to what answered its earlier swing and makes no more attacks`;
+      }
+    }
+    if (fallen) {
+      swings.push({ attack: attack.name, skipped: fallen });
       return;
     }
     // Swallowed by an earlier swing of this routine (or by anything since
@@ -1065,6 +1093,7 @@ export function handleEnemyAttack(
     ...(notes.length ? { conditionEffects: notes } : {}),
     ...(targetHp ? { targetHp } : {}),
     ...(dropped ? { dropped: true, note: `${target.name} falls to 0 HP.` } : {}),
+    ...(answersLanded.length ? { answersLanded } : {}),
   };
 }
 

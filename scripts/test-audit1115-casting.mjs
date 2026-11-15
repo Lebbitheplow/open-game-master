@@ -1177,5 +1177,122 @@ await test("S26: Armor of Agathys's cold that would slay waits on an ally's Cutt
   assert.deepEqual([statusOf(world, goblin.id).status, statusOf(world, goblin.id).currentHp], ["alive", 10], JSON.stringify(words.result));
 });
 
+// ---- S27: the wait is only the reaction decision right after the hit ----
+
+// The lead's ruling on S26. SRD 5.1, Reactions: a reaction is taken right
+// after its trigger, so Shield ("which you take when you are hit by an
+// attack") is decided before the attacker does anything else. S26 held a
+// killing answer for the rest of the GM turn that rolled the hit: the goblin
+// whose death waited swung again (the next attack of its routine, a bonus
+// action in the same reply), and a reply that ended the fight dropped the
+// waiting answer, so the goblin left alive. Now the answer lands before the
+// attacker's next swing, before any attack after it, and before any call
+// that is no reaction.
+const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
+const { invokeEngine } = await import("../src/lib/dm/invoke.ts");
+
+// The calls of one AI reply that plays the goblin's turn: one GM turn for
+// all of them, the goblin handed to it as the model's end_turn hands the
+// enemies it passes (enemy-turn-order.ts).
+function oneReply(world, goblin) {
+  const turn = createDmTurn(world.campaignId, [], "ai");
+  const encounter = world.encounter();
+  encounterRows.saveEncounter({ ...encounter, legendary: { ...encounter.legendary, handoff: { turnId: turn.id, enemyIds: [goblin.id] } } });
+  return (name, args = {}) => invokeEngine(world.campaign(), { kind: "ai", turnId: turn.id }, { name, args });
+}
+// The goblin's row, in the fight or after it.
+const goblinRow = (id) => encounterRows.getEnemy(id);
+
+// A wizard under Fire Shield (cold) with Shield in hand, at AC 12, and two
+// goblins of `stats`, the first at `hp`.
+async function flameAndShield(hp, stats = {}) {
+  const { world, sheets: [mage], enemies: [goblin, other] } = await table([caster("wizard", "int", ["Fire Shield", "Shield"])], 2, stats);
+  const cast = await world.invoke("cast_buff", { characterId: mage.id, spell: "Fire Shield", variant: "fire shield (cold)", level: 4 });
+  assert.equal(cast.ok, true, cast.error);
+  world.patch(mage.id, { ac: 12, acOverride: true });
+  encounterRows.patchEnemyHp(goblin.id, hp, "alive");
+  return { world, mage, goblin, other };
+}
+
+const TWO_SWINGS = { attacks: [{ name: "Scimitar", toHit: 4, damage: "1d6+2", type: "slashing" }], attacksPerTurn: 2 };
+const WITH_DAGGER = { attacks: [{ name: "Scimitar", toHit: 4, damage: "1d6+2", type: "slashing" }, { name: "Dagger", toHit: 4, damage: "1d4+2", type: "piercing", bonusAction: true }] };
+
+await test("S27: a goblin Fire Shield slays with its first swing makes no second: the flame lands before the routine swings again", async () => {
+  const { world, mage, goblin } = await flameAndShield(5, TWO_SWINGS);
+  // The first scimitar: 10 + 4 hits AC 12 for 3 + 2, and Shield's 17 could
+  // still turn it, so the flame's 4 + 4 would wait; the second would be
+  // 15 + 4 for 3 + 2.
+  world.dice(10, 3, 4, 4, 15, 3);
+  const swing = await world.invoke("enemy_attack", { enemyId: goblin.id, targetCharacterId: mage.id });
+  world.clearDice();
+  assert.equal(swing.ok, true, swing.error);
+  assert.equal(statusOf(world, goblin.id).status, "dead", JSON.stringify(swing.result));
+  const [, second] = swing.result.swings;
+  assert.ok(second && second.rolled === undefined && /slain|fell|falls/i.test(String(second.skipped)), JSON.stringify(swing.result.swings));
+  assert.equal(world.sheet(mage.id).maxHp - world.sheet(mage.id).currentHp, 5, "only the first scimitar landed");
+  assert.match(JSON.stringify(swing.result.answersLanded ?? []), /Fire Shield/);
+});
+
+await test("S27: a goblin Fire Shield slays makes no bonus-action attack later in the same reply", async () => {
+  const { world, mage, goblin } = await flameAndShield(5, WITH_DAGGER);
+  const reply = oneReply(world, goblin);
+  world.dice(10, 3, 4, 4);
+  const swing = await reply("enemy_attack", { enemyId: goblin.id, targetCharacterId: mage.id, attack: "Scimitar" });
+  world.clearDice();
+  assert.equal(swing.ok, true, swing.error);
+  assert.equal(statusOf(world, goblin.id).status, "alive", "the flame waits on the Shield the wizard could still cast");
+  world.dice(15, 3);
+  const dagger = await reply("enemy_attack", { enemyId: goblin.id, targetCharacterId: mage.id, attack: "Dagger" });
+  world.clearDice();
+  assert.equal(statusOf(world, goblin.id).status, "dead", JSON.stringify(dagger));
+  assert.notEqual(dagger.ok, true, JSON.stringify(dagger.result));
+  assert.equal(world.sheet(mage.id).maxHp - world.sheet(mage.id).currentHp, 5, "the dagger never struck");
+});
+
+await test("S27: a reply that ends the fight after the hit lands the waiting flame: the goblin dies as the hit stands", async () => {
+  const { world, mage, goblin } = await flameAndShield(5);
+  const reply = oneReply(world, goblin);
+  world.dice(10, 3, 4, 4);
+  const swing = await reply("enemy_attack", { enemyId: goblin.id, targetCharacterId: mage.id });
+  world.clearDice();
+  assert.equal(swing.ok, true, swing.error);
+  assert.equal(statusOf(world, goblin.id).status, "alive");
+  const ended = await reply("end_encounter", { outcome: "enemies_fled" });
+  assert.equal(ended.ok, true, ended.error);
+  assert.equal(goblinRow(goblin.id).status, "dead", JSON.stringify(ended.result));
+  assert.match(JSON.stringify(ended.result.answersLanded ?? []), /Fire Shield lands/);
+});
+
+await test("S27: Shield cast right after the hit, in the same reply, still turns it and leaves the goblin unburnt", async () => {
+  const { world, mage, goblin, other } = await flameAndShield(5);
+  // The model casts it only on its player's word (player-word.ts).
+  world.say("player", "If that goblin hits me, I cast Shield.", mage);
+  const reply = oneReply(world, goblin);
+  world.dice(10, 3, 4, 4);
+  await reply("enemy_attack", { enemyId: goblin.id, targetCharacterId: mage.id });
+  world.clearDice();
+  const shield = await reply("use_reaction", { characterId: mage.id, feature: "Shield" });
+  assert.equal(shield.ok, true, shield.error);
+  assert.match(JSON.stringify(shield.result), /Fire Shield never came/);
+  // Whatever the reply does next lands nothing: the answer is gone.
+  world.dice(1);
+  const next = await reply("apply_damage", { enemyId: other.id, dice: "1d4", source: "hazard", reason: "a falling stone" });
+  world.clearDice();
+  assert.equal(next.ok, true, next.error);
+  assert.deepEqual([statusOf(world, goblin.id).status, statusOf(world, goblin.id).currentHp], ["alive", 5], JSON.stringify(next.result));
+});
+
+await test("S27: a goblin whose opportunity attack waits on Shield falls before the next goblin strikes", async () => {
+  const { world, mage, goblin, other } = await flameAndShield(5);
+  await layMap(world, field(), { [mage.id]: { x: 2, y: 2 }, [goblin.id]: { x: 3, y: 2 }, [other.id]: { x: 2, y: 3 } });
+  // The wizard walks off past both. The first goblin's 10 + 4 hits for 3 + 2
+  // and its flame of 4 + 4 waits on Shield; the second goblin's 2 + 4 misses.
+  world.dice(10, 3, 4, 4, 2);
+  const out = resolveOpportunityAttacks(world.campaign(), mage.id, { x: 2, y: 2 }, { x: 0, y: 2 }, false, [{ x: 1, y: 2 }, { x: 0, y: 2 }]);
+  world.clearDice();
+  assert.equal(statusOf(world, goblin.id).status, "dead", JSON.stringify(out.notes));
+  assert.match(out.notes.join(" "), /Fire Shield lands/);
+});
+
 closeTables();
 finish();

@@ -223,13 +223,15 @@ function agathysFrost(
 
 // A waiting answer lands (retort-wait.ts): the damage it held, dealt as it
 // would have been, with what a kill sets off for its holder (Grim Harvest).
-export function landAnswer(campaign: Campaign, turn: DmTurn, answer: WaitingAnswer, sheets: CharacterSheet[], sheetsById: Map<string, CharacterSheet>): string[] {
+// `holdVictory`: a last foe's fall leaves the fight's end to the GM's next
+// turn (enemy-damage.ts), for a landing amid code holding the encounter.
+export function landAnswer(campaign: Campaign, turn: DmTurn, answer: WaitingAnswer, sheets: CharacterSheet[], sheetsById: Map<string, CharacterSheet>, holdVictory = false): string[] {
   const encounter = getActiveEncounter(campaign.id);
   const live = getEnemy(answer.enemyId);
   if (!encounter || !live || live.status !== "alive") {
     return [];
   }
-  const applied = applyEnemyDamage(campaign, turn, encounter, live, answer.amount, sheets, sheetsById, answer.type, { magical: true, ...(answer.spell ? { spell: true } : {}) });
+  const applied = applyEnemyDamage(campaign, turn, encounter, live, answer.amount, sheets, sheetsById, answer.type, { magical: true, ...(answer.spell ? { spell: true } : {}), ...(holdVictory ? { holdVictory: true } : {}) });
   const holder = getSheetById(answer.holderId)?.name ?? "The character";
   return [
     `${holder}'s ${answer.by} lands now that the hit stands: ${live.displayName} takes ${applied.damageApplied ?? answer.amount} ${answer.type} damage${applied.dead ? " and falls" : ""}.`,

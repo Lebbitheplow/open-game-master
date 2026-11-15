@@ -64,7 +64,7 @@ import { targetSwingMarks } from "@/lib/dm/enemy-swing-odds";
 import { enfeebledBlow, measureRetort, spellRetort, spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { joinRetorts, riderMarkOf } from "@/lib/dm/retort-logic";
 import { gripsHeldBy, swallowMark } from "@/lib/dm/swallow";
-import { reactionCouldTurn } from "@/lib/dm/retort-wait";
+import { landWaits, reactionCouldTurn } from "@/lib/dm/retort-wait";
 import { thoughtShieldBack } from "@/lib/dm/thought-shield";
 import { authoredAfterHit } from "@/lib/dm/authored-hooks";
 import { holdsFeature } from "@/lib/srd/feature-names";
@@ -242,6 +242,20 @@ export function resolveOpportunityAttacks(
     const sight = opportunitySight({ campaignId: campaign.id, encounterId: encounter.id, enemy, sheet, enemyReacts: true, moverAt: leftFrom });
     if (sight && !sight.attackerSees) {
       continue;
+    }
+    // An answer still waiting on the reaction to an earlier hit lands before
+    // this attack (retort-wait.ts): the moment to turn that hit has passed,
+    // and a creature it slays makes no opportunity attack. The fight is read
+    // again for what the landing changed; it stays open for the GM's next
+    // turn, as a fall to an opportunity attack leaves it.
+    const landedFirst = landWaits(campaign, null, { holdVictory: true });
+    if (landedFirst.length) {
+      notes.push(...landedFirst);
+      Object.assign(encounter, getActiveEncounter(campaign.id) ?? encounter);
+      const now = getEnemy(enemy.id);
+      if (!now || now.status !== "alive" || now.currentHp <= 0) {
+        continue;
+      }
     }
     // The reaction is spent whether or not the swing lands.
     encounter.reactionsUsed = [...encounter.reactionsUsed, enemy.id];
