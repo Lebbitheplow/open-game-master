@@ -617,7 +617,7 @@ export function handleTakeAction(
   }
   };
   const outcome = resolveAction();
-  return "error" in outcome ? outcome : { ...costs, ...outcome, ...(slip ? { revelationInFlesh: slip.note } : {}) };
+  return "error" in outcome ? outcome : { ...costs, ...outcome, ...(slip ? { [slip.key]: slip.note } : {}) };
 }
 
 // In a fight a captor is a creature with a turn: its binding is its own

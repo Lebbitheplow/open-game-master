@@ -60,7 +60,8 @@ export function afflictCondition(
   turnId: string,
   sheetId: string,
   condition: string,
-  options: { minutes?: number; rounds?: number; saveAbility?: "con" | "wis"; saveDc?: number; endsOnDamage?: boolean; source: string },
+  // `nonmagical`: a mechanical trap's hold (set-condition.ts).
+  options: { minutes?: number; rounds?: number; saveAbility?: "con" | "wis"; saveDc?: number; endsOnDamage?: boolean; source: string; nonmagical?: boolean },
 ): boolean {
   const sheet = getSheetById(sheetId);
   if (!sheet) {
@@ -77,7 +78,7 @@ export function afflictCondition(
       ...(options.saveAbility && options.saveDc ? { saveAbility: options.saveAbility, saveDc: options.saveDc } : {}),
     },
     options.source,
-    { spellEffect: { source: options.source.slice(0, 80), ...(options.endsOnDamage ? { endsOnDamage: true } : {}) } },
+    { spellEffect: { source: options.source.slice(0, 80), ...(options.endsOnDamage ? { endsOnDamage: true } : {}) }, ...(options.nonmagical ? { nonmagical: true } : {}) },
   );
   return !("error" in applied);
 }

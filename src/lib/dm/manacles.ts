@@ -112,6 +112,10 @@ function dropAt(campaign: Campaign, bound: Bound): void {
   }
 }
 
+// Slipped by another way out (Freedom of Movement, ar-ws-squeeze.ts): the
+// set lies at the creature's feet, as after the DC 20 slip.
+export const manaclesFall = (campaign: Campaign, bound: Bound) => dropAt(campaign, bound);
+
 function giveSet(campaign: Campaign, turn: DmTurn, sheet: CharacterSheet, delta: number, reason: string): void {
   const fresh = getSheetById(sheet.id) ?? sheet;
   const at = fresh.equipment.findIndex((item) => namesManacles(item));
@@ -330,6 +334,9 @@ function bind(campaign: Campaign, turn: DmTurn, hands: Hands, bound: Bound, item
     // (immune to it) keeps the set and the action.
     const laid = handleSetCondition(campaign, turn.id, getSheetById(bound.sheet.id) ?? bound.sheet, { condition: RESTRAINED }, `Manacles put on by ${handsName(hands)}`, {
       spellEffect: { source: MANACLES_HOLD, ...(foes ? { keyWithFoes: true } : {}) },
+      // Iron, no magic: Freedom of Movement does not keep it off, its slip
+      // takes it off (ar-ws-squeeze.ts).
+      nonmagical: true,
     });
     if ("error" in laid && laid.error) {
       return { error: `${laid.error} Nothing was spent.`, refused: "rules" };

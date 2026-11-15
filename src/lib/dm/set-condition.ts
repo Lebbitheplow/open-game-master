@@ -256,7 +256,7 @@ export function conditionImmunity(
   }
   // A spell's protection (Heroism, Protection from Evil and Good, Heroes'
   // Feast): src/lib/srd/condition-effects.ts.
-  const warded = conditionGrantedImmunity(sheet.conditions, wanted, source ? String(source.stats.type ?? "") : undefined);
+  const warded = conditionGrantedImmunity(sheet.conditions, wanted, source ? String(source.stats.type ?? "") : undefined, magical);
   if (warded) {
     return `${warded} makes them immune`;
   }
@@ -353,7 +353,9 @@ export function handleSetCondition(
   reason: string,
   // Set by cast_buff: the condition is a spell's effect, cast and paid for,
   // and this is what the spell records on it (src/lib/dm/spell-effects.ts).
-  options?: { spellEffect?: ConditionMeta },
+  // `nonmagical`: an engine-laid hold no magic made (manacles, a mechanical
+  // trap's net), which what keeps only magic off does not refuse.
+  options?: { spellEffect?: ConditionMeta; nonmagical?: boolean },
 ): ToolResult {
   const raw = args.condition ?? "";
   // Inspiration is the DM's award, held on the sheet until a roll spends it
@@ -384,7 +386,7 @@ export function handleSetCondition(
   if (unpaid) {
     return unpaid;
   }
-  const immune = conditionImmunity(campaign, sheet, normalized, Boolean(options?.spellEffect || args.magical), args.sourceEnemyId);
+  const immune = conditionImmunity(campaign, sheet, normalized, !options?.nonmagical && Boolean(options?.spellEffect || args.magical), args.sourceEnemyId);
   if (immune) {
     return {
       error: `${sheet.name} cannot be ${normalized}: ${immune}. The condition was not applied; narrate them shrugging it off.`,

@@ -87,12 +87,16 @@ export function springTrapOn(
       lines.push(`${amount} ${part.type}.`);
     }
   }
+  // A mechanical trap's hold is no magic (a falling net, a hunting trap's
+  // jaws): what keeps only magic off (Freedom of Movement) does not keep it
+  // off, and that spell's slip takes it off (ar-ws-squeeze.ts).
+  const nonmagical = trap.kind === "mechanical";
   for (const condition of trap.conditionsAlways ?? []) {
     // A trap's block has no word on damage, so a sleep it lays wakes when
     // hurt, as one laid by name does (set-condition.ts) and as the sleep the
     // same trap's failed save lays through cast_at_player does.
     const wakes = wakesOnDamage(canonicalCondition(condition), sheet().currentHp);
-    if (afflictCondition(campaign, turn.id, victim.id, condition, { ...(trap.rounds ? { rounds: trap.rounds } : {}), ...(wakes ? { endsOnDamage: true } : {}), source: name })) {
+    if (afflictCondition(campaign, turn.id, victim.id, condition, { ...(trap.rounds ? { rounds: trap.rounds } : {}), ...(wakes ? { endsOnDamage: true } : {}), source: name, nonmagical })) {
       lines.push(`${victim.name} is ${condition}.`);
     }
   }
@@ -126,7 +130,7 @@ export function springTrapOn(
   if (trap.condition && (saved as { saved?: boolean }).saved === false && !sheet().deathSaves?.dead) {
     const lasts = !trap.rounds ? {} : trap.rounds > 100 ? { minutes: Math.round(trap.rounds / 10) } : { rounds: trap.rounds };
     const wakes = wakesOnDamage(canonicalCondition(trap.condition), sheet().currentHp);
-    if (afflictCondition(campaign, turn.id, victim.id, trap.condition, { ...lasts, ...(wakes ? { endsOnDamage: true } : {}), source: name })) {
+    if (afflictCondition(campaign, turn.id, victim.id, trap.condition, { ...lasts, ...(wakes ? { endsOnDamage: true } : {}), source: name, nonmagical })) {
       lines.push(`${victim.name} is ${trap.condition}${trap.rounds ? ` for ${trap.rounds >= 600 && trap.rounds % 600 === 0 ? `${trap.rounds / 600} hour${trap.rounds === 600 ? "" : "s"}` : trap.rounds >= 10 && trap.rounds % 10 === 0 ? `${trap.rounds / 10} minute${trap.rounds === 10 ? "" : "s"}` : `${trap.rounds} rounds`}` : ""}.`);
     }
   }

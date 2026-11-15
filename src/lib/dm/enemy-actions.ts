@@ -35,6 +35,7 @@ import {
 } from "@/lib/dm/enemy-turn-logic";
 import { enemyEscape } from "@/lib/dm/grapple";
 import { callsManacles, foesManacles } from "@/lib/dm/manacles";
+import { enemySqueezeSlip } from "@/lib/dm/ar-ws-squeeze";
 import { hostilesInSight } from "@/lib/dm/enemy-aggressive";
 import { heldTurnRefusal } from "@/lib/dm/flee-logic";
 import { hasTrait } from "@/lib/dm/monster-abilities";
@@ -275,6 +276,12 @@ function dodge(campaign: Campaign, enemy: EncounterEnemy, encounter: Encounter, 
 }
 
 function escape(campaign: Campaign, turn: DmTurn, enemy: EncounterEnemy, encounter: Encounter, bonus: boolean, ability?: string): ToolResult {
+  // Freedom of Movement's slip: 5 feet of its movement, no action
+  // (ar-ws-squeeze.ts), before the action is paid.
+  const slip = enemySqueezeSlip(campaign, enemy, encounter);
+  if (slip && "done" in slip) {
+    return slip.done;
+  }
   const route = routeFor(encounter, enemy, bonus, null, false, "escape");
   if (typeof route !== "string") {
     return route;
@@ -282,6 +289,9 @@ function escape(campaign: Campaign, turn: DmTurn, enemy: EncounterEnemy, encount
   const result = enemyEscape(campaign, turn, enemy.id, ability);
   if ("error" in result) {
     return result;
+  }
+  if (slip) {
+    result[slip.key] = slip.note;
   }
   const live = getActiveEncounter(campaign.id);
   if (live) {

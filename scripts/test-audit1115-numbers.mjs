@@ -669,6 +669,69 @@ await test("N12: out of a fight, captors manacle a character with no actor named
   assert.match(unnamed.error, /enemyId/);
 });
 
+// ---- N13: Freedom of Movement's slip ----
+// SRD 5.1, Freedom of Movement: "magic can neither reduce the target's
+// speed nor cause the target to be paralyzed or restrained. The target can
+// also spend 5 feet of movement to automatically escape from nonmagical
+// restraints, such as manacles or a creature that has it grappled." The
+// engine made the spell's holder immune to every restraint, magic or not
+// (no manacles, no net), and its escape from a grapple was the action and
+// a check like anyone's; an enemy's was the same.
+
+const moved = (refId) => kit.token(refId).movedThisRound;
+
+await test("N13: a character under Freedom of Movement is manacled all the same, and slips the grapple and then the manacles for 5 feet of movement each, with no action and no roll", async () => {
+  const captor = await trapFight();
+  kit.place(captor.id, 2, 2);
+  kit.place(captive.id, 3, 2);
+  world.patch(captive.id, { conditions: ["freedom of movement", "grappled"], conditionMeta: { "freedom of movement": { rounds: 600 }, grappled: { source: captor.id } } });
+  kit.enemyTurn(captor.id);
+  const bound = await bindHero(captor.id);
+  assert.equal(bound.ok, true, bound.error);
+  assert.ok(manacled(sheet(captive.id)), "Freedom of Movement kept nonmagical manacles off");
+  kit.giveTurn(captive.id);
+  world.clearDice();
+  const before = moved(captive.id);
+  const out = await world.invoke("take_action", { characterId: captive.id, action: "escape" });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.success, true, JSON.stringify(out.result));
+  assert.equal(sheet(captive.id).conditions.includes("grappled"), false);
+  assert.ok(manacled(sheet(captive.id)), "one slip ends one hold");
+  assert.equal(moved(captive.id), before + 1);
+  const second = await world.invoke("take_action", { characterId: captive.id, action: "escape" });
+  assert.equal(second.ok, true, second.error);
+  assert.equal(manacled(sheet(captive.id)), false);
+  assert.equal(moved(captive.id), before + 2);
+  assert.equal(kit.lastRolls(1)[0]?.characterId === captive.id && kit.lastRolls(1)[0]?.kind === "ability_check", false, "a check was rolled");
+  // The action is still theirs.
+  const dodge = await world.invoke("take_action", { characterId: captive.id, action: "dodge" });
+  assert.equal(dodge.ok, true, dodge.error);
+});
+
+await test("N13: an enemy under Freedom of Movement slips a grapple and a net for 5 feet of its movement each, keeping its action", async () => {
+  const enemy = await trapFight();
+  kit.place(jailer.id, 2, 2);
+  kit.place(enemy.id, 3, 2);
+  kit.setEnemy(enemy.id, {
+    conditions: ["freedom of movement", "grappled", "restrained"],
+    conditionMeta: { "freedom of movement": { rounds: 600 }, grappled: { source: jailer.id }, restrained: { source: "net" } },
+  });
+  kit.enemyTurn(enemy.id);
+  world.clearDice();
+  const before = moved(enemy.id);
+  const out = await world.invoke("take_action", { action: "escape", enemyId: enemy.id });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(foe(enemy.id).conditions.includes("grappled"), false, JSON.stringify(foe(enemy.id).conditions));
+  assert.equal(moved(enemy.id), before + 1);
+  const net = await world.invoke("take_action", { action: "escape", enemyId: enemy.id });
+  assert.equal(net.ok, true, net.error);
+  assert.equal(foe(enemy.id).conditions.includes("restrained"), false, JSON.stringify(foe(enemy.id).conditions));
+  assert.equal(moved(enemy.id), before + 2);
+  assert.equal(world.clearDice(), 0);
+  const dodge = await world.invoke("take_action", { action: "dodge", enemyId: enemy.id });
+  assert.equal(dodge.ok, true, dodge.error);
+});
+
 await kit.endFight();
 world.close();
 finish();
