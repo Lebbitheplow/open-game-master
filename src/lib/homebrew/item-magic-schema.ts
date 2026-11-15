@@ -84,8 +84,10 @@ export const chargeRuleSchema = z.object({
   // Emptied, all back this many days on (SRD 5.1, Horn of Valhalla's 7):
   // carried so a copied SRD item keeps its wait (ChargeRule.regainDays).
   regainDays: int(1, 36500).optional(),
+  // Spent, back this many hours on (SRD 5.1, Frost Brand's one an hour).
+  regainHours: int(1, 720).optional(),
   regainOn: z.literal("long_rest").optional(),
-  unit: z.enum(["minute", "use"]).optional(),
+  unit: z.enum(["minute", "use", "card"]).optional(),
   activation: z.enum(["bonus", "free"]).optional(),
   daily: z.string().trim().min(1).max(200).optional(),
   // A use past the last charge risks the item (SRD 5.1, Wind Fan).

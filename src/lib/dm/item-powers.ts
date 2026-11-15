@@ -10,6 +10,7 @@
 
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
+import { getClock } from "@/lib/db/clock";
 import { spendAction } from "@/lib/dm/action-budget";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
@@ -27,11 +28,14 @@ export function powerShort(item: EquipmentItem, power: { name: string; rule: Cha
   return chargesShort(powerView(item, power.name), power.rule, count);
 }
 
-// The row with `count` of this property's uses spent.
-export function withPowerSpent(item: EquipmentItem, power: { name: string; rule: ChargeRule }, count = 1): EquipmentItem {
+// The row with `count` of this property's uses spent. One that waits hours
+// from its last use (ChargeRule.regainHours: the Orb of Dragonkind's Call
+// Dragons) keeps the clock's minute `now` it emptied, for advanceClock.
+export function withPowerSpent(item: EquipmentItem, power: { name: string; rule: ChargeRule }, count = 1, now?: number): EquipmentItem {
   const math = spendChargesMath({ qty: 1, ...powerView(item, power.name) }, power.rule, count);
   const left = "error" in math ? 0 : math.charges;
-  return { ...item, powerCharges: { ...(item.powerCharges ?? {}), [power.name]: left } };
+  const waits = power.rule.regainHours && left === 0 && now !== undefined ? { powersEmptiedAt: { ...(item.powersEmptiedAt ?? {}), [power.name]: now } } : {};
+  return { ...item, powerCharges: { ...(item.powerCharges ?? {}), [power.name]: left }, ...waits };
 }
 
 export function itemPowerUse(
@@ -84,7 +88,7 @@ export function itemPowerUse(
   if (encounter && budget) {
     storeBudget(encounter, budget);
   }
-  const after = withPowerSpent(carried, power, count);
+  const after = withPowerSpent(carried, power, count, getClock(campaign.id).instant);
   const left = after.powerCharges?.[power.name] ?? 0;
   writeCharges(campaign.id, sheet, sheet.equipment.map((item) => (item === carried ? after : item)), "use_item", `${carried.name}: ${power.name}`, turnId);
   const when = regainWhen(power.rule);

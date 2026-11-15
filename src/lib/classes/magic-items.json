@@ -2914,6 +2914,22 @@
       }
     },
     {
+      "name": "Deck of Illusions",
+      "match": "deck of illusions",
+      "slugs": [
+        "deck-of-illusions",
+        "deck-of-illusions-a5e"
+      ],
+      "requiresAttunement": false,
+      "noWear": true,
+      "effects": [],
+      "charges": {
+        "max": 34,
+        "spentAway": true,
+        "unit": "card"
+      }
+    },
+    {
       "name": "Deepstone Cestus",
       "match": "deepstone cestus",
       "slugs": [
@@ -3943,6 +3959,12 @@
             "type": "cold"
           }
         ]
+      },
+      "charges": {
+        "max": 1,
+        "regainHours": 1,
+        "unit": "use",
+        "activation": "free"
       }
     },
     {
@@ -6488,6 +6510,13 @@
       "charges": {
         "max": 7,
         "regain": "1d4+3"
+      },
+      "powers": {
+        "Call Dragons": {
+          "max": 1,
+          "regainHours": 1,
+          "unit": "use"
+        }
       }
     },
     {
@@ -7215,7 +7244,12 @@
         "ring-of-djinni-summoning-a5e"
       ],
       "requiresAttunement": true,
-      "effects": []
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regainHours": 24,
+        "unit": "use"
+      }
     },
     {
       "name": "Ring of Elemental Command",

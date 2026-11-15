@@ -87,6 +87,9 @@ export function regainWhen(rule: ChargeRule): string | null {
   if (rule.regainDays) {
     return `${rule.regainDays} days after the last is spent`;
   }
+  if (rule.regainHours) {
+    return `${rule.regainHours} hour${rule.regainHours === 1 ? "" : "s"} after the last is spent`;
+  }
   if (!rule.regain) {
     return null;
   }

@@ -134,6 +134,9 @@ export const DAILY_POWERS = {
 // required"); an action otherwise.
 const once = (activation) => ({ max: 1, regain: "all", unit: "use", ...(activation ? { activation } : {}) });
 export const POWERS = {
+  // Call Dragons: "Once you have used this property, it can't be used again
+  // for 1 hour." Its spells spend the orb's own charges.
+  "orb of dragonkind": { "Call Dragons": { max: 1, regainHours: 1, unit: "use" } },
   "staff of thunder and lightning": {
     Lightning: once("free"),
     Thunder: once("free"),
@@ -191,6 +194,18 @@ export const COUNTED_USES = {
   // long rest, and each use past it rolls the wearer's save
   // (src/lib/dm/item-use.ts).
   "ring of x-ray vision": { max: 1, regain: "all", regainOn: "long_rest", unit: "use", overuseSave: { ability: "con", dc: 15 } },
+  // "When you draw this weapon, you can extinguish all nonmagical flames
+  // within 30 feet of you. This property can be used no more than once per
+  // hour": no action of its own (it rides the draw), back an hour after use.
+  "frost brand": { max: 1, regainHours: 1, unit: "use", activation: "free" },
+  // "After the djinni departs, it can't be summoned again for 24 hours":
+  // counted from the summoning (the djinni serves up to an hour), so the
+  // wait may end that hour early.
+  "ring of djinni summoning": { max: 1, regainHours: 24, unit: "use" },
+  // "A full deck has 34 cards ... that card can't be used again": each draw
+  // spends a card, and the deck is used up with its last. "A deck found as
+  // treasure is usually missing 1d20 - 1 cards": the GM sets the row's count.
+  "deck of illusions": { max: 34, spentAway: true, unit: "card" },
 };
 
 // The last charge's d20 where a 1 leaves an item its text describes rather

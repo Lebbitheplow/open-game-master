@@ -150,10 +150,11 @@ function equipmentWithPaymentBack(equipment: readonly EquipmentItem[], paid: Non
     // A prayer bead the cast never used is unused again, an item that had
     // emptied holds a charge again, so no wait runs (ChargeRule.regainDays),
     // and a property the cast spent (a Luck Blade's Wish) is unspent.
-    const { beadsSpent: _spent, emptiedAt: _emptied, powerCharges: _powers, ...rest } = item;
+    const { beadsSpent: _spent, emptiedAt: _emptied, powerCharges: _powers, powersEmptiedAt: _waits, ...rest } = item;
     void _spent;
     void _emptied;
     void _powers;
+    void _waits;
     return {
       ...rest,
       charges: (item.charges ?? 0) + charges,
@@ -388,7 +389,8 @@ export function chargedItemUse(
     // SRD 5.1, Horn of Valhalla: "Once you use the horn, it can't be used
     // again until 7 days have passed": the wait runs from the minute it
     // emptied (item-charges.ts daysWaitOver).
-    const waits = rule?.regainDays && !destroyed && !becomes && math.charges === 0 ? getClock(campaign.id).instant : null;
+    // Frost Brand's hour and a djinni's 24 the same way (ChargeRule.regainHours).
+    const waits = (rule?.regainDays || rule?.regainHours) && !destroyed && !becomes && math.charges === 0 ? getClock(campaign.id).instant : null;
     const equipment = spent.map((item, index) => {
       if (index !== at) return item;
       const beaded = bead && !destroyed && !becomes ? { ...item, beadsSpent: [...(item.beadsSpent ?? []), bead] } : item;

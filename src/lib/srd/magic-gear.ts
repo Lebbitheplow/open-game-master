@@ -73,13 +73,19 @@ export type ChargeRule = {
   // used again until 7 days have passed"). The row keeps the minute it
   // emptied (EquipmentItem.emptiedAt).
   regainDays?: number;
+  // Spent, it is whole again this many hours later, dawn or not (SRD 5.1,
+  // Frost Brand: "This property can be used no more than once per hour";
+  // Ring of Djinni Summoning: "it can't be summoned again for 24 hours").
+  // The row keeps the minute it emptied (EquipmentItem.emptiedAt; a
+  // property's, powersEmptiedAt).
+  regainHours?: number;
   // What comes back returns when the owner finishes a long rest, not at dawn
   // (SRD 5.1, Boots of Speed: "the magic ceases to function until you finish
   // a long rest").
   regainOn?: "long_rest";
   // What one count is, in the words the GM is told: a minute of the Boots of
   // Speed's ten, a use of a property's one. A charge otherwise.
-  unit?: "minute" | "use";
+  unit?: "minute" | "use" | "card";
   // Using it takes no action ("free": a property that rides a hit, a Luck
   // Blade's luck) or the bonus action (Boots of Speed); an action otherwise.
   activation?: "bonus" | "free";

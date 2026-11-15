@@ -296,6 +296,9 @@ export const equipmentItemSchema = z.object({
   // by the property's name: a Staff of Thunder and Lightning's "Thunderclap"
   // at 0 until dawn. A property not listed is whole.
   powerCharges: z.record(z.string().trim().min(1).max(40), z.number().int().min(0).max(50)).optional(),
+  // The clock's minute each property waiting hours was spent (an Orb of
+  // Dragonkind's Call Dragons, ChargeRule.regainHours), by its name.
+  powersEmptiedAt: z.record(z.string().trim().min(1).max(40), z.number().int().min(0)).optional(),
   // Pounds per unit, for the optional encumbrance rule. Filled in from the
   // content pack when a sheet is read (src/lib/db/sheets.ts), so rows
   // written before the field still get weighed; a value a player typed

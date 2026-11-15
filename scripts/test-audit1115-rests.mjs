@@ -688,4 +688,58 @@ await test("R16 a Ring of X-ray Vision used again before a long rest asks a DC 1
   assert.deepEqual(rolled(table), [], "the first use after a long rest asks no save");
 });
 
+await test("R17 a once-an-hour or once-a-day item use waits its hours on the clock, and a Deck of Illusions holds 34 cards", async () => {
+  // SRD 5.1: Frost Brand, "When you draw this weapon, you can extinguish all
+  // nonmagical flames within 30 feet of you. This property can be used no
+  // more than once per hour"; Orb of Dragonkind, Call Dragons, "Once you
+  // have used this property, it can't be used again for 1 hour"; Ring of
+  // Djinni Summoning, "After the djinni departs, it can't be summoned again
+  // for 24 hours"; Deck of Illusions, "A full deck has 34 cards ... When the
+  // illusion ends, the image on its card disappears, and that card can't be
+  // used again." None was counted.
+  const { chargeRuleOf, itemPowersOf } = await import("../src/lib/srd/item-charge-rules.ts");
+  assert.deepEqual(chargeRuleOf({ name: "Frost Brand" }), { max: 1, regainHours: 1, unit: "use", activation: "free" });
+  assert.deepEqual(chargeRuleOf({ name: "Ring of Djinni Summoning" }), { max: 1, regainHours: 24, unit: "use" });
+  assert.deepEqual(itemPowersOf({ name: "Orb of Dragonkind" })?.["Call Dragons"], { max: 1, regainHours: 1, unit: "use" });
+  assert.deepEqual(chargeRuleOf({ name: "Deck of Illusions" }), { max: 34, spentAway: true, unit: "card" });
+
+  const table = await openTable();
+  const hero = table.addHero({
+    class: "wizard", level: 17, maxHp: 90,
+    equipment: [
+      { name: "Frost Brand", qty: 1, equipped: true, attuned: true },
+      { name: "Ring of Djinni Summoning", qty: 1, equipped: true, attuned: true },
+      { name: "Orb of Dragonkind", qty: 1, attuned: true },
+      { name: "Deck of Illusions", qty: 1 },
+    ],
+  });
+  const use = (item, extra = {}) => table.invoke("use_item", { characterId: hero.id, item, ...extra });
+  const pass = (amount, unit) => table.invoke("pass_time", { amount, unit });
+  assert.equal((await use("Frost Brand")).ok, true, "the flames go out");
+  const again = await use("Frost Brand");
+  assert.equal(again.refused, "rules", "not twice in an hour");
+  assert.match(again.error, /1 hour/);
+  assert.equal((await use("Orb of Dragonkind", { spell: "Call Dragons" })).ok, true);
+  assert.equal((await use("Orb of Dragonkind", { spell: "Call Dragons" })).refused, "rules", "the call waits its hour");
+  assert.equal((await use("Ring of Djinni Summoning")).ok, true);
+  await pass(30, "minutes");
+  assert.equal((await use("Frost Brand")).refused, "rules", "half an hour is not an hour");
+  await pass(30, "minutes");
+  assert.equal((await use("Frost Brand")).ok, true, "an hour on, it works again");
+  assert.equal((await use("Orb of Dragonkind", { spell: "Call Dragons" })).ok, true, "and so does the call");
+  // A dawn is not the djinni's 24 hours.
+  await pass(20, "hours");
+  assert.equal((await use("Ring of Djinni Summoning")).refused, "rules", "the djinni waits 24 hours, dawn or not");
+  await pass(3, "hours");
+  assert.equal((await use("Ring of Djinni Summoning")).ok, true, "24 hours on, the djinni comes again");
+
+  // The deck: one card a draw, the deck gone with its last.
+  const drawn = await use("Deck of Illusions");
+  assert.equal(drawn.ok, true, drawn.error);
+  assert.equal(table.sheet(hero.id).equipment.find((item) => item.name === "Deck of Illusions")?.charges, 33);
+  table.patch(hero.id, { equipment: table.sheet(hero.id).equipment.map((item) => (item.name === "Deck of Illusions" ? { ...item, charges: 1 } : item)) });
+  assert.equal((await use("Deck of Illusions")).ok, true);
+  assert.ok(!table.sheet(hero.id).equipment.some((item) => item.name === "Deck of Illusions"), "the last card thrown, the deck is used up");
+});
+
 finish();
