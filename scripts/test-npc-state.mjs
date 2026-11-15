@@ -256,5 +256,75 @@ await test("an unconscious or dead mind is owed no turn in the scene", async () 
   assert.deepEqual(owed.map((entry) => entry.id), ["a"]);
 });
 
+// ---- The narration held to the record (ticket 06) -------------------------
+
+const guard = await import("../src/lib/dm/npc-state-guard-logic.ts");
+const { readStateGuard } = await import("../src/lib/dm/npc-state-guard.ts");
+const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
+
+await test("the read is due only when someone named is held or down, a change shows, or the party moves holding someone", () => {
+  const free = { name: "Nera", aliases: [], record: "" };
+  const held = { name: "Rugo", aliases: [], record: "prisoner of Brakk, bound" };
+  assert.equal(guard.stateGuardDue({ named: [free], narration: "Nera hands out the bread.", partyMoved: false, partyHolds: false }), false);
+  assert.equal(guard.stateGuardDue({ named: [], narration: "The road is empty.", partyMoved: false, partyHolds: true }), false);
+  assert.equal(guard.stateGuardDue({ named: [held], narration: "Rugo stares.", partyMoved: false, partyHolds: true }), true);
+  assert.equal(guard.stateGuardDue({ named: [free], narration: "Nera falls, svenuta.", partyMoved: false, partyHolds: false }), true);
+  assert.equal(guard.stateGuardDue({ named: [], narration: "You set off.", partyMoved: true, partyHolds: true }), true);
+  assert.deepEqual(guard.peopleNamed("Rugo grunts.", [held, free]).map((person) => person.name), ["Rugo"]);
+});
+
+await test("the reader's reply is held to the people asked about and to words really in the narration", () => {
+  const people = [{ name: "Rugo", aliases: ["Uomo armato"], record: "prisoner of Brakk, bound" }];
+  const narration = "Rugo afferra l'ascia e colpisce la guardia.";
+  const reading = guard.parseStateReading(
+    JSON.stringify({
+      clashes: [
+        { name: "Uomo armato", quote: "afferra l'ascia", problem: "he is bound" },
+        { name: "Rugo", quote: "words not in the narration", problem: "x" },
+        { name: "Somebody else", quote: "colpisce", problem: "x" },
+      ],
+      unrecorded: [{ name: "Rugo", change: "wounded" }, { name: "Rugo", change: "twice" }, { name: "Nobody", change: "dead" }],
+    }),
+    narration,
+    people,
+  );
+  assert.deepEqual(reading.clashes, [{ name: "Rugo", quote: "afferra l'ascia", problem: "he is bound" }]);
+  assert.deepEqual(reading.unrecorded, [{ name: "Rugo", change: "wounded" }]);
+  assert.equal(guard.parseStateReading("no json", narration, people), null);
+  assert.equal(guard.parseStateReading('{"clashes":[]}', narration, people), null);
+  assert.match(guard.stateGuardPrompt({ clashes: [], unrecorded: [{ name: "Rugo", change: "taken prisoner" }] }), /Call npc_state[\s\S]*Your narration stands/);
+  assert.match(guard.stateGuardPrompt(reading), /narrate this moment again in full/);
+});
+
+await test("the guard asks nothing when nobody named is held, down or changing, and finds nothing when the reader fails", async () => {
+  const turn = createDmTurn(world.campaignId, []);
+  let asked = 0;
+  const reader = async () => {
+    asked += 1;
+    return null;
+  };
+  assert.equal(await readStateGuard(world.campaign(), turn, ["Brakk"], "Nera hands out the bread.", [], reader), null);
+  assert.equal(asked, 0, "no call for a quiet scene");
+  assert.equal(await readStateGuard(world.campaign(), turn, ["Brakk"], "Aldren rattles his chains.", [], reader), null);
+  assert.equal(asked, 1, "a held man named is read, and a failed read finds nothing");
+});
+
+await test("a capture the prose shows with no npc_state sends the narrator back once for the call, and the narration stands", async () => {
+  upsertNpc({ campaignId: world.campaignId, name: "Bandito", location: "" });
+  model.script([
+    reply({ text: "Brakk stende il Bandito con un pugno e lo lega al carro." }),
+    reply({ text: JSON.stringify({ clashes: [], unrecorded: [{ name: "Bandito", change: "knocked out and tied, prisoner of Brakk" }] }) }),
+    reply({ calls: [call("npc_state", { name: "Bandito", custody: "captive", heldBy: "Brakk", restraint: "bound", condition: "unconscious" })] }),
+  ]);
+  await model.turn(world, "Lo stendo e lo lego.", brakk.id);
+  const bandit = sheetOf("Bandito");
+  assert.equal(bandit.custody, "captive");
+  assert.equal(bandit.condition, "unconscious");
+  const lastNarration = getDatabase()
+    .prepare("SELECT content FROM campaign_messages WHERE campaign_id = ? AND author_type = 'dm' ORDER BY seq DESC LIMIT 1")
+    .get(world.campaignId);
+  assert.match(lastNarration.content, /lo lega al carro/);
+});
+
 model.close();
 finish();

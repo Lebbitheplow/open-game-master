@@ -293,6 +293,8 @@ import { petTools, PET_TOOL_NAMES } from "@/lib/dm/pet-tools";
 import { socialTools, SOCIAL_TOOL_NAMES, handleSetNpc, npcRosterForPrompt } from "@/lib/dm/social-tools";
 import { npcMindTools, NPC_MIND_TOOL_NAMES } from "@/lib/dm/npc-mind-tools";
 import { handleNpcState, npcStateTools, NPC_STATE_TOOL_NAMES } from "@/lib/dm/npc-state-tools";
+import { readStateGuard } from "@/lib/dm/npc-state-guard";
+import { stateGuardPrompt } from "@/lib/dm/npc-state-guard-logic";
 import { awayArrivalNote, handleNpcInform, handleNpcPast, handleNpcSpeak, mindRosterNotes, mindTurnRefusal, mindsAwaitingTurn, mindsWithinEarshot, npcMindsOn } from "@/lib/dm/npc-mind";
 import { hearingPrompt, sceneMindsPrompt, TIME_SKIP_TOOLS } from "@/lib/dm/npc-mind-logic";
 import { mindSpeeches, narratorLines } from "@/lib/dm/voice-knowledge-logic";
@@ -2051,6 +2053,8 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
   // mind still on stage (npc-mind.ts mindsAwaitingTurn, design §9).
   let sceneMindsNudged = false;
   let hearingNudged = false;
+  // The NPC state guard sends the narrator back once (npc-state-guard.ts).
+  let stateNudged = false;
   // What the current call streamed to the draft, and how many narration
   // parts the turn held before it. Settled once the call's text is kept or
   // withheld for good: before the next call (a correction sends the model
@@ -2836,6 +2840,31 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
           role: "user",
           content: intentCorrection(card.intent, card.characterId, card.name, card.resolution),
         });
+        saveDmTurn(turn);
+        continue;
+      }
+      // The prose held to the NPC state sheet (docs/specs/ogm-npc-state.md):
+      // a body changed on screen with no npc_state, or a line the record
+      // makes impossible, sends the narrator back once. A change alone keeps
+      // the narration and asks for the calls; a clash withdraws this reply's
+      // narration to be told again. A read that fails lets it all stand.
+      const stateReadNow = !finalCall && !stateNudged && turn.narrationParts.length > 0;
+      const stateRead = stateReadNow
+        ? await readStateGuard(campaign, turn, sheets.map((sheet) => sheet.name), turn.narrationParts.join("\n\n"), turnCalls(turn.conversation, toolCalls))
+        : null;
+      if (stateRead && (stateRead.clashes.length || stateRead.unrecorded.length)) {
+        stateNudged = true;
+        if (stateRead.clashes.length && narration && turn.narrationParts[turn.narrationParts.length - 1] === narration) {
+          turn.narrationParts.pop();
+        }
+        turn.conversation.push({
+          role: "assistant",
+          ...carried,
+          content: visibleText || "",
+          ...(toolCalls.length ? { tool_calls: echoedToolCalls } : {}),
+        });
+        answerRanAbove(fightOwnsFloor(campaignId), false);
+        turn.conversation.push({ role: "user", content: stateGuardPrompt(stateRead) });
         saveDmTurn(turn);
         continue;
       }
