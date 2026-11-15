@@ -161,6 +161,11 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
     const rolled = attackRollLine(sheet, profile.toHit, options.board?.attackAura, profile);
     const damage = line.damage;
     const notes: string[] = [];
+    // The off-hand card bears the same weapon's name as the main-hand one (a
+    // pair of shortswords is one row of two), so it says what it is first: a
+    // player with two blades equipped took it for a second copy and thought
+    // two-weapon fighting was missing.
+    if (offHand) notes.push(`Off-hand attack, your bonus action: the ${name} in your other hand, after you take the Attack action with a ${dualWields(sheet.feats, sheet.campaignId) ? "one-handed melee" : "light melee"} weapon.`);
     // Which weapon is out, on the card itself (held-default.ts): a player
     // could not tell, and asked for one they thought was drawn.
     const wield = natural ? undefined : wieldOf(sheet, name);
