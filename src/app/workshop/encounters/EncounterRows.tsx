@@ -230,8 +230,8 @@ export function EncounterRows({
                   <summary className="flex min-h-10 cursor-pointer list-none items-center gap-1.5 text-xs text-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40">
                     <GameIcon icon={{ kind: "glyph", key: "tab-battle" }} size="size-4" />
                     Starts from a saved set-up
-                    <span className="ml-auto text-[10px] text-amber-200/70 group-open:hidden">Show</span>
-                    <span className="ml-auto hidden text-[10px] text-amber-200/70 group-open:inline">Hide</span>
+                    <span className="ml-auto text-[10px] text-stone-400 group-open:hidden">Show</span>
+                    <span className="ml-auto hidden text-[10px] text-stone-400 group-open:inline">Hide</span>
                   </summary>
                   <ul className="space-y-0.5 pb-2 text-[11px] text-stone-300">
                     {encounter.setup.map((line) => (

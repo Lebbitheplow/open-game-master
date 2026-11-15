@@ -114,6 +114,10 @@ html[data-theme-ornaments="true"][data-theme] .kit-select-list {
 html[data-theme-ornaments="true"][data-theme] .danger-zone {
   border-color: var(--color-red-500);
 }
+/* Allegiance is information, so a decorative panel edge must not hide it. */
+html[data-theme-ornaments="true"][data-theme] .party-card[data-against] {
+  border-color: var(--color-rose-500);
+}
 html[data-theme-ornaments="true"][data-theme] :is(.section-head-title, .lobby-head-title) {
   letter-spacing: 0.13em;
   text-shadow: 0 1px 1px #0002;

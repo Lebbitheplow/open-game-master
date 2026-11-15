@@ -66,6 +66,7 @@ export default {
     await page.getByRole("button", { name: /^Show your hand$/ }).locator("visible=true").first().click();
     await eventually(async () => (await motion(".cine-fight-hand .hand-slot")).includes("hand-fan-in"), { timeoutMs: 2_000, every: 30, label: "the cards dealing back in" });
     await eventually(() => page.locator(`${root}.cine-fight-board .cine-fight-hand .hand-card`).locator("visible=true").count(), { label: "the cards back on the board" });
+    await untilStill(page);
     await t.shot("hand-on-board");
   },
 };

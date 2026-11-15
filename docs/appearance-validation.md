@@ -1,5 +1,52 @@
 # Appearance infrastructure validation
 
+## GitHub browser failures, November 15
+
+At `10729d588`, both builds and all six Linux/Windows test shards passed on
+GitHub, but five browser shards failed. The same scenarios reproduced locally:
+6 of 21 cases passed and 15 failed. These failures were outside the dedicated
+59-check appearance preview, so that preview alone did not establish readiness.
+
+The follow-up restores readable equipment notes, spell availability/restriction
+labels, empty sheet values, name-menu headings and encounter disclosures. It
+also preserves the red border when a companion turns against the party. The
+duplicate header initiative ribbon moves out of the way below 1440px, leaving
+the order on the board and turn banner and restoring room for the laptop map.
+
+The ornament container now leaves its empty center unpainted while explicitly
+keeping its rails and corners visible. Previously the full-screen container
+made axe treat narration as overlapped and check no contrast rule. The existing
+split-line regression now measures the passage again; the appearance check also
+requires the frame and corners to remain visible.
+
+The day-board regression now accepts either an opaque paper fill or an opaque
+gradient and measures enlarged-board control contrast against the actual
+surface. It still requires 4.5:1 text contrast and keeps the map window dark;
+it no longer requires the surrounding themed table to use the old night colors.
+
+| Check | Result |
+| --- | --- |
+| Previously failing CI scenarios and adjacent combat cases | All 21 cases have passing production results across the three groups and corrective rerun described below |
+| Arcane full appearance matrix | 59 passed, including visible frame/corner assertions |
+| Targeted component and appearance suites | All 6 files passed: appearance, appearance contracts, adventuring gear, builder gear, builder reselect and possessive title case |
+| Production build, TypeScript and bundle budgets | Passed; shared CSS 107.0 KiB, rulebook CSS 113.5 KiB; JavaScript budgets unchanged and passing |
+| Full lint and final script lint | No errors; full lint retains 313 warnings |
+
+The layout group initially passed 9 of 11 cases. Both companion cases still
+failed because their test accepted only RGB/OKLab color strings, while Chromium
+serialized the restored rose token as Lab. The test now reads painted color
+channels and still requires a distinct red foe border. Its corrective run passed
+both companion cases and all three hand-on-board cases (5 of 5); the latter now
+wait for the returning cards to settle before screenshots. Builder/sheet checks
+passed 6 of 6 and the fight-bench groups passed 4 of 4. This is a reconciled set
+of 21 passing cases, not a claim of one uninterrupted 21-case green run.
+
+[Reviewed production screenshots](https://github.com/Smoebo/open-dungeon-master/tree/fa3353388ce63c2a0cebe5b2e5148f54ae4937b9/images/ci-fixes)
+show the phone menu and narration in both modes, the laptop board, and the foe
+border. The data is fictional. The full unit suite was not repeated locally;
+the six GitHub unit-test shards at the preceding commit passed. Final-commit CI
+and native-shell/real-device checks remain outstanding, and PR 962 stays draft.
+
 ## Shared fixes from the Sunken Tide handoff
 
 The PR 977 handoff identified hardcoded action colors and three layout defects

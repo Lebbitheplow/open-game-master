@@ -197,9 +197,11 @@ try {
       const g=await geometry();
       try {
         assert.ok(g.dialog && g.dialog.x>=-1 && g.dialog.y>=-1 && g.dialog.right<=1361 && g.dialog.bottom<=901,'Enlarged map fits: '+JSON.stringify(g.dialog));
-        const ornaments=await evaluate(`(() => { const e=document.querySelector('.theme-overlay .theme-ornaments[data-surface="overlay"]');return e && {corners:e.children.length,pointerEvents:getComputedStyle(e).pointerEvents,frame:getComputedStyle(e,'::before').borderImageSource,corner:getComputedStyle(e.firstElementChild).backgroundImage}; })()`);
+        const ornaments=await evaluate(`(() => { const e=document.querySelector('.theme-overlay .theme-ornaments[data-surface="overlay"]');return e && {corners:e.children.length,pointerEvents:getComputedStyle(e).pointerEvents,frame:getComputedStyle(e,'::before').borderImageSource,corner:getComputedStyle(e.firstElementChild).backgroundImage,frameVisibility:getComputedStyle(e,'::before').visibility,cornerVisibility:getComputedStyle(e.firstElementChild).visibility}; })()`);
         assert.equal(ornaments?.corners,4,'Enlarged map has its own four decorative corners');
         assert.equal(ornaments.pointerEvents,'none','Border does not intercept map controls');
+        assert.equal(ornaments.frameVisibility,'visible','Frame remains painted independently of its empty container');
+        assert.equal(ornaments.cornerVisibility,'visible','Corners remain painted independently of their empty container');
         for (const slot of ['frame','corner']) {
           const expected=themeArtStyle(theme)['--theme-art-'+slot];
           if (expected==='none') assert.equal(ornaments[slot],'none');

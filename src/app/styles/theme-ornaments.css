@@ -5,9 +5,13 @@
   display: none;
   position: absolute;
   pointer-events: none;
+  /* Only the rails and corners paint. The full-screen empty container must
+     not count as a foreground surface when text contrast is measured. */
+  visibility: hidden;
 }
 html[data-theme-ornaments="true"] .theme-ornaments { display: block; }
 .theme-ornaments > span {
+  visibility: visible;
   position: absolute;
   background: var(--theme-art-corner, none) var(--theme-corner-background-position, center) / var(--theme-corner-background-size, contain) no-repeat;
 }
@@ -29,6 +33,7 @@ html[data-theme-ornaments="true"] .theme-ornaments { display: block; }
   z-index: 21;
 }
 .theme-ornaments:is([data-surface="table"], [data-surface="overlay"])::before {
+  visibility: visible;
   content: "";
   position: absolute;
   inset: 2px;

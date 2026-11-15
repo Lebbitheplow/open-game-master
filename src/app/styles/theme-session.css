@@ -45,6 +45,11 @@ html[data-theme-ornaments="true"][data-theme] .theme-table .session-controls {
   flex-wrap: wrap;
 }
 html[data-theme-ornaments="true"][data-theme] .theme-table .cine-ribbon-slot { order: 3; }
+@media (max-width: 1439px) {
+  /* At laptop width the duplicate initiative ribbon made a third header row
+     and took the board's space. The board and turn banner retain the order. */
+  html[data-theme-ornaments="true"][data-theme] .theme-table .cine-ribbon-slot { display: none; }
+}
 html[data-theme-ornaments="true"][data-theme] .theme-table .session-title {
   color: var(--color-amber-200);
   background: none;

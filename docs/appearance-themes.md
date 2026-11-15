@@ -186,8 +186,12 @@ New themes can style these hooks without editing `Lobby.tsx` or `SessionView.tsx
 Keep theme-specific material variables in that theme's CSS. For a substantially
 different layout, add scoped treatment rules after the shared material imports.
 
-The ornament is an absolute overlay with `aria-hidden` and no pointer events. It
-does not reserve space for itself. Reserve a quiet rail in your theme's container
+The ornament is an absolute overlay with `aria-hidden` and no pointer events. Its
+empty container uses `visibility: hidden`, while the corner spans and frame
+pseudo-element explicitly use `visibility: visible`. Keep that distinction:
+otherwise accessibility tools treat the transparent center as overlapping the
+reading surface and cannot measure text contrast. The overlay does not reserve
+space for itself. Reserve a quiet rail in your theme's container
 styles and keep the asset's transparent interior clear of text and controls.
 The enlarged battle map renders its own `ThemeOrnaments surface="overlay"`
 inside the dialog. A portal is outside the session's element tree, so it cannot
