@@ -412,10 +412,26 @@ await test("hit points back end the dying on every path: a sheet with hit points
   const hero = person.addHero({ name: "Keltec", class: "fighter", level: 3, maxHp: 28 });
   try {
     person.patch(hero.id, { currentHp: 0, deathSaves: dying.deathSaves, conditions: ["Unconscious", "Prone"] });
-    // What an undo of the blow writes: the hit points alone.
-    const { patchSheet, getSheetById } = await import("../src/lib/db/sheets.ts");
-    patchSheet(hero.id, { currentHp: 28 }, { restoring: true });
+    // An undo of the blow puts back the hit points alone (sheet-undo.ts).
+    const { getSheetById } = await import("../src/lib/db/sheets.ts");
+    const { insertSheetAudit } = await import("../src/lib/db/sheet-audit.ts");
+    const { revertAuditEntry } = await import("../src/lib/sheet-undo.ts");
+    const { allocateSeq, getCampaignById } = await import("../src/lib/db/campaigns.ts");
+    const blow = insertSheetAudit({
+      campaignId: person.campaignId,
+      characterId: hero.id,
+      turnId: null,
+      actor: "dm",
+      kind: "damage",
+      delta: { currentHp: 0 },
+      reason: "a blow",
+      seq: allocateSeq(person.campaignId),
+      before: { ...getSheetById(hero.id), currentHp: 28 },
+      patch: { currentHp: 0 },
+    });
+    assert.equal(revertAuditEntry(getCampaignById(person.campaignId), blow).ok, true);
     const back = getSheetById(hero.id);
+    assert.equal(back?.currentHp, 28);
     assert.equal(back?.deathSaves, null, "the track stayed beside full hit points");
     assert.deepEqual(back?.conditions, ["Prone"]);
   } finally {
