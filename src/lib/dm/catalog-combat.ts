@@ -394,7 +394,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
     category: "combat",
     summary: "Dodge, Dash, Disengage, Hide, Help, Grapple, Shove, Ready, Search, Use an Object, Escape, a Grappler's Pin or an improvised action, with its real contest and effect, for a character or an enemy.",
     fields: [
-      { name: "characterId", label: "Character", kind: "character", help: "Blank when an enemy acts." },
+      { name: "characterId", label: "Character", kind: "character", help: "Blank when an enemy acts, or when captors out of a fight lock Manacles (Object) on an Ally." },
       {
         name: "action",
         label: "Action",
@@ -456,7 +456,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
         onlyWhen: { field: "action", equals: ["search", "improvise"] },
         host: { feature: IMPROVISED, older: { label: "Search with", help: "Perception, or Investigation to reason it out." } },
       },
-      { name: "ability", label: "Or an ability", kind: "select", options: ABILITIES, onlyWhen: { field: "action", equals: ["improvise"] } },
+      { name: "ability", label: "Or an ability", kind: "select", options: ABILITIES, help: "Escape from manacles: Dexterity slips them, Strength breaks them (DC 20 either).", onlyWhen: { field: "action", equals: ["improvise", "escape"] } },
       {
         name: "contestSkill",
         label: "Enemy resists with",
@@ -501,7 +501,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
         name: "enemyId",
         label: "Enemy acting",
         kind: "enemy",
-        help: "Instead of a character: an enemy taking Dash, Disengage, Dodge, or Escape from a grapple or a spell's hold (Web, Entangle, Maze, Irresistible Dance). It spends the enemy's action; move it afterward with Move a token.",
+        help: "Instead of a character: an enemy taking Dash, Disengage, Dodge, Escape from a grapple or a spell's hold (Web, Entangle, Maze, Irresistible Dance), or Use an Object with Manacles on an Ally. It spends the enemy's action; move it afterward with Move a token.",
         // Sent under the name that server reads: it knows escapingEnemyId,
         // and dropped enemyId, so an escape from the console failed there.
         host: {
@@ -586,7 +586,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
           { value: "frigid_water", label: "Frigid water" },
         ],
       },
-      { name: "characterIds", label: "Caught in it", kind: "characters", requiredUnless: ["rank", "enemyIds"] },
+      { name: "characterIds", label: "Caught in it", kind: "characters", requiredUnless: ["rank", "enemyIds", "place"] },
       { name: "enemyIds", label: "Enemies caught in it", kind: "enemies", help: "A trap, a fall or a hazard of your own: the server rolls each enemy's save from its stat block." },
       {
         name: "rank",
@@ -608,6 +608,9 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
         other: { label: "One of this table's traps", placeholder: "Scything Blade" },
         help: "Runs the trap's own numbers instead of the severity table: an SRD sample trap, or a trap from this table's workshop.",
       },
+      { name: "place", label: "Set it on the board", kind: "boolean", help: "A trap by name, laid hidden from the players on the square below; the first creature to step there springs it.", host: { feature: "setTraps" } },
+      { name: "fromX", label: "Its square: column", kind: "number", min: 0, max: 99, help: "Where a set trap lies, or where a trap fires from (cover on a DEX save).", host: { feature: "setTraps" } },
+      { name: "fromY", label: "Its square: row", kind: "number", min: 0, max: 99, host: { feature: "setTraps" } },
       { name: "hours", label: "Hours of exposure", kind: "number", min: 1, max: 48, help: "Extreme cold or heat: one CON save an hour, a level of exhaustion for each failure." },
       { name: "minutes", label: "Minutes in the water", kind: "number", min: 1, max: 120, help: "Frigid water: free for the Constitution score's minutes, then one CON save a minute." },
       { name: "damage", label: "Damage", kind: "dice", help: "Only for a hazard of your own." },

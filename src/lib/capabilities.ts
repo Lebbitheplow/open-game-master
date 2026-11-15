@@ -187,6 +187,15 @@ export const SERVER_FEATURES = {
   // or one blow where many were asked), so they stay hidden there, and the
   // attack's field is that host's bonusAttack.
   actionParts: true,
+  // damage_object's `bound` (the console's "Manacles on"): whose set of
+  // manacles is struck when several creatures are bound. An older host
+  // strips it unread and refuses the blow, so the field stays hidden there.
+  manaclesBound: true,
+  // apply_hazard's `place` (the console hazard form's "Set it on the board"
+  // and its square): a named trap set hidden on the board. An older host
+  // strips it unread and springs the trap at once, so the fields stay
+  // hidden there.
+  setTraps: true,
   // A test fight's moment saved as its prepared fight's set-up (issue 685):
   // "Save as set-up" on the test table (POST /api/campaigns/[id]/fight-setup)
   // and "Remove its set-up" on the fight, which an older host answers with

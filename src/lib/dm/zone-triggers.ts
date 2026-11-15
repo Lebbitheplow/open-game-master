@@ -62,6 +62,7 @@ function spaceIn(width: number, mover: { kind: string; refId: string }, at: XY, 
   return Boolean(cells?.length) && footprintIndexes(width, at, mover.kind === "enemy" ? tokenFootprint({ kind: "enemy", refId: mover.refId }) : 1).some((cell) => cells!.includes(cell));
 }
 import { textKey } from "@/lib/language/text-logic";
+import { enterSetTrap, isSetTrap } from "@/lib/dm/set-traps";
 
 // A turn for a character's saves and damage, closed once used, as an
 // opportunity attack's is (src/lib/dm/opportunity-strike.ts).
@@ -443,6 +444,13 @@ function areasAfterMove(
   let stopAt: XY | null = null;
   for (const zone of armed) {
     const trigger = zoneRowFor(zone)?.trigger as ZoneTrigger;
+    // A trap set on a square springs by its own numbers (set-traps.ts).
+    if (isSetTrap(zone)) {
+      const sprung = withZoneTurn(campaign.id, (turn) => enterSetTrap(campaign, turn, encounter, map, zone, victim, start, walked));
+      lines.push(...sprung.lines);
+      stopAt = stopAt ?? sprung.stopAt;
+      continue;
+    }
     if (!touches(zone, trigger, victim)) {
       continue;
     }

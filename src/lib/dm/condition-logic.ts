@@ -110,6 +110,9 @@ export type ConditionMeta = {
   // repeat saves meet Magic Resistance as the first one did
   // (condition-tick.ts).
   magical?: boolean;
+  // Manacles the party's foes put on: their one key is the foes', not the
+  // party's (manacles.ts).
+  keyWithFoes?: boolean;
   // The Grappler feat's pin, on the grappler's own restraint: the creature
   // they hold pinned (grappler-pin.ts).
   pinning?: string;

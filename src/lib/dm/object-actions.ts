@@ -15,6 +15,7 @@
 //     tool releases it off their turn for the reaction (readied-release.ts;
 //     a readied attack through pc_attack, src/lib/dm/pc-attack-plan.ts).
 
+import { revealSetTraps } from "@/lib/dm/set-traps";
 import { coatsAsBonusAction, drinksAsBonusAction } from "@/lib/srd/feat-combat";
 import { isBasicPoison } from "@/lib/dm/attack-onhit";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -237,11 +238,14 @@ export function searchAction(
   if (check.rollId) {
     turn.rollIds.push(check.rollId);
   }
+  // A hidden trap set on the board that the check meets (set-traps.ts).
+  const traps = revealSetTraps(campaign, sheet, skill, check.total);
   return {
     ok: true,
     action: "Search",
     skill,
     total: check.total,
+    ...(traps ? { found: traps } : {}),
     ...(check.notes.length ? { notes: check.notes } : {}),
     note: `${sheet.name} searches: ${skill} ${check.total}. Compare it with what is there to find: a hidden creature's Stealth must be beaten (a tie keeps it hidden), a trap's or a clue's DC only met.`,
   };

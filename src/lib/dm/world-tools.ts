@@ -148,6 +148,7 @@ export const worldTools: ToolDef[] = [
         properties: {
           name: { type: "string", description: "What the object is ('the oak door'), or 'Wall of Ice' with its section. The server keeps its damage, and what the first call said it is made of, between blows." },
           section: { type: "integer", minimum: 1, description: "A Wall of Ice's section, numbered from the end it was laid from." },
+          bound: { type: "string", description: "Manacles: the creature they bind, exact characterId or enemyId from GAME STATE. Needed when several are bound." },
           characterId: { type: "string", description: "The character striking it with a weapon: exact characterId from GAME STATE." },
           weapon: { type: "string", description: "The weapon they strike with, from their equipment." },
           improvised: { type: "boolean", description: "True when weapon names an object that is no weapon on their sheet (a chair, a bottle). It strikes as an improvised weapon." },

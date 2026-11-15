@@ -41,6 +41,7 @@ import { badArguments, toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { unknownSheetRef } from "@/lib/dm/rolls";
 import { freeFromNet, NET_AC, NET_HP, netObject, nettedId } from "@/lib/dm/net-hold";
+import { breakManacles, MANACLES_AC, MANACLES_HP, manaclesKey, manaclesObject } from "@/lib/dm/manacles";
 import { vesselObject } from "@/lib/dm/genie-vessel";
 
 export const OBJECT_MATERIALS: ObjectMaterial[] = [
@@ -52,6 +53,9 @@ const objectSchema = z.object({
   name: z.string().trim().min(1).max(60).optional(),
   // A sectioned wall's section (src/lib/dm/zone-walls.ts).
   section: z.coerce.number().int().min(1).max(99).optional(),
+  // Manacles: the creature whose set is struck, when several are bound
+  // (manacles.ts manaclesObject).
+  bound: z.string().trim().min(1).max(80).optional(),
   material: z.enum(OBJECT_MATERIALS as [ObjectMaterial, ...ObjectMaterial[]]).optional(),
   size: z.enum(OBJECT_SIZES as [ObjectSize, ...ObjectSize[]]).optional(),
   fragile: z.coerce.boolean().optional(),
@@ -134,22 +138,28 @@ export function damageObject(
   if (net && "error" in net) {
     return net;
   }
+  // Manacles are iron with 15 hit points (SRD 5.1); broken, the creature
+  // they bind is free (manacles.ts).
+  const shackle = campaign && args.name && !section && !net ? manaclesObject(campaign.id, args.name, args.bound) : null;
+  if (shackle && "error" in shackle) {
+    return shackle;
+  }
   // A Genie warlock's vessel has its warlock's numbers (genie-vessel.ts).
-  const vessel = campaign && args.name && !section && !net ? vesselObject(campaign.id, args.name) : null;
+  const vessel = campaign && args.name && !section && !net && !shackle ? vesselObject(campaign.id, args.name) : null;
   // Each section keeps its own damage between blows.
-  const kept = section ? `${section.zoneId} ${section.section}` : net ? `net ${nettedId(net.netted)}` : vessel ? vessel.key : args.name;
+  const kept = section ? `${section.zoneId} ${section.section}` : net ? `net ${nettedId(net.netted)}` : shackle ? (manaclesKey(shackle.bound) ?? args.name) : vessel ? vessel.key : args.name;
   const record = campaign && kept ? objectRecord(campaign.id, kept) : null;
   const profile = objectProfile(args.material ?? "wood", args.size ?? "medium", args.fragile);
   // A section's numbers are its wall's; an object already named keeps the
   // numbers its first call decided; only a new one reads this call's.
-  const ac = section?.ac ?? (net ? NET_AC : undefined) ?? vessel?.ac ?? record?.ac ?? args.ac ?? profile.ac;
-  const hp = section?.hp ?? (net ? NET_HP : undefined) ?? vessel?.hp ?? record?.hp ?? args.hp ?? profile.hp;
+  const ac = section?.ac ?? (net ? NET_AC : undefined) ?? (shackle ? MANACLES_AC : undefined) ?? vessel?.ac ?? record?.ac ?? args.ac ?? profile.ac;
+  const hp = section?.hp ?? (net ? NET_HP : undefined) ?? (shackle ? MANACLES_HP : undefined) ?? vessel?.hp ?? record?.hp ?? args.hp ?? profile.hp;
   const threshold = record ? record.threshold : args.threshold;
   const already = record?.taken ?? 0;
   const restated =
     vessel && ((args.ac !== undefined && args.ac !== ac) || (args.hp !== undefined && args.hp !== hp) || args.material !== undefined || args.size !== undefined)
       ? `${vessel.owner}'s vessel is a Tiny object of their own numbers: AC ${ac} (their spell save DC), ${hp} HP (warlock level + proficiency bonus)`
-      : record && !section && !net && ((args.ac !== undefined && args.ac !== ac) || (args.hp !== undefined && args.hp !== hp) || args.material !== undefined || args.size !== undefined)
+      : record && !section && !net && !shackle && ((args.ac !== undefined && args.ac !== ac) || (args.hp !== undefined && args.hp !== hp) || args.material !== undefined || args.size !== undefined)
       ? `kept as it was first described: AC ${ac}, ${hp} HP${threshold ? `, damage threshold ${threshold}` : ""}`
       : null;
   if (record?.broken) {
@@ -273,6 +283,10 @@ export function damageObject(
   if (campaign && net && broken) {
     notes.push(freeFromNet(campaign, net.netted, true));
     forgetObject(campaign.id, `net ${nettedId(net.netted)}`);
+  }
+  if (campaign && shackle?.bound && broken) {
+    notes.push(breakManacles(campaign, shackle.bound));
+    forgetObject(campaign.id, manaclesKey(shackle.bound) ?? "");
   }
   return {
     ok: true,
