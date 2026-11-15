@@ -565,12 +565,13 @@ await test("E13 a giant spider's Web is read: restrained, a DC 12 STR check to b
 });
 
 // A giant spider's Web on Kara, from the rulebook's own block.
-async function webbed() {
+async function webbed(before = () => {}) {
   await kit.endFight();
   await kit.fight(1, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
   const [spider] = world.enemies();
   const stats = srd("Giant Spider");
   kit.setEnemy(spider.id, { ac: stats.ac, maxHp: stats.maxHp, stats });
+  before();
   kit.place(kara.id, 5, 5);
   kit.place(bram.id, 6, 6);
   kit.place(spider.id, 9, 5);
@@ -842,6 +843,309 @@ await test("E18 a druid in an owl's form flying out of a goblin's reach keeps th
   world.patch(kara.id, { wildShape: null });
   maps.setTokenMovement(kit.token(kara.id).id, "walk");
   assert.equal(swings.length, 0, "the form's Flyby is hers while she wears it");
+});
+
+// E19: the party's own Pounce, Charge and Trampling Charge. A goblin 25 feet
+// east of Kara, on her own turn.
+const { findBeastForm, wildShapeRecord } = await import("../src/lib/srd/beast-forms.ts");
+const { findSummonForm } = await import("../src/lib/srd/summon-forms.ts");
+const { summonRecord } = await import("../src/lib/dm/summon-rules.ts");
+const { spawnSummons } = await import("../src/lib/dm/summon-store.ts");
+
+async function goblinAhead() {
+  await kit.endFight();
+  await kit.fight(1, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+  const [goblin] = world.enemies();
+  kit.place(kara.id, 5, 5);
+  kit.place(bram.id, 15, 15);
+  kit.place(goblin.id, 10, 5);
+  return goblin;
+}
+
+// A creature Bram's spell made, on its own turn beside Kara.
+function summoned(name, spell) {
+  const form = findSummonForm(name);
+  const record = summonRecord(form, { spell, casterId: bram.id, casterName: "Bram", concentration: false, castId: `e19-${name}` });
+  const [made] = spawnSummons(world.campaign(), world.sheet(bram.id), { form, count: 1, record, rounds: null, slotLevel: null, initiative: "caster" });
+  kit.place(made.id, 5, 6);
+  kit.giveTurn(made.id);
+  return made;
+}
+
+await test("E19 Kara in a tiger's form who runs 20 feet at a goblin and claws it knocks it prone on a failed DC 13 STR save, then bites as the bonus action, once", async () => {
+  const goblin = await goblinAhead();
+  world.patch(kara.id, { wildShape: wildShapeRecord(findBeastForm("Tiger"), { kind: "wildshape", abilities: { str: 17, dex: 15, con: 14 } }) });
+  kit.giveTurn(kara.id);
+  await walkTo(world.owner, 9, 5);
+  // The claw hits for 1d8 + 3; the goblin's STR save comes up 1.
+  world.dice(19, 4, 1);
+  const claw = await world.invoke("pc_attack", { characterId: kara.id, targetEnemyId: goblin.id, weapon: "Claw" });
+  world.clearDice();
+  assert.equal(claw.ok, true, claw.error);
+  assert.ok(kit.enemy(goblin.id).conditions.includes("prone"), JSON.stringify(claw.result));
+  // Prone within 5 feet: the bite rolls at advantage, 1d10 + 3.
+  world.dice(19, 19, 5);
+  const bite = await world.invoke("pc_attack", { characterId: kara.id, targetEnemyId: goblin.id, weapon: "Bite" });
+  world.clearDice();
+  assert.equal(bite.ok, true, bite.error);
+  assert.equal(world.encounter().turnBudget?.bonusUsed, true, "the bite is the bonus action");
+  assert.equal(kit.enemy(goblin.id).currentHp, 40 - 7 - 8);
+  // Her Extra Attack's second swing is still hers (Wild Shape keeps her
+  // class features); after it the turn holds no attack and no bonus action.
+  world.dice(19, 19, 5);
+  const second = await world.invoke("pc_attack", { characterId: kara.id, targetEnemyId: goblin.id, weapon: "Bite" });
+  world.clearDice();
+  assert.equal(second.ok, true, second.error);
+  world.dice(19, 19, 5);
+  const again = await world.invoke("pc_attack", { characterId: kara.id, targetEnemyId: goblin.id, weapon: "Bite" });
+  world.clearDice();
+  world.patch(kara.id, { wildShape: null });
+  assert.equal(again.ok, false, "one bonus bite");
+});
+
+await test("E19 the tiger standing beside the goblin knocks nobody down; with no board, the run is the call's word", async () => {
+  const goblin = await goblinAhead();
+  world.patch(kara.id, { wildShape: wildShapeRecord(findBeastForm("Tiger"), { kind: "wildshape", abilities: { str: 17, dex: 15, con: 14 } }) });
+  kit.place(kara.id, 9, 5);
+  kit.giveTurn(kara.id);
+  world.dice(19, 4, 1);
+  const still = await world.invoke("pc_attack", { characterId: kara.id, targetEnemyId: goblin.id, weapon: "Claw" });
+  world.clearDice();
+  assert.equal(still.ok, true, still.error);
+  assert.ok(!kit.enemy(goblin.id).conditions.includes("prone"), "no run, no Pounce");
+
+  const { getDatabase } = await import("../src/lib/db/core.ts");
+  getDatabase().prepare("DELETE FROM battle_maps WHERE id = ?").run(kit.map().id);
+  kit.giveTurn(kara.id);
+  world.dice(19, 4, 1);
+  const charged = await world.invoke("pc_attack", { characterId: kara.id, targetEnemyId: goblin.id, weapon: "Claw", charged: true });
+  world.clearDice();
+  world.patch(kara.id, { wildShape: null });
+  assert.equal(charged.ok, true, charged.error);
+  assert.ok(kit.enemy(goblin.id).conditions.includes("prone"), JSON.stringify(charged.result));
+});
+
+await test("E19 an elk Conjure Animals called charges 20 feet and rams for its extra 2d6, the goblin knocked prone on a failed DC 13 STR save", async () => {
+  const goblin = await goblinAhead();
+  const elk = summoned("Elk", "Conjure Animals");
+  const ran = await world.invoke("move_token", { token: elk.id, x: 9, y: 6 });
+  assert.equal(ran.ok, true, ran.error);
+  // Ram 1d6 + 3 at 2, the charge's 2d6 at 3 and 4; the save comes up 1.
+  world.dice(19, 2, 3, 4, 1);
+  const ram = await world.invoke("pc_attack", { characterId: elk.id, targetEnemyId: goblin.id, weapon: "Ram" });
+  world.clearDice();
+  assert.equal(ram.ok, true, ram.error);
+  assert.equal(kit.enemy(goblin.id).currentHp, 40 - (2 + 3 + 3 + 4), JSON.stringify(ram.result));
+  assert.ok(kit.enemy(goblin.id).conditions.includes("prone"));
+});
+
+await test("E19 a Find Steed warhorse's Trampling Charge knocks the goblin prone, and its second hooves attack is the bonus action", async () => {
+  const goblin = await goblinAhead();
+  const horse = summoned("Warhorse", "Find Steed");
+  await world.invoke("move_token", { token: horse.id, x: 9, y: 6 });
+  // Hooves 2d6 + 4 at 3 and 3; the DC 14 STR save comes up 1.
+  world.dice(19, 3, 3, 1);
+  const first = await world.invoke("pc_attack", { characterId: horse.id, targetEnemyId: goblin.id, weapon: "Hooves" });
+  world.clearDice();
+  assert.equal(first.ok, true, first.error);
+  assert.ok(kit.enemy(goblin.id).conditions.includes("prone"), JSON.stringify(first.result));
+  world.dice(19, 19, 3, 3);
+  const second = await world.invoke("pc_attack", { characterId: horse.id, targetEnemyId: goblin.id, weapon: "Hooves" });
+  world.clearDice();
+  assert.equal(second.ok, true, second.error);
+  assert.equal(world.encounter().turnBudget?.bonusUsed, true, "the second hooves attack is the bonus action");
+  assert.equal(kit.enemy(goblin.id).currentHp, 40 - 10 - 10);
+});
+
+await test("E19 Kara's panther companion, running with her 20 feet at the goblin, pounces: prone on a failed save, then its bite as its own bonus action", async () => {
+  await kit.endFight();
+  const panther = findBeastForm("Panther");
+  world.patch(kara.id, { pets: [{ name: "Shade", kind: "beast_companion", form: "panther", hp: 13, maxHp: 13, ac: 12, speed: 50, attacks: panther.attacks, notes: "" }] });
+  const goblin = await goblinAhead();
+  kit.giveTurn(kara.id);
+  await walkTo(world.owner, 9, 5);
+  // Claw 1d4 + 2 at 2; the DC 12 STR save comes up 1.
+  world.dice(19, 2, 1);
+  const claw = await world.invoke("pet_attack", { characterId: kara.id, targetEnemyId: goblin.id, attack: "Claw" });
+  world.clearDice();
+  assert.equal(claw.ok, true, claw.error);
+  assert.ok(kit.enemy(goblin.id).conditions.includes("prone"), JSON.stringify(claw.result));
+  // Bite 1d6 + 2 at 4, with advantage on the prone goblin.
+  world.dice(19, 19, 4);
+  const bite = await world.invoke("pet_attack", { characterId: kara.id, targetEnemyId: goblin.id, attack: "Bite" });
+  world.clearDice();
+  assert.equal(bite.ok, true, bite.error);
+  world.dice(19, 19, 4);
+  const again = await world.invoke("pet_attack", { characterId: kara.id, targetEnemyId: goblin.id, attack: "Bite" });
+  world.clearDice();
+  world.patch(kara.id, { pets: [] });
+  assert.equal(again.ok, false, "one bite");
+  assert.equal(kit.enemy(goblin.id).currentHp, 40 - 4 - 6);
+});
+
+// E21: Freedom of Movement and a creature's webbing.
+await test("E21 Kara under Freedom of Movement is still webbed by a giant spider (nonmagical), and slips the webbing for 5 feet of movement, no action and no check", async () => {
+  await webbed(() => world.patch(kara.id, { conditions: ["freedom of movement"], conditionMeta: { "freedom of movement": { rounds: 600, spell: "Freedom of Movement" } } }));
+  kit.giveTurn(kara.id);
+  // A natural 1 on any check would keep her held: the slip asks none.
+  world.dice(1);
+  const out = await world.invoke("take_action", { characterId: kara.id, action: "escape" });
+  world.clearDice();
+  const after = world.sheet(kara.id);
+  world.patch(kara.id, { conditions: [], conditionMeta: {} });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.feature, "Freedom of Movement", JSON.stringify(out.result));
+  assert.ok(!after.conditions.includes("restrained"), "the webbing no longer holds her");
+  assert.equal(world.encounter().turnBudget?.actionUsed ?? false, false, "no action spent");
+});
+
+await test("E21 a goblin under Freedom of Movement held by a giant spider's webbing slips it for 5 feet of its movement, keeping its action", async () => {
+  const spider = await webbed();
+  world.patch(kara.id, { conditions: [], conditionMeta: {} });
+  const [goblin] = await (async () => {
+    await kit.endFight();
+    await kit.fight(2, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+    return world.enemies();
+  })();
+  const { readAttackText } = await import("../src/lib/bestiary/attack-text.ts");
+  const hold = readAttackText(WEB).onHit?.hold;
+  assert.ok(hold, "the web's hold is read (E13)");
+  kit.place(goblin.id, 3, 2);
+  kit.setEnemy(goblin.id, {
+    conditions: ["freedom of movement", "restrained"],
+    conditionMeta: { "freedom of movement": { rounds: 600, spell: "Freedom of Movement" }, restrained: { source: spider.id, hold } },
+  });
+  kit.enemyTurn(goblin.id);
+  world.dice(1);
+  const out = await world.invoke("take_action", { action: "escape", enemyId: goblin.id });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.feature, "Freedom of Movement", JSON.stringify(out.result));
+  assert.ok(!kit.enemy(goblin.id).conditions.includes("restrained"));
+  const dodge = await world.invoke("take_action", { action: "dodge", enemyId: goblin.id });
+  assert.equal(dodge.ok, true, `its action is still its own: ${dodge.error}`);
+});
+
+// E22: a shadow's Strength Drain on a creature, not only on a sheet.
+async function shadowAndOgre() {
+  await kit.endFight();
+  await kit.fight(2, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+  const [shade, ogre] = world.enemies();
+  const printed = srd("Shadow");
+  const indoors = (lines) => (lines ?? []).filter((line) => !/^sunlight/i.test(line));
+  const shadowStats = { ...printed, traits: indoors(printed.traits), fullTraits: indoors(printed.fullTraits) };
+  kit.setEnemy(shade.id, { ac: shadowStats.ac, maxHp: shadowStats.maxHp, stats: shadowStats });
+  const ogreStats = srd("Ogre");
+  kit.setEnemy(ogre.id, { ac: ogreStats.ac, maxHp: ogreStats.maxHp, stats: ogreStats });
+  kit.place(kara.id, 5, 5);
+  kit.place(bram.id, 15, 15);
+  kit.place(shade.id, 7, 5);
+  kit.place(ogre.id, 6, 5);
+  // Dominated by Kara, the shadow strikes its old ally (enemy-strike.ts).
+  const encounters = await import("../src/lib/db/encounters.ts");
+  encounters.patchEnemyConditions(shade.id, ["charmed"], { charmed: { spell: "Dominate Person", source: kara.id } });
+  kit.enemyTurn(shade.id);
+  return { shade, ogre };
+}
+
+await test("E22 a shadow's touch on an ogre takes 1d4 from its Strength: its Strength save, Greatclub and Javelin feel it, until the fight ends", async () => {
+  const { shade, ogre } = await shadowAndOgre();
+  // A hit, 2d6 + 2, and the drain's d4 a 4: Strength 19 to 15, +4 to +2.
+  world.dice(19, 3, 3, 4);
+  const out = await world.invoke("enemy_attack", { enemyId: shade.id, targetCharacterId: ogre.id, attack: "Strength Drain" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  const drained = kit.enemy(ogre.id);
+  assert.ok(drained.conditions.includes("strength reduced (-4)"), JSON.stringify(out.result));
+  assert.equal(drained.stats.abilities.str, 15);
+  const { saveModFor } = await import("../src/lib/bestiary/enemy-numbers.ts");
+  assert.equal(saveModFor(drained.stats, "str"), 2);
+  assert.deepEqual(drained.stats.attacks.map((attack) => attack.toHit), [4, 4], "both Strength attacks lose 2");
+  // The ogre's greatclub at Kara: 2d8 + 4 - 2.
+  const hp = world.sheet(kara.id).currentHp;
+  kit.freshRound();
+  kit.enemyTurn(ogre.id);
+  world.dice(19, 4, 4);
+  const club = await world.invoke("enemy_attack", { enemyId: ogre.id, targetCharacterId: kara.id, attack: "Greatclub" });
+  world.clearDice();
+  assert.equal(club.ok, true, club.error);
+  assert.equal(world.sheet(kara.id).currentHp, hp - (4 + 4 + 2));
+  world.patch(kara.id, { currentHp: hp });
+  // No rest is kept for a creature's row: the drain is gone with the fight
+  // (a foe brought back carries none of it).
+  const { carryConditions } = await import("../src/lib/dm/foe-carry-logic.ts");
+  assert.deepEqual(carryConditions(drained.conditions, drained.conditionMeta, 0, 0).conditions, []);
+});
+
+await test("E22 an ogre drained to Strength 0 by a shadow dies", async () => {
+  const { shade, ogre } = await shadowAndOgre();
+  kit.setEnemy(ogre.id, { stats: { abilities: { ...srd("Ogre").abilities, str: 3 } } });
+  world.dice(19, 3, 3, 4);
+  const out = await world.invoke("enemy_attack", { enemyId: shade.id, targetCharacterId: ogre.id, attack: "Strength Drain" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(kit.enemy(ogre.id).status, "dead", JSON.stringify(out.result));
+});
+
+await test("E22 a brown bear Bram conjured, drained by a shadow, bites with its lowered Strength", async () => {
+  const { shade, ogre } = await shadowAndOgre();
+  const encounters = await import("../src/lib/db/encounters.ts");
+  encounters.patchEnemyConditions(shade.id, [], {});
+  const bear = summoned("Brown Bear", "Conjure Animals");
+  kit.place(bear.id, 8, 5);
+  kit.enemyTurn(shade.id);
+  world.dice(19, 3, 3, 4);
+  const touch = await world.invoke("enemy_attack", { enemyId: shade.id, targetCharacterId: bear.id, attack: "Strength Drain" });
+  world.clearDice();
+  assert.equal(touch.ok, true, touch.error);
+  assert.ok(world.sheet(bear.id).conditions.includes("strength reduced (-4)"));
+  // Bite +6 1d8 + 4 as printed, +4 and 1d8 + 2 at Strength 15.
+  kit.place(bear.id, 7, 6);
+  kit.giveTurn(bear.id);
+  world.dice(10, 5);
+  const bite = await world.invoke("pc_attack", { characterId: bear.id, targetEnemyId: ogre.id, weapon: "Bite" });
+  world.clearDice();
+  assert.equal(bite.ok, true, bite.error);
+  assert.equal(bite.result.rolled, 14, JSON.stringify(bite.result));
+  assert.equal(bite.result.damage, 7);
+});
+
+// E23: what a spell on a creature makes it immune to.
+await test("E23 a goblin under Heroism cannot be frightened, one under Mind Blank cannot be charmed", async () => {
+  await kit.endFight();
+  await kit.fight(2, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+  const [brave, guarded] = world.enemies();
+  kit.setEnemy(brave.id, { conditions: ["heroism"], conditionMeta: { heroism: { rounds: 10, spell: "Heroism" } } });
+  kit.setEnemy(guarded.id, { conditions: ["mind blank"], conditionMeta: { "mind blank": { rounds: 14400, spell: "Mind Blank" } } });
+  const fear = await world.invoke("set_enemy_condition", { enemyId: brave.id, condition: "frightened", sourceCharacterId: kara.id });
+  assert.equal(fear.ok, false, "Heroism: immune to being frightened");
+  assert.ok(!kit.enemy(brave.id).conditions.includes("frightened"));
+  const charm = await world.invoke("set_enemy_condition", { enemyId: guarded.id, condition: "charmed", sourceCharacterId: kara.id });
+  assert.equal(charm.ok, false, "Mind Blank: immune to being charmed");
+  assert.ok(!kit.enemy(guarded.id).conditions.includes("charmed"));
+});
+
+await test("E23 a goblin under Freedom of Movement is not paralyzed by a spell, but a giant spider's web still holds it", async () => {
+  await kit.endFight();
+  await kit.fight(2, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+  const [goblin, spider] = world.enemies();
+  const stats = srd("Giant Spider");
+  kit.setEnemy(spider.id, { ac: stats.ac, maxHp: stats.maxHp, stats });
+  kit.setEnemy(goblin.id, { conditions: ["freedom of movement"], conditionMeta: { "freedom of movement": { rounds: 600, spell: "Freedom of Movement" } } });
+  const held = await world.invoke("set_enemy_condition", { enemyId: goblin.id, condition: "paralyzed", sourceCharacterId: kara.id, magical: true });
+  assert.equal(held.ok, false, "magic cannot paralyze it");
+  assert.ok(!kit.enemy(goblin.id).conditions.includes("paralyzed"));
+  kit.place(kara.id, 2, 2);
+  kit.place(goblin.id, 6, 5);
+  kit.place(spider.id, 9, 5);
+  const encounters = await import("../src/lib/db/encounters.ts");
+  encounters.patchEnemyConditions(spider.id, ["charmed"], { charmed: { spell: "Dominate Monster", source: kara.id } });
+  kit.enemyTurn(spider.id);
+  world.dice(19);
+  const web = await world.invoke("enemy_attack", { enemyId: spider.id, targetCharacterId: goblin.id, attack: "Web" });
+  world.clearDice();
+  assert.equal(web.ok, true, web.error);
+  assert.ok(kit.enemy(goblin.id).conditions.includes("restrained"), `the web is no magic: ${JSON.stringify(web.result)}`);
 });
 
 finish();

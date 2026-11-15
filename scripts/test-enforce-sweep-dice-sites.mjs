@@ -536,7 +536,7 @@ const SITES = {
   "lib/dm/hit-dice.ts#spendHitDice": "D hit dice",
   "lib/dm/invoke-roll.ts#handleRequestRoll": "H",
   "lib/dm/item-charges.ts#rechargeAtDawn": "F", "lib/dm/item-charges.ts#spendChargesMath": "H the d20 on an item's last charge",
-  "lib/dm/mount-combat.ts#strikeMount": "F", "lib/dm/natural-onhit.ts#landNaturalOnHit": "D", "lib/dm/npc-agency.ts#advanceNpcAgency": "F",
+  "lib/dm/mount-combat.ts#strikeMount": "F", "lib/dm/natural-onhit.ts#resolveNaturalOnHit": "D", "lib/dm/npc-agency.ts#advanceNpcAgency": "F",
   "lib/dm/object-damage.ts#damageObject": "F the damage the GM names for an object, which no character's roll dealt",
   "lib/dm/opportunity-sides.ts#enemiesStrikeWalker": "F", "lib/dm/opportunity.ts#resolveOpportunityAttacks": "F",
   "lib/dm/opportunity-pets.ts#strikePetsOnWalk": "F",

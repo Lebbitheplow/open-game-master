@@ -191,6 +191,12 @@ export const SERVER_FEATURES = {
   // manacles is struck when several creatures are bound. An older host
   // strips it unread and refuses the blow, so the field stays hidden there.
   manaclesBound: true,
+  // enemy_attack's and pet_attack's `charged`, and pc_attack's for a form's
+  // or summoned creature's Charge or Pounce (the console's "Ran straight at
+  // the target first"): with no board, the run a charge rides. An older
+  // host strips the first two unread and reads pc_attack's for Charger
+  // alone, so the two stay hidden there and pc_attack's reads as Charger's.
+  chargeRuns: true,
   // apply_hazard's `place` (the console hazard form's "Set it on the board"
   // and its square): a named trap set hidden on the board. An older host
   // strips it unread and springs the trap at once, so the fields stay

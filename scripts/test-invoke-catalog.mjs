@@ -812,11 +812,7 @@ const OMITTED_ON_PURPOSE = {
   // improvised action uses, and how far it is (src/lib/dm/improvise.ts); a
   // person running the table knows it.
   take_action: ["mount", "scene", "distanceFt"],
-  // A creature's run before its Charge or Pounce is the board's to measure
-  // (src/lib/dm/enemy-charge.ts); only with no board does the model say it
-  // ran, and a person running a fight with no board rules the charge as
-  // they see it.
-  enemy_attack: ["advantageSource", "targetMount", "charged"],
+  enemy_attack: ["advantageSource", "targetMount"],
   request_roll: ["advantageSource"],
   // What a companion holds to is set by the class and alignment the form
   // does offer; the model alone may replace it, as a list of objects no form
@@ -1323,6 +1319,8 @@ test("the rules audit's new console fields ask for the host", () => {
     ["apply_hazard", "minutes", "frigidWater"],
     ["apply_hazard", "place", "setTraps"],
     ["damage_object", "bound", "manaclesBound"],
+    ["enemy_attack", "charged", "chargeRuns"],
+    ["pet_attack", "charged", "chargeRuns"],
   ]) {
     assert.ok(field(tool, name), `${tool}.${name}`);
     assert.ok(fieldForHost(field(tool, name), () => true), `${tool}.${name} on a host that has it`);
@@ -1330,6 +1328,11 @@ test("the rules audit's new console fields ask for the host", () => {
     assert.ok(read("src/lib/capabilities.ts").match(new RegExp(`^\\s*${flag}: true,$`, "m")), `the server flags ${flag}`);
     assert.match(read("src/lib/use-capabilities.ts"), new RegExp(`features\\?: \\{[^}]*${flag}\\?: boolean`));
   }
+  // pc_attack's run was Charger's alone on an older host, and reads so there.
+  const charged = field("pc_attack", "charged");
+  assert.match(fieldForHost(charged, () => true).help, /Charge or Pounce/);
+  assert.match(fieldForHost(charged, () => false).label, /Charger/);
+  assert.doesNotMatch(fieldForHost(charged, () => false).help, /Pounce/);
   const hazardTypes = (offers) => fieldForHost(field("apply_hazard", "type"), offers).options.map((option) => option.value);
   assert.ok(hazardTypes(() => true).includes("frigid_water"));
   assert.ok(!hazardTypes(() => false).includes("frigid_water"), "an older host is offered no frigid water");

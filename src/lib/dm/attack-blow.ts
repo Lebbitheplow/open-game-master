@@ -38,6 +38,7 @@ import { pushTokenAway } from "@/lib/dm/map-tools";
 import { bulwarkBanish } from "@/lib/dm/mortal-bulwark";
 import { apexAttack, kineticShove } from "@/lib/dm/genre-a-cyberpunk-hits";
 import { landNaturalOnHit } from "@/lib/dm/natural-onhit";
+import { partyChargeAfterHit } from "@/lib/dm/party-charge";
 import { landBlow } from "@/lib/dm/pc-attack-damage";
 import { applyRiderCondition, gainTempHp, riderBarred, stunningStrikeSave } from "@/lib/dm/pc-attack-riders";
 import { getFoe } from "@/lib/dm/sheet-foe";
@@ -349,8 +350,16 @@ function hitExtras(scene: SwingScene, record: AttackRecord, dead: boolean, over:
       out.poison = line;
     }
   }
+  // A form's or a summoned creature's charge (party-charge.ts): spent on this
+  // hit, a kill too; then the save the run forces, its push, and the bonus
+  // attack a pounce opens on a creature left prone.
+  const charged = () =>
+    extras.charge && !over
+      ? partyChargeAfterHit(campaign, scene.turn, { attacker: { kind: "sheet", sheetId: sheet.id, name: sheet.name }, ownerId: sheet.id, pusherId: sheet.id, who: sheet.name, enemyId: enemy.id, trait: extras.charge, bonusCall: "pc_attack weapon" })
+      : [];
   if (over || dead) {
-    return out;
+    const spent = charged();
+    return spent.length ? { ...out, charge: spent } : out;
   }
   if (extras.creature) {
     const lines = landNaturalOnHit(campaign, {
@@ -364,6 +373,10 @@ function hitExtras(scene: SwingScene, record: AttackRecord, dead: boolean, over:
     if (lines.length) {
       out.onHit = lines;
     }
+  }
+  const charge = charged();
+  if (charge.length) {
+    out.charge = charge;
   }
   if (extras.openHand) {
     out.openHand = openHandOnHit(campaign, sheet.id, enemy.id, extras.openHand.choice, extras.openHand.dc);

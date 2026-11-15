@@ -27,6 +27,7 @@ import { isConditionNamed } from "@/lib/srd/feature-names";
 import { swallowCreature } from "@/lib/dm/swallow";
 import { swallowRuleOf } from "@/lib/dm/swallow-logic";
 import { allyCreatureConditionAura } from "@/lib/dm/aura";
+import { drainCreature } from "@/lib/dm/creature-drain";
 
 type Sheets = { sheets: CharacterSheet[]; sheetsById: Map<string, CharacterSheet> };
 
@@ -96,8 +97,9 @@ export function resolveRowOnHit(
     if (!now || now.status !== "alive" || (now.currentHp <= 0 && condition === "prone")) {
       continue;
     }
-    // Its own immunities, and a petrified creature's to poison.
-    if (immuneToCondition(now, condition)) {
+    // Its own immunities, a petrified creature's to poison, and a spell's on
+    // it; a creature's grip or web is no magic (Freedom of Movement).
+    if (immuneToCondition(now, condition, attack.spellAttack === true)) {
       out.riderRefused = `${now.displayName} cannot be ${condition}.`;
       continue;
     }
@@ -142,6 +144,14 @@ export function resolveRowOnHit(
           out.drainHealed = `${attacker.displayName} regains ${healed - self.currentHp} hit points.`;
         }
       }
+    }
+  }
+  // A drained score (a shadow's Strength Drain), as on a character
+  // (enemy-hit.ts): creature-drain.ts.
+  if (rider.scoreDrain && !saved) {
+    const drained = drainCreature(campaign, turn, attacker, targetId, attack.name, rider.scoreDrain);
+    if (drained) {
+      out.scoreDrained = drained;
     }
   }
   // Swallowed whole, as a character is (swallow.ts).

@@ -45,16 +45,22 @@ function typeHolds(enemy: EncounterEnemy, word: string): boolean {
 
 // The rider resolved on the enemy; the lines say what happened.
 export function landNaturalOnHit(campaign: Campaign, hit: NaturalHit): string[] {
+  return resolveNaturalOnHit(campaign, hit).lines;
+}
+
+// The same, and whether the creature saved: null when no save was rolled. A
+// charge's push follows a failed save (party-charge.ts).
+export function resolveNaturalOnHit(campaign: Campaign, hit: NaturalHit): { lines: string[]; saved: boolean | null } {
   const { onHit } = hit;
   const enemy = getEnemy(hit.enemyId);
   if (!enemy || enemy.status !== "alive") {
-    return [];
+    return { lines: [], saved: null };
   }
   const label = hit.attack;
   const lines: string[] = [];
   const spared = onHit.exempt?.find((word) => typeHolds(enemy, word));
   if (spared) {
-    return [`${label}: ${enemy.displayName} is ${spared === "undead" ? "undead" : `a ${spared}`}, which this rider spares (${onHitWords(onHit)}).`];
+    return { lines: [`${label}: ${enemy.displayName} is ${spared === "undead" ? "undead" : `a ${spared}`}, which this rider spares (${onHitWords(onHit)}).`], saved: null };
   }
   let saved = false;
   let failedBy = 0;
@@ -104,7 +110,7 @@ export function landNaturalOnHit(campaign: Campaign, hit: NaturalHit): string[] 
   if (onHit.manual?.length) {
     lines.push(`${label}, for the GM to resolve: ${onHit.manual.join(" ")}`);
   }
-  return lines;
+  return { lines, saved: onHit.save && onHit.dc ? saved : null };
 }
 
 // The conditions a failed save (or a hit with no save) lays: the rider's
@@ -127,9 +133,10 @@ function layConditions(campaign: Campaign, hit: NaturalHit, failedBy: number, to
     (onHit.unconsciousFailBy !== undefined && failedBy >= onHit.unconsciousFailBy) ||
     (onHit.unconsciousAtMost !== undefined && (total === null || total <= onHit.unconsciousAtMost));
   const wanted = [onHit.condition, ...(onHit.alsoCondition ? [onHit.alsoCondition] : []), ...(unconscious ? ["unconscious"] : [])];
-  // Its own immunities, and a petrified creature's to poison.
-  const laid = wanted.filter((name) => !immuneToCondition(fresh, name) && !fresh.conditions.includes(name));
-  const skipped = wanted.filter((name) => immuneToCondition(fresh, name));
+  // Its own immunities, a petrified creature's to poison, and a spell's on
+  // it; a creature's bite or web is no magic (Freedom of Movement).
+  const laid = wanted.filter((name) => !immuneToCondition(fresh, name, false) && !fresh.conditions.includes(name));
+  const skipped = wanted.filter((name) => immuneToCondition(fresh, name, false));
   const meta: ConditionMetaMap = { ...(fresh.conditionMeta as ConditionMetaMap) };
   for (const name of laid) {
     const entry: ConditionMeta = {

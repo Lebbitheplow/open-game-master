@@ -103,7 +103,8 @@ export function springOnEnemy(
   };
   const lay = (condition: string, meta: ConditionMeta): boolean => {
     const enemy = live();
-    if (immuneToCondition(enemy, condition)) {
+    // A mechanical trap's hold is no magic (Freedom of Movement).
+    if (immuneToCondition(enemy, condition, magical)) {
       lines.push(`${enemy.displayName} is immune to ${condition}.`);
       return false;
     }

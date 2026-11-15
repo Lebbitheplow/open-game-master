@@ -59,6 +59,9 @@ import { castFromElsewhere } from "@/lib/dm/cast-origin";
 import { checkAttackSpell } from "@/lib/dm/pc-attack-spell";
 import { attacksAllowedFor, budgetFor } from "@/lib/dm/turn-budget";
 import { ranStraight } from "@/lib/dm/ar-wbf-feat-turn";
+import { partyChargeFor } from "@/lib/dm/party-charge";
+import { sheetBlock, sheetNaturalName, withChargeProfile } from "@/lib/dm/party-charge-logic";
+import type { ChargeTrait } from "@/lib/dm/charge-logic";
 import { textKey } from "@/lib/language/text-logic";
 import { acBreakdownFor } from "@/lib/srd";
 import { foeSlayerBonus } from "@/lib/dm/attack-features";
@@ -180,6 +183,8 @@ export type AttackExtras = {
   reactionAttack: boolean;
   // The holder's own turn, kept for its once-a-turn riders alone.
   turnRiders: TurnBudget | null;
+  // The charge this hit rides (party-charge.ts).
+  charge?: ChargeTrait;
 };
 
 export function planPcAttack(input: {
@@ -497,6 +502,7 @@ export function planPcAttack(input: {
     budget,
     targetId: enemy.id,
     targetSize: enemy.stats.size,
+    targetConditions: enemy.conditions,
     feetFrom: (otherId) => {
       const apart = tilesBetween(encounter.id, otherId, enemy.id);
       return apart === null ? null : apart * 5;
@@ -537,6 +543,15 @@ export function planPcAttack(input: {
     }
   } else if (options.bonusFeat === "Crossbow Expert") {
     featNotes.push("Crossbow Expert: the hand crossbow shot as the bonus action");
+  }
+  // A form's or a summoned creature's Charge, Pounce or Trampling Charge
+  // (party-charge.ts): the run's extra dice on the blow; its save, push and
+  // bonus attack once it lands (attack-blow.ts).
+  const charge = kind === "natural" && !input.reactionAttack
+    ? partyChargeFor({ encounter, budget, block: sheetBlock(sheet), attack: sheetNaturalName(sheet, args.weapon), who: sheet.name, walkerId: sheet.id, enemyId: enemy.id, claimed: args.charged === true })
+    : null;
+  if (charge) {
+    profile = withChargeProfile(profile, charge);
   }
   // A weapon the sheet does not hold is drawn as part of the attack, with
   // the turn's free object interaction (issue #424); a second draw would be
@@ -860,6 +875,7 @@ export function planPcAttack(input: {
       giantKiller,
       reactionAttack: Boolean(input.reactionAttack),
       turnRiders,
+      ...(charge ? { charge } : {}),
       ...(options.featureBonus?.tempHpOnHit ? { tempHp: { amount: options.featureBonus.tempHpOnHit, feature: options.featureBonus.feature } } : {}),
     },
   };
