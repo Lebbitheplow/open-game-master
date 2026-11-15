@@ -857,6 +857,24 @@ export function staleFightFloor(campaignId: string): boolean {
     .get(initiative.encounterId, campaignId);
 }
 
+// A stale fight floor, released to the open table when no fight is on (with
+// one on, its own pointer sets the floor at the next turn). Returns the floor
+// it set, or null when nothing changed.
+export function releaseStaleFightFloor(campaignId: string): Floor | null {
+  if (!staleFightFloor(campaignId)) {
+    return null;
+  }
+  const fightOn = getDatabase()
+    .prepare(`SELECT 1 FROM encounters WHERE campaign_id = ? AND status = 'active' AND kind = 'fight'`)
+    .get(campaignId);
+  if (fightOn) {
+    return null;
+  }
+  const open: Floor = { mode: "open" };
+  setFloor(campaignId, open);
+  return open;
+}
+
 export function setFloor(campaignId: string, floor: Floor) {
   getDatabase()
     .prepare(`UPDATE campaigns SET floor_json = ? WHERE id = ?`)

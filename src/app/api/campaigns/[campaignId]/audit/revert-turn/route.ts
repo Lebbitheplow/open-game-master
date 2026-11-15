@@ -1,8 +1,7 @@
 import { z } from "zod";
 import { isErrorResponse, requireStoryAuthority, seesStorytellerSecrets } from "@/lib/campaign-api";
 import { correctionsField } from "@/lib/correction-reasons";
-import { getCampaignById, setFloor, staleFightFloor } from "@/lib/db/campaigns";
-import { floorAfterRelease } from "@/lib/dm/encounter-tools";
+import { getCampaignById, releaseStaleFightFloor } from "@/lib/db/campaigns";
 import { getDatabase } from "@/lib/db/core";
 import { previewTurnClockRewind, rewindTurnClock } from "@/lib/db/clock";
 import { getDmTurn, markDmTurnReverted } from "@/lib/db/dm-turns";
@@ -179,10 +178,9 @@ export async function POST(
     }
     // A floor left naming a fight that is not on (a table an older revert
     // left so, issue 968) goes to what the table holds now.
-    if (staleFightFloor(campaignId)) {
-      const floor = floorAfterRelease(campaignId);
-      setFloor(campaignId, floor);
-      publishPersisted(campaignId, "floor_changed", { floor });
+    const released = releaseStaleFightFloor(campaignId);
+    if (released) {
+      publishPersisted(campaignId, "floor_changed", { floor: released });
     }
     // The test fight's turn trace reads the turn as taken back from here on.
     markDmTurnReverted(turnId);

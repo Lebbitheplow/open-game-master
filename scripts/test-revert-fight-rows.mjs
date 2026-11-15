@@ -396,8 +396,16 @@ await test("a floor left naming a fight that is not on owns nothing: the lead ca
     assert.equal(fightHoldsFloor(person.campaignId), false, "the lead could not open a table whose fight is over");
     setFloor(person.campaignId, { mode: "hold", next: { mode: "initiative", encounterId: "a-fight-long-over", userIds: [person.owner.id], currentName: "Vex", round: 4 } });
     assert.equal(staleFightFloor(person.campaignId), true);
+    // What a revert does with it: no fight on, the table opens.
+    const { releaseStaleFightFloor } = await import("../src/lib/db/campaigns.ts");
+    const { getActiveEncounter } = await import("../src/lib/db/encounters.ts");
+    if (!getActiveEncounter(person.campaignId)) {
+      assert.deepEqual(releaseStaleFightFloor(person.campaignId), { mode: "open" });
+      assert.deepEqual(getFloor(person.campaignId), { mode: "open" });
+    }
     setFloor(person.campaignId, { mode: "open" });
     assert.equal(staleFightFloor(person.campaignId), false);
+    assert.equal(releaseStaleFightFloor(person.campaignId), null);
   } finally {
     setFloor(person.campaignId, before);
   }
