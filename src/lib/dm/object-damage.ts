@@ -53,6 +53,9 @@ const objectSchema = z.object({
   name: z.string().trim().min(1).max(60).optional(),
   // A sectioned wall's section (src/lib/dm/zone-walls.ts).
   section: z.coerce.number().int().min(1).max(99).optional(),
+  // Manacles: the creature whose set is struck, when several are bound
+  // (manacles.ts manaclesObject).
+  bound: z.string().trim().min(1).max(80).optional(),
   material: z.enum(OBJECT_MATERIALS as [ObjectMaterial, ...ObjectMaterial[]]).optional(),
   size: z.enum(OBJECT_SIZES as [ObjectSize, ...ObjectSize[]]).optional(),
   fragile: z.coerce.boolean().optional(),
@@ -137,7 +140,7 @@ export function damageObject(
   }
   // Manacles are iron with 15 hit points (SRD 5.1); broken, the creature
   // they bind is free (manacles.ts).
-  const shackle = campaign && args.name && !section && !net ? manaclesObject(campaign.id, args.name) : null;
+  const shackle = campaign && args.name && !section && !net ? manaclesObject(campaign.id, args.name, args.bound) : null;
   if (shackle && "error" in shackle) {
     return shackle;
   }

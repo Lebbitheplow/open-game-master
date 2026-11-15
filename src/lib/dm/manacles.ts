@@ -437,11 +437,13 @@ export function enemyManaclesEscape(campaign: Campaign, turn: DmTurn, enemy: Enc
   return { ok: true, action: "escape", ...outcome, note: outcome.success ? outcome.note : `${outcome.note} Its action is spent.` };
 }
 
-// What damage_object's "Manacles" is: the set on the one creature bound in
+// What damage_object's "Manacles" is: the set on the creature `boundRef`
+// names (damage_object's `bound`), else on the one creature bound in
 // manacles (broken, it frees them unharmed), or a set lying loose. Its
-// numbers are the set's either way. Refused when several creatures are
-// bound, since the name cannot say which set.
-export function manaclesObject(campaignId: string, name: string): { bound: Bound | null } | ToolError | null {
+// numbers are the set's either way. With several creatures bound and none
+// named it is refused: the name alone cannot say which set (the prisoners'
+// sets could not be struck at all before `bound`).
+export function manaclesObject(campaignId: string, name: string, boundRef?: string): { bound: Bound | null } | ToolError | null {
   if (!namesManacles({ name })) {
     return null;
   }
@@ -450,8 +452,18 @@ export function manaclesObject(campaignId: string, name: string): { bound: Bound
     ...(encounter ? listEnemies(encounter.id) : []).filter((enemy) => enemy.status === "alive" && manaclesHold(enemy)).map((enemy) => ({ kind: "enemy" as const, enemy })),
     ...listSheets(campaignId).map((stale) => getSheetById(stale.id) ?? stale).filter((entry) => manaclesHold(entry)).map((entry) => ({ kind: "pc" as const, sheet: entry })),
   ];
+  const ref = boundRef?.trim();
+  if (ref) {
+    // By its id or its name, as every target is (enemy-damage.ts, rolls.ts).
+    const sheets = listSheets(campaignId);
+    const named = (encounter ? resolveEnemyRef(encounter.id, ref)?.id : undefined) ?? resolveSheetRef(ref, sheets, new Map(sheets.map((entry) => [entry.id, entry])))?.id;
+    const found = all.find((entry) => boundId(entry) === named);
+    return found
+      ? { bound: found }
+      : { error: `"${ref}" is in no manacles: bound names the creature a set binds (${all.length ? all.map((entry) => `${boundName(entry)}, ${boundId(entry)}`).join("; ") : "none is bound"}). Nothing was rolled.`, retry: true };
+  }
   if (all.length > 1) {
-    return { error: `Manacles bind ${all.map(boundName).join(", ")}; the name cannot say which set. Break one with that creature's take_action escape. Nothing was rolled.`, retry: true };
+    return { error: `Manacles bind ${all.map((entry) => `${boundName(entry)} (${boundId(entry)})`).join(", ")}: send bound with the id of the creature whose set is struck. Nothing was rolled.`, retry: true };
   }
   return { bound: all[0] ?? null };
 }

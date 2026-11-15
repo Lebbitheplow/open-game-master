@@ -732,6 +732,40 @@ await test("N13: an enemy under Freedom of Movement slips a grapple and a net fo
   assert.equal(dodge.ok, true, dodge.error);
 });
 
+// ---- N14: damage_object on one of several sets of manacles ----
+// With two creatures in manacles, damage_object "Manacles" was refused
+// because the name cannot say which set, and no argument could: the
+// prisoners' manacles could not be broken at all.
+
+await test("N14: with two creatures in manacles, damage_object names whose set by the bound creature, and breaking it frees only that one", async () => {
+  const enemy = await trapFight();
+  freshJailer(2);
+  kit.place(jailer.id, 2, 2);
+  kit.place(enemy.id, 3, 2);
+  kit.place(captive.id, 2, 3);
+  kit.giveTurn(jailer.id);
+  kit.setEnemy(enemy.id, { conditions: ["stunned"], conditionMeta: {} });
+  assert.equal((await shackle(enemy.id)).ok, true);
+  kit.giveTurn(jailer.id);
+  const second = await world.invoke("take_action", { characterId: jailer.id, action: "use_object", item: "Manacles", targetCharacterId: captive.id });
+  assert.equal(second.ok, true, second.error);
+  const unnamed = await world.invoke("damage_object", { name: "Manacles", damage: "15", damageType: "bludgeoning" });
+  assert.equal(unnamed.ok, false, JSON.stringify(unnamed));
+  assert.match(unnamed.error, /bound/);
+  // A creature in no manacles is no set's.
+  const wrong = await world.invoke("damage_object", { name: "Manacles", bound: jailer.id, damage: "15", damageType: "bludgeoning" });
+  assert.equal(wrong.ok, false, JSON.stringify(wrong));
+  const snap = await world.invoke("damage_object", { name: "Manacles", bound: captive.id, damage: "15", damageType: "bludgeoning" });
+  assert.equal(snap.ok, true, snap.error);
+  assert.equal(snap.result.broken, true, JSON.stringify(snap.result));
+  assert.equal(manacled(sheet(captive.id)), false);
+  assert.ok(manacled(foe(enemy.id)), "the other set broke too");
+  // The enemy's set keeps its own count: 14 is not yet 15.
+  const dent = await world.invoke("damage_object", { name: "Manacles", bound: enemy.id, damage: "14", damageType: "bludgeoning" });
+  assert.equal(dent.ok, true, dent.error);
+  assert.ok(manacled(foe(enemy.id)));
+});
+
 await kit.endFight();
 world.close();
 finish();
