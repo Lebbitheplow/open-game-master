@@ -34,6 +34,7 @@ import { canEnemyAct } from "@/lib/dm/can-act";
 import { releaseGrapplesHeldByAny } from "@/lib/dm/grapple";
 import { standingOn } from "@/lib/dm/combatant";
 import { leftBehind, swallowCoverError } from "@/lib/dm/swallow";
+import { allyCreatureConditionAura } from "@/lib/dm/aura";
 
 // Encounter tools beyond the core start/damage/attack/end set:
 // reinforcements, enemy flight, enemy conditions, and multi-target AoE.
@@ -285,6 +286,12 @@ function handleEnemyCondition(
     const stone = petrifiedRefusal(enemy.conditions, named);
     if (stone) {
       return { error: `${enemy.displayName} cannot be ${named}: ${stone}.`, refused: "rules" };
+    }
+    // Aura of Courage or Devotion over a creature fighting for the party
+    // (aura.ts), as over a character.
+    const shielded = allyCreatureConditionAura(campaign.id, enemy, named);
+    if (shielded) {
+      return { error: `${enemy.displayName} cannot be ${named}: ${shielded} protects it.`, refused: "rules" };
     }
     // Laid by a creature on the other side of a swallower's wall: it does
     // not land (swallow.ts).

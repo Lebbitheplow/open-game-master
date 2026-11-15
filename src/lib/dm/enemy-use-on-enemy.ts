@@ -3,6 +3,7 @@ import { getEnemy, type EncounterEnemy } from "@/lib/db/encounters";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
 import { wakesOnDamage, type ConditionMeta } from "@/lib/dm/condition-logic";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
+import { allyCreatureConditionAura } from "@/lib/dm/aura";
 import type { EnemyUse } from "@/lib/dm/enemy-casting";
 import { layEnemyConditionInstance } from "@/lib/dm/enemy-condition-lay";
 import { canonicalCondition } from "@/lib/dm/set-condition";
@@ -35,7 +36,9 @@ export function layEnemyUseOnEnemy(
     if (now.status !== "alive") {
       break;
     }
-    if (immuneToCondition(now, name)) {
+    // Its own immunities, and a paladin's Aura of Courage or Devotion over a
+    // creature fighting for the party (aura.ts).
+    if (immuneToCondition(now, name) || allyCreatureConditionAura(campaign.id, now, name)) {
       refused.push(name);
       continue;
     }

@@ -164,7 +164,7 @@ const dismissSchema = z.object({
 
 // A creature the call names that the sheet does not hold: the call's to fix,
 // from the creatures they have.
-function noPet(sheet: CharacterSheet, petName?: string): ToolError {
+export function noPet(sheet: CharacterSheet, petName?: string): ToolError {
   const held = sheet.pets.map((pet) => `${pet.name} (${pet.form})`);
   if (!petName && held.length > 1) {
     return { error: `${sheet.name} has several bound creatures; name one: ${held.join(", ")}.`, retry: true };
@@ -476,52 +476,72 @@ export function handleDamagePet(
   if (!pet) {
     return noPet(sheet, args.petName);
   }
+  return hurtPet(campaign, sheet, pet, { parts: [{ amount: args.amount, type: args.type }], magical: args.magical === true });
+}
+
+// Damage landing on a pet, by type: apply_damage with a petName, and what a
+// pet's own save leaves of an area or a spell (src/lib/dm/pet-save.ts), so
+// both meet the same defenses and the same end at 0 hit points.
+export function hurtPet(
+  campaign: Campaign,
+  owner: CharacterSheet,
+  pet: SheetPet,
+  input: { parts: Array<{ amount: number; type?: string }>; magical: boolean },
+): Record<string, unknown> & { ok: true } {
+  // The record as it stands now: an area lands on several pets of one owner,
+  // and each write must keep the others.
+  const sheet = getSheetById(owner.id) ?? owner;
+  const at = sheet.pets.findIndex((entry) => entry.name === pet.name && entry.kind === pet.kind);
+  const current = at >= 0 ? sheet.pets[at] : pet;
   // The damage meets the pet's own defenses, as a character's meets theirs:
-  // an imp takes no fire, a drake none of its essence.
-  const adjusted = damageAdjust(args.amount, args.type, pet.resist ?? "", pet.immune ?? "", pet.vulnerable ?? "", {
-    magical: args.magical === true,
-  });
-  const dealt = adjusted.amount;
-  const typed = args.type?.trim() ? { type: args.type.trim() } : {};
-  const defended = adjusted.note ? { defenses: `${pet.name} is ${adjusted.note}.` } : {};
-  const hp = Math.max(0, pet.hp - dealt);
+  // an imp takes no fire, a drake none of its essence. Two types are two
+  // shares, each meeting its own (Flame Strike's fire and radiant).
+  const adjusted = input.parts.map((part) =>
+    damageAdjust(part.amount, part.type, current.resist ?? "", current.immune ?? "", current.vulnerable ?? "", { magical: input.magical }),
+  );
+  const dealt = adjusted.reduce((sum, entry) => sum + entry.amount, 0);
+  const types = input.parts.map((part) => part.type?.trim() ?? "").filter(Boolean);
+  const typed = types.length ? { type: types.join(" and ") } : {};
+  const notes = adjusted.map((entry) => entry.note).filter(Boolean);
+  const defended = notes.length ? { defenses: `${current.name} is ${notes.join("; ")}.` } : {};
+  const hp = Math.max(0, current.hp - dealt);
+  const others = sheet.pets.filter((_, index) => index !== at);
   // Drake Companion: it lasts "until it drops to 0 hit points": then it is
   // gone, until the ranger summons it again.
-  if (hp <= 0 && pet.kind === "drake") {
-    patchSheet(sheet.id, { pets: sheet.pets.filter((entry) => entry !== pet) });
+  if (hp <= 0 && current.kind === "drake") {
+    patchSheet(sheet.id, { pets: others });
     publishSheet(campaign, sheet.id);
-    return { ok: true, pet: pet.name, damage: dealt, ...typed, ...defended, vanished: `${pet.name} drops to 0 hit points and is gone. ${sheet.name} can summon it again (summon_pet).` };
+    return { ok: true, pet: current.name, damage: dealt, ...typed, ...defended, vanished: `${current.name} drops to 0 hit points and is gone. ${sheet.name} can summon it again (summon_pet).` };
   }
-  if (hp <= 0 && pet.kind === "familiar") {
+  if (hp <= 0 && current.kind === "familiar") {
     // A familiar at 0 HP vanishes; the spell brings it back later.
-    const pets = sheet.pets.filter((entry) => entry !== pet);
-    patchSheet(sheet.id, { pets });
+    patchSheet(sheet.id, { pets: others });
     publishSheet(campaign, sheet.id);
     return {
       ok: true,
-      pet: pet.name,
+      pet: current.name,
       damage: dealt,
       ...typed,
       ...defended,
-      vanished: `${pet.name} drops and dissolves into shimmering mist. ${sheet.name} can resummon it by casting Find Familiar again (10 gp of incense, one hour).`,
+      vanished: `${current.name} drops and dissolves into shimmering mist. ${sheet.name} can resummon it by casting Find Familiar again (10 gp of incense, one hour).`,
     };
   }
-  const pets = sheet.pets.map((entry) => (entry === pet ? { ...entry, hp } : entry));
+  const pets = sheet.pets.map((entry, index) => (index === at ? { ...entry, hp } : entry));
   patchSheet(sheet.id, { pets });
   publishSheet(campaign, sheet.id);
   // Damage to a pet is the trigger its owner's reaction answers (a drake's
   // resistance, src/lib/dm/last-save.ts).
   if (dealt > 0) {
-    recordTrigger(campaign.id, { kind: "pet_damage", characterId: sheet.id, forcer: { id: sheet.id, name: sheet.name }, petName: pet.name, damage: { amount: dealt, type: args.type?.trim() ?? "" } });
+    recordTrigger(campaign.id, { kind: "pet_damage", characterId: sheet.id, forcer: { id: sheet.id, name: sheet.name }, petName: current.name, damage: { amount: dealt, type: types.join(" and ") } });
   }
   return {
     ok: true,
-    pet: pet.name,
+    pet: current.name,
     damage: dealt,
     ...typed,
     ...defended,
-    hp: `${hp}/${pet.maxHp}`,
-    ...(hp <= 0 ? { down: `${pet.name} falls unconscious at 0 HP.` } : {}),
+    hp: `${hp}/${current.maxHp}`,
+    ...(hp <= 0 ? { down: `${current.name} falls unconscious at 0 HP.` } : {}),
   };
 }
 

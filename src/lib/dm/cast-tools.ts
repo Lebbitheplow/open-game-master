@@ -22,7 +22,8 @@ export const castAtPlayerTool: ToolDef = {
       type: "object",
       additionalProperties: false,
       properties: {
-        characterId: { type: "string", description: "Exact characterId from GAME STATE." },
+        characterId: { type: "string", description: "Exact characterId from GAME STATE (with petName, the owner)." },
+        petName: { type: "string", description: "Their pet makes the save instead: which, by name." },
         source: { type: "string", description: "What forces the save ('the hag's Hold Person')." },
         saveAbility: {
           type: "string",

@@ -92,6 +92,9 @@ export const chargeRuleSchema = z.object({
 export const checkRidersSchema = z.object({
   bonus: int(-5, 5).optional(),
   skillBonus: z.partialRecord(z.enum(SKILL_IDS), int(-10, 10)).optional(),
+  // A Dexterity check to pick a lock, with thieves' tools or without (SRD
+  // 5.1, Gloves of Thievery): src/lib/srd/item-check-riders.ts lockBonus.
+  lockBonus: int(-10, 10).optional(),
   advantage: z.array(z.enum(SKILL_IDS)).max(SKILL_IDS.length).optional(),
 });
 
@@ -146,7 +149,7 @@ export type ItemMagic = {
   weaponRiders?: WeaponRiders;
   armorRiders?: ArmorRiders;
   charges?: ChargeRule;
-  checks?: { bonus?: number; skillBonus?: Partial<Record<(typeof SKILL_IDS)[number], number>>; advantage?: string[] };
+  checks?: { bonus?: number; skillBonus?: Partial<Record<(typeof SKILL_IDS)[number], number>>; lockBonus?: number; advantage?: string[] };
   spells?: ItemSpell[];
   attunedBy?: AttunementRule;
   cursed?: boolean;

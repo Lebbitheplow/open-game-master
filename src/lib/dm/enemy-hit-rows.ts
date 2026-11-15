@@ -26,6 +26,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { swallowCreature } from "@/lib/dm/swallow";
 import { swallowRuleOf } from "@/lib/dm/swallow-logic";
+import { allyCreatureConditionAura } from "@/lib/dm/aura";
 
 type Sheets = { sheets: CharacterSheet[]; sheetsById: Map<string, CharacterSheet> };
 
@@ -98,6 +99,13 @@ export function resolveRowOnHit(
     // Its own immunities, and a petrified creature's to poison.
     if (immuneToCondition(now, condition)) {
       out.riderRefused = `${now.displayName} cannot be ${condition}.`;
+      continue;
+    }
+    // A paladin's Aura of Courage or Devotion over a creature fighting for
+    // the party (aura.ts).
+    const shielded = allyCreatureConditionAura(campaign.id, now, condition);
+    if (shielded) {
+      out.riderRefused = `${shielded} keeps ${condition} off ${now.displayName}.`;
       continue;
     }
     const meta: ConditionMetaMap = {

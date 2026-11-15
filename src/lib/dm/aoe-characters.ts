@@ -1,7 +1,8 @@
 // aoe_damage on the characters an area catches: each rolls their own save
 // from the real sheet (a published dice card), a failure lays the player
 // spell's conditions and its riders, Evasion and Sculpt Spells apply, and the damage rides
-// apply_damage so audit, undo and the death engine all run. Split from
+// apply_damage so audit, undo and the death engine all run; the mount and the
+// pets beside each character make their own saves. Split from
 // aoe-damage.ts, which rolls the blast once and calls this with it.
 
 import { maskKeepsOut } from "@/lib/dm/genre-cc-a-drones";
@@ -29,6 +30,8 @@ import { spellSchoolFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { areaOnMount } from "@/lib/dm/mount-area";
 import { immuneLine, immuneToUse, settleSaveImmunity } from "@/lib/dm/save-immunity";
+import { areaOnPets } from "@/lib/dm/pet-save";
+import { spellAreaShape } from "@/lib/dm/aoe-shape";
 
 export function aoeOnCharacters(input: {
   campaign: Campaign;
@@ -238,6 +241,31 @@ export function aoeOnCharacters(input: {
       row.mount = ridden;
     }
     results.push(row);
+  }
+  // Their pets stand with them (ruling D2), so an area that caught a
+  // character caught their familiar or companion too, each making its own
+  // save (pet-save.ts). Not a spell that names its targets (Chain
+  // Lightning's four): only an area. Every character above left one row, in
+  // order, sculpted and masked ones included: the evoker's choice and the
+  // mask spare the character, not the creature beside them.
+  const area = !input.spell || Boolean(spellAreaShape(input.spell, spellAuthorsFor(campaign)));
+  if (area) {
+    pcTargets.forEach((sheet, index) => {
+      const pets = areaOnPets({
+        campaign,
+        turn,
+        owner: sheet,
+        ability,
+        dc: input.dc,
+        halfOnSave,
+        blast,
+        magical: Boolean(input.spell) || Boolean(enemyUse?.magical),
+        source: (input.reason ?? input.spell ?? enemyUse?.name ?? "the area").slice(0, 120),
+      });
+      if (pets && results[index]) {
+        results[index].pets = pets;
+      }
+    });
   }
   return results;
 }

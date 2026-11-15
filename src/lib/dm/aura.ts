@@ -1,6 +1,7 @@
 import { getCampaignById } from "@/lib/db/campaigns";
 import { sideOf } from "@/lib/dm/combatant";
-import { getActiveEncounter } from "@/lib/db/encounters";
+import { dominatorOf, type CombatantKind } from "@/lib/dm/combat-sides-logic";
+import { getActiveEncounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { listSheets } from "@/lib/db/sheets";
 import { computeSheetDerived } from "@/lib/srd";
@@ -23,6 +24,12 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 // conscious paladin in play covers every fielded ally. Auras of one kind do
 // not stack (the same-effect rule): the best one applies, and a paladin in
 // another's aura keeps the larger of the two, never the sum.
+//
+// "You or a friendly creature" (SRD 5.1): a creature of the fight on the
+// party's side (an enemy row moved there, combat-sides.ts) is one too, and
+// is measured on the board the same way (allyCreatureSaveAura,
+// allyCreatureConditionAura). The party's summons and companions are sheets
+// and are covered as characters.
 
 export type AuraSaveBonus = { bonus: number; note: string };
 
@@ -45,7 +52,7 @@ export function auraRangeFeet(donor: AuraDonor): number {
 function reaches(
   campaignId: string,
   donor: CharacterSheet,
-  target: Pick<CharacterSheet, "id">,
+  target: { id: string },
 ): boolean {
   const encounter = getActiveEncounter(campaignId);
   const map = encounter ? getBattleMapForEncounter(encounter.id) : null;
@@ -66,12 +73,12 @@ function reaches(
 // fielded, not the target itself, and on the target's side of the fight
 // running (src/lib/dm/combatant.ts): a paladin who turned on the party
 // shields the party no longer, and is not shielded by it.
-function donorsFor(campaignId: string, target: Pick<CharacterSheet, "id">): CharacterSheet[] {
+function donorsFor(campaignId: string, target: { id: string; kind?: CombatantKind }): CharacterSheet[] {
   const campaign = getCampaignById(campaignId);
   const sheets = listSheets(campaignId);
   const fielded = campaign ? fieldedSheets(campaign, sheets) : sheets;
   const encounter = getActiveEncounter(campaignId);
-  const side = encounter ? sideOf(encounter, "sheet", target.id) : null;
+  const side = encounter ? sideOf(encounter, target.kind ?? "sheet", target.id) : null;
   return fielded.filter(
     (donor) =>
       donor.id !== target.id &&
@@ -81,10 +88,8 @@ function donorsFor(campaignId: string, target: Pick<CharacterSheet, "id">): Char
   );
 }
 
-export function allySaveAura(
-  campaignId: string,
-  target: Pick<CharacterSheet, "id"> & Partial<CharacterSheet>,
-): AuraSaveBonus | null {
+// The best Aura of Protection reaching this target from another paladin.
+function bestSaveAura(campaignId: string, target: { id: string; kind?: CombatantKind }): (AuraSaveBonus & { raw: number }) | null {
   let best: AuraSaveBonus & { raw: number } | null = null;
   for (const donor of donorsFor(campaignId, target)) {
     const derived = computeSheetDerived(donor);
@@ -103,6 +108,14 @@ export function allySaveAura(
       };
     }
   }
+  return best;
+}
+
+export function allySaveAura(
+  campaignId: string,
+  target: Pick<CharacterSheet, "id"> & Partial<CharacterSheet>,
+): AuraSaveBonus | null {
+  const best = bestSaveAura(campaignId, target);
   if (!best) {
     return null;
   }
@@ -123,11 +136,26 @@ export function allySaveAura(
   return { bonus: extra, note: best.note };
 }
 
+// Aura of Protection over a creature that shares this character's square:
+// their mount (mount-area.ts) or their pet, which stands with them (ruling
+// D2, pet-place.ts). "You or a friendly creature within 10 feet of you"
+// (SRD 5.1): the character's own aura while they are a conscious paladin, or
+// the best of another's that reaches their square, never the sum.
+export function saveAuraBeside(campaignId: string, holder: CharacterSheet): AuraSaveBonus | null {
+  const own = auraGranted(holder) ? defenseRiders({ class: holder.class, level: holder.level, features: holder.features }, computeSheetDerived(holder).abilityMods).saveBonus : 0;
+  const other = allySaveAura(campaignId, holder);
+  const bonus = own + (other?.bonus ?? 0);
+  if (bonus <= 0) {
+    return null;
+  }
+  return { bonus, note: other ? other.note : `${holder.name}'s aura: +${own} on saving throws` };
+}
+
 // The conditions an ally's aura keeps off this character right now (Aura of
 // Courage: frightened; Aura of Devotion: charmed), with whose aura it is.
 export function allyConditionAura(
   campaignId: string,
-  target: Pick<CharacterSheet, "id">,
+  target: { id: string; kind?: CombatantKind },
   condition: string,
 ): string | null {
   const wanted = condition.trim().toLowerCase();
@@ -138,4 +166,35 @@ export function allyConditionAura(
     }
   }
   return null;
+}
+
+// A creature of the fight the aura counts as friendly: on the party's side
+// by its own allegiance. One held there by a domination spell is charmed
+// into serving, not friendly, and the aura would help it throw the spell
+// off; a character fighting as a foe (sheet-foe.ts) saves as the sheet it is.
+function friendlyRow(campaignId: string, enemy: EncounterEnemy): boolean {
+  const encounter = getActiveEncounter(campaignId);
+  if (!encounter || dominatorOf(enemy.conditions, enemy.conditionMeta as Parameters<typeof dominatorOf>[1])) {
+    return false;
+  }
+  return sideOf(encounter, "enemy", enemy.id, enemy) === "party";
+}
+
+// Aura of Protection on a creature of the fight fighting for the party
+// (forced-save.ts rollEnemySave). Before, its saves took its stat block
+// alone beside the paladin.
+export function allyCreatureSaveAura(campaignId: string, enemy: EncounterEnemy): AuraSaveBonus | null {
+  if (!friendlyRow(campaignId, enemy)) {
+    return null;
+  }
+  const best = bestSaveAura(campaignId, { id: enemy.id, kind: "enemy" });
+  return best ? { bonus: best.bonus, note: best.note } : null;
+}
+
+// Aura of Courage (or Devotion) keeping a condition off such a creature:
+// whose aura, or null. Asked where a condition is laid on an enemy row by
+// the GM or by another creature's ability (set_condition, a monster's area
+// or hit, aoe_damage).
+export function allyCreatureConditionAura(campaignId: string, enemy: EncounterEnemy, condition: string): string | null {
+  return friendlyRow(campaignId, enemy) ? allyConditionAura(campaignId, { id: enemy.id, kind: "enemy" }, condition) : null;
 }

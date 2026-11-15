@@ -370,5 +370,136 @@ await test("K10: Gloves of Thievery add +5 to a Dexterity check to pick a lock, 
   assert.equal(pick.total, 10 + 9, `rollCharacterCheck picks the lock with the tools and the gloves: ${JSON.stringify(pick)}`);
 });
 
+// K11. SRD 5.1, Paladin, Aura of Protection: "Whenever you or a friendly
+// creature within 10 feet of you must make a saving throw, the creature
+// gains a bonus to the saving throw equal to your Charisma modifier (with a
+// minimum bonus of +1). You must be conscious to grant this bonus." Aura of
+// Courage: "you and friendly creatures within 10 feet of you can't be
+// frightened while you are conscious." A creature of the fight moved to the
+// party's side (combat-sides.ts) saved on its stat block alone and could be
+// frightened beside the paladin; the party's sheets, summons and companions
+// already had both. A creature the party holds by a domination spell is
+// charmed into serving, not friendly, and is left out.
+await test("K11: a creature fighting on the party's side saves with the paladin's Aura of Protection and is kept from fear by Aura of Courage", async () => {
+  await kit.endFight();
+  const { moveToSide } = await import("../src/lib/dm/combat-sides.ts");
+  const paladin = world.addHero({ class: "paladin", level: 10, maxHp: 80, abilities: { cha: 16 }, features: klass("paladin", "Aura of Protection", "Aura of Courage"), proficiencies: { ...TRAINED } });
+  world.patch(paladin.id, { currentHp: 80 });
+  const [ally, held] = (await kit.fight(2), world.enemies());
+  moveToSide(world.campaign(), ally.id, "party", { quiet: true });
+  kit.place(paladin.id, 3, 3);
+  kit.place(ally.id, 4, 3);
+  kit.place(held.id, 3, 4);
+  const saveOf = async (enemy) => {
+    // The damage's two dice first, then the save's d20.
+    const out = await forced([3, 3, 10], () => world.invoke("aoe_damage", { enemyIds: [enemy.id], saveAbility: "dex", dc: 25, damage: "2d6", damageType: "fire", halfOnSave: true, reason: "a fire trap" }));
+    const caught = out.result?.results?.find((entry) => entry.target === enemy.displayName);
+    assert.ok(caught, `the staging: ${enemy.displayName} saved: ${JSON.stringify(out).slice(0, 400)}`);
+    return { total: caught.save };
+  };
+  const beside = await saveOf(ally);
+  assert.equal(beside.total, 10 + 0 + 3, `the paladin's aura (CHA +3) on the ally's save: ${beside.total}`);
+  kit.place(ally.id, 12, 12);
+  assert.equal((await saveOf(ally)).total, 10, "15 feet off the paladin's aura does not reach");
+  kit.place(ally.id, 4, 3);
+  // A goblin the paladin's side dominates fights for the party but is no friend.
+  kit.setEnemy(held.id, { conditions: ["charmed"], conditionMeta: { charmed: { source: paladin.id, spell: "Dominate Monster", rounds: 10 } } });
+  assert.equal((await saveOf(held)).total, 10, "a dominated creature's save takes no aura");
+  const scared = await world.invoke("set_condition", { enemyId: ally.id, condition: "frightened", rounds: 2 });
+  assert.equal(scared.ok, false, `Aura of Courage keeps fear off the ally: ${JSON.stringify(scared).slice(0, 200)}`);
+  assert.match(String(scared.error), /aura/i);
+  await kit.endFight();
+});
+
+// K12. SRD 5.1, Saving Throws: each creature an effect forces to save rolls
+// its own, from its own block: "the creature" a fireball's sphere catches,
+// not only the characters. A pet stands in its owner's square (ruling D2,
+// pet-place.ts), so an area that catches the owner catches it; Find Familiar
+// keeps "the statistics of the chosen form" (an imp's Magic Resistance:
+// "advantage on saving throws against spells and other magical effects"); the
+// uncommanded companion takes the Dodge ("advantage on Dexterity saving
+// throws"); Aura of Protection covers "a friendly creature within 10 feet".
+// No door rolled a pet's save: the GM sent apply_damage with petName and a
+// number of its own choosing.
+await test("K12: a pet caught in an area or a spell makes its own save from its own block", async () => {
+  await kit.endFight();
+  const ranger = world.addHero({ class: "ranger", subclass: "Beast Master", level: 3, maxHp: 40, abilities: { dex: 10 }, proficiencies: { ...TRAINED } });
+  const paladin = world.addHero({ class: "paladin", level: 6, maxHp: 60, abilities: { cha: 16 }, features: klass("paladin", "Aura of Protection"), proficiencies: { ...TRAINED } });
+  const summoned = await world.invoke("summon_pet", { characterId: ranger.id, kind: "beast_companion", form: "wolf" });
+  assert.equal(summoned.ok, true, summoned.error);
+  const wolf = () => world.sheet(ranger.id).pets[0];
+  assert.equal(wolf().hp, 12, "the staging: a ranger 3's wolf has 12 hit points");
+  await kit.fight(1);
+  kit.place(ranger.id, 3, 3);
+  kit.place(paladin.id, 4, 3);
+  // The blast (4d6: 12), the ranger's own save, then the wolf's: two d20s,
+  // since the companion dodges until commanded.
+  const trap = (faces) => forced(faces, () => world.invoke("aoe_damage", { characterIds: [ranger.id], saveAbility: "dex", dc: 15, damage: "4d6", damageType: "fire", halfOnSave: true, reason: "a fire trap" }));
+  const near = await trap([3, 3, 3, 3, 20, 10, 4]);
+  assert.equal(near.ok, true, near.error);
+  const card = kit.lastRolls(20).find((roll) => /^Wolf: DEX save vs a fire trap/.test(roll.detail ?? ""));
+  assert.ok(card, `the wolf rolls its own save, on a dice card: ${JSON.stringify(near.result).slice(0, 400)}`);
+  const saved = near.result.results[0].pets?.[0];
+  assert.equal(saved?.save, 10 + 2 + 3, `the higher of the two dice, its DEX +2 and the paladin's aura +3: ${JSON.stringify(near.result.results[0])}`);
+  assert.equal(saved.success, true);
+  assert.equal(wolf().hp, 12 - 6, "a made save takes half of the 12");
+  // Fifteen feet off, the aura is gone and the save fails: all of it.
+  kit.place(paladin.id, 12, 12);
+  const far = await trap([3, 3, 3, 3, 20, 10, 4]);
+  assert.equal(far.ok, true, far.error);
+  const failed = far.result.results[0].pets?.[0];
+  assert.equal(failed?.save, 10 + 2, `no aura beyond 10 feet: ${JSON.stringify(far.result.results[0])}`);
+  assert.equal(wolf().hp, 0, "a failed save takes the whole 12");
+  await kit.endFight();
+
+  // An enemy's spell at a familiar: the imp's own CON save with advantage
+  // (Magic Resistance), Shatter's half on a success, and the warlock untouched.
+  const warlock = world.addHero({ class: "warlock", level: 3, maxHp: 30, proficiencies: { ...TRAINED } });
+  world.patch(warlock.id, { currentHp: 30, features: [...world.sheet(warlock.id).features, { name: "Pact of the Chain", source: "class" }] });
+  const bound = await world.invoke("summon_pet", { characterId: warlock.id, kind: "familiar", form: "imp" });
+  assert.equal(bound.ok, true, bound.error);
+  const imp = () => world.sheet(warlock.id).pets[0];
+  const [enemy] = (await kit.fight(1), world.enemies());
+  kit.setEnemy(enemy.id, { stats: { spells: ["Shatter"], abilities: { str: 10, dex: 10, con: 10, int: 14, wis: 10, cha: 10 } } });
+  enemyHoldsTheFloor();
+  // The save's two d20s (3 and 12, CON +1), then Shatter's 3d8 (6).
+  const cast = await forced([3, 12, 2, 2, 2], () => world.invoke("cast_at_player", { characterId: warlock.id, petName: "imp", casterEnemyId: enemy.id, spell: "Shatter", level: 2, saveAbility: "con", dc: 13, damage: "3d8", damageType: "thunder", halfOnSave: true }));
+  assert.equal(cast.ok, true, cast.error);
+  assert.equal(world.sheet(warlock.id).currentHp, 30, `the spell was at the imp, not the warlock: ${JSON.stringify(cast.result).slice(0, 300)}`);
+  assert.equal(cast.result.save, 12 + 1, `the imp keeps the higher die (Magic Resistance): ${JSON.stringify(cast.result)}`);
+  assert.equal(cast.result.saved, true);
+  assert.equal(imp().hp, 10 - 3, "a made save against Shatter takes half of the 6");
+  // A hazard with no creature behind it: the imp's own DEX save, and its
+  // immunity to fire.
+  const flame = await forced([5, 3, 3], () => world.invoke("cast_at_player", { characterId: warlock.id, petName: "imp", saveAbility: "dex", dc: 20, damage: "2d6", damageType: "fire", halfOnSave: true, source: "a jet of flame" }));
+  assert.equal(flame.ok, true, flame.error);
+  assert.equal(flame.result.save, 5 + 3, `the imp's DEX +3: ${JSON.stringify(flame.result)}`);
+  assert.equal(imp().hp, 7, "an imp takes no fire");
+  await kit.endFight();
+
+  // The blocks a pet saves from (pet-save-logic.ts): a drake's own scores
+  // with the ranger's proficiency on DEX and WIS, and a block's Evasion.
+  const logic = await import("../src/lib/dm/pet-save-logic.ts");
+  assert.deepEqual(logic.drakeSaveMods(3), { str: 3, dex: 4, con: 2, int: -1, wis: 5, cha: -1 });
+  assert.equal(logic.petDamageShare({ saved: true, halfOnSave: true, ability: "dex", evasion: true }), "none");
+  assert.equal(logic.petDamageShare({ saved: false, halfOnSave: true, ability: "dex", evasion: true }), "half");
+  assert.equal(logic.petDamageShare({ saved: false, halfOnSave: true, ability: "con", evasion: true }), "full");
+  assert.equal(logic.petDamageShare({ saved: true, halfOnSave: false, ability: "wis", evasion: false }), "none");
+});
+
+// K13. SRD 5.1: Gloves of Thievery, Boots of Elvenkind and Eyes of Minute
+// Seeing are wondrous items that ask no attunement; "a creature can be
+// attuned to no more than three magic items at a time". These three are no
+// row of the magic-item table (their magic rides checks alone), so the
+// attunement rule read them as unknown items and let a character attune
+// them, filling one of the three places.
+await test("K13: an item SRD 5.1 asks no attunement of takes none of the three places", async () => {
+  const { attunementProblem } = await import("../src/lib/srd/magic-items.ts");
+  for (const name of ["Gloves of Thievery", "Boots of Elvenkind", "Eyes of Minute Seeing"]) {
+    assert.match(String(attunementProblem({ name, equipped: true }, [], null)), /needs no attunement/, name);
+  }
+  assert.equal(attunementProblem({ name: "Cloak of Elvenkind", equipped: true }, [], null), null, "the cloak asks attunement, and gets it");
+});
+
 world.close();
 finish();

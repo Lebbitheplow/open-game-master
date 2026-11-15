@@ -296,7 +296,8 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
     category: "combat",
     summary: "An enemy's spell or a trap on one character: the save from their sheet, then the damage or the condition.",
     fields: [
-      { name: "characterId", label: "Target", kind: "character", required: true },
+      { name: "characterId", label: "Target", kind: "character", required: true, help: "With a pet named below, its owner." },
+      { name: "petName", label: "Their pet", kind: "text", help: "The character's pet makes the save instead, by name." },
       { name: "saveAbility", label: "Save", kind: "select", options: ABILITIES, help: "Needed for a hazard (a trap); an enemy's ability or spell brings its own." },
       { name: "dc", label: "Save DC", kind: "number", min: 1, max: 30, help: "Needed with Save for a hazard." },
       { name: "damage", label: "Damage", kind: "dice", placeholder: "2d6", help: "Give damage, a condition, or both." },
