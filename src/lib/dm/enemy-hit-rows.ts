@@ -12,7 +12,7 @@ import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter, getEnemy, patchEnemyConditions, patchEnemyHp, shiftEnemyMaxHp, type EncounterEnemy } from "@/lib/db/encounters";
 import { insertRoll } from "@/lib/db/rolls";
 import type { EnemyAttack } from "@/lib/bestiary/statblock";
-import { asleepOnFailure } from "@/lib/bestiary/attack-text";
+import { asleepOnFailure, riderSpares } from "@/lib/bestiary/attack-text";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import { isValidExpression, rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
@@ -45,6 +45,14 @@ export function resolveRowOnHit(
   }
   if (rider.maxSize && sizeRank(target.stats.size ?? "medium") > sizeRank(rider.maxSize)) {
     return { rider: `${target.displayName} is too large for ${attack.name}'s rider.` };
+  }
+  // "A creature other than an elf or undead" (a ghoul's claws): a zombie it
+  // claws is not paralyzed.
+  // Its type and the subtype in brackets: "undead", "humanoid (elf)".
+  const type = target.stats.type ?? "";
+  const spared = riderSpares(rider, [type.replace(/\s*\(.*$/, ""), ...(/\(([^)]*)\)/.exec(type)?.[1].split(/\s*,\s*/) ?? [])]);
+  if (spared) {
+    return { rider: `${attack.name}'s rider passes over ${target.displayName} (${spared}): its text spares that kind of creature.` };
   }
   const out: Record<string, unknown> = {};
   let saved = false;

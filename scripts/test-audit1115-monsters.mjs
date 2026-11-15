@@ -258,4 +258,38 @@ await test("E05 an Elusive rogue walking off two wolves is struck with no advant
   }
 });
 
+test("E06 a ghoul's claws are read as sparing elves and undead", async () => {
+  const { readAttackText } = await import("../src/lib/bestiary/attack-text.ts");
+  const claws = readAttackText(
+    "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 7 (2d4 + 2) slashing damage. If the target is a creature other than an elf or undead, it must succeed on a DC 10 Constitution saving throw or be paralyzed for 1 minute. The target can repeat the saving throw at the end of each of its turns, ending the effect on itself on a success.",
+  );
+  assert.deepEqual(claws.onHit?.spares, ["elf", "undead"]);
+  assert.equal(claws.onHit?.condition, "paralyzed");
+});
+
+await test("E06 a ghoul's claws paralyze a human who fails the save, and pass over an elf", async () => {
+  const sylvi = world.addHero({ name: "Sylvi", race: "elf", class: "fighter", level: 3, maxHp: 60, abilities: { con: 10 }, proficiencies: TRAINED });
+  await kit.endFight();
+  await kit.fight(1, { heroFaces: { [kara.id]: 19, [bram.id]: 18, [sylvi.id]: 17 } });
+  const [ghoul] = world.enemies();
+  const stats = srd("Ghoul");
+  kit.setEnemy(ghoul.id, { ac: stats.ac, maxHp: stats.maxHp, stats });
+  kit.place(sylvi.id, 5, 5);
+  kit.place(kara.id, 7, 5);
+  kit.place(ghoul.id, 6, 5);
+  kit.place(bram.id, 15, 15);
+  for (const [hero, paralyzed] of [[sylvi, false], [kara, true]]) {
+    kit.freshRound();
+    kit.enemyTurn(ghoul.id);
+    // A hit, 2d4 + 2, and a 1 on the save if one is asked.
+    world.dice(19, 3, 3, 1);
+    const out = await world.invoke("enemy_attack", { enemyId: ghoul.id, targetCharacterId: hero.id, attack: "Claws" });
+    world.clearDice();
+    assert.equal(out.ok, true, out.error);
+    assert.equal(world.sheet(hero.id).conditions.includes("paralyzed"), paralyzed, `${hero.name}: ${JSON.stringify(out.result.swings)}`);
+  }
+  world.patch(kara.id, { conditions: [], conditionMeta: {} });
+  world.patch(sylvi.id, { currentHp: 0, deathSaves: { successes: 0, failures: 3, dead: true } });
+});
+
 finish();
