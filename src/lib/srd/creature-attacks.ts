@@ -241,6 +241,9 @@ function creatureRider(onHit: OnHitRider): CreatureOnHit | undefined {
     ...(onHit.drainMaxHp === "all" ? { drainMaxHp: "all" as const } : {}),
     ...(onHit.unconsciousFailBy ? { unconsciousFailBy: onHit.unconsciousFailBy } : {}),
     ...(onHit.unconsciousAtMost ? { unconsciousAtMost: onHit.unconsciousAtMost } : {}),
+    // The kinds it spares ("a creature other than an elf or undead"): dropped
+    // here, a workshop creature made from a ghoul paralyzed elves.
+    ...(onHit.spares?.length ? { exempt: [...onHit.spares] } : {}),
     ...(manual.length ? { manual: manual.slice(0, 6) } : {}),
   };
   return Object.keys(rider).length ? rider : undefined;

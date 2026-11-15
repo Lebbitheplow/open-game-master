@@ -280,6 +280,18 @@ await test("E06 the bundled table's ghoul keeps its claws' save and spares elves
   assert.equal(claws.onHit?.manual, undefined, JSON.stringify(claws.onHit));
 });
 
+// A creature built in the workshop from a pack's block goes through the
+// other conversion (creatureAttackOf), which dropped the kinds the rider
+// spares: a story pet made from a ghoul paralyzed elves.
+await test("E06 a ghoul's claws copied into a workshop creature still spare elves and undead, and come back the same", async () => {
+  const { SRD_CREATURES } = await import("../src/lib/srd/srd-creatures.ts");
+  const { creatureAttackOf, enemyAttackOf } = await import("../src/lib/srd/creature-attacks.ts");
+  const read = enemyAttackOf(SRD_CREATURES.find((entry) => entry.name === "Ghoul").attacks.find((entry) => entry.name === "Claws"));
+  const copied = creatureAttackOf(read);
+  assert.deepEqual(copied.onHit?.exempt, ["elf", "undead"], JSON.stringify(copied.onHit));
+  assert.deepEqual(enemyAttackOf(copied).onHit?.spares, ["elf", "undead"]);
+});
+
 await test("E06 a ghoul's claws paralyze a human who fails the save, and pass over an elf", async () => {
   const sylvi = world.addHero({ name: "Sylvi", race: "elf", class: "fighter", level: 3, maxHp: 60, abilities: { con: 10 }, proficiencies: TRAINED });
   await kit.endFight();
