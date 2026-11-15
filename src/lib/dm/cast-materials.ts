@@ -20,7 +20,7 @@ import { spellNamesOf, type SpellFacts } from "@/lib/srd/spell-facts";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { COPPER_PER_GOLD, purseCopper } from "@/lib/srd/currency";
 import type { ToolError } from "@/lib/dm/tool-errors";
-import { textKey } from "@/lib/language/text-logic";
+import { findNamed, textKey } from "@/lib/language/text-logic";
 import { hasItemTag } from "@/lib/srd/item-tags";
 import type { ItemTag } from "@/lib/schemas/item-tags";
 import { subclassFocus } from "@/lib/dm/ar-wbf-bard-casting-logic";
@@ -246,7 +246,7 @@ const POUCH_ONLY = new Set(["ranger", "fighter", "rogue", "monk", "barbarian"]);
 // A material with no price needs a component pouch or the caster's focus.
 // The priced parts are the materialPlan's to find; an item's own spell (a
 // scroll, a wand) never asks (cast-guard.ts castFromItem).
-export function focusProblem(sheet: Pick<CharacterSheet, "name" | "class" | "classes" | "equipment"> & Partial<Pick<CharacterSheet, "features" | "feats">>, facts: SpellFacts | null): ToolError | null {
+export function focusProblem(sheet: Pick<CharacterSheet, "name" | "class" | "classes" | "equipment"> & Partial<Pick<CharacterSheet, "features" | "feats" | "spellcasting">>, facts: SpellFacts | null): ToolError | null {
   if (!facts?.material || materialComponents(facts).length) {
     return null;
   }
@@ -274,7 +274,14 @@ export function focusProblem(sheet: Pick<CharacterSheet, "name" | "class" | "cla
       ? null
       : { error: `${facts.name} has a material component${facts.materialText ? ` (${facts.materialText.replace(/\.$/, "")})` : ""}: ${sheet.name}'s focus is their kit and mask (${genre.feature}; a herbalism kit, a healer's kit or the beaked mask on the sheet) or a component pouch, and they carry neither. Add one to the sheet. Nothing was spent.`, refused: "rules" };
   }
-  const classIds = [sheet.class, ...(sheet.classes ?? []).map((entry) => entry.id)].map((id) => (id ?? "").trim().toLowerCase());
+  // The class the spell is cast as, where an entry per class lists it: a
+  // focus serves its own class's spells (SRD 5.1, Druid: "a druidic focus as
+  // a spellcasting focus for your druid spells"). Judged by every class on
+  // the sheet, a ranger and druid's druidic focus stood in for a ranger
+  // spell (audit 2026-11-15, S19). A spell no entry lists (a domain's) is
+  // judged by them all.
+  const owners = (sheet.spellcasting?.casters ?? []).filter((caster) => findNamed([...(caster.known ?? []), ...(caster.prepared ?? []), ...(caster.cantrips ?? []), ...(caster.spellbook ?? [])], facts.name, (name) => [name]));
+  const classIds = (owners.length ? owners.map((caster) => caster.classId) : [sheet.class, ...(sheet.classes ?? []).map((entry) => entry.id)]).map((id) => (id ?? "").trim().toLowerCase());
   const kinds = [...new Set(classIds.flatMap((id) => CLASS_FOCUS[id] ?? []))];
   // A horror caster's own focus (src/lib/srd/genre-gh-horror-focus.ts): the
   // exorcist's holy symbol or ritual kit, the occultist's grimoire, the

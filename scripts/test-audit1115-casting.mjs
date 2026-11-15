@@ -647,5 +647,32 @@ await test("S18: \"5th, 6th, or 7th level, the duration increases to 48 hours\" 
   assert.deepEqual(slotDurationsFromText(printed).at, [[5, 48 * 600], [8, 72 * 600]]);
 });
 
+// ---- S19: a multiclass caster's focus serves its own class's spells ----
+
+// SRD 5.1, Druid: "You can use a druidic focus as a spellcasting focus for
+// your druid spells" (each class's focus the same). On a ranger and druid
+// the focus was judged by the union of the classes, so the druidic focus
+// stood in for a spell learned as a ranger.
+await test("S19: a ranger and druid's druidic focus serves the spell they prepared as a druid, not the one they know as a ranger", async () => {
+  const { focusProblem } = await import("../src/lib/dm/cast-materials.ts");
+  const { spellFactsFor } = await import("../src/lib/content/index.ts");
+  const both = {
+    name: "Wren", class: "ranger",
+    classes: [{ id: "ranger", subclass: "", level: 5 }, { id: "druid", subclass: "", level: 3 }],
+    equipment: [{ name: "Druidic focus (yew wand)", qty: 1, tags: ["druidic_focus"] }],
+    spellcasting: {
+      ability: "wis", slots: {}, known: ["Goodberry"], prepared: ["Longstrider"], cantrips: [],
+      casters: [
+        { classId: "ranger", ability: "wis", known: ["Goodberry"], prepared: [], cantrips: [] },
+        { classId: "druid", ability: "wis", known: [], prepared: ["Longstrider"], cantrips: [] },
+      ],
+    },
+  };
+  assert.equal(focusProblem(both, spellFactsFor("Longstrider")), null, "a druid spell takes the druidic focus");
+  const ranger = focusProblem(both, spellFactsFor("Goodberry"));
+  assert.equal(ranger?.refused, "rules", JSON.stringify(ranger));
+  assert.match(ranger.error, /component pouch/);
+});
+
 closeTables();
 finish();
