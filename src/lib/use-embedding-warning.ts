@@ -13,15 +13,17 @@ import type { TableLanguage } from "@/lib/schemas/game-settings-options";
 // until there is something to say, and it appears without a reload. The server
 // probes each language once, so asking again costs a lookup.
 export function useEmbeddingWarning(languages: readonly TableLanguage[]): EmbeddingWarning | null {
-  const asked = languages.filter((language): language is ProbedLanguage => language !== "english").join(",");
+  // A string, so a new array with the same languages asks nothing again.
+  const asked = JSON.stringify(languages.filter((language): language is ProbedLanguage => language !== "english"));
   const [known, setKnown] = useState<{ asked: string; checks: EmbeddingLanguageCheck[] } | null>(null);
   useEffect(() => {
-    if (asked === "") {
+    const probed = JSON.parse(asked) as ProbedLanguage[];
+    if (probed.length === 0) {
       return;
     }
     let live = true;
     void Promise.all(
-      asked.split(",").map(async (language) => {
+      probed.map(async (language) => {
         const response = await fetch(`/api/embeddings/language?language=${language}`, { cache: "no-store" });
         if (!response.ok) {
           throw new Error(`The embedding language check failed (${response.status}).`);

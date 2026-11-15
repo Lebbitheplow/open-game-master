@@ -13,7 +13,7 @@ export type EmbeddingWarning = { title: string; body: string; languages: ProbedL
 // "Italian", "Italian or French", "Italian, French or German".
 function anyOf(languages: readonly ProbedLanguage[]): string {
   const names = languages.map((language) => TABLE_LANGUAGE_NAMES[language].english);
-  return names.length > 1 ? `${names.slice(0, -1).join(", ")} or ${names[names.length - 1]}` : names[0];
+  return [names.slice(0, -1).join(", "), names.slice(-1).join("")].filter(Boolean).join(" or ");
 }
 
 // One warning for every language checked (one under a picker, each campaign's
