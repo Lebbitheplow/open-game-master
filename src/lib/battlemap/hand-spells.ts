@@ -16,6 +16,7 @@ import { RACIAL_COUNTER_PREFIX } from "@/lib/srd/racial-grants";
 import { breathChoices } from "@/lib/battlemap/mt-mr-hand";
 import { grantUses } from "@/lib/srd/granted-casts";
 import { computeSheetDerived, spellAttackFor, spellSaveDcFor } from "@/lib/srd";
+import { formulaMods } from "@/lib/srd/proficiency";
 import { counterSpendCards, pickLabel, playedAsSpendCard } from "@/lib/battlemap/hand-subclass";
 import { authoredSpendFor, gateHolds } from "@/lib/srd/authored-effects";
 import { nameChoice } from "@/lib/srd/feature-names";
@@ -304,7 +305,7 @@ export function spellCard(sheet: CharacterSheet, turn: HandTurn, riders: CombatR
     // The modifier and what the caster's features add, as the heal tool
     // rolls them (heal-bonus.ts): an item's spell heals with the modifier its
     // own DC implies, a ring's with its first caster's.
-    const added = healAdditions(sheet, castLevel ?? fact.level, derived.abilityMods);
+    const added = healAdditions(sheet, castLevel ?? fact.level, formulaMods(derived));
     const modifier = healModifier({
       dc: stored ? stored.entry.saveDc ?? null : spellSaveDcFor(sheet, name),
       proficiencyBonus: derived.proficiencyBonus,
@@ -665,6 +666,9 @@ function counterPick(def: ResourceDef, sheet: CharacterSheet): HandChoice | null
 
 export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] {
   const derived = computeSheetDerived(sheet);
+  // The card's dice read the character's proficiency bonus as the spend
+  // does (resource-tools.ts): Healing Hands' d4s, a Chef's treat.
+  const fxMods = formulaMods(derived);
   const cards: HandCard[] = [];
   // An at-will feature (One with Shadows) has no counter on the sheet: its
   // card comes from the feature held, and reads no uses.
@@ -715,7 +719,7 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
     let condition = "";
     let damageType = "";
     if (effect.kind === "heal_self" || effect.kind === "heal_target") {
-      damage = effect.dice(level, derived.abilityMods);
+      damage = effect.dice(level, fxMods);
       dice = `heals ${damage}`;
       type = "mend";
       heals = true;
@@ -728,7 +732,7 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
       // How much of the pool to spend is the player's call, so they finish the line.
       compose = true;
     } else if (effect.kind === "temp_hp") {
-      damage = effect.dice(level, derived.abilityMods);
+      damage = effect.dice(level, fxMods);
       dice = `${damage} temp hp`;
       type = "ward";
       target = "self";
@@ -754,7 +758,7 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
       type = "spell";
       target = "enemy";
     } else if (effect.kind === "enemy_save") {
-      damage = effect.dice ? effect.dice(level, derived.abilityMods) : null;
+      damage = effect.dice ? effect.dice(level, fxMods) : null;
       damageType = effect.type ?? "";
       save = { ability: SAVE_LABEL[effect.save] ?? effect.save, dc: counterSaveDc(effect.dcAbility, derived, Math.max(...Object.values(derived.abilityMods))) };
       dice = damage ? `${damage}${damageType ? ` ${damageType}` : ""}, ${save.ability} save` : `${save.ability} save`;
@@ -765,7 +769,7 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
       dice = `${effect.feet} ft`;
     } else if (effect.kind === "hit_damage") {
       // Fury of the Small: onto the creature the hit landed on.
-      damage = effect.dice(level, derived.abilityMods);
+      damage = effect.dice(level, fxMods);
       dice = `+${damage}`;
       target = "enemy";
     }

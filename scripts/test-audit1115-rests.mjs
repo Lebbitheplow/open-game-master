@@ -742,4 +742,83 @@ await test("R17 a once-an-hour or once-a-day item use waits its hours on the clo
   assert.ok(!table.sheet(hero.id).equipment.some((item) => item.name === "Deck of Illusions"), "the last card thrown, the deck is used up");
 });
 
+await test("R18 \"prof\" in a feature's own formula reads the character's proficiency bonus: the total level's, and an Ioun Stone of Mastery's", async () => {
+  // SRD 5.1, Multiclassing: "Your proficiency bonus is always based on your
+  // total character level, not your level in a particular class"; Ioun
+  // Stone, Mastery: "Your proficiency bonus increases by 1". The formula
+  // readers took the bonus from the level their door passed: a subclass
+  // feature's class level, and never the stone.
+  const { combatRiders } = await import("../src/lib/srd/feature-effects.ts");
+  const { resolveFormula } = await import("../src/lib/srd/authored-effects.ts");
+  const { resolveDiceFormula } = await import("../src/lib/srd/class-resources.ts");
+  const stone = { name: "Ioun Stone of Mastery", qty: 1, equipped: true, attuned: true };
+  // Genie's Wrath: "extra damage equal to your proficiency bonus". A warlock
+  // 1 / fighter 4 is 5th level, proficiency +3.
+  const genie = (extra = {}) => ({
+    class: "warlock", level: 5, classes: [{ id: "warlock", level: 1 }, { id: "fighter", level: 4 }],
+    features: [{ name: "Genie's Vessel (Efreeti)", classId: "warlock" }], ...extra,
+  });
+  const wrath = (sheet) => combatRiders(sheet).damageRiders.find((rider) => rider.type === "fire")?.dice;
+  assert.equal(wrath(genie()), "3", "Genie's Wrath adds the character's +3, not the warlock level's +2");
+  assert.equal(wrath(genie({ equipment: [stone] })), "4", "and the stone's +1");
+  // A "level" in the same formula stays the class's: the readers keep it.
+  assert.equal(resolveFormula("level+prof", 1, { prof: 3 }), "1+3");
+  assert.equal(resolveDiceFormula("profd4+level", 1, { prof: 4 }), "4d4+1");
+
+  const table = await openTable();
+  const use = (who, resource, extra = {}) => table.invoke("use_resource", { characterId: who.id, resource, ...extra });
+  // Healing Hands: "a number of d4s equal to your proficiency bonus". A 5th
+  // level aasimar with the stone rolls four.
+  const healer = table.addHero({ class: "fighter", level: 5, maxHp: 40, race: "aasimar", equipment: [stone] });
+  const friend = table.addHero({ class: "fighter", level: 5, maxHp: 40 });
+  table.patch(friend.id, { currentHp: 10 });
+  table.dice(1, 2, 3, 4);
+  const healed = await use(healer, "Healing Hands", { targetCharacterId: friend.id });
+  table.clearDice();
+  assert.equal(healed.ok, true, healed.error);
+  assert.equal(table.sheet(friend.id).currentHp, 10 + 1 + 2 + 3 + 4, "four d4s");
+  // Chef: "temporary hit points equal to your proficiency bonus".
+  const cook = table.addHero({ class: "fighter", level: 5, maxHp: 40, feats: ["Chef"], equipment: [stone] });
+  assert.equal(table.sheet(cook.id).resources.chef_treats?.max, 4);
+  const treat = await use(cook, "Chef's Treats");
+  assert.equal(treat.ok, true, treat.error);
+  assert.equal(table.sheet(cook.id).tempHp, 4, "a treat gives the cook's +4");
+  // Emboldening Bond: "a number of willing creatures ... (this can include
+  // yourself) equal to your proficiency bonus". A cleric 1 / fighter 4 is
+  // +3: the cleric and two others, where the cleric level's +2 took one.
+  const peace = table.addHero({
+    class: "cleric", level: 5, maxHp: 40, classes: [{ id: "cleric", level: 1, subclass: "Peace Domain" }, { id: "fighter", level: 4, subclass: "" }],
+    features: [{ name: "Emboldening Bond", classId: "cleric", source: "class" }],
+  });
+  const bonded = () => table.sheets().filter((sheet) => (table.sheet(sheet.id).conditions ?? []).includes("emboldening bond")).length;
+  const bond = await use(peace, "Emboldening Bond");
+  assert.equal(bond.ok, true, bond.error);
+  assert.equal(bonded(), 3, "the cleric and two others");
+});
+
+await test("R19 a buff's temporary hit points read the level of the class that grants it on a multiclass sheet", async () => {
+  // Fighting Spirit (Samurai): "5 temporary hit points ... 10 at 10th level
+  // and 15 at 15th level" of the fighter; Form of Dread (Undead): "1d10 +
+  // your warlock level". The spend read the character's total level, so a
+  // fighter 3 / wizard 7 took 10 and a warlock 3 / fighter 5 added 8.
+  const table = await openTable();
+  const use = (who, resource) => table.invoke("use_resource", { characterId: who.id, resource });
+  const samurai = table.addHero({
+    class: "fighter", level: 10, maxHp: 60, classes: [{ id: "fighter", level: 3, subclass: "Samurai" }, { id: "wizard", level: 7, subclass: "" }],
+    features: [{ name: "Fighting Spirit", classId: "fighter", source: "class" }],
+  });
+  const spirit = await use(samurai, "Fighting Spirit");
+  assert.equal(spirit.ok, true, spirit.error);
+  assert.equal(table.sheet(samurai.id).tempHp, 5, "fighter 3: 5 temporary hit points");
+  const dread = table.addHero({
+    class: "warlock", level: 8, maxHp: 60, classes: [{ id: "warlock", level: 3, subclass: "The Undead" }, { id: "fighter", level: 5, subclass: "" }],
+    features: [{ name: "Form of Dread", classId: "warlock", source: "class" }],
+  });
+  table.dice(4);
+  const formed = await use(dread, "Form of Dread");
+  table.clearDice();
+  assert.equal(formed.ok, true, formed.error);
+  assert.equal(table.sheet(dread.id).tempHp, 4 + 3, "1d10 + warlock level 3");
+});
+
 finish();

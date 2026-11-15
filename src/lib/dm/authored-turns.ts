@@ -12,6 +12,7 @@ import { getActiveEncounter, getEnemy, type Encounter } from "@/lib/db/encounter
 import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { computeSheetDerived } from "@/lib/srd";
+import { formulaMods } from "@/lib/srd/proficiency";
 import { activeAuthored, resolveFormula } from "@/lib/srd/authored-effects";
 import { effectiveMaxHp, incapacitatedBy, removeConditionInstances, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { hurtEnemy } from "@/lib/dm/spell-aura";
@@ -35,8 +36,10 @@ function fielded(campaignId: string): CharacterSheet[] {
     .filter((sheet) => !sheet.deathSaves?.dead && sheet.currentHp > 0);
 }
 
+// The modifiers and the character's proficiency bonus a feature's formula
+// reads (srd/proficiency.ts formulaMods).
 function modsOf(sheet: CharacterSheet): Record<string, number> {
-  return computeSheetDerived(sheet).abilityMods;
+  return formulaMods(computeSheetDerived(sheet));
 }
 
 function reach(range: number | Array<[number, number]>, level: number): number {

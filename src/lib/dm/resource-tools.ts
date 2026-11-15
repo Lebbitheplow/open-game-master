@@ -9,6 +9,7 @@ import { breakConcentration, droppedLine, setConcentration } from "@/lib/dm/conc
 import { aoeSpendFor } from "@/lib/srd/aoe-spend";
 import { diceFor as healingOn, rollOwnDice } from "@/lib/dm/character-roll";
 import { computeSheetDerived } from "@/lib/srd";
+import { formulaMods } from "@/lib/srd/proficiency";
 import { ELEMENTAL_WILD_SHAPE_COST, elementalWildShape, wildShapeUse, type WildShapeAsk } from "@/lib/dm/wild-shape-use";
 import { RAGE_FIRST, withoutRageFirst } from "@/lib/dm/mt-srd-barbarian";
 import { targetReachProblem } from "@/lib/dm/mt-srd-reach";
@@ -665,10 +666,14 @@ export function computeUseResource(
   // Multiclass: an effect's level-scaled dice read the owning class's level
   // (Second Wind heals 1d10 + FIGHTER level), not the summed character level.
   const fxLevel = resourceLevel(def, sheet);
+  // What the effect's formula reads besides that level: the modifiers and
+  // the character's proficiency bonus ("prof", "profd4": Healing Hands,
+  // Chef), from the total level and worn magic, not the class level's.
+  const fxMods = formulaMods(derived);
   switch (def.effect.kind) {
     case "heal_self": {
       // "halfmax": half the character's hit point maximum (Unearthly Recovery).
-      const expression = def.effect.dice(fxLevel, derived.abilityMods).replace(/\bhalfmax\b/g, String(Math.floor(effectiveMaxHp(sheet) / 2)));
+      const expression = def.effect.dice(fxLevel, fxMods).replace(/\bhalfmax\b/g, String(Math.floor(effectiveMaxHp(sheet) / 2)));
       const total = rollHealing(campaign, sheet, def.displayName, expression);
       outcome.healTarget = { characterId: sheet.id, amount: Math.max(1, total) };
       outcome.result.healingRolled = total;
@@ -721,7 +726,7 @@ export function computeUseResource(
       }
       // Perfected Formula: each healing die counts as at least half its faces
       // (genre-a-cyberpunk-programs.ts healDiceFloor).
-      const expression = healDiceFloor(sheet, def.effect.dice(fxLevel, derived.abilityMods));
+      const expression = healDiceFloor(sheet, def.effect.dice(fxLevel, fxMods));
       const total = rollHealing(campaign, sheet, healingOn(def.displayName, sheet, target), expression);
       outcome.healTarget = { characterId: target.id, amount: Math.max(1, total) };
       outcome.result.healingRolled = total;
@@ -744,7 +749,7 @@ export function computeUseResource(
       if (spoiled) {
         return spoiled;
       }
-      const expression = def.effect.dice(fxLevel, derived.abilityMods);
+      const expression = def.effect.dice(fxLevel, fxMods);
       const total = Math.max(
         1,
         rollHealing(campaign, sheet, healingOn(`${def.displayName} (temporary HP)`, sheet, target), expression),
@@ -803,7 +808,11 @@ export function computeUseResource(
             campaign,
             sheet,
             healingOn(`${def.displayName} (temporary HP)`, sheet, recipient),
-            effect.tempHp(sheet.level, derived.abilityMods),
+            // At the granting class's level, as the effect's other dice
+            // are: Fighting Spirit's 5 / 10 / 15 are fighter levels and
+            // Form of Dread adds the warlock level (a fighter 3 / wizard 7
+            // took 10, a warlock 3 / fighter 5 added 8).
+            effect.tempHp(fxLevel, fxMods),
           ),
         );
         if (rolled > recipient.tempHp) {
@@ -841,14 +850,14 @@ export function computeUseResource(
       const saved = rollCounterSave(campaign, sheet, def, {
         save: effect.save,
         dc: counterSaveDc(effect.dcAbility, derived, Math.max(...Object.values(derived.abilityMods))),
-        dice: effect.dice ? effect.dice(fxLevel, derived.abilityMods) : null,
+        dice: effect.dice ? effect.dice(fxLevel, fxMods) : null,
         condition: effect.condition,
       }, variant, aim);
       return "error" in saved ? saved : { ...outcome, result: { ...outcome.result, ...saved.result } };
     }
     case "hit_damage": {
       // Fury of the Small: rolled here onto the creature hit, after the hit.
-      const hit = resolveCounterHit(campaign, sheet, { name: def.displayName, dice: def.effect.dice(fxLevel, derived.abilityMods), larger: def.effect.larger, holderSize: sheetSize(sheet) }, aim ?? {});
+      const hit = resolveCounterHit(campaign, sheet, { name: def.displayName, dice: def.effect.dice(fxLevel, fxMods), larger: def.effect.larger, holderSize: sheetSize(sheet) }, aim ?? {});
       return "error" in hit ? hit : { ...outcome, result: { ...outcome.result, ...hit.result } };
     }
     case "teleport": {
