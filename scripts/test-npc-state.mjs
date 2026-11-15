@@ -327,5 +327,12 @@ await test("a capture the prose shows with no npc_state sends the narrator back 
   assert.match(lastNarration.content, /lo lega al carro/);
 });
 
+await test("taken along with the party, a character left on the record elsewhere joins the party's place at once", () => {
+  upsertCurrentLocation({ campaignId: world.campaignId, name: "the crossroads" });
+  upsertNpc({ campaignId: world.campaignId, name: "Left at the mill", location: "the mill" });
+  assert.equal(state({ name: "Left at the mill", custody: "captive", heldBy: "Brakk", withParty: true }).ok, true);
+  assert.equal(placeOf("Left at the mill"), "the crossroads");
+});
+
 model.close();
 finish();
