@@ -302,5 +302,22 @@ await test("N08: an Amulet of Health's Constitution 19 is seven days without foo
   assert.equal(day.exhaustion, 0);
 });
 
+// ---- N09: the Javelin of Lightning's power says what a save does ----
+// SRD 5.1, Javelin of Lightning: "Each creature in the line excluding you
+// and the target must make a DC 13 Dexterity saving throw, taking 4d6
+// lightning damage on a failed save, and half as much damage on a
+// successful one." The power use_item hands the GM read "DC 13 Dexterity
+// save or 4d6 lightning", so a save was resolved as no damage.
+
+await test("N09: the Javelin of Lightning's power tells the GM a made save still takes half", async () => {
+  const thrower = world.addHero({ user: world.owner, class: "fighter", level: 5, maxHp: 44 });
+  world.patch(thrower.id, { equipment: [{ name: "Javelin of Lightning", qty: 1 }] });
+  const out = await world.invoke("use_item", { characterId: thrower.id, item: "Javelin of Lightning" });
+  assert.equal(out.ok, true, out.error);
+  const power = String(out.result.power ?? "");
+  assert.match(power, /DC 13 Dexterity/);
+  assert.match(power, /half/, power);
+});
+
 world.close();
 finish();

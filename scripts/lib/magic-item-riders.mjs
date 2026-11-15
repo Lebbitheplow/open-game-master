@@ -111,7 +111,11 @@ export const DAILY_POWERS = {
   "cape of the mountebank": "the dimension door spell, leaving a cloud of smoke behind and arriving in another",
   "dagger of venom": "the blade drips poison: the next hit forces a DC 15 Constitution save or 2d10 poison and poisoned for 1 minute",
   "dragon scale mail": "sense the nearest dragon of its kind within 30 miles",
-  "javelin of lightning": "a 5-foot line of lightning to a target within 120 feet: DC 13 Dexterity save or 4d6 lightning, and the target takes 4d6 lightning on a hit",
+  // "Each creature in the line excluding you and the target must make a DC
+  // 13 Dexterity saving throw, taking 4d6 lightning damage on a failed save,
+  // and half as much damage on a successful one." The line once read "DC 13
+  // Dexterity save or 4d6 lightning", and a save was resolved as no damage.
+  "javelin of lightning": "a 5-foot-wide line of lightning to a target within 120 feet: every other creature in it makes a DC 13 Dexterity save, 4d6 lightning on a failure and half on a success; then a ranged attack with the javelin, and a hit deals 4d6 lightning beside its own damage",
   "plate armor of etherealness": "the etherealness spell for 10 minutes",
 };
 
