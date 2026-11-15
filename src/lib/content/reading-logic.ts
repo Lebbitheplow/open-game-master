@@ -85,7 +85,9 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 //      at 0 and the rest that ends it ("the target's Strength score is
 //      reduced by 1d4", a shadow's Strength Drain), and what holds a target
 //      it restrains, the check that breaks it and its numbers as an object
-//      (a giant spider's webbing; rules audit 2026-11-15, monsters).
+//      (a giant spider's webbing), and the kinds a shared 24-hour immunity
+//      covers ("the Dreadful Glare of all mummies (but not mummy lords)";
+//      rules audit 2026-11-15, monsters).
 export const READER_REVISION = 15;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";

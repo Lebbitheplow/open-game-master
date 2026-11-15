@@ -20,14 +20,36 @@ export function saveImmunityMark(abilityName: string): string {
   return `immune to ${textKey(abilityName)}`;
 }
 
-// Whether this character is immune to this creature's use now.
+// A mark shared by a kind of creature ("the Dreadful Glare of all mummies
+// (but not mummy lords)", SRD 5.1) keeps the kinds it covers and those it
+// sets apart in its instance's `sources`, as these keys.
+const KIND = "kind:";
+const NOT = "not:";
+
+// The kind among `kinds` this creature is, by its block's slug or its name
+// as whole words, the longest that fits ("mummy lord" before "mummy"), or null.
+function kindOf(enemy: { slug: string; displayName: string }, kinds: string[]): string | null {
+  const said = [` ${textKey(enemy.slug.replace(/[-_]+/g, " "))} `, ` ${textKey(enemy.displayName)} `];
+  return [...kinds].sort((a, b) => b.length - a.length).find((kind) => said.some((words) => words.includes(` ${textKey(kind)} `))) ?? null;
+}
+
+// Whether this character is immune to this creature's use now: a mark from
+// the creature itself, or a shared one whose kinds take it in.
 export function immuneToUse(sheet: { conditions: string[]; conditionMeta?: unknown }, use: Pick<EnemyUse, "enemy" | "name" | "immuneAfter">): boolean {
   if (!use.immuneAfter) {
     return false;
   }
   const mark = saveImmunityMark(use.name);
   const held = sheet.conditions.find((entry) => textKey(entry) === mark);
-  return Boolean(held) && instancesOf((sheet.conditionMeta as ConditionMetaMap | undefined)?.[held as string]).some((entry) => entry.source === use.enemy.id);
+  return Boolean(held) && instancesOf((sheet.conditionMeta as ConditionMetaMap | undefined)?.[held as string]).some((entry) => {
+    if (entry.source === use.enemy.id) {
+      return true;
+    }
+    const covered = (entry.sources ?? []).filter((key) => key.startsWith(KIND)).map((key) => key.slice(KIND.length));
+    const apart = (entry.sources ?? []).filter((key) => key.startsWith(NOT)).map((key) => key.slice(NOT.length));
+    const kind = covered.length ? kindOf(use.enemy, [...covered, ...apart]) : null;
+    return kind !== null && covered.includes(kind) && !apart.includes(kind);
+  });
 }
 
 export function immuneLine(name: string, use: Pick<EnemyUse, "enemy" | "name">): string {
@@ -46,9 +68,11 @@ export function settleSaveImmunity(campaignId: string, sheetId: string, use: Pic
   if (!sheet || immuneToUse(sheet, use)) {
     return false;
   }
+  const shared = [...(use.immuneAfter.kinds ?? []).map((kind) => `${KIND}${kind}`), ...(use.immuneAfter.except ?? []).map((kind) => `${NOT}${kind}`)];
   const laid = addConditionInstance(sheet.conditions, sheet.conditionMeta as ConditionMetaMap, saveImmunityMark(use.name), {
     source: use.enemy.id,
     rounds: use.immuneAfter.rounds,
+    ...(shared.length ? { sources: shared.slice(0, 20) } : {}),
   });
   const updated = patchSheet(sheet.id, { conditions: laid.conditions, conditionMeta: laid.meta });
   if (updated) {

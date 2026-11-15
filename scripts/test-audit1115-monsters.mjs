@@ -780,4 +780,50 @@ await test("E16 an owl familiar's Flyby keeps it clear of the same swing", async
   assert.equal(pet?.hp, 1);
 });
 
+await test("E17 a Dreadful Glare's immunity is read for the kinds it covers: all mummies but not mummy lords, or mummies and mummy lords both", () => {
+  const glare = (text) => parseSaveEffect(text).immuneAfter;
+  assert.deepEqual(glare("If the target can see the mummy, it must succeed on a DC 11 Wisdom saving throw against this magic or become frightened until the end of the mummy's next turn. A target that succeeds on the saving throw is immune to the Dreadful Glare of all mummies (but not mummy lords) for the next 24 hours."), { rounds: 14400, onEnd: false, kinds: ["mummy"], except: ["mummy lord"] });
+  assert.deepEqual(glare("If the target can see the mummy lord, it must succeed on a DC 16 Wisdom saving throw against this magic or become frightened until the end of the mummy's next turn. A target that succeeds on the saving throw is immune to the Dreadful Glare of all mummies and mummy lords for the next 24 hours."), { rounds: 14400, onEnd: false, kinds: ["mummy", "mummy lord"] });
+  // Every other block's is its own creature's (E01).
+  assert.equal(glare("must succeed on a DC 19 Wisdom saving throw or become frightened for 1 minute. If a creature's saving throw is successful or the effect ends for it, the creature is immune to the dragon's Frightful Presence for the next 24 hours.").kinds, undefined);
+});
+
+await test("E17 a hero who withstands one mummy's glare is immune to every mummy's, not a mummy lord's; withstanding the lord's covers mummies too", async () => {
+  const { getDatabase } = await import("../src/lib/db/core.ts");
+  await kit.endFight();
+  await kit.fight(3, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+  const [first, second, lord] = world.enemies();
+  for (const [foe, title, slug] of [[first, "Mummy", "mummy"], [second, "Mummy", "mummy"], [lord, "Mummy Lord", "mummy-lord"]]) {
+    const stats = srd(title);
+    kit.setEnemy(foe.id, { ac: stats.ac, maxHp: stats.maxHp, stats });
+    getDatabase().prepare("UPDATE encounter_enemies SET slug = ? WHERE id = ?").run(slug, foe.id);
+  }
+  kit.place(kara.id, 5, 5);
+  kit.place(bram.id, 5, 7);
+  kit.place(first.id, 7, 5);
+  kit.place(second.id, 7, 6);
+  kit.place(lord.id, 8, 8);
+  const glare = async (foe, hero, face) => {
+    kit.freshRound();
+    kit.enemyTurn(foe.id);
+    world.dice(face);
+    const out = await world.invoke("cast_at_player", { casterEnemyId: foe.id, enemyAbility: "Dreadful Glare", characterId: hero.id });
+    world.clearDice();
+    return out;
+  };
+  const withstood = await glare(first, kara, 20);
+  assert.equal(withstood.ok, true, withstood.error);
+  const again = await glare(second, kara, 1);
+  assert.equal(again.ok, false, "another mummy's glare: immune");
+  assert.match(String(again.error), /immune/);
+  const lords = await glare(lord, kara, 20);
+  assert.equal(lords.ok, true, "the mummy's immunity is not to a mummy lord's glare");
+  // Bram withstands the lord's: no mummy's glare reaches him now.
+  world.patch(kara.id, { conditions: [], conditionMeta: {} });
+  const lordOnBram = await glare(lord, bram, 20);
+  assert.equal(lordOnBram.ok, true, lordOnBram.error);
+  const mummyOnBram = await glare(first, bram, 1);
+  assert.equal(mummyOnBram.ok, false, "the lord's covers all mummies");
+});
+
 finish();

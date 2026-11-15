@@ -3,7 +3,7 @@ import { getActiveEncounter, saveEncounter, turnKey, type Encounter, type Encoun
 import type { EnemyAttack, SaveAbility } from "@/lib/bestiary/statblock";
 import { splitDamageExpression } from "@/lib/dm/aoe-parts";
 import type { SpellCondition, SpellMech } from "@/lib/srd/spell-mech-types";
-import type { TurnTie } from "@/lib/dm/save-effect";
+import type { SaveEffect, TurnTie } from "@/lib/dm/save-effect";
 import { spellDamageFor, spellFactsFor, spellMechanicsFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { canEnemyAct, markEnemyBonus } from "@/lib/dm/can-act";
@@ -74,7 +74,7 @@ export type EnemyUse = {
   magical: boolean;
   // A creature that made the save is immune to this use for a while, by
   // the block (save-effect.ts immuneAfter): save-immunity.ts holds it.
-  immuneAfter?: { rounds: number; onEnd: boolean };
+  immuneAfter?: SaveEffect["immuneAfter"];
   // The numbers are the block's (or the spell's): the caller's are ignored.
   // False only for a creature whose block lists nothing to match (a
   // synthesized enemy), which keeps the caller's numbers.

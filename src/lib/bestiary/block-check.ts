@@ -393,7 +393,14 @@ export function checkSpecials(raw: unknown): Checked<MonsterAbility[]> {
     const immune = (source.immuneAfter ?? null) as Raw | null;
     const immuneRounds = immune ? clamp(immune.rounds, 1, ROUND_CEILING) : null;
     if (immune && immuneRounds !== null) {
-      ability.immuneAfter = { rounds: immuneRounds, onEnd: immune.onEnd === true };
+      // The kinds a shared immunity covers ("of all mummies (but not mummy lords)").
+      const kinds = (value: unknown) => (Array.isArray(value) ? value.map((kind) => text(kind, 60).toLowerCase()).filter(Boolean).slice(0, 6) : []);
+      ability.immuneAfter = {
+        rounds: immuneRounds,
+        onEnd: immune.onEnd === true,
+        ...(kinds(immune.kinds).length ? { kinds: kinds(immune.kinds) } : {}),
+        ...(kinds(immune.except).length ? { except: kinds(immune.except) } : {}),
+      };
     }
     const also = Array.isArray(source.also) ? source.also.map((name) => words(name, BLOCK_LIMITS.conditionName).toLowerCase()).filter(Boolean).slice(0, 4) : [];
     if (also.length) {
