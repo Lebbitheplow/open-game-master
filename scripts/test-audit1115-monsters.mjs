@@ -317,4 +317,32 @@ await test("E07 a pteranodon with Flyby flying out of the fighter's reach draws 
   }
 });
 
+await test("E08 a boar's Relentless leaves it at 1 hit point from 7 damage or less, once; past 7, or the second time, it falls", async () => {
+  await kit.endFight();
+  await kit.fight(1, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+  const [boar] = world.enemies();
+  const stats = srd("Boar");
+  kit.setEnemy(boar.id, { ac: 5, maxHp: stats.maxHp, currentHp: 3, stats: { ...stats, ac: 5 } });
+  kit.place(kara.id, 5, 5);
+  kit.place(bram.id, 15, 15);
+  kit.place(boar.id, 6, 5);
+  // Kara's fist, 1 + her Strength 3: 4 damage, 7 or less.
+  kit.giveTurn(kara.id);
+  const first = await kit.swing(kara.id, boar.id, [15]);
+  assert.equal(first.ok, true, first.error);
+  assert.equal(kit.enemy(boar.id).status, "alive", JSON.stringify(first.result));
+  assert.equal(kit.enemy(boar.id).currentHp, 1, "Relentless: 1 hit point instead");
+  kit.giveTurn(kara.id);
+  await kit.swing(kara.id, boar.id, [15]);
+  assert.equal(kit.enemy(boar.id).status, "dead", "used once, the next drop is its last");
+
+  await kit.endFight();
+  await kit.fight(1, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+  const [big] = world.enemies();
+  kit.setEnemy(big.id, { ac: 5, maxHp: stats.maxHp, currentHp: 5, stats: { ...stats, ac: 5 } });
+  const out = await world.invoke("damage_enemy", { enemyId: big.id, amount: 9, type: "slashing", source: "hazard" });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(kit.enemy(big.id).status, "dead", "9 damage is past what Relentless holds");
+});
+
 finish();

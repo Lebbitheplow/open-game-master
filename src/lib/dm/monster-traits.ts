@@ -67,6 +67,16 @@ export function martialAdvantageDice(stats: Traits): string | null {
   return /\((\d+d\d+)\)/.exec(found)?.[1] ?? /(\d+d\d+)/.exec(found)?.[1] ?? "2d6";
 }
 
+// Relentless (SRD 5.1 boar, giant boar, wereboar): the most damage it can
+// take that would drop it to 0 and leave it at 1 hit point instead ("If the
+// boar takes 7 damage or less that would reduce it to 0 hit points"), or
+// null for a block without it.
+export function relentlessThreshold(stats: Traits & { fullTraits?: string[] }): number | null {
+  const found = [...(stats.fullTraits ?? []), ...(stats.traits ?? [])].find((entry) => /^relentless\b/i.test(entry.trim()));
+  const most = found ? /\btakes (\d{1,3}) damage or less\b/i.exec(found) : null;
+  return most ? Number(most[1]) : null;
+}
+
 // Surprise Attack's dice, or null.
 export function surpriseAttackDice(stats: Traits): string | null {
   const found = line(stats, /^surprise attack\b/i);
@@ -86,7 +96,7 @@ const ENGINE_READS = [
   /^immutable form\b/i, /^limited magic immunity\b/i, /^martial advantage\b/i, /^surprise attack\b/i,
   /^shapechanger\b/i, /^reaction:\s*parry\b/i, /^legendary action/i, /^lair action/i,
   /^turn(?:ing)? (?:resistance|defiance|immunity|vulnerability)\b/i, /^turning:/i,
-  /^(?:the \w+ can take \d+ legendary actions)/i, /^multiattack\b/i, /^flyby\b/i,
+  /^(?:the \w+ can take \d+ legendary actions)/i, /^multiattack\b/i, /^flyby\b/i, /^relentless\b/i,
 ];
 
 // The block's lines the engine does not read, each as its name: the DM's to

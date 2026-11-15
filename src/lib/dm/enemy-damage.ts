@@ -9,7 +9,7 @@ import { endFightEffects, endFoeEffects } from "@/lib/db/active-effects";
 import { getFloor, setFloor, type Campaign } from "@/lib/db/campaigns";
 import { burnWebUnder } from "@/lib/dm/zone-cast";
 import { lightOil } from "@/lib/dm/gear-zones";
-import { endEncounter, getActiveEncounter, getEnemy, listEnemies, patchEnemyHp, setEnemyConcentration, type Encounter, type EncounterEnemy, patchEnemyConditions } from "@/lib/db/encounters";
+import { endEncounter, getActiveEncounter, getEnemy, listEnemies, patchEnemyHp, saveEncounter, setEnemyConcentration, type Encounter, type EncounterEnemy, patchEnemyConditions } from "@/lib/db/encounters";
 import { activePublicEncounter } from "@/lib/db/encounter-view";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { settleDying } from "@/lib/dm/death";
@@ -34,8 +34,8 @@ import { enemyDefenseLines, meetEnemyPart } from "@/lib/dm/enemy-defenses";
 import { authoredIgnoresResistance } from "@/lib/dm/authored-saves";
 import { isKnockedOut, knockedOutConditions } from "@/lib/dm/knockout";
 import { endConditionsHeldBy, endVowsOn } from "@/lib/dm/enemy-conditions";
-import { enemyHpCap, hasTrait, REGENERATION_STOPPED, regenerationOf } from "@/lib/dm/monster-abilities";
-import { absorbs } from "@/lib/dm/monster-traits";
+import { abilityRefusal, enemyHpCap, findMonsterAbility, hasTrait, REGENERATION_STOPPED, regenerationOf, spendAbility } from "@/lib/dm/monster-abilities";
+import { absorbs, relentlessThreshold } from "@/lib/dm/monster-traits";
 import { fallsRegenerating, regeneratingDown } from "@/lib/dm/regeneration";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import { settleFrenzies } from "@/lib/dm/frenzy";
@@ -544,6 +544,24 @@ export function applyEnemyDamage(
       fortitude = `${enemy.displayName}'s Undead Fortitude fails (CON save ${save.total ?? "failed"} vs DC ${dc}).`;
     }
   }
+  // Relentless (SRD 5.1 boar, giant boar, wereboar): "If the boar takes 7
+  // damage or less that would reduce it to 0 hit points, it is reduced to 1
+  // hit point instead", once between rests (once a fight here: the block's
+  // "Recharges after a Short or Long Rest" use, kept on the ability ledger).
+  // Before this the boar fell to the blow its text says it shrugs off.
+  let relentless: string | null = null;
+  const most = math.dropped && !knockedOut && options?.death !== true && options?.nonlethal !== true ? relentlessThreshold(enemy.stats) : null;
+  const holdsOn = most !== null && adjusted.amount <= most ? findMonsterAbility(enemy.stats, "Relentless") : null;
+  if (holdsOn) {
+    const live = getActiveEncounter(campaign.id) ?? encounter;
+    const ledger = live.legendary.abilities?.[enemy.id];
+    if (!abilityRefusal(enemy.displayName, holdsOn, ledger)) {
+      live.legendary.abilities = { ...(live.legendary.abilities ?? {}), [enemy.id]: spendAbility(holdsOn, ledger) };
+      saveEncounter(live);
+      math = { currentHp: 1, dropped: false };
+      relentless = `${enemy.displayName}'s Relentless holds: ${adjusted.amount} damage would have dropped it, and it stays up at 1 hit point (once until it rests).`;
+    }
+  }
   const knockout = options?.nonlethal === true && math.dropped && !knockedOut;
   // A troll dies only at its turn start (src/lib/dm/regeneration.ts): 0 hit
   // points leaves it down.
@@ -573,6 +591,7 @@ export function applyEnemyDamage(
     ...(damageType?.trim() ? { damageType: damageType.trim().toLowerCase() } : {}),
     ...(adjusted.note ? { damageApplied: adjusted.amount, damageNote: adjusted.note } : {}),
     ...(fortitude ? { undeadFortitude: fortitude } : {}),
+    ...(relentless ? { relentless } : {}),
   };
   // The damage that stops Regeneration (a troll's acid or fire) holds it off
   // at the creature's next turn start (legendary-tools.ts). Kept as a
