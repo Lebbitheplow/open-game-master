@@ -481,5 +481,44 @@ await test("S11: one casting of an enemy's Hypnotic Pattern over two heroes hold
   assert.equal(world.enemies().find((entry) => entry.id === hag.id).concentration, "Hypnotic Pattern");
 });
 
+// ---- S12: the prepared count reads the score a worn item sets ----
+
+// SRD 5.1, Wizard, Preparing and Casting Spells: "choose a number of wizard
+// spells from your spellbook equal to your Intelligence modifier + your
+// wizard level"; Headband of Intellect: "Your Intelligence score is 19 while
+// you wear this headband." Every other number reads the headband's 19
+// (computeSheetDerived), but the spells route, the sheet's Spells panel and
+// the save check counted from the sheet's own INT 10.
+const BOOK = ["Magic Missile", "Shield", "Sleep", "Burning Hands", "Mage Armor", "Detect Magic", "Thunderwave"];
+const headbandWizard = (prepared) => caster("wizard", "int", prepared, ["Fire Bolt"], 3, {
+  abilities: { int: 10, con: 14, dex: 12 },
+  equipment: [{ name: "Headband of Intellect", qty: 1, equipped: true, attuned: true }],
+  spellcasting: { spellbook: BOOK },
+});
+
+await test("S12: a 3rd-level wizard (INT 10) in a Headband of Intellect prepares 7 spells (3 + the headband's +4), not 3", async () => {
+  const { openWorld } = await import("./lib/enforce-world.mjs");
+  const world = await openWorld();
+  const mage = world.addHero(headbandWizard(BOOK.slice(0, 3)));
+  const spells = await world.route("campaigns/[campaignId]/sheet/spells");
+  world.signIn({ id: mage.userId });
+  const response = await spells.POST(
+    new Request("http://test/", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "prepare", spell: "Burning Hands", sheetId: mage.id }) }),
+    { params: Promise.resolve({ campaignId: world.campaignId }) },
+  );
+  const body = await response.json();
+  assert.equal(response.status, 200, JSON.stringify(body));
+});
+
+await test("S12: the save check counts a headband wizard's 7 prepared spells as within the count", async () => {
+  const { spellListProblems } = await import("../src/lib/srd/spell-prep.ts");
+  const { openWorld } = await import("./lib/enforce-world.mjs");
+  const world = await openWorld();
+  const mage = world.sheet(world.addHero(headbandWizard(BOOK)).id);
+  assert.deepEqual(spellListProblems(mage, { bookAllowance: false }).filter((line) => /prepare|spells/i.test(line)), []);
+  const bare = { ...mage, equipment: [] };
+  assert.ok(spellListProblems(bare, { bookAllowance: false }).some((line) => /3/.test(line)), "without the headband, 7 is over the count of 3");
+});
+
 closeTables();
 finish();

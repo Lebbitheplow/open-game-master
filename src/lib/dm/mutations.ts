@@ -112,7 +112,7 @@ import { spellRulesClassFor } from "@/lib/classes";
 import { planHealFx } from "@/lib/battlemap/fx-plan";
 import { publishFx, tokenPosition } from "@/lib/dm/fx";
 import { checklistClassSpell, isCantripName, spellsAgainstLimit } from "@/lib/srd/spell-lists";
-import { arcanumSplit, casterViewsOf, mysticArcanumLevels, spellCapOf, spellbookOf, withCasterViews } from "@/lib/srd/spell-prep";
+import { arcanumSplit, casterViewsOf, countingScores, mysticArcanumLevels, spellCapOf, spellbookOf, withCasterViews } from "@/lib/srd/spell-prep";
 import { subclassSpellsFor } from "@/lib/srd/features";
 import { waypointProperty } from "@/lib/dm/waypoint-logic";
 import { badArguments, invalidArguments, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
@@ -2061,8 +2061,8 @@ function dmMutation(
             const level = classLevels[caster.classId.toLowerCase()] ?? sheet.level;
             const view = learnerViews[index];
             const cap = view
-              ? spellCapOf(view, sheet.abilities)
-              : suggestedSpellCount(spellRulesClassFor(caster.classId), level, abilityMod(sheet.abilities[caster.ability]));
+              ? spellCapOf(view, countingScores(sheet))
+              : suggestedSpellCount(spellRulesClassFor(caster.classId), level, abilityMod(countingScores(sheet)[caster.ability]));
             const classEntry = (sheet.classes ?? []).find(
               (entry) => entry.id.toLowerCase() === caster.classId.toLowerCase(),
             );
@@ -2089,8 +2089,8 @@ function dmMutation(
           }
         } else {
           const ceiling = learnerViews[0]
-            ? spellCapOf(learnerViews[0], sheet.abilities)
-            : suggestedSpellCount(spellRulesClassFor(sheet.class), sheet.level, abilityMod(sheet.abilities[sheet.spellcasting.ability]));
+            ? spellCapOf(learnerViews[0], countingScores(sheet))
+            : suggestedSpellCount(spellRulesClassFor(sheet.class), sheet.level, abilityMod(countingScores(sheet)[sheet.spellcasting.ability]));
           const arcana = arcanumFor(sheet.class, sheet.level, intoKnown ? known : prepared);
           if (arcana.taken && facts) {
             return arcanumTaken(facts.name, facts.level);
