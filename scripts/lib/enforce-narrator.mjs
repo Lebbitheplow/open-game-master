@@ -29,7 +29,7 @@
 // the readings the server kept (src/lib/dm/claims.ts answers a passage it has
 // read before from memory), so every passage a script holds is read.
 import http from "node:http";
-import { answerReader, isReaderRequest } from "./claims-reader.mjs";
+import { answerKnowledge, answerReader, isKnowledgeRequest, isReaderRequest } from "./claims-reader.mjs";
 
 // The AI's door into the engine: an AI turn and actor kind "ai", the way a
 // delegated turn or an AI share of an assisted session reaches it.
@@ -94,6 +94,8 @@ export async function fakeModel() {
   const requests = [];
   let readerScript = [];
   const readerRequests = [];
+  let knowledgeScript = [];
+  const knowledgeRequests = [];
   const fallback = reply({ text: "The moment settles, and the table waits on the next move." });
 
   function sse(res, entry) {
@@ -172,6 +174,11 @@ export async function fakeModel() {
         answerReader(res, readerScript.shift() ?? []);
         return;
       }
+      if (isKnowledgeRequest(body)) {
+        knowledgeRequests.push(body);
+        answerKnowledge(res, knowledgeScript.shift() ?? []);
+        return;
+      }
       requests.push(body);
       const entry = script[served] ?? fallback;
       served += 1;
@@ -211,6 +218,12 @@ export async function fakeModel() {
       readerScript = [...entries];
       readerRequests.length = 0;
       globalThis.__odmReaderReplies?.clear();
+    },
+    // What the voice-knowledge reader answers, one list of leaks per call.
+    knowledgeRequests,
+    leaks: (entries) => {
+      knowledgeScript = [...entries];
+      knowledgeRequests.length = 0;
     },
     served: () => served,
     script: (entries) => {

@@ -21,6 +21,8 @@ import { getActiveEncounter } from "@/lib/db/encounters";
 import { budgetApplies, paidSwingsLeft } from "@/lib/dm/action-budget";
 import { exchangeWords } from "@/lib/dm/story-moves";
 import type { GuardKind, GuardOutcome, GuardReport } from "@/lib/narrator-quality";
+import { readVoiceLeaks } from "@/lib/dm/voice-knowledge";
+import { knowledgeCorrectionPrompt } from "@/lib/dm/voice-knowledge-logic";
 
 // The DB/model rim of the engine-boundary guard. The ruling lives in
 // dm/engine-boundary.ts (pure) and the reading in dm/claims.ts; this file
@@ -215,7 +217,10 @@ export async function enforceEngineBoundary(
   const crossed = lineViolations(narration, lines, campaign.gameSettings.tableLanguage);
   const read = await readNarration(campaign, turn, sheets, turn.narrationParts, partReads);
   const { lines: spoken, handedOn, deeds, bonds, unread } = read;
-  const found = kindsOf([...read.contradictions, ...(campaign.gameSettings.narrationGuard ? returned.map(() => ({ kind: "card" as const, detail: "", clause: "" })) : [])], crossed);
+  // A line the narrator voiced for someone who cannot know what it says
+  // (src/lib/dm/voice-knowledge-logic.ts): fixed by the same one rewrite.
+  const leaks = await readVoiceLeaks(campaign, turn, sheets, narration);
+  const found = kindsOf([...read.contradictions, ...leaks, ...(campaign.gameSettings.narrationGuard ? returned.map(() => ({ kind: "card" as const, detail: "", clause: "" })) : [])], crossed);
   const kept = (outcome: GuardOutcome): GuardedNarration => ({ spoken, handedOn, deeds, bonds, guard: { outcome, kinds: found } });
   // A spell the prose cast with nothing behind it, which its player asked
   // for, is cast now rather than written out of the story (issue 570). The
@@ -238,6 +243,7 @@ export async function enforceEngineBoundary(
       contradictions.push({ kind: "spell", clause: entry.clause, detail: `${caster}'s ${spell} has now been cast by the server, as their player asked: its result is the last tool result above. Narrate it from that result (the roll, the save, the damage), not from what you wrote` });
     }
   }
+  contradictions.push(...leaks);
   if (campaign.gameSettings.narrationGuard) {
     contradictions.push(...returned.map((detail) => ({ kind: "card" as const, detail, clause: "" })));
   }
@@ -248,6 +254,7 @@ export async function enforceEngineBoundary(
     return kept(castNow ? "cast" : !campaign.gameSettings.narrationGuard ? "off" : unread ? "unread" : "quiet");
   }
 
+  const engine = contradictions.filter((entry) => entry.kind !== "knowledge");
   const summary = [...contradictions.map((entry) => entry.detail), ...crossed.map((line) => `line crossed: ${line}`)].join("; ");
 
   // The narration is echoed back explicitly: a turn that ended on a pure
@@ -261,7 +268,11 @@ export async function enforceEngineBoundary(
       { role: "assistant", content: narration },
       {
         role: "user",
-        content: [contradictions.length ? buildCorrectionPrompt(contradictions) : "", crossed.length ? buildLinePrompt(crossed) : ""]
+        content: [
+          engine.length ? buildCorrectionPrompt(engine) : "",
+          leaks.length ? knowledgeCorrectionPrompt(leaks) : "",
+          crossed.length ? buildLinePrompt(crossed) : "",
+        ]
           .filter(Boolean)
           .join("\n\n"),
       },
@@ -299,7 +310,8 @@ export async function enforceEngineBoundary(
   // which at least the table already saw streaming.
   const { contradictions: remaining, lines: respoken, handedOn: rehanded } = await readNarration(campaign, turn, sheets, [corrected], new Map());
   const stillCrossed = lineViolations(corrected, lines, campaign.gameSettings.tableLanguage);
-  if (remaining.length + stillCrossed.length >= contradictions.length + crossed.length) {
+  const stillLeaking = leaks.length ? await readVoiceLeaks(campaign, turn, sheets, corrected) : [];
+  if (remaining.length + stillLeaking.length + stillCrossed.length >= contradictions.length + crossed.length) {
     console.warn(
       `[engine-boundary] turn ${turn.id}: correction did not resolve the contradiction (${summary})`,
     );

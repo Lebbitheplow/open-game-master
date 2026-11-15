@@ -178,6 +178,23 @@ lontano viene interpellato come farebbe un master con un giocatore umano separat
   senza menti, Comparse. La rete di sicurezza esistente (`companionAutoAct`) resta.
 - Non fatto (opzione 2 scartata): la mente che chiama da sola gli strumenti di combattimento.
 
+### 12. Battute che il narratore scrive per gli altri (decisione dell'utente)
+- Le Comparse e chiunque parli senza una mente propria hanno la voce del narratore, che conosce
+  tutta la storia. Caso reale: una sentinella che aveva visto arrivare Brakk da solo gli disse
+  «puoi tornare dai tuoi» e gli nominò «il problema del carro», rimasto fuori vista.
+- Prima di pubblicare la narrazione, il controllo di narrazione (`narration-guard.ts`) fa una
+  lettura in più (`voice-knowledge.ts`, modello di utilità) sulle sole battute tra virgolette
+  scritte dal narratore: non quelle che una mente ha detto con `npc_speak` in quel turno, né
+  quelle dei personaggi giocanti. Il lettore vede la scena recente, chi può parlare (ruolo,
+  tratto, luogo, ciò che la sua mente ha imparato) e segnala solo ciò che chi parla afferma o
+  dà per scontato senza poterlo sapere; un'ipotesi detta come tale resta.
+- Una segnalazione vale solo se cita parole presenti in quelle battute. Il narratore riscrive
+  una volta con la riscrittura di riserva che il controllo già usa; se la riscrittura sbaglia
+  ancora, la frase viene tagliata come per le altre contraddizioni. Una lettura fallita non
+  segnala nulla.
+- Attivo solo con il controllo di narrazione e le menti dei PNG accesi: nessuna nuova
+  impostazione. Costo: una chiamata di utilità (circa 3-5 s) per turno con battute del narratore.
+
 ## Implementazione (branch `npc-agents`)
 - Logica pura: `src/lib/dm/npc-mind-logic.ts` (nomi appresi, memorie per PNG e tempo,
   bande, prompt, parsing della proposta, destinatari, nomi non appresi, gradi, roster).

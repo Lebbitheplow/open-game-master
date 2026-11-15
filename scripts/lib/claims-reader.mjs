@@ -16,3 +16,18 @@ export function answerReader(res, claims = []) {
     }),
   );
 }
+
+// The voice-knowledge reader (src/lib/dm/voice-knowledge-logic.ts
+// knowledgeReading): one read per narration with quoted lines the narrator
+// wrote, when the table keeps the outcome check and the NPC minds on.
+export const KNOWLEDGE_PROMPT_START = "You check what characters voiced by a game master could know";
+
+export function isKnowledgeRequest(body) {
+  return String(body.messages?.[0]?.content ?? "").startsWith(KNOWLEDGE_PROMPT_START);
+}
+
+// One non-streamed reply carrying `leaks` (none by default).
+export function answerKnowledge(res, leaks = []) {
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({ choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: JSON.stringify({ leaks }) } }] }));
+}
