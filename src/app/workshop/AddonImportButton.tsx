@@ -2,6 +2,7 @@
 
 import { Loader2, Puzzle, Upload, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { AddonByline, addonByText } from "@/components/addons/AddonByline";
 import { AddonFields, fieldDefaults, type FieldValues } from "@/components/addons/AddonFields";
 import { appNotice } from "@/components/ui/ConfirmDialog";
 import { SectionHead } from "@/components/ui/SectionHead";
@@ -204,11 +205,11 @@ export function AddonImportButton({
               value={key(importer)}
               onChange={choose}
               disabled={working}
-              options={workshopImporters.map((entry) => ({ value: key(entry), label: entry.title, hint: entry.addonName }))}
+              options={workshopImporters.map((entry) => ({ value: key(entry), label: entry.title, hint: addonByText(entry) }))}
             />
           ) : (
             <p className="text-sm text-amber-100">
-              {importer.title} <span className="text-xs text-stone-500">· {importer.addonName}</span>
+              {importer.title} <AddonByline owner={importer} />
             </p>
           )}
           {importer.description ? <p className="mt-1 text-xs text-stone-400">{importer.description}</p> : null}

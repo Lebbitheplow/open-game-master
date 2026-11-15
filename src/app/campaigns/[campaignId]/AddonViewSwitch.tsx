@@ -2,6 +2,7 @@
 
 import { SlidersHorizontal } from "lucide-react";
 import { useCallback, useEffect, useState, useSyncExternalStore, type CSSProperties } from "react";
+import { AddonByline, addonByText } from "@/components/addons/AddonByline";
 import { AddonFields, type FieldValues } from "@/components/addons/AddonFields";
 import { Dialog } from "@/components/ui/Dialog";
 import type { OfferedBoardView } from "@/lib/addons/offered";
@@ -137,7 +138,7 @@ export function AddonViewSwitch({
   const [optionsOpen, setOptionsOpen] = useState(false);
   if (!views.length) return null;
   const active = views.find((view) => boardViewKey(view) === value) ?? null;
-  const options = [{ key: "", label: "Board", hint: "The built-in board" }, ...views.map((view) => ({ key: boardViewKey(view), label: view.title, hint: `${view.description || view.title}, from ${view.addonName}` }))];
+  const options = [{ key: "", label: "Board", hint: "The built-in board" }, ...views.map((view) => ({ key: boardViewKey(view), label: view.title, hint: `${view.description || view.title}, from ${addonByText(view)}` }))];
   // Shaped like the Move pills beside it (BoardMoveModes.tsx), in the board
   // chrome's fixed colours: the board stays dark in the day theme, where the
   // amber scale turns dark brown and would vanish here.
@@ -181,7 +182,8 @@ export function AddonViewSwitch({
           </button>
           <Dialog open={optionsOpen} onOpenChange={setOptionsOpen} title={`${active.title} options`}>
             <p className="mb-3 text-xs leading-5 text-stone-400">
-              For this device only, from {active.addonName}. They change how the board is drawn here, nothing else.
+              For this device only, <AddonByline owner={active} prefix="from " className="text-xs text-stone-400" />. They change how the
+              board is drawn here, nothing else.
             </p>
             <AddonFields
               idPrefix={`view-${active.addonId}-${active.id}`}
@@ -191,6 +193,22 @@ export function AddonViewSwitch({
             />
           </Dialog>
         </>
+      ) : null}
+      {/* The view's creator, credited beside it while it draws the board. */}
+      {active?.addonAuthor ? (
+        active.addonUrl ? (
+          <a
+            href={active.addonUrl}
+            target="_blank"
+            rel="noreferrer"
+            title={`${active.title}, from ${addonByText(active)}`}
+            className="motion-press inline-flex min-h-8 items-center rounded-full px-1.5 text-[10px] text-[#8a86a6] underline-offset-2 hover:text-[#e9e6f4] hover:underline focus-visible:outline-2 focus-visible:outline-[rgba(212,171,58,0.8)]"
+          >
+            by {active.addonAuthor}
+          </a>
+        ) : (
+          <span className="inline-flex min-h-8 items-center px-1.5 text-[10px] text-[#8a86a6]">by {active.addonAuthor}</span>
+        )
       ) : null}
     </div>
   );

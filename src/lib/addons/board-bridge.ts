@@ -8,9 +8,8 @@ import { storedSex, type Sex } from "@/lib/actor-sex-logic";
 import type { Ruler } from "@/lib/battlemap/board-move";
 import type { SceneryPlacement } from "@/lib/battlemap/render/renderer.js";
 
-// The board view contract: what the table page posts into an addon's
-// sandboxed frame, and what it accepts back (docs/addons/extension-points.md,
-// "Board views").
+// The board view contract: what the table page posts into an addon's sandboxed
+// frame, and what it accepts back (docs/addons/extension-points.md, "Board views").
 //
 // The frame is an addon's own HTML page, loaded with sandbox="allow-scripts"
 // and no allow-same-origin, so it runs in an opaque origin: it cannot read
@@ -103,9 +102,10 @@ export type BoardSnapshot = {
   scenery?: SceneryPlacement[];
   // What this addon's own generator left on the map, or null.
   view: { data: unknown; files: Array<{ name: string; type: string; bytes: number }> } | null;
-  // Where this addon's asset library is served (its data folder's public/,
-  // which its setup fills): fetch "<assetsUrl><file>".
+  // Where its asset library is served (data folder's public/, which setup
+  // fills): fetch "<assetsUrl><file>". `parts`: its parts set up here.
   assetsUrl: string;
+  parts?: string[];
   // This viewer's choices for the view's own options (the manifest's
   // boardViews[].options), normalized to the fields, defaults filled in.
   options: OptionValues;
@@ -151,6 +151,7 @@ export function boardSnapshot(
     moveAim?: { x: number; y: number } | null;
     scenery?: SceneryPlacement[];
     assetsUrl?: string;
+    parts?: string[];
     // The view's option fields and what this device chose for them.
     viewOptions?: { fields: OptionField[]; values: unknown };
   },
@@ -204,6 +205,7 @@ export function boardSnapshot(
     ...(!view.backdrop && options.scenery ? { scenery: options.scenery } : {}),
     view: own ? { data: own.data, files: own.files.map(({ name, type, bytes }) => ({ name, type, bytes })) } : null,
     assetsUrl: options.assetsUrl ?? `/api/addons/${addonId}/assets/`,
+    parts: options.parts ?? [],
     options: options.viewOptions ? normalizeOptionValues(options.viewOptions.fields, options.viewOptions.values) : {},
     viewer: { canDirect: options.canDirect },
     appearance: options.appearance,
@@ -322,7 +324,7 @@ export type HostMessage =
   | { odm: number; type: "action-menu"; revision: number; menu: BoardActionMenu | null }
   | { odm: number; type: "rendering"; active: boolean }
   | { odm: number; type: "snapshot"; snapshot: BoardSnapshot; sessionLayout?: "stage" }
-  | { odm: number; type: "scene"; genre: string | null; appearance: BoardSnapshot["appearance"]; options: BoardSnapshot["options"]; assetsUrl: string }
+  | { odm: number; type: "scene"; genre: string | null; appearance: BoardSnapshot["appearance"]; options: BoardSnapshot["options"]; assetsUrl: string; parts?: string[] }
   | { odm: number; type: "ruler"; mapId: string; ruler: Ruler | null }
   | { odm: number; type: "fx"; events: BoardFx[] }
   | { odm: number; type: "ping"; x: number; y: number; focus: boolean; at: number }

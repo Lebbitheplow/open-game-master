@@ -168,9 +168,12 @@ by a script from your repository.
    ```
 
    A branch or tag is resolved to its commit, which is what gets audited. The
-   entry holds your addon's name, author, description, permissions and what it
-   adds (all read from your `addon.json`), the repository, folder and commit,
-   and a hash of the folder's files. Do not edit it by hand: the check
+   entry holds your addon's name, author, description, permissions, what it
+   adds and modifies and its parts (all read from your `addon.json`), the
+   repository, folder and commit, and a hash of the folder's files. The same
+   command writes your row into the [addon creators](../../README.md#addon-creators)
+   table in the README (your name, your GitHub profile, your repositories and
+   what your addon adds): commit both files. Do not edit it by hand: the check
    derives it again and fails on any difference. Categories: `maps` (maps and
    the board), `content` (content and import), `table` (at the table), `tools`.
 5. Open a pull request with only that change. Say what the addon does, which
@@ -181,6 +184,16 @@ by a script from your repository.
    source at the audited commit, what it asks for, and for an update the
    changes since the last audited commit. A reviewer walks
    [the checklist](#the-review-checklist), tries it on a server, and merges.
+
+**A large addon in parts.** An asset library split per campaign setting
+(high fantasy, dark fantasy, science fiction) is one addon with
+[parts](authoring.md#parts-an-addon-in-pieces), not one entry per setting:
+the admin installs the addon once and picks the settings. The parts can be
+release files, folders of your repository beside the addon's folder, or
+repositories of their own pinned to a commit in your `addon.json`; each of
+those repositories is audited with the addon and credited beside it. The
+check fails when a repository folder does not hold exactly the bytes your
+manifest says.
 
 Every update is a new pull request: bump `version` in your `addon.json`, push,
 and run `add` again. The check fails if the commit changed but the version did
@@ -203,9 +216,15 @@ the last audited commit is what the review reads.
       the project that publishes them; Python requirements are pinned.
 - [ ] The asset library (`publicDir`) holds only what any visitor to the
       server may see.
-- [ ] It declares `conflicts` with addons it truly cannot run beside, and
-      `exclusive` for shared resources it occupies (`gpu`, `blender`); it
-      binds no fixed network port.
+- [ ] It declares `conflicts` with addons it truly cannot run beside,
+      `modifies` for what it changes for everyone (with the common names, and
+      `replace` only for what it takes over), and `exclusive` for shared
+      resources it occupies (`gpu`, `blender`); it binds no fixed network port.
+- [ ] Parts: each part's downloads land in folders of their own; a part kept
+      in another repository pins a commit there and is read like the addon;
+      `minServerVersion` is set to the first release that reads parts.
+- [ ] The README's addon creators table has its row (the check fails
+      otherwise).
 - [ ] Settings its setup needs are `required`; settings that change what
       setup does are `affectsSetup` (or named by a download's `when`).
 - [ ] Secrets are used only for their service and never logged.
@@ -233,10 +252,15 @@ the last audited commit is what the review reads.
   nothing. A commit cannot change, so
   later pushes to the author's repository never reach a server until a new
   entry for a new commit has been audited.
-- **What the entry shows.** Name, creator, the GitHub user and a link to the
-  exact source, what it adds and asks for, the programs it needs, how much
-  its setup downloads, and any conflicts or shared resources, all read from
-  the addon's `addon.json` at that commit.
+- **What the entry shows.** Name, creator, their GitHub profile and
+  repository with a link to the exact source, what it adds, modifies and asks
+  for, the programs it needs, how much its setup and each of its parts
+  download, and any conflicts or shared resources, all read from the addon's
+  `addon.json` at that commit.
+- **Credit.** Every addon on the list has a row in the README's
+  [addon creators](../../README.md#addon-creators) table, written from the
+  list by `scripts/addon-catalog.mjs`, and a server credits its creator
+  wherever what it adds is offered and on its licenses page.
 - **Removing an addon** from the list is a pull request deleting its entry.
   Servers that installed it keep it until an admin removes it.
 
