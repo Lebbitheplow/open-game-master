@@ -24,12 +24,14 @@ import {
   extremeColdSave,
   extremeHeatSave,
   fallingDamageDice,
+  frigidWaterSaves,
   heatHoursSoFar,
   suffocationRounds,
   trapProfile,
   type TrapSeverity,
 } from "@/lib/srd/hazards";
 import { pcResistances } from "@/lib/dm/condition-logic";
+import { computeAbilityScore } from "@/lib/dm/roll-riders";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { rollCard } from "@/lib/dm/roll-card";
 import { rollOn } from "@/lib/roll-labels";
@@ -83,9 +85,10 @@ export const hazardTools: ToolDef[] = [
               "drowning",
               "extreme_cold",
               "extreme_heat",
+              "frigid_water",
             ],
             description:
-              "Which hazard. Feet for falling; severity or a trap by name for trap; for generic, a bespoke hazard (a gout of flame) with your own damage, saveAbility and dc; roundsWithoutAir for suffocation and drowning; hours for extreme cold and heat.",
+              "Which hazard. Feet for falling; severity or a trap by name for trap; for generic, a bespoke hazard (a gout of flame) with your own damage, saveAbility and dc; roundsWithoutAir for suffocation and drowning; hours for extreme cold and heat; minutes for frigid water.",
           },
           hours: {
             type: "integer",
@@ -93,6 +96,12 @@ export const hazardTools: ToolDef[] = [
             maximum: 48,
             description:
               "extreme_cold/extreme_heat only: hours of exposure. The server rolls the hourly CON saves (gear and resistances count) and applies exhaustion for each failure.",
+          },
+          minutes: {
+            type: "integer",
+            minimum: 1,
+            maximum: 120,
+            description: "frigid_water only: minutes in the water so far.",
           },
           roundsWithoutAir: {
             type: "integer",
@@ -167,6 +176,7 @@ const hazardSchema = z.object({
     "drowning",
     "extreme_cold",
     "extreme_heat",
+    "frigid_water",
   ]),
   characterIds: z.array(z.string()).min(1).optional(),
   // The front or the rear of the travel formation instead of named ids
@@ -176,6 +186,8 @@ const hazardSchema = z.object({
   roundsWithoutAir: z.coerce.number().int().min(0).max(100).optional(),
   // extreme_cold / extreme_heat: hours of exposure, one save for each.
   hours: z.coerce.number().int().min(1).max(48).optional(),
+  // frigid_water: minutes in the water, the first Constitution-score of them free.
+  minutes: z.coerce.number().int().min(1).max(120).optional(),
   severity: z.enum(["setback", "dangerous", "deadly"]).optional(),
   saveAbility: z.enum(["str", "dex", "con", "int", "wis", "cha"]).optional(),
   dc: z.coerce.number().int().min(1).max(30).optional(),
@@ -457,6 +469,41 @@ function resolveHazard(
     };
   }
 
+  // Frigid water: the Constitution score's minutes are free, then a DC 10
+  // Constitution save each further minute, a level of exhaustion on a
+  // failure; resistance to cold passes them all (frigidWaterSaves).
+  if (args.type === "frigid_water") {
+    const minutes = args.minutes ?? 1;
+    const perTarget = targets.map((sheet) => {
+      if (pcResistances(sheet).includes("cold")) {
+        return { name: sheet.name, immune: "cold resistance: unaffected by the water's cold" };
+      }
+      const con = computeAbilityScore(sheet, "con");
+      const hours = frigidWaterSaves(con, minutes);
+      if (!hours.length) {
+        return { name: sheet.name, minutesLeft: con - minutes, note: `${sheet.name} can stand ${con} minutes in the water (their Constitution score) before it tells.` };
+      }
+      const saves = hourlyConSaves({
+        campaign,
+        turn,
+        sheet,
+        hours,
+        detail: (minute) => `${sheet.name}: CON save vs the frigid water, minute ${minute}`,
+        reason: source,
+        sheets,
+        sheetsById,
+      });
+      return { name: sheet.name, saves };
+    });
+    return {
+      ok: true,
+      type: "frigid_water",
+      minutes,
+      results: perTarget,
+      note: "Minutes in frigid water up to the Constitution score are free; each one after is a DC 10 Constitution save, a level of exhaustion on each failure, applied by the server. Cold resistance negates it. Narrate the cold.",
+    };
+  }
+
   // A named trap runs by its own numbers (src/lib/dm/trap-run.ts).
   if (args.type === "trap" && args.trap) {
     const found = trapAt(args.trap, campaign.id);
@@ -569,5 +616,6 @@ function defaultSource(args: z.infer<typeof hazardSchema>): string {
   if (args.type === "trap") return "a trap";
   if (args.type === "suffocation") return "suffocation";
   if (args.type === "drowning") return "drowning";
+  if (args.type === "frigid_water") return "frigid water";
   return "the hazard";
 }

@@ -107,3 +107,16 @@ export function heatHoursSoFar(last: { hours: number; until: number } | undefine
   const began = now - Math.max(0, hours) * 60;
   return last.until > began - 60 ? last.hours : 0;
 }
+
+// --- Frigid water (the weather rules beside extreme cold): "A creature can
+// be immersed in frigid water for a number of minutes equal to its
+// Constitution score before suffering any ill effects. Each additional
+// minute spent in frigid water requires the creature to succeed on a DC 10
+// Constitution saving throw or gain one level of exhaustion." The saves for
+// `minutes` in the water, by the minute each falls on; none within the
+// score. ---
+export function frigidWaterSaves(conScore: number, minutes: number): Array<{ hour: number; dc: number }> {
+  const free = Math.max(0, Math.floor(Number(conScore) || 0));
+  const total = Math.max(0, Math.floor(Number(minutes) || 0));
+  return Array.from({ length: Math.max(0, total - free) }, (_, index) => ({ hour: free + index + 1, dc: 10 }));
+}

@@ -142,5 +142,43 @@ await test("N03: a DC sent with extreme cold or heat is not the book's and is no
   assert.equal(sheet(trekker.id).exhaustion ?? 0, 0);
 });
 
+// ---- N04: frigid water ----
+// The weather rules' Frigid Water, beside the extreme cold and heat the
+// engine plays: "A creature can be immersed in frigid water for a number of
+// minutes equal to its Constitution score before suffering any ill effects.
+// Each additional minute spent in frigid water requires the creature to
+// succeed on a DC 10 Constitution saving throw or gain one level of
+// exhaustion. Creatures with resistance or immunity to cold damage
+// automatically succeed on the saving throw." apply_hazard had no such
+// hazard: the GM's only door was a generic one with its own numbers, which
+// lays no exhaustion.
+
+await test("N04: frigid water is free for Constitution-score minutes, then a DC 10 Constitution save each further minute", async () => {
+  const swimmer = world.addHero({ user: world.owner, class: "fighter", level: 3, maxHp: 40, abilities: { con: 12 } });
+  world.clearDice();
+  // CON 12 (+1): 12 minutes free, then minutes 13, 14 and 15. A 9 (10)
+  // makes it, a 1 (2) does not.
+  world.dice(9, 1, 1);
+  const out = await world.invoke("apply_hazard", { type: "frigid_water", minutes: 15, characterIds: [swimmer.id] });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.clearDice(), 0);
+  assert.deepEqual(savesOf(swimmer.id), [10, 10, 10]);
+  assert.equal(sheet(swimmer.id).exhaustion, 2);
+});
+
+await test("N04: within the Constitution score's minutes, or resisting cold, frigid water rolls nothing", async () => {
+  const swimmer = world.addHero({ user: world.owner, class: "fighter", level: 3, maxHp: 40, abilities: { con: 12 } });
+  // Resistance to cold for the hour, as a Potion of Resistance leaves it.
+  const hardy = world.addHero({ user: world.owner, class: "fighter", level: 3, maxHp: 40 });
+  world.patch(hardy.id, { conditions: ["protection from energy (cold)"], conditionMeta: {} });
+  world.clearDice();
+  await world.invoke("apply_hazard", { type: "frigid_water", minutes: 12, characterIds: [swimmer.id] });
+  const resisted = await world.invoke("apply_hazard", { type: "frigid_water", minutes: 30, characterIds: [hardy.id] });
+  assert.equal(resisted.ok, true, resisted.error);
+  assert.deepEqual(savesOf(swimmer.id), []);
+  assert.deepEqual(savesOf(hardy.id), []);
+  assert.equal(sheet(hardy.id).exhaustion ?? 0, 0);
+});
+
 world.close();
 finish();
