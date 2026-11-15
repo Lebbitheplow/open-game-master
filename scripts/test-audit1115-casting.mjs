@@ -307,5 +307,22 @@ await test("S07: a wizard and cleric in a Robe of the Archmagi reads each class'
   assert.match(text, new RegExp(`As a cleric \\(WIS, Save DC ${clericDc}\\)`));
 });
 
+// ---- S08: a spell's note never sends the GM to deal what the server deals ----
+
+// Warding Bond's shared damage (pc-damage.ts wardingBondShare) and Fire
+// Shield's retort (spell-retort.ts) are dealt by the server, but the note a
+// cast hands the GM still said "(apply_damage)": a GM who obeyed hurt Warding
+// Bond's caster twice for every blow the ward took (SRD 5.1: "you take the
+// same amount of damage", once).
+await test("S08: Warding Bond's and Fire Shield's cast notes leave their damage to the server", async () => {
+  const { spellMechFor } = await import("../src/lib/srd/spell-mechanics.ts");
+  for (const spell of ["Warding Bond", "Fire Shield"]) {
+    const note = spellMechFor([spell])?.note ?? "";
+    assert.ok(note, `${spell} has a note`);
+    assert.doesNotMatch(note, /apply_damage/, `${spell}: ${note}`);
+    assert.match(note, /the server/i, `${spell}: ${note}`);
+  }
+});
+
 closeTables();
 finish();
