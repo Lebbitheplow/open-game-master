@@ -1,4 +1,4 @@
-import { rulebookPages } from "@/lib/rulebook/book";
+import { rulebookPages, type BookLocale } from "@/lib/rulebook/book";
 import type { RulebookPage } from "@/lib/rulebook/types";
 import { spellMechanicsFor } from "@/lib/content";
 import { itemMechanicsOf } from "@/lib/workshop/catalog-mechanics";
@@ -135,8 +135,8 @@ function enTitleOf(id: string): string | undefined {
   return enTitles.get(id);
 }
 
-export function crosswalkFor(page: Pick<RulebookPage, "id" | "kind" | "title">, locale = "en"): Crosswalk {
-  const french = locale.startsWith("fr");
+export function crosswalkFor(page: Pick<RulebookPage, "id" | "kind" | "title">, locale: BookLocale = "en"): Crosswalk {
+  const french = locale === "fr";
   const walk = crosswalkEn(french ? { ...page, title: enTitleOf(page.id) ?? page.title } : page);
   if (!french) return walk;
   const fr = WHERE_FR[page.id];
