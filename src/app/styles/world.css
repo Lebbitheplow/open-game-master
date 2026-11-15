@@ -1862,8 +1862,9 @@ html[data-theme="light"] .cine-board-frame { box-shadow: 0 0 30px rgba(122, 88, 
 html[data-theme="light"] .cine-board-frame > :not(.board-view) { background: #f1ebde; border-color: rgba(122, 88, 20, 0.5); }
 html[data-theme="light"] .board-panel > .board-view { background: #0d0b1c; }
 /* The enlarged board is a night table by day too: what stands on its starfield
-   keeps the night's ink. */
-html[data-theme="light"] .cine-tabletop {
+   keeps the night's ink. So does a card laid on the title screen's painting
+   (ts-night: the setup card). */
+html[data-theme="light"] :is(.cine-tabletop, .ts-night) {
   --color-stone-950: #0d0b1c;
   --color-stone-900: #151229;
   --color-stone-800: #211b3a;
