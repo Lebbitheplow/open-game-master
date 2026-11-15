@@ -106,6 +106,10 @@ export type ConditionMeta = {
   mote?: boolean;
   // A monster's grapple: its printed escape DC (grapple.ts).
   escapeDc?: number;
+  // Laid by magic with no spell named (set_enemy_condition magical): its
+  // repeat saves meet Magic Resistance as the first one did
+  // (condition-tick.ts).
+  magical?: boolean;
   // The Grappler feat's pin, on the grappler's own restraint: the creature
   // they hold pinned (grappler-pin.ts).
   pinning?: string;

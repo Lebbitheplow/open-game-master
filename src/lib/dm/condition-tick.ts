@@ -611,7 +611,7 @@ function tickEnemyConditions(campaign: Campaign, encounter: Encounter, by: numbe
         due.ability,
         due.dc,
         {
-          magical: Boolean(instance.spell),
+          magical: Boolean(instance.spell) || instance.magical === true,
           // A creature with Legendary Resistance spends one to end what binds
           // it, as it would against the first save (src/lib/dm/legendary-tools.ts).
           resist: true,

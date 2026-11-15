@@ -145,4 +145,40 @@ await test("E02 an ability the Multiattack does not name still spends the action
   assert.equal(routine.ok, false, "the breath was its action");
 });
 
+const MAGIC_RESISTANCE = "Magic Resistance: The creature has advantage on saving throws against spells and other magical effects.";
+
+await test("E03 Magic Resistance answers Sanctuary: the fiend rolls its WIS save with advantage and makes its attack", async () => {
+  const foe = await stage("Adult Red Dragon");
+  kit.setEnemy(foe.id, { stats: { ...kit.enemy(foe.id).stats, traits: [MAGIC_RESISTANCE], saveMods: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } } });
+  world.patch(kara.id, { conditions: ["sanctuary"], conditionMeta: { sanctuary: { source: kara.id } } });
+  // A 1 and a 20 on the save: with advantage it makes the DC; the swings miss.
+  world.dice(1, 20, 1, 1, 1);
+  const out = await world.invoke("enemy_attack", { enemyId: foe.id, targetCharacterId: kara.id });
+  world.clearDice();
+  world.patch(kara.id, { conditions: [], conditionMeta: {} });
+  assert.equal(out.ok, true, out.error);
+  assert.ok((out.result.swings ?? []).length > 0, "the attack was made");
+});
+
+await test("E03 a magical hold set on a creature keeps Magic Resistance on the save at the end of its turn", async () => {
+  await kit.endFight();
+  await kit.fight(1, { heroFaces: { [kara.id]: 19, [bram.id]: 10 } });
+  const [foe] = world.enemies();
+  kit.setEnemy(foe.id, { maxHp: 200, stats: { ...kit.enemy(foe.id).stats, traits: [MAGIC_RESISTANCE] } });
+  const encounter = world.encounter();
+  const entry = (id) => encounter.order.find((each) => (each.kind === "pc" ? each.characterId : each.enemyId) === id);
+  const legendary = { ...encounter.legendary };
+  delete legendary.walked;
+  delete legendary.walkedHolds;
+  kit.saveEncounter({ ...encounter, order: [entry(kara.id), entry(foe.id), entry(bram.id)], turnIndex: 0, turnBudget: null, legendary });
+  const set = await world.invoke("set_enemy_condition", { enemyId: foe.id, condition: "paralyzed", saveAbility: "wis", saveDc: 15, magical: true });
+  assert.equal(set.ok, true, set.error);
+  assert.equal(kit.endTurn(kara.userId), true);
+  // The end of the creature's turn: a 1 and a 20, kept high with advantage.
+  world.dice(1, 20);
+  assert.equal(kit.endTurn(bram.userId), true);
+  world.clearDice();
+  assert.ok(!kit.enemy(foe.id).conditions.includes("paralyzed"), "Magic Resistance's advantage carried it past DC 15");
+});
+
 finish();
