@@ -76,6 +76,13 @@ Ogni PNG tracciato ha, oltre a ciò che esiste già:
    narratore, menti) vengono ricordate da ogni PNG di primo livello con il gruppo o
    nel luogo corrente, sveglio e non lontano. Niente tiri di Percezione: le notizie
    da lontano passano da `npc_inform`.
+   **Chi è col gruppo è nel combattimento.** Quando si apre uno scontro, ogni PNG
+   che segue il gruppo (con il gruppo o suo prigioniero), non morto, entra sulla
+   mappa dalla parte del gruppo, con iniziativa e segnalino: libero e armato come
+   guardia, disarmato o prigioniero come popolano (o con la sua scheda, se ne ha
+   una). Un prigioniero legato è trattenuto e incapacitato: può essere colpito, non
+   agisce. Non vale XP. A fine scontro chi è morto o a terra lo è anche nel suo
+   stato.
 4. **Coerenza interna.** Un morto non parla né agisce; uno svenuto non parla e non
    sente; liberare un prigioniero toglie custodia e vincoli insieme. Le chiamate che
    violano queste regole sono rifiutate con una frase che dice cosa correggere.

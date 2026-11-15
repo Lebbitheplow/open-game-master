@@ -62,6 +62,7 @@ import { releaseHeldSteps } from "@/lib/dm/romance-held";
 import { finishCastingsAtFightEnd } from "@/lib/dm/long-casting";
 import { freeFromCorpse, noteBlowFromInside, swallowFightEnd } from "@/lib/dm/swallow";
 import { projectionDreadHeal } from "@/lib/dm/spirit-projection";
+import { partyNpcRows, settlePartyNpcs } from "@/lib/dm/party-npcs-fight";
 
 // The single server-side path for damage landing on an enemy. Used by the
 // damage_enemy tool AND by damage rolls carrying targetEnemyId, which the
@@ -205,7 +206,7 @@ export function finishEncounter(
   // Read again: the survivors scattered above are fled now, and the card
   // counts them so.
   recordEncounterSummary(campaign.id, encounter, outcome, listEnemies(encounter.id), sheets);
-  const { guestsGone, turncoats, foesMourned, answersOwed } = afterTheFight(campaign, encounter, enemies);
+  const { guestsGone, turncoats, foesMourned, answersOwed, npcsHurt } = afterTheFight(campaign, encounter, enemies);
   // The end of initiative is not the end of dying. With nobody on the
   // party's side left conscious, no one can stabilize the fallen, so their
   // saves are rolled out now, in order, as the pointer would have rolled
@@ -216,7 +217,8 @@ export function finishEncounter(
   // The foes left lying knocked out: the GM is told who, with the id that
   // brings one into a later fight as they are (issue #667: nothing said so,
   // and the next fight made them fresh).
-  const spared = listEnemies(encounter.id).filter((enemy) => isKnockedOut(enemy));
+  const allies = new Set(partyNpcRows(encounter, listEnemies(encounter.id)).map((row) => row.id));
+  const spared = listEnemies(encounter.id).filter((enemy) => isKnockedOut(enemy) && !allies.has(enemy.id));
 
   return {
     encounterOver: true,
@@ -242,6 +244,7 @@ export function finishEncounter(
       ? { bondsClosed: `Every bond with ${foesMourned.join(" and ")} is closed: they died in the fight.` }
       : {}),
     ...(answersOwed.length ? { answerOwed: answersOwed.join(" ") } : {}),
+    ...(npcsHurt?.length ? { alliesFallen: `Their record now says: ${npcsHurt.join("; ")}. Narrate it.` } : {}),
     ...(spared.length
       ? {
           spared: `Left lying knocked out, unconscious and stable: ${spared
@@ -291,7 +294,7 @@ export function afterTheFight(
   campaign: Campaign,
   encounter: Encounter,
   enemies: readonly EncounterEnemy[],
-): { guestsGone: string[]; turncoats: string[]; foesMourned: string[]; answersOwed: string[] } {
+): { guestsGone: string[]; turncoats: string[]; foesMourned: string[]; answersOwed: string[]; npcsHurt?: string[] } {
   // What the fight's plan still held can no longer happen (fight-events.ts).
   disarmFightEvents(encounter.id);
   const floor = getFloor(campaign.id);
@@ -316,7 +319,12 @@ export function afterTheFight(
   // A foe the party knew who died in it is dead to every hero (issue 657).
   // An ephemeral like the companion tools send, so this module imports no
   // conscience.
-  const foesMourned = closeFallenFoes(campaign, enemies);
+  // The NPCs who fought beside the party are allies, not foes: their
+  // record takes what the fight did to them (src/lib/dm/party-npcs-fight.ts).
+  const fought = listEnemies(encounter.id);
+  const allies = new Set(partyNpcRows(encounter, fought).map((row) => row.id));
+  const npcsHurt = settlePartyNpcs(encounter, fought);
+  const foesMourned = closeFallenFoes(campaign, enemies.filter((enemy) => !allies.has(enemy.id)));
   if (foesMourned.length) {
     publishEphemeral(campaign.id, "relationships_updated", {});
   }
@@ -324,7 +332,7 @@ export function afterTheFight(
   // romance-held.ts): the GM is told here, on the turns after, and on a
   // person's console.
   const answersOwed = releaseHeldSteps(campaign);
-  return { guestsGone, turncoats, foesMourned, answersOwed };
+  return { guestsGone, turncoats, foesMourned, answersOwed, ...(npcsHurt.length ? { npcsHurt } : {}) };
 }
 
 // Ends the encounter with victory XP once nobody on the foes' side is left
