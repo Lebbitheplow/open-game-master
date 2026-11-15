@@ -264,5 +264,24 @@ await test("N06: a Rolling Sphere's prone is the kind a creature stands up from,
   assert.equal(sheet(runner.id).conditionMeta?.prone?.saveEnds, undefined, JSON.stringify(sheet(runner.id).conditionMeta));
 });
 
+// ---- N07: a Potion of Giant Strength's Strength carries and lifts ----
+// SRD 5.1, Potion of Giant Strength: "your Strength score changes for 1
+// hour". Lifting and Carrying: carrying capacity is the Strength score x 15,
+// and a creature can push, drag or lift up to twice that (30 x Strength).
+// The potion's score reached attacks and checks, but the carry and lift
+// limits read only worn items, so a drinker with Strength 10 still lifted
+// at most 300 pounds.
+
+await test("N07: a Potion of Hill Giant Strength's Strength 21 lifts 630 pounds and carries 315", async () => {
+  const strongman = world.addHero({ user: world.owner, class: "fighter", level: 3, maxHp: 40 });
+  world.patch(strongman.id, { equipment: [{ name: "Potion of Hill Giant Strength", qty: 1 }] });
+  const drunk = await world.invoke("use_item", { characterId: strongman.id, item: "Potion of Hill Giant Strength" });
+  assert.equal(drunk.ok, true, drunk.error);
+  const out = await world.invoke("lift", { characterId: strongman.id, weightLb: 600, how: "lift" });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.limitLb, 630);
+  assert.equal(out.result.capacityLb, 315);
+});
+
 world.close();
 finish();

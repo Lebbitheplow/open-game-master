@@ -422,11 +422,9 @@ export function effectiveAbilities(
     }
   }
   // A Potion of Giant Strength sets Strength for an hour, like the belt.
-  for (const condition of wearer?.conditions ?? []) {
-    const potion = /^giant strength \((\d+)\)$/i.exec(condition.trim());
-    if (potion) {
-      set.str = Math.max(set.str ?? 0, Math.min(30, Number(potion[1])));
-    }
+  const potion = potionStrength(wearer);
+  if (potion) {
+    set.str = Math.max(set.str ?? 0, potion);
   }
   if (!Object.keys(set).length) {
     return raised;
@@ -454,7 +452,25 @@ export function itemAbilityScore(
       out = Math.min(increase.max, out + increase.amount);
     }
   }
-  return Math.max(out, riders.abilitySet[ability] ?? 0);
+  // The potion's Strength counts here as in effectiveAbilities: carrying
+  // capacity and the lift limit read this score (SRD 5.1, Lifting and
+  // Carrying: Strength x 15, x 30 to push, drag or lift), and a drinker
+  // with Strength 10 under a Potion of Hill Giant Strength lifted only 300
+  // pounds where Strength 21 lifts 630.
+  return Math.max(out, riders.abilitySet[ability] ?? 0, ability === "str" ? potionStrength(wearer) : 0);
+}
+
+// The Strength a Potion of Giant Strength sets while it lasts: "giant
+// strength (21)" on the sheet (src/lib/dm/consumables.ts), or 0 with none.
+function potionStrength(wearer: Wearer | undefined): number {
+  let best = 0;
+  for (const condition of wearer?.conditions ?? []) {
+    const potion = /^giant strength \((\d+)\)$/i.exec(condition.trim());
+    if (potion) {
+      best = Math.max(best, Math.min(30, Number(potion[1])));
+    }
+  }
+  return best;
 }
 
 // ---- attunement ----
