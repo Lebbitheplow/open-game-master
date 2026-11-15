@@ -135,4 +135,34 @@ await test("R05 a character brought back from death is no longer attuned to anyt
   assert.equal(Boolean(cloak.attuned), false);
 });
 
+await test("R06 a worn, attuned Ring of Regeneration heals 1d6 every 10 minutes the clock moves, from 1 hit point up", async () => {
+  // SRD 5.1, Ring of Regeneration: "While wearing this ring, you regain 1d6
+  // hit points every 10 minutes, provided that you have at least 1 hit
+  // point."
+  const table = await openTable();
+  const ring = { name: "Ring of Regeneration", qty: 1, attuned: true, equipped: true };
+  const wearer = table.addHero({ class: "fighter", level: 5, maxHp: 60, equipment: [ring], hitDice: { die: "d10", total: 5, spent: 5 } });
+  const down = table.addHero({ class: "fighter", level: 5, maxHp: 60, equipment: [ring], hitDice: { die: "d10", total: 5, spent: 5 } });
+  table.patch(wearer.id, { currentHp: 10 });
+  table.patch(down.id, { currentHp: 0, deathSaves: { successes: 0, failures: 0, stable: true, dead: false } });
+  table.clearDice();
+  table.diceLog();
+  // Half an hour: three ten-minute marks, 3d6.
+  table.dice(1, 2, 3);
+  await table.invoke("pass_time", { amount: 30, unit: "minutes" });
+  table.clearDice();
+  assert.equal(table.sheet(wearer.id).currentHp, 10 + 6);
+  // At 0 hit points the ring does nothing.
+  assert.equal(table.sheet(down.id).currentHp, 0);
+  // Never past the maximum.
+  table.dice(6, 6, 6, 6, 6, 6);
+  await table.invoke("pass_time", { amount: 60, unit: "minutes" });
+  table.clearDice();
+  assert.equal(table.sheet(wearer.id).currentHp, 16 + 36);
+  table.dice(6, 6, 6, 6, 6, 6);
+  await table.invoke("pass_time", { amount: 60, unit: "minutes" });
+  table.clearDice();
+  assert.equal(table.sheet(wearer.id).currentHp, 60);
+});
+
 finish();

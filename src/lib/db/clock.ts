@@ -1,5 +1,6 @@
 import { tickEffectMinutes } from "@/lib/db/active-effects";
 import { mummyRotClock } from "@/lib/dm/mummy-rot";
+import { regenerationClock } from "@/lib/dm/regeneration-ring";
 import { getCampaignById } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { gutterBurntLights } from "@/lib/dm/light-timers";
@@ -125,6 +126,8 @@ export function advanceClock(
     if (campaign) {
       deathSaves = tickClockConditions(campaign, moved.minutes, current.instant);
     }
+    // A Ring of Regeneration's d6 for every ten minutes (regeneration-ring.ts).
+    regenerationClock(campaignId, current.instant, moved.instant);
   }
   // Command Undead: a commanded undead of Intelligence 12 repeats its save
   // as each hour ends, in a fight or out (src/lib/dm/ar-ws-command-hours.ts).
