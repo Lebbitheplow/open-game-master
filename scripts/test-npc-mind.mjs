@@ -684,6 +684,45 @@ await test("a mind owed its turn is asked in the same note as who heard, so a cl
   }
 });
 
+await test("a whispered question, its answer and a mind owed its turn each get a call: the owed turn is not lost to the hearing", async () => {
+  const { listNpcs } = await import("../src/lib/db/npcs.ts");
+  const others = listNpcs(world.campaignId).filter((entry) => mind.tierOfNpc(entry) === "primary" && !entry.companionSheetId);
+  for (const other of others) {
+    minds.setNpcTier(other.id, "secondary");
+  }
+  npc("Captain Wren", { trait: "leads the column" });
+  npc("Prisoner Vell", { trait: "chained on the cart" });
+  try {
+    model.script([
+      reply({ calls: [call("npc_speak", { name: "Captain Wren", perceives: "Aria sits on the cart." })] }),
+      answer({ speech: "Watch them.", intent: "" }),
+      reply({ text: '"Watch them," Wren says.' }),
+    ]);
+    await model.turn(world, "I sit on the cart.", aria.id);
+    const wrenAsked = () => model.requests.filter((request) => String(request.messages?.at(-1)?.content ?? "").includes("Aria leans to Vell")).length;
+    model.script([
+      reply({ calls: [call("npc_speak", { name: "Prisoner Vell", perceives: "Aria whispers: who sent you?" })] }),
+      answer({ speech: "Nobody you know.", intent: "" }),
+      reply({ text: '"Nobody you know," Vell murmurs.' }),
+      reply({ calls: [call("npc_hear", { speaker: "Aria", words: "Who sent you?", listeners: [{ name: "Captain Wren", reach: "far", dc: 15 }] })] }),
+      reply({ calls: [call("npc_hear", { speaker: "Prisoner Vell", words: "Nobody you know.", listeners: [{ name: "Captain Wren", reach: "far", dc: 15 }] })] }),
+      reply({ calls: [call("npc_speak", { name: "Captain Wren", perceives: "Aria leans to Vell on the cart; the rain drowns their words." })] }),
+      answer({ speech: "Enough chatter.", intent: "" }),
+      reply({ text: '"Enough chatter," Wren calls back.' }),
+    ]);
+    const dm = await model.turn(world, '"Who sent you?" I whisper to Vell.', aria.id);
+    assert.equal(wrenAsked(), 1, "the captain owed her turn is still asked after both lines were heard");
+    assert.match(dm.content, /Enough chatter/);
+  } finally {
+    for (const other of others) {
+      minds.setNpcTier(other.id, "primary");
+    }
+    for (const name of ["Captain Wren", "Prisoner Vell"]) {
+      minds.setNpcTier(getNpcByName(world.campaignId, name).id, "secondary");
+    }
+  }
+});
+
 await test("a note sent on the call before the last still leaves a call with tools to answer it", async () => {
   const { listNpcs } = await import("../src/lib/db/npcs.ts");
   const others = listNpcs(world.campaignId).filter((entry) => mind.tierOfNpc(entry) === "primary" && !entry.companionSheetId);
