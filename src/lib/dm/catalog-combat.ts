@@ -456,7 +456,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
         onlyWhen: { field: "action", equals: ["search", "improvise"] },
         host: { feature: IMPROVISED, older: { label: "Search with", help: "Perception, or Investigation to reason it out." } },
       },
-      { name: "ability", label: "Or an ability", kind: "select", options: ABILITIES, onlyWhen: { field: "action", equals: ["improvise"] } },
+      { name: "ability", label: "Or an ability", kind: "select", options: ABILITIES, help: "Escape from manacles: Dexterity slips them, Strength breaks them (DC 20 either).", onlyWhen: { field: "action", equals: ["improvise", "escape"] } },
       {
         name: "contestSkill",
         label: "Enemy resists with",

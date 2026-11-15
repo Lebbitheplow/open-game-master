@@ -273,12 +273,12 @@ function dodge(campaign: Campaign, enemy: EncounterEnemy, encounter: Encounter, 
   };
 }
 
-function escape(campaign: Campaign, turn: DmTurn, enemy: EncounterEnemy, encounter: Encounter, bonus: boolean): ToolResult {
+function escape(campaign: Campaign, turn: DmTurn, enemy: EncounterEnemy, encounter: Encounter, bonus: boolean, ability?: string): ToolResult {
   const route = routeFor(encounter, enemy, bonus, null, false, "escape");
   if (typeof route !== "string") {
     return route;
   }
-  const result = enemyEscape(campaign, turn, enemy.id);
+  const result = enemyEscape(campaign, turn, enemy.id, ability);
   if ("error" in result) {
     return result;
   }
@@ -293,7 +293,8 @@ function escape(campaign: Campaign, turn: DmTurn, enemy: EncounterEnemy, encount
 export function handleEnemyTakeAction(
   campaign: Campaign,
   turn: DmTurn,
-  args: { enemyId: string; action: string; bonus?: boolean },
+  // `ability`: manacles' escape, "dex" to slip them or "str" to break them.
+  args: { enemyId: string; action: string; bonus?: boolean; ability?: string },
 ): ToolResult {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
@@ -338,6 +339,6 @@ export function handleEnemyTakeAction(
     case "dodge":
       return dodge(campaign, enemy, encounter, bonus);
     case "escape":
-      return escape(campaign, turn, enemy, encounter, bonus);
+      return escape(campaign, turn, enemy, encounter, bonus, args.ability);
   }
 }

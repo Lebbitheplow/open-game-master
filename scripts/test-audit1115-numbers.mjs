@@ -429,6 +429,157 @@ await test("N10: a hazard of the GM's own and a fall land on an enemy through ap
   assert.ok(foe(enemy.id).conditions.includes("prone"));
 });
 
+// ---- N11: manacles ----
+// SRD 5.1, Adventuring Gear, Manacles: "These metal restraints can bind a
+// Small or Medium creature. Escaping the manacles requires a successful DC
+// 20 Dexterity check. Breaking them requires a successful DC 20 Strength
+// check. Each set of manacles comes with one key. Without the key, a
+// creature proficient with thieves' tools can pick the manacles' lock with
+// a successful DC 15 Dexterity check. Manacles have 15 hit points." The
+// engine had no path for any of it: the GM laid "restrained" by hand and
+// chose every DC through request_roll.
+
+const jailer = world.addHero({ user: world.owner, class: "fighter", level: 3, maxHp: 40 });
+const captive = world.addHero({ user: world.owner, class: "fighter", level: 3, maxHp: 40 });
+const burglar = world.addHero({
+  user: world.owner,
+  class: "rogue",
+  level: 3,
+  maxHp: 30,
+  abilities: { dex: 14 },
+  proficiencies: { saves: [], skills: [], expertise: [], languages: ["Common"], tools: ["Thieves' tools"], armor: [], weapons: [] },
+});
+const carriedQty = (id, name) => (sheet(id).equipment.find((item) => item.name === name)?.qty ?? 0);
+const manacled = (held) => held.conditions.includes("restrained") && [held.conditionMeta?.restrained].flat().some((entry) => entry?.source === "manacles");
+const shackle = (id) => world.invoke("take_action", { characterId: jailer.id, action: "use_object", item: "Manacles", targetEnemyId: id });
+const freshJailer = (qty = 1) => world.patch(jailer.id, { equipment: [{ name: "Manacles", qty }] });
+
+await test("N11: manacles bind only a Small or Medium creature within reach that cannot fight them off, and the binder's set goes onto it", async () => {
+  const enemy = await trapFight();
+  freshJailer();
+  kit.place(jailer.id, 2, 2);
+  kit.place(enemy.id, 3, 2);
+  kit.giveTurn(jailer.id);
+  // Up and fighting: refused, nothing spent.
+  const free = await shackle(enemy.id);
+  assert.equal(free.ok, false, JSON.stringify(free));
+  assert.equal(carriedQty(jailer.id, "Manacles"), 1);
+  // Large: refused even stunned.
+  kit.setEnemy(enemy.id, { stats: { size: "Large" }, conditions: ["stunned"], conditionMeta: {} });
+  const large = await shackle(enemy.id);
+  assert.equal(large.ok, false, JSON.stringify(large));
+  // Medium and stunned: bound.
+  kit.setEnemy(enemy.id, { stats: { size: "Medium" }, conditions: ["stunned"], conditionMeta: {} });
+  const bound = await shackle(enemy.id);
+  assert.equal(bound.ok, true, bound.error);
+  assert.ok(manacled(foe(enemy.id)), JSON.stringify(foe(enemy.id).conditionMeta));
+  assert.equal(carriedQty(jailer.id, "Manacles"), 0, "the set stayed in the binder's pack");
+});
+
+await test("N11: an enemy's escape from manacles is a DC 20 check from its block, the better of Dexterity to slip them and Strength to break them", async () => {
+  const enemy = await trapFight({ abilities: { ...DUMMY.abilities, dex: 14, str: 10 } });
+  freshJailer();
+  kit.place(jailer.id, 2, 2);
+  kit.place(enemy.id, 3, 2);
+  kit.giveTurn(jailer.id);
+  kit.setEnemy(enemy.id, { conditions: ["stunned"], conditionMeta: {} });
+  assert.equal((await shackle(enemy.id)).ok, true);
+  const live = foe(enemy.id);
+  const meta = { ...live.conditionMeta };
+  delete meta.stunned;
+  kit.setEnemy(enemy.id, { conditions: live.conditions.filter((name) => name !== "stunned"), conditionMeta: meta });
+  // Dexterity +2: 17 is 19, short of 20; 18 is 20 and slips them.
+  kit.freshRound();
+  world.dice(17);
+  const stuck = await world.invoke("take_action", { action: "escape", enemyId: enemy.id });
+  assert.equal(stuck.ok, true, stuck.error);
+  assert.equal(stuck.result.success, false, JSON.stringify(stuck.result));
+  assert.ok(manacled(foe(enemy.id)));
+  kit.freshRound();
+  world.dice(18);
+  const slipped = await world.invoke("take_action", { action: "escape", enemyId: enemy.id });
+  assert.equal(slipped.ok, true, slipped.error);
+  assert.equal(slipped.result.success, true, JSON.stringify(slipped.result));
+  assert.equal(world.clearDice(), 0);
+  assert.equal(manacled(foe(enemy.id)), false);
+});
+
+await test("N11: a bound character breaks the manacles with a DC 20 Strength check; a creature proficient with thieves' tools picks them with DC 15 Dexterity; the key opens them", async () => {
+  await trapFight();
+  world.patch(burglar.id, { equipment: [{ name: "Thieves' Tools", qty: 1 }] });
+  const bindCaptive = async () => {
+    freshJailer();
+    kit.place(jailer.id, 2, 2);
+    kit.place(captive.id, 3, 2);
+    kit.place(burglar.id, 4, 2);
+    kit.giveTurn(jailer.id);
+    const out = await world.invoke("take_action", { characterId: jailer.id, action: "use_object", item: "Manacles", targetCharacterId: captive.id });
+    assert.equal(out.ok, true, out.error);
+    assert.ok(manacled(sheet(captive.id)));
+  };
+  await bindCaptive();
+  // Strength 10: a 19 is 19, a 20 is 20 and breaks them.
+  kit.giveTurn(captive.id);
+  world.dice(19);
+  const strain = await world.invoke("take_action", { characterId: captive.id, action: "escape", ability: "str" });
+  assert.equal(strain.ok, true, strain.error);
+  assert.equal(strain.result.success, false, JSON.stringify(strain.result));
+  kit.giveTurn(captive.id);
+  world.dice(20);
+  const broke = await world.invoke("take_action", { characterId: captive.id, action: "escape", ability: "str" });
+  assert.equal(broke.ok, true, broke.error);
+  assert.equal(broke.result.success, true, JSON.stringify(broke.result));
+  assert.equal(manacled(sheet(captive.id)), false);
+  // Picked: Dexterity +2 and proficiency +2; a 10 is 14, an 11 is 15.
+  await bindCaptive();
+  const pick = () => world.invoke("take_action", { characterId: burglar.id, action: "use_object", item: "Thieves' Tools", targetCharacterId: captive.id });
+  kit.giveTurn(burglar.id);
+  world.dice(10);
+  const fumbled = await pick();
+  assert.equal(fumbled.ok, true, fumbled.error);
+  assert.equal(fumbled.result.success, false, JSON.stringify(fumbled.result));
+  kit.giveTurn(burglar.id);
+  world.dice(11);
+  const picked = await pick();
+  assert.equal(picked.ok, true, picked.error);
+  assert.equal(picked.result.success, true, JSON.stringify(picked.result));
+  assert.equal(manacled(sheet(captive.id)), false);
+  // Without proficiency in thieves' tools there is no pick.
+  await bindCaptive();
+  world.patch(jailer.id, { equipment: [{ name: "Thieves' Tools", qty: 1 }] });
+  kit.giveTurn(jailer.id);
+  const untrained = await world.invoke("take_action", { characterId: jailer.id, action: "use_object", item: "Thieves' Tools", targetCharacterId: captive.id });
+  assert.equal(untrained.ok, false, JSON.stringify(untrained));
+  // The key, which came with the set the party put on: opened with no
+  // roll, and the set goes back in the pack of whoever opened it.
+  world.patch(jailer.id, { equipment: [] });
+  kit.giveTurn(jailer.id);
+  assert.equal(world.clearDice(), 0);
+  const opened = await world.invoke("take_action", { characterId: jailer.id, action: "use_object", item: "Manacles", targetCharacterId: captive.id });
+  assert.equal(opened.ok, true, opened.error);
+  assert.equal(manacled(sheet(captive.id)), false);
+  assert.equal(carriedQty(jailer.id, "Manacles"), 1);
+  assert.equal(world.clearDice(), 0);
+});
+
+await test("N11: manacles have 15 hit points: damage_object on them breaks them and frees the creature unharmed", async () => {
+  const enemy = await trapFight();
+  freshJailer();
+  kit.place(jailer.id, 2, 2);
+  kit.place(enemy.id, 3, 2);
+  kit.giveTurn(jailer.id);
+  kit.setEnemy(enemy.id, { conditions: ["stunned"], conditionMeta: {} });
+  assert.equal((await shackle(enemy.id)).ok, true);
+  const dent = await world.invoke("damage_object", { name: "Manacles", damage: "14", damageType: "bludgeoning" });
+  assert.equal(dent.ok, true, dent.error);
+  assert.equal(dent.result.hp, 15, JSON.stringify(dent.result));
+  assert.ok(manacled(foe(enemy.id)));
+  const snap = await world.invoke("damage_object", { name: "Manacles", damage: "1", damageType: "bludgeoning" });
+  assert.equal(snap.result.broken, true, JSON.stringify(snap.result));
+  assert.equal(manacled(foe(enemy.id)), false);
+  assert.equal(foe(enemy.id).currentHp, 40);
+});
+
 await kit.endFight();
 world.close();
 finish();

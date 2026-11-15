@@ -24,6 +24,7 @@ import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
 import { charmedBy } from "@/lib/dm/enemy-profile";
 import { effectiveSpeed } from "@/lib/dm/condition-logic";
 import { characterEscape } from "@/lib/dm/grapple";
+import { manaclesUse } from "@/lib/dm/manacles";
 import { squeezeSlip } from "@/lib/dm/ar-ws-squeeze";
 import { handleEnemyTakeAction } from "@/lib/dm/enemy-actions";
 import { pin } from "@/lib/dm/grappler-pin";
@@ -105,7 +106,7 @@ export const actionTools: ToolDef[] = [
           },
           targetCharacterId: {
             type: "string",
-            description: "Help only: the ally being helped, exact characterId from GAME STATE.",
+            description: "Help or manacles: the ally helped or bound, exact characterId from GAME STATE.",
           },
           shove: {
             type: "string",
@@ -126,7 +127,7 @@ export const actionTools: ToolDef[] = [
           // cost the trimmed set of a 48K table its spare room, a model knows
           // them, and a wrong one is refused with the list (takeActionSchema).
           skill: { type: "string", description: "Search: perception (the default) or investigation. Improvise: the character's skill." },
-          ability: { type: "string", enum: [...ABILITIES], description: "Improvise: an ability instead of a skill." },
+          ability: { type: "string", enum: [...ABILITIES], description: "Improvise: an ability instead of a skill. Escape from manacles: dex slips, str breaks." },
           contestSkill: { type: "string", description: "Improvise: the creature's opposing skill or ability, if unusual." },
           difficulty: { type: "string", enum: [...DIFFICULTY_TIERS], description: "Improvise: the DC; needed with no creature." },
           condition: { type: "string", enum: [...IMPROVISED_CONDITIONS], description: "Improvise: what a win does to the creature." },
@@ -135,7 +136,7 @@ export const actionTools: ToolDef[] = [
           distanceFt: { type: "integer", minimum: 0, description: "Improvise on the battle map (required): feet to the thing used, as narrated, never a guess." },
           item: {
             type: "string",
-            description: "Use an Object only: the object, when it is one they carry. For consumables, use use_item.",
+            description: "Use an Object only: the object, when it is one they carry. For consumables, use use_item. Manacles or Thieves' Tools on a target bind, unlock or pick.",
           },
           scene: { type: "string", description: "Improvise (required): the thing used, in the narration's words." },
           enemyId: {
@@ -321,7 +322,7 @@ function enemyActionAndWalk(
   if (plan && "error" in plan) {
     return toolError(plan);
   }
-  const acted = handleEnemyTakeAction(campaign, turn, { enemyId, action: args.action, bonus: args.bonus });
+  const acted = handleEnemyTakeAction(campaign, turn, { enemyId, action: args.action, bonus: args.bonus, ability: args.ability });
   if (acted.error || !enemy || !hasDestination(args)) {
     return acted;
   }
@@ -566,7 +567,8 @@ export function handleTakeAction(
       return searchAction(campaign, turn, sheet, skill, { spend: () => spend() });
     }
     case "use_object":
-      return objectAction(
+      // Manacles put on, opened or picked (manacles.ts); else the plain use.
+      return manaclesUse(campaign, turn, sheet, args, () => spend()) ?? objectAction(
         campaign,
         turn,
         sheet,
@@ -576,7 +578,7 @@ export function handleTakeAction(
         price.feature === "Fast Hands" ? "their bonus action (Fast Hands)" : undefined,
       );
     case "escape":
-      return characterEscape(campaign, turn, sheet, () => spend());
+      return characterEscape(campaign, turn, sheet, () => spend(), args.ability);
     case "pin":
       return pin(campaign, turn, sheet, encounter, args.targetEnemyId, () => spend());
     case "improvise":
