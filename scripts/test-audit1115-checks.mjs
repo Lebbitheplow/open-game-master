@@ -333,5 +333,42 @@ await test("K09: a Stealth total that ties the watcher's Perception stays hidden
   await kit.endFight();
 });
 
+// K10. SRD 5.1, Gloves of Thievery: "you gain a +5 bonus to Dexterity
+// (Sleight of Hand) checks and Dexterity checks made to pick locks." Only
+// the Sleight of Hand half was applied: a thieves' tools check to pick a
+// lock rolled without the gloves. A check names a lock with about 'locks'
+// (a trap's disarm is about 'traps', and takes nothing), the AI GM is asked
+// for it before a gloved character's Dexterity check is rolled, and the
+// shared check door (contest-roll.ts rollCharacterCheck) carries the tool.
+await test("K10: Gloves of Thievery add +5 to a Dexterity check to pick a lock, never to disarming a trap", async () => {
+  await kit.endFight();
+  const picker = world.addHero({
+    class: "fighter", level: 1, abilities: { dex: 14 },
+    proficiencies: { ...TRAINED, tools: ["thieves' tools"] },
+    equipment: [{ name: "Gloves of Thievery", qty: 1, equipped: true }],
+  });
+  const tools = { kind: "ability_check", ability: "dex", tool: "thieves' tools" };
+  // DEX +2 and proficiency +2 with the tools.
+  assert.equal(resolved(picker.id, { ...tools, about: "traps" }).expression, "1d20+4", "a trap's disarm takes no lock bonus");
+  assert.equal(resolved(picker.id, tools).expression, "1d20+4", "a check that names no lock takes none");
+  assert.equal(resolved(picker.id, { ...tools, about: "locks" }).expression, "1d20+9", "picking a lock takes the gloves' +5");
+  assert.equal(resolved(picker.id, { kind: "ability_check", ability: "str", about: "locks" }).expression, "1d20", "a Strength check on a lock is not a Dexterity check");
+  assert.equal(resolved(picker.id, { kind: "skill_check", skill: "sleight_of_hand", about: "locks" }).expression, "1d20+7", "Sleight of Hand to pick a lock takes the +5 once");
+  // The AI GM is asked what a gloved character's Dexterity check is for.
+  const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
+  const { dispatchAdjudication } = await import("../src/lib/dm/invoke-dispatch.ts");
+  world.say("player", "I work the lock.", picker);
+  const sheets = world.sheets();
+  const asked = await dispatchAdjudication("request_roll", JSON.stringify({ ...tools, characterId: picker.id, difficulty: "moderate", reason: "the cell door" }), {
+    campaign: world.campaign(), turn: createDmTurn(world.campaignId, []), sheets, sheetsById: new Map(sheets.map((sheet) => [sheet.id, sheet])), realDiceUserIds: new Set(),
+  });
+  assert.equal(asked.retry, true, `rolled without asking: ${JSON.stringify(asked).slice(0, 200)}`);
+  assert.match(asked.error, /about: locks, or 'none'/, asked.error);
+  // The shared check door: the tool's proficiency and the gloves on a lock.
+  const { rollCharacterCheck } = await import("../src/lib/dm/contest-roll.ts");
+  const pick = await forced([10], () => rollCharacterCheck(world.campaign(), world.sheet(picker.id), { ability: "dex", tool: "thieves' tools", about: "locks", dc: 15 }, "manacles"));
+  assert.equal(pick.total, 10 + 9, `rollCharacterCheck picks the lock with the tools and the gloves: ${JSON.stringify(pick)}`);
+});
+
 world.close();
 finish();

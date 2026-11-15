@@ -2450,6 +2450,7 @@
     "lib/srd/index.ts#str-eq": [["key",2,"creature sizes"],["key",2,"a lineage's size pick: its variant group label and the size it names"]],
     "lib/srd/index.ts#toLowerCase": [["key",4,"race id from a race name; class id"],["key",3,"race ids from a race name, and the size ODM's own \"Size (Small)\" pick names"]],
     "lib/srd/index.ts#toUpperCase": [["display",4,"ability abbreviation shown"]],
+    "lib/srd/item-check-riders.ts#str-eq": [["key",2,"an ability id and a check's about value (roll-about.ts CHECK_ABOUT): a Dexterity check about a lock (engine vocabulary)"]],
     "lib/srd/item-check-riders.ts#str-list": [["english-source",1,"reference: SRD magic item names"]],
     "lib/srd/item-spells.ts#re-word": [["english-source",56,"reference: SRD magic item names matched whole"]],
     "lib/srd/prayer-beads.ts#str-list": [["english-source",1,"reference: the SRD prayer bead kinds and the spells each holds, matched whole by textKey"]],
