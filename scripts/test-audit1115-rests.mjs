@@ -51,4 +51,41 @@ await test("R02 Durable floors each hit die at twice the Constitution modifier, 
   assert.equal(table.sheet(fighter.id).currentHp, 10 + 6 + 13);
 });
 
+await test("R03 a worn, attuned Periapt of Wound Closure doubles what each hit die heals and stabilizes its dying wearer", async () => {
+  // SRD 5.1, Periapt of Wound Closure: "While you wear this pendant, you
+  // stabilize whenever you are dying at the start of your turn. In
+  // addition, whenever you roll a Hit Die to regain hit points, double the
+  // number of hit points it restores."
+  const { rollDeathSave } = await import("../src/lib/dm/death.ts");
+  const table = await openTable();
+  const periapt = { name: "Periapt of Wound Closure", qty: 1, attuned: true, equipped: true };
+  const wearer = table.addHero({ class: "fighter", level: 5, maxHp: 60, abilities: { con: 14 }, equipment: [periapt], hitDice: { die: "d10", total: 5, spent: 0 } });
+  const bare = table.addHero({ class: "fighter", level: 5, maxHp: 60, abilities: { con: 14 }, equipment: [{ ...periapt, attuned: false }], hitDice: { die: "d10", total: 5, spent: 0 } });
+  assert.equal(table.sheet(wearer.id).equipment[0]?.attuned, true, "the periapt is stored attuned");
+  table.patch(wearer.id, { currentHp: 10 });
+  table.patch(bare.id, { currentHp: 10 });
+  table.diceLog();
+  // 4 + 2 doubled is 12; the unattuned pendant does nothing (4 + 2).
+  table.dice(4, 4);
+  const rest = await shortRest(table, [{ characterId: wearer.id, dice: 1 }, { characterId: bare.id, dice: 1 }]);
+  assert.equal(rest.ok, true, rest.error);
+  rolled(table);
+  assert.equal(table.sheet(wearer.id).currentHp, 10 + 12);
+  assert.equal(table.sheet(bare.id).currentHp, 10 + 6);
+
+  // Dying at the start of their turn, the wearer stabilizes: no save is
+  // rolled, and the track reads stable.
+  table.patch(wearer.id, { currentHp: 0, deathSaves: { successes: 0, failures: 2, stable: false, dead: false } });
+  table.clearDice();
+  table.diceLog();
+  table.dice(1, 3);
+  rollDeathSave(table.campaign(), wearer.id);
+  const track = table.sheet(wearer.id).deathSaves;
+  assert.equal(track?.stable, true, JSON.stringify(track));
+  assert.equal(track?.dead, false);
+  assert.equal(track?.failures, 0);
+  assert.equal(table.sheet(wearer.id).currentHp, 0, "stable is not healed");
+  table.clearDice();
+});
+
 finish();

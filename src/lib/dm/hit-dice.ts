@@ -35,6 +35,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { healCeiling, hitDiceHealingFactor } from "@/lib/dm/afflictions";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { sanctuaryDieBonus } from "@/lib/dm/genie-vessel";
+import { WOUND_CLOSURE, wearsWorkingItem } from "@/lib/srd/magic-items";
 
 export type HitDiceOutcome =
   | ToolError
@@ -144,7 +145,11 @@ export function spendHitDice(input: {
   // Durable floors each die at twice the Constitution modifier; Stalwart
   // adds it (src/lib/srd/feat-combat.ts).
   const floored = hitDieHealingFloor(sheet, conMod);
-  const rolled = hitDiceHealing(outcome, conMod, (input.songDie ? 1 : 0) + (input.chefDie ? 1 : 0), floored ? { floor: floored.floor, add: floored.extra } : {});
+  // SRD 5.1, Periapt of Wound Closure: "whenever you roll a Hit Die to
+  // regain hit points, double the number of hit points it restores". The
+  // pendant had no effect at all: worn and attuned, the dice healed as bare.
+  const times = wearsWorkingItem(sheet.equipment, sheet, WOUND_CLOSURE) ? 2 : 1;
+  const rolled = hitDiceHealing(outcome, conMod, (input.songDie ? 1 : 0) + (input.chefDie ? 1 : 0), { ...(floored ? { floor: floored.floor, add: floored.extra } : {}), times });
   const withFeat = rolled + count * (sanctuary?.bonus ?? 0);
   const healed = Math.floor(withFeat * hitDiceHealingFactor(sheet));
   // Pale Tincture's damage is beyond what hit dice heal (afflictions.ts).

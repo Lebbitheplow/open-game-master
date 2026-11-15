@@ -383,6 +383,24 @@ export function magicItemRiders(equipment: WornMagicItem[], wearer?: Wearer): Ma
   return riders;
 }
 
+// The pendant whose magic the hit dice and the death save read by name
+// (src/lib/dm/hit-dice.ts, death.ts).
+export const WOUND_CLOSURE = "Periapt of Wound Closure";
+
+// Whether the sheet wears this magic item where its magic works (worn, and
+// attuned by someone who may when it asks for that), for an item whose
+// effect one engine reads by name.
+export function wearsWorkingItem(equipment: WornMagicItem[], wearer: Wearer | undefined, name: string): boolean {
+  const wanted = magicItemNamed(name);
+  if (!wanted) {
+    return false;
+  }
+  return equipment.some((item) => {
+    const def = defOf(item);
+    return def !== null && def.match === wanted.match && itemActive(item, def, equipment, wearer);
+  });
+}
+
 // The flying, swimming and climbing speeds worn items give, in feet, the
 // best of each; `walking` is the wearer's walking speed, for the items whose
 // speed equals it (SRD 5.1, Winged Boots: "a flying speed equal to your
