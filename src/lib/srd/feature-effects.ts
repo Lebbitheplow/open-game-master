@@ -378,7 +378,7 @@ export const FEATURE_EFFECTS: FeatureDef[] = ([
     match: ["remarkable athlete"],
     effects: [{ kind: "half_proficiency", scope: "physical" }],
     guidance:
-      "Remarkable Athlete: half their proficiency bonus (rounded down) on Strength, Dexterity, and Constitution checks that do not already use it, initiative included. The server applies it.",
+      "Remarkable Athlete: half their proficiency bonus (rounded up) on Strength, Dexterity, and Constitution checks that do not already use it, initiative included. The server applies it.",
   },
   {
     // Enforced by the roll resolver with the dice grammar's floor suffix
@@ -1168,6 +1168,10 @@ export type DefenseRiders = {
   // Trades) or "physical" for STR/DEX/CON only (Remarkable Athlete). The
   // broader scope wins when a sheet somehow carries both.
   halfProficiency: "all" | "physical" | "mental" | null;
+  // Every scope held, for the half a check takes (halfProficiencyBonus): a
+  // bard who is also a Champion keeps Remarkable Athlete's round-up on the
+  // physical checks, which the one broadest scope above loses.
+  halfScopes: Array<"all" | "physical" | "mental">;
 };
 
 // SRD 5.1 paladin, Aura of Protection: "You must be conscious to grant this
@@ -1196,6 +1200,7 @@ export function defenseRiders(
     passiveBonus: 0,
     resistances: [],
     halfProficiency: null,
+    halfScopes: [],
   };
   for (const { effect } of effectsFor(sheet)) {
     switch (effect.kind) {
@@ -1228,6 +1233,9 @@ export function defenseRiders(
         break;
       case "half_proficiency":
         riders.halfProficiency = riders.halfProficiency === "all" ? "all" : effect.scope;
+        if (!riders.halfScopes.includes(effect.scope)) {
+          riders.halfScopes.push(effect.scope);
+        }
         break;
       default:
         break;
@@ -1248,6 +1256,24 @@ export function halfProficiencyCovers(
     return ability === "int" || ability === "wis";
   }
   return scope === "physical" && (ability === "str" || ability === "dex" || ability === "con");
+}
+
+// The half proficiency bonus a check of this ability takes from the scopes
+// held, the best of them: Remarkable Athlete's rounds up ("half your
+// proficiency bonus (round up)", SRD 5.1, Champion), Jack of All Trades'
+// and the rest round down. 0 when none covers it.
+export function halfProficiencyBonus(
+  scopes: ReadonlyArray<"all" | "physical" | "mental">,
+  ability: string,
+  proficiencyBonus: number,
+): number {
+  return scopes.reduce(
+    (best, scope) =>
+      halfProficiencyCovers(scope, ability)
+        ? Math.max(best, scope === "physical" ? Math.ceil(proficiencyBonus / 2) : Math.floor(proficiencyBonus / 2))
+        : best,
+    0,
+  );
 }
 
 // Halfling Lucky: a natural 1 on an attack roll, ability check, or saving

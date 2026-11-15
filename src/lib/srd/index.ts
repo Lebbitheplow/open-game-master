@@ -1,6 +1,6 @@
 import { soulOfArtificeBonus } from "@/lib/srd/mt-srd-artificer";
 import { subclassSpellsFor } from "@/lib/srd/features";
-import { FEAT_ONLY_SPEED, auraGranted, combatRiders, defenseRiders, halfProficiencyCovers } from "@/lib/srd/feature-effects";
+import { FEAT_ONLY_SPEED, auraGranted, combatRiders, defenseRiders, halfProficiencyBonus } from "@/lib/srd/feature-effects";
 import { formSees } from "@/lib/srd/form-sees";
 import { hasMediumArmorMaster } from "@/lib/srd/feat-combat";
 import { dualWielderAcBonus } from "@/lib/srd/feat-ac";
@@ -524,7 +524,7 @@ export function computeSheetDerived(
   const defense =
     sheet.class && (sheet.features || sheet.feats)
       ? defenseRiders({ class: sheet.class, level: sheet.level, features: riderFeatures, campaignId: sheet.campaignId }, abilityMods)
-      : { saveBonus: 0, initiativeBonus: 0, passiveBonus: 0, halfProficiency: null };
+      : { saveBonus: 0, initiativeBonus: 0, passiveBonus: 0, halfProficiency: null, halfScopes: [] };
 
   // Saves a feature trains on top of the class table's (Diamond Soul,
   // Slippery Mind): derived here, so no stored sheet has to change.
@@ -563,9 +563,9 @@ export function computeSheetDerived(
 
   // Jack of All Trades / Remarkable Athlete: half the proficiency bonus on
   // any covered check that does not already use it. The bard's rounds down;
-  // the Champion's, which covers the physical abilities only, rounds up.
-  const halfScope = defense.halfProficiency ?? null;
-  const halfPb = halfScope === "physical" ? Math.ceil(pb / 2) : Math.floor(pb / 2);
+  // the Champion's, which covers the physical abilities only, rounds up; a
+  // sheet with both takes the better on each check.
+  const halfOf = (ability: string) => halfProficiencyBonus(defense.halfScopes ?? [], ability, pb);
   // A genre feature's doubled skill (authored-effects.ts authoredExpertise)
   // doubles a proficiency the sheet has, as Expertise does.
   const expertise = [
@@ -589,8 +589,8 @@ export function computeSheetDerived(
         ? { label: "expertise", value: pb * 2 }
         : sheet.proficiencies.skills.includes(skill.id) || featureSkills.includes(skill.id) || formSkills[skill.id] !== undefined
           ? { label: "proficiency", value: pb }
-          : halfProficiencyCovers(halfScope, skill.ability)
-            ? { label: "half proficiency", value: halfPb }
+          : halfOf(skill.ability) > 0
+            ? { label: "half proficiency", value: halfOf(skill.ability) }
             : { label: "untrained", value: 0 };
       const own = keepMeaningful([
         { label: `${skill.ability.toUpperCase()} modifier`, value: abilityMods[skill.ability] },
@@ -616,7 +616,7 @@ export function computeSheetDerived(
     { label: "DEX modifier", value: abilityMods.dex },
     { label: "features", value: defense.initiativeBonus },
     // Sharpened Logic's Intelligence and Wisdom half does not reach it.
-    { label: "half proficiency", value: halfScope && halfProficiencyCovers(halfScope, "dex") ? halfPb : 0 },
+    { label: "half proficiency", value: halfOf("dex") },
   ]);
   const passiveParts = keepMeaningful([
     { label: "base", value: 10 },

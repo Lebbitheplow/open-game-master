@@ -145,5 +145,30 @@ await test("K03: initiative is a Dexterity check: Cat's Grace, a Dexterity curse
   world.patch(quick.id, { equipment: [] });
 });
 
+// K04. SRD 5.1, Champion, Remarkable Athlete: "add half your proficiency
+// bonus (round up) to any Strength, Dexterity, or Constitution check you make
+// that doesn't already use your proficiency bonus"; Bard, Jack of All
+// Trades: half "rounded down" to any ability check. A bard who is also a
+// Champion keeps the better half on each check: the round-up on the physical
+// ones. The broader scope swallowed the narrower, so a Strength check took
+// the bard's rounded-down half, and the feature's own guidance told the GM
+// that Remarkable Athlete rounds down.
+await test("K04: Remarkable Athlete's half proficiency rounds up beside Jack of All Trades, and says so", async () => {
+  const both = world.addHero({
+    class: "fighter", subclass: "champion", level: 13, abilities: { str: 10, dex: 10, int: 10 },
+    classes: [{ id: "fighter", level: 11, subclass: "champion" }, { id: "bard", level: 2, subclass: "" }],
+    features: [...klass("fighter", "Remarkable Athlete"), ...klass("bard", "Jack of All Trades")],
+    proficiencies: { ...TRAINED },
+  });
+  // Proficiency +5 at 13th level: the round-up gives 3, the round-down 2.
+  assert.equal(resolved(both.id, { kind: "skill_check", skill: "arcana" }).expression, "1d20+2", "the staging: an Intelligence check takes Jack of All Trades' 2");
+  assert.equal(resolved(both.id, { kind: "skill_check", skill: "athletics" }).expression, "1d20+3", "an untrained Athletics check takes Remarkable Athlete's 3");
+  assert.equal(resolved(both.id, { kind: "ability_check", ability: "str" }).expression, "1d20+3", "a raw Strength check takes 3");
+  assert.equal(resolved(both.id, { kind: "initiative" }).expression, "1d20+3", "initiative, a Dexterity check, takes 3");
+  const { guidanceFor } = await import("../src/lib/srd/feature-effects.ts");
+  const guidance = String(guidanceFor({ class: "fighter", features: [], feature: "Remarkable Athlete" }));
+  assert.match(guidance, /Remarkable Athlete: half their proficiency bonus \(rounded up\)/, guidance);
+});
+
 world.close();
 finish();

@@ -21,7 +21,7 @@ import { purseCoins } from "@/lib/srd/currency";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
 import {
   defenseRiders,
-  halfProficiencyCovers,
+  halfProficiencyBonus,
   hasHalflingLuck,
 } from "@/lib/srd/feature-effects";
 import { strengthCheckFloor } from "@/lib/srd/trait-rules";
@@ -467,7 +467,7 @@ function resolveUnfloored(
   const defense =
     sheet && sheet.class
       ? defenseRiders({ class: sheet.class, level: sheet.level, features: sheet.features })
-      : { saveAdvantage: new Set<string>(), halfProficiency: null };
+      : { saveAdvantage: new Set<string>(), halfProficiency: null, halfScopes: [] };
   // Halfling Lucky: attacks, checks, and saves reroll a natural 1 once. It
   // rides the leading d20 term as the grammar's "r1" reroll suffix (placed
   // before any Reliable Talent floor, which raises the surviving face).
@@ -760,16 +760,10 @@ function resolveUnfloored(
     const derived = computeSheetDerived(sheet);
     // Jack of All Trades / Remarkable Athlete: raw ability checks never
     // carry proficiency, so a covered ability always gets the half bonus.
-    const halfScope =
-      (defense as { halfProficiency?: "all" | "physical" | "mental" | null }).halfProficiency ?? null;
     // Jack of All Trades rounds down; Remarkable Athlete (the physical
-    // scope) rounds up.
+    // scope) rounds up; a sheet with both takes the better.
     const halfBonus =
-      args.kind === "ability_check" && halfProficiencyCovers(halfScope, args.ability)
-        ? halfScope === "physical"
-          ? Math.ceil(derived.proficiencyBonus / 2)
-          : Math.floor(derived.proficiencyBonus / 2)
-        : 0;
+      args.kind === "ability_check" ? halfProficiencyBonus(defense.halfScopes ?? [], args.ability, derived.proficiencyBonus) : 0;
     const auraBonus = args.kind === "saving_throw" ? (extras?.saveBonus ?? 0) : 0;
     const effectBonus = extras?.effectBonus ?? 0;
     // A check made with a tool the character is trained in adds proficiency
