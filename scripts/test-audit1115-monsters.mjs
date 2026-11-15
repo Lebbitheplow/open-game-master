@@ -613,4 +613,75 @@ await test("E13 the webbing is an object of its own: immune to bludgeoning, and 
   assert.ok(!world.sheet(kara.id).conditions.includes("restrained"), "the webbing is destroyed and she is free");
 });
 
+// A hero's own walk to (x, y) as their player makes it; the opportunity
+// attacks it drew, by their stored rolls.
+async function walkTo(user, x, y) {
+  const before = new Set(kit.lastRolls(40).map((roll) => roll.id));
+  const moveRoute = await world.route("campaigns/[campaignId]/battle-map/move");
+  world.signIn(user);
+  const walked = await moveRoute.POST(new Request("http://odm.test/move", { method: "POST", body: JSON.stringify({ x, y }) }), { params: Promise.resolve({ campaignId: world.campaignId }) });
+  world.clearDice();
+  assert.equal(walked.status, 200, await walked.text());
+  return kit.lastRolls(40).filter((roll) => !before.has(roll.id) && roll.kind === "attack" && /opportunity attack/.test(roll.detail ?? ""));
+}
+
+await test("E14 under the Flanking variant, a goblin's opportunity attack at Kara walking out of a flank has advantage; the other's, after she left it, does not", async () => {
+  const { updateGameSettings } = await import("../src/lib/db/campaigns.ts");
+  const settings = world.campaign().gameSettings;
+  updateGameSettings(world.campaignId, { variantRules: { ...settings.variantRules, flanking: true } });
+  await kit.endFight();
+  await kit.fight(2, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+  const [east, west] = world.enemies();
+  kit.place(kara.id, 5, 5);
+  kit.place(bram.id, 15, 15);
+  kit.place(east.id, 6, 5);
+  kit.place(west.id, 4, 5);
+  kit.giveTurn(kara.id);
+  // Up and away to the north-west: she leaves the east goblin's reach from
+  // between the two, the west one's a square later.
+  const swings = await walkTo(world.owner, 2, 2);
+  updateGameSettings(world.campaignId, { variantRules: settings.variantRules });
+  const by = (foe) => swings.find((roll) => roll.attacker?.id === foe.id);
+  assert.equal(swings.length, 2, JSON.stringify(swings.map((roll) => roll.detail)));
+  assert.equal(by(east)?.advantage, "advantage", "flanked as she pulled away");
+  assert.notEqual(by(west)?.advantage, "advantage", "out of the flank by then");
+});
+
+await test("E14 Heavy Armor Master takes 3 off a goblin's nonmagical opportunity attack, as off its own-turn blow", async () => {
+  const kept = world.sheet(kara.id);
+  world.patch(kara.id, { feats: [...(kept.feats ?? []), "Heavy Armor Master"], equipment: [...(kept.equipment ?? []), { name: "Plate", qty: 1, equipped: true }] });
+  await kit.endFight();
+  await kit.fight(1, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+  const [goblin] = world.enemies();
+  kit.place(kara.id, 5, 5);
+  kit.place(bram.id, 15, 15);
+  kit.place(goblin.id, 6, 5);
+  kit.giveTurn(kara.id);
+  const before = world.sheet(kara.id).currentHp;
+  // A natural 20 to beat plate; the club's 1d6 + 2 doubled: 6 and 6 and 2.
+  world.dice(20, 6, 6);
+  const swings = await walkTo(world.owner, 2, 5);
+  world.patch(kara.id, { feats: kept.feats ?? [], equipment: kept.equipment ?? [] });
+  assert.equal(swings.length, 1);
+  assert.equal(before - world.sheet(kara.id).currentHp, 11, "14 less Heavy Armor Master's 3");
+});
+
+await test("E14 a goblin that fails its WIS save against Kara's Sanctuary loses its opportunity attack", async () => {
+  await kit.endFight();
+  await kit.fight(1, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+  const [goblin] = world.enemies();
+  kit.place(kara.id, 5, 5);
+  kit.place(bram.id, 15, 15);
+  kit.place(goblin.id, 6, 5);
+  kit.giveTurn(kara.id);
+  world.patch(kara.id, { conditions: ["sanctuary"], conditionMeta: { sanctuary: { source: kara.id } } });
+  const before = world.sheet(kara.id).currentHp;
+  // Its save a 1: turned away. Were the swing made, a 20 would land it.
+  world.dice(1, 20, 6, 6);
+  const swings = await walkTo(world.owner, 2, 5);
+  world.patch(kara.id, { conditions: [], conditionMeta: {} });
+  assert.equal(swings.length, 0, "no opportunity attack is rolled");
+  assert.equal(world.sheet(kara.id).currentHp, before);
+});
+
 finish();

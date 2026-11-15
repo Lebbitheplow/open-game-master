@@ -66,6 +66,7 @@ import { holdsFeature } from "@/lib/srd/feature-names";
 import { activeAuthored } from "@/lib/srd/authored-effects";
 import { enemySpeedTiles } from "@/lib/dm/enemy-speed";
 import { opportunityAnswer } from "@/lib/dm/opportunity-ask";
+import { opportunityBlow, opportunityDecoy, opportunityWards } from "@/lib/dm/opportunity-wards";
 import { letGoNote, timedOutNote, type OpportunityTrigger } from "@/lib/dm/opportunity-ask-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -231,6 +232,17 @@ export function resolveOpportunityAttacks(
     // The reaction is spent whether or not the swing lands.
     encounter.reactionsUsed = [...encounter.reactionsUsed, enemy.id];
     saveEncounter(encounter);
+    // Magic Weapons, or a blow the block prints as magical ("magical
+    // bludgeoning"), as enemy_attack reads it.
+    const magical = hasTrait(enemy.stats, "magicWeapons") || attack.magical === true;
+    // Sanctuary and Among the Dead lose the attack; the subclass wards, the
+    // flank where they stood, Adamantine Armor, Heavy Armor Master shape it
+    // (opportunity-wards.ts), as on its own turn.
+    const wards = opportunityWards(campaign, encounter.id, enemy, sheet, leftFrom, magical);
+    if (wards.lost) {
+      notes.push(`${shownName(encounter.id, enemy.id, enemy.displayName)} gets no opportunity attack on ${sheet.name}: ${wards.lost}`);
+      continue;
+    }
 
     // An attack roll like any other: both sides' conditions decide it. Its
     // fear weighs only with the source in sight, and the leaver's Dodge
@@ -276,6 +288,7 @@ export function resolveOpportunityAttacks(
       ...(pack ? ["advantage" as const] : []),
       ...marks.sources,
       ...own.sources,
+      ...wards.sources,
     ];
     const advantage = mergeAdvantage(marks.elusive ? odds.filter((source) => source !== "advantage") : odds);
     const targetAc = acWithEffects(campaign.id, sheet, enemy);
@@ -297,6 +310,12 @@ export function resolveOpportunityAttacks(
       roll: hitRoll,
       source: "digital",
     });
+    // Mirror Image: a duplicate may take the attack instead (spell-defenses.ts).
+    const decoy = opportunityDecoy(campaign.id, sheet.id, hitOutcome.total);
+    if (decoy) {
+      notes.push(`${shownName(encounter.id, enemy.id, enemy.displayName)} takes an opportunity attack as ${sheet.name} pulls away: ${decoy}.`);
+      continue;
+    }
     const adjudicated = adjudicateHit(hitOutcome.total, hitOutcome.crit, targetAc);
     if (!adjudicated.hit) {
       notes.push(
@@ -304,7 +323,7 @@ export function resolveOpportunityAttacks(
       );
       continue;
     }
-    const crit = adjudicated.crit || context.autoCrit;
+    const crit = (adjudicated.crit || context.autoCrit) && !wards.noCrit;
 
     const rolledDamage = crit
       ? critDamageExpression(attack.damage, 0, {
@@ -340,11 +359,9 @@ export function resolveOpportunityAttacks(
     // Damage like any other (src/lib/dm/pc-damage.ts): resistances, temporary
     // hit points, a beast form's pool first, Relentless Endurance, the rage
     // ending at 0, the death engine, and the concentration save.
-    // Magic Weapons, or a blow the block prints as magical ("magical
-    // bludgeoning"), as enemy_attack reads it.
-    const magical = hasTrait(enemy.stats, "magicWeapons") || attack.magical === true;
     const blow = blowByType(attack, damageOutcome, crit);
-    const rolled = enfeebledBlow(enemy, attack, false, Math.max(0, blow.amount));
+    const warded = opportunityBlow(encounter.id, enemy, sheet, wards, enfeebledBlow(enemy, attack, false, Math.max(0, blow.amount)));
+    const rolled = warded.amount;
     // The blow without its critical dice when the natural 20 alone made it one,
     // for a reaction that rolls the attack again (last-hit.ts plainOfReroll).
     const plainRoll = adjudicated.crit && !context.autoCrit
@@ -362,7 +379,7 @@ export function resolveOpportunityAttacks(
               amount: rolled,
               ...(blow.type ? { type: blow.type } : {}),
               ...(blow.parts ? { parts: scaledParts(blow.parts, rolled) } : {}),
-              ...(magical ? { magical: true } : {}),
+              ...wards.flags,
               crit,
               reason: `opportunity attack from ${enemy.displayName}`,
             })
@@ -379,14 +396,14 @@ export function resolveOpportunityAttacks(
     const normalBlow = normalRoll ? blowByType(attack, normalRoll, false) : null;
     const normalRaw = normalBlow ? enfeebledBlow(enemy, attack, false, Math.max(0, normalBlow.amount)) : 0;
     const normal = normalBlow ? { raw: normalRaw, type: normalBlow.type ?? "", ...(normalBlow.parts ? { parts: scaledParts(normalBlow.parts, normalRaw) } : {}), from: rolled } : undefined;
-    hitLog.swing(hitOutcome, targetAc, { hit: true, crit, raw: rolled, advantage, ...(blow.type ? { type: blow.type } : {}), ...(blow.parts ? { parts: scaledParts(blow.parts, rolled) } : {}), ...(plain ? { plain } : {}), ...(normal ? { normal } : {}), ...(magical ? { flags: { magical: true } } : {}) });
+    hitLog.swing(hitOutcome, targetAc, { hit: true, crit, raw: rolled, advantage, ...(blow.type ? { type: blow.type } : {}), ...(blow.parts ? { parts: scaledParts(blow.parts, rolled) } : {}), ...(plain ? { plain } : {}), ...(normal ? { normal } : {}), flags: wards.flags });
     hitLog.close({ attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName }, attack: `${attack.name} (opportunity attack)`, type: attack.type, ranged: false });
     if (updated && updated.currentHp <= 0 && !updated.wildShape) {
       downed = true;
       downedAt = leftFrom;
     }
     const byType = Array.isArray(landed.damageByType) ? ` (${(landed.damageByType as string[]).join(", ")})` : typeof landed.resistance === "string" ? ` (${landed.resistance})` : "";
-    const riderNote = Array.isArray(onHit?.riderCondition) ? ` ${sheet.name} is ${(onHit.riderCondition as string[]).join(" and ")}.` : "";
+    const riderNote = `${Array.isArray(onHit?.riderCondition) ? ` ${sheet.name} is ${(onHit.riderCondition as string[]).join(" and ")}.` : ""}${[...wards.notes, ...warded.notes].map((line) => ` ${line}.`).join("")}`;
     notes.push(
       `${shownName(encounter.id, enemy.id, enemy.displayName)} takes an opportunity attack as ${sheet.name} pulls away: ${
         crit ? "a critical hit for " : "hit for "
