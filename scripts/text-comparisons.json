@@ -3190,6 +3190,7 @@
     "lib/srd/genre-gb-device.ts#re-word": [["english-source",1,"ODM's own \"Fabricated Device: <spell> (DC n, +n)\" item name, as deviceName writes it"]],
     "lib/battlemap/zones-genre-gh.ts#str-list": [["key",1,"zone trigger events (engine vocabulary)"]],
     "lib/dm/genre-gh-last-one-out.ts#str-list": [["key",1,"move action ids (dash, disengage)"]],
-    "lib/srd/genre-gh-warded.ts#str-list": [["key",1,"creature types (engine vocabulary)"]]
+    "lib/srd/genre-gh-warded.ts#str-list": [["key",1,"creature types (engine vocabulary)"]],
+    "lib/starter/pregens.ts#str-key": [["key",1,"starter pregen French description lookup by pregen id (PREGEN_FR)"]]
   }
 }
