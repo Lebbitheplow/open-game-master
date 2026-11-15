@@ -256,3 +256,110 @@ export function aboutSubject(subject: Pointer): { text: string; whole: boolean; 
 export function keyOf(speaker: Speaker): string {
   return speaker.id || textKey(speaker.name);
 }
+
+// The tag straight after a line that runs on into it: "...," says Marla;
+// "...", dice Marla; "...?" she asks. A line that ends its own sentence
+// has none the words can tell from an action ("Not tonight." Venn frowns.),
+// so the prose around it decides.
+export function tagOf(line: string, after: string, reading: Reading): Subject | null {
+  const text = (sentencesOf(after)[0]?.text ?? "").replace(LEAD, "").trimEnd();
+  if (!text) {
+    return null;
+  }
+  const continues = /[,—–-]$/.test(line.trimEnd()) || /^\s*[,—–]/.test(after) || /^\p{Ll}/u.test(text);
+  if (!continues) {
+    return null;
+  }
+  const subject = subjectOf(text, reading, false);
+  if (subject.kind !== "other") {
+    return subject;
+  }
+  // One word, then the speaker: "says Old Pike", "dice Marla", "orders the
+  // Captain".
+  const verb = /^(\p{Ll}+)\s+/u.exec(text);
+  if (!verb) {
+    return subject;
+  }
+  const rest = text.slice(verb[0].length);
+  const found = nameAt(rest, reading, false);
+  const pronoun = englishPronounAt(rest, reading);
+  return found
+    ? { kind: "name", speaker: found.speaker, text: rest, end: found.end }
+    : pronoun
+      ? { kind: "pronoun", text: rest, end: pronoun[0].length }
+      : { kind: "other" };
+}
+
+// The people a stretch of prose names anywhere in it, by keyOf and by name:
+// a companion is listed by the row behind them and spoken for by their sheet.
+function namedIn(text: string, reading: Reading): Set<string> {
+  const named = new Set<string>();
+  for (const sentence of sentencesOf(text)) {
+    for (const { speaker, pattern, short } of reading.matchers) {
+      pattern.lastIndex = 0;
+      let found: RegExpExecArray | null;
+      while ((found = pattern.exec(sentence.text))) {
+        if (written(found, short, reading, opensSentence(sentence.text.slice(0, found.index)))) {
+          named.add(keyOf(speaker)).add(textKey(speaker.name));
+        }
+      }
+    }
+  }
+  return named;
+}
+
+// Whether the prose before a line, inside its paragraph, is about somebody
+// the table does not list: the last sentence that opens on anyone, followed
+// back past "he" and "his" to whoever they stand for.
+function aboutStranger(before: string, reading: Reading): boolean {
+  const sentences = sentencesOf(before);
+  for (let index = sentences.length - 1; index >= 0; index -= 1) {
+    const subject = subjectOf(sentences[index].text, reading);
+    if (subject.kind === "other") {
+      return true;
+    }
+    if (subject.kind === "name") {
+      return false;
+    }
+  }
+  return false;
+}
+
+// The quoted lines the prose around them gives to somebody the table does
+// not list, each with the people its paragraph names: a tag that opens on
+// someone else ("...," the cultist growls), the sentence before the line
+// about someone else ("The lead cultist raises a hand, his voice a low
+// growl."), or, for a line that opens its paragraph, the beat after it. The
+// claims reader put such a line on whoever had spoken last, a companion the
+// cultist was not (issue 965); a speaker its paragraph never names is a guess.
+// English tables only: elsewhere a sentence that opens on "elle" or "er"
+// reads as about nobody known, which would make every such line a stranger's.
+export function strangerLines(text: string, reading: Reading): Map<string, Set<string>> {
+  const out = new Map<string, Set<string>>();
+  if (!reading.englishPronouns) {
+    return out;
+  }
+  let boundary = 0;
+  for (const match of text.matchAll(QUOTE)) {
+    const start = match.index;
+    const end = start + match[0].length;
+    const words = quotedText(match);
+    const lineStart = text.lastIndexOf("\n", start - 1) + 1;
+    const lineEnd = text.indexOf("\n", end);
+    const paragraphEnd = lineEnd === -1 ? text.length : lineEnd;
+    const nextQuote = text.slice(end).search(QUOTE_OPEN);
+    const after = text.slice(end, Math.min(paragraphEnd, nextQuote === -1 ? text.length : end + nextQuote));
+    const before = text.slice(Math.max(boundary, lineStart), start);
+    boundary = end;
+    const tag = tagOf(words, after, reading);
+    const stranger = tag
+      ? tag.kind === "other" || (tag.kind === "pronoun" && aboutStranger(before, reading))
+      : before.trim()
+        ? aboutStranger(before, reading)
+        : subjectOf(sentencesOf(after)[0]?.text ?? "", reading, true).kind === "other";
+    if (stranger) {
+      out.set(words, namedIn(text.slice(lineStart, paragraphEnd), reading));
+    }
+  }
+  return out;
+}
