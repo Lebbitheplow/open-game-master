@@ -138,6 +138,13 @@ function checkOnHit(raw: unknown, attack: string): Checked<OnHitRider | null> {
   if (maxSize) {
     rider.maxSize = maxSize;
   }
+  // The kinds the rider passes over ("a creature other than an elf or
+  // undead", a ghoul's claws): dropped here, a ghoul copied into the
+  // workshop paralyzed elves again.
+  const spares = (Array.isArray(source.spares) ? source.spares : []).map((kind) => textKey(text(kind, BLOCK_LIMITS.conditionName))).filter(Boolean).slice(0, 6);
+  if (spares.length) {
+    rider.spares = spares;
+  }
   // The lifetimes and riders the rules audit reads from a hit: an effect
   // that lasts until a long rest or for good, a drained hit point maximum,
   // being swallowed, and the clauses left to the DM, kept word for word.
@@ -360,6 +367,14 @@ export function checkSpecials(raw: unknown): Checked<MonsterAbility[]> {
     }
     if (source.endsOnDamage === true) {
       ability.endsOnDamage = true;
+    }
+    // The 24-hour immunity after a success (a dragon's Frightful Presence,
+    // save-effect.ts immuneAfter): dropped here, a dragon copied into the
+    // workshop asked the same hero the same save every round.
+    const immune = (source.immuneAfter ?? null) as Raw | null;
+    const immuneRounds = immune ? clamp(immune.rounds, 1, ROUND_CEILING) : null;
+    if (immune && immuneRounds !== null) {
+      ability.immuneAfter = { rounds: immuneRounds, onEnd: immune.onEnd === true };
     }
     const also = Array.isArray(source.also) ? source.also.map((name) => words(name, BLOCK_LIMITS.conditionName).toLowerCase()).filter(Boolean).slice(0, 4) : [];
     if (also.length) {
