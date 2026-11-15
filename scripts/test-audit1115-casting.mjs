@@ -824,5 +824,70 @@ await test("S20: on physical dice the held attack lands Fire Shield's flame once
   assert.equal(hpLost(world, goblin.id), 0, JSON.stringify(shield.result));
 });
 
+// ---- S21: an opportunity attack meets the answers enemy_attack meets ----
+
+// An opportunity attack is a melee attack (SRD 5.1, Opportunity Attacks), so
+// what answers a creature that hits in melee answers it: Armor of Agathys "If
+// a creature hits you with a melee attack while you have these hit points",
+// Thought Shield "whenever a creature deals psychic damage to you", Flames of
+// Phlegethos. The server's opportunity attack called the spells' answer with
+// no temporary hit points (so the frost never bit), dropped its line (so the
+// GM never heard of Fire Shield's flame), and never called Thought Shield or
+// a feature's retaliation at all.
+const { resolveOpportunityAttacks } = await import("../src/lib/dm/opportunity.ts");
+
+async function leaver(hero, stats = {}) {
+  const { world, sheets: [sheet], enemies: [goblin] } = await table([hero], 1, stats);
+  await layMap(world, field(), { [sheet.id]: { x: 2, y: 2 }, [goblin.id]: { x: 3, y: 2 } });
+  world.patch(sheet.id, { ac: 12, acOverride: true });
+  const walk = (faces) => {
+    world.dice(...faces);
+    const out = resolveOpportunityAttacks(world.campaign(), sheet.id, { x: 2, y: 2 }, { x: 0, y: 2 }, false, [{ x: 1, y: 2 }, { x: 0, y: 2 }]);
+    world.clearDice();
+    return out;
+  };
+  return { world, sheet, goblin, walk };
+}
+
+await test("S21: a creature whose opportunity attack hits an Armor of Agathys cast at 3rd takes its 15 cold, and the GM is told", async () => {
+  const { world, sheet, goblin, walk } = await leaver(caster("warlock", "cha", [], ["Eldritch Blast"], 5, { spellcasting: { known: ["Armor of Agathys"], slots: { 3: { max: 2, used: 0 } } } }));
+  const armored = await world.invoke("cast_buff", { characterId: sheet.id, spell: "Armor of Agathys", level: 3 });
+  assert.equal(armored.ok, true, armored.error);
+  const out = walk([15, 3]);
+  assert.equal(world.sheet(sheet.id).tempHp, 10, JSON.stringify(out.notes));
+  assert.equal(hpLost(world, goblin.id), 15, JSON.stringify(out.notes));
+  assert.match(out.notes.join(" "), /Armor of Agathys/);
+});
+
+await test("S21: a creature whose opportunity attack deals a Thought Shield warlock psychic damage takes the same", async () => {
+  const { world, sheet, goblin, walk } = await leaver(
+    { class: "warlock", level: 10, abilities: { cha: 16 }, features: [{ name: "Thought Shield", source: "choice" }] },
+    { attacks: [{ name: "Mind Lash", toHit: 4, damage: "1d6+2", type: "psychic" }] },
+  );
+  const out = walk([15, 3]);
+  const took = world.sheet(sheet.id).maxHp - world.sheet(sheet.id).currentHp;
+  assert.ok(took > 0, JSON.stringify(out.notes));
+  assert.equal(hpLost(world, goblin.id), took, JSON.stringify(out.notes));
+});
+
+await test("S21: Fire Shield's flame on an opportunity attack reaches the GM, and a Shield that turns the hit away takes it back", async () => {
+  const { world, sheet, goblin, walk } = await leaver(caster("wizard", "int", ["Fire Shield", "Shield"]));
+  const cast = await world.invoke("cast_buff", { characterId: sheet.id, spell: "Fire Shield", variant: "fire shield (cold)", level: 4 });
+  assert.equal(cast.ok, true, cast.error);
+  const out = walk([10, 3, 4, 4]);
+  assert.match(out.notes.join(" "), /Fire Shield/);
+  assert.equal(hpLost(world, goblin.id), 8);
+  const shield = await world.invoke("use_reaction", { characterId: sheet.id, feature: "Shield" });
+  assert.equal(shield.ok, true, shield.error);
+  assert.equal(hpLost(world, goblin.id), 0, JSON.stringify(shield.result));
+});
+
+await test("S21: a creature whose opportunity attack hits a tiefling wreathed in Flames of Phlegethos takes the 1d4 fire", async () => {
+  const { world, sheet, goblin, walk } = await leaver({ class: "fighter", level: 5, abilities: { str: 16 } });
+  world.patch(sheet.id, { conditions: ["flames of phlegethos"] });
+  const out = walk([15, 3, 4]);
+  assert.equal(hpLost(world, goblin.id), 4, JSON.stringify(out.notes));
+});
+
 closeTables();
 finish();
