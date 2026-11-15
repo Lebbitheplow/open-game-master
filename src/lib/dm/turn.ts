@@ -297,7 +297,7 @@ import { readStateGuard } from "@/lib/dm/npc-state-guard";
 import { stateGuardPrompt } from "@/lib/dm/npc-state-guard-logic";
 import { awayArrivalNote, handleNpcInform, handleNpcPast, handleNpcSpeak, mindRosterNotes, mindTurnRefusal, mindsAwaitingTurn, mindsWithinEarshot, npcMindsOn } from "@/lib/dm/npc-mind";
 import { hearingPrompt, sceneMindsPrompt, TIME_SKIP_TOOLS } from "@/lib/dm/npc-mind-logic";
-import { mindSpeeches, narratorLines } from "@/lib/dm/voice-knowledge-logic";
+import { mindSpeeches, narratorLines, quotedLines } from "@/lib/dm/voice-knowledge-logic";
 import { worldForPrompt } from "@/lib/dm/world-prompt";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import {
@@ -2873,8 +2873,14 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       // who heard them is the dice's to say (npc_hear, D&D Perception), not
       // the narrator's guess a turn later. Sent back once; the narration
       // stands.
+      // A player character's own quoted words count too: a question put
+      // under the breath to one character, answered by that character's
+      // mind alone, left the prisoner on the bench beside them unasked.
       const spokenAloud = !finalCall && !hearingNudged && turn.narrationParts.length > 0
-        ? narratorLines(turn.narrationParts.join("\n\n"), mindSpeeches(turn.conversation))
+        ? [
+            ...playerLinesSinceDm(campaignId).flatMap((message) => quotedLines(message.content)),
+            ...narratorLines(turn.narrationParts.join("\n\n"), mindSpeeches(turn.conversation)),
+          ]
         : [];
       const listeners = spokenAloud.length ? mindsWithinEarshot(campaign, turn.id, turnCalls(turn.conversation, toolCalls)) : [];
       if (listeners.length) {
