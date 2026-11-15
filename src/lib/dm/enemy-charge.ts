@@ -91,7 +91,7 @@ export function chargeAfterHit(
 ): string[] {
   const ridden = chargeRider(attack, trait);
   const out = ridden ? resolve(ridden) : null;
-  const lines: string[] = [];
+  const lines: string[] = trait.extra ? [`${trait.name}: the run adds ${trait.extra.dice}${trait.extra.type ? ` ${trait.extra.type}` : ""} to the blow.`] : [];
   if (out && typeof out.riderSave === "string") {
     lines.push(
       out.riderSaved

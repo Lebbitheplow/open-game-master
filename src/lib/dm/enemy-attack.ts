@@ -88,7 +88,7 @@ import { sheetSize } from "@/lib/srd";
 import { fittedText } from "@/lib/dm/fitted-text";
 import { cloudRuneAtHit, landTurnedBlow } from "@/lib/dm/cloud-rune";
 import { chargeAttackOf, chargeBonusOf } from "@/lib/dm/charge-logic";
-import { chargeAfterHit, chargeForHit, enemyRunFeet } from "@/lib/dm/enemy-charge";
+import { chargeAfterHit, chargeForHit, enemyRunFeet, withChargeDice } from "@/lib/dm/enemy-charge";
 import { conditionsOf, PRONE } from "@/lib/dm/vitals-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 
@@ -838,8 +838,12 @@ export function handleEnemyAttack(
       return;
     }
 
-    // The charge this hit rides, once a turn (enemy-charge.ts).
+    // The charge this hit rides, once a turn, and its extra dice on the
+    // blow (enemy-charge.ts).
     const charge = chargeForHit(getActiveEncounter(campaign.id), standing, attack, ranFeet);
+    if (charge) {
+      attack = withChargeDice(attack, charge);
+    }
     // Martial Advantage and Surprise Attack add their dice to the blow
     // (src/lib/dm/monster-traits.ts), doubled on a critical hit like the rest.
     const bonus = hitTraitDice(encounter, standing, target.id, attack, martialSpent);

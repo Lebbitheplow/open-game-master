@@ -39,7 +39,7 @@ import { effectOutcome } from "@/lib/dm/effect-tools";
 import { enemyRowSwingOdds } from "@/lib/dm/enemy-swing-odds";
 import { resolveRowOnHit } from "@/lib/dm/enemy-hit-rows";
 import { hitTraitDice } from "@/lib/dm/side-allies";
-import { chargeAfterHit, chargeForHit, enemyRunFeet } from "@/lib/dm/enemy-charge";
+import { chargeAfterHit, chargeForHit, enemyRunFeet, withChargeDice } from "@/lib/dm/enemy-charge";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { enfeebledBlow, spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
@@ -189,7 +189,10 @@ export function enemyStrikesEnemy(
       continue;
     }
     shots += mode.ranged ? 1 : 0;
-    const attack: EnemyAttack = alternativeBlow(plannedAttack, { ranged: mode.ranged, bloodied: enemy.currentHp <= enemy.maxHp / 2 });
+    const swung: EnemyAttack = alternativeBlow(plannedAttack, { ranged: mode.ranged, bloodied: enemy.currentHp <= enemy.maxHp / 2 });
+    // The charge this hit would ride, and its extra dice (enemy-charge.ts).
+    const charge = chargeForHit(getActiveEncounter(campaign.id), enemy, swung, ranFeet);
+    const attack = charge ? withChargeDice(swung, charge) : swung;
     const odds = enemyRowSwingOdds({
       campaign,
       encounterId: encounter.id,
@@ -233,7 +236,6 @@ export function enemyStrikesEnemy(
     }
     // Martial Advantage and Surprise Attack add their dice to the blow, and
     // an active effect its amount (set_effect), doubled on a crit like the rest.
-    const charge = chargeForHit(getActiveEncounter(campaign.id), enemy, attack, ranFeet);
     const traits = hitTraitDice(live, enemy, now.id, attack, martialSpent);
     martialSpent ||= traits.martial;
     const effectDamage = effectOutcome(campaign.id, { kind: "enemy", id: enemy.id }, "damage").bonus;

@@ -427,4 +427,61 @@ await test("E09 a lion that charges with no attack named makes its claw; one sta
   assert.equal(bite.ok, false, "no Pounce, no bonus bite: its action is spent");
 });
 
+await test("E10 a Charge's extra dice, their type and its push are read; a charge of extra damage only leaves the GM nothing", async () => {
+  const { readChargeTrait } = await import("../src/lib/dm/charge-logic.ts");
+  const { withChargeDice } = await import("../src/lib/dm/enemy-charge.ts");
+  const { manualTraits } = await import("../src/lib/dm/monster-traits.ts");
+  const minotaur = readChargeTrait("Charge: If the minotaur moves at least 10 ft. straight toward a target and then hits it with a gore attack on the same turn, the target takes an extra 9 (2d8) piercing damage. If the target is a creature, it must succeed on a DC 14 Strength saving throw or be pushed up to 10 ft. away and knocked prone.");
+  assert.deepEqual(minotaur, { name: "Charge", feet: 10, attacks: ["gore"], prone: true, extra: { dice: "2d8", type: "piercing" }, save: { ability: "str", dc: 14 }, pushFeet: 10 });
+  assert.deepEqual(
+    readChargeTrait("Charge: If the centaur moves at least 30 ft. straight toward a target and then hits it with a pike attack on the same turn, the target takes an extra 10 (3d6) piercing damage."),
+    { name: "Charge", feet: 30, attacks: ["pike"], prone: false, extra: { dice: "3d6", type: "piercing" } },
+  );
+  // "An extra 7 (2d6) damage": the ram's own type.
+  assert.deepEqual(readChargeTrait("Charge: If the elk moves at least 20 ft. straight toward a target and then hits it with a ram attack on the same turn, the target takes an extra 7 (2d6) damage. If the target is a creature, it must succeed on a DC 13 Strength saving throw or be knocked prone.").extra, { dice: "2d6" });
+  // Dice of another type ride the blow as a part of their own.
+  const blow = withChargeDice({ name: "Ram", toHit: 5, damage: "1d8+3", type: "bludgeoning" }, { name: "Charge", feet: 20, attacks: ["ram"], prone: false, extra: { dice: "2d6", type: "fire" } });
+  assert.equal(blow.damage, "1d8+3+2d6");
+  assert.equal(blow.type, "bludgeoning/fire");
+  assert.deepEqual(blow.riders, [{ dice: "2d6", type: "fire" }]);
+  for (const title of ["Minotaur", "Boar", "Centaur", "Elk", "Rhinoceros"]) {
+    assert.ok(!manualTraits(srd(title)).includes("Charge"), `${title}: its Charge is the engine's`);
+  }
+});
+
+// A minotaur's own turn, its near side four squares from Kara.
+async function minotaurAt(x) {
+  await kit.endFight();
+  await kit.fight(1, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+  const [bull] = world.enemies();
+  const stats = srd("Minotaur");
+  kit.setEnemy(bull.id, { ac: stats.ac, maxHp: stats.maxHp, stats });
+  kit.place(kara.id, 5, 5);
+  kit.place(bram.id, 15, 15);
+  kit.place(bull.id, x, 5);
+  kit.enemyTurn(bull.id);
+  return bull;
+}
+
+await test("E10 a minotaur that charges Kara gores her for its extra 2d8, and on a failed DC 14 STR save pushes her 10 feet and knocks her prone", async () => {
+  const bull = await minotaurAt(9);
+  // The gore hits: 2d8 + 4, then the Charge's 2d8, all 3s; Kara's save a 1.
+  world.dice(19, 3, 3, 3, 3, 1);
+  const out = await world.invoke("enemy_attack", { enemyId: bull.id, targetCharacterId: kara.id, attack: "Gore" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.swings[0].damage, 16, JSON.stringify(out.result.swings));
+  assert.ok(world.sheet(kara.id).conditions.includes("prone"));
+  const { tilesApart } = await import("../src/lib/dm/board-reach.ts");
+  assert.equal(tilesApart(kit.token(kara.id), kit.token(bull.id)), 3, "pushed 10 feet straight away");
+
+  const still = await minotaurAt(6);
+  world.dice(19, 3, 3, 3, 3, 1);
+  const gore = await world.invoke("enemy_attack", { enemyId: still.id, targetCharacterId: kara.id, attack: "Gore" });
+  world.clearDice();
+  assert.equal(gore.ok, true, gore.error);
+  assert.equal(gore.result.swings[0].damage, 10, "no run, no Charge: 2d8 + 4");
+  assert.ok(!world.sheet(kara.id).conditions.includes("prone"));
+});
+
 finish();

@@ -140,9 +140,7 @@ export function chargeBonusOf(stats: Traits, attack: string): ChargeTrait | null
   return chargeTraitsOf(stats).find((trait) => trait.bonus && named(trait.bonus, attack)) ?? null;
 }
 
-// Whether a trait line is a charge the engine plays whole: its run, its
-// save and fall, its bonus attack. Extra dice and a push are not yet played.
+// Whether a trait line is a charge the engine plays whole.
 export function playsCharge(line: string): boolean {
-  const read = readChargeTrait(line);
-  return read !== null && !read.extra && !read.pushFeet;
+  return readChargeTrait(line) !== null;
 }
