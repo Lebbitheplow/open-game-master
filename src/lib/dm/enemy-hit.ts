@@ -30,6 +30,7 @@ import type { ScoreDrain } from "@/lib/bestiary/score-drain-text";
 import { drainConditionName, drainOf } from "@/lib/srd/ability-drain-logic";
 import { effectiveAbilities } from "@/lib/srd/magic-items";
 import { dmRoll } from "@/lib/dm/roll-card";
+import { withHold } from "@/lib/dm/creature-hold";
 
 // What an enemy's hit does once it lands (SRD 5.1): each damage type in the
 // blow meets the target's resistances on its own ("piercing plus fire"
@@ -258,6 +259,19 @@ export function resolveOnHit(
           `${condition} lasts until the ${rider.until.edge} of ${rider.until.whose === "source" ? `${enemy.displayName}'s` : "their"} next turn`,
         );
       }
+    }
+  }
+  // What holds the restrained target and how it breaks (a giant spider's
+  // webbing): kept on the instance the hit laid (creature-hold.ts).
+  if (rider.hold && ((out.riderCondition as string[] | undefined) ?? []).includes("restrained")) {
+    const held = getSheetById(target.id);
+    const key = Object.keys(held?.conditionMeta ?? {}).find((name) => name.toLowerCase() === "restrained");
+    if (held && key) {
+      const updated = patchSheet(held.id, { conditionMeta: withHold(held.conditionMeta as ConditionMetaMap, key, enemy.id, rider.hold) });
+      if (updated) {
+        publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
+      }
+      out.escape = `${rider.hold.check.ability.toUpperCase()} check DC ${rider.hold.check.dc} as an action (take_action escape)${rider.hold.ac ? `, or destroy the ${rider.hold.name} (damage_object name "${rider.hold.name}", AC ${rider.hold.ac}, ${rider.hold.hp} HP)` : ""}`;
     }
   }
   if (rider.escapeDc && ((out.riderCondition as string[] | undefined) ?? []).includes("grappled")) {

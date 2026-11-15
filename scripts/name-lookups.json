@@ -1107,7 +1107,7 @@
     "lib/bestiary/attack-parse.ts#whole": [["parse",3,"dice terms of the pack's damage fields"]],
     "lib/bestiary/attack-text.ts#first": [["key",1,"the SRD's English attack and multiattack text parsed (a workshop monster's text: authoring)"]],
     "lib/bestiary/attack-text.ts#number": [["key",12,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
-    "lib/bestiary/attack-text.ts#partial": [["pattern",30,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["key",35,"the SRD's English attack and multiattack text parsed (a workshop monster's text: authoring)"],["parse",2,"the Hit: clause's own damage, read before any saving-throw clause"]],
+    "lib/bestiary/attack-text.ts#partial": [["pattern",30,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["key",36,"the SRD's English attack and multiattack text parsed (a workshop monster's text: authoring)"],["parse",2,"the Hit: clause's own damage, read before any saving-throw clause"]],
     "lib/bestiary/attack-text.ts#whole": [["key",2,"damage types"],["identity",1,"the kinds a rider spares against the target's species and creature type, textKey on both sides"]],
     "lib/bestiary/block-check.ts#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/bestiary/block-check.ts#partial": [["key",2,"size words and dedupe keys in the workshop's block check"]],
@@ -3203,6 +3203,12 @@
     "lib/srd/ability-drain-logic.ts#number": [["key",2,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/bestiary/score-drain-text.ts#partial": [["pattern",6,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/bestiary/score-drain-text.ts#keyed": [["key",1,"an ability's English name a regex already captured, read in a fixed table"]],
-    "lib/dm/enemy-hit.ts#whole": [["key",1,"a drained score's condition by the label the engine wrote it under"]]
+    "lib/dm/enemy-hit.ts#whole": [["key",1,"a drained score's condition by the label the engine wrote it under"]],
+    "lib/bestiary/hold-text.ts#partial": [["pattern",12,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
+    "lib/bestiary/hold-text.ts#whole": [["key",2,"damage types, the pack's English list of them"]],
+    "lib/bestiary/hold-text.ts#number": [["key",3,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
+    "lib/dm/creature-hold.ts#keyed": [["key",2,"a sheet's or a row's conditionMeta by the condition key it was written under"]],
+    "lib/dm/creature-hold.ts#whole": [["identity",2,"the hold damage_object names: its own whole name, or \"<hold> on <creature>\" or \"<creature>'s <hold>\" (textKey on both sides); several that fit are refused with the options"]],
+    "lib/dm/creature-hold.ts#first": [["key",2,"the hold a restrained creature carries, found on its own instance (a creature holds one at a time)"]]
   }
 }

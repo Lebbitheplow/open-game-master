@@ -84,6 +84,19 @@ const conditionInstanceSchema = z.object({
     // A monster's grapple prints its escape DC, which the escape is rolled
     // against instead of a contest (src/lib/dm/grapple.ts).
     escapeDc: z.number().int().min(1).max(40).optional(),
+    // What holds a restrained creature and breaks it (a giant spider's
+    // webbing: a DC 12 Strength check, or the webbing destroyed as an object
+    // of its own numbers), src/lib/dm/creature-hold.ts.
+    hold: z
+      .object({
+        name: z.string().trim().min(1).max(40),
+        check: z.object({ ability: z.enum(["str", "dex"]), dc: z.number().int().min(1).max(30) }),
+        ac: z.number().int().min(1).max(30).optional(),
+        hp: z.number().int().min(1).max(500).optional(),
+        vulnerable: z.string().trim().max(120).optional(),
+        immune: z.string().trim().max(200).optional(),
+      })
+      .optional(),
     // The Grappler feat's pin: on the grappler's own restraint, the creature
     // they hold pinned; it lasts while that grapple does
     // (src/lib/dm/grappler-pin.ts).

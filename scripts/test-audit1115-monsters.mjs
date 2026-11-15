@@ -549,4 +549,68 @@ await test("E11 a shadow's touch takes 1d4 from Kara's Strength (her attacks and
   assert.equal(strength(world.sheet(kara.id)), 16, "the reduction ends with the short rest");
 });
 
+const WEB = "Ranged Weapon Attack: +5 to hit, range 30/60 ft., one creature. Hit: The target is restrained by webbing. As an action, the restrained target can make a DC 12 Strength check, bursting the webbing on a success. The webbing can also be attacked and destroyed (AC 10; hp 5; vulnerability to fire damage; immunity to bludgeoning, poison, and psychic damage).";
+
+await test("E13 a giant spider's Web is read: restrained, a DC 12 STR check to burst it, the webbing's AC, hit points and defences", async () => {
+  const { readAttackText } = await import("../src/lib/bestiary/attack-text.ts");
+  const web = readAttackText(WEB).onHit;
+  assert.equal(web?.condition, "restrained");
+  assert.deepEqual(web?.hold, { name: "webbing", check: { ability: "str", dc: 12 }, ac: 10, hp: 5, vulnerable: "fire", immune: "bludgeoning, poison, psychic" });
+  assert.equal(web?.manual, undefined, "nothing of it is left to the GM");
+  // Another book's wording: the webbing's numbers in a sentence of its own.
+  assert.deepEqual(
+    readAttackText("Ranged Weapon Attack: +5 to hit, range 30/60 ft., one creature. Hit: The creature is restrained by webbing. As an action, the restrained creature can make a DC 13 Strength check, escaping from the webbing on a success. The effect also ends if the webbing is destroyed. The webbing has AC 10, 5 hp, vulnerability to fire damage, and immunity to bludgeoning, poison, and psychic damage.").onHit?.hold,
+    { name: "webbing", check: { ability: "str", dc: 13 }, ac: 10, hp: 5, vulnerable: "fire", immune: "bludgeoning, poison, psychic" },
+  );
+});
+
+// A giant spider's Web on Kara, from the rulebook's own block.
+async function webbed() {
+  await kit.endFight();
+  await kit.fight(1, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+  const [spider] = world.enemies();
+  const stats = srd("Giant Spider");
+  kit.setEnemy(spider.id, { ac: stats.ac, maxHp: stats.maxHp, stats });
+  kit.place(kara.id, 5, 5);
+  kit.place(bram.id, 6, 6);
+  kit.place(spider.id, 9, 5);
+  kit.enemyTurn(spider.id);
+  world.dice(19);
+  const out = await world.invoke("enemy_attack", { enemyId: spider.id, targetCharacterId: kara.id, attack: "Web" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.ok(world.sheet(kara.id).conditions.includes("restrained"), JSON.stringify(out.result.swings));
+  return spider;
+}
+
+await test("E13 Kara webbed by a giant spider bursts it with her action and a DC 12 STR check; a failed check leaves her held", async () => {
+  await webbed();
+  kit.giveTurn(kara.id);
+  world.dice(2);
+  const stuck = await world.invoke("take_action", { characterId: kara.id, action: "escape" });
+  world.clearDice();
+  assert.equal(stuck.ok, true, stuck.error);
+  assert.equal(stuck.result.success, false, JSON.stringify(stuck.result));
+  assert.ok(world.sheet(kara.id).conditions.includes("restrained"));
+  kit.giveTurn(kara.id);
+  world.dice(12);
+  const free = await world.invoke("take_action", { characterId: kara.id, action: "escape" });
+  world.clearDice();
+  assert.equal(free.ok, true, free.error);
+  assert.equal(free.result.success, true, JSON.stringify(free.result));
+  assert.ok(!world.sheet(kara.id).conditions.includes("restrained"), "15 vs DC 12: the webbing bursts");
+});
+
+await test("E13 the webbing is an object of its own: immune to bludgeoning, and 5 hit points of fire (doubled) or slashing destroy it and free her", async () => {
+  await webbed();
+  const blunt = await world.invoke("damage_object", { name: "webbing", damage: "6", damageType: "bludgeoning" });
+  assert.equal(blunt.ok, true, blunt.error);
+  assert.equal(blunt.result.damage, 0, JSON.stringify(blunt.result));
+  assert.ok(world.sheet(kara.id).conditions.includes("restrained"));
+  const fire = await world.invoke("damage_object", { name: "webbing", damage: "3", damageType: "fire" });
+  assert.equal(fire.ok, true, fire.error);
+  assert.equal(fire.result.damage, 6, "vulnerable to fire: 3 doubled");
+  assert.ok(!world.sheet(kara.id).conditions.includes("restrained"), "the webbing is destroyed and she is free");
+});
+
 finish();

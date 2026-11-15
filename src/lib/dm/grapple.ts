@@ -23,6 +23,7 @@ import { holdsFeat } from "@/lib/srd/feat-effects";
 import { genreEscapeAdvantage, genreGripDisadvantage } from "@/lib/srd/genre-b-combat";
 import { characterNetEscape, enemyNetEscape, netHolds } from "@/lib/dm/net-hold";
 import { characterTrapEscape, trapHoldOn } from "@/lib/dm/trap-escape";
+import { characterHoldEscape, enemyHoldEscape, holdOn } from "@/lib/dm/creature-hold";
 import { characterExtinguish, enemyBurning, enemyExtinguish, sheetBurning } from "@/lib/dm/gear-weapon-hit";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
@@ -99,7 +100,10 @@ export function characterEscape(
   if (!held) {
     // A spell's hold (Entangle, Web): src/lib/dm/spell-escape.ts. A trap's
     // (a falling net): src/lib/dm/trap-escape.ts.
-    return characterSpellHold(campaign, sheet)
+    // A creature's hold (a giant spider's webbing): creature-hold.ts.
+    return holdOn(sheet)
+      ? characterHoldEscape(campaign, turn, sheet, spend)
+      : characterSpellHold(campaign, sheet)
       ? characterSpellEscape(campaign, turn, sheet, spend)
       : netHolds(sheet)
         ? characterNetEscape(campaign, turn, sheet, spend)
@@ -212,7 +216,9 @@ export function enemyEscape(
       return enemyExtinguish(campaign, turn, enemy);
     }
     // A net's hold (net-hold.ts): the action and a DC 10 Strength check.
-    return enemySpellHold(campaign, enemy)
+    return holdOn(enemy)
+      ? enemyHoldEscape(campaign, turn, enemy)
+      : enemySpellHold(campaign, enemy)
       ? enemySpellEscape(campaign, turn, enemy)
       : netHolds(enemy)
         ? enemyNetEscape(campaign, turn, enemy)

@@ -184,6 +184,25 @@ function checkOnHit(raw: unknown, attack: string): Checked<OnHitRider | null> {
   if (drain && drained && drainDice && (drain.until === "short" || drain.until === "long")) {
     rider.scoreDrain = { ability: drained, dice: drainDice, diesAtZero: drain.diesAtZero === true, until: drain.until };
   }
+  // What holds a target it restrains (a giant spider's webbing,
+  // hold-text.ts): its check and its numbers as an object.
+  const hold = (source.hold ?? null) as Raw | null;
+  const holdCheck = hold?.check && typeof hold.check === "object" ? (hold.check as Raw) : null;
+  const holdName = hold ? text(hold.name, 40).toLowerCase() : "";
+  const holdDc = holdCheck ? clamp(holdCheck.dc, 1, 30) : null;
+  if (hold && holdName && holdCheck && (holdCheck.ability === "str" || holdCheck.ability === "dex") && holdDc !== null) {
+    const ac = clamp(hold.ac, 1, 30);
+    const hp = clamp(hold.hp, 1, 500);
+    const vulnerable = text(hold.vulnerable, 120).toLowerCase();
+    const immune = text(hold.immune, 200).toLowerCase();
+    rider.hold = {
+      name: holdName,
+      check: { ability: holdCheck.ability, dc: holdDc },
+      ...(ac !== null && hp !== null ? { ac, hp } : {}),
+      ...(vulnerable ? { vulnerable } : {}),
+      ...(immune ? { immune } : {}),
+    };
+  }
   const manual = (Array.isArray(source.manual) ? source.manual : [])
     .slice(0, MANUAL_CLAUSES)
     .map((clause) => text(clause, MANUAL_CLAUSE_MAX))

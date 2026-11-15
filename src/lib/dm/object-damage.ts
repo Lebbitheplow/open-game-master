@@ -41,6 +41,8 @@ import { badArguments, toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { unknownSheetRef } from "@/lib/dm/rolls";
 import { freeFromNet, NET_AC, NET_HP, netObject, nettedId } from "@/lib/dm/net-hold";
+import { freeFromHold, heldId, holdObject } from "@/lib/dm/creature-hold";
+import { damageAdjust } from "@/lib/dm/damage-logic";
 import { vesselObject } from "@/lib/dm/genie-vessel";
 
 export const OBJECT_MATERIALS: ObjectMaterial[] = [
@@ -134,22 +136,28 @@ export function damageObject(
   if (net && "error" in net) {
     return net;
   }
+  // A creature's webbing holding someone has the block's numbers
+  // (creature-hold.ts), kept per creature it holds.
+  const web = campaign && args.name && !section && !net ? holdObject(campaign.id, args.name) : null;
+  if (web && "error" in web) {
+    return web;
+  }
   // A Genie warlock's vessel has its warlock's numbers (genie-vessel.ts).
-  const vessel = campaign && args.name && !section && !net ? vesselObject(campaign.id, args.name) : null;
+  const vessel = campaign && args.name && !section && !net && !web ? vesselObject(campaign.id, args.name) : null;
   // Each section keeps its own damage between blows.
-  const kept = section ? `${section.zoneId} ${section.section}` : net ? `net ${nettedId(net.netted)}` : vessel ? vessel.key : args.name;
+  const kept = section ? `${section.zoneId} ${section.section}` : net ? `net ${nettedId(net.netted)}` : web ? `hold ${heldId(web.held)}` : vessel ? vessel.key : args.name;
   const record = campaign && kept ? objectRecord(campaign.id, kept) : null;
   const profile = objectProfile(args.material ?? "wood", args.size ?? "medium", args.fragile);
   // A section's numbers are its wall's; an object already named keeps the
   // numbers its first call decided; only a new one reads this call's.
-  const ac = section?.ac ?? (net ? NET_AC : undefined) ?? vessel?.ac ?? record?.ac ?? args.ac ?? profile.ac;
-  const hp = section?.hp ?? (net ? NET_HP : undefined) ?? vessel?.hp ?? record?.hp ?? args.hp ?? profile.hp;
+  const ac = section?.ac ?? (net ? NET_AC : undefined) ?? web?.hold.ac ?? vessel?.ac ?? record?.ac ?? args.ac ?? profile.ac;
+  const hp = section?.hp ?? (net ? NET_HP : undefined) ?? web?.hold.hp ?? vessel?.hp ?? record?.hp ?? args.hp ?? profile.hp;
   const threshold = record ? record.threshold : args.threshold;
   const already = record?.taken ?? 0;
   const restated =
     vessel && ((args.ac !== undefined && args.ac !== ac) || (args.hp !== undefined && args.hp !== hp) || args.material !== undefined || args.size !== undefined)
       ? `${vessel.owner}'s vessel is a Tiny object of their own numbers: AC ${ac} (their spell save DC), ${hp} HP (warlock level + proficiency bonus)`
-      : record && !section && !net && ((args.ac !== undefined && args.ac !== ac) || (args.hp !== undefined && args.hp !== hp) || args.material !== undefined || args.size !== undefined)
+      : record && !section && !net && !web && ((args.ac !== undefined && args.ac !== ac) || (args.hp !== undefined && args.hp !== hp) || args.material !== undefined || args.size !== undefined)
       ? `kept as it was first described: AC ${ac}, ${hp} HP${threshold ? `, damage threshold ${threshold}` : ""}`
       : null;
   if (record?.broken) {
@@ -251,6 +259,14 @@ export function damageObject(
     notes.push(`only slashing damage cuts a net, and this was ${type || "untyped"}`);
     dealt = 0;
   }
+  // The webbing's own defences, as its block prints them (creature-hold.ts).
+  if (web && dealt) {
+    const met = damageAdjust(dealt, type, "", web.hold.immune ?? "", web.hold.vulnerable ?? "", { magical: false, spell: false });
+    if (met.note) {
+      notes.push(`the ${web.hold.name}: ${met.note}`);
+    }
+    dealt = met.amount;
+  }
   if (dealt !== null && threshold && dealt > 0 && dealt < threshold) {
     notes.push(`${dealt} is under its damage threshold of ${threshold}: superficial, nothing comes off`);
     dealt = 0;
@@ -273,6 +289,10 @@ export function damageObject(
   if (campaign && net && broken) {
     notes.push(freeFromNet(campaign, net.netted, true));
     forgetObject(campaign.id, `net ${nettedId(net.netted)}`);
+  }
+  if (campaign && web && broken) {
+    notes.push(freeFromHold(campaign, web.held, true));
+    forgetObject(campaign.id, `hold ${heldId(web.held)}`);
   }
   return {
     ok: true,

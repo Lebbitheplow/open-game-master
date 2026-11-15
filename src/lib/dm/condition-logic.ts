@@ -9,6 +9,7 @@ import { conditionIncomingAttackState, conditionSpeed } from "@/lib/srd/conditio
 import { conditionSeesInvisible } from "@/lib/srd/condition-effect-queries";
 import { itemAbilityScore, type Wearer } from "@/lib/srd/magic-items";
 import { textKey } from "@/lib/language/text-logic";
+import type { CreatureHold } from "@/lib/bestiary/hold-text";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { CALTROPS_WOUND } from "@/lib/battlemap/zones-gear";
 import { maxHpCannotFall } from "@/lib/dm/ar-ws-inured-logic";
@@ -106,6 +107,9 @@ export type ConditionMeta = {
   mote?: boolean;
   // A monster's grapple: its printed escape DC (grapple.ts).
   escapeDc?: number;
+  // What holds a restrained creature: the check that breaks it and the
+  // thing as an object (a giant spider's webbing, creature-hold.ts).
+  hold?: CreatureHold;
   // Laid by magic with no spell named (set_enemy_condition magical): its
   // repeat saves meet Magic Resistance as the first one did
   // (condition-tick.ts).

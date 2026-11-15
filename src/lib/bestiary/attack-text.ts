@@ -4,6 +4,7 @@ import type { TurnTie } from "@/lib/dm/save-effect";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
 import { textKey } from "@/lib/language/text-logic";
 import { readScoreDrain, SCORE_DRAIN_SENTENCE, type ScoreDrain } from "@/lib/bestiary/score-drain-text";
+import { HOLD_SENTENCE, readHold, type CreatureHold } from "@/lib/bestiary/hold-text";
 
 // What an attack's printed line says beyond its bonus and dice (SRD 5.1,
 // Monsters: Actions): melee or ranged, its reach and range, the typed dice
@@ -55,6 +56,9 @@ export type OnHitRider = {
   // "The target's Strength score is reduced by 1d4" (a shadow): the score,
   // the dice, death at 0, the rest that ends it (score-drain-text.ts).
   scoreDrain?: ScoreDrain;
+  // What holds a target it restrains, the check that breaks it and the thing
+  // as an object (a giant spider's webbing, hold-text.ts).
+  hold?: CreatureHold;
   // A poison's sleep on a bad enough save: failed by this much (a drow's
   // hand crossbow, a pseudodragon's sting) or rolled this or lower (a
   // sprite's shortbow). A couatl's bite sleeps on any failure, as its
@@ -498,6 +502,12 @@ function readOnHit(hit: string, effectOnly: boolean): OnHitRider | null {
       rider.condition = conditionName(laid[1]);
     }
     manual = [...new Set([...manual, ...sentences.slice(laid ? 1 : 0)])];
+  }
+  // A web's escape and its numbers are the engine's (creature-hold.ts).
+  const hold = rider.condition === "restrained" ? readHold(hit) : null;
+  if (hold) {
+    rider.hold = hold;
+    manual = manual.filter((sentence) => !HOLD_SENTENCE.test(sentence));
   }
   // A swallow is the engine's to play (src/lib/dm/swallow.ts): its acid,
   // cover, regurgitation and corpse are not left to the GM.
