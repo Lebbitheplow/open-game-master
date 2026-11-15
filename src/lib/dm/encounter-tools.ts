@@ -150,6 +150,7 @@ import { castingTurnBudget } from "@/lib/dm/long-casting";
 import { endEncounterTool, endTurnTool, enemyAttackTool, startEncounterTool, type ToolDef } from "@/lib/dm/encounter-tool-defs";
 import { RUN_PREPARED_ENCOUNTER, runPreparedEncounter } from "@/lib/dm/prepared-encounter-tool";
 import { asEventTurn, fireFightEvents } from "@/lib/dm/fight-events";
+import { proneRiders, settleProneRiders } from "@/lib/dm/mount-thrown";
 import { rollDeathSave } from "@/lib/dm/death";
 import { risesWithVengeance } from "@/lib/dm/searing-vengeance";
 import { getBattleMapForEncounter, getTokenByRef, listHiddenRefIds, resetRoundBudgets, resetTurnBudgets } from "@/lib/db/battle-maps";
@@ -1574,6 +1575,9 @@ export type TurnHolder = {
   turnIndex: number;
   floor: InitiativeFloor | null;
   partyCouldRise: boolean;
+  // The mounted riders already prone (mount-thrown.ts): the call that lays a
+  // rider prone is the one that asks for their save.
+  proneRiders: string[];
 };
 
 export function turnHolder(campaignId: string): TurnHolder | null {
@@ -1587,6 +1591,7 @@ export function turnHolder(campaignId: string): TurnHolder | null {
     turnIndex: encounter.turnIndex,
     floor: fightFloor(campaignId),
     partyCouldRise: partyCanRise(encounter),
+    proneRiders: proneRiders(campaignId),
   };
 }
 
@@ -1624,14 +1629,17 @@ function resumeAfter(before: Pick<TurnHolder, "order" | "turnIndex">, order: Ord
 // A prepared fight's events the call brought on happen here too, for the
 // same reason (src/lib/dm/fight-events.ts); what they told the table is
 // returned, for the model's turn to hear in the call's result.
+// A rider the call knocked prone makes the save to stay mounted here as well
+// (mount-thrown.ts): prone reaches a sheet from too many doors to ask at each.
 export function settleTurn(campaign: Campaign, before: TurnHolder | null): string[] {
+  const thrown = before ? settleProneRiders(campaign, before.proneRiders) : [];
   if (before) {
     passOnFrom(campaign, before);
     // The call may have downed the last of the party (a blow on a dying or a
     // stable character, the death save a pass rolled).
     partyFallen(campaign, before.partyCouldRise, before.order);
   }
-  return fireFightEvents(campaign);
+  return [...thrown, ...fireFightEvents(campaign)];
 }
 
 function passOnFrom(campaign: Campaign, before: TurnHolder | null) {
