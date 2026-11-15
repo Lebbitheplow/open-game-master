@@ -2073,9 +2073,9 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
   // captain riding beside the whisper was never asked. A note sent on the
   // last call buys two more: one with tools to answer it, one to narrate.
   let callLimit = MAX_MODEL_CALLS;
-  const tableNoteCalls = (final: boolean) => {
+  const tableNoteCalls = (final: boolean, notes = 1) => {
     if (final) {
-      callLimit += 2;
+      callLimit += 1 + notes;
     }
   };
   while (turn.callIndex < callLimit) {
@@ -2897,7 +2897,15 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       const listeners = spokenAloud.length ? mindsWithinEarshot(campaign, turn.id, turnCalls(turn.conversation, toolCalls)) : [];
       if (listeners.length) {
         hearingNudged = true;
-        tableNoteCalls(finalCall);
+        // A mind owed its turn is asked in the same note: sent apart, the
+        // second note came on a closing reply that had nothing left to say,
+        // and the captain's hour on the road went unplayed.
+        const owedToo = sceneMindsNudged ? [] : mindsAwaitingTurn(campaign, turn.id, turnCalls(turn.conversation, toolCalls));
+        const skipped = owedToo.length > 0 && turnCalls(turn.conversation, toolCalls).some((call) => TIME_SKIP_TOOLS.has(call.name));
+        if (owedToo.length) {
+          sceneMindsNudged = true;
+        }
+        tableNoteCalls(finalCall, owedToo.length ? 2 : 1);
         turn.conversation.push({
           role: "assistant",
           ...carried,
@@ -2905,7 +2913,15 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
           ...(toolCalls.length ? { tool_calls: echoedToolCalls } : {}),
         });
         answerRanAbove(fightOwnsFloor(campaignId), false);
-        turn.conversation.push({ role: "user", content: hearingPrompt(listeners.map((npc) => npc.name), spokenAloud[0].slice(0, 120)) });
+        turn.conversation.push({
+          role: "user",
+          content: [
+            hearingPrompt(listeners.map((npc) => npc.name), spokenAloud[0].slice(0, 120)),
+            owedToo.length ? `${sceneMindsPrompt(owedToo.map((npc) => npc.name), skipped)} After their turns, narrate only what those turns add.` : "",
+          ]
+            .filter(Boolean)
+            .join("\n\n"),
+        });
         saveDmTurn(turn);
         continue;
       }

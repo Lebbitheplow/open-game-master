@@ -605,6 +605,44 @@ await test("a mind travelling with the party is within earshot of the road's tal
   }
 });
 
+await test("a mind owed its turn is asked in the same note as who heard, so a closing reply cannot drop it", async () => {
+  const { listNpcs } = await import("../src/lib/db/npcs.ts");
+  const others = listNpcs(world.campaignId).filter((entry) => mind.tierOfNpc(entry) === "primary" && !entry.companionSheetId);
+  for (const other of others) {
+    minds.setNpcTier(other.id, "secondary");
+  }
+  npc("Captain Wren", { trait: "leads the column" });
+  try {
+    model.script([
+      reply({ calls: [call("npc_speak", { name: "Captain Wren", perceives: "Aria falls in behind the cart." })] }),
+      answer({ speech: "Stay close.", intent: "" }),
+      reply({ text: '"Stay close," Wren says.' }),
+    ]);
+    await model.turn(world, "I fall in behind the cart.", aria.id);
+    model.script([
+      reply({ text: 'From the cart the prisoner laughs: "I hope we never see those wagons."' }),
+      reply({
+        calls: [
+          call("npc_hear", { speaker: "the prisoner", words: "I hope we never see those wagons.", listeners: [{ name: "Captain Wren", reach: "near" }] }),
+          call("npc_speak", { name: "Captain Wren", perceives: "The prisoner laughs that he hopes never to see those wagons." }),
+        ],
+      }),
+      answer({ speech: "Quiet back there.", intent: "" }),
+      reply({ text: '"Quiet back there," Wren snaps.' }),
+    ]);
+    const dm = await model.turn(world, "I keep marching.", aria.id);
+    const notes = model.requests.map((request) => String(request.messages?.at(-1)?.content ?? "")).filter((text) => text.includes("nobody asked whether they heard"));
+    assert.equal(notes.length, 1);
+    assert.match(notes[0], /Captain Wren is a first-tier character/);
+    assert.match(dm.content, /Quiet back there/);
+  } finally {
+    for (const other of others) {
+      minds.setNpcTier(other.id, "primary");
+    }
+    minds.setNpcTier(getNpcByName(world.campaignId, "Captain Wren").id, "secondary");
+  }
+});
+
 await test("a mind played from a mind seat answers the same isolated question, and silence falls to the server's mind", async () => {
   const { createUser } = await import("../src/lib/db/users.ts");
   const seats = await import("../src/lib/db/mind-seats.ts");
