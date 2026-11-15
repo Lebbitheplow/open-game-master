@@ -115,7 +115,7 @@ export const DAILY_POWERS = {
   // 13 Dexterity saving throw, taking 4d6 lightning damage on a failed save,
   // and half as much damage on a successful one." The line once read "DC 13
   // Dexterity save or 4d6 lightning", and a save was resolved as no damage.
-  "javelin of lightning": "a 5-foot-wide line of lightning to a target within 120 feet: every other creature in it makes a DC 13 Dexterity save, 4d6 lightning on a failure and half on a success; then a ranged attack with the javelin, and a hit deals 4d6 lightning beside its own damage",
+  "javelin of lightning": "a 5-foot-wide line to a target within 120 feet: each other creature in it makes a DC 13 Dexterity save, 4d6 lightning or half on a success; then a ranged attack, and a hit adds 4d6 lightning",
   "plate armor of etherealness": "the etherealness spell for 10 minutes",
 };
 
