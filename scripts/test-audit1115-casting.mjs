@@ -1294,5 +1294,39 @@ await test("S27: a goblin whose opportunity attack waits on Shield falls before 
   assert.match(out.notes.join(" "), /Fire Shield lands/);
 });
 
+// ---- S28: nothing that closes the hit drops the answer waiting on it ----
+
+// The lead's ruling on S26: a turn passing or the fight ending closes the
+// hit, and the creature dies as the hit stands. A turn passed on a route
+// with no call through the door left the answer waiting while the next
+// creature took its turn, and a fight ended by the engine or force-ended by
+// the lead dropped it: the goblin scattered alive with the survivors.
+const { finishEncounter } = await import("../src/lib/dm/enemy-damage.ts");
+
+await test("S28: a turn passing lands the waiting flame", async () => {
+  const { world, mage, goblin } = await flameAndShield(5);
+  await swingAt(world, goblin, mage, [10, 3, 4, 4]);
+  assert.equal(statusOf(world, goblin.id).status, "alive");
+  skipCurrentTurn(world.campaignId);
+  assert.equal(statusOf(world, goblin.id).status, "dead");
+});
+
+await test("S28: a fight the lead force-ends lands the waiting flame before the goblins scatter", async () => {
+  const { world, mage, goblin } = await flameAndShield(5);
+  await swingAt(world, goblin, mage, [10, 3, 4, 4]);
+  world.signIn({ id: world.owner.id });
+  const ended = await routeCall(await world.route("campaigns/[campaignId]/encounter"), "DELETE", undefined, { campaignId: world.campaignId });
+  assert.equal(ended.status, 200, JSON.stringify(ended.json));
+  assert.equal(goblinRow(goblin.id).status, "dead");
+});
+
+await test("S28: a fight the engine ends lands the waiting flame first", async () => {
+  const { world, mage, goblin } = await flameAndShield(5);
+  await swingAt(world, goblin, mage, [10, 3, 4, 4]);
+  const sheets = world.sheets();
+  finishEncounter(world.campaign(), createDmTurn(world.campaignId, [], "human_dm"), world.encounter(), "enemies_fled", sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])));
+  assert.equal(goblinRow(goblin.id).status, "dead");
+});
+
 closeTables();
 finish();
