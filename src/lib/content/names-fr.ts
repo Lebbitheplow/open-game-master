@@ -1937,7 +1937,6 @@ export const ITEM_EN_BY_FR: Record<string, string> = {
   "jeu de cartes": "Playing Card Set",
   "lame porte bonheur": "Luck Blade",
   "lampe": "Lamp",
-  "lance": "Spear",
   "lance d arçon": "Lance",
   "lanterne à capote": "Lantern, Hooded",
   "lanterne de révélation": "Lantern of Revealing",
