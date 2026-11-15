@@ -624,6 +624,18 @@ A separate host message { odm: 1, type: "ruler", mapId, ruler } carries the norm
 
 Ruler updates are separate from snapshots so hovering does not require rebuilding terrain, figures or other expensive scene resources. Ignore messages for other map IDs. This additive message retains bridge version 1; older views may ignore it and older hosts do not send it.
 
+### Miniature movement and sides
+
+A projected token may carry `walkPath`, a recent, confirmed ground walk from
+its origin through its current position. Each square must be visible to that
+viewer. Views can use it for animation when the position changes, starting
+from the token's previous position. The host omits it for reduced motion and
+when there is no matching recent visible walk, such as a teleport or undo.
+
+The optional `side` is `"party"` or `"foe"` when the game overrides a
+figure's usual allegiance. Without it, use the normal side for the token's
+kind. Both fields are additive and can be absent on older hosts.
+
 ### Enemy and NPC sex
 
 Visible enemy and NPC tokens may include `sex: "Female" | "Male"`, supplied by the server's viewer projection after its normal visibility filtering. It is the same gender the flat board's face for that figure reads (`src/lib/actor-sex-logic.ts`), so a view's model and the plate on the tracker never disagree.

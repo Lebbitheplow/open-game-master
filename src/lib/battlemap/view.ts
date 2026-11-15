@@ -1,4 +1,5 @@
 import { formSenses } from "@/lib/srd/mt-srd-form-senses";
+import { visibleWalk } from "@/lib/battlemap/confirmed-walk";
 import { speedCannotBeReduced } from "@/lib/srd/genre-b-post-apocalyptic";
 import { readiedReleaseFor } from "@/lib/dm/readied-release";
 import { ambushRound } from "@/lib/dm/turn-extra-attacks-logic";
@@ -423,6 +424,7 @@ export function buildPlayerMapView(
       x: token.x,
       y: token.y,
       mine: myToken !== null && token.id === myToken.id,
+      walkPath: visibleWalk(token, map.width, map.height, visible, fullVision),
       down:
         token.kind === "pc" && (sheetsById.get(token.refId)?.currentHp ?? 1) <= 0,
       hidden: token.hidden,

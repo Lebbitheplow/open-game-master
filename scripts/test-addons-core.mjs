@@ -631,6 +631,18 @@ await test("a walk's first tap is named to the view as its aim, and nothing else
   assert.match(board, /moveAim=\{moveAim\}/, "the table does not tell the view its aim");
 });
 
+await test("every addon sees the projected walk and side; reduced motion omits the walk", () => {
+  const walkPath = [{ x: 0, y: 0 }, { x: 1, y: 0 }];
+  const projected = { ...view, tokens: [{ ...view.tokens[0], x: 1, y: 0, walkPath, side: "foe" }] };
+  const snapshot = (addon, reducedMotion) => boardSnapshot(projected, addon, {
+    canDirect: false, appearance: { theme: "night", reducedMotion },
+  }).tokens[0];
+  assert.deepEqual(snapshot("hello-dungeon", false).walkPath, walkPath);
+  assert.equal(snapshot("another-addon", false).side, "foe");
+  assert.equal(snapshot("another-addon", true).side, "foe");
+  assert.equal(snapshot("another-addon", true).walkPath, undefined);
+});
+
 await test("a snapshot carries the flat board's layers, only about figures this viewer sees", () => {
   const appearance = { theme: "night", reducedMotion: false };
   const fuller = {

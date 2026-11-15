@@ -414,7 +414,8 @@ export async function POST(
     }
     carried = placed;
   }
-  moveToken(token.id, x, y, scene ? 0 : token.movedThisRound + (readied ? 0 : spend));
+  moveToken(token.id, x, y, scene ? 0 : token.movedThisRound + (readied ? 0 : spend),
+    path && token.movement === "walk" ? [from, ...path] : undefined);
   // The run a charge is measured from begins where they stood (mt-fb-charge.ts).
   if (!scene && !readied) {
     noteRun(campaignId, sheet, from);
