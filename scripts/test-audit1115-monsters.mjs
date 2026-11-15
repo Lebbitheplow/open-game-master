@@ -826,4 +826,22 @@ await test("E17 a hero who withstands one mummy's glare is immune to every mummy
   assert.equal(mummyOnBram.ok, false, "the lord's covers all mummies");
 });
 
+await test("E18 a druid in an owl's form flying out of a goblin's reach keeps the owl's Flyby: no opportunity attack", async () => {
+  const maps = await import("../src/lib/db/battle-maps.ts");
+  await kit.endFight();
+  await kit.fight(1, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+  const [goblin] = world.enemies();
+  kit.place(kara.id, 5, 5);
+  kit.place(bram.id, 15, 15);
+  kit.place(goblin.id, 6, 5);
+  world.patch(kara.id, { wildShape: { form: "Owl", beastHp: 1, beastMaxHp: 1, beastAc: 11, kind: "wildshape", abilities: { str: 3, dex: 13, con: 8 }, speed: 5 } });
+  maps.setTokenMovement(kit.token(kara.id).id, "fly");
+  kit.giveTurn(kara.id);
+  world.dice(19, 4);
+  const swings = await walkTo(world.owner, 4, 5);
+  world.patch(kara.id, { wildShape: null });
+  maps.setTokenMovement(kit.token(kara.id).id, "walk");
+  assert.equal(swings.length, 0, "the form's Flyby is hers while she wears it");
+});
+
 finish();

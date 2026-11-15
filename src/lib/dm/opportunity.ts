@@ -68,6 +68,7 @@ import { enemySpeedTiles } from "@/lib/dm/enemy-speed";
 import { opportunityAnswer } from "@/lib/dm/opportunity-ask";
 import { opportunityBlow, opportunityDecoy, opportunityWards } from "@/lib/dm/opportunity-wards";
 import { strikePetsOnWalk } from "@/lib/dm/opportunity-pets";
+import { findShapeForm } from "@/lib/srd/beast-forms";
 import { letGoNote, timedOutNote, type OpportunityTrigger } from "@/lib/dm/opportunity-ask-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -129,8 +130,11 @@ export function withLiveDodge(conditions: string[]): string[] {
 // Flyby (SRD 5.1: an owl, a giant owl, a pteranodon, a flying snake): "The
 // owl doesn't provoke opportunity attacks when it flies out of an enemy's
 // reach." Its walk aloft draws no swing on either side: an enemy row's own
-// trait, or a conjured creature's block (its summon record's traits). Before
-// this a pteranodon swooping off the fighter was struck as any walker was.
+// trait, a conjured creature's block (its summon record's traits), or the
+// form a character wears (Wild Shape, Polymorph: the beast's traits are
+// theirs while they wear it, read from the form's block). Before this a
+// pteranodon swooping off the fighter was struck as any walker was, and so
+// was a druid flying off as an owl.
 function fliesBy(mapId: string, refId: string): boolean {
   if (getTokenByRef(mapId, refId)?.movement !== "fly") {
     return false;
@@ -139,7 +143,9 @@ function fliesBy(mapId: string, refId: string): boolean {
   if (enemy) {
     return hasTrait(enemy.stats, "flyby");
   }
-  return /(?:^|[.;]\s*)flyby\b/i.test(getSheetById(refId)?.summon?.traits ?? "");
+  const sheet = getSheetById(refId);
+  const form = sheet?.wildShape ? findShapeForm(sheet.wildShape.form) : null;
+  return /(?:^|[.;]\s*)flyby\b/i.test(sheet?.summon?.traits ?? "") || Boolean(form?.traitLines.some((line) => /^flyby\b/i.test(line.trim())));
 }
 
 // Resolves the opportunity attacks a character's move provokes, applying
