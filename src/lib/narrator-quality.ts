@@ -34,8 +34,8 @@ export const GUARD_OUTCOMES = ["quiet", "rewritten", "cast", "kept_short", "kept
 export type GuardOutcome = (typeof GUARD_OUTCOMES)[number];
 
 // The contradiction kinds a guard found (src/lib/dm/engine-boundary.ts
-// Contradiction), and "line" for a safety line crossed.
-export type GuardKind = "hit" | "miss" | "death" | "number" | "spell" | "line" | "card";
+// Contradiction, "knowledge" included), and "line" for a safety line crossed.
+export type GuardKind = "hit" | "miss" | "death" | "number" | "spell" | "line" | "card" | "knowledge";
 
 export type GuardReport = { outcome: GuardOutcome; kinds: GuardKind[] };
 

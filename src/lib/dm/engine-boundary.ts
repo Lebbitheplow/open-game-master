@@ -618,7 +618,9 @@ export function resolveOutcomes(
 export type Contradiction = {
   // "card": a card from the Hand no call carried out (issue 570), which goes
   // back to its player; nothing in the prose is quoted for it.
-  kind: "hit" | "miss" | "death" | "number" | "spell" | "card";
+  // "knowledge": a line the narrator voiced for someone who cannot know what
+  // it says (src/lib/dm/voice-knowledge-logic.ts); ruled by its own reader.
+  kind: "hit" | "miss" | "death" | "number" | "spell" | "card" | "knowledge";
   detail: string;
   clause: string;
   // A spell's: who the prose has casting it, so the one their player asked
