@@ -812,7 +812,11 @@ const OMITTED_ON_PURPOSE = {
   // improvised action uses, and how far it is (src/lib/dm/improvise.ts); a
   // person running the table knows it.
   take_action: ["mount", "scene", "distanceFt"],
-  enemy_attack: ["advantageSource", "targetMount"],
+  // A creature's run before its Charge or Pounce is the board's to measure
+  // (src/lib/dm/enemy-charge.ts); only with no board does the model say it
+  // ran, and a person running a fight with no board rules the charge as
+  // they see it.
+  enemy_attack: ["advantageSource", "targetMount", "charged"],
   request_roll: ["advantageSource"],
   // What a companion holds to is set by the class and alignment the form
   // does offer; the model alone may replace it, as a list of objects no form

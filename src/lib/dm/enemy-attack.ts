@@ -87,6 +87,10 @@ import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import { sheetSize } from "@/lib/srd";
 import { fittedText } from "@/lib/dm/fitted-text";
 import { cloudRuneAtHit, landTurnedBlow } from "@/lib/dm/cloud-rune";
+import { chargeAttackOf, chargeBonusOf } from "@/lib/dm/charge-logic";
+import { chargeAfterHit, chargeForHit, enemyRunFeet } from "@/lib/dm/enemy-charge";
+import { conditionsOf, PRONE } from "@/lib/dm/vitals-logic";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 
 const attackArgsSchema = z.object({
   enemyId: z.string(),
@@ -105,7 +109,12 @@ const attackArgsSchema = z.object({
   // paid as the casting is, its action, a slot or the legendary action that
   // bought it.
   spell: z.string().trim().max(80).optional(),
+  // With no board to measure it: it ran straight at the target first, for a
+  // Charge or a Pounce (enemy-charge.ts). On a board the squares decide.
+  charged: z.coerce.boolean().optional(),
 });
+
+const liesProne = (conditions: string[]) => conditions.some((entry) => isConditionNamed(entry, PRONE));
 
 // The profile the enemy walks in for: the shortest reach among the melee
 // swings it is about to make, or the shortest range when every swing is
@@ -213,7 +222,13 @@ export function handleEnemyAttack(
   }
   // An attack the block prints among its Bonus Actions is the creature's
   // bonus action: one swing, beside its action, once a round.
-  const bonus = !cast && Boolean(args.attack && attackNamed(found.stats.attacks, args.attack)?.bonusAction);
+  const printedBonus = !cast && Boolean(args.attack && attackNamed(found.stats.attacks, args.attack)?.bonusAction);
+  // So is a Pounce's bite (a Trampling Charge's stomp) at the creature its
+  // charge left prone this turn: "If the target is prone, the lion can make
+  // one bite attack against it as a bonus action" (enemy-charge.ts).
+  const pouncedOn = enemyTurnEntry(encounter, found.id).pouncedOn;
+  const pounce = !cast && !printedBonus && args.attack && pouncedOn ? chargeBonusOf(found.stats, args.attack) : null;
+  const bonus = printedBonus || pounce !== null;
   // One guard for the enemy side (src/lib/dm/can-act.ts): the dead, the
   // incapacitated and the surprised do nothing, and an action is one a round.
   // Haste's extra action, once its own is spent, is one weapon attack
@@ -278,6 +293,15 @@ export function handleEnemyAttack(
     const picked = resolveCombatant(campaign.id, encounter, lash);
     return { error: `${found.displayName} is confused: this turn's attack is on ${picked?.name ?? "the creature Confusion picked"}, picked at random, and no other.`, refused: "rules" };
   }
+  if (pounce) {
+    const lying = aimed.kind === "enemy" ? aimed.enemy.conditions : conditionsOf(getSheetById(aimed.id) ?? { conditions: [], currentHp: 1 });
+    if (aimed.id !== pouncedOn || !liesProne(lying)) {
+      return {
+        error: `${found.displayName}'s ${pounce.name} gives its bonus ${args.attack} only at the creature its charge struck this turn, while it lies prone. Nothing was spent.`,
+        refused: "rules",
+      };
+    }
+  }
   if (!engine.anySide && !lash && !hostileTo(encounter, { kind: "enemy", id: found.id }, { kind: aimed.kind, id: aimed.id })) {
     return {
       error: `${aimed.name} fights on ${found.displayName}'s side: enemy_attack does not strike an ally. Pick a creature on the other side.`,
@@ -320,6 +344,7 @@ export function handleEnemyAttack(
       bonus,
       haste: hasteSwing,
       ...(swallowing ? { swallowing: { maxSize: swallowing.maxSize } } : {}),
+      ...(args.charged ? { charged: true } : {}),
       sheets,
       sheetsById,
     });
@@ -469,6 +494,17 @@ export function handleEnemyAttack(
   }
   // A walk that took it out of a grappled creature's reach let go.
   releaseGrapplesOutOfReach(campaign);
+  // How far it ran straight at the target this turn, the walk in included,
+  // for a Charge or a Pounce (enemy-charge.ts). A creature of one attack a
+  // turn that names none makes the one its charge rides once the run is
+  // long enough: a lion bounding at its prey claws, it does not bite.
+  const ranFeet = enemyRunFeet(encounter.id, enemy.id, target.id, args.charged === true);
+  const charging = !args.attack && !single && !found.stats.routines?.length && planned.length === 1 ? chargeAttackOf(found.stats, actionAttacks, ranFeet) : null;
+  if (charging && !planned.includes(charging)) {
+    // The routine's one swing, swapped where it stands.
+    planned.splice(0, 1, charging);
+    profiles.splice(0, 1, enemyAttackProfile(charging, found.stats.traits ?? []));
+  }
   // The walk may have drawn an opportunity attack that killed it.
   const standing = resolveEnemyRef(encounter.id, enemy.id);
   if (!standing || standing.status !== "alive") {
@@ -802,6 +838,8 @@ export function handleEnemyAttack(
       return;
     }
 
+    // The charge this hit rides, once a turn (enemy-charge.ts).
+    const charge = chargeForHit(getActiveEncounter(campaign.id), standing, attack, ranFeet);
     // Martial Advantage and Surprise Attack add their dice to the blow
     // (src/lib/dm/monster-traits.ts), doubled on a critical hit like the rest.
     const bonus = hitTraitDice(encounter, standing, target.id, attack, martialSpent);
@@ -945,6 +983,11 @@ export function handleEnemyAttack(
       ? byType.reduce((sum, part) => sum + (/^(\d+) necrotic\b/i.exec(part) ? Number(/^(\d+)/.exec(part)![1]) : 0), 0)
       : /necrotic/i.test(blow.type ?? attack.type) ? dealt : 0;
     const onHit = resolveOnHit(campaign, turn, standing, attack, target.id, { sheets, sheetsById, dealt: { total: dealt, necrotic } });
+    // Charge, Pounce, Trampling Charge: the save the run and this hit force,
+    // and a Pounce's bonus attack on a creature left prone (enemy-charge.ts).
+    const charged = charge
+      ? chargeAfterHit(campaign, standing, attack, charge, { id: target.id, name: target.name }, (ridden) => resolveOnHit(campaign, turn, standing, ridden, target.id, { sheets, sheetsById }), () => liesProne(conditionsOf(getSheetById(target.id) ?? target)))
+      : [];
     // Fire Shield and Holy Aura answer the blow (spell-retort.ts).
     const retort = spellRetort(campaign, turn, standing, target.id, !ranged, spatial.distance === null || spatial.distance <= 1, sheets, sheetsById);
     if (typeof onHit?.targetHp === "string") {
@@ -962,6 +1005,7 @@ export function handleEnemyAttack(
       damage: dealt,
       ...(byType ? { damageByType: byType } : {}),
       ...(onHit ?? {}),
+      ...(charged.length ? { charge: charged } : {}),
       ...(retort ? { retort } : {}),
     });
   });

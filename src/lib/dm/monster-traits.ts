@@ -14,7 +14,13 @@
 //   - Surprise Attack (the bugbear, the doppelganger): a hit on a creature
 //     it surprised, in the first round, deals the extra dice it prints.
 //
+//   - Charge, Pounce and Trampling Charge (the boar, the lion, the
+//     triceratops): read whole by charge-logic.ts and played on the hit by
+//     enemy-charge.ts.
+//
 // Pure: no I/O. Traits are stored as "Name. text" or "Name: text" lines.
+
+import { playsCharge } from "@/lib/dm/charge-logic";
 
 type Traits = { traits?: string[] };
 
@@ -104,7 +110,7 @@ const ENGINE_READS = [
 export function manualTraits(stats: Traits & { fullTraits?: string[] }): string[] {
   return (stats.fullTraits?.length ? stats.fullTraits : stats.traits ?? [])
     .map((entry) => entry.trim())
-    .filter((entry) => entry && !ENGINE_READS.some((pattern) => pattern.test(entry)))
+    .filter((entry) => entry && !ENGINE_READS.some((pattern) => pattern.test(entry)) && !playsCharge(entry))
     .map((entry) => (/^(?:(?:reaction|bonus action|legendary action|lair action|action)s?:\s*)?([^.:(]{2,60}?)(?:\s*\([^)]*\))?\s*[.:]/i.exec(entry)?.[1] ?? entry.slice(0, 40)).trim())
     .filter((name, index, list) => list.indexOf(name) === index);
 }

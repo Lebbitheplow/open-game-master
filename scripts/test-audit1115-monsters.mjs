@@ -345,4 +345,86 @@ await test("E08 a boar's Relentless leaves it at 1 hit point from 7 damage or le
   assert.equal(kit.enemy(big.id).status, "dead", "9 damage is past what Relentless holds");
 });
 
+await test("E09 Pounce and Trampling Charge are read from the block: the run, the attack, the DC and the bonus attack", async () => {
+  const { readChargeTrait } = await import("../src/lib/dm/charge-logic.ts");
+  assert.deepEqual(
+    readChargeTrait("Pounce: If the lion moves at least 20 ft. straight toward a creature and then hits it with a claw attack on the same turn, that target must succeed on a DC 13 Strength saving throw or be knocked prone. If the target is prone, the lion can make one bite attack against it as a bonus action."),
+    { name: "Pounce", feet: 20, attacks: ["claw"], prone: true, save: { ability: "str", dc: 13 }, bonus: ["bite"] },
+  );
+  assert.deepEqual(
+    readChargeTrait("Trampling Charge: If the horse moves at least 20 ft. straight toward a creature and then hits it with a hooves attack on the same turn, that target must succeed on a DC 14 Strength saving throw or be knocked prone. If the target is prone, the horse can make another attack with its hooves against it as a bonus action."),
+    { name: "Trampling Charge", feet: 20, attacks: ["hooves"], prone: true, save: { ability: "str", dc: 14 }, bonus: ["hooves"] },
+  );
+  // A terser book's wording, and a weretiger's form note and choice of bites.
+  assert.deepEqual(
+    readChargeTrait("Pounce: If it moves 20'+ straight toward creature and hits it with Claw on same turn target knocked prone (DC 15 Str negates). If target prone cyonaxin can make one Bite attack vs. it as a bonus action."),
+    { name: "Pounce", feet: 20, attacks: ["claw"], prone: true, save: { ability: "str", dc: 15 }, bonus: ["bite"] },
+  );
+  assert.deepEqual(readChargeTrait("Pounce (Tiger or Hybrid Form Only): If the weretiger moves at least 15 feet straight toward a creature and then hits it with a Claw attack on the same turn, that target must succeed on a DC 14 STR save or be knocked prone. If the target is prone, the weretiger can make one Bite or Claw attack against it as a bonus action.")?.bonus, ["bite", "claw"]);
+  // What it cannot read whole stays the GM's: a mounted charge, a pounce with
+  // no straight run, two bonus attacks.
+  assert.equal(readChargeTrait("Charge: If the ghost knight is mounted and moves at least 30 feet in a straight line toward a target and hits it with a melee attack on the same turn, the target takes an extra 7 (2d6) damage."), null);
+  assert.equal(readChargeTrait("Pounce: When the risen reaver hits an enemy with its blade attack after moving at least 20 feet, the target creature must make a DC 15 Strength saving throw."), null);
+  assert.equal(readChargeTrait("Pounce: If the likho moves at least 20 feet straight toward a creature and then hits it with a claw attack on the same turn, that target must succeed on a DC 14 Strength saving throw or be knocked prone. If the target is prone, the likho can use a bonus action to make two additional claw attacks against it."), null);
+  const { manualTraits } = await import("../src/lib/dm/monster-traits.ts");
+  assert.ok(!manualTraits(srd("Lion")).includes("Pounce"), "the lion's Pounce is the engine's, not the GM's");
+  assert.ok(!manualTraits(srd("Triceratops")).includes("Trampling Charge"));
+});
+
+// A lion's own turn, five squares from Kara on an open field.
+async function lionAt(x) {
+  await kit.endFight();
+  await kit.fight(1, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+  const [lion] = world.enemies();
+  const stats = srd("Lion");
+  kit.setEnemy(lion.id, { ac: stats.ac, maxHp: stats.maxHp, stats });
+  kit.place(kara.id, 5, 5);
+  kit.place(bram.id, 15, 15);
+  kit.place(lion.id, x, 5);
+  kit.enemyTurn(lion.id);
+  return lion;
+}
+
+await test("E09 a lion that bounds 20 feet at Kara and claws her knocks her prone on a failed DC 13 STR save, then bites as its bonus action, once", async () => {
+  const lion = await lionAt(10);
+  // The claw hits for 1d6 + 3; Kara's STR save comes up 1.
+  world.dice(19, 3, 1);
+  const claw = await world.invoke("enemy_attack", { enemyId: lion.id, targetCharacterId: kara.id, attack: "Claw" });
+  world.clearDice();
+  assert.equal(claw.ok, true, claw.error);
+  assert.ok(world.sheet(kara.id).conditions.includes("prone"), JSON.stringify(claw.result));
+  // Prone within 5 feet: the bite rolls at advantage.
+  world.dice(19, 19, 4);
+  const bite = await world.invoke("enemy_attack", { enemyId: lion.id, targetCharacterId: kara.id, attack: "Bite" });
+  world.clearDice();
+  assert.equal(bite.ok, true, bite.error);
+  assert.equal(swingsOf(bite).length, 1, "one bite");
+  world.dice(19, 19, 4);
+  const again = await world.invoke("enemy_attack", { enemyId: lion.id, targetCharacterId: kara.id, attack: "Bite" });
+  world.clearDice();
+  assert.equal(again.ok, false, "the bonus action is spent");
+});
+
+await test("E09 a lion that charges with no attack named makes its claw; one standing beside Kara knocks nobody down", async () => {
+  const lion = await lionAt(10);
+  world.dice(19, 3, 1);
+  const out = await world.invoke("enemy_attack", { enemyId: lion.id, targetCharacterId: kara.id });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.deepEqual(swingsOf(out), ["Claw"], "the attack its Pounce rides");
+  assert.ok(world.sheet(kara.id).conditions.includes("prone"));
+  world.patch(kara.id, { conditions: [], conditionMeta: {} });
+
+  const still = await lionAt(6);
+  world.dice(19, 3, 1);
+  const claw = await world.invoke("enemy_attack", { enemyId: still.id, targetCharacterId: kara.id, attack: "Claw" });
+  world.clearDice();
+  assert.equal(claw.ok, true, claw.error);
+  assert.ok(!world.sheet(kara.id).conditions.includes("prone"), "no run, no Pounce");
+  world.dice(19, 4);
+  const bite = await world.invoke("enemy_attack", { enemyId: still.id, targetCharacterId: kara.id, attack: "Bite" });
+  world.clearDice();
+  assert.equal(bite.ok, false, "no Pounce, no bonus bite: its action is spent");
+});
+
 finish();

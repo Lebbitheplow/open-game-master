@@ -3191,6 +3191,13 @@
     "lib/dm/genre-gh-quarry.ts#whole": [["key",1,"token refs (ids)"]],
     "lib/srd/genre-gh-warded.ts#partial": [["key",2,"an attacker's creature type cut into words, and the type a Warded condition names in its bracket (engine vocabulary)"]],
     "lib/srd/genre-gh-warded.ts#whole": [["key",1,"a creature type among the attacker's type words (engine vocabulary)"]],
-    "lib/dm/genre-gh-wards.ts#whole": [["key",1,"a warding creature type by its whole name (textKey on both sides); a miss is refused"],["identity",1,"a held condition replaced by its whole name (textKey on both sides)"]]
+    "lib/dm/genre-gh-wards.ts#whole": [["key",1,"a warding creature type by its whole name (textKey on both sides); a miss is refused"],["identity",1,"a held condition replaced by its whole name (textKey on both sides)"]],
+    "lib/dm/charge-logic.ts#partial": [["pattern",12,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["parse",1,"the attacks a Charge or Pounce line names, split on its \"or\""]],
+    "lib/dm/charge-logic.ts#number": [["key",3,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
+    "lib/dm/charge-logic.ts#whole": [["identity",2,"the attack a Charge or Pounce names, by whole name or its singular (textKey on both sides), among the block's attacks"]],
+    "lib/dm/enemy-charge.ts#first": [["parse",1,"an attack's own damage type, the first of the types its stored line joins with a slash"]],
+    "lib/dm/enemy-charge.ts#partial": [["parse",2,"an attack's own damage types, split on the slash its stored line joins them with"]],
+    "lib/dm/enemy-charge.ts#whole-single": [["key",1,"damage types"]],
+    "lib/dm/enemy-charge.ts#whole": [["key",1,"damage types"]]
   }
 }

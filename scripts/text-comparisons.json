@@ -3193,6 +3193,16 @@
     "lib/srd/genre-gb-device.ts#re-word": [["english-source",1,"ODM's own \"Fabricated Device: <spell> (DC n, +n)\" item name, as deviceName writes it"]],
     "lib/battlemap/zones-genre-gh.ts#str-list": [["key",1,"zone trigger events (engine vocabulary)"]],
     "lib/dm/genre-gh-last-one-out.ts#str-list": [["key",1,"move action ids (dash, disengage)"]],
-    "lib/srd/genre-gh-warded.ts#str-list": [["key",1,"creature types (engine vocabulary)"]]
+    "lib/srd/genre-gh-warded.ts#str-list": [["key",1,"creature types (engine vocabulary)"]],
+    "lib/dm/charge-logic.ts#toLowerCase": [["english-source",3,"stat-block text: a Charge, Pounce or Trampling Charge line's attack names, damage type and save ability (pack rows)"]],
+    "lib/dm/charge-logic.ts#\\b": [["english-source",18,"stat-block text: a Charge, Pounce or Trampling Charge line (pack rows)"]],
+    "lib/dm/charge-logic.ts#\\w": [["display",2,"a trait's name as the table reads it, and its first letters capitalized"]],
+    "lib/dm/charge-logic.ts#toUpperCase": [["display",1,"a trait's name as the table reads it, and its first letters capitalized"]],
+    "lib/dm/charge-logic.ts#RegExp i": [["english-source",1,"stat-block text: a Charge's extra damage and its type (pack rows)"]],
+    "lib/dm/enemy-charge.ts#toLowerCase": [["key",1,"damage type"]],
+    "lib/dm/charge-logic.ts#str-alt": [["english-source",1,"stat-block text: the save abilities a Charge line prints (pack rows)"]],
+    "lib/dm/charge-logic.ts#re-word": [["english-source",13,"stat-block text: a Charge, Pounce or Trampling Charge line (pack rows)"]],
+    "lib/dm/charge-logic.ts#re-affix": [["english-source",1,"stat-block text: the article before an attack a Charge line names (\"a claw attack\", \"its tusks\")"]],
+    "lib/dm/charge-logic.ts#str-key": [["english-source",1,"stat-block text: the save ability a Charge line prints, read in a fixed table"]]
   }
 }
