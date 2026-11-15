@@ -780,6 +780,28 @@ export function handleNpcHear(campaign: Campaign, rawArguments: string): ToolRes
   };
 }
 
+// Words the narrator was asked about and never put to npc_hear: the turn
+// closed on a reply that told the story again instead. Who heard is still
+// the dice's to say, never nobody by default and never everybody: each
+// listener the note named is held to their passive Perception against the
+// difficulty of words from across the scene (far, unaimed).
+export function hearUnasked(campaign: Campaign, lines: readonly { speaker: string; words: string }[], names: readonly string[]): string[] {
+  const heard = new Set<string>();
+  if (!names.length) {
+    return [];
+  }
+  for (const line of lines.slice(0, 3)) {
+    const result = handleNpcHear(
+      campaign,
+      JSON.stringify({ speaker: line.speaker, words: line.words.slice(0, 1200), listeners: names.map((name) => ({ name, reach: "far" })) }),
+    );
+    for (const name of (result as { heard?: string[] }).heard ?? []) {
+      heard.add(name);
+    }
+  }
+  return [...heard];
+}
+
 const informSchema = z.object({
   name: z.string().trim().min(1).max(120),
   source: z.string().trim().min(1).max(120),
