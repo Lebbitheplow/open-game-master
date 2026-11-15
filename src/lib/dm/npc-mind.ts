@@ -83,6 +83,7 @@ import {
   heardMemory,
   mutedMemory,
   MAX_FIRST_TIER_NPCS,
+  ON_STAGE_SOURCE,
 } from "@/lib/dm/npc-mind-logic";
 
 // The NPC minds (docs/specs/ogm-npc-isolation-design.md): each named NPC and
@@ -614,7 +615,7 @@ export async function handleNpcSpeak(campaign: Campaign, rawArguments: string): 
   // Only those really with them hear it: a mind apart from the scene is not
   // a listener in it.
   const others = cast.filter((entry) => ids.includes(entry.id) && entry.id !== npc.id && (apart || !getNpcAway(entry.id)));
-  addNpcMemories(campaign.id, [npc.id, ...others.map((entry) => entry.id)], { kind: "knowledge", sourceKind: "perceived", sourceName: "", content: args.perceives, learnedAt: now }, turnId);
+  addNpcMemories(campaign.id, [npc.id, ...others.map((entry) => entry.id)], { kind: "knowledge", sourceKind: "perceived", sourceName: ON_STAGE_SOURCE, content: args.perceives, learnedAt: now }, turnId);
   // What the mind sees of the others' bodies (docs/specs/ogm-npc-state.md):
   // the listeners, and anyone else here whose state shows (tied, down,
   // dead), never what they carry, and a keeper by name only if it knows it.
@@ -766,7 +767,7 @@ export function handleNpcHear(campaign: Campaign, rawArguments: string): ToolRes
     addNpcMemories(
       campaign.id,
       [npc.id],
-      { kind: "knowledge", sourceKind: "perceived", sourceName: "", content: outcome.heard ? heardMemory(args.speaker, args.words, args.place ?? "") : mutedMemory(args.speaker, args.place ?? ""), learnedAt: now },
+      { kind: "knowledge", sourceKind: "perceived", sourceName: ON_STAGE_SOURCE, content: outcome.heard ? heardMemory(args.speaker, args.words, args.place ?? "") : mutedMemory(args.speaker, args.place ?? ""), learnedAt: now },
       turnId,
     );
     (outcome.heard ? heard : missed).push(npc.name);

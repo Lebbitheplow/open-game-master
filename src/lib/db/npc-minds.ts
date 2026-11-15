@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
-import { parseAway, parseMindModel, type MindModelChoice, type NpcAway, type NpcMemory, type NpcMemoryKind, type NpcSourceKind } from "@/lib/dm/npc-mind-logic";
+import { ON_STAGE_SOURCE, parseAway, parseMindModel, type MindModelChoice, type NpcAway, type NpcMemory, type NpcMemoryKind, type NpcSourceKind } from "@/lib/dm/npc-mind-logic";
 
 // The registers behind the NPC minds (src/lib/dm/npc-mind.ts): what each NPC
 // knows and from whom, and each time a mind was asked. Thin on purpose; the
@@ -45,20 +45,29 @@ export function npcsActedInTurn(campaignId: string, turnId: string): Set<string>
 }
 
 // The NPCs still on stage across the recent DM turns `turnIdsNewestFirst`:
-// for each NPC, the newest of those turns that left it any memory decides.
-// It acted there (said or did something): still on stage. It was only told
-// something (npc_inform): it had left the scene. A time skip asks the first
-// kind for their turn (npc-mind.ts mindsAwaitingTurn).
+// for each NPC, the newest of those turns that left it a memory of the scene
+// decides. It acted there (said or did something), or the scene reached it
+// where it stood (npc_speak's moment, words it overheard through npc_hear,
+// marked ON_STAGE_SOURCE): still on stage. It was only told something, or
+// shown it from afar (npc_inform): it had left the scene. A time skip asks
+// the first kind for their turn (npc-mind.ts mindsAwaitingTurn). Played
+// live: the prisoner on the cart who only overheard the last exchange was
+// taken for gone, and the afternoon's march was lived by the captain alone.
 export function npcsOnStageRecently(campaignId: string, turnIdsNewestFirst: readonly string[]): Set<string> {
   const onStage = new Set<string>();
   const decided = new Set<string>();
-  const read = getDatabase().prepare(`SELECT npc_id, MAX(source_kind = 'self') AS acted FROM npc_memories WHERE campaign_id = ? AND turn_id = ? GROUP BY npc_id`);
+  const read = getDatabase().prepare(
+    `SELECT npc_id, MAX(source_kind = 'self' OR (source_kind = 'perceived' AND source_name = ?)) AS acted, MAX(source_kind <> 'background') AS lived
+     FROM npc_memories WHERE campaign_id = ? AND turn_id = ? GROUP BY npc_id`,
+  );
   for (const turnId of turnIdsNewestFirst) {
     if (!turnId) {
       continue;
     }
-    for (const row of read.all(campaignId, turnId) as Array<{ npc_id: string; acted: number }>) {
-      if (decided.has(row.npc_id)) {
+    for (const row of read.all(ON_STAGE_SOURCE, campaignId, turnId) as Array<{ npc_id: string; acted: number; lived: number }>) {
+      // Only their background was seeded there: it says nothing of where
+      // they stood.
+      if (decided.has(row.npc_id) || !row.lived) {
         continue;
       }
       decided.add(row.npc_id);

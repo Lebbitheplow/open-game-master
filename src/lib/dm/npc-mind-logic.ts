@@ -25,6 +25,10 @@ export type NpcMemoryKind = (typeof NPC_MEMORY_KINDS)[number];
 // named source. self: its own words, conclusions, deeds.
 export const NPC_SOURCE_KINDS = ["background", "perceived", "told", "self"] as const;
 export type NpcSourceKind = (typeof NPC_SOURCE_KINDS)[number];
+// The source of what the scene showed a mind where it stood (npc_speak's
+// moment, npc_hear's words): proof it was on stage that turn, unlike news
+// from afar (npc_inform). Never read as a person's name.
+export const ON_STAGE_SOURCE = "on stage";
 
 export type NpcMemory = {
   npcId: string;

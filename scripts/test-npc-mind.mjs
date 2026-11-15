@@ -1211,6 +1211,28 @@ await test("a rest lets time pass over the scene: a mind on stage a few turns ba
     assert.match(dm.content, /chain creaks/, "what the mind chose is narrated");
     assert.ok(memories("Prisoner Vell").some((entry) => entry.sourceKind === "perceived" && /An hour passes/.test(entry.content)));
 
+    // Last turn Vell only overheard Aria (npc_hear): still on stage, so the
+    // next stretch of time is his to live too.
+    model.script([
+      reply({ calls: [call("npc_hear", { speaker: "Aria", words: "We leave at dawn.", listeners: [{ name: "Prisoner Vell", reach: "near" }] })] }),
+      reply({ text: '"We leave at dawn," Aria says.' }),
+    ]);
+    await model.turn(world, '"We leave at dawn," I tell the guards.', aria.id);
+    gap();
+    const livedBefore = lived();
+    model.script([
+      reply({ calls: [call("take_rest", { kind: "short" })] }),
+      reply({ text: "Another hour passes." }),
+      reply({ calls: [call("npc_speak", { name: "Prisoner Vell", perceives: "Another hour passes in the shelter." })] }),
+      answer({ speech: "", intent: "sleep" }),
+      reply({ text: "Vell sleeps." }),
+    ]);
+    await model.turn(world, "I rest another hour.", aria.id);
+    assert.equal(lived() - livedBefore, 1, "a mind who only overheard the last exchange is still on stage for the rest");
+
+    gap();
+    gap();
+    gap();
     gap();
     model.script([reply({ text: "Aria studies the map by the fire." })]);
     await model.turn(world, "I study the map.", aria.id);
