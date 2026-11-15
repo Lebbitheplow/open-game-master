@@ -21,6 +21,7 @@ import { bonusSpellProblem, openCastOf, withSpellMarks } from "@/lib/dm/cast-rul
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import type { TurnBudget } from "@/lib/dm/action-budget";
+import { concentratesAtSlot } from "@/lib/srd/spell-duration";
 import type { ToolError } from "@/lib/dm/tool-errors";
 
 // A spell read from a scroll or let loose from a wand on the caster's own turn
@@ -82,7 +83,7 @@ export function castFromItem(
     slot: `cast from ${cast.item}: no spell slot spent`,
     ...numbers,
   };
-  if (input.concentration === true || facts?.concentration === true) {
+  if (input.concentration === true || concentratesAtSlot(facts?.runsAs ?? name, facts?.concentration === true, cast.level)) {
     const { displaced } = setConcentration(campaign, turnId, sheet.id, name, cast.level);
     result.concentration = true;
     if (displaced) {

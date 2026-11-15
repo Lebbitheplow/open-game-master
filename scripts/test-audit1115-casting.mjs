@@ -123,5 +123,40 @@ await test("S02: after Healing Word with the bonus action, a wand's levelled spe
   assert.equal(JSON.stringify(world.sheet(priest.id).equipment), before, "the wand keeps its charges");
 });
 
+// ---- S03: Bestow Curse from a 5th-level slot needs no concentration ----
+
+// SRD 5.1, Bestow Curse: "Using a spell slot of 5th level or higher grants a
+// duration that doesn't require concentration." (Major Image from a 6th
+// level slot likewise.) The engine set concentration from the spell's own
+// flag whatever the slot, so a 5th-level curse ended the cleric's Bless and
+// the next hit could end the eight-hour curse.
+async function cursingCleric() {
+  const { world, sheets: [priest, ally], enemies: [goblin] } = await table([caster("cleric", "wis", ["Bless", "Bestow Curse"], [], 9), caster("fighter", "str", [], [], 9)]);
+  const blessed = await world.invoke("cast_buff", { characterId: priest.id, spell: "Bless", targetCharacterIds: [ally.id] });
+  assert.equal(blessed.ok, true, blessed.error);
+  assert.equal(world.sheet(priest.id).concentratingOn, "Bless");
+  return { world, priest, ally, goblin };
+}
+
+await test("S03: Bestow Curse from a 5th-level slot leaves the caster's concentration on Bless, and the curse holds", async () => {
+  const { world, priest, ally, goblin } = await cursingCleric();
+  world.dice(1);
+  const cursed = await world.invoke("cast_at_enemy", { characterId: priest.id, targetEnemyId: goblin.id, spell: "Bestow Curse", condition: "str", saveAbility: "wis", level: 5 });
+  world.clearDice();
+  assert.equal(cursed.ok, true, cursed.error);
+  assert.equal(world.sheet(priest.id).concentratingOn, "Bless", "the 5th-level curse takes no concentration");
+  assert.ok(world.sheet(ally.id).conditions.includes("blessed"), "Bless still holds");
+  assert.ok(world.enemies().find((entry) => entry.id === goblin.id).conditions.some((name) => name.startsWith("cursed")), "the goblin is cursed");
+});
+
+await test("S03: Bestow Curse from a 3rd-level slot still takes the concentration (and ends Bless)", async () => {
+  const { world, priest, goblin } = await cursingCleric();
+  world.dice(1);
+  const cursed = await world.invoke("cast_at_enemy", { characterId: priest.id, targetEnemyId: goblin.id, spell: "Bestow Curse", condition: "str", saveAbility: "wis", level: 3 });
+  world.clearDice();
+  assert.equal(cursed.ok, true, cursed.error);
+  assert.equal(world.sheet(priest.id).concentratingOn, "Bestow Curse");
+});
+
 closeTables();
 finish();
