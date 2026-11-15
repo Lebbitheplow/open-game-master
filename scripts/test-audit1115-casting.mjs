@@ -1070,5 +1070,40 @@ await test("S24: a Swallow that still hits through Shield keeps the wizard insid
   assert.ok(world.sheet(mage.id).conditions.includes("swallowed"));
 });
 
+// ---- S25: Armor of Agathys reads the temporary hit points at each swing ----
+
+// SRD 5.1, Armor of Agathys: "If a creature hits you with a melee attack
+// while you have these hit points, the creature takes 5 cold damage" (more
+// from a higher slot). Each swing is its own hit. When a reaction turns away
+// the swing that used the hit points up, the next swing that still hits meets
+// them, and the frost answers it; the refund gave the hit points back and
+// left that swing unanswered.
+const MAULER = { attacks: [{ name: "Maul", toHit: 4, damage: "2d6+10", type: "bludgeoning" }], attacksPerTurn: 2 };
+
+await test("S25: when Cutting Words turns away the swing that took Armor of Agathys's hit points, the next swing that still hits is frozen", async () => {
+  const { world, sheets: [lock, bard], enemies: [ogre] } = await table([
+    caster("warlock", "cha", [], ["Eldritch Blast"], 5, { spellcasting: { known: ["Armor of Agathys"], slots: { 3: { max: 2, used: 0 } } } }),
+    loreBard,
+  ], 1, MAULER);
+  const armored = await world.invoke("cast_buff", { characterId: lock.id, spell: "Armor of Agathys", level: 3 });
+  assert.equal(armored.ok, true, armored.error);
+  world.patch(lock.id, { ac: 12, acOverride: true });
+  world.patch(bard.id, { resources: { ...world.sheet(bard.id).resources, bardic_inspiration: { max: 3, used: 0 } } });
+  // The first maul: 10 + 4 hits for 6 + 6 + 10 = 22, through all 15
+  // temporary hit points, and is frozen; the second, 19 + 4, hits for 12 with
+  // none left, and is not.
+  const swing = await swingAt(world, ogre, lock, [10, 6, 6, 19, 1, 1]);
+  assert.equal(hpLost(world, ogre.id), 15, JSON.stringify(swing.result));
+  world.dice(8);
+  const words = await world.invoke("use_reaction", { characterId: bard.id, feature: "Cutting Words", targetCharacterId: lock.id });
+  world.clearDice();
+  assert.equal(words.ok, true, words.error);
+  // 14 - 8 misses the first; the second now lands in the 15 temporary hit
+  // points, and the frost answers it.
+  assert.equal(world.sheet(lock.id).tempHp, 3, JSON.stringify(words.result));
+  assert.equal(hpLost(world, ogre.id), 15, JSON.stringify(words.result));
+  assert.match(JSON.stringify(words.result), /Armor of Agathys/);
+});
+
 closeTables();
 finish();

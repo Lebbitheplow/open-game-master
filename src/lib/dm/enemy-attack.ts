@@ -1008,7 +1008,7 @@ export function handleEnemyAttack(
     // Fire Shield, Armor of Agathys and Holy Aura answer the blow
     // (spell-retort.ts), kept with the swing with Thought Shield's: a hit a
     // reaction turns into a miss never set them off (reaction-refund.ts).
-    const answered = measureRetort(standing.id, () => spellRetort(campaign, turn, standing, target.id, !ranged, spatial.distance === null || spatial.distance <= 1, sheets, sheetsById, struck.tempHp ?? 0), (out) => out.by);
+    const answered = measureRetort(standing.id, () => spellRetort(campaign, turn, standing, target.id, !ranged, spatial.distance === null || spatial.distance <= 1, sheets, sheetsById, struck.tempHp ?? 0), (out) => out.by, (out) => out.shares);
     const retort = answered.result.line;
     hitLog.retort(joinRetorts(psychicBack.retort, answered.retort));
     if (typeof onHit?.targetHp === "string") {

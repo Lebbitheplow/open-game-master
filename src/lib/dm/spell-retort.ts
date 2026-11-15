@@ -159,8 +159,61 @@ export function takeRetortBack(campaign: Campaign, retort: Retort): string | nul
   return `${what} answered a blow that now misses, so it never came: ${enemy.displayName}${healed || freed ? `${healed}${freed}` : " is as it was"}.`;
 }
 
+export const AGATHYS = "Armor of Agathys";
+
+const hpOf = (enemyId: string) => getEnemy(enemyId)?.currentHp ?? 0;
+
+// Armor of Agathys: "If a creature hits you with a melee attack while you
+// have these hit points, the creature takes 5 cold damage", 5 more for each
+// slot level above 1st (SRD 5.1). `held` is the character as the blow met
+// them, whose spell's slot sets the cold. Returns the lines, or null when the
+// spell is not on them or the creature is gone. The line once told the GM to
+// deal it with apply_damage, which refuses a spell's harm to a foe, so the
+// frost never bit.
+function agathysFrost(
+  campaign: Campaign,
+  turn: DmTurn,
+  encounter: NonNullable<ReturnType<typeof getActiveEncounter>>,
+  attackerId: string,
+  held: CharacterSheet,
+  sheets: CharacterSheet[],
+  sheetsById: Map<string, CharacterSheet>,
+): string[] | null {
+  const frost = held.conditions.find((entry) => isConditionNamed(entry, "armor of agathys"));
+  const live = frost ? getEnemy(attackerId) : null;
+  if (!frost || !live || live.status !== "alive") {
+    return null;
+  }
+  const slot = Math.max(1, ...instancesOf((held.conditionMeta as ConditionMetaMap)[frost]).map((instance) => instance.slotLevel ?? 1));
+  const cold = 5 * slot;
+  const applied = applyEnemyDamage(campaign, turn, encounter, live, cold, sheets, sheetsById, "cold", { magical: true, spell: true });
+  return [
+    `${held.name}'s Armor of Agathys freezes ${live.displayName} for ${applied.damageApplied ?? cold} cold damage.`,
+    ...(applied.dead ? spellKill(campaign, encounter, live, held.id, { spell: AGATHYS }) : []),
+  ];
+}
+
+// The frost dealt for a swing a reaction's correction now finds meeting the
+// temporary hit points (reaction-refund.ts), read as any answer is.
+export function agathysAnew(
+  campaign: Campaign,
+  turn: DmTurn,
+  attackerId: string,
+  held: CharacterSheet,
+  sheets: CharacterSheet[],
+  sheetsById: Map<string, CharacterSheet>,
+): { lines: string[]; retort: Retort | null } {
+  const encounter = getActiveEncounter(campaign.id);
+  if (!encounter) {
+    return { lines: [], retort: null };
+  }
+  const measured = measureRetort(attackerId, () => agathysFrost(campaign, turn, encounter, attackerId, held, sheets, sheetsById), (lines) => (lines ? [AGATHYS] : []));
+  return { lines: measured.result ?? [], retort: measured.retort };
+}
+
 // Fire Shield and Holy Aura answering a melee hit on the character. Returns
-// the line for the swing (or null) and the answers that fired.
+// the line for the swing (or null), the answers that fired and the hit
+// points each took (retort-logic.ts Retort.share).
 export function spellRetort(
   campaign: Campaign,
   turn: DmTurn,
@@ -172,30 +225,24 @@ export function spellRetort(
   sheetsById: Map<string, CharacterSheet>,
   // The temporary hit points the character held as the blow landed.
   tempHpBefore = 0,
-): { line: string | null; by: string[] } {
+): { line: string | null; by: string[]; shares: Record<string, number> } {
   const target = getSheetById(targetId);
   const encounter = getActiveEncounter(campaign.id);
+  const shares: Record<string, number> = {};
   if (!target || !encounter || !melee) {
-    return { line: null, by: [] };
+    return { line: null, by: [], shares };
   }
   const lines: string[] = [];
   const by: string[] = [];
-  // Armor of Agathys: "If a creature hits you with a melee attack while you
-  // have these hit points, the creature takes 5 cold damage", 5 more for each
-  // slot level above 1st (SRD 5.1). The spell's hour outlasts its temporary
-  // hit points, so the ones held as the blow landed decide it. The line told
-  // the GM to deal it with apply_damage, which refuses a spell's harm to a
-  // foe, so the frost never bit.
-  const frost = target.conditions.find((entry) => isConditionNamed(entry, "armor of agathys"));
-  if (frost && tempHpBefore > 0) {
-    const live = getEnemy(attacker.id);
-    const slot = Math.max(1, ...instancesOf((target.conditionMeta as ConditionMetaMap)[frost]).map((instance) => instance.slotLevel ?? 1));
-    if (live?.status === "alive") {
-      const cold = 5 * slot;
-      const applied = applyEnemyDamage(campaign, turn, encounter, live, cold, sheets, sheetsById, "cold", { magical: true, spell: true });
-      by.push("Armor of Agathys");
-      lines.push(`${target.name}'s Armor of Agathys freezes ${live.displayName} for ${applied.damageApplied ?? cold} cold damage.`);
-      lines.push(...(applied.dead ? spellKill(campaign, encounter, live, target.id, { spell: "Armor of Agathys" }) : []));
+  // The spell's hour outlasts its temporary hit points, so the ones held as
+  // the blow landed decide it (agathysFrost).
+  if (tempHpBefore > 0) {
+    const hp = hpOf(attacker.id);
+    const frozen = agathysFrost(campaign, turn, encounter, attacker.id, target, sheets, sheetsById);
+    if (frozen) {
+      by.push(AGATHYS);
+      lines.push(...frozen);
+      shares[AGATHYS] = hp - hpOf(attacker.id);
     }
   }
   const shield = target.conditions.find((entry) => isConditionNamed(entry, "fire shield"));
@@ -209,6 +256,7 @@ export function spellRetort(
       const rolled = rollCard(campaign, turn, target.id, "damage", rollAgainst("Fire Shield", live.displayName), "2d8", sheetAttacker(target)).total;
       const applied = applyEnemyDamage(campaign, turn, encounter, live, rolled, sheets, sheetsById, type, { magical: true, spell: true });
       by.push("Fire Shield");
+      shares["Fire Shield"] = live.currentHp - hpOf(live.id);
       lines.push(`${target.name}'s Fire Shield sears ${live.displayName} for ${applied.damageApplied ?? rolled} ${type} damage.`);
       // The shield killed it: Grim Harvest for its bearer (ar-ws-harvest.ts).
       lines.push(...(applied.dead ? spellKill(campaign, encounter, live, target.id, { spell: "Fire Shield" }) : []));
@@ -236,7 +284,7 @@ export function spellRetort(
       }
     }
   }
-  return { line: lines.length ? lines.join(" ") : null, by };
+  return { line: lines.length ? lines.join(" ") : null, by, shares };
 }
 
 // ---- Bestow Curse ----

@@ -412,7 +412,7 @@ export function resolveOpportunityAttacks(
       const ridden = getSheetById(sheet.id);
       const own = Array.isArray(rider?.riderCondition) ? (rider.riderCondition as string[]) : [];
       const laid = unridden && ridden ? (rider?.swallowed ? swallowMark(campaign.id, unridden, ridden, sheet.id, grips, own) : riderMarkOf(unridden, ridden, own)) : null;
-      const answered = measureRetort(enemy.id, () => spellRetort(campaign, turn, enemy, sheet.id, true, reach <= 1, hitSheets, hitSheetsById, sheet.tempHp ?? 0), (out) => out.by);
+      const answered = measureRetort(enemy.id, () => spellRetort(campaign, turn, enemy, sheet.id, true, reach <= 1, hitSheets, hitSheetsById, sheet.tempHp ?? 0), (out) => out.by, (out) => out.shares);
       return { landed: applied, onHit: rider, answered, psychicBack, laid };
     });
     const updated = getSheetById(sheet.id);

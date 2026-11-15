@@ -50,10 +50,11 @@ import {
   type SwingOutcome,
 } from "@/lib/dm/hit-replay-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
-import { takeRetortBack } from "@/lib/dm/spell-retort";
+import { AGATHYS, agathysAnew, giveShareBack, takeRetortBack } from "@/lib/dm/spell-retort";
+import { getDmTurn } from "@/lib/db/dm-turns";
 import { thoughtShieldLessened } from "@/lib/dm/thought-shield";
 import { gripsBack } from "@/lib/dm/swallow";
-import { ridersBack, type RiderMark } from "@/lib/dm/retort-logic";
+import { joinRetorts, ridersBack, type RiderMark } from "@/lib/dm/retort-logic";
 import { answerLabel, carryCuts, hitIdOf, openHits, wardHpOf, writeLastHit, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { applyDmMutation, audit } from "@/lib/dm/mutations";
 import { blowDefenses, meetDefenses, WILDFIRE_SPIRIT } from "@/lib/dm/pc-damage";
@@ -387,6 +388,7 @@ export function settleHits(
   });
   const final = state;
   retortsBack(campaign, sheet, steps, notes);
+  frostReread(campaign, turnId, sheet, steps, notes, sheets, sheetsById);
 
   // Each hit of the chain is kept as the corrected fight has it: its
   // swings, where it found and left them (a later hit that found them down
@@ -615,6 +617,47 @@ function lessenedAnswers(campaign: Campaign, held: CharacterSheet, record: LastH
   const kept = { ...swing };
   delete kept.retort;
   return psychic.retort ? { ...kept, retort: psychic.retort } : kept;
+}
+
+// Armor of Agathys answers each melee hit "while you have these hit points"
+// (SRD 5.1). After the replay a swing that still hits reads them as the
+// corrected fight left them: one a reaction left them for (an earlier swing
+// turned away, its blow given back) is frozen now; one that no longer finds
+// them (a reroll made an earlier blow a critical) gives its frost back. Each
+// is kept with its swing, so a later reaction finds it there.
+function frostReread(campaign: Campaign, turnId: string, sheet: CharacterSheet, steps: Step[], notes: string[], sheets: CharacterSheet[], sheetsById: Map<string, CharacterSheet>) {
+  const turn = getDmTurn(turnId);
+  for (const step of steps) {
+    const { record } = step;
+    const attackerId = record.attacker.kind === "enemy" ? record.attacker.id : null;
+    if (!turn || !attackerId || !record.before.conditions.some((entry) => isConditionNamed(entry, "armor of agathys"))) {
+      continue;
+    }
+    step.corrected = step.corrected.map((swing, at) => {
+      const met = (step.now.swings[at]?.temp ?? 0) > 0;
+      const fired = Boolean(swing.retort?.by.includes(AGATHYS));
+      if (!swing.hit || (swing.ranged ?? record.ranged) || met === fired) {
+        return swing;
+      }
+      if (met) {
+        const anew = agathysAnew(campaign, turn, attackerId, heldFor(sheet, record), sheets, sheetsById);
+        notes.push(...anew.lines.map((line) => `A blow that still hits now meets the temporary hit points: ${line}`));
+        const retort = joinRetorts(swing.retort ?? null, anew.retort);
+        return retort ? { ...swing, retort } : swing;
+      }
+      const share = swing.retort?.share?.[AGATHYS] ?? 0;
+      if (!swing.retort || share <= 0) {
+        return swing;
+      }
+      const back = giveShareBack(campaign, swing.retort, AGATHYS, share, `${AGATHYS}: ${sheet.name} no longer had its temporary hit points when that blow landed`);
+      if (back.line) {
+        notes.push(back.line);
+      }
+      const kept = { ...swing };
+      delete kept.retort;
+      return back.retort ? { ...kept, retort: back.retort } : kept;
+    });
+  }
 }
 
 // The marks of the riders whose swings a reaction now turns into misses
