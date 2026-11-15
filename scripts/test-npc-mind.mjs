@@ -539,6 +539,47 @@ await test("a player character's own quoted words, answered without a narrated l
   }
 });
 
+await test("a hearing note the narrator ignores still lets the dice decide: passive Perception for each listener it named", async () => {
+  const { listNpcs } = await import("../src/lib/db/npcs.ts");
+  const others = listNpcs(world.campaignId).filter((entry) => mind.tierOfNpc(entry) === "primary" && !entry.companionSheetId);
+  for (const other of others) {
+    minds.setNpcTier(other.id, "secondary");
+  }
+  // A priest's Wisdom 16 (passive 13) meets the far difficulty, 13; a
+  // zombie's 6 (passive 8) does not.
+  const blockOf = (row, slug) => getDatabase().prepare("UPDATE npcs SET stat_block = ? WHERE id = ?").run(slug, row.id);
+  blockOf(npc("Keen Ilsa", { trait: "sharp-eared, chained to the cart" }), "priest");
+  blockOf(npc("Dull Bors", { trait: "half asleep on the cart" }), "zombie");
+  try {
+    model.script([
+      reply({ calls: [call("npc_speak", { name: "Keen Ilsa", perceives: "Aria climbs onto the cart." })] }),
+      answer({ speech: "Mind the chains.", intent: "" }),
+      reply({ calls: [call("npc_speak", { name: "Dull Bors", perceives: "Aria climbs onto the cart." })] }),
+      answer({ speech: "Mm.", intent: "" }),
+      reply({ text: '"Mind the chains," Ilsa says. Bors only grunts.' }),
+    ]);
+    await model.turn(world, "I climb onto the cart.", aria.id);
+    model.script([
+      reply({ text: "The captain nods." }),
+      // The note comes back; the narrator tells the story again instead.
+      reply({ text: "The captain nods." }),
+      reply({ text: "" }),
+    ]);
+    await model.turn(world, '"The magistrate is Vargo," I whisper to the captain.', aria.id);
+    const knows = (name) => memories(name).some((entry) => /Vargo/.test(entry.content));
+    assert.ok(knows("Keen Ilsa"), "passive 13 against 13: she caught it");
+    assert.ok(!knows("Dull Bors"), "passive 8 against 13: he did not");
+    assert.ok(memories("Dull Bors").some((entry) => /Aria/.test(entry.content)), "he knows only that Aria spoke");
+  } finally {
+    for (const other of others) {
+      minds.setNpcTier(other.id, "primary");
+    }
+    for (const name of ["Keen Ilsa", "Dull Bors"]) {
+      minds.setNpcTier(getNpcByName(world.campaignId, name).id, "secondary");
+    }
+  }
+});
+
 await test("a turn whose calls all went on mechanics still asks the mind on stage who heard: the note buys its own calls", async () => {
   const { listNpcs } = await import("../src/lib/db/npcs.ts");
   const others = listNpcs(world.campaignId).filter((entry) => mind.tierOfNpc(entry) === "primary" && !entry.companionSheetId);

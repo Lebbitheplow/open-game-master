@@ -296,7 +296,7 @@ import { handleNpcState, npcStateTools, NPC_STATE_TOOL_NAMES } from "@/lib/dm/np
 import { listNpcs } from "@/lib/db/npcs";
 import { readStateGuard } from "@/lib/dm/npc-state-guard";
 import { stateGuardPrompt } from "@/lib/dm/npc-state-guard-logic";
-import { awayArrivalNote, handleNpcInform, handleNpcPast, handleNpcSpeak, mindRosterNotes, mindTurnRefusal, mindsAwaitingTurn, mindsWithinEarshot, npcMindsOn } from "@/lib/dm/npc-mind";
+import { awayArrivalNote, handleNpcInform, hearUnasked, handleNpcPast, handleNpcSpeak, mindRosterNotes, mindTurnRefusal, mindsAwaitingTurn, mindsWithinEarshot, npcMindsOn } from "@/lib/dm/npc-mind";
 import { hearingPrompt, sceneMindsPrompt, TIME_SKIP_TOOLS } from "@/lib/dm/npc-mind-logic";
 import { mindSpeeches, narratorLines, quotedLines } from "@/lib/dm/voice-knowledge-logic";
 import { worldForPrompt } from "@/lib/dm/world-prompt";
@@ -2055,6 +2055,8 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
   // mind still on stage (npc-mind.ts mindsAwaitingTurn, design §9).
   let sceneMindsNudged = false;
   let hearingNudged = false;
+  // What the hearing note asked about, kept until npc_hear answers it.
+  let owedHearing: { lines: { speaker: string; words: string }[]; names: string[] } | null = null;
   // The NPC state guard sends the narrator back once (npc-state-guard.ts).
   let stateNudged = false;
   // What the current call streamed to the draft, and how many narration
@@ -2890,15 +2892,19 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       // A player character's own quoted words count too: a question put
       // under the breath to one character, answered by that character's
       // mind alone, left the prisoner on the bench beside them unasked.
-      const spokenAloud = !toolsClosed && !hearingNudged && turn.narrationParts.length > 0
+      const spokenBy = !toolsClosed && !hearingNudged && turn.narrationParts.length > 0
         ? [
-            ...playerLinesSinceDm(campaignId).flatMap((message) => quotedLines(message.content)),
-            ...narratorLines(turn.narrationParts.join("\n\n"), mindSpeeches(turn.conversation)),
+            ...playerLinesSinceDm(campaignId).flatMap((message) =>
+              quotedLines(message.content).map((words) => ({ speaker: (message.characterId && context.sheetsById.get(message.characterId)?.name) || "someone nearby", words })),
+            ),
+            ...narratorLines(turn.narrationParts.join("\n\n"), mindSpeeches(turn.conversation)).map((words) => ({ speaker: "someone nearby", words })),
           ]
         : [];
+      const spokenAloud = spokenBy.map((line) => line.words);
       const listeners = spokenAloud.length ? mindsWithinEarshot(campaign, turn.id, turnCalls(turn.conversation, toolCalls)) : [];
       if (listeners.length) {
         hearingNudged = true;
+        owedHearing = { lines: spokenBy, names: listeners.map((npc) => npc.name) };
         // A mind owed its turn is asked in the same note: sent apart, the
         // second note came on a closing reply that had nothing left to say,
         // and the captain's hour on the road went unplayed.
@@ -3126,6 +3132,11 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     setDmStatus(campaignId, "narrating");
   }
   settleDraft();
+  // The hearing note went unanswered (the reply told the story again):
+  // the listeners it named are held to their passive Perception.
+  if (!failed && owedHearing && !turnCalls(turn.conversation, []).some((call) => call.name === "npc_hear")) {
+    hearUnasked(campaign, owedHearing.lines, owedHearing.names);
+  }
 
   // A private exchange (whispers only) is allowed to end without narration
   // (finalize() writes nothing to the table for it), so an empty reply there
