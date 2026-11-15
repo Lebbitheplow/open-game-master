@@ -74,6 +74,8 @@ import {
   type MindPerson,
   type NpcMemory,
   type NpcProposal,
+  firstTierLimit,
+  MAX_FIRST_TIER_NPCS,
 } from "@/lib/dm/npc-mind-logic";
 
 // The NPC minds (docs/specs/ogm-npc-isolation-design.md): each named NPC and
@@ -658,9 +660,8 @@ const pastSchema = z.object({
   firstTier: z.boolean().optional(),
 });
 
-// First-tier NPCs besides the party's companions: each is a mind the table
-// pays for every time they act.
-export const MAX_FIRST_TIER_NPCS = 4;
+
+export { MAX_FIRST_TIER_NPCS };
 
 // npc_past: who someone was before play, laid down before they first act.
 // Refused once they have lived anything, so a companion cannot suddenly
@@ -687,9 +688,10 @@ export function handleNpcPast(campaign: Campaign, rawArguments: string): ToolRes
   }
   if (args.firstTier !== undefined && !npc.companionSheetId) {
     const others = cast.filter((entry) => entry.id !== npc.id && !entry.archived && !entry.companionSheetId && tierOfNpc(entry) === "primary");
-    if (args.firstTier && others.length >= MAX_FIRST_TIER_NPCS) {
+    const limit = firstTierLimit(campaign);
+    if (args.firstTier && others.length >= limit) {
       return {
-        error: `${others.map((entry) => entry.name).join(", ")} already have their own minds (${MAX_FIRST_TIER_NPCS} at most). Keep ${npc.name} second tier, or give one of them back to the narrator with firstTier: false first.`,
+        error: `${others.map((entry) => entry.name).join(", ")} already have their own minds (${limit} at most at this table). Keep ${npc.name} second tier, or give one of them back to the narrator with firstTier: false first.`,
         refused: "limit",
       };
     }

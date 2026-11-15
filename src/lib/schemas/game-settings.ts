@@ -144,6 +144,11 @@ export const gameSettingsSchema = z.object({
   // made before keeps the single narrator, whose NPCs' knowledge was never
   // recorded and cannot be rebuilt.
   npcMinds: z.boolean().default(false),
+  // How many NPCs besides the party's companions the GM may give a mind of
+  // their own (npc_past firstTier, src/lib/dm/npc-mind.ts). A ceiling, not a
+  // quota: the GM uses as many as the story hinges on. Each one costs a model
+  // call whenever it is in the scene, so a bigger cast plays slower.
+  npcMindLimit: z.number().int().min(1).max(20).default(4),
   // After each DM narration, block do and say for everyone until the party
   // lead opens responses. OOC and lead directions stay available.
   holdSubmissions: z.boolean().default(false),

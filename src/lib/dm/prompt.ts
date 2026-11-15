@@ -113,6 +113,7 @@ import { ADVANTAGE_SOURCES } from "@/lib/dm/pc-attack-options";
 import { PLACE_DIRECTIONS, PLACE_DISTANCES } from "@/lib/overworld/places";
 import { heroFell } from "@/lib/characters/fallen-logic";
 import { NPC_MINDS_RULES } from "@/lib/dm/npc-mind-tools";
+import { firstTierLimit } from "@/lib/dm/npc-mind-logic";
 import { personaLine } from "@/lib/backgrounds/persona-logic";
 
 // The rolls the moment shows have landed and been told (issue 931): under a
@@ -1951,7 +1952,8 @@ function turnRuleParts(state: TurnRuleState): {
   }
   // Each NPC answers from their own mind (src/lib/dm/npc-mind.ts).
   if (state.campaign.gameSettings.npcMinds) {
-    settingsRules.push(NPC_MINDS_RULES);
+    const limit = firstTierLimit(state.campaign);
+    settingsRules.push(`${NPC_MINDS_RULES} This table allows up to ${limit} first-tier NPC${limit === 1 ? "" : "s"} besides the party's companions: a ceiling, not a quota.`);
   }
   if (
     state.campaign.gameSettings.relationships !== "off" &&

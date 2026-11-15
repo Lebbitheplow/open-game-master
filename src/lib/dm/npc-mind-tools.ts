@@ -65,7 +65,7 @@ export const npcMindTools = [
           past: { type: "array", items: { type: "string" }, description: "Facts of their life before play that they remember." },
           firstTier: {
             type: "boolean",
-            description: "True for a character the story hinges on (the prisoner, the rival, the patron, the one hiding the secret): they get their own mind and play like a player. At most four besides the party's companions.",
+            description: "True for a character the story hinges on (the prisoner, the rival, the patron, the one hiding the secret): they get their own mind and play like a player. At most as many as the table allows besides the party's companions (the rules say how many).",
           },
         },
         required: ["name"],
