@@ -81,6 +81,8 @@ export function attachNativeBoard(frame: HTMLIFrameElement, api: ShellNativeBoar
     if (!id || disposed) return;
     const bounds = rect(frame);
     const occlusions = [...document.querySelectorAll(OCCLUDERS)]
+      // Dialogs can hide background controls without removing their rectangles.
+      .filter(e => !e.closest('[aria-hidden="true"],[inert]'))
       .filter(e => e.getAttribute("role") !== "menu" || getComputedStyle(e).pointerEvents !== "none")
       .filter(e => !e.contains(frame) && e.getClientRects().length && getComputedStyle(e).visibility !== "hidden")
       .filter(e => {
@@ -104,7 +106,7 @@ export function attachNativeBoard(frame: HTMLIFrameElement, api: ShellNativeBoar
     const resize = new ResizeObserver(layout);
     const changes = new MutationObserver(layout);
     resize.observe(frame);
-    changes.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["style", "class", "open", "data-state"] });
+    changes.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["style", "class", "open", "data-state", "aria-hidden", "inert"] });
     window.addEventListener("resize", layout);
     window.addEventListener("scroll", layout, true);
     document.addEventListener("visibilitychange", layout);
