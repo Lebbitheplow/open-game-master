@@ -1,5 +1,5 @@
 // Builds the French rulebook (src/lib/rulebook/srd-5.1-fr.json): the same
-// book as srd-5.1.json — same page ids, same order, same chapters and parts —
+// book as srd-5.1.json (same page ids, same order, same chapters and parts),
 // with the pages, titles and meta lines of the official French print,
 // Wizards of the Coast's « Document de Référence du Système 5.1 »
 // (SRD_CC_v5.1_FR.pdf, CC-BY-4.0; see docs/LICENSES.md).
@@ -30,7 +30,7 @@
 // waves' coverage differs from the manifest.
 //
 // Page markdown keeps the print as extracted; the `<!-- CHECK -->` comments
-// the waves carry (missing FR table captions, print quirks — ~80 sites) stay
+// the waves carry (missing FR table captions, print quirks; ~80 sites) stay
 // in the wave sources and are stripped here, their EN-title behavior being
 // the agreed one. Unlike the English import there is no ERRATA list: the
 // French prose is quoted, not re-converted.
@@ -49,8 +49,8 @@ const tsvPath = join(tools, "data", "manifest-alignment.tsv");
 const waves = join(tools, "waves");
 
 // The wave folder each EN page's French print lives in, in the order the
-// folders are tried (a page filed as rules rather than as an entry — the
-// half-dragon template, customizing-npcs — is found by the second candidate).
+// folders are tried (a page filed as rules rather than as an entry, the
+// half-dragon template, customizing-npcs, is found by the second candidate).
 function waveFolderFor(enId, chapter, kind) {
   const rules = ["monsters/rules"];
   switch (chapter) {
@@ -118,7 +118,7 @@ const CHAPTER_TITLES = {
 
 // The three books' French words: the parts are this app's own binding (the
 // FR PDF prints no part titles), so they carry the French the book's chrome
-// already reads — the rulebook.part.* message values' text.
+// already reads: the rulebook.part.* message values' text.
 const PART_TITLES = { players: "Joueurs", "dungeon-master": "Le maître du jeu", monsters: "Monstres" };
 const PART_BLURBS = {
   players: "Le Manuel des joueurs, pour tout ce que le SRD en ouvre : créer un héros, jouer, et tous les sorts.",
@@ -277,7 +277,7 @@ if (pages.length !== en.pages.length - KNOWN_MISSING.length) {
 }
 
 // The chapters and parts: the English book's binding with the print's
-// French titles. The chapter blurbs keep the English book's words — the FR
+// French titles. The chapter blurbs keep the English book's words: the FR
 // print opens every chapter straight into its first section, printing no
 // blurb; the three parts (this book's own binding) carry the French the
 // reader already shows for them.
