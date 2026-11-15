@@ -11,6 +11,7 @@ import { DAMAGE_TYPES } from "@/app/workshop/homebrew/types";
 import { MechGroup, list, num, sub, type Mech } from "@/app/workshop/homebrew/MechGroup";
 import { addChip, rowIcon } from "@/app/workshop/kit";
 import { textKey } from "@/lib/language/text-logic";
+import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 
 // The rest of a magic item's magic, in the words the engines read the SRD's
 // by (src/lib/homebrew/item-magic-schema.ts): what a magic weapon adds to a
@@ -164,13 +165,16 @@ export function ChecksBlock({ data, set }: Props) {
   const put = (patch: Mech) => set({ checks: clean({ ...checks, ...patch }) });
   const bonused = Object.keys(skillBonus);
   const locks = typeof checks.lockBonus === "number";
+  // The app's workshop can open a host from before the lock pick, whose item
+  // schema drops lockBonus unread: the chip is offered only where it keeps.
+  const offersLocks = hostOffers(useCapabilities(), "itemLockBonus");
   return (
     <MechGroup title="What it adds to checks" summary={[num(checks.bonus) ? `+${num(checks.bonus)} to every check` : "", ...bonused.map((skill) => `+${skillBonus[skill]} ${skill.replace(/_/g, " ")}`), locks ? `+${num(checks.lockBonus)} picking locks` : "", list(checks.advantage).length ? `advantage on ${list(checks.advantage).join(", ").replace(/_/g, " ")}` : ""].filter(Boolean).join(", ") || "nothing"} open={Object.keys(checks).length > 0}>
       <NumberField label="Every ability check" value={num(checks.bonus)} min={-5} max={5} onChange={(bonus) => put({ bonus: optional(bonus) })} />
       <div className="col-span-2 sm:col-span-4">
         <span className="text-[11px] text-stone-400">A bonus to these checks</span>
         <ToggleChips
-          options={CHECK_TARGETS}
+          options={offersLocks ? CHECK_TARGETS : SKILL_IDS}
           labels={CHECK_LABELS}
           selected={locks ? [...bonused, LOCKS] : bonused}
           onChange={(next) =>
