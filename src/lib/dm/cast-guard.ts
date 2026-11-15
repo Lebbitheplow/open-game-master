@@ -107,7 +107,7 @@ import { authoredSlotRefund } from "@/lib/srd/authored-effects-more";
 import { SURGE_CHANCE } from "@/lib/srd/authored-effects-data4";
 // The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
 import "@/lib/db/item-cast-credits";
-import { takeItemCast, type ItemCast } from "@/lib/srd/item-cast-credit";
+import { dropCastRunning, takeItemCast, type ItemCast } from "@/lib/srd/item-cast-credit";
 import { awakenedDamageType, spendSwiftRitual, swiftRitual } from "@/lib/dm/ar-ws-awakened";
 import type { SpellMech } from "@/lib/srd/spell-mechanics";
 import { storerHolding } from "@/lib/srd/spell-storing";
@@ -838,10 +838,14 @@ export function castSpell(
     patch.conditionMeta = { ...((patch.conditionMeta ?? sheet.conditionMeta) as ConditionMetaMap), [SURGE_CHANCE]: { rounds: 1 } };
     result.wildMagicSurge = surgeLine;
   }
-  // Cast from their own slots now: an item's numbers for it are over.
+  // Cast from their own slots now: an item's numbers for it are over, on its
+  // row or on the credit of an item the earlier cast used up.
   const freed = input.storing ? null : equipmentWithoutRunning(patch.equipment ?? sheet.equipment, name);
   if (freed) {
     patch.equipment = freed;
+  }
+  if (!input.storing) {
+    dropCastRunning(sheet.id, name);
   }
   if (Object.keys(patch).length) {
     patchSheet(sheet.id, patch);

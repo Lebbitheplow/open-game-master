@@ -13,7 +13,7 @@ import { findNamed } from "@/lib/language/text-logic";
 import { computeSheetDerived, spellAttackFor, spellSaveDcFor } from "@/lib/srd";
 // The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
 import "@/lib/db/item-cast-credits";
-import { recordItemCast, runningItemSpell, type ItemCast } from "@/lib/srd/item-cast-credit";
+import { keepCastRunning, recordItemCast, runningItemSpell, type ItemCast } from "@/lib/srd/item-cast-credit";
 import { rowName } from "@/lib/srd/item-row";
 import { beadStoreRefusal, putInBead } from "@/lib/dm/ar-ws-bead-store";
 import { isBead, isBeadSlot } from "@/lib/srd/ar-ws-conjured";
@@ -126,11 +126,17 @@ export function takeFromRing(campaign: Campaign, turnId: string | null, sheetId:
 
 // The item's numbers ride on its row while the spell holds, for its later
 // effects (item-cast-credit.ts runningItemSpell). What has ended goes as this
-// is written, and a scroll used up has no row: its spell keeps the old way.
+// is written. A scroll used up (a bead broken, a wand gone to dust) has no
+// row: the credit its cast took carries them instead, or a Spirit Guardians
+// read from a scroll saved against the reader's own DC once its minute ran out.
 export function noteRunning(sheetId: string, cast: ItemCast) {
   const sheet = getSheetById(sheetId);
   const row = sheet ? findNamed(sheet.equipment, cast.item, (item) => [item.name]) : null;
-  if (!sheet || !row) {
+  if (!sheet) {
+    return;
+  }
+  if (!row) {
+    keepCastRunning(sheet.id, cast.spell);
     return;
   }
   const kept = (row.castRunning ?? []).filter((entry) => !findNamed([entry], cast.spell, (one) => [one.spell]) && runningItemSpell(sheet, entry.spell));

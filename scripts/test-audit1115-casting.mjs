@@ -341,5 +341,102 @@ await test("S09: a warlock 2 with both pact slots spent who reaches warlock 3 ha
   assert.deepEqual(fifth.slots, { 3: { max: 2, used: 1 } });
 });
 
+// ---- S10: a spell read from a scroll keeps the scroll's numbers while it runs ----
+
+// SRD 5.1, Spell Scroll: the spell is cast with the scroll's save DC and
+// attack bonus (15 and +7 for a 3rd-level scroll). The item credit lent those
+// numbers for one real minute after the cast, and a used-up scroll leaves no
+// row to carry them on (ring-store.ts noteRunning), so a Spirit Guardians
+// read from a scroll saved against the reader's own DC from the next minute
+// on, and a Call Lightning's later bolts the same.
+const { getDatabase } = await import("../src/lib/db/core.ts");
+const { skipCurrentTurn } = await import("../src/lib/dm/encounter-tools.ts");
+const { layMap } = await import("./lib/enforce-spells.mjs");
+const { field } = await import("./lib/enforce-spell-kit.mjs");
+
+// Real time passing since the scroll was read: more than the minute a taken
+// credit lends its numbers for.
+function ageItemCasts(sheetId, ms = 10 * 60 * 1000) {
+  const db = getDatabase();
+  const row = db.prepare(`SELECT payload_json FROM item_cast_credits WHERE character_id = ?`).get(sheetId);
+  if (row) {
+    const aged = JSON.parse(row.payload_json).map((credit) => ({ ...credit, at: credit.at - ms, ...(credit.usedAt !== undefined ? { usedAt: credit.usedAt - ms } : {}) }));
+    db.prepare(`UPDATE item_cast_credits SET payload_json = ? WHERE character_id = ?`).run(JSON.stringify(aged), sheetId);
+  }
+}
+
+// A 9th-level cleric (WIS 18, own DC 16) beside a goblin, Spirit Guardians
+// read from a 3rd-level scroll (DC 15).
+async function guardianScroll() {
+  const { world, sheets: [priest], enemies: [goblin] } = await table([caster("cleric", "wis", ["Spirit Guardians"], [], 9, { equipment: [scroll("Spirit Guardians")] })]);
+  await layMap(world, field(), { [priest.id]: { x: 1, y: 2 }, [goblin.id]: { x: 2, y: 2 } });
+  const read = await world.invoke("use_item", { characterId: priest.id, item: "Spell Scroll (Spirit Guardians)" });
+  assert.equal(read.ok, true, read.error);
+  const cast = await world.invoke("cast_buff", { characterId: priest.id, spell: "Spirit Guardians", level: 3 });
+  assert.equal(cast.ok, true, cast.error);
+  assert.equal(world.sheet(priest.id).spellcasting.slots["3"].used, 0, "the scroll paid, not a slot");
+  return { world, priest, goblin };
+}
+
+await test("S10: Spirit Guardians read from a scroll saves against the scroll's DC 15 long after the minute, not the cleric's 16", async () => {
+  const { world, priest, goblin } = await guardianScroll();
+  ageItemCasts(priest.id);
+  // A 15 saves against 15 (half of 12) and fails against 16 (all 12).
+  world.dice(15, 4, 4, 4);
+  assert.equal(skipCurrentTurn(world.campaignId), true);
+  world.clearDice();
+  assert.equal(hpLost(world, goblin.id), 6);
+});
+
+await test("S10: once the scroll's Spirit Guardians has ended, the cleric's own casting saves against their own DC 16", async () => {
+  const { world, priest, goblin } = await guardianScroll();
+  const dropped = await world.invoke("clear_condition", { characterId: priest.id, condition: "concentration" });
+  assert.equal(dropped.ok, true, dropped.error);
+  ageItemCasts(priest.id);
+  await freshTurn(world);
+  const own = await world.invoke("cast_buff", { characterId: priest.id, spell: "Spirit Guardians", level: 3 });
+  assert.equal(own.ok, true, own.error);
+  assert.equal(world.sheet(priest.id).spellcasting.slots["3"].used, 1);
+  world.dice(15, 4, 4, 4);
+  assert.equal(skipCurrentTurn(world.campaignId), true);
+  world.clearDice();
+  assert.equal(hpLost(world, goblin.id), 12);
+});
+
+await test("S10: a later Call Lightning bolt from a scroll is saved against the scroll's DC 15, not the druid's 16", async () => {
+  const { world, sheets: [druid], enemies: [goblin] } = await table([caster("druid", "wis", ["Call Lightning"], [], 9, { equipment: [scroll("Call Lightning")] })]);
+  const read = await world.invoke("use_item", { characterId: druid.id, item: "Spell Scroll (Call Lightning)" });
+  assert.equal(read.ok, true, read.error);
+  // The damage dice first, then the save.
+  world.dice(1, 1, 1, 20);
+  const one = await world.invoke("aoe_damage", { casterCharacterId: druid.id, spell: "Call Lightning", level: 3, enemyIds: [goblin.id] });
+  world.clearDice();
+  assert.equal(one.ok, true, one.error);
+  assert.equal(hpLost(world, goblin.id), 1, "a 20 saved: half of 3");
+  await freshTurn(world);
+  ageItemCasts(druid.id);
+  world.dice(5, 5, 5, 15);
+  const two = await world.invokeAsIs("aoe_damage", { casterCharacterId: druid.id, spell: "Call Lightning", enemyIds: [goblin.id] });
+  world.clearDice();
+  assert.equal(two.ok, true, two.error);
+  // A 15 saves against 15: half of 15.
+  assert.equal(hpLost(world, goblin.id), 1 + 7);
+});
+
+await test("S10: a Sanctuary read from a scroll onto an ally wards them with the scroll's DC 13 long after the minute", async () => {
+  const { world, sheets: [priest, ally], enemies: [goblin] } = await table([caster("cleric", "wis", ["Sanctuary"], [], 9, { equipment: [scroll("Sanctuary")] }), caster("fighter", "str", [], [], 9)]);
+  const read = await world.invoke("use_item", { characterId: priest.id, item: "Spell Scroll (Sanctuary)" });
+  assert.equal(read.ok, true, read.error);
+  const warded = await world.invoke("cast_buff", { characterId: priest.id, spell: "Sanctuary", targetCharacterIds: [ally.id] });
+  assert.equal(warded.ok, true, warded.error);
+  assert.ok(world.sheet(ally.id).conditions.includes("sanctuary"));
+  ageItemCasts(priest.id);
+  // A 13 makes the goblin's WIS save against 13 and fails it against 16.
+  world.dice(13, 15, 3);
+  const swing = await world.invoke("enemy_attack", { enemyId: goblin.id, targetCharacterId: ally.id });
+  world.clearDice();
+  assert.equal(swing.ok, true, swing.error);
+});
+
 closeTables();
 finish();
