@@ -3,6 +3,7 @@
 import { romanceCueAllowed } from "@/lib/dm/director-logic";
 import { gmTurnCompanion, gmTurnDominated, initiativeCharacter, selectedCharacter, typedReactors as typedReactorsOf } from "@/lib/player-characters";
 import { useThemePrefs } from "@/lib/theme-mode";
+import { EquipmentArtProvider } from "@/components/ui/EquipmentArtProvider";
 import { LevelUpMoment, LootMoment, MomentVeil, RestMoment, TravelBanner } from "@/app/campaigns/[campaignId]/Moments";
 import { CoordinationPanel } from "@/app/campaigns/[campaignId]/CoordinationPanel";
 import { CorrectionReasonChips } from "@/components/CorrectionReasonChips";
@@ -1316,6 +1317,7 @@ export function SessionView({
   } satisfies Omit<SidePanelRouterProps, "tab" | "visible" | "onOpenTab">;
 
   return (
+    <EquipmentArtProvider genre={campaign.genre}>
     <main className="cine-stage flex h-dvh flex-col" data-session-view={sessionLayout ? shownStageView : undefined} data-side-board={boardInPanel ? "" : undefined}
       data-prep={prepOpen ? "" : undefined}
       data-addon-theme={sessionTheme ? "" : undefined}
@@ -1739,5 +1741,6 @@ export function SessionView({
         )
       ) : null}
     </main>
+    </EquipmentArtProvider>
   );
 }

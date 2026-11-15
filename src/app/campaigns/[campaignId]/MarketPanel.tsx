@@ -12,6 +12,7 @@ import { appConfirm } from "@/components/ui/ConfirmDialog";
 import { InfoDialog } from "@/components/ui/InfoDialog";
 import { contentSlug } from "@/lib/help";
 import { cardArtwork } from "@/lib/battlemap/card-art";
+import { useEquipmentGenre } from "@/components/ui/EquipmentArtProvider";
 import { cn } from "@/lib/cn";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { formatCopper, formatPrice } from "@/lib/srd/currency";
@@ -125,6 +126,7 @@ export function MarketPanel({
   // Puts an action in the composer, for a sale only the DM can price.
   onAskKeeper?: (text: string) => void;
 }) {
+  const genre = useEquipmentGenre();
   const [shops, setShops] = useState<ShopView[] | null>(null);
   const [here, setHere] = useState<{ id: string; name: string } | null>(null);
   const [places, setPlaces] = useState<Named[]>([]);
@@ -334,7 +336,7 @@ export function MarketPanel({
           meta={`${formatPrice(details.askingCp)} here, ${details.qty} on the shelf`}
           note={details.note || undefined}
           reference={{ kind: "items", slug: contentSlug(details.itemName), name: details.itemName }}
-          icon={cardArtwork({ kind: "item", key: details.itemName, family: "item-gear" })}
+          icon={cardArtwork({ kind: "item", key: details.itemName, family: "item-gear" }, genre)}
         />
       ) : null}
       <SectionHead

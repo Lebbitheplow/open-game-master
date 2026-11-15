@@ -1,0 +1,259 @@
+{
+  "cyberpunk": {
+    "dagger": {
+      "item": "cyberpunk-dagger",
+      "card": "cyberpunk-weapon-dagger",
+      "baseCard": "weapon-dagger"
+    },
+    "forgery-kit": {
+      "item": "cyberpunk-forgery-kit",
+      "card": "cyberpunk-gear-forgery-kit",
+      "baseCard": "gear-forgery-kit"
+    }
+  },
+  "dark_fantasy": {
+    "longsword": {
+      "item": "dark-fantasy-longsword",
+      "card": "dark-fantasy-weapon-longsword",
+      "baseCard": "weapon-longsword"
+    },
+    "chain-shirt": {
+      "item": "dark-fantasy-chain-shirt",
+      "card": "dark-fantasy-armor-chain-shirt",
+      "baseCard": "armor-chain-shirt"
+    },
+    "manacles": {
+      "item": "dark-fantasy-manacles",
+      "card": "dark-fantasy-gear-manacles",
+      "baseCard": "gear-manacles"
+    },
+    "dagger": {
+      "item": "dark-fantasy-dagger",
+      "card": "dark-fantasy-weapon-dagger",
+      "baseCard": "weapon-dagger"
+    },
+    "leather": {
+      "item": "dark-fantasy-leather",
+      "card": "dark-fantasy-armor-leather",
+      "baseCard": "armor-leather"
+    },
+    "herbalism-kit": {
+      "item": "dark-fantasy-herbalism-kit",
+      "card": "dark-fantasy-gear-herbalism-kit",
+      "baseCard": "gear-herbalism-kit"
+    },
+    "shield": {
+      "item": "dark-fantasy-shield",
+      "card": "dark-fantasy-armor-shield",
+      "baseCard": "armor-shield"
+    },
+    "flail": {
+      "item": "dark-fantasy-flail",
+      "card": "dark-fantasy-weapon-flail",
+      "baseCard": "weapon-flail"
+    },
+    "whip": {
+      "item": "dark-fantasy-whip",
+      "card": "dark-fantasy-weapon-whip",
+      "baseCard": "weapon-whip"
+    },
+    "lute": {
+      "item": "dark-fantasy-lute",
+      "card": "dark-fantasy-gear-lute",
+      "baseCard": "gear-lute"
+    },
+    "club": {
+      "item": "dark-fantasy-club",
+      "card": "dark-fantasy-weapon-club",
+      "baseCard": "weapon-club"
+    },
+    "poisoners-kit": {
+      "item": "dark-fantasy-poisoners-kit",
+      "card": "dark-fantasy-gear-poisoners-kit",
+      "baseCard": "gear-poisoners-kit"
+    }
+  },
+  "horror": {
+    "leather": {
+      "item": "horror-leather",
+      "card": "horror-armor-leather",
+      "baseCard": "armor-leather"
+    },
+    "holy-symbol": {
+      "item": "horror-holy-symbol",
+      "card": "horror-gear-holy-symbol",
+      "baseCard": "gear-holy-symbol"
+    },
+    "dagger": {
+      "item": "horror-dagger",
+      "card": "horror-weapon-dagger",
+      "baseCard": "weapon-dagger"
+    },
+    "component-pouch": {
+      "item": "horror-component-pouch",
+      "card": "horror-gear-component-pouch",
+      "baseCard": "gear-component-pouch"
+    },
+    "longsword": {
+      "item": "horror-longsword",
+      "card": "horror-weapon-longsword",
+      "baseCard": "weapon-longsword"
+    },
+    "chain-shirt": {
+      "item": "horror-chain-shirt",
+      "card": "horror-armor-chain-shirt",
+      "baseCard": "armor-chain-shirt"
+    }
+  },
+  "mystery": {
+    "club": {
+      "item": "mystery-club",
+      "card": "mystery-weapon-club",
+      "baseCard": "weapon-club"
+    },
+    "leather": {
+      "item": "mystery-leather",
+      "card": "mystery-armor-leather",
+      "baseCard": "armor-leather"
+    },
+    "dagger": {
+      "item": "mystery-dagger",
+      "card": "mystery-weapon-dagger",
+      "baseCard": "weapon-dagger"
+    },
+    "quarterstaff": {
+      "item": "mystery-quarterstaff",
+      "card": "mystery-weapon-quarterstaff",
+      "baseCard": "weapon-quarterstaff"
+    },
+    "disguise-kit": {
+      "item": "mystery-disguise-kit",
+      "card": "mystery-gear-disguise-kit",
+      "baseCard": "gear-disguise-kit"
+    },
+    "warhammer": {
+      "item": "mystery-warhammer",
+      "card": "mystery-weapon-warhammer",
+      "baseCard": "weapon-warhammer"
+    },
+    "studded-leather": {
+      "item": "mystery-studded-leather",
+      "card": "mystery-armor-studded-leather",
+      "baseCard": "armor-studded-leather"
+    }
+  },
+  "post_apocalyptic": {
+    "leather": {
+      "item": "post-apocalyptic-leather",
+      "card": "post-apocalyptic-armor-leather",
+      "baseCard": "armor-leather"
+    },
+    "tinkers-tools": {
+      "item": "post-apocalyptic-tinkers-tools",
+      "card": "post-apocalyptic-gear-tinkers-tools",
+      "baseCard": "gear-tinkers-tools"
+    },
+    "battleaxe": {
+      "item": "post-apocalyptic-battleaxe",
+      "card": "post-apocalyptic-weapon-battleaxe",
+      "baseCard": "weapon-battleaxe"
+    },
+    "hide": {
+      "item": "post-apocalyptic-hide",
+      "card": "post-apocalyptic-armor-hide",
+      "baseCard": "armor-hide"
+    },
+    "spear": {
+      "item": "post-apocalyptic-spear",
+      "card": "post-apocalyptic-weapon-spear",
+      "baseCard": "weapon-spear"
+    },
+    "dagger": {
+      "item": "post-apocalyptic-dagger",
+      "card": "post-apocalyptic-weapon-dagger",
+      "baseCard": "weapon-dagger"
+    },
+    "mace": {
+      "item": "post-apocalyptic-mace",
+      "card": "post-apocalyptic-weapon-mace",
+      "baseCard": "weapon-mace"
+    },
+    "herbalism-kit": {
+      "item": "post-apocalyptic-herbalism-kit",
+      "card": "post-apocalyptic-gear-herbalism-kit",
+      "baseCard": "gear-herbalism-kit"
+    },
+    "shortbow": {
+      "item": "post-apocalyptic-shortbow",
+      "card": "post-apocalyptic-weapon-shortbow",
+      "baseCard": "weapon-shortbow"
+    },
+    "quiver": {
+      "item": "post-apocalyptic-quiver",
+      "card": "post-apocalyptic-gear-quiver",
+      "baseCard": "gear-quiver"
+    },
+    "arrows": {
+      "item": "post-apocalyptic-arrows",
+      "card": "post-apocalyptic-gear-arrows",
+      "baseCard": "gear-arrows"
+    }
+  },
+  "steampunk": {
+    "light-hammer": {
+      "item": "steampunk-light-hammer",
+      "card": "steampunk-weapon-light-hammer",
+      "baseCard": "weapon-light-hammer"
+    },
+    "tinkers-tools": {
+      "item": "steampunk-tinkers-tools",
+      "card": "steampunk-gear-tinkers-tools",
+      "baseCard": "gear-tinkers-tools"
+    },
+    "rapier": {
+      "item": "steampunk-rapier",
+      "card": "steampunk-weapon-rapier",
+      "baseCard": "weapon-rapier"
+    },
+    "leather": {
+      "item": "steampunk-leather",
+      "card": "steampunk-armor-leather",
+      "baseCard": "armor-leather"
+    },
+    "navigators-tools": {
+      "item": "steampunk-navigators-tools",
+      "card": "steampunk-gear-navigators-tools",
+      "baseCard": "gear-navigators-tools"
+    },
+    "dagger": {
+      "item": "steampunk-dagger",
+      "card": "steampunk-weapon-dagger",
+      "baseCard": "weapon-dagger"
+    },
+    "alchemists-supplies": {
+      "item": "steampunk-alchemists-supplies",
+      "card": "steampunk-gear-alchemists-supplies",
+      "baseCard": "gear-alchemists-supplies"
+    },
+    "quarterstaff": {
+      "item": "steampunk-quarterstaff",
+      "card": "steampunk-weapon-quarterstaff",
+      "baseCard": "weapon-quarterstaff"
+    },
+    "warhammer": {
+      "item": "steampunk-warhammer",
+      "card": "steampunk-weapon-warhammer",
+      "baseCard": "weapon-warhammer"
+    },
+    "shield": {
+      "item": "steampunk-shield",
+      "card": "steampunk-armor-shield",
+      "baseCard": "armor-shield"
+    },
+    "chain-mail": {
+      "item": "steampunk-chain-mail",
+      "card": "steampunk-armor-chain-mail",
+      "baseCard": "armor-chain-mail"
+    }
+  }
+}
