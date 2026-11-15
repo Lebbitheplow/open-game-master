@@ -227,5 +227,42 @@ await test("N05: a made save against a hunting trap is no damage and no hold", a
   assert.deepEqual(sheet(walker.id).conditions, []);
 });
 
+// ---- N06: a named trap's failed-save condition keeps the trap's own duration ----
+// SRD 5.1, Traps, Poison Needle: "the target must succeed on a DC 15
+// Constitution saving throw or be poisoned for 1 hour". Rolling Sphere: a
+// failed save is 10d10 "and knocked prone"; prone ends when the creature
+// stands up, never on a save. The failed save's condition went through
+// cast_at_player, which held the hour to 100 rounds (10 minutes) and made
+// prone a condition a Dexterity save at each turn's end shook off.
+
+await test("N06: a Poison Needle's failed save is poisoned for the hour, not ten minutes", async () => {
+  const picker = world.addHero({ user: world.owner, class: "rogue", level: 3, maxHp: 60 });
+  morning();
+  world.clearDice();
+  // 2d10 poison (10), then the DC 15 Constitution save failed.
+  world.dice(5, 5, 1);
+  const out = await world.invoke("apply_hazard", { type: "trap", trap: "Poison Needle", characterIds: [picker.id] });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.clearDice(), 0);
+  assert.ok(sheet(picker.id).conditions.includes("poisoned"));
+  const later = await world.invoke("pass_time", { amount: 30, unit: "minutes" });
+  assert.equal(later.ok, true, later.error);
+  assert.ok(sheet(picker.id).conditions.includes("poisoned"), "the needle's poison wore off within half an hour");
+  await world.invoke("pass_time", { amount: 31, unit: "minutes" });
+  assert.equal(sheet(picker.id).conditions.includes("poisoned"), false, "the needle's poison outlasted its hour");
+});
+
+await test("N06: a Rolling Sphere's prone is the kind a creature stands up from, not a save-ends condition", async () => {
+  const runner = world.addHero({ user: world.owner, class: "fighter", level: 3, maxHp: 90 });
+  world.clearDice();
+  world.dice(1, ...new Array(10).fill(5));
+  const out = await world.invoke("apply_hazard", { type: "trap", trap: "Rolling Sphere", characterIds: [runner.id] });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.clearDice(), 0);
+  assert.equal(90 - sheet(runner.id).currentHp, 50);
+  assert.ok(sheet(runner.id).conditions.includes("prone"));
+  assert.equal(sheet(runner.id).conditionMeta?.prone?.saveEnds, undefined, JSON.stringify(sheet(runner.id).conditionMeta));
+});
+
 world.close();
 finish();

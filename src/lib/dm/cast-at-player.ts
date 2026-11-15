@@ -78,6 +78,10 @@ const castAtPlayerSchema = z.object({
   // Set by apply_hazard for a trap: Dungeon Delver saves at advantage and
   // takes half (src/lib/srd/feat-combat.ts).
   hazard: z.enum(["trap"]).optional(),
+  // Set by apply_hazard for a named trap, with hazard "trap": the save and
+  // its damage are rolled here and the trap lays what a failure leaves, for
+  // its own duration and never as save-ends (src/lib/dm/trap-run.ts).
+  conditionByTrap: z.boolean().optional(),
   // Set by apply_hazard: the square a trap or hazard comes from, for the
   // cover between it and the character on a Dexterity save.
   fromX: z.coerce.number().int().min(0).optional(),
@@ -636,7 +640,8 @@ export function handleCastAtPlayer(
   }
 
   const standing = getSheetById(sheet.id);
-  if (conditionName && !saved && standing && standing.currentHp > 0) {
+  const trapLays = args.hazard === "trap" && args.conditionByTrap === true;
+  if (conditionName && !saved && standing && standing.currentHp > 0 && !trapLays) {
     const condition = canonicalCondition(conditionName);
     const applied = layEnemyCondition(
       campaign,
