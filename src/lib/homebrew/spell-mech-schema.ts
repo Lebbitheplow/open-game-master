@@ -169,6 +169,9 @@ export const spellMechSchema = z.object({
   area: z.boolean().optional(),
   areaFeet: feet.optional(),
   repeat: z.enum(["action", "bonus", "free"]).optional(),
+  // Witch Bolt's beam on later turns: unnamed here, the parse dropped it, and
+  // a workshop copy's later turns dealt nothing.
+  repeatDice: dice.optional(),
   targetTypes: words(14).optional(),
   immuneTypes: words(14).optional(),
   immuneIfImmuneTo: word().optional(),
@@ -195,6 +198,13 @@ export const spellMechSchema = z.object({
 // the two drift apart.
 const drift: SpellMech = {} as z.infer<typeof spellMechSchema>;
 void drift;
+// And the other way: a field the engine's row carries that the schema does
+// not name is dropped by the parse, so a workshop copy of the spell plays
+// without it (Destructive Wave's radiant-or-necrotic choice did). The line
+// below names any such field in the compile error.
+type UnnamedField = Exclude<keyof SpellMech, keyof z.infer<typeof spellMechSchema>>;
+const everyFieldNamed: [UnnamedField] extends [never] ? true : UnnamedField = true;
+void everyFieldNamed;
 
 // The block, or why not: the first problem, named by its field.
 export function checkSpellMech(raw: unknown): { mech: SpellMech } | { error: string } {
