@@ -957,5 +957,47 @@ await test("S22: a bite that still hits through Shield keeps the wizard prone", 
   assert.ok(world.sheet(mage.id).conditions.includes("prone"));
 });
 
+// ---- S23: Thought Shield gives back what the warlock took, after the reaction ----
+
+// SRD 5.1, Thought Shield: "whenever a creature deals psychic damage to you,
+// that creature takes the same amount of damage that you do." A reaction that
+// only lessens the blow (Uncanny Dodge's half, Cutting Words off the damage)
+// lessens what the warlock took, so it lessens what goes back. The refund gave
+// the warlock back the halved part and left the creature the full psychic.
+const MIND_LASH = { attacks: [{ name: "Mind Lash", toHit: 4, damage: "1d6+2", type: "psychic" }] };
+const thinker = (features = []) => ({ class: "warlock", level: 10, abilities: { cha: 16 }, features: [{ name: "Thought Shield", source: "choice" }, ...features] });
+
+await test("S23: an Uncanny Dodge that halves a psychic blow on a Thought Shield warlock halves the psychic the creature takes back", async () => {
+  const { world, sheets: [lock], enemies: [goblin] } = await table([thinker([{ name: "Uncanny Dodge", source: "choice" }])], 1, MIND_LASH);
+  world.patch(lock.id, { ac: 12, acOverride: true });
+  // 15 + 4 hits for 6 + 2 = 8 psychic, which the shield's resistance halves to 4.
+  await swingAt(world, goblin, lock, [15, 6]);
+  assert.equal(hpLost(world, goblin.id), 4, "the creature takes the 4 the warlock took");
+  const dodge = await world.invoke("use_reaction", { characterId: lock.id, feature: "Uncanny Dodge" });
+  assert.equal(dodge.ok, true, dodge.error);
+  // 8 halved to 4, and the resistance halves that to 2.
+  const after = world.sheet(lock.id);
+  assert.equal(after.maxHp - after.currentHp, 2, JSON.stringify(dodge.result));
+  assert.equal(hpLost(world, goblin.id), 2, JSON.stringify(dodge.result));
+  assert.match(JSON.stringify(dodge.result), /Thought Shield/, "the GM is told the creature gets some back");
+});
+
+await test("S23: Cutting Words off the damage of a psychic critical lessens Thought Shield's answer the same", async () => {
+  const { world, sheets: [lock, bard], enemies: [goblin] } = await table([thinker(), loreBard], 1, MIND_LASH);
+  world.patch(lock.id, { ac: 12, acOverride: true });
+  world.patch(bard.id, { resources: { ...world.sheet(bard.id).resources, bardic_inspiration: { max: 3, used: 0 } } });
+  // A natural 20 that Cutting Words cannot turn: its die comes off the
+  // damage instead. 2d6 of 6s + 2 = 14, halved by the resistance to 7; less
+  // the die's 1, 13 halved to 6.
+  await swingAt(world, goblin, lock, [20, 6, 6]);
+  assert.equal(hpLost(world, goblin.id), 7);
+  world.dice(1);
+  const words = await world.invoke("use_reaction", { characterId: bard.id, feature: "Cutting Words", targetCharacterId: lock.id });
+  world.clearDice();
+  assert.equal(words.ok, true, words.error);
+  const after = world.sheet(lock.id);
+  assert.equal(hpLost(world, goblin.id), after.maxHp - after.currentHp, JSON.stringify(words.result));
+});
+
 closeTables();
 finish();

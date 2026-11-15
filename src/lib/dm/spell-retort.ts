@@ -23,7 +23,7 @@ import { spellSaveDcFor } from "@/lib/srd";
 import type { EnemyAttack } from "@/lib/bestiary/statblock";
 import { conditionRollRiders, type ConditionRollRiders } from "@/lib/srd/condition-effects";
 import { instancesOf, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
-import { retortBack, retortOf, type Retort, type RetortCreature } from "@/lib/dm/retort-logic";
+import { lessenedRetort, retortBack, retortOf, type Retort, type RetortCreature } from "@/lib/dm/retort-logic";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -98,13 +98,38 @@ function creatureNow(enemyId: string): RetortCreature | null {
 }
 
 // Runs an answer to a blow and reads what it did to the creature that struck
-// (`by` names the answers that fired, from what it returned).
-export function measureRetort<T>(enemyId: string, run: () => T, by: (result: T) => string[]): { result: T; retort: Retort | null } {
+// (`by` names the answers that fired, from what it returned; `share`, when
+// several fired, the hit points each took).
+export function measureRetort<T>(
+  enemyId: string,
+  run: () => T,
+  by: (result: T) => string[],
+  share?: (result: T) => Record<string, number>,
+): { result: T; retort: Retort | null } {
   const before = creatureNow(enemyId);
   const result = run();
   const after = creatureNow(enemyId);
   const fired = by(result);
-  return { result, retort: before && after && fired.length ? retortOf(enemyId, before, after, fired) : null };
+  return { result, retort: before && after && fired.length ? retortOf(enemyId, before, after, fired, share?.(result)) : null };
+}
+
+// A reaction lessened what one answer answered (Uncanny Dodge halving the
+// psychic Thought Shield gives back): the creature gets `given` of that
+// answer's hit points back, within the body that lost them. Returns the
+// answer as it now stands and the line for the reaction's result.
+export function giveShareBack(campaign: Campaign, retort: Retort, by: string, given: number, why: string): { retort: Retort | null; line: string | null } {
+  const enemy = getEnemy(retort.enemyId);
+  const now = enemy ? creatureNow(enemy.id) : null;
+  if (!enemy || !now || given <= 0) {
+    return { retort, line: null };
+  }
+  const back = retortBack(now, { ...retort, hp: given, laid: [], ended: [] });
+  if (!back || back.hp <= 0) {
+    return { retort, line: retort.fell && enemy.status !== "alive" ? `${why}, but ${by} already slew ${enemy.displayName}; a slain creature is not raised.` : null };
+  }
+  patchEnemyHp(enemy.id, back.currentHp, "alive");
+  publishEncounter(campaign.id);
+  return { retort: lessenedRetort(retort, by, back.hp), line: `${why}: ${enemy.displayName} gets back ${back.hp} hit point${back.hp === 1 ? "" : "s"}.` };
 }
 
 // A reaction turned the swing that set the answer off into a miss: the

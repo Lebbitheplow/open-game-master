@@ -47,11 +47,18 @@ export type Retort = {
   // with their meta (the oil Fire Shield's flame burnt off).
   laid: string[];
   ended: Array<{ name: string; meta?: unknown }>;
+  // The hit points each answer took, read apart (Thought Shield's psychic,
+  // Armor of Agathys's cold): a reaction that changes how much of the blow
+  // landed, or whether the temporary hit points were still there, corrects
+  // that answer alone (SRD 5.1: Thought Shield deals "the same amount of
+  // damage that you do"). Absent on records written before it.
+  share?: Record<string, number>;
 };
 
 // What the answers did, from the creature before and after them; null when
-// they did nothing to it.
-export function retortOf(enemyId: string, before: RetortCreature, after: RetortCreature, by: string[]): Retort | null {
+// they did nothing to it. One answer's share is the whole; several give
+// theirs in `share`.
+export function retortOf(enemyId: string, before: RetortCreature, after: RetortCreature, by: string[], share?: Record<string, number>): Retort | null {
   const laid = after.conditions.filter((name) => !before.conditions.includes(name));
   const ended = before.conditions
     .filter((name) => !after.conditions.includes(name))
@@ -61,7 +68,19 @@ export function retortOf(enemyId: string, before: RetortCreature, after: RetortC
   if (!hp && !fell && !laid.length && !ended.length) {
     return null;
   }
-  return { enemyId, by, hp, maxHp: before.maxHp, fell, laid, ended };
+  const shares = share ?? (by.length === 1 ? { [by[0]]: hp } : undefined);
+  return { enemyId, by, hp, maxHp: before.maxHp, fell, laid, ended, ...(shares ? { share: shares } : {}) };
+}
+
+function joinShares(first: Retort["share"], second: Retort["share"]): Retort["share"] {
+  if (!first && !second) {
+    return undefined;
+  }
+  const out: Record<string, number> = { ...(first ?? {}) };
+  for (const [name, hp] of Object.entries(second ?? {})) {
+    out[name] = (out[name] ?? 0) + hp;
+  }
+  return out;
 }
 
 // Two answers to the same swing (Thought Shield as the damage lands, the
@@ -70,6 +89,7 @@ export function joinRetorts(first: Retort | null, second: Retort | null): Retort
   if (!first || !second || first.enemyId !== second.enemyId) {
     return first ?? second;
   }
+  const share = joinShares(first.share, second.share);
   return {
     enemyId: first.enemyId,
     by: [...first.by, ...second.by.filter((name) => !first.by.includes(name))],
@@ -78,7 +98,20 @@ export function joinRetorts(first: Retort | null, second: Retort | null): Retort
     fell: first.fell || second.fell,
     laid: [...first.laid, ...second.laid.filter((name) => !first.laid.includes(name))],
     ended: [...first.ended, ...second.ended.filter((entry) => !first.ended.some((had) => had.name === entry.name))],
+    ...(share ? { share } : {}),
   };
+}
+
+// The answer kept with `given` of one answer's hit points taken back (a
+// reaction lessened what it answered); null when nothing it did is left.
+export function lessenedRetort(retort: Retort, by: string, given: number): Retort | null {
+  const share = { ...(retort.share ?? {}), [by]: Math.max(0, (retort.share?.[by] ?? 0) - given) };
+  const hp = retort.hp - given;
+  const left = retort.by.filter((name) => name !== by || share[name] > 0);
+  if (!hp && !retort.fell && !retort.laid.length && !retort.ended.length) {
+    return null;
+  }
+  return { ...retort, by: left, hp, share };
 }
 
 export type RetortBack = {

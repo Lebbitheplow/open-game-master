@@ -51,6 +51,7 @@ import {
 } from "@/lib/dm/hit-replay-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { takeRetortBack } from "@/lib/dm/spell-retort";
+import { thoughtShieldLessened } from "@/lib/dm/thought-shield";
 import { ridersBack, type RiderMark } from "@/lib/dm/retort-logic";
 import { answerLabel, carryCuts, hitIdOf, openHits, wardHpOf, writeLastHit, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { applyDmMutation, audit } from "@/lib/dm/mutations";
@@ -378,7 +379,7 @@ export function settleHits(
     });
   });
   const final = state;
-  retortsBack(campaign, steps, notes);
+  retortsBack(campaign, sheet, steps, notes);
 
   // Each hit of the chain is kept as the corrected fight has it: its
   // swings, where it found and left them (a later hit that found them down
@@ -537,10 +538,13 @@ function sameTrack(a: DeathTrack | null, b: DeathTrack | null): boolean {
 // Agathys and Holy Aura answer a creature that hits; a blow Shield or Cutting
 // Words turns away never hit. A swing that still hits keeps what it set off,
 // dealt the once.
-function retortsBack(campaign: Campaign, steps: Step[], notes: string[]) {
+function retortsBack(campaign: Campaign, sheet: CharacterSheet, steps: Step[], notes: string[]) {
   for (const step of steps) {
     const was = step.record.swings;
     step.corrected = step.corrected.map((swing, at) => {
+      if (was[at]?.hit && swing.hit && was[at].retort && swing.raw !== was[at].raw) {
+        return lessenedAnswers(campaign, heldFor(sheet, step.record), step.record, was[at], swing, notes);
+      }
       if (!was[at]?.hit || swing.hit || (!was[at].retort && !was[at].laid)) {
         return swing;
       }
@@ -566,6 +570,39 @@ function retortsBack(campaign: Campaign, steps: Step[], notes: string[]) {
       step.record = plain;
     }
   }
+}
+
+// The character as a hit's blows met them: their conditions and form then.
+function heldFor(sheet: CharacterSheet, record: LastHit): CharacterSheet {
+  return { ...sheet, conditions: record.before.conditions, conditionMeta: record.before.conditionMeta, wildShape: record.before.wildShape ?? null };
+}
+
+// A swing's blow as the damage path met it, for an answer that reads what
+// landed: its damage, type, parts and flags, with a reaction's resistance.
+function blowOf(record: LastHit, swing: SwingRecord) {
+  return {
+    amount: swing.hit ? swing.raw : 0,
+    type: (swing.type ?? record.type) || undefined,
+    parts: swing.parts?.length ? scaledParts(swing.parts, swing.raw) : undefined,
+    flags: { ...(swing.flags ?? {}), ...(swing.resists?.length ? { resists: swing.resists } : {}) },
+  };
+}
+
+// A swing that still hits, with less of it landing (Uncanny Dodge, Cutting
+// Words off the damage): the answers that read what landed are lessened with
+// it. SRD 5.1, Thought Shield: the creature takes "the same amount of damage
+// that you do".
+function lessenedAnswers(campaign: Campaign, held: CharacterSheet, record: LastHit, was: SwingRecord, swing: SwingRecord, notes: string[]): SwingRecord {
+  const psychic = was.retort ? thoughtShieldLessened(campaign, held, was.retort, blowOf(record, was), blowOf(record, swing)) : null;
+  if (!psychic) {
+    return swing;
+  }
+  if (psychic.line) {
+    notes.push(psychic.line);
+  }
+  const kept = { ...swing };
+  delete kept.retort;
+  return psychic.retort ? { ...kept, retort: psychic.retort } : kept;
 }
 
 // The marks of the riders whose swings a reaction now turns into misses
