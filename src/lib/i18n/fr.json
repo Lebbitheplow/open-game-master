@@ -1607,7 +1607,7 @@
     "Choice {index}": "Choix {index}",
     "Add another choice": "Ajouter un autre choix",
     "Storm": "Tempête",
-    "{ordinal} level": "Niveau {level}",
+    "{ordinal} level": "Niveau {ordinal}",
     "cantrip": "sort mineur",
     "yours": "ta création",
     "Nothing matched \"{query}\" that is not picked already.": "Aucun résultat pour « {query} » parmi ce qui n’est pas déjà pris.",
@@ -2628,8 +2628,8 @@
     "The GM": "Le MJ",
     "A player": "Un joueur",
     "Who takes {name}'s turns in fights": "Qui mène les tours de {name} en combat",
-    "You take {name}'s turns in fights. Out of fights the GM plays {name}.": "Tu mènes les tours de {name} en combat. Hors combat, le MJ le joue.",
-    "{who} takes {name}'s turns in fights. Out of fights the GM plays {name}.": "{who} mène les tours de {name} en combat. Hors combat, le MJ le joue.",
+    "You take {name}'s turns in fights. Out of fights the GM plays {name}.": "Tu mènes les tours de {name} en combat. Hors combat, le MJ joue {name}.",
+    "{who} takes {name}'s turns in fights. Out of fights the GM plays {name}.": "{who} mène les tours de {name} en combat. Hors combat, le MJ joue {name}.",
     "The GM plays {name}'s turns in fights, as everywhere else.": "Le MJ joue les tours de {name} en combat, comme partout ailleurs.",
     "Could not change who commands them.": "Impossible de changer qui le commande.",
     "Save to my characters": "Enregistrer dans mes personnages",
@@ -3131,7 +3131,7 @@
     "Place them for {article} {class}": "Les répartir pour {class}",
     "One improvement is still to choose. Pick for me adds the points to {scores} main scores, never a feat.": "Une amélioration reste à choisir. « Choisir pour moi » ajoute les points aux scores principaux {scores}, jamais à un don.",
     "{count} improvements are still to choose. Pick for me adds the points to {scores} main scores, never a feat.": "{count} améliorations restent à choisir. « Choisir pour moi » ajoute les points aux scores principaux {scores}, jamais à un don.",
-    "a {class}'s": "de la classe",
+    "a {class}'s": "de {class}",
     "the": "des scores",
     "Name your hero": "Nomme ton héros",
     "Roll a name": "Tirer un nom",
@@ -3569,7 +3569,7 @@
     "Who else it takes": "Qui d’autre est visé",
     "Up to {count}": "Jusqu’à {count}",
     "You take {count} {unit}.": "Tu reçois {count} {unit}.",
-    "{name} takes {count} {unit}.": "{name} en reçoit {count}.",
+    "{name} takes {count} {unit}.": "{name} reçoit {count} {unit}.",
     "{count} more may join you.": "{count} de plus peuvent te rejoindre.",
     "{count} more may join {name}.": "{count} de plus peuvent rejoindre {name}.",
     "{name} (you)": "{name} (toi)",
@@ -3868,7 +3868,7 @@
     "Your free object interaction is spent: Fast Hands makes this one your bonus action.": "Ton interaction gratuite avec un objet est dépensée : Mains rapides en fait ton action bonus.",
     "Your free object interaction is spent: this one takes the Use an Object action.": "Ton interaction gratuite avec un objet est dépensée : celle-ci prend l’action Utiliser un objet.",
     "{name}'s hands are full ({items}), so {what} cannot be drawn yet. Dropping one is free (handle_item drop); putting one away takes the object interaction.": "{name} a les mains pleines ({items}) : {what} attend une main libre. Lâcher une arme est gratuit (handle_item drop) ; en ranger une prend l’interaction avec un objet.",
-    "{name}'s free object interaction this turn already went on an object, and {what} would be a second: that takes the Use an Object action, which {name} has already spent. It can wait for their next turn.": "{name} a déjà dépensé son interaction gratuite avec un objet ce tour-ci, et {what} serait une seconde : cela prend l’action Utiliser un objet, et son action est déjà dépensée. Cela attendra son prochain tour.",
+    "{name}'s free object interaction this turn already went on an object, and {what} would be a second: that takes the Use an Object action, which {name} has already spent. It can wait for their next turn.": "{name} a déjà dépensé son interaction gratuite avec un objet ce tour-ci, et {what} serait une seconde : cela prend l’action Utiliser un objet, que {name} a déjà dépensée. Cela attendra son prochain tour.",
     "{name}'s free object interaction this turn already went on an object, and {what} would be a second, which takes the Use an Object action: an attack cannot draw it as well. {name} attacks with what they hold, or draws it on their next turn.": "{name} a déjà dépensé son interaction gratuite avec un objet ce tour-ci, et {what} serait une seconde, ce qui prend l’action Utiliser un objet : une attaque ne peut pas aussi le dégainer. {name} attaque avec ce qu’il tient, ou le dégainera à son prochain tour.",
     "Take off {name}": "Retirer {name}",
     "Strap on {name}": "Attacher {name}",
@@ -4031,7 +4031,7 @@
     "Elemental Affinity's resistance comes with a spell of your dragon's damage type: cast one first.": "La résistance de l’Affinité élémentaire vient avec un sort du type de dégâts de ton dragon : lance-en un d’abord.",
     "Channel Divinity. Held for their next lightning or thunder damage, dealt at its maximum.": "Canaliser la divinité. Retenue pour leurs prochains dégâts de foudre ou de tonnerre, au maximum de ses dés.",
     "{name} works on the creatures of a fight; there is none.": "{name} vise les créatures d’un combat ; il n’y en a pas.",
-    "{name} takes a creature {who} can see, and they are blinded.": "{name} vise une créature que {who} peut voir, et {who} est aveuglé.",
+    "{name} takes a creature {who} can see, and they are blinded.": "{name} vise une créature visible par {who}, et elle est aveuglée.",
     "{name} is used in a fight, on a creature in it.": "{name} s’emploie dans un combat, sur une créature qui y est.",
     "Rapid Strike trades this attack's advantage for one more attack, and it has none here. Aim at a creature you attack with advantage.": "Frappe rapide échange l’avantage de cette attaque contre une attaque de plus, et il n’y en a pas ici. Vise une créature contre qui tu attaques avec avantage.",
     "out of range ({feet} ft, it reaches {reach} ft)": "hors de portée ({feet} ft, elle atteint {reach} ft)",
@@ -10869,7 +10869,7 @@
       "{count} règles optionnelles"
     ],
     ", 1 item\u0000, {count} items": [
-      ", {count} élément",
+      ", 1 élément",
       ", {count} éléments"
     ],
     "Party: {count} pregen offered to players who join tables you run ({names}). One player each; tick or untick them in the workshop's Party panel.\u0000Party: {count} pregens offered to players who join tables you run ({names}). One player each; tick or untick them in the workshop's Party panel.": [
@@ -11105,8 +11105,8 @@
       "Retire {count} sorts : la limite est {limit} {list}."
     ],
     "Point buy is {count} point over its {budget}. Lower a score first.\u0000Point buy is {count} points over its {budget}. Lower a score first.": [
-      "L’achat de points dépasse son budget de {count} point. Baisse d’abord une valeur.",
-      "L’achat de points dépasse son budget de {count} points. Baisse d’abord une valeur."
+      "L’achat de points dépasse son budget ({budget}) de {count} point. Baisse d’abord une valeur.",
+      "L’achat de points dépasse son budget ({budget}) de {count} points. Baisse d’abord une valeur."
     ],
     "the improvement\u0000the improvements": [
       "l’amélioration",
@@ -11665,8 +11665,8 @@
       "Équipement : {count} objets, {names}"
     ],
     " The missing one does not stop you saving.\u0000 The {count} missing ones do not stop you saving.": [
-      " Rien de tout cela ne t’empêche d’enregistrer.",
-      " Rien de tout cela ne t’empêche d’enregistrer."
+      " Celui qui manque ne t’empêche pas d’enregistrer.",
+      " Les {count} manquants ne t’empêchent pas d’enregistrer."
     ],
     "The GM stepped away; the AI is answering one more time.\u0000The GM stepped away; the AI is answering the next {count} times.": [
       "Le MJ s’est éclipsé ; l’IA répond encore une fois.",
