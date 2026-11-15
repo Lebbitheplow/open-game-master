@@ -324,5 +324,22 @@ await test("S08: Warding Bond's and Fire Shield's cast notes leave their damage 
   }
 });
 
+// ---- S09: a warlock's spent pact slots stay spent through a level-up ----
+
+// SRD 5.1, Pact Magic: all of a warlock's slots are one level, and they come
+// back on a short or long rest. A level that raises that level (warlock 3, 5,
+// 7, 9) moves the slots to the new level; the engine kept spent slots spent
+// on every other caster (level-change.ts: "Spent dice and spent slots stay
+// spent") but read a lone warlock's spent count at the new level's key,
+// where there was none, so both spent slots came back without a rest.
+await test("S09: a warlock 2 with both pact slots spent who reaches warlock 3 has two 2nd-level slots, both still spent", async () => {
+  const { settleSlots } = await import("../src/lib/srd/level-change.ts");
+  const casting = { ability: "cha", slots: { 1: { max: 2, used: 2 } }, known: ["Hex"], prepared: [], cantrips: ["Eldritch Blast"] };
+  const after = settleSlots({ class: "warlock", level: 2, spellcasting: casting }, [{ id: "warlock", level: 3 }]);
+  assert.deepEqual(after.slots, { 2: { max: 2, used: 2 } });
+  const fifth = settleSlots({ class: "warlock", level: 4, spellcasting: { ...casting, slots: { 2: { max: 2, used: 1 } } } }, [{ id: "warlock", level: 5 }]);
+  assert.deepEqual(fifth.slots, { 3: { max: 2, used: 1 } });
+});
+
 closeTables();
 finish();

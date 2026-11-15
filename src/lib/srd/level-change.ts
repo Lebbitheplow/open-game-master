@@ -137,7 +137,12 @@ export function settleSlots(state: LevelState, classes: ClassEntry[], extras?: S
     Boolean(warlock) &&
     !hadPact &&
     findClass(state.loneClassBefore ?? "")?.casterType === "pact";
-  const used = (slotLevel: string) => (movesPact ? 0 : (casting?.slots?.[slotLevel]?.used ?? 0));
+  // A lone warlock's slots are all one level, and a level that raises it
+  // (warlock 3, 5, 7, 9) moves them: what was spent of them moves too. Read
+  // at the new level's key, where nothing was, both spent slots came back
+  // without a rest.
+  const lonePact = !multiclass && findClass(classes[0].id)?.casterType === "pact";
+  const used = (slotLevel: string) => (movesPact ? 0 : lonePact ? lonePactUsed : (casting?.slots?.[slotLevel]?.used ?? 0));
   const slots = Object.fromEntries(
     Object.entries(table).map(([slotLevel, max]) => [
       slotLevel,
