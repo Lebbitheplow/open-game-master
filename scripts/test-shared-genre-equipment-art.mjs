@@ -9,7 +9,13 @@ import { renderToStaticMarkup } from "react-dom/server";
 register("./lib/register-alias.mjs", import.meta.url);
 const { equipmentArtwork } = await import("../src/lib/equipment-art-logic.ts");
 const { cardArtwork } = await import("../src/lib/battlemap/card-art.ts");
-const { iconCandidates } = await import("../src/lib/icons.ts");
+const { iconCandidates, iconSlug, iconPath, isPainted } = await import("../src/lib/icons.ts");
+const { SRD_WEAPONS, WEAPON_ALIASES, weaponNamed } = await import("../src/lib/srd/weapons.ts");
+const { SRD_ARMOR } = await import("../src/lib/srd/armor.ts");
+const { SRD_GEAR, SRD_GOODS, gearKey } = await import("../src/lib/srd/adventuring-gear.ts");
+const { pluralForms } = await import("../src/lib/srd/name-forms.ts");
+const { withoutBonus } = await import("../src/lib/srd/item-row.ts");
+const { buildEquipmentArtAliases } = await import("./generate-equipment-art-aliases.mjs");
 const { GameIcon } = await import("../src/components/ui/GameIcon.tsx");
 const { EquipmentArtProvider } = await import("../src/components/ui/EquipmentArtProvider.tsx");
 const { buildIconList } = await import("./icon-set.mjs");
@@ -68,6 +74,37 @@ for (const row of subjects) {
 }
 for (const [key, genre, expected] of [["Dagger +1", "cyberpunk", "cyberpunk-dagger"], ["+2 Warhammer", "steampunk", "steampunk-warhammer"], ["Shield, +3", "dark_fantasy", "dark-fantasy-shield"], ["Arrows +1", "post_apocalyptic", "post-apocalyptic-arrows"], ["Tinker’s Tools", "steampunk", "steampunk-tinkers-tools"]]) {
   assert.equal(equipmentArtwork({ kind: "item", key }, genre, "inventory").key, expected);
+}
+// The browser reads weapon spellings from a generated table rather than the
+// weapon catalogue (budget); it must stay current and pick exactly the
+// painting the catalogue's own weaponNamed reading picks, for every spelling.
+assert.deepEqual(read("src/lib/equipment-art-aliases.json"), buildEquipmentArtAliases(), "src/lib/equipment-art-aliases.json matches the catalogue");
+{
+  const bases = [
+    ...SRD_WEAPONS.flatMap((w) => [w.name, ...(WEAPON_ALIASES[w.name] ?? [])]),
+    ...SRD_ARMOR.map((a) => a.name), ...SRD_GEAR.map((g) => g.name), ...SRD_GOODS.map((g) => g.name),
+    ...subjects.map((r) => r.label), "long sword", "Hand axe", "Light-Hammer", "WAR HAMMER", "Crossbow, light", "Moon Dagger",
+  ];
+  const spellings = new Set(bases.flatMap((name) => {
+    const book = /^([^,(]+),\s*([^,(]+)$/.exec(name);
+    const forms = [name, name.toLowerCase(), ...pluralForms(gearKey(name)), ...(book ? [`${book[2]} ${book[1]}`, `${book[2]}, ${book[1]}`] : [])];
+    return forms.flatMap((form) => [form, `${form} +1`, `+2 ${form}`, `${form}, +3`]);
+  }));
+  let compared = 0;
+  for (const [genre, entries] of Object.entries(read("src/lib/equipment-art.json"))) {
+    for (const key of spellings) {
+      // #961's resolver, which loaded the weapon catalogue into every page.
+      const variant = Object.hasOwn(entries, iconSlug(weaponNamed(key)?.name ?? withoutBonus(key))) ? entries[iconSlug(weaponNamed(key)?.name ?? withoutBonus(key))] : null;
+      const ref = { kind: "item", key };
+      for (const [surface, kind, painting] of [["inventory", "item", variant?.item], ["card", "action", variant?.card]]) {
+        const expected = painting && isPainted(iconPath(kind, painting)) ? painting : key;
+        const now = equipmentArtwork(ref, genre, surface);
+        assert.equal(now === ref ? key : now.key, expected, `${genre} ${surface}: ${key}`);
+        compared++;
+      }
+    }
+  }
+  assert.ok(compared > 10000, `compared ${compared} spellings`);
 }
 for (const key of ["Moon Dagger", "Leather of the Moon", "Unknown Relic", "constructor", "__proto__"]) {
   const ref = { kind: "item", key };assert.equal(equipmentArtwork(ref, "cyberpunk", "inventory"), ref);
