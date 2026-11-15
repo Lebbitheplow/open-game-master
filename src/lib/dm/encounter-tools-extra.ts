@@ -331,7 +331,7 @@ function handleEnemyCondition(
             ...(args.rounds ? { rounds: args.rounds } : {}),
             ...(countsOn ? { countsOn } : {}),
             ...(args.saveAbility && args.saveDc
-              ? { saveEnds: { ability: args.saveAbility, dc: args.saveDc } }
+              ? { saveEnds: { ability: args.saveAbility, dc: args.saveDc }, ...(args.magical === true ? { magical: true } : {}) }
               : {}),
             ...(wakes ? { endsOnDamage: true } : {}),
           }

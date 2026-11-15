@@ -69,6 +69,14 @@ export type SaveEffect = {
   // The ability says it is magic ("against this magic"), which Magic
   // Resistance answers.
   magical?: boolean;
+  // "If a creature's saving throw is successful or the effect ends for it,
+  // the creature is immune to the dragon's Frightful Presence for the next 24
+  // hours" (SRD 5.1: the dragons, the ghost's Horrifying Visage, the mummies'
+  // Dreadful Glare, the lich's gaze, the harpy's song): how long a creature
+  // that made the save is out of its reach, and whether the effect ending for
+  // it does the same. Without it a dragon's Multiattack asked the same save
+  // every round of the fight.
+  immuneAfter?: { rounds: number; onEnd: boolean };
 };
 
 const CONDITIONS = `knocked prone|prone|asleep|${CONDITION_WORDS.join("|")}`;
@@ -305,8 +313,18 @@ export function parseSaveEffect(raw: string): SaveEffect {
   if (/against this magic|magically/i.test(text)) {
     out.magical = true;
   }
+  const immune = sentences.find((sentence) => IMMUNE_AFTER.test(sentence.text));
+  const span = immune ? IMMUNE_AFTER.exec(immune.text) : null;
+  if (immune && span) {
+    const unit = span[2].toLowerCase();
+    out.immuneAfter = { rounds: Number(span[1]) * UNIT_ROUNDS[unit], onEnd: /\bor the effect ends for (?:it|them|the (?:creature|target))\b/i.test(immune.text) };
+  }
   return out;
 }
+
+// "... is immune to the harpy's song for the next 24 hours", "immune to the
+// Dreadful Glare of all mummies (but not mummy lords) for the next 24 hours".
+const IMMUNE_AFTER = /\bimmune to\b[^.;]*?\bfor the next (\d{1,3}) (round|minute|hour|day)s?\b/i;
 
 // A line with no save: the condition its "or be ..." clause names, as before.
 function readUnsaved(text: string): SaveEffect {

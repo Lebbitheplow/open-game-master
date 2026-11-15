@@ -19,7 +19,7 @@ import { insertRoll } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
 import { footprintForSize } from "@/lib/battlemap/footprint";
 
-import { d20Expression, rollExpression } from "@/lib/dice";
+import { d20Expression, rollExpression, type Advantage } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import {
   adjudicateHit,
@@ -59,6 +59,8 @@ import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { blowByType, resolveOnHit, scaledParts } from "@/lib/dm/enemy-hit";
 import { effectOutcome } from "@/lib/dm/effect-tools";
 import { hasTrait } from "@/lib/dm/monster-abilities";
+import { allyBeside } from "@/lib/dm/side-allies";
+import { targetSwingMarks } from "@/lib/dm/enemy-swing-odds";
 import { enfeebledBlow, spellRetort, spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { activeAuthored } from "@/lib/srd/authored-effects";
@@ -122,6 +124,22 @@ export function withLiveDodge(conditions: string[]): string[] {
   return conditions.filter((entry) => entry.toLowerCase() !== DODGING);
 }
 
+// Flyby (SRD 5.1: an owl, a giant owl, a pteranodon, a flying snake): "The
+// owl doesn't provoke opportunity attacks when it flies out of an enemy's
+// reach." Its walk aloft draws no swing on either side: an enemy row's own
+// trait, or a conjured creature's block (its summon record's traits). Before
+// this a pteranodon swooping off the fighter was struck as any walker was.
+function fliesBy(mapId: string, refId: string): boolean {
+  if (getTokenByRef(mapId, refId)?.movement !== "fly") {
+    return false;
+  }
+  const enemy = getEnemy(refId);
+  if (enemy) {
+    return hasTrait(enemy.stats, "flyby");
+  }
+  return /(?:^|[.;]\s*)flyby\b/i.test(getSheetById(refId)?.summon?.traits ?? "");
+}
+
 // Resolves the opportunity attacks a character's move provokes, applying
 // damage and posting table notes. `disengaged` suppresses all of them.
 // `path` is the walk, square by square after the starting one; without it
@@ -143,7 +161,7 @@ export function resolveOpportunityAttacks(
     return empty;
   }
   const map = getBattleMapForEncounter(encounter.id);
-  if (!map) {
+  if (!map || fliesBy(map.id, characterId)) {
     return empty;
   }
   const steps = [from, ...(path?.length ? path : [to])];
@@ -230,6 +248,11 @@ export function resolveOpportunityAttacks(
     });
     const light = lightOnAttack(sight, { attacker: enemy.displayName, target: sheet.name });
     const own = enemyOpportunityRiders(campaign.id, enemy);
+    // Pack Tactics, as on its own turn (enemy-swing-odds.ts): an ally of the
+    // creature, up and able, within 5 feet of the leaver where it left the
+    // reach (SRD 5.1). The reaction's swing never read it, so a wolf beside
+    // its packmate struck a fleeing hero on one die.
+    const pack = hasTrait(enemy.stats, "packTactics") && allyBeside(encounter.id, { kind: "enemy", id: enemy.id }, sheet.id, leftFrom);
     // Escape the Horde (a Hunter ranger's Defensive Tactics): opportunity
     // attacks against them are made at disadvantage.
     const escapes = holdsFeature(sheet, "Escape the Horde");
@@ -239,15 +262,22 @@ export function resolveOpportunityAttacks(
     // An active effect on its attack and damage rolls (set_effect).
     const attackEffect = effectOutcome(campaign.id, { kind: "enemy", id: enemy.id }, "attack");
     const damageEffect = effectOutcome(campaign.id, { kind: "enemy", id: enemy.id }, "damage").bonus;
-    const advantage = mergeAdvantage([
+    // Chill Touch's dread, Bestow Curse at its caster, a goad, and Elusive's
+    // "no attack roll against you has advantage", read as on its own turn
+    // (enemy-swing-odds.ts targetSwingMarks). It strikes from beside them.
+    const marks = targetSwingMarks(enemy, sheet, conditionsOf(sheet), 1);
+    const odds: Advantage[] = [
       ...context.sources,
       ...light.sources,
       ...(escapes ? ["disadvantage" as const] : []),
       ...(eagle ? ["disadvantage" as const] : []),
       ...(attackEffect.advantage ? ["advantage" as const] : []),
       ...(attackEffect.disadvantage ? ["disadvantage" as const] : []),
+      ...(pack ? ["advantage" as const] : []),
+      ...marks.sources,
       ...own.sources,
-    ]);
+    ];
+    const advantage = mergeAdvantage(marks.elusive ? odds.filter((source) => source !== "advantage") : odds);
     const targetAc = acWithEffects(campaign.id, sheet, enemy);
     const hitOutcome = rollExpression(`${d20Expression(attack.toHit + attackEffect.bonus, advantage)}${own.riders.diceSuffix}`, undefined, {
       purpose: { roller: "enemy", kind: "attack", who: enemy.displayName },
@@ -467,7 +497,7 @@ export function resolvePcOpportunityWalk(
   // SRD 5.1, Opportunity Attacks: "when a hostile creature that you can see
   // moves out of your reach". A creature the GM keeps off the board is one
   // no character sees, so it provokes nothing; the GM shows it to let it.
-  if (hiddenNow(encounter.id).has(enemyId)) {
+  if (hiddenNow(encounter.id).has(enemyId) || fliesBy(map.id, enemyId)) {
     return { notes: [] };
   }
   const steps = [from, ...(path?.length ? path : [to])];

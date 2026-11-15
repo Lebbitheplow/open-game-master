@@ -7,27 +7,40 @@
 // Database reads only: enemy-attack.ts, enemy-strike.ts and
 // enemy-swing-odds.ts ask it for every swing of a stat block's routine.
 
+import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getEncounter } from "@/lib/db/encounters";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
+import { tilesApart } from "@/lib/dm/board-reach";
+import type { XY } from "@/lib/battlemap/sight-lines";
 import type { CombatantKind } from "@/lib/dm/combat-sides-logic";
 import { combatantDefeated, combatantsOf, sideOf } from "@/lib/dm/combatant";
 import { incapacitatedBy } from "@/lib/dm/condition-logic";
 import { martialAdvantageDice, surpriseAttackDice } from "@/lib/dm/monster-traits";
 
 // Whether an ally of the attacker, up and able, stands within 5 feet of the
-// target: any combatant of its side but itself and the target.
-export function allyBeside(encounterId: string, attacker: { kind: CombatantKind; id: string }, targetRef: string): boolean {
+// target: any combatant of its side but itself and the target. `at`: the
+// square the target is struck in when its token is no longer there (an
+// opportunity attack lands where the walker left the reach, and the walk has
+// moved the token on by then).
+export function allyBeside(encounterId: string, attacker: { kind: CombatantKind; id: string }, targetRef: string, at?: XY): boolean {
   const encounter = getEncounter(encounterId);
   if (!encounter) {
     return false;
   }
+  const map = at ? getBattleMapForEncounter(encounterId) : null;
+  const walker = map ? getTokenByRef(map.id, targetRef) : null;
+  const struckAt = walker && at ? { ...walker, x: at.x, y: at.y } : null;
+  const apart = (allyId: string) => {
+    const token = map && struckAt ? getTokenByRef(map.id, allyId) : null;
+    return token && struckAt ? tilesApart(token, struckAt) : tilesBetween(encounterId, allyId, targetRef);
+  };
   const mine = sideOf(encounter, attacker.kind, attacker.id);
   return combatantsOf(encounter.campaignId, encounter).some((ally) => {
     if (ally.id === attacker.id || ally.id === targetRef || ally.side !== mine || combatantDefeated(ally)) {
       return false;
     }
     const conditions = ally.kind === "enemy" ? ally.enemy.conditions : ally.sheet.conditions;
-    return !incapacitatedBy(conditions) && (tilesBetween(encounterId, ally.id, targetRef) ?? Infinity) <= 1;
+    return !incapacitatedBy(conditions) && (apart(ally.id) ?? Infinity) <= 1;
   });
 }
 

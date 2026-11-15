@@ -76,7 +76,12 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 // 13:  a serpentfolk's animal friendship is held to snakes and a duergar's
 //      Enlarge/Reduce to enlarge (their innate rows' freeLimit), and a
 //      centaur's Equine Build line names the push and the drag.
-export const READER_REVISION = 13;
+// 14:  a monster's save ability reads the immunity its text grants after a
+//      success ("immune to the dragon's Frightful Presence for the next 24
+//      hours"), and an attack's rider the kinds it spares ("a creature other
+//      than an elf or undead", a ghoul's claws; rules audit 2026-11-15,
+//      monsters).
+export const READER_REVISION = 14;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";
 

@@ -14,8 +14,9 @@ import { allocateSeq } from "@/lib/db/campaigns";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { isValidExpression, rollExpression, type RollResult } from "@/lib/dice";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
+import { sheetCreatureType } from "@/lib/dm/summon-rules";
 import type { EnemyAttack, TypedDice } from "@/lib/bestiary/statblock";
-import { asleepOnFailure } from "@/lib/bestiary/attack-text";
+import { asleepOnFailure, riderSpares } from "@/lib/bestiary/attack-text";
 import { durationArgsFor, effectiveMaxHp, maxHpRiders, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { handleSetCondition } from "@/lib/dm/set-condition";
 import { swallowCreature } from "@/lib/dm/swallow";
@@ -121,6 +122,12 @@ export function resolveOnHit(
   }
   if (rider.maxSize && sizeRank(characterSize(target)) > sizeRank(rider.maxSize)) {
     return { rider: `${target.name} is too large for ${attack.name}'s rider.` };
+  }
+  // "If the target is a creature other than an elf or undead" (a ghoul's
+  // claws): an elf is not asked the save and is not paralyzed.
+  const spared = riderSpares(rider, [target.race ?? "", sheetCreatureType(target)]);
+  if (spared) {
+    return { rider: `${attack.name}'s rider passes over ${target.name} (${spared}): its text spares that kind of creature.` };
   }
   const out: Record<string, unknown> = {};
   let saved = false;
