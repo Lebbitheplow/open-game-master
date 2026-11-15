@@ -1929,6 +1929,7 @@
     "lib/dm/object-damage.ts#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/dm/object-damage.ts#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["key",1,"damage types"]],
     "lib/dm/ooc-question.ts#partial": [["pattern",6,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
+    "lib/dm/opportunity.ts#partial": [["authoring",1,"a conjured creature's block traits read for Flyby at a trait's start"]],
     "lib/dm/opportunity.ts#whole": [["key",1,"reaction keys"]],
     "lib/dm/option-costs.ts#first": [["key",2,"a cost table row's option name"]],
     "lib/dm/option-costs.ts#partial": [["key",1,"ODM's own \"Channel Divinity: \" and psionic feature names"]],

@@ -86,7 +86,7 @@ const ENGINE_READS = [
   /^immutable form\b/i, /^limited magic immunity\b/i, /^martial advantage\b/i, /^surprise attack\b/i,
   /^shapechanger\b/i, /^reaction:\s*parry\b/i, /^legendary action/i, /^lair action/i,
   /^turn(?:ing)? (?:resistance|defiance|immunity|vulnerability)\b/i, /^turning:/i,
-  /^(?:the \w+ can take \d+ legendary actions)/i, /^multiattack\b/i,
+  /^(?:the \w+ can take \d+ legendary actions)/i, /^multiattack\b/i, /^flyby\b/i,
 ];
 
 // The block's lines the engine does not read, each as its name: the DM's to

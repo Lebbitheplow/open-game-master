@@ -405,6 +405,9 @@ const TRAIT_FLAGS = {
   regeneration: REGENERATION_NAME,
   // Tome of Beasts prints it in the singular ("Magic Weapon").
   magicWeapons: /^magic weapons?\b/i,
+  // An owl's, a pteranodon's, a flying snake's: no opportunity attack when it
+  // flies out of a reach (opportunity.ts).
+  flyby: /^flyby\b/i,
 } as const;
 
 export type TraitFlag = keyof typeof TRAIT_FLAGS;

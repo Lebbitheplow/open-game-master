@@ -124,6 +124,22 @@ export function withLiveDodge(conditions: string[]): string[] {
   return conditions.filter((entry) => entry.toLowerCase() !== DODGING);
 }
 
+// Flyby (SRD 5.1: an owl, a giant owl, a pteranodon, a flying snake): "The
+// owl doesn't provoke opportunity attacks when it flies out of an enemy's
+// reach." Its walk aloft draws no swing on either side: an enemy row's own
+// trait, or a conjured creature's block (its summon record's traits). Before
+// this a pteranodon swooping off the fighter was struck as any walker was.
+function fliesBy(mapId: string, refId: string): boolean {
+  if (getTokenByRef(mapId, refId)?.movement !== "fly") {
+    return false;
+  }
+  const enemy = getEnemy(refId);
+  if (enemy) {
+    return hasTrait(enemy.stats, "flyby");
+  }
+  return /(?:^|[.;]\s*)flyby\b/i.test(getSheetById(refId)?.summon?.traits ?? "");
+}
+
 // Resolves the opportunity attacks a character's move provokes, applying
 // damage and posting table notes. `disengaged` suppresses all of them.
 // `path` is the walk, square by square after the starting one; without it
@@ -145,7 +161,7 @@ export function resolveOpportunityAttacks(
     return empty;
   }
   const map = getBattleMapForEncounter(encounter.id);
-  if (!map) {
+  if (!map || fliesBy(map.id, characterId)) {
     return empty;
   }
   const steps = [from, ...(path?.length ? path : [to])];
@@ -481,7 +497,7 @@ export function resolvePcOpportunityWalk(
   // SRD 5.1, Opportunity Attacks: "when a hostile creature that you can see
   // moves out of your reach". A creature the GM keeps off the board is one
   // no character sees, so it provokes nothing; the GM shows it to let it.
-  if (hiddenNow(encounter.id).has(enemyId)) {
+  if (hiddenNow(encounter.id).has(enemyId) || fliesBy(map.id, enemyId)) {
     return { notes: [] };
   }
   const steps = [from, ...(path?.length ? path : [to])];

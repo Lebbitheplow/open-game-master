@@ -292,4 +292,29 @@ await test("E06 a ghoul's claws paralyze a human who fails the save, and pass ov
   world.patch(sylvi.id, { currentHp: 0, deathSaves: { successes: 0, failures: 3, dead: true } });
 });
 
+await test("E07 a pteranodon with Flyby flying out of the fighter's reach draws no opportunity attack; walking, it does", async () => {
+  const maps = await import("../src/lib/db/battle-maps.ts");
+  const FLYBY = ["Flyby: The pteranodon doesn't provoke opportunity attacks when it flies out of an enemy's reach."];
+  for (const aloft of [true, false]) {
+    await kit.endFight();
+    await kit.fight(1, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+    const [foe] = world.enemies();
+    kit.setEnemy(foe.id, { stats: { ...kit.enemy(foe.id).stats, speed: "10 ft., fly 60 ft.", traits: FLYBY } });
+    kit.place(kara.id, 5, 5);
+    kit.place(bram.id, 15, 15);
+    kit.place(foe.id, 6, 5);
+    if (aloft) {
+      maps.setTokenMovement(kit.token(foe.id).id, "fly");
+    }
+    kit.enemyTurn(foe.id);
+    const before = new Set(kit.lastRolls(40).map((roll) => roll.id));
+    const moved = await world.invoke("move_token", { token: foe.id, x: 8, y: 5 });
+    world.clearDice();
+    assert.equal(moved.ok, true, moved.error);
+    const swings = kit.lastRolls(40).filter((roll) => !before.has(roll.id) && roll.kind === "attack");
+    const struck = world.encounter().reactionsUsed.includes(kara.id) || swings.length > 0;
+    assert.equal(struck, !aloft, aloft ? "Flyby: no swing at a creature flying out of reach" : "walking out of reach still provokes");
+  }
+});
+
 finish();
