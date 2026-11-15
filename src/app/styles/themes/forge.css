@@ -95,13 +95,13 @@
 /* Riveted corner brackets where a flat panel keeps the app's own. */
 html[data-appearance="forge"] :is(.ornate::before, .ornate::after) { width: 18px; height: 18px; border-width: 2px; }
 [data-appearance="forge"] {
-  /* Solid corner plates need less room than open leaves: at the shared size
-     the plate reaches the enlarged map's title. The bands are also busier
-     than a vine, so they run thinner on a phone beside the bottom bar. */
-  --theme-table-corner-size: 104px;
-  /* The stone rail is opaque to its inner edge; at the shared 40px it sat
-     over the last letter of the desktop rail's labels with enlarged text. */
+  /* The stone rail is opaque to its inner edge. At the shared 40px it sat
+     over the last letter of the desktop rail's labels with enlarged text
+     and over the party cards' left edge; at the shared 28px on a phone it
+     covered the first letter of the bottom bar. */
   --theme-table-frame-width: 30px;
   --theme-table-frame-width-small: 18px;
+  /* A solid plate, unlike an open leaf, hides the bottom bar's end labels
+     at the shared phone size. The desktop corner keeps the shared size. */
   --theme-table-corner-size-small: 60px;
 }
