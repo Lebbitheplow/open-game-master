@@ -112,6 +112,10 @@ export const spellMechSchema = z.object({
   ignoresCover: z.boolean().optional(),
   damageType: word().optional(),
   secondType: word().optional(),
+  // Destructive Wave's "radiant or necrotic damage (your choice)": the
+  // object strips a key it does not name, so a copy lost the choice and its
+  // second 5d6 was radiant whatever the caster named.
+  secondTypeChoice: words().optional(),
   attack: z.enum(["melee", "ranged"]).optional(),
   condition: z.object(conditionBase).optional(),
   noDamage: z.boolean().optional(),
