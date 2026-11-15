@@ -233,14 +233,55 @@ export function applyConsumable(
       const damage = rollCard(campaign, null, sheet.id, "damage", `${itemName}: it was poison`, "3d6", null);
       const hurt = applyPcDamage(campaign, turnId, sheet, { amount: damage.total, type: "poison", reason });
       const save = rollSave(campaign, getSheetById(sheet.id) ?? sheet, 13, `${sheet.name}: CON save vs ${itemName}`);
-      if (!save.success) {
-        condition(campaign, turnId, sheet, "poisoned", 60, reason);
+      if (save.success) {
+        return { effect: `It was poison: ${damage.total} poison damage.`, ...hurt };
       }
-      return { effect: `It was poison: ${damage.total} poison damage${save.success ? "" : ", and poisoned for an hour"}.`, ...hurt };
+      const course = poisonCourse(campaign, turnId, sheet.id, itemName);
+      if (course.rounds > 0) {
+        handleSetCondition(campaign, turnId, getSheetById(sheet.id) ?? sheet, { condition: "poisoned", rounds: course.rounds }, reason, { spellEffect: { source: "item" } });
+      }
+      return { effect: `It was poison: ${damage.total} poison damage, then ${course.line}`, ...hurt };
     }
     default:
       return null;
   }
+}
+
+// SRD 5.1, Potion of Poison, after a failed save: "At the start of each of
+// your turns while you are poisoned in this way, you take 3d6 poison damage.
+// At the end of each of your turns, you can repeat the saving throw. On a
+// successful save, the poison damage you take on your subsequent turns
+// decreases by 1d6. The poison ends when the damage decreases to 0." The
+// engine once left the drinker poisoned for an hour after the first 3d6 and
+// dealt nothing more. Rolled through at once, as Burnt Othur Fumes' turns
+// are (affliction-poisons.ts); a drinker who drops to 0 stops it there.
+// Returns the turns it lasted and the line for the result.
+function poisonCourse(campaign: Campaign, turnId: string, sheetId: string, itemName: string): { rounds: number; line: string } {
+  let dice = 3;
+  let rounds = 0;
+  let dealt = 0;
+  while (dice > 0 && rounds < 30) {
+    const before = getSheetById(sheetId);
+    if (!before || before.deathSaves?.dead || before.currentHp <= 0) {
+      break;
+    }
+    rounds += 1;
+    const hit = rollCard(campaign, null, before.id, "damage", `${itemName}: the poison, turn ${rounds}`, `${dice}d6`, null);
+    dealt += hit.total;
+    applyPcDamage(campaign, turnId, before, { amount: hit.total, type: "poison", reason: itemName });
+    const after = getSheetById(sheetId);
+    if (!after || after.deathSaves?.dead || after.currentHp <= 0) {
+      break;
+    }
+    if (rollSave(campaign, after, 13, `${after.name}: CON save vs ${itemName}, turn ${rounds}`).success) {
+      dice -= 1;
+    }
+  }
+  const end = dice === 0 ? ", until it ran out" : (getSheetById(sheetId)?.currentHp ?? 0) <= 0 ? ", until they fell" : "";
+  return {
+    rounds,
+    line: `${dealt} more over ${rounds} turn${rounds === 1 ? "" : "s"} (3d6 at the start of each, 1d6 less after each DC 13 Constitution save made)${end}; poisoned for those turns. Rolled and applied by the server.`,
+  };
 }
 
 function rollSave(campaign: Campaign, sheet: CharacterSheet, dc: number, detail: string): { success: boolean } {
