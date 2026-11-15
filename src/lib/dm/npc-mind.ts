@@ -1,7 +1,9 @@
 import { z } from "zod";
+import { npcSeenStateWords, npcSilencedBy } from "@/lib/dm/npc-state-logic";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getClock } from "@/lib/db/clock";
-import { getNpcById, listNpcs, patchNpcAgency, type Npc } from "@/lib/db/npcs";
+import { describeInstant } from "@/lib/dm/calendar";
+import { getNpcById, listNpcs, patchNpcAgency, setNpcPlace, type Npc } from "@/lib/db/npcs";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { listSheets, getSheetById } from "@/lib/db/sheets";
 import { listRelationships } from "@/lib/db/relationships";
@@ -53,6 +55,7 @@ import {
   awayRosterNote,
   backgroundOpen,
   catchUpSteps,
+  knowsName,
   memoriesFor,
   mindsOwedTurn,
   mentalScoresOf,
@@ -159,6 +162,7 @@ export function mindsWithinEarshot(
       companionInFight: inFight && Boolean(npc.companionSheetId),
       actedLastTurn: acted.has(npc.id),
       onStageRecently: recent.has(npc.id),
+      silenced: Boolean(npcSilencedBy(npc.state)),
     })),
     touched,
     true,
@@ -203,6 +207,7 @@ export function mindsAwaitingTurn(
       companionInFight: inFight && Boolean(npc.companionSheetId),
       actedLastTurn: acted.has(npc.id),
       onStageRecently: recent.has(npc.id),
+      silenced: Boolean(npcSilencedBy(npc.state)),
     })),
     touched,
     timeSkipped,
@@ -554,6 +559,14 @@ export async function handleNpcSpeak(campaign: Campaign, rawArguments: string): 
   if (!npc) {
     return { error: `No tracked NPC is called "${args.name}". Register them with set_npc first.`, retry: true };
   }
+  // The body comes first (npc_state): the senseless and the dead say nothing.
+  const silenced = npcSilencedBy(npc.state);
+  if (silenced) {
+    return {
+      error: `${npc.name} is ${silenced} on the record and cannot speak or answer. Narrate them as they are; if the story has changed that, record it with npc_state first.`,
+      refused: "rules",
+    };
+  }
   // A second-tier NPC has no mind of their own: the narrator voices them.
   if (tierOfNpc(npc) !== "primary") {
     return {
@@ -585,16 +598,39 @@ export async function handleNpcSpeak(campaign: Campaign, rawArguments: string): 
     whileApart = done.lines;
     setNpcAway(npc.id, apart ? { place: args.place || away.place, since: now } : null);
   }
+  if (!apart) {
+    bringToScene(campaign, npc);
+  }
   const actor = getNpcById(npc.id) ?? npc;
   // Only those really with them hear it: a mind apart from the scene is not
   // a listener in it.
   const others = cast.filter((entry) => ids.includes(entry.id) && entry.id !== npc.id && (apart || !getNpcAway(entry.id)));
   addNpcMemories(campaign.id, [npc.id, ...others.map((entry) => entry.id)], { kind: "knowledge", sourceKind: "perceived", sourceName: "", content: args.perceives, learnedAt: now }, turnId);
+  // What the mind sees of the others' bodies (docs/specs/ogm-npc-state.md):
+  // the listeners, and anyone else here whose state shows (tied, down,
+  // dead), never what they carry, and a keeper by name only if it knows it.
+  const ownMemories = listNpcMemories(campaign.id, npc.id);
+  const looks = (entry: Npc) => npcSeenStateWords(entry.state, knowsName(entry.state.heldBy, ownMemories) || textKey(entry.state.heldBy) === textKey(npc.name));
+  const here = apart ? "" : (getCurrentLocation(campaign.id)?.name ?? "");
+  const visible = here
+    ? cast.filter((entry) => entry.id !== npc.id && !others.includes(entry) && !entry.archived && entry.location === here && !getNpcAway(entry.id) && looks(entry))
+    : [];
+  const described = (entry: Npc) => {
+    const seen = looks(entry);
+    return { name: entry.name, description: clipText(`${entry.role || entry.trait || "a person"}${seen ? `; now ${seen}` : ""}`, 140) };
+  };
   const present: MindPerson[] = [
     ...(apart ? [] : heroesOf(campaign.id).filter((hero) => textKey(hero.name) !== textKey(npc.name))),
-    ...others.map((entry) => ({ name: entry.name, description: clipText(entry.role || entry.trait || "a person", 80) })),
+    ...others.map(described),
+    ...visible.map(described),
   ];
-  const where = apart ? `You are at ${args.place || away?.place || "a place of your own"}, apart from the party.\n` : "";
+  const own = npcSeenStateWords(actor.state, knowsName(actor.state.heldBy, ownMemories));
+  // The clock, so a moment told as a stretch ("Brakk lies down; eight hours
+  // pass") is answered from its end: Mara, told of a whole night's rest,
+  // bade the waking man "sleep while you can".
+  const clock = getClock(campaign.id);
+  const when = `It is now ${describeInstant(clock.calendar, clock.instant)}. You speak and act at this moment, after everything below has already happened.\n`;
+  const where = `${when}${apart ? `You are at ${args.place || away?.place || "a place of your own"}, apart from the party.\n` : ""}${own ? `You yourself are ${own}.\n` : ""}`;
   // Its own turn in a fight: the mind chooses it, seeing the fight as it does.
   const fightTurn = apart ? null : mindsFightTurn(campaign, npc.companionSheetId);
   const ownTurn = fightTurn?.npc.id === npc.id ? fightTurn : null;
@@ -648,6 +684,16 @@ export async function handleNpcSpeak(campaign: Campaign, rawArguments: string): 
   };
 }
 
+// Someone who speaks in the scene, or hears it from close by, is in it: a
+// record that still puts them somewhere else is brought to where the party
+// is (docs/specs/ogm-npc-state.md, rule 3). A mind apart is left where it is.
+function bringToScene(campaign: Campaign, npc: Npc) {
+  const here = getCurrentLocation(campaign.id)?.name ?? "";
+  if (here && npc.location !== here && !getNpcAway(npc.id)) {
+    setNpcPlace(npc.id, { location: here });
+  }
+}
+
 const hearSchema = z.object({
   speaker: z.string().trim().min(1).max(120),
   words: z.string().trim().min(1).max(1200),
@@ -699,9 +745,13 @@ export function handleNpcHear(campaign: Campaign, rawArguments: string): ToolRes
     }
     const d20 = listener.reach === "far" && listener.listening ? rollExpression("1d20").total : null;
     const outcome = hears(listener.reach, listener.dc ?? HEARING_DC, scoresFor(campaign, npc).wis, d20);
-    if (listener.reach === "out_of_earshot") {
+    // The senseless and the dead hear nothing (npc_state).
+    if (listener.reach === "out_of_earshot" || npcSilencedBy(npc.state)) {
       missed.push(npc.name);
       continue;
+    }
+    if (listener.reach === "near") {
+      bringToScene(campaign, npc);
     }
     seedBackground(campaign, npc, listNpcMemories(campaign.id, npc.id));
     addNpcMemories(

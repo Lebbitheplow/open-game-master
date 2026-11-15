@@ -51,6 +51,10 @@ const CORE_ALWAYS = [
 // Out of a fight: moving, meeting people, the purse and the pack.
 const CORE_EXPLORE = [
   "move_party",
+  // Out of a fight by default: a fight's trimmed set has no room left, and
+  // a foe knocked out or taken there is recorded once it ends, or through
+  // more_tools (src/lib/dm/npc-state-tools.ts).
+  "npc_state",
   "update_location",
   "start_encounter",
   "npc_reaction",

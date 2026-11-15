@@ -171,6 +171,7 @@ export const BUNDLE_COLUMNS: Record<string, { carried: string[]; left: Record<st
       tier: "who plays first tier is chosen when the new adventure is made",
       away_json: "where a companion was left is play, not the adventure: a new table starts with the party together",
       mind_model_json: "a mind's model is chosen from the new table's own agent program, which may offer other models",
+      state_json: "who is a prisoner, bound or down is play: a new table starts with everyone free and standing",
     },
   },
   lore_entries: {

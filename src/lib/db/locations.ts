@@ -1,5 +1,6 @@
 import { textKey } from "@/lib/language/text-logic";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
+import { parseNpcState, partyFollowers } from "@/lib/dm/npc-state-logic";
 import { placeTree } from "@/lib/overworld/places";
 import type { GeneratedImage } from "@/lib/types";
 
@@ -185,6 +186,7 @@ export function upsertCurrentLocation(input: {
   });
 
   const id = apply();
+  followParty(input.campaignId, input.name.trim().slice(0, 80));
   const location = getLocation(id);
   if (!location) {
     throw new Error("Failed to upsert location.");
@@ -448,4 +450,29 @@ export function setLocationLayout(locationId: string, layoutDescription: string)
     .prepare(`UPDATE locations SET layout_description = ?, updated_at = ? WHERE id = ?`)
     .run(layoutDescription.slice(0, 2000), nowIso(), locationId);
   return getLocation(locationId);
+}
+
+// Whoever travels with the party, and the prisoners it keeps, are where it
+// is now (npc_state, src/lib/dm/npc-state-logic.ts): their place follows on
+// every move, so a man tied on the cart is never left "at the mill" in the
+// record. Raw rows, not src/lib/db/npcs.ts, which this module must not pull in.
+function followParty(campaignId: string, place: string) {
+  const db = getDatabase();
+  const rows = db
+    .prepare(`SELECT id, name, aliases_json, state_json, away_json, location FROM npcs WHERE campaign_id = ? AND archived = 0`)
+    .all(campaignId) as Array<{ id: string; name: string; aliases_json: string; state_json: string; away_json: string; location: string }>;
+  const candidates = rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    aliases: parseJson<string[]>(row.aliases_json, []),
+    state: parseNpcState(row.state_json),
+    away: Boolean(row.away_json),
+  }));
+  const move = db.prepare(`UPDATE npcs SET location = ?, updated_at = ? WHERE id = ?`);
+  const now = nowIso();
+  for (const id of partyFollowers(candidates)) {
+    if (rows.find((row) => row.id === id)?.location !== place) {
+      move.run(place, now, id);
+    }
+  }
 }

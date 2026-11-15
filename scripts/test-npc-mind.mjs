@@ -507,6 +507,38 @@ await test("words said aloud with a mind on stage send the narrator back once to
   }
 });
 
+await test("a player character's own quoted words, answered without a narrated line, still ask who on stage heard them", async () => {
+  const { listNpcs } = await import("../src/lib/db/npcs.ts");
+  const others = listNpcs(world.campaignId).filter((entry) => mind.tierOfNpc(entry) === "primary" && !entry.companionSheetId);
+  for (const other of others) {
+    minds.setNpcTier(other.id, "secondary");
+  }
+  npc("Watchman Pell", { trait: "chained to the bench" });
+  const nudges = () => model.requests.filter((request) => String(request.messages?.at(-1)?.content ?? "").includes("nobody asked whether they heard")).length;
+  try {
+    model.script([
+      reply({ calls: [call("npc_speak", { name: "Watchman Pell", perceives: "Aria comes into the shelter." })] }),
+      answer({ speech: "Who's there?", intent: "" }),
+      reply({ text: '"Who\'s there?" Pell calls from the bench.' }),
+    ]);
+    await model.turn(world, "I step into the shelter.", aria.id);
+    const before = nudges();
+    model.script([
+      reply({ text: "The captain leans in and nods, saying nothing." }),
+      reply({ calls: [call("npc_hear", { speaker: "Aria", words: "How long to Malfosso?", listeners: [{ name: "Watchman Pell", reach: "far", dc: 15 }] })] }),
+      reply({ text: "" }),
+    ]);
+    await model.turn(world, '"How long to Malfosso?" I whisper to the captain.', aria.id);
+    assert.equal(nudges() - before, 1, "the player's whisper is asked about once");
+    assert.ok(!memories("Watchman Pell").some((entry) => /Malfosso/.test(entry.content)), "passive 10 against 15: not heard");
+  } finally {
+    for (const other of others) {
+      minds.setNpcTier(other.id, "primary");
+    }
+    minds.setNpcTier(getNpcByName(world.campaignId, "Watchman Pell").id, "secondary");
+  }
+});
+
 await test("a mind played from a mind seat answers the same isolated question, and silence falls to the server's mind", async () => {
   const { createUser } = await import("../src/lib/db/users.ts");
   const seats = await import("../src/lib/db/mind-seats.ts");

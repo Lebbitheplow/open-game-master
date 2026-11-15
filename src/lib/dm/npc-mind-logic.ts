@@ -526,6 +526,8 @@ export type SceneMindCandidate = {
   // Acted in one of the last few turns and not sent off stage since
   // (npc-minds.ts npcsOnStageRecently): asked when time skips.
   onStageRecently: boolean;
+  // Unconscious or dead on the NPC's sheet (npc-state-logic.ts): no turn.
+  silenced?: boolean;
 };
 
 // The tools that let time pass over the scene: a rest, a wait, a journey,
@@ -543,6 +545,7 @@ export function mindsOwedTurn(
       !entry.archived &&
       !entry.away &&
       !entry.companionInFight &&
+      !entry.silenced &&
       (entry.actedLastTurn || (timeSkipped && entry.onStageRecently)) &&
       !touchedIds.has(entry.id),
   );
