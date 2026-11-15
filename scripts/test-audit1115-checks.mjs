@@ -235,5 +235,28 @@ await test("K06: a character's save to end a spell's hold at the end of their tu
   await kit.endFight();
 });
 
+// K07. SRD 5.1, Paladin, Aura of Protection: "Whenever you or a friendly
+// creature within 10 feet of you must make a saving throw, the creature
+// gains a bonus to the saving throw equal to your Charisma modifier (with a
+// minimum bonus of +1). You must be conscious to grant this bonus." A
+// paladin's own steed stands in the aura's heart, and a mount's Dexterity
+// save against an area that caught its rider took only its own Dexterity.
+await test("K07: a mount's save against an area takes its paladin rider's Aura of Protection", async () => {
+  await kit.endFight();
+  const { setMount } = await import("../src/lib/db/mounts.ts");
+  const rider = world.addHero({ class: "paladin", level: 6, maxHp: 60, abilities: { cha: 16, dex: 10 }, features: klass("paladin", "Aura of Protection"), proficiencies: { ...TRAINED } });
+  world.patch(rider.id, { currentHp: 60 });
+  await kit.fight(1);
+  kit.place(rider.id, 3, 3);
+  setMount(world.campaignId, rider.id, { ref: "warhorse", name: "Warhorse", speed: 60, controlled: true, size: "large", ac: 11, hp: 19, maxHp: 19 });
+  const blast = await forced([3, 3, 3, 3, 10, 10], () => world.invoke("aoe_damage", { characterIds: [rider.id], saveAbility: "dex", dc: 15, damage: "4d6", damageType: "fire", halfOnSave: true, reason: "a fire trap" }));
+  assert.equal(blast.ok, true, blast.error);
+  const horse = kit.lastRolls(20).find((roll) => /^Warhorse: DEX save/.test(roll.detail ?? ""));
+  assert.ok(horse, `the staging: the warhorse saved: ${JSON.stringify(blast.result).slice(0, 300)}`);
+  assert.equal(horse.total, 10 + 1 + 3, `the warhorse's save: 10 on the die, DEX +1, the aura +3: ${horse.total}`);
+  setMount(world.campaignId, rider.id, null);
+  await kit.endFight();
+});
+
 world.close();
 finish();
