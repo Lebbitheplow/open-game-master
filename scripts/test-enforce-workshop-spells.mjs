@@ -101,5 +101,14 @@ await test("A spell block the engine could not run is refused when it is saved, 
   assert.ok("error" in checkSpellMech({ resolution: "save", save: "dex", aura: { radiusFeet: 10, save: "wis", dice: "9d999x", baseLevel: 3, type: "fire", halfOnSave: true } }));
 });
 
+await test("A workshop copy keeps every field of the engine's own row: Witch Bolt's later beam, Destructive Wave's choice of type.", () => {
+  // The schema's parse drops a key it does not name; a copy of Witch Bolt
+  // lost repeatDice and its later turns dealt nothing.
+  const bolt = checkSpellMech({ resolution: "attack", attack: "ranged", damageType: "lightning", repeat: "action", repeatDice: "1d12" });
+  assert.ok("mech" in bolt, JSON.stringify(bolt));
+  assert.equal(bolt.mech.repeatDice, "1d12");
+  assert.ok("error" in checkSpellMech({ resolution: "attack", repeat: "action", repeatDice: "1d999x" }), "dice the table cannot roll are refused");
+});
+
 await closeTables();
 finish();

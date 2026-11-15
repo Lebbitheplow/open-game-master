@@ -8,6 +8,7 @@
 // free of the table itself, so a module the browser loads may read it.
 
 import type { EnemyAttack, OnHitRider } from "@/lib/bestiary/statblock";
+import { textKey } from "@/lib/language/text-logic";
 
 export type CreatureAbility = "str" | "dex" | "con" | "int" | "wis" | "cha";
 
@@ -134,15 +135,17 @@ export function attackDamage(attack: Pick<CreatureAttack, "damage" | "riders">):
 }
 
 // The rider in the shape an enemy's attack carries (src/lib/dm/enemy-hit.ts
-// resolveOnHit), for a creature that turns on the party or a creature
-// polymorphed into a beast. A rider that spares some targets is left to the
-// DM entire, as that engine reads no such limit.
+// resolveOnHit), for a creature that turns on the party, a creature
+// polymorphed into a beast, and every SRD creature on a server with no
+// content pack. The kinds it spares ("a creature other than an elf or
+// undead") are `spares`, as the pack's reader keeps them (attack-text.ts),
+// and each hit door reads them (riderSpares). Handed to the GM whole, as
+// before those doors read it, a bundled ghoul's claws never rolled their
+// save: the paralysis was the GM's to remember.
 function enemyRider(onHit: CreatureOnHit): OnHitRider | undefined {
   const manual = [...(onHit.manual ?? [])];
-  if (onHit.exempt?.length) {
-    return { manual: [`On a hit: ${onHitWords(onHit)}.`, ...manual] };
-  }
   const rider: OnHitRider = {
+    ...(onHit.exempt?.length ? { spares: onHit.exempt.map(textKey) } : {}),
     ...(onHit.save ? { save: onHit.save } : {}),
     ...(onHit.dc ? { dc: onHit.dc } : {}),
     ...(onHit.condition ? { condition: onHit.condition } : {}),
@@ -238,6 +241,9 @@ function creatureRider(onHit: OnHitRider): CreatureOnHit | undefined {
     ...(onHit.drainMaxHp === "all" ? { drainMaxHp: "all" as const } : {}),
     ...(onHit.unconsciousFailBy ? { unconsciousFailBy: onHit.unconsciousFailBy } : {}),
     ...(onHit.unconsciousAtMost ? { unconsciousAtMost: onHit.unconsciousAtMost } : {}),
+    // The kinds it spares ("a creature other than an elf or undead"): dropped
+    // here, a workshop creature made from a ghoul paralyzed elves.
+    ...(onHit.spares?.length ? { exempt: [...onHit.spares] } : {}),
     ...(manual.length ? { manual: manual.slice(0, 6) } : {}),
   };
   return Object.keys(rider).length ? rider : undefined;
