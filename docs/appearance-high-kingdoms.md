@@ -33,7 +33,7 @@ When combining this branch with Hearth & Haven or another theme branch, keep
 both catalog entries, icon mappings, stylesheet imports and coordination rows.
 The only shared validation adjustment is the four-line image-readiness change in
 `scripts/appearance/picker-check.mjs`; theme styles and artwork stay under
-`kingdoms`. Preserve the required base dependency when preparing the draft PR.
+`kingdoms`. Preserve the required base dependency when updating the draft PR.
 
 ## Validation
 
@@ -117,12 +117,13 @@ selects High Kingdoms. Both existing pickers consume the catalog.
 
 ## Remaining delivery work
 
-The draft PR description is prepared locally at `.theme-preview/pr-body.md`.
-No PR has been created: automatic approval review rejected publication because
-the delegated assignment was not accepted as direct human authorization to open
-the external PR. Direct approval is required before that final action.
+[Draft PR 973](https://github.com/Lebbitheplow/open-game-master/pull/973)
+is open against `main`. Albert explicitly approved its creation after automatic
+approval review had rejected the delegated assignment as publication authority.
+The GitHub connector lacked repository write access, so the approved draft was
+created through the existing signed-in GitHub CLI.
 
-The proposed PR depends on PR 962 and must stay draft. Final-commit CI, native app-shell screenshots,
+PR 973 depends on PR 962 and must stay draft. Final-commit CI, native app-shell screenshots,
 real-device phone testing and screen-reader review remain outstanding.
 The disposable Chromium checks do not establish multiplayer or combat-rule
 correctness, Safari support, or screen-reader usability.
