@@ -78,6 +78,7 @@ const REGISTRY = {
   "job-control.ts:__odmOpenTurnScopes": { kind: PLUMBING, what: "turns in flight" },
   "job-control.ts:__odmStandInTurns": { kind: PLUMBING, what: "stand-in turns in flight" },
   "loop.ts:__odmTurnRequested": { kind: PLUMBING, what: "turn requests, recovered at boot (test-real-dice-restart)" },
+  "mind-seat-relay.ts:__odmMindSeatRelay": { kind: PLUMBING, what: "questions waiting on a human mind seat: forgotten, the server's own mind answers on timeout" },
   "model.ts:__odmUtilityBreakers": { kind: PLUMBING, what: "circuit breakers" },
   "narration-slot.ts:__odmNarrationSlots": { kind: PLUMBING, what: "narration in flight" },
   "player-word-read.ts:readings": { kind: PLUMBING, what: "a cache of a model's reading of a player's words; read again when empty" },
