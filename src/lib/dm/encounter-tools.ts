@@ -22,6 +22,7 @@ import {
   setFloor,
   getFloor,
   combatOwnsFloor,
+  staleFightFloor,
   campaignSeats,
   type Campaign,
   type Floor,
@@ -722,6 +723,13 @@ export function floorAfterRelease(campaignId: string): Floor {
 // floor row says. Spotlights and lead overrides are refused while this holds.
 export function fightOwnsFloor(campaignId: string): boolean {
   return combatOwnsFloor(getFloor(campaignId)) || initiativeFloorFor(campaignId) !== null;
+}
+
+// Whether a person may not set the floor because a fight owns it: as
+// fightOwnsFloor, but a floor left naming a fight that has ended owns nothing
+// (campaigns.ts staleFightFloor, issue 968), so the lead can open the table.
+export function fightHoldsFloor(campaignId: string): boolean {
+  return initiativeFloorFor(campaignId) !== null || (combatOwnsFloor(getFloor(campaignId)) && !staleFightFloor(campaignId));
 }
 
 function describeOrder(encounter: Encounter): string {
