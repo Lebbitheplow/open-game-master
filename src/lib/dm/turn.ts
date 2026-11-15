@@ -3946,6 +3946,9 @@ export function handleLocationCall(
   toolName: string,
   rawArguments: string,
   picturesAvailable: boolean,
+  // A person at the console naming who goes (invoke-dispatch, not the AI):
+  // their pick stands even on the table's first move.
+  byPerson = false,
 ): ToolResult {
   let args: {
     name?: unknown;
@@ -4061,11 +4064,12 @@ export function handleLocationCall(
     publishPersisted(campaign.id, "campaign_updated", { scene: location.name });
     // Some of the party went and the rest stayed (issue 563): a moment a
     // companion may slip away.
-    // A party that has not set out yet has not split: the first move_party
-    // of a table names nobody left behind, whatever it lists. (Until
-    // 2026-11-14 a table with no place was offered the tool without the
-    // field; it is one tool now, see dmTurnTools.)
-    split = previous ? partySplit(campaign, args.characterIds, location.name) : "";
+    // A party that has not set out yet has not split: the model's first
+    // move_party of a table names nobody left behind, whatever it lists.
+    // (Until 2026-11-14 a table with no place was offered the tool without
+    // the field; it is one tool now, see dmTurnTools.) A person who picked
+    // "Who goes" meant it, so theirs splits the party wherever it stands.
+    split = previous || byPerson ? partySplit(campaign, args.characterIds, location.name) : "";
   } else {
     previousLayout = getCurrentLocation(campaign.id)?.layoutDescription ?? "";
     location = updateCurrentLocationDetails(campaign.id, { layoutDescription, connections });

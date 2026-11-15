@@ -184,6 +184,17 @@ await test("the party splitting up is a moment a companion slips away; the whole
   assert.equal(departure().gone.how, "Slipped away while the party was split up");
 });
 
+await test("on a table's first move, a person naming who goes splits the party; the AI's list is read as the whole party setting out", async () => {
+  const byPerson = await table({});
+  const first = await byPerson.world.invoke("move_party", { name: "The Old Mill", visionClear: false, characterIds: [byPerson.pc.id] });
+  assert.equal(first.ok, true, first.error);
+  assert.match(first.result.note, /The party has split up: Kael went to The Old Mill, and Seren stayed behind\./);
+  const byAi = await table({});
+  const opening = await byAi.asAi("move_party", { name: "The Old Mill", visionClear: false, characterIds: [byAi.pc.id] });
+  assert.equal(opening.ok, true, opening.error);
+  assert.doesNotMatch(opening.result.note ?? "", /split up/);
+});
+
 await test("one ceiling rule: a companion come back for the party fights whole at a Turn table, and answers to the ceiling elsewhere", async () => {
   const returning = [{ stats: { cr: 5 }, sheetFoe: { kind: "returning", npcId: "n", name: "Seren" } }];
   const at = (companionConscience) => rosterBudget({ difficulty: "normal", gameSettings: { relationships: "on", companionConscience } }, [3], returning);

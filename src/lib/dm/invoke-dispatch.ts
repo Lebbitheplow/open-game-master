@@ -331,7 +331,7 @@ function engineCall(
           campaign.gameSettings.mapsEnabled &&
           imageProducerReady(campaign.settings) &&
           (await imagesAvailable(campaign.settings));
-        const result = handleLocationCall(campaign, name, rawArguments, pictures);
+        const result = handleLocationCall(campaign, name, rawArguments, pictures, turn.actor !== "ai");
         // Bookkeeping the model's turn uses to link its narration to a map;
         // a person's narration is a separate message, so it goes no further.
         delete result.movedToNewLocation;
