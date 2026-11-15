@@ -38,6 +38,7 @@ import { sanctuaryRefusal } from "@/lib/dm/spell-defenses";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { thoughtShieldBack } from "@/lib/dm/thought-shield";
 import { sanctuaryWard } from "@/lib/dm/enemy-conditions";
+import { immuneLine, immuneToUse, settleSaveImmunity } from "@/lib/dm/save-immunity";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { outOfReach } from "@/lib/dm/spell-planes";
 import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
@@ -376,6 +377,11 @@ export function handleCastAtPlayer(
     if ("error" in prepared) {
       return prepared;
     }
+    // Withstood before, and immune to it for the while its block says
+    // (save-immunity.ts): no save is asked, and the creature keeps its action.
+    if (immuneToUse(getSheetById(sheet.id) ?? sheet, prepared)) {
+      return { error: `${immuneLine(sheet.name, prepared)} Nothing was spent; ${prepared.enemy.displayName} may target someone else or do something else.`, retry: true };
+    }
     // Sanctuary answers a harmful spell as it answers an attack; the refused
     // caster keeps its action for another target.
     const warded = sanctuaryWard(campaign.id, prepared.enemy, sheet, sanctuaryRefusal);
@@ -517,6 +523,9 @@ export function handleCastAtPlayer(
     ...(save.notes.length ? { conditionEffects: save.notes } : {}),
     ...(use?.corrections.length ? { corrected: use.corrections } : {}),
   };
+  if (use && settleSaveImmunity(campaign.id, sheet.id, use, saved) && saved) {
+    base.immune = immuneLine(sheet.name, use);
+  }
 
   if (damage) {
     // The card shows the dice as rolled; the save halves or stops what lands.

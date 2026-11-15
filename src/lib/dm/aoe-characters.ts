@@ -28,6 +28,7 @@ import { saveAgainst } from "@/lib/dm/roll-about";
 import { spellSchoolFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { areaOnMount } from "@/lib/dm/mount-area";
+import { immuneLine, immuneToUse, settleSaveImmunity } from "@/lib/dm/save-immunity";
 
 export function aoeOnCharacters(input: {
   campaign: Campaign;
@@ -65,6 +66,12 @@ export function aoeOnCharacters(input: {
       results.push({ target: sheet.name, success: true, damage: 0, masked: `${sheet.name}'s beaked mask keeps out ${input.spell}.` });
       continue;
     }
+    // Withstood this creature's use before: immune to it for the while its
+    // block says, so no save is asked and nothing lands (save-immunity.ts).
+    if (enemyUse && immuneToUse(getSheetById(sheet.id) ?? sheet, enemyUse)) {
+      results.push({ target: sheet.name, success: true, damage: 0, immune: immuneLine(sheet.name, enemyUse) });
+      continue;
+    }
     // The save a requested roll would be: conditions, a paladin's aura,
     // lasting effects, exhaustion and an inspiration die all count
     // (src/lib/dm/forced-save.ts).
@@ -97,6 +104,7 @@ export function aoeOnCharacters(input: {
     // An automatic failure (a paralyzed creature's DEX save) is settled as
     // any failure: the spell's conditions land and Evasion still halves.
     const success = save.autoFailed ? false : save.success;
+    const immune = enemyUse && !careful ? settleSaveImmunity(campaign.id, sheet.id, enemyUse, success) && success : false;
     // A player's spell that binds lays its conditions on a character who
     // fails, recorded with the spell (an ally caught in a Slow).
     // What landed and what a trait refused are both reported, so the
@@ -135,6 +143,7 @@ export function aoeOnCharacters(input: {
       ...(evasion ? { evasion: success ? "no damage" : "half damage" } : {}),
       ...(bound.length ? { conditionApplied: bound.join(", ") } : {}),
       ...(refused.length ? { conditionRefused: refused.join(" ") } : {}),
+      ...(immune && enemyUse ? { immune: immuneLine(sheet.name, enemyUse) } : {}),
     };
     const hpBefore = getSheetById(sheet.id)?.currentHp ?? sheet.currentHp;
     const landing = taken.filter((entry) => entry.amount > 0);

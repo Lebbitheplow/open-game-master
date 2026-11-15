@@ -70,6 +70,9 @@ export type EnemyUse = {
   followUp?: string;
   // A spell or a magical ability, which Magic Resistance answers.
   magical: boolean;
+  // A creature that made the save is immune to this use for a while, by
+  // the block (save-effect.ts immuneAfter): save-immunity.ts holds it.
+  immuneAfter?: { rounds: number; onEnd: boolean };
   // The numbers are the block's (or the spell's): the caller's are ignored.
   // False only for a creature whose block lists nothing to match (a
   // synthesized enemy), which keeps the caller's numbers.
@@ -276,6 +279,7 @@ export function prepareEnemyUse(campaign: Campaign, input: Input): EnemyUse | To
         ...(ability.endsOnDamage ? { endsOnDamage: true } : {}),
         ...(ability.failBy ? { failBy: ability.failBy } : {}),
         ...(second ? { followUp: second.name } : {}),
+        ...(ability.immuneAfter ? { immuneAfter: ability.immuneAfter } : {}),
         magical: Boolean(ability.magical),
       });
     }
