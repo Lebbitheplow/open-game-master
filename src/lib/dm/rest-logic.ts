@@ -410,7 +410,8 @@ export function hitDiceHealing(
   // Each die is held to them alone: Durable once floored the dice together,
   // so a 1 and a 10 healed 17 where the rule's floor on the 1 heals 19.
   // `times`: a Periapt of Wound Closure doubles what each die restores.
-  perDie: { floor?: number; add?: number; times?: number } = {},
+  // `highest`: each die counts its top face (a Potion of Vitality's day).
+  perDie: { floor?: number; add?: number; times?: number; highest?: boolean } = {},
 ): number {
   const diceTerms = outcome.terms.filter((term) => term.kind === "dice");
   const count = typeof extraDice === "number" ? extraDice : extraDice ? 1 : 0;
@@ -420,9 +421,9 @@ export function hitDiceHealing(
     extra += term && term.kind === "dice" ? term.subtotal : 0;
   }
   const fromDice = diceTerms
-    .flatMap((term) => (term.kind === "dice" ? term.dice : []))
+    .flatMap((term) => (term.kind === "dice" ? term.dice.map((die) => ({ ...die, top: term.sides })) : []))
     .filter((die) => die.kept)
-    .reduce((sum, die) => sum + (Math.max(perDie.floor ?? 0, die.value + conMod) + (perDie.add ?? 0)) * (perDie.times ?? 1), 0);
+    .reduce((sum, die) => sum + (Math.max(perDie.floor ?? 0, (perDie.highest ? die.top : die.value) + conMod) + (perDie.add ?? 0)) * (perDie.times ?? 1), 0);
   return fromDice + extra;
 }
 

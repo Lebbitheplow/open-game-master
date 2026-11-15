@@ -25,6 +25,7 @@ import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { removeConditions } from "@/lib/dm/condition-logic";
+import { VITAL_HIT_DICE } from "@/lib/dm/hit-dice";
 import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
@@ -206,7 +207,11 @@ export function applyConsumable(
     case "vitality": {
       const cleared = removeConditions(sheet.conditions, sheet.conditionMeta, ["poisoned", ...diseases]);
       write(campaign, sheet, { exhaustion: 0, conditions: cleared.conditions, conditionMeta: cleared.meta });
-      return { effect: `${sheet.name}'s exhaustion is gone, and any poison or disease with it.` };
+      // "For the next 24 hours, you regain the maximum number of hit points
+      // for any Hit Die you spend": a day's mark the hit dice read
+      // (src/lib/dm/hit-dice.ts). Without it the potion's second half was lost.
+      condition(campaign, turnId, sheet, VITAL_HIT_DICE, 24 * 60, reason);
+      return { effect: `${sheet.name}'s exhaustion is gone, and any poison or disease with it. For 24 hours every Hit Die they spend heals its maximum.` };
     }
     case "health": {
       const cleared = removeConditions(sheet.conditions, sheet.conditionMeta, ["blinded", "deafened", "paralyzed", "poisoned", ...diseases]);

@@ -88,4 +88,29 @@ await test("R03 a worn, attuned Periapt of Wound Closure doubles what each hit d
   table.clearDice();
 });
 
+await test("R04 for 24 hours after a Potion of Vitality every hit die spent heals its maximum", async () => {
+  // SRD 5.1, Potion of Vitality: "For the next 24 hours, you regain the
+  // maximum number of hit points for any Hit Die you spend."
+  const table = await openTable();
+  const fighter = table.addHero({ class: "fighter", level: 5, maxHp: 60, abilities: { con: 14 }, hitDice: { die: "d10", total: 5, spent: 0 } });
+  table.patch(fighter.id, { currentHp: 10, equipment: [{ name: "Potion of Vitality", qty: 1 }] });
+  const drunk = await table.invoke("use_item", { characterId: fighter.id, item: "Potion of Vitality" });
+  assert.equal(drunk.ok, true, drunk.error);
+  table.clearDice();
+  table.diceLog();
+  table.dice(1, 2);
+  const rest = await shortRest(table, [{ characterId: fighter.id, dice: 2 }]);
+  assert.equal(rest.ok, true, rest.error);
+  table.clearDice();
+  // Two d10s at their maximum, each with the +2: 24, whatever the faces.
+  assert.equal(table.sheet(fighter.id).currentHp, 10 + 24);
+  // A day later the potion is spent: the dice heal as rolled again.
+  await table.invoke("pass_time", { amount: 1, unit: "days" });
+  table.patch(fighter.id, { currentHp: 10 });
+  table.dice(1);
+  await shortRest(table, [{ characterId: fighter.id, dice: 1 }]);
+  table.clearDice();
+  assert.equal(table.sheet(fighter.id).currentHp, 10 + 3);
+});
+
 finish();
