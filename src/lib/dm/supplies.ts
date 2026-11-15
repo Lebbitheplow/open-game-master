@@ -44,8 +44,8 @@ import { hasItemTag } from "@/lib/srd/item-tags";
 // costs a level of exhaustion: 3 + the Constitution modifier, at least 1,
 // from the score an item sets or raises (an Amulet of Health's 19). The
 // sheet's own score once counted alone, so the amulet bought no extra day.
-export function daysWithoutFood(sheet: Pick<CharacterSheet, "abilities" | "equipment"> & Partial<CharacterSheet>): number {
-  return Math.max(1, 3 + abilityMod(computeAbilityScore(sheet, "con")));
+export function daysWithoutFood(sheet: Pick<CharacterSheet, "abilities" | "equipment">): number {
+  return Math.max(1, 3 + abilityMod(computeAbilityScore({ abilities: sheet.abilities, equipment: sheet.equipment }, "con")));
 }
 
 // One day's upkeep for one character: what they ate from the pack, whether
