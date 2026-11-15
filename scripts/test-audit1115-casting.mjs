@@ -520,5 +520,44 @@ await test("S12: the save check counts a headband wizard's 7 prepared spells as 
   assert.ok(spellListProblems(bare, { bookAllowance: false }).some((line) => /3/.test(line)), "without the headband, 7 is over the count of 3");
 });
 
+// ---- S13: a duration in words ("a year and a day") is read ----
+
+// SRD 5.1, Mass Suggestion: "When you cast this spell using a 7th-level
+// spell slot, the duration is 10 days. When you use an 8th-level spell slot,
+// the duration is 30 days. When you use a 9th-level spell slot, the duration
+// is a year and a day." The reader took only a duration with digits, so the
+// 9th-level casting kept the 8th's 30 days; and the longest count a lifetime
+// could hold was one year, a day short. The same reader lost Geas's "until it
+// is ended" and Planar Binding's 7th and 8th levels.
+const DAY = 14400;
+
+await test("S13: Mass Suggestion lasts 24 hours, 10 days from a 7th-level slot, 30 from an 8th, a year and a day from a 9th", async () => {
+  const { spellDurationRounds } = await import("../src/lib/dm/spell-effects.ts");
+  const { slotDurationsFromText } = await import("../src/lib/srd/spell-duration.ts");
+  assert.deepEqual([6, 7, 8, 9].map((level) => spellDurationRounds("Mass Suggestion", undefined, level)), [DAY, 10 * DAY, 30 * DAY, 366 * DAY]);
+  const printed = "When you cast this spell using a 7th-level spell slot, the duration is 10 days. When you use an 8th-level spell slot, the duration is 30 days. When you use a 9th-level spell slot, the duration is a year and a day.";
+  assert.deepEqual(slotDurationsFromText(printed).at, [[7, 10 * DAY], [8, 30 * DAY], [9, 366 * DAY]]);
+  // The other rows a slot lengthens still read as before.
+  assert.deepEqual([3, 5].map((level) => spellDurationRounds("Hex", undefined, level)), [8 * 600, 24 * 600]);
+  // Geas from a 9th-level slot: "until it is ended by one of the spells
+  // mentioned above", no count (it read as the 7th level's year).
+  assert.deepEqual([7, 9].map((level) => spellDurationRounds("Geas", undefined, level)), [365 * DAY, null]);
+  // Planar Binding: "10 days with a 6th-level slot, to 30 days with a
+  // 7th-level slot, to 180 days with an 8th-level slot, and to a year and a
+  // day with a 9th-level slot" (the 7th and 8th read as the 6th's 10 days).
+  assert.deepEqual([5, 6, 7, 8, 9].map((level) => spellDurationRounds("Planar Binding", undefined, level)), [DAY, 10 * DAY, 30 * DAY, 180 * DAY, 366 * DAY]);
+  assert.equal(spellDurationRounds("Suggestion", undefined, 9), 8 * 600);
+});
+
+await test("S13: a goblin that fails its save against a 9th-level Mass Suggestion is held for a year and a day", async () => {
+  const { world, sheets: [bard], enemies: [goblin] } = await table([caster("bard", "cha", [], [], 17, { spellcasting: { known: ["Mass Suggestion"] } })]);
+  world.dice(1);
+  const cast = await world.invoke("cast_at_enemy", { characterId: bard.id, targetEnemyId: goblin.id, spell: "Mass Suggestion", saveAbility: "wis", level: 9 });
+  world.clearDice();
+  assert.equal(cast.ok, true, cast.error);
+  const foe = world.enemies().find((entry) => entry.id === goblin.id);
+  assert.equal(foe.conditionMeta.suggested?.rounds, 366 * DAY, JSON.stringify(foe.conditionMeta));
+});
+
 closeTables();
 finish();

@@ -4,10 +4,12 @@
 import { z } from "zod";
 import { ABILITIES } from "@/lib/schemas/abilities";
 
-// The longest lifetime a count of rounds can hold: a year. Spells that last
-// days (Geas's thirty, Contagion's seven) are counted in rounds like every
-// other duration, ten to the minute; "until dispelled" carries no count.
-export const ROUND_CEILING = 365 * 24 * 60 * 10;
+// The longest lifetime a count of rounds can hold: a year and a day, Mass
+// Suggestion's from a 9th-level slot (a year alone cut it a day short).
+// Spells that last days (Geas's thirty, Contagion's seven) are counted in
+// rounds like every other duration, ten to the minute; "until dispelled"
+// carries no count.
+export const ROUND_CEILING = 366 * 24 * 60 * 10;
 
 // One instance of a condition: its lifetime, its source, what ends it.
 const conditionInstanceSchema = z.object({
