@@ -24,7 +24,7 @@ import { selectedCharacter } from "@/lib/player-characters";
 // The genre catalogs' rules text, all of it: the model reads it beside a
 // custom feature (src/lib/classes/feature-text.ts).
 import "@/lib/classes/feature-text-all";
-import { resourceDef } from "@/lib/srd/class-resources";
+import { rechargeOf, resourceDef } from "@/lib/srd/class-resources";
 import { foretoldStateLine } from "@/lib/dm/foretold-logic";
 import { featEngineTag } from "@/lib/srd/feat-combat";
 import { featFactsFor } from "@/lib/characters/catalog";
@@ -749,7 +749,7 @@ export function describeSheet(
     const parts = resourceEntries.map(([id, state]) => {
       const def = resourceDef(id);
       return `${def?.displayName ?? id} ${state.max - state.used}/${state.max}${
-        def?.recharge === "short" ? " (refills on any rest)" : ""
+        def && rechargeOf(def, sheet) === "short" ? " (refills on any rest)" : ""
       }`;
     });
     lines.push(

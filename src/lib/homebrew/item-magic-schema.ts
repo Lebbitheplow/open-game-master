@@ -81,6 +81,9 @@ export const chargeRuleSchema = z.object({
   lastChargeRegain: dice.optional(),
   regainAtDusk: flag,
   spentAway: flag,
+  // Emptied, all back this many days on (SRD 5.1, Horn of Valhalla's 7):
+  // carried so a copied SRD item keeps its wait (ChargeRule.regainDays).
+  regainDays: int(1, 36500).optional(),
   daily: z.string().trim().min(1).max(200).optional(),
   // A use past the last charge risks the item (SRD 5.1, Wind Fan).
   overuseRisk: int(1, 100).optional(),

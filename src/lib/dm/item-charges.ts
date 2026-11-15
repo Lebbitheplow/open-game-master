@@ -188,15 +188,28 @@ function withoutBeadsSpent(item: EquipmentItem): EquipmentItem {
   return rest;
 }
 
+// Whether an item whose charges come back days after it empties (a Horn of
+// Valhalla's 7) is whole again at minute `to` of the clock.
+export function daysWaitOver(item: Pick<EquipmentItem, "emptiedAt">, rule: ChargeRule, to: number): boolean {
+  return Boolean(rule.regainDays) && typeof item.emptiedAt === "number" && to >= item.emptiedAt + (rule.regainDays ?? 0) * MINUTES_PER_DAY;
+}
+
+function withoutEmptiedAt(item: EquipmentItem): EquipmentItem {
+  const { emptiedAt: _at, ...rest } = item;
+  void _at;
+  return rest;
+}
+
 // Every dawn the clock crosses, each charged item that regains at dawn rolls
 // what it regains (never past its most); an item whose text brings its uses
 // back at dusk, at each dusk. Called by advanceClock, so a rest, travel and
 // pass_time all bring the same dawn. A roll card is published for each item
-// so the table sees the dice.
+// so the table sees the dice. An item that waits days from emptying is whole
+// once the clock reaches the end of its wait, at dawn or not.
 export function rechargeAtDawn(campaignId: string, from: number, to: number): string[] {
   const dawns = Math.min(30, dawnsBetween(from, to));
   const dusks = Math.min(30, dusksBetween(from, to));
-  if (!dawns && !dusks) {
+  if (to <= from) {
     return [];
   }
   const recharged: string[] = [];
@@ -209,7 +222,12 @@ export function rechargeAtDawn(campaignId: string, from: number, to: number): st
         changed = true;
       }
       const rule = chargeRuleOf(item);
-      if (!rule?.regain || typeof item.charges !== "number") {
+      if (rule && daysWaitOver(item, rule, to)) {
+        changed = true;
+        recharged.push(`${sheet.name}'s ${item.name}: ${chargeMax(rule)}/${chargeMax(rule)}`);
+        return { ...withoutEmptiedAt(item), charges: chargeMax(rule) };
+      }
+      if (!rule?.regain || typeof item.charges !== "number" || (!dawns && !dusks)) {
         return item;
       }
       const most = chargeMax(rule);

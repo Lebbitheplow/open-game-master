@@ -71,10 +71,18 @@ export function chargesShort(item: Pick<EquipmentItem, "name" | "charges">, rule
   if (count <= left || (rule.overuseRisk && left === 0)) {
     return null;
   }
-  const regains = rule.regain
-    ? rule.regain === "all"
-      ? `It regains all its charges at ${rule.regainAtDusk ? "dusk" : "dawn"}.`
-      : `It regains ${rule.regain} charges at ${rule.regainAtDusk ? "dusk" : "dawn"}.`
-    : "It does not regain charges.";
-  return `${item.name} has ${left} charge${left === 1 ? "" : "s"} left and this use needs ${count}. ${regains}`;
+  return `${item.name} has ${left} charge${left === 1 ? "" : "s"} left and this use needs ${count}. ${regainSentence(rule)}`;
+}
+
+// When an item's charges come back, for its refusal and its use's note: at
+// dawn (or dusk), days after it empties, or never.
+export function regainSentence(rule: ChargeRule): string {
+  if (rule.regainDays) {
+    return `It holds all its charges again ${rule.regainDays} days after its last one was spent.`;
+  }
+  if (!rule.regain) {
+    return "It does not regain charges.";
+  }
+  const when = rule.regainAtDusk ? "dusk" : "dawn";
+  return rule.regain === "all" ? `It regains all its charges at ${when}.` : `It regains ${rule.regain} charges at ${when}.`;
 }

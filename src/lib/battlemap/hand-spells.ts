@@ -20,7 +20,7 @@ import { counterSpendCards, pickLabel, playedAsSpendCard } from "@/lib/battlemap
 import { authoredSpendFor, gateHolds } from "@/lib/srd/authored-effects";
 import { nameChoice } from "@/lib/srd/feature-names";
 import { affinityCastType } from "@/lib/srd/dragon-ancestor";
-import { heldAtWill, resourceDef, resourceLevel, type ResourceDef, resourceName } from "@/lib/srd/class-resources";
+import { heldAtWill, rechargeOf, resourceDef, resourceLevel, type ResourceDef, resourceName } from "@/lib/srd/class-resources";
 import { psionicOptions } from "@/lib/dm/option-costs";
 import { ACTION_SURGED, WEAPON_HIT } from "@/lib/dm/action-budget";
 import { AFTER_ROLL_COUNTERS } from "@/lib/dm/after-roll-logic";
@@ -832,7 +832,7 @@ export function featureCards(sheet: CharacterSheet, turn: HandTurn): HandCard[] 
         standingGate(sheet, turn, cost === "reaction" ? "reaction" : cost === "bonus" ? "bonus" : cost === "free" ? "free" : def.replacesAttack ? "attack" : "action"),
         // With no use left, the other price its text names still pays
         // (counter-rules.ts otherPrice): sorcery points, or a spell slot.
-        left > 0 || otherPrice(def, sheet) ? null : { reason: `${def.displayName} is spent until a ${def.recharge} rest.`, spent: true },
+        left > 0 || otherPrice(def, sheet) ? null : { reason: `${def.displayName} is spent until a ${rechargeOf(def, sheet)} rest.`, spent: true },
         // SRD 5.1 fighter, Action Surge: "only once on the same turn".
         id === "action_surge" && (turn.marks ?? []).includes(ACTION_SURGED)
           ? { reason: "Action Surge is used once a turn; the other use waits for a later turn.", spent: true }

@@ -12,7 +12,7 @@ import { computeSheetDerived } from "@/lib/srd";
 import { ELEMENTAL_WILD_SHAPE_COST, elementalWildShape, wildShapeUse, type WildShapeAsk } from "@/lib/dm/wild-shape-use";
 import { RAGE_FIRST, withoutRageFirst } from "@/lib/dm/mt-srd-barbarian";
 import { targetReachProblem } from "@/lib/dm/mt-srd-reach";
-import { heldUnlimitedState, isUnlimited, matchResource, RAGING, recoveringPrefix, resourceLevel, type ResourceDef, type SaveAbilityId, type SaveTerms, sheetCatalog } from "@/lib/srd/class-resources";
+import { heldUnlimitedState, isUnlimited, matchResource, RAGING, rechargeOf, recoveringPrefix, resourceLevel, type ResourceDef, type SaveAbilityId, type SaveTerms, sheetCatalog } from "@/lib/srd/class-resources";
 import { counterGate, counterSaveDc, otherPrice } from "@/lib/srd/counter-rules";
 import { rallyMark, rallyRefusal } from "@/lib/dm/ar-wbf-feat-rally";
 import { treatsRefusal } from "@/lib/dm/ar-wbf-feat-treats";
@@ -616,7 +616,7 @@ export function computeUseResource(
       resource: def.displayName,
       spent: slotPays ? `a level ${more.slotLevel} spell slot (no use was left)` : paid ? `${paid.amount} ${paid.id.replace(/_/g, " ")} (no use was left)` : paidSlot !== null ? `a level ${paidSlot} spell slot (no use was left)` : cost,
       left: unlimited ? "unlimited" : paid || paidSlot !== null ? `0/${state.max}` : `${left - cost}/${state.max}`,
-      refills: def.recharge === "short" ? "on any rest" : "on a long rest",
+      refills: rechargeOf(def, sheet) === "short" ? "on any rest" : "on a long rest",
       effect: def.guidance,
     },
   };

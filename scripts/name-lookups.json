@@ -2491,6 +2491,7 @@
     "lib/srd/ammunition.ts#keyed": [["identity",1,"SRD, spell, feature, subclass, hazard and magic rows by textKey (or armorKey/gearKey/rowKey/featureKey/priceKey, textKey-based); row tables keyed by the row's own name; the workshop's tables"]],
     "lib/srd/ammunition.ts#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/srd/ammunition.ts#partial": [["key",2,"ODM's own \"(20)\" count in a line's name"]],
+    "lib/srd/armor.ts#first": [["key",1,"the first of the unarmored formulas a sheet holds, in its class list's order (the class it gained Unarmored Defense from first, SRD 5.1 multiclassing): features already matched by name, no text naming a record"]],
     "lib/srd/armor.ts#bypass": [["key",1,"the \"+N\" lives in the item's own name (magicItemBonus, the one helper)"]],
     "lib/srd/armor.ts#keyed": [["key",1,"an armour's other whole names, keyed by its row name"],["identity",3,"SRD, spell, feature, subclass, hazard and magic rows by textKey (or armorKey/gearKey/rowKey/featureKey/priceKey, textKey-based); row tables keyed by the row's own name; the workshop's tables"]],
     "lib/srd/armor.ts#partial": [["key",4,"the English proficiency names a class lists"],["key",1,"the armor index built from the rows' own names"],["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],

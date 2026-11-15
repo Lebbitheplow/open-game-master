@@ -305,8 +305,10 @@ export type ResourceDef = {
   // Vanish is counted, the ranger's is not.
   grantedBy?: string[];
   displayName: string;
-  // classId is the class whose level sized the counter, when one did.
-  maxFor: (level: number, abilityMods: Record<string, number>, classId?: string) => number;
+  // classId is the class whose level sized the counter, when one did, and
+  // characterLevel the whole character's: a count of the proficiency bonus
+  // reads it, since the bonus follows the total level, not one class's.
+  maxFor: (level: number, abilityMods: Record<string, number>, classId?: string, characterLevel?: number) => number;
   recharge: Recharge;
   effect: ResourceEffect;
   action?: ResourceAction;
@@ -858,12 +860,15 @@ const SUBCLASS_RESOURCE_DEFS: ResourceDef[] = (
   id: row.id,
   match: row.match,
   displayName: row.displayName,
-  maxFor: (level: number, mods: Record<string, number>) => {
+  maxFor: (level: number, mods: Record<string, number>, _classId?: string, characterLevel?: number) => {
     if (row.byLevel) {
       return Math.max(1, level * (row.levelTimes ?? 1) + (row.levelPlus ?? 0) + (row.plusAbility ? (mods[row.plusAbility] ?? 0) : 0));
     }
     if (row.proficiency) {
-      return proficiencyBonus(level) * row.proficiency;
+      // SRD 5.1, Multiclassing: the proficiency bonus is always the total
+      // level's. Read from the class level, a wizard 2 / fighter 5 had two
+      // Bladesongs where proficiency +3 gives three.
+      return proficiencyBonus(characterLevel ?? level) * row.proficiency;
     }
     if (row.scale) {
       const step = row.scale.find(([atLevel]) => level >= atLevel);
@@ -1276,6 +1281,21 @@ export function resourceLevel(
   return resourceLevelFor(def, matched?.classId, sheet.level, sheet.classes).level;
 }
 
+// The rest a counter comes back on as this sheet holds it: Bardic
+// Inspiration's long rest is any rest from bard 5 (Font of Inspiration).
+// Read from `recharge` alone, GAME STATE, a spend's result and the Hand told
+// a 5th-level bard their uses waited for a long rest.
+export function rechargeOf(
+  def: ResourceDef,
+  sheet?: {
+    level: number;
+    classes?: Array<{ id: string; level: number }>;
+    features?: Array<{ name: string; classId?: string }>;
+  },
+): Recharge {
+  return def.rechargeFor && sheet ? def.rechargeFor(resourceLevel(def, sheet)) : def.recharge;
+}
+
 // Builds the resources map from the features list: features that map to a
 // known resource get a counter sized for the level; existing used counts
 // are preserved (clamped to the new max) so level-ups never refund spent
@@ -1317,7 +1337,7 @@ export function populateResources(
       // rebuke before 3rd level) is no counter at all.
       continue;
     }
-    let max = def.maxFor(scaled.level, abilityMods, scaled.classId);
+    let max = def.maxFor(scaled.level, abilityMods, scaled.classId, level);
     // A feature that upgrades this one raises the ceiling: by the row the
     // catalog wrote for it, or by the count its own name states.
     for (const feature of held) {

@@ -10,7 +10,7 @@ import racesJson from "@/lib/srd/races.json";
 import skillsJson from "@/lib/srd/skills.json";
 import spellSlotsJson from "@/lib/srd/spell-slots.json";
 import { CUSTOM_CLASSES, findCustomClass } from "@/lib/classes";
-import { computeArmorClass, unarmoredFormulaFor, type AcBreakdown } from "@/lib/srd/armor";
+import { computeArmorClass, unarmoredFormulasFor, type AcBreakdown, type UnarmoredFormula } from "@/lib/srd/armor";
 import { conditionAcRiders } from "@/lib/srd/condition-effects";
 import { featureSaveProficiencies, featureSkillProficiencies } from "@/lib/srd/trait-rules";
 import { borrowedProficiencies } from "@/lib/srd/borrowed-proficiency";
@@ -190,7 +190,7 @@ export function acBreakdownFor(source: AcSource): AcBreakdown {
   // and CON that feed the AC, so the effective scores are used throughout.
   const abilities = effectiveAbilities(source.abilities, source.equipment, source);
   const magic = magicItemRiders(source.equipment, source);
-  const input = {
+  const bare = {
     equipment: source.equipment,
     race: source.race,
     armorProfs: source.proficiencies.armor,
@@ -201,11 +201,19 @@ export function acBreakdownFor(source: AcSource): AcBreakdown {
       wis: abilityMod(abilities.wis),
     },
     strength: abilities.str,
-    unarmored: unarmoredFormulaFor(
-      source.classes?.length
-        ? source.classes.map((entry) => entry.id)
-        : source.class,
-      source.features,
+  };
+  // The better of the unarmored formulas held (armor.ts unarmoredFormulasFor).
+  const formulas = unarmoredFormulasFor(
+    source.classes?.length
+      ? source.classes.map((entry) => entry.id)
+      : source.class,
+    source.features,
+  );
+  const input = {
+    ...bare,
+    unarmored: formulas.reduce<UnarmoredFormula | null>(
+      (best, formula) => (!best || computeArmorClass({ ...bare, unarmored: formula }).ac > computeArmorClass({ ...bare, unarmored: best }).ac ? formula : best),
+      null,
     ),
   };
   // The Defense fighting style only counts while actually wearing armor, so

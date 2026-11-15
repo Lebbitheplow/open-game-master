@@ -298,19 +298,32 @@ export function unarmoredFormulaFor(
   classId: string | string[],
   features: Array<{ name: string }>,
 ): UnarmoredFormula | null {
+  return unarmoredFormulasFor(classId, features)[0] ?? null;
+}
+
+// Every unarmored formula the character may choose among: the one class
+// formula it gained first, then the ones no class owns (Draconic
+// Resilience). Two ways to figure the AC are never added, and the character
+// uses the better (SRD 5.1); read as the class one alone, a barbarian 1 /
+// draconic sorcerer 1 stood at 10 + DEX + CON where 13 + DEX was higher.
+export function unarmoredFormulasFor(
+  classId: string | string[],
+  features: Array<{ name: string }>,
+): UnarmoredFormula[] {
   const wantedClasses = (Array.isArray(classId) ? classId : [classId]).map((entry) =>
     entry.trim().toLowerCase(),
   );
   const candidates = UNARMORED_FORMULAS.filter((entry) =>
     holdsFeature({ features }, entry.match),
   );
+  const classless = candidates.filter((entry) => entry.classes.length === 0).map((entry) => entry.formula);
   for (const wanted of wantedClasses) {
     const owned = candidates.find((entry) => entry.classes.includes(wanted));
     if (owned) {
-      return owned.formula;
+      return [owned.formula, ...classless];
     }
   }
-  return candidates.find((entry) => entry.classes.length === 0)?.formula ?? null;
+  return classless;
 }
 
 export type AcBreakdown = {

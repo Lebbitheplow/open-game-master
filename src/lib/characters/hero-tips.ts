@@ -9,7 +9,7 @@
 import { carriedWeapons, deriveHand, FRESH_TURN, SAVE_LABEL, type HandCard, type SpellFact } from "@/lib/battlemap/hand";
 import type { CharacterSheet, CreateSheetInput } from "@/lib/schemas/sheet";
 import { computeSheetDerived, SRD_SKILLS, formatModifier } from "@/lib/srd";
-import { populateResources, resourceDef } from "@/lib/srd/class-resources";
+import { populateResources, rechargeOf, resourceDef } from "@/lib/srd/class-resources";
 import { ammoKindForWeapon, findAmmo } from "@/lib/srd/ammunition";
 import { combatRiders } from "@/lib/srd/feature-effects";
 import { weaponAttackProfile } from "@/lib/dm/attack-logic";
@@ -245,7 +245,7 @@ function bestFeature(cards: HandCard[], sheet: CharacterSheet): { card: HandCard
     const def = resourceDef(card.intent.resourceId);
     const state = sheet.resources[card.intent.resourceId];
     if (!def || !state || state.max <= 0) continue;
-    return { card, uses: state.max, recharge: def.recharge };
+    return { card, uses: state.max, recharge: rechargeOf(def, sheet) };
   }
   return null;
 }

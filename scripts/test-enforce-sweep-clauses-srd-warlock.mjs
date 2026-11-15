@@ -25,6 +25,8 @@ P["warlock.dark-ones-own-luck.rest"] = async () => {
 P["warlock.fiendish-resilience.magical-weapons"] = async () => {
   const t = await rig.table();
   const who = fiend(t, 10);
+  // The type is chosen as a rest ends (SRD 5.1, Fiendish Resilience).
+  assert.equal((await t.rest("short")).ok, true);
   const chosen = await t.use(who, "Fiendish Resilience", { variant: "slashing" });
   assert.equal(chosen.ok, true, chosen.error);
   const hit = async (args) => {

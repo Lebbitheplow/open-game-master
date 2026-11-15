@@ -67,6 +67,11 @@ export type ChargeRule = {
   regainAtDusk?: boolean;
   // The item is gone (or no longer magic) once the last charge is spent.
   spentAway?: boolean;
+  // Emptied, the item waits this many days and then holds all its charges
+  // again (SRD 5.1, Horn of Valhalla: "Once you use the horn, it can't be
+  // used again until 7 days have passed"). The row keeps the minute it
+  // emptied (EquipmentItem.emptiedAt).
+  regainDays?: number;
   // A once-a-day power tracked as one charge: what it does.
   daily?: string;
   // The item may still be used with no charge left, at this percent chance

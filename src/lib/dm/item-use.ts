@@ -44,6 +44,7 @@ import { chargesShort } from "@/lib/srd/item-charge-rules";
 import { linesNamed } from "@/lib/srd/item-row";
 import { beadForSpell, beadRefusal, beadsOf } from "@/lib/srd/prayer-beads";
 import { getSheetById } from "@/lib/db/sheets";
+import { getClock } from "@/lib/db/clock";
 import { textKey } from "@/lib/language/text-logic";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
@@ -120,9 +121,11 @@ function equipmentWithPaymentBack(equipment: readonly EquipmentItem[], paid: Non
     if (charges === undefined) {
       return { ...item, qty: item.qty + 1 };
     }
-    // A prayer bead the cast never used is unused again.
-    const { beadsSpent: _spent, ...rest } = item;
+    // A prayer bead the cast never used is unused again, and an item that had
+    // emptied holds a charge again, so no wait runs (ChargeRule.regainDays).
+    const { beadsSpent: _spent, emptiedAt: _emptied, ...rest } = item;
     void _spent;
+    void _emptied;
     return { ...rest, charges: (item.charges ?? 0) + charges, ...(row.beadsSpent ? { beadsSpent: row.beadsSpent } : {}) };
   });
 }
@@ -314,7 +317,15 @@ export function chargedItemUse(
     const spent = equipmentAfterSpend(sheet.equipment, carried, math.charges, destroyed, becomes);
     const bead = cast && beadsOf(carried.name) ? beadForSpell(cast.spell) : null;
     const at = sheet.equipment.indexOf(carried);
-    const equipment = bead && !destroyed && !becomes ? spent.map((item, index) => (index === at ? { ...item, beadsSpent: [...(item.beadsSpent ?? []), bead] } : item)) : spent;
+    // SRD 5.1, Horn of Valhalla: "Once you use the horn, it can't be used
+    // again until 7 days have passed": the wait runs from the minute it
+    // emptied (item-charges.ts daysWaitOver).
+    const waits = rule?.regainDays && !destroyed && !becomes && math.charges === 0 ? getClock(campaign.id).instant : null;
+    const equipment = spent.map((item, index) => {
+      if (index !== at) return item;
+      const beaded = bead && !destroyed && !becomes ? { ...item, beadsSpent: [...(item.beadsSpent ?? []), bead] } : item;
+      return waits !== null ? { ...beaded, emptiedAt: waits } : beaded;
+    });
     writeCharges(campaign.id, sheet, equipment, "use_item", rule ? `${carried.name}: ${count} charge${count === 1 ? "" : "s"}` : `${carried.name}: used up`, turnId);
   }
   if (refuel) {
@@ -370,7 +381,13 @@ export function chargedItemUse(
         : count === 0
           ? `No charge is spent; ${math.charges} left.`
           : `${count} charge${count === 1 ? "" : "s"} spent; ${destroyed ? "the item is gone" : becomes ? `the item is a ${becomes} now` : `${math.charges} left`}${
-              rule.regain && !destroyed && !becomes ? (rule.regain === "all" ? `, all back at ${rule.regainAtDusk ? "dusk" : "dawn"}` : `, ${rule.regain} back at ${rule.regainAtDusk ? "dusk" : "dawn"}`) : ""
+              rule.regainDays && !destroyed && !becomes
+                ? `, all back ${rule.regainDays} days after the last is spent`
+                : rule.regain && !destroyed && !becomes
+                  ? rule.regain === "all"
+                    ? `, all back at ${rule.regainAtDusk ? "dusk" : "dawn"}`
+                    : `, ${rule.regain} back at ${rule.regainAtDusk ? "dusk" : "dawn"}`
+                  : ""
             }.`,
       ...math.notes,
       check && cast?.check
