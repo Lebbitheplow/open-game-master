@@ -296,7 +296,6 @@ const SKIP = {
   npc_speak: "asks an NPC's own mind, a model call; its revert (npc_memories, npc_proposals) is held by test-npc-mind",
   npc_inform: "writes only npc_memories, a journaled table whose revert test-npc-mind holds",
   npc_past: "writes npc_memories and npcs.inspiration on a first-tier NPC; held by test-npc-mind",
-  npc_hear: "writes only npc_memories of words overheard, a journaled table whose revert test-npc-mind holds",
   relationship_scheme: "needs the player's own opt-in to romance on the sheet, which only the player's settings route writes",
 };
 

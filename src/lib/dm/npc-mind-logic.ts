@@ -26,7 +26,7 @@ export type NpcMemoryKind = (typeof NPC_MEMORY_KINDS)[number];
 export const NPC_SOURCE_KINDS = ["background", "perceived", "told", "self"] as const;
 export type NpcSourceKind = (typeof NPC_SOURCE_KINDS)[number];
 // The source of what the scene showed a mind where it stood (npc_speak's
-// moment, npc_hear's words): proof it was on stage that turn, unlike news
+// moment, words said in its scene): proof it was on stage that turn, unlike news
 // from afar (npc_inform). Never read as a person's name.
 export const ON_STAGE_SOURCE = "on stage";
 
@@ -568,7 +568,7 @@ export function sceneMindsPrompt(names: readonly string[], timeSkipped = false):
       : []),
     `[Table note] ${who} ${names.length === 1 ? "is" : "are"} a first-tier character in this scene and had no turn of their own in it.`,
     "Like a player at the table, each acts after the players and before the outcome.",
-    "Call npc_speak for each now. In perceives, tell them only what they could see and hear of this turn from where they are: sounds, shouts, who left and who came back, what was said within earshot (words npc_hear rolled for: only if it says they heard them). Nothing from beyond their sight and hearing, and nothing of anyone's thoughts.",
+    "Call npc_speak for each now. In perceives, tell them only what they could see and hear of this turn from where they are: sounds, shouts, who left and who came back, what was said there. Nothing from beyond their sight and hearing, and nothing of anyone's thoughts.",
     "Their mind may speak, act, ask or keep silent; then narrate what they say and carry out what they intend with the engine's tools.",
     "If one of them is no longer in the scene at all, call npc_inform for them instead with what, if anything, reached them.",
     // Played live: after the prisoner's silent turn the narrator told the
@@ -577,47 +577,10 @@ export function sceneMindsPrompt(names: readonly string[], timeSkipped = false):
   ].join(" ");
 }
 
-// ---- Who hears words said in the scene (D&D 5e Perception) ----
-//
-// Words the narrator voices, or a hero says, reach the people around only
-// as far as they could hear them. Close by they are heard; out of earshot
-// they are not; in between (across a room, a weak voice, rain on the roof)
-// the listener's Perception decides against the difficulty the narrator
-// sets: passive (10 + Wisdom modifier), or a d20 roll when they are
-// listening on purpose. A miss leaves only that someone spoke.
-export type HearingReach = "near" | "far" | "out_of_earshot";
-
-export function abilityModifier(score: number | undefined): number {
-  return typeof score === "number" && Number.isFinite(score) ? Math.floor((score - 10) / 2) : 0;
-}
-
-export function hears(reach: HearingReach, dc: number, wisdom: number | undefined, d20: number | null): { heard: boolean; total: number | null } {
-  if (reach === "near") return { heard: true, total: null };
-  if (reach === "out_of_earshot") return { heard: false, total: null };
-  const total = (d20 ?? 10) + abilityModifier(wisdom);
-  return { heard: total >= dc, total };
-}
-
-// The note that sends the narrator back once when words were said aloud
-// with first-tier characters on stage and nobody asked who heard them.
-// At most this many npc_hear calls are budgeted for one hearing note (one per
-// speaker); a crowded scene's remaining lines wait for the next turn.
-export const MAX_HEARING_CALLS = 3;
-
-export function hearingPrompt(names: readonly string[], quote: string): string {
-  return [
-    `[Table note] Words were said aloud this turn ("${quote}") with ${names.join(", ")} on stage, and nobody asked whether they heard.`,
-    "Call npc_hear for what each speaker said, listing each of them as a listener with how far they were: near, far (with how hard it was to make out as dc) or out_of_earshot. The server rolls their Perception in secret.",
-    "Do not write the narration again: it stands as it is. If what they heard changes anything, carry it on in the next turn.",
-  ].join(" ");
-}
-
+// What a mind keeps of words said aloud in its scene (npc-mind.ts
+// everyoneHears): everyone there hears them.
 export function heardMemory(speaker: string, words: string, place: string): string {
   return `${place ? `${place}: ` : ""}you heard ${speaker} say: «${words}»`;
-}
-
-export function mutedMemory(speaker: string, place: string): string {
-  return `${place ? `${place}: ` : ""}you saw ${speaker} speaking, too low or too far for you to make out the words.`;
 }
 
 // First-tier NPCs besides the party's companions: each is a mind the table

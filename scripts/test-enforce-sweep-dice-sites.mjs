@@ -445,7 +445,7 @@ const NO_ROW = {
   // The world.
   move_party: "the party's place", update_location: "the place", start_scene: "opens a scene", end_scene: "closes a scene", set_weather: "the weather",
   pass_time: "the clock", roll_treasure: "the GM's treasure dice", check_notice: "passive scores, no dice: check_notice.active is its row", set_npc: "a person", npc_reaction: "the person's 2d6",
-  npc_speak: "an NPC mind's words, no dice", npc_state: "an NPC's body, no dice", npc_hear: "an NPC's own hidden Perception d20, never a seat's", npc_inform: "an NPC's register, no dice", npc_past: "an NPC's past, no dice",
+  npc_speak: "an NPC mind's words, no dice", npc_state: "an NPC's body, no dice", npc_inform: "an NPC's register, no dice", npc_past: "an NPC's past, no dice",
   romance_advance: "a courtship stage", relationship_end: "ends a bond", relationship_scheme: "an NPC's scheme", request_player_input: "a question",
   send_whisper: "a whisper", record_event: "the chronicle", complete_beat: "the arc", write_campaign_note: "a note", recall_story: "memory", search_lore: "lore",
   read_card: "prep", generate_image: "a picture", set_ambience: "sound", show_title: "a title", play_sting: "sound", show_handout: "a handout", dismiss_handout: "a handout",
@@ -537,7 +537,6 @@ const SITES = {
   "lib/dm/invoke-roll.ts#handleRequestRoll": "H",
   "lib/dm/item-charges.ts#rechargeAtDawn": "F", "lib/dm/item-charges.ts#spendChargesMath": "H the d20 on an item's last charge",
   "lib/dm/mount-combat.ts#strikeMount": "F", "lib/dm/natural-onhit.ts#landNaturalOnHit": "D", "lib/dm/npc-agency.ts#advanceNpcAgency": "F", "lib/dm/npc-mind.ts#runOffscreenMinds": "F", "lib/dm/npc-mind.ts#catchUp": "F the engine's die on what a companion tried while apart",
-  "lib/dm/npc-mind.ts#handleNpcHear": "F an NPC's hidden Wisdom (Perception) d20 to catch words said aloud",
   "lib/dm/object-damage.ts#damageObject": "F the damage the GM names for an object, which no character's roll dealt",
   "lib/dm/opportunity-sides.ts#enemiesStrikeWalker": "F", "lib/dm/opportunity.ts#resolveOpportunityAttacks": "F",
   "lib/dm/pc-attack-resolve.ts#throwToHit": "H",

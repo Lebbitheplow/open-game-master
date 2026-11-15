@@ -1681,7 +1681,7 @@
     "lib/dm/npc-mind-logic.ts#str-list": [["key",3,"a mind's memory kinds, source kinds and mental ability keys (engine vocabulary)"]],
     "lib/dm/npc-mind-logic.ts#str-eq": [["key",2,"a memory's stored kind or source kind, a companion's kind and an NPC's stored tier (engine vocabulary)"]],
     "lib/dm/npc-mind.ts#str-includes": [["key",1,"SRD weapon property id (two-handed)"]],
-    "lib/dm/npc-mind-tools.ts#str-list": [["key",5,"tool names and required field names (engine vocabulary)"]],
+    "lib/dm/npc-mind-tools.ts#str-list": [["key",2,"tool names and required field names (engine vocabulary)"]],
     "lib/dm/npc-suggest.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/object-actions.ts#str-eq": [["key",1,"a gear weapon's damage type, the engine's own English name (a burning torch kindles oil)"]],
     "lib/dm/object-actions.ts#toLowerCase": [["key",1,"condition label (engine vocabulary)"]],
@@ -3204,7 +3204,7 @@
     "lib/db/npc-minds.ts#LIKE": [["key",1,"an NPC's id found in the stored speech JSON, an exact id narrowed after by parsing"]],
     "lib/db/npc-minds.ts#str-eq": [["key",1,"a speech entry's speaker kind (engine vocabulary)"]],
     "lib/dm/npc-state-logic.ts#str-list": [["key",3,"an NPC's custody, restraint and condition values (engine vocabulary)"]],
-    "lib/dm/voice-knowledge-logic.ts#str-eq": [["key",2,"a tool's name and a transcript line's author (engine vocabulary)"]],
+    "lib/dm/voice-knowledge-logic.ts#str-eq": [["key",3,"a tool's name, a transcript line's author and a tool result's field types (engine vocabulary)"]],
     "lib/dm/npc-state-guard-logic.ts#str-list": [["table-language",1,"Italian and English words for a body's change in the narrator's prose, only deciding whether a utility read of the narration is worth its call: a miss is caught on the next turn's read of a named person"]]
   }
 }

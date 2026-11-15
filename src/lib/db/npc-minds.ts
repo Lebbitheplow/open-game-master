@@ -47,8 +47,8 @@ export function npcsActedInTurn(campaignId: string, turnId: string): Set<string>
 // The NPCs still on stage across the recent DM turns `turnIdsNewestFirst`:
 // for each NPC, the newest of those turns that left it a memory of the scene
 // decides. It acted there (said or did something), or the scene reached it
-// where it stood (npc_speak's moment, words it overheard through npc_hear,
-// marked ON_STAGE_SOURCE): still on stage. It was only told something, or
+// where it stood (npc_speak's moment, words said in its scene, marked
+// ON_STAGE_SOURCE): still on stage. It was only told something, or
 // shown it from afar (npc_inform): it had left the scene. A time skip asks
 // the first kind for their turn (npc-mind.ts mindsAwaitingTurn). Played
 // live: the prisoner on the cart who only overheard the last exchange was

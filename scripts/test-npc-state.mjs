@@ -97,10 +97,10 @@ await test("the senseless and the dead neither speak nor hear", async () => {
   const spoken = await mind.handleNpcSpeak(world.campaign(), JSON.stringify({ name: "Vell", perceives: "Brakk shakes you." }));
   assert.equal(spoken.refused, "rules");
   assert.match(spoken.error, /unconscious/);
-  const heard = mind.handleNpcHear(world.campaign(), JSON.stringify({ speaker: "Brakk", words: "Wake up.", listeners: [{ name: "Vell", reach: "near" }] }));
-  assert.deepEqual(heard.heard, []);
-  assert.deepEqual(heard.missed, ["Vell"]);
+  state({ name: "Vell", withParty: true });
+  mind.everyoneHears(world.campaign(), "turn-wake", [{ speaker: "Brakk", words: "Wake up." }]);
   assert.equal(minds.listNpcMemories(world.campaignId, row.id).length, 0, "nothing reached a senseless mind");
+  state({ name: "Vell", withParty: false });
 });
 
 // ---- A whole turn --------------------------------------------------------
@@ -159,15 +159,9 @@ await test("when the party moves, its travellers and prisoners are moved with it
   assert.match(logic.npcStateWords(sheetOf("Capitana Mara")), /with the party/);
 });
 
-await test("whoever speaks in the scene or hears it close by is in it; a mind apart is not moved", async () => {
+await test("a mind apart from the party is not moved with it", async () => {
   upsertCurrentLocation({ campaignId: world.campaignId, name: "the gatehouse" });
-  const guard = upsertNpc({ campaignId: world.campaignId, name: "Gate guard", location: "the barracks" });
-  minds.setNpcTier(guard.id, "primary");
-  mind.handleNpcHear(world.campaign(), JSON.stringify({ speaker: "Brakk", words: "Open up.", listeners: [{ name: "Gate guard", reach: "near" }] }));
-  assert.equal(placeOf("Gate guard"), "the gatehouse");
   const far = upsertNpc({ campaignId: world.campaignId, name: "Far sentry", location: "the wall" });
-  mind.handleNpcHear(world.campaign(), JSON.stringify({ speaker: "Brakk", words: "Open up.", listeners: [{ name: "Far sentry", reach: "far" }] }));
-  assert.equal(placeOf("Far sentry"), "the wall", "a far listener is not dragged into the scene");
   minds.setNpcAway(far.id, { place: "the wall", since: 0 });
   state({ name: "Far sentry", withParty: true });
   upsertCurrentLocation({ campaignId: world.campaignId, name: "the keep" });

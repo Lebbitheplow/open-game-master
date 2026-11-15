@@ -24,7 +24,7 @@ risulta in scena. Copre «Con il gruppo» e le regole 2 e 3 della spec.
 - [ ] `npc_state` accetta `withParty` vero/falso.
 - [ ] Quando il luogo corrente del gruppo cambia, ogni PNG con `withParty` vero ha lo stesso luogo subito dopo, senza altre chiamate.
 - [ ] Un PNG prigioniero di un personaggio giocante, o di un PNG che è con il gruppo, segue il gruppo finché resta prigioniero; liberato, resta dove si trova.
-- [ ] Un PNG che parla con `npc_speak` o sente come `near` in `npc_hear` e il cui luogo registrato è diverso da quello corrente viene spostato nel luogo corrente.
+- [ ] Un PNG che parla con `npc_speak` e il cui luogo registrato è diverso da quello corrente viene spostato nel luogo corrente.
 - [ ] Un PNG segnato come lontano (`away`) non viene spostato dalla regola precedente e non segue il gruppo.
 - [ ] Chi è con il gruppo compare nella parte alta dell'elenco del Master, con la dicitura «con il gruppo».
 
@@ -41,7 +41,7 @@ Blocked by 01.
 ## Step-by-Step Implementation Plan
 1. Aggiungere `withParty` a `NpcState` e alla logica pura; derivare «segue il gruppo» da `withParty` o dalla custodia.
 2. Trovare il punto unico in cui il server cambia il luogo corrente della campagna e, lì, aggiornare il luogo di chi segue. Checkpoint: test su cambio di luogo.
-3. Nei punti in cui `npc_speak` e `npc_hear` vengono risolti, allineare il luogo di chi agisce, saltando chi è `away`.
+3. Nel punto in cui `npc_speak` viene risolto, allineare il luogo di chi agisce, saltando chi è `away`.
 4. Aggiornare ordinamento e riga dell'elenco.
 
 ## Testing Plan
