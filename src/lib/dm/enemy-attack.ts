@@ -82,7 +82,7 @@ import { unknownSheetRef } from "@/lib/dm/rolls";
 import { mountTargetProblem, strikeMount } from "@/lib/dm/mount-combat";
 import { riderTakesIt } from "@/lib/dm/ar-wbf-feat-doors";
 import { enemySpellAttack } from "@/lib/dm/enemy-casting";
-import { swallowCover, swallowRefusal } from "@/lib/dm/swallow";
+import { gripsHeldBy, swallowCover, swallowMark, swallowRefusal } from "@/lib/dm/swallow";
 import { swallowActionOf } from "@/lib/dm/swallow-logic";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import { sheetSize } from "@/lib/srd";
@@ -991,12 +991,15 @@ export function handleEnemyAttack(
       ? byType.reduce((sum, part) => sum + (/^(\d+) necrotic\b/i.exec(part) ? Number(/^(\d+)/.exec(part)![1]) : 0), 0)
       : /necrotic/i.test(blow.type ?? attack.type) ? dealt : 0;
     const unridden = getSheetById(target.id);
+    // A bite that may swallow ends the grapples its target holds: read first.
+    const grips = attack.onHit?.swallow ? gripsHeldBy(campaign.id, target.id) : null;
     const onHit = resolveOnHit(campaign, turn, standing, attack, target.id, { sheets, sheetsById, dealt: { total: dealt, necrotic } });
     // What the rider laid on the target, kept with the swing: a reaction
-    // that turns it into a miss takes it off (reaction-refund.ts). A
-    // creature swallowed is the swallow's to free (swallow.ts), not this.
+    // that turns it into a miss takes it off (reaction-refund.ts), a swallow
+    // with the grapples it ended (swallow.ts swallowMark).
     const ridden = getSheetById(target.id);
-    hitLog.laid(unridden && ridden && !onHit?.swallowed ? riderMarkOf(unridden, ridden, Array.isArray(onHit?.riderCondition) ? (onHit.riderCondition as string[]) : []) : null);
+    const own = Array.isArray(onHit?.riderCondition) ? (onHit.riderCondition as string[]) : [];
+    hitLog.laid(unridden && ridden ? (onHit?.swallowed ? swallowMark(campaign.id, unridden, ridden, target.id, grips, own) : riderMarkOf(unridden, ridden, own)) : null);
     // Charge, Pounce, Trampling Charge: the save the run and this hit force,
     // and a Pounce's bonus attack on a creature left prone (enemy-charge.ts).
     const charged = charge

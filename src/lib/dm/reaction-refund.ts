@@ -52,6 +52,7 @@ import {
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { takeRetortBack } from "@/lib/dm/spell-retort";
 import { thoughtShieldLessened } from "@/lib/dm/thought-shield";
+import { gripsBack } from "@/lib/dm/swallow";
 import { ridersBack, type RiderMark } from "@/lib/dm/retort-logic";
 import { answerLabel, carryCuts, hitIdOf, openHits, wardHpOf, writeLastHit, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { applyDmMutation, audit } from "@/lib/dm/mutations";
@@ -333,6 +334,12 @@ export function settleHits(
   if (freed.length) {
     notes.push(`${sheet.name} is no longer ${freed.map((name) => (maxHpRiders([name], sheet.conditionMeta as ConditionMetaMap).drain > 0 ? "drained of maximum hit points" : name)).join(" or ")}: the blow that laid it now misses.`);
   }
+  // What a swallow ended comes back (a grapple; SRD 5.1: "If the attack hits,
+  // the target is also swallowed, and the grapple ends").
+  const heldAgain = unlaid.flatMap((mark) => mark.ended).map((entry) => entry.name).filter((name) => !sheet.conditions.includes(name) && riderless.conditions.includes(name) && maxHpRiders([name], riderless.conditionMeta as ConditionMetaMap).drain <= 0);
+  if (heldAgain.length) {
+    notes.push(`${sheet.name} is ${heldAgain.join(" and ")} again, as before the blow that now misses.`);
+  }
   const first = chain[0];
   const nowStanding = standingOfSheet(sheet);
 
@@ -513,6 +520,11 @@ export function settleHits(
   patch.conditions = conditions;
   patch.conditionMeta = meta as FullPatchSheetInput["conditionMeta"];
   reactionPatch(campaign, turnId, sheet.id, patch, `${answerLabel(label)}: the blow corrected`);
+  // The grapples they held that a swallow ended hold again (swallow.ts).
+  const regripped = unlaid.flatMap((mark) => (mark.released?.length ? gripsBack(campaign, sheet.id, mark.released) : []));
+  if (regripped.length) {
+    notes.push(`${regripped.join(" and ")} ${regripped.length === 1 ? "is" : "are"} still grappled by ${sheet.name}.`);
+  }
 
   bondShareBack(campaign, turnId, steps, label, sheets, sheetsById);
   concentrationBack(campaign, turnId, steps, final, notes, label);

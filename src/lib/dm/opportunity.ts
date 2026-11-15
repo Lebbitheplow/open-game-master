@@ -63,6 +63,7 @@ import { allyBeside } from "@/lib/dm/side-allies";
 import { targetSwingMarks } from "@/lib/dm/enemy-swing-odds";
 import { enfeebledBlow, measureRetort, spellRetort, spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { joinRetorts, riderMarkOf } from "@/lib/dm/retort-logic";
+import { gripsHeldBy, swallowMark } from "@/lib/dm/swallow";
 import { thoughtShieldBack } from "@/lib/dm/thought-shield";
 import { authoredAfterHit } from "@/lib/dm/authored-hooks";
 import { holdsFeature } from "@/lib/srd/feature-names";
@@ -405,10 +406,12 @@ export function resolveOpportunityAttacks(
       // miss takes it back (spell-retort.ts measureRetort).
       const psychicBack = measureRetort(enemy.id, () => (rolled > 0 ? thoughtShieldBack(campaign, turn, sheet, enemy.id, { amount: rolled, type: blow.type, parts: blow.parts ? scaledParts(blow.parts, rolled) : undefined, flags: magical ? { magical: true } : {} }, hitSheets, hitSheetsById) : {}), (back) => (back.thoughtShield ? ["Thought Shield"] : []));
       const unridden = getSheetById(sheet.id);
+      const grips = attack.onHit?.swallow ? gripsHeldBy(campaign.id, sheet.id) : null;
       const rider = resolveOnHit(campaign, turn, enemy, attack, sheet.id, { sheets: hitSheets, sheetsById: hitSheetsById });
       // What the rider laid on them, kept with the swing (enemy-attack.ts).
       const ridden = getSheetById(sheet.id);
-      const laid = unridden && ridden && !rider?.swallowed ? riderMarkOf(unridden, ridden, Array.isArray(rider?.riderCondition) ? (rider.riderCondition as string[]) : []) : null;
+      const own = Array.isArray(rider?.riderCondition) ? (rider.riderCondition as string[]) : [];
+      const laid = unridden && ridden ? (rider?.swallowed ? swallowMark(campaign.id, unridden, ridden, sheet.id, grips, own) : riderMarkOf(unridden, ridden, own)) : null;
       const answered = measureRetort(enemy.id, () => spellRetort(campaign, turn, enemy, sheet.id, true, reach <= 1, hitSheets, hitSheetsById, sheet.tempHp ?? 0), (out) => out.by);
       return { landed: applied, onHit: rider, answered, psychicBack, laid };
     });

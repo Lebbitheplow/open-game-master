@@ -999,5 +999,76 @@ await test("S23: Cutting Words off the damage of a psychic critical lessens Thou
   assert.equal(hpLost(world, goblin.id), after.maxHp - after.currentHp, JSON.stringify(words.result));
 });
 
+// ---- S24: a bite a reaction turns into a miss swallows no one ----
+
+// SRD 5.1, Behir, Swallow: "If the attack hits, the target is also
+// swallowed, and the grapple ends"; the purple worm's bite, the giant toad's
+// and frog's the same. A bite Shield turns into a miss never hit, so it
+// swallowed no one and ended no grapple. The refund gave the bite's hit points
+// back and left the wizard inside the behir, blinded and restrained.
+const fsModule = await import("node:fs");
+const { parseMonster } = await import("../src/lib/bestiary/statblock.ts");
+const { readPage, rowOfBlock } = await import("./lib/srd-bestiary.mjs");
+const srdBook = JSON.parse(fsModule.readFileSync(new URL("../src/lib/rulebook/srd-5.1.json", import.meta.url), "utf8"));
+function srdBlock(title) {
+  const page = srdBook.pages.find((entry) => entry.title === title && entry.kind === "monster");
+  const parsed = parseMonster(rowOfBlock(title, readPage(page.md)));
+  return parsed.stats ?? parsed;
+}
+
+async function behirGrips() {
+  const { world, sheets: [mage], enemies: [behir] } = await table([caster("wizard", "int", ["Shield"])], 1, srdBlock("Behir"));
+  world.patch(mage.id, { ac: 12, acOverride: true, conditions: ["grappled"], conditionMeta: { grappled: { source: behir.id, escapeDc: 16 } } });
+  const swallow = async (faces) => {
+    world.dice(...faces);
+    const out = await world.invoke("enemy_attack", { enemyId: behir.id, targetCharacterId: mage.id, attack: "Swallow" });
+    world.clearDice();
+    assert.equal(out.ok, true, out.error);
+    return out;
+  };
+  return { world, mage, behir, swallow };
+}
+
+await test("S24: a behir's Swallow that Shield turns into a miss swallows no one: out, seeing, free to move, and held in its grapple again", async () => {
+  const { world, mage, behir, swallow } = await behirGrips();
+  // 3 + 10 against AC 12 hits; Shield's 17 is missed.
+  const bitten = await swallow([3, 1, 1, 1]);
+  assert.ok(world.sheet(mage.id).conditions.includes("swallowed"), JSON.stringify(bitten.result));
+  const shield = await world.invoke("use_reaction", { characterId: mage.id, feature: "Shield" });
+  assert.equal(shield.ok, true, shield.error);
+  const after = world.sheet(mage.id);
+  for (const name of ["swallowed", "blinded", "restrained"]) {
+    assert.ok(!after.conditions.includes(name), `no longer ${name}: ${JSON.stringify(after.conditions)} ${JSON.stringify(shield.result)}`);
+  }
+  assert.ok(after.conditions.includes("grappled"), "the grapple the bite ended holds again");
+  assert.equal(after.conditionMeta.grappled?.source, behir.id);
+  assert.equal(after.currentHp, after.maxHp);
+  assert.match(JSON.stringify(shield.result), /swallowed/, "the GM is told the wizard is out");
+});
+
+await test("S24: a grapple the wizard held, which the swallow ended, holds again when Shield turns the bite into a miss", async () => {
+  const { world, sheets: [mage], enemies: [behir, held] } = await table([caster("wizard", "int", ["Shield"])], 2, srdBlock("Behir"));
+  world.patch(mage.id, { ac: 12, acOverride: true, conditions: ["grappled"], conditionMeta: { grappled: { source: behir.id } } });
+  encounterRows.patchEnemyConditions(held.id, ["grappled"], { grappled: { source: mage.id } });
+  world.dice(3, 1, 1, 1);
+  const bitten = await world.invoke("enemy_attack", { enemyId: behir.id, targetCharacterId: mage.id, attack: "Swallow" });
+  world.clearDice();
+  assert.equal(bitten.ok, true, bitten.error);
+  assert.ok(!world.enemies().find((entry) => entry.id === held.id).conditions.includes("grappled"), "swallowed, the wizard lets go");
+  const shield = await world.invoke("use_reaction", { characterId: mage.id, feature: "Shield" });
+  assert.equal(shield.ok, true, shield.error);
+  const foe = world.enemies().find((entry) => entry.id === held.id);
+  assert.ok(foe.conditions.includes("grappled"), JSON.stringify(shield.result));
+  assert.equal(foe.conditionMeta.grappled?.source, mage.id);
+});
+
+await test("S24: a Swallow that still hits through Shield keeps the wizard inside", async () => {
+  const { world, mage, swallow } = await behirGrips();
+  await swallow([19, 1, 1, 1]);
+  const shield = await world.invoke("use_reaction", { characterId: mage.id, feature: "Shield" });
+  assert.equal(shield.ok, true, shield.error);
+  assert.ok(world.sheet(mage.id).conditions.includes("swallowed"));
+});
+
 closeTables();
 finish();

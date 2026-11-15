@@ -21,6 +21,7 @@
 // swing, and taken back with it.
 
 import { maxHpRiders, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 
 export type RetortCreature = {
   currentHp: number;
@@ -156,9 +157,41 @@ export function retortBack(now: RetortCreature, retort: Retort): RetortBack | nu
 // the "Hit:" text is what the hit does): the conditions it laid, and the drain
 // of their maximum it raised (one "max hp reduced" mark grows with each
 // drain, so the smaller one it replaced is kept to put back).
-export type RiderMark = { laid: string[]; ended: Array<{ name: string; meta?: unknown }> };
+export type RiderMark = {
+  laid: string[];
+  ended: Array<{ name: string; meta?: unknown }>;
+  // A condition it held already that it changed (a swallow's restrained over
+  // a grapple's): the meta it found, put back while the rider's still stands.
+  changed?: Array<{ name: string; meta?: unknown; left?: unknown }>;
+  // The grapples a swallow ended that the character held on others (swallow.ts
+  // gripsHeldBy), put back by the refund when the bite no longer hits.
+  released?: Array<{ kind: "sheet" | "enemy"; id: string; meta: unknown }>;
+};
 
 type Conditioned = { conditions: string[]; conditionMeta: Record<string, unknown> };
+
+const heldName = (sheet: Conditioned, name: string) => sheet.conditions.find((entry) => isConditionNamed(entry, name));
+const sameMeta = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+// A swallow's mark (SRD 5.1: "the target is swallowed, and the grapple
+// ends"): every condition of `names` it laid, ended or changed on the
+// character, so a bite a reaction turns into a miss leaves them as it found
+// them, the grapple it ended holding again.
+export function swallowMarkOf(before: Conditioned, after: Conditioned, names: readonly string[]): RiderMark | null {
+  const mark: Required<Pick<RiderMark, "laid" | "ended" | "changed">> = { laid: [], ended: [], changed: [] };
+  for (const name of names) {
+    const was = heldName(before, name);
+    const now = heldName(after, name);
+    if (now && !was) {
+      mark.laid.push(now);
+    } else if (was && !now) {
+      mark.ended.push(was in before.conditionMeta ? { name: was, meta: before.conditionMeta[was] } : { name: was });
+    } else if (was && now && !sameMeta(before.conditionMeta[was], after.conditionMeta[now])) {
+      mark.changed.push({ name: now, meta: before.conditionMeta[was], left: after.conditionMeta[now] });
+    }
+  }
+  return mark.laid.length || mark.ended.length || mark.changed.length ? mark : null;
+}
 
 const drains = (sheet: Conditioned, name: string) => maxHpRiders([name], sheet.conditionMeta as ConditionMetaMap).drain > 0;
 
@@ -187,6 +220,14 @@ export function ridersBack<T extends Conditioned>(sheet: T, marks: readonly Ride
     for (const entry of mark.ended.filter((had) => !conditions.includes(had.name))) {
       conditions.push(entry.name);
       if (entry.meta !== undefined) {
+        meta[entry.name] = entry.meta;
+      }
+    }
+    // Only where nothing since has changed it again.
+    for (const entry of (mark.changed ?? []).filter((had) => conditions.includes(had.name) && sameMeta(meta[had.name], had.left))) {
+      if (entry.meta === undefined) {
+        delete meta[entry.name];
+      } else {
         meta[entry.name] = entry.meta;
       }
     }
