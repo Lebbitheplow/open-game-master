@@ -32,7 +32,7 @@ const DUSK_HOUR = 18;
 
 // The pure reads (the rule, the most, the count now) live in
 // src/lib/srd/item-charge-rules.ts so the sheet can show them too.
-import { chargeMax, chargeRuleOf, chargesLeft, chargesShort } from "@/lib/srd/item-charge-rules";
+import { chargeMax, chargeRuleOf, chargesLeft, chargesShort, itemPowersOf, powersRefilled } from "@/lib/srd/item-charge-rules";
 import type { ToolError } from "@/lib/dm/tool-errors";
 export { chargeMax, chargeRuleOf, chargesLeft };
 
@@ -67,6 +67,9 @@ export function spendChargesMath(
   overuse?: ReturnType<typeof rollExpression>;
   // That use did not work: the item tore.
   failed?: boolean;
+  // A use past the last that its user pays for with a saving throw, rolled
+  // by the caller (src/lib/dm/item-use.ts): a Ring of X-ray Vision's.
+  overuseSave?: NonNullable<ChargeRule["overuseSave"]>;
 } {
   let initial: ReturnType<typeof rollExpression> | undefined;
   if (typeof item.charges !== "number" && typeof rule.max === "string") {
@@ -92,6 +95,11 @@ export function spendChargesMath(
       overuse,
       ...(torn ? { failed: true } : {}),
     };
+  }
+  // SRD 5.1, Ring of X-ray Vision: used again before a long rest, it works,
+  // at a DC 15 Constitution save or a level of exhaustion.
+  if (count > left && rule.overuseSave && left === 0) {
+    return { charges: 0, destroyed: false, notes: [], overuseSave: rule.overuseSave };
   }
   const short = chargesShort(item, rule, count, initial?.total);
   if (short) {
@@ -189,9 +197,35 @@ function withoutBeadsSpent(item: EquipmentItem): EquipmentItem {
 }
 
 // Whether an item whose charges come back days after it empties (a Horn of
-// Valhalla's 7) is whole again at minute `to` of the clock.
+// Valhalla's 7) is whole again at minute `to` of the clock; one that waits
+// hours (Frost Brand's one, a djinni's 24) the same way.
 export function daysWaitOver(item: Pick<EquipmentItem, "emptiedAt">, rule: ChargeRule, to: number): boolean {
-  return Boolean(rule.regainDays) && typeof item.emptiedAt === "number" && to >= item.emptiedAt + (rule.regainDays ?? 0) * MINUTES_PER_DAY;
+  return waitEnded(item.emptiedAt, rule, to);
+}
+
+function waitEnded(emptiedAt: number | undefined, rule: ChargeRule, to: number): boolean {
+  const minutes = (rule.regainDays ?? 0) * MINUTES_PER_DAY + (rule.regainHours ?? 0) * MINUTES_PER_HOUR;
+  return minutes > 0 && typeof emptiedAt === "number" && to >= emptiedAt + minutes;
+}
+
+// The row with each property whose hours have passed whole again (SRD 5.1,
+// Orb of Dragonkind, Call Dragons: "it can't be used again for 1 hour").
+function powersWaitedOut(item: EquipmentItem, to: number): EquipmentItem {
+  const waits = item.powersEmptiedAt;
+  const powers = itemPowersOf(item);
+  if (!waits || !powers) {
+    return item;
+  }
+  const done = Object.keys(waits).filter((power) => powers[power] && waitEnded(waits[power], powers[power], to));
+  if (!done.length) {
+    return item;
+  }
+  const charges = Object.fromEntries(Object.entries(item.powerCharges ?? {}).filter(([power]) => !done.includes(power)));
+  const left = Object.fromEntries(Object.entries(waits).filter(([power]) => !done.includes(power)));
+  const { powerCharges: _charges, powersEmptiedAt: _waits, ...rest } = item;
+  void _charges;
+  void _waits;
+  return { ...rest, ...(Object.keys(charges).length ? { powerCharges: charges } : {}), ...(Object.keys(left).length ? { powersEmptiedAt: left } : {}) };
 }
 
 function withoutEmptiedAt(item: EquipmentItem): EquipmentItem {
@@ -216,8 +250,11 @@ export function rechargeAtDawn(campaignId: string, from: number, to: number): st
   for (const sheet of listSheets(campaignId)) {
     let changed = false;
     const equipment = sheet.equipment.map((row) => {
-      // A prayer bead used is whole again at dawn (src/lib/srd/prayer-beads.ts).
-      const item = dawns && row.beadsSpent ? withoutBeadsSpent(row) : row;
+      // A prayer bead used is whole again at dawn (src/lib/srd/prayer-beads.ts),
+      // and so is each property of an item used once a dawn (a Staff of
+      // Thunder and Lightning's Thunderclap).
+      const beaded = dawns && row.beadsSpent ? withoutBeadsSpent(row) : row;
+      const item = powersWaitedOut(dawns ? powersRefilled(beaded, "dawn") : beaded, to);
       if (item !== row) {
         changed = true;
       }
@@ -227,7 +264,8 @@ export function rechargeAtDawn(campaignId: string, from: number, to: number): st
         recharged.push(`${sheet.name}'s ${item.name}: ${chargeMax(rule)}/${chargeMax(rule)}`);
         return { ...withoutEmptiedAt(item), charges: chargeMax(rule) };
       }
-      if (!rule?.regain || typeof item.charges !== "number" || (!dawns && !dusks)) {
+      // What comes back at a long rest (Boots of Speed) waits for the rest.
+      if (!rule?.regain || rule.regainOn === "long_rest" || typeof item.charges !== "number" || (!dawns && !dusks)) {
         return item;
       }
       const most = chargeMax(rule);

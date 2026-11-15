@@ -29,7 +29,7 @@ import type {
 } from "@/lib/schemas/sheet";
 import { ABILITIES } from "@/lib/schemas/sheet";
 import { XP_THRESHOLDS, findSkill, levelForXp } from "@/lib/srd";
-import { ABILITY_SCORE_CAP, applyAsiChoices, earnedAsiCountFor } from "@/lib/srd/asi";
+import { ABILITY_SCORE_CAP, applyAsiChoices, earnedAsiCountFor, raisedTowardCap } from "@/lib/srd/asi";
 import { applySubclassTraining, autoSubclassPicks, grantsForHeldTraining, subclassGrants, withSubclassChoiceRecords } from "@/lib/srd/subclass-training";
 import type { SubclassExtras } from "@/lib/srd/subclass-tables";
 import { asiTaken, withAsiLedger } from "@/lib/srd/asi-ledger";
@@ -147,6 +147,8 @@ function improvementsAsked(
           error: `An Ability Score Improvement raises scores; it cannot lower ${ABILITY_NAMES[ability]} from ${sheet.abilities[ability]} to ${request.abilities[ability]}.`,
         };
       }
+      // Held at 20 even where a manual or tome raised the maximum: SRD 5.1,
+      // "you can't increase an ability score above 20 using this feature".
       if (request.abilities[ability] > ABILITY_SCORE_CAP && delta > 0) {
         return {
           error: `An Ability Score Improvement cannot raise ${ABILITY_NAMES[ability]} above ${ABILITY_SCORE_CAP}.`,
@@ -180,7 +182,7 @@ export function applyChoices(scores: AbilityScores, choices: AsiChoice[]): Abili
   const next = { ...scores };
   for (const choice of choices) {
     if (choice.mode === "plus1x2" && choice.abilities[0] === choice.abilities[1]) {
-      next[choice.abilities[0]] = Math.min(ABILITY_SCORE_CAP, next[choice.abilities[0]] + 1);
+      next[choice.abilities[0]] = raisedTowardCap(next[choice.abilities[0]], 1);
     } else {
       Object.assign(next, applyAsiChoices(next, [choice]));
     }

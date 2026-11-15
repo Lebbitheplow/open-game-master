@@ -5,7 +5,7 @@
 // The table helpers come first: they point the database at a scratch
 // directory before anything from src/ loads.
 import assert from "node:assert/strict";
-import { clockOf, openTable, rolled } from "./lib/enforce-resources.mjs";
+import { casting, clockOf, openTable, rolled } from "./lib/enforce-resources.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 
 const { test, finish } = suite("test-audit1115-rests");
@@ -360,6 +360,386 @@ await test("R11 a worn, attuned Ioun Stone of Regeneration heals 15 at the end o
   assert.equal(table.sheet(down.id).currentHp, 0, "at 0 hit points the stone does nothing");
   await table.invoke("pass_time", { amount: 2, unit: "hours" });
   assert.equal(table.sheet(wearer.id).currentHp, 60, "never past the maximum");
+});
+
+await test("R12 an item property usable once a dawn or until a long rest has a count the engine spends, refuses past and refills at that dawn or rest", async () => {
+  // SRD 5.1: Staff of Thunder and Lightning, "When one of these properties
+  // is used, it can't be used again until the next dawn"; Rod of Lordly
+  // Might's Drain Life, Paralyze and Terrify, each "can't be used again until
+  // the next dawn"; Boots of Speed, "When the boots' property has been used
+  // for a total of 10 minutes, the magic ceases to function until you finish
+  // a long rest"; Pearl of Power, "regain one expended spell slot ... Once
+  // you use the pearl, it can't be used again until the next dawn"; Rod of
+  // Rulership, Iron Bands of Binding and the Protective Aura of a Rod of
+  // Alertness likewise; Luck Blade, Luck and Wish each once a dawn. Nothing
+  // counted these, so the GM could use them as often as it liked.
+  const { chargeRuleOf, itemPowersOf } = await import("../src/lib/srd/item-charge-rules.ts");
+  for (const name of ["Pearl of Power", "Rod of Rulership", "Iron Bands of Binding"]) {
+    const rule = chargeRuleOf({ name });
+    assert.ok(rule?.max === 1 && rule.regain === "all" && rule.daily, `${name}: one use, back at dawn`);
+  }
+  assert.deepEqual(Object.keys(itemPowersOf({ name: "Staff of Thunder and Lightning" }) ?? {}), ["Lightning", "Thunder", "Lightning Strike", "Thunderclap", "Thunder and Lightning"]);
+  assert.deepEqual(Object.keys(itemPowersOf({ name: "Rod of Lordly Might" }) ?? {}), ["Drain Life", "Paralyze", "Terrify"]);
+  assert.deepEqual(Object.keys(itemPowersOf({ name: "Luck Blade" }) ?? {}), ["Luck", "Wish"]);
+  assert.ok(itemPowersOf({ name: "Rod of Alertness" })?.["Protective Aura"]);
+  assert.equal(chargeRuleOf({ name: "Boots of Speed" })?.max, 10);
+  assert.equal(chargeRuleOf({ name: "Boots of Speed" })?.regainOn, "long_rest");
+  // SRD 5.1, Figurine of Wondrous Power: each figurine waits its own days
+  // ("Bronze Griffon ... Once it has been used, it can't be used again until
+  // 5 days have passed"). The family's row held 24 charges, the goat of
+  // traveling's alone, so a griffon flew 24 times and never waited.
+  assert.deepEqual(chargeRuleOf({ name: "Figurine of Wondrous Power (Bronze Griffon)" }), { max: 1, regainDays: 5 });
+  assert.deepEqual(chargeRuleOf({ name: "Silver Raven Figurine" }), { max: 1, regainDays: 2 });
+  assert.deepEqual(chargeRuleOf({ name: "Ivory Goat of Traveling" }), { max: 24, regainDays: 7 });
+  assert.deepEqual(chargeRuleOf({ name: "Ivory Goat of Travail" }), { max: 1, regainDays: 30 });
+  assert.equal(chargeRuleOf({ name: "Figurine of Wondrous Power" }), null);
+
+  const table = await openTable();
+  const hero = table.addHero({
+    class: "wizard", level: 9, maxHp: 50, abilities: { int: 16 },
+    spellcasting: casting("int", { 1: [4, 0], 2: [3, 0], 3: [3, 0], 4: [3, 0], 5: [1, 0] }),
+    equipment: [
+      { name: "Staff of Thunder and Lightning", qty: 1, equipped: true, attuned: true },
+      { name: "Boots of Speed", qty: 1, equipped: true, attuned: true },
+      { name: "Pearl of Power", qty: 1, attuned: true },
+    ],
+  });
+  const use = (item, extra = {}) => table.invoke("use_item", { characterId: hero.id, item, ...extra });
+  const unnamed = await use("Staff of Thunder and Lightning");
+  assert.equal(unnamed.retry, true, "the staff asks which property");
+  const clap = await use("Staff of Thunder and Lightning", { spell: "Thunderclap" });
+  assert.equal(clap.ok, true, clap.error);
+  const twice = await use("Staff of Thunder and Lightning", { spell: "Thunderclap" });
+  assert.equal(twice.refused, "rules", "a second thunderclap waits for dawn");
+  assert.match(twice.error, /dawn/);
+  const strike = await use("Staff of Thunder and Lightning", { spell: "Lightning Strike" });
+  assert.equal(strike.ok, true, `each property has its own use: ${strike.error}`);
+
+  // Ten minutes of the boots, then nothing until a long rest.
+  const run = await use("Boots of Speed", { charges: 10 });
+  assert.equal(run.ok, true, run.error);
+  const more = await use("Boots of Speed");
+  assert.equal(more.refused, "rules", "the boots' ten minutes are spent");
+  assert.match(more.error, /long rest/);
+
+  // The pearl gives a spent slot back, once.
+  table.patch(hero.id, { spellcasting: { ...table.sheet(hero.id).spellcasting, slots: { ...table.sheet(hero.id).spellcasting.slots, 3: { max: 3, used: 2 } } } });
+  const pearl = await use("Pearl of Power");
+  assert.equal(pearl.ok, true, pearl.error);
+  assert.equal(table.sheet(hero.id).spellcasting.slots["3"].used, 1, "a 3rd-level slot is back");
+  assert.equal((await use("Pearl of Power")).refused, "rules", "the pearl waits for dawn");
+  table.patch(hero.id, { equipment: [...table.sheet(hero.id).equipment, { name: "Iron Bands of Binding", qty: 1 }] });
+  assert.equal((await use("Iron Bands of Binding")).ok, true, "the bands bind once");
+  assert.ok(table.sheet(hero.id).equipment.some((item) => item.name === "Iron Bands of Binding"), "and stay in the pack");
+  assert.equal((await use("Iron Bands of Binding")).refused, "rules", "the bands wait for dawn");
+
+  // Past a dawn the staff's and the pearl's uses are back, the boots' not.
+  await table.invoke("pass_time", { amount: 1, unit: "days" });
+  assert.equal((await use("Staff of Thunder and Lightning", { spell: "Thunderclap" })).ok, true, "the thunderclap is back at dawn");
+  assert.equal((await use("Pearl of Power")).ok, true, "the pearl is back at dawn");
+  assert.equal((await use("Boots of Speed")).refused, "rules", "a dawn is not a long rest");
+  table.patch(hero.id, { currentHp: 50 });
+  const rest = await table.invoke("take_rest", { kind: "long" });
+  assert.equal(rest.ok, true, rest.error);
+  assert.equal((await use("Boots of Speed")).ok, true, "the boots work again after a long rest");
+
+  // A Luck Blade with two wishes left still grants one a dawn.
+  table.patch(hero.id, { equipment: [{ name: "Luck Blade", qty: 1, equipped: true, attuned: true, charges: 2 }] });
+  const wish = await use("Luck Blade", { spell: "Wish" });
+  assert.equal(wish.ok, true, wish.error);
+  const second = await use("Luck Blade", { spell: "Wish" });
+  assert.equal(second.refused, "rules", "a second wish waits for dawn");
+  assert.equal(table.sheet(hero.id).equipment[0].charges, 1, "and spends no charge");
+  assert.equal((await use("Luck Blade", { spell: "Luck" })).ok, true, "Luck is its own use");
+});
+
+await test("R13 reading a manual or tome raises the score and its maximum by 2, the book then waits a century, and the level-up, the legality check and the GM's edits hold that maximum", async () => {
+  // SRD 5.1, Manual of Bodily Health: "If you spend 48 hours over a period
+  // of 6 days or fewer studying the book's contents and practicing its
+  // guidelines, your Constitution score increases by 2, as does your maximum
+  // for that score. The manual then loses its magic, but regains it in a
+  // century." Gainful Exercise (Strength), Quickness of Action (Dexterity),
+  // the Tomes of Clear Thought (Intelligence), Leadership and Influence
+  // (Charisma) and Understanding (Wisdom) likewise. Nothing read them: the
+  // GM could only patch the score, held at 20, and the maximum never rose.
+  const { gearDefNamed } = await import("../src/lib/srd/magic-gear.ts");
+  const { chargeRuleOf } = await import("../src/lib/srd/item-charge-rules.ts");
+  const { featureAbilityGrants } = await import("../src/lib/srd/trait-rules.ts");
+  const { abilityProblems } = await import("../src/lib/srd/legality/abilities.ts");
+  const { buildLevelUp } = await import("../src/lib/srd/level-up.ts");
+  const { classGrantsFor } = await import("../src/lib/characters/catalog.ts");
+  const books = {
+    "Manual of Bodily Health": "con",
+    "Manual of Gainful Exercise": "str",
+    "Manual of Quickness of Action": "dex",
+    "Tome of Clear Thought": "int",
+    "Tome of Leadership and Influence": "cha",
+    "Tome of Understanding": "wis",
+  };
+  for (const [name, ability] of Object.entries(books)) {
+    assert.deepEqual(gearDefNamed(name)?.reading, { ability, amount: 2 }, name);
+    assert.deepEqual(chargeRuleOf({ name }), { max: 1, regainDays: 36500 }, `${name}: one reading, back in a century`);
+  }
+
+  const table = await openTable();
+  const reader = table.addHero({ class: "fighter", level: 7, maxHp: 70, abilities: { str: 16, dex: 12, con: 20, int: 10, wis: 10, cha: 10 }, equipment: [{ name: "Manual of Bodily Health", qty: 1 }] });
+  const friend = table.addHero({ class: "fighter", level: 7, maxHp: 70 });
+  const before = table.sheet(reader.id);
+  const read = await table.invoke("use_item", { characterId: reader.id, item: "Manual of Bodily Health" });
+  assert.equal(read.ok, true, read.error);
+  const after = table.sheet(reader.id);
+  assert.equal(after.abilities.con, 22, "20 becomes 22");
+  // "your hit point maximum changes as well, as though you had the new
+  // modifier from 1st level": +1 a level for seven levels.
+  assert.equal(after.maxHp, before.maxHp + 7);
+  assert.ok(after.equipment.some((item) => item.name === "Manual of Bodily Health"), "the book stays, its magic spent");
+  assert.deepEqual(featureAbilityGrants(after), { con: 2 }, "the raised maximum is on the sheet");
+  // Handed on, it is a plain book for a century.
+  table.patch(friend.id, { equipment: [after.equipment.find((item) => item.name === "Manual of Bodily Health")] });
+  const again = await table.invoke("use_item", { characterId: friend.id, item: "Manual of Bodily Health" });
+  assert.equal(again.refused, "rules");
+  assert.match(again.error, /36500 days/);
+
+  // The legality check takes 22 for the reader and still refuses it for
+  // anyone else.
+  const check = (sheet) => abilityProblems({ scores: sheet.abilities, racial: {}, recorded: [], freePoints: 0, mode: "bounds", pools: [], grants: featureAbilityGrants(sheet) });
+  assert.deepEqual(check(after).filter((line) => /passes/.test(line)), []);
+  assert.ok(check({ ...after, features: [] }).some((line) => /passes 20/.test(line)), "without the book, 22 is past the cap");
+
+  // The GM's own edit cannot take a score past 20 another way, and keeps a
+  // 22 the book gave.
+  const pushed = await table.invoke("update_sheet", { characterId: friend.id, abilities: { ...table.sheet(friend.id).abilities, str: 22 }, reason: "a story boon" });
+  assert.notEqual(pushed.ok, true, `past 20 is refused: ${JSON.stringify(pushed)}`);
+  const kept = await table.invoke("update_sheet", { characterId: reader.id, abilities: { ...after.abilities, cha: 12 }, reason: "a story change" });
+  assert.equal(kept.ok, true, kept.error);
+  assert.equal(table.sheet(reader.id).abilities.con, 22);
+  const forged = await table.invoke("update_sheet", { characterId: friend.id, features: [...table.sheet(friend.id).features, { name: "Manual of Bodily Health (studied: +2 Constitution)", source: "story" }], reason: "read it" });
+  assert.notEqual(forged.ok, true, `only reading the book writes its record: ${JSON.stringify(forged)}`);
+
+  // The 8th-level improvement keeps the book's 22 (the improvement itself
+  // is held at 20: R14).
+  table.patch(reader.id, { xp: 34000 });
+  const sheet = table.sheet(reader.id);
+  const context = { hpMethod: "average", multiclassAllowed: true, classOf: classGrantsFor, racialCantrips: 0, spellOf: () => null, featOf: () => null, subclassOffered: () => true, rollDie: () => 1 };
+  const leveled = buildLevelUp(sheet, { level: 8, maxHp: sheet.maxHp, currentHp: sheet.currentHp, hitDice: sheet.hitDice, asiChoices: [{ mode: "plus2", ability: "str" }] }, context);
+  assert.ok(!("error" in leveled), leveled.error);
+  assert.equal(leveled.patch.abilities.con, 22);
+});
+
+await test("R14 an Ability Score Improvement or a feat's point never takes a score past 20, and keeps a book's 22", async () => {
+  // SRD 5.1, Ability Score Improvement: "you can't increase an ability score
+  // above 20 using this feature." A manual or tome raises the score and its
+  // maximum by 2, but an improvement (or a feat's +1) is still held at 20:
+  // a 22 the book gave stays 22, a 20 with the book's raised maximum stays
+  // 20, and an 18 rises to 20 at most. R13 had read the book's maximum in
+  // place of the improvement's 20, so a 20 went to 22; and a feat's point on
+  // a 22 lowered it to 20.
+  const { buildLevelUp } = await import("../src/lib/srd/level-up.ts");
+  const { classGrantsFor } = await import("../src/lib/characters/catalog.ts");
+  const { applyAsiChoices } = await import("../src/lib/srd/asi.ts");
+  const { applyFeatIncrease } = await import("../src/lib/srd/feat-effects.ts");
+  const { abilitiesAfterLevel } = await import("../src/app/campaigns/[campaignId]/level-up-preview.ts");
+  const { featureAbilityGrants } = await import("../src/lib/srd/trait-rules.ts");
+  const { abilityProblems } = await import("../src/lib/srd/legality/abilities.ts");
+  const record = { name: "Manual of Bodily Health (studied: +2 Constitution)", source: "story" };
+  const table = await openTable();
+  const hero = table.addHero({ class: "fighter", level: 7, maxHp: 70, abilities: { str: 16, dex: 12, con: 20, int: 10, wis: 10, cha: 10 } });
+  table.patch(hero.id, { xp: 34000, features: [...table.sheet(hero.id).features, record] });
+  const resilient = { name: "Resilient", prerequisite: "", desc: "Increase the chosen ability score by 1, to a maximum of 20. You gain proficiency in saving throws using the chosen ability." };
+  const context = { hpMethod: "average", multiclassAllowed: true, classOf: classGrantsFor, racialCantrips: 0, spellOf: () => null, featOf: (name) => (/^resilient$/i.test(name) ? resilient : null), subclassOffered: () => true, rollDie: () => 1 };
+  const levelUp = (sheet, ask) => buildLevelUp(sheet, { level: 8, maxHp: sheet.maxHp, currentHp: sheet.currentHp, hitDice: sheet.hitDice, ...ask }, context);
+  const at = (con) => ({ ...table.sheet(hero.id), abilities: { ...table.sheet(hero.id).abilities, con } });
+
+  // A 20 with the book's raised maximum: the improvement adds nothing to it.
+  const twenty = levelUp(at(20), { asiChoices: [{ mode: "plus2", ability: "con" }] });
+  assert.ok(!("error" in twenty), twenty.error);
+  assert.equal(twenty.patch.abilities.con, 20, "an improvement never takes a score past 20");
+  const asked = levelUp(at(20), { abilities: { ...at(20).abilities, con: 22 } });
+  assert.ok("error" in asked, "asking for 22 by an improvement is refused");
+  assert.match(asked.error, /above 20/);
+  // An 18 rises to 20 at most, even with a maximum of 22.
+  assert.equal(levelUp(at(18), { asiChoices: [{ mode: "plus2", ability: "con" }] }).patch.abilities.con, 20);
+  assert.equal(abilitiesAfterLevel(at(19), [{ mode: "plus2", ability: "con" }], { id: "fighter", level: 8 }).abilities.con, 20, "the level-up preview agrees");
+  // The book's 22 is kept by an improvement and by a feat's point.
+  assert.equal(levelUp(at(22), { asiChoices: [{ mode: "plus2", ability: "con" }] }).patch.abilities.con, 22);
+  const feat = levelUp(at(22), { asiChoices: [{ mode: "feat", feat: "Resilient", ability: "con" }] });
+  assert.ok(!("error" in feat), feat.error);
+  assert.equal(feat.patch.abilities.con, 22, "Resilient's point does not lower the book's 22 to 20");
+  assert.equal(applyFeatIncrease({ str: 10, dex: 10, con: 22, int: 10, wis: 10, cha: 10 }, "Resilient", "con").abilities.con, 22);
+  // A companion's level-up takes the same improvement.
+  assert.equal(applyAsiChoices({ str: 10, dex: 10, con: 22, int: 10, wis: 10, cha: 10 }, [{ mode: "plus2", ability: "con" }]).con, 22);
+  assert.equal(applyAsiChoices({ str: 10, dex: 10, con: 20, int: 10, wis: 10, cha: 10 }, [{ mode: "plus1x2", abilities: ["con", "str"] }]).con, 20);
+  // The legality check still takes the book's 22 as a score the sheet may hold.
+  const sheet = at(22);
+  const problems = abilityProblems({ scores: sheet.abilities, racial: {}, recorded: [], freePoints: 0, mode: "bounds", pools: [], grants: featureAbilityGrants(sheet) });
+  assert.deepEqual(problems.filter((line) => /passes/.test(line)), []);
+});
+
+await test("R15 an attuned Ioun Stone of Mastery orbiting its owner adds 1 to the proficiency bonus every number reads", async () => {
+  // SRD 5.1, Ioun Stone, Mastery: "Your proficiency bonus increases by 1
+  // while this pale green prism orbits your head." It was in the table for
+  // attunement only: every proficiency read took the level alone.
+  const { computeSheetDerived } = await import("../src/lib/srd/index.ts");
+  const { describeSheet } = await import("../src/lib/dm/prompt.ts");
+  const { matchMagicItem } = await import("../src/lib/srd/magic-items.ts");
+  const { proficiencyBonusOf } = await import("../src/lib/srd/proficiency.ts");
+  assert.equal(matchMagicItem({ name: "Ioun Stone of Mastery" })?.requiresAttunement, true);
+  const stone = { name: "Ioun Stone of Mastery", qty: 1, equipped: true, attuned: true };
+  const table = await openTable();
+  // A 5th-level bladesinger: proficiency +3, +4 with the stone.
+  const wizard = table.addHero({
+    class: "wizard", level: 5, maxHp: 30, abilities: { int: 16 },
+    spellcasting: casting("int", { 1: [4, 0], 2: [3, 0], 3: [2, 0] }),
+    feats: ["Chef"],
+    equipment: [stone],
+  });
+  table.patch(wizard.id, { proficiencies: { ...table.sheet(wizard.id).proficiencies, saves: ["int", "wis"] } });
+  const sheet = table.sheet(wizard.id);
+  assert.equal(proficiencyBonusOf(sheet), 4);
+  const derived = computeSheetDerived(sheet);
+  assert.equal(derived.proficiencyBonus, 4);
+  assert.equal(derived.spellSaveDc, 8 + 4 + 3, "the spell save DC");
+  assert.equal(derived.spellAttack, 4 + 3, "the spell attack");
+  assert.equal(derived.saves.int, 3 + 4, "a proficient save");
+  assert.match(describeSheet(sheet, "wizard", false, {}), /Save DC 15/, "GAME STATE");
+  // Chef: "a number of treats equal to your proficiency bonus"; Bladesong:
+  // "a number of times equal to your proficiency bonus".
+  assert.equal(sheet.resources.chef_treats?.max, 4, "a counter sized by the proficiency bonus");
+  assert.equal(populateResources([{ name: "Bladesong", classId: "wizard" }], 5, mods, undefined, undefined, undefined, undefined, undefined, proficiencyBonusOf(sheet)).sub_bladesong?.max, 4);
+  // Set down (not orbiting) or no longer attuned, it adds nothing.
+  table.patch(wizard.id, { equipment: [{ ...stone, equipped: false }] });
+  assert.equal(computeSheetDerived(table.sheet(wizard.id)).proficiencyBonus, 3);
+  assert.equal(table.sheet(wizard.id).resources.chef_treats?.max, 3, "the counter follows the stone");
+  table.patch(wizard.id, { equipment: [{ ...stone, attuned: false }] });
+  assert.equal(proficiencyBonusOf(table.sheet(wizard.id)), 3);
+  table.patch(wizard.id, { equipment: [stone] });
+  assert.equal(table.sheet(wizard.id).resources.chef_treats?.max, 4);
+  // A rabbitfolk's Hare-Trigger adds the bonus to initiative, the stone's too.
+  const rabbit = table.addHero({ class: "fighter", level: 5, abilities: { dex: 14 }, equipment: [stone] });
+  table.patch(rabbit.id, { features: [...table.sheet(rabbit.id).features, { name: "Hare-Trigger", source: "race" }] });
+  assert.equal(computeSheetDerived(table.sheet(rabbit.id)).initiative, 2 + 4);
+});
+
+await test("R15 the Ioun Stones of Awareness, Sustenance and Reserve do what their text says while they orbit", async () => {
+  // SRD 5.1, Ioun Stone: Awareness, "You can't be surprised while this dark
+  // blue rhomboid orbits your head"; Sustenance, "You don't need to eat or
+  // drink while this clear spindle orbits your head"; Reserve, "stores
+  // spells cast into it ... up to 3 levels worth of spells at a time". They
+  // were in the table for attunement only.
+  const { cannotBeSurprised } = await import("../src/lib/dm/surprise-guard.ts");
+  const { needsNoFoodOrWater } = await import("../src/lib/dm/mt-srd-monk.ts");
+  const { isSpellStorer, storeLevelsFree } = await import("../src/lib/srd/spell-storing.ts");
+  const { storeRefusal } = await import("../src/lib/dm/ring-store.ts");
+  const orbit = (name, extra = {}) => ({ name, qty: 1, equipped: true, attuned: true, ...extra });
+  const table = await openTable();
+  const hero = (equipment) => table.sheet(table.addHero({ class: "rogue", level: 5, maxHp: 30, equipment }).id);
+  assert.equal(cannotBeSurprised(hero([orbit("Ioun Stone of Awareness")]), []), true, "Awareness: never surprised");
+  assert.equal(cannotBeSurprised(hero([orbit("Ioun Stone of Awareness", { attuned: false })]), []), false, "not attuned, it does nothing");
+  assert.equal(needsNoFoodOrWater(hero([orbit("Ioun Stone of Sustenance")])), true, "Sustenance: no food or drink");
+  assert.equal(needsNoFoodOrWater(hero([orbit("Ioun Stone of Sustenance", { equipped: false })])), false, "set down, it does nothing");
+  const reserve = orbit("Ioun Stone of Reserve");
+  assert.equal(isSpellStorer(reserve), true, "Reserve stores spells");
+  assert.equal(storeLevelsFree(reserve), 3);
+  assert.equal(storeLevelsFree({ ...reserve, storedSpells: [{ spell: "Shield", level: 1 }] }), 2);
+  assert.equal(storeLevelsFree({ name: "Ring of Spell Storing", qty: 1, slug: "ring-of-spell-storing" }), 5, "the ring keeps its five");
+  const holder = hero([reserve]);
+  assert.equal(storeRefusal(holder.id, "Ioun Stone of Reserve", "Fireball", 3), null);
+  assert.equal(storeRefusal(holder.id, "Ioun Stone of Reserve", "Greater Invisibility", 4)?.refused, "rules", "a 4th-level spell does not fit");
+});
+
+await test("R16 a Ring of X-ray Vision used again before a long rest asks a DC 15 Constitution save or a level of exhaustion", async () => {
+  // SRD 5.1, Ring of X-ray Vision: "you can use an action to speak its
+  // command word. When you do so, you can see into and through solid matter
+  // for 1 minute ... Whenever you use the ring again before taking a long
+  // rest, you must succeed on a DC 15 Constitution saving throw or gain one
+  // level of exhaustion." The ring had no count: every use was free.
+  const { chargeRuleOf } = await import("../src/lib/srd/item-charge-rules.ts");
+  assert.deepEqual(chargeRuleOf({ name: "Ring of X-ray Vision" }), { max: 1, regain: "all", regainOn: "long_rest", unit: "use", overuseSave: { ability: "con", dc: 15 } });
+  const table = await openTable();
+  const ring = { name: "Ring of X-ray Vision", qty: 1, equipped: true, attuned: true };
+  const hero = table.addHero({ class: "rogue", level: 5, maxHp: 40, abilities: { con: 10 }, equipment: [ring] });
+  const use = () => table.invoke("use_item", { characterId: hero.id, item: "Ring of X-ray Vision" });
+  // The first use costs nothing more.
+  table.diceLog();
+  const first = await use();
+  assert.equal(first.ok, true, first.error);
+  assert.deepEqual(rolled(table), [], "no save on the first use");
+  assert.equal(table.sheet(hero.id).exhaustion, 0);
+  // The second, before a long rest: the wearer's own save, failed on a 5.
+  table.dice(5);
+  const second = await use();
+  assert.equal(second.ok, true, `it still works: ${second.error}`);
+  assert.deepEqual(rolled(table), [[20, 5]]);
+  assert.equal(table.sheet(hero.id).exhaustion, 1, "a failed save is a level of exhaustion");
+  assert.match(JSON.stringify(second), /DC 15 Constitution save: 5, a failure/);
+  // A 15 passes and costs nothing.
+  table.dice(15);
+  const third = await use();
+  assert.equal(third.ok, true, third.error);
+  assert.deepEqual(rolled(table), [[20, 15]]);
+  assert.equal(table.sheet(hero.id).exhaustion, 1);
+  // A long rest gives the free use back.
+  table.patch(hero.id, { currentHp: 40 });
+  const rest = await table.invoke("take_rest", { kind: "long" });
+  assert.equal(rest.ok, true, rest.error);
+  table.diceLog();
+  const after = await use();
+  assert.equal(after.ok, true, after.error);
+  assert.deepEqual(rolled(table), [], "the first use after a long rest asks no save");
+});
+
+await test("R17 a once-an-hour or once-a-day item use waits its hours on the clock, and a Deck of Illusions holds 34 cards", async () => {
+  // SRD 5.1: Frost Brand, "When you draw this weapon, you can extinguish all
+  // nonmagical flames within 30 feet of you. This property can be used no
+  // more than once per hour"; Orb of Dragonkind, Call Dragons, "Once you
+  // have used this property, it can't be used again for 1 hour"; Ring of
+  // Djinni Summoning, "After the djinni departs, it can't be summoned again
+  // for 24 hours"; Deck of Illusions, "A full deck has 34 cards ... When the
+  // illusion ends, the image on its card disappears, and that card can't be
+  // used again." None was counted.
+  const { chargeRuleOf, itemPowersOf } = await import("../src/lib/srd/item-charge-rules.ts");
+  assert.deepEqual(chargeRuleOf({ name: "Frost Brand" }), { max: 1, regainHours: 1, unit: "use", activation: "free" });
+  assert.deepEqual(chargeRuleOf({ name: "Ring of Djinni Summoning" }), { max: 1, regainHours: 24, unit: "use" });
+  assert.deepEqual(itemPowersOf({ name: "Orb of Dragonkind" })?.["Call Dragons"], { max: 1, regainHours: 1, unit: "use" });
+  assert.deepEqual(chargeRuleOf({ name: "Deck of Illusions" }), { max: 34, spentAway: true, unit: "card" });
+
+  const table = await openTable();
+  const hero = table.addHero({
+    class: "wizard", level: 17, maxHp: 90,
+    equipment: [
+      { name: "Frost Brand", qty: 1, equipped: true, attuned: true },
+      { name: "Ring of Djinni Summoning", qty: 1, equipped: true, attuned: true },
+      { name: "Orb of Dragonkind", qty: 1, attuned: true },
+      { name: "Deck of Illusions", qty: 1 },
+    ],
+  });
+  const use = (item, extra = {}) => table.invoke("use_item", { characterId: hero.id, item, ...extra });
+  const pass = (amount, unit) => table.invoke("pass_time", { amount, unit });
+  assert.equal((await use("Frost Brand")).ok, true, "the flames go out");
+  const again = await use("Frost Brand");
+  assert.equal(again.refused, "rules", "not twice in an hour");
+  assert.match(again.error, /1 hour/);
+  assert.equal((await use("Orb of Dragonkind", { spell: "Call Dragons" })).ok, true);
+  assert.equal((await use("Orb of Dragonkind", { spell: "Call Dragons" })).refused, "rules", "the call waits its hour");
+  assert.equal((await use("Ring of Djinni Summoning")).ok, true);
+  await pass(30, "minutes");
+  assert.equal((await use("Frost Brand")).refused, "rules", "half an hour is not an hour");
+  await pass(30, "minutes");
+  assert.equal((await use("Frost Brand")).ok, true, "an hour on, it works again");
+  assert.equal((await use("Orb of Dragonkind", { spell: "Call Dragons" })).ok, true, "and so does the call");
+  // A dawn is not the djinni's 24 hours.
+  await pass(20, "hours");
+  assert.equal((await use("Ring of Djinni Summoning")).refused, "rules", "the djinni waits 24 hours, dawn or not");
+  await pass(3, "hours");
+  assert.equal((await use("Ring of Djinni Summoning")).ok, true, "24 hours on, the djinni comes again");
+
+  // The deck: one card a draw, the deck gone with its last.
+  const drawn = await use("Deck of Illusions");
+  assert.equal(drawn.ok, true, drawn.error);
+  assert.equal(table.sheet(hero.id).equipment.find((item) => item.name === "Deck of Illusions")?.charges, 33);
+  table.patch(hero.id, { equipment: table.sheet(hero.id).equipment.map((item) => (item.name === "Deck of Illusions" ? { ...item, charges: 1 } : item)) });
+  assert.equal((await use("Deck of Illusions")).ok, true);
+  assert.ok(!table.sheet(hero.id).equipment.some((item) => item.name === "Deck of Illusions"), "the last card thrown, the deck is used up");
 });
 
 finish();

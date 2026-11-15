@@ -137,10 +137,12 @@ test("an unidentified item is nothing: its name is the party's description", () 
 // item table: use_item took every one out of the pack as if drunk, a Bow of
 // Accuracy, an Armored Corset and an Apron of the Eager Artisan with the Air
 // Seeds. Each is now kept or used up by its own text (SRD 5.1, Magic Items,
-// Consumables: "Some items are used up when they are activated").
+// Consumables: "Some items are used up when they are activated"). The Iron
+// Bands of Binding left this list for the table, which counts their use
+// once a dawn and keeps them (test-audit1115-rests R12).
 const KEPT_BY_TEXT = [
   "Apron of the Eager Artisan", "Armored Corset", "Bow of Accuracy", "Alembic of Unmaking", "Efreeti Bottle",
-  "Iron Bands of Binding", "Instant Fortress", "Folding Boat", "Handy Haversack", "Birdsong Whistle",
+  "Instant Fortress", "Folding Boat", "Handy Haversack", "Birdsong Whistle",
   "Message Whistle", "Clockwork Calendar", "Pocket Spark", "Dimensional Shackles",
 ];
 const USED_UP_BY_TEXT = [
@@ -190,9 +192,11 @@ test("every magic item no word of its name places is read from its text, each on
     }
   }
   console.log(`read from their text: ${group.length}, kept ${kept}, used up ${usedUp.length}:\n  ${usedUp.join("\n  ")}`);
-  assert.equal(group.length, 284);
+  // 282: the two Iron Bands of Binding rows joined the magic item table with
+  // their once-a-dawn use (test-audit1115-rests R12).
+  assert.equal(group.length, 282);
   assert.equal(usedUp.length, 44);
-  assert.equal(kept, 240);
+  assert.equal(kept, 238);
 });
 
 console.log(`test-item-tags: ${passed} tests passed`);

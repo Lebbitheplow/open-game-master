@@ -44,7 +44,7 @@ const { resolveAttackWeapon, weaponAttackProfile } = await import("../src/lib/dm
 const { armorOfRow, wornArmorTurnsCrits, SRD_ARMOR } = await import("../src/lib/srd/armor.ts");
 const { SRD_WEAPONS } = await import("../src/lib/srd/weapons.ts");
 const { magicItemRiders, attunementProblem } = await import("../src/lib/srd/magic-items.ts");
-const { chargeRuleOf } = await import("../src/lib/srd/item-charge-rules.ts");
+const { chargeRuleOf, itemPowersOf } = await import("../src/lib/srd/item-charge-rules.ts");
 const { itemCheckKeys, itemCheckRiders } = await import("../src/lib/srd/item-check-riders.ts");
 const { itemSpellsOfRow } = await import("../src/lib/srd/item-spells.ts");
 const { gearDefOfRow } = await import("../src/lib/srd/magic-gear.ts");
@@ -246,6 +246,8 @@ function engineView(row) {
       weaponRiders: riders.weaponRiders.map((rider) => ({ ...rider, source: "ITEM" })),
     },
     charges: chargeRuleOf(row),
+    powers: itemPowersOf(row),
+    reading: gearDefOfRow(row)?.reading ?? null,
     checks: SKILLS.map((skill) => {
       const out = itemCheckRiders(equipment, skill);
       return [out.bonus, out.advantage];

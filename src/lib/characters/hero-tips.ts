@@ -17,6 +17,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { ABILITIES, type Ability } from "@/lib/schemas/abilities";
 import type { IconRef } from "@/lib/icons";
 import { cardIcon } from "@/lib/battlemap/spell-glyph-logic";
+import { proficiencyBonusOf } from "@/lib/srd/proficiency";
 
 // The library row the hero page reads: the sheet as saved, with its level.
 export type LibraryHero = {
@@ -102,7 +103,7 @@ export function freshPlaySheet(hero: LibraryHero): CharacterSheet {
     spellcasting: sheet.spellcasting,
     conditions: [],
     conditionMeta: {},
-    resources: populateResources(sheet.features, level, abilityMods, {}, sheet.classes, sheet.feats, undefined, { race: sheet.race, variant: sheet.racialChoices?.variant }),
+    resources: populateResources(sheet.features, level, abilityMods, {}, sheet.classes, sheet.feats, undefined, { race: sheet.race, variant: sheet.racialChoices?.variant }, proficiencyBonusOf({ ...sheet, level })),
     wildShape: null,
     pets: [],
     exhaustion: 0,

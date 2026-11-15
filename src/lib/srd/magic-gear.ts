@@ -9,6 +9,7 @@
 // without a cycle. Pure: the builder runs it in the browser.
 
 import magicItemsJson from "@/lib/classes/magic-items.json";
+import type { Ability } from "@/lib/schemas/abilities";
 import { textKey } from "@/lib/language/text-logic";
 import { isWorkshopRow, rowName, type RowItem } from "@/lib/srd/item-row";
 import { armorSpellings, SRD_ARMOR } from "@/lib/srd/armor-table";
@@ -72,6 +73,22 @@ export type ChargeRule = {
   // used again until 7 days have passed"). The row keeps the minute it
   // emptied (EquipmentItem.emptiedAt).
   regainDays?: number;
+  // Spent, it is whole again this many hours later, dawn or not (SRD 5.1,
+  // Frost Brand: "This property can be used no more than once per hour";
+  // Ring of Djinni Summoning: "it can't be summoned again for 24 hours").
+  // The row keeps the minute it emptied (EquipmentItem.emptiedAt; a
+  // property's, powersEmptiedAt).
+  regainHours?: number;
+  // What comes back returns when the owner finishes a long rest, not at dawn
+  // (SRD 5.1, Boots of Speed: "the magic ceases to function until you finish
+  // a long rest").
+  regainOn?: "long_rest";
+  // What one count is, in the words the GM is told: a minute of the Boots of
+  // Speed's ten, a use of a property's one. A charge otherwise.
+  unit?: "minute" | "use" | "card";
+  // Using it takes no action ("free": a property that rides a hit, a Luck
+  // Blade's luck) or the bonus action (Boots of Speed); an action otherwise.
+  activation?: "bonus" | "free";
   // A once-a-day power tracked as one charge: what it does.
   daily?: string;
   // The item may still be used with no charge left, at this percent chance
@@ -79,6 +96,11 @@ export type ChargeRule = {
   // again before then, it has a cumulative 20 percent chance of not working
   // and tearing into useless, nonmagical tatters").
   overuseRisk?: number;
+  // The item may still be used with no use left, at a saving throw its user
+  // rolls or a level of exhaustion (SRD 5.1, Ring of X-ray Vision: "Whenever
+  // you use the ring again before taking a long rest, you must succeed on a
+  // DC 15 Constitution saving throw or gain one level of exhaustion").
+  overuseSave?: { ability: "str" | "dex" | "con" | "int" | "wis" | "cha"; dc: number };
 };
 
 export type GearDef = {
@@ -94,6 +116,14 @@ export type GearDef = {
   weapon?: WeaponRiders;
   armor?: ArmorRiders;
   charges?: ChargeRule;
+  // Properties that each keep a count of their own, by the name the SRD
+  // heads them with (Staff of Thunder and Lightning's Thunderclap, once a
+  // dawn). The row holds what is left of each (EquipmentItem.powerCharges).
+  powers?: Record<string, ChargeRule>;
+  // A book whose study raises a score and its maximum (SRD 5.1, Manual of
+  // Bodily Health: "your Constitution score increases by 2, as does your
+  // maximum for that score"); src/lib/srd/studied-books.ts.
+  reading?: { ability: Ability; amount: number };
   // Attuning curses the wearer: the attunement holds until remove curse.
   cursed?: boolean;
 };

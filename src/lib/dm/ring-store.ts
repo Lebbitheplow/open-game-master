@@ -23,6 +23,7 @@ import {
   storedSpellNamed,
   storedSpellsOf,
   storeLevelsFree,
+  storeLevelsOf,
   type StoredSpell,
 } from "@/lib/srd/spell-storing";
 
@@ -77,8 +78,9 @@ export function storeRefusal(holderId: string, ringName: string, spell: string, 
   if (level < 1 || level > SPELL_STORE_LEVELS) {
     return { error: `${ring.name} stores spells of 1st through 5th level, not level ${level}. Nothing was spent.`, refused: "rules" };
   }
+  // An Ioun Stone of Reserve holds three levels, the ring five.
   const free = storeLevelsFree(ring);
-  return level > free ? { error: `${ring.name} has ${free} of ${SPELL_STORE_LEVELS} levels free, and ${spell} at level ${level} does not fit. Nothing was spent.`, refused: "rules" } : null;
+  return level > free ? { error: `${ring.name} has ${free} of ${storeLevelsOf(ring)} levels free, and ${spell} at level ${level} does not fit. Nothing was spent.`, refused: "rules" } : null;
 }
 
 // The numbers a stored spell keeps from the caster who cast it into the ring.

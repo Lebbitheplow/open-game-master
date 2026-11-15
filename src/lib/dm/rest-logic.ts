@@ -17,6 +17,7 @@ import { settlePreparation } from "@/lib/srd/spell-prep";
 import { restVanished } from "@/lib/srd/ar-ws-spellbook";
 import { withoutConjuredAtLongRest } from "@/lib/srd/ar-ws-conjured";
 import { attunementProblem } from "@/lib/srd/magic-items";
+import { rechargeAtLongRest } from "@/lib/srd/item-charge-rules";
 import type { CharacterSheet, FullPatchSheetInput, HitDicePool } from "@/lib/schemas/sheet";
 
 // Pure 5e rest math, database-free so scripts/test-rest-logic.mjs can
@@ -118,6 +119,12 @@ export function longRestPatch(
   const lasting = withoutConjuredAtLongRest(sheet.equipment);
   if (lasting) {
     patch.equipment = lasting;
+  }
+  // What an item gives back "when you finish a long rest" (SRD 5.1, Boots of
+  // Speed's ten minutes), in the rest's own audited patch.
+  const recharged = rechargeAtLongRest(patch.equipment ?? sheet.equipment);
+  if (recharged) {
+    patch.equipment = recharged;
   }
   // Bound creatures rest with their owner: a night restores a downed
   // companion or drake to full (a vanished familiar is already gone).

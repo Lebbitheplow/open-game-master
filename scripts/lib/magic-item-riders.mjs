@@ -117,6 +117,51 @@ export const DAILY_POWERS = {
   // Dexterity save or 4d6 lightning", and a save was resolved as no damage.
   "javelin of lightning": "a 5-foot-wide line to a target within 120 feet: each other creature in it makes a DC 13 Dexterity save, 4d6 lightning or half on a success; then a ranged attack, and a hit adds 4d6 lightning",
   "plate armor of etherealness": "the etherealness spell for 10 minutes",
+  // "regain one expended spell slot. If the expended slot was of 4th level
+  // or higher, the new slot is 3rd level. Once you use the pearl, it can't
+  // be used again until the next dawn." The slot comes back at use_item
+  // (src/lib/dm/item-use.ts).
+  "pearl of power": "regain one expended spell slot of 3rd level or lower",
+  // "The rod can't be used again until the next dawn."
+  "rod of rulership": "each creature of your choice within 120 feet: DC 15 Wisdom save or charmed by you for 8 hours",
+  // "Once the bands are used, they can't be used again until the next dawn."
+  "iron bands of binding": "a ranged attack (Dexterity modifier + proficiency bonus) that restrains a Huge or smaller creature within 60 feet",
+};
+
+// The properties of one item that each have their own use, beside its
+// charges or without any: SRD 5.1, Staff of Thunder and Lightning, "When one
+// of these properties is used, it can't be used again until the next dawn".
+// Keyed by the property's name as the SRD heads it; use_item names it in
+// `spell`, and a property named for a spell the item casts (a Luck Blade's
+// Wish) gates that cast. `activation` "free": it rides a hit or needs no
+// action ("When you hit with a melee attack using the staff", "no action
+// required"); an action otherwise.
+const once = (activation) => ({ max: 1, regain: "all", unit: "use", ...(activation ? { activation } : {}) });
+export const POWERS = {
+  // Call Dragons: "Once you have used this property, it can't be used again
+  // for 1 hour." Its spells spend the orb's own charges.
+  "orb of dragonkind": { "Call Dragons": { max: 1, regainHours: 1, unit: "use" } },
+  "staff of thunder and lightning": {
+    Lightning: once("free"),
+    Thunder: once("free"),
+    "Lightning Strike": once(),
+    Thunderclap: once(),
+    // "Doing so doesn't expend the daily use of those properties, only the
+    // use of this one."
+    "Thunder and Lightning": once(),
+  },
+  // Drain Life and Paralyze ride a melee hit; Terrify is an action. "This
+  // property can't be used again until the next dawn", each.
+  "rod of lordly might": { "Drain Life": once("free"), Paralyze: once("free"), Terrify: once() },
+  // "This property can't be used again until the next dawn."
+  "rod of alertness": { "Protective Aura": once() },
+  // Luck: "(no action required) to reroll one attack roll, ability check,
+  // or saving throw"; Wish: "expend 1 charge and cast the wish spell ...
+  // This property can't be used again until the next dawn."
+  "luck blade": { Luck: once("free"), Wish: once() },
+  // "you can turn your failed save into a successful one. You can't use
+  // this property of the staff again until the next dawn."
+  "staff of charming": { "Turn a Failed Save": once("free") },
 };
 
 // Uses the text counts without calling them charges, kept as charges so
@@ -142,6 +187,29 @@ export const COUNTED_USES = {
   // addition, the robe has 4d4 other patches ... Once the last patch is
   // removed, the robe becomes an ordinary garment."
   "robe of useful items": { max: "4d4+12", spentAway: true },
+  // "you can use a bonus action and click the boots' heels together ...
+  // When the boots' property has been used for a total of 10 minutes, the
+  // magic ceases to function until you finish a long rest": ten minutes,
+  // each use spending the minutes it runs.
+  "boots of speed": { max: 10, regain: "all", regainOn: "long_rest", unit: "minute", activation: "bonus" },
+  // "you can use an action to speak its command word ... Whenever you use the
+  // ring again before taking a long rest, you must succeed on a DC 15
+  // Constitution saving throw or gain one level of exhaustion": one use a
+  // long rest, and each use past it rolls the wearer's save
+  // (src/lib/dm/item-use.ts).
+  "ring of x-ray vision": { max: 1, regain: "all", regainOn: "long_rest", unit: "use", overuseSave: { ability: "con", dc: 15 } },
+  // "When you draw this weapon, you can extinguish all nonmagical flames
+  // within 30 feet of you. This property can be used no more than once per
+  // hour": no action of its own (it rides the draw), back an hour after use.
+  "frost brand": { max: 1, regainHours: 1, unit: "use", activation: "free" },
+  // "After the djinni departs, it can't be summoned again for 24 hours":
+  // counted from the summoning (the djinni serves up to an hour), so the
+  // wait may end that hour early.
+  "ring of djinni summoning": { max: 1, regainHours: 24, unit: "use" },
+  // "A full deck has 34 cards ... that card can't be used again": each draw
+  // spends a card, and the deck is used up with its last. "A deck found as
+  // treasure is usually missing 1d20 - 1 cards": the GM sets the row's count.
+  "deck of illusions": { max: 34, spentAway: true, unit: "card" },
 };
 
 // The last charge's d20 where a 1 leaves an item its text describes rather

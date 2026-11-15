@@ -99,6 +99,12 @@ export function itemMechanicsOf(row: Row): Record<string, unknown> | null {
   if (def?.charges) {
     out.charges = def.charges;
   }
+  if (def?.powers) {
+    out.powers = def.powers;
+  }
+  if (def?.reading) {
+    out.reading = def.reading;
+  }
   if (def?.cursed) {
     out.cursed = true;
   }

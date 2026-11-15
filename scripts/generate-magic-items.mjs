@@ -25,8 +25,8 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3-multiple-ciphers";
-import { ADDED, ALIASES, DROPPED, EXTRA, REPLACED } from "./lib/magic-item-corrections.mjs";
-import { categoryBase, COUNTED_USES, DAILY_POWERS, GEAR_RIDERS, LAST_CHARGE_BECOMES } from "./lib/magic-item-riders.mjs";
+import { ADDED, ALIASES, DROPPED, EXTRA, REPLACED, UNCHARGED } from "./lib/magic-item-corrections.mjs";
+import { categoryBase, COUNTED_USES, DAILY_POWERS, GEAR_RIDERS, LAST_CHARGE_BECOMES, POWERS } from "./lib/magic-item-riders.mjs";
 import { nameBase } from "./lib/name-base.mjs";
 import { PLAYED_DOCUMENTS_SQL } from "../src/lib/content/edition.ts";
 
@@ -368,6 +368,11 @@ function usesOf(desc) {
   if (days && countOf(days[1])) {
     return { max: 1, regainDays: countOf(days[1]) };
   }
+  // The manuals and tomes: "The manual then loses its magic, but regains it
+  // in a century": one reading, back in a hundred years of days.
+  if (/loses its magic, but regains it in a century/i.test(desc)) {
+    return { max: 1, regainDays: 36500 };
+  }
   return null;
 }
 
@@ -458,7 +463,7 @@ function gearOf(row, desc, match, rawDesc) {
   if (authored?.cursed) {
     out.cursed = true;
   }
-  const charges = chargesOf(desc, srd ? match : null);
+  const charges = srd && UNCHARGED[match] ? null : chargesOf(desc, srd ? match : null);
   const dailyCast = srd && !charges && !DAILY_POWERS[match] ? dailyCastOf(rawDesc) : null;
   if (charges) {
     out.charges = charges;
@@ -466,6 +471,16 @@ function gearOf(row, desc, match, rawDesc) {
     out.charges = { max: 1, regain: "all", daily: DAILY_POWERS[match] };
   } else if (dailyCast) {
     out.charges = { max: 1, regain: "all", daily: dailyCast };
+  }
+  if (srd && POWERS[match]) {
+    out.powers = POWERS[match];
+  }
+  // SRD 5.1, the manuals and tomes: "your Constitution score increases by 2,
+  // as does your maximum for that score". use_item applies it
+  // (src/lib/srd/studied-books.ts).
+  const reading = srd ? /your (Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma) score increases by (\d+), as does your maximum for that score/i.exec(desc) : null;
+  if (reading) {
+    out.reading = { ability: ABILITY[reading[1].toLowerCase()], amount: Number(reading[2]) };
   }
   return out;
 }
@@ -560,6 +575,7 @@ function collect() {
       effects: added.effects,
       ...(added.base ? { base: added.base } : {}),
       ...(added.charges ? { charges: added.charges } : {}),
+      ...(added.noWear ? { noWear: true } : {}),
     });
   }
   return {

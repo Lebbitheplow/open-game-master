@@ -1,3 +1,5 @@
+import { studiedRecords } from "@/lib/srd/studied-books";
+import { ABILITIES } from "@/lib/schemas/abilities";
 import { markPaidOption } from "@/lib/dm/mt-srd-metamagic";
 import { healerKitStabilize, healerKitUse } from "@/lib/dm/stabilize";
 import { afterCounterSpend } from "@/lib/dm/mt-fb-counter-riders";
@@ -2278,6 +2280,13 @@ function dmMutation(
           return { result: refusal };
         }
       }
+      // A manual's or tome's reading, and the maximum it raised, is written
+      // only by use_item as the book is read (src/lib/srd/studied-books.ts).
+      if (patch.features && studiedRecords(patch.features).join("|") !== studiedRecords(sheet.features).join("|")) {
+        return {
+          result: { error: "A manual or tome read is recorded by use_item when the character reads the book; update_sheet neither adds nor removes that record. Nothing was changed.", refused: "rules" },
+        };
+      }
       // The ceiling is on what one story moment gives, however the edit is
       // split: it is measured from the sheet as it stood before the first
       // update_sheet of this turn, or of the last ten minutes at a console
@@ -2298,6 +2307,8 @@ function dmMutation(
           level: Math.min(sheet.level, baseline.level),
           maxHp: Math.min(sheet.maxHp, baseline.maxHp),
           gold: Math.min(sheet.gold, baseline.gold),
+          // A score already past 20 (a manual read, Primal Champion) may stay.
+          abilities: Object.fromEntries(ABILITIES.map((ability) => [ability, Math.max(sheet.abilities[ability], baseline.abilities[ability])])),
         },
         patch,
         typeof patch.xp === "number" ? levelForXp(patch.xp) : undefined,

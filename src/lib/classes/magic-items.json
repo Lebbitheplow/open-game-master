@@ -1377,7 +1377,14 @@
         "boots-of-speed-a5e"
       ],
       "requiresAttunement": true,
-      "effects": []
+      "effects": [],
+      "charges": {
+        "max": 10,
+        "regain": "all",
+        "regainOn": "long_rest",
+        "unit": "minute",
+        "activation": "bonus"
+      }
     },
     {
       "name": "Boots of Striding and Springing",
@@ -2907,6 +2914,22 @@
       }
     },
     {
+      "name": "Deck of Illusions",
+      "match": "deck of illusions",
+      "slugs": [
+        "deck-of-illusions",
+        "deck-of-illusions-a5e"
+      ],
+      "requiresAttunement": false,
+      "noWear": true,
+      "effects": [],
+      "charges": {
+        "max": 34,
+        "spentAway": true,
+        "unit": "card"
+      }
+    },
+    {
       "name": "Deepstone Cestus",
       "match": "deepstone cestus",
       "slugs": [
@@ -3595,18 +3618,180 @@
       "effects": []
     },
     {
-      "name": "Figurine of Wondrous Power",
-      "match": "figurine of wondrous power",
-      "slugs": [
-        "figurine-of-wondrous-power",
-        "figurine-of-wondrous-power-a5e"
-      ],
+      "name": "Figurine of Wondrous Power (Bronze Griffon)",
+      "match": "figurine of wondrous power (bronze griffon)",
+      "slugs": [],
       "requiresAttunement": false,
-      "noWear": true,
+      "aliases": [
+        "Bronze Griffon Figurine",
+        "Figurine of Wondrous Power, Bronze Griffon"
+      ],
       "effects": [],
       "charges": {
-        "max": 24
-      }
+        "max": 1,
+        "regainDays": 5
+      },
+      "noWear": true
+    },
+    {
+      "name": "Figurine of Wondrous Power (Ebony Fly)",
+      "match": "figurine of wondrous power (ebony fly)",
+      "slugs": [],
+      "requiresAttunement": false,
+      "aliases": [
+        "Ebony Fly Figurine",
+        "Figurine of Wondrous Power, Ebony Fly"
+      ],
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regainDays": 2
+      },
+      "noWear": true
+    },
+    {
+      "name": "Figurine of Wondrous Power (Goat of Terror)",
+      "match": "figurine of wondrous power (goat of terror)",
+      "slugs": [],
+      "requiresAttunement": false,
+      "aliases": [
+        "Ivory Goat of Terror",
+        "Figurine of Wondrous Power, Goat of Terror"
+      ],
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regainDays": 15
+      },
+      "noWear": true
+    },
+    {
+      "name": "Figurine of Wondrous Power (Goat of Travail)",
+      "match": "figurine of wondrous power (goat of travail)",
+      "slugs": [],
+      "requiresAttunement": false,
+      "aliases": [
+        "Ivory Goat of Travail",
+        "Figurine of Wondrous Power, Goat of Travail"
+      ],
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regainDays": 30
+      },
+      "noWear": true
+    },
+    {
+      "name": "Figurine of Wondrous Power (Goat of Traveling)",
+      "match": "figurine of wondrous power (goat of traveling)",
+      "slugs": [],
+      "requiresAttunement": false,
+      "aliases": [
+        "Ivory Goat of Traveling",
+        "Figurine of Wondrous Power, Goat of Traveling"
+      ],
+      "effects": [],
+      "charges": {
+        "max": 24,
+        "regainDays": 7
+      },
+      "noWear": true
+    },
+    {
+      "name": "Figurine of Wondrous Power (Golden Lion)",
+      "match": "figurine of wondrous power (golden lion)",
+      "slugs": [],
+      "requiresAttunement": false,
+      "aliases": [
+        "Golden Lion Figurine",
+        "Figurine of Wondrous Power, Golden Lion"
+      ],
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regainDays": 7
+      },
+      "noWear": true
+    },
+    {
+      "name": "Figurine of Wondrous Power (Marble Elephant)",
+      "match": "figurine of wondrous power (marble elephant)",
+      "slugs": [],
+      "requiresAttunement": false,
+      "aliases": [
+        "Marble Elephant Figurine",
+        "Figurine of Wondrous Power, Marble Elephant"
+      ],
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regainDays": 7
+      },
+      "noWear": true
+    },
+    {
+      "name": "Figurine of Wondrous Power (Obsidian Steed)",
+      "match": "figurine of wondrous power (obsidian steed)",
+      "slugs": [],
+      "requiresAttunement": false,
+      "aliases": [
+        "Obsidian Steed Figurine",
+        "Figurine of Wondrous Power, Obsidian Steed"
+      ],
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regainDays": 5
+      },
+      "noWear": true
+    },
+    {
+      "name": "Figurine of Wondrous Power (Onyx Dog)",
+      "match": "figurine of wondrous power (onyx dog)",
+      "slugs": [],
+      "requiresAttunement": false,
+      "aliases": [
+        "Onyx Dog Figurine",
+        "Figurine of Wondrous Power, Onyx Dog"
+      ],
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regainDays": 7
+      },
+      "noWear": true
+    },
+    {
+      "name": "Figurine of Wondrous Power (Serpentine Owl)",
+      "match": "figurine of wondrous power (serpentine owl)",
+      "slugs": [],
+      "requiresAttunement": false,
+      "aliases": [
+        "Serpentine Owl Figurine",
+        "Figurine of Wondrous Power, Serpentine Owl"
+      ],
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regainDays": 2
+      },
+      "noWear": true
+    },
+    {
+      "name": "Figurine of Wondrous Power (Silver Raven)",
+      "match": "figurine of wondrous power (silver raven)",
+      "slugs": [],
+      "requiresAttunement": false,
+      "aliases": [
+        "Silver Raven Figurine",
+        "Figurine of Wondrous Power, Silver Raven"
+      ],
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regainDays": 2
+      },
+      "noWear": true
     },
     {
       "name": "Flame Tongue",
@@ -3774,6 +3959,12 @@
             "type": "cold"
           }
         ]
+      },
+      "charges": {
+        "max": 1,
+        "regainHours": 1,
+        "unit": "use",
+        "activation": "free"
       }
     },
     {
@@ -5086,6 +5277,22 @@
       "effects": []
     },
     {
+      "name": "Iron Bands of Binding",
+      "match": "iron bands of binding",
+      "slugs": [
+        "iron-bands-of-binding",
+        "iron-bands-of-binding-a5e"
+      ],
+      "requiresAttunement": false,
+      "noWear": true,
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regain": "all",
+        "daily": "a ranged attack (Dexterity modifier + proficiency bonus) that restrains a Huge or smaller creature within 60 feet"
+      }
+    },
+    {
       "name": "Iron Foe Mace",
       "match": "iron foe mace",
       "slugs": [
@@ -5426,6 +5633,19 @@
       },
       "charges": {
         "max": "1d4-1"
+      },
+      "powers": {
+        "Luck": {
+          "max": 1,
+          "regain": "all",
+          "unit": "use",
+          "activation": "free"
+        },
+        "Wish": {
+          "max": 1,
+          "regain": "all",
+          "unit": "use"
+        }
       }
     },
     {
@@ -5663,6 +5883,63 @@
           "amount": 1
         }
       ]
+    },
+    {
+      "name": "Manual of Bodily Health",
+      "match": "manual of bodily health",
+      "slugs": [
+        "manual-of-bodily-health",
+        "manual-of-bodily-health-a5e"
+      ],
+      "requiresAttunement": false,
+      "noWear": true,
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regainDays": 36500
+      },
+      "reading": {
+        "ability": "con",
+        "amount": 2
+      }
+    },
+    {
+      "name": "Manual of Gainful Exercise",
+      "match": "manual of gainful exercise",
+      "slugs": [
+        "manual-of-gainful-exercise",
+        "manual-of-gainful-exercise-a5e"
+      ],
+      "requiresAttunement": false,
+      "noWear": true,
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regainDays": 36500
+      },
+      "reading": {
+        "ability": "str",
+        "amount": 2
+      }
+    },
+    {
+      "name": "Manual of Quickness of Action",
+      "match": "manual of quickness of action",
+      "slugs": [
+        "manual-of-quickness-of-action",
+        "manual-of-quickness-of-action-a5e"
+      ],
+      "requiresAttunement": false,
+      "noWear": true,
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regainDays": 36500
+      },
+      "reading": {
+        "ability": "dex",
+        "amount": 2
+      }
     },
     {
       "name": "Manual of the Lesser Golem",
@@ -6233,6 +6510,13 @@
       "charges": {
         "max": 7,
         "regain": "1d4+3"
+      },
+      "powers": {
+        "Call Dragons": {
+          "max": 1,
+          "regainHours": 1,
+          "unit": "use"
+        }
       }
     },
     {
@@ -6369,7 +6653,12 @@
         "spellcaster": true
       },
       "noWear": true,
-      "effects": []
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regain": "all",
+        "daily": "regain one expended spell slot of 3rd level or lower"
+      }
     },
     {
       "name": "Perdita Ravenwing’s True Name",
@@ -6955,7 +7244,12 @@
         "ring-of-djinni-summoning-a5e"
       ],
       "requiresAttunement": true,
-      "effects": []
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regainHours": 24,
+        "unit": "use"
+      }
     },
     {
       "name": "Ring of Elemental Command",
@@ -7527,7 +7821,17 @@
         "ring-of-x-ray-vision-a5e"
       ],
       "requiresAttunement": true,
-      "effects": []
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regain": "all",
+        "regainOn": "long_rest",
+        "unit": "use",
+        "overuseSave": {
+          "ability": "con",
+          "dc": 15
+        }
+      }
     },
     {
       "name": "Riverine Blade",
@@ -7647,7 +7951,14 @@
         "rod-of-alertness-a5e"
       ],
       "requiresAttunement": true,
-      "effects": []
+      "effects": [],
+      "powers": {
+        "Protective Aura": {
+          "max": 1,
+          "regain": "all",
+          "unit": "use"
+        }
+      }
     },
     {
       "name": "Rod of Blade Bending",
@@ -7735,7 +8046,26 @@
         "rod-of-lordly-might-a5e"
       ],
       "requiresAttunement": true,
-      "effects": []
+      "effects": [],
+      "powers": {
+        "Drain Life": {
+          "max": 1,
+          "regain": "all",
+          "unit": "use",
+          "activation": "free"
+        },
+        "Paralyze": {
+          "max": 1,
+          "regain": "all",
+          "unit": "use",
+          "activation": "free"
+        },
+        "Terrify": {
+          "max": 1,
+          "regain": "all",
+          "unit": "use"
+        }
+      }
     },
     {
       "name": "Rod of Reformation",
@@ -7772,7 +8102,12 @@
         "rod-of-rulership-a5e"
       ],
       "requiresAttunement": true,
-      "effects": []
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regain": "all",
+        "daily": "each creature of your choice within 120 feet: DC 15 Wisdom save or charmed by you for 8 hours"
+      }
     },
     {
       "name": "Rod of Sacrificial Blessing",
@@ -8922,6 +9257,14 @@
         "max": 10,
         "regain": "1d8+2",
         "lastChargeBecomes": "Quarterstaff"
+      },
+      "powers": {
+        "Turn a Failed Save": {
+          "max": 1,
+          "regain": "all",
+          "unit": "use",
+          "activation": "free"
+        }
       }
     },
     {
@@ -9555,7 +9898,36 @@
         "staff-of-thunder-and-lightning-a5e"
       ],
       "requiresAttunement": true,
-      "effects": []
+      "effects": [],
+      "powers": {
+        "Lightning": {
+          "max": 1,
+          "regain": "all",
+          "unit": "use",
+          "activation": "free"
+        },
+        "Thunder": {
+          "max": 1,
+          "regain": "all",
+          "unit": "use",
+          "activation": "free"
+        },
+        "Lightning Strike": {
+          "max": 1,
+          "regain": "all",
+          "unit": "use"
+        },
+        "Thunderclap": {
+          "max": 1,
+          "regain": "all",
+          "unit": "use"
+        },
+        "Thunder and Lightning": {
+          "max": 1,
+          "regain": "all",
+          "unit": "use"
+        }
+      }
     },
     {
       "name": "Staff of Voices",
@@ -10286,6 +10658,44 @@
       }
     },
     {
+      "name": "Tome of Clear Thought",
+      "match": "tome of clear thought",
+      "slugs": [
+        "tome-of-clear-thought",
+        "tome-of-clear-thought-a5e"
+      ],
+      "requiresAttunement": false,
+      "noWear": true,
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regainDays": 36500
+      },
+      "reading": {
+        "ability": "int",
+        "amount": 2
+      }
+    },
+    {
+      "name": "Tome of Leadership and Influence",
+      "match": "tome of leadership and influence",
+      "slugs": [
+        "tome-of-leadership-and-influence",
+        "tome-of-leadership-and-influence-a5e"
+      ],
+      "requiresAttunement": false,
+      "noWear": true,
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regainDays": 36500
+      },
+      "reading": {
+        "ability": "cha",
+        "amount": 2
+      }
+    },
+    {
       "name": "Tome of the Endless Tale",
       "match": "tome of the endless tale",
       "slugs": [
@@ -10296,6 +10706,25 @@
       "effects": [],
       "charges": {
         "max": 3
+      }
+    },
+    {
+      "name": "Tome of Understanding",
+      "match": "tome of understanding",
+      "slugs": [
+        "tome-of-understanding",
+        "tome-of-understanding-a5e"
+      ],
+      "requiresAttunement": false,
+      "noWear": true,
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regainDays": 36500
+      },
+      "reading": {
+        "ability": "wis",
+        "amount": 2
       }
     },
     {

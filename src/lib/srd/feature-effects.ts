@@ -22,6 +22,8 @@ import { GENRE_A_FEATURE_DEFS, GENRE_A_MARK_ATTACKS } from "@/lib/srd/genre-a-fe
 import { GENRE_B_FEATURE_DEFS } from "@/lib/srd/authored-effects-genre-b";
 import { featTwinOf, tableFeat } from "@/lib/srd/feat-effects";
 import { textKey } from "@/lib/language/text-logic";
+import { proficiencyBonusOf } from "@/lib/srd/proficiency";
+import type { WornMagicItem } from "@/lib/srd/magic-items";
 import { choiceIn, isConditionNamed, isNamed } from "@/lib/srd/feature-names";
 
 export type FightingStyleId =
@@ -1186,7 +1188,9 @@ export function auraGranted(sheet: { currentHp?: number; conditions?: readonly s
 }
 
 export function defenseRiders(
-  sheet: { class: string; level: number; features: Array<{ name: string }>; campaignId?: string },
+  // `proficiencyBonus`: the character's own where the caller has it (an
+  // Ioun Stone of Mastery's +1 in it); else it is read from the sheet.
+  sheet: { class: string; level: number; features: Array<{ name: string }>; campaignId?: string; proficiencyBonus?: number; equipment?: WornMagicItem[] },
   // Ability modifiers, so a CHA-scaled aura resolves to a real number. When
   // omitted the aura's minimum stands in.
   abilityMods?: Record<string, number>,
@@ -1211,7 +1215,7 @@ export function defenseRiders(
         riders.initiativeBonus += Math.max(0, abilityMods?.[effect.ability] ?? 0);
         break;
       case "initiative_proficiency":
-        riders.initiativeBonus += 2 + Math.floor((clampLevel(sheet.level) - 1) / 4);
+        riders.initiativeBonus += sheet.proficiencyBonus ?? proficiencyBonusOf(sheet);
         break;
       case "save_bonus":
         riders.saveBonus += Math.max(effect.min, abilityMods?.[effect.ability] ?? 0);

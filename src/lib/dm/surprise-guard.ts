@@ -13,6 +13,8 @@ import { holdsFeat } from "@/lib/srd/feat-effects";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { optionFeatureName } from "@/lib/srd/options";
 import { infusionWorn } from "@/lib/srd/infusions";
+import { wearsWorkingItem } from "@/lib/srd/magic-items";
+import { IOUN_AWARENESS } from "@/lib/srd/proficiency";
 import { activeAuthored } from "@/lib/srd/authored-effects";
 import { creatureTypeOf } from "@/lib/bestiary/creature-type";
 import { textKey } from "@/lib/language/text-logic";
@@ -33,7 +35,9 @@ export function cannotBeSurprised(sheet: CharacterSheet, foes: readonly LyingInW
   if (oneWithTheRuins(sheet)) {
     return true;
   }
-  if (holdsFeat(sheet, "Alert") || holdsFeature(sheet, optionFeatureName("rune", "Storm Rune")) || infusionWorn(sheet.equipment ?? [], "Helm of Awareness")) {
+  // An Ioun Stone of Awareness orbiting its attuned owner (SRD 5.1: "You
+  // can't be surprised while this dark blue rhomboid orbits your head").
+  if (holdsFeat(sheet, "Alert") || holdsFeature(sheet, optionFeatureName("rune", "Storm Rune")) || infusionWorn(sheet.equipment ?? [], "Helm of Awareness") || wearsWorkingItem(sheet.equipment ?? [], sheet, IOUN_AWARENESS)) {
     return true;
   }
   return activeAuthored(sheet, "no_surprise").some(({ effect }) => {
