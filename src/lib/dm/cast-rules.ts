@@ -16,7 +16,7 @@ import { holdsFeat } from "@/lib/srd/feat-effects";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import { acBreakdownFor } from "@/lib/srd";
 import { subclassSpellsFor } from "@/lib/srd/features";
-import type { SpellFacts } from "@/lib/srd/spell-facts";
+import type { CastingTime, SpellFacts } from "@/lib/srd/spell-facts";
 import { casterViewsOf, notReadyReason, spellbookOf } from "@/lib/srd/spell-prep";
 import { wearsUntrainedArmor } from "@/lib/srd/armor";
 import { matchWeapon } from "@/lib/srd/weapons";
@@ -771,7 +771,7 @@ export function turnCharge(input: {
 // action. `time` is what the casting takes of the turn.
 export function bonusSpellProblem(
   marks: readonly string[],
-  cast: { who: string; name: string; time: string; levelled: boolean; afterLevelled?: boolean },
+  cast: { who: string; name: string; time: CastingTime; levelled: boolean; afterLevelled?: boolean },
 ): CastRefusal | null {
   if (cast.time === "bonus" && marks.includes(LEVELLED_SPELL) && !cast.afterLevelled) {
     return {
@@ -789,7 +789,7 @@ export function bonusSpellProblem(
 }
 
 // What a casting leaves on the turn for the rule above to read.
-export function withSpellMarks(budget: TurnBudget, time: string, levelled: boolean): TurnBudget {
+export function withSpellMarks(budget: TurnBudget, time: CastingTime, levelled: boolean): TurnBudget {
   return {
     ...budget,
     oncePerTurn: [
