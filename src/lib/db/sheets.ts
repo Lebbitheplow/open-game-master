@@ -1089,8 +1089,8 @@ export function patchSheet(
 
   // Hit points written back end the dying, by whatever path (vitals-logic.ts
   // regainedSettle, issue 968). A write that sets the track itself says what
-  // it is, and one that leaves the hit points alone regains nothing.
-  const settled = input.currentHp !== undefined && input.deathSaves === undefined ? regainedSettle(next) : null;
+  // it is, and one that does not raise the hit points regains nothing.
+  const settled = input.currentHp !== undefined && input.currentHp > existing.currentHp && input.deathSaves === undefined ? regainedSettle(next) : null;
   if (settled) {
     Object.assign(next, settled);
   }
