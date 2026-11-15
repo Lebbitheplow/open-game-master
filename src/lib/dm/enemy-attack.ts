@@ -20,7 +20,8 @@ import { readiedHolder } from "@/lib/dm/readied-release";
 import { hitTraitDice } from "@/lib/dm/side-allies";
 import type { EncounterEnemy } from "@/lib/db/encounters";
 import { mirrorImageDecoy, sanctuaryRefusal } from "@/lib/dm/spell-defenses";
-import { enfeebledBlow, spellRetort, spendEnemyRiders } from "@/lib/dm/spell-retort";
+import { enfeebledBlow, measureRetort, spellRetort, spendEnemyRiders } from "@/lib/dm/spell-retort";
+import { joinRetorts } from "@/lib/dm/retort-logic";
 import { z } from "zod";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import {
@@ -865,8 +866,11 @@ export function handleEnemyAttack(
       ...(args.nonlethal && !ranged ? { nonlethal: true } : {}),
       reason: `${enemy.displayName}'s ${attack.name}`,
     });
-    // Thought Shield: the psychic damage a warlock took goes back to the creature.
-    Object.assign(applied, thoughtShieldBack(campaign, turn, struck, enemy.id, { amount: Math.min(dealt, 200), type: blow.type, parts: blow.parts ? scaledParts(blow.parts, dealt) : undefined, flags }, sheets, sheetsById));
+    // Thought Shield: the psychic damage a warlock took goes back to the
+    // creature, kept with the swing so a reaction that turns it into a miss
+    // takes it back (spell-retort.ts measureRetort).
+    const psychicBack = measureRetort(enemy.id, () => thoughtShieldBack(campaign, turn, struck, enemy.id, { amount: Math.min(dealt, 200), type: blow.type, parts: blow.parts ? scaledParts(blow.parts, dealt) : undefined, flags }, sheets, sheetsById), (back) => (back.thoughtShield ? ["Thought Shield"] : []));
+    Object.assign(applied, psychicBack.result);
     totalDamage += dealt;
     takenTotal += dealt > 0 ? meetDefenses(blowDefenses(campaign.id, struck, flags), Math.min(dealt, 200), blow.type, blow.parts ? scaledParts(blow.parts, dealt) : undefined, 0).amount : 0;
     previousHit = true;
@@ -935,8 +939,12 @@ export function handleEnemyAttack(
       ? byType.reduce((sum, part) => sum + (/^(\d+) necrotic\b/i.exec(part) ? Number(/^(\d+)/.exec(part)![1]) : 0), 0)
       : /necrotic/i.test(blow.type ?? attack.type) ? dealt : 0;
     const onHit = resolveOnHit(campaign, turn, standing, attack, target.id, { sheets, sheetsById, dealt: { total: dealt, necrotic } });
-    // Fire Shield, Armor of Agathys and Holy Aura answer the blow (spell-retort.ts).
-    const retort = spellRetort(campaign, turn, standing, target.id, !ranged, spatial.distance === null || spatial.distance <= 1, sheets, sheetsById, struck.tempHp ?? 0);
+    // Fire Shield, Armor of Agathys and Holy Aura answer the blow
+    // (spell-retort.ts), kept with the swing with Thought Shield's: a hit a
+    // reaction turns into a miss never set them off (reaction-refund.ts).
+    const answered = measureRetort(standing.id, () => spellRetort(campaign, turn, standing, target.id, !ranged, spatial.distance === null || spatial.distance <= 1, sheets, sheetsById, struck.tempHp ?? 0), (out) => out.by);
+    const retort = answered.result.line;
+    hitLog.retort(joinRetorts(psychicBack.retort, answered.retort));
     if (typeof onHit?.targetHp === "string") {
       targetHp = onHit.targetHp;
     }
@@ -963,7 +971,11 @@ export function handleEnemyAttack(
     type: (closing?.attack ?? planned[0]).type,
     ranged: closing?.ranged ?? false,
   });
-  notes.push(...authoredAfterHit(campaign, { encounter, attacker: standing, target, dealt: totalDamage, taken: takenTotal, ranged: (lastSwing as { ranged: boolean } | null)?.ranged ?? false, attackName: closing?.attack.name }));
+  // A feature's retaliation for the attack as a whole, kept with its record:
+  // a reaction that leaves none of its swings a hit takes it back.
+  const retaliation = measureRetort(standing.id, () => authoredAfterHit(campaign, { encounter, attacker: standing, target, dealt: totalDamage, taken: takenTotal, ranged: (lastSwing as { ranged: boolean } | null)?.ranged ?? false, attackName: closing?.attack.name }), (lines) => (lines.length ? ["A retaliation"] : []));
+  hitLog.afterHit(retaliation.retort);
+  notes.push(...retaliation.result);
 
   const names = [...new Set(planned.map((attack) => attack.name))];
   return {

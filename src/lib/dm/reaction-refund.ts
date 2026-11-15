@@ -16,7 +16,9 @@
 // is undone too: the drop to 0 (unconscious, prone, the death track, a death
 // by massive damage), the rage it ended, the Relentless Endurance, Undying
 // Sentinel, Death Ward or Relentless Rage that held them up, a Warding Bond's share, and the
-// concentration it broke with the effects that spell held.
+// concentration it broke with the effects that spell held. A swing turned
+// into a miss gives back what it set off against its attacker (Fire Shield's
+// flame, Armor of Agathys's cold: retortsBack).
 //
 // This module must not import mutations.ts' callers back; it calls the heal
 // mutation the same way cast-tools does.
@@ -48,6 +50,7 @@ import {
   type SwingOutcome,
 } from "@/lib/dm/hit-replay-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
+import { takeRetortBack } from "@/lib/dm/spell-retort";
 import { answerLabel, carryCuts, hitIdOf, openHits, wardHpOf, writeLastHit, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { applyDmMutation, audit } from "@/lib/dm/mutations";
 import { blowDefenses, meetDefenses, WILDFIRE_SPIRIT } from "@/lib/dm/pc-damage";
@@ -365,6 +368,7 @@ export function settleHits(
     });
   });
   const final = state;
+  retortsBack(campaign, steps, notes);
 
   // Each hit of the chain is kept as the corrected fight has it: its
   // swings, where it found and left them (a later hit that found them down
@@ -514,6 +518,42 @@ function sameTrack(a: DeathTrack | null, b: DeathTrack | null): boolean {
     Boolean(a?.dead) === Boolean(b?.dead) &&
     Boolean(a?.stable) === Boolean(b?.stable)
   );
+}
+
+// What the swings a reaction turned into misses had set off against their
+// attackers (last-hit.ts SwingRecord.retort), taken back once: the step keeps
+// the swing (and the record its whole attack's retaliation) without it, so a
+// second reaction finds nothing left to give. SRD 5.1: Fire Shield, Armor of
+// Agathys and Holy Aura answer a creature that hits; a blow Shield or Cutting
+// Words turns away never hit. A swing that still hits keeps what it set off,
+// dealt the once.
+function retortsBack(campaign: Campaign, steps: Step[], notes: string[]) {
+  for (const step of steps) {
+    const was = step.record.swings;
+    step.corrected = step.corrected.map((swing, at) => {
+      const kept = was[at]?.retort;
+      if (!kept || !was[at].hit || swing.hit) {
+        return swing;
+      }
+      const line = takeRetortBack(campaign, kept);
+      if (line) {
+        notes.push(line);
+      }
+      const plain = { ...swing };
+      delete plain.retort;
+      return plain;
+    });
+    const whole = step.record.afterHit;
+    if (whole && was.some((swing) => swing.hit) && !step.corrected.some((swing) => swing.hit)) {
+      const line = takeRetortBack(campaign, whole);
+      if (line) {
+        notes.push(line);
+      }
+      const plain = { ...step.record };
+      delete plain.afterHit;
+      step.record = plain;
+    }
+  }
 }
 
 // Warding Bond: the cleric who bound them took the same damage each blow

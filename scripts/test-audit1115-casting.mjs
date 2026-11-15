@@ -674,5 +674,155 @@ await test("S19: a ranger and druid's druidic focus serves the spell they prepar
   assert.match(ranger.error, /component pouch/);
 });
 
+// ---- S20: a hit a reaction turns into a miss sets off nothing ----
+
+// SRD 5.1 keys each answer to the hit: Fire Shield "Whenever a creature
+// within 5 feet of you hits you with a melee attack", Armor of Agathys "If a
+// creature hits you with a melee attack", Holy Aura "If a fiend or an undead
+// hits a creature with a melee attack". Shield's +5 counts "including against
+// the triggering attack" and Cutting Words comes "before the GM determines
+// whether the attack roll succeeds", so an attack they turn into a miss never
+// hit. The engine lands the hit and its answer in one call and the reaction
+// after it: the creature kept the flame, the frost and the blindness of a
+// blow that missed.
+const { call: routeCall } = await import("./lib/enforce-campaign.mjs");
+const { setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
+const { listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
+
+async function flameWizard(options = {}) {
+  const { world, sheets: [mage], enemies: [goblin] } = await table([caster("wizard", "int", ["Fire Shield", "Shield"])], 1, {}, options);
+  const cast = await world.invoke("cast_buff", { characterId: mage.id, spell: "Fire Shield", variant: "fire shield (cold)", level: 4 });
+  assert.equal(cast.ok, true, cast.error);
+  world.patch(mage.id, { ac: 12, acOverride: true });
+  return { world, mage, goblin };
+}
+
+async function swingAt(world, goblin, hero, faces) {
+  world.dice(...faces);
+  const swing = await world.invoke("enemy_attack", { enemyId: goblin.id, targetCharacterId: hero.id });
+  world.clearDice();
+  assert.equal(swing.ok, true, swing.error);
+  return swing;
+}
+
+await test("S20: a hit Shield turns into a miss never set off Fire Shield: the goblin gets its 8 fire damage back", async () => {
+  const { world, mage, goblin } = await flameWizard();
+  // 10 + 4 against AC 12 hits for 3 + 2; the shield's 2d8 come up 4 and 4.
+  const swing = await swingAt(world, goblin, mage, [10, 3, 4, 4]);
+  assert.equal(swing.result.hit, true, JSON.stringify(swing.result));
+  assert.equal(hpLost(world, goblin.id), 8, "the flame answers the hit as it lands");
+  const shield = await world.invoke("use_reaction", { characterId: mage.id, feature: "Shield" });
+  assert.equal(shield.ok, true, shield.error);
+  // 14 against AC 17 misses: no hit, so no flame.
+  assert.equal(hpLost(world, goblin.id), 0, JSON.stringify(shield.result));
+  assert.equal(world.sheet(mage.id).currentHp, world.sheet(mage.id).maxHp);
+  assert.match(JSON.stringify(shield.result), /Fire Shield/, "the GM is told the flame is taken back");
+});
+
+await test("S20: a hit Shield cannot turn keeps Fire Shield's flame, dealt once", async () => {
+  const { world, mage, goblin } = await flameWizard();
+  // 19 + 4 still meets AC 17.
+  await swingAt(world, goblin, mage, [19, 3, 4, 4]);
+  const shield = await world.invoke("use_reaction", { characterId: mage.id, feature: "Shield" });
+  assert.equal(shield.ok, true, shield.error);
+  assert.equal(hpLost(world, goblin.id), 8);
+});
+
+const loreBard = caster("bard", "cha", [], [], 5, { subclass: "College of Lore" });
+
+await test("S20: a hit Cutting Words turns into a miss never froze its attacker on Armor of Agathys", async () => {
+  const { world, sheets: [lock, bard], enemies: [goblin] } = await table([
+    caster("warlock", "cha", [], ["Eldritch Blast"], 5, { spellcasting: { known: ["Armor of Agathys"], slots: { 3: { max: 2, used: 0 } } } }),
+    loreBard,
+  ]);
+  const armored = await world.invoke("cast_buff", { characterId: lock.id, spell: "Armor of Agathys", level: 3 });
+  assert.equal(armored.ok, true, armored.error);
+  world.patch(lock.id, { ac: 12, acOverride: true });
+  world.patch(bard.id, { resources: { ...world.sheet(bard.id).resources, bardic_inspiration: { max: 3, used: 0 } } });
+  await swingAt(world, goblin, lock, [10, 3]);
+  assert.equal(hpLost(world, goblin.id), 15, "the frost answers the hit as it lands");
+  world.dice(8);
+  const words = await world.invoke("use_reaction", { characterId: bard.id, feature: "Cutting Words", targetCharacterId: lock.id });
+  world.clearDice();
+  assert.equal(words.ok, true, words.error);
+  // 14 - 8 against AC 12 misses.
+  assert.equal(hpLost(world, goblin.id), 0, JSON.stringify(words.result));
+  assert.equal(world.sheet(lock.id).tempHp, 15, "the temporary hit points are whole again");
+  assert.match(JSON.stringify(words.result), /Armor of Agathys/, "the GM is told the frost is taken back");
+});
+
+await test("S20: a fiend whose hit Cutting Words turns into a miss is not left blinded by Holy Aura", async () => {
+  const { world, sheets: [cleric, bard], enemies: [imp] } = await table([caster("cleric", "wis", ["Holy Aura"], [], 15), loreBard], 1, { type: "fiend" });
+  world.patch(cleric.id, { equipment: [...world.sheet(cleric.id).equipment, { name: "Reliquary", qty: 1, worth: 1000 }] });
+  const cast = await world.invoke("cast_buff", { characterId: cleric.id, spell: "Holy Aura", targetCharacterIds: [cleric.id], level: 8 });
+  assert.equal(cast.ok, true, cast.error);
+  world.patch(cleric.id, { ac: 12, acOverride: true });
+  world.patch(bard.id, { resources: { ...world.sheet(bard.id).resources, bardic_inspiration: { max: 3, used: 0 } } });
+  // The swing at disadvantage (10, 10), its damage, the cleric's concentration
+  // save with the aura's advantage, then the imp's CON save, failed.
+  await swingAt(world, imp, cleric, [10, 10, 3, 20, 20, 1]);
+  assert.ok(world.enemies().find((entry) => entry.id === imp.id).conditions.includes("blinded"), "the aura blinds it as the hit lands");
+  world.dice(8);
+  const words = await world.invoke("use_reaction", { characterId: bard.id, feature: "Cutting Words", targetCharacterId: cleric.id });
+  world.clearDice();
+  assert.equal(words.ok, true, words.error);
+  assert.ok(!world.enemies().find((entry) => entry.id === imp.id).conditions.includes("blinded"), JSON.stringify(words.result));
+});
+
+await test("S20: a creature Fire Shield slew on a blow Shield turns into a miss stays slain, and the GM is told why", async () => {
+  // Two goblins, so the first one's fall does not end the fight.
+  const { world, sheets: [mage], enemies: [goblin] } = await table([caster("wizard", "int", ["Fire Shield", "Shield"])], 2);
+  const cast = await world.invoke("cast_buff", { characterId: mage.id, spell: "Fire Shield", variant: "fire shield (cold)", level: 4 });
+  assert.equal(cast.ok, true, cast.error);
+  world.patch(mage.id, { ac: 12, acOverride: true });
+  encounterRows.patchEnemyHp(goblin.id, 5, "alive");
+  await swingAt(world, goblin, mage, [10, 3, 4, 4]);
+  assert.equal(world.enemies().find((entry) => entry.id === goblin.id).status, "dead");
+  const shield = await world.invoke("use_reaction", { characterId: mage.id, feature: "Shield" });
+  assert.equal(shield.ok, true, shield.error);
+  assert.equal(world.sheet(mage.id).currentHp, world.sheet(mage.id).maxHp, "the blow is still turned away");
+  assert.equal(world.enemies().find((entry) => entry.id === goblin.id).status, "dead");
+  assert.match(JSON.stringify(shield.result), /stays dead/);
+});
+
+await test("S20: an answer is read off the creature before and after it, and taken back within the body that lost it", async () => {
+  const { retortOf, joinRetorts, retortBack } = await import("../src/lib/dm/retort-logic.ts");
+  const at = (currentHp, conditions = [], extra = {}) => ({ currentHp, maxHp: 30, status: "alive", conditions, conditionMeta: {}, ...extra });
+  const frost = retortOf("g", at(30), at(15), ["Armor of Agathys"]);
+  const blind = retortOf("g", at(15), at(15, ["blinded"]), ["Holy Aura"]);
+  assert.equal(retortOf("g", at(30), at(30), ["Fire Shield"]), null, "an answer that did nothing keeps nothing");
+  const both = joinRetorts(frost, blind);
+  assert.deepEqual([both.hp, both.by, both.laid], [15, ["Armor of Agathys", "Holy Aura"], ["blinded"]]);
+  // Hit for 5 more since: it gets the 15 back, from 10, and sees again.
+  assert.deepEqual(retortBack(at(10, ["blinded"]), both), { currentHp: 25, conditions: [], conditionMeta: {}, hp: 15 });
+  assert.equal(retortBack(at(10, [], { maxHp: 12 }), frost), null, "a body that changed since is not given another's hit points");
+  assert.equal(retortBack(at(0, [], { status: "dead" }), { ...frost, fell: true }), null, "a slain creature stays slain");
+  // Oil the flame burnt off comes back with its meta.
+  const oil = retortOf("g", at(30, ["covered in oil"], { conditionMeta: { "covered in oil": { rounds: 10 } } }), at(17), ["Fire Shield"]);
+  assert.deepEqual(retortBack(at(17), oil).conditionMeta, { "covered in oil": { rounds: 10 } });
+});
+
+await test("S20: on physical dice the held attack lands Fire Shield's flame once, and Shield still takes it back", async () => {
+  const { world, mage, goblin } = await flameWizard({ gameSettings: { dicePolicy: "real_allowed" } });
+  // A hit on a concentrating wizard asks a CON save, which the seat rolls.
+  world.patch(mage.id, { concentratingOn: "Detect Magic" });
+  setMemberRealDice(world.campaignId, mage.userId, true);
+  const swing = await swingAt(world, goblin, mage, [10, 3, 4, 4]);
+  assert.equal(swing.result?.parked, true, JSON.stringify(swing.result));
+  assert.equal(hpLost(world, goblin.id), 0, "nothing lands while the save waits");
+  const [card] = listOpenPendingRolls(world.campaignId).filter((pending) => pending.userId === mage.userId);
+  assert.ok(card, "the save is the seat's to roll");
+  world.dice(4, 4);
+  world.signIn({ id: mage.userId });
+  const entered = await routeCall(await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]"), "POST", { dice: [15] }, { campaignId: world.campaignId, pendingRollId: card.id });
+  world.clearDice();
+  assert.equal(entered.status, 200, JSON.stringify(entered.json));
+  assert.equal(hpLost(world, goblin.id), 8, "the call run again deals the flame once");
+  setMemberRealDice(world.campaignId, mage.userId, false);
+  const shield = await world.invoke("use_reaction", { characterId: mage.id, feature: "Shield" });
+  assert.equal(shield.ok, true, shield.error);
+  assert.equal(hpLost(world, goblin.id), 0, JSON.stringify(shield.result));
+});
+
 closeTables();
 finish();

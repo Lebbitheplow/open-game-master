@@ -9,17 +9,21 @@
 //     Holy Aura a fiend's or an undead's with a Constitution save against
 //     blindness.
 // Ray of Enfeeblement's hit is laid by the spell attack's riders
-// (src/lib/dm/spell-attack-riders.ts) through layEnfeeblement.
+// (src/lib/dm/spell-attack-riders.ts) through layEnfeeblement. What the
+// answers to a blow do is read around them (measureRetort), kept with the
+// swing, and taken back when a reaction turns the swing into a miss
+// (takeRetortBack, retort-logic.ts).
 
 import { spellKill } from "@/lib/dm/ar-ws-harvest";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { getActiveEncounter, getEnemy, patchEnemyConditions, type EncounterEnemy } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy, patchEnemyConditions, patchEnemyHp, type EncounterEnemy } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
 import { spellSaveDcFor } from "@/lib/srd";
 import type { EnemyAttack } from "@/lib/bestiary/statblock";
 import { conditionRollRiders, type ConditionRollRiders } from "@/lib/srd/condition-effects";
 import { instancesOf, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { retortBack, retortOf, type Retort, type RetortCreature } from "@/lib/dm/retort-logic";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { rollEnemySave } from "@/lib/dm/forced-save";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -87,8 +91,51 @@ export function enfeebledBlow(enemy: EncounterEnemy, attack: EnemyAttack, ranged
   return enemy.conditions.includes("enfeebled") && usesStrength(enemy, attack, ranged) ? Math.floor(amount / 2) : amount;
 }
 
+// The creature as an answer finds or leaves it, for retortOf.
+function creatureNow(enemyId: string): RetortCreature | null {
+  const enemy = getEnemy(enemyId);
+  return enemy ? { currentHp: enemy.currentHp, maxHp: enemy.maxHp, status: enemy.status, conditions: [...enemy.conditions], conditionMeta: { ...(enemy.conditionMeta as Record<string, unknown>) } } : null;
+}
+
+// Runs an answer to a blow and reads what it did to the creature that struck
+// (`by` names the answers that fired, from what it returned).
+export function measureRetort<T>(enemyId: string, run: () => T, by: (result: T) => string[]): { result: T; retort: Retort | null } {
+  const before = creatureNow(enemyId);
+  const result = run();
+  const after = creatureNow(enemyId);
+  const fired = by(result);
+  return { result, retort: before && after && fired.length ? retortOf(enemyId, before, after, fired) : null };
+}
+
+// A reaction turned the swing that set the answer off into a miss: the
+// creature gets back what it took (retort-logic.ts retortBack). Returns the
+// line for the reaction's result, or null when nothing came back.
+export function takeRetortBack(campaign: Campaign, retort: Retort): string | null {
+  const enemy = getEnemy(retort.enemyId);
+  if (!enemy) {
+    return null;
+  }
+  const what = retort.by.length ? retort.by.join(" and ") : "A retaliation";
+  const now = creatureNow(enemy.id)!;
+  const back = retortBack(now, retort);
+  if (!back) {
+    return retort.fell && enemy.status !== "alive" ? `${what} slew ${enemy.displayName} on a blow that now misses; a slain creature is not raised, so it stays dead.` : null;
+  }
+  if (back.currentHp !== now.currentHp) {
+    patchEnemyHp(enemy.id, back.currentHp, "alive");
+  }
+  // Written from the creature as the answer is taken back, after the hit
+  // points: a condition a regained hit point ends (a caltrops wound) was
+  // never lost, since the hit points never were.
+  patchEnemyConditions(enemy.id, back.conditions, back.conditionMeta as ConditionMetaMap);
+  publishEncounter(campaign.id);
+  const healed = back.hp > 0 ? ` gets back the ${back.hp} hit points it took` : back.hp < 0 ? ` loses the ${-back.hp} hit points it drank` : "";
+  const freed = retort.laid.length ? `${healed ? " and" : ""} is no longer ${retort.laid.join(" or ")}` : "";
+  return `${what} answered a blow that now misses, so it never came: ${enemy.displayName}${healed || freed ? `${healed}${freed}` : " is as it was"}.`;
+}
+
 // Fire Shield and Holy Aura answering a melee hit on the character. Returns
-// the line for the swing, or null.
+// the line for the swing (or null) and the answers that fired.
 export function spellRetort(
   campaign: Campaign,
   turn: DmTurn,
@@ -100,13 +147,14 @@ export function spellRetort(
   sheetsById: Map<string, CharacterSheet>,
   // The temporary hit points the character held as the blow landed.
   tempHpBefore = 0,
-): string | null {
+): { line: string | null; by: string[] } {
   const target = getSheetById(targetId);
   const encounter = getActiveEncounter(campaign.id);
   if (!target || !encounter || !melee) {
-    return null;
+    return { line: null, by: [] };
   }
   const lines: string[] = [];
+  const by: string[] = [];
   // Armor of Agathys: "If a creature hits you with a melee attack while you
   // have these hit points, the creature takes 5 cold damage", 5 more for each
   // slot level above 1st (SRD 5.1). The spell's hour outlasts its temporary
@@ -120,6 +168,7 @@ export function spellRetort(
     if (live?.status === "alive") {
       const cold = 5 * slot;
       const applied = applyEnemyDamage(campaign, turn, encounter, live, cold, sheets, sheetsById, "cold", { magical: true, spell: true });
+      by.push("Armor of Agathys");
       lines.push(`${target.name}'s Armor of Agathys freezes ${live.displayName} for ${applied.damageApplied ?? cold} cold damage.`);
       lines.push(...(applied.dead ? spellKill(campaign, encounter, live, target.id, { spell: "Armor of Agathys" }) : []));
     }
@@ -134,6 +183,7 @@ export function spellRetort(
       // The shield's bearer deals it.
       const rolled = rollCard(campaign, turn, target.id, "damage", rollAgainst("Fire Shield", live.displayName), "2d8", sheetAttacker(target)).total;
       const applied = applyEnemyDamage(campaign, turn, encounter, live, rolled, sheets, sheetsById, type, { magical: true, spell: true });
+      by.push("Fire Shield");
       lines.push(`${target.name}'s Fire Shield sears ${live.displayName} for ${applied.damageApplied ?? rolled} ${type} damage.`);
       // The shield killed it: Grim Harvest for its bearer (ar-ws-harvest.ts).
       lines.push(...(applied.dead ? spellKill(campaign, encounter, live, target.id, { spell: "Fire Shield" }) : []));
@@ -152,6 +202,7 @@ export function spellRetort(
         against: "blinded",
         record: { turn, detail: `${live.displayName}: CON save against Holy Aura` },
       });
+      by.push("Holy Aura");
       if (!save.success && !live.conditions.includes("blinded")) {
         const meta: ConditionMetaMap = { ...(live.conditionMeta as ConditionMetaMap), blinded: { spell: "Holy Aura", source: caster.id } };
         patchEnemyConditions(live.id, [...live.conditions, "blinded"], meta);
@@ -160,7 +211,7 @@ export function spellRetort(
       }
     }
   }
-  return lines.length ? lines.join(" ") : null;
+  return { line: lines.length ? lines.join(" ") : null, by };
 }
 
 // ---- Bestow Curse ----
