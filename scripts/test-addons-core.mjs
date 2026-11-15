@@ -585,6 +585,15 @@ await test("a snapshot is the viewer's projection, with only this addon's view d
   assert.equal(boardSnapshot(view, "other-addon", { canDirect: false, appearance }).view, null);
 });
 
+await test("the optional cosmetic scenery goes to board views without competing with a backdrop", () => {
+  const scenery = [{ section: "props", id: "test-prop", x: 0.5, y: 0.5, size: 0.8, rotation: 0 }];
+  const options = { canDirect: false, appearance: { theme: "night", reducedMotion: false }, scenery };
+  const ordinary = { ...view, backdrop: null };
+  assert.deepEqual(boardSnapshot(ordinary, "hello-dungeon", options).scenery, scenery);
+  assert.equal(boardSnapshot(view, "hello-dungeon", options).scenery, undefined);
+  assert.equal(boardSnapshot(ordinary, "hello-dungeon", { ...options, scenery: undefined }).scenery, undefined);
+});
+
 await test("character gender is optional and only travels with projected figures", () => {
   const appearance = { theme: "night", reducedMotion: false };
   for (const gender of ["Female", "Male", "Nonbinary", ""]) {

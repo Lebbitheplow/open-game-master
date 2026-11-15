@@ -9,6 +9,16 @@ export type RenderAssets = {
   catalogue: { objects: unknown[]; decals: unknown[] };
 };
 
+export type SceneryPlacement = {
+  section: "props" | "decals";
+  id: string;
+  x: number;
+  y: number;
+  size: number;
+  rotation: number;
+  blend?: string;
+};
+
 export type RenderOptions = {
   grid?: boolean;
   dressing?: boolean;
@@ -34,4 +44,6 @@ export type RenderSpec = {
 export const ODMRender: {
   render(spec: RenderSpec, canvas: HTMLCanvasElement): void;
   dressingPool(skin: Skin, objects: unknown[]): unknown[];
+  scenery(rows: string[], skin: Skin, catalogue: RenderAssets["catalogue"], seed: number,
+    options?: Pick<RenderOptions, "props" | "dressing" | "decals">): SceneryPlacement[];
 };

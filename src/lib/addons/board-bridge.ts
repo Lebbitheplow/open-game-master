@@ -6,6 +6,7 @@ import type { PlayerMapView } from "@/lib/battlemap/view-types";
 import type { Gender } from "@/lib/gender";
 import { storedSex, type Sex } from "@/lib/actor-sex-logic";
 import type { Ruler } from "@/lib/battlemap/board-move";
+import type { SceneryPlacement } from "@/lib/battlemap/render/renderer.js";
 
 // The board view contract: what the table page posts into an addon's
 // sandboxed frame, and what it accepts back (docs/addons/extension-points.md,
@@ -97,6 +98,7 @@ export type BoardSnapshot = {
   moveAim: { x: number; y: number } | null;
   // Whether the map has a picture under it; ask for it as the file "backdrop".
   hasBackdrop: boolean;
+  scenery?: SceneryPlacement[];
   // What this addon's own generator left on the map, or null.
   view: { data: unknown; files: Array<{ name: string; type: string; bytes: number }> } | null;
   // Where this addon's asset library is served (its data folder's public/,
@@ -145,6 +147,7 @@ export function boardSnapshot(
     looks?: Map<string, BoardLook>;
     intents?: TokenIntent[] | null;
     moveAim?: { x: number; y: number } | null;
+    scenery?: SceneryPlacement[];
     assetsUrl?: string;
     // The view's option fields and what this device chose for them.
     viewOptions?: { fields: OptionField[]; values: unknown };
@@ -194,6 +197,7 @@ export function boardSnapshot(
     budgetLeft: view.budgetLeft,
     moveAim: options.moveAim ?? null,
     hasBackdrop: Boolean(view.backdrop),
+    ...(!view.backdrop && options.scenery ? { scenery: options.scenery } : {}),
     view: own ? { data: own.data, files: own.files.map(({ name, type, bytes }) => ({ name, type, bytes })) } : null,
     assetsUrl: options.assetsUrl ?? `/api/addons/${addonId}/assets/`,
     options: options.viewOptions ? normalizeOptionValues(options.viewOptions.fields, options.viewOptions.values) : {},

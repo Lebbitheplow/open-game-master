@@ -613,6 +613,16 @@ extension point is added to the server with its own contract, checks and tests,
 in a release, and documented here; the contract version goes up only when an
 existing contract has to change.
 
+### Painted scenery
+
+The optional `scenery` snapshot list contains the flat painter's seeded
+decorations on explored terrain. Each entry has `section` (`props` or
+`decals`), a catalog `id`, `x`, `y`, and `size` measured in squares,
+and `rotation` in radians. Views can use a 3D model at the same spot.
+Placed props already come as board tokens. Automatic scenery is cosmetic.
+Hosts omit the list if the map has a backdrop or the painted catalog is
+unavailable. Bridge version 1 remains compatible with views that ignore it.
+
 ### Remaining movement and the native ruler
 
 A board snapshot's optional budgetLeft is remaining movement in squares. The authoritative reachable list is already filtered by the native movement mode; use it for movement shading instead of calculating another range. A zero budget hides movement shading. Older hosts omit budgetLeft.
