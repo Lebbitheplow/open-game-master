@@ -539,6 +539,41 @@ await test("a player character's own quoted words, answered without a narrated l
   }
 });
 
+await test("a turn whose calls all went on mechanics still asks the mind on stage who heard: the note buys its own calls", async () => {
+  const { listNpcs } = await import("../src/lib/db/npcs.ts");
+  const others = listNpcs(world.campaignId).filter((entry) => mind.tierOfNpc(entry) === "primary" && !entry.companionSheetId);
+  for (const other of others) {
+    minds.setNpcTier(other.id, "secondary");
+  }
+  npc("Escort Vell", { trait: "rides beside the cart" });
+  const nudges = () => model.requests.filter((request) => String(request.messages?.at(-1)?.content ?? "").includes("nobody asked whether they heard")).length;
+  try {
+    model.script([
+      reply({ calls: [call("npc_speak", { name: "Escort Vell", perceives: "Aria walks beside the cart." })] }),
+      answer({ speech: "Keep up.", intent: "" }),
+      reply({ text: '"Keep up," Vell says.' }),
+    ]);
+    await model.turn(world, "I walk beside the cart.", aria.id);
+    const before = nudges();
+    model.script([
+      reply({ calls: [call("search_lore", { query: "the sergeant" })] }),
+      reply({ calls: [call("search_lore", { query: "the grain" })] }),
+      reply({ calls: [call("search_lore", { query: "the road" })] }),
+      reply({ text: 'The prisoner mutters: "Sergeant Ferran, at dawn."' }),
+      reply({ calls: [call("npc_hear", { speaker: "the prisoner", words: "Sergeant Ferran, at dawn.", listeners: [{ name: "Escort Vell", reach: "near" }] })] }),
+      reply({ text: "" }),
+    ]);
+    await model.turn(world, '"Who was the sergeant?" I whisper to the prisoner.', aria.id);
+    assert.equal(nudges() - before, 1, "asked once, though the four calls were spent");
+    assert.ok(memories("Escort Vell").some((entry) => /Ferran/.test(entry.content)), "near: the escort heard it");
+  } finally {
+    for (const other of others) {
+      minds.setNpcTier(other.id, "primary");
+    }
+    minds.setNpcTier(getNpcByName(world.campaignId, "Escort Vell").id, "secondary");
+  }
+});
+
 await test("a mind played from a mind seat answers the same isolated question, and silence falls to the server's mind", async () => {
   const { createUser } = await import("../src/lib/db/users.ts");
   const seats = await import("../src/lib/db/mind-seats.ts");

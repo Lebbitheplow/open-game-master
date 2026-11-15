@@ -2067,7 +2067,18 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     shownFrom = turn.narrationParts.length;
   };
 
-  while (turn.callIndex < MAX_MODEL_CALLS) {
+  // The table's own one-shot notes (who heard, the state sheet, a mind owed
+  // its turn) still come when the turn's calls ran out on mechanics: a
+  // journey of search_lore, travel and move_party spent all four, and the
+  // captain riding beside the whisper was never asked. A note sent on the
+  // last call buys two more: one with tools to answer it, one to narrate.
+  let callLimit = MAX_MODEL_CALLS;
+  const tableNoteCalls = (final: boolean) => {
+    if (final) {
+      callLimit += 2;
+    }
+  };
+  while (turn.callIndex < callLimit) {
     settleDraft();
     // A stopped turn makes no further call: it unwinds into its halted
     // notice (advance) with whatever it already applied kept.
@@ -2091,7 +2102,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     // turn for a few tokens. A first call that fits no set is refused for
     // room (model.ts): narrating without tools would decide what dice must.
     const toolsClosed = !fitted.fits && turn.callIndex > 0;
-    const finalCall = turn.callIndex === MAX_MODEL_CALLS - 1 || toolsClosed;
+    const finalCall = turn.callIndex === callLimit - 1 || toolsClosed;
     const tools = toolsClosed ? [] : fitted.tools;
     if (!toolsClosed) {
       sentTools = { tools, noFight: keptTools ? true : !inEncounter };
@@ -2685,7 +2696,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       if (!finalCall && !planNudged && !toolCalls.length && planOnly) {
         planNudged = true;
         turn.conversation.push({ role: "assistant", content: visibleText || "", ...carried });
-        turn.conversation.push({ role: "user", content: planCorrection(turn.callIndex === MAX_MODEL_CALLS - 1) });
+        turn.conversation.push({ role: "user", content: planCorrection(turn.callIndex === callLimit - 1) });
         saveDmTurn(turn);
         continue;
       }
@@ -2848,12 +2859,13 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       // makes impossible, sends the narrator back once. A change alone keeps
       // the narration and asks for the calls; a clash withdraws this reply's
       // narration to be told again. A read that fails lets it all stand.
-      const stateReadNow = !finalCall && !stateNudged && turn.narrationParts.length > 0;
+      const stateReadNow = !toolsClosed && !stateNudged && turn.narrationParts.length > 0;
       const stateRead = stateReadNow
         ? await readStateGuard(campaign, turn, sheets.map((sheet) => sheet.name), turn.narrationParts.join("\n\n"), turnCalls(turn.conversation, toolCalls))
         : null;
       if (stateRead && (stateRead.clashes.length || stateRead.unrecorded.length)) {
         stateNudged = true;
+        tableNoteCalls(finalCall);
         if (stateRead.clashes.length && narration && turn.narrationParts[turn.narrationParts.length - 1] === narration) {
           turn.narrationParts.pop();
         }
@@ -2876,7 +2888,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       // A player character's own quoted words count too: a question put
       // under the breath to one character, answered by that character's
       // mind alone, left the prisoner on the bench beside them unasked.
-      const spokenAloud = !finalCall && !hearingNudged && turn.narrationParts.length > 0
+      const spokenAloud = !toolsClosed && !hearingNudged && turn.narrationParts.length > 0
         ? [
             ...playerLinesSinceDm(campaignId).flatMap((message) => quotedLines(message.content)),
             ...narratorLines(turn.narrationParts.join("\n\n"), mindSpeeches(turn.conversation)),
@@ -2885,6 +2897,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       const listeners = spokenAloud.length ? mindsWithinEarshot(campaign, turn.id, turnCalls(turn.conversation, toolCalls)) : [];
       if (listeners.length) {
         hearingNudged = true;
+        tableNoteCalls(finalCall);
         turn.conversation.push({
           role: "assistant",
           ...carried,
@@ -2902,11 +2915,12 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       // stands. The narration so far stays; the mind's turn follows it.
       // A rest, a wait or a journey widens who is owed (mindsAwaitingTurn)
       // and tells them how long they lived through.
-      const asksMinds = !finalCall && !sceneMindsNudged && turn.narrationParts.length > 0;
+      const asksMinds = !toolsClosed && !sceneMindsNudged && turn.narrationParts.length > 0;
       const callsSoFar = asksMinds ? turnCalls(turn.conversation, toolCalls) : [];
       const owedMinds = asksMinds ? mindsAwaitingTurn(campaign, turn.id, callsSoFar) : [];
       if (owedMinds.length) {
         sceneMindsNudged = true;
+        tableNoteCalls(finalCall);
         turn.conversation.push({
           role: "assistant",
           ...carried,
