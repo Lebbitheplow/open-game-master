@@ -50,6 +50,10 @@ export type EnemyTurnEntry = {
   // whether its attacks are made. Either may come first; each once.
   routineUses?: string[];
   routineSwung?: boolean;
+  // Its Charge or Pounce rode a hit this turn (once a turn), and the creature
+  // a Pounce left prone, whose bonus attack is open (enemy-charge.ts).
+  chargeUsed?: boolean;
+  pouncedOn?: string;
 };
 
 export type EnemyTurns = { round: number; byId: Record<string, EnemyTurnEntry> };
@@ -76,6 +80,8 @@ function cleanEntry(raw: unknown): EnemyTurnEntry {
       ? { routineUses: [...new Set(record.routineUses.filter((key): key is string => typeof key === "string"))] }
       : {}),
     ...(record.routineSwung === true ? { routineSwung: true } : {}),
+    ...(record.chargeUsed === true ? { chargeUsed: true } : {}),
+    ...(typeof record.pouncedOn === "string" && record.pouncedOn ? { pouncedOn: record.pouncedOn } : {}),
   };
 }
 

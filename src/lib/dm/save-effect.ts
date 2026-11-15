@@ -76,7 +76,11 @@ export type SaveEffect = {
   // that made the save is out of its reach, and whether the effect ending for
   // it does the same. Without it a dragon's Multiattack asked the same save
   // every round of the fight.
-  immuneAfter?: { rounds: number; onEnd: boolean };
+  // `kinds`: the creatures whose use of it the immunity covers, beyond the
+  // one withstood ("of all mummies and mummy lords"), and `except` those it
+  // does not ("(but not mummy lords)"), singular; save-immunity.ts matches
+  // a creature by its block (slug or name).
+  immuneAfter?: { rounds: number; onEnd: boolean; kinds?: string[]; except?: string[] };
 };
 
 const CONDITIONS = `knocked prone|prone|asleep|${CONDITION_WORDS.join("|")}`;
@@ -318,6 +322,15 @@ export function parseSaveEffect(raw: string): SaveEffect {
   if (immune && span) {
     const unit = span[2].toLowerCase();
     out.immuneAfter = { rounds: Number(span[1]) * UNIT_ROUNDS[unit], onEnd: /\bor the effect ends for (?:it|them|the (?:creature|target))\b/i.test(immune.text) };
+    // "the Dreadful Glare of all mummies (but not mummy lords)": shared by
+    // every creature of the kinds named (SRD 5.1, Mummy), not this one's alone.
+    const shared = OF_ALL.exec(immune.text);
+    if (shared) {
+      out.immuneAfter.kinds = kindList(shared[1]);
+      if (shared[2]) {
+        out.immuneAfter.except = kindList(shared[2]);
+      }
+    }
   }
   return out;
 }
@@ -325,6 +338,19 @@ export function parseSaveEffect(raw: string): SaveEffect {
 // "... is immune to the harpy's song for the next 24 hours", "immune to the
 // Dreadful Glare of all mummies (but not mummy lords) for the next 24 hours".
 const IMMUNE_AFTER = /\bimmune to\b[^.;]*?\bfor the next (\d{1,3}) (round|minute|hour|day)s?\b/i;
+
+// "of all mummies (but not mummy lords) for": the kinds, and those set apart.
+const OF_ALL = /\bimmune to\b[^.;]*?\bof all ([a-z ,'-]+?)(?:\s*\(but not ([a-z ,'-]+?)\))?\s+for\b/i;
+
+// "mummies and mummy lords" -> ["mummy", "mummy lord"]: each kind singular.
+function kindList(raw: string): string[] {
+  const singular = (word: string) => (/ies$/.test(word) ? word.replace(/ies$/, "y") : /ves$/.test(word) ? word.replace(/ves$/, "f") : /[^su]s$/.test(word) ? word.slice(0, -1) : word);
+  return raw
+    .toLowerCase()
+    .split(/,\s*(?:and\s+)?|\s+and\s+/)
+    .map((kind) => kind.trim().split(/\s+/).map((word, index, words) => (index === words.length - 1 ? singular(word) : word)).join(" "))
+    .filter(Boolean);
+}
 
 // A line with no save: the condition its "or be ..." clause names, as before.
 function readUnsaved(text: string): SaveEffect {

@@ -66,6 +66,9 @@ import { holdsFeature } from "@/lib/srd/feature-names";
 import { activeAuthored } from "@/lib/srd/authored-effects";
 import { enemySpeedTiles } from "@/lib/dm/enemy-speed";
 import { opportunityAnswer } from "@/lib/dm/opportunity-ask";
+import { opportunityBlow, opportunityDecoy, opportunityWards } from "@/lib/dm/opportunity-wards";
+import { strikePetsOnWalk } from "@/lib/dm/opportunity-pets";
+import { findShapeForm } from "@/lib/srd/beast-forms";
 import { letGoNote, timedOutNote, type OpportunityTrigger } from "@/lib/dm/opportunity-ask-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -127,8 +130,11 @@ export function withLiveDodge(conditions: string[]): string[] {
 // Flyby (SRD 5.1: an owl, a giant owl, a pteranodon, a flying snake): "The
 // owl doesn't provoke opportunity attacks when it flies out of an enemy's
 // reach." Its walk aloft draws no swing on either side: an enemy row's own
-// trait, or a conjured creature's block (its summon record's traits). Before
-// this a pteranodon swooping off the fighter was struck as any walker was.
+// trait, a conjured creature's block (its summon record's traits), or the
+// form a character wears (Wild Shape, Polymorph: the beast's traits are
+// theirs while they wear it, read from the form's block). Before this a
+// pteranodon swooping off the fighter was struck as any walker was, and so
+// was a druid flying off as an owl.
 function fliesBy(mapId: string, refId: string): boolean {
   if (getTokenByRef(mapId, refId)?.movement !== "fly") {
     return false;
@@ -137,7 +143,9 @@ function fliesBy(mapId: string, refId: string): boolean {
   if (enemy) {
     return hasTrait(enemy.stats, "flyby");
   }
-  return /(?:^|[.;]\s*)flyby\b/i.test(getSheetById(refId)?.summon?.traits ?? "");
+  const sheet = getSheetById(refId);
+  const form = sheet?.wildShape ? findShapeForm(sheet.wildShape.form) : null;
+  return /(?:^|[.;]\s*)flyby\b/i.test(sheet?.summon?.traits ?? "") || Boolean(form?.traitLines.some((line) => /^flyby\b/i.test(line.trim())));
 }
 
 // Resolves the opportunity attacks a character's move provokes, applying
@@ -153,8 +161,10 @@ export function resolveOpportunityAttacks(
   path?: XY[],
 ): OpportunityOutcome {
   const empty: OpportunityOutcome = { notes: [], downed: false };
+  // The walker's Disengage is theirs: a pet walking with them still provokes
+  // (opportunity-pets.ts).
   if (disengaged) {
-    return empty;
+    return { notes: strikePetsOnWalk(campaign, characterId, [from, ...(path?.length ? path : [to])]), downed: false };
   }
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
@@ -231,6 +241,17 @@ export function resolveOpportunityAttacks(
     // The reaction is spent whether or not the swing lands.
     encounter.reactionsUsed = [...encounter.reactionsUsed, enemy.id];
     saveEncounter(encounter);
+    // Magic Weapons, or a blow the block prints as magical ("magical
+    // bludgeoning"), as enemy_attack reads it.
+    const magical = hasTrait(enemy.stats, "magicWeapons") || attack.magical === true;
+    // Sanctuary and Among the Dead lose the attack; the subclass wards, the
+    // flank where they stood, Adamantine Armor, Heavy Armor Master shape it
+    // (opportunity-wards.ts), as on its own turn.
+    const wards = opportunityWards(campaign, encounter.id, enemy, sheet, leftFrom, magical);
+    if (wards.lost) {
+      notes.push(`${shownName(encounter.id, enemy.id, enemy.displayName)} gets no opportunity attack on ${sheet.name}: ${wards.lost}`);
+      continue;
+    }
 
     // An attack roll like any other: both sides' conditions decide it. Its
     // fear weighs only with the source in sight, and the leaver's Dodge
@@ -276,6 +297,7 @@ export function resolveOpportunityAttacks(
       ...(pack ? ["advantage" as const] : []),
       ...marks.sources,
       ...own.sources,
+      ...wards.sources,
     ];
     const advantage = mergeAdvantage(marks.elusive ? odds.filter((source) => source !== "advantage") : odds);
     const targetAc = acWithEffects(campaign.id, sheet, enemy);
@@ -297,6 +319,12 @@ export function resolveOpportunityAttacks(
       roll: hitRoll,
       source: "digital",
     });
+    // Mirror Image: a duplicate may take the attack instead (spell-defenses.ts).
+    const decoy = opportunityDecoy(campaign.id, sheet.id, hitOutcome.total);
+    if (decoy) {
+      notes.push(`${shownName(encounter.id, enemy.id, enemy.displayName)} takes an opportunity attack as ${sheet.name} pulls away: ${decoy}.`);
+      continue;
+    }
     const adjudicated = adjudicateHit(hitOutcome.total, hitOutcome.crit, targetAc);
     if (!adjudicated.hit) {
       notes.push(
@@ -304,7 +332,7 @@ export function resolveOpportunityAttacks(
       );
       continue;
     }
-    const crit = adjudicated.crit || context.autoCrit;
+    const crit = (adjudicated.crit || context.autoCrit) && !wards.noCrit;
 
     const rolledDamage = crit
       ? critDamageExpression(attack.damage, 0, {
@@ -340,11 +368,9 @@ export function resolveOpportunityAttacks(
     // Damage like any other (src/lib/dm/pc-damage.ts): resistances, temporary
     // hit points, a beast form's pool first, Relentless Endurance, the rage
     // ending at 0, the death engine, and the concentration save.
-    // Magic Weapons, or a blow the block prints as magical ("magical
-    // bludgeoning"), as enemy_attack reads it.
-    const magical = hasTrait(enemy.stats, "magicWeapons") || attack.magical === true;
     const blow = blowByType(attack, damageOutcome, crit);
-    const rolled = enfeebledBlow(enemy, attack, false, Math.max(0, blow.amount));
+    const warded = opportunityBlow(encounter.id, enemy, sheet, wards, enfeebledBlow(enemy, attack, false, Math.max(0, blow.amount)));
+    const rolled = warded.amount;
     // The blow without its critical dice when the natural 20 alone made it one,
     // for a reaction that rolls the attack again (last-hit.ts plainOfReroll).
     const plainRoll = adjudicated.crit && !context.autoCrit
@@ -362,7 +388,7 @@ export function resolveOpportunityAttacks(
               amount: rolled,
               ...(blow.type ? { type: blow.type } : {}),
               ...(blow.parts ? { parts: scaledParts(blow.parts, rolled) } : {}),
-              ...(magical ? { magical: true } : {}),
+              ...wards.flags,
               crit,
               reason: `opportunity attack from ${enemy.displayName}`,
             })
@@ -379,14 +405,14 @@ export function resolveOpportunityAttacks(
     const normalBlow = normalRoll ? blowByType(attack, normalRoll, false) : null;
     const normalRaw = normalBlow ? enfeebledBlow(enemy, attack, false, Math.max(0, normalBlow.amount)) : 0;
     const normal = normalBlow ? { raw: normalRaw, type: normalBlow.type ?? "", ...(normalBlow.parts ? { parts: scaledParts(normalBlow.parts, normalRaw) } : {}), from: rolled } : undefined;
-    hitLog.swing(hitOutcome, targetAc, { hit: true, crit, raw: rolled, advantage, ...(blow.type ? { type: blow.type } : {}), ...(blow.parts ? { parts: scaledParts(blow.parts, rolled) } : {}), ...(plain ? { plain } : {}), ...(normal ? { normal } : {}), ...(magical ? { flags: { magical: true } } : {}) });
+    hitLog.swing(hitOutcome, targetAc, { hit: true, crit, raw: rolled, advantage, ...(blow.type ? { type: blow.type } : {}), ...(blow.parts ? { parts: scaledParts(blow.parts, rolled) } : {}), ...(plain ? { plain } : {}), ...(normal ? { normal } : {}), flags: wards.flags });
     hitLog.close({ attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName }, attack: `${attack.name} (opportunity attack)`, type: attack.type, ranged: false });
     if (updated && updated.currentHp <= 0 && !updated.wildShape) {
       downed = true;
       downedAt = leftFrom;
     }
     const byType = Array.isArray(landed.damageByType) ? ` (${(landed.damageByType as string[]).join(", ")})` : typeof landed.resistance === "string" ? ` (${landed.resistance})` : "";
-    const riderNote = Array.isArray(onHit?.riderCondition) ? ` ${sheet.name} is ${(onHit.riderCondition as string[]).join(" and ")}.` : "";
+    const riderNote = `${Array.isArray(onHit?.riderCondition) ? ` ${sheet.name} is ${(onHit.riderCondition as string[]).join(" and ")}.` : ""}${[...wards.notes, ...warded.notes].map((line) => ` ${line}.`).join("")}`;
     notes.push(
       `${shownName(encounter.id, enemy.id, enemy.displayName)} takes an opportunity attack as ${sheet.name} pulls away: ${
         crit ? "a critical hit for " : "hit for "
@@ -399,6 +425,11 @@ export function resolveOpportunityAttacks(
 
   for (const note of notes) {
     tableNote(campaign, note);
+  }
+  // A pet walking with them provokes too, from a creature whose reaction is
+  // still in hand (opportunity-pets.ts).
+  if (!downed) {
+    notes.push(...strikePetsOnWalk(campaign, characterId, steps));
   }
   // The characters of the other side strike too: a party member as a
   // turncoat walks off, a turncoat as a party member does. They post their

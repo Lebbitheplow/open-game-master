@@ -116,6 +116,8 @@ export function resolveRowOnHit(
         ...(rider.repeatSave && rider.save && rider.dc ? { saveEnds: { ability: rider.save, dc: rider.dc } } : {}),
         ...(rider.untilLongRest ? { untilLongRest: true } : {}),
         ...(condition === "grappled" && rider.escapeDc ? { escapeDc: rider.escapeDc } : {}),
+        // A giant spider's webbing: its escape and its numbers (creature-hold.ts).
+        ...(condition === "restrained" && rider.hold ? { hold: rider.hold } : {}),
         ...(condition === "unconscious" && rider.wakesOnDamage ? { endsOnDamage: true } : {}),
       },
     };

@@ -539,6 +539,7 @@ const SITES = {
   "lib/dm/mount-combat.ts#strikeMount": "F", "lib/dm/natural-onhit.ts#landNaturalOnHit": "D", "lib/dm/npc-agency.ts#advanceNpcAgency": "F",
   "lib/dm/object-damage.ts#damageObject": "F the damage the GM names for an object, which no character's roll dealt",
   "lib/dm/opportunity-sides.ts#enemiesStrikeWalker": "F", "lib/dm/opportunity.ts#resolveOpportunityAttacks": "F",
+  "lib/dm/opportunity-pets.ts#strikePetsOnWalk": "F",
   "lib/dm/pc-attack-resolve.ts#throwToHit": "H",
   "lib/dm/pet-tools.ts#handlePetAttack": "H a bound creature's attack, which its player rolls",
   "lib/dm/prismatic.ts#rollRays": "D",
