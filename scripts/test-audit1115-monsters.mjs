@@ -208,4 +208,54 @@ await test("E04 a wolf's opportunity attack has Pack Tactics' advantage with its
   }
 });
 
+// A hero's own walk west to (2,5), as their player makes it; the opportunity
+// attacks it drew, by their stored rolls.
+async function walkAway(hero, user) {
+  const before = new Set(kit.lastRolls(40).map((roll) => roll.id));
+  const moveRoute = await world.route("campaigns/[campaignId]/battle-map/move");
+  world.signIn(user);
+  const walked = await moveRoute.POST(new Request("http://odm.test/move", { method: "POST", body: JSON.stringify({ x: 2, y: 5 }) }), { params: Promise.resolve({ campaignId: world.campaignId }) });
+  world.clearDice();
+  assert.equal(walked.status, 200, await walked.text());
+  return kit.lastRolls(40).filter((roll) => !before.has(roll.id) && roll.kind === "attack" && /opportunity attack/.test(roll.detail ?? ""));
+}
+
+await test("E05 a zombie Chill Touch struck swings at its caster walking away at disadvantage", async () => {
+  await kit.endFight();
+  await kit.fight(1, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+  const [zombie] = world.enemies();
+  const { CHILL_TOUCH_DREAD } = await import("../src/lib/dm/spell-attack-riders.ts");
+  kit.setEnemy(zombie.id, { stats: { ...kit.enemy(zombie.id).stats, type: "undead" }, conditions: [CHILL_TOUCH_DREAD], conditionMeta: { [CHILL_TOUCH_DREAD]: { source: kara.id, untilTurnEndOf: kara.id } } });
+  kit.place(kara.id, 5, 5);
+  kit.place(bram.id, 15, 15);
+  kit.place(zombie.id, 6, 5);
+  kit.giveTurn(kara.id);
+  const swings = await walkAway(kara, world.owner);
+  assert.equal(swings.length, 1, "the zombie strikes as she pulls away");
+  assert.equal(swings[0].advantage, "disadvantage");
+});
+
+await test("E05 an Elusive rogue walking off two wolves is struck with no advantage, Pack Tactics or not", async () => {
+  await kit.endFight();
+  await kit.fight(2, { heroFaces: { [kara.id]: 10, [bram.id]: 19 } });
+  const [wolf, packmate] = world.enemies();
+  const PACK = ["Pack Tactics: The wolf has advantage on an attack roll against a creature if at least one of the wolf's allies is within 5 feet of the creature and the ally isn't incapacitated."];
+  for (const foe of [wolf, packmate]) {
+    kit.setEnemy(foe.id, { stats: { ...kit.enemy(foe.id).stats, traits: PACK } });
+  }
+  const features = world.sheet(bram.id).features ?? [];
+  world.patch(bram.id, { features: [...features, { name: "Elusive", description: "No attack roll has advantage against you while you aren't incapacitated." }] });
+  kit.place(bram.id, 5, 5);
+  kit.place(kara.id, 15, 15);
+  kit.place(wolf.id, 6, 5);
+  kit.place(packmate.id, 6, 6);
+  kit.giveTurn(bram.id);
+  const swings = await walkAway(bram, { id: bram.userId });
+  world.patch(bram.id, { features });
+  assert.equal(swings.length, 2);
+  for (const swing of swings) {
+    assert.notEqual(swing.advantage, "advantage", `${swing.detail}: Elusive takes the advantage away`);
+  }
+});
+
 finish();

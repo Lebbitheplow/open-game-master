@@ -19,7 +19,7 @@ import { insertRoll } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
 import { footprintForSize } from "@/lib/battlemap/footprint";
 
-import { d20Expression, rollExpression } from "@/lib/dice";
+import { d20Expression, rollExpression, type Advantage } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import {
   adjudicateHit,
@@ -60,6 +60,7 @@ import { blowByType, resolveOnHit, scaledParts } from "@/lib/dm/enemy-hit";
 import { effectOutcome } from "@/lib/dm/effect-tools";
 import { hasTrait } from "@/lib/dm/monster-abilities";
 import { allyBeside } from "@/lib/dm/side-allies";
+import { targetSwingMarks } from "@/lib/dm/enemy-swing-odds";
 import { enfeebledBlow, spellRetort, spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { activeAuthored } from "@/lib/srd/authored-effects";
@@ -245,7 +246,11 @@ export function resolveOpportunityAttacks(
     // An active effect on its attack and damage rolls (set_effect).
     const attackEffect = effectOutcome(campaign.id, { kind: "enemy", id: enemy.id }, "attack");
     const damageEffect = effectOutcome(campaign.id, { kind: "enemy", id: enemy.id }, "damage").bonus;
-    const advantage = mergeAdvantage([
+    // Chill Touch's dread, Bestow Curse at its caster, a goad, and Elusive's
+    // "no attack roll against you has advantage", read as on its own turn
+    // (enemy-swing-odds.ts targetSwingMarks). It strikes from beside them.
+    const marks = targetSwingMarks(enemy, sheet, conditionsOf(sheet), 1);
+    const odds: Advantage[] = [
       ...context.sources,
       ...light.sources,
       ...(escapes ? ["disadvantage" as const] : []),
@@ -253,8 +258,10 @@ export function resolveOpportunityAttacks(
       ...(attackEffect.advantage ? ["advantage" as const] : []),
       ...(attackEffect.disadvantage ? ["disadvantage" as const] : []),
       ...(pack ? ["advantage" as const] : []),
+      ...marks.sources,
       ...own.sources,
-    ]);
+    ];
+    const advantage = mergeAdvantage(marks.elusive ? odds.filter((source) => source !== "advantage") : odds);
     const targetAc = acWithEffects(campaign.id, sheet, enemy);
     const hitOutcome = rollExpression(`${d20Expression(attack.toHit + attackEffect.bonus, advantage)}${own.riders.diceSuffix}`, undefined, {
       purpose: { roller: "enemy", kind: "attack", who: enemy.displayName },
