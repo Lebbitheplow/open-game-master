@@ -43,6 +43,8 @@ import {
 import { chargeNoun, chargesShort, itemPowersOf, powerNamed, regainWhen } from "@/lib/srd/item-charge-rules";
 import { itemPowerUse, powerShort, withPowerSpent } from "@/lib/dm/item-powers";
 import { matchMagicItem } from "@/lib/srd/magic-items";
+import { gearDefOfRow } from "@/lib/srd/magic-gear";
+import { studyBook } from "@/lib/dm/book-study";
 import { linesNamed } from "@/lib/srd/item-row";
 import { beadForSpell, beadRefusal, beadsOf } from "@/lib/srd/prayer-beads";
 import { getSheetById } from "@/lib/db/sheets";
@@ -242,6 +244,13 @@ export function chargedItemUse(
   if (barrier) {
     return { error: barrier, refused: "rules" };
   }
+  // SRD 5.1, the manuals and tomes: "If you spend 48 hours over a period of
+  // 6 days or fewer studying the book's contents" (book-study.ts): never a
+  // fight's action.
+  const reading = gearDefOfRow(carried)?.reading;
+  if (reading && getActiveEncounter(campaign.id)) {
+    return { error: `Reading ${carried.name} is 48 hours of study over 6 days or fewer, not something done in a fight. Nothing was spent.`, refused: "rules" };
+  }
   // A prayer bead the necklace does not hold, or one used since dawn.
   const beadless = cast ? beadRefusal(carried, cast.spell) : null;
   if (beadless) {
@@ -369,6 +378,8 @@ export function chargedItemUse(
   if (refuel) {
     recoverSlot(campaign, sheet.id, refuel);
   }
+  // The score and its maximum rise together (book-study.ts).
+  const studied = reading && !destroyed ? studyBook(campaign, sheet.id, carried.name, reading, turnId) : null;
   // The check the cast waits on (Amulet of the Planes); a failure casts
   // nothing, and the item's text says what happens instead.
   const check = cast?.check && !("failed" in math && math.failed) ? rollCastCheck(campaign, sheet, cast.check, `${sheet.name}: ${carried.name}, ${ABILITY_WORD[cast.check.ability]} check`) : null;
@@ -429,7 +440,7 @@ export function chargedItemUse(
         ? `${sheet.name} casts ${casts.spell} at level ${casts.level} from ${carried.name}${numbers(casts) ? ` (${numbers(casts)})` : ""}. Resolve it now with the spell's own tool (aoe_damage, cast_at_enemy, heal, cast_buff) naming the spell: that cast spends no slot and uses the item's numbers.`
         : cast
           ? ""
-          : "No spell slot is spent. Resolve what the item does with the tool for it (aoe_damage, apply_damage, set_condition, heal) and narrate it.",
+          : studied ?? "No spell slot is spent. Resolve what the item does with the tool for it (aoe_damage, apply_damage, set_condition, heal) and narrate it.",
     ].filter(Boolean).join(" "),
   };
 }

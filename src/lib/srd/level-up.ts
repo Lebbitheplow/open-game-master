@@ -30,6 +30,7 @@ import type {
 import { ABILITIES } from "@/lib/schemas/sheet";
 import { XP_THRESHOLDS, findSkill, levelForXp } from "@/lib/srd";
 import { ABILITY_SCORE_CAP, applyAsiChoices, earnedAsiCountFor } from "@/lib/srd/asi";
+import { abilityCapsOf } from "@/lib/srd/studied-books";
 import { applySubclassTraining, autoSubclassPicks, grantsForHeldTraining, subclassGrants, withSubclassChoiceRecords } from "@/lib/srd/subclass-training";
 import type { SubclassExtras } from "@/lib/srd/subclass-tables";
 import { asiTaken, withAsiLedger } from "@/lib/srd/asi-ledger";
@@ -140,6 +141,8 @@ function improvementsAsked(
   }
   if (request.abilities) {
     const raised: Array<keyof AbilityScores> = [];
+    // 20, or the maximum a manual or tome read raised (studied-books.ts).
+    const caps = abilityCapsOf(sheet);
     for (const ability of ABILITIES) {
       const delta = request.abilities[ability] - sheet.abilities[ability];
       if (delta < 0) {
@@ -147,9 +150,9 @@ function improvementsAsked(
           error: `An Ability Score Improvement raises scores; it cannot lower ${ABILITY_NAMES[ability]} from ${sheet.abilities[ability]} to ${request.abilities[ability]}.`,
         };
       }
-      if (request.abilities[ability] > ABILITY_SCORE_CAP && delta > 0) {
+      if (request.abilities[ability] > caps[ability] && delta > 0) {
         return {
-          error: `An Ability Score Improvement cannot raise ${ABILITY_NAMES[ability]} above ${ABILITY_SCORE_CAP}.`,
+          error: `An Ability Score Improvement cannot raise ${ABILITY_NAMES[ability]} above ${caps[ability]}.`,
         };
       }
       for (let point = 0; point < delta; point += 1) {
@@ -176,13 +179,14 @@ function improvementsAsked(
 
 // A choice as the points it adds, a lone odd point included (the old shape
 // can ask for +1 to a single score).
-export function applyChoices(scores: AbilityScores, choices: AsiChoice[]): AbilityScores {
+export function applyChoices(scores: AbilityScores, choices: AsiChoice[], caps?: Partial<Record<keyof AbilityScores, number>>): AbilityScores {
   const next = { ...scores };
   for (const choice of choices) {
     if (choice.mode === "plus1x2" && choice.abilities[0] === choice.abilities[1]) {
-      next[choice.abilities[0]] = Math.min(ABILITY_SCORE_CAP, next[choice.abilities[0]] + 1);
+      const ability = choice.abilities[0];
+      next[ability] = Math.max(next[ability], Math.min(caps?.[ability] ?? ABILITY_SCORE_CAP, next[ability] + 1));
     } else {
-      Object.assign(next, applyAsiChoices(next, [choice]));
+      Object.assign(next, applyAsiChoices(next, [choice], caps));
     }
   }
   return next;
@@ -297,7 +301,10 @@ export function buildLevelUp(
         : `${klass.name} level ${leveled.level} gives no Ability Score Improvement, so ability scores and feats stay as they are. Improvements come at the class's own levels.`,
     );
   }
-  let abilities = applyChoices(sheet.abilities, asked.choices);
+  // SRD 5.1, the manuals and tomes: "your Constitution score increases by
+  // 2, as does your maximum for that score": an improvement may take the
+  // score to that maximum (studied-books.ts).
+  let abilities = applyChoices(sheet.abilities, asked.choices, abilityCapsOf(sheet));
   const feats = [...sheet.feats];
   // A half-feat's point (Actor's Charisma, Resilient's chosen score) and
   // Resilient's saving throw come with the feat.

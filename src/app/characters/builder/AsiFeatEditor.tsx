@@ -44,6 +44,7 @@ export default function AsiFeatEditor({
   featChoices,
   onFeatPicks,
   known,
+  caps,
 }: {
   // Character level for the builder's "Level N: X earned" heading; absent in
   // the level-up dialog, which introduces the section with its own copy.
@@ -63,7 +64,12 @@ export default function AsiFeatEditor({
   featChoices?: FeatChoices;
   onFeatPicks?: (feat: string, picks: FeatPicks) => void;
   known?: KnownTraining;
+  // The most each score may reach: 20, or the maximum a manual or tome read
+  // raised (src/lib/srd/studied-books.ts abilityCapsOf). Absent: 20 each.
+  caps?: Record<Ability, number>;
 }) {
+  const capOf = (ability: Ability) => caps?.[ability] ?? ABILITY_SCORE_CAP;
+  const raisedCaps = ABILITY_KEYS.filter((ability) => capOf(ability) > ABILITY_SCORE_CAP);
   function setChoice(index: number, choice: AsiChoice | null) {
     const next = slotLevels.map((_, slot) => choices[slot] ?? null);
     next[index] = choice;
@@ -100,7 +106,8 @@ export default function AsiFeatEditor({
       <p className="mb-3 text-xs text-stone-500">
         This is how higher-level characters raise their stats. Each earned level grants +2 to one{" "}
         <GameTerm id="ability_score">ability score</GameTerm>, +1 to two of them, or a feat.
-        Scores cap at {ABILITY_SCORE_CAP}.
+        Scores cap at {ABILITY_SCORE_CAP}
+        {raisedCaps.length ? `; ${raisedCaps.map((ability) => `${ABILITY_LABELS[ability]} at ${capOf(ability)}`).join(", ")}, raised by a book read` : ""}.
       </p>
       {!baseScores ? (
         <p className="rounded-md border border-stone-800 bg-stone-900/60 p-3 text-xs text-stone-400">
@@ -112,7 +119,7 @@ export default function AsiFeatEditor({
             const choice = choices[index] ?? null;
             // Scores as they stand entering this slot: base plus all
             // earlier choices, a half-feat's point among them.
-            const current = scoresEntering(baseScores, choices.slice(0, index), featDescOf);
+            const current = scoresEntering(baseScores, choices.slice(0, index), featDescOf, caps);
             if (takenInPlay[index]) {
               return (
                 <div
@@ -151,10 +158,10 @@ export default function AsiFeatEditor({
                           } else if (mode === "plus2") {
                             // A score the whole +2 fits under the cap first, so
                             // the default never throws a point away.
-                            setChoice(index, { mode: "plus2", ability: firstOpenAbility(current, undefined, 2) });
+                            setChoice(index, { mode: "plus2", ability: firstOpenAbility(current, undefined, 2, caps) });
                           } else {
-                            const first = firstOpenAbility(current);
-                            const second = firstOpenAbility(current, first);
+                            const first = firstOpenAbility(current, undefined, 1, caps);
+                            const second = firstOpenAbility(current, first, 1, caps);
                             setChoice(index, { mode: "plus1x2", abilities: [first, second] });
                           }
                         }}
@@ -181,8 +188,8 @@ export default function AsiFeatEditor({
                       className="w-full"
                       options={ABILITY_KEYS.map((ability) => ({
                         value: ability,
-                        label: `${ABILITY_LABELS[ability]} (${current[ability]}${current[ability] >= ABILITY_SCORE_CAP ? ", at cap" : ""})`,
-                        disabled: current[ability] >= ABILITY_SCORE_CAP && ability !== choice.ability,
+                        label: `${ABILITY_LABELS[ability]} (${current[ability]}${current[ability] >= capOf(ability) ? ", at cap" : ""})`,
+                        disabled: current[ability] >= capOf(ability) && ability !== choice.ability,
                       }))}
                     />
                   </label>
@@ -206,9 +213,9 @@ export default function AsiFeatEditor({
                           className="w-full"
                           options={ABILITY_KEYS.map((ability) => ({
                             value: ability,
-                            label: `${ABILITY_LABELS[ability]} (${current[ability]}${current[ability] >= ABILITY_SCORE_CAP ? ", at cap" : ""})`,
+                            label: `${ABILITY_LABELS[ability]} (${current[ability]}${current[ability] >= capOf(ability) ? ", at cap" : ""})`,
                             disabled:
-                              (current[ability] >= ABILITY_SCORE_CAP && ability !== choice.abilities[half]) ||
+                              (current[ability] >= capOf(ability) && ability !== choice.abilities[half]) ||
                               ability === choice.abilities[half === 0 ? 1 : 0],
                           }))}
                         />
@@ -284,7 +291,7 @@ export default function AsiFeatEditor({
                       options={featAbilityIncrease(choice.feat, featDescOf?.(choice.feat))!.from.map((ability) => ({
                         value: ability,
                         label: `${ABILITY_LABELS[ability]} (${current[ability]})`,
-                        disabled: current[ability] >= ABILITY_SCORE_CAP && ability !== choice.ability,
+                        disabled: current[ability] >= capOf(ability) && ability !== choice.ability,
                       }))}
                     />
                   </label>
@@ -305,7 +312,7 @@ export default function AsiFeatEditor({
                   <p className="mt-2 text-xs text-stone-500">
                     {choice.mode === "feat"
                       ? `Feat: ${choice.feat}${featRaise(current, choice, featDescOf)}`
-                      : summarizeChoice(current, choice)}
+                      : summarizeChoice(current, choice, caps)}
                   </p>
                 ) : (
                   <p className="mt-2 text-xs text-stone-500">
@@ -354,9 +361,9 @@ function featChoice(feat: string, desc?: string): AsiChoice {
 
 // The scores after these choices, with each half-feat's point added the way
 // the server adds it (src/lib/srd/legality/half-feats.ts).
-function scoresEntering(base: AbilityScores, earlier: Array<AsiChoice | null>, descOf?: (name: string) => string): AbilityScores {
+function scoresEntering(base: AbilityScores, earlier: Array<AsiChoice | null>, descOf?: (name: string) => string, caps?: Record<Ability, number>): AbilityScores {
   const picks = earlier.filter((choice): choice is AsiChoice => choice !== null);
-  return scoresWithHalfFeats(applyAsiChoices(base, picks), halfFeatPicks({ asiChoices: picks }, 0, descOf)).abilities;
+  return scoresWithHalfFeats(applyAsiChoices(base, picks, caps), halfFeatPicks({ asiChoices: picks }, 0, descOf)).abilities;
 }
 
 // ", Charisma 15 to 16 (+3)" for a half-feat, nothing for any other feat.
@@ -371,14 +378,14 @@ function featRaise(current: AbilityScores, choice: AsiChoice, descOf?: (name: st
     : "";
 }
 
-function firstOpenAbility(scores: AbilityScores, skip?: Ability, room = 1): Ability {
+function firstOpenAbility(scores: AbilityScores, skip?: Ability, room = 1, caps?: Record<Ability, number>): Ability {
   const fits = (need: number) =>
-    ABILITY_KEYS.find((ability) => ability !== skip && scores[ability] + need <= ABILITY_SCORE_CAP);
+    ABILITY_KEYS.find((ability) => ability !== skip && scores[ability] + need <= (caps?.[ability] ?? ABILITY_SCORE_CAP));
   return fits(room) ?? fits(1) ?? ABILITY_KEYS.find((ability) => ability !== skip) ?? "str";
 }
 
-function summarizeChoice(current: AbilityScores, choice: AsiChoice): string {
-  const after = applyAsiChoices(current, [choice]);
+function summarizeChoice(current: AbilityScores, choice: AsiChoice, caps?: Record<Ability, number>): string {
+  const after = applyAsiChoices(current, [choice], caps);
   const touched =
     choice.mode === "plus2" ? [choice.ability] : choice.mode === "plus1x2" ? choice.abilities : [];
   return touched

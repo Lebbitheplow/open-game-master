@@ -247,6 +247,7 @@ function engineView(row) {
     },
     charges: chargeRuleOf(row),
     powers: itemPowersOf(row),
+    reading: gearDefOfRow(row)?.reading ?? null,
     checks: SKILLS.map((skill) => {
       const out = itemCheckRiders(equipment, skill);
       return [out.bonus, out.advantage];

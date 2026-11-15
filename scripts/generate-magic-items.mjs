@@ -368,6 +368,11 @@ function usesOf(desc) {
   if (days && countOf(days[1])) {
     return { max: 1, regainDays: countOf(days[1]) };
   }
+  // The manuals and tomes: "The manual then loses its magic, but regains it
+  // in a century": one reading, back in a hundred years of days.
+  if (/loses its magic, but regains it in a century/i.test(desc)) {
+    return { max: 1, regainDays: 36500 };
+  }
   return null;
 }
 
@@ -469,6 +474,13 @@ function gearOf(row, desc, match, rawDesc) {
   }
   if (srd && POWERS[match]) {
     out.powers = POWERS[match];
+  }
+  // SRD 5.1, the manuals and tomes: "your Constitution score increases by 2,
+  // as does your maximum for that score". use_item applies it
+  // (src/lib/srd/studied-books.ts).
+  const reading = srd ? /your (Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma) score increases by (\d+), as does your maximum for that score/i.exec(desc) : null;
+  if (reading) {
+    out.reading = { ability: ABILITY[reading[1].toLowerCase()], amount: Number(reading[2]) };
   }
   return out;
 }

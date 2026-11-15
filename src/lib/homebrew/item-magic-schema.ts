@@ -141,6 +141,9 @@ export const itemMagicSchema = z.object({
   // Properties with a count of their own (ChargeRule per property name),
   // carried so a copied Staff of Thunder and Lightning keeps them.
   powers: z.record(z.string().trim().min(1).max(40), chargeRuleSchema).refine((powers) => Object.keys(powers).length <= 8, "at most 8 properties").optional(),
+  // A book whose study raises a score and its maximum (a Manual of Bodily
+  // Health), carried so a copy keeps it (src/lib/srd/studied-books.ts).
+  reading: z.object({ ability: z.enum(["str", "dex", "con", "int", "wis", "cha"]), amount: int(1, 4) }).optional(),
   checks: checkRidersSchema.optional(),
   spells: z.array(itemSpellSchema).max(24).optional(),
   attunedBy: attunedBySchema.optional(),
@@ -153,6 +156,7 @@ export type ItemMagic = {
   armorRiders?: ArmorRiders;
   charges?: ChargeRule;
   powers?: Record<string, ChargeRule>;
+  reading?: { ability: "str" | "dex" | "con" | "int" | "wis" | "cha"; amount: number };
   checks?: { bonus?: number; skillBonus?: Partial<Record<(typeof SKILL_IDS)[number], number>>; advantage?: string[] };
   spells?: ItemSpell[];
   attunedBy?: AttunementRule;
@@ -177,7 +181,7 @@ export function checkItemMagic(raw: Record<string, unknown>): { magic: ItemMagic
     source.charges = /dawn|day|long rest/i.test(String(recharge ?? "")) ? { ...rest, regain: "all" } : rest;
   }
   const picked = Object.fromEntries(
-    ["weaponRiders", "armorRiders", "charges", "powers", "checks", "spells", "attunedBy", "cursed", "carried"]
+    ["weaponRiders", "armorRiders", "charges", "powers", "reading", "checks", "spells", "attunedBy", "cursed", "carried"]
       .filter((key) => source[key] !== undefined && source[key] !== null)
       .map((key) => [key, source[key]]),
   );

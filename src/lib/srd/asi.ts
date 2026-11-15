@@ -58,22 +58,28 @@ export function crossedAsiLevels(
   );
 }
 
-// Bake ASI choices into ability scores, capping each at 20. Null slots
-// (still undecided in the UI) are skipped.
+// Bake ASI choices into ability scores, capping each at 20, or at the
+// maximum a manual or tome read raised (`caps`, src/lib/srd/studied-books.ts
+// abilityCapsOf). An improvement never lowers a score already past its cap.
+// Null slots (still undecided in the UI) are skipped.
 export function applyAsiChoices(
   scores: AbilityScores,
   choices: Array<AsiChoice | null | undefined>,
+  caps?: Partial<Record<keyof AbilityScores, number>>,
 ): AbilityScores {
   const next = { ...scores };
+  const raise = (ability: keyof AbilityScores, points: number) => {
+    next[ability] = Math.max(next[ability], Math.min(caps?.[ability] ?? ABILITY_SCORE_CAP, next[ability] + points));
+  };
   for (const choice of choices) {
     if (!choice) {
       continue;
     }
     if (choice.mode === "plus2") {
-      next[choice.ability] = Math.min(ABILITY_SCORE_CAP, next[choice.ability] + 2);
+      raise(choice.ability, 2);
     } else if (choice.mode === "plus1x2") {
       for (const ability of choice.abilities) {
-        next[ability] = Math.min(ABILITY_SCORE_CAP, next[ability] + 1);
+        raise(ability, 1);
       }
     }
   }

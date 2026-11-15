@@ -1,5 +1,6 @@
 "use client";
 
+import { abilityCapsOf } from "@/lib/srd/studied-books";
 import { splitToolGrants } from "@/lib/srd/tool-choices";
 import {
   classFeaturesFor,
@@ -1426,6 +1427,7 @@ export function LevelUpDialog({
                   <AsiFeatEditor
                     slotLevels={asiLevels}
                     baseScores={sheet.abilities}
+                    caps={abilityCapsOf(sheet)}
                     choices={asiLevels.map((_, index) => asiChoices[index] ?? null)}
                     onChange={setAsiChoices}
                     featSpecOf={featSpecOf}

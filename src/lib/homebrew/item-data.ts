@@ -109,6 +109,7 @@ export type HomebrewGearDef = {
   armor?: ArmorRiders;
   charges?: ChargeRule;
   powers?: Record<string, ChargeRule>;
+  reading?: { ability: "str" | "dex" | "con" | "int" | "wis" | "cha"; amount: number };
   cursed?: boolean;
 };
 
@@ -444,7 +445,7 @@ export function gearFromHomebrewData(name: string, data: unknown): HomebrewGear 
       ...(extra.carried ? { carried: true } : {}),
     };
   }
-  if (extra.weaponRiders || extra.armorRiders || extra.charges || extra.powers || extra.cursed) {
+  if (extra.weaponRiders || extra.armorRiders || extra.charges || extra.powers || extra.reading || extra.cursed) {
     gear.def = {
       requiresAttunement,
       ...(gear.weapon ? { base: { kind: "weapon" as const, name: gear.weapon.name } } : gear.armor ? { base: { kind: "armor" as const, name: gear.armor.name } } : {}),
@@ -452,6 +453,7 @@ export function gearFromHomebrewData(name: string, data: unknown): HomebrewGear 
       ...(extra.armorRiders ? { armor: extra.armorRiders } : {}),
       ...(extra.charges ? { charges: extra.charges } : {}),
       ...(extra.powers ? { powers: extra.powers } : {}),
+      ...(extra.reading ? { reading: extra.reading } : {}),
       ...(extra.cursed ? { cursed: true } : {}),
     };
   }

@@ -5863,6 +5863,63 @@
       ]
     },
     {
+      "name": "Manual of Bodily Health",
+      "match": "manual of bodily health",
+      "slugs": [
+        "manual-of-bodily-health",
+        "manual-of-bodily-health-a5e"
+      ],
+      "requiresAttunement": false,
+      "noWear": true,
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regainDays": 36500
+      },
+      "reading": {
+        "ability": "con",
+        "amount": 2
+      }
+    },
+    {
+      "name": "Manual of Gainful Exercise",
+      "match": "manual of gainful exercise",
+      "slugs": [
+        "manual-of-gainful-exercise",
+        "manual-of-gainful-exercise-a5e"
+      ],
+      "requiresAttunement": false,
+      "noWear": true,
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regainDays": 36500
+      },
+      "reading": {
+        "ability": "str",
+        "amount": 2
+      }
+    },
+    {
+      "name": "Manual of Quickness of Action",
+      "match": "manual of quickness of action",
+      "slugs": [
+        "manual-of-quickness-of-action",
+        "manual-of-quickness-of-action-a5e"
+      ],
+      "requiresAttunement": false,
+      "noWear": true,
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regainDays": 36500
+      },
+      "reading": {
+        "ability": "dex",
+        "amount": 2
+      }
+    },
+    {
       "name": "Manual of the Lesser Golem",
       "match": "manual of the lesser golem",
       "slugs": [
@@ -10557,6 +10614,44 @@
       }
     },
     {
+      "name": "Tome of Clear Thought",
+      "match": "tome of clear thought",
+      "slugs": [
+        "tome-of-clear-thought",
+        "tome-of-clear-thought-a5e"
+      ],
+      "requiresAttunement": false,
+      "noWear": true,
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regainDays": 36500
+      },
+      "reading": {
+        "ability": "int",
+        "amount": 2
+      }
+    },
+    {
+      "name": "Tome of Leadership and Influence",
+      "match": "tome of leadership and influence",
+      "slugs": [
+        "tome-of-leadership-and-influence",
+        "tome-of-leadership-and-influence-a5e"
+      ],
+      "requiresAttunement": false,
+      "noWear": true,
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regainDays": 36500
+      },
+      "reading": {
+        "ability": "cha",
+        "amount": 2
+      }
+    },
+    {
       "name": "Tome of the Endless Tale",
       "match": "tome of the endless tale",
       "slugs": [
@@ -10567,6 +10662,25 @@
       "effects": [],
       "charges": {
         "max": 3
+      }
+    },
+    {
+      "name": "Tome of Understanding",
+      "match": "tome of understanding",
+      "slugs": [
+        "tome-of-understanding",
+        "tome-of-understanding-a5e"
+      ],
+      "requiresAttunement": false,
+      "noWear": true,
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regainDays": 36500
+      },
+      "reading": {
+        "ability": "wis",
+        "amount": 2
       }
     },
     {

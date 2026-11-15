@@ -453,4 +453,80 @@ await test("R12 an item property usable once a dawn or until a long rest has a c
   assert.equal((await use("Luck Blade", { spell: "Luck" })).ok, true, "Luck is its own use");
 });
 
+await test("R13 reading a manual or tome raises the score and its maximum by 2, the book then waits a century, and the level-up, the legality check and the GM's edits hold that maximum", async () => {
+  // SRD 5.1, Manual of Bodily Health: "If you spend 48 hours over a period
+  // of 6 days or fewer studying the book's contents and practicing its
+  // guidelines, your Constitution score increases by 2, as does your maximum
+  // for that score. The manual then loses its magic, but regains it in a
+  // century." Gainful Exercise (Strength), Quickness of Action (Dexterity),
+  // the Tomes of Clear Thought (Intelligence), Leadership and Influence
+  // (Charisma) and Understanding (Wisdom) likewise. Nothing read them: the
+  // GM could only patch the score, held at 20, and the maximum never rose.
+  const { gearDefNamed } = await import("../src/lib/srd/magic-gear.ts");
+  const { chargeRuleOf } = await import("../src/lib/srd/item-charge-rules.ts");
+  const { featureAbilityGrants } = await import("../src/lib/srd/trait-rules.ts");
+  const { abilityProblems } = await import("../src/lib/srd/legality/abilities.ts");
+  const { buildLevelUp } = await import("../src/lib/srd/level-up.ts");
+  const { classGrantsFor } = await import("../src/lib/characters/catalog.ts");
+  const books = {
+    "Manual of Bodily Health": "con",
+    "Manual of Gainful Exercise": "str",
+    "Manual of Quickness of Action": "dex",
+    "Tome of Clear Thought": "int",
+    "Tome of Leadership and Influence": "cha",
+    "Tome of Understanding": "wis",
+  };
+  for (const [name, ability] of Object.entries(books)) {
+    assert.deepEqual(gearDefNamed(name)?.reading, { ability, amount: 2 }, name);
+    assert.deepEqual(chargeRuleOf({ name }), { max: 1, regainDays: 36500 }, `${name}: one reading, back in a century`);
+  }
+
+  const table = await openTable();
+  const reader = table.addHero({ class: "fighter", level: 7, maxHp: 70, abilities: { str: 16, dex: 12, con: 20, int: 10, wis: 10, cha: 10 }, equipment: [{ name: "Manual of Bodily Health", qty: 1 }] });
+  const friend = table.addHero({ class: "fighter", level: 7, maxHp: 70 });
+  const before = table.sheet(reader.id);
+  const read = await table.invoke("use_item", { characterId: reader.id, item: "Manual of Bodily Health" });
+  assert.equal(read.ok, true, read.error);
+  const after = table.sheet(reader.id);
+  assert.equal(after.abilities.con, 22, "20 becomes 22");
+  // "your hit point maximum changes as well, as though you had the new
+  // modifier from 1st level": +1 a level for seven levels.
+  assert.equal(after.maxHp, before.maxHp + 7);
+  assert.ok(after.equipment.some((item) => item.name === "Manual of Bodily Health"), "the book stays, its magic spent");
+  assert.deepEqual(featureAbilityGrants(after), { con: 2 }, "the raised maximum is on the sheet");
+  // Handed on, it is a plain book for a century.
+  table.patch(friend.id, { equipment: [after.equipment.find((item) => item.name === "Manual of Bodily Health")] });
+  const again = await table.invoke("use_item", { characterId: friend.id, item: "Manual of Bodily Health" });
+  assert.equal(again.refused, "rules");
+  assert.match(again.error, /36500 days/);
+
+  // The legality check takes 22 for the reader and still refuses it for
+  // anyone else.
+  const check = (sheet) => abilityProblems({ scores: sheet.abilities, racial: {}, recorded: [], freePoints: 0, mode: "bounds", pools: [], grants: featureAbilityGrants(sheet) });
+  assert.deepEqual(check(after).filter((line) => /passes/.test(line)), []);
+  assert.ok(check({ ...after, features: [] }).some((line) => /passes 20/.test(line)), "without the book, 22 is past the cap");
+
+  // The GM's own edit cannot take a score past 20 another way, and keeps a
+  // 22 the book gave.
+  const pushed = await table.invoke("update_sheet", { characterId: friend.id, abilities: { ...table.sheet(friend.id).abilities, str: 22 }, reason: "a story boon" });
+  assert.notEqual(pushed.ok, true, `past 20 is refused: ${JSON.stringify(pushed)}`);
+  const kept = await table.invoke("update_sheet", { characterId: reader.id, abilities: { ...after.abilities, cha: 12 }, reason: "a story change" });
+  assert.equal(kept.ok, true, kept.error);
+  assert.equal(table.sheet(reader.id).abilities.con, 22);
+  const forged = await table.invoke("update_sheet", { characterId: friend.id, features: [...table.sheet(friend.id).features, { name: "Manual of Bodily Health (studied: +2 Constitution)", source: "story" }], reason: "read it" });
+  assert.notEqual(forged.ok, true, `only reading the book writes its record: ${JSON.stringify(forged)}`);
+
+  // A fighter at CON 18 who reads it stands at 20 with a maximum of 22, and
+  // the 8th-level improvement takes it to 22.
+  table.patch(reader.id, { abilities: { ...table.sheet(reader.id).abilities, con: 20 }, xp: 34000 });
+  const sheet = table.sheet(reader.id);
+  const context = { hpMethod: "average", multiclassAllowed: true, classOf: classGrantsFor, racialCantrips: 0, spellOf: () => null, featOf: () => null, subclassOffered: () => true, rollDie: () => 1 };
+  const leveled = buildLevelUp(sheet, { level: 8, maxHp: sheet.maxHp, currentHp: sheet.currentHp, hitDice: sheet.hitDice, asiChoices: [{ mode: "plus2", ability: "con" }] }, context);
+  assert.ok(!("error" in leveled), leveled.error);
+  assert.equal(leveled.patch.abilities.con, 22);
+  // Without the book the same improvement stops at 20.
+  const plain = buildLevelUp({ ...sheet, features: sheet.features.filter((feature) => !/studied/.test(feature.name)) }, { level: 8, maxHp: sheet.maxHp, currentHp: sheet.currentHp, hitDice: sheet.hitDice, asiChoices: [{ mode: "plus2", ability: "con" }] }, context);
+  assert.equal("error" in plain ? 20 : plain.patch.abilities.con, 20);
+});
+
 finish();

@@ -9,6 +9,7 @@
 // without a cycle. Pure: the builder runs it in the browser.
 
 import magicItemsJson from "@/lib/classes/magic-items.json";
+import type { Ability } from "@/lib/schemas/abilities";
 import { textKey } from "@/lib/language/text-logic";
 import { isWorkshopRow, rowName, type RowItem } from "@/lib/srd/item-row";
 import { armorSpellings, SRD_ARMOR } from "@/lib/srd/armor-table";
@@ -108,6 +109,10 @@ export type GearDef = {
   // heads them with (Staff of Thunder and Lightning's Thunderclap, once a
   // dawn). The row holds what is left of each (EquipmentItem.powerCharges).
   powers?: Record<string, ChargeRule>;
+  // A book whose study raises a score and its maximum (SRD 5.1, Manual of
+  // Bodily Health: "your Constitution score increases by 2, as does your
+  // maximum for that score"); src/lib/srd/studied-books.ts.
+  reading?: { ability: Ability; amount: number };
   // Attuning curses the wearer: the attunement holds until remove curse.
   cursed?: boolean;
 };
