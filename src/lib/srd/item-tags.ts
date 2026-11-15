@@ -44,7 +44,8 @@ const TABLE = itemTagsJson as unknown as {
   items: Array<[string, string, ItemTag[]]>;
   added: Array<[string, ItemTag[]]>;
   potions: Array<[string, ItemTag[], PotionKind]>;
-  wielded: Record<WieldedAs, string[]>;
+  // One letter per items row: m(elee), r(anged), a(rmor) or "-".
+  wielded: string;
 };
 
 // What a weapon or suit of the pack is held or worn as.
@@ -92,26 +93,30 @@ for (const [name, tags] of TABLE.added) {
 // "srd_" slugs, and everything else it holds is a magic item, a weapon or
 // armor.
 const BEYOND_PLAIN_GEAR = new Set<ItemRow>();
-for (const [name, slug, tags] of TABLE.items) {
+const WIELDED_ROWS: Array<[ItemRow, WieldedAs]> = [];
+const WIELDED_LETTERS: Record<string, WieldedAs> = { m: "melee", r: "ranged", a: "armor" };
+TABLE.items.forEach(([name, slug, tags], at) => {
   const row = { name, tags };
   BY_SLUG.set(slug, row);
   if (!slug.startsWith("srd_")) {
     BEYOND_PLAIN_GEAR.add(row);
   }
+  const as = WIELDED_LETTERS[TABLE.wielded[at] ?? "-"];
+  if (as) {
+    WIELDED_ROWS.push([row, as]);
+  }
   index(row);
-}
+});
 // The pack's magic weapons and armor and other documents' plain ones, by
 // row. A name two documents file is found as its first row, so that row is
-// marked as well.
+// marked as well, by the first kind in this order that marks it.
 const WIELDED = new Map<ItemRow, WieldedAs>();
-for (const [as, slugs] of Object.entries(TABLE.wielded) as Array<[WieldedAs, string[]]>) {
-  for (const slug of slugs) {
-    const row = BY_SLUG.get(slug);
-    const first = row ? rowNamed(row.name) : null;
-    for (const marked of [row, first]) {
-      if (marked && !WIELDED.has(marked)) {
-        WIELDED.set(marked, as);
-      }
+const KIND_ORDER: readonly WieldedAs[] = ["melee", "ranged", "armor"];
+WIELDED_ROWS.sort(([, a], [, b]) => KIND_ORDER.indexOf(a) - KIND_ORDER.indexOf(b));
+for (const [row, as] of WIELDED_ROWS) {
+  for (const marked of [row, rowNamed(row.name)]) {
+    if (marked && !WIELDED.has(marked)) {
+      WIELDED.set(marked, as);
     }
   }
 }

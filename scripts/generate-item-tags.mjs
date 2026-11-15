@@ -92,13 +92,11 @@ function wieldedAs(row) {
   }
   return RANGED.test(`${row.name} ${category}`) ? "ranged" : "melee";
 }
-const wielded = { melee: [], ranged: [], armor: [] };
-for (const row of rows) {
-  const as = wieldedAs(row);
-  if (as) {
-    wielded[as].push(row.slug);
-  }
-}
+// One letter per items row, in its order: m(elee), r(anged), a(rmor) or
+// "-". The slugs themselves cost every page that loads the table 2 KiB
+// (gzip) more than this does.
+const WIELDED_LETTER = { melee: "m", ranged: "r", armor: "a" };
+const wielded = rows.map((row) => WIELDED_LETTER[wieldedAs(row)] ?? "-").join("");
 
 // ---- the SRD potions' kinds, from their own tables ----
 
@@ -145,8 +143,9 @@ const generated = {
   added: ADDED.map((entry) => [entry.name, entry.tags]),
   // [name, tags, effect] for each kind of an SRD potion with a table.
   potions: kinds,
-  // The slugs of the pack's magic weapons and armor and of other
-  // documents' plain ones, by what they are held or worn as.
+  // What each items row is held or worn as, one letter per row (m melee,
+  // r ranged, a armor, - neither): the pack's magic weapons and armor and
+  // other documents' plain ones.
   wielded,
 };
 const serialized = `${JSON.stringify(generated)}\n`;
