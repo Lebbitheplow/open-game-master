@@ -516,18 +516,6 @@ export const SOCIAL_ADJUDICATIONS: CatalogEntry[] = [
     ],
   },
   {
-    name: "npc_hear",
-    label: "Who hears it",
-    category: "social",
-    summary: "Words said in the scene reach the NPCs around as far as they could hear them; Perception decides in between.",
-    fields: [
-      { name: "speaker", label: "Who spoke", kind: "text", required: true },
-      { name: "words", label: "Their words", kind: "longtext", required: true, maxLength: 1200 },
-      { name: "place", label: "Where", kind: "text" },
-      { name: "listeners", label: "Who heard it", kind: "list", required: true, help: "The NPCs who heard the words; you decide who was close enough." },
-    ],
-  },
-  {
     name: "npc_past",
     label: "An NPC's past",
     category: "social",

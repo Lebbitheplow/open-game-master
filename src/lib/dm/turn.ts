@@ -296,9 +296,9 @@ import { handleNpcState, npcStateTools, NPC_STATE_TOOL_NAMES } from "@/lib/dm/np
 import { listNpcs } from "@/lib/db/npcs";
 import { readStateGuard } from "@/lib/dm/npc-state-guard";
 import { stateGuardPrompt } from "@/lib/dm/npc-state-guard-logic";
-import { awayArrivalNote, handleNpcInform, hearUnasked, handleNpcPast, handleNpcSpeak, mindRosterNotes, mindTurnRefusal, mindsAwaitingTurn, mindsWithinEarshot, npcMindsOn } from "@/lib/dm/npc-mind";
-import { hearingPrompt, MAX_HEARING_CALLS, sceneMindsPrompt, TIME_SKIP_TOOLS } from "@/lib/dm/npc-mind-logic";
-import { mindSpeeches, narratorLines, quotedLines } from "@/lib/dm/voice-knowledge-logic";
+import { awayArrivalNote, everyoneHears, handleNpcInform, handleNpcPast, handleNpcSpeak, mindRosterNotes, mindTurnRefusal, mindsAwaitingTurn, npcMindsOn } from "@/lib/dm/npc-mind";
+import { sceneMindsPrompt, TIME_SKIP_TOOLS } from "@/lib/dm/npc-mind-logic";
+import { mindLines, mindSpeeches, narratorLines, quotedLines } from "@/lib/dm/voice-knowledge-logic";
 import { worldForPrompt } from "@/lib/dm/world-prompt";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import {
@@ -2054,9 +2054,6 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
   // One shot at a turn that closed without the turn owed to a first-tier
   // mind still on stage (npc-mind.ts mindsAwaitingTurn, design §9).
   let sceneMindsNudged = false;
-  let hearingNudged = false;
-  // What the hearing note asked about, kept until npc_hear answers it.
-  let owedHearing: { lines: { speaker: string; words: string }[]; names: string[] } | null = null;
   // The NPC state guard sends the narrator back once (npc-state-guard.ts).
   let stateNudged = false;
   // What the current call streamed to the draft, and how many narration
@@ -2884,60 +2881,6 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
         saveDmTurn(turn);
         continue;
       }
-      // Words said aloud in the prose (a line the narrator voiced, not a
-      // mind's own) with first-tier characters on stage whom nothing told:
-      // who heard them is the dice's to say (npc_hear, D&D Perception), not
-      // the narrator's guess a turn later. Sent back once; the narration
-      // stands.
-      // A player character's own quoted words count too: a question put
-      // under the breath to one character, answered by that character's
-      // mind alone, left the prisoner on the bench beside them unasked.
-      const spokenBy = !toolsClosed && !hearingNudged && turn.narrationParts.length > 0
-        ? [
-            ...playerLinesSinceDm(campaignId).flatMap((message) =>
-              quotedLines(message.content).map((words) => ({ speaker: (message.characterId && context.sheetsById.get(message.characterId)?.name) || "someone nearby", words })),
-            ),
-            ...narratorLines(turn.narrationParts.join("\n\n"), mindSpeeches(turn.conversation)).map((words) => ({ speaker: "someone nearby", words })),
-          ]
-        : [];
-      const spokenAloud = spokenBy.map((line) => line.words);
-      const listeners = spokenAloud.length ? mindsWithinEarshot(campaign, turn.id, turnCalls(turn.conversation, toolCalls)) : [];
-      if (listeners.length) {
-        hearingNudged = true;
-        owedHearing = { lines: spokenBy, names: listeners.map((npc) => npc.name) };
-        // A mind owed its turn is asked in the same note: sent apart, the
-        // second note came on a closing reply that had nothing left to say,
-        // and the captain's hour on the road went unplayed.
-        const owedToo = sceneMindsNudged ? [] : mindsAwaitingTurn(campaign, turn.id, turnCalls(turn.conversation, toolCalls));
-        const skipped = owedToo.length > 0 && turnCalls(turn.conversation, toolCalls).some((call) => TIME_SKIP_TOOLS.has(call.name));
-        if (owedToo.length) {
-          sceneMindsNudged = true;
-        }
-        // One call per speaker to hear and per mind owed its turn: a small
-        // model makes one tool call a reply, and a fixed two spent both on
-        // npc_hear for a whispered question and its answer, leaving the
-        // captain's turn to a closing reply that only narrated her silence.
-        const speakers = new Set(spokenBy.map((line) => line.speaker)).size + mindSpeeches(turn.conversation).length;
-        tableNoteCalls(Math.min(speakers, MAX_HEARING_CALLS) + owedToo.length);
-        turn.conversation.push({
-          role: "assistant",
-          ...carried,
-          content: visibleText || "",
-          ...(toolCalls.length ? { tool_calls: echoedToolCalls } : {}),
-        });
-        answerRanAbove(fightOwnsFloor(campaignId), false);
-        turn.conversation.push({
-          role: "user",
-          content: [
-            hearingPrompt(listeners.map((npc) => npc.name), spokenAloud[0].slice(0, 120)),
-            owedToo.length ? sceneMindsPrompt(owedToo.map((npc) => npc.name), skipped) : "",
-          ]
-            .filter(Boolean)
-            .join("\n\n"),
-        });
-        saveDmTurn(turn);
-        continue;
-      }
       // A first-tier mind still on stage plays like a player at the table:
       // a turn that closes without giving it one sends the narrator back
       // once to ask it, telling it only what it perceived from where it
@@ -3137,10 +3080,17 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     setDmStatus(campaignId, "narrating");
   }
   settleDraft();
-  // The hearing note went unanswered (the reply told the story again):
-  // the listeners it named are held to their passive Perception.
-  if (!failed && owedHearing && !turnCalls(turn.conversation, []).some((call) => call.name === "npc_hear")) {
-    hearUnasked(campaign, owedHearing.lines, owedHearing.names);
+  // Everyone in the scene hears what was said aloud in it: the heroes'
+  // quoted words, the narrator's voiced lines and the minds' own. No dice,
+  // no note; distance beyond the scene is the narrator's (npc_inform).
+  if (!failed && turn.narrationParts.length) {
+    everyoneHears(campaign, turn.id, [
+      ...playerLinesSinceDm(campaignId).flatMap((message) =>
+        quotedLines(message.content).map((words) => ({ speaker: (message.characterId && context.sheetsById.get(message.characterId)?.name) || "someone nearby", words })),
+      ),
+      ...narratorLines(turn.narrationParts.join("\n\n"), mindSpeeches(turn.conversation)).map((words) => ({ speaker: "someone nearby", words })),
+      ...mindLines(turn.conversation),
+    ]);
   }
 
   // A private exchange (whispers only) is allowed to end without narration

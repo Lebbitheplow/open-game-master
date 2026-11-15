@@ -43,6 +43,26 @@ export function quotedLines(narration: string): string[] {
   return [...narration.matchAll(QUOTE)].map((match) => quotedText(match).trim()).filter(Boolean);
 }
 
+// Who of the minds said what this turn, from the npc_speak results: the
+// words everyone else in the scene hears (npc-mind.ts everyoneHears).
+export function mindLines(conversation: readonly { role: string; content?: unknown }[]): { speaker: string; words: string }[] {
+  const out: { speaker: string; words: string }[] = [];
+  for (const message of conversation) {
+    if (message.role !== "tool" || typeof message.content !== "string") {
+      continue;
+    }
+    try {
+      const parsed = JSON.parse(message.content) as { npc?: unknown; says?: unknown };
+      if (typeof parsed.npc === "string" && typeof parsed.says === "string" && parsed.says.trim()) {
+        out.push({ speaker: parsed.npc, words: parsed.says.trim() });
+      }
+    } catch {
+      // Not a tool result a mind wrote.
+    }
+  }
+  return out;
+}
+
 // What the minds said this turn: the "says" of every npc_speak result in the
 // turn's conversation. Those words came from a model that knows only the
 // speaker's own past; they are never the narrator's leak.

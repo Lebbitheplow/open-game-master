@@ -436,288 +436,33 @@ await test("the story promotes a second-tier character mid-way, who remembers th
   }
 });
 
-await test("words said in the scene reach the NPCs around as far as they could hear them (npc_hear, D&D Perception)", async () => {
-  npc("Healer Wenna", { trait: "tired healer" }, "secondary");
-  npc("Guard Tobb", { trait: "bored guard" }, "secondary");
-  npc("Sentry Alm", { trait: "on the far tower" }, "secondary");
-  const hear = (listeners) =>
-    mind.handleNpcHear(world.campaign(), JSON.stringify({ speaker: "Daro", words: "They took the sacks to the old mill.", place: "the well house", listeners }));
-  // Close by: heard. Across the room, passive 10 + Wis 0 against 13: missed.
-  // Out of earshot: nothing at all.
-  const out = hear([
-    { name: "Guard Tobb", reach: "near" },
-    { name: "Healer Wenna", reach: "far", dc: 13 },
-    { name: "Sentry Alm", reach: "out_of_earshot" },
-  ]);
-  assert.deepEqual(out.heard, ["Guard Tobb"]);
-  assert.deepEqual(out.missed, ["Healer Wenna", "Sentry Alm"]);
-  assert.ok(memories("Guard Tobb").some((entry) => entry.content.includes("«They took the sacks to the old mill.»")));
-  assert.ok(!memories("Healer Wenna").some((entry) => /mill/.test(entry.content)), "a missed check leaves no words");
-  assert.ok(memories("Healer Wenna").some((entry) => /too low or too far/.test(entry.content)), "only that someone spoke");
-  assert.equal(memories("Sentry Alm").length, 0);
-  // An easy one (DC 10) is heard on passive Perception.
-  assert.deepEqual(hear([{ name: "Healer Wenna", reach: "far", dc: 10 }]).heard, ["Healer Wenna"]);
-  // The rule itself: Wisdom moves it, a roll replaces the passive 10.
-  assert.equal(logic.hears("far", 13, 14, null).heard, false, "passive 10 + 2 = 12, under 13");
-  assert.equal(logic.hears("far", 13, 16, null).heard, true, "passive 10 + 3 = 13");
-  assert.equal(logic.hears("far", 13, 10, 7).heard, false, "7 on the die, Wis +0");
-  assert.equal(logic.hears("far", 13, 16, 12).heard, true, "12 + 3");
-  assert.ok(mind.handleNpcHear(world.campaign(), JSON.stringify({ speaker: "Daro", words: "x", listeners: [{ name: "Nobody Here", reach: "near" }] })).unknown.includes("Nobody Here"));
-  assert.deepEqual(mind.handleNpcHear(world.campaign(), JSON.stringify({ speaker: "Daro", words: "The miller.", listeners: ["Sentry Alm"] })).heard, ["Sentry Alm"], "the console names who heard");
-  const { npcMindTools, NPC_MINDS_RULES } = await import("../src/lib/dm/npc-mind-tools.ts");
-  assert.ok(npcMindTools.some((tool) => tool.function.name === "npc_hear"));
-  assert.match(NPC_MINDS_RULES, /call npc_hear/);
-});
-
-await test("words said aloud with a mind on stage send the narrator back once to ask who heard; the dice decide", async () => {
-  const { listNpcs } = await import("../src/lib/db/npcs.ts");
+await test("everyone in the scene hears what is said aloud in it: no dice and no note; who is apart or senseless does not", async () => {
+  const { listNpcs, setNpcState } = await import("../src/lib/db/npcs.ts");
   const others = listNpcs(world.campaignId).filter((entry) => mind.tierOfNpc(entry) === "primary" && !entry.companionSheetId);
   for (const other of others) {
     minds.setNpcTier(other.id, "secondary");
   }
-  npc("Healer Imre", { trait: "watching the sick" });
-  npc("Patient Ost", { trait: "weak in bed" }, "secondary");
-  const nudges = () => model.requests.filter((request) => String(request.messages?.at(-1)?.content ?? "").includes("nobody asked whether they heard")).length;
+  const withParty = (row, extra = {}) => setNpcState(row.id, { custody: "free", heldBy: "", restraint: "none", condition: "up", withParty: true, disarmed: false, carries: [], ...extra });
+  withParty(npc("Healer Imre", { trait: "watching the sick" }));
+  withParty(npc("Patient Ost", { trait: "weak in bed" }), { condition: "unconscious" });
+  npc("Clerk Bede", { trait: "in another town" });
+  const notes = () => model.requests.filter((request) => /Words were said aloud|nobody asked whether they heard/.test(String(request.messages?.at(-1)?.content ?? ""))).length;
   try {
-    model.script([
-      reply({ calls: [call("npc_speak", { name: "Healer Imre", perceives: "Aria comes into the sick house." })] }),
-      answer({ speech: "Quietly, please.", intent: "" }),
-      reply({ text: '"Quietly, please," Imre says, and points to the beds.' }),
-    ]);
-    await model.turn(world, "I step into the sick house.", aria.id);
-    const before = nudges();
-    model.script([
-      reply({ text: 'Ost turns his face to you. "They took the sacks to the old mill," he whispers.' }),
-      reply({ calls: [call("npc_hear", { speaker: "Patient Ost", words: "They took the sacks to the old mill.", listeners: [{ name: "Healer Imre", reach: "far", dc: 13 }] })] }),
-      reply({ text: "" }),
-      reply({ calls: [call("npc_speak", { name: "Healer Imre", perceives: "Across the room Aria bends over Ost's bed; he whispers something you cannot make out." })] }),
-      answer({ speech: "Don't tire him.", intent: "" }),
-      reply({ text: 'From the doorway Imre calls softly: "Don\'t tire him."' }),
-    ]);
-    const dm = await model.turn(world, "I ask Ost where the thugs went.", aria.id);
-    assert.equal(nudges() - before, 1, "sent back once to ask who heard");
-    assert.equal(dm.content.match(/old mill/g)?.length, 1, dm.content);
-    assert.ok(!memories("Healer Imre").some((entry) => /old mill/.test(entry.content)), "passive 10 against 13: the healer did not hear");
-    assert.ok(memories("Healer Imre").some((entry) => /too low or too far/.test(entry.content)));
+    const before = notes();
+    model.script([reply({ text: 'At the door the farmer shouts: "The bridge is out since dawn."' })]);
+    await model.turn(world, '"Who are you?" I whisper to the farmer.', aria.id);
+    assert.equal(notes() - before, 0, "no note asks who heard");
+    assert.ok(memories("Healer Imre").some((entry) => /The bridge is out since dawn/.test(entry.content)), "the narrator's voiced line");
+    assert.ok(memories("Healer Imre").some((entry) => /Aria say: «Who are you\?»/.test(entry.content)), "the hero's own whispered words: everyone hears");
+    assert.ok(!memories("Patient Ost").some((entry) => /bridge is out/.test(entry.content)), "the unconscious hear nothing");
+    assert.ok(!memories("Clerk Bede").some((entry) => /bridge is out/.test(entry.content)), "someone elsewhere hears nothing");
+    const { npcMindTools } = await import("../src/lib/dm/npc-mind-tools.ts");
+    assert.ok(!npcMindTools.some((tool) => tool.function.name === "npc_hear"));
   } finally {
     for (const other of others) {
       minds.setNpcTier(other.id, "primary");
     }
-    minds.setNpcTier(getNpcByName(world.campaignId, "Healer Imre").id, "secondary");
-  }
-});
-
-await test("a player character's own quoted words, answered without a narrated line, still ask who on stage heard them", async () => {
-  const { listNpcs } = await import("../src/lib/db/npcs.ts");
-  const others = listNpcs(world.campaignId).filter((entry) => mind.tierOfNpc(entry) === "primary" && !entry.companionSheetId);
-  for (const other of others) {
-    minds.setNpcTier(other.id, "secondary");
-  }
-  npc("Watchman Pell", { trait: "chained to the bench" });
-  const nudges = () => model.requests.filter((request) => String(request.messages?.at(-1)?.content ?? "").includes("nobody asked whether they heard")).length;
-  try {
-    model.script([
-      reply({ calls: [call("npc_speak", { name: "Watchman Pell", perceives: "Aria comes into the shelter." })] }),
-      answer({ speech: "Who's there?", intent: "" }),
-      reply({ text: '"Who\'s there?" Pell calls from the bench.' }),
-    ]);
-    await model.turn(world, "I step into the shelter.", aria.id);
-    const before = nudges();
-    model.script([
-      reply({ text: "The captain leans in and nods, saying nothing." }),
-      reply({ calls: [call("npc_hear", { speaker: "Aria", words: "How long to Malfosso?", listeners: [{ name: "Watchman Pell", reach: "far", dc: 15 }] })] }),
-      reply({ text: "" }),
-    ]);
-    await model.turn(world, '"How long to Malfosso?" I whisper to the captain.', aria.id);
-    assert.equal(nudges() - before, 1, "the player's whisper is asked about once");
-    assert.ok(!memories("Watchman Pell").some((entry) => /Malfosso/.test(entry.content)), "passive 10 against 15: not heard");
-  } finally {
-    for (const other of others) {
-      minds.setNpcTier(other.id, "primary");
-    }
-    minds.setNpcTier(getNpcByName(world.campaignId, "Watchman Pell").id, "secondary");
-  }
-});
-
-await test("a hearing note the narrator ignores still lets the dice decide: passive Perception for each listener it named", async () => {
-  const { listNpcs } = await import("../src/lib/db/npcs.ts");
-  const others = listNpcs(world.campaignId).filter((entry) => mind.tierOfNpc(entry) === "primary" && !entry.companionSheetId);
-  for (const other of others) {
-    minds.setNpcTier(other.id, "secondary");
-  }
-  // A priest's Wisdom 16 (passive 13) meets the far difficulty, 13; a
-  // zombie's 6 (passive 8) does not.
-  const blockOf = (row, slug) => getDatabase().prepare("UPDATE npcs SET stat_block = ? WHERE id = ?").run(slug, row.id);
-  blockOf(npc("Keen Ilsa", { trait: "sharp-eared, chained to the cart" }), "priest");
-  blockOf(npc("Dull Bors", { trait: "half asleep on the cart" }), "zombie");
-  try {
-    model.script([
-      reply({ calls: [call("npc_speak", { name: "Keen Ilsa", perceives: "Aria climbs onto the cart." })] }),
-      answer({ speech: "Mind the chains.", intent: "" }),
-      reply({ calls: [call("npc_speak", { name: "Dull Bors", perceives: "Aria climbs onto the cart." })] }),
-      answer({ speech: "Mm.", intent: "" }),
-      reply({ text: '"Mind the chains," Ilsa says. Bors only grunts.' }),
-    ]);
-    await model.turn(world, "I climb onto the cart.", aria.id);
-    model.script([
-      reply({ text: "The captain nods." }),
-      // The note comes back; the narrator tells the story again instead.
-      reply({ text: "The captain nods." }),
-      reply({ text: "" }),
-    ]);
-    await model.turn(world, '"The magistrate is Vargo," I whisper to the captain.', aria.id);
-    const knows = (name) => memories(name).some((entry) => /Vargo/.test(entry.content));
-    assert.ok(knows("Keen Ilsa"), "passive 13 against 13: she caught it");
-    assert.ok(!knows("Dull Bors"), "passive 8 against 13: he did not");
-    assert.ok(memories("Dull Bors").some((entry) => /Aria/.test(entry.content)), "he knows only that Aria spoke");
-  } finally {
-    for (const other of others) {
-      minds.setNpcTier(other.id, "primary");
-    }
-    for (const name of ["Keen Ilsa", "Dull Bors"]) {
-      minds.setNpcTier(getNpcByName(world.campaignId, name).id, "secondary");
-    }
-  }
-});
-
-await test("a turn whose calls all went on mechanics still asks the mind on stage who heard: the note buys its own calls", async () => {
-  const { listNpcs } = await import("../src/lib/db/npcs.ts");
-  const others = listNpcs(world.campaignId).filter((entry) => mind.tierOfNpc(entry) === "primary" && !entry.companionSheetId);
-  for (const other of others) {
-    minds.setNpcTier(other.id, "secondary");
-  }
-  npc("Escort Vell", { trait: "rides beside the cart" });
-  const nudges = () => model.requests.filter((request) => String(request.messages?.at(-1)?.content ?? "").includes("nobody asked whether they heard")).length;
-  try {
-    model.script([
-      reply({ calls: [call("npc_speak", { name: "Escort Vell", perceives: "Aria walks beside the cart." })] }),
-      answer({ speech: "Keep up.", intent: "" }),
-      reply({ text: '"Keep up," Vell says.' }),
-    ]);
-    await model.turn(world, "I walk beside the cart.", aria.id);
-    const before = nudges();
-    model.script([
-      reply({ calls: [call("search_lore", { query: "the sergeant" })] }),
-      reply({ calls: [call("search_lore", { query: "the grain" })] }),
-      reply({ calls: [call("search_lore", { query: "the road" })] }),
-      reply({ text: 'The prisoner mutters: "Sergeant Ferran, at dawn."' }),
-      reply({ calls: [call("npc_hear", { speaker: "the prisoner", words: "Sergeant Ferran, at dawn.", listeners: [{ name: "Escort Vell", reach: "near" }] })] }),
-      reply({ text: "" }),
-    ]);
-    await model.turn(world, '"Who was the sergeant?" I whisper to the prisoner.', aria.id);
-    assert.equal(nudges() - before, 1, "asked once, though the four calls were spent");
-    assert.ok(memories("Escort Vell").some((entry) => /Ferran/.test(entry.content)), "near: the escort heard it");
-  } finally {
-    for (const other of others) {
-      minds.setNpcTier(other.id, "primary");
-    }
-    minds.setNpcTier(getNpcByName(world.campaignId, "Escort Vell").id, "secondary");
-  }
-});
-
-await test("a mind travelling with the party is within earshot of the road's talk, though nobody spoke to it yet", async () => {
-  const { listNpcs } = await import("../src/lib/db/npcs.ts");
-  const { upsertCurrentLocation } = await import("../src/lib/db/locations.ts");
-  const { handleNpcState } = await import("../src/lib/dm/npc-state-tools.ts");
-  const others = listNpcs(world.campaignId).filter((entry) => mind.tierOfNpc(entry) === "primary" && !entry.companionSheetId);
-  for (const other of others) {
-    minds.setNpcTier(other.id, "secondary");
-  }
-  upsertCurrentLocation({ campaignId: world.campaignId, name: "the road north" });
-  npc("Chained Oss", { trait: "chained at the head of the column" });
-  handleNpcState(world.campaign(), JSON.stringify({ name: "Chained Oss", custody: "captive", heldBy: "Aria", restraint: "chained", withParty: true }));
-  const nudges = () => model.requests.filter((request) => String(request.messages?.at(-1)?.content ?? "").includes("nobody asked whether they heard")).length;
-  try {
-    model.script([
-      reply({ text: "The captain nods without turning." }),
-      reply({ calls: [call("npc_hear", { speaker: "Aria", words: "We may be followed.", listeners: [{ name: "Chained Oss", reach: "near" }] })] }),
-      reply({ text: "" }),
-    ]);
-    await model.turn(world, '"We may be followed," I tell the captain quietly.', aria.id);
-    assert.equal(nudges(), 1, "the script reset the requests: this turn's note is the only one");
-    assert.ok(memories("Chained Oss").some((entry) => /followed/.test(entry.content)));
-  } finally {
-    for (const other of others) {
-      minds.setNpcTier(other.id, "primary");
-    }
-    const oss = getNpcByName(world.campaignId, "Chained Oss");
-    minds.setNpcTier(oss.id, "secondary");
-    handleNpcState(world.campaign(), JSON.stringify({ name: "Chained Oss", custody: "free", restraint: "none", withParty: false }));
-  }
-});
-
-await test("a mind owed its turn is asked in the same note as who heard, so a closing reply cannot drop it", async () => {
-  const { listNpcs } = await import("../src/lib/db/npcs.ts");
-  const others = listNpcs(world.campaignId).filter((entry) => mind.tierOfNpc(entry) === "primary" && !entry.companionSheetId);
-  for (const other of others) {
-    minds.setNpcTier(other.id, "secondary");
-  }
-  npc("Captain Wren", { trait: "leads the column" });
-  try {
-    model.script([
-      reply({ calls: [call("npc_speak", { name: "Captain Wren", perceives: "Aria falls in behind the cart." })] }),
-      answer({ speech: "Stay close.", intent: "" }),
-      reply({ text: '"Stay close," Wren says.' }),
-    ]);
-    await model.turn(world, "I fall in behind the cart.", aria.id);
-    model.script([
-      reply({ text: 'From the cart the prisoner laughs: "I hope we never see those wagons."' }),
-      reply({
-        calls: [
-          call("npc_hear", { speaker: "the prisoner", words: "I hope we never see those wagons.", listeners: [{ name: "Captain Wren", reach: "near" }] }),
-          call("npc_speak", { name: "Captain Wren", perceives: "The prisoner laughs that he hopes never to see those wagons." }),
-        ],
-      }),
-      answer({ speech: "Quiet back there.", intent: "" }),
-      reply({ text: '"Quiet back there," Wren snaps.' }),
-    ]);
-    const dm = await model.turn(world, "I keep marching.", aria.id);
-    const notes = model.requests.map((request) => String(request.messages?.at(-1)?.content ?? "")).filter((text) => text.includes("nobody asked whether they heard"));
-    assert.equal(notes.length, 1);
-    assert.match(notes[0], /Captain Wren is a first-tier character/);
-    assert.match(dm.content, /Quiet back there/);
-  } finally {
-    for (const other of others) {
-      minds.setNpcTier(other.id, "primary");
-    }
-    minds.setNpcTier(getNpcByName(world.campaignId, "Captain Wren").id, "secondary");
-  }
-});
-
-await test("a whispered question, its answer and a mind owed its turn each get a call: the owed turn is not lost to the hearing", async () => {
-  const { listNpcs } = await import("../src/lib/db/npcs.ts");
-  const others = listNpcs(world.campaignId).filter((entry) => mind.tierOfNpc(entry) === "primary" && !entry.companionSheetId);
-  for (const other of others) {
-    minds.setNpcTier(other.id, "secondary");
-  }
-  npc("Captain Wren", { trait: "leads the column" });
-  npc("Prisoner Vell", { trait: "chained on the cart" });
-  try {
-    model.script([
-      reply({ calls: [call("npc_speak", { name: "Captain Wren", perceives: "Aria sits on the cart." })] }),
-      answer({ speech: "Watch them.", intent: "" }),
-      reply({ text: '"Watch them," Wren says.' }),
-    ]);
-    await model.turn(world, "I sit on the cart.", aria.id);
-    const wrenAsked = () => model.requests.filter((request) => String(request.messages?.at(-1)?.content ?? "").includes("Aria leans to Vell")).length;
-    model.script([
-      reply({ calls: [call("npc_speak", { name: "Prisoner Vell", perceives: "Aria whispers: who sent you?" })] }),
-      answer({ speech: "Nobody you know.", intent: "" }),
-      reply({ text: '"Nobody you know," Vell murmurs.' }),
-      reply({ calls: [call("npc_hear", { speaker: "Aria", words: "Who sent you?", listeners: [{ name: "Captain Wren", reach: "far", dc: 15 }] })] }),
-      reply({ calls: [call("npc_hear", { speaker: "Prisoner Vell", words: "Nobody you know.", listeners: [{ name: "Captain Wren", reach: "far", dc: 15 }] })] }),
-      reply({ calls: [call("npc_speak", { name: "Captain Wren", perceives: "Aria leans to Vell on the cart; the rain drowns their words." })] }),
-      answer({ speech: "Enough chatter.", intent: "" }),
-      reply({ text: '"Enough chatter," Wren calls back.' }),
-    ]);
-    const dm = await model.turn(world, '"Who sent you?" I whisper to Vell.', aria.id);
-    assert.equal(wrenAsked(), 1, "the captain owed her turn is still asked after both lines were heard");
-    assert.match(dm.content, /Enough chatter/);
-  } finally {
-    for (const other of others) {
-      minds.setNpcTier(other.id, "primary");
-    }
-    for (const name of ["Captain Wren", "Prisoner Vell"]) {
+    for (const name of ["Healer Imre", "Patient Ost", "Clerk Bede"]) {
       minds.setNpcTier(getNpcByName(world.campaignId, name).id, "secondary");
     }
   }
@@ -741,17 +486,12 @@ await test("a note sent on the call before the last still leaves a call with too
       reply({ calls: [call("search_lore", { query: "the bridge" })] }),
       reply({ calls: [call("search_lore", { query: "the stranger" })] }),
       reply({ text: 'The stranger shrugs: "No wagons this morning."' }),
-      reply({
-        calls: [
-          call("npc_hear", { speaker: "the stranger", words: "No wagons this morning.", listeners: [{ name: "Guard Tamsin", reach: "near" }] }),
-          call("npc_speak", { name: "Guard Tamsin", perceives: "The stranger says he saw no wagons this morning." }),
-        ],
-      }),
+      reply({ calls: [call("npc_speak", { name: "Guard Tamsin", perceives: "The stranger says he saw no wagons this morning." })] }),
       answer({ speech: "", intent: "watch the stranger" }),
       reply({ text: "Tamsin keeps her eyes on the stranger." }),
     ]);
     await model.turn(world, "I ask the stranger about wagons.", aria.id);
-    assert.ok(memories("Guard Tamsin").some((entry) => /No wagons/.test(entry.content)), "the note's npc_hear was made and the guard heard");
+    assert.ok(memories("Guard Tamsin").some((entry) => entry.sourceKind === "perceived" && /saw no wagons this morning/.test(entry.content)), "the owed note was answered with the guard's turn");
   } finally {
     for (const other of others) {
       minds.setNpcTier(other.id, "primary");
@@ -1250,12 +990,11 @@ await test("a rest lets time pass over the scene: a mind on stage a few turns ba
     assert.match(dm.content, /chain creaks/, "what the mind chose is narrated");
     assert.ok(memories("Prisoner Vell").some((entry) => entry.sourceKind === "perceived" && /An hour passes/.test(entry.content)));
 
-    // Last turn Vell only overheard Aria (npc_hear): still on stage, so the
-    // next stretch of time is his to live too.
-    model.script([
-      reply({ calls: [call("npc_hear", { speaker: "Aria", words: "We leave at dawn.", listeners: [{ name: "Prisoner Vell", reach: "near" }] })] }),
-      reply({ text: '"We leave at dawn," Aria says.' }),
-    ]);
+    // Last turn Vell, travelling with the party, only heard Aria: still on
+    // stage, so the next stretch of time is his to live too.
+    const { setNpcState } = await import("../src/lib/db/npcs.ts");
+    setNpcState(getNpcByName(world.campaignId, "Prisoner Vell").id, { custody: "captive", heldBy: "Aria", restraint: "chained", condition: "up", withParty: true, disarmed: false, carries: [] });
+    model.script([reply({ text: '"We leave at dawn," Aria says.' })]);
     await model.turn(world, '"We leave at dawn," I tell the guards.', aria.id);
     gap();
     const livedBefore = lived();

@@ -70,9 +70,12 @@ Ogni PNG tracciato ha, oltre a ciò che esiste già:
    cambia, il luogo di ogni PNG «con il gruppo» cambia nello stesso momento, senza
    che il Master faccia nulla. Un prigioniero del gruppo o di un PNG che è con il
    gruppo è «con il gruppo» finché resta prigioniero.
-3. **Chi agisce in scena è in scena.** Un PNG che parla con `npc_speak`, che sente
-   da vicino con `npc_hear` o che viene catturato viene spostato nel luogo corrente
-   se il registro diceva altrove.
+3. **Chi agisce in scena è in scena.** Un PNG che parla con `npc_speak` o che viene
+   catturato viene spostato nel luogo corrente se il registro diceva altrove.
+   **Chi è in scena sente tutto.** Le battute dette ad alta voce nel turno (eroi,
+   narratore, menti) vengono ricordate da ogni PNG di primo livello con il gruppo o
+   nel luogo corrente, sveglio e non lontano. Niente tiri di Percezione: le notizie
+   da lontano passano da `npc_inform`.
 4. **Coerenza interna.** Un morto non parla né agisce; uno svenuto non parla e non
    sente; liberare un prigioniero toglie custodia e vincoli insieme. Le chiamate che
    violano queste regole sono rifiutate con una frase che dice cosa correggere.
