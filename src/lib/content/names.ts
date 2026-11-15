@@ -4,7 +4,7 @@
 // server's content routes answer in English, so a name is translated where
 // it is displayed: a row's or a stored name is looked up in the official
 // French SRD 5.1 names (names-fr.ts, generated from Wizards of the Coast's
-// SRD_CC_v5.1_FR.pdf). English is the source and the fallback — a name the
+// SRD_CC_v5.1_FR.pdf). English is the source and the fallback: a name the
 // maps do not carry (a subrace, a homebrew entry, a genre weapon) reads as
 // it always did. What reaches the engine, the protocol and the DM's prompts
 // stays English: only the words on screen change, the way skillLabel
@@ -60,7 +60,7 @@ function slugKey(name: string): string {
 
 // The canonical form the class-feature, species-trait, background-feature
 // and subclass keys are built from, on both sides of the maps: lowercase,
-// punctuation deleted (apostrophes, commas, periods, colons, parentheses —
+// punctuation deleted (apostrophes, commas, periods, colons, parentheses, as
 // a bracket note rides on many a display name), then every run of remaining
 // non-alphanumeric characters one hyphen. The generated maps key these
 // tables the same way (scripts/build-names-fr.mjs), so a name as it is
@@ -116,7 +116,7 @@ function lookup(table: FrNamesTable, key: string): string | null {
 
 // The keys a table tries, in order: a row's own slug first (a third-party
 // document may slugify differently, and the row's slug is what its pack
-// calls it — the pack's rows are homebrew or a translation the pack made,
+// calls it: the pack's rows are homebrew or a translation the pack made,
 // and neither is translated here), then the name as the tables spell it.
 function keysFor(table: FrNamesTable, row: NamedRow): string[] {
   if (table === "gear") {
@@ -161,7 +161,7 @@ export function contentName(
 // Proficiency (heavy armor)") in the reader's language: the maps key a
 // feature by its class and the feature's display name in the canonical form
 // ("cleric:bonus-proficiency-heavy-armor"). A feature the class's map does
-// not carry (an artificer's — the French SRD does not print the class —, a
+// not carry (an artificer's, as the French SRD does not print the class, or a
 // workshop class's) stays English.
 export function classFeatureName(classId: string, featureName: string, locale: Locale): string {
   if (locale !== "fr" || !featureName) {
@@ -175,7 +175,7 @@ export function classFeatureName(classId: string, featureName: string, locale: L
 // Senses)", "+1 HP per level (Dwarven Toughness)") in the reader's language:
 // the maps key a trait by its species and the trait's name
 // ("wood-elf:keen-senses"), and the line's name is the whole line, the words
-// before a trailing bracket note, or the note itself — whichever the map
+// before a trailing bracket note, or the note itself, whichever the map
 // carries. Whatever is not the name rides along untranslated ("60 ft",
 // "+1 HP per level"): it is the app's own shorthand, and only the official
 // name is translated. A trait the species's map does not carry (the French
@@ -216,8 +216,8 @@ export function speciesTraitName(raceId: string, traitLine: string, locale: Loca
   return traitLine;
 }
 
-// A background's granted feature as the sheet carries it — "Shelter of the
-// Faithful (Acolyte)" — in the reader's language: the maps key a feature by
+// A background's granted feature as the sheet carries it ("Shelter of the
+// Faithful (Acolyte)") in the reader's language: the maps key a feature by
 // its background and the feature's name ("acolyte:shelter-of-the-faithful"),
 // and the background's own name rides along through the backgrounds map. A
 // feature the map does not carry (the French SRD prints one background as an
@@ -240,7 +240,7 @@ export function backgroundFeatureName(featureName: string, locale: Locale): stri
   return `${hit} (${contentName("backgrounds", background, locale)})`;
 }
 
-// A subclass as the sheet stores it — "Life Domain", "life", "Evocation" —
+// A subclass as the sheet stores it ("Life Domain", "life", "Evocation")
 // in the reader's language: the maps key a subclass by its class and its
 // name, whole or bare ("cleric:life-domain", "cleric:life"). A subclass the
 // map does not carry (a workshop or pack archetype) stays as it was stored.

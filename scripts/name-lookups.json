@@ -3186,6 +3186,11 @@
     "lib/dm/genre-gh-quarry.ts#whole": [["key",1,"token refs (ids)"]],
     "lib/srd/genre-gh-warded.ts#partial": [["key",2,"an attacker's creature type cut into words, and the type a Warded condition names in its bracket (engine vocabulary)"]],
     "lib/srd/genre-gh-warded.ts#whole": [["key",1,"a creature type among the attacker's type words (engine vocabulary)"]],
-    "lib/dm/genre-gh-wards.ts#whole": [["key",1,"a warding creature type by its whole name (textKey on both sides); a miss is refused"],["identity",1,"a held condition replaced by its whole name (textKey on both sides)"]]
+    "lib/dm/genre-gh-wards.ts#whole": [["key",1,"a warding creature type by its whole name (textKey on both sides); a miss is refused"],["identity",1,"a held condition replaced by its whole name (textKey on both sides)"]],
+    "lib/srd/item-row.ts#keyed": [["key",1,"ITEM_EN_BY_FR reverse lookup for French SRD item names"]],
+    "lib/dm/item-logic.ts#keyed": [["key",1,"ITEM_EN_BY_FR reverse lookup for French SRD item names"]],
+    "lib/content/names.ts#normalizer": [["key",4,"official SRD name table key normalizers (gearKey, slugKey, canonicalKey) for FR_NAMES_BY_TABLE lookup"]],
+    "lib/content/names.ts#keyed": [["key",6,"official SRD table lookups into FR_NAMES_BY_TABLE using normalized keys"]],
+    "lib/content/names.ts#partial": [["key",3,"parenthetical and measurement suffix stripping for speciesTraitName and backgroundFeatureName"]]
   }
 }

@@ -9,15 +9,15 @@
 //   "adult-black-dragon");
 // - weapons / armor: the Open5e row slug ("crossbow-light", "chain-mail");
 // - gear: the gearKey of the SRD gear's English name
-//   (src/lib/srd/adventuring-gear.ts) — lowercase words, punctuation and
+//   (src/lib/srd/adventuring-gear.ts): lowercase words, punctuation and
 //   apostrophes dropped ("alchemists fire flask");
 // - magicItems: the SRD 5.1 magic item's slug ("adamantine-armor"), the same
 //   slug the rulebook's item pages carry (srd-5.1.json; "Ammunition, +1, +2,
 //   or +3" is "ammunition-1-2-or-3") and the sheet's item rows spell;
 // - conditions: the lowercase condition id ("blinded");
-// - feats: the feat's slug ("crossbow-expert") — the open5e row slug and the
+// - feats: the feat's slug ("crossbow-expert"), the open5e row slug and the
 //   slug of the stored English name are the same slugify, so one key serves
-//   both. The official French SRD 5.1 prints a single feat (« Empoigneur » —
+//   both. The official French SRD 5.1 prints a single feat (« Empoigneur »,
 //   the English SRD 5.1 it translates has only Grappler as a feat); the other
 //   official names come from Wizards' official French SRD 5.2.1 (its « Dons »
 //   section, pp. 92-94, prints Vigilant, Initié à la magie, Sauvagerie
@@ -127,7 +127,7 @@ const record = (name, entries) =>
 const counts = Object.fromEntries(Object.entries(tables).map(([table, entries]) => [table, Object.keys(entries).length]));
 
 const header = `// NOMS OFFICIELS FRANÇAIS du Document de Référence du Système 5.1 de
-// Wizards of the Coast (CC-BY-4.0), extraits de SRD_CC_v5.1_FR.pdf — la
+// Wizards of the Coast (CC-BY-4.0), extraits de SRD_CC_v5.1_FR.pdf : la
 // traduction française officielle des noms du SRD 5.1 (sorts, monstres,
 // espèces, Historiques, classes et leurs aptitudes, conditions, dons, armes,
 // armures, objets magiques et équipement d'aventurier). Les dons font
@@ -167,8 +167,9 @@ mkdirSync(dirname(outFile), { recursive: true });
 writeFileSync(outFile, header + "\n" + body, "utf8");
 
 console.log(
-  `names-fr.ts written: ${total} pairs — ` +
+  `names-fr.ts written: ${total} pairs (` +
     Object.entries(counts)
       .map(([table, count]) => `${table} ${count}`)
-      .join(", "),
+      .join(", ") +
+    ")",
 );

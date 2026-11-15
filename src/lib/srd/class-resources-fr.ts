@@ -1,9 +1,9 @@
 // The class resources' own words in French, at render time (the same shape
-// the names map precedent uses: the stored data stays English — the engine
+// the names map precedent uses: the stored data stays English (the engine
 // parses the guidance's cost words and the DM's tools read it whole, see
-// resource-tools.ts — and only what a player sees changes). English is the
+// resource-tools.ts) and only what a player sees changes). English is the
 // source and the fallback: a resource the map does not carry (the genre
-// classes' counters, the authored subclass pools, the innate spell counters —
+// classes' counters, the authored subclass pools, the innate spell counters,
 // hundreds of rows with no official French anywhere) reads as it always did.
 //
 // NAMES are the official FR SRD 5.1 print, each verified in the bundled
@@ -18,7 +18,7 @@
 // the feats are not printed in the bundled FR book (its Dons page carries
 // the intro only), so Inspiring Leader and the Lucky feat's Luck Points get
 // the established FR glossary names, and the three feat-pour counters
-// (Tome of Heroes / Level Up A5E) have no official French at all — they are
+// (Tome of Heroes / Level Up A5E) have no official French at all: they are
 // direct-translated like the A5E feats, their rows marked below.
 //
 // GUIDANCE keeps the third-person voice of the English lines (DM-model text
@@ -28,7 +28,7 @@
 // targetCharacterId, amount, variant and their quoted values), SRD terms as
 // the French print spells them (action bonus, avantage, jet de sauvegarde,
 // DD, repos court, repos long), curly apostrophes throughout, and sentences
-// that split on ". " the same way the English ones do — the card's rules
+// that split on ". " the same way the English ones do: the card's rules
 // line takes the first sentence, so no abbreviation-with-period sits inside
 // one.
 type Locale = "en" | "fr";
@@ -37,7 +37,7 @@ export const RESOURCE_FR: Record<string, { name: string; guidance: string }> = {
   rage: {
     name: "Rage",
     guidance:
-      "Une action bonus. La rage dure jusqu’à 1 minute : résistance aux dégâts contondants, perforants et tranchants, dégâts supplémentaires aux attaques en mêlée basées sur la Force, et avantage aux tests et jets de sauvegarde de Force — rien de tout cela en armure lourde. Le serveur applique tout ; la rage s’interrompt plus tôt si le personnage y met fin, tombe inconscient, ou termine un tour sans avoir attaqué ni subi de dégâts depuis le précédent.",
+      "Une action bonus. La rage dure jusqu’à 1 minute : résistance aux dégâts contondants, perforants et tranchants, dégâts supplémentaires aux attaques en mêlée basées sur la Force, et avantage aux tests et jets de sauvegarde de Force (rien de tout cela en armure lourde). Le serveur applique tout ; la rage s’interrompt plus tôt si le personnage y met fin, tombe inconscient, ou termine un tour sans avoir attaqué ni subi de dégâts depuis le précédent.",
   },
   ki: {
     name: "Points de ki",

@@ -3190,6 +3190,10 @@
     "lib/srd/genre-gb-device.ts#re-word": [["english-source",1,"ODM's own \"Fabricated Device: <spell> (DC n, +n)\" item name, as deviceName writes it"]],
     "lib/battlemap/zones-genre-gh.ts#str-list": [["key",1,"zone trigger events (engine vocabulary)"]],
     "lib/dm/genre-gh-last-one-out.ts#str-list": [["key",1,"move action ids (dash, disengage)"]],
-    "lib/srd/genre-gh-warded.ts#str-list": [["key",1,"creature types (engine vocabulary)"]]
+    "lib/srd/genre-gh-warded.ts#str-list": [["key",1,"creature types (engine vocabulary)"]],
+    "lib/content/names.ts#toLowerCase": [["key",4,"official SRD table key normalizers (slugKey, canonicalKey, classId) for FR_NAMES_BY_TABLE lookup"]],
+    "lib/content/names.ts#[a-z]": [["key",2,"slug normalizers stripping non-alphanumeric ASCII characters (slugKey, gearKey)"]],
+    "lib/content/names-fr.ts#str-key": [["key",1,"French SRD name translation table lookup (FR_NAMES_BY_TABLE / ITEM_EN_BY_FR)"]],
+    "lib/srd/class-resources-fr.ts#str-key": [["key",1,"class resource key to French name and guidance table (RESOURCE_FR)"]]
   }
 }

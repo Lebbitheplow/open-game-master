@@ -1,5 +1,5 @@
 // NOMS OFFICIELS FRANÇAIS du Document de Référence du Système 5.1 de
-// Wizards of the Coast (CC-BY-4.0), extraits de SRD_CC_v5.1_FR.pdf — la
+// Wizards of the Coast (CC-BY-4.0), extraits de SRD_CC_v5.1_FR.pdf : la
 // traduction française officielle des noms du SRD 5.1 (sorts, monstres,
 // espèces, Historiques, classes et leurs aptitudes, conditions, dons, armes,
 // armures, objets magiques et équipement d'aventurier). Les dons font
