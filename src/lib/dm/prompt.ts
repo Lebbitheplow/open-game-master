@@ -1654,7 +1654,7 @@ export const requestRollTool = {
         againstEnemyId: {
           type: "string",
           description:
-            "A contest in a fight: the enemy opposing this skill or ability check, exact enemyId from GAME STATE. The server rolls its check from its stat block (Insight against Deception, Perception against Stealth) and the character must beat it; a tie changes nothing. Send no dc or difficulty with it.",
+            "A contest in a fight: the enemy opposing this skill or ability check, exact enemyId from GAME STATE. The server rolls its check from its stat block (Insight against Deception, Perception against Stealth); a tie changes nothing. Send no dc or difficulty with it.",
         },
         againstMonster: {
           type: "string",

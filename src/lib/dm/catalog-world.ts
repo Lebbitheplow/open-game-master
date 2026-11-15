@@ -404,7 +404,7 @@ export const WORLD_ADJUDICATIONS: CatalogEntry[] = [
         ],
         help: "Off the board; left empty, the current location and the hour decide.",
       },
-      { name: "againstEnemyId", label: "Hiding (enemy)", kind: "enemy", help: "The server rolls its Stealth (or Deception for Insight) as the DC." },
+      { name: "againstEnemyId", label: "Hiding (enemy)", kind: "enemy", help: "The server rolls its Stealth (or Deception for Insight) to set the DC; a Stealth that ties a passive score stays hidden." },
       { name: "againstMonster", label: "Hiding or lying (stat block or NPC)", kind: "text", placeholder: "goblin", help: "Out of a fight: the creature's stat block by name, or for Insight a tracked NPC's name. Whoever beats an NPC's act is told privately." },
       { name: "characterIds", label: "Who might notice", kind: "characters" },
       {

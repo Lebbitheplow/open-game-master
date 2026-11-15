@@ -129,11 +129,11 @@ export const checkTools: ToolDef[] = [
           againstEnemyId: {
             type: "string",
             description:
-              "A creature of the running fight hiding (or lying, for insight): exact enemyId from GAME STATE. The server rolls its Stealth (or Deception) as the DC. Out of a fight, use againstMonster.",
+              "A creature of the running fight hiding (or lying, for insight): exact enemyId from GAME STATE. The server rolls its Stealth (or Deception) to set the DC. Out of a fight, use againstMonster.",
           },
           againstMonster: {
             type: "string",
-            description: "Out of a fight, who hides or lies: a bestiary creature, or for insight a tracked NPC's exact name. For insight an AI companion's exact name works too. The server rolls its Stealth or Deception as the DC.",
+            description: "Out of a fight, who hides or lies: a bestiary creature, or for insight a tracked NPC's exact name. For insight an AI companion's exact name works too. The server rolls its Stealth or Deception to set the DC.",
           },
           difficulty: {
             type: "string",
@@ -441,7 +441,8 @@ export function handleCheckNotice(
     };
   }
   // A creature that hides or lies sets the DC with its own roll (SRD 5.1,
-  // Contests; src/lib/dm/roll-gates.ts); a tie goes to the one noticing.
+  // Contests; src/lib/dm/roll-gates.ts); a tie keeps a hider hidden, and a
+  // liar's tie goes to the one listening.
   let contest: ReturnType<typeof rollContest> | null = null;
   // A tracked NPC's lie or act (issue 501), named where a stat block would
   // be: their Deception sets the DC, from their stat block or their nature
@@ -578,7 +579,7 @@ export function handleCheckNotice(
     missedBy,
     anyNoticed,
     ...(weather.note ? { weather: weather.note } : {}),
-    ...(contest ? { contest: `${contest.name} rolled ${contest.skill} ${contest.total}: that is the DC.` } : {}),
+    ...(contest ? { contest: `${contest.name} rolled ${contest.skill} ${contest.total}${contest.answering ? ": that is the DC." : `; a tie keeps it hidden, so the DC is ${contest.dc}.`}` } : {}),
     ...(shifts.length ? { applied: shifts } : {}),
     ...(seenThrough.length ? { seenThrough } : {}),
     note: seenThrough.length

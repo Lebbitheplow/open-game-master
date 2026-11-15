@@ -297,5 +297,41 @@ await test("K08: a Perception check in the dark that names no sense is asked for
   await kit.endFight();
 });
 
+// K09. SRD 5.1, Contests: "If the contest results in a tie, the situation
+// remains the same as it was before the contest." A creature hidden stays
+// hidden when the watcher's Perception only ties its Stealth, on every door:
+// the Hide action and the ambush already read it so, while check_notice and
+// a contested request_roll gave the tie to the watcher, so the same 15
+// against a passive 15 was hidden on one door and spotted on the other. A
+// fixed DC (a trap, a clue) is met, as before.
+await test("K09: a Stealth total that ties the watcher's Perception stays hidden, on check_notice and a contested roll alike", async () => {
+  await kit.endFight();
+  // Passive Perception 15: WIS +3, proficiency +2.
+  const lookout = world.addHero({ class: "ranger", level: 1, abilities: { wis: 16, dex: 10 }, proficiencies: { ...TRAINED, skills: ["perception", "stealth"] } });
+  const [enemy] = (await kit.fight(1), world.enemies());
+  kit.setEnemy(enemy.id, { stats: { skills: { stealth: 6, perception: 4 } } });
+  // The goblin rolls 9: Stealth 15, a tie with the passive 15.
+  const tied = await forced([9], () => world.invoke("check_notice", { characterIds: [lookout.id], againstEnemyId: enemy.id, reason: "a goblin in the brush" }));
+  assert.equal(tied.ok, true, tied.error);
+  assert.deepEqual(tied.result.noticedBy, [], `a tie keeps the goblin hidden: ${JSON.stringify(tied.result)}`);
+  assert.equal(tied.result.dc, 16);
+  assert.match(String(tied.result.contest), /tie/, tied.result.contest);
+  // A Search by request_roll: the goblin's 15 against the lookout's 10 + 5.
+  const search = await forced([9, 10], () => world.invoke("request_roll", { characterId: lookout.id, kind: "skill_check", skill: "perception", againstEnemyId: enemy.id, reason: "is the goblin still there?" }));
+  assert.equal(search.ok, true, search.error);
+  assert.equal(search.result.dc, 16, "an active search must beat the hider's Stealth");
+  assert.equal(search.result.success, false, "15 against a hider's 15 finds nothing");
+  // The other way round: the lookout sneaks past the goblin, whose
+  // Perception rolls 11 + 4 = 15; their Stealth 15 ties it and stays unseen.
+  const sneak = await forced([11, 13], () => world.invoke("request_roll", { characterId: lookout.id, kind: "skill_check", skill: "stealth", againstEnemyId: enemy.id, reason: "past the goblin" }));
+  assert.equal(sneak.ok, true, sneak.error);
+  assert.equal(sneak.result.dc, 15, "a sneak that ties the watcher's Perception stays hidden");
+  assert.equal(sneak.result.success, true);
+  // A fixed DC is met: passive 15 against DC 15 notices it.
+  const trap = await world.invoke("check_notice", { characterIds: [lookout.id], dc: 15, reason: "a tripwire" });
+  assert.equal(trap.result.noticedBy.length, 1, "a passive score that meets a trap's DC notices it");
+  await kit.endFight();
+});
+
 world.close();
 finish();

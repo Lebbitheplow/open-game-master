@@ -1828,7 +1828,7 @@
     "lib/dm/roll-args.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/roll-feature-riders.ts#re-word": [["key",4,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/roll-feature-riders.ts#toLowerCase": [["key",2,"die notation, skill id"]],
-    "lib/dm/roll-gates.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/roll-gates.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"],["key",2,"skill ids, as srd findSkill names them: a Stealth contest's tie goes to the hider (engine vocabulary)"]],
     "lib/dm/roll-gates.ts#str-key": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/roll-gates.ts#str-list": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/roll-gates.ts#toLowerCase": [["key",1,"skill id"]],

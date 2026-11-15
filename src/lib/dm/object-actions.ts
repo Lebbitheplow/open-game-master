@@ -235,7 +235,7 @@ export function searchAction(
     skill,
     total: check.total,
     ...(check.notes.length ? { notes: check.notes } : {}),
-    note: `${sheet.name} searches: ${skill} ${check.total}. Compare it with the DC of what is there to find (a hidden creature's Stealth, a trap's DC); what they do not beat stays unfound.`,
+    note: `${sheet.name} searches: ${skill} ${check.total}. Compare it with what is there to find: a hidden creature's Stealth must be beaten (a tie keeps it hidden), a trap's or a clue's DC only met.`,
   };
 }
 
