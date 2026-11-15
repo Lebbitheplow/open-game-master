@@ -366,7 +366,7 @@ try {
   await test("the crosswalk speaks the reader's language but reads the English book's names", () => {
     const walk = crosswalkFor(rulebookPage("fireball", "fr").page, "fr");
     assert.equal(walk.support, "engine", "Boule de feu stays an engine spell");
-    assert.match(walk.where, /Les outils d'incantation gèrent ses jets/);
+    assert.match(walk.where, /Les outils d’incantation gèrent ses jets/);
     const magicItems = crosswalkFor(rulebookPage("magic-items", "fr").page, "fr");
     assert.match(magicItems.where, /Atelier : Objets \(harmonisation, effets, propriétés additionnelles, charges, sorts\)/);
     const enFireball = crosswalkFor(rulebookPage("fireball").page, "en");
