@@ -67,6 +67,7 @@ import { activeAuthored } from "@/lib/srd/authored-effects";
 import { enemySpeedTiles } from "@/lib/dm/enemy-speed";
 import { opportunityAnswer } from "@/lib/dm/opportunity-ask";
 import { opportunityBlow, opportunityDecoy, opportunityWards } from "@/lib/dm/opportunity-wards";
+import { strikePetsOnWalk } from "@/lib/dm/opportunity-pets";
 import { letGoNote, timedOutNote, type OpportunityTrigger } from "@/lib/dm/opportunity-ask-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -154,8 +155,10 @@ export function resolveOpportunityAttacks(
   path?: XY[],
 ): OpportunityOutcome {
   const empty: OpportunityOutcome = { notes: [], downed: false };
+  // The walker's Disengage is theirs: a pet walking with them still provokes
+  // (opportunity-pets.ts).
   if (disengaged) {
-    return empty;
+    return { notes: strikePetsOnWalk(campaign, characterId, [from, ...(path?.length ? path : [to])]), downed: false };
   }
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
@@ -416,6 +419,11 @@ export function resolveOpportunityAttacks(
 
   for (const note of notes) {
     tableNote(campaign, note);
+  }
+  // A pet walking with them provokes too, from a creature whose reaction is
+  // still in hand (opportunity-pets.ts).
+  if (!downed) {
+    notes.push(...strikePetsOnWalk(campaign, characterId, steps));
   }
   // The characters of the other side strike too: a party member as a
   // turncoat walks off, a turncoat as a party member does. They post their

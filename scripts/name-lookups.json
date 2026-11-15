@@ -3210,6 +3210,7 @@
     "lib/dm/creature-hold.ts#keyed": [["key",2,"a sheet's or a row's conditionMeta by the condition key it was written under"]],
     "lib/dm/creature-hold.ts#whole": [["identity",2,"the hold damage_object names: its own whole name, or \"<hold> on <creature>\" or \"<creature>'s <hold>\" (textKey on both sides); several that fit are refused with the options"]],
     "lib/dm/creature-hold.ts#first": [["key",2,"the hold a restrained creature carries, found on its own instance (a creature holds one at a time)"]],
-    "lib/dm/opportunity-sides.ts#partial": [["key",1,"a blow's damage type, the necrotic part a drain reads"]]
+    "lib/dm/opportunity-sides.ts#partial": [["key",1,"a blow's damage type, the necrotic part a drain reads"]],
+    "lib/dm/opportunity-pets.ts#partial": [["pattern",2,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]]
   }
 }

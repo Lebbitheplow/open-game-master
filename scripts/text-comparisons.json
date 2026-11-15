@@ -3219,6 +3219,8 @@
     "lib/bestiary/hold-text.ts#re-word": [["english-source",10,"content-pack attack text: what restrains a target, the check that breaks it and its numbers as an object (Open5e rows)"]],
     "lib/bestiary/hold-text.ts#re-affix": [["english-source",2,"content-pack attack text: the ability a check names (\"Strength\", \"Dex\") read by its first letter, and the words around a damage list"]],
     "lib/dm/creature-hold.ts#toUpperCase": [["display",2,"ability abbreviation shown"]],
-    "lib/dm/opportunity-sides.ts#re-word": [["key",1,"damage type (engine vocabulary)"]]
+    "lib/dm/opportunity-sides.ts#re-word": [["key",1,"damage type (engine vocabulary)"]],
+    "lib/dm/opportunity-pets.ts#\\b": [["english-source",4,"a pet record's notes, written from its SRD block (familiar-forms.ts familiarNotes): its fly speed and the Flyby trait"]],
+    "lib/dm/opportunity-pets.ts#re-word": [["english-source",2,"a pet record's notes, written from its SRD block (familiar-forms.ts familiarNotes): its fly speed and the Flyby trait"]]
   }
 }

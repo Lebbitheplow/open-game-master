@@ -742,4 +742,42 @@ await test("E15 a creature with Magic Weapons strikes a dominated walker's resis
   assert.equal(kit.enemy(walker.id).currentHp, 34, "magical: the resistance does not halve it");
 });
 
+// Kara's pet walks with her (pet-place.ts: a pet has no token of its own).
+const GREY = { name: "Grey", kind: "beast_companion", form: "wolf", hp: 11, maxHp: 11, ac: 13, speed: 40, attacks: [], notes: "" };
+const HOOT = { name: "Hoot", kind: "familiar", form: "owl", hp: 1, maxHp: 1, ac: 11, speed: 5, fly: 60, attacks: [], notes: "Fly 60 ft.; darkvision 120 ft.; Flyby, Keen Hearing and Sight." };
+
+async function petWalk(pet) {
+  await kit.endFight();
+  world.patch(kara.id, { pets: [pet] });
+  await kit.fight(1, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+  const [goblin] = world.enemies();
+  kit.place(kara.id, 5, 5);
+  kit.place(bram.id, 15, 15);
+  kit.place(goblin.id, 6, 5);
+  kit.giveTurn(kara.id);
+  const disengage = await world.invoke("take_action", { characterId: kara.id, action: "disengage" });
+  assert.equal(disengage.ok, true, disengage.error);
+  // A hit, and the club's 1d6 + 2 at 4.
+  world.dice(19, 4);
+  const swings = await walkTo(world.owner, 2, 5);
+  return { goblin, swings };
+}
+
+await test("E16 a companion walking off a goblin with its Disengaged ranger draws the goblin's opportunity attack, as any creature does", async () => {
+  const { swings } = await petWalk(GREY);
+  const pet = world.sheet(kara.id).pets.find((entry) => entry.name === "Grey");
+  world.patch(kara.id, { pets: [] });
+  assert.equal(swings.length, 1, "the goblin strikes the wolf: Kara's Disengage is hers, not its");
+  assert.match(String(swings[0].detail), /Grey/);
+  assert.equal(pet?.hp, 5, "11 less the club's 6");
+});
+
+await test("E16 an owl familiar's Flyby keeps it clear of the same swing", async () => {
+  const { swings } = await petWalk(HOOT);
+  const pet = world.sheet(kara.id).pets.find((entry) => entry.name === "Hoot");
+  world.patch(kara.id, { pets: [] });
+  assert.equal(swings.length, 0);
+  assert.equal(pet?.hp, 1);
+});
+
 finish();
