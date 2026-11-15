@@ -109,13 +109,23 @@ export function springTrapOn(
       dc: trap.save.dc,
       ...(trap.damage ? { damage: trap.damage.dice, damageType: trap.damage.type } : {}),
       halfOnSave: trap.save.halfOnSave,
-      ...(trap.condition ? { condition: trap.condition } : {}),
-      ...(trap.condition && trap.rounds ? { rounds: Math.min(100, trap.rounds) } : {}),
+      ...(trap.condition && !trap.heldOnFail ? { condition: trap.condition } : {}),
+      ...(trap.condition && !trap.heldOnFail && trap.rounds ? { rounds: Math.min(100, trap.rounds) } : {}),
       hazard: "trap",
       ...from,
     }),
     sheets,
     sheetsById,
   );
+  // A hold a failed save leaves (a hunting trap's jaws) is the trap's, laid
+  // with the trap as its source so its own escape ends it
+  // (trap-escape.ts). Through cast_at_player it was a save-ends condition
+  // with no source: a Dexterity save at each turn's end shook off jaws the
+  // SRD opens only with a Strength check.
+  if (trap.heldOnFail && trap.condition && (saved as { saved?: boolean }).saved === false && !sheet().deathSaves?.dead) {
+    if (afflictCondition(campaign, turn.id, victim.id, trap.condition, { ...(trap.rounds ? { rounds: trap.rounds } : {}), source: name })) {
+      lines.push(`${victim.name} is ${trap.condition}.`);
+    }
+  }
   return { name: victim.name, hit: true, ...(crit ? { crit: true } : {}), note: lines.join(" "), ...saved };
 }

@@ -37,6 +37,12 @@ export type TrapSpec = {
   // How a creature breaks a conditionsAlways hold with its action
   // (src/lib/dm/trap-escape.ts); absent, Strength against the save DC.
   escape?: { ability: "str" | "dex"; dc: number };
+  // The condition a failed save leaves is the hold `escape` breaks, as a
+  // conditionsAlways one is (a hunting trap's jaws close only on a failure).
+  heldOnFail?: true;
+  // What each failed escape check costs the creature held (a hunting trap's
+  // jaws: "Each failed check deals 1 piercing damage").
+  escapeHurts?: TrapDamage;
   summary: string;
 };
 
@@ -45,6 +51,21 @@ export type SampleTrap = TrapSpec & { id: string; name: string };
 const TRIP_WIRE = { spot: { dc: 10, skill: "perception" as const }, disarm: { dc: 15, how: "thieves' tools (an edged tool at disadvantage)" } };
 
 export const SAMPLE_TRAPS: SampleTrap[] = [
+  // SRD 5.1, Adventuring Gear, Hunting Trap: "A creature that steps on the
+  // plate must succeed on a DC 13 Dexterity saving throw or take 1d4
+  // piercing damage and stop moving. Thereafter, until the creature breaks
+  // free of the trap, its movement is limited by the length of the chain
+  // ... A creature can use its action to make a DC 13 Strength check,
+  // freeing itself or another creature within its reach on a success. Each
+  // failed check deals 1 piercing damage to the trapped creature." Gear, not
+  // one of the sample traps, but sprung on a character the same way; the
+  // GM once typed its save, damage and escape DC.
+  {
+    id: "hunting_trap", name: "Hunting Trap", kind: "mechanical", trigger: "stepping on the pressure plate between its steel jaws",
+    save: { ability: "dex", dc: 13, halfOnSave: false }, damage: { dice: "1d4", type: "piercing" },
+    condition: "caught in a hunting trap", heldOnFail: true, escape: { ability: "str", dc: 13 }, escapeHurts: { dice: "1", type: "piercing" },
+    summary: "Steel jaws snap shut: a DC 13 Dexterity save or 1d4 piercing, and the creature stops, held to the trap's short chain. Its action and a DC 13 Strength check free it (or another within reach); each failed check deals 1 piercing.",
+  },
   {
     id: "collapsing_roof", name: "Collapsing Roof", kind: "mechanical", trigger: "a trip wire 3 inches off the ground", ...TRIP_WIRE,
     save: { ability: "dex", dc: 15, halfOnSave: true }, damage: { dice: "4d10", type: "bludgeoning" },

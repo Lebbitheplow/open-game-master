@@ -180,5 +180,52 @@ await test("N04: within the Constitution score's minutes, or resisting cold, fri
   assert.equal(sheet(hardy.id).exhaustion ?? 0, 0);
 });
 
+// ---- N05: the hunting trap ----
+// SRD 5.1, Adventuring Gear, Hunting Trap: "A creature that steps on the
+// plate must succeed on a DC 13 Dexterity saving throw or take 1d4 piercing
+// damage and stop moving. Thereafter, until the creature breaks free of the
+// trap, its movement is limited by the length of the chain ... A creature
+// can use its action to make a DC 13 Strength check, freeing itself or
+// another creature within its reach on a success. Each failed check deals 1
+// piercing damage to the trapped creature." The engine knew no hunting
+// trap: a GM springing one on the party typed the save, the damage and the
+// escape DC itself.
+
+await test("N05: a hunting trap is a DC 13 Dexterity save or 1d4 piercing and caught; each failed DC 13 Strength check to get free costs 1 piercing", async () => {
+  const walker = world.addHero({ user: world.owner, class: "fighter", level: 3, maxHp: 40 });
+  world.clearDice();
+  // Dexterity 10: a 12 misses DC 13; 1d4 = 3.
+  world.dice(12, 3);
+  const sprung = await world.invoke("apply_hazard", { type: "trap", trap: "Hunting Trap", characterIds: [walker.id] });
+  assert.equal(sprung.ok, true, sprung.error);
+  assert.equal(world.clearDice(), 0);
+  assert.equal(40 - sheet(walker.id).currentHp, 3);
+  assert.ok(sheet(walker.id).conditions.includes("caught in a hunting trap"), JSON.stringify(sheet(walker.id).conditions));
+  // Strength 10: a 12 fails DC 13 and the jaws bite for 1; a 13 frees them.
+  world.dice(12);
+  const strain = await world.invoke("take_action", { characterId: walker.id, action: "escape" });
+  assert.equal(strain.ok, true, strain.error);
+  assert.equal(strain.result.success, false);
+  assert.equal(40 - sheet(walker.id).currentHp, 4);
+  world.dice(13);
+  const free = await world.invoke("take_action", { characterId: walker.id, action: "escape" });
+  assert.equal(free.ok, true, free.error);
+  assert.equal(free.result.success, true);
+  assert.equal(world.clearDice(), 0);
+  assert.equal(sheet(walker.id).conditions.includes("caught in a hunting trap"), false);
+  assert.equal(40 - sheet(walker.id).currentHp, 4);
+});
+
+await test("N05: a made save against a hunting trap is no damage and no hold", async () => {
+  const walker = world.addHero({ user: world.owner, class: "fighter", level: 3, maxHp: 40 });
+  world.clearDice();
+  world.dice(13);
+  const sprung = await world.invoke("apply_hazard", { type: "trap", trap: "Hunting Trap", characterIds: [walker.id] });
+  assert.equal(sprung.ok, true, sprung.error);
+  assert.equal(world.clearDice(), 0);
+  assert.equal(sheet(walker.id).currentHp, 40);
+  assert.deepEqual(sheet(walker.id).conditions, []);
+});
+
 world.close();
 finish();
