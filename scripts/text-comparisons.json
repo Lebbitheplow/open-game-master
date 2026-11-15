@@ -3204,6 +3204,8 @@
     "lib/db/npc-minds.ts#LIKE": [["key",1,"an NPC's id found in the stored speech JSON, an exact id narrowed after by parsing"]],
     "lib/db/npc-minds.ts#str-eq": [["key",1,"a speech entry's speaker kind (engine vocabulary)"]],
     "lib/dm/npc-state-logic.ts#str-list": [["key",3,"an NPC's custody, restraint and condition values (engine vocabulary)"]],
+    "lib/dm/party-npcs-fight-logic.ts#str-eq": [["key",2,"an NPC's custody, restraint and condition values and an enemy row's status (engine vocabulary)"]],
+    "lib/dm/party-npcs-fight-logic.ts#str-list": [["key",1,"an NPC's custody, restraint and condition values (engine vocabulary)"]],
     "lib/dm/voice-knowledge-logic.ts#str-eq": [["key",3,"a tool's name, a transcript line's author and a tool result's field types (engine vocabulary)"]],
     "lib/dm/npc-state-guard-logic.ts#str-list": [["table-language",1,"Italian and English words for a body's change in the narrator's prose, only deciding whether a utility read of the narration is worth its call: a miss is caught on the next turn's read of a named person"]]
   }
