@@ -348,7 +348,10 @@ await test("A hit that lays an effect and no damage is an attack: the SRD condit
   const read = parseAttack(web);
   assert.equal(read?.damage, "0");
   assert.equal(read?.onHit?.condition, "restrained");
-  assert.deepEqual(read?.onHit?.manual?.[0], "As an action, the restrained target can make a DC 12 Strength check, bursting the webbing on a success.");
+  // The escape and the webbing's numbers are the engine's now (E13,
+  // creature-hold.ts), so nothing of it is left to the GM by hand.
+  assert.deepEqual(read?.onHit?.hold, { name: "webbing", check: { ability: "str", dc: 12 }, ac: 10, hp: 5, vulnerable: "fire", immune: "bludgeoning, poison, psychic" });
+  assert.equal(read?.onHit?.manual, undefined);
   const touch = {
     name: "Intoxicating Touch",
     desc: "Melee Spell Attack: +5 to hit, reach 5 ft., one creature. Hit: The target is magically cursed for 1 hour. Until the curse ends, the target has disadvantage on Wisdom saving throws and all ability checks.",
