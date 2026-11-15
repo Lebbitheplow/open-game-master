@@ -72,6 +72,11 @@ const DELIBERATELY_OMITTED = new Set([
   // Not a choice: it marks every table made from this version on, so a
   // table made before keeps its single narrator (src/app/api/campaigns/route.ts).
   "npcMinds",
+  // How many key characters get a mind of their own: four is a safe
+  // default, it matters only once the story raises someone to the first
+  // tier, and the narration group of GameSettingsPanel owns it
+  // (NarrationStyleRows.tsx).
+  "npcMindLimit",
 ]);
 
 let passed = 0;
