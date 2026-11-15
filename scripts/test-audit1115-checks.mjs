@@ -9,6 +9,9 @@ import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 const { test, finish } = suite("test-audit1115-checks");
 const world = await openWorld({ campaign: { maxPlayers: 30 } });
 const kit = await combatKit(world);
+const { getDatabase } = await import("../src/lib/db/core.ts");
+const maps = await import("../src/lib/db/battle-maps.ts");
+const { clearLitTilesCache } = await import("../src/lib/battlemap/lit-cache.ts");
 
 const klass = (classId, ...names) => names.map((name) => ({ name, source: "class", classId }));
 
@@ -59,6 +62,56 @@ for (const [label, hero, spend, spell] of [
     await kit.endFight();
   });
 }
+
+// Night under a roof: no ambient light, no lamps, no torches.
+function darkBoard() {
+  const board = kit.map();
+  maps.setBattleMapOutdoors(board.id, false);
+  getDatabase().prepare(`UPDATE battle_maps SET ambient = 'dark', lights_json = '[]', zones_json = '[]' WHERE id = ?`).run(board.id);
+  for (const token of maps.listTokens(board.id)) {
+    maps.setTokenLight(token.id, 0);
+  }
+  clearLitTilesCache();
+}
+
+// K02. SRD 5.1, Vision and Light: darkvision sees "in darkness as if it were
+// dim light", and dim light only lightly obscures; Hiding: "You can't hide
+// from a creature that can see you clearly" (Skulker is the feat that lets a
+// creature hide while only lightly obscured). The Hide gate took any dark
+// board as cover from every watcher: a goblin with darkvision 60 feet, four
+// squares off, lost sight of a rogue in the dark, and a rogue standing in an
+// ally's torchlight hid because the torch was not their own.
+await test("K02: a watcher with darkvision sees a hider in the dark, and a torch's light gives the hider away", async () => {
+  const thief = world.addHero({ class: "rogue", level: 5, abilities: { dex: 16 }, proficiencies: { ...TRAINED, skills: ["stealth"] } });
+  const lamp = world.addHero({ class: "fighter", level: 5, proficiencies: { ...TRAINED } });
+  const hideNow = () => forced([15], () => world.invoke("take_action", { characterId: thief.id, action: "hide" }));
+  const stage = async (senses) => {
+    await kit.endFight();
+    const [enemy] = (await kit.fight(1), world.enemies());
+    kit.setEnemy(enemy.id, { stats: { senses } });
+    darkBoard();
+    kit.giveTurn(thief.id);
+    kit.place(thief.id, 5, 5);
+    kit.place(enemy.id, 5, 9);
+    kit.place(lamp.id, 1, 1);
+    return enemy;
+  };
+  await stage({ passivePerception: 10, darkvision: 60 });
+  const seen = await hideNow();
+  assert.equal(seen.ok, false, "a goblin with darkvision 20 feet away sees the rogue in the dark");
+  assert.match(String(seen.error), /cannot hide/);
+  await stage({ passivePerception: 10 });
+  const unseen = await hideNow();
+  assert.equal(unseen.ok, true, `with no darkvision the dark hides the rogue: ${unseen.error}`);
+  // An ally's torch beside the rogue lights their square for every watcher.
+  await stage({ passivePerception: 10 });
+  kit.place(lamp.id, 5, 4);
+  maps.setTokenLight(kit.token(lamp.id).id, 4);
+  clearLitTilesCache();
+  const lit = await hideNow();
+  assert.equal(lit.ok, false, "the rogue stands in the fighter's torchlight");
+  await kit.endFight();
+});
 
 world.close();
 finish();
