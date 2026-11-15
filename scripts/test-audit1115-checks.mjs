@@ -487,5 +487,19 @@ await test("K12: a pet caught in an area or a spell makes its own save from its 
   assert.equal(logic.petDamageShare({ saved: true, halfOnSave: false, ability: "wis", evasion: false }), "none");
 });
 
+// K13. SRD 5.1: Gloves of Thievery, Boots of Elvenkind and Eyes of Minute
+// Seeing are wondrous items that ask no attunement; "a creature can be
+// attuned to no more than three magic items at a time". These three are no
+// row of the magic-item table (their magic rides checks alone), so the
+// attunement rule read them as unknown items and let a character attune
+// them, filling one of the three places.
+await test("K13: an item SRD 5.1 asks no attunement of takes none of the three places", async () => {
+  const { attunementProblem } = await import("../src/lib/srd/magic-items.ts");
+  for (const name of ["Gloves of Thievery", "Boots of Elvenkind", "Eyes of Minute Seeing"]) {
+    assert.match(String(attunementProblem({ name, equipped: true }, [], null)), /needs no attunement/, name);
+  }
+  assert.equal(attunementProblem({ name: "Cloak of Elvenkind", equipped: true }, [], null), null, "the cloak asks attunement, and gets it");
+});
+
 world.close();
 finish();

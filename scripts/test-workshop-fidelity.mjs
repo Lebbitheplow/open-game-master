@@ -270,6 +270,8 @@ function firstDifference(a, b, path = "") {
   return `${path || "view"}: ${JSON.stringify(a)?.slice(0, 120)} -> ${JSON.stringify(b)?.slice(0, 120)}`;
 }
 
+const CHECK_ITEMS = ["Gloves of Thievery", "Stone of Good Luck (Luckstone)", "Cloak of Elvenkind", "Boots of Elvenkind", "Eyes of the Eagle", "Robe of Eyes", "Eyes of Minute Seeing"];
+
 // Every item the engines know by name: the SRD weapons and armour, and every
 // magic item row (SRD and pack) the magic-gear table carries.
 function itemRows() {
@@ -277,6 +279,9 @@ function itemRows() {
     ...SRD_WEAPONS.map((weapon) => ({ name: weapon.name, kind: "weapon" })),
     ...SRD_ARMOR.map((armor) => ({ name: armor.name, kind: "armor" })),
     ...magicItemsJson.items.map((item) => ({ name: item.name, kind: "magic_item" })),
+    // The items whose numbers ride checks (src/lib/srd/item-check-riders.ts),
+    // which the magic-gear table does not carry, so none was compared.
+    ...CHECK_ITEMS.filter((name) => !magicItemsJson.items.some((item) => item.name === name)).map((name) => ({ name, kind: "magic_item" })),
   ];
   return rows.map((row) => ({ ...row, source: "open5e", data: { desc: `${row.name}.` } }));
 }

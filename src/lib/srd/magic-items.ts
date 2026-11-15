@@ -24,6 +24,7 @@ import { genreWornRiders } from "@/lib/srd/genre-b-combat";
 import magicItemsJson from "@/lib/classes/magic-items.json";
 import { ATTUNEMENT_SLOTS, attunementSlotsFor } from "@/lib/srd/armor";
 import { countsAsWorn } from "@/lib/srd/wear-slots";
+import { checkRidersOf } from "@/lib/srd/item-check-riders";
 import type { Ability } from "@/lib/schemas/sheet";
 import type { ItemTag } from "@/lib/schemas/item-tags";
 import { textKey } from "@/lib/language/text-logic";
@@ -471,7 +472,12 @@ export function attunementProblem(
   const who = wearer?.name ?? "This character";
   const def = defOf(item);
   const cap = attunementSlotsFor(wearer);
-  if (def && !def.requiresAttunement) {
+  // An item whose magic rides checks alone (Gloves of Thievery, Boots of
+  // Elvenkind, Eyes of Minute Seeing: item-check-riders.ts) is no row of this
+  // table, and was attuned as an unknown item is, taking one of the three
+  // places though SRD 5.1 asks no attunement of it.
+  const checks = def ? null : checkRidersOf(item);
+  if ((def && !def.requiresAttunement) || (checks && !checks.requiresAttunement)) {
     return `${item.name} needs no attunement: it works for whoever wears it, and takes none of the ${cap} attunements.`;
   }
   if (def && wearer && !mayAttune(def, wearer)) {
