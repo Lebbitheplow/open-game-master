@@ -438,5 +438,48 @@ await test("S10: a Sanctuary read from a scroll onto an ally wards them with the
   assert.equal(swing.ok, true, swing.error);
 });
 
+// ---- S11: an enemy's new casting of its concentration spell ends the old ----
+
+// SRD 5.1, Concentration: "You lose concentration on a spell if you cast
+// another spell that requires concentration", a second casting of the same
+// spell too. An enemy's concentration was cleared only for a different spell,
+// and after the new casting's conditions were laid, so a hag that cast Hold
+// Person on one hero and again the next round on another held both.
+const encounterRows = await import("../src/lib/db/encounters.ts");
+const nextRound = (world) => {
+  const live = world.encounter();
+  encounterRows.saveEncounter({ ...live, round: live.round + 1 });
+};
+const heldBy = (world, id) => world.sheet(id).conditions.includes("paralyzed");
+
+await test("S11: an enemy that casts Hold Person again the next round frees the hero its first casting held", async () => {
+  const { world, sheets: [first, second], enemies: [hag] } = await table([{ class: "fighter", level: 5 }, { class: "rogue", level: 5 }], 1, { spells: ["Hold Person"] });
+  const hold = async (target) => {
+    world.dice(1);
+    const out = await world.invoke("cast_at_player", { characterId: target.id, spell: "Hold Person", saveAbility: "wis", dc: 15, condition: "paralyzed", casterEnemyId: hag.id });
+    world.clearDice();
+    assert.equal(out.ok, true, out.error);
+  };
+  await hold(first);
+  assert.ok(heldBy(world, first.id));
+  nextRound(world);
+  await hold(second);
+  assert.ok(heldBy(world, second.id), "the new casting holds its target");
+  assert.ok(!heldBy(world, first.id), "the first casting ended with the new one");
+  assert.equal(world.enemies().find((entry) => entry.id === hag.id).concentration, "Hold Person");
+});
+
+await test("S11: one casting of an enemy's Hypnotic Pattern over two heroes holds them both", async () => {
+  const { world, sheets: [first, second], enemies: [hag] } = await table([{ class: "fighter", level: 5 }, { class: "rogue", level: 5 }], 1, { spells: ["Hypnotic Pattern"] });
+  world.dice(1, 1);
+  const out = await world.invoke("aoe_damage", { casterEnemyId: hag.id, spell: "Hypnotic Pattern", characterIds: [first.id, second.id], saveAbility: "wis", dc: 15 });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  for (const hero of [first, second]) {
+    assert.ok(world.sheet(hero.id).conditions.includes("charmed"), JSON.stringify(out.result?.results));
+  }
+  assert.equal(world.enemies().find((entry) => entry.id === hag.id).concentration, "Hypnotic Pattern");
+});
+
 closeTables();
 finish();

@@ -1,5 +1,6 @@
 import type { Campaign } from "@/lib/db/campaigns";
-import { getActiveEncounter, saveEncounter, turnKey, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy, saveEncounter, setEnemyConcentration, turnKey, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { clearSpellConditionsByName } from "@/lib/dm/concentration";
 import type { EnemyAttack, SaveAbility } from "@/lib/bestiary/statblock";
 import { splitDamageExpression } from "@/lib/dm/aoe-parts";
 import type { SpellCondition, SpellMech } from "@/lib/srd/spell-mech-types";
@@ -338,6 +339,17 @@ export function prepareEnemyUse(campaign: Campaign, input: Input): EnemyUse | To
       }
       live.legendary.abilities = abilities;
       saveEncounter(live);
+      // A new casting of a concentration spell ends the one the creature
+      // holds, an earlier casting of the same spell too (SRD 5.1,
+      // Concentration), before this casting's own effects land: each commit
+      // is one casting, and its targets all come after it. Ended afterwards,
+      // and only for a different spell, a hag's second Hold Person kept the
+      // first one's hero paralyzed beside the new one's.
+      const held = use.spell ? getEnemy(enemy.id)?.concentration : null;
+      if (held) {
+        setEnemyConcentration(enemy.id, null);
+        clearSpellConditionsByName(campaign, held, undefined, enemy.id);
+      }
     },
   };
 }
