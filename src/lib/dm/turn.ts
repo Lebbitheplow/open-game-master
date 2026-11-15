@@ -2070,13 +2070,13 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
   // The table's own one-shot notes (who heard, the state sheet, a mind owed
   // its turn) still come when the turn's calls ran out on mechanics: a
   // journey of search_lore, travel and move_party spent all four, and the
-  // captain riding beside the whisper was never asked. A note sent on the
-  // last call buys two more: one with tools to answer it, one to narrate.
+  // captain riding beside the whisper was never asked. So a
+  // note always leaves room after it: a call with tools for each thing it
+  // asks, then one to narrate. Sent on the call before the last, the note
+  // used to leave only the last, which has no tools, and went unanswered.
   let callLimit = MAX_MODEL_CALLS;
-  const tableNoteCalls = (final: boolean, notes = 1) => {
-    if (final) {
-      callLimit += 1 + notes;
-    }
+  const tableNoteCalls = (notes = 1) => {
+    callLimit = Math.max(callLimit, turn.callIndex + notes + 1);
   };
   while (turn.callIndex < callLimit) {
     settleDraft();
@@ -2865,7 +2865,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
         : null;
       if (stateRead && (stateRead.clashes.length || stateRead.unrecorded.length)) {
         stateNudged = true;
-        tableNoteCalls(finalCall);
+        tableNoteCalls();
         if (stateRead.clashes.length && narration && turn.narrationParts[turn.narrationParts.length - 1] === narration) {
           turn.narrationParts.pop();
         }
@@ -2905,7 +2905,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
         if (owedToo.length) {
           sceneMindsNudged = true;
         }
-        tableNoteCalls(finalCall, owedToo.length ? 2 : 1);
+        tableNoteCalls(owedToo.length ? 2 : 1);
         turn.conversation.push({
           role: "assistant",
           ...carried,
@@ -2936,7 +2936,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       const owedMinds = asksMinds ? mindsAwaitingTurn(campaign, turn.id, callsSoFar) : [];
       if (owedMinds.length) {
         sceneMindsNudged = true;
-        tableNoteCalls(finalCall);
+        tableNoteCalls();
         turn.conversation.push({
           role: "assistant",
           ...carried,

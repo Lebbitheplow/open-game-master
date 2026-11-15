@@ -643,6 +643,43 @@ await test("a mind owed its turn is asked in the same note as who heard, so a cl
   }
 });
 
+await test("a note sent on the call before the last still leaves a call with tools to answer it", async () => {
+  const { listNpcs } = await import("../src/lib/db/npcs.ts");
+  const others = listNpcs(world.campaignId).filter((entry) => mind.tierOfNpc(entry) === "primary" && !entry.companionSheetId);
+  for (const other of others) {
+    minds.setNpcTier(other.id, "secondary");
+  }
+  npc("Guard Tamsin", { trait: "watches the cart" });
+  try {
+    model.script([
+      reply({ calls: [call("npc_speak", { name: "Guard Tamsin", perceives: "Aria stands by the cart." })] }),
+      answer({ speech: "Morning.", intent: "" }),
+      reply({ text: '"Morning," Tamsin says.' }),
+    ]);
+    await model.turn(world, "I stand by the cart.", aria.id);
+    model.script([
+      reply({ calls: [call("search_lore", { query: "the bridge" })] }),
+      reply({ calls: [call("search_lore", { query: "the stranger" })] }),
+      reply({ text: 'The stranger shrugs: "No wagons this morning."' }),
+      reply({
+        calls: [
+          call("npc_hear", { speaker: "the stranger", words: "No wagons this morning.", listeners: [{ name: "Guard Tamsin", reach: "near" }] }),
+          call("npc_speak", { name: "Guard Tamsin", perceives: "The stranger says he saw no wagons this morning." }),
+        ],
+      }),
+      answer({ speech: "", intent: "watch the stranger" }),
+      reply({ text: "Tamsin keeps her eyes on the stranger." }),
+    ]);
+    await model.turn(world, "I ask the stranger about wagons.", aria.id);
+    assert.ok(memories("Guard Tamsin").some((entry) => /No wagons/.test(entry.content)), "the note's npc_hear was made and the guard heard");
+  } finally {
+    for (const other of others) {
+      minds.setNpcTier(other.id, "primary");
+    }
+    minds.setNpcTier(getNpcByName(world.campaignId, "Guard Tamsin").id, "secondary");
+  }
+});
+
 await test("a mind played from a mind seat answers the same isolated question, and silence falls to the server's mind", async () => {
   const { createUser } = await import("../src/lib/db/users.ts");
   const seats = await import("../src/lib/db/mind-seats.ts");
