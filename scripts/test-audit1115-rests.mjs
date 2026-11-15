@@ -796,4 +796,29 @@ await test("R18 \"prof\" in a feature's own formula reads the character's profic
   assert.equal(bonded(), 3, "the cleric and two others");
 });
 
+await test("R19 a buff's temporary hit points read the level of the class that grants it on a multiclass sheet", async () => {
+  // Fighting Spirit (Samurai): "5 temporary hit points ... 10 at 10th level
+  // and 15 at 15th level" of the fighter; Form of Dread (Undead): "1d10 +
+  // your warlock level". The spend read the character's total level, so a
+  // fighter 3 / wizard 7 took 10 and a warlock 3 / fighter 5 added 8.
+  const table = await openTable();
+  const use = (who, resource) => table.invoke("use_resource", { characterId: who.id, resource });
+  const samurai = table.addHero({
+    class: "fighter", level: 10, maxHp: 60, classes: [{ id: "fighter", level: 3, subclass: "Samurai" }, { id: "wizard", level: 7, subclass: "" }],
+    features: [{ name: "Fighting Spirit", classId: "fighter", source: "class" }],
+  });
+  const spirit = await use(samurai, "Fighting Spirit");
+  assert.equal(spirit.ok, true, spirit.error);
+  assert.equal(table.sheet(samurai.id).tempHp, 5, "fighter 3: 5 temporary hit points");
+  const dread = table.addHero({
+    class: "warlock", level: 8, maxHp: 60, classes: [{ id: "warlock", level: 3, subclass: "The Undead" }, { id: "fighter", level: 5, subclass: "" }],
+    features: [{ name: "Form of Dread", classId: "warlock", source: "class" }],
+  });
+  table.dice(4);
+  const formed = await use(dread, "Form of Dread");
+  table.clearDice();
+  assert.equal(formed.ok, true, formed.error);
+  assert.equal(table.sheet(dread.id).tempHp, 4 + 3, "1d10 + warlock level 3");
+});
+
 finish();

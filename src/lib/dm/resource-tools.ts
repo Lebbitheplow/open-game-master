@@ -808,7 +808,11 @@ export function computeUseResource(
             campaign,
             sheet,
             healingOn(`${def.displayName} (temporary HP)`, sheet, recipient),
-            effect.tempHp(sheet.level, fxMods),
+            // At the granting class's level, as the effect's other dice
+            // are: Fighting Spirit's 5 / 10 / 15 are fighter levels and
+            // Form of Dread adds the warlock level (a fighter 3 / wizard 7
+            // took 10, a warlock 3 / fighter 5 added 8).
+            effect.tempHp(fxLevel, fxMods),
           ),
         );
         if (rolled > recipient.tempHp) {
