@@ -27,7 +27,7 @@ import { boardFactsForHost } from "@/lib/battlemap/mt-mr-hand";
 import { feetForHost } from "@/lib/battlemap/zone-feet";
 import type { PlayerMapView } from "@/lib/battlemap/view-types";
 import { HAND_FAN_CAP, arrangeHand, isUrgentCard, seatPicked, startingLayout } from "@/lib/battlemap/hand-layout";
-import { groupHand, isGroup, type HandGroup } from "@/lib/battlemap/hand-groups";
+import { groupHand, handBoardChoices, isGroup, type HandGroup } from "@/lib/battlemap/hand-groups";
 import {
   HAND_TARGET_EVENT,
   HAND_BOARD_ACTION_EVENT,
@@ -705,8 +705,20 @@ function HandInner({
     const close = { id: "panel-close" as const, label: "Close", disabled: null };
     if (boardSwap) return { title: `Replace ${boardSwap.current}?`, lines: [`Casting ${boardSwap.next} ends concentration on ${boardSwap.current} and its effects. Keep it to spend nothing.`], controls: [{ id: "hand-confirm", label: `Cast ${boardSwap.next}`, disabled: null }, { id: "hand-keep", label: `Keep ${boardSwap.current}`, disabled: null }, close] };
     if (boardChoices) {
-      const matches = cards.filter(card => card.intent.card === (boardChoices === "attack" ? "attack" : "spell"));
-      return { title: boardChoices === "attack" ? "Choose a weapon" : "Choose a spell", lines: ["Choose the action, then its target and options. Nothing is sent until you play it.", ...(!matches.length ? ["No matching cards are available yet; spell details may still be loading."] : []), ...(notice ? [notice] : [])], controls: [{ id: "hand-card", label: boardChoices === "attack" ? "Weapon" : "Spell", disabled: null, options: matches.map(card => ({ value: card.id, label: `${card.name}${card.wield ? ` · ${WIELD_LABEL[card.wield]}` : ""} · ${card.cost}${card.resource ? ` · ${card.resource}` : ""}${card.dice ? ` · ${card.dice}` : ""}`, disabled: card.disabled })) }, close] };
+      const attack = boardChoices === "attack";
+      const choices = handBoardChoices(cards, boardChoices);
+      return {
+        title: attack ? "Choose an attack" : "Choose a spell",
+        lines: [...(choices.length ? [] : [attack ? "No attacks are available right now." : "No spells are available right now."]), ...(notice ? [notice] : [])],
+        controls: [...choices.map(({ label, cards }): BoardControl => ({
+          id: "hand-card", label, disabled: null,
+          options: cards.map(card => ({
+            value: card.id,
+            label: `${card.name}${card.wield ? ` · ${WIELD_LABEL[card.wield]}` : ""} · ${card.cost}${card.resource ? ` · ${card.resource}` : ""}${card.dice ? ` · ${card.dice}` : ""}`,
+            disabled: null,
+          })),
+        })), close],
+      };
     }
     if (!picked) return null;
     const option = (value: string, label: string, disabled: string | null = null) => ({ value, label, disabled });

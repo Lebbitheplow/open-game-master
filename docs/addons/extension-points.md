@@ -462,6 +462,9 @@ revision, actionId }`. The finite `BOARD_VALUE_CONTROLS` may include a `value`
 string, capped at 200 characters. IDs are the finite `BOARD_CONTROL_IDS` in
 `board-bridge.ts`. A control may offer exact enabled `options` or a bounded
 text `input`; the host validates the value against that current offer.
+Several pickers may share an action ID. For example, Cast offers playable
+spells by level with a `hand-card` picker for each level. Send the chosen
+option's value with that ID.
 The host checks the current map, turn/viewer and HUD contents, revision,
 offered/enabled control and pending state, and consumes each offer once before
 calling the existing handler. Repeated equivalent renders keep the same

@@ -164,6 +164,13 @@ function spellSections(cards: HandCard[], sheet: Pick<CharacterSheet, "spellcast
   }));
 }
 
+export function handBoardChoices(cards: HandCard[], mode: "attack" | "cast"): Array<Pick<HandGroupSection, "label" | "cards">> {
+  const playable = cards.filter(card => card.disabled === null && !card.spent && !card.compose &&
+    (mode === "attack" ? card.intent.card === "attack" : card.intent.card === "spell" && !card.fromItem));
+  if (mode === "cast") return spellSections(playable, null);
+  return playable.length ? [{ label: "Attack", cards: playable }] : [];
+}
+
 // Items by the item, each with what it has left, as Spells goes by level with its
 // slots: a Staff of the Magi deals 19 cards, and its charges are the choice. With
 // nothing cast from an item, the group is the one list it always was.

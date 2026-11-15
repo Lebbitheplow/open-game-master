@@ -19,6 +19,7 @@ const {
   filterChips,
   groupHand,
   groupKeyOf,
+  handBoardChoices,
   isGroup,
   sectionLine,
   slotNote,
@@ -38,6 +39,21 @@ function test(name, fn) {
   passed += 1;
   console.log(`ok: ${name}`);
 }
+
+test("native Attack and Cast offer playable cards and put spells in level order", () => {
+  const card = (id, kind, level, extra = {}) => ({ id, intent: { card: kind }, level, disabled: null, spent: false, compose: false, ...extra });
+  const cards = [
+    card("fireball", "spell", 3), card("staff", "spell", 1, { fromItem: { key: "staff" } }),
+    card("fire-bolt", "spell", 0), card("misty-step", "spell", 2, { disabled: "No slots" }),
+    card("shield", "spell", 1, { spent: true }), card("bless", "spell", 1),
+    card("sword", "attack"), card("bow", "attack", undefined, { disabled: "No arrows" }),
+    card("chat-only", "attack", undefined, { compose: true }), card("dodge", "basic"),
+  ];
+  const groups = (mode) => handBoardChoices(cards, mode).map(({ label, cards }) => [label, cards.map(({ id }) => id)]);
+  assert.deepEqual(groups("attack"), [["Attack", ["sword"]]]);
+  assert.deepEqual(groups("cast"), [["Cantrips", ["fire-bolt"]], ["Level 1", ["bless"]], ["Level 3", ["fireball"]]]);
+  assert.deepEqual(handBoardChoices([card("staff", "spell", 1, { fromItem: { key: "staff" } })], "cast"), []);
+});
 
 const fact = (level, castingTime, extra = {}) => ({
   level,
