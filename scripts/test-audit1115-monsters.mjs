@@ -684,4 +684,62 @@ await test("E14 a goblin that fails its WIS save against Kara's Sanctuary loses 
   assert.equal(world.sheet(kara.id).currentHp, before);
 });
 
+// A creature the party dominates, on its own turn, walking west off its old
+// allies; the opportunity attacks it drew, by their stored rolls.
+async function turncoatWalk(walker) {
+  const encounters = await import("../src/lib/db/encounters.ts");
+  encounters.patchEnemyConditions(walker.id, ["charmed"], { charmed: { spell: "Dominate Person", source: kara.id } });
+  kit.enemyTurn(walker.id);
+  const before = new Set(kit.lastRolls(40).map((roll) => roll.id));
+  const moved = await world.invoke("move_token", { token: walker.id, x: 2, y: 5 });
+  world.clearDice();
+  assert.equal(moved.ok, true, moved.error);
+  return kit.lastRolls(40).filter((roll) => !before.has(roll.id) && roll.kind === "attack" && /opportunity attack/.test(roll.detail ?? ""));
+}
+
+const PACK_WOLF = {
+  traits: ["Pack Tactics: The wolf has advantage on an attack roll against a creature if at least one of the wolf's allies is within 5 feet of the creature and the ally isn't incapacitated."],
+  attacks: [{ name: "Bite", toHit: 4, damage: "2d4+2", type: "piercing", mode: "melee", onHit: { save: "str", dc: 11, condition: "prone" } }],
+};
+
+await test("E15 a goblin the party dominates, walking off a wolf, is bitten with Pack Tactics' advantage and knocked prone on a failed save", async () => {
+  await kit.endFight();
+  await kit.fight(3, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+  const [walker, wolf, packmate] = world.enemies();
+  for (const foe of [wolf, packmate]) {
+    kit.setEnemy(foe.id, { stats: { ...kit.enemy(foe.id).stats, ...PACK_WOLF } });
+  }
+  kit.place(kara.id, 15, 15);
+  kit.place(bram.id, 17, 15);
+  kit.place(walker.id, 5, 5);
+  kit.place(wolf.id, 6, 5);
+  kit.place(packmate.id, 5, 6);
+  // The packmate has spent its reaction: it strikes nobody, and stands beside.
+  const encounter = world.encounter();
+  kit.saveEncounter({ ...encounter, reactionsUsed: [...encounter.reactionsUsed, packmate.id] });
+  // Two d20s for the advantage, the bite's 2d4, the goblin's STR save of 1.
+  world.dice(15, 14, 2, 2, 1);
+  const swings = await turncoatWalk(walker);
+  assert.equal(swings.length, 1, JSON.stringify(swings.map((roll) => roll.detail)));
+  assert.equal(swings[0].advantage, "advantage", "Pack Tactics, the packmate beside where it left");
+  assert.ok(kit.enemy(walker.id).conditions.includes("prone"), "the bite's rider: knocked prone");
+});
+
+await test("E15 a creature with Magic Weapons strikes a dominated walker's resistance to nonmagical blows whole", async () => {
+  await kit.endFight();
+  await kit.fight(2, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+  const [walker, guard] = world.enemies();
+  kit.setEnemy(walker.id, { maxHp: 40, stats: { ...kit.enemy(walker.id).stats, resist: "bludgeoning, piercing, and slashing from nonmagical attacks" } });
+  kit.setEnemy(guard.id, { stats: { ...kit.enemy(guard.id).stats, traits: ["Magic Weapons: The guard's weapon attacks are magical."] } });
+  kit.place(kara.id, 15, 15);
+  kit.place(bram.id, 17, 15);
+  kit.place(walker.id, 5, 5);
+  kit.place(guard.id, 6, 5);
+  // A hit, the club's 1d6 + 2 at 4: 6, not halved.
+  world.dice(19, 4);
+  const swings = await turncoatWalk(walker);
+  assert.equal(swings.length, 1);
+  assert.equal(kit.enemy(walker.id).currentHp, 34, "magical: the resistance does not halve it");
+});
+
 finish();

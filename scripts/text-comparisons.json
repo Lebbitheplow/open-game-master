@@ -3218,6 +3218,7 @@
     "lib/bestiary/hold-text.ts#str-list": [["key",1,"damage types (engine vocabulary)"]],
     "lib/bestiary/hold-text.ts#re-word": [["english-source",10,"content-pack attack text: what restrains a target, the check that breaks it and its numbers as an object (Open5e rows)"]],
     "lib/bestiary/hold-text.ts#re-affix": [["english-source",2,"content-pack attack text: the ability a check names (\"Strength\", \"Dex\") read by its first letter, and the words around a damage list"]],
-    "lib/dm/creature-hold.ts#toUpperCase": [["display",2,"ability abbreviation shown"]]
+    "lib/dm/creature-hold.ts#toUpperCase": [["display",2,"ability abbreviation shown"]],
+    "lib/dm/opportunity-sides.ts#re-word": [["key",1,"damage type (engine vocabulary)"]]
   }
 }

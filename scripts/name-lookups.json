@@ -3209,6 +3209,7 @@
     "lib/bestiary/hold-text.ts#number": [["key",3,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/dm/creature-hold.ts#keyed": [["key",2,"a sheet's or a row's conditionMeta by the condition key it was written under"]],
     "lib/dm/creature-hold.ts#whole": [["identity",2,"the hold damage_object names: its own whole name, or \"<hold> on <creature>\" or \"<creature>'s <hold>\" (textKey on both sides); several that fit are refused with the options"]],
-    "lib/dm/creature-hold.ts#first": [["key",2,"the hold a restrained creature carries, found on its own instance (a creature holds one at a time)"]]
+    "lib/dm/creature-hold.ts#first": [["key",2,"the hold a restrained creature carries, found on its own instance (a creature holds one at a time)"]],
+    "lib/dm/opportunity-sides.ts#partial": [["key",1,"a blow's damage type, the necrotic part a drain reads"]]
   }
 }
