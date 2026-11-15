@@ -375,19 +375,29 @@ export class BridgeSession {
       timer.unref?.();
       this.waiter = { resolve, onDelta: options.onDelta, timer };
 
-      // Answer the held calls from the results the loop appended.
-      for (const message of fresh) {
-        if (message.role === "tool" && message.tool_call_id && this.inflight.has(message.tool_call_id)) {
-          const call = this.inflight.get(message.tool_call_id)!;
-          this.inflight.delete(message.tool_call_id);
-          const text = typeof message.content === "string" ? message.content : JSON.stringify(message.content);
-          call.answer(text, toolResultIsError(text));
-        }
+      // Answer the held calls from the results the loop appended. A note
+      // the loop wrote beside them (who heard, a mind owed its turn, a
+      // correction) rides on the last result: the program is still inside
+      // its own turn and reads nothing else until it ends. Played live, every
+      // note sent after request_player_input was lost this way, and the
+      // program only wrote its narration again.
+      const besideResults = this.finished ? "" : renderFollowUp(fresh as never[]);
+      const answering = fresh.filter(
+        (message) => message.role === "tool" && message.tool_call_id && this.inflight.has(message.tool_call_id),
+      );
+      for (const [index, message] of answering.entries()) {
+        const call = this.inflight.get(message.tool_call_id!)!;
+        this.inflight.delete(message.tool_call_id!);
+        const text = typeof message.content === "string" ? message.content : JSON.stringify(message.content);
+        const note = besideResults && index === answering.length - 1 ? `\n\n${besideResults}` : "";
+        call.answer(`${text}${note}`, toolResultIsError(text));
       }
       // A call the loop chose not to run (over a cap, deduplicated) still
       // needs an answer or the program waits forever.
-      for (const call of this.inflight.values()) {
-        call.answer("The engine did not run this call. Continue without it.", true);
+      const unrun = [...this.inflight.values()];
+      for (const [index, call] of unrun.entries()) {
+        const note = besideResults && !answering.length && index === unrun.length - 1 ? `\n\n${besideResults}` : "";
+        call.answer(`The engine did not run this call. Continue without it.${note}`, true);
       }
       this.inflight.clear();
       if (this.narrateOnly) {

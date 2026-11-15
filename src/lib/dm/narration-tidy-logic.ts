@@ -228,13 +228,6 @@ export function arcBookkeepingPrompt(text: string): string {
 export const REPEATED_NARRATION_PROMPT =
   "[System] That reply repeats one of your earlier narrations almost word for word. The player has acted again, and this is a new moment. Resolve what they just did with the tools (in a fight: the attack, move or spell they declared, on their turn), then narrate only what is new.";
 
-// A table note (who heard, an owed mind's turn, a state change) answered by
-// the narration said again with no call: nothing it asked was done. Played
-// live, five times out of five right after request_player_input handed the
-// floor over: the model took the note for a new moment and narrated it.
-export const NOTE_UNANSWERED_PROMPT =
-  "[Table note] That reply only said the narration again; it stands already and was not kept twice. Nothing the note above asks for was done yet: make exactly those tool calls now, then add only what they change. The floor you handed over stays handed over.";
-
 // An English bold heading for a turn, a round or the fight itself, read only
 // at an English table: "**Bram's Turn**", "**Round 1:**", "**Combat
 // begins.**", "**End of Avery's Turn.**".

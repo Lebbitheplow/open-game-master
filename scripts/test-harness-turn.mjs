@@ -379,6 +379,32 @@ await test("a completion that loops is settled with its first copy and the progr
   assert.equal(summary.message.content, LOOP.trim());
 });
 
+await test("a table note sent beside a tool result reaches the program still inside its turn", async () => {
+  script([[roll, { text: "The door gives." }]]);
+  const rollTool = { type: "function", function: { name: "request_roll", description: "Roll.", parameters: { type: "object", properties: {} } } };
+  const messages = [
+    { role: "system", content: "You are the DM." },
+    { role: "user", content: "I shoulder the door." },
+  ];
+  const first = await requestHarnessMessage(messages, { tools: [rollTool] }, { role: "story", turn: true, campaignId: campaign.id });
+  const call = first.message.tool_calls?.[0];
+  assert.equal(call?.function?.name, "request_roll");
+  const NOTE = "[Table note] Words were said aloud this turn; call npc_hear.";
+  const next = [
+    ...messages,
+    { role: "assistant", content: "", tool_calls: first.message.tool_calls },
+    { role: "tool", tool_call_id: call.id, content: JSON.stringify({ ok: true, total: 14 }) },
+    { role: "user", content: NOTE },
+  ];
+  const second = await requestHarnessMessage(next, { tools: [rollTool] }, { role: "story", turn: true, campaignId: campaign.id });
+  releaseHarnessConversation(next);
+  const result = fakeLog().find((entry) => entry.kind === "result" && entry.detail.name === "request_roll").detail;
+  assert.ok(result.text.includes(NOTE), result.text);
+  assert.ok(result.text.includes('"total":14'), "the result itself is still there");
+  assert.equal(result.isError, false);
+  assert.match(second.message.content, /The door gives/);
+});
+
 await test("an admins-only server refuses the agent to a campaign a player leads", async () => {
   const player = createUser("bram", "x");
   const theirs = createCampaign(player.id, {

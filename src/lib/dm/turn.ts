@@ -134,7 +134,6 @@ import {
   createOrphanCloserFilter,
   arcBookkeepingPrompt,
   REPEAT_LOOKBACK,
-  NOTE_UNANSWERED_PROMPT,
   REPEATED_NARRATION_PROMPT,
   repeatsEarlierNarration,
   tableNarrationParts,
@@ -2036,8 +2035,6 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
   // Held against the GM's newest passages, not the last alone: a copy of one
   // four replies back read as the story jumping backwards (issue 942).
   let repeatNudged = false;
-  let noteRetried = false;
-  let lastNoteCalls = 1;
   let earlier: string[] | null = null;
   const earlierNarrations = () => (earlier ??= recentGmNarrations(campaignId));
   // Whether the last call's prose, the only narration it could give, was an
@@ -2083,7 +2080,6 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
   // used to leave only the last, which has no tools, and went unanswered.
   let callLimit = MAX_MODEL_CALLS;
   const tableNoteCalls = (notes = 1) => {
-    lastNoteCalls = notes;
     callLimit = Math.max(callLimit, turn.callIndex + notes + 1);
   };
   while (turn.callIndex < callLimit) {
@@ -2701,24 +2697,6 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       // and ends nothing; none of it was kept. Send the model once to do
       // what it planned and narrate. A model that plans again keeps no
       // narration, so the turn ends on the empty-turn line, not the plan.
-      // A table note answered by the narration said again, and no call:
-      // asked once more, plainly (NOTE_UNANSWERED_PROMPT).
-      const lastSent = turn.conversation.at(-1);
-      if (
-        !noteRetried &&
-        !toolsClosed &&
-        !toolCalls.length &&
-        repeatsThisTurn &&
-        lastSent?.role === "user" &&
-        String(lastSent.content ?? "").startsWith("[Table note]")
-      ) {
-        noteRetried = true;
-        tableNoteCalls(lastNoteCalls);
-        turn.conversation.push({ role: "assistant", content: visibleText || "", ...carried });
-        turn.conversation.push({ role: "user", content: NOTE_UNANSWERED_PROMPT });
-        saveDmTurn(turn);
-        continue;
-      }
       if (!finalCall && !planNudged && !toolCalls.length && planOnly) {
         planNudged = true;
         turn.conversation.push({ role: "assistant", content: visibleText || "", ...carried });

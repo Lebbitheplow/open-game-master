@@ -507,45 +507,6 @@ await test("words said aloud with a mind on stage send the narrator back once to
   }
 });
 
-await test("a note answered by the narration said again, after the floor was handed over, is asked once more and then answered", async () => {
-  const { listNpcs } = await import("../src/lib/db/npcs.ts");
-  const others = listNpcs(world.campaignId).filter((entry) => mind.tierOfNpc(entry) === "primary" && !entry.companionSheetId);
-  for (const other of others) {
-    minds.setNpcTier(other.id, "secondary");
-  }
-  npc("Healer Imre", { trait: "watching the sick" });
-  const retries = () => model.requests.filter((request) => String(request.messages?.at(-1)?.content ?? "").includes("only said the narration again")).length;
-  const asked =
-    'The rain drums on the cart and the lamp in the farmhouse window flickers. The door opens a crack and a farmer in a floury apron looks out at the cart and the guards. At the door the farmer shouts: "Where are you headed at this hour?"';
-  try {
-    model.script([
-      reply({ calls: [call("npc_speak", { name: "Healer Imre", perceives: "Aria waits by the cart." })] }),
-      answer({ speech: "Careful.", intent: "" }),
-      reply({ text: '"Careful," Imre says.' }),
-    ]);
-    await model.turn(world, "I wait by the cart.", aria.id);
-    const before = retries();
-    model.script([
-      reply({ text: asked, calls: [call("request_player_input", { characterIds: [aria.id], prompt: "How do you answer?" })] }),
-      reply({ text: asked }),
-      reply({ calls: [call("npc_hear", { speaker: "the farmer", words: "Where are you headed at this hour?", listeners: [{ name: "Healer Imre", reach: "near" }] })] }),
-      reply({ calls: [call("npc_speak", { name: "Healer Imre", perceives: "The farmer shouts from the door: where are you headed at this hour?" })] }),
-      answer({ speech: "Say nothing yet.", intent: "" }),
-      reply({ text: '"Say nothing yet," Imre murmurs.' }),
-    ]);
-    const dm = await model.turn(world, "I keep watch.", aria.id);
-    assert.equal(retries() - before, 1, "the repeat sent the note back once");
-    assert.equal(dm.content.match(/Where are you headed/g)?.length, 1, dm.content);
-    assert.ok(memories("Healer Imre").some((entry) => /you heard the farmer say/.test(entry.content)), "the note was answered with npc_hear");
-    assert.match(dm.content, /Say nothing yet/);
-  } finally {
-    for (const other of others) {
-      minds.setNpcTier(other.id, "primary");
-    }
-    minds.setNpcTier(getNpcByName(world.campaignId, "Healer Imre").id, "secondary");
-  }
-});
-
 await test("a player character's own quoted words, answered without a narrated line, still ask who on stage heard them", async () => {
   const { listNpcs } = await import("../src/lib/db/npcs.ts");
   const others = listNpcs(world.campaignId).filter((entry) => mind.tierOfNpc(entry) === "primary" && !entry.companionSheetId);
