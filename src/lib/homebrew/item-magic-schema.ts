@@ -90,6 +90,9 @@ export const chargeRuleSchema = z.object({
   daily: z.string().trim().min(1).max(200).optional(),
   // A use past the last charge risks the item (SRD 5.1, Wind Fan).
   overuseRisk: int(1, 100).optional(),
+  // A use past the last asks its user a saving throw or a level of
+  // exhaustion (SRD 5.1, Ring of X-ray Vision): carried so a copy keeps it.
+  overuseSave: z.object({ ability: z.enum(["str", "dex", "con", "int", "wis", "cha"]), dc: int(1, 30) }).optional(),
 });
 
 export const checkRidersSchema = z.object({

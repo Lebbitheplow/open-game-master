@@ -3067,7 +3067,7 @@
     "lib/pdf-import/view.ts#partial": [["key",2,"record kinds and keys"]],
     "lib/srd/scrolls.ts#number": [["key",1,"a spell slot's level, from its key"]],
     "lib/srd/scrolls.ts#whole": [["key",1,"class slugs"]],
-    "lib/dm/item-use.ts#bypass": [["identity",1,"the line a paid cast came from, by its own name"],["identity",1,"the item a casting held across turns came from, by the name it was begun with, paid as it finishes"],["identity",1,"a carried manual's or tome's reading, off the carried line's own table row (gearDefOfRow)"]],
+    "lib/dm/item-use.ts#bypass": [["identity",1,"the line a paid cast came from, by its own name"],["identity",1,"the item a casting held across turns came from, by the name it was begun with, paid as it finishes"],["identity",1,"a carried manual's or tome's reading, off the carried line's own table row (gearDefOfRow)"],["identity",1,"the used item's name, only the words of the save a use past its last asks (overuseStrain)"]],
     "lib/dm/item-use.ts#whole": [["identity",1,"two scrolls under one name told apart by what they hold, by textKey"],["identity",1,"an item property named for the spell the item casts (a Luck Blade's Wish), textKey on both sides"]],
     "lib/battlemap/hand-ring.ts#bypass": [["key",1,"a section of Items, keyed by the ring's own name"]],
     "lib/dm/intent-check.ts#whole-single": [["identity",1,"the spell a scroll holds against the card's, by textKey"]],

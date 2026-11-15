@@ -67,6 +67,9 @@ export function spendChargesMath(
   overuse?: ReturnType<typeof rollExpression>;
   // That use did not work: the item tore.
   failed?: boolean;
+  // A use past the last that its user pays for with a saving throw, rolled
+  // by the caller (src/lib/dm/item-use.ts): a Ring of X-ray Vision's.
+  overuseSave?: NonNullable<ChargeRule["overuseSave"]>;
 } {
   let initial: ReturnType<typeof rollExpression> | undefined;
   if (typeof item.charges !== "number" && typeof rule.max === "string") {
@@ -92,6 +95,11 @@ export function spendChargesMath(
       overuse,
       ...(torn ? { failed: true } : {}),
     };
+  }
+  // SRD 5.1, Ring of X-ray Vision: used again before a long rest, it works,
+  // at a DC 15 Constitution save or a level of exhaustion.
+  if (count > left && rule.overuseSave && left === 0) {
+    return { charges: 0, destroyed: false, notes: [], overuseSave: rule.overuseSave };
   }
   const short = chargesShort(item, rule, count, initial?.total);
   if (short) {

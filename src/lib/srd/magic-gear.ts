@@ -90,6 +90,11 @@ export type ChargeRule = {
   // again before then, it has a cumulative 20 percent chance of not working
   // and tearing into useless, nonmagical tatters").
   overuseRisk?: number;
+  // The item may still be used with no use left, at a saving throw its user
+  // rolls or a level of exhaustion (SRD 5.1, Ring of X-ray Vision: "Whenever
+  // you use the ring again before taking a long rest, you must succeed on a
+  // DC 15 Constitution saving throw or gain one level of exhaustion").
+  overuseSave?: { ability: "str" | "dex" | "con" | "int" | "wis" | "cha"; dc: number };
 };
 
 export type GearDef = {

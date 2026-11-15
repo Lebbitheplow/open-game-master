@@ -43,7 +43,9 @@ import {
 import { chargeNoun, chargesShort, itemPowersOf, powerNamed, regainWhen } from "@/lib/srd/item-charge-rules";
 import { itemPowerUse, powerShort, withPowerSpent } from "@/lib/dm/item-powers";
 import { matchMagicItem } from "@/lib/srd/magic-items";
-import { gearDefOfRow } from "@/lib/srd/magic-gear";
+import { gearDefOfRow, type ChargeRule } from "@/lib/srd/magic-gear";
+import { characterSave } from "@/lib/dm/between-io";
+import { raiseExhaustion } from "@/lib/dm/set-condition";
 import { studyBook } from "@/lib/dm/book-study";
 import { linesNamed } from "@/lib/srd/item-row";
 import { beadForSpell, beadRefusal, beadsOf } from "@/lib/srd/prayer-beads";
@@ -87,6 +89,26 @@ function rollCastCheck(campaign: Campaign, sheet: CharacterSheet, check: NonNull
 }
 
 const ABILITY_WORD = { str: "Strength", dex: "Dexterity", con: "Constitution", int: "Intelligence", wis: "Wisdom", cha: "Charisma" } as const;
+
+// SRD 5.1, Ring of X-ray Vision: "Whenever you use the ring again before
+// taking a long rest, you must succeed on a DC 15 Constitution saving throw
+// or gain one level of exhaustion." The wearer's own save (between-io.ts
+// characterSave), and the level through the exhaustion door. Before, the
+// ring had no count and every use was free.
+function overuseStrain(campaign: Campaign, turnId: string, sheetId: string, item: string, save: NonNullable<ChargeRule["overuseSave"]>): string {
+  const sheet = getSheetById(sheetId);
+  if (!sheet) {
+    return "";
+  }
+  const word = ABILITY_WORD[save.ability];
+  const outcome = characterSave(campaign, sheet, { ability: save.ability, dc: save.dc, detail: `${sheet.name}: ${item} used again before a long rest, ${word} save` });
+  if (outcome.success) {
+    return `${item} has no use left before a long rest, so it asks a DC ${save.dc} ${word} save: ${outcome.total}, a success. It works.`;
+  }
+  const raised = raiseExhaustion(campaign, turnId, sheet, `${item} used again before a long rest: failed the DC ${save.dc} ${word} save`);
+  const level = typeof raised.condition === "string" ? ` (${raised.condition})` : raised.dead ? " and dies of it" : "";
+  return `${item} has no use left before a long rest, so it asks a DC ${save.dc} ${word} save: ${outcome.autoFailed ? "it fails" : `${outcome.total}, a failure`}. It works, and ${sheet.name} gains a level of exhaustion${level}.`;
+}
 
 // A cast of this spell from this item that this same turn has already paid for and
 // not yet resolved: the model told by the correction to call use_item and the spell's
@@ -378,6 +400,9 @@ export function chargedItemUse(
   if (refuel) {
     recoverSlot(campaign, sheet.id, refuel);
   }
+  // A use past the last one paid with the user's own saving throw (Ring of
+  // X-ray Vision: DC 15 Constitution or a level of exhaustion).
+  const strain = "overuseSave" in math && math.overuseSave ? overuseStrain(campaign, turnId, sheet.id, carried.name, math.overuseSave) : null;
   // The score and its maximum rise together (book-study.ts).
   const studied = reading && !destroyed ? studyBook(campaign, sheet.id, carried.name, reading, turnId) : null;
   // The check the cast waits on (Amulet of the Planes); a failure casts
@@ -427,7 +452,9 @@ export function chargedItemUse(
         ? destroyed
           ? `${carried.name} is used up.`
           : `No charge is spent: ${carried.name} casts it at will.`
-        : count === 0
+        : strain
+          ? strain
+          : count === 0
           ? `No charge is spent; ${math.charges} left.`
           : `${chargeNoun(rule, count)} spent; ${destroyed ? "the item is gone" : becomes ? `the item is a ${becomes} now` : `${math.charges} left`}${
               !destroyed && !becomes && regainWhen(rule) ? `, ${rule.regain && rule.regain !== "all" ? rule.regain : "all"} back ${regainWhen(rule)}` : ""

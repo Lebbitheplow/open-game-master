@@ -620,4 +620,45 @@ await test("R15 an attuned Ioun Stone of Mastery orbiting its owner adds 1 to th
   assert.equal(computeSheetDerived(table.sheet(rabbit.id)).initiative, 2 + 4);
 });
 
+await test("R16 a Ring of X-ray Vision used again before a long rest asks a DC 15 Constitution save or a level of exhaustion", async () => {
+  // SRD 5.1, Ring of X-ray Vision: "you can use an action to speak its
+  // command word. When you do so, you can see into and through solid matter
+  // for 1 minute ... Whenever you use the ring again before taking a long
+  // rest, you must succeed on a DC 15 Constitution saving throw or gain one
+  // level of exhaustion." The ring had no count: every use was free.
+  const { chargeRuleOf } = await import("../src/lib/srd/item-charge-rules.ts");
+  assert.deepEqual(chargeRuleOf({ name: "Ring of X-ray Vision" }), { max: 1, regain: "all", regainOn: "long_rest", unit: "use", overuseSave: { ability: "con", dc: 15 } });
+  const table = await openTable();
+  const ring = { name: "Ring of X-ray Vision", qty: 1, equipped: true, attuned: true };
+  const hero = table.addHero({ class: "rogue", level: 5, maxHp: 40, abilities: { con: 10 }, equipment: [ring] });
+  const use = () => table.invoke("use_item", { characterId: hero.id, item: "Ring of X-ray Vision" });
+  // The first use costs nothing more.
+  table.diceLog();
+  const first = await use();
+  assert.equal(first.ok, true, first.error);
+  assert.deepEqual(rolled(table), [], "no save on the first use");
+  assert.equal(table.sheet(hero.id).exhaustion, 0);
+  // The second, before a long rest: the wearer's own save, failed on a 5.
+  table.dice(5);
+  const second = await use();
+  assert.equal(second.ok, true, `it still works: ${second.error}`);
+  assert.deepEqual(rolled(table), [[20, 5]]);
+  assert.equal(table.sheet(hero.id).exhaustion, 1, "a failed save is a level of exhaustion");
+  assert.match(JSON.stringify(second), /DC 15 Constitution save: 5, a failure/);
+  // A 15 passes and costs nothing.
+  table.dice(15);
+  const third = await use();
+  assert.equal(third.ok, true, third.error);
+  assert.deepEqual(rolled(table), [[20, 15]]);
+  assert.equal(table.sheet(hero.id).exhaustion, 1);
+  // A long rest gives the free use back.
+  table.patch(hero.id, { currentHp: 40 });
+  const rest = await table.invoke("take_rest", { kind: "long" });
+  assert.equal(rest.ok, true, rest.error);
+  table.diceLog();
+  const after = await use();
+  assert.equal(after.ok, true, after.error);
+  assert.deepEqual(rolled(table), [], "the first use after a long rest asks no save");
+});
+
 finish();

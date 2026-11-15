@@ -63,13 +63,14 @@ export function chargesLeft(item: Pick<EquipmentItem, "charges">, rule: ChargeRu
 
 // Why this use cannot be paid, or null: the words use_item refuses with and the
 // card greys with. A count still to be rolled (a Necklace of Fireballs' first use)
-// and a Wind Fan, which may be used past its last charge at a risk, are not short.
+// and a Wind Fan or a Ring of X-ray Vision, which may be used past the last at a
+// risk, are not short.
 export function chargesShort(item: Pick<EquipmentItem, "name" | "charges">, rule: ChargeRule, count: number, rolled?: number): string | null {
   if (typeof item.charges !== "number" && typeof rule.max === "string" && rolled === undefined) {
     return null;
   }
   const left = chargesLeft(item, rule, rolled);
-  if (count <= left || (rule.overuseRisk && left === 0)) {
+  if (count <= left || ((rule.overuseRisk || rule.overuseSave) && left === 0)) {
     return null;
   }
   return `${item.name} has ${chargeNoun(rule, left)} left and this use needs ${count}. ${regainSentence(rule)}`;

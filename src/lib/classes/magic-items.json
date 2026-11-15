@@ -7787,7 +7787,17 @@
         "ring-of-x-ray-vision-a5e"
       ],
       "requiresAttunement": true,
-      "effects": []
+      "effects": [],
+      "charges": {
+        "max": 1,
+        "regain": "all",
+        "regainOn": "long_rest",
+        "unit": "use",
+        "overuseSave": {
+          "ability": "con",
+          "dc": 15
+        }
+      }
     },
     {
       "name": "Riverine Blade",

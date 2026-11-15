@@ -185,6 +185,12 @@ export const COUNTED_USES = {
   // magic ceases to function until you finish a long rest": ten minutes,
   // each use spending the minutes it runs.
   "boots of speed": { max: 10, regain: "all", regainOn: "long_rest", unit: "minute", activation: "bonus" },
+  // "you can use an action to speak its command word ... Whenever you use the
+  // ring again before taking a long rest, you must succeed on a DC 15
+  // Constitution saving throw or gain one level of exhaustion": one use a
+  // long rest, and each use past it rolls the wearer's save
+  // (src/lib/dm/item-use.ts).
+  "ring of x-ray vision": { max: 1, regain: "all", regainOn: "long_rest", unit: "use", overuseSave: { ability: "con", dc: 15 } },
 };
 
 // The last charge's d20 where a 1 leaves an item its text describes rather
