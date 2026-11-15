@@ -21,6 +21,8 @@ import { attackDamage, attackSummary } from "@/lib/srd/creature-attacks";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { naturalAttackProfile, pickNaturalAttack } from "@/lib/dm/natural-attack";
 import { landNaturalOnHit } from "@/lib/dm/natural-onhit";
+import { partyChargeAfterHit, partyChargeFor, petPounceCost } from "@/lib/dm/party-charge";
+import { petBlock, petPounceKey, pounceOpen, withChargeAttack } from "@/lib/dm/party-charge-logic";
 import { landBlow } from "@/lib/dm/pc-attack-damage";
 import { badArguments, noneNamed, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCoverError } from "@/lib/dm/swallow";
@@ -97,6 +99,7 @@ export const petTools: ToolDef[] = [
           petName: { type: "string", description: "Which pet, when they have several." },
           targetEnemyId: { type: "string", description: "The enemy being attacked: exact enemyId from GAME STATE." },
           attack: { type: "string", description: "Named attack when the pet has several." },
+          charged: { type: "boolean", description: "No board only: it ran straight at the target first (Charge, Pounce)." },
           reason: { type: "string", description: "Short in-fiction cause." },
         },
         required: ["characterId", "targetEnemyId"],
@@ -142,6 +145,9 @@ const petAttackSchema = z.object({
   petName: z.string().trim().max(60).optional(),
   targetEnemyId: z.string(),
   attack: z.string().trim().max(40).optional(),
+  // A fight with no board: the pet ran straight at the target first, for its
+  // Charge or Pounce (party-charge.ts). On a board the squares decide.
+  charged: z.coerce.boolean().optional(),
   reason: z.string().optional(),
 });
 
@@ -310,8 +316,13 @@ export function handlePetAttack(
     return inside;
   }
   // Commanding the pet is the owner's to do, on the owner's turn, and costs
-  // what the feature says (src/lib/dm/pet-attack-cost.ts).
-  const charge = petAttackCost(sheet, pet, encounter);
+  // what the feature says (src/lib/dm/pet-attack-cost.ts). A Pounce's bite at
+  // the creature the pet's own charge left prone this turn is the pet's bonus
+  // action instead, once (party-charge.ts).
+  const turnNow = encounter.turnBudget?.ownerId === sheet.id ? encounter.turnBudget : null;
+  const named = pickNaturalAttack(pet.attacks, args.attack);
+  const pounce = named && !turnNow?.oncePerTurn.includes(petPounceKey(pet.name)) ? pounceOpen(turnNow, petBlock(pet), named.name, pet.name, enemy) : null;
+  const charge = pounce ? petPounceCost(encounter, sheet.id, pet.name, pounce) : petAttackCost(sheet, pet, encounter);
   if ("error" in charge) {
     return toolError(charge);
   }
@@ -331,6 +342,11 @@ export function handlePetAttack(
   if (attack.proneTargetsOnly && !enemy.conditions.includes("prone")) {
     return { error: `${pet.name}'s ${attack.name} strikes only a prone creature, and ${enemy.displayName} is not prone. Nothing was spent.`, refused: "rules" };
   }
+  // The pet's Charge, Pounce or Trampling Charge after a run straight at the
+  // target, its owner's walk (the pet stands with its owner): the extra dice
+  // on the blow, the save once it lands (party-charge.ts).
+  const run = pounce ? null : partyChargeFor({ encounter, budget: turnNow, block: petBlock(pet), attack: attack.name, who: pet.name, walkerId: sheet.id, enemyId: enemy.id, claimed: args.charged === true });
+  const swung = run ? withChargeAttack(attack, run) : attack;
 
   // Both sides' conditions as they meet this attacker (SRD 5.1, Conditions),
   // read as every other attack reads them (condition-logic.ts
@@ -390,7 +406,7 @@ export function handlePetAttack(
   }
   // The hit's dice and any rider dice of another type; a critical doubles
   // the dice, never the flat bonus (SRD 5.1).
-  const { expression } = attackDamage(attack);
+  const { expression } = attackDamage(swung);
   const variant = campaign.gameSettings.variantRules;
   const damageOutcome = rollExpression(
     crit ? critDamageExpression(expression, 0, { powerfulCritical: variant.powerfulCritical, multiplyNumeric: variant.criticalDamageMods }) : expression,
@@ -414,7 +430,7 @@ export function handlePetAttack(
   const magical = activeAuthored(sheet, "pet_magical").some(({ effect }) => effect.pets.includes(pet.kind));
   // Each damage type of the blow meets the creature's resistances on its own
   // (a flying snake's bite: 1 piercing and 3d4 poison).
-  const profile = naturalAttackProfile(attack, { weapon: `${pet.name} ${attack.name}`, note: `${pet.name}'s own attack` });
+  const profile = naturalAttackProfile(swung, { weapon: `${pet.name} ${attack.name}`, note: `${pet.name}'s own attack` });
   const applied = landBlow({
     campaign,
     turn,
@@ -442,6 +458,10 @@ export function handlePetAttack(
         onHit: attack.onHit,
       })
     : [];
+  // The charge is spent on this hit (a kill too); its save, push and pounce.
+  const charged = run
+    ? partyChargeAfterHit(campaign, turn, { attacker: { kind: "pet", sheetId: sheet.id, name: pet.name }, ownerId: sheet.id, pusherId: sheet.id, who: pet.name, enemyId: enemy.id, trait: run, bonusCall: "pet_attack attack" })
+    : [];
   return {
     ok: true,
     attack: `${pet.name}: ${attack.name}`,
@@ -451,6 +471,7 @@ export function handlePetAttack(
     ...(crit ? { crit: true } : {}),
     ...applied,
     ...(onHit.length ? { onHit } : {}),
+    ...(charged.length ? { charge: charged } : {}),
     economy,
   };
 }

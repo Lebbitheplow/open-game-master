@@ -3216,6 +3216,8 @@
     "lib/dm/charge-logic.ts#re-word": [["english-source",13,"stat-block text: a Charge, Pounce or Trampling Charge line (pack rows)"]],
     "lib/dm/charge-logic.ts#re-affix": [["english-source",1,"stat-block text: the article before an attack a Charge line names (\"a claw attack\", \"its tusks\")"]],
     "lib/dm/charge-logic.ts#str-key": [["english-source",1,"stat-block text: the save ability a Charge line prints, read in a fixed table"]],
+    "lib/dm/party-charge-logic.ts#str-includes": [["key",1,"a condition name as the engine stores it (prone)"]],
+    "lib/dm/party-charge.ts#str-includes": [["key",1,"a condition name as the engine stores it (prone)"]],
     "lib/bestiary/score-drain-text.ts#\\b": [["english-source",19,"content-pack attack text: a drained ability score, its death at 0 and the rest that ends it (Open5e rows)"]],
     "lib/bestiary/score-drain-text.ts#toLowerCase": [["english-source",2,"content-pack attack text: the ability a drain names and its dice"]],
     "lib/bestiary/score-drain-text.ts#RegExp i": [["english-source",1,"content-pack attack text: \"dies if this reduces its Strength to 0\" for the ability the drain named"]],

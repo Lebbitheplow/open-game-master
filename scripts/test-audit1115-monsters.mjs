@@ -844,4 +844,142 @@ await test("E18 a druid in an owl's form flying out of a goblin's reach keeps th
   assert.equal(swings.length, 0, "the form's Flyby is hers while she wears it");
 });
 
+// E19: the party's own Pounce, Charge and Trampling Charge. A goblin 25 feet
+// east of Kara, on her own turn.
+const { findBeastForm, wildShapeRecord } = await import("../src/lib/srd/beast-forms.ts");
+const { findSummonForm } = await import("../src/lib/srd/summon-forms.ts");
+const { summonRecord } = await import("../src/lib/dm/summon-rules.ts");
+const { spawnSummons } = await import("../src/lib/dm/summon-store.ts");
+
+async function goblinAhead() {
+  await kit.endFight();
+  await kit.fight(1, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+  const [goblin] = world.enemies();
+  kit.place(kara.id, 5, 5);
+  kit.place(bram.id, 15, 15);
+  kit.place(goblin.id, 10, 5);
+  return goblin;
+}
+
+// A creature Bram's spell made, on its own turn beside Kara.
+function summoned(name, spell) {
+  const form = findSummonForm(name);
+  const record = summonRecord(form, { spell, casterId: bram.id, casterName: "Bram", concentration: false, castId: `e19-${name}` });
+  const [made] = spawnSummons(world.campaign(), world.sheet(bram.id), { form, count: 1, record, rounds: null, slotLevel: null, initiative: "caster" });
+  kit.place(made.id, 5, 6);
+  kit.giveTurn(made.id);
+  return made;
+}
+
+await test("E19 Kara in a tiger's form who runs 20 feet at a goblin and claws it knocks it prone on a failed DC 13 STR save, then bites as the bonus action, once", async () => {
+  const goblin = await goblinAhead();
+  world.patch(kara.id, { wildShape: wildShapeRecord(findBeastForm("Tiger"), { kind: "wildshape", abilities: { str: 17, dex: 15, con: 14 } }) });
+  kit.giveTurn(kara.id);
+  await walkTo(world.owner, 9, 5);
+  // The claw hits for 1d8 + 3; the goblin's STR save comes up 1.
+  world.dice(19, 4, 1);
+  const claw = await world.invoke("pc_attack", { characterId: kara.id, targetEnemyId: goblin.id, weapon: "Claw" });
+  world.clearDice();
+  assert.equal(claw.ok, true, claw.error);
+  assert.ok(kit.enemy(goblin.id).conditions.includes("prone"), JSON.stringify(claw.result));
+  // Prone within 5 feet: the bite rolls at advantage, 1d10 + 3.
+  world.dice(19, 19, 5);
+  const bite = await world.invoke("pc_attack", { characterId: kara.id, targetEnemyId: goblin.id, weapon: "Bite" });
+  world.clearDice();
+  assert.equal(bite.ok, true, bite.error);
+  assert.equal(world.encounter().turnBudget?.bonusUsed, true, "the bite is the bonus action");
+  assert.equal(kit.enemy(goblin.id).currentHp, 40 - 7 - 8);
+  // Her Extra Attack's second swing is still hers (Wild Shape keeps her
+  // class features); after it the turn holds no attack and no bonus action.
+  world.dice(19, 19, 5);
+  const second = await world.invoke("pc_attack", { characterId: kara.id, targetEnemyId: goblin.id, weapon: "Bite" });
+  world.clearDice();
+  assert.equal(second.ok, true, second.error);
+  world.dice(19, 19, 5);
+  const again = await world.invoke("pc_attack", { characterId: kara.id, targetEnemyId: goblin.id, weapon: "Bite" });
+  world.clearDice();
+  world.patch(kara.id, { wildShape: null });
+  assert.equal(again.ok, false, "one bonus bite");
+});
+
+await test("E19 the tiger standing beside the goblin knocks nobody down; with no board, the run is the call's word", async () => {
+  const goblin = await goblinAhead();
+  world.patch(kara.id, { wildShape: wildShapeRecord(findBeastForm("Tiger"), { kind: "wildshape", abilities: { str: 17, dex: 15, con: 14 } }) });
+  kit.place(kara.id, 9, 5);
+  kit.giveTurn(kara.id);
+  world.dice(19, 4, 1);
+  const still = await world.invoke("pc_attack", { characterId: kara.id, targetEnemyId: goblin.id, weapon: "Claw" });
+  world.clearDice();
+  assert.equal(still.ok, true, still.error);
+  assert.ok(!kit.enemy(goblin.id).conditions.includes("prone"), "no run, no Pounce");
+
+  const { getDatabase } = await import("../src/lib/db/core.ts");
+  getDatabase().prepare("DELETE FROM battle_maps WHERE id = ?").run(kit.map().id);
+  kit.giveTurn(kara.id);
+  world.dice(19, 4, 1);
+  const charged = await world.invoke("pc_attack", { characterId: kara.id, targetEnemyId: goblin.id, weapon: "Claw", charged: true });
+  world.clearDice();
+  world.patch(kara.id, { wildShape: null });
+  assert.equal(charged.ok, true, charged.error);
+  assert.ok(kit.enemy(goblin.id).conditions.includes("prone"), JSON.stringify(charged.result));
+});
+
+await test("E19 an elk Conjure Animals called charges 20 feet and rams for its extra 2d6, the goblin knocked prone on a failed DC 13 STR save", async () => {
+  const goblin = await goblinAhead();
+  const elk = summoned("Elk", "Conjure Animals");
+  const ran = await world.invoke("move_token", { token: elk.id, x: 9, y: 6 });
+  assert.equal(ran.ok, true, ran.error);
+  // Ram 1d6 + 3 at 2, the charge's 2d6 at 3 and 4; the save comes up 1.
+  world.dice(19, 2, 3, 4, 1);
+  const ram = await world.invoke("pc_attack", { characterId: elk.id, targetEnemyId: goblin.id, weapon: "Ram" });
+  world.clearDice();
+  assert.equal(ram.ok, true, ram.error);
+  assert.equal(kit.enemy(goblin.id).currentHp, 40 - (2 + 3 + 3 + 4), JSON.stringify(ram.result));
+  assert.ok(kit.enemy(goblin.id).conditions.includes("prone"));
+});
+
+await test("E19 a Find Steed warhorse's Trampling Charge knocks the goblin prone, and its second hooves attack is the bonus action", async () => {
+  const goblin = await goblinAhead();
+  const horse = summoned("Warhorse", "Find Steed");
+  await world.invoke("move_token", { token: horse.id, x: 9, y: 6 });
+  // Hooves 2d6 + 4 at 3 and 3; the DC 14 STR save comes up 1.
+  world.dice(19, 3, 3, 1);
+  const first = await world.invoke("pc_attack", { characterId: horse.id, targetEnemyId: goblin.id, weapon: "Hooves" });
+  world.clearDice();
+  assert.equal(first.ok, true, first.error);
+  assert.ok(kit.enemy(goblin.id).conditions.includes("prone"), JSON.stringify(first.result));
+  world.dice(19, 19, 3, 3);
+  const second = await world.invoke("pc_attack", { characterId: horse.id, targetEnemyId: goblin.id, weapon: "Hooves" });
+  world.clearDice();
+  assert.equal(second.ok, true, second.error);
+  assert.equal(world.encounter().turnBudget?.bonusUsed, true, "the second hooves attack is the bonus action");
+  assert.equal(kit.enemy(goblin.id).currentHp, 40 - 10 - 10);
+});
+
+await test("E19 Kara's panther companion, running with her 20 feet at the goblin, pounces: prone on a failed save, then its bite as its own bonus action", async () => {
+  await kit.endFight();
+  const panther = findBeastForm("Panther");
+  world.patch(kara.id, { pets: [{ name: "Shade", kind: "beast_companion", form: "panther", hp: 13, maxHp: 13, ac: 12, speed: 50, attacks: panther.attacks, notes: "" }] });
+  const goblin = await goblinAhead();
+  kit.giveTurn(kara.id);
+  await walkTo(world.owner, 9, 5);
+  // Claw 1d4 + 2 at 2; the DC 12 STR save comes up 1.
+  world.dice(19, 2, 1);
+  const claw = await world.invoke("pet_attack", { characterId: kara.id, targetEnemyId: goblin.id, attack: "Claw" });
+  world.clearDice();
+  assert.equal(claw.ok, true, claw.error);
+  assert.ok(kit.enemy(goblin.id).conditions.includes("prone"), JSON.stringify(claw.result));
+  // Bite 1d6 + 2 at 4, with advantage on the prone goblin.
+  world.dice(19, 19, 4);
+  const bite = await world.invoke("pet_attack", { characterId: kara.id, targetEnemyId: goblin.id, attack: "Bite" });
+  world.clearDice();
+  assert.equal(bite.ok, true, bite.error);
+  world.dice(19, 19, 4);
+  const again = await world.invoke("pet_attack", { characterId: kara.id, targetEnemyId: goblin.id, attack: "Bite" });
+  world.clearDice();
+  world.patch(kara.id, { pets: [] });
+  assert.equal(again.ok, false, "one bite");
+  assert.equal(kit.enemy(goblin.id).currentHp, 40 - 4 - 6);
+});
+
 finish();

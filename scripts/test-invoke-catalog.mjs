@@ -817,6 +817,8 @@ const OMITTED_ON_PURPOSE = {
   // ran, and a person running a fight with no board rules the charge as
   // they see it.
   enemy_attack: ["advantageSource", "targetMount", "charged"],
+  // The same for a pet's run (src/lib/dm/party-charge.ts).
+  pet_attack: ["charged"],
   request_roll: ["advantageSource"],
   // What a companion holds to is set by the class and alignment the form
   // does offer; the model alone may replace it, as a list of objects no form
