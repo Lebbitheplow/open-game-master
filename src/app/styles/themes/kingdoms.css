@@ -90,6 +90,14 @@ html[data-appearance="kingdoms"][data-theme] .theme-table .cine-header {
 html[data-appearance="kingdoms"][data-theme] .lobby-head {
   border-bottom: 3px double var(--material-edge);
 }
+/* The hand floats over the dark map in either brightness mode; day blue ink
+   is only appropriate on the surrounding ivory reading panels. */
+html[data-appearance="kingdoms"] .theme-table .cine-fight-hand .hand-label {
+  color: #f3dca5;
+}
+html[data-appearance="kingdoms"] .theme-table .cine-fight-hand .hand-hint {
+  color: #f1e6d3;
+}
 /* Ambient motes and moving contours compete with the manuscript materials.
    Only the decorative canvas directly under body is the app backdrop. */
 html[data-appearance="kingdoms"] .ambient-dust,
