@@ -3,6 +3,7 @@ import { fallResistances } from "@/lib/dm/genre-a-cyberpunk-defenses";
 import { genreFall } from "@/lib/srd/genre-b-combat";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { getClock, setClock } from "@/lib/db/clock";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { planHazardFx } from "@/lib/battlemap/fx-plan";
 import { publishFx, tokenPosition } from "@/lib/dm/fx";
@@ -23,6 +24,7 @@ import {
   extremeColdSave,
   extremeHeatSave,
   fallingDamageDice,
+  heatHoursSoFar,
   suffocationRounds,
   trapProfile,
   type TrapSeverity,
@@ -124,7 +126,7 @@ export const hazardTools: ToolDef[] = [
             enum: ["str", "dex", "con", "int", "wis", "cha"],
             description: "trap and generic only: the save the hazard forces. Default: 'dex'.",
           },
-          dc: { type: "integer", description: "generic: the save DC. Default: 13. For extreme_cold or extreme_heat it replaces the hourly DC." },
+          dc: { type: "integer", description: "generic only: the save DC. Default: 13." },
           damage: {
             type: "string",
             description: "generic only: the damage dice ('3d6').",
@@ -406,14 +408,24 @@ function resolveHazard(
   // there. Cold resistance or immunity shrugs it off entirely.
   if (args.type === "extreme_cold" || args.type === "extreme_heat") {
     const cold = args.type === "extreme_cold";
-    const hours = Array.from({ length: args.hours ?? 1 }, (_, index) => ({
-      hour: index + 1,
-      dc: args.dc ?? (cold ? extremeColdSave() : extremeHeatSave(index + 1)).dc,
-    }));
+    const count = args.hours ?? 1;
+    // The DCs are the rule's, never the call's: a `dc` sent with the weather
+    // once replaced them. The heat's goes on from the hours each character
+    // has already spent in it (heatHoursSoFar).
+    const now = getClock(campaign.id).instant;
+    const heat = { ...(getClock(campaign.id).heat ?? {}) };
     const perTarget = targets.map((sheet) => {
       const shrug = exposureShrug(sheet, cold);
       if (shrug) {
         return { name: sheet.name, immune: shrug };
+      }
+      const before = cold ? 0 : heatHoursSoFar(heat[sheet.id], now, count);
+      const hours = Array.from({ length: count }, (_, index) => ({
+        hour: before + index + 1,
+        dc: (cold ? extremeColdSave() : extremeHeatSave(before + index + 1)).dc,
+      }));
+      if (!cold) {
+        heat[sheet.id] = { hours: before + count, until: now };
       }
       const saves = hourlyConSaves({
         campaign,
@@ -428,13 +440,17 @@ function resolveHazard(
       });
       return { name: sheet.name, saves };
     });
+    if (!cold) {
+      // Read again after the saves, so nothing they wrote to the clock is lost.
+      setClock(campaign.id, { ...getClock(campaign.id), heat });
+    }
     return {
       ok: true,
       type: args.type,
-      hours: hours.length,
+      hours: count,
       results: perTarget,
-      note: `One Constitution save for each of ${hours.length} hour${hours.length === 1 ? "" : "s"} of exposure${
-        cold ? " (DC 10)" : " (DC 5, one higher each hour; medium or heavy armor or heavy clothing at disadvantage)"
+      note: `One Constitution save for each of ${count} hour${count === 1 ? "" : "s"} of exposure${
+        cold ? " (DC 10)" : " (DC 5 for the first hour in a row, one higher each further hour; medium or heavy armor or heavy clothing at disadvantage)"
       }; each failure is a level of exhaustion, applied by the server. ${
         cold ? "Cold weather gear or" : "Fire"
       } resistance negates it. Narrate the toll.`,

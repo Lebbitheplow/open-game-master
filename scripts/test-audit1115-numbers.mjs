@@ -83,5 +83,64 @@ await test("N02: three hours on the road in frigid air are three DC 10 Constitut
   await world.invoke("set_weather", { sky: "clear", temperature: "mild", wind: "calm" });
 });
 
+// ---- N03: extreme heat's DC goes on rising; the book's DCs are not the GM's ----
+// The engine's weather rule: in extreme heat "the DC is 5 for the first hour
+// and increases by 1 for each additional hour"; extreme cold is DC 10 each
+// hour. Each call and each travel leg began again at DC 5, and a `dc` the
+// model sent replaced either.
+
+await test("N03: two 2-hour spells of extreme heat in a row save at DC 5, 6, 7 and 8", async () => {
+  const trekker = world.addHero({ user: world.owner, class: "fighter", level: 3, maxHp: 40 });
+  morning();
+  world.clearDice();
+  world.dice(20, 20, 20, 20);
+  await world.invoke("apply_hazard", { type: "extreme_heat", hours: 2, characterIds: [trekker.id] });
+  await world.invoke("apply_hazard", { type: "extreme_heat", hours: 2, characterIds: [trekker.id] });
+  assert.equal(world.clearDice(), 0);
+  assert.deepEqual(savesOf(trekker.id), [5, 6, 7, 8]);
+});
+
+// Four hours in the shade between: a break of an hour or more. (The clock
+// moved by less than the next stretch could be that stretch itself, which
+// apply_hazard does not move the clock for, so it goes on.)
+await test("N03: a break of an hour or more out of the heat starts its DC at 5 again", async () => {
+  const trekker = world.addHero({ user: world.owner, class: "fighter", level: 3, maxHp: 40 });
+  morning();
+  world.clearDice();
+  world.dice(20, 20, 20, 20);
+  await world.invoke("apply_hazard", { type: "extreme_heat", hours: 2, characterIds: [trekker.id] });
+  setClockInstant(world.campaignId, getClock(world.campaignId).instant + 240);
+  await world.invoke("apply_hazard", { type: "extreme_heat", hours: 2, characterIds: [trekker.id] });
+  assert.equal(world.clearDice(), 0);
+  assert.deepEqual(savesOf(trekker.id), [5, 6, 5, 6]);
+});
+
+await test("N03: two 2-hour legs on the road in the heat go on from the first leg's DC", async () => {
+  const walker = world.addHero({ user: world.owner, class: "fighter", level: 3, maxHp: 40 });
+  morning();
+  await world.invoke("set_weather", { sky: "clear", temperature: "hot", wind: "calm" });
+  world.clearDice();
+  world.dice(20, 20, 20, 20);
+  for (const leg of [1, 2]) {
+    const out = await world.invoke("travel", { hours: 2, pace: "normal", characterIds: [walker.id] });
+    assert.equal(out.ok, true, `leg ${leg}: ${out.error}`);
+  }
+  assert.equal(world.clearDice(), 0);
+  assert.deepEqual(savesOf(walker.id), [5, 6, 7, 8]);
+  await world.invoke("set_weather", { sky: "clear", temperature: "mild", wind: "calm" });
+});
+
+await test("N03: a DC sent with extreme cold or heat is not the book's and is not used", async () => {
+  const trekker = world.addHero({ user: world.owner, class: "fighter", level: 3, maxHp: 40 });
+  morning();
+  world.clearDice();
+  world.dice(20, 20);
+  await world.invoke("apply_hazard", { type: "extreme_cold", hours: 1, dc: 25, characterIds: [trekker.id] });
+  await world.invoke("apply_hazard", { type: "extreme_heat", hours: 1, dc: 2, characterIds: [trekker.id] });
+  assert.equal(world.clearDice(), 0);
+  assert.deepEqual(savesOf(trekker.id), [10, 5]);
+  assert.equal(sheet(trekker.id).exhaustion ?? 0, 0);
+});
+
 world.close();
 finish();

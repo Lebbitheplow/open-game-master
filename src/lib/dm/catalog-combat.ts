@@ -610,7 +610,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
       { name: "damage", label: "Damage", kind: "dice", help: "Only for a hazard of your own." },
       damageTypeField("damageType", "Damage type", "Resistances apply."),
       { name: "saveAbility", label: "Save", kind: "select", options: ABILITIES },
-      { name: "dc", label: "DC", kind: "number", min: 1, max: 30 },
+      { name: "dc", label: "DC", kind: "number", min: 1, max: 30, help: "Only for a hazard of your own; the book sets the rest." },
       { name: "halfOnSave", label: "Half on a save", kind: "boolean", default: true },
       conditionField("condition", "Condition on a failed save"),
       { name: "roundsWithoutAir", label: "Rounds without air", kind: "number", min: 0, max: 100 },
