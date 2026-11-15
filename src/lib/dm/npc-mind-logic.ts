@@ -567,6 +567,9 @@ export function sceneMindsPrompt(names: readonly string[], timeSkipped = false):
     "Call npc_speak for each now. In perceives, tell them only what they could see and hear of this turn from where they are: sounds, shouts, who left and who came back, what was said within earshot (words npc_hear rolled for: only if it says they heard them). Nothing from beyond their sight and hearing, and nothing of anyone's thoughts.",
     "Their mind may speak, act, ask or keep silent; then narrate what they say and carry out what they intend with the engine's tools.",
     "If one of them is no longer in the scene at all, call npc_inform for them instead with what, if anything, reached them.",
+    // Played live: after the prisoner's silent turn the narrator told the
+    // failed search of the shelter a second time in other words.
+    "The narration so far stands: after their turns, narrate only what those turns add, and never tell an outcome already told again.",
   ].join(" ");
 }
 
