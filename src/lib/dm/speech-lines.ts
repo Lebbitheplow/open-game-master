@@ -13,11 +13,26 @@ import { listSheets } from "@/lib/db/sheets";
 import { guardOutcomes } from "@/lib/dm/engine-boundary";
 import { liveStateFor, readClaims, speakerRoster } from "@/lib/dm/claims";
 import { commonWords, textKey } from "@/lib/language/text-logic";
-import { attributeSpeech, hasQuotedLine, linesOf, mergeLines, storedSpeaker, type Speaker, type SpokenLine } from "@/lib/dm/speech";
+import { attributeSpeech, hasQuotedLine, linesOf, mergeLines, storedSpeaker, unlistedSpeakerLines, type Speaker, type SpokenLine } from "@/lib/dm/speech";
+import { keyOf } from "@/lib/dm/speech-prose";
 
 // How many of the latest messages commonWords reads: a fixed window, so its
 // cost never grows with the campaign.
 const COMMON_WORDS_MESSAGES = 80;
+
+// Who may speak at the table and the words its story uses, as the
+// structural reading reads them.
+function structuralReading(campaign: Pick<Campaign, "id" | "gameSettings">) {
+  const sheets = listSheets(campaign.id);
+  const creatures = new Map([...guardOutcomes([], liveStateFor(campaign.id), campaign.gameSettings.tableLanguage).creatures].map(([ref, fact]) => [ref, fact.display]));
+  const recent = listRecentMessages(campaign.id, COMMON_WORDS_MESSAGES)
+    .filter((message) => message.authorType === "dm")
+    .map((message) => message.content);
+  return {
+    speakers: [...speakerRoster(campaign.id, sheets, creatures).values()],
+    options: { common: commonWords(recent), englishPronouns: campaign.gameSettings.tableLanguage === "english" },
+  };
+}
 
 // Person-written text: the human DM's narration, a beat, an edit, an
 // accepted rewrite. No model call.
@@ -25,18 +40,8 @@ export function personLines(campaign: Pick<Campaign, "id" | "gameSettings">, tex
   if (!hasQuotedLine(text)) {
     return [];
   }
-  const sheets = listSheets(campaign.id);
-  const creatures = new Map([...guardOutcomes([], liveStateFor(campaign.id), campaign.gameSettings.tableLanguage).creatures].map(([ref, fact]) => [ref, fact.display]));
-  const speakers = [...speakerRoster(campaign.id, sheets, creatures).values()];
-  const recent = listRecentMessages(campaign.id, COMMON_WORDS_MESSAGES)
-    .filter((message) => message.authorType === "dm")
-    .map((message) => message.content);
-  return linesOf(
-    attributeSpeech(text, speakers, {
-      common: commonWords(recent),
-      englishPronouns: campaign.gameSettings.tableLanguage === "english",
-    }),
-  );
+  const { speakers, options } = structuralReading(campaign);
+  return linesOf(attributeSpeech(text, speakers, options));
 }
 
 // Model-written text outside a turn (a reroll, a continued scene, an
@@ -76,6 +81,16 @@ export async function modelLines(campaign: Campaign, text: string, label: string
 export function modelTextLines(campaign: Pick<Campaign, "id" | "gameSettings">, text: string, read: readonly SpokenLine[]): SpokenLine[] {
   const sheets = listSheets(campaign.id);
   const fromWords = personLines(campaign, text);
+  // A line the prose gives to someone the table does not list is the
+  // reader's to give only to a person its paragraph names: offered a scene
+  // with a companion in it, the reader put "The heir. Give us the fragment"
+  // on him, after "The lead cultist raises a hand" (issue 965).
+  const reading = read.length && hasQuotedLine(text) ? structuralReading(campaign) : null;
+  const strangers = reading ? unlistedSpeakerLines(text, reading.speakers, reading.options) : new Map<string, Set<string>>();
+  const guessed = (entry: SpokenLine) => {
+    const named = strangers.get(entry.line);
+    return named !== undefined && !named.has(keyOf(entry.speaker)) && !named.has(textKey(entry.speaker.name));
+  };
   const mayTake = (sheetId: string, line: string) =>
     sheets.some((sheet) => sheet.id === sheetId && sheet.isCompanion) ||
     fromWords.some((entry) => entry.line === line && entry.speaker.id === sheetId);
@@ -97,7 +112,7 @@ export function modelTextLines(campaign: Pick<Campaign, "id" | "gameSettings">, 
       return [];
     }
     return [{ line, speaker: sheet ? { kind: "pc", id: sheet.id, name: sheet.name } : storedSpeaker(speaker) }];
-  });
+  }).filter((entry) => !guessed(entry));
   return mergeLines(
     resolved,
     fromWords.filter((entry) => entry.speaker.kind !== "pc"),
