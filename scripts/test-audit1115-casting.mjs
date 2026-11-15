@@ -559,5 +559,32 @@ await test("S13: a goblin that fails its save against a 9th-level Mass Suggestio
   assert.equal(foe.conditionMeta.suggested?.rounds, 366 * DAY, JSON.stringify(foe.conditionMeta));
 });
 
+// ---- S15: a ranger casts a costless material only from a component pouch ----
+
+// SRD 5.1, Spellcasting, Components: "A character can use a component pouch
+// or a spellcasting focus (found in chapter 5) in place of the components
+// specified for a spell", and each class names the focus it may use (the
+// wizard an arcane focus, the druid a druidic focus...). The ranger's text
+// names none, so a ranger needs the pouch. Letting a ranger use any focus is
+// the 2024 rule. A fighter's or rogue's third-caster subclass names none
+// either.
+await test("S15: a ranger holding a druidic focus but no component pouch is refused Goodberry, and says why", async () => {
+  const { focusProblem } = await import("../src/lib/dm/cast-materials.ts");
+  const { spellFactsFor } = await import("../src/lib/content/index.ts");
+  const facts = spellFactsFor("Goodberry");
+  assert.ok(facts?.material, "Goodberry has a material component");
+  const ranger = (equipment) => ({ name: "Wren", class: "ranger", classes: [{ id: "ranger", subclass: "", level: 5 }], equipment });
+  const refused = focusProblem(ranger([{ name: "Druidic focus (yew wand)", qty: 1, tags: ["druidic_focus"] }]), facts);
+  assert.equal(refused?.refused, "rules", JSON.stringify(refused));
+  assert.match(refused.error, /a ranger needs a component pouch; the SRD ranger has no spellcasting focus/);
+  assert.equal(focusProblem(ranger([{ name: "Component pouch", qty: 1 }]), facts), null, "the pouch serves");
+  // A ranger and druid uses the druid's focus as the druid does.
+  assert.equal(focusProblem({ ...ranger([{ name: "Druidic focus (yew wand)", qty: 1, tags: ["druidic_focus"] }]), classes: [{ id: "ranger", level: 5 }, { id: "druid", level: 2 }] }, facts), null);
+  // A fighter's Eldritch Knight with an arcane focus: no focus in their text either.
+  const grease = spellFactsFor("Grease");
+  const knight = focusProblem({ name: "Brann", class: "fighter", classes: [{ id: "fighter", subclass: "Eldritch Knight", level: 7 }], equipment: [{ name: "Arcane focus (crystal)", qty: 1, tags: ["arcane_focus"] }] }, grease);
+  assert.equal(knight?.refused, "rules", JSON.stringify(knight));
+});
+
 closeTables();
 finish();
