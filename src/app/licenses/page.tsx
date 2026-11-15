@@ -50,6 +50,18 @@ export default function LicensesPage() {
           https://creativecommons.org/licenses/by/4.0/legalcode.
         </p>
         <p>
+          A reader whose browser asks for French reads the rulebook in Wizards of the Coast&rsquo;s official
+          French translation, the <span lang="fr">Document de Référence du Système 5.1</span>, under the same
+          license.{" "}
+          <span lang="fr">
+            Ce travail comprend la documentation tirée du Document de Référence du Système 5.1 (« SRD 5.1 »)
+            par Wizards of the Coast LLC et disponible à l&rsquo;adresse
+            https://dnd.wizards.com/fr/resources/systems-reference-document. Le SRD 5.1 est distribué en vertu
+            de la licence Creative Commons Attribution 4.0 International disponible à l&rsquo;adresse
+            https://creativecommons.org/licenses/by/4.0/legalcode.fr.
+          </span>
+        </p>
+        <p>
           Expanded character options, spells, items, and monsters are imported from the{" "}
           <span className="text-stone-100">Open5e</span> dataset (open5e.com), which
           aggregates open-licensed tabletop content. Each source document and its license

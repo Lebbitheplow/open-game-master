@@ -363,6 +363,20 @@ try {
     assert.match(frContents.parts[0].blurb, /créer un héros/);
   });
 
+  await test("the French book ends with the print's whole legal notice", () => {
+    // CC-BY-4.0 asks every work to carry Wizards' attribution statement; the
+    // French book's last page is where its readers find it, so the statement
+    // must be there in full (the wave once lost its first words).
+    const legal = rulebookPage("legal-information", "fr").page;
+    assert.equal(legal.title, "Informations juridiques");
+    assert.ok(legal.md.startsWith("Le Document de Référence du Système 5.1 vous est fourni à titre gratuit"), legal.md.slice(0, 80));
+    assert.match(
+      legal.md,
+      /Ce travail comprend la documentation tirée du Document de Référence du Système 5\.1 \(« SRD 5\.1 »\) par Wizards of the Coast LLC et disponible à l'adresse https:\/\/dnd\.wizards\.com\/fr\/resources\/systems-reference-document\. Le SRD 5\.1 est distribué en vertu de la licence Creative Commons Attribution 4\.0 International disponible à l'adresse https:\/\/creativecommons\.org\/licenses\/by\/4\.0\/legalcode\.fr\./,
+    );
+    assert.equal(rulebookContents("fr").source.licenseUrl, "https://creativecommons.org/licenses/by/4.0/legalcode.fr");
+  });
+
   await test("the crosswalk speaks the reader's language but reads the English book's names", () => {
     const walk = crosswalkFor(rulebookPage("fireball", "fr").page, "fr");
     assert.equal(walk.support, "engine", "Boule de feu stays an engine spell");

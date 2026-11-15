@@ -165,6 +165,27 @@ function tidy(markdown) {
     .trim();
 }
 
+// The legal page (FR pdf p. 1) is set full width above the two columns, and
+// its two opening lines never reached the wave: the page's first words and
+// the start of the attribution statement every work using the SRD must
+// carry (« Ce travail comprend la documentation tirée du Document de
+// Référence du Système 5.1 (« SRD 5.1 ») par »). They are restored here from
+// the print, with the address the print breaks across a line joined again.
+// Checked against SRD_CC_v5.1_FR.pdf, sha256
+// f5cdd4d34c8e61f9c2db5cbaeaf7c75f245a3de001136b7e9037a653c7aa1ccc.
+const LEGAL_OPENING = "Le Document de Référence du Système 5.1 vous est fourni à titre gratuit en vertu de la licence Creative ";
+const LEGAL_ATTRIBUTION = "Ce travail comprend la documentation tirée du Document de Référence du Système 5.1 (« SRD 5.1 ») par ";
+function restoreLegalPage(markdown) {
+  let md = markdown;
+  if (md.startsWith("Commons Attribution")) md = LEGAL_OPENING + md;
+  md = md.replace(/\n\nWizards of the Coast LLC et disponible/, `\n\n${LEGAL_ATTRIBUTION}Wizards of the Coast LLC et disponible`);
+  md = md.replace("systems-reference- document", "systems-reference-document");
+  if (!md.includes(LEGAL_ATTRIBUTION) || !md.startsWith(LEGAL_OPENING)) {
+    throw new Error("the French legal page no longer reads as the print: check restoreLegalPage against the wave");
+  }
+  return md;
+}
+
 const en = JSON.parse(readFileSync(enPath, "utf8"));
 const enById = new Map(en.pages.map((page) => [page.id, page]));
 
@@ -192,7 +213,8 @@ for (const enPage of en.pages) {
   for (const folder of waveFolderFor(id, chapter, kind)) {
     const candidate = join(waves, folder, `${id}.md`);
     try {
-      const md = tidy(readFileSync(candidate, "utf8"));
+      const text = tidy(readFileSync(candidate, "utf8"));
+      const md = id === "legal-information" ? restoreLegalPage(text) : text;
       path = { folder, md };
       break;
     } catch {
