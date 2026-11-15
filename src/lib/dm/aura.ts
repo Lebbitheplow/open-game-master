@@ -136,6 +136,21 @@ export function allySaveAura(
   return { bonus: extra, note: best.note };
 }
 
+// Aura of Protection over a creature that shares this character's square:
+// their mount (mount-area.ts) or their pet, which stands with them (ruling
+// D2, pet-place.ts). "You or a friendly creature within 10 feet of you"
+// (SRD 5.1): the character's own aura while they are a conscious paladin, or
+// the best of another's that reaches their square, never the sum.
+export function saveAuraBeside(campaignId: string, holder: CharacterSheet): AuraSaveBonus | null {
+  const own = auraGranted(holder) ? defenseRiders({ class: holder.class, level: holder.level, features: holder.features }, computeSheetDerived(holder).abilityMods).saveBonus : 0;
+  const other = allySaveAura(campaignId, holder);
+  const bonus = own + (other?.bonus ?? 0);
+  if (bonus <= 0) {
+    return null;
+  }
+  return { bonus, note: other ? other.note : `${holder.name}'s aura: +${own} on saving throws` };
+}
+
 // The conditions an ally's aura keeps off this character right now (Aura of
 // Courage: frightened; Aura of Devotion: charmed), with whose aura it is.
 export function allyConditionAura(
