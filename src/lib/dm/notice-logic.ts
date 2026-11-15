@@ -145,6 +145,19 @@ export function lightSeenBy(ambient: Light, carriesLight: boolean, darkvision: b
   return light as Light;
 }
 
+// Whether a check in this light hangs on the sense it uses, so a call that
+// names none must name it before the dice roll (SRD 5.1, Vision and Light:
+// dim light costs Perception by sight disadvantage, and darkness fails any
+// check by sight): Perception in dim light or darkness, Investigation in the
+// dark. `skill` is the skill's id (srd findSkill). `spared`: dim light costs
+// this roller nothing (Skulker, dim-sight.ts).
+export function lightHangsOnSense(light: Light | null | undefined, skill: string | undefined, spared = false): boolean {
+  if (light === "dark") {
+    return skill === "perception" || skill === "investigation";
+  }
+  return light === "dim" && skill === "perception" && !spared;
+}
+
 // The shift to a passive Perception that relies on sight, with the reasons
 // for the result.
 // In darkness a creature that cannot see is effectively blinded, and a
