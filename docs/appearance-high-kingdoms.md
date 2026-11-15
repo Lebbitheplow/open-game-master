@@ -6,7 +6,7 @@ Day mode uses warm ivory reading panels with blue ink; night mode uses deep
 blue panels with ivory text and gilt headings. It claims no genre default.
 
 The original wheat-sheaf shields, banners and council hall distinguish it from
-Cloud Citadel's sky and marble, Arcane's celestial imagery and Gothic's tracery.
+Radiant Heights' sky and marble (formerly Cloud Citadel), Arcane's celestial imagery and Gothic's tracery.
 The generated border supplies both the frame and cropped corners. Production
 art and complete built-in image-generation prompts are in
 [`public/assets/themes/kingdoms/art-provenance.json`](../public/assets/themes/kingdoms/art-provenance.json).
@@ -18,7 +18,7 @@ The alpha channel is retained without repair, and the artwork contracts pass.
 - Owner: Codex High Kingdoms session.
 - Branch: `codex/high-kingdoms-theme`; worktree: `theme-high-kingdoms`.
 - Required base: PR [962](https://github.com/Lebbitheplow/open-game-master/pull/962),
-  commit `fccee2be4ace16f5b792032bc3292b6679ec5ac2`. PR 962 is draft.
+  commit `cab3070dc96c895a1d8aae8d6dd34b05c1a6ef65`. PR 962 is draft.
 - Theme-specific shared edits are additive: catalog registration, Shield icon mapping and CSS
   import. The picker browser check now waits for artwork to decode before
   capturing: the cold-profile night screenshot otherwise showed empty borders
@@ -35,63 +35,60 @@ The only shared validation adjustment is the four-line image-readiness change in
 `scripts/appearance/picker-check.mjs`; theme styles and artwork stay under
 `kingdoms`. Preserve the required base dependency when updating the draft PR.
 
-## Shared-correction validation
+## Latest shared integration, November 15, 2026
 
-Correction checkpoint: `4374da3fd66d2d2e38b8b1743f22194df1b73ecf`, merging
-the updated PR 962 base above. Both Shield and Waves mappings are retained.
-The coordination-board resolution keeps the incoming Tide and Hearth records.
+Source checkpoint: `3d92137e032048a86a44cad00caef0ad99ca8ecf`, merging PR 962 at
+`cab3070dc96c895a1d8aae8d6dd34b05c1a6ef65`. High Kingdoms' CSS, artwork, catalog entry,
+Shield mapping and picker image-readiness change are unchanged from the previous
+integration. Both Shield and Waves mappings remain. The coordination resolution
+preserves the incoming sibling records and new theme proposals.
 
-High Kingdoms now sets `--material-send-wash`, `--material-send-edge` and
-`--material-chosen-wash` instead of overriding the send and selected-mode
-backgrounds and borders directly. Opaque royal blue reaches the moving
-`.motion-pill`; ivory foregrounds and forced-colors system colors are retained.
-The shared `--material-vital-fill` default and low-health treatment remain intact.
-Artwork, image-decode readiness, hand labels and decorative rules are preserved.
+The shared update fixes menu, sheet, builder and disclosure-label contrast,
+restores hostile-card border distinction, removes duplicate initiative chrome
+below 1440px, and makes the empty ornament container transparent to accessibility
+measurement while its frame and corners remain painted. Shared browser assertions
+now accept actual painted solid surfaces and color channels.
 
-The [refreshed immutable gallery](https://github.com/Smoebo/open-dungeon-master/tree/821dd7e8888abc5dd45c5e16215d0241097dcca5)
-contains 52 production screenshots and exact geometry/material reports.
+The [current immutable gallery](https://github.com/Smoebo/open-dungeon-master/tree/aa2df41bbfe0fc833cbb39fb373cc1e0530b5f39) contains 52 refreshed production
+screenshots, geometry/material reports and a sanitized selected-regression report.
 
-| Check | Correction result |
+| Check | Current result |
 | --- | --- |
-| `npm run test:appearance` | 12 appearance checks and 5 CSS/artwork contracts passed |
-| Full production browser matrix, port 3032 | 59/59 passed, including all 16 new layout/material checks |
-| Additional action inspection | Four day/night and forced-colors cases passed; selected moving highlight is royal blue and labels remain legible |
-| Full repository lint | Zero errors, 313 existing warnings |
+| Six targeted suites | Passed: appearance, appearance contracts, adventuring gear, builder gear, builder reselect and possessive title case; includes 12+5 appearance checks |
+| Production theme browser matrix | 59/59 passed on the first run after the preview was ready |
+| Additional action inspection | Four day/night and forced-colors cases passed |
+| Selected shared browser regression | 26/26 passed: name-menu, day-board, companion-conduct, split-line, hand-on-board, creator-spells-identity, creator-sheets, builder-a11y, fight-bench, fight-bench-2, world-pack-omissions and table-layout, at their configured widths |
+| Prior Windows timeout investigation | Isolated fight-opening suite passed all 13 checks; previous timeout did not reproduce locally |
+| Full repository lint | Zero errors, 313 warnings |
 | Production build and TypeScript | Passed with two build workers |
-| Bundle budgets | Passed: 107.6 KiB shared CSS, 114.2 KiB rulebook CSS; JavaScript within unchanged budgets |
-| `git diff --check` | Passed |
+| Bundle budgets | Passed: 107.7 KiB shared CSS, 114.3 KiB rulebook CSS; JavaScript within unchanged budgets |
+| Diff whitespace check | Passed |
 
-The first matrix attempt passed 58/59 and timed out on its first story navigation.
-Its report is retained; the warmed complete rerun passed 59/59. Manual review
-covered phone titles at 320/390px, desktop titles at 1024/1360/1920px, and
-phone/desktop enlarged-map frame clearance in both brightness modes. The
-1024px/125% combat capture still has a cramped three-pane battle area; the title
-checks do not establish usability of every pane. The disposable preview is stopped.
+All five shared browser failures recorded at the first integration now pass
+locally. The broader 26-case selection includes the shared 21-case follow-up,
+three table-layout widths and two fight-bench-2 cases. The [previous Windows run](https://github.com/Lebbitheplow/open-game-master/actions/runs/43674772120)
+failed a warm-up cancellation timeout in fight-opening; its isolated local pass
+does not establish that final-head CI will pass. No timing limits or gameplay
+code were changed here.
 
-### Remaining CI findings
+Manual review confirms the borders and corners still paint, enlarged-map controls
+clear the ornaments, and the wider combat view remains readable. At 1024px with
+125% text, the three-pane combat area is still cramped. This remains a shared
+layout limitation despite passing title bounds. The disposable preview is stopped.
+Keep PR 973 draft pending its dependency, final-head CI and the remaining delivery
+checks below. The full 1,218-file coverage later in this document is historical,
+not a rerun of this integration.
 
-The [previous PR 973 Linux run](https://github.com/Lebbitheplow/open-game-master/actions/runs/43666785785)
-failed 16 browser scenarios. Every failing scenario is also present among the
-17 failures on the [original PR 962 base run](https://github.com/Lebbitheplow/open-game-master/actions/runs/43653434657),
-before High Kingdoms was added. Previous-head Windows CI passed.
+## First shared integration, historical
 
-The focused production command
-`node scripts/browser/run.mjs --only table-layout,day-board,companion-conduct,name-menu`
-passed 4/9 cases: all three table-layout widths and phone day-board. Five failures
-remain and are recorded in the gallery's `ci-investigation.json`:
-
-- Name-menu contrast fails by day on desktop and phone.
-- Desktop day-board expects a gradient first stop, while the shared painted
-  chronicle uses the solid `--material-paper` background. The assertion reads
-  `backgroundImage` and receives `none`; its expectation needs shared review.
-- Hostile companion borders match ordinary party borders on desktop and phone;
-  the shared painted-card treatment loses that semantic distinction.
-
-The previous table-layout desktop timeout was a tooltip intercepting the Notes
-click; it did not reproduce in the three-width local rerun. These findings are
-not cleared by the 59/59 appearance matrix. Keep the PR draft pending shared
-follow-up and final-commit CI. Full-suite file coverage below is historical and
-was not repeated for this CSS/layout integration.
+Source `4374da3fd66d2d2e38b8b1743f22194df1b73ecf` integrated PR 962 at
+`fccee2be4ace16f5b792032bc3292b6679ec5ac2`. It moved the royal-blue send
+and selected-action fills to the shared material variables, retaining ivory
+labels, forced-colors behavior and semantic health colors. Its
+[historical gallery](https://github.com/Smoebo/open-dungeon-master/tree/821dd7e8888abc5dd45c5e16215d0241097dcca5)
+records 59/59 on a warmed rerun after one navigation timeout, four action checks,
+build/lint/budget passes, and the then-failing five shared browser cases.
+Those failures are superseded by the current 26/26 selected-regression result.
 
 ## Original validation before the shared corrections
 
