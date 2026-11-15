@@ -8,6 +8,9 @@
   --material-control-radius: 3px;
   --material-panel-radius: 6px 6px 2px 2px;
   --material-primary-wash: linear-gradient(#254b98f5, #142d69fa);
+  --material-send-wash: linear-gradient(#254b98, #142d69);
+  --material-send-edge: var(--material-edge);
+  --material-chosen-wash: var(--material-send-wash);
   --material-metal-finish: linear-gradient(135deg, #f8e3a6, #ba8d39 47%, #f2d58b 51%, #94621f);
   --material-metal-ink: #182b51;
   --material-edge: #a38448;
@@ -76,12 +79,10 @@
   --material-body-wash: linear-gradient(#f3edddcf, #f3eddde0);
 }
 
-/* Blue enamel carries the same primary action through story and combat.
-   The shared material layer's original green is specific to Woodland. */
+/* The shared material layer paints blue enamel, including the moving highlight.
+   Retain warm ivory labels over the opaque blue action surfaces. */
 html[data-appearance="kingdoms"][data-theme] .theme-table .cine-send,
 html[data-appearance="kingdoms"][data-theme] .theme-table .cine-desk .session-mode[data-on] {
-  background: var(--material-primary-wash);
-  border-color: var(--material-edge);
   color: #fff5db;
 }
 html[data-appearance="kingdoms"][data-theme] .theme-table .cine-header {
@@ -103,10 +104,13 @@ html[data-appearance="kingdoms"] .theme-table .cine-fight-hand .hand-hint {
 html[data-appearance="kingdoms"] .ambient-dust,
 html[data-appearance="kingdoms"] body > canvas[aria-hidden] { display: none; }
 @media (forced-colors: active) {
+  html[data-appearance="kingdoms"] {
+    --material-send-wash: ButtonFace;
+    --material-send-edge: ButtonText;
+    --material-chosen-wash: ButtonFace;
+  }
   html[data-appearance="kingdoms"][data-theme] .theme-table .cine-send,
   html[data-appearance="kingdoms"][data-theme] .theme-table .cine-desk .session-mode[data-on] {
-    background: ButtonFace;
     color: ButtonText;
-    border-color: ButtonText;
   }
 }
