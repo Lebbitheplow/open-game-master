@@ -22,12 +22,12 @@
 //     stood (landWaits): a call through the dispatch door that is no
 //     use_reaction, in the same GM turn as in a later one (invoke-dispatch.ts);
 //     the attacker's next swing of the same call (enemy-attack.ts landSwing);
-//     any attack after it (enemy-attack.ts, opportunity.ts); a turn ending
-//     (encounter-tools.ts advancePointer); the fight ending (enemy-damage.ts
-//     finishEncounter, the force-end route). It waited once for the rest of
-//     the GM turn that rolled it: the goblin whose death waited swung again
-//     in the same reply, and a reply that ended the fight dropped the answer,
-//     the goblin leaving alive.
+//     any attack after it (enemy-attack.ts, opportunity.ts); a move on the
+//     board (the move route); a turn ending (encounter-tools.ts
+//     advancePointer); the fight ending (enemy-damage.ts finishEncounter, the
+//     force-end route). It waited once for the rest of the GM turn that rolled
+//     it: the goblin whose death waited swung again in the same reply, and a
+//     reply that ended the fight dropped the answer, the goblin leaving alive.
 // An answer no reaction could change lands at once, as before.
 
 import type { Campaign } from "@/lib/db/campaigns";

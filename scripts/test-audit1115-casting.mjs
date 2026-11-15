@@ -1328,5 +1328,25 @@ await test("S28: a fight the engine ends lands the waiting flame first", async (
   assert.equal(goblinRow(goblin.id).status, "dead");
 });
 
+// ---- S29: a drag on the board lands the answer before the move ----
+
+// S26 left a hit a player's drag closes to land its answer at the next call
+// through the door: the walk away drew the opportunity attack of a goblin
+// whose death waited, the same attacker acting again.
+await test("S29: a drag on the board lands the waiting flame before the move resolves: the slain goblin strikes no opportunity attack", async () => {
+  const { world, mage, goblin, other } = await flameAndShield(5);
+  await layMap(world, field(), { [mage.id]: { x: 2, y: 2 }, [goblin.id]: { x: 3, y: 2 }, [other.id]: { x: 30, y: 2 } });
+  await swingAt(world, goblin, mage, [10, 3, 4, 4]);
+  assert.equal(statusOf(world, goblin.id).status, "alive");
+  const hurt = world.sheet(mage.id).currentHp;
+  world.signIn({ id: mage.userId });
+  world.dice(15, 3);
+  const moved = await routeCall(await world.route("campaigns/[campaignId]/battle-map/move"), "POST", { x: 0, y: 2 }, { campaignId: world.campaignId });
+  world.clearDice();
+  assert.equal(moved.status, 200, JSON.stringify(moved.json));
+  assert.equal(statusOf(world, goblin.id).status, "dead", JSON.stringify(moved.json));
+  assert.equal(world.sheet(mage.id).currentHp, hurt, "no opportunity attack struck the wizard");
+});
+
 closeTables();
 finish();
