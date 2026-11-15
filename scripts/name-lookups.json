@@ -1998,6 +1998,8 @@
     "lib/dm/pet-condition-lay.ts#whole": [["identity",1,"the pet a call already found, again on the record read before a write, by its stored name and kind"],["key",1,"a condition label against the block's condition immunities, split at their commas (engine vocabulary)"],["identity",2,"a condition label already held on the record, or already laid this call"]],
     "lib/dm/pet-condition-lay.ts#keyed": [["key",1,"a spell's own rules for one of its forms, by the condition key it lays"]],
     "lib/dm/pet-condition-lay.ts#partial": [["key",1,"a condition label among those the use lays (engine vocabulary)"]],
+    "lib/dm/pet-zones.ts#partial": [["key",1,"the pet's creature type against the area's rules types (engine vocabulary), as zone-triggers.ts reads an enemy's"]],
+    "lib/dm/pet-zones.ts#whole": [["identity",3,"the pet a strike already found, again on the record read before each write, by its stored name; condition labels on its record; the area's spell among a hold's instances"]],
     "lib/dm/pet-strike.ts#whole": [["identity",1,"the pet a call already found, again on the record read before each swing, by its stored name"]],
     "lib/dm/pet-conditions.ts#keyed": [["key",1,"a pet's conditionMeta by the condition key it was written under"]],
     "lib/dm/pet-conditions.ts#whole": [["identity",2,"condition labels still held on the record"]],

@@ -10,6 +10,7 @@ import { giveBack, swarmDieBack } from "@/lib/dm/authored-spend-more";
 import { planFeatureMove } from "@/lib/dm/feature-move";
 import { commandPet, PET_COMMANDS } from "@/lib/dm/pet-command";
 import { incapacitatedBy } from "@/lib/dm/condition-logic";
+import { spellTurnHold } from "@/lib/srd/condition-effect-queries";
 import { petAttackedKey } from "@/lib/dm/pet-attack-cost";
 import { namedOption, type ToolError } from "@/lib/dm/tool-errors";
 import type { FullPatchSheetInput } from "@/lib/schemas/sheet";
@@ -66,7 +67,7 @@ function petCommand(ctx: SpendContext, does: Extract<SpendDoes, { kind: "pet_com
   }
   // Dash, Disengage and Help are actions, and an incapacitated creature
   // takes none (SRD 5.1, Conditions): a paralyzed companion helps no one.
-  const stopped = incapacitatedBy(companion.conditions ?? []);
+  const stopped = incapacitatedBy(companion.conditions ?? []) ?? spellTurnHold(companion.conditions ?? [], "action");
   if (stopped) {
     return { error: `${companion.name} is ${stopped}; it can take no action at ${ctx.sheet.name}'s command. Nothing was spent.`, refused: "rules" };
   }

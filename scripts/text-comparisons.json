@@ -1764,6 +1764,8 @@
     "lib/dm/pet-save-roll.ts#toUpperCase": [["display",1,"ability abbreviation shown on the save's dice card"]],
     "lib/dm/pet-condition-lay.ts#str-includes": [["key",1,"a condition label in the block's immunities (engine vocabulary)"]],
     "lib/dm/pet-condition-lay.ts#str-eq": [["key",1,"a condition label (engine vocabulary)"]],
+    "lib/dm/pet-zones.ts#str-eq": [["key",2,"the area's condition labels (engine vocabulary)"]],
+    "lib/dm/pet-zones.ts#toUpperCase": [["display",1,"ability abbreviation shown in the table's line"]],
     "lib/dm/pet-strike.ts#str-eq": [["key",1,"the rider's condition label (engine vocabulary)"]],
     "lib/dm/pet-conditions.ts#toUpperCase": [["display",4,"ability abbreviation shown on the save's dice card and the table's line"]],
     "lib/dm/pet-tools.ts#toUpperCase": [["display",1,"ability abbreviation shown on the save's dice card"]],

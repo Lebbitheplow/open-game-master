@@ -171,5 +171,81 @@ await test("P02: a creature's attack at a pet is rolled at its AC and conditions
   await kit.endFight();
 });
 
+// P03. SRD 5.1: Moonbeam ("When a creature enters the spell's area for the
+// first time on a turn or starts its turn there"), Spike Growth ("2d4
+// piercing damage for every 5 feet it travels"), Web ("Each creature that
+// starts its turn in the webs or that enters them during its turn must make
+// a Dexterity saving throw. On a failed save, the creature is restrained"),
+// Stinking Cloud (a failed save spends its action retching). A pet stands in
+// its owner's square (ruling D2), walks their walk and acts on their turn; the
+// areas read tokens alone, so a wolf walked through Spike Growth and stood in
+// Moonbeam untouched.
+await test("P03: a lasting area strikes the pet in its owner's square at every moment it strikes the owner", async () => {
+  await kit.endFight();
+  const { caster } = await import("./lib/enforce-spell-kit.mjs");
+  const { zoneTurnStart, zonesAfterMove } = await import("../src/lib/dm/zone-triggers.ts");
+  const { saveZones } = await import("../src/lib/dm/zone-store.ts");
+  const ranger = world.addHero({ class: "ranger", subclass: "Beast Master", level: 5, maxHp: 50, abilities: { con: 12, dex: 12 }, proficiencies: { ...TRAINED } });
+  const summoned = await world.invoke("summon_pet", { characterId: ranger.id, kind: "beast_companion", form: "wolf" });
+  assert.equal(summoned.ok, true, summoned.error);
+  const wolf = () => petOf(ranger.id, "wolf");
+  const druid = world.addHero(caster("druid", "wis", ["Moonbeam", "Spike Growth"]));
+  const wizard = world.addHero(caster("wizard", "int", ["Web", "Stinking Cloud"]));
+  await kit.fight(1);
+  kit.place(druid.id, 0, 0);
+  kit.place(wizard.id, 0, 1);
+  const lay = async (who, spell, level, x, y) => {
+    saveZones(kit.map().id, []);
+    kit.giveTurn(who.id);
+    const cast = await world.invoke("use_spell_slot", { characterId: who.id, spell, level, atX: x, atY: y });
+    assert.equal(cast.ok, true, `${spell}: ${cast.error}`);
+  };
+  const turnStarts = (faces) => forced(faces, () => zoneTurnStart(world.campaign(), world.encounter(), [ranger.id]));
+  const hpOf = () => ({ ranger: world.sheet(ranger.id).currentHp, wolf: wolf().hp });
+
+  // Moonbeam: the ranger's CON save and 2d10, then the wolf's own.
+  kit.place(ranger.id, 6, 5);
+  await lay(druid, "Moonbeam", 2, 6, 5);
+  let before = hpOf();
+  await turnStarts([1, 1, 1, 1, 1, 1]);
+  assert.equal(world.sheet(ranger.id).currentHp, before.ranger - 2, "the staging: the ranger takes the beam");
+  assert.equal(wolf().hp, before.wolf - 2, `the wolf beside them takes it too: ${JSON.stringify(hpOf())}`);
+  assert.ok(kit.lastRolls(12).some((roll) => /^Wolf: CON save vs Moonbeam/.test(roll.detail ?? "")), "the wolf makes its own save");
+
+  // Spike Growth: the wolf walks the ranger's squares and takes the same 2d4 per 5 feet.
+  await lay(druid, "Spike Growth", 2, 8, 5);
+  kit.place(ranger.id, 3, 5);
+  before = hpOf();
+  await forced(new Array(24).fill(1), () => zonesAfterMove(world.campaign(), world.encounter().id, { kind: "pc", refId: ranger.id }, { x: 3, y: 5 }, [{ x: 4, y: 5 }, { x: 5, y: 5 }]));
+  const ran = before.ranger - world.sheet(ranger.id).currentHp;
+  assert.ok(ran > 0, "the staging: the ranger walks into the spikes");
+  assert.equal(before.wolf - wolf().hp, ran, `the wolf takes what the ranger took: ${JSON.stringify(hpOf())}`);
+
+  // Web: entering, the ranger saves and the dodging wolf fails (two dice);
+  // the wizard's concentration ending frees it.
+  await lay(wizard, "Web", 2, 8, 5);
+  kit.place(ranger.id, 3, 5);
+  await forced([20, 1, 1], () => zonesAfterMove(world.campaign(), world.encounter().id, { kind: "pc", refId: ranger.id }, { x: 3, y: 5 }, [4, 5, 6, 7, 8].map((x) => ({ x, y: 5 }))));
+  assert.ok(kit.lastRolls(8).some((roll) => roll.characterId === ranger.id && roll.kind === "saving_throw"), "the staging: the ranger walks into the webs and saves");
+  assert.ok(!world.sheet(ranger.id).conditions.includes("restrained"), "the staging: the ranger saved");
+  assert.ok(wolf().conditions.includes("restrained"), `the wolf is caught: ${JSON.stringify(wolf().conditions)}`);
+  assert.equal(wolf().conditionMeta.restrained.spell, "Web");
+  clearSpellConditionsByName(world.campaign(), "Web", undefined, wizard.id);
+  assert.ok(!wolf().conditions.includes("restrained"), "the web's end frees the wolf");
+
+  // Stinking Cloud: starting the turn in it, the wolf fails and loses its
+  // action: no attack this turn.
+  await lay(wizard, "Stinking Cloud", 3, 6, 5);
+  kit.place(ranger.id, 6, 5);
+  await turnStarts([20, 1]);
+  assert.ok(wolf().conditions.includes("retching"), `the wolf retches: ${JSON.stringify(wolf().conditions)}`);
+  const [goblin] = world.enemies();
+  kit.giveTurn(ranger.id);
+  const bite = await world.invoke("pet_attack", { characterId: ranger.id, targetEnemyId: goblin.id });
+  assert.equal(bite.ok, false);
+  assert.match(String(bite.error), /retching/);
+  await kit.endFight();
+});
+
 world.close();
 finish();

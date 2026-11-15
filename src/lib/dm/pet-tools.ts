@@ -29,6 +29,7 @@ import { attackContext, incapacitatedBy, type ConditionMetaMap } from "@/lib/dm/
 import { charmedBy } from "@/lib/dm/enemy-profile";
 import { rollPetSave } from "@/lib/dm/pet-save-roll";
 import { settleOnDamage } from "@/lib/dm/spell-effects";
+import { spellTurnHold } from "@/lib/srd/condition-effect-queries";
 import { damageAdjust } from "@/lib/dm/damage-logic";
 import { findTableMonster } from "@/lib/bestiary/homebrew-monsters";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
@@ -292,6 +293,11 @@ export function handlePetAttack(
   const stopped = incapacitatedBy(pet.conditions ?? []);
   if (stopped) {
     return { error: `${pet.name} is ${stopped} and cannot attack. Nothing was spent.`, refused: "rules" };
+  }
+  // A turn's action lost (Stinking Cloud's retching, pet-zones.ts).
+  const lost = spellTurnHold(pet.conditions ?? [], "attack");
+  if (lost) {
+    return { error: `${pet.name} is ${lost} and takes no action this turn. Nothing was spent.`, refused: "rules" };
   }
   if (!pet.attacks.length) {
     return {
