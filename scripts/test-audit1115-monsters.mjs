@@ -565,12 +565,13 @@ await test("E13 a giant spider's Web is read: restrained, a DC 12 STR check to b
 });
 
 // A giant spider's Web on Kara, from the rulebook's own block.
-async function webbed() {
+async function webbed(before = () => {}) {
   await kit.endFight();
   await kit.fight(1, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
   const [spider] = world.enemies();
   const stats = srd("Giant Spider");
   kit.setEnemy(spider.id, { ac: stats.ac, maxHp: stats.maxHp, stats });
+  before();
   kit.place(kara.id, 5, 5);
   kit.place(bram.id, 6, 6);
   kit.place(spider.id, 9, 5);
@@ -980,6 +981,49 @@ await test("E19 Kara's panther companion, running with her 20 feet at the goblin
   world.patch(kara.id, { pets: [] });
   assert.equal(again.ok, false, "one bite");
   assert.equal(kit.enemy(goblin.id).currentHp, 40 - 4 - 6);
+});
+
+// E21: Freedom of Movement and a creature's webbing.
+await test("E21 Kara under Freedom of Movement is still webbed by a giant spider (nonmagical), and slips the webbing for 5 feet of movement, no action and no check", async () => {
+  await webbed(() => world.patch(kara.id, { conditions: ["freedom of movement"], conditionMeta: { "freedom of movement": { rounds: 600, spell: "Freedom of Movement" } } }));
+  kit.giveTurn(kara.id);
+  // A natural 1 on any check would keep her held: the slip asks none.
+  world.dice(1);
+  const out = await world.invoke("take_action", { characterId: kara.id, action: "escape" });
+  world.clearDice();
+  const after = world.sheet(kara.id);
+  world.patch(kara.id, { conditions: [], conditionMeta: {} });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.feature, "Freedom of Movement", JSON.stringify(out.result));
+  assert.ok(!after.conditions.includes("restrained"), "the webbing no longer holds her");
+  assert.equal(world.encounter().turnBudget?.actionUsed ?? false, false, "no action spent");
+});
+
+await test("E21 a goblin under Freedom of Movement held by a giant spider's webbing slips it for 5 feet of its movement, keeping its action", async () => {
+  const spider = await webbed();
+  world.patch(kara.id, { conditions: [], conditionMeta: {} });
+  const [goblin] = await (async () => {
+    await kit.endFight();
+    await kit.fight(2, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+    return world.enemies();
+  })();
+  const { readAttackText } = await import("../src/lib/bestiary/attack-text.ts");
+  const hold = readAttackText(WEB).onHit?.hold;
+  assert.ok(hold, "the web's hold is read (E13)");
+  kit.place(goblin.id, 3, 2);
+  kit.setEnemy(goblin.id, {
+    conditions: ["freedom of movement", "restrained"],
+    conditionMeta: { "freedom of movement": { rounds: 600, spell: "Freedom of Movement" }, restrained: { source: spider.id, hold } },
+  });
+  kit.enemyTurn(goblin.id);
+  world.dice(1);
+  const out = await world.invoke("take_action", { action: "escape", enemyId: goblin.id });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.feature, "Freedom of Movement", JSON.stringify(out.result));
+  assert.ok(!kit.enemy(goblin.id).conditions.includes("restrained"));
+  const dodge = await world.invoke("take_action", { action: "dodge", enemyId: goblin.id });
+  assert.equal(dodge.ok, true, `its action is still its own: ${dodge.error}`);
 });
 
 finish();
