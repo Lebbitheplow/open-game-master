@@ -23,6 +23,7 @@ import { recordUsage } from "@/lib/usage/ledger";
 import { recordModelCall, type ModelCallOutcome } from "@/lib/usage/model-calls";
 import { fitRequest, requestTokens, toolDefinitionTokens, type FitMessage } from "@/lib/dm/request-fit";
 import { calibrationFor, noteReportedInput } from "@/lib/dm/token-calibration";
+import { slotForOtherCall } from "@/lib/dm/prompt-snapshot";
 import { asInteractive, waitForInteractive } from "@/lib/dm/inference-gate";
 import { currentModelTask } from "@/lib/usage/task-scope";
 import { afterFailure, afterSuccess, breakerOpen, CLOSED, type BreakerState } from "@/lib/dm/utility-breaker-logic";
@@ -352,10 +353,20 @@ async function attempt(
   if (route.provider === "custom") {
     await probeCustomContextWindow(route.baseUrl, route.apiKey, route.model);
   }
+  // A narrator that keeps prompt snapshots gives its tables' turns a slot of
+  // their own (src/lib/dm/prompt-snapshot.ts). A call that names none goes
+  // to the slot holding its first message (a turn's rescue, the guard's
+  // rewrite), or to the helper slot: the claims reader landing on the turn's
+  // slot threw the turn's prompt away.
+  const slot =
+    route.provider !== "custom" || options.slot !== undefined
+      ? options.slot
+      : slotForOtherCall({ baseUrl: route.baseUrl, model: route.model, apiKey: route.apiKey }, messages[0]?.content, options.tools);
   const call = () =>
     send(route, sent, {
       ...transport,
       ...leastThought,
+      ...(slot !== undefined ? { slot } : {}),
       onDelta,
       ...(sizing && !sizing.windowAssumed ? { maxOutputTokens: sizing.outputTokens } : {}),
     });

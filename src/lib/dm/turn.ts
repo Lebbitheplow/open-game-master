@@ -157,7 +157,17 @@ import { characterAwaitingPlayer, characterHeld, prepareWordFor } from "@/lib/dm
 import { hitIdOf, openHits } from "@/lib/dm/last-hit";
 import { aiPlaysSheet } from "@/lib/dm/companion-command";
 import { enemiesDue, enemiesOwedTurn, personRunsTable } from "@/lib/dm/enemies-due";
-import { narratorKeepsPromptStart, noteTurnHead, scheduleNextTurnCheck, settleTurnWarmup, turnHeadKey, warmNextTurn } from "@/lib/dm/turn-warmup";
+import {
+  narratorKeepsPromptStart,
+  noteTurnHead,
+  noteTurnReuse,
+  readyTurnHead,
+  rulesAcrossFight,
+  scheduleNextTurnCheck,
+  settleTurnWarmup,
+  turnHeadKey,
+  warmNextTurn,
+} from "@/lib/dm/turn-warmup";
 import { directContextFor } from "@/lib/dm/direct-context";
 import { castCarded, castDeclared, castRolled, castToolHint, namedCreature, slotlessCastCall, storedCastHint, unpaidCastPrompt, type CastCreature } from "@/lib/dm/slotless-cast-logic";
 import { storerHolding } from "@/lib/srd/spell-storing";
@@ -1544,9 +1554,18 @@ export function dmTurnTools(
   return [
     requestRollTool,
     requestPlayerInputTool,
-    // partOf and bearing ride once there is a place to be part of or to set
-    // out from (issue 548).
-    getCurrentLocation(campaign.id) ? movePartyTool : firstMovePartyTool,
+    // One move_party from the first scene on. The list rides in the prompt's
+    // first message, and a narrator that keeps the prompt's start reads the
+    // whole prompt again when it changes: the shorter tool of a table with no
+    // place yet (issue 548) became this one after the campaign's first
+    // move_party, and the opening turn read 33K tokens twice, 199 seconds on
+    // a BC-250 (2026-11-14). The handler reads no split into a first move;
+    // the compact set still offers the shorter tool (compactTurnTools). So
+    // does a fight's trimmed set, which is the one with no room to spare on
+    // a 48K window (scripts/test-prompt-window.mjs): a party that moves on in
+    // the middle of a round files the place once the fight is over, and the
+    // list changes with a fight's start and end anyway.
+    leanTools && inEncounter ? firstMovePartyTool : movePartyTool,
     updateLocationTool,
     recordEventTool,
     ...(isStageEnabled(campaign.gameSettings.stages, "recall") ? [recallStoryTool] : []),
@@ -1693,7 +1712,14 @@ export function compactTurnTools(
   signals: ProfileSignals,
   opened: Iterable<ToolGroupId>,
 ): { tools: unknown[]; offered: Set<string>; closed: ToolGroupId[] } {
-  const full = dmTurnTools(campaign, inEncounter, imageEnabled, false) as ToolDefLike[];
+  // Before the table has any place, move_party goes without partOf, a bearing
+  // or a split (firstMovePartyTool): the first scene of a 16K table has no
+  // room to spare for them, and a compact call's tools follow the moment
+  // anyway, so nothing is read again for the change.
+  const placed = Boolean(getCurrentLocation(campaign.id));
+  const full = (dmTurnTools(campaign, inEncounter, imageEnabled, false) as ToolDefLike[]).map((tool) =>
+    !placed && tool.function.name === "move_party" ? (firstMovePartyTool as unknown as ToolDefLike) : tool,
+  );
   const names = full.map((tool) => tool.function.name);
   const offered = compactToolNames(names, signals, opened);
   const closed = closedGroups(names, offered);
@@ -1959,6 +1985,11 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
   // began, and the ones more_tools opened since (kept on the trace, so a
   // resumed turn keeps them). Two openings a run cost no call of the budget.
   const compact = tuning.toolProfile === "compact";
+  // The compact set and the short rules follow the players' words, and an
+  // agent program is handed one catalogue for the whole turn: only the full
+  // and the trimmed sets ride in a first message the rules can follow
+  // (rulesAcrossFight).
+  const rulesFollowTools = !compact && !tuning.briefRules && campaign.settings.textProvider !== "harness";
   let freeOpens = 2;
   // Chapters close on story progress, not message volume: the DM reports a
   // finished beat with complete_beat and that ends the chapter. One per
@@ -2043,13 +2074,20 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     // A stopped turn makes no further call: it unwinds into its halted
     // notice (advance) with whatever it already applied kept.
     assertJobLive();
-    // Rebuilt each iteration (see dmTurnTools), save the one case
-    // keepsToolsThroughFightStart covers.
+    // The list the turn's calls were sent holds for the turn. It rides in
+    // the prompt's first message, and a narrator that keeps the prompt's
+    // start reads the whole prompt again when it changes (33K to 42K tokens,
+    // 80 to 125 seconds each on a BC-250, 2026-11-14): so only a fight
+    // starting or ending in the turn builds it anew, and a fight's start
+    // not even then when keepsToolsThroughFightStart covers it.
     const encounterNow = getActiveEncounter(campaignId);
     const inEncounter = Boolean(encounterNow);
+    const sentBefore = sentTools;
     const keptTools: unknown[] | null =
-      !compact && sentTools?.noFight && encounterNow && keepsToolsThroughFightStart(encounterNow, sheets)
-        ? sentTools.tools
+      !compact &&
+      sentBefore &&
+      (sentBefore.noFight === !inEncounter || (sentBefore.noFight && encounterNow && keepsToolsThroughFightStart(encounterNow, sheets)))
+        ? sentBefore.tools
         : null;
     const fitted: { tools: unknown[]; fits: boolean } = keptTools
       ? { tools: keptTools, fits: true }
@@ -2065,7 +2103,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     const finalCall = turn.callIndex === MAX_MODEL_CALLS - 1 || toolsClosed;
     const tools = toolsClosed ? [] : fitted.tools;
     if (!toolsClosed) {
-      sentTools = { tools, noFight: keptTools ? true : !inEncounter };
+      sentTools = { tools, noFight: keptTools && sentBefore ? sentBefore.noFight : !inEncounter };
       toolsSentByTurn.set(turn.id, tools);
     }
     const resolvesCard = direct.length > 0 && turn.callIndex === 0;
@@ -2086,9 +2124,40 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     // (src/lib/dm/turn-warmup.ts): the same one is waited for, another is
     // stopped. Either way it is the one the narrator holds after this call.
     const firstMessage = turn.conversation[0];
+    // The rules cross a fight's start and end with the tools. The list for
+    // the other side under the rules the turn began with was a first message
+    // of its own: the narrator read the whole prompt for it, and again when
+    // the turn ended, for the next turn's (a fight's start cost 89 and 101
+    // seconds on a BC-250, its end 123 and 79, 2026-11-14). Sent together
+    // they are the next turn's first message, read once, and the fight's
+    // first call has the fight's rules to play its enemies by. A resumed
+    // turn's first call checks too: the fight may have begun before it
+    // parked.
+    if (
+      rulesFollowTools &&
+      !toolsClosed &&
+      sentTools &&
+      (sentBefore ? sentBefore.noFight !== sentTools.noFight : turn.callIndex > 0) &&
+      firstMessage?.role === "system" &&
+      typeof firstMessage.content === "string"
+    ) {
+      const rules = rulesAcrossFight(campaignId, firstMessage.content, !sentTools.noFight);
+      if (rules) {
+        firstMessage.content = rules;
+      }
+    }
+    // A narrator that keeps prompt snapshots has the first message put back
+    // from one when its slot holds another (src/lib/dm/prompt-snapshot.ts):
+    // a fight's rules after the first fight, the table's own after another
+    // table's turn or a restart. The compact set's first message follows the
+    // players' words, so it is never the same twice and is left alone.
+    let slot: number | undefined;
     if (!resolvesCard && firstMessage?.role === "system" && typeof firstMessage.content === "string") {
       const head = turnHeadKey(campaign.settings, firstMessage.content, tools);
       await settleTurnWarmup(campaignId, head);
+      if (rulesFollowTools && !toolsClosed) {
+        slot = await readyTurnHead(campaign.settings, campaignId, head, turn.callIndex === 0);
+      }
       noteTurnHead(campaignId, head);
     }
     // The card's own tool call stands in for the first reply: the engine
@@ -2104,6 +2173,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       // Fitted again to the window before it goes: the prompt has grown by
       // every call and result so far (src/lib/dm/turn-fit.ts).
       ...turnCallOptions(campaign, turn, "turn"),
+      ...(slot !== undefined ? { slot } : {}),
       // Force pure narration on the last permitted call so a tool-happy
       // model cannot loop forever.
       toolChoice: finalCall ? "none" : "auto",
@@ -2124,6 +2194,9 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     });
 
     const { message, error, finishReason } = reply;
+    if (slot !== undefined && !error) {
+      noteTurnReuse(campaign.settings, campaignId, reply.usage?.cachedInputTokens);
+    }
     // A call the server answered with its tools taken off is kept on the
     // turn's trace and shown on the admin text-model panel (tool-call-health.ts).
     if (!resolvesCard && tools.length && !error) {
@@ -3982,7 +4055,11 @@ export function handleLocationCall(
     publishPersisted(campaign.id, "campaign_updated", { scene: location.name });
     // Some of the party went and the rest stayed (issue 563): a moment a
     // companion may slip away.
-    split = partySplit(campaign, args.characterIds, location.name);
+    // A party that has not set out yet has not split: the first move_party
+    // of a table names nobody left behind, whatever it lists. (Until
+    // 2026-11-14 a table with no place was offered the tool without the
+    // field; it is one tool now, see dmTurnTools.)
+    split = previous ? partySplit(campaign, args.characterIds, location.name) : "";
   } else {
     previousLayout = getCurrentLocation(campaign.id)?.layoutDescription ?? "";
     location = updateCurrentLocationDetails(campaign.id, { layoutDescription, connections });
