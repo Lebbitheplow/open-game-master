@@ -83,6 +83,7 @@ import { mountTargetProblem, strikeMount } from "@/lib/dm/mount-combat";
 import { riderTakesIt } from "@/lib/dm/ar-wbf-feat-doors";
 import { enemySpellAttack } from "@/lib/dm/enemy-casting";
 import { gripsHeldBy, swallowCover, swallowMark, swallowRefusal } from "@/lib/dm/swallow";
+import { reactionCouldTurn } from "@/lib/dm/retort-wait";
 import { swallowActionOf } from "@/lib/dm/swallow-logic";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import { sheetSize } from "@/lib/srd";
@@ -921,7 +922,10 @@ export function handleEnemyAttack(
     // Thought Shield: the psychic damage a warlock took goes back to the
     // creature, kept with the swing so a reaction that turns it into a miss
     // takes it back (spell-retort.ts measureRetort).
-    const psychicBack = measureRetort(enemy.id, () => thoughtShieldBack(campaign, turn, struck, enemy.id, { amount: Math.min(dealt, 200), type: blow.type, parts: blow.parts ? scaledParts(blow.parts, dealt) : undefined, flags }, sheets, sheetsById), (back) => (back.thoughtShield ? ["Thought Shield"] : []));
+    // A reaction that could still turn this swing into a miss holds an answer
+    // that would slay the creature until the hit is settled (retort-wait.ts).
+    const waits = reactionCouldTurn(campaign.id, struck, { total: hitOutcome.total, natural20: natCrit, vsAc: targetAc(), melee: !ranged });
+    const psychicBack = measureRetort(enemy.id, () => thoughtShieldBack(campaign, turn, struck, enemy.id, { amount: Math.min(dealt, 200), type: blow.type, parts: blow.parts ? scaledParts(blow.parts, dealt) : undefined, flags }, sheets, sheetsById, waits), (back) => (back.thoughtShield && !back.waiting ? ["Thought Shield"] : []));
     Object.assign(applied, psychicBack.result);
     totalDamage += dealt;
     takenTotal += dealt > 0 ? meetDefenses(blowDefenses(campaign.id, struck, flags), Math.min(dealt, 200), blow.type, blow.parts ? scaledParts(blow.parts, dealt) : undefined, 0).amount : 0;
@@ -1008,9 +1012,11 @@ export function handleEnemyAttack(
     // Fire Shield, Armor of Agathys and Holy Aura answer the blow
     // (spell-retort.ts), kept with the swing with Thought Shield's: a hit a
     // reaction turns into a miss never set them off (reaction-refund.ts).
-    const answered = measureRetort(standing.id, () => spellRetort(campaign, turn, standing, target.id, !ranged, spatial.distance === null || spatial.distance <= 1, sheets, sheetsById, struck.tempHp ?? 0), (out) => out.by, (out) => out.shares);
-    const retort = answered.result.line;
+    const answered = measureRetort(standing.id, () => spellRetort(campaign, turn, standing, target.id, !ranged, spatial.distance === null || spatial.distance <= 1, sheets, sheetsById, struck.tempHp ?? 0, waits), (out) => out.by, (out) => out.shares);
+    // Thought Shield's line with the spells': the GM never heard it here.
+    const retort = [psychicBack.result.thoughtShield, answered.result.line].filter(Boolean).join(" ") || null;
     hitLog.retort(joinRetorts(psychicBack.retort, answered.retort));
+    hitLog.waiting([...(psychicBack.result.waiting ? [psychicBack.result.waiting] : []), ...answered.result.waiting]);
     if (typeof onHit?.targetHp === "string") {
       targetHp = onHit.targetHp;
     }

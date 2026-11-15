@@ -115,6 +115,11 @@ export function lessenedRetort(retort: Retort, by: string, given: number): Retor
   return { ...retort, by: left, hp, share };
 }
 
+// An answer that would slay the creature that struck, held on the swing
+// until the hit is settled (retort-wait.ts): who answered, the creature, the
+// damage it deals and whether it is a spell's.
+export type WaitingAnswer = { by: string; enemyId: string; holderId: string; amount: number; type: string; spell: boolean };
+
 export type RetortBack = {
   currentHp: number;
   conditions: string[];

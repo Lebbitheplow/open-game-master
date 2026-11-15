@@ -18,8 +18,8 @@ import { getActiveEncounter, getEnemy } from "@/lib/db/encounters";
 import { applyEnemyDamage, resolveEnemyRef } from "@/lib/dm/enemy-damage";
 import { meetEnemyPart } from "@/lib/dm/enemy-defenses";
 import { blowDefenses, meetDefenses, type BlowFlags } from "@/lib/dm/pc-damage";
-import type { Retort } from "@/lib/dm/retort-logic";
-import { giveShareBack } from "@/lib/dm/spell-retort";
+import type { Retort, WaitingAnswer } from "@/lib/dm/retort-logic";
+import { giveShareBack, wouldDrop } from "@/lib/dm/spell-retort";
 import { holdsFeature, isNamed } from "@/lib/srd/feature-names";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -48,7 +48,10 @@ export function thoughtShieldBack(
   blow: Parameters<typeof psychicTaken>[2],
   sheets: CharacterSheet[],
   sheetsById: Map<string, CharacterSheet>,
-): { thoughtShield?: string } {
+  // A reaction could still turn this swing into a miss (retort-wait.ts):
+  // psychic that would slay the creature waits on it.
+  waits = false,
+): { thoughtShield?: string; waiting?: WaitingAnswer } {
   if (!enemyId || blow.amount <= 0 || !holdsFeature(sheet, "thought shield")) {
     return {};
   }
@@ -57,6 +60,12 @@ export function thoughtShieldBack(
   const taken = encounter && enemy && enemy.currentHp > 0 ? psychicTaken(campaign.id, sheet, blow) : 0;
   if (!encounter || !enemy || taken <= 0) {
     return {};
+  }
+  if (waits && wouldDrop(campaign.id, enemy, taken, PSYCHIC, false)) {
+    return {
+      thoughtShield: `${sheet.name}'s ${THOUGHT_SHIELD} would slay ${enemy.displayName} with the same ${taken} psychic damage: it lands once the hit stands, and never if a reaction turns the hit into a miss.`,
+      waiting: { by: THOUGHT_SHIELD, enemyId: enemy.id, holderId: sheet.id, amount: taken, type: PSYCHIC, spell: false },
+    };
   }
   // The same amount, of the same type: the creature's own defenses meet it.
   applyEnemyDamage(campaign, turn, encounter, enemy, taken, sheets, sheetsById, PSYCHIC, { magical: true, holdVictory: true });

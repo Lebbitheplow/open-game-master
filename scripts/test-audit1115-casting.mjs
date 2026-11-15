@@ -769,20 +769,75 @@ await test("S20: a fiend whose hit Cutting Words turns into a miss is not left b
   assert.ok(!world.enemies().find((entry) => entry.id === imp.id).conditions.includes("blinded"), JSON.stringify(words.result));
 });
 
-await test("S20: a creature Fire Shield slew on a blow Shield turns into a miss stays slain, and the GM is told why", async () => {
+// ---- S26: an answer that would slay its attacker waits on the reaction ----
+
+// The lead's ruling on S20's product decision. SRD 5.1 decides Shield
+// ("including against the triggering attack") and Cutting Words ("before the
+// GM determines whether the attack roll succeeds") before the hit does
+// anything, and a creature that never hit takes no flame. The engine lands
+// the answer with the hit and never raises a creature it slew, so a goblin
+// Fire Shield burnt to death stayed dead when Shield then turned the blow
+// into a miss. An answer that would slay now waits while a reaction could
+// still turn the swing, and lands when the hit is settled.
+async function lowGoblin(hp, faces) {
   // Two goblins, so the first one's fall does not end the fight.
-  const { world, sheets: [mage], enemies: [goblin] } = await table([caster("wizard", "int", ["Fire Shield", "Shield"])], 2);
+  const { world, sheets: [mage], enemies: [goblin, other] } = await table([caster("wizard", "int", ["Fire Shield", "Shield"])], 2);
   const cast = await world.invoke("cast_buff", { characterId: mage.id, spell: "Fire Shield", variant: "fire shield (cold)", level: 4 });
   assert.equal(cast.ok, true, cast.error);
   world.patch(mage.id, { ac: 12, acOverride: true });
-  encounterRows.patchEnemyHp(goblin.id, 5, "alive");
-  await swingAt(world, goblin, mage, [10, 3, 4, 4]);
-  assert.equal(world.enemies().find((entry) => entry.id === goblin.id).status, "dead");
+  encounterRows.patchEnemyHp(goblin.id, hp, "alive");
+  const swing = await swingAt(world, goblin, mage, faces);
+  return { world, mage, goblin, other, swing };
+}
+const statusOf = (world, id) => world.enemies().find((entry) => entry.id === id);
+
+await test("S26: Fire Shield's flame that would slay waits while the wizard can still cast Shield, and Shield turning the blow leaves the goblin unburnt", async () => {
+  // 10 + 4 against AC 12 hits; the shield's 2d8 of 4 and 4 would slay a
+  // goblin at 5, and Shield's 17 would turn the 14.
+  const { world, mage, goblin, swing } = await lowGoblin(5, [10, 3, 4, 4]);
+  assert.equal(statusOf(world, goblin.id).status, "alive", JSON.stringify(swing.result));
+  assert.equal(statusOf(world, goblin.id).currentHp, 5);
+  assert.match(JSON.stringify(swing.result), /Fire Shield would slay .* lands once the hit stands/);
   const shield = await world.invoke("use_reaction", { characterId: mage.id, feature: "Shield" });
   assert.equal(shield.ok, true, shield.error);
-  assert.equal(world.sheet(mage.id).currentHp, world.sheet(mage.id).maxHp, "the blow is still turned away");
-  assert.equal(world.enemies().find((entry) => entry.id === goblin.id).status, "dead");
-  assert.match(JSON.stringify(shield.result), /stays dead/);
+  assert.equal(world.sheet(mage.id).currentHp, world.sheet(mage.id).maxHp, "the blow is turned away");
+  assert.deepEqual([statusOf(world, goblin.id).status, statusOf(world, goblin.id).currentHp], ["alive", 5], JSON.stringify(shield.result));
+  assert.match(JSON.stringify(shield.result), /Fire Shield never came/);
+});
+
+await test("S26: with no reaction taken, the waiting flame lands as the next call of a later GM turn begins, and the goblin falls", async () => {
+  const { world, goblin, other } = await lowGoblin(5, [10, 3, 4, 4]);
+  assert.equal(statusOf(world, goblin.id).status, "alive");
+  const next = await world.invoke("apply_damage", { enemyId: other.id, amount: 1, reason: "the next thing done" });
+  assert.equal(next.ok, true, next.error);
+  assert.equal(statusOf(world, goblin.id).status, "dead", JSON.stringify(next.result));
+  assert.match(JSON.stringify(next.result.answersLanded ?? []), /Fire Shield lands now that the hit stands/);
+});
+
+await test("S26: a flame that would slay lands at once when no reaction could turn the hit", async () => {
+  // 19 + 4 = 23 beats Shield's 17.
+  const { world, goblin } = await lowGoblin(5, [19, 3, 4, 4]);
+  assert.equal(statusOf(world, goblin.id).status, "dead");
+});
+
+await test("S26: Armor of Agathys's cold that would slay waits on an ally's Cutting Words, and the words turning the hit leave the goblin alive", async () => {
+  const { world, sheets: [lock, bard], enemies: [goblin] } = await table([
+    caster("warlock", "cha", [], ["Eldritch Blast"], 5, { spellcasting: { known: ["Armor of Agathys"], slots: { 3: { max: 2, used: 0 } } } }),
+    loreBard,
+  ], 2);
+  const armored = await world.invoke("cast_buff", { characterId: lock.id, spell: "Armor of Agathys", level: 3 });
+  assert.equal(armored.ok, true, armored.error);
+  world.patch(lock.id, { ac: 12, acOverride: true });
+  world.patch(bard.id, { resources: { ...world.sheet(bard.id).resources, bardic_inspiration: { max: 3, used: 0 } } });
+  encounterRows.patchEnemyHp(goblin.id, 10, "alive");
+  // 10 + 4 hits; the 15 cold would slay a goblin at 10, and an 8 off the 14 turns it.
+  await swingAt(world, goblin, lock, [10, 3]);
+  assert.equal(statusOf(world, goblin.id).status, "alive");
+  world.dice(8);
+  const words = await world.invoke("use_reaction", { characterId: bard.id, feature: "Cutting Words", targetCharacterId: lock.id });
+  world.clearDice();
+  assert.equal(words.ok, true, words.error);
+  assert.deepEqual([statusOf(world, goblin.id).status, statusOf(world, goblin.id).currentHp], ["alive", 10], JSON.stringify(words.result));
 });
 
 await test("S20: an answer is read off the creature before and after it, and taken back within the body that lost it", async () => {

@@ -54,6 +54,7 @@ import { AGATHYS, agathysAnew, giveShareBack, takeRetortBack } from "@/lib/dm/sp
 import { getDmTurn } from "@/lib/db/dm-turns";
 import { thoughtShieldLessened } from "@/lib/dm/thought-shield";
 import { gripsBack } from "@/lib/dm/swallow";
+import { settleWaiting } from "@/lib/dm/retort-wait";
 import { joinRetorts, ridersBack, type RiderMark } from "@/lib/dm/retort-logic";
 import { answerLabel, carryCuts, hitIdOf, openHits, wardHpOf, writeLastHit, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { applyDmMutation, audit } from "@/lib/dm/mutations";
@@ -389,6 +390,8 @@ export function settleHits(
   const final = state;
   retortsBack(campaign, sheet, steps, notes);
   frostReread(campaign, turnId, sheet, steps, notes, sheets, sheetsById);
+  // What waited on a reaction that could turn a swing lands or never comes.
+  settleWaiting(campaign, turnId, steps, notes, sheets, sheetsById);
 
   // Each hit of the chain is kept as the corrected fight has it: its
   // swings, where it found and left them (a later hit that found them down

@@ -64,6 +64,7 @@ import { targetSwingMarks } from "@/lib/dm/enemy-swing-odds";
 import { enfeebledBlow, measureRetort, spellRetort, spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { joinRetorts, riderMarkOf } from "@/lib/dm/retort-logic";
 import { gripsHeldBy, swallowMark } from "@/lib/dm/swallow";
+import { reactionCouldTurn } from "@/lib/dm/retort-wait";
 import { thoughtShieldBack } from "@/lib/dm/thought-shield";
 import { authoredAfterHit } from "@/lib/dm/authored-hooks";
 import { holdsFeature } from "@/lib/srd/feature-names";
@@ -404,7 +405,10 @@ export function resolveOpportunityAttacks(
       // without them, the frost never bit here, and its line never reached
       // the GM. Each kept with the swing, so a Shield that turns it into a
       // miss takes it back (spell-retort.ts measureRetort).
-      const psychicBack = measureRetort(enemy.id, () => (rolled > 0 ? thoughtShieldBack(campaign, turn, sheet, enemy.id, { amount: rolled, type: blow.type, parts: blow.parts ? scaledParts(blow.parts, rolled) : undefined, flags: magical ? { magical: true } : {} }, hitSheets, hitSheetsById) : {}), (back) => (back.thoughtShield ? ["Thought Shield"] : []));
+      // An answer that would slay it waits on a reaction that could still
+      // turn this swing into a miss (retort-wait.ts).
+      const waits = reactionCouldTurn(campaign.id, sheet, { total: hitOutcome.total, natural20: hitOutcome.crit === "nat20", vsAc: targetAc, melee: true });
+      const psychicBack = measureRetort(enemy.id, () => (rolled > 0 ? thoughtShieldBack(campaign, turn, sheet, enemy.id, { amount: rolled, type: blow.type, parts: blow.parts ? scaledParts(blow.parts, rolled) : undefined, flags: magical ? { magical: true } : {} }, hitSheets, hitSheetsById, waits) : {}), (back) => (back.thoughtShield && !back.waiting ? ["Thought Shield"] : []));
       const unridden = getSheetById(sheet.id);
       const grips = attack.onHit?.swallow ? gripsHeldBy(campaign.id, sheet.id) : null;
       const rider = resolveOnHit(campaign, turn, enemy, attack, sheet.id, { sheets: hitSheets, sheetsById: hitSheetsById });
@@ -412,7 +416,7 @@ export function resolveOpportunityAttacks(
       const ridden = getSheetById(sheet.id);
       const own = Array.isArray(rider?.riderCondition) ? (rider.riderCondition as string[]) : [];
       const laid = unridden && ridden ? (rider?.swallowed ? swallowMark(campaign.id, unridden, ridden, sheet.id, grips, own) : riderMarkOf(unridden, ridden, own)) : null;
-      const answered = measureRetort(enemy.id, () => spellRetort(campaign, turn, enemy, sheet.id, true, reach <= 1, hitSheets, hitSheetsById, sheet.tempHp ?? 0), (out) => out.by, (out) => out.shares);
+      const answered = measureRetort(enemy.id, () => spellRetort(campaign, turn, enemy, sheet.id, true, reach <= 1, hitSheets, hitSheetsById, sheet.tempHp ?? 0, waits), (out) => out.by, (out) => out.shares);
       return { landed: applied, onHit: rider, answered, psychicBack, laid };
     });
     const updated = getSheetById(sheet.id);
@@ -426,6 +430,7 @@ export function resolveOpportunityAttacks(
     hitLog.swing(hitOutcome, targetAc, { hit: true, crit, raw: rolled, advantage, ...(blow.type ? { type: blow.type } : {}), ...(blow.parts ? { parts: scaledParts(blow.parts, rolled) } : {}), ...(plain ? { plain } : {}), ...(normal ? { normal } : {}), flags: wards.flags });
     hitLog.retort(joinRetorts(psychicBack.retort, answered.retort));
     hitLog.laid(laid);
+    hitLog.waiting([...(psychicBack.result.waiting ? [psychicBack.result.waiting] : []), ...answered.result.waiting]);
     hitLog.close({ attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName }, attack: `${attack.name} (opportunity attack)`, type: attack.type, ranged: false });
     // A feature's retaliation for a melee hit (Flames of Phlegethos, a
     // retaliate row), as enemy_attack's attack meets it.

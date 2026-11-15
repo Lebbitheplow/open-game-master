@@ -86,6 +86,7 @@ import { deedRefusal } from "@/lib/dm/deed-guard";
 import { heldRollUserIds } from "@/lib/dice/held-rolls";
 import { listMembers } from "@/lib/db/campaigns";
 import { listSheets } from "@/lib/db/sheets";
+import { landClosedWaits } from "@/lib/dm/retort-wait";
 
 const MUTATIONS = new Set<string>(MUTATION_TOOL_NAMES);
 const ENCOUNTERS = new Set<string>(ENCOUNTER_TOOL_NAMES);
@@ -111,9 +112,14 @@ export async function dispatchAdjudication(
   sentArguments: string,
   context: DispatchContext,
 ): Promise<ToolResult> {
+  // An answer that would slay its attacker waits on the reaction that could
+  // turn the hit (retort-wait.ts): once that moment has passed, anything else
+  // done lands it first, at this one door.
+  const landed = name === "use_reaction" || !context.turn ? [] : landClosedWaits(context.campaign, context.turn, context.sheets, context.sheetsById);
   // A romance rung the call moves, up or down, is told to the table here,
   // at the one door the AI's turn and a person's console share (issue 640).
-  return watchRungs(context.campaign, name, () => dispatchCall(name, sentArguments, context));
+  const result = await watchRungs(context.campaign, name, () => dispatchCall(name, sentArguments, context));
+  return landed.length ? { ...result, answersLanded: landed } : result;
 }
 
 async function dispatchCall(
