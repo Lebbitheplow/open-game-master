@@ -59,6 +59,7 @@ import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { blowByType, resolveOnHit, scaledParts } from "@/lib/dm/enemy-hit";
 import { effectOutcome } from "@/lib/dm/effect-tools";
 import { hasTrait } from "@/lib/dm/monster-abilities";
+import { allyBeside } from "@/lib/dm/side-allies";
 import { enfeebledBlow, spellRetort, spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { activeAuthored } from "@/lib/srd/authored-effects";
@@ -230,6 +231,11 @@ export function resolveOpportunityAttacks(
     });
     const light = lightOnAttack(sight, { attacker: enemy.displayName, target: sheet.name });
     const own = enemyOpportunityRiders(campaign.id, enemy);
+    // Pack Tactics, as on its own turn (enemy-swing-odds.ts): an ally of the
+    // creature, up and able, within 5 feet of the leaver where it left the
+    // reach (SRD 5.1). The reaction's swing never read it, so a wolf beside
+    // its packmate struck a fleeing hero on one die.
+    const pack = hasTrait(enemy.stats, "packTactics") && allyBeside(encounter.id, { kind: "enemy", id: enemy.id }, sheet.id, leftFrom);
     // Escape the Horde (a Hunter ranger's Defensive Tactics): opportunity
     // attacks against them are made at disadvantage.
     const escapes = holdsFeature(sheet, "Escape the Horde");
@@ -246,6 +252,7 @@ export function resolveOpportunityAttacks(
       ...(eagle ? ["disadvantage" as const] : []),
       ...(attackEffect.advantage ? ["advantage" as const] : []),
       ...(attackEffect.disadvantage ? ["disadvantage" as const] : []),
+      ...(pack ? ["advantage" as const] : []),
       ...own.sources,
     ]);
     const targetAc = acWithEffects(campaign.id, sheet, enemy);

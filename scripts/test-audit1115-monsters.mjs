@@ -181,4 +181,31 @@ await test("E03 a magical hold set on a creature keeps Magic Resistance on the s
   assert.ok(!kit.enemy(foe.id).conditions.includes("paralyzed"), "Magic Resistance's advantage carried it past DC 15");
 });
 
+await test("E04 a wolf's opportunity attack has Pack Tactics' advantage with its packmate beside the square the hero left", async () => {
+  await kit.endFight();
+  await kit.fight(2, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+  const [wolf, packmate] = world.enemies();
+  const PACK = ["Pack Tactics: The wolf has advantage on an attack roll against a creature if at least one of the wolf's allies is within 5 feet of the creature and the ally isn't incapacitated."];
+  for (const foe of [wolf, packmate]) {
+    kit.setEnemy(foe.id, { stats: { ...kit.enemy(foe.id).stats, traits: PACK } });
+  }
+  kit.place(kara.id, 5, 5);
+  kit.place(bram.id, 15, 15);
+  kit.place(wolf.id, 6, 5);
+  kit.place(packmate.id, 6, 6);
+  kit.giveTurn(kara.id);
+  const before = new Set(kit.lastRolls(40).map((roll) => roll.id));
+  // Kara's own walk west, as her player makes it.
+  const moveRoute = await world.route("campaigns/[campaignId]/battle-map/move");
+  world.signIn(world.owner);
+  const walked = await moveRoute.POST(new Request("http://odm.test/move", { method: "POST", body: JSON.stringify({ x: 2, y: 5 }) }), { params: Promise.resolve({ campaignId: world.campaignId }) });
+  world.clearDice();
+  assert.equal(walked.status, 200, await walked.text());
+  const swings = kit.lastRolls(40).filter((roll) => !before.has(roll.id) && roll.kind === "attack" && /opportunity attack/.test(roll.detail ?? ""));
+  assert.equal(swings.length, 2, "both wolves strike as she pulls away");
+  for (const swing of swings) {
+    assert.equal(swing.advantage, "advantage", `${swing.detail}: the other wolf stood beside her where she left`);
+  }
+});
+
 finish();
