@@ -165,4 +165,43 @@ await test("R06 a worn, attuned Ring of Regeneration heals 1d6 every 10 minutes 
   assert.equal(table.sheet(wearer.id).currentHp, 60);
 });
 
+await test("R07 a barbarian or monk with Draconic Resilience stands at the better of the two unarmored armor classes", async () => {
+  // SRD 5.1: Draconic Resilience, "when you aren't wearing armor, your AC
+  // equals 13 + your Dexterity modifier"; Unarmored Defense, 10 + DEX + CON
+  // (barbarian) or + WIS (monk). Two ways to figure the AC are not added:
+  // the character uses one, and the better one is the one they choose.
+  const { acBreakdownFor } = await import("../src/lib/srd/index.ts");
+  const base = { proficiencies: { armor: [] }, equipment: [] };
+  const barbarian = acBreakdownFor({
+    ...base,
+    class: "barbarian",
+    level: 2,
+    classes: [{ id: "barbarian", level: 1 }, { id: "sorcerer", level: 1 }],
+    abilities: { str: 14, dex: 14, con: 12, int: 10, wis: 10, cha: 14 },
+    features: [{ name: "Unarmored Defense", classId: "barbarian" }, { name: "Draconic Resilience", classId: "sorcerer" }],
+  });
+  // 10 + 2 + 1 = 13 against 13 + 2 = 15.
+  assert.equal(barbarian.ac, 15, barbarian.parts.join(", "));
+  const monk = acBreakdownFor({
+    ...base,
+    class: "monk",
+    level: 2,
+    classes: [{ id: "monk", level: 1 }, { id: "sorcerer", level: 1 }],
+    abilities: { str: 10, dex: 16, con: 12, int: 10, wis: 12, cha: 14 },
+    features: [{ name: "Unarmored Defense", classId: "monk" }, { name: "Draconic Resilience", classId: "sorcerer" }],
+  });
+  // 10 + 3 + 1 = 14 against 13 + 3 = 16.
+  assert.equal(monk.ac, 16, monk.parts.join(", "));
+  // Where Unarmored Defense is the better, it stands: CON 18 is 10 + 2 + 4.
+  const tough = acBreakdownFor({
+    ...base,
+    class: "barbarian",
+    level: 2,
+    classes: [{ id: "barbarian", level: 1 }, { id: "sorcerer", level: 1 }],
+    abilities: { str: 14, dex: 14, con: 18, int: 10, wis: 10, cha: 14 },
+    features: [{ name: "Unarmored Defense", classId: "barbarian" }, { name: "Draconic Resilience", classId: "sorcerer" }],
+  });
+  assert.equal(tough.ac, 16, tough.parts.join(", "));
+});
+
 finish();
