@@ -1,0 +1,988 @@
+{
+  "date": "2026-11-14",
+  "tool": "built-in image_gen",
+  "records": [
+    {
+      "id": "pistol",
+      "category": "weapon",
+      "label": "Pistol",
+      "subject": "a compact unbranded semi-automatic pistol, dark blued steel slide and textured black grip, side profile, no futuristic attachments",
+      "genre": "shared",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: a compact unbranded semi-automatic pistol, dark blued steel slide and textured black grip, side profile, no futuristic attachments. Full object in a shallow diagonal from lower left to upper right, side view with minimal foreshortening.",
+      "sourceFile": "exec-dcd42ce3-0dbc-40b5-accb-41fede1465da.png",
+      "sourceSha256": "992cc24df913aebca46a588a79f2b96316da988d6191842c84d1146728c2f8a8",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/weapon-pistol.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 8474,
+          "sha256": "0be45b3f175c072d706dd7150b40c494941396511174af793f29f699be7454e7"
+        },
+        "icons": {
+          "file": "/assets/icons/item/pistol.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 4488,
+          "sha256": "33b6b7a8970406e0c5248d350b8acf25954808db186f8737fd47e3d418c1fe51"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository.",
+      "previousInventory": {
+        "src": "/assets/icons/item/pistol.webp",
+        "bytes": 2312
+      }
+    },
+    {
+      "id": "revolver",
+      "category": "weapon",
+      "label": "Revolver",
+      "subject": "a period six-shot revolver, visibly distinct cylinder, blued steel and walnut grip, side profile, restrained sepia highlights",
+      "genre": "mystery",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: a period six-shot revolver, visibly distinct cylinder, blued steel and walnut grip, side profile, restrained sepia highlights. Full object in a shallow diagonal from lower left to upper right, side view with minimal foreshortening.",
+      "sourceFile": "exec-e17ef9fc-0339-4bd6-8cf0-14e8f9351948.png",
+      "sourceSha256": "903051700e7515edd43bdc7413aafee8ee7a29526a0e417157ca71b0ce984532",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/weapon-revolver.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 9448,
+          "sha256": "df2253d3cba17d6ad8d5b28ceaee0a959b3affb81a66e931f169f403d24d495f"
+        },
+        "icons": {
+          "file": "/assets/icons/item/revolver.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 4004,
+          "sha256": "fe431ce97ff1bbd58a88271d36a0a0877ee74ef6394cba991190aaf2f30ffa9d"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository.",
+      "previousInventory": {
+        "src": "/assets/icons/item/revolver.webp",
+        "bytes": 2616
+      }
+    },
+    {
+      "id": "sawed-off-scattergun",
+      "category": "weapon",
+      "label": "Sawed-off Scattergun",
+      "subject": "a compact sawed-off double-barrel shotgun, visibly short twin barrels, short walnut shoulder stock and worn blued steel, full side profile",
+      "genre": "horror",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: a compact sawed-off double-barrel shotgun, visibly short twin barrels, short walnut shoulder stock and worn blued steel, full side profile. Full object in a shallow diagonal from lower left to upper right, side view with minimal foreshortening.",
+      "sourceFile": "exec-3028d90d-dd3f-4c4c-8ccf-4da68ede8566.png",
+      "sourceSha256": "9bf53afcb38b3dcb472b46a3238ac48da7607d48818f6e2be7fcfd49bf32ef5c",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/weapon-sawed-off-scattergun.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 10394,
+          "sha256": "88f0c06297c2d4c7cb7a6aef1baa70e36beb1ff1eabed48249cbf16df63c505e"
+        },
+        "icons": {
+          "file": "/assets/icons/item/sawed-off-scattergun.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 4128,
+          "sha256": "76beed87c7b569ac0f53cbb9081d095228ddca54fee85151381e81510c02c361"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository.",
+      "previousInventory": {
+        "src": "/assets/icons/item/sawed-off-scattergun.webp",
+        "bytes": 2218
+      }
+    },
+    {
+      "id": "hunting-rifle",
+      "category": "weapon",
+      "label": "Hunting Rifle",
+      "subject": "a long bolt-action hunting rifle, full walnut shoulder stock, long steel barrel and small conventional scope, complete side profile",
+      "genre": "shared",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: a long bolt-action hunting rifle, full walnut shoulder stock, long steel barrel and small conventional scope, complete side profile. Full object in a shallow diagonal from lower left to upper right, side view with minimal foreshortening.",
+      "sourceFile": "exec-908da1f1-9345-40de-952f-89180939db5f.png",
+      "sourceSha256": "3d6aee84f806f95859d144da9b409b14fa99dbbec10e5c342b5b6953516fc6fe",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/weapon-hunting-rifle.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 7632,
+          "sha256": "aa9cebf68956736037a80372a8406b9bab7c9edb8ddb9fbfed2b77eb2da4abe2"
+        },
+        "icons": {
+          "file": "/assets/icons/item/hunting-rifle.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 3292,
+          "sha256": "ab3da9f04d443d4ea39548b6f8a41970a3fa9e4f9986cb4c8afc164bde8b4114"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository.",
+      "previousInventory": {
+        "src": "/assets/icons/item/hunting-rifle.webp",
+        "bytes": 1968
+      }
+    },
+    {
+      "id": "musket",
+      "category": "weapon",
+      "label": "Musket",
+      "subject": "a long antique flintlock musket, slender full wooden stock, very long iron barrel, visible external flintlock, restrained brass fittings, full side profile",
+      "genre": "steampunk",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: a long antique flintlock musket, slender full wooden stock, very long iron barrel, visible external flintlock, restrained brass fittings, full side profile. Full object in a shallow diagonal from lower left to upper right, side view with minimal foreshortening.",
+      "sourceFile": "exec-0aacf1ef-43a9-4431-b642-ce9800db82fd.png",
+      "sourceSha256": "44237dbc02f03371a60f8f0150447d0562af3ef52bed58067ad7f00c0ab4c8c0",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/weapon-musket.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 7190,
+          "sha256": "0f5f4163020319b5e696ea7142de8281d921f6960bf76445781d57c039063250"
+        },
+        "icons": {
+          "file": "/assets/icons/item/musket.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 3104,
+          "sha256": "2199ffc381585bebcca916196fbb35cac02bfcb6af5ca3e1996f623e4e038fb8"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository.",
+      "previousInventory": {
+        "src": "/assets/icons/item/musket.webp",
+        "bytes": 1898
+      }
+    },
+    {
+      "id": "hand-cannon",
+      "category": "weapon",
+      "label": "Hand Cannon",
+      "subject": "a single-handed antique hand cannon, thick short wide-bore barrel, chunky wooden pistol grip, iron and aged brass, original steampunk design, side profile",
+      "genre": "steampunk",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: a single-handed antique hand cannon, thick short wide-bore barrel, chunky wooden pistol grip, iron and aged brass, original steampunk design, side profile. Full object in a shallow diagonal from lower left to upper right, side view with minimal foreshortening.",
+      "sourceFile": "exec-908c0f35-484b-4d7f-b192-168a1da54e0c.png",
+      "sourceSha256": "dd1d8cc76efe966b6002fce018cbfc207acadccb4e0524a28f87505a7b7ecb7e",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/weapon-hand-cannon.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 12716,
+          "sha256": "500a64b5d3fe10183c2e1988c03f711c22b40af4e313cfe764991db38694409c"
+        },
+        "icons": {
+          "file": "/assets/icons/item/hand-cannon.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 5482,
+          "sha256": "8bff175e35ea10919ffbf2a4ebc2ca8b97fc9459bb139d9b115dfa646f2cbb44"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository.",
+      "previousInventory": {
+        "src": "/assets/icons/item/hand-cannon.webp",
+        "bytes": 1762
+      }
+    },
+    {
+      "id": "monoblade",
+      "category": "weapon",
+      "label": "Monoblade",
+      "subject": "a sleek futuristic single-edged steel sword with fine cyan cutting edge and compact black grip",
+      "genre": "cyberpunk",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment card illustration. Create ONE monoblade: a sleek futuristic single-edged steel sword with an extremely fine cyan-lit cutting edge, a compact black textured single-hand grip, minimal practical guard, brushed gunmetal spine. Original unbranded cyberpunk design, no recognizable franchise styling. Premium hand-painted illustration with crisp believable metal and leather materials, controlled painterly highlights. Wide 2:1 composition, weapon running lower left to upper right at a shallow diagonal, full object visible with 8 percent clear margin. Strong silhouette readable at 112x56 pixels. Isolated object on genuine transparent alpha background. No person, hands, text, labels, frame, border, scenery, floating decorative streaks, or additional objects. Restrained cyan on the blade only.",
+      "sourceFile": "exec-253cf636-61f3-4a5c-8763-68926de81a95.png",
+      "sourceSha256": "345ab5f6dc3efeb7b7735a69fa08ba35bfb6fdf1d2b8af5d221de3161ffa8a34",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/weapon-monoblade.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 6478,
+          "sha256": "aa6b24882c96ffd2e46721733afb4e394da88abc5c86adbd0abb92cbcfc5897e"
+        },
+        "icons": {
+          "file": "/assets/icons/item/monoblade.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 2828,
+          "sha256": "7b94eeb3894f8913b1b6e3dcd11a3c63f4e82577a03c7897afffc550efe8015e"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository.",
+      "previousInventory": {
+        "src": "/assets/icons/item/monoblade.webp",
+        "bytes": 2660
+      }
+    },
+    {
+      "id": "chainblade",
+      "category": "weapon",
+      "label": "Chainblade",
+      "subject": "an original industrial two-handed chainblade, long straight toothed cutting bar, exposed continuous cutting chain, compact motor housing and two clearly separated hand grips, steel and worn ochre, no franchise symbols",
+      "genre": "post_apocalyptic",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: an original industrial two-handed chainblade, long straight toothed cutting bar, exposed continuous cutting chain, compact motor housing and two clearly separated hand grips, steel and worn ochre, no franchise symbols. Full object in a shallow diagonal from lower left to upper right, side view with minimal foreshortening.",
+      "sourceFile": "exec-af5e0e28-88cc-474c-b0a2-c05341a607c1.png",
+      "sourceSha256": "130bab0733856fa89cfa787020d051e85803e62eebcd28a750d87536a7a52a94",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/weapon-chainblade.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 12250,
+          "sha256": "faa46d3fb18d693f3f04d6226f85eb163be110d0bc09a3219c9a7bcf80c11249"
+        },
+        "icons": {
+          "file": "/assets/icons/item/chainblade.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 4910,
+          "sha256": "ddc539e7bd16b24b103e82307083844c3e07656755940aab9b9b6b00e24a364e"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository.",
+      "previousInventory": {
+        "src": "/assets/icons/item/chainblade.webp",
+        "bytes": 1870
+      }
+    },
+    {
+      "id": "shock-baton",
+      "category": "weapon",
+      "label": "Shock Baton",
+      "subject": "a compact single-handed electric baton with insulated black grip, sturdy metal shaft and two visible tip electrodes carrying one small blue arc",
+      "genre": "shared",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: a compact single-handed electric baton with insulated black grip, sturdy metal shaft and two visible tip electrodes carrying one small blue arc. Full object in a shallow diagonal from lower left to upper right, side view with minimal foreshortening.",
+      "sourceFile": "exec-197812ca-32ac-46e4-9c1c-eb44c887e48f.png",
+      "sourceSha256": "6215b7bce6222797f5ec23e3d8c0e9b2d2e05ae045eabfa1191454e9ba3e737f",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/weapon-shock-baton.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 8376,
+          "sha256": "50e73bd597b2dd1928f82cea1a71dc3c8f31dc8f45079466fd1d2a9649295f2d"
+        },
+        "icons": {
+          "file": "/assets/icons/item/shock-baton.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 3678,
+          "sha256": "22f7c7d2467a5ef032862f1f0700860503396679ab58724a85b297754ad58d5b"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository.",
+      "previousInventory": {
+        "src": "/assets/icons/item/shock-baton.webp",
+        "bytes": 1832
+      }
+    },
+    {
+      "id": "vibroknife",
+      "category": "weapon",
+      "label": "Vibroknife",
+      "subject": "a compact futuristic knife, short broad steel blade only one and a half times grip length, ribbed black grip and small cyan power indicator, physically solid blade not a light sword",
+      "genre": "cyberpunk",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: a compact futuristic knife, short broad steel blade only one and a half times grip length, ribbed black grip and small cyan power indicator, physically solid blade not a light sword. Full object in a shallow diagonal from lower left to upper right, side view with minimal foreshortening.",
+      "sourceFile": "exec-f1a2dceb-a4a2-4fe2-8015-c50b733128a1.png",
+      "sourceSha256": "1bac78ae6f6ac3b129ab82065e09a1fbab8f01ad23f0db4edeed7bdeff12059c",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/weapon-vibroknife.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 8852,
+          "sha256": "00c0ede31b9450991112629c931620054bb149ed2b65cc7b5dfb66bb8cf25f99"
+        },
+        "icons": {
+          "file": "/assets/icons/item/vibroknife.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 3516,
+          "sha256": "4c6978d74a4e6db19e69b402fca2ea8881fd5a25f21c4a98c717b2871af864b4"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository.",
+      "previousInventory": {
+        "src": "/assets/icons/item/vibroknife.webp",
+        "bytes": 2490
+      }
+    },
+    {
+      "id": "ripper-gauntlet",
+      "category": "weapon",
+      "label": "Ripper Gauntlet",
+      "subject": "one empty armored mechanical glove, four short parallel retractable steel claws attached above the knuckles, dark steel plates and black leather palm, no wearer or severed body parts",
+      "genre": "cyberpunk",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: one empty armored mechanical glove, four short parallel retractable steel claws attached above the knuckles, dark steel plates and black leather palm, no wearer or severed body parts. ",
+      "sourceFile": "exec-72c795c2-9f1c-4a0a-8e85-86384325cb0f.png",
+      "sourceSha256": "99e4c3e05ff8350f488e428088c88b6e9eed720a7df999c648087242324beee8",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/weapon-ripper-gauntlet.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 14868,
+          "sha256": "bd02c7fe76329457b10fd2aaeb5c80d4bbfd84b8bab99d8d449f9953275c0eea"
+        },
+        "icons": {
+          "file": "/assets/icons/item/ripper-gauntlet.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 7088,
+          "sha256": "faec12cebecbaf0df2511c0d42b532de00ef6c59ed9cb65fdbb46c01f24157ff"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository.",
+      "previousInventory": {
+        "src": "/assets/icons/item/ripper-gauntlet.webp",
+        "bytes": 1886
+      }
+    },
+    {
+      "id": "heavy-spanner",
+      "category": "weapon",
+      "label": "Heavy Spanner",
+      "subject": "one oversized heavy industrial open-ended spanner, massive open jaw and long thick iron handle with worn leather grip, aged brass adjustment wheel, believable wrench",
+      "genre": "steampunk",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: one oversized heavy industrial open-ended spanner, massive open jaw and long thick iron handle with worn leather grip, aged brass adjustment wheel, believable wrench. Full object in a shallow diagonal from lower left to upper right, side view with minimal foreshortening.",
+      "sourceFile": "exec-43fef97b-aff4-4ba9-a964-76c164066fdf.png",
+      "sourceSha256": "be696a5980b7cfb12da80beb9cd3dd60ac00525191994bcc11c519c614d79d6a",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/weapon-heavy-spanner.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 11576,
+          "sha256": "29b53715e9b7b6c8dc085353a34a8bbf0abd4592c29fe326f6ab4efaabfcd016"
+        },
+        "icons": {
+          "file": "/assets/icons/item/heavy-spanner.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 4568,
+          "sha256": "5dc9c1f79a7e1d3feb5eab1b671a19c96c9cf8e2981bf0fe347a13abae479a8a"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository.",
+      "previousInventory": {
+        "src": "/assets/icons/item/heavy-spanner.webp",
+        "bytes": 2464
+      }
+    },
+    {
+      "id": "sword-cane",
+      "category": "weapon",
+      "label": "Sword Cane",
+      "subject": "one period sword cane with its slender straight steel blade partly withdrawn from a black walking-cane sheath, curved dark wood handle, sheath and blade aligned and clearly separate, minimal silver collar",
+      "genre": "mystery",
+      "prompt": "Use case: stylized-concept. A painted inventory icon for a fictional tabletop mystery roleplaying game: an antique sword cane shown as two separated objects, its slim straight silver blade with curved dark wooden handle and its plain black cane sheath lying alongside. This is decorative game artwork only, with no diagram, measurements, instructions, or internal mechanism. Beautiful painterly steel and polished dark wood. Wide 2:1 canvas, shallow diagonal arrangement, full objects centered with generous transparent margins. Genuine transparent background. No people, hands, text, numbers, logos, scenery, frame, extra objects, or motion lines.",
+      "generationHistory": [
+        {
+          "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: one period sword cane with its slender straight steel blade partly withdrawn from a black walking-cane sheath, curved dark wood handle, sheath and blade aligned and clearly separate, minimal silver collar. Full object in a shallow diagonal from lower left to upper right, side view with minimal foreshortening.",
+          "result": "Output rejected by image service safety filter; no asset returned."
+        }
+      ],
+      "sourceFile": "exec-4a8f62ef-8273-4e42-8b9a-ef75da02ace3.png",
+      "sourceSha256": "bbdb87977b4d2379359dee17acb1c7d8b1df99d8d3045763f0d3546e4361e417",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/weapon-sword-cane.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 9434,
+          "sha256": "77a36ac277bc07c6bd46c4a48d77d5fab1606d1786a68c0ee6fd3ce25b1bb29f"
+        },
+        "icons": {
+          "file": "/assets/icons/item/sword-cane.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 3840,
+          "sha256": "c4b9b0e39fee771b592ba13e508f33a9c5dadef848086b36763f0d32e194e5a1"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository.",
+      "previousInventory": {
+        "src": "/assets/icons/item/sword-cane.webp",
+        "bytes": 1642
+      }
+    },
+    {
+      "id": "machete",
+      "category": "weapon",
+      "label": "Machete",
+      "subject": "one practical broad single-edged machete with a slightly forward weighted tip, worn steel blade and short wrapped wooden handle, utilitarian survivor equipment",
+      "genre": "post_apocalyptic",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: one practical broad single-edged machete with a slightly forward weighted tip, worn steel blade and short wrapped wooden handle, utilitarian survivor equipment. Full object in a shallow diagonal from lower left to upper right, side view with minimal foreshortening.",
+      "sourceFile": "exec-9b92280c-cf56-4855-a22e-dacb9c77c85d.png",
+      "sourceSha256": "57abe25b3f0953d205e4b9892b5f81dcd4f07faaa2ef6798b2aadf1cb077b8d3",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/weapon-machete.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 8482,
+          "sha256": "a3929626015b6c676cb52d88ad3e0a6ec00b976164bb3a8b6759aa220cc0b502"
+        },
+        "icons": {
+          "file": "/assets/icons/item/machete.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 3538,
+          "sha256": "be0db179ef968a31d22b50c775c62b94faef7a6d095013292922599d8de55bc5"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository.",
+      "previousInventory": {
+        "src": "/assets/icons/item/machete.webp",
+        "bytes": 2320
+      }
+    },
+    {
+      "id": "crowbar",
+      "category": "weapon",
+      "label": "Crowbar",
+      "subject": "one long worn red-painted steel crowbar, clearly hooked forked claw at one end and flattened chisel at the other, believable uninterrupted bent metal bar",
+      "genre": "post_apocalyptic",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: one long worn red-painted steel crowbar, clearly hooked forked claw at one end and flattened chisel at the other, believable uninterrupted bent metal bar. Full object in a shallow diagonal from lower left to upper right, side view with minimal foreshortening.",
+      "sourceFile": "exec-52c70b64-ab04-4f01-92df-806a8bce1687.png",
+      "sourceSha256": "45fec8825d4d6f8433ff4c2517ed6578ea3af980226958aefc5e80c55ac8a3bc",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/weapon-crowbar.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 7670,
+          "sha256": "b6a4137081a73f8393561fd6f53c69db80cf025c2931d8333df2f9fae9891eb7"
+        },
+        "icons": {
+          "file": "/assets/icons/item/crowbar.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 3222,
+          "sha256": "f8ca93609d393fc7cd9286ad64f3e8336d52a2e26bc69d1b89b6218da8df2c30"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository.",
+      "previousInventory": {
+        "src": "/assets/icons/item/crowbar.webp",
+        "bytes": 1872
+      }
+    },
+    {
+      "id": "silvered-stake",
+      "category": "weapon",
+      "label": "Silvered Stake",
+      "subject": "one short sharpened wooden vampire-hunting stake with a polished silver sleeve covering its pointed end, rough oak grain and leather grip wrapping, no crossguard, unmistakably a stake rather than a dagger",
+      "genre": "horror",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: one short sharpened wooden vampire-hunting stake with a polished silver sleeve covering its pointed end, rough oak grain and leather grip wrapping, no crossguard, unmistakably a stake rather than a dagger. Full object in a shallow diagonal from lower left to upper right, side view with minimal foreshortening.",
+      "sourceFile": "exec-c1799b11-4fbf-48bf-ba01-97068377d86b.png",
+      "sourceSha256": "223631275575ccc24f77507f0dfb628bd4b7cc9ef7c8dd28a047dd1fdb57188d",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/weapon-silvered-stake.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 9554,
+          "sha256": "44fd228478d3a6b14f7019391b1ff848979762eb813a0bbabbe464701ed86348"
+        },
+        "icons": {
+          "file": "/assets/icons/item/silvered-stake.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 3700,
+          "sha256": "c4439691943725677260545a2ecadbb81dba167de11227dbbc2250338493d719"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository.",
+      "previousInventory": {
+        "src": "/assets/icons/item/silvered-stake.webp",
+        "bytes": 1884
+      }
+    },
+    {
+      "id": "censer-mace",
+      "category": "weapon",
+      "label": "Censer Mace",
+      "subject": "one rigid short-handled mace whose attached metal head is a perforated round incense censer, warm ember glow visible through apertures and one subtle wisp of smoke, antique bronze and dark wood, no chain",
+      "genre": "horror",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: one rigid short-handled mace whose attached metal head is a perforated round incense censer, warm ember glow visible through apertures and one subtle wisp of smoke, antique bronze and dark wood, no chain. Full object in a shallow diagonal from lower left to upper right, side view with minimal foreshortening.",
+      "sourceFile": "exec-c95c6793-98f8-4c82-99fb-c07ee1e1353d.png",
+      "sourceSha256": "7688097314b6ba8bcfa7d26c55aef6ec31da5a14aba110e5592862888a36d092",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/weapon-censer-mace.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 10336,
+          "sha256": "584d17da4387a03034c5d1071c9ae6bd66a03d7824bf08fda5d1dba4ee8ef2e9"
+        },
+        "icons": {
+          "file": "/assets/icons/item/censer-mace.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 4182,
+          "sha256": "579fedd003ce47c640357d1459483bd1b82be3b941a6ce13f29cdd71227fb17e"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository.",
+      "previousInventory": {
+        "src": "/assets/icons/item/censer-mace.webp",
+        "bytes": 2150
+      }
+    },
+    {
+      "id": "hurled-vial",
+      "category": "weapon",
+      "label": "Hurled Vial",
+      "subject": "one small throwable sealed glass vial containing vivid green caustic liquid, strong rounded glass body, thick cork and protective leather band, intact and static",
+      "genre": "shared",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: one small throwable sealed glass vial containing vivid green caustic liquid, strong rounded glass body, thick cork and protective leather band, intact and static. ",
+      "sourceFile": "exec-b034dc8e-e73b-4f31-8166-ffbf43f20169.png",
+      "sourceSha256": "4d5a08dd925c0ad7f9f766474126f15c22f199da817e0948fc3e29d40221da45",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/weapon-hurled-vial.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 7544,
+          "sha256": "b85fcab87b6566947fe881d8cdc33a6a93b58fd771e37fcfdd91bc72f306527b"
+        },
+        "icons": {
+          "file": "/assets/icons/item/hurled-vial.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 10408,
+          "sha256": "e69b6a07850de7e12cd81f85df83a3a0e4d3192d4d9a6dba79e8bca246c36ee5"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository.",
+      "previousInventory": {
+        "src": "/assets/icons/item/hurled-vial.webp",
+        "bytes": 2460
+      }
+    },
+    {
+      "id": "armorweave-vest",
+      "category": "armor",
+      "label": "Armorweave Vest",
+      "subject": "one empty sleeveless futuristic armorweave vest, supple black ballistic fabric with visible fine woven texture, slim flexible silhouette and subtle cyan seam accents, front three-quarter view",
+      "genre": "cyberpunk",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: one empty sleeveless futuristic armorweave vest, supple black ballistic fabric with visible fine woven texture, slim flexible silhouette and subtle cyan seam accents, front three-quarter view. ",
+      "sourceFile": "exec-1ffe4b5f-e28b-4393-a2e8-33d89f9e1244.png",
+      "sourceSha256": "ae3dce5ffe74d14fd7cf6422c7aa34f95e973ec1c81a052d922dd55886b3ef00",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/armor-armorweave-vest.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 5028,
+          "sha256": "f9e4bb45bc30ddf7f37a2fe4242ff700e90ee1c0d6d67e6e57086dc0075941ba"
+        },
+        "icons": {
+          "file": "/assets/icons/item/armorweave-vest.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 5792,
+          "sha256": "411e4ae4705e79590efba00d617d7fb2a6a78f5773981cb77736c2bc689e54fe"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository.",
+      "previousInventory": {
+        "src": "/assets/icons/item/armorweave-vest.webp",
+        "bytes": 2586
+      }
+    },
+    {
+      "id": "kevlar-vest",
+      "category": "armor",
+      "label": "Kevlar Vest",
+      "subject": "one empty practical olive ballistic vest with thick soft fabric panels, adjustable shoulder straps, side buckles and quilted panel seams, no hard external plates, front three-quarter view",
+      "genre": "shared",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: one empty practical olive ballistic vest with thick soft fabric panels, adjustable shoulder straps, side buckles and quilted panel seams, no hard external plates, front three-quarter view. ",
+      "sourceFile": "exec-7d87c070-8055-4db0-a602-0e2e2b1512b5.png",
+      "sourceSha256": "9417b67a87d0c48cd9d9cae0f8eda1c665f154463b31ad3efd3206973a8c7cc9",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/armor-kevlar-vest.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 7094,
+          "sha256": "59b0441f8f6e927b516172ad74eea7e91da43efc8ef5014cee30756275cb5096"
+        },
+        "icons": {
+          "file": "/assets/icons/item/kevlar-vest.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 7022,
+          "sha256": "e7a0a394f2e0a8136201ba1e73c7f6d538ba15c41cf075891169639c9cf74432"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository.",
+      "previousInventory": {
+        "src": "/assets/icons/item/kevlar-vest.webp",
+        "bytes": 2550
+      }
+    },
+    {
+      "id": "riot-plating",
+      "category": "armor",
+      "label": "Riot Plating",
+      "subject": "one empty heavy riot armor torso with rigid dark steel chest and broad articulated shoulder plates, stout neck guard and layered abdominal plates, visibly heavier than a soft vest, front three-quarter view",
+      "genre": "shared",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: one empty heavy riot armor torso with rigid dark steel chest and broad articulated shoulder plates, stout neck guard and layered abdominal plates, visibly heavier than a soft vest, front three-quarter view. ",
+      "sourceFile": "exec-edd8681a-9a4d-4cc9-954f-9c8ed3637399.png",
+      "sourceSha256": "50f62975a088a37c55ca8fe76e50a303bf4696d498e88f5fc3a0f16838452f2b",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/armor-riot-plating.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 7732,
+          "sha256": "e82c21f0441f61f99ccb9b4b0112b3e8e0e1a95749581613f9305c4359bad65a"
+        },
+        "icons": {
+          "file": "/assets/icons/item/riot-plating.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 8698,
+          "sha256": "639d1361d2926139e6b4685be12e02088ee5a241d5358230d1edb5e2429bf99a"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository.",
+      "previousInventory": {
+        "src": "/assets/icons/item/riot-plating.webp",
+        "bytes": 3384
+      }
+    },
+    {
+      "id": "brass-carapace",
+      "category": "armor",
+      "label": "Brass Carapace",
+      "subject": "one empty steampunk breastplate of curved riveted brass segments, copper joints and dark leather harness, restrained teal patina, front three-quarter view",
+      "genre": "steampunk",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: one empty steampunk breastplate of curved riveted brass segments, copper joints and dark leather harness, restrained teal patina, front three-quarter view. ",
+      "sourceFile": "exec-d157c187-bd8b-43a0-8b81-733cdc6d7b43.png",
+      "sourceSha256": "3a814ba785a49286b1772664615e910c4be1d002a4f2935fa2302a4fa5607d1e",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/armor-brass-carapace.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 8232,
+          "sha256": "c87a99e6f7840aa452934c3f0f229a6f720c971fa17739610af45f3447a0acdc"
+        },
+        "icons": {
+          "file": "/assets/icons/item/brass-carapace.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 9920,
+          "sha256": "705c991f2484481ac5a0e321193cf942620ae02f8f225c25e6a5d32acf3c5b5a"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository.",
+      "previousInventory": {
+        "src": "/assets/icons/item/brass-carapace.webp",
+        "bytes": 3218
+      }
+    },
+    {
+      "id": "scrap-plate",
+      "category": "armor",
+      "label": "Scrap Plate",
+      "subject": "one empty scavenged armor torso assembled from mismatched rusted steel plates bolted to worn leather, asymmetrical shoulder guards, visibly repaired and practical, front three-quarter view",
+      "genre": "post_apocalyptic",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: one empty scavenged armor torso assembled from mismatched rusted steel plates bolted to worn leather, asymmetrical shoulder guards, visibly repaired and practical, front three-quarter view. ",
+      "sourceFile": "exec-3c71edbc-b7fd-4a0a-9f4d-b30b0608c254.png",
+      "sourceSha256": "4a33cb91020a0f8808e92b7396ba2d4300646cc9c3da48137117dd9230d47172",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/armor-scrap-plate.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 10174,
+          "sha256": "62afa3003665e3aa04a0b7789e38f5df72ee1c291644212561560766ca930891"
+        },
+        "icons": {
+          "file": "/assets/icons/item/scrap-plate.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 10428,
+          "sha256": "dd4978ba7c3dfcd07d1e13b59d81471aae3ccbe178fbe970b8fc4f545420e161"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository.",
+      "previousInventory": {
+        "src": "/assets/icons/item/scrap-plate.webp",
+        "bytes": 2280
+      }
+    },
+    {
+      "id": "ballistic-shield",
+      "category": "armor",
+      "label": "Ballistic Shield",
+      "subject": "one tall modern rectangular ballistic shield of dark composite material, small horizontal reinforced viewport near the top, beveled corners, scuffed surface, upright three-quarter view, no lettering",
+      "genre": "shared",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: one tall modern rectangular ballistic shield of dark composite material, small horizontal reinforced viewport near the top, beveled corners, scuffed surface, upright three-quarter view, no lettering. ",
+      "sourceFile": "exec-097a3fe6-9374-4267-8f4b-6b27ef6debdf.png",
+      "sourceSha256": "26b64a621bf18d72945b8766813f54072e8ad08e9c55a0b77bfa6b89d78dbacd",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/armor-ballistic-shield.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 4348,
+          "sha256": "e03a2aba0bb992d6dceeb277fe4298327c226a8e2dcaa1e04d9ce10a18d6dbff"
+        },
+        "icons": {
+          "file": "/assets/icons/item/ballistic-shield.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 5402,
+          "sha256": "fc0fe6cd9edfb4a0d431c83e6004ed347824c83e7773a153236139a733ceebfc"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository.",
+      "previousInventory": {
+        "src": "/assets/icons/item/ballistic-shield.webp",
+        "bytes": 3880
+      }
+    },
+    {
+      "id": "hacking-rig",
+      "category": "item",
+      "label": "Hacking Rig",
+      "subject": "one compact portable cyberpunk hacking terminal opened like a clamshell, physical keyboard, small cyan display with abstract unlabeled circuit shapes, neatly attached short connector cable, dark steel case",
+      "genre": "cyberpunk",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: one compact portable cyberpunk hacking terminal opened like a clamshell, physical keyboard, small cyan display with abstract unlabeled circuit shapes, neatly attached short connector cable, dark steel case. ",
+      "sourceFile": "exec-3d897122-a02c-400d-a3ae-cd3541b8d681.png",
+      "sourceSha256": "5900941c7b2379d3beff76a540b387292fc731c42b7cafc39f5addd0ef677b2a",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/gear-hacking-rig.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 11858,
+          "sha256": "e14048ca9b2909585c800329367f533b53ade29ee00fde0e7447a37757dc6b2f"
+        },
+        "icons": {
+          "file": "/assets/icons/item/hacking-rig.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 7764,
+          "sha256": "c31c66ba199d6a241b1c6479d5c6afd7645ae0f2b2d46653932c070eaf07862a"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository."
+    },
+    {
+      "id": "drone-controls",
+      "category": "item",
+      "label": "Drone Controls",
+      "subject": "one handheld drone controller with two thumb joysticks, folded-out small cyan telemetry screen and two short aerials, rugged black casing, no drone present, no text on screen",
+      "genre": "cyberpunk",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: one handheld drone controller with two thumb joysticks, folded-out small cyan telemetry screen and two short aerials, rugged black casing, no drone present, no text on screen. ",
+      "sourceFile": "exec-522ea55f-4051-40d4-bbcc-d49ffed8ae88.png",
+      "sourceSha256": "49e35016b222fee321e7939dd2f3e66efe38f8edda740f7b2f5d424473653e8e",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/gear-drone-controls.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 10548,
+          "sha256": "d65d9a87c988501aaac3a28904606519f902c78309bb42059483c3d41eaee410"
+        },
+        "icons": {
+          "file": "/assets/icons/item/drone-controls.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 6480,
+          "sha256": "cb029d88f72def9abcba65f4f6353bf2ceb8defed41b6c0295f124f2966b92cf"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository."
+    },
+    {
+      "id": "medics-kit",
+      "category": "item",
+      "label": "Medic's Kit",
+      "subject": "one open compact red-brown medical satchel with neatly arranged white bandage rolls, metal scissors and sealed medicine bottles, small plain white cross patch, believable readable medical equipment",
+      "genre": "shared",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: one open compact red-brown medical satchel with neatly arranged white bandage rolls, metal scissors and sealed medicine bottles, small plain white cross patch, believable readable medical equipment. ",
+      "sourceFile": "exec-a2667425-503e-4b8d-ab79-b65db5908321.png",
+      "sourceSha256": "d91557e3614d17d472e193009b3a53ac1a38d320fc6ef5e24189d729c6ecf0d5",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/gear-medics-kit.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 12450,
+          "sha256": "c76d87a23a368a6799af8427cf51258fc4b667c6d63247ba9fa761073535aef4"
+        },
+        "icons": {
+          "file": "/assets/icons/item/medics-kit.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 8440,
+          "sha256": "7a2c32cfd00fe678ad4b69b690dcf56d3d4dab4ea4f5052c0ac6e19a8ce93755"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository."
+    },
+    {
+      "id": "field-instruments",
+      "category": "item",
+      "label": "Field Instruments",
+      "subject": "one portable paranormal field instrument with large analog needle gauge, attached short sensor probe and cable coiled beside it, aged dark case and pale green indicator, no writing or digits",
+      "genre": "horror",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: one portable paranormal field instrument with large analog needle gauge, attached short sensor probe and cable coiled beside it, aged dark case and pale green indicator, no writing or digits. ",
+      "sourceFile": "exec-ce7f13d7-f436-4245-9645-c7ff3860db3e.png",
+      "sourceSha256": "64d4b90cd24efae176879ac00703ba79620dd05ba7af8720f6e3cff4d2f0b01b",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/gear-field-instruments.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 12944,
+          "sha256": "c21dfde0734185f008b7ccd7c7d76ad2fbc102e62f409a501be603773ea01dc1"
+        },
+        "icons": {
+          "file": "/assets/icons/item/field-instruments.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 6752,
+          "sha256": "16f2bcd552586810597608f867d6cfd276f69682ff35247e87345a7c266ed5ce"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository."
+    },
+    {
+      "id": "investigators-kit",
+      "category": "item",
+      "label": "Investigator's Kit",
+      "subject": "one open leather detective case holding a large magnifying glass, blank pocket notebook, small fingerprint brush and unlabeled evidence envelope, sepia noir materials, organized compact arrangement",
+      "genre": "mystery",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: one open leather detective case holding a large magnifying glass, blank pocket notebook, small fingerprint brush and unlabeled evidence envelope, sepia noir materials, organized compact arrangement. ",
+      "sourceFile": "exec-7e4abdc2-13f3-4162-90ed-90f9710c66c4.png",
+      "sourceSha256": "706a56450dd3d501053163b4876647049186bfe6059f7d4292add28624b33d96",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/gear-investigators-kit.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 11390,
+          "sha256": "a466b1443d4dad60215fc1973533bd4101dbab39fa24ae99a5a5dbf91c9e6abd"
+        },
+        "icons": {
+          "file": "/assets/icons/item/investigators-kit.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 9038,
+          "sha256": "6e6a538e9e8d8e2b045589dc694dbf91f2019539a584d97e8f6f0b0c8b26c50f"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository."
+    },
+    {
+      "id": "photographers-kit",
+      "category": "item",
+      "label": "Photographer's Kit",
+      "subject": "one vintage folding bellows camera with circular brass lens and folded leather carrying case behind it, dark wood and black leather, compact readable silhouette",
+      "genre": "mystery",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: one vintage folding bellows camera with circular brass lens and folded leather carrying case behind it, dark wood and black leather, compact readable silhouette. ",
+      "sourceFile": "exec-9f4122bd-835e-4517-9293-2887e16a29aa.png",
+      "sourceSha256": "d40fed672bd234a2771309c431f4282424394e849167f7f516881c1da216928d",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/gear-photographers-kit.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 12440,
+          "sha256": "88c2d5f35df016333b92fdbabb6f4b705581edf0987440ccd8beea2839584ae3"
+        },
+        "icons": {
+          "file": "/assets/icons/item/photographers-kit.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 7418,
+          "sha256": "ad7322b9d556dab9473ba351f331772eb0e4c01230642a42917b56d4b984ecf7"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository."
+    },
+    {
+      "id": "seance-kit",
+      "category": "item",
+      "label": "Seance Kit",
+      "subject": "one compact occult kit arranged on folded deep violet cloth: a clear crystal ball on a small dark wood stand, one short lit candle and a simple brass pendulum, no letters or spirit board",
+      "genre": "mystery",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: one compact occult kit arranged on folded deep violet cloth: a clear crystal ball on a small dark wood stand, one short lit candle and a simple brass pendulum, no letters or spirit board. ",
+      "sourceFile": "exec-e3e6ae47-4734-4a79-8759-ba2a5d258474.png",
+      "sourceSha256": "63143bfc49def07deb374b96134ca9055ae8cb8da931e3808d693ab552a96d25",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/gear-seance-kit.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 12814,
+          "sha256": "1c2603525776d7aba9a593b5d4492560484affe96c61caddc7891402e4eb2c12"
+        },
+        "icons": {
+          "file": "/assets/icons/item/seance-kit.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 6492,
+          "sha256": "6cb8864a2aeb64a4b1f8341ece7814d3b7acf8e92d7d8a720ef31e15505ed9a8"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository."
+    },
+    {
+      "id": "bullets",
+      "category": "item",
+      "label": "Bullets",
+      "subject": "a small open ammunition pouch with exactly five clearly visible brass cartridges, two standing beside the pouch, copper bullet tips, restrained gunmetal and brown leather",
+      "genre": "shared",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration. Premium hand-painted game art, crisp believable materials, natural edge highlights, readable strong silhouette at 112x56 pixels. Isolated on genuine transparent alpha background. Wide 2:1 composition; complete subject centered with 8 percent safe margin. No person, hands, text, labels, logos, frame, border, scenery, decorative streaks or extra objects. Original unbranded design. Subject: a small open ammunition pouch with exactly five clearly visible brass cartridges, two standing beside the pouch, copper bullet tips, restrained gunmetal and brown leather. ",
+      "sourceFile": "exec-7b5a11a4-3a31-478c-b206-91344075efd7.png",
+      "sourceSha256": "8098c63c831662a6def86b3a2719c6692a39436b3d61ad30c87a857637c710d4",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/gear-bullets.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 12082,
+          "sha256": "c33832554799d20b6ccbf10e694d39b96ff349262d066bbe328e991985f5261d"
+        },
+        "icons": {
+          "file": "/assets/icons/item/bullets.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 7988,
+          "sha256": "b4a1ba10a3f15209f033194d375be80d0051bbdb081ba4afe9548f0487043ae1"
+        }
+      },
+      "sourceLocation": "Original generated PNG retained in the local art archive; not shipped in the repository."
+    }
+  ],
+  "validation": {
+    "paintings": 32,
+    "exports": 64,
+    "cardSize": [
+      256,
+      128
+    ],
+    "iconSize": [
+      256,
+      256
+    ]
+  },
+  "encoding": {
+    "cards": "Approved 256x128 WebP, unchanged.",
+    "inventory": "256x256 WebP, artwork padded to radius 70px before the existing GameIcon 1.7x zoom; quality 94, alpha quality 100."
+  }
+}

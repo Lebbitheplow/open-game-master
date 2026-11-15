@@ -1,0 +1,16 @@
+{
+  "inventoryImages": 64,
+  "weaponCards": 18,
+  "viewports": [
+    1280,
+    390
+  ],
+  "themes": [
+    "dark",
+    "light"
+  ],
+  "allImagesDecoded": true,
+  "horizontalOverflow": false,
+  "pageErrors": [],
+  "scope": "Static rendering of the actual React components and application CSS; not an authenticated campaign or native client run."
+}
