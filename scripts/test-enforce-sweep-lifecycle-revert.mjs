@@ -228,6 +228,11 @@ const RECIPES = {
   check_notice: one("calm", (c) => ({ difficulty: "moderate", characterIds: [c.hero.id, c.mage.id] })),
   set_npc: one("calm", () => ({ name: "Old Marta", attitude: "friendly", trait: "hums while she works", gender: "female" })),
   npc_reaction: one("calm", () => ({ name: "Gate Sergeant", gender: "male" }), { dice: [4, 4] }),
+  // A body's state (npcs.state_json): taken, tied and brought along, all
+  // written back by the revert.
+  npc_state: one("calm", () => ({ name: "Old Marta", custody: "captive", heldBy: "the party", restraint: "bound", withParty: true, disarmed: true }), {
+    before: (c) => must(c, "set_npc", { name: "Old Marta", attitude: "hostile", trait: "hums while she works", gender: "female" }),
+  }),
   social_check: one("calm", (c) => ({ characterId: c.hero.id, npc: "Old Marta", approach: "persuade" }), {
     before: (c) => must(c, "set_npc", { name: "Old Marta", attitude: "indifferent", trait: "hums while she works", gender: "female" }),
     dice: [15],
@@ -291,6 +296,7 @@ const SKIP = {
   npc_speak: "asks an NPC's own mind, a model call; its revert (npc_memories, npc_proposals) is held by test-npc-mind",
   npc_inform: "writes only npc_memories, a journaled table whose revert test-npc-mind holds",
   npc_past: "writes npc_memories and npcs.inspiration on a first-tier NPC; held by test-npc-mind",
+  npc_hear: "writes only npc_memories of words overheard, a journaled table whose revert test-npc-mind holds",
   relationship_scheme: "needs the player's own opt-in to romance on the sheet, which only the player's settings route writes",
 };
 
