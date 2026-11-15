@@ -274,5 +274,38 @@ await test("S06: once the spell's temporary hit points are gone, a melee hit tak
   assert.equal(hpLost(world, goblin.id), 0);
 });
 
+// ---- S07: GAME STATE's per-class save DC is the one the engine rolls ----
+
+// SRD 5.1, Robe of the Archmagi: "Your spell save DC and spell attack bonus
+// each increase by 2." A multiclass caster's GAME STATE line worked each
+// class's DC out by hand as 8 + proficiency + the ability, so the robe's +2
+// the engine rolls against was missing from the number the GM reads out.
+await test("S07: a wizard and cleric in a Robe of the Archmagi reads each class's save DC with the robe's +2, as the engine rolls it", async () => {
+  const { describeSheet } = await import("../src/lib/dm/prompt.ts");
+  const { spellSaveDcFor } = await import("../src/lib/srd/index.ts");
+  const hero = caster("wizard", "int", [], [], 5, {
+    abilities: { int: 18, wis: 12, con: 14 },
+    classes: [{ id: "wizard", subclass: "", level: 3 }, { id: "cleric", subclass: "", level: 2 }],
+    equipment: [{ name: "Robe of the Archmagi", qty: 1, equipped: true, attuned: true }],
+    spellcasting: {
+      ability: "int",
+      prepared: ["Magic Missile", "Cure Wounds"],
+      casters: [
+        { classId: "wizard", ability: "int", known: [], prepared: ["Magic Missile"], cantrips: [], spellbook: ["Magic Missile"] },
+        { classId: "cleric", ability: "wis", known: [], prepared: ["Cure Wounds"], cantrips: [] },
+      ],
+    },
+  });
+  const { world, sheets: [mage] } = await table([hero]);
+  const sheet = world.sheet(mage.id);
+  const text = describeSheet(sheet, "a player", false);
+  const wizardDc = spellSaveDcFor(sheet, "Magic Missile");
+  const clericDc = spellSaveDcFor(sheet, "Cure Wounds");
+  // 8 + 3 + 4 (INT 18) + 2, and 8 + 3 + 1 (WIS 12) + 2.
+  assert.deepEqual([wizardDc, clericDc], [17, 14]);
+  assert.match(text, new RegExp(`As a wizard \\(INT, Save DC ${wizardDc}\\)`));
+  assert.match(text, new RegExp(`As a cleric \\(WIS, Save DC ${clericDc}\\)`));
+});
+
 closeTables();
 finish();
