@@ -635,5 +635,17 @@ await test("S17: a fighter casting a cleric's Heroism from a Ring of Spell Stori
   assert.equal(world.sheet(fighter.id).tempHp, 4);
 });
 
+// ---- S18: a list of slot levels sharing one length starts at the first ----
+
+// A pack spell's higher-level text lists levels before the length they share
+// ("using a spell slot of 5th, 6th, or 7th level, the duration increases to
+// 48 hours"). The reader gave the length to the last level of the list, so
+// a 5th or 6th-level casting kept the spell's own duration.
+await test("S18: \"5th, 6th, or 7th level, the duration increases to 48 hours\" lasts 48 hours from a 5th-level slot", async () => {
+  const { slotDurationsFromText } = await import("../src/lib/srd/spell-duration.ts");
+  const printed = "When you cast this spell using a spell slot of 5th, 6th, or 7th level, the duration increases to 48 hours. When you cast this spell using a spell slot of 8th or 9th level, the duration increases to 72 hours.";
+  assert.deepEqual(slotDurationsFromText(printed).at, [[5, 48 * 600], [8, 72 * 600]]);
+});
+
 closeTables();
 finish();

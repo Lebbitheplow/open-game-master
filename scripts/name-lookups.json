@@ -2698,7 +2698,7 @@
     "lib/srd/spell-dice.ts#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/srd/spell-dice.ts#partial": [["parse",2,"dice expressions"]],
     "lib/srd/spell-duration.ts#keyed": [["identity",1,"a record by its whole name (textKey on both sides): the published spells a higher slot frees of concentration (Bestow Curse, Major Image)"],["key",1,"a duration's count word read as its number (\"a year and a day\")"]],
-    "lib/srd/spell-duration.ts#number": [["key",4,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
+    "lib/srd/spell-duration.ts#number": [["key",3,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/srd/spell-duration.ts#partial": [["key",6,"the SRD's or pack's English spell text (a homebrew spell's text: authoring)"],["pattern",5,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/srd/spell-facts.ts#keyed": [["identity",4,"SRD, spell, feature, subclass, hazard and magic rows by textKey (or armorKey/gearKey/rowKey/featureKey/priceKey, textKey-based); row tables keyed by the row's own name; the workshop's tables"]],
     "lib/srd/spell-facts.ts#number": [["key",5,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],

@@ -63,20 +63,30 @@ export function slotDurationsFromText(text: string): { at: SlotDurations; each: 
     // Planar Binding lists its lengths in one sentence, "to 30 days with a
     // 7th-level slot, to 180 days with an 8th-level slot": each "to" begins
     // a clause of its own, or the 7th and 8th went unread.
+    // A list of levels before the length they share ("a spell slot of 5th,
+    // 6th, or 7th level, the duration increases to 48 hours") starts at the
+    // first of them: the length went to the last, and the 5th and 6th kept
+    // the spell's own (audit 2026-11-15, S18).
+    let listed: number | null = null;
     for (const clause of sentence.split(/,\s*(?:or|and)\s+|,\s*(?=[1-9](?:st|nd|rd|th))|,\s*(?=to\s)/i)) {
       const level = LEVEL.exec(clause);
       if (!level) {
         continue;
       }
+      const from: number = listed ?? Number(level[1]);
       // Geas from a 9th-level slot lasts "until it is ended by one of the
       // spells mentioned above": no count, as for "until dispelled".
       if (/until (?:it is )?(?:dispelled|ended)|permanent/i.test(clause)) {
-        at.push([Number(level[1]), null]);
+        at.push([from, null]);
+        listed = null;
         continue;
       }
       const lasts = lastsIn(clause);
       if (lasts !== null) {
-        at.push([Number(level[1]), lasts]);
+        at.push([from, lasts]);
+        listed = null;
+      } else {
+        listed = from;
       }
     }
   }
