@@ -3190,6 +3190,11 @@
     "lib/srd/genre-gb-device.ts#re-word": [["english-source",1,"ODM's own \"Fabricated Device: <spell> (DC n, +n)\" item name, as deviceName writes it"]],
     "lib/battlemap/zones-genre-gh.ts#str-list": [["key",1,"zone trigger events (engine vocabulary)"]],
     "lib/dm/genre-gh-last-one-out.ts#str-list": [["key",1,"move action ids (dash, disengage)"]],
-    "lib/srd/genre-gh-warded.ts#str-list": [["key",1,"creature types (engine vocabulary)"]]
+    "lib/srd/genre-gh-warded.ts#str-list": [["key",1,"creature types (engine vocabulary)"]],
+    "lib/i18n/locale.ts#toLowerCase": [["key",1,"Accept-Language BCP 47 tag lower-cased (protocol)"]],
+    "lib/i18n/locale.ts#str-eq": [["key",4,"BCP 47 locale code equality (fr/en) in parseLocale and localeFromAcceptLanguage"]],
+    "lib/i18n/locale.ts#str-startsWith": [["key",2,"BCP 47 language tag prefix match (fr-/en-) on Accept-Language header"]],
+    "lib/i18n/translate.ts#[a-z]": [["key",1,"template placeholder {varName} regex in interpolate"]],
+    "lib/i18n/translate.ts#str-eq": [["key",1,"skip special context var name in interpolate"]]
   }
 }

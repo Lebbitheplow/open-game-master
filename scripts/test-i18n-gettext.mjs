@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
-import { translate, translatePlural } from "../src/lib/i18n/translate";
-import { localeFromAcceptLanguage, resolveLocale } from "../src/lib/i18n/locale";
+import { register } from "node:module";
+
+register("./lib/register-routes.mjs", import.meta.url);
+
+const { translate, translatePlural } = await import("../src/lib/i18n/translate.ts");
+const { localeFromAcceptLanguage, resolveLocale } = await import("../src/lib/i18n/locale.ts");
 
 // 1. English returns the source string verbatim with interpolation
 assert.equal(translate("en", "Loading…"), "Loading…");
@@ -25,5 +29,7 @@ assert.equal(resolveLocale({ savedLocale: "fr", cookieHeader: "odm_locale=en", a
 assert.equal(resolveLocale({ cookieHeader: "foo=1; odm_locale=fr", acceptLanguage: "en-US" }), "fr");
 assert.equal(resolveLocale({ acceptLanguage: "fr-CA,fr;q=0.9,en;q=0.8" }), "fr");
 assert.equal(localeFromAcceptLanguage("de-DE,es;q=0.8"), "en");
+assert.equal(localeFromAcceptLanguage("en-US;q=0.5,fr;q=0.9"), "fr");
+assert.equal(localeFromAcceptLanguage("fr;q=0,en;q=0.8"), "en");
 
-console.log("test-i18n-gettext: 11 assertions passed");
+console.log("test-i18n-gettext: 13 assertions passed");

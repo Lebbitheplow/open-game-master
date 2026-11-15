@@ -3186,6 +3186,9 @@
     "lib/dm/genre-gh-quarry.ts#whole": [["key",1,"token refs (ids)"]],
     "lib/srd/genre-gh-warded.ts#partial": [["key",2,"an attacker's creature type cut into words, and the type a Warded condition names in its bracket (engine vocabulary)"]],
     "lib/srd/genre-gh-warded.ts#whole": [["key",1,"a creature type among the attacker's type words (engine vocabulary)"]],
-    "lib/dm/genre-gh-wards.ts#whole": [["key",1,"a warding creature type by its whole name (textKey on both sides); a miss is refused"],["identity",1,"a held condition replaced by its whole name (textKey on both sides)"]]
+    "lib/dm/genre-gh-wards.ts#whole": [["key",1,"a warding creature type by its whole name (textKey on both sides); a miss is refused"],["identity",1,"a held condition replaced by its whole name (textKey on both sides)"]],
+    "lib/i18n/locale.ts#partial": [["parse",7,"Accept-Language BCP 47 tag/q-weight parsing and cookie header splitting (protocol), never a record's name"]],
+    "lib/i18n/locale.ts#number": [["parse",1,"Accept-Language q weight parsed as a number (protocol)"]],
+    "lib/i18n/locale.ts#whole": [["parse",1,"cookie name equality in cookieValue (protocol), never a record's name"]]
   }
 }

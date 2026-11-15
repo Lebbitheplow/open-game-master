@@ -9,8 +9,17 @@ export function parseLocale(raw: string | null | undefined): Locale | null {
 
 export function localeFromAcceptLanguage(header: string | null | undefined): Locale {
   if (!header) return "en";
-  for (const part of header.split(",")) {
-    const tag = part.split(";")[0].trim().toLowerCase();
+  const tags = header
+    .split(",")
+    .map((part, at) => {
+      const [tag, ...params] = part.split(";");
+      const q = params.map((param) => /^\s*q\s*=\s*([0-9.]+)\s*$/i.exec(param)?.[1]).find((value) => value !== undefined);
+      const weight = q === undefined ? 1 : Number(q);
+      return { tag: tag.trim().toLowerCase(), weight: Number.isFinite(weight) ? weight : 0, at };
+    })
+    .filter(({ weight }) => weight > 0)
+    .sort((a, b) => b.weight - a.weight || a.at - b.at);
+  for (const { tag } of tags) {
     if (tag === "fr" || tag.startsWith("fr-")) return "fr";
     if (tag === "en" || tag.startsWith("en-")) return "en";
   }
