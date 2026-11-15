@@ -158,5 +158,59 @@ await test("S03: Bestow Curse from a 3rd-level slot still takes the concentratio
   assert.equal(world.sheet(priest.id).concentratingOn, "Bestow Curse");
 });
 
+// ---- S04: Dispel Magic weighs a spell at the level it was cast at ----
+
+// SRD 5.1, Dispel Magic: "For each spell of 4th level or higher on the
+// target, make an ability check using your spellcasting ability. The DC
+// equals 10 + the spell's level." A spell cast from a higher slot is a spell
+// of that level (Casting a Spell at a Higher Level), and the condition it
+// laid records the slot. The engine read the spell's printed level, so a
+// 3rd-level Dispel Magic ended a Hold Person cast at 4th outright, and the
+// check was made with the sheet's first casting ability, not the ability of
+// the class that cast Dispel Magic.
+const dispelGrip = (world, id) => world.enemies().find((entry) => entry.id === id).conditions.includes("paralyzed");
+
+async function heldGoblin(dispeller) {
+  const { world, sheets: [holder, breaker], enemies: [goblin] } = await table([caster("wizard", "int", ["Hold Person"], [], 9), dispeller]);
+  world.dice(1);
+  const held = await world.invoke("cast_at_enemy", { characterId: holder.id, targetEnemyId: goblin.id, spell: "Hold Person", saveAbility: "wis", level: 4 });
+  world.clearDice();
+  assert.equal(held.ok, true, held.error);
+  assert.ok(dispelGrip(world, goblin.id), "the goblin is held");
+  return { world, breaker, goblin };
+}
+
+await test("S04: a Hold Person cast at 4th level asks a 3rd-level Dispel Magic for a DC 14 check, and a failed check leaves it", async () => {
+  const { world, breaker, goblin } = await heldGoblin(caster("wizard", "int", ["Dispel Magic"], [], 9));
+  world.dice(1);
+  const dispel = await world.invoke("cast_at_enemy", { characterId: breaker.id, targetEnemyId: goblin.id, spell: "Dispel Magic", level: 3 });
+  world.clearDice();
+  assert.equal(dispel.ok, true, dispel.error);
+  assert.ok(dispelGrip(world, goblin.id), JSON.stringify(dispel.result?.dispelled));
+});
+
+await test("S04: a wizard and cleric's Dispel Magic, prepared as a cleric spell, checks with Wisdom", async () => {
+  const hero = caster("wizard", "int", [], [], 7, {
+    abilities: { int: 8, wis: 18, con: 14 },
+    classes: [{ id: "wizard", subclass: "", level: 2 }, { id: "cleric", subclass: "", level: 5 }],
+    spellcasting: {
+      ability: "int",
+      prepared: ["Dispel Magic"],
+      casters: [
+        { classId: "wizard", ability: "int", known: [], prepared: [], cantrips: [], spellbook: [] },
+        { classId: "cleric", ability: "wis", known: [], prepared: ["Dispel Magic"], cantrips: [] },
+      ],
+    },
+  });
+  const { world, breaker, goblin } = await heldGoblin(hero);
+  world.dice(10);
+  const dispel = await world.invoke("cast_at_enemy", { characterId: breaker.id, targetEnemyId: goblin.id, spell: "Dispel Magic", level: 3 });
+  world.clearDice();
+  assert.equal(dispel.ok, true, dispel.error);
+  // 10 + 4 (WIS 18) against 10 + 4, where INT 8 would have made it 9.
+  assert.match(JSON.stringify(dispel.result?.dispelled), /check 14 vs DC 14/);
+  assert.ok(!dispelGrip(world, goblin.id));
+});
+
 closeTables();
 finish();
