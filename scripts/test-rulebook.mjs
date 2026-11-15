@@ -411,6 +411,9 @@ try {
     assert.equal(localeFromAcceptLanguage("en-GB,en;q=0.9,fr;q=0.8"), "en", "the first language the app speaks wins");
     assert.equal(localeFromAcceptLanguage("de-DE,fr;q=0.9"), "fr", "an app language after an unknown one still wins");
     assert.equal(localeFromAcceptLanguage("de"), "en");
+    assert.equal(localeFromAcceptLanguage("en;q=0.2,fr;q=0.9"), "fr", "the higher weight wins, not the earlier tag");
+    assert.equal(localeFromAcceptLanguage("fr;q=0,en"), "en", "a language weighted q=0 is refused");
+    assert.equal(localeFromAcceptLanguage("fr;q=0"), "en");
   });
 
   // ---- the routes ----
@@ -455,6 +458,23 @@ try {
     // A request without the header keeps reading the English book.
     const enContents = await (await contentsRoute.GET(new Request("http://x/api/rulebook"))).json();
     assert.equal(enContents.chapters.find((chapter) => chapter.id === "spells").title, "Spells");
+
+    // The reader's own X-Odm-Locale wins over Accept-Language, so every
+    // response that reads the book names both in Vary: otherwise a cache
+    // keyed on Accept-Language alone could hand one reader's French book to
+    // another reader's English request.
+    const own = { headers: { "Accept-Language": "en", "X-Odm-Locale": "fr" } };
+    const ownPage = await pageRoute.GET(new Request("http://x/api/rulebook/pages/fireball", own), params("fireball"));
+    assert.equal((await ownPage.json()).page.title, "Boule de feu");
+    const responses = [
+      await contentsRoute.GET(new Request("http://x/api/rulebook")),
+      await pageRoute.GET(new Request("http://x/api/rulebook/pages/combat"), params("combat")),
+      await searchRoute.GET(new Request("http://x/api/rulebook/search?q=cover")),
+    ];
+    for (const response of responses) {
+      const vary = (response.headers.get("vary") ?? "").toLowerCase().split(",").map((name) => name.trim());
+      assert.ok(vary.includes("accept-language") && vary.includes("x-odm-locale"), `Vary: ${response.headers.get("vary")}`);
+    }
   });
 
   console.log(`\n${passed} rulebook checks passed`);

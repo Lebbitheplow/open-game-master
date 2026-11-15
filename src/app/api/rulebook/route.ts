@@ -1,5 +1,5 @@
 import { currentUser, unauthorized } from "@/lib/auth";
-import { bookLocaleOf, rulebookContents } from "@/lib/rulebook/book";
+import { BOOK_LOCALE_VARY, bookLocaleOf, rulebookContents } from "@/lib/rulebook/book";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,6 +14,6 @@ export async function GET(request: Request) {
     return unauthorized();
   }
   return Response.json(rulebookContents(bookLocaleOf(request)), {
-    headers: { "Cache-Control": "private, max-age=300", Vary: "Accept-Language" },
+    headers: { "Cache-Control": "private, max-age=300", Vary: BOOK_LOCALE_VARY },
   });
 }

@@ -3,9 +3,9 @@
 // same book as the official French print (srd-5.1-fr.json, built by
 // scripts/import-srd-rulebook-fr.mjs from SRD_CC_v5.1_FR.pdf). The two books
 // bind the same pages under the same ids in the same order, so bookmarks,
-// links and folios hold in both; the three pages the French print lost (the
-// magic items chapter's three rules pages) fall back to the English page in
-// the same binding position.
+// links and folios hold in both. Every English page has a French print today;
+// a page the French book ever lacks falls back to the English page in the
+// same binding position.
 //
 // The contents, one page with its neighbours, and search are answered per
 // locale; the search index is built on the first search of that locale, in
@@ -25,23 +25,38 @@ import type {
   SearchResponse,
 } from "./types";
 
-// The request's language itself now lives beside the refusal words that use
-// it (src/lib/request-locale.ts), so the campaign API can resolve a
-// request's language without loading the two books with it.
 export type BookLocale = "en" | "fr";
 
-// The book language an Accept-Language header asks for: the first tag that
-// names French or English wins; a header that names neither reads English.
+// The book language an Accept-Language header asks for: the most preferred
+// tag that names French or English wins (by q, ties in the header's order);
+// a tag weighted q=0 is one the reader refuses; a header that names neither
+// reads English.
 export function localeFromAcceptLanguage(header: string | null): BookLocale {
   if (!header) return "en";
-  for (const part of header.split(",")) {
-    const tag = part.split(";")[0].trim().toLowerCase();
+  const tags = header
+    .split(",")
+    .map((part, at) => {
+      const [tag, ...params] = part.split(";");
+      const q = params.map((param) => /^\s*q\s*=\s*([0-9.]+)\s*$/i.exec(param)?.[1]).find((value) => value !== undefined);
+      const weight = q === undefined ? 1 : Number(q);
+      return { tag: tag.trim().toLowerCase(), weight: Number.isFinite(weight) ? weight : 0, at };
+    })
+    .filter(({ weight }) => weight > 0)
+    .sort((a, b) => b.weight - a.weight || a.at - b.at);
+  for (const { tag } of tags) {
     if (tag === "fr" || tag.startsWith("fr-")) return "fr";
     if (tag === "en" || tag.startsWith("en-")) return "en";
   }
   return "en";
 }
 
+// Every request header bookLocaleOf reads. A response that depends on the
+// book's language names all of them in Vary, so no browser or shared cache
+// hands a French answer to an English request or the other way round.
+export const BOOK_LOCALE_VARY = "Accept-Language, X-Odm-Locale";
+
+// The reader's own choice (X-Odm-Locale, only "en" or "fr"; anything else is
+// ignored) wins over the browser's Accept-Language.
 export function bookLocaleOf(request: Request): BookLocale {
   const own = request.headers.get("x-odm-locale");
   if (own === "fr" || own === "en") {
@@ -53,7 +68,7 @@ export function bookLocaleOf(request: Request): BookLocale {
 const enBook = data as RulebookData;
 
 // The French book's pages, with the English page substituted where the
-// French print has none — so its folio count and page order match the
+// French print has none, so its folio count and page order match the
 // English book's exactly.
 function mergedFrBook(): RulebookData {
   const frPages = new Map((frData as RulebookData).pages.map((page) => [page.id, page]));
@@ -174,8 +189,8 @@ export async function rulebookSearchAsync(query: string, limit?: number, locale:
   return { hits: searchRulebook(state.index, query, limit) };
 }
 
-// Every page of one locale's book — the crosswalk reads the English book's
-// titles and kinds, which the catalogs and the workshop copy under.
+// Every page of one locale's book (the crosswalk reads the English book's
+// titles and kinds, which the catalogs and the workshop copy under).
 export function rulebookPages(locale: BookLocale = "en"): RulebookPage[] {
   return books[locale].pages;
 }

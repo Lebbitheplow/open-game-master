@@ -1,5 +1,5 @@
 import { currentUser, unauthorized } from "@/lib/auth";
-import { bookLocaleOf, rulebookSearchAsync } from "@/lib/rulebook/book";
+import { BOOK_LOCALE_VARY, bookLocaleOf, rulebookSearchAsync } from "@/lib/rulebook/book";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,6 +17,6 @@ export async function GET(request: Request) {
   }
   const q = (new URL(request.url).searchParams.get("q") ?? "").slice(0, QUERY_MAX);
   return Response.json(await rulebookSearchAsync(q, undefined, bookLocaleOf(request)), {
-    headers: { Vary: "Accept-Language" },
+    headers: { Vary: BOOK_LOCALE_VARY },
   });
 }
