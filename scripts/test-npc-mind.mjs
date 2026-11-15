@@ -1109,6 +1109,7 @@ await test("on stage means it acted last turn: owed a turn now unless asked, inf
   assert.match(note, /npc_speak/);
   assert.match(note, /only what they could see and hear/);
   assert.match(note, /npc_inform/);
+  assert.match(note, /never tell an outcome already told again/, "the outcome is not told a second time after their turns");
   // A time skip also asks whoever was on stage a few turns back.
   const quiet = [
     { ...base, id: "h", name: "Hugo", actedLastTurn: false },

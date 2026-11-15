@@ -2925,7 +2925,7 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
           role: "user",
           content: [
             hearingPrompt(listeners.map((npc) => npc.name), spokenAloud[0].slice(0, 120)),
-            owedToo.length ? `${sceneMindsPrompt(owedToo.map((npc) => npc.name), skipped)} After their turns, narrate only what those turns add.` : "",
+            owedToo.length ? sceneMindsPrompt(owedToo.map((npc) => npc.name), skipped) : "",
           ]
             .filter(Boolean)
             .join("\n\n"),
