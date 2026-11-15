@@ -212,5 +212,24 @@ await test("S04: a wizard and cleric's Dispel Magic, prepared as a cleric spell,
   assert.ok(!dispelGrip(world, goblin.id));
 });
 
+// ---- S05: Destructive Wave deals both of its damage types ----
+
+// SRD 5.1, Destructive Wave: "a creature takes 5d6 thunder damage and 5d6
+// radiant or necrotic damage (your choice) and is knocked prone." The dice
+// reader stopped at "radiant or necrotic", so the wave rolled 5d6 thunder
+// and half of its damage was lost.
+await test("S05: Destructive Wave rolls 5d6 thunder and 5d6 radiant, and a failed save knocks the creature prone", async () => {
+  const { world, sheets: [paladin], enemies: [goblin] } = await table([caster("paladin", "cha", ["Destructive Wave"], [], 17)]);
+  world.diceLog();
+  world.dice(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
+  const wave = await world.invoke("aoe_damage", { casterCharacterId: paladin.id, spell: "Destructive Wave", enemyIds: [goblin.id], level: 5 });
+  world.clearDice();
+  assert.equal(wave.ok, true, wave.error);
+  assert.equal(world.diceLog().filter((die) => die.sides === 6).length, 10, "ten d6");
+  const foe = world.enemies().find((entry) => entry.id === goblin.id);
+  assert.equal(foe.maxHp - foe.currentHp, 10);
+  assert.ok(foe.conditions.includes("prone"));
+});
+
 closeTables();
 finish();
