@@ -7,7 +7,7 @@ import sharp from "sharp";
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 register("./lib/register-alias.mjs", import.meta.url);
-const { equipmentArtwork } = await import("../src/lib/equipment-art-logic.ts");
+const { equipmentArtwork, GENRE_VARIANTS } = await import("../src/lib/equipment-art-logic.ts");
 const { cardArtwork } = await import("../src/lib/battlemap/card-art.ts");
 const { iconCandidates, iconSlug, iconPath, isPainted } = await import("../src/lib/icons.ts");
 const { SRD_WEAPONS, WEAPON_ALIASES, weaponNamed } = await import("../src/lib/srd/weapons.ts");
@@ -34,6 +34,7 @@ for (const genre of new Set(subjects.map(r => r.genre))) {
   const names = new Set(classes.flatMap(c => GENRE_KITS[c.id].lines.flatMap(line => line.options.flatMap(option => option.items.map(item => item.name)))));
   assert.deepEqual(subjects.filter(r => r.genre === genre).map(r => r.label).sort(), [...names].filter(name => sharedNames.has(name)).sort(), genre + " starting-kit coverage");
 }
+assert.equal([...GENRE_VARIANTS.values()].reduce((n, v) => n + v.size, 0), 49, "every painting is listed once");
 for (const row of subjects) {
   const original = Object.freeze({ kind: "item", key: row.label, family: `item-${row.kind}` });
   const inventory = equipmentArtwork(original, row.genre, "inventory");
@@ -91,10 +92,10 @@ assert.deepEqual(read("src/lib/equipment-art-aliases.json"), buildEquipmentArtAl
     return forms.flatMap((form) => [form, `${form} +1`, `+2 ${form}`, `${form}, +3`]);
   }));
   let compared = 0;
-  for (const [genre, entries] of Object.entries(read("src/lib/equipment-art.json"))) {
+  for (const [genre, variants] of GENRE_VARIANTS) {
     for (const key of spellings) {
       // #961's resolver, which loaded the weapon catalogue into every page.
-      const variant = Object.hasOwn(entries, iconSlug(weaponNamed(key)?.name ?? withoutBonus(key))) ? entries[iconSlug(weaponNamed(key)?.name ?? withoutBonus(key))] : null;
+      const variant = variants.get(iconSlug(weaponNamed(key)?.name ?? withoutBonus(key)));
       const ref = { kind: "item", key };
       for (const [surface, kind, painting] of [["inventory", "item", variant?.item], ["card", "action", variant?.card]]) {
         const expected = painting && isPainted(iconPath(kind, painting)) ? painting : key;

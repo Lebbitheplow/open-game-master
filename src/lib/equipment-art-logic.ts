@@ -4,8 +4,18 @@ import equipmentArt from "./equipment-art.json";
 import equipmentAliases from "./equipment-art-aliases.json";
 
 type Variant = { item: string; card: string; baseCard: string };
-const VARIANTS = new Map<string, Map<string, Variant>>(
-  Object.entries(equipmentArt).map(([genre, entries]) => [genre, new Map(Object.entries(entries))]),
+// equipment-art.json lists, per genre, the base Hand cards that have a genre
+// painting ("weapon-dagger"); every name follows from that one, so the file
+// every page loads carries nothing else. A "cyberpunk" dagger is the item
+// icon "cyberpunk-dagger" and the card "cyberpunk-weapon-dagger".
+export const GENRE_VARIANTS = new Map<string, Map<string, Variant>>(
+  Object.entries(equipmentArt).map(([genre, cards]) => {
+    const prefix = genre.replaceAll("_", "-");
+    return [genre, new Map(cards.map((baseCard): [string, Variant] => {
+      const key = baseCard.slice(baseCard.indexOf("-") + 1);
+      return [key, { item: `${prefix}-${key}`, card: `${prefix}-${baseCard}`, baseCard }];
+    }))];
+  }),
 );
 // Every GameIcon on every page reaches this module, so it reads the weapon
 // spellings from a table generated off the catalogue
@@ -26,7 +36,7 @@ function artworkKey(name: string): string {
 }
 
 export function equipmentArtwork(icon: IconRef, genre: string | null | undefined, surface: "inventory" | "card"): IconRef {
-  const variants = genre ? VARIANTS.get(genre) : undefined;
+  const variants = genre ? GENRE_VARIANTS.get(genre) : undefined;
   if (!variants || (icon.kind !== "item" && icon.kind !== "action")) return icon;
   const variant = icon.kind === "item"
     ? variants.get(artworkKey(icon.key))

@@ -14,12 +14,12 @@ const { gearKey } = await import("../src/lib/srd/adventuring-gear.ts");
 const { pluralForms } = await import("../src/lib/srd/name-forms.ts");
 const { SRD_WEAPONS, WEAPON_ALIASES, weaponNamed } = await import("../src/lib/srd/weapons.ts");
 const { iconSlug } = await import("../src/lib/icons.ts");
+const { GENRE_VARIANTS } = await import("../src/lib/equipment-art-logic.ts");
 const root = path.resolve(import.meta.dirname, "..");
 const target = path.join(root, "src/lib/equipment-art-aliases.json");
 
 export function buildEquipmentArtAliases() {
-  const paintings = JSON.parse(readFileSync(path.join(root, "src/lib/equipment-art.json"), "utf8"));
-  const supported = new Set(Object.values(paintings).flatMap((entries) => Object.keys(entries)));
+  const supported = new Set([...GENRE_VARIANTS.values()].flatMap((variants) => [...variants.keys()]));
   const weapons = new Map();
   for (const weapon of SRD_WEAPONS) {
     const canonical = iconSlug(weapon.name);
