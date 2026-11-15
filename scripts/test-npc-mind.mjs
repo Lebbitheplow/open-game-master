@@ -574,6 +574,37 @@ await test("a turn whose calls all went on mechanics still asks the mind on stag
   }
 });
 
+await test("a mind travelling with the party is within earshot of the road's talk, though nobody spoke to it yet", async () => {
+  const { listNpcs } = await import("../src/lib/db/npcs.ts");
+  const { upsertCurrentLocation } = await import("../src/lib/db/locations.ts");
+  const { handleNpcState } = await import("../src/lib/dm/npc-state-tools.ts");
+  const others = listNpcs(world.campaignId).filter((entry) => mind.tierOfNpc(entry) === "primary" && !entry.companionSheetId);
+  for (const other of others) {
+    minds.setNpcTier(other.id, "secondary");
+  }
+  upsertCurrentLocation({ campaignId: world.campaignId, name: "the road north" });
+  npc("Chained Oss", { trait: "chained at the head of the column" });
+  handleNpcState(world.campaign(), JSON.stringify({ name: "Chained Oss", custody: "captive", heldBy: "Aria", restraint: "chained", withParty: true }));
+  const nudges = () => model.requests.filter((request) => String(request.messages?.at(-1)?.content ?? "").includes("nobody asked whether they heard")).length;
+  try {
+    model.script([
+      reply({ text: "The captain nods without turning." }),
+      reply({ calls: [call("npc_hear", { speaker: "Aria", words: "We may be followed.", listeners: [{ name: "Chained Oss", reach: "near" }] })] }),
+      reply({ text: "" }),
+    ]);
+    await model.turn(world, '"We may be followed," I tell the captain quietly.', aria.id);
+    assert.equal(nudges(), 1, "the script reset the requests: this turn's note is the only one");
+    assert.ok(memories("Chained Oss").some((entry) => /followed/.test(entry.content)));
+  } finally {
+    for (const other of others) {
+      minds.setNpcTier(other.id, "primary");
+    }
+    const oss = getNpcByName(world.campaignId, "Chained Oss");
+    minds.setNpcTier(oss.id, "secondary");
+    handleNpcState(world.campaign(), JSON.stringify({ name: "Chained Oss", custody: "free", restraint: "none", withParty: false }));
+  }
+});
+
 await test("a mind played from a mind seat answers the same isolated question, and silence falls to the server's mind", async () => {
   const { createUser } = await import("../src/lib/db/users.ts");
   const seats = await import("../src/lib/db/mind-seats.ts");
