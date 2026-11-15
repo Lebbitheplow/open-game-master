@@ -1281,6 +1281,21 @@ export function resourceLevel(
   return resourceLevelFor(def, matched?.classId, sheet.level, sheet.classes).level;
 }
 
+// The rest a counter comes back on as this sheet holds it: Bardic
+// Inspiration's long rest is any rest from bard 5 (Font of Inspiration).
+// Read from `recharge` alone, GAME STATE, a spend's result and the Hand told
+// a 5th-level bard their uses waited for a long rest.
+export function rechargeOf(
+  def: ResourceDef,
+  sheet?: {
+    level: number;
+    classes?: Array<{ id: string; level: number }>;
+    features?: Array<{ name: string; classId?: string }>;
+  },
+): Recharge {
+  return def.rechargeFor && sheet ? def.rechargeFor(resourceLevel(def, sheet)) : def.recharge;
+}
+
 // Builds the resources map from the features list: features that map to a
 // known resource get a counter sized for the level; existing used counts
 // are preserved (clamped to the new max) so level-ups never refund spent

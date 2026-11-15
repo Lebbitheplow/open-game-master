@@ -22,7 +22,7 @@ import { publishPersisted } from "@/lib/events";
 import { tilesApart } from "@/lib/dm/board-reach";
 
 import { computeSheetDerived } from "@/lib/srd";
-import { matchResource, sheetCatalog } from "@/lib/srd/class-resources";
+import { matchResource, rechargeOf, sheetCatalog } from "@/lib/srd/class-resources";
 import { classLevelOf, holdsFeature } from "@/lib/srd/trait-rules";
 import { effectiveMaxHp, incapacitatedBy, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { activeAuthored } from "@/lib/srd/authored-effects";
@@ -318,7 +318,7 @@ function spend(
   }
   if (state.max - state.used < amount) {
     return {
-      error: `${sheet.name} has ${state.max - state.used}/${state.max} ${def.displayName} left and this takes ${amount}; it comes back on a ${def.recharge === "short" ? "short or long" : "long"} rest.`,
+      error: `${sheet.name} has ${state.max - state.used}/${state.max} ${def.displayName} left and this takes ${amount}; it comes back on a ${rechargeOf(def, sheet) === "short" ? "short or long" : "long"} rest.`,
       refused: "rules",
     };
   }

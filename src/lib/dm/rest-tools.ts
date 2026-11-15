@@ -14,7 +14,7 @@ import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
-import { resourceDef, resourceLevel } from "@/lib/srd/class-resources";
+import { rechargeOf, resourceDef, resourceLevel } from "@/lib/srd/class-resources";
 import {
   defaultShortRestDice,
   longRestPatch,
@@ -646,7 +646,7 @@ function applySlotRecovery(
       }
       // A counter that comes back on a short rest (Psi Font's "on a short
       // rest", every one) is given back by the very rest that spends it.
-      const everyRest = (def.rechargeFor?.(resourceLevel(def, live)) ?? def.recharge) === "short";
+      const everyRest = rechargeOf(def, live) === "short";
       const patch = {
         spellcasting: { ...live.spellcasting, slots: back.slots },
         resources: { ...live.resources, [id]: { max: state.max, used: everyRest ? state.used : state.used + 1 } },

@@ -229,4 +229,24 @@ await test("R08 Fiendish Resilience's damage type is chosen as a rest ends, not 
   assert.ok(table.sheet(fiend.id).features.some((feature) => feature.name === "Fiendish Resilience (fire)"));
 });
 
+await test("R09 from bard 5 the GM, the spend's result and the Hand say Bardic Inspiration comes back on any rest", async () => {
+  // SRD 5.1, Bard, Font of Inspiration: "Beginning when you reach 5th
+  // level, you regain all of your expended uses of Bardic Inspiration when
+  // you finish a short or long rest." The rest already refilled it; GAME
+  // STATE, use_resource and the Hand read the 1st-level rule and said a
+  // long rest, so the GM held a 5th-level bard to one night's uses.
+  const { describeSheet } = await import("../src/lib/dm/prompt.ts");
+  const table = await openTable();
+  const bard = table.addHero({ class: "bard", level: 5, abilities: { cha: 16 }, features: [{ name: "Bardic Inspiration (d8)", classId: "bard" }, { name: "Font of Inspiration", classId: "bard" }] });
+  const ally = table.addHero({ class: "fighter", level: 5 });
+  assert.ok(table.sheet(bard.id).resources.bardic_inspiration, "the bard holds the counter");
+  assert.match(describeSheet(table.sheet(bard.id), "bard", false, {}), /Bardic Inspiration 3\/3 \(refills on any rest\)/);
+  const spent = await table.invoke("use_resource", { characterId: bard.id, resource: "Bardic Inspiration", targetCharacterId: ally.id });
+  assert.equal(spent.ok, true, spent.error);
+  assert.equal(spent.result?.refills ?? spent.refills, "on any rest");
+  // A 4th-level bard still waits for the night.
+  const novice = table.addHero({ class: "bard", level: 4, abilities: { cha: 16 }, features: [{ name: "Bardic Inspiration (d6)", classId: "bard" }] });
+  assert.doesNotMatch(describeSheet(table.sheet(novice.id), "novice", false, {}), /Bardic Inspiration 3\/3 \(refills on any rest\)/);
+});
+
 finish();
