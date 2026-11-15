@@ -107,6 +107,9 @@ const conditionInstanceSchema = z.object({
     pinning: z.string().trim().min(1).max(80).optional(),
     // Ends when the creature finishes a long rest (Life Drain, Draining Kiss).
     untilLongRest: z.boolean().optional(),
+    // A drained score's value before the first drain (a shadow's Strength
+    // Drain on a creature's row): src/lib/srd/creature-drain-logic.ts.
+    scoreFrom: z.number().int().min(0).max(30).optional(),
     // Ends when the rest it was raised for ends, short or long (Hearth of
     // Moonlight and Shadow, src/lib/dm/rest-logic.ts).
     untilRestEnds: z.boolean().optional(),

@@ -1026,4 +1026,88 @@ await test("E21 a goblin under Freedom of Movement held by a giant spider's webb
   assert.equal(dodge.ok, true, `its action is still its own: ${dodge.error}`);
 });
 
+// E22: a shadow's Strength Drain on a creature, not only on a sheet.
+async function shadowAndOgre() {
+  await kit.endFight();
+  await kit.fight(2, { heroFaces: { [kara.id]: 19, [bram.id]: 18 } });
+  const [shade, ogre] = world.enemies();
+  const printed = srd("Shadow");
+  const indoors = (lines) => (lines ?? []).filter((line) => !/^sunlight/i.test(line));
+  const shadowStats = { ...printed, traits: indoors(printed.traits), fullTraits: indoors(printed.fullTraits) };
+  kit.setEnemy(shade.id, { ac: shadowStats.ac, maxHp: shadowStats.maxHp, stats: shadowStats });
+  const ogreStats = srd("Ogre");
+  kit.setEnemy(ogre.id, { ac: ogreStats.ac, maxHp: ogreStats.maxHp, stats: ogreStats });
+  kit.place(kara.id, 5, 5);
+  kit.place(bram.id, 15, 15);
+  kit.place(shade.id, 7, 5);
+  kit.place(ogre.id, 6, 5);
+  // Dominated by Kara, the shadow strikes its old ally (enemy-strike.ts).
+  const encounters = await import("../src/lib/db/encounters.ts");
+  encounters.patchEnemyConditions(shade.id, ["charmed"], { charmed: { spell: "Dominate Person", source: kara.id } });
+  kit.enemyTurn(shade.id);
+  return { shade, ogre };
+}
+
+await test("E22 a shadow's touch on an ogre takes 1d4 from its Strength: its Strength save, Greatclub and Javelin feel it, until the fight ends", async () => {
+  const { shade, ogre } = await shadowAndOgre();
+  // A hit, 2d6 + 2, and the drain's d4 a 4: Strength 19 to 15, +4 to +2.
+  world.dice(19, 3, 3, 4);
+  const out = await world.invoke("enemy_attack", { enemyId: shade.id, targetCharacterId: ogre.id, attack: "Strength Drain" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  const drained = kit.enemy(ogre.id);
+  assert.ok(drained.conditions.includes("strength reduced (-4)"), JSON.stringify(out.result));
+  assert.equal(drained.stats.abilities.str, 15);
+  const { saveModFor } = await import("../src/lib/bestiary/enemy-numbers.ts");
+  assert.equal(saveModFor(drained.stats, "str"), 2);
+  assert.deepEqual(drained.stats.attacks.map((attack) => attack.toHit), [4, 4], "both Strength attacks lose 2");
+  // The ogre's greatclub at Kara: 2d8 + 4 - 2.
+  const hp = world.sheet(kara.id).currentHp;
+  kit.freshRound();
+  kit.enemyTurn(ogre.id);
+  world.dice(19, 4, 4);
+  const club = await world.invoke("enemy_attack", { enemyId: ogre.id, targetCharacterId: kara.id, attack: "Greatclub" });
+  world.clearDice();
+  assert.equal(club.ok, true, club.error);
+  assert.equal(world.sheet(kara.id).currentHp, hp - (4 + 4 + 2));
+  world.patch(kara.id, { currentHp: hp });
+  // No rest is kept for a creature's row: the drain is gone with the fight
+  // (a foe brought back carries none of it).
+  const { carryConditions } = await import("../src/lib/dm/foe-carry-logic.ts");
+  assert.deepEqual(carryConditions(drained.conditions, drained.conditionMeta, 0, 0).conditions, []);
+});
+
+await test("E22 an ogre drained to Strength 0 by a shadow dies", async () => {
+  const { shade, ogre } = await shadowAndOgre();
+  kit.setEnemy(ogre.id, { stats: { abilities: { ...srd("Ogre").abilities, str: 3 } } });
+  world.dice(19, 3, 3, 4);
+  const out = await world.invoke("enemy_attack", { enemyId: shade.id, targetCharacterId: ogre.id, attack: "Strength Drain" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(kit.enemy(ogre.id).status, "dead", JSON.stringify(out.result));
+});
+
+await test("E22 a brown bear Bram conjured, drained by a shadow, bites with its lowered Strength", async () => {
+  const { shade, ogre } = await shadowAndOgre();
+  const encounters = await import("../src/lib/db/encounters.ts");
+  encounters.patchEnemyConditions(shade.id, [], {});
+  const bear = summoned("Brown Bear", "Conjure Animals");
+  kit.place(bear.id, 8, 5);
+  kit.enemyTurn(shade.id);
+  world.dice(19, 3, 3, 4);
+  const touch = await world.invoke("enemy_attack", { enemyId: shade.id, targetCharacterId: bear.id, attack: "Strength Drain" });
+  world.clearDice();
+  assert.equal(touch.ok, true, touch.error);
+  assert.ok(world.sheet(bear.id).conditions.includes("strength reduced (-4)"));
+  // Bite +6 1d8 + 4 as printed, +4 and 1d8 + 2 at Strength 15.
+  kit.place(bear.id, 7, 6);
+  kit.giveTurn(bear.id);
+  world.dice(10, 5);
+  const bite = await world.invoke("pc_attack", { characterId: bear.id, targetEnemyId: ogre.id, weapon: "Bite" });
+  world.clearDice();
+  assert.equal(bite.ok, true, bite.error);
+  assert.equal(bite.result.rolled, 14, JSON.stringify(bite.result));
+  assert.equal(bite.result.damage, 7);
+});
+
 finish();

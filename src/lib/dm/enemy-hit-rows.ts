@@ -27,6 +27,7 @@ import { isConditionNamed } from "@/lib/srd/feature-names";
 import { swallowCreature } from "@/lib/dm/swallow";
 import { swallowRuleOf } from "@/lib/dm/swallow-logic";
 import { allyCreatureConditionAura } from "@/lib/dm/aura";
+import { drainCreature } from "@/lib/dm/creature-drain";
 
 type Sheets = { sheets: CharacterSheet[]; sheetsById: Map<string, CharacterSheet> };
 
@@ -142,6 +143,14 @@ export function resolveRowOnHit(
           out.drainHealed = `${attacker.displayName} regains ${healed - self.currentHp} hit points.`;
         }
       }
+    }
+  }
+  // A drained score (a shadow's Strength Drain), as on a character
+  // (enemy-hit.ts): creature-drain.ts.
+  if (rider.scoreDrain && !saved) {
+    const drained = drainCreature(campaign, turn, attacker, targetId, attack.name, rider.scoreDrain);
+    if (drained) {
+      out.scoreDrained = drained;
     }
   }
   // Swallowed whole, as a character is (swallow.ts).

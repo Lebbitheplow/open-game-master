@@ -126,6 +126,8 @@ export type ConditionMeta = {
   // Ends when the rest it was raised for ends, short or long (Hearth of
   // Moonlight and Shadow: "until the rest ends"): src/lib/dm/rest-logic.ts.
   untilRestEnds?: boolean;
+  // A drained score's value before the first drain (creature-drain-logic.ts).
+  scoreFrom?: number;
   // Each character a creature has withstood, where one mark answers several
   // (Instinctive Charm).
   sources?: string[];
