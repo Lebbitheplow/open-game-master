@@ -62,6 +62,16 @@ export const APPEARANCE_THEMES = [
     },
     provenance: "public/assets/themes/gothic/art-provenance.json",
   },
+  {
+    id: "forge", name: "Deep Forge", description: "Dark basalt, hammered bronze, and ember light.", icon: "sparkles", stylesheet: "src/app/styles/themes/forge.css",
+    art: {
+      texture: "/assets/themes/forge/basalt-v1.webp",
+      frame: "/assets/themes/forge/bronze-band-frame-v1.webp",
+      corner: "/assets/themes/forge/ember-plate-corner-v1.webp",
+      backdrop: "/assets/themes/forge/forge-hall-v1.webp",
+    },
+    provenance: "public/assets/themes/forge/art-provenance.json",
+  },
 ] as const satisfies readonly AppearanceDefinition[];
 export type AppearanceTheme = (typeof APPEARANCE_THEMES)[number]["id"];
 export type AppearanceChoice = "campaign" | AppearanceTheme;
