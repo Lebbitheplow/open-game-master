@@ -2,7 +2,7 @@
 // This catalog is safe to import in both client components and server schemas.
 import type { Genre } from "@/lib/schemas/game-settings-options";
 
-export const APPEARANCE_ICONS = ["sparkles", "leaf", "church"] as const;
+export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "waves"] as const;
 export type AppearanceIcon = (typeof APPEARANCE_ICONS)[number];
 export const THEME_ART_SLOTS = {
   texture: "--theme-art-texture",

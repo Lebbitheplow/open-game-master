@@ -6,6 +6,9 @@
   --material-control-radius: 12px 12px 2px 2px;
   --material-panel-radius: 18px 18px 3px 3px;
   --material-primary-wash: linear-gradient(#782c48e8, #3c1428eb);
+  --material-send-wash: linear-gradient(#782c48, #3c1428);
+  --material-send-edge: var(--color-amber-400);
+  --material-chosen-wash: var(--material-send-wash);
   --material-metal-finish: linear-gradient(135deg, #e2cbd3, #93727f 48%, #cdb3bf 51%, #75535f);
   --material-metal-ink: #301723;
   --material-rail-wash: linear-gradient(#20141b70, #20141b70);
@@ -37,6 +40,7 @@
   --color-amber-50: #fff7fa;
 }
 [data-appearance="gothic"][data-theme="light"] {
+  --material-send-wash: linear-gradient(#74304d, #48162d);
   --material-primary-wash: linear-gradient(#74304deb, #48162df0);
   --background: #f1e8e7;
   --foreground: #33212a;

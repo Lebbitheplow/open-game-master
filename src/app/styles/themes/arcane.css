@@ -5,6 +5,9 @@
   --material-fitting-radius: 50%;
   --material-control-radius: 6px;
   --material-panel-radius: 12px 4px;
+  --material-send-wash: linear-gradient(#55421e, #342345);
+  --material-send-edge: var(--color-amber-400);
+  --material-chosen-wash: var(--material-send-wash);
 }
 [data-appearance="arcane"][data-theme="dark"] {
   --background: #0a0817;
@@ -33,6 +36,7 @@
   --color-amber-50: #fdf7e7;
 }
 [data-appearance="arcane"][data-theme="light"] {
+  --material-send-wash: linear-gradient(#755c24, #493716);
   --material-primary-wash: linear-gradient(#755c24f0, #493716f0);
   --background: #f4efe4;
   --foreground: #221a10;

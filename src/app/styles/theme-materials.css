@@ -13,6 +13,12 @@
   --material-body-wash: linear-gradient(color-mix(in srgb, var(--background) 94%, transparent), color-mix(in srgb, var(--background) 94%, transparent));
   --material-rail-wash: linear-gradient(#12101c70, #12101c70);
   --material-primary-wash: linear-gradient(#55421ee8, #342345eb);
+  /* The table's send key, chosen say/do key and health bar. The defaults are
+     the greens every painted theme had before these were variables. */
+  --material-send-wash: linear-gradient(#456332, #233b1d);
+  --material-send-edge: #b4c99c;
+  --material-chosen-wash: linear-gradient(#344d2d, #203522);
+  --material-vital-fill: linear-gradient(90deg, #668449, #b9d88e);
   --material-metal-finish: linear-gradient(135deg, #f2dda1, #ac803b 48%, #e8cf88 51%, #826128);
   --material-metal-ink: #251b10;
   --material-fitting-radius: 50%;

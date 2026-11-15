@@ -17,9 +17,9 @@ or session to coordinate with; it does not mean that session is still running.
 
 | Work | Owner / last contributor | Branch, commit or work location | State and next step | Last update |
 | --- | --- | --- | --- | --- |
-| Shared framework; Arcane, Woodland, Gothic | Codex, PR 962 session | `codex/genre-appearance-themes`, PR 962; local worktree `theme-infrastructure-pr` | Ready for review. Local build, lint, theme checks and all 1,218 test files passed across batches/reruns; see validation record. Final CI, native-shell and real-device checks remain before delivery. | 2026-11-14 |
+| Shared framework; Arcane, Woodland, Gothic | Codex, PR 962 session | `codex/genre-appearance-themes`, PR 962; local worktree `theme-infrastructure-pr` | Tide's shared handoff is implemented and locally validated: configurable action colors, readable headers, map-frame clearance and 16 new regressions. Arcane/Gothic passed 59 browser checks each; Woodland passed its focused rerun after the full matrix. See validation record for details. Final CI, native-shell and real-device checks remain. Browser port 3034 is free after validation. | 2026-11-14 |
 | Deep Forge | Fable; successor not yet assigned | Reported commit `c92039a08`; reference repo `C:\dev\tabletop-companion`, worktree `C:\dev\ogm-appearance-themes` | Groundwork already exists. Continue from Fable's implementation and port to the current framework; locate that work before starting another version. | 2026-11-14 |
-| Sunken Tide | Fable; successor not yet assigned | Stopped session; worktree/branch and handoff link still to record | Groundwork already exists per Albert/Fable. Next session should locate and preserve that work, then record what remains. | 2026-11-14 |
+| Sunken Tide | Fable, theme-tide session | `feat/appearance-theme-tide`; theme commit `0a9b64b6d`, head `ebade302c`; [draft PR 977](https://github.com/Lebbitheplow/open-game-master/pull/977), based on PR 962 | Built from the recovered groundwork. Shared changes from `476c2b4c6` are now in PR 962. Rebase onto the updated framework, dropping duplicated shared edits while keeping Tide's catalog entry and material values; rerun the expanded browser matrix. Browser port 3033 (3032 belongs to High Kingdoms). | 2026-11-14 |
 | Hearth & Haven | Session `01a1dc7c-174e-7d53-8359-175b5c09ae65` | `codex/hearth-haven-theme`; worktree `theme-hearth-haven`; base `96b5a50b5` | Assigned and started at Albert's request. Implement painted indoor oak, parchment and lamplight; validate day/night and leave a separate draft PR/handoff. Browser port 3031. | 2026-11-14 |
 | High Kingdoms | Session `01a1dc7c-3fee-7901-9f79-e1e9ee41063d` | `codex/high-kingdoms-theme`; worktree `theme-high-kingdoms`; base `96b5a50b5` | Assigned and started at Albert's request. Implement ivory, royal-blue heraldry and manuscript borders; validate day/night and leave a separate draft PR/handoff. Browser port 3032. | 2026-11-14 |
 
@@ -64,7 +64,7 @@ All three have painted textures, borders, corners and fallback scenery. Their
 artwork reaches the lobby, active session and enlarged battle-map dialog, in
 both brightness modes. Campaign covers and scene paintings retain priority over
 fallback scenery. Current screenshots live in the separate
-[review gallery](https://github.com/Smoebo/open-dungeon-master/tree/97ad9ffb8045f4a446e5145021d70c2bfa843a2b/images).
+[review gallery](https://github.com/Smoebo/open-dungeon-master/tree/826cd595e90b0693b5c788819a86fcb44e83c9dc/images).
 
 PR 962's current focus is the shared framework and validation. Its follow-up
 isolates theme-owned CSS, checks image transparency, centralizes genre and icon
@@ -77,7 +77,7 @@ real-device checks must not be inferred from this table.
 | ID | Name | Look | Status | Evidence and next step |
 | --- | --- | --- | --- | --- |
 | `forge` | Deep Forge | Dark basalt, hammered bronze bands, ember light; square-cut keys | **built**, reported | Fable's handoff identifies `c92039a08`, built on `e75ec96ae`, with four images and prompts. That commit is not available in this checkout. Recover and inspect it, then port its own styles/assets to PR 962's current catalog and material variables. Rerun current checks; the old reference had two narrow-combat failures. |
-| `tide` | Sunken Tide | Sea-glass teal, pale driftwood, verdigris bronze, pearl | **started**, reported | Fable reports a stopped session with no commit. No working files have been verified here. Preserve the brief; locate recoverable files before treating this as more than an idea. |
+| `tide` | Sunken Tide | Sea-glass teal, pale driftwood, verdigris bronze, pearl | **built**, draft PR | [PR 977](https://github.com/Lebbitheplow/open-game-master/pull/977) contains the recovered implementation, four WebP assets, provenance and both palettes. Claims no genre. Fable reports 12 behavior + 5 contract checks and 43 browser checks passing; its PR records which build/lint checks preceded the shared patch and the Windows tar failures. Shared layout defects are assigned to PR 962. Rebase onto those fixes, then rerun the expanded checks; native-shell, real-device and final CI checks remain. |
 | `kingdoms` | High Kingdoms | Ivory, royal blue, heraldry, illuminated manuscript borders | **started** | Assigned session and worktree are in the handoff table. Emphasize banners, heraldic fittings and manuscript ornament; keep it distinct from Cloud Citadel's airy marble and sky imagery. |
 | `hearth` | Hearth & Haven | Warm parchment, amber, oak, cosy tavern atmosphere | **started** | Assigned session and worktree are in the handoff table. Use crafted indoor woodwork and warm lamplight, distinct from Ancient Woodland's living vines and forest canopy. |
 | `frost` | Frostbound | Blue-white ice, pale steel, aurora green accent | **idea** | Day mode is the natural starting point. Give night mode a cold steel/aurora identity distinct from Arcane's indigo and amethyst. |
@@ -120,8 +120,9 @@ does not claim a genre default.
 3. Build one genre theme. Neon District would exercise a visibly different
    material family and mixed vector/painted artwork; this is a recommendation,
    not a committed priority.
-4. Revisit Tide if its work is recoverable, then choose further themes according
-   to interest and the remaining gaps in the picker.
+4. Rebase the built Tide theme after PR 962's shared fixes, then choose further
+   themes according to interest and the remaining gaps in the picker. Hearth
+   and High Kingdoms are already assigned in the active-work table.
 
 ## Before a row moves to started
 
@@ -162,4 +163,4 @@ does not claim a genre default.
 | When does a genre theme become the default? | Register the visual theme first; make a genre-default change an explicit reviewed decision. Existing campaigns following genre will change appearance. | Maintainer agreement for each claim. |
 | How many themes before grouping the picker? | The current checks cover three real choices and four/six-card layout fixtures. Reassess with the first seventh theme and actual phone use. | Whether grouping or filtering helps; six is a test case, not a product limit. |
 | What is the asset budget per theme? | Measure the complete shipped set and retain the existing 2 MiB limit per image. | The suggested 0.5–2 MB per-theme range is an estimate, not an enforced total. |
-| Who continues Forge/Tide? | Build on Fable's groundwork and record the handoff in the active-work table. | Tide's work location and the next owner for each theme. |
+| Who continues Forge/Tide? | Build on Fable's groundwork and record the handoff in the active-work table. Tide is now built in PR 977. | Forge's next owner; Tide's rebase and final validation after the shared fixes. |

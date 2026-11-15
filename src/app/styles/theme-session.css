@@ -30,10 +30,21 @@ html[data-theme-ornaments="true"][data-theme] .theme-table .cine-scrim-vignette 
 html[data-theme-ornaments="true"][data-theme] .theme-table header.cine-header {
   position: relative;
   flex-shrink: 0;
+  flex-wrap: wrap;
   padding-left: 36px;
   background: var(--material-control-wash), var(--material-grain) center / 620px;
   border-bottom: 2px ridge var(--material-edge);
 }
+/* Reserve readable title space; controls and initiative can take another row. */
+html[data-theme-ornaments="true"][data-theme] .theme-table .session-heading {
+  flex: 1 1 16rem;
+  min-width: min(100%, 14rem);
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .session-controls {
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-table .cine-ribbon-slot { order: 3; }
 html[data-theme-ornaments="true"][data-theme] .theme-table .session-title {
   color: var(--color-amber-200);
   background: none;
@@ -96,7 +107,7 @@ html[data-theme-ornaments="true"][data-theme] .theme-table .cine-party-face {
   box-shadow: 0 0 0 2px #c4cebc80;
 }
 html[data-theme-ornaments="true"][data-theme] .theme-table .cine-party-fill:not([data-low="true"]) {
-  background: linear-gradient(90deg, #668449, #b9d88e);
+  background: var(--material-vital-fill);
 }
 html[data-theme-ornaments="true"][data-theme] .theme-table .cine-party-card[data-current="true"] {
   border-color: var(--color-amber-300);
@@ -126,15 +137,15 @@ html[data-theme-ornaments="true"][data-theme] .theme-table .cine-desk .session-m
   box-shadow: inset 0 1px 0 #dce5cf30;
 }
 html[data-theme-ornaments="true"][data-theme] .theme-table .cine-desk .session-mode[data-on] {
-  background: linear-gradient(#344d2d, #203522);
+  background: var(--material-chosen-wash);
   color: #f4f4da;
   border-color: var(--color-amber-400);
   box-shadow: inset 0 2px 6px #0004, 0 2px 0 var(--color-amber-500);
 }
 html[data-theme-ornaments="true"][data-theme] .theme-table .cine-send {
-  background: linear-gradient(#456332, #233b1d);
+  background: var(--material-send-wash);
   color: #f4f4da;
-  border-color: #b4c99c;
+  border-color: var(--material-send-edge);
   border-radius: var(--material-control-radius);
 }
 html[data-theme-ornaments="true"][data-theme] .theme-table .session-well textarea::placeholder {
@@ -185,13 +196,13 @@ html[data-theme-ornaments="true"][data-theme] .theme-table .hand {
 @media (max-width: 639px) {
   html[data-theme-ornaments="true"][data-theme] .theme-table header.cine-header {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: 2.5rem minmax(0, 1fr);
     gap: 6px 10px;
     padding-left: 24px;
   }
-  html[data-theme-ornaments="true"][data-theme] .theme-table .cine-header > div:first-child { display: contents; }
-  html[data-theme-ornaments="true"][data-theme] .theme-table .session-title { grid-column: 1 / -1; }
-  html[data-theme-ornaments="true"][data-theme] .theme-table .session-title + p { min-width: 0; }
+  html[data-theme-ornaments="true"][data-theme] .theme-table .session-back { grid-column: 1; grid-row: 1; }
+  html[data-theme-ornaments="true"][data-theme] .theme-table .session-heading { grid-column: 2; grid-row: 1; min-width: 0; }
+  html[data-theme-ornaments="true"][data-theme] .theme-table .session-controls { grid-column: 1 / -1; grid-row: 2; }
 }
 
 /* Combat surfaces keep the same reading materials as the story. The
@@ -204,6 +215,10 @@ html[data-theme-ornaments="true"][data-theme] .cine-board-frame > .board-panel {
 }
 html[data-theme-ornaments="true"][data-theme] .theme-overlay {
   border: 10px solid transparent;
+  /* The painted rail extends farther inward than the transparent CSS border.
+     Keep header controls and initiative rows inside its quiet interior. */
+  --theme-overlay-gutter: max(1.25rem, calc(var(--theme-table-frame-width, 40px) - 10px + 8px));
+  padding: max(var(--theme-overlay-gutter), env(safe-area-inset-top)) var(--theme-overlay-gutter) max(var(--theme-overlay-gutter), env(safe-area-inset-bottom));
   background: linear-gradient(var(--material-paper), var(--material-paper)) padding-box,
     var(--material-grain) center / 420px border-box;
 }
@@ -228,7 +243,10 @@ html[data-theme-ornaments="true"][data-theme] .theme-overlay .cine-tabletop-clos
   border-color: var(--material-edge);
 }
 @media (max-width: 1023px) {
-  html[data-theme-ornaments="true"][data-theme] .theme-overlay { border-width: 4px; }
+  html[data-theme-ornaments="true"][data-theme] .theme-overlay {
+    border-width: 4px;
+    --theme-overlay-gutter: max(1.25rem, calc(var(--theme-table-frame-width-small, 28px) - 4px + 8px));
+  }
 }
 @media (forced-colors: active) {
   html[data-theme-ornaments="true"][data-theme] .theme-overlay { border: 1px solid CanvasText; background: Canvas; }

@@ -62,8 +62,8 @@ It is not the app appearance registry. Leave it alone when adding an appearance.
    },
    ```
 
-   The pickers and schema now include it. Existing symbols are `sparkles`, `leaf`
-   and `church`. To introduce another symbol, add its key to `APPEARANCE_ICONS`
+   The pickers and schema now include it. Existing symbols are `sparkles`, `leaf`,
+   `church` and `waves`. To introduce another symbol, add its key to `APPEARANCE_ICONS`
    and its component to the single map in `ThemeIcon.tsx`. Type checking catches
    a missing mapping.
 
@@ -145,9 +145,18 @@ Defaults use the theme's palette, and overrides also apply inside picker preview
 | `--material-metal`, `--material-edge` | Fitting text and border colors |
 | `--material-metal-finish`, `--material-metal-ink` | Painted metal gradient and its emblem color |
 | `--material-primary-wash` | Primary-button gradient; keep light button text legible in both modes |
+| `--material-send-wash`, `--material-send-edge`, `--material-chosen-wash` | The table's send key and its border, and the chosen say/do key; opaque, under light text |
+| `--material-vital-fill` | Party health bar above the low-health mark |
 | `--material-fitting-radius`, `--material-control-radius`, `--material-panel-radius` | Circular Arcane, pointed Gothic or asymmetric Woodland shapes |
 | `--material-body-wash`, `--material-rail-wash`, `--material-scrim` | Page, rail and scenery shading |
 | `--material-crest-tilt` | Rotation of the decorative lobby emblem |
+
+The send and chosen-action defaults preserve Woodland's green controls. Arcane
+and Gothic override them with opaque brass/indigo and garnet gradients. Keep
+light labels legible in both brightness modes. Healthy party bars remain green
+in these three themes; low-health styling is semantic and is not overridden by
+`--material-vital-fill`. The moving selection highlight copies the chosen
+button's fill, so inspect that visible highlight when testing the chosen color.
 
 Arcane and Gothic reuse their frame image for the `corner` slot. Their catalog
 entries set `cornerScale: 4`, which displays the top-left 25% of each image axis
@@ -187,8 +196,14 @@ the document root and uses the same frame and corner geometry as the table.
 Keep overlay containers positioned (the battle map uses `fixed`) and place the
 ornaments inside them; do not change their positioning to `relative`.
 
-The shared painted layout uses a 10px table and overlay rail on desktop and 4px on phones. Its lobby rail is
-26px on desktop and 12px on phones. It has additional inner padding.
+The shared painted layout uses a 10px table and overlay rail on desktop and 4px
+on phones. The enlarged map also reserves inner padding from the declared frame
+width, so its heading, controls and initiative rows stay inside the painted rail.
+Its lobby rail is 26px on desktop and 12px on phones, with additional inner padding.
+Session headers give the back link and title separate phone grid cells; larger
+headers wrap controls and initiative instead of shrinking the title to a letter.
+Use the named `session-back`, `session-heading` and `session-controls` hooks when
+changing that layout, rather than assuming a particular child position.
 
 Shared ornament measurements can be overridden in the theme selector:
 
@@ -285,10 +300,21 @@ The current browser matrix covers:
 - The actual account Appearance dialog at desktop/phone widths, day/night and
   enlarged text: keyboard theme selection, Follow campaign, isolated preview
   colors/artwork, and layout-only fixtures with four and six choices.
+- Visible title characters, back-link collisions and header control bounds at
+  enlarged text sizes, including 320/390px phones and 1024/1360/1920px desktops.
+- Enlarged-map content clearance from the painted frame, including initiative
+  rows, after finite entrance animations settle.
+- Live overrides of the four table material variables, including the moving
+  selection highlight and preservation of the low-health treatment.
 
 Use `npm run theme:check -- --theme woodland --picker-only` for the six picker
 checks alone. Its results are saved to `results-picker.json`; extra cards are
 temporary browser fixtures and are never registered or saved as real themes.
+
+Use `npm run theme:check -- --theme woodland --layout-only` for the 16 painted-theme header,
+frame-clearance and material checks. Results go to `results-layout.json`.
+These also run in the full matrix. The layout checks were verified to fail on
+the title collisions and frame overlap reported during Tide's development.
 
 These checks validate interface behavior and geometry, not full combat rules,
 multiplayer synchronization, mobile Safari, or screen-reader usability. Also
@@ -300,7 +326,7 @@ Stop the preview with Ctrl+C when finished. `.theme-preview/` is ignored; do not
 commit databases or browser profiles. Preserve only the screenshots and summary
 needed for the PR. Publish review screenshots on a separate evidence branch and
 link them from the PR; keep production artwork and provenance with the code.
-The [PR 962 gallery](https://github.com/Smoebo/open-dungeon-master/tree/97ad9ffb8045f4a446e5145021d70c2bfa843a2b)
+The [PR 962 gallery](https://github.com/Smoebo/open-dungeon-master/tree/826cd595e90b0693b5c788819a86fcb44e83c9dc)
 is an example. Use a commit link so later captures cannot silently change the
 review evidence. If styles appear stale, restart the preview and rerun the
 check. This occurred with imported CSS during Woodland development. A missing

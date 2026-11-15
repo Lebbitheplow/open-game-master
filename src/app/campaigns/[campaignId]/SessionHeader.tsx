@@ -215,18 +215,18 @@ export const SessionHeader = memo(function SessionHeader({
       <Link
         href={out.href}
         aria-label={out.label}
-        className="-ml-1.5 flex size-10 shrink-0 items-center justify-center rounded-md text-stone-400 transition-colors hover:text-amber-200 sm:hidden"
+        className="session-back -ml-1.5 flex size-10 shrink-0 items-center justify-center rounded-md text-stone-400 transition-colors hover:text-amber-200 sm:hidden"
       >
         <ArrowLeft className="size-5" />
       </Link>
-      <div className="min-w-0 flex-1">
+      <div className="session-heading min-w-0 flex-1">
         <h1 className="gold-title session-title font-display">{title}</h1>
         <p key={scene} className="live-in truncate font-serif text-xs italic text-stone-400">
           {scene || "The adventure unfolds"}
         </p>
       </div>
       {ribbon ? <div className="cine-ribbon-slot hidden lg:flex">{ribbon}</div> : null}
-      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
+      <div className="session-controls flex shrink-0 items-center gap-1.5 sm:gap-2.5">
         {/* Every table-wide control on one brass plate; the way out and the
             account menu stay beside it as the app's own furniture. */}
         <div className="session-cluster">

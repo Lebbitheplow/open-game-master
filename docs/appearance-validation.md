@@ -1,5 +1,46 @@
 # Appearance infrastructure validation
 
+## Shared fixes from the Sunken Tide handoff
+
+The PR 977 handoff identified hardcoded action colors and three layout defects
+in the shared painted-theme styles. This follow-up ports the shared portions of
+Fable's `476c2b4c671e9eb2e98dc6426f540041e1f88df3`: the wave symbol, four table
+material variables, consumers and authoring documentation. Tide's catalog entry,
+assets and palette remain in its own draft PR.
+
+Phone back links and title blocks now have separate grid positions. Larger
+headers reserve readable title space and wrap the controls/initiative strip.
+The enlarged map reserves inner padding from the frame width, keeping its title,
+controls and initiative rows inside the painted rail. Arcane and Gothic override
+the action materials with their own colors; healthy bars remain green and the
+low-health treatment remains unchanged.
+
+The new browser regressions count visible title characters, check glyph/back-link
+intersections and control bounds, and compare overlay content with the frame's
+inner edge. The corrected pre-fix run passed the two 1920px cases and failed the
+other 12 layout cases. Two additional checks exercise live material overrides
+and the moving selection highlight, while preserving low-health styling. Finite
+entrance and color animations settle before measurement. The full painted-theme
+matrix now contains 59 checks; `--layout-only` runs the 16 focused checks.
+
+| Check | Result |
+| --- | --- |
+| Appearance catalog and artwork contracts | 12 + 5 passed |
+| Woodland full browser matrix | 57 passed; two material-test target failures corrected in the focused rerun |
+| Woodland final focused regressions | 16 passed |
+| Arcane / Gothic full browser matrices | 59 passed for each theme |
+| Relevant unit/source-audit suites | All 5 files passed: appearance, artwork contracts, narration defaults, name lookups and text comparisons |
+| Production build, type check and bundle budgets | Passed; 106.9 KiB shared CSS, 113.5 KiB rulebook CSS, JavaScript within existing budgets |
+| Full repository lint | Passed, 0 errors and 313 existing warnings |
+
+The [nine reviewed follow-up screenshots](https://github.com/Smoebo/open-dungeon-master/tree/826cd595e90b0693b5c788819a86fcb44e83c9dc/images/shared-fixes)
+show each theme's phone title at night, desktop combat with enlarged text by day,
+and enlarged-map frame clearance. All use disposable fictional campaigns.
+
+The full 1,218-file result below belongs to the preceding infrastructure pass;
+it has not been rerun for this CSS/header follow-up. Final-commit CI, native-shell
+and real-device checks remain delivery requirements. PR 962 stays draft.
+
 ## Follow-up to the theme infrastructure review
 
 Fable's handoff reviewed `e21a63844`. The later painted-theme extension had

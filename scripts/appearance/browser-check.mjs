@@ -7,12 +7,14 @@ import { themeArtStyle, APPEARANCE_THEME_IDS } from '../../src/lib/appearance-th
 import { openBrowser, pause } from './browser.mjs';
 import { writeReview } from './review.mjs';
 import { checkPicker } from './picker-check.mjs';
+import { checkSharedLayout } from './layout-check.mjs';
 const browser = await openBrowser({browserPath,output});
 const {send,evaluate}=browser;
 try {
   const checks = [], failures = [], screenshots = [];
   const interactionsOnly = process.argv.includes('--interactions-only');
   const pickerOnly = process.argv.includes('--picker-only');
+  const layoutOnly = process.argv.includes('--layout-only');
   const waitFor = async (expression, timeout = 20000) => {
     const end = Date.now() + timeout;
     while (Date.now() < end) { if (await evaluate(expression)) return; await pause(200); }
@@ -28,7 +30,7 @@ try {
     await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
     await pause(250);
   };
-  const settleOverlay = () => evaluate(`Promise.all([...document.querySelector('.theme-overlay').getAnimations()].filter(a=>a.effect?.getTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{}))).then(()=>true)`);
+  const settleOverlay = () => evaluate(`Promise.all([...document.querySelector('.theme-overlay').getAnimations({subtree:true})].filter(a=>a.effect?.getTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{}))).then(()=>true)`);
   const shot = async name => {
     const image = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
     const filename = 'validation-' + name + '.png';
@@ -64,7 +66,7 @@ try {
   const combatId = campaigns.find(c => c.title === 'Theme validation · Combat').id;
   const lobbyId = campaigns.find(c => c.title === 'Theme validation · Lobby')?.id;
   assert.ok(lobbyId, 'Use the disposable theme:preview server, with the same --theme and --port');
-  if (!interactionsOnly) await checkPicker({send,evaluate,click,waitFor,dimensions,run,shot,origin});
+  if (!interactionsOnly && !layoutOnly) await checkPicker({send,evaluate,click,waitFor,dimensions,run,shot,origin});
   if (pickerOnly) {
     await fs.writeFile(path.join(output,'results-picker.json'),JSON.stringify({theme,createdAt:new Date().toISOString(),checks,failures},null,2));
     await writeReview(output,theme,screenshots);
@@ -77,6 +79,8 @@ try {
     await evaluate('document.fonts.ready.then(() => true)');
     await pause(900);
   };
+  if ((definition.art?.frame || definition.art?.corner) && !interactionsOnly && !process.argv.includes('--dice-only')) await checkSharedLayout({evaluate,dimensions,go,storyId,combatId,run,shot,click,waitFor,settleOverlay});
+  if (!layoutOnly) {
   await send('Page.navigate', {url:origin+'/campaigns/'+lobbyId});
   await waitFor(`!!document.querySelector('.theme-lobby-shell') && document.documentElement.dataset.appearance === ${JSON.stringify(theme)}`);
   await evaluate('document.fonts.ready.then(() => true)');
@@ -243,7 +247,8 @@ try {
       return await evaluate(`document.querySelector('.hand-card[data-picked="true"]').getAttribute('aria-label')`);
     });
   }
-  await fs.writeFile(path.join(output,interactionsOnly?'results-interactions.json':'results.json'), JSON.stringify({theme,createdAt:new Date().toISOString(),checks,failures},null,2));
+  }
+  await fs.writeFile(path.join(output,layoutOnly?'results-layout.json':interactionsOnly?'results-interactions.json':'results.json'), JSON.stringify({theme,createdAt:new Date().toISOString(),checks,failures},null,2));
   if (!interactionsOnly) await writeReview(output, theme, screenshots);
   if (failures.length) process.exitCode=1;
   console.log(JSON.stringify({passed:checks.length,failed:failures.length}));
