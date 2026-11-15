@@ -79,8 +79,10 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 // 14:  a monster's save ability reads the immunity its text grants after a
 //      success ("immune to the dragon's Frightful Presence for the next 24
 //      hours"), and an attack's rider the kinds it spares ("a creature other
-//      than an elf or undead", a ghoul's claws; rules audit 2026-11-15,
-//      monsters).
+//      than an elf or undead", a ghoul's claws); Destructive Wave reads as a
+//      hand-written row (5d6 thunder and 5d6 radiant or necrotic), and
+//      Warding Bond's and Fire Shield's notes leave their damage to the
+//      server (rules audit 2026-11-15, monsters and casting).
 export const READER_REVISION = 14;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";

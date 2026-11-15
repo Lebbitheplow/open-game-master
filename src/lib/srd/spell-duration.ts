@@ -23,6 +23,25 @@ const SPEAKS_OF_DURATION = /duration|\blasts?\b|concentration|for up to|until (?
 const roundsOf = (count: string | undefined, unit: string) =>
   Math.min(ROUND_CEILING, Number(count ?? 1) * (ROUNDS[unit.toLowerCase()] ?? 1));
 
+// A count in words as well as digits, and a second length joined by "and":
+// Mass Suggestion from a 9th-level slot lasts "a year and a day". Read with
+// digits only, that sentence said nothing and the 8th level's 30 days stood.
+const WORDS: Record<string, number> = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twelve: 12, twenty: 20, thirty: 30 };
+const COUNT = `(\\d+|${Object.keys(WORDS).join("|")})`;
+const LASTS = new RegExp(`\\b${COUNT}\\s+${UNIT}(?:\\s+and\\s+${COUNT}\\s+${UNIT})?\\b`, "i");
+const countOf = (word: string) => (/^\d+$/.test(word) ? Number(word) : (WORDS[word.toLowerCase()] ?? 1));
+
+// The rounds a clause says the spell lasts, or null when it names no length.
+function lastsIn(clause: string): number | null {
+  const lasts = LASTS.exec(clause);
+  if (!lasts) {
+    return null;
+  }
+  const first = countOf(lasts[1]) * (ROUNDS[lasts[2].toLowerCase()] ?? 1);
+  const second = lasts[3] && lasts[4] ? countOf(lasts[3]) * (ROUNDS[lasts[4].toLowerCase()] ?? 1) : 0;
+  return Math.min(ROUND_CEILING, first + second);
+}
+
 // What an "At Higher Levels" text says about the duration: lifetimes from a
 // slot level up, and a lifetime added for each slot level above one. A
 // cantrip's growth with its caster ("when you reach 5th level") is no slot's.
@@ -41,18 +60,33 @@ export function slotDurationsFromText(text: string): { at: SlotDurations; each: 
       each = { above: Number(added[3]), rounds: roundsOf(added[1]?.trim(), added[2]) };
       continue;
     }
-    for (const clause of sentence.split(/,\s*(?:or|and)\s+|,\s*(?=[1-9](?:st|nd|rd|th))/i)) {
+    // Planar Binding lists its lengths in one sentence, "to 30 days with a
+    // 7th-level slot, to 180 days with an 8th-level slot": each "to" begins
+    // a clause of its own, or the 7th and 8th went unread.
+    // A list of levels before the length they share ("a spell slot of 5th,
+    // 6th, or 7th level, the duration increases to 48 hours") starts at the
+    // first of them: the length went to the last, and the 5th and 6th kept
+    // the spell's own (audit 2026-11-15, S18).
+    let listed: number | null = null;
+    for (const clause of sentence.split(/,\s*(?:or|and)\s+|,\s*(?=[1-9](?:st|nd|rd|th))|,\s*(?=to\s)/i)) {
       const level = LEVEL.exec(clause);
       if (!level) {
         continue;
       }
-      if (/until (?:it is )?dispelled|permanent/i.test(clause)) {
-        at.push([Number(level[1]), null]);
+      const from: number = listed ?? Number(level[1]);
+      // Geas from a 9th-level slot lasts "until it is ended by one of the
+      // spells mentioned above": no count, as for "until dispelled".
+      if (/until (?:it is )?(?:dispelled|ended)|permanent/i.test(clause)) {
+        at.push([from, null]);
+        listed = null;
         continue;
       }
-      const lasts = new RegExp(`(\\d+)\\s+${UNIT}`, "i").exec(clause);
-      if (lasts) {
-        at.push([Number(level[1]), roundsOf(lasts[1], lasts[2])]);
+      const lasts = lastsIn(clause);
+      if (lasts !== null) {
+        at.push([from, lasts]);
+        listed = null;
+      } else {
+        listed = from;
       }
     }
   }

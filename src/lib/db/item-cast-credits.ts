@@ -1,6 +1,7 @@
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { currentTurnId } from "@/lib/dm/job-control";
 import type { ItemCastCredit, ItemCastStore } from "@/lib/srd/item-cast-credit";
+import { textKey } from "@/lib/language/text-logic";
 
 // The spells items have paid for and their tools have not yet cast
 // (src/lib/srd/item-cast-credit.ts), kept in the database the way a turn's
@@ -35,7 +36,36 @@ function write(sheetId: string, credits: ItemCastCredit[]) {
     .run(sheetId, campaign?.campaign_id ?? "", JSON.stringify(credits), nowIso());
 }
 
-const STORE: ItemCastStore = { read, write, turn: currentTurnId };
+type MetaEntry = { spell?: string; source?: string; others?: MetaEntry[] };
+
+// Whether a condition this character's casting of the spell laid still holds
+// on a character at their table or a creature in their fight: an item's
+// numbers for a spell that runs on others only (Sanctuary on an ally) last
+// while it does (item-cast-credit.ts runningItemSpell). Read from the rows,
+// not the sheet modules, which reach this store.
+function holds(sheetId: string, spell: string): boolean {
+  const campaign = db().prepare(`SELECT campaign_id FROM character_sheets WHERE id = ?`).get(sheetId) as { campaign_id: string } | undefined;
+  if (!campaign) {
+    return false;
+  }
+  const rows = [
+    ...(db().prepare(`SELECT condition_meta_json FROM character_sheets WHERE campaign_id = ?`).all(campaign.campaign_id) as Array<{ condition_meta_json: string | null }>),
+    ...(db()
+      .prepare(
+        `SELECT e.condition_meta_json FROM encounter_enemies e JOIN encounters n ON n.id = e.encounter_id
+         WHERE n.campaign_id = ? AND n.status = 'active'`,
+      )
+      .all(campaign.campaign_id) as Array<{ condition_meta_json: string | null }>),
+  ];
+  const key = textKey(spell);
+  return rows.some((row) =>
+    Object.values(parseJson<Record<string, MetaEntry>>(row.condition_meta_json, {})).some((entry) =>
+      [entry, ...(entry?.others ?? [])].some((one) => one?.source === sheetId && typeof one.spell === "string" && textKey(one.spell) === key),
+    ),
+  );
+}
+
+const STORE: ItemCastStore = { read, write, turn: currentTurnId, holds };
 globalThis.__odmItemCastStore = STORE;
 
 // "Revert this turn" took back what the turn's use_item spent (the sheet's
@@ -53,6 +83,7 @@ export function forgetTurnItemCasts(campaignId: string, turnId: string) {
         const waiting = { ...credit };
         delete waiting.usedAt;
         delete waiting.usedTurn;
+        delete waiting.running;
         return waiting;
       });
     if (JSON.stringify(next) !== JSON.stringify(list)) {

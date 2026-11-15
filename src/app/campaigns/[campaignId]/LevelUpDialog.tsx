@@ -64,7 +64,7 @@ import {
   fightingStyleSlots,
   type FightingStyleId,
 } from "@/lib/srd/feature-effects";
-import { spellStyleFor, spellbookAllowance } from "@/lib/srd/spell-prep";
+import { countingScores, spellStyleFor, spellbookAllowance } from "@/lib/srd/spell-prep";
 import { arcanumName, arcanumSplit, mysticArcanumLevels } from "@/lib/srd/mystic-arcanum";
 import { isThirdCaster, thirdCasterRequiredCantrip } from "@/lib/srd/third-caster";
 import {
@@ -485,7 +485,8 @@ export function LevelUpDialog({
     subclass: effectiveSubclass,
     progression,
     level: classLevelAfter,
-    abilitiesAfter: after.abilities,
+    // A worn Headband of Intellect's 19 counts (spell-prep.ts countingScores).
+    abilitiesAfter: countingScores(sheet, after.abilities),
   });
   const showSpells = caster.casts || (!isMulticlassPath && Boolean(sheet.spellcasting));
   // Magical Secrets, the Book of Shadows and Pact of the Chain's find

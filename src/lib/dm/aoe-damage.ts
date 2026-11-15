@@ -539,7 +539,7 @@ export function handleAoeDamage(
       return { error: `Invalid damage expression "${args.damage}".`, retry: true };
     }
     // A creature's spell as well as a character's (a mage's Ice Storm).
-    const secondType = plan?.mech?.secondType ?? enemyUse?.secondType;
+    const secondType = plan?.secondType ?? plan?.mech?.secondType ?? enemyUse?.secondType;
     // A character's plan split its dice before the riders' joined (aoe-spell.ts).
     const split = plan?.damageParts ?? splitDamageExpression(args.damage, secondType);
     // Elemental Adept: a spell that deals the chosen type has every 1 on its
@@ -657,7 +657,7 @@ export function handleAoeDamage(
           cover: saveCover(enemy.id),
           // The spell's damage types, for a save that leans only against some
           // (Corona of Light: fire and radiant).
-          ...(plan ? { damageType: [args.type, plan.mech?.secondType].filter(Boolean).join(", ") } : {}),
+          ...(plan ? { damageType: [args.type, plan.secondType ?? plan.mech?.secondType].filter(Boolean).join(", ") } : {}),
           ...(plan ? spellSaveOptions(plan.mech, enemy) : {}),
           ...(plan ? { record: { turn, detail: `${enemy.displayName}: ${ability.toUpperCase()} save against ${plan.spell}` } } : {}),
         });

@@ -341,5 +341,338 @@ await test("S09: a warlock 2 with both pact slots spent who reaches warlock 3 ha
   assert.deepEqual(fifth.slots, { 3: { max: 2, used: 1 } });
 });
 
+// ---- S10: a spell read from a scroll keeps the scroll's numbers while it runs ----
+
+// SRD 5.1, Spell Scroll: the spell is cast with the scroll's save DC and
+// attack bonus (15 and +7 for a 3rd-level scroll). The item credit lent those
+// numbers for one real minute after the cast, and a used-up scroll leaves no
+// row to carry them on (ring-store.ts noteRunning), so a Spirit Guardians
+// read from a scroll saved against the reader's own DC from the next minute
+// on, and a Call Lightning's later bolts the same.
+const { getDatabase } = await import("../src/lib/db/core.ts");
+const { skipCurrentTurn } = await import("../src/lib/dm/encounter-tools.ts");
+const { layMap } = await import("./lib/enforce-spells.mjs");
+const { field } = await import("./lib/enforce-spell-kit.mjs");
+
+// Real time passing since the scroll was read: more than the minute a taken
+// credit lends its numbers for.
+function ageItemCasts(sheetId, ms = 10 * 60 * 1000) {
+  const db = getDatabase();
+  const row = db.prepare(`SELECT payload_json FROM item_cast_credits WHERE character_id = ?`).get(sheetId);
+  if (row) {
+    const aged = JSON.parse(row.payload_json).map((credit) => ({ ...credit, at: credit.at - ms, ...(credit.usedAt !== undefined ? { usedAt: credit.usedAt - ms } : {}) }));
+    db.prepare(`UPDATE item_cast_credits SET payload_json = ? WHERE character_id = ?`).run(JSON.stringify(aged), sheetId);
+  }
+}
+
+// A 9th-level cleric (WIS 18, own DC 16) beside a goblin, Spirit Guardians
+// read from a 3rd-level scroll (DC 15).
+async function guardianScroll() {
+  const { world, sheets: [priest], enemies: [goblin] } = await table([caster("cleric", "wis", ["Spirit Guardians"], [], 9, { equipment: [scroll("Spirit Guardians")] })]);
+  await layMap(world, field(), { [priest.id]: { x: 1, y: 2 }, [goblin.id]: { x: 2, y: 2 } });
+  const read = await world.invoke("use_item", { characterId: priest.id, item: "Spell Scroll (Spirit Guardians)" });
+  assert.equal(read.ok, true, read.error);
+  const cast = await world.invoke("cast_buff", { characterId: priest.id, spell: "Spirit Guardians", level: 3 });
+  assert.equal(cast.ok, true, cast.error);
+  assert.equal(world.sheet(priest.id).spellcasting.slots["3"].used, 0, "the scroll paid, not a slot");
+  return { world, priest, goblin };
+}
+
+await test("S10: Spirit Guardians read from a scroll saves against the scroll's DC 15 long after the minute, not the cleric's 16", async () => {
+  const { world, priest, goblin } = await guardianScroll();
+  ageItemCasts(priest.id);
+  // A 15 saves against 15 (half of 12) and fails against 16 (all 12).
+  world.dice(15, 4, 4, 4);
+  assert.equal(skipCurrentTurn(world.campaignId), true);
+  world.clearDice();
+  assert.equal(hpLost(world, goblin.id), 6);
+});
+
+await test("S10: once the scroll's Spirit Guardians has ended, the cleric's own casting saves against their own DC 16", async () => {
+  const { world, priest, goblin } = await guardianScroll();
+  const dropped = await world.invoke("clear_condition", { characterId: priest.id, condition: "concentration" });
+  assert.equal(dropped.ok, true, dropped.error);
+  ageItemCasts(priest.id);
+  await freshTurn(world);
+  const own = await world.invoke("cast_buff", { characterId: priest.id, spell: "Spirit Guardians", level: 3 });
+  assert.equal(own.ok, true, own.error);
+  assert.equal(world.sheet(priest.id).spellcasting.slots["3"].used, 1);
+  world.dice(15, 4, 4, 4);
+  assert.equal(skipCurrentTurn(world.campaignId), true);
+  world.clearDice();
+  assert.equal(hpLost(world, goblin.id), 12);
+});
+
+await test("S10: a later Call Lightning bolt from a scroll is saved against the scroll's DC 15, not the druid's 16", async () => {
+  const { world, sheets: [druid], enemies: [goblin] } = await table([caster("druid", "wis", ["Call Lightning"], [], 9, { equipment: [scroll("Call Lightning")] })]);
+  const read = await world.invoke("use_item", { characterId: druid.id, item: "Spell Scroll (Call Lightning)" });
+  assert.equal(read.ok, true, read.error);
+  // The damage dice first, then the save.
+  world.dice(1, 1, 1, 20);
+  const one = await world.invoke("aoe_damage", { casterCharacterId: druid.id, spell: "Call Lightning", level: 3, enemyIds: [goblin.id] });
+  world.clearDice();
+  assert.equal(one.ok, true, one.error);
+  assert.equal(hpLost(world, goblin.id), 1, "a 20 saved: half of 3");
+  await freshTurn(world);
+  ageItemCasts(druid.id);
+  world.dice(5, 5, 5, 15);
+  const two = await world.invokeAsIs("aoe_damage", { casterCharacterId: druid.id, spell: "Call Lightning", enemyIds: [goblin.id] });
+  world.clearDice();
+  assert.equal(two.ok, true, two.error);
+  // A 15 saves against 15: half of 15.
+  assert.equal(hpLost(world, goblin.id), 1 + 7);
+});
+
+await test("S10: a Sanctuary read from a scroll onto an ally wards them with the scroll's DC 13 long after the minute", async () => {
+  const { world, sheets: [priest, ally], enemies: [goblin] } = await table([caster("cleric", "wis", ["Sanctuary"], [], 9, { equipment: [scroll("Sanctuary")] }), caster("fighter", "str", [], [], 9)]);
+  const read = await world.invoke("use_item", { characterId: priest.id, item: "Spell Scroll (Sanctuary)" });
+  assert.equal(read.ok, true, read.error);
+  const warded = await world.invoke("cast_buff", { characterId: priest.id, spell: "Sanctuary", targetCharacterIds: [ally.id] });
+  assert.equal(warded.ok, true, warded.error);
+  assert.ok(world.sheet(ally.id).conditions.includes("sanctuary"));
+  ageItemCasts(priest.id);
+  // A 13 makes the goblin's WIS save against 13 and fails it against 16.
+  world.dice(13, 15, 3);
+  const swing = await world.invoke("enemy_attack", { enemyId: goblin.id, targetCharacterId: ally.id });
+  world.clearDice();
+  assert.equal(swing.ok, true, swing.error);
+});
+
+// ---- S11: an enemy's new casting of its concentration spell ends the old ----
+
+// SRD 5.1, Concentration: "You lose concentration on a spell if you cast
+// another spell that requires concentration", a second casting of the same
+// spell too. An enemy's concentration was cleared only for a different spell,
+// and after the new casting's conditions were laid, so a hag that cast Hold
+// Person on one hero and again the next round on another held both.
+const encounterRows = await import("../src/lib/db/encounters.ts");
+const nextRound = (world) => {
+  const live = world.encounter();
+  encounterRows.saveEncounter({ ...live, round: live.round + 1 });
+};
+const heldBy = (world, id) => world.sheet(id).conditions.includes("paralyzed");
+
+await test("S11: an enemy that casts Hold Person again the next round frees the hero its first casting held", async () => {
+  const { world, sheets: [first, second], enemies: [hag] } = await table([{ class: "fighter", level: 5 }, { class: "rogue", level: 5 }], 1, { spells: ["Hold Person"] });
+  const hold = async (target) => {
+    world.dice(1);
+    const out = await world.invoke("cast_at_player", { characterId: target.id, spell: "Hold Person", saveAbility: "wis", dc: 15, condition: "paralyzed", casterEnemyId: hag.id });
+    world.clearDice();
+    assert.equal(out.ok, true, out.error);
+  };
+  await hold(first);
+  assert.ok(heldBy(world, first.id));
+  nextRound(world);
+  await hold(second);
+  assert.ok(heldBy(world, second.id), "the new casting holds its target");
+  assert.ok(!heldBy(world, first.id), "the first casting ended with the new one");
+  assert.equal(world.enemies().find((entry) => entry.id === hag.id).concentration, "Hold Person");
+});
+
+await test("S11: one casting of an enemy's Hypnotic Pattern over two heroes holds them both", async () => {
+  const { world, sheets: [first, second], enemies: [hag] } = await table([{ class: "fighter", level: 5 }, { class: "rogue", level: 5 }], 1, { spells: ["Hypnotic Pattern"] });
+  world.dice(1, 1);
+  const out = await world.invoke("aoe_damage", { casterEnemyId: hag.id, spell: "Hypnotic Pattern", characterIds: [first.id, second.id], saveAbility: "wis", dc: 15 });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  for (const hero of [first, second]) {
+    assert.ok(world.sheet(hero.id).conditions.includes("charmed"), JSON.stringify(out.result?.results));
+  }
+  assert.equal(world.enemies().find((entry) => entry.id === hag.id).concentration, "Hypnotic Pattern");
+});
+
+// ---- S12: the prepared count reads the score a worn item sets ----
+
+// SRD 5.1, Wizard, Preparing and Casting Spells: "choose a number of wizard
+// spells from your spellbook equal to your Intelligence modifier + your
+// wizard level"; Headband of Intellect: "Your Intelligence score is 19 while
+// you wear this headband." Every other number reads the headband's 19
+// (computeSheetDerived), but the spells route, the sheet's Spells panel and
+// the save check counted from the sheet's own INT 10.
+const BOOK = ["Magic Missile", "Shield", "Sleep", "Burning Hands", "Mage Armor", "Detect Magic", "Thunderwave"];
+const headbandWizard = (prepared) => caster("wizard", "int", prepared, ["Fire Bolt"], 3, {
+  abilities: { int: 10, con: 14, dex: 12 },
+  equipment: [{ name: "Headband of Intellect", qty: 1, equipped: true, attuned: true }],
+  spellcasting: { spellbook: BOOK },
+});
+
+await test("S12: a 3rd-level wizard (INT 10) in a Headband of Intellect prepares 7 spells (3 + the headband's +4), not 3", async () => {
+  const { openWorld } = await import("./lib/enforce-world.mjs");
+  const world = await openWorld();
+  const mage = world.addHero(headbandWizard(BOOK.slice(0, 3)));
+  const spells = await world.route("campaigns/[campaignId]/sheet/spells");
+  world.signIn({ id: mage.userId });
+  const response = await spells.POST(
+    new Request("http://test/", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "prepare", spell: "Burning Hands", sheetId: mage.id }) }),
+    { params: Promise.resolve({ campaignId: world.campaignId }) },
+  );
+  const body = await response.json();
+  assert.equal(response.status, 200, JSON.stringify(body));
+});
+
+await test("S12: the save check counts a headband wizard's 7 prepared spells as within the count", async () => {
+  const { spellListProblems } = await import("../src/lib/srd/spell-prep.ts");
+  const { openWorld } = await import("./lib/enforce-world.mjs");
+  const world = await openWorld();
+  const mage = world.sheet(world.addHero(headbandWizard(BOOK)).id);
+  assert.deepEqual(spellListProblems(mage, { bookAllowance: false }).filter((line) => /prepare|spells/i.test(line)), []);
+  const bare = { ...mage, equipment: [] };
+  assert.ok(spellListProblems(bare, { bookAllowance: false }).some((line) => /3/.test(line)), "without the headband, 7 is over the count of 3");
+});
+
+// ---- S13: a duration in words ("a year and a day") is read ----
+
+// SRD 5.1, Mass Suggestion: "When you cast this spell using a 7th-level
+// spell slot, the duration is 10 days. When you use an 8th-level spell slot,
+// the duration is 30 days. When you use a 9th-level spell slot, the duration
+// is a year and a day." The reader took only a duration with digits, so the
+// 9th-level casting kept the 8th's 30 days; and the longest count a lifetime
+// could hold was one year, a day short. The same reader lost Geas's "until it
+// is ended" and Planar Binding's 7th and 8th levels.
+const DAY = 14400;
+
+await test("S13: Mass Suggestion lasts 24 hours, 10 days from a 7th-level slot, 30 from an 8th, a year and a day from a 9th", async () => {
+  const { spellDurationRounds } = await import("../src/lib/dm/spell-effects.ts");
+  const { slotDurationsFromText } = await import("../src/lib/srd/spell-duration.ts");
+  assert.deepEqual([6, 7, 8, 9].map((level) => spellDurationRounds("Mass Suggestion", undefined, level)), [DAY, 10 * DAY, 30 * DAY, 366 * DAY]);
+  const printed = "When you cast this spell using a 7th-level spell slot, the duration is 10 days. When you use an 8th-level spell slot, the duration is 30 days. When you use a 9th-level spell slot, the duration is a year and a day.";
+  assert.deepEqual(slotDurationsFromText(printed).at, [[7, 10 * DAY], [8, 30 * DAY], [9, 366 * DAY]]);
+  // The other rows a slot lengthens still read as before.
+  assert.deepEqual([3, 5].map((level) => spellDurationRounds("Hex", undefined, level)), [8 * 600, 24 * 600]);
+  // Geas from a 9th-level slot: "until it is ended by one of the spells
+  // mentioned above", no count (it read as the 7th level's year).
+  assert.deepEqual([7, 9].map((level) => spellDurationRounds("Geas", undefined, level)), [365 * DAY, null]);
+  // Planar Binding: "10 days with a 6th-level slot, to 30 days with a
+  // 7th-level slot, to 180 days with an 8th-level slot, and to a year and a
+  // day with a 9th-level slot" (the 7th and 8th read as the 6th's 10 days).
+  assert.deepEqual([5, 6, 7, 8, 9].map((level) => spellDurationRounds("Planar Binding", undefined, level)), [DAY, 10 * DAY, 30 * DAY, 180 * DAY, 366 * DAY]);
+  assert.equal(spellDurationRounds("Suggestion", undefined, 9), 8 * 600);
+});
+
+await test("S13: a goblin that fails its save against a 9th-level Mass Suggestion is held for a year and a day", async () => {
+  const { world, sheets: [bard], enemies: [goblin] } = await table([caster("bard", "cha", [], [], 17, { spellcasting: { known: ["Mass Suggestion"] } })]);
+  world.dice(1);
+  const cast = await world.invoke("cast_at_enemy", { characterId: bard.id, targetEnemyId: goblin.id, spell: "Mass Suggestion", saveAbility: "wis", level: 9 });
+  world.clearDice();
+  assert.equal(cast.ok, true, cast.error);
+  const foe = world.enemies().find((entry) => entry.id === goblin.id);
+  assert.equal(foe.conditionMeta.suggested?.rounds, 366 * DAY, JSON.stringify(foe.conditionMeta));
+});
+
+// ---- S15: a ranger casts a costless material only from a component pouch ----
+
+// SRD 5.1, Spellcasting, Components: "A character can use a component pouch
+// or a spellcasting focus (found in chapter 5) in place of the components
+// specified for a spell", and each class names the focus it may use (the
+// wizard an arcane focus, the druid a druidic focus...). The ranger's text
+// names none, so a ranger needs the pouch. Letting a ranger use any focus is
+// the 2024 rule. A fighter's or rogue's third-caster subclass names none
+// either.
+await test("S15: a ranger holding a druidic focus but no component pouch is refused Goodberry, and says why", async () => {
+  const { focusProblem } = await import("../src/lib/dm/cast-materials.ts");
+  const { spellFactsFor } = await import("../src/lib/content/index.ts");
+  const facts = spellFactsFor("Goodberry");
+  assert.ok(facts?.material, "Goodberry has a material component");
+  const ranger = (equipment) => ({ name: "Wren", class: "ranger", classes: [{ id: "ranger", subclass: "", level: 5 }], equipment });
+  const refused = focusProblem(ranger([{ name: "Druidic focus (yew wand)", qty: 1, tags: ["druidic_focus"] }]), facts);
+  assert.equal(refused?.refused, "rules", JSON.stringify(refused));
+  assert.match(refused.error, /a ranger needs a component pouch; the SRD ranger has no spellcasting focus/);
+  assert.equal(focusProblem(ranger([{ name: "Component pouch", qty: 1 }]), facts), null, "the pouch serves");
+  // A ranger and druid uses the druid's focus as the druid does.
+  assert.equal(focusProblem({ ...ranger([{ name: "Druidic focus (yew wand)", qty: 1, tags: ["druidic_focus"] }]), classes: [{ id: "ranger", level: 5 }, { id: "druid", level: 2 }] }, facts), null);
+  // A fighter's Eldritch Knight with an arcane focus: no focus in their text either.
+  const grease = spellFactsFor("Grease");
+  const knight = focusProblem({ name: "Brann", class: "fighter", classes: [{ id: "fighter", subclass: "Eldritch Knight", level: 7 }], equipment: [{ name: "Arcane focus (crystal)", qty: 1, tags: ["arcane_focus"] }] }, grease);
+  assert.equal(knight?.refused, "rules", JSON.stringify(knight));
+});
+
+// ---- S16: Destructive Wave's second 5d6 is radiant or necrotic, the caster's choice ----
+
+// SRD 5.1, Destructive Wave: "5d6 thunder damage and 5d6 radiant or necrotic
+// damage (your choice)". S05 dealt the second 5d6 as radiant always; a
+// paladin who chose necrotic had no way to say so. Each share meets its own
+// resistance: a creature resistant to necrotic halves only that share.
+async function waveAt(stats, args = {}) {
+  const { world, sheets: [paladin], enemies: [foe] } = await table([caster("paladin", "cha", ["Destructive Wave"], [], 17)], 1, stats);
+  // Every d6 a 2: 10 thunder and 10 of the chosen type; the save a 1.
+  world.dice(2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1);
+  const wave = await world.invoke("aoe_damage", { casterCharacterId: paladin.id, spell: "Destructive Wave", enemyIds: [foe.id], level: 5, ...args });
+  world.clearDice();
+  assert.equal(wave.ok, true, wave.error);
+  return { wave, lost: hpLost(world, foe.id) };
+}
+
+await test("S16: Destructive Wave cast as necrotic deals its second 5d6 as necrotic, halved by a resistance to necrotic", async () => {
+  const { wave, lost } = await waveAt({ resist: "necrotic" }, { type: "necrotic" });
+  assert.equal(lost, 10 + 5, JSON.stringify(wave.result?.results));
+  assert.match(JSON.stringify(wave.result), /necrotic/);
+});
+
+await test("S16: Destructive Wave with no choice named stays radiant, which a resistance to necrotic does not touch", async () => {
+  const { lost } = await waveAt({ resist: "necrotic" });
+  assert.equal(lost, 20);
+});
+
+// ---- S17: Heroism from a Ring of Spell Storing gives the original caster's modifier ----
+
+// SRD 5.1, Ring of Spell Storing: the spell "uses the slot level, spell save
+// DC, spell attack bonus, and spellcasting ability of the original caster";
+// Heroism: temporary hit points "equal to your spellcasting ability modifier
+// at the start of each of its turns". The turn-start grant read the
+// wearer's own sheet, so a fighter casting a cleric's stored Heroism gained
+// none at all (the fighter has no spellcasting ability).
+await test("S17: a fighter casting a cleric's Heroism from a Ring of Spell Storing gains the cleric's 4 temporary hit points each turn", async () => {
+  const ringRow = { name: "Ring of Spell Storing", qty: 1, equipped: true, attuned: true, storedSpells: [{ spell: "Heroism", level: 1, saveDc: 15, attackBonus: 7, abilityMod: 4, by: "Priest" }] };
+  const { world, sheets: [fighter] } = await table([{ class: "fighter", level: 5, abilities: { str: 16 }, equipment: [ringRow] }]);
+  const drawn = await world.invoke("use_item", { characterId: fighter.id, item: "Ring of Spell Storing", spell: "Heroism" });
+  assert.equal(drawn.ok, true, JSON.stringify(drawn));
+  const cast = await world.invoke("cast_buff", { characterId: fighter.id, spell: "Heroism", targetCharacterIds: [fighter.id] });
+  assert.equal(cast.ok, true, JSON.stringify(cast));
+  // The goblin's turn, then the fighter's own: Heroism's grant as it starts.
+  assert.equal(skipCurrentTurn(world.campaignId), true);
+  assert.equal(skipCurrentTurn(world.campaignId), true);
+  world.clearDice();
+  assert.equal(world.sheet(fighter.id).tempHp, 4);
+});
+
+// ---- S18: a list of slot levels sharing one length starts at the first ----
+
+// A pack spell's higher-level text lists levels before the length they share
+// ("using a spell slot of 5th, 6th, or 7th level, the duration increases to
+// 48 hours"). The reader gave the length to the last level of the list, so
+// a 5th or 6th-level casting kept the spell's own duration.
+await test("S18: \"5th, 6th, or 7th level, the duration increases to 48 hours\" lasts 48 hours from a 5th-level slot", async () => {
+  const { slotDurationsFromText } = await import("../src/lib/srd/spell-duration.ts");
+  const printed = "When you cast this spell using a spell slot of 5th, 6th, or 7th level, the duration increases to 48 hours. When you cast this spell using a spell slot of 8th or 9th level, the duration increases to 72 hours.";
+  assert.deepEqual(slotDurationsFromText(printed).at, [[5, 48 * 600], [8, 72 * 600]]);
+});
+
+// ---- S19: a multiclass caster's focus serves its own class's spells ----
+
+// SRD 5.1, Druid: "You can use a druidic focus as a spellcasting focus for
+// your druid spells" (each class's focus the same). On a ranger and druid
+// the focus was judged by the union of the classes, so the druidic focus
+// stood in for a spell learned as a ranger.
+await test("S19: a ranger and druid's druidic focus serves the spell they prepared as a druid, not the one they know as a ranger", async () => {
+  const { focusProblem } = await import("../src/lib/dm/cast-materials.ts");
+  const { spellFactsFor } = await import("../src/lib/content/index.ts");
+  const both = {
+    name: "Wren", class: "ranger",
+    classes: [{ id: "ranger", subclass: "", level: 5 }, { id: "druid", subclass: "", level: 3 }],
+    equipment: [{ name: "Druidic focus (yew wand)", qty: 1, tags: ["druidic_focus"] }],
+    spellcasting: {
+      ability: "wis", slots: {}, known: ["Goodberry"], prepared: ["Longstrider"], cantrips: [],
+      casters: [
+        { classId: "ranger", ability: "wis", known: ["Goodberry"], prepared: [], cantrips: [] },
+        { classId: "druid", ability: "wis", known: [], prepared: ["Longstrider"], cantrips: [] },
+      ],
+    },
+  };
+  assert.equal(focusProblem(both, spellFactsFor("Longstrider")), null, "a druid spell takes the druidic focus");
+  const ranger = focusProblem(both, spellFactsFor("Goodberry"));
+  assert.equal(ranger?.refused, "rules", JSON.stringify(ranger));
+  assert.match(ranger.error, /component pouch/);
+});
+
 closeTables();
 finish();

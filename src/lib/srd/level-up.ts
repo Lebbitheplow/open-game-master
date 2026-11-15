@@ -62,7 +62,7 @@ import {
   multiclassGrantsFor,
 } from "@/lib/srd/multiclass";
 import { hpBonusPerLevel } from "@/lib/srd/race-id";
-import { casterViewsOf, dedupeNames, withCasterViews, type CasterView } from "@/lib/srd/spell-prep";
+import { casterViewsOf, countingScores, dedupeNames, withCasterViews, type CasterView } from "@/lib/srd/spell-prep";
 import { isThirdCaster } from "@/lib/srd/third-caster";
 import { featureHitPoints, holdsFeature, withPrimalChampion } from "@/lib/srd/trait-rules";
 import { isChoiceFeature, unmetPrerequisite } from "@/lib/srd/legality/features";
@@ -674,7 +674,8 @@ export function buildLevelUp(
         subclass: leveled.subclass,
         list: mine.list,
         firstLevel: leveled.level === 1 || !views.some((view) => view.classId.toLowerCase() === classId),
-        abilities,
+        // The new scores as worn items leave them (spell-prep.ts countingScores).
+        abilities: countingScores(sheet, abilities),
         freeCantrips: context.racialCantrips,
         // A pact boon picked with this level widens its lists now.
         features,

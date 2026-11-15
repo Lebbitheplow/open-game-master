@@ -23,6 +23,7 @@ import type { EncounterEnemy } from "@/lib/db/encounters";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getSheetById } from "@/lib/db/sheets";
 import { spellSaveDcFor } from "@/lib/srd";
+import { textKey } from "@/lib/language/text-logic";
 import { spellDamageFor, spellFactsFor, spellMechanicsFor, spellSchoolFor } from "@/lib/content";
 import { castShares, type SpellMech } from "@/lib/srd/spell-mechanics";
 import { spellDamageRiders } from "@/lib/srd/spell-damage-riders";
@@ -68,6 +69,9 @@ export type AoeSpellPlan = {
   dc: number;
   halfOnSave: boolean;
   type?: string;
+  // The second type of a two-type spell, the caster's pick where the row
+  // offers one (Destructive Wave's radiant or necrotic).
+  secondType?: string;
   // The conditions a failed save lays down, the first being the spell's own.
   conditions: string[];
   spellLevel: number;
@@ -297,6 +301,10 @@ export function planAoeSpell(
       type = castDamageType(caster, cast, { name, asked: input.type, own: mech.damageType, second: mech.secondType, level: facts?.level ?? null, authors });
     }
   }
+  // A second type the caster picks (Destructive Wave's radiant or necrotic,
+  // "your choice"), named as the damage type; the row's default otherwise.
+  // Always radiant before: a paladin who chose necrotic could not say so.
+  const secondType = mech?.secondTypeChoice?.find((choice) => textKey(choice) === textKey(input.type ?? "")) ?? mech?.secondType;
   // Multiclass: the DC follows the class whose list carries the spell.
   let dc = input.dc ?? 0;
   const realDc = spellSaveDcFor(caster, input.spell);
@@ -313,7 +321,7 @@ export function planAoeSpell(
     ? spellDamageRiders(caster, {
         school: spellSchoolFor(input.spell, authors),
         damageType: type,
-        secondType: mech?.secondType,
+        secondType,
         level: spellLevel,
         classes: facts?.classes,
       })
@@ -335,7 +343,7 @@ export function planAoeSpell(
   // resistance (src/lib/dm/affinity-cast.ts).
   if (damage) {
     markAffinityCast(campaign, caster, type);
-    markAffinityCast(campaign, caster, mech?.secondType);
+    markAffinityCast(campaign, caster, secondType);
   }
   if (riders.potentCantrip && !halfOnSave) {
     halfOnSave = true;
@@ -372,6 +380,7 @@ export function planAoeSpell(
     dc,
     halfOnSave,
     ...(type ? { type } : {}),
+    ...(secondType ? { secondType } : {}),
     conditions: condition ? [condition.name, ...(condition.also ?? [])].map(canonicalCondition) : [],
     spellLevel,
     slotLevel,

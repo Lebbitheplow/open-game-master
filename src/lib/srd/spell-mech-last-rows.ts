@@ -26,8 +26,9 @@ export const SRD_LAST_ROWS: Record<string, SpellMech> = {
   // half the wave, so the row names both. Radiant is the second unless the
   // GM rules necrotic for the caster.
   "destructive wave": {
-    resolution: "save", save: "con", halfOnSave: true, damageType: "thunder", secondType: "radiant", condition: { name: "prone" },
+    resolution: "save", save: "con", halfOnSave: true, damageType: "thunder", secondType: "radiant", secondTypeChoice: ["radiant", "necrotic"], condition: { name: "prone" },
     dice: { base: "5d6+5d6", baseLevel: 5 },
+    note: "The second 5d6 is radiant, or necrotic if the caster chooses: name type necrotic.",
   },
 
   // Effects on the caster or an ally, each a condition of the registry

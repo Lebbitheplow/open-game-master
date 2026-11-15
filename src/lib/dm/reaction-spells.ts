@@ -13,6 +13,7 @@ import { getBattleMapForEncounter } from "@/lib/db/battle-maps";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { spellEngineName, spellFactsFor } from "@/lib/content";
+import { spellAbilityFor } from "@/lib/srd";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
@@ -360,15 +361,21 @@ function absorbedType(record: LastHit | null): string | null {
 // ---- Counterspell ----
 
 // The ability Counterspell's check is made with: the spellcasting ability of
-// the class it is cast from (SRD 5.1: sorcerer, warlock, wizard), the
-// sheet's own when it is one of them.
+// the class it is cast as (SRD 5.1: sorcerer, warlock, wizard). On a sheet
+// with a caster entry per class, the one that lists it (spellAbilityFor, as
+// Dispel Magic's check reads it): a wizard/sorcerer who learned it as a
+// sorcerer rolled the sheet's first ability, Intelligence (audit 2026-11-15,
+// S14). Otherwise the sheet's own when it is one of those classes'.
 const COUNTERSPELL_CLASSES: Record<string, string> = { sorcerer: "cha", warlock: "cha", wizard: "int" };
 function counterspellAbility(sheet: Ctx["sheet"]): string {
-  const primary = sheet.spellcasting?.ability ?? "int";
+  const owned = spellAbilityFor(sheet, "Counterspell");
   const holders = [sheet.class, ...(sheet.classes ?? []).map((entry) => entry.id)]
     .map((id) => COUNTERSPELL_CLASSES[(id ?? "").toLowerCase()])
     .filter((ability): ability is string => Boolean(ability));
-  return !holders.length || holders.includes(primary) ? primary : holders[0];
+  if (owned && (!holders.length || holders.includes(owned))) {
+    return owned;
+  }
+  return holders[0] ?? sheet.spellcasting?.ability ?? "int";
 }
 
 // A spell of the slot's level or lower fails; a higher one fails on an
