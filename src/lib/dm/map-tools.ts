@@ -872,6 +872,7 @@ export function handleMoveToken(
     resolved.kind === "enemy" && !allowance
       ? (getTokenByRef(map.id, resolved.token.refId)?.movedThisRound ?? resolved.token.movedThisRound) + spent
       : (getTokenByRef(map.id, resolved.token.refId)?.movedThisRound ?? resolved.token.movedThisRound),
+    !args.forced && !allowance?.fly && resolved.token.movement === "walk" ? [origin, ...walked] : undefined,
   );
   // A flight takes it up: it stays aloft where it lands (set_movement).
   if (allowance?.fly && resolved.token.movement !== "fly") {

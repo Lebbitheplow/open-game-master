@@ -40,6 +40,8 @@ export type BoardSnapshotToken = {
   y: number;
   // Squares per side: 1 for medium, 2 for large, and so on.
   size: number;
+  side?: "party" | "foe";
+  walkPath?: Array<{ x: number; y: number }>;
   mine: boolean;
   down: boolean;
   hidden: boolean;
@@ -175,6 +177,8 @@ export function boardSnapshot(
       x: token.x,
       y: token.y,
       size: view.tokenFootprint[token.id] ?? 1,
+      ...(token.side === "party" || token.side === "foe" ? { side: token.side } : {}),
+      ...(token.walkPath && !options.appearance.reducedMotion ? { walkPath: token.walkPath } : {}),
       mine: token.mine,
       down: token.down,
       hidden: token.hidden,
