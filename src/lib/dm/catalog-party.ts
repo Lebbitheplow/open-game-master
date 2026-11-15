@@ -529,6 +529,7 @@ export const PARTY_ADJUDICATIONS: CatalogEntry[] = [
           { value: "book", label: "Another spellbook or a teacher" },
         ],
         help: "From a scroll, the server rolls their Intelligence (Arcana) check against 10 + the spell's level, and the scroll is used up either way.",
+        host: { feature: "scrollCopy" },
       },
       REASON,
     ],

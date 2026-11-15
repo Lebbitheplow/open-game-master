@@ -196,6 +196,21 @@ export const SERVER_FEATURES = {
   // strips it unread and springs the trap at once, so the fields stay
   // hidden there.
   setTraps: true,
+  // learn_spell's `from` (the console's "A wizard copies it from"): a copy
+  // from a scroll rolls the Arcana check and uses the scroll up. An older
+  // host strips it unread and copies with no check, so it stays hidden there.
+  scrollCopy: true,
+  // cast_at_player's `petName` (the console's "Their pet"): the pet makes the
+  // save. An older host strips it unread and forces the save on the owner,
+  // so it stays hidden there.
+  petSaves: true,
+  // apply_hazard's `enemyIds` (the console's "Enemies caught in it"): each
+  // enemy saves from its stat block. An older host strips it unread and
+  // catches nobody, so it stays hidden there.
+  enemyHazards: true,
+  // apply_hazard's frigid_water type and its `minutes`: an older host knows
+  // no such hazard and refuses it, so the choice stays hidden there.
+  frigidWater: true,
   // A test fight's moment saved as its prepared fight's set-up (issue 685):
   // "Save as set-up" on the test table (POST /api/campaigns/[id]/fight-setup)
   // and "Remove its set-up" on the fight, which an older host answers with

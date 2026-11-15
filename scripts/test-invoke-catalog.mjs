@@ -1306,4 +1306,29 @@ test("cast_buff's form picks a summoning's kind and each target's form from the 
   assert.deepEqual(mixRecord([{ variant: "Skeleton", count: 2 }]), { Skeleton: 2 });
 });
 
+// The 2026-11-15 rules audit's new console fields: each is one an older host
+// strips unread (a pet's save forced on its owner, enemies caught by
+// nobody, a scroll copied with no check) or refuses, so an app holding a
+// newer console hides it there.
+test("the rules audit's new console fields ask for the host", () => {
+  const field = (tool, name) => adjudication(tool).fields.find((entry) => entry.name === name);
+  for (const [tool, name, flag] of [
+    ["learn_spell", "from", "scrollCopy"],
+    ["cast_at_player", "petName", "petSaves"],
+    ["apply_hazard", "enemyIds", "enemyHazards"],
+    ["apply_hazard", "minutes", "frigidWater"],
+    ["apply_hazard", "place", "setTraps"],
+    ["damage_object", "bound", "manaclesBound"],
+  ]) {
+    assert.ok(field(tool, name), `${tool}.${name}`);
+    assert.ok(fieldForHost(field(tool, name), () => true), `${tool}.${name} on a host that has it`);
+    assert.equal(fieldForHost(field(tool, name), () => false), null, `${tool}.${name} hidden on an older host`);
+    assert.ok(read("src/lib/capabilities.ts").match(new RegExp(`^\\s*${flag}: true,$`, "m")), `the server flags ${flag}`);
+    assert.match(read("src/lib/use-capabilities.ts"), new RegExp(`features\\?: \\{[^}]*${flag}\\?: boolean`));
+  }
+  const hazardTypes = (offers) => fieldForHost(field("apply_hazard", "type"), offers).options.map((option) => option.value);
+  assert.ok(hazardTypes(() => true).includes("frigid_water"));
+  assert.ok(!hazardTypes(() => false).includes("frigid_water"), "an older host is offered no frigid water");
+});
+
 console.log(`invoke-catalog: ${passed} tests passed`);
