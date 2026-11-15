@@ -825,6 +825,16 @@ await test("a mind on stage is not forgotten: a turn without its turn sends the 
     assert.match(dm.content, /Arrows hiss/, "the narration before the nudge stays");
     assert.match(dm.content, /Did you get him/, "the mind's own turn follows it");
     assert.ok(memories("Prisoner Hale").some((entry) => entry.sourceKind === "perceived" && /shouts, then silence/.test(entry.content)));
+    // Sent back for the mind, the narrator wrote its whole passage again
+    // instead: the table reads it once, not twice with a fragment after it.
+    model.script([
+      reply({ text: '"Yes. I have a daughter. That is why I weigh every word, Aria."\n\nHale says nothing more. The escort waits beside him for your answer.' }),
+      reply({ text: '"Yes. I have a daughter. That is why I weigh every word, Aria."\n\nHale says nothing more. The escort waits beside him for your answer.' }),
+    ]);
+    const twice = await model.turn(world, "I wait by the cart.", aria.id);
+    assert.equal(nudges(), 1, "the narrator was sent back for the mind");
+    assert.equal(twice.content.match(/daughter/g)?.length, 1, twice.content);
+    assert.equal(twice.content.match(/says nothing more/g)?.length, 1, twice.content);
     model.script([
       reply({ calls: [call("npc_inform", { name: "Prisoner Hale", source: "own eyes", news: "The cart rolls on without Aria.", witnessed: true })] }),
       reply({ text: "Aria leaves the escort behind and walks into the town." }),

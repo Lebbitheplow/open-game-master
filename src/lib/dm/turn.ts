@@ -2321,7 +2321,17 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     if (finalRepeat) {
       finalRepeated = true;
     }
-    if (narration && !finalRepeat && (!calledOutcomeTool || finalCall)) {
+    // A part this turn already holds, said again: after the server sent the
+    // narrator back for a mind it had left out (npc-mind.ts
+    // mindsAwaitingTurn), the reply repeated the whole passage word for word,
+    // and the table read Aldren's line twice, the second cut to a fragment
+    // credited to whoever stood beside him. The repeat adds nothing; only new
+    // prose is kept.
+    const repeatsThisTurn = Boolean(narration) && repeatsEarlierNarration(narration, turn.narrationParts);
+    if (repeatsThisTurn) {
+      console.warn(`[dm-turn] turn ${turn.id}: a reply repeated a passage this turn already holds; it is not kept twice.`);
+    }
+    if (narration && !finalRepeat && !repeatsThisTurn && (!calledOutcomeTool || finalCall)) {
       turn.narrationParts.push(narration);
       if (read) {
         partReads.set(narration, read);
