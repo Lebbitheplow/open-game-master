@@ -279,6 +279,48 @@ export function tickWorldQuietly(
   return { ...current, reachedRungs: all };
 }
 
+// Something finding the party while time passes over it: a night's rest, a
+// journey, a long wait. The quiet ticks above keep the turn-paced engines
+// out of a timeskip, so the hours themselves roll: one d1000 per four-hour
+// stretch, at the table's combat pace. What it is (an assault, a noise, a
+// visitor, a thief) fits the place and is the narrator's to choose; the
+// roll only says that something comes.
+export type TimeskipKind = "rest" | "journey" | "wait";
+export const TIMESKIP_ENCOUNTER_PERMILLE: Record<CombatPace, number> = { rare: 40, balanced: 80, frequent: 150 };
+
+const TIMESKIP_OPENING: Record<TimeskipKind, string> = {
+  rest: "While the party rested, something found them",
+  journey: "On the road, something found the party",
+  wait: "While the party waited, something found them",
+};
+
+export function timeskipDisturbance(
+  kind: TimeskipKind,
+  stretches: number,
+  pace: CombatPace | undefined,
+  rng: Rng,
+): string | null {
+  const chance = TIMESKIP_ENCOUNTER_PERMILLE[pace ?? "balanced"];
+  const count = Math.max(0, Math.min(stretches, 12));
+  for (let index = 0; index < count; index += 1) {
+    if (Math.floor(rng() * 1000) < chance) {
+      const when = count > 1 ? ` (in the ${ordinal(index + 1)} of ${count} four-hour stretches)` : "";
+      return [
+        `${TIMESKIP_OPENING[kind]}${when}: the server rolled it, so do not narrate this stretch as quiet.`,
+        "Choose what fits the place and the hour: somewhere guarded or indoors it is likelier a noise, a visitor or a thief than an assault; in the wild, a beast, raiders or a patrol.",
+        "Whoever kept watch sees it coming; those asleep wake to it, surprised if it is hostile and nobody watched.",
+        "Stop the stretch there and play it out with the table: give the characters on stage their turn, and open start_encounter only if violence breaks out.",
+        ...(kind === "rest" ? ["An interruption shorter than an hour does not undo the rest (SRD 5.1, Long Rest); a longer fight means it must begin again."] : []),
+      ].join(" ");
+    }
+  }
+  return null;
+}
+
+function ordinal(value: number): string {
+  return value === 1 ? "first" : value === 2 ? "second" : value === 3 ? "third" : `${value}th`;
+}
+
 // Sparks are consumed the moment a turn's prompt carried them.
 export function drainSparks(state: WorldTickState): WorldTickState {
   return { ...state, sparks: [] };

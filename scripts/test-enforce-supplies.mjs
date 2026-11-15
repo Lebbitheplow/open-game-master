@@ -130,7 +130,13 @@ await test("A journey of days has its meal once: the first night's dawn, not one
   // Constitution past any saving throw the road's weather can ask, so the
   // cold does not kill the hero before the second dawn.
   const guest = hero({ abilities: { con: 30 }, equipment: [{ ...RATIONS, qty: 5 }, WATERSKIN] });
-  const out = await world.invoke("travel", { days: 3, meal: "breakfast at the host's table" });
+  // Nothing finds the party on the road (world-tick-logic.ts
+  // timeskipDisturbance): a stopped journey would leave the dawns uneaten.
+  const random = Math.random;
+  Math.random = () => 0.5;
+  const out = await world.invoke("travel", { days: 3, meal: "breakfast at the host's table" }).finally(() => {
+    Math.random = random;
+  });
   assert.equal(out.ok, true, out.error);
   assert.equal(qty(world, guest.id, "Rations (1 day)"), 4, "two dawns on the road, and the first was covered");
   assert.equal(clock().mealAtDawn, undefined);
