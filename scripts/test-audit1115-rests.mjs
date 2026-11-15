@@ -620,6 +620,33 @@ await test("R15 an attuned Ioun Stone of Mastery orbiting its owner adds 1 to th
   assert.equal(computeSheetDerived(table.sheet(rabbit.id)).initiative, 2 + 4);
 });
 
+await test("R15 the Ioun Stones of Awareness, Sustenance and Reserve do what their text says while they orbit", async () => {
+  // SRD 5.1, Ioun Stone: Awareness, "You can't be surprised while this dark
+  // blue rhomboid orbits your head"; Sustenance, "You don't need to eat or
+  // drink while this clear spindle orbits your head"; Reserve, "stores
+  // spells cast into it ... up to 3 levels worth of spells at a time". They
+  // were in the table for attunement only.
+  const { cannotBeSurprised } = await import("../src/lib/dm/surprise-guard.ts");
+  const { needsNoFoodOrWater } = await import("../src/lib/dm/mt-srd-monk.ts");
+  const { isSpellStorer, storeLevelsFree } = await import("../src/lib/srd/spell-storing.ts");
+  const { storeRefusal } = await import("../src/lib/dm/ring-store.ts");
+  const orbit = (name, extra = {}) => ({ name, qty: 1, equipped: true, attuned: true, ...extra });
+  const table = await openTable();
+  const hero = (equipment) => table.sheet(table.addHero({ class: "rogue", level: 5, maxHp: 30, equipment }).id);
+  assert.equal(cannotBeSurprised(hero([orbit("Ioun Stone of Awareness")]), []), true, "Awareness: never surprised");
+  assert.equal(cannotBeSurprised(hero([orbit("Ioun Stone of Awareness", { attuned: false })]), []), false, "not attuned, it does nothing");
+  assert.equal(needsNoFoodOrWater(hero([orbit("Ioun Stone of Sustenance")])), true, "Sustenance: no food or drink");
+  assert.equal(needsNoFoodOrWater(hero([orbit("Ioun Stone of Sustenance", { equipped: false })])), false, "set down, it does nothing");
+  const reserve = orbit("Ioun Stone of Reserve");
+  assert.equal(isSpellStorer(reserve), true, "Reserve stores spells");
+  assert.equal(storeLevelsFree(reserve), 3);
+  assert.equal(storeLevelsFree({ ...reserve, storedSpells: [{ spell: "Shield", level: 1 }] }), 2);
+  assert.equal(storeLevelsFree({ name: "Ring of Spell Storing", qty: 1, slug: "ring-of-spell-storing" }), 5, "the ring keeps its five");
+  const holder = hero([reserve]);
+  assert.equal(storeRefusal(holder.id, "Ioun Stone of Reserve", "Fireball", 3), null);
+  assert.equal(storeRefusal(holder.id, "Ioun Stone of Reserve", "Greater Invisibility", 4)?.refused, "rules", "a 4th-level spell does not fit");
+});
+
 await test("R16 a Ring of X-ray Vision used again before a long rest asks a DC 15 Constitution save or a level of exhaustion", async () => {
   // SRD 5.1, Ring of X-ray Vision: "you can use an action to speak its
   // command word. When you do so, you can see into and through solid matter

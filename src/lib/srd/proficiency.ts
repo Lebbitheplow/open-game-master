@@ -18,6 +18,12 @@ export function levelProficiencyBonus(level: number): number {
 }
 
 export const IOUN_MASTERY = "Ioun Stone of Mastery";
+// The other Ioun Stones whose magic one door reads by name: Awareness (the
+// surprise guard), Sustenance (food and drink), Reserve (spells stored, as a
+// Ring of Spell Storing's at three levels: src/lib/srd/spell-storing.ts).
+export const IOUN_AWARENESS = "Ioun Stone of Awareness";
+export const IOUN_SUSTENANCE = "Ioun Stone of Sustenance";
+export const IOUN_RESERVE = "Ioun Stone of Reserve";
 
 // What worn magic adds to the proficiency bonus: 1 for an attuned, orbiting
 // Ioun Stone of Mastery (one copy counts, as for any item).
