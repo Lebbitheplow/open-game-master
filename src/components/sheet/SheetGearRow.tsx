@@ -8,6 +8,7 @@ import { guessStands, matchArmor } from "@/lib/srd/armor";
 import { matchMagicItem } from "@/lib/srd/magic-items";
 import { swapQuestion, wearConflict, type WearConflict } from "@/lib/srd/wear-slots";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
+import { ITEM_CATEGORY_LABEL, itemCategory, itemCategoryIcon } from "@/lib/srd/item-category-logic";
 
 // One wearable item on the character sheet: its charges, whether it is
 // attuning or cursed, and the wear and attune toggles with the engine's
@@ -78,15 +79,20 @@ export function SheetGearRow({
   // refuses the rest (srd/magic-items.ts attunementProblem).
   // One already attuned keeps the control so it can end.
   const def = matchMagicItem(item);
+  const category = itemCategory(item);
   const attunable =
     Boolean(item.attuned) ||
     Boolean(item.gear?.magic?.requiresAttunement) ||
     Boolean(def?.requiresAttunement);
   return (
     <>
-    <div data-gear-row={item.name} className="flex items-center gap-2 text-xs text-stone-300">
-      <GameIcon icon={{ kind: "item", key: item.name, family: "item-gear" }} size="size-6" />
-      <span className="min-w-0 grow truncate">{item.name}</span>
+    <div data-gear-row={item.name} data-tone={category} className="flex items-center gap-2 text-xs text-stone-300">
+      {/* The item's kind, which reads at this size; its own painting does not. */}
+      <GameIcon icon={itemCategoryIcon(category)} size="size-6" className="tone-rim" />
+      <span className="min-w-0 grow truncate">
+        <span className="sr-only">{ITEM_CATEGORY_LABEL[category]}: </span>
+        {item.name}
+      </span>
       {idle ? (
         <span className="motion-pop shrink-0 rounded-full border border-stone-700 px-1.5 text-[10px] text-stone-400" title={`Worn, but a character wears ${idle} at a time, so its magic does not count.`}>
           not in effect

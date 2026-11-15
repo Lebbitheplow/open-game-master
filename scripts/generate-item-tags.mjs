@@ -62,6 +62,44 @@ const items = rows.map((row) => {
   return base ? [row.name, row.slug, tags, base] : [row.name, row.slug, tags];
 });
 
+// A weapon or suit the pack files without a base the engines know (a magic
+// "Axe of Chilling Fear" or "Agile Armor", another document's "Double Axe")
+// is still a weapon or armor to the sheet's picture of it (src/lib/srd/
+// item-category-logic.ts). The pack's own kind and category say which; a
+// weapon is ranged when its name or category says ranged or names a bow, a
+// crossbow, a sling, a blowgun or a dart. Ammunition is neither, nor is the
+// armor a spell or a class feature gives.
+const RANGED = /\b(?:(?:long|short|cross)?bows?|slings?|blowguns?|darts?)\b/i;
+function wieldedAs(row) {
+  const category = String(row.category ?? "").toLowerCase();
+  if (row.srd && row.kind !== "magic_item") {
+    return null;
+  }
+  if (row.kind === "armor") {
+    return /armor$|^shield$/.test(category) && category !== "no armor" ? "armor" : null;
+  }
+  if (row.kind === "weapon") {
+    return category.includes("ranged") || RANGED.test(row.name) ? "ranged" : "melee";
+  }
+  if (row.kind !== "magic_item") {
+    return null;
+  }
+  if (category.startsWith("armor")) {
+    return "armor";
+  }
+  if (!category.startsWith("weapon") || /ammunition|arrow|bolt/.test(category)) {
+    return null;
+  }
+  return RANGED.test(`${row.name} ${category}`) ? "ranged" : "melee";
+}
+const wielded = { melee: [], ranged: [], armor: [] };
+for (const row of rows) {
+  const as = wieldedAs(row);
+  if (as) {
+    wielded[as].push(row.slug);
+  }
+}
+
 // ---- the SRD potions' kinds, from their own tables ----
 
 // A markdown table's body rows, as trimmed cells.
@@ -107,6 +145,9 @@ const generated = {
   added: ADDED.map((entry) => [entry.name, entry.tags]),
   // [name, tags, effect] for each kind of an SRD potion with a table.
   potions: kinds,
+  // The slugs of the pack's magic weapons and armor and of other
+  // documents' plain ones, by what they are held or worn as.
+  wielded,
 };
 const serialized = `${JSON.stringify(generated)}\n`;
 

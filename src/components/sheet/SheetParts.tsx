@@ -17,6 +17,8 @@ import { wearingIsExplicit } from "@/lib/srd/armor";
 import { oneOfKind, wornButIdle } from "@/lib/srd/wear-slots";
 import { rowName, srdNameWithBonus } from "@/lib/srd/item-row";
 import { matchWeapon } from "@/lib/srd/weapons";
+import { cardArtwork } from "@/lib/battlemap/card-art";
+import { ITEM_CATEGORY_LABEL, itemCategory, itemCategoryIcon, type CategoryItem } from "@/lib/srd/item-category-logic";
 
 // The pieces of the character sheet (docs/visual-overhaul-plan.md 8b.5), one
 // implementation drawn by both the session's sheet dialog and the character
@@ -319,12 +321,15 @@ export function SkillRows({
 
 // Every carried thing as an icon chip that opens its entry in the library,
 // so a rope and a Flame Tongue both say what they are. Worn and attuned gear
-// is marked on the chip.
+// is marked on the chip. The chip leads with the picture of the item's kind
+// (a weapon, armor, something used up...), which reads at the chip's size
+// where the item's own painting did not; the hover shows the painting, the
+// Hand card's where the item has one.
 export function EquipmentChips({
   equipment,
   extra,
 }: {
-  equipment: Array<{ name: string; qty: number; equipped?: boolean; attuned?: boolean; attuning?: boolean; layered?: boolean }>;
+  equipment: Array<{ name: string; qty: number; equipped?: boolean; attuned?: boolean; attuning?: boolean; layered?: boolean } & CategoryItem>;
   // More for a row's note, by its index: its charges ("4/7 charges").
   extra?: (index: number) => string | null | undefined;
 }) {
@@ -340,21 +345,25 @@ export function EquipmentChips({
   };
   return (
     <InfoChipList
-      items={equipment.map((item, index) => ({
-        name: item.qty > 1 ? `${item.name} x${item.qty}` : item.name,
-        icon: { kind: "item" as const, key: item.name, family: "item-gear" },
-        note:
-          [
-            wornNote(item),
-            item.attuned ? "attuned" : item.attuning ? "attunes at the next rest" : null,
-            extra?.(index) ?? null,
-          ]
-            .filter(Boolean)
-            .join(", ") || undefined,
-        // The card is the row's (src/lib/srd/item-row.ts), with the bonus the
-        // item's own name declares.
-        reference: { kind: "items", slug: contentSlug(rowName(item)), name: srdNameWithBonus(item) },
-      }))}
+      items={equipment.map((item, index) => {
+        const category = itemCategory(item);
+        return {
+          name: item.qty > 1 ? `${item.name} x${item.qty}` : item.name,
+          icon: cardArtwork({ kind: "item" as const, key: item.name, family: "item-gear" }),
+          lead: { icon: itemCategoryIcon(category), label: ITEM_CATEGORY_LABEL[category], tone: category },
+          note:
+            [
+              wornNote(item),
+              item.attuned ? "attuned" : item.attuning ? "attunes at the next rest" : null,
+              extra?.(index) ?? null,
+            ]
+              .filter(Boolean)
+              .join(", ") || undefined,
+          // The card is the row's (src/lib/srd/item-row.ts), with the bonus the
+          // item's own name declares.
+          reference: { kind: "items", slug: contentSlug(rowName(item)), name: srdNameWithBonus(item) },
+        };
+      })}
     />
   );
 }
