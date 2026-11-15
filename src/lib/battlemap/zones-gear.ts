@@ -13,7 +13,18 @@ import type { ZoneRow } from "@/lib/battlemap/zones-spells";
 // endedByRegain).
 export const CALTROPS_WOUND = "caltrops wound";
 
+// A trap set on a square (src/lib/dm/set-traps.ts): its zone carries the
+// trap's name and runs as this row.
+export const SET_TRAP = "Set Trap";
+
 export const GEAR_ZONE_ROWS: Record<string, ZoneRow> = {
+  // The first creature to step on its square springs it by the trap's own
+  // numbers, there, and it is spent (a budget of one).
+  "set trap": {
+    shape: "cube", feet: 5, level: 0, concentration: false, rounds: null, mundane: true, tone: "blade", budget: 1,
+    trigger: { on: ["enter"], firstOnly: true },
+    summary: "a set trap: the first creature to step on its square springs it",
+  },
   // "As an action, you can spread a bag of caltrops to cover a square area
   // that is 5 feet on a side. Any creature that enters the area must succeed
   // on a DC 15 Dexterity saving throw or stop moving this turn and take 1

@@ -191,6 +191,11 @@ export const SERVER_FEATURES = {
   // manacles is struck when several creatures are bound. An older host
   // strips it unread and refuses the blow, so the field stays hidden there.
   manaclesBound: true,
+  // apply_hazard's `place` (the console hazard form's "Set it on the board"
+  // and its square): a named trap set hidden on the board. An older host
+  // strips it unread and springs the trap at once, so the fields stay
+  // hidden there.
+  setTraps: true,
   // A test fight's moment saved as its prepared fight's set-up (issue 685):
   // "Save as set-up" on the test table (POST /api/campaigns/[id]/fight-setup)
   // and "Remove its set-up" on the fight, which an older host answers with

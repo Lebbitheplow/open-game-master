@@ -2197,6 +2197,8 @@
     "lib/dm/trap-run.ts#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/dm/enemy-trap.ts#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/dm/manacles.ts#keyed": [["key",1,"a creature's conditionMeta by the condition key it was written under"]],
+    "lib/dm/set-traps.ts#whole-single": [["key",1,"the set-trap row's zone key (engine vocabulary)"]],
+    "lib/dm/set-traps.ts#bypass": [["identity",1,"the trap a carried line is, by its whole name (trapAt, textKey on both sides)"]],
     "lib/dm/enemy-trap.ts#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/dm/turn-defiance.ts#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "lib/dm/turn-defiance.ts#partial": [["parse",11,"a block's turning lines cut into who they shield and how far (stat-block text)"]],

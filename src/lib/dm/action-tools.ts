@@ -25,6 +25,7 @@ import { charmedBy } from "@/lib/dm/enemy-profile";
 import { effectiveSpeed } from "@/lib/dm/condition-logic";
 import { characterEscape } from "@/lib/dm/grapple";
 import { callsManacles, foesManacles, manaclesUse } from "@/lib/dm/manacles";
+import { setCarriedTrap } from "@/lib/dm/set-traps";
 import { squeezeSlip } from "@/lib/dm/ar-ws-squeeze";
 import { handleEnemyTakeAction } from "@/lib/dm/enemy-actions";
 import { pin } from "@/lib/dm/grappler-pin";
@@ -580,8 +581,9 @@ export function handleTakeAction(
       return searchAction(campaign, turn, sheet, skill, { spend: () => spend() });
     }
     case "use_object":
-      // Manacles put on, opened or picked (manacles.ts); else the plain use.
-      return manaclesUse(campaign, turn, sheet, args, () => spend()) ?? objectAction(
+      // Manacles put on, opened or picked (manacles.ts), a carried trap set
+      // on the board (set-traps.ts); else the plain use.
+      return manaclesUse(campaign, turn, sheet, args, () => spend()) ?? setCarriedTrap(campaign, turn, sheet, args.item, () => spend()) ?? objectAction(
         campaign,
         turn,
         sheet,

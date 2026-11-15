@@ -766,6 +766,83 @@ await test("N14: with two creatures in manacles, damage_object names whose set b
   assert.ok(manacled(foe(enemy.id)));
 });
 
+// ---- N15: a trap set on the battle map ----
+// SRD 5.1, Hunting Trap: "When you use your action to set it, this trap
+// forms a saw-toothed steel ring that snaps shut when a creature steps on a
+// pressure plate in the center." Traps: "You can also compare the DC to
+// detect the trap with each character's passive Wisdom (Perception) score
+// to determine whether anyone in the party notices the trap in passing."
+// Nothing could lie on a square: a set trap caught an enemy only if the GM
+// remembered it and sprang it by hand.
+
+const { liveZones } = await import("../src/lib/dm/zone-store.ts");
+const { zonesAfterMove } = await import("../src/lib/dm/zone-triggers.ts");
+const { viewZones } = await import("../src/lib/dm/zone-view.ts");
+const { getCampaignById } = await import("../src/lib/db/campaigns.ts");
+const walk = (kind, refId, start, steps) => zonesAfterMove(getCampaignById(world.campaignId), world.encounter().id, { kind, refId }, start, steps);
+const trapZone = (name) => liveZones(kit.map(), world.encounter()).find((zone) => zone.spell === name);
+const everyCell = () => new Set(Array.from({ length: kit.map().width * kit.map().height }, (_, cell) => cell));
+
+await test("N15: a trap the GM sets on a square is hidden from the players' board, and the first creature to step on it springs it by its own numbers, once", async () => {
+  const enemy = await trapFight({ saveMods: { ...DUMMY.saveMods, dex: 0 } });
+  kit.place(enemy.id, 3, 2);
+  kit.place(jailer.id, 9, 9);
+  const placed = await world.invoke("apply_hazard", { type: "trap", trap: "Hunting Trap", place: true, fromX: 4, fromY: 2 });
+  assert.equal(placed.ok, true, placed.error);
+  assert.equal(world.clearDice(), 0, "setting a trap rolled something");
+  const trap = trapZone("Hunting Trap");
+  assert.ok(trap, "no trap lies on the board");
+  assert.deepEqual(trap.cells, [2 * kit.map().width + 4]);
+  assert.equal(viewZones(kit.map(), world.encounter(), everyCell(), { characterId: jailer.id, cell: null }).some((zone) => zone.id === trap.id), false, "a player's board shows the hidden trap");
+  assert.equal(viewZones(kit.map(), world.encounter(), everyCell(), null).some((zone) => zone.id === trap.id), true, "the GM's board hides it too");
+  // Its Dexterity save at +0: a 5 misses DC 13; 1d4 = 3, and it stops there.
+  world.dice(5, 3);
+  walk("enemy", enemy.id, { x: 3, y: 2 }, [{ x: 4, y: 2 }, { x: 5, y: 2 }]);
+  assert.equal(world.clearDice(), 0, "the trap's save and damage were not rolled");
+  assert.equal(foe(enemy.id).currentHp, 37);
+  assert.ok(foe(enemy.id).conditions.includes("caught in a hunting trap"), JSON.stringify(foe(enemy.id).conditions));
+  assert.deepEqual([kit.token(enemy.id).x, kit.token(enemy.id).y], [4, 2], "the jaws did not hold it on their square");
+  assert.equal(trapZone("Hunting Trap"), undefined, "the trap was not spent");
+});
+
+await test("N15: a character sets a hunting trap with take_action use_object: it leaves the pack and lies, in the party's sight, toward the nearest foe", async () => {
+  const enemy = await trapFight();
+  world.patch(jailer.id, { equipment: [{ name: "Hunting Trap", qty: 1 }] });
+  kit.place(jailer.id, 2, 2);
+  kit.place(enemy.id, 6, 2);
+  kit.giveTurn(jailer.id);
+  const set = await world.invoke("take_action", { characterId: jailer.id, action: "use_object", item: "Hunting Trap" });
+  assert.equal(set.ok, true, set.error);
+  const trap = trapZone("Hunting Trap");
+  assert.ok(trap, JSON.stringify(set.result));
+  assert.deepEqual(trap.cells, [2 * kit.map().width + 3]);
+  assert.notEqual(trap.hidden, true);
+  assert.equal(carriedQty(jailer.id, "Hunting Trap"), 0);
+});
+
+await test("N15: a character whose passive Perception meets a hidden trap's DC notices it in passing and stops short; one whose does not springs it", async () => {
+  await trapFight();
+  const keen = jailer;
+  const dull = captive;
+  world.patch(dull.id, { abilities: { ...sheet(dull.id).abilities, wis: 6 } });
+  kit.place(keen.id, 2, 4);
+  kit.place(dull.id, 2, 6);
+  // A Falling Net: spotted by a DC 10 Wisdom (Perception) check.
+  assert.equal((await world.invoke("apply_hazard", { type: "trap", trap: "Falling Net", place: true, fromX: 3, fromY: 4 })).ok, true);
+  world.clearDice();
+  walk("pc", keen.id, { x: 2, y: 4 }, [{ x: 3, y: 4 }, { x: 4, y: 4 }]);
+  assert.equal(world.clearDice(), 0);
+  assert.equal(sheet(keen.id).conditions.includes("restrained"), false, "passive Perception 10 walked into a DC 10 trap");
+  assert.deepEqual([kit.token(keen.id).x, kit.token(keen.id).y], [2, 4], "it did not stop short of the trap");
+  assert.notEqual(trapZone("Falling Net")?.hidden, true, "a noticed trap stayed hidden");
+  // A second hidden net, for the one who would not notice it (passive 8).
+  assert.equal((await world.invoke("apply_hazard", { type: "trap", trap: "Falling Net", place: true, fromX: 3, fromY: 6 })).ok, true);
+  world.dice(15);
+  walk("pc", dull.id, { x: 2, y: 6 }, [{ x: 3, y: 6 }]);
+  world.clearDice();
+  assert.ok(sheet(dull.id).conditions.includes("restrained"), JSON.stringify(sheet(dull.id).conditions));
+});
+
 await kit.endFight();
 world.close();
 finish();

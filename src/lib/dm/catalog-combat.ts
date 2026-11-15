@@ -586,7 +586,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
           { value: "frigid_water", label: "Frigid water" },
         ],
       },
-      { name: "characterIds", label: "Caught in it", kind: "characters", requiredUnless: ["rank", "enemyIds"] },
+      { name: "characterIds", label: "Caught in it", kind: "characters", requiredUnless: ["rank", "enemyIds", "place"] },
       { name: "enemyIds", label: "Enemies caught in it", kind: "enemies", help: "A trap, a fall or a hazard of your own: the server rolls each enemy's save from its stat block." },
       {
         name: "rank",
@@ -608,6 +608,9 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
         other: { label: "One of this table's traps", placeholder: "Scything Blade" },
         help: "Runs the trap's own numbers instead of the severity table: an SRD sample trap, or a trap from this table's workshop.",
       },
+      { name: "place", label: "Set it on the board", kind: "boolean", help: "A trap by name, laid hidden from the players on the square below; the first creature to step there springs it.", host: { feature: "setTraps" } },
+      { name: "fromX", label: "Its square: column", kind: "number", min: 0, max: 99, help: "Where a set trap lies, or where a trap fires from (cover on a DEX save).", host: { feature: "setTraps" } },
+      { name: "fromY", label: "Its square: row", kind: "number", min: 0, max: 99, host: { feature: "setTraps" } },
       { name: "hours", label: "Hours of exposure", kind: "number", min: 1, max: 48, help: "Extreme cold or heat: one CON save an hour, a level of exhaustion for each failure." },
       { name: "minutes", label: "Minutes in the water", kind: "number", min: 1, max: 120, help: "Frigid water: free for the Constitution score's minutes, then one CON save a minute." },
       { name: "damage", label: "Damage", kind: "dice", help: "Only for a hazard of your own." },

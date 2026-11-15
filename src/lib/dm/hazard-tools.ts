@@ -36,6 +36,7 @@ import type { Ability, CharacterSheet } from "@/lib/schemas/sheet";
 import { rollCard } from "@/lib/dm/roll-card";
 import { rollOn } from "@/lib/roll-labels";
 import { springTrapOn } from "@/lib/dm/trap-run";
+import { setTrapAt } from "@/lib/dm/set-traps";
 import { rollExpression } from "@/lib/dice";
 import { SAMPLE_TRAPS } from "@/lib/srd/trap-specs";
 import { hazardNamesAt, trapAt } from "@/lib/srd/table-hazards";
@@ -167,6 +168,7 @@ export const hazardTools: ToolDef[] = [
             description: `trap only: an SRD sample trap or one of the table's own workshop traps, by its listed name. SRD traps: ${SAMPLE_TRAPS.map((trap) => trap.name).join(", ")}; workshop traps are named under GAME STATE. A named trap runs by its own numbers instead of the severity table.`,
           },
           fromX: { type: "integer", description: "trap and generic: x of the square it fires from, for cover on a DEX save." },
+          place: { type: "boolean", description: "trap only: set it hidden on the square fromX, fromY; the first creature to step there springs it." },
           fromY: { type: "integer", description: "Its y." },
           reason: { type: "string", description: "Short note on the hazard." },
         },
@@ -215,6 +217,9 @@ const hazardSchema = z.object({
   // cannot know without it.
   fromX: z.coerce.number().int().min(0).optional(),
   fromY: z.coerce.number().int().min(0).optional(),
+  // A named trap set on the square fromX, fromY instead of sprung now
+  // (src/lib/dm/set-traps.ts).
+  place: z.coerce.boolean().optional(),
 });
 
 // The square the hazard comes from, as cast_at_player reads it.
@@ -247,6 +252,15 @@ export function handleApplyHazard(
     args = hazardSchema.parse(JSON.parse(rawArguments || "{}"));
   } catch (error) {
     return badArguments("Invalid arguments: apply_hazard needs a type and characterIds (or rank).", error, rawArguments);
+  }
+  // The GM's trap set on a square, hidden from the players' boards; the
+  // first creature to step on it springs it (set-traps.ts).
+  if (args.place) {
+    if (args.type !== "trap" || !args.trap?.trim() || args.fromX === undefined || args.fromY === undefined) {
+      return { error: "place sets a named trap on a square: type 'trap', its name in trap, and the square in fromX and fromY. Nothing was set.", retry: true };
+    }
+    const set = setTrapAt(campaign, { name: args.trap, at: { x: args.fromX, y: args.fromY }, by: { kind: "enemy", id: "gm", name: "" }, hidden: true });
+    return "error" in set ? set : { ok: true, placed: set.line };
   }
   // Who walks first or last, from the formation in force (issue 230).
   let named = args.characterIds ?? [];
