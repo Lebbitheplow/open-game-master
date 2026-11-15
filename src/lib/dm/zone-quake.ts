@@ -38,6 +38,8 @@ import { breakConcentration, clearSpellConditionsByName } from "@/lib/dm/concent
 import { laySpellConditionsOnEnemy } from "@/lib/dm/spell-effects";
 import { rollCard } from "@/lib/dm/roll-card";
 import { rollOn } from "@/lib/roll-labels";
+import { layPetCondition } from "@/lib/dm/pet-condition-lay";
+import { rollPetSave } from "@/lib/dm/pet-save-roll";
 
 function withQuakeTurn<T>(campaignId: string, run: (turn: DmTurn) => T): T {
   const turn = openStandInTurn(campaignId);
@@ -105,6 +107,18 @@ export function quakeShake(campaign: Campaign, map: BattleMap, zone: SpellZone, 
           if (!("error" in laid)) {
             lines.push(`${sheet.name} is knocked prone by ${zone.spell}.`);
           }
+        }
+      }
+      // The pets in their square are on the same ground (ruling D2), unless
+      // they fly: each its own DEX save or prone (pet-condition-lay.ts).
+      for (const pet of getSheetById(sheet.id)?.pets ?? []) {
+        if (pet.hp <= 0 || pet.fly || prone(pet.conditions ?? [])) {
+          continue;
+        }
+        const owner = getSheetById(sheet.id) ?? sheet;
+        const save = rollPetSave(campaign, turn, owner, pet, { ability: "dex", dc, magical: true, source: zone.spell });
+        if (!save.success && !("error" in layPetCondition(campaign, owner, pet, { condition: "prone", magical: true }))) {
+          lines.push(`${pet.name} is knocked prone by ${zone.spell}.`);
         }
       }
       const standing = getSheetById(sheet.id);

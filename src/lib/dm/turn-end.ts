@@ -105,6 +105,35 @@ function withoutTurnEndInstances(
   return { conditions: nextConditions, meta: nextMeta, gone, changed: gone.length > 0 };
 }
 
+// The pets' instances that wait on these turns ("until the end of the mummy
+// lord's next turn" on a familiar, a pet retching in a Stinking Cloud):
+// marked as the turn begins and ended as it ends, as a character's are. A
+// pet's turn is its owner's (pet-conditions.ts).
+function petTurnMarks(campaign: Campaign, combatantIds: string[], step: "begin" | "end"): void {
+  const ids = new Set(combatantIds);
+  for (const stale of listSheets(campaign.id)) {
+    const owner = getSheetById(stale.id) ?? stale;
+    let changed = false;
+    const pets = owner.pets.map((pet) => {
+      const meta = (pet.conditionMeta ?? {}) as ConditionMetaMap;
+      if (!pet.conditions?.length) {
+        return pet;
+      }
+      if (step === "begin") {
+        const next = beginTurnMarks(pet.conditions, meta, combatantIds);
+        changed ||= Boolean(next);
+        return next ? { ...pet, conditionMeta: next } : pet;
+      }
+      const removed = withoutTurnEndInstances(pet.conditions, meta, ids);
+      changed ||= removed.changed;
+      return removed.changed ? { ...pet, conditions: removed.conditions, conditionMeta: removed.meta } : pet;
+    });
+    if (changed) {
+      patchSheetAudited(campaign.id, owner.id, { pets }, { kind: "condition_clock", reason: "a hold on their pet that lasted until a turn's end", delta: { ended: [], added: [] } });
+    }
+  }
+}
+
 // The meta a "until the end of <whose> next turn" effect is written with.
 export function untilTurnEnd(whose: string, extra: ConditionMeta = {}): ConditionMeta {
   return { ...extra, untilTurnEndOf: whose };
@@ -149,6 +178,7 @@ export function beginTurns(campaign: Campaign, encounterId: string, combatantIds
       });
     }
   }
+  petTurnMarks(campaign, combatantIds, "begin");
   return enemiesChanged;
 }
 
@@ -216,6 +246,7 @@ export function endTurns(
       }
     }
   }
+  petTurnMarks(campaign, combatantIds, "end");
   // A hold its source has let go of (Champion Challenge): condition-leash.ts.
   const leashes = endLeashes(encounterId);
   lines.push(...leashes.lines);

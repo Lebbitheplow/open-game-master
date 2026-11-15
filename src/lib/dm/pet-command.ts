@@ -34,6 +34,7 @@ import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { spentSlotRefusal } from "@/lib/dm/cast-rules";
+import { isIncapacitated } from "@/lib/dm/condition-logic";
 
 // The creatures that dodge when not commanded: a Beast Master's companion
 // and a Drakewarden's drake (a familiar and a story pet act on their own).
@@ -62,7 +63,9 @@ export function petDodgeTurnStart(campaign: Campaign, sheet: CharacterSheet): st
   const changed = fresh.pets.map((pet) => {
     if (!DODGERS.includes(pet.kind) || pet.hp <= 0) return pet;
     const kept = (pet.conditions ?? []).filter((entry) => !PET_COMMANDS.includes(textKey(entry)) && textKey(entry) !== PET_DODGING);
-    const next = [PET_DODGING, ...kept];
+    // The Dodge is an action, and an incapacitated creature takes none (SRD
+    // 5.1, Conditions): a paralyzed wolf is not dodging.
+    const next = isIncapacitated(kept) ? kept : [PET_DODGING, ...kept];
     return next.join("|") === (pet.conditions ?? []).join("|") ? pet : { ...pet, conditions: next };
   });
   if (changed.some((pet, index) => pet !== fresh.pets[index])) {

@@ -151,6 +151,16 @@ export function saveAuraBeside(campaignId: string, holder: CharacterSheet): Aura
   return { bonus, note: other ? other.note : `${holder.name}'s aura: +${own} on saving throws` };
 }
 
+// The condition a paladin's aura keeps off a creature in this character's
+// square (their pet, ruling D2): the character's own Aura of Courage or
+// Devotion while they are a conscious paladin, or another's that reaches the
+// square. Null when none does.
+export function conditionAuraBeside(campaignId: string, holder: CharacterSheet, condition: string): string | null {
+  const wanted = condition.trim().toLowerCase();
+  const own = auraGranted(holder) ? auraConditionImmunities(holder).find((entry) => entry.condition === wanted) : undefined;
+  return own ? `${holder.name}'s ${own.because}` : allyConditionAura(campaignId, holder, wanted);
+}
+
 // The conditions an ally's aura keeps off this character right now (Aura of
 // Courage: frightened; Aura of Devotion: charmed), with whose aura it is.
 export function allyConditionAura(

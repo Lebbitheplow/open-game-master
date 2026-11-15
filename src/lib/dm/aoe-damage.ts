@@ -850,6 +850,7 @@ export function handleAoeDamage(
       sheets,
       sheetsById,
       coverOf: saveCover,
+      named: laysCondition ? { condition: laysCondition, rounds: args.rounds } : null,
     }),
   );
 

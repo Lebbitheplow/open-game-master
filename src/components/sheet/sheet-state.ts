@@ -22,7 +22,7 @@ import {
   pcResistances,
 } from "@/lib/dm/condition-logic";
 import { attunementRefusal } from "@/lib/dm/usage-rules";
-import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
+import type { CharacterSheet, EquipmentItem, SheetPet } from "@/lib/schemas/sheet";
 import { speedFor } from "@/lib/srd";
 import { UNLIMITED_USES, resourceDef } from "@/lib/srd/class-resources";
 import { chargeMax, chargeRuleOf, chargesLeft } from "@/lib/srd/item-charge-rules";
@@ -142,6 +142,11 @@ export function stateTags(sheet: CharacterSheet): StateTag[] {
 // ends (WIS 13)", "from Goblin 2", "3 rounds".
 export function conditionDetail(sheet: CharacterSheet, condition: string, nameOf: (id: string) => string | null): string {
   return conditionNoteLine(conditionNote(condition, sheet.conditionMeta?.[condition], nameOf, sheet.id));
+}
+
+// The same for a pet's condition: its turn is its owner's (pet-conditions.ts).
+export function petConditionDetail(owner: CharacterSheet, pet: SheetPet, condition: string, nameOf: (id: string) => string | null): string {
+  return conditionNoteLine(conditionNote(condition, pet.conditionMeta?.[condition], nameOf, owner.id));
 }
 
 // ---- hit dice ----

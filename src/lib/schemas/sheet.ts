@@ -850,7 +850,11 @@ export const petSchema = z.object({
   fly: z.number().int().min(0).max(120).optional(),
   saves: z.record(z.string(), z.number().int().min(-10).max(30)).optional(),
   skills: z.record(z.string(), z.number().int().min(-10).max(30)).optional(),
-  conditions: z.array(z.string().trim().min(1).max(60)).max(8).optional(),
+  // Beside what the bond lays, the conditions a failed save laid (Hold
+  // Monster's paralysis, a net's restraint), timed and ended as a
+  // character's are (src/lib/dm/pet-conditions.ts), with the same metadata.
+  conditions: z.array(z.string().trim().min(1).max(60)).max(15).optional(),
+  conditionMeta: conditionMetaSchema.optional(),
 });
 export type SheetPet = z.infer<typeof petSchema>;
 
