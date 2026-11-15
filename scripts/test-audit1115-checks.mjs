@@ -170,5 +170,42 @@ await test("K04: Remarkable Athlete's half proficiency rounds up beside Jack of 
   assert.match(guidance, /Remarkable Athlete: half their proficiency bonus \(rounded up\)/, guidance);
 });
 
+// K05. SRD 5.1, Vision and Light: in darkness a creature "effectively
+// suffers from the blinded condition when trying to see something in that
+// area"; dim light gives disadvantage on Wisdom (Perception) checks that
+// rely on sight; darkvision sees dim light as bright and darkness as dim.
+// Off the board a check by sight read the place's light; on a battle map it
+// read none at all, so a human's Perception by sight in an unlit cave, or in
+// a dim hall, rolled as in daylight, and check_notice let them spot things
+// in the dark.
+await test("K05: on a battle map a check by sight reads the light on the character's square", async () => {
+  await kit.endFight();
+  const human = world.addHero({ class: "fighter", level: 1, race: "human", abilities: { wis: 10 }, proficiencies: { ...TRAINED } });
+  const dwarf = world.addHero({ class: "fighter", level: 1, race: "hill_dwarf", abilities: { wis: 10 }, proficiencies: { ...TRAINED } });
+  await kit.fight(1);
+  kit.place(human.id, 2, 2);
+  kit.place(dwarf.id, 6, 2);
+  const look = { kind: "skill_check", skill: "perception", by: "sight" };
+  darkBoard();
+  const blind = resolved(human.id, look);
+  assert.equal(blind.autoFail, true, `a human in an unlit cave sees nothing: ${JSON.stringify(blind)}`);
+  assert.equal(resolved(dwarf.id, look).expression, "2d20kl1", "darkvision sees the dark as dim light: disadvantage");
+  assert.equal(resolved(human.id, { ...look, by: "hearing" }).expression, "1d20", "a check by ear ignores the light");
+  const notice = await world.invoke("check_notice", { characterIds: [human.id, dwarf.id], dc: 5, reason: "a trapdoor" });
+  assert.equal(notice.ok, true, notice.error);
+  assert.deepEqual(notice.result.noticedBy, [world.sheet(dwarf.id).name], "the human notices nothing in the dark, the dwarf does");
+  // A torch in the human's hand lights their square.
+  maps.setTokenLight(kit.token(human.id).id, 4);
+  clearLitTilesCache();
+  assert.equal(resolved(human.id, look).expression, "1d20", "by torchlight the human sees");
+  // A dim hall: disadvantage without darkvision, nothing with it.
+  getDatabase().prepare(`UPDATE battle_maps SET ambient = 'dim' WHERE id = ?`).run(kit.map().id);
+  maps.setTokenLight(kit.token(human.id).id, 0);
+  clearLitTilesCache();
+  assert.equal(resolved(human.id, look).expression, "2d20kl1", "dim light: disadvantage on Perception by sight");
+  assert.equal(resolved(dwarf.id, look).expression, "1d20", "darkvision sees dim light as bright");
+  await kit.endFight();
+});
+
 world.close();
 finish();

@@ -25,7 +25,7 @@ import { getActiveBattleMap } from "@/lib/battlemap/view";
 import { normalizeClock } from "@/lib/dm/calendar";
 import { getClock } from "@/lib/db/clock";
 import { sightPassiveShift, unawareReason } from "@/lib/dm/notice-logic";
-import { lightForSheet, offBoardAmbient } from "@/lib/dm/place-light";
+import { boardLightFor, lightForSheet, offBoardAmbient } from "@/lib/dm/place-light";
 import { dimLightSpares } from "@/lib/dm/dim-sight";
 import { contestOpponent, marchStealthProblem, rollContest } from "@/lib/dm/roll-gates";
 import { weatherPerceptionRider } from "@/lib/srd/weather";
@@ -472,8 +472,8 @@ export function handleCheckNotice(
       ? weatherPerceptionRider(normalizeClock(campaign.clock).weather)
       : { disadvantage: false, passiveMod: 0, note: null };
   // Off the board the light is the place's, a lit torch or lantern and
-  // darkvision on top (src/lib/dm/place-light.ts, which a rolled check
-  // reads too). A board keeps its own light.
+  // darkvision on top; on a board, the light on each character's own square
+  // (src/lib/dm/place-light.ts, which a rolled check reads too).
   const ambient = offBoardAmbient(campaign.id, args.light ?? null);
   const noticedBy: string[] = [];
   const noticers: CharacterSheet[] = [];
@@ -500,13 +500,14 @@ export function handleCheckNotice(
       countedOut += 1;
       continue;
     }
+    const seenBy = ambient ? lightForSheet(ambient, fresh) : boardLightFor(campaign.id, fresh);
     const sight =
       sense === "perception"
         ? sightPassiveShift({
             pace: clock.travelPace,
             byEar: args.by === "hearing",
             spared: dimLightSpares(fresh),
-            ...(ambient ? { light: lightForSheet(ambient, fresh) } : {}),
+            ...(seenBy ? { light: seenBy } : {}),
           })
         : { shift: 0, blind: false, disadvantage: false, notes: [] };
     if (sight.notes.length) {
