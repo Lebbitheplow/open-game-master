@@ -42,6 +42,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { wardOf } from "@/lib/dm/arcane-ward";
 import { actedThisTurn, recordTurnEnd } from "@/lib/dm/last-save";
 import type { BlowFlags } from "@/lib/dm/pc-damage";
+import type { Retort, RiderMark } from "@/lib/dm/retort-logic";
 
 export type SwingRecord = {
   // The attack this swing was, when a multiattack swings several (a
@@ -117,6 +118,16 @@ export type SwingRecord = {
   // ended with it. SRD 5.1: a separate save for each source of damage, so a
   // reaction judges the one blow that broke it, not the whole attack.
   concentration?: { save: number | null; broke: boolean };
+  // What the hit set off against the creature that made it (Armor of
+  // Agathys's cold, Fire Shield's flame, Holy Aura's blinding, Thought
+  // Shield's psychic: spell-retort.ts), kept so a reaction that turns the
+  // swing into a miss takes it back (reaction-refund.ts). Absent when it set
+  // off nothing, and on older records.
+  retort?: Retort;
+  // What the hit's own rider laid on the character (a wolf's prone, a
+  // grapple, a drain of their maximum: retort-logic.ts RiderMark), taken off
+  // when a reaction turns the swing into a miss. Absent when it laid nothing.
+  laid?: RiderMark;
 };
 
 export type CriticalRecipe = {
@@ -235,6 +246,11 @@ export type LastHit = {
   // carries, in their order (reaction-refund.ts). Absent on records written
   // before it, which are read by their times.
   seqs?: { open: number; close: number };
+  // What the attack as a whole set off against its maker once its swings
+  // were done (a feature's retaliation, authored-hooks.ts authoredAfterHit),
+  // taken back when a reaction leaves none of them a hit. Absent when it set
+  // off nothing.
+  afterHit?: Retort;
   // The reactions already answered with it, so one cannot be taken twice.
   answered: string[];
   // When the attack began (the first swing) and when it was recorded.
@@ -757,6 +773,8 @@ export function openLastHit(campaignId: string, characterId: string) {
   const startedAt = nowIso();
   const openSeq = latestSeq(campaignId);
   const swings: SwingRecord[] = [];
+  // The record as close() wrote it.
+  let written: LastHit | null = null;
   // The concentration each swing found, and when the swing before it ended,
   // so a swing's own concentration save is read off the rolls since then.
   let concentrating = before?.concentratingOn ?? null;
@@ -829,6 +847,27 @@ export function openLastHit(campaignId: string, characterId: string) {
         ...(concentration ? { concentration } : {}),
       });
     },
+    // What the swing just logged set off against the attacker, kept with it.
+    retort(retort: Retort | null) {
+      const last = swings.at(-1);
+      if (last && last.hit && retort) {
+        swings[swings.length - 1] = { ...last, retort };
+      }
+    },
+    // What the swing just logged laid on the character through its rider.
+    laid(mark: RiderMark | null) {
+      const last = swings.at(-1);
+      if (last && last.hit && mark) {
+        swings[swings.length - 1] = { ...last, laid: mark };
+      }
+    },
+    // What the whole attack set off once it was recorded, kept with it.
+    afterHit(retort: Retort | null) {
+      if (written && retort) {
+        written = { ...written, afterHit: retort };
+        writeLastHit(campaignId, written);
+      }
+    },
     close(what: {
       attacker: LastHit["attacker"];
       attack: string;
@@ -841,7 +880,7 @@ export function openLastHit(campaignId: string, characterId: string) {
         return;
       }
       const encounter = getActiveEncounter(campaignId);
-      writeLastHit(campaignId, {
+      written = {
         id: newHitId(),
         characterId,
         encounterId: encounter?.id ?? null,
@@ -860,7 +899,8 @@ export function openLastHit(campaignId: string, characterId: string) {
         startedAt,
         at: nowIso(),
         seqs: { open: openSeq, close: latestSeq(campaignId) },
-      });
+      };
+      writeLastHit(campaignId, written);
     },
   };
 }

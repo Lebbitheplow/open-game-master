@@ -61,7 +61,10 @@ import { effectOutcome } from "@/lib/dm/effect-tools";
 import { hasTrait } from "@/lib/dm/monster-abilities";
 import { allyBeside } from "@/lib/dm/side-allies";
 import { targetSwingMarks } from "@/lib/dm/enemy-swing-odds";
-import { enfeebledBlow, spellRetort, spendEnemyRiders } from "@/lib/dm/spell-retort";
+import { enfeebledBlow, measureRetort, spellRetort, spendEnemyRiders } from "@/lib/dm/spell-retort";
+import { joinRetorts, riderMarkOf } from "@/lib/dm/retort-logic";
+import { thoughtShieldBack } from "@/lib/dm/thought-shield";
+import { authoredAfterHit } from "@/lib/dm/authored-hooks";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { activeAuthored } from "@/lib/srd/authored-effects";
 import { enemySpeedTiles } from "@/lib/dm/enemy-speed";
@@ -379,7 +382,7 @@ export function resolveOpportunityAttacks(
     const plainBlow = plainRoll ? blowByType(attack, plainRoll, false) : null;
     const plainRaw = plainBlow ? enfeebledBlow(enemy, attack, false, Math.max(0, plainBlow.amount)) : 0;
     const plain = plainBlow ? { raw: plainRaw, ...(plainBlow.parts ? { parts: scaledParts(plainBlow.parts, plainRaw) } : {}) } : undefined;
-    const { landed, onHit } = withOpportunityTurn(campaign.id, (turn) => {
+    const { landed, onHit, answered, psychicBack, laid } = withOpportunityTurn(campaign.id, (turn) => {
       const hitSheets = listSheets(campaign.id);
       const hitSheetsById = new Map(hitSheets.map((entry) => [entry.id, entry]));
       const applied: Record<string, unknown> =
@@ -393,9 +396,21 @@ export function resolveOpportunityAttacks(
               reason: `opportunity attack from ${enemy.displayName}`,
             })
           : {};
+      // An opportunity attack is a melee attack (SRD 5.1), met by every answer
+      // enemy_attack's blow meets (enemy-attack.ts): Thought Shield's psychic
+      // as the damage lands, then Fire Shield, Holy Aura and Armor of Agathys,
+      // which reads the temporary hit points held as the blow landed. Called
+      // without them, the frost never bit here, and its line never reached
+      // the GM. Each kept with the swing, so a Shield that turns it into a
+      // miss takes it back (spell-retort.ts measureRetort).
+      const psychicBack = measureRetort(enemy.id, () => (rolled > 0 ? thoughtShieldBack(campaign, turn, sheet, enemy.id, { amount: rolled, type: blow.type, parts: blow.parts ? scaledParts(blow.parts, rolled) : undefined, flags: magical ? { magical: true } : {} }, hitSheets, hitSheetsById) : {}), (back) => (back.thoughtShield ? ["Thought Shield"] : []));
+      const unridden = getSheetById(sheet.id);
       const rider = resolveOnHit(campaign, turn, enemy, attack, sheet.id, { sheets: hitSheets, sheetsById: hitSheetsById });
-      spellRetort(campaign, turn, enemy, sheet.id, true, reach <= 1, hitSheets, hitSheetsById);
-      return { landed: applied, onHit: rider };
+      // What the rider laid on them, kept with the swing (enemy-attack.ts).
+      const ridden = getSheetById(sheet.id);
+      const laid = unridden && ridden && !rider?.swallowed ? riderMarkOf(unridden, ridden, Array.isArray(rider?.riderCondition) ? (rider.riderCondition as string[]) : []) : null;
+      const answered = measureRetort(enemy.id, () => spellRetort(campaign, turn, enemy, sheet.id, true, reach <= 1, hitSheets, hitSheetsById, sheet.tempHp ?? 0), (out) => out.by);
+      return { landed: applied, onHit: rider, answered, psychicBack, laid };
     });
     const updated = getSheetById(sheet.id);
     // A critical's normal figure, for Sentinel at Death's Door (last-hit.ts).
@@ -406,7 +421,14 @@ export function resolveOpportunityAttacks(
     const normalRaw = normalBlow ? enfeebledBlow(enemy, attack, false, Math.max(0, normalBlow.amount)) : 0;
     const normal = normalBlow ? { raw: normalRaw, type: normalBlow.type ?? "", ...(normalBlow.parts ? { parts: scaledParts(normalBlow.parts, normalRaw) } : {}), from: rolled } : undefined;
     hitLog.swing(hitOutcome, targetAc, { hit: true, crit, raw: rolled, advantage, ...(blow.type ? { type: blow.type } : {}), ...(blow.parts ? { parts: scaledParts(blow.parts, rolled) } : {}), ...(plain ? { plain } : {}), ...(normal ? { normal } : {}), flags: wards.flags });
+    hitLog.retort(joinRetorts(psychicBack.retort, answered.retort));
+    hitLog.laid(laid);
     hitLog.close({ attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName }, attack: `${attack.name} (opportunity attack)`, type: attack.type, ranged: false });
+    // A feature's retaliation for a melee hit (Flames of Phlegethos, a
+    // retaliate row), as enemy_attack's attack meets it.
+    const retaliation = measureRetort(enemy.id, () => authoredAfterHit(campaign, { encounter, attacker: enemy, target: sheet, dealt: rolled, ranged: false, attackName: attack.name }), (lines) => (lines.length ? ["A retaliation"] : []));
+    hitLog.afterHit(retaliation.retort);
+    const answers = [psychicBack.result.thoughtShield, answered.result.line, ...retaliation.result].filter((line): line is string => Boolean(line));
     if (updated && updated.currentHp <= 0 && !updated.wildShape) {
       downed = true;
       downedAt = leftFrom;
@@ -416,7 +438,7 @@ export function resolveOpportunityAttacks(
     notes.push(
       `${shownName(encounter.id, enemy.id, enemy.displayName)} takes an opportunity attack as ${sheet.name} pulls away: ${
         crit ? "a critical hit for " : "hit for "
-      }${rolled} damage${byType}.${riderNote}`,
+      }${rolled} damage${byType}.${riderNote}${answers.length ? ` ${answers.join(" ")}` : ""}`,
     );
     if (downed) {
       break;

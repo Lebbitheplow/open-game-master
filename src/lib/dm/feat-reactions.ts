@@ -71,6 +71,7 @@ export function defensiveDuelist(ctx: Ctx): ToolResult {
     applied: turned
       ? `Defensive Duelist: +${bonus} AC against ${record.attacker.name}'s ${record.attack}; ${turned} hit${turned === 1 ? "" : "s"} now miss${turned === 1 ? "es" : ""}: ${settled.given} hit points come back. HP ${settled.hp}.`
       : `Defensive Duelist: +${bonus} AC, but ${record.attacker.name}'s ${record.attack} still hits.`,
+    ...(settled.notes.length ? { notes: settled.notes } : {}),
   };
 }
 

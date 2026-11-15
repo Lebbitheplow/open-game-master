@@ -189,6 +189,13 @@ function lastHitOn(ctx: Ctx, target: CharacterSheet, label: string, which?: (hit
   return { record, index };
 }
 
+// What a refund undid beyond hit points, after a reaction's line: the flame or
+// frost a hit turned into a miss never set off, concentration kept
+// (reaction-refund.ts settleHits notes).
+function noted(settled: { notes: string[] }): string {
+  return settled.notes.length ? ` ${settled.notes.join(" ")}` : "";
+}
+
 // One open hit on `covered` rolled again at disadvantage, and settled: a miss
 // gives the hit points back, a hit that stands is answered all the same. What
 // goes through here: every reaction that lays disadvantage on an attack roll
@@ -236,7 +243,7 @@ export function rollHitAgainAtDisadvantage(
     };
   }
   const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, hit: false, raw: 0 } : entry)), label);
-  return { missed: true, record: hit.record, applied: `Rolled again at disadvantage: ${total} against AC ${swing.vsAc} misses, and ${settled.given} hit points come back. HP ${settled.hp}.` };
+  return { missed: true, record: hit.record, applied: `Rolled again at disadvantage: ${total} against AC ${swing.vsAc} misses, and ${settled.given} hit points come back. HP ${settled.hp}.${noted(settled)}` };
 }
 
 // The modifiers and the character's proficiency bonus a reaction's formula
@@ -631,7 +638,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       // /tmp/odm-gapstudy/WAVE1.md): made unless the call says "no attack".
       const declined = textKey(ctx.args.variant ?? "") === NO_ATTACK;
       const struck = does.strikeOnMiss ? (declined ? { attack: `${ctx.sheet.name} lets the attack pass.` } : strikeAttacker(ctx, reaction.name, hit.record)) : {};
-      return { ...struck, applied: `AC ${swing.vsAc} + ${bonus} turns the ${swing.total} into a miss: ${settled.given} hit points come back. HP ${settled.hp}.` };
+      return { ...struck, applied: `AC ${swing.vsAc} + ${bonus} turns the ${swing.total} into a miss: ${settled.given} hit points come back. HP ${settled.hp}.${noted(settled)}` };
     }
     case "disadv_vs_hit": {
       const named = allyOf(ctx);
@@ -1094,7 +1101,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         return { rolled: die, applied: `The attack falls to ${swing.total - die} and still hits AC ${swing.vsAc}.` };
       }
       const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, hit: false, raw: 0 } : entry)), label);
-      return { rolled: die, applied: `The attack falls to ${swing.total - die} against AC ${swing.vsAc} and misses: ${settled.given} hit points come back to ${target.name}.` };
+      return { rolled: die, applied: `The attack falls to ${swing.total - die} against AC ${swing.vsAc} and misses: ${settled.given} hit points come back to ${target.name}.${noted(settled)}` };
     }
     case "redirect": {
       // The Cloud Rune turns a hit before its damage is rolled: the knight's
@@ -1201,7 +1208,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       if ("error" in hit) return hit;
       const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, hit: false, raw: 0 } : entry)), label);
       if (!does.exhaustion) {
-        const missed = `The attack misses: ${settled.given} hit points come back to ${target.name}. HP ${settled.hp}.`;
+        const missed = `The attack misses: ${settled.given} hit points come back to ${target.name}. HP ${settled.hp}.${noted(settled)}`;
         // Vanish Below's move, to the square named (none named: they stay).
         if (does.moveFt && ctx.args.x !== undefined && ctx.args.y !== undefined) {
           const moved = reactionMove(ctx, reaction.name, "opened", does.moveFt);
@@ -1211,7 +1218,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
       }
       const now = getSheetById(ctx.sheet.id) ?? ctx.sheet;
       reactionPatch(ctx.campaign, ctx.turn.id, now.id, { exhaustion: Math.min(6, (now.exhaustion ?? 0) + does.exhaustion) }, `${reaction.name}: exhaustion`);
-      return { applied: `The attack misses by the wizard's word: ${settled.given} hit points come back to ${target.name}. ${ctx.sheet.name} gains ${does.exhaustion} level of exhaustion.` };
+      return { applied: `The attack misses by the wizard's word: ${settled.given} hit points come back to ${target.name}. ${ctx.sheet.name} gains ${does.exhaustion} level of exhaustion.${noted(settled)}` };
     }
     case "echo_takes_hit": {
       const ally = allyOf(ctx);
@@ -1262,7 +1269,7 @@ function resolve(ctx: Ctx, found: Found): ToolResult | ToolError {
         return { rolled: die, applied: `${does.die}: ${die}, under ${does.min}; the hit still lands.` };
       }
       const settled = settle(ctx, hit.record, hit.record.swings.map((entry, at) => (at === hit.index ? { ...entry, hit: false, raw: 0 } : entry)), label);
-      return { rolled: die, applied: `${does.die}: ${die}, the attack misses whatever it rolled: ${settled.given} hit points come back. HP ${settled.hp}.` };
+      return { rolled: die, applied: `${does.die}: ${die}, the attack misses whatever it rolled: ${settled.given} hit points come back. HP ${settled.hp}.${noted(settled)}` };
     }
     case "uncrit": {
       const target = allyOf(ctx) ?? ctx.sheet;
