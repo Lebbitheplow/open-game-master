@@ -21,7 +21,7 @@ import { hitTraitDice } from "@/lib/dm/side-allies";
 import type { EncounterEnemy } from "@/lib/db/encounters";
 import { mirrorImageDecoy, sanctuaryRefusal } from "@/lib/dm/spell-defenses";
 import { enfeebledBlow, measureRetort, spellRetort, spendEnemyRiders } from "@/lib/dm/spell-retort";
-import { joinRetorts } from "@/lib/dm/retort-logic";
+import { joinRetorts, riderMarkOf } from "@/lib/dm/retort-logic";
 import { z } from "zod";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import {
@@ -938,7 +938,13 @@ export function handleEnemyAttack(
     const necrotic = byType
       ? byType.reduce((sum, part) => sum + (/^(\d+) necrotic\b/i.exec(part) ? Number(/^(\d+)/.exec(part)![1]) : 0), 0)
       : /necrotic/i.test(blow.type ?? attack.type) ? dealt : 0;
+    const unridden = getSheetById(target.id);
     const onHit = resolveOnHit(campaign, turn, standing, attack, target.id, { sheets, sheetsById, dealt: { total: dealt, necrotic } });
+    // What the rider laid on the target, kept with the swing: a reaction
+    // that turns it into a miss takes it off (reaction-refund.ts). A
+    // creature swallowed is the swallow's to free (swallow.ts), not this.
+    const ridden = getSheetById(target.id);
+    hitLog.laid(unridden && ridden && !onHit?.swallowed ? riderMarkOf(unridden, ridden, Array.isArray(onHit?.riderCondition) ? (onHit.riderCondition as string[]) : []) : null);
     // Fire Shield, Armor of Agathys and Holy Aura answer the blow
     // (spell-retort.ts), kept with the swing with Thought Shield's: a hit a
     // reaction turns into a miss never set them off (reaction-refund.ts).

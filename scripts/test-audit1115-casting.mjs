@@ -889,5 +889,73 @@ await test("S21: a creature whose opportunity attack hits a tiefling wreathed in
   assert.equal(hpLost(world, goblin.id), 4, JSON.stringify(out.notes));
 });
 
+// ---- S22: what a hit lays on its target goes with the hit ----
+
+// A creature's "Hit:" text is what the hit does (SRD 5.1, Attack Rolls: on a
+// hit the attack's effects apply): a wolf's "If the target is a creature, it
+// must succeed on a DC 11 Strength saving throw or be knocked prone", a
+// constrictor's grapple, a spider's poison. A swing Shield or Cutting Words
+// turns into a miss did none of it. The refund gave back the rider's damage
+// and left the wizard prone, the fighter grappled.
+const WOLF = { attacks: [{ name: "Bite", toHit: 4, damage: "2d4+2", type: "piercing", mode: "melee", onHit: { save: "str", dc: 11, condition: "prone" } }] };
+const SNAKE = { attacks: [{ name: "Constrict", toHit: 4, damage: "1d8+2", type: "bludgeoning", mode: "melee", onHit: { condition: "grappled", escapeDc: 14, alsoCondition: "restrained" } }] };
+
+async function bittenWizard(stats) {
+  const { world, sheets: [mage], enemies: [beast] } = await table([caster("wizard", "int", ["Shield"])], 1, stats);
+  world.patch(mage.id, { ac: 12, acOverride: true });
+  return { world, mage, beast };
+}
+
+await test("S22: a wolf's bite Shield turns into a miss leaves the wizard standing, not prone", async () => {
+  const { world, mage, beast } = await bittenWizard(WOLF);
+  // 10 + 4 against AC 12, 2d4 of 1 and 1, the STR save a 1.
+  await swingAt(world, beast, mage, [10, 1, 1, 1]);
+  assert.ok(world.sheet(mage.id).conditions.includes("prone"), "the bite knocks the wizard down as it lands");
+  const shield = await world.invoke("use_reaction", { characterId: mage.id, feature: "Shield" });
+  assert.equal(shield.ok, true, shield.error);
+  assert.ok(!world.sheet(mage.id).conditions.includes("prone"), JSON.stringify(shield.result));
+});
+
+await test("S22: a constrictor's hit Shield turns into a miss holds no one: not grappled, not restrained", async () => {
+  const { world, mage, beast } = await bittenWizard(SNAKE);
+  await swingAt(world, beast, mage, [10, 1]);
+  assert.ok(world.sheet(mage.id).conditions.includes("grappled"));
+  const shield = await world.invoke("use_reaction", { characterId: mage.id, feature: "Shield" });
+  assert.equal(shield.ok, true, shield.error);
+  const after = world.sheet(mage.id).conditions;
+  assert.ok(!after.includes("grappled") && !after.includes("restrained"), JSON.stringify(after));
+});
+
+await test("S22: a Life Drain Shield turns into a miss drains nothing: the wizard's maximum and hit points are whole", async () => {
+  const { world, mage, beast } = await bittenWizard({ attacks: [{ name: "Life Drain", toHit: 8, damage: "2d10", type: "necrotic", mode: "melee", onHit: { save: "con", dc: 13, drainMaxHp: "total" } }] });
+  const full = world.sheet(mage.id).maxHp;
+  // 5 + 8 against AC 12 hits for 3 + 3; the CON save a 1.
+  await swingAt(world, beast, mage, [5, 3, 3, 1]);
+  assert.ok(world.sheet(mage.id).conditions.some((name) => /max hp reduced/.test(name)), "the drain lands with the hit");
+  const shield = await world.invoke("use_reaction", { characterId: mage.id, feature: "Shield" });
+  assert.equal(shield.ok, true, shield.error);
+  const after = world.sheet(mage.id);
+  assert.ok(!after.conditions.some((name) => /max hp reduced/.test(name)), JSON.stringify(after.conditions));
+  assert.equal(after.currentHp, full, "healed to the maximum the drain no longer lowers");
+});
+
+await test("S22: a rider's mark is its own conditions and the drain it raised, and comes off as it went on", async () => {
+  const { riderMarkOf, ridersBack } = await import("../src/lib/dm/retort-logic.ts");
+  const was = { conditions: ["blessed", "max hp reduced (-5)"], conditionMeta: { "max hp reduced (-5)": { source: "w1", untilLongRest: true } } };
+  const now = { conditions: ["blessed", "unconscious", "prone", "poisoned", "max hp reduced (-12)"], conditionMeta: { "max hp reduced (-12)": { source: "w2", untilLongRest: true } } };
+  // The drop's unconscious and prone are the refund's to undo, not the rider's.
+  const mark = riderMarkOf(was, now, ["poisoned"]);
+  assert.deepEqual(mark, { laid: ["poisoned", "max hp reduced (-12)"], ended: [{ name: "max hp reduced (-5)", meta: { source: "w1", untilLongRest: true } }] });
+  assert.deepEqual(ridersBack({ conditions: ["blessed", "poisoned", "max hp reduced (-12)"], conditionMeta: now.conditionMeta }, [mark]), was);
+});
+
+await test("S22: a bite that still hits through Shield keeps the wizard prone", async () => {
+  const { world, mage, beast } = await bittenWizard(WOLF);
+  await swingAt(world, beast, mage, [19, 1, 1, 1]);
+  const shield = await world.invoke("use_reaction", { characterId: mage.id, feature: "Shield" });
+  assert.equal(shield.ok, true, shield.error);
+  assert.ok(world.sheet(mage.id).conditions.includes("prone"));
+});
+
 closeTables();
 finish();

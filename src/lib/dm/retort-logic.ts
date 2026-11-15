@@ -4,6 +4,9 @@
 // as the answer found and left it, and how to take it back. Pure; the reads
 // and writes are spell-retort.ts's.
 //
+// The same holds for what the hit's own rider laid on the character it hit
+// (RiderMark below): a wolf's prone, a constrictor's grapple, a wight's drain.
+//
 // SRD 5.1 keys each answer to the hit: Armor of Agathys "If a creature hits
 // you with a melee attack", Fire Shield "Whenever a creature within 5 feet of
 // you hits you with a melee attack", Holy Aura "If a fiend or an undead hits
@@ -16,6 +19,8 @@
 // reactions after it (reaction-refund.ts settleHits), so the creature kept
 // the flame of a blow that missed. What the answer did is kept with the
 // swing, and taken back with it.
+
+import { maxHpRiders, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 
 export type RetortCreature = {
   currentHp: number;
@@ -110,4 +115,48 @@ export function retortBack(now: RetortCreature, retort: Retort): RetortBack | nu
   const conditions = [...kept, ...back.map((entry) => entry.name)];
   const changed = currentHp !== now.currentHp || conditions.length !== now.conditions.length || back.length > 0;
   return changed ? { currentHp, conditions, conditionMeta: meta, hp: currentHp - now.currentHp } : null;
+}
+
+// ---- the rider's mark on the character hit ----
+
+// What a hit's rider did to the conditions of the character it hit (SRD 5.1:
+// the "Hit:" text is what the hit does): the conditions it laid, and the drain
+// of their maximum it raised (one "max hp reduced" mark grows with each
+// drain, so the smaller one it replaced is kept to put back).
+export type RiderMark = { laid: string[]; ended: Array<{ name: string; meta?: unknown }> };
+
+type Conditioned = { conditions: string[]; conditionMeta: Record<string, unknown> };
+
+const drains = (sheet: Conditioned, name: string) => maxHpRiders([name], sheet.conditionMeta as ConditionMetaMap).drain > 0;
+
+// The mark from the character before and after the rider. `own`: the
+// conditions the rider reports it laid. A drop to 0 by the rider's damage
+// lays unconscious and prone too, and the refund already undoes a drop that
+// no longer happens, so only the rider's own conditions and its drain count.
+export function riderMarkOf(before: Conditioned, after: Conditioned, own: readonly string[]): RiderMark | null {
+  const laid = after.conditions.filter((name) => !before.conditions.includes(name) && (own.includes(name) || drains(after, name)));
+  const ended = before.conditions
+    .filter((name) => !after.conditions.includes(name) && drains(before, name))
+    .map((name) => (name in before.conditionMeta ? { name, meta: before.conditionMeta[name] } : { name }));
+  return laid.length || ended.length ? { laid, ended } : null;
+}
+
+// The character with the marks of riders that no longer hit taken off: their
+// conditions gone, a drain they raised back to what it was.
+export function ridersBack<T extends Conditioned>(sheet: T, marks: readonly RiderMark[]): T {
+  let conditions = [...sheet.conditions];
+  const meta = { ...sheet.conditionMeta };
+  for (const mark of marks) {
+    conditions = conditions.filter((name) => !mark.laid.includes(name));
+    for (const name of mark.laid) {
+      delete meta[name];
+    }
+    for (const entry of mark.ended.filter((had) => !conditions.includes(had.name))) {
+      conditions.push(entry.name);
+      if (entry.meta !== undefined) {
+        meta[entry.name] = entry.meta;
+      }
+    }
+  }
+  return { ...sheet, conditions, conditionMeta: meta };
 }

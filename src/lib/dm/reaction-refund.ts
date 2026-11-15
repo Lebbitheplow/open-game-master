@@ -33,7 +33,7 @@ import { RAGING } from "@/lib/srd/class-resources";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { WARD_POOL } from "@/lib/dm/arcane-ward";
 import { concentrationDamageHook } from "@/lib/dm/concentration";
-import { effectiveMaxHp, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { effectiveMaxHp, maxHpRiders, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import type { DeathTrack } from "@/lib/dm/death-logic";
 import { scaledParts } from "@/lib/dm/enemy-hit";
 import {
@@ -51,6 +51,7 @@ import {
 } from "@/lib/dm/hit-replay-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { takeRetortBack } from "@/lib/dm/spell-retort";
+import { ridersBack, type RiderMark } from "@/lib/dm/retort-logic";
 import { answerLabel, carryCuts, hitIdOf, openHits, wardHpOf, writeLastHit, type LastHit, type SwingRecord } from "@/lib/dm/last-hit";
 import { applyDmMutation, audit } from "@/lib/dm/mutations";
 import { blowDefenses, meetDefenses, WILDFIRE_SPIRIT } from "@/lib/dm/pc-damage";
@@ -318,10 +319,19 @@ export function settleHits(
   if (!sheet) {
     return { given: 0, hp: "", notes };
   }
-  const maxHp = effectiveMaxHp(sheet);
   const chain = chainFrom(campaign.id, answers);
   const correctedOf = new Map(answers.map((answer) => [hitIdOf(answer.record), answer.corrected]));
   const swingsOf = (record: LastHit) => correctedOf.get(hitIdOf(record)) ?? record.swings;
+  // What the riders of the swings now missing laid on them comes off first
+  // (a wolf's prone, a grapple), so the maximum the replay heals them to is
+  // one a drain those swings raised no longer lowers.
+  const unlaid = ridersUndone(chain, swingsOf);
+  const riderless = unlaid.length ? ridersBack(sheet, unlaid) : sheet;
+  const maxHp = effectiveMaxHp(riderless);
+  const freed = unlaid.flatMap((mark) => mark.laid).filter((name) => sheet.conditions.includes(name) && !riderless.conditions.includes(name));
+  if (freed.length) {
+    notes.push(`${sheet.name} is no longer ${freed.map((name) => (maxHpRiders([name], sheet.conditionMeta as ConditionMetaMap).drain > 0 ? "drained of maximum hit points" : name)).join(" or ")}: the blow that laid it now misses.`);
+  }
   const first = chain[0];
   const nowStanding = standingOfSheet(sheet);
 
@@ -401,7 +411,7 @@ export function settleHits(
       });
     }
   };
-  if (sameStanding(final, nowStanding) && !steps.some((step) => step.heldAt !== null && !step.now.heldUsed)) {
+  if (!unlaid.length && sameStanding(final, nowStanding) && !steps.some((step) => step.heldAt !== null && !step.now.heldUsed)) {
     keep();
     return { given: 0, hp: `${sheet.currentHp}/${maxHp}`, notes };
   }
@@ -416,8 +426,8 @@ export function settleHits(
   if (ward && final.ward !== undefined && final.ward !== null && final.ward !== nowStanding.ward) {
     patch.resources = { ...sheet.resources, [WARD_POOL]: { max: ward.max, used: Math.max(0, Math.min(ward.max, ward.max - final.ward)) } };
   }
-  let conditions = [...sheet.conditions];
-  let meta = { ...sheet.conditionMeta } as Record<string, unknown>;
+  let conditions = [...riderless.conditions];
+  let meta = { ...riderless.conditionMeta } as Record<string, unknown>;
   const before = first.before;
   const fellThen = !up(nowStanding) || Boolean(sheet.deathSaves?.dead) || steps.some((step) => step.heldAt !== null);
   const fallsNow = !up(final) || steps.some((step) => step.now.dropped);
@@ -531,16 +541,18 @@ function retortsBack(campaign: Campaign, steps: Step[], notes: string[]) {
   for (const step of steps) {
     const was = step.record.swings;
     step.corrected = step.corrected.map((swing, at) => {
-      const kept = was[at]?.retort;
-      if (!kept || !was[at].hit || swing.hit) {
+      if (!was[at]?.hit || swing.hit || (!was[at].retort && !was[at].laid)) {
         return swing;
       }
-      const line = takeRetortBack(campaign, kept);
+      const kept = was[at].retort;
+      const line = kept ? takeRetortBack(campaign, kept) : null;
       if (line) {
         notes.push(line);
       }
+      // The rider's mark came off the character with the replay (ridersUndone).
       const plain = { ...swing };
       delete plain.retort;
+      delete plain.laid;
       return plain;
     });
     const whole = step.record.afterHit;
@@ -554,6 +566,16 @@ function retortsBack(campaign: Campaign, steps: Step[], notes: string[]) {
       step.record = plain;
     }
   }
+}
+
+// The marks of the riders whose swings a reaction now turns into misses
+// (last-hit.ts SwingRecord.laid), oldest first. SRD 5.1: a creature's "Hit:"
+// text is what its hit does, so a blow Shield turns away knocks no one prone.
+function ridersUndone(chain: LastHit[], swingsOf: (record: LastHit) => SwingRecord[]): RiderMark[] {
+  return chain.flatMap((record) => {
+    const now = swingsOf(record);
+    return record.swings.flatMap((swing, at) => (swing.hit && swing.laid && now[at] && !now[at].hit ? [swing.laid] : []));
+  });
 }
 
 // Warding Bond: the cleric who bound them took the same damage each blow

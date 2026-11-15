@@ -42,7 +42,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { wardOf } from "@/lib/dm/arcane-ward";
 import { actedThisTurn, recordTurnEnd } from "@/lib/dm/last-save";
 import type { BlowFlags } from "@/lib/dm/pc-damage";
-import type { Retort } from "@/lib/dm/retort-logic";
+import type { Retort, RiderMark } from "@/lib/dm/retort-logic";
 
 export type SwingRecord = {
   // The attack this swing was, when a multiattack swings several (a
@@ -124,6 +124,10 @@ export type SwingRecord = {
   // swing into a miss takes it back (reaction-refund.ts). Absent when it set
   // off nothing, and on older records.
   retort?: Retort;
+  // What the hit's own rider laid on the character (a wolf's prone, a
+  // grapple, a drain of their maximum: retort-logic.ts RiderMark), taken off
+  // when a reaction turns the swing into a miss. Absent when it laid nothing.
+  laid?: RiderMark;
 };
 
 export type CriticalRecipe = {
@@ -848,6 +852,13 @@ export function openLastHit(campaignId: string, characterId: string) {
       const last = swings.at(-1);
       if (last && last.hit && retort) {
         swings[swings.length - 1] = { ...last, retort };
+      }
+    },
+    // What the swing just logged laid on the character through its rider.
+    laid(mark: RiderMark | null) {
+      const last = swings.at(-1);
+      if (last && last.hit && mark) {
+        swings[swings.length - 1] = { ...last, laid: mark };
       }
     },
     // What the whole attack set off once it was recorded, kept with it.
