@@ -17,7 +17,7 @@ assert.equal(translate("fr", "Loading…"), "Chargement…");
 assert.equal(translate("fr", "Some brand new untranslated UI string"), "Some brand new untranslated UI string");
 
 // 3. Context disambiguation resolves collisions cleanly
-assert.equal(translate("fr", "On"), "Allumé");
+assert.equal(translate("fr", "On"), "Activé");
 assert.equal(translate("fr", "On", { context: "workshop.homebrew.spellMore.on" }), "Sur");
 
 // 4. Pluralization follows EN (count === 1) vs FR (count <= 1)
@@ -41,7 +41,7 @@ assert.equal(
   ),
   "fr",
 );
-assert.equal(translate("fr", "On", { context: "unknown.context" }), "Allumé");
+assert.equal(translate("fr", "On", { context: "unknown.context" }), "Activé");
 
 // 6. Catalog integrity: every French entry preserves the English {placeholders}
 // (omitting English-only {article} where French uses no indefinite article).
