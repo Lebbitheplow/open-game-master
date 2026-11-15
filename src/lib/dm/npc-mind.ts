@@ -2,6 +2,7 @@ import { z } from "zod";
 import { npcSeenStateWords, npcSilencedBy } from "@/lib/dm/npc-state-logic";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getClock } from "@/lib/db/clock";
+import { describeInstant } from "@/lib/dm/calendar";
 import { getNpcById, listNpcs, patchNpcAgency, setNpcPlace, type Npc } from "@/lib/db/npcs";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { listSheets, getSheetById } from "@/lib/db/sheets";
@@ -624,7 +625,12 @@ export async function handleNpcSpeak(campaign: Campaign, rawArguments: string): 
     ...visible.map(described),
   ];
   const own = npcSeenStateWords(actor.state, knowsName(actor.state.heldBy, ownMemories));
-  const where = `${apart ? `You are at ${args.place || away?.place || "a place of your own"}, apart from the party.\n` : ""}${own ? `You yourself are ${own}.\n` : ""}`;
+  // The clock, so a moment told as a stretch ("Brakk lies down; eight hours
+  // pass") is answered from its end: Mara, told of a whole night's rest,
+  // bade the waking man "sleep while you can".
+  const clock = getClock(campaign.id);
+  const when = `It is now ${describeInstant(clock.calendar, clock.instant)}. You speak and act at this moment, after everything below has already happened.\n`;
+  const where = `${when}${apart ? `You are at ${args.place || away?.place || "a place of your own"}, apart from the party.\n` : ""}${own ? `You yourself are ${own}.\n` : ""}`;
   // Its own turn in a fight: the mind chooses it, seeing the fight as it does.
   const fightTurn = apart ? null : mindsFightTurn(campaign, npc.companionSheetId);
   const ownTurn = fightTurn?.npc.id === npc.id ? fightTurn : null;

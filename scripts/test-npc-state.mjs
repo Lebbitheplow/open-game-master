@@ -240,6 +240,7 @@ await test("a mind sees who is tied or down beside it, and its own bonds, never 
   const said = await mind.handleNpcSpeak(world.campaign(), JSON.stringify({ name: "Watcher", perceives: "Morning in the square." }));
   assert.equal(said.ok, true, JSON.stringify(said));
   const text = mindText(mindRequests()[before]);
+  assert.match(text, /It is now .+ You speak and act at this moment, after everything below has already happened\./, "the mind answers from the end of what it is told");
   assert.match(text, /You yourself are a prisoner, in chains\./, "its own state, with a keeper it has not learned the name of");
   assert.match(text, /now a prisoner, bound/);
   assert.doesNotMatch(text, /forged writ/, "what another carries is not seen");
