@@ -120,5 +120,56 @@ await test("P01: a pet that fails a save is held by the condition it lays, for t
   await kit.endFight();
 });
 
+// P02. SRD 5.1, Ghoul, Claws: "If the target is a creature other than an elf
+// or undead, it must succeed on a DC 10 Constitution saving throw or be
+// paralyzed for 1 minute. The target can repeat the saving throw at the end
+// of each of its turns"; Paralyzed: "Attack rolls against the creature have
+// advantage. Any attack that hits the creature is a critical hit if the
+// attacker is within 5 feet"; the companion's Dodge. No door rolled a
+// creature's own attack at a pet: the GM narrated it and chose the damage.
+await test("P02: a creature's attack at a pet is rolled at its AC and conditions, and its rider lays what the pet's save fails", async () => {
+  await kit.endFight();
+  const ranger = world.addHero({ class: "ranger", subclass: "Beast Master", level: 3, maxHp: 40, proficiencies: { ...TRAINED } });
+  const summoned = await world.invoke("summon_pet", { characterId: ranger.id, kind: "beast_companion", form: "wolf" });
+  assert.equal(summoned.ok, true, summoned.error);
+  const wolf = () => petOf(ranger.id, "wolf");
+  await world.beginFight([{ monster: "ghoul", count: 1 }]);
+  kit.openField();
+  kit.scatter();
+  const [ghoul] = world.enemies();
+  kit.place(ranger.id, 3, 3);
+  kit.place(ghoul.id, 4, 3);
+  enemyHoldsTheFloor();
+  // The dodging wolf: two d20s, the lower kept (18). Claws 2d4+2: 6. The
+  // wolf's CON save: 1.
+  const clawed = await forced([18, 18, 2, 2, 1], () => world.invoke("enemy_attack", { enemyId: ghoul.id, targetCharacterId: ranger.id, targetPet: "wolf", attack: "Claws" }));
+  assert.equal(clawed.ok, true, clawed.error);
+  const swing = clawed.result.swings?.[0];
+  assert.equal(swing?.hit, true, JSON.stringify(clawed.result));
+  assert.match(String(swing.situation), /dodging/, "the uncommanded wolf dodges");
+  assert.equal(world.sheet(ranger.id).currentHp, 40, "the ranger is not the one struck");
+  assert.equal(wolf().hp, 12 - 6, "the claws' damage lands on the wolf");
+  assert.deepEqual(swing.riderCondition, ["paralyzed"], `the claws' rider: ${JSON.stringify(swing)}`);
+  assert.equal(wolf().conditionMeta.paralyzed.rounds, 10, "for 1 minute");
+  assert.deepEqual(wolf().conditionMeta.paralyzed.saveEnds, { ability: "con", dc: 10 }, "a save at the end of each of its turns");
+  // The paralyzed wolf: struck with advantage, a critical hit within 5 feet,
+  // its Dodge worth nothing.
+  kit.freshRound();
+  enemyHoldsTheFloor();
+  const bitten = await forced([3, 15, 1, 1, 1, 1], () => world.invoke("enemy_attack", { enemyId: ghoul.id, targetCharacterId: ranger.id, targetPet: "wolf", attack: "Bite" }));
+  assert.equal(bitten.ok, true, bitten.error);
+  const bite = bitten.result.swings?.[0];
+  assert.equal(bite?.hit, true, JSON.stringify(bitten.result));
+  assert.equal(bite.crit, true, `a hit on a paralyzed creature within 5 feet is critical: ${JSON.stringify(bite)}`);
+  assert.equal(wolf().hp, 0, "four d6 and the bite's 2: the wolf drops");
+  // A pet the character does not have is refused before anything is spent.
+  kit.freshRound();
+  enemyHoldsTheFloor();
+  const none = await world.invoke("enemy_attack", { enemyId: ghoul.id, targetCharacterId: ranger.id, targetPet: "owl", attack: "Bite" });
+  assert.equal(none.ok, false);
+  assert.match(String(none.error), /no bound creature called "owl"/);
+  await kit.endFight();
+});
+
 world.close();
 finish();

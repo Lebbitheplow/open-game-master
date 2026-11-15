@@ -204,6 +204,10 @@ export const SERVER_FEATURES = {
   // save. An older host strips it unread and forces the save on the owner,
   // so it stays hidden there.
   petSaves: true,
+  // enemy_attack's `targetPet` (the console's "At their pet"): the creature
+  // strikes the pet at its own AC and conditions. An older host strips it
+  // unread and strikes the owner, so it stays hidden there.
+  petStrikes: true,
   // apply_hazard's `enemyIds` (the console's "Enemies caught in it"): each
   // enemy saves from its stat block. An older host strips it unread and
   // catches nobody, so it stays hidden there.

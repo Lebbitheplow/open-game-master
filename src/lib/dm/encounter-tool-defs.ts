@@ -149,6 +149,7 @@ export const enemyAttackTool: ToolDef = {
           description: "Melee, to take them alive: dropped to 0 HP they are stable, not dying.",
         },
         targetMount: { type: "boolean", description: "At the target's mount instead." },
+        targetPet: { type: "string", description: "At the target's pet instead, by name." },
         charged: { type: "boolean", description: "No board only: it ran straight at the target first (Charge, Pounce)." },
       },
       required: ["enemyId", "targetCharacterId"],

@@ -79,6 +79,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { ADVANTAGE_SOURCES, claimedAdvantage } from "@/lib/dm/pc-attack-options";
 import { unknownSheetRef } from "@/lib/dm/rolls";
 import { mountTargetProblem, strikeMount } from "@/lib/dm/mount-combat";
+import { petTargetProblem, strikePet } from "@/lib/dm/pet-strike";
 import { riderTakesIt } from "@/lib/dm/ar-wbf-feat-doors";
 import { enemySpellAttack } from "@/lib/dm/enemy-casting";
 import { swallowCover, swallowRefusal } from "@/lib/dm/swallow";
@@ -105,6 +106,9 @@ const attackArgsSchema = z.object({
   // At the target's mount instead (SRD 5.1, Controlling a Mount: "the
   // attacker can target you or the mount"): mount-combat.ts.
   targetMount: z.coerce.boolean().optional(),
+  // At the target's pet instead, by its name: it stands in their square
+  // (ruling D2) and is struck at its own AC (pet-strike.ts).
+  targetPet: z.string().trim().min(1).max(60).optional(),
   // An attack-roll spell from its list (enemy-casting.ts enemySpellAttack):
   // paid as the casting is, its action, a slot or the legendary action that
   // bought it.
@@ -358,6 +362,11 @@ export function handleEnemyAttack(
   if (unmounted) {
     return { error: unmounted, retry: true };
   }
+  // A pet the call names that the character does not have, or one down.
+  const noPetThere = args.targetPet ? (args.targetMount ? { error: "Name the mount or the pet, not both.", retry: true as const } : petTargetProblem(target, args.targetPet)) : null;
+  if (noPetThere) {
+    return noPetThere;
+  }
   // Mounted Combatant: the rider takes the attack aimed at the mount
   // (src/lib/dm/ar-wbf-feat-doors.ts).
   const riderTakes = args.targetMount ? riderTakesIt(target) : null;
@@ -582,33 +591,42 @@ export function handleEnemyAttack(
     }
   }
   saveEncounter(live);
-  // At the mount: its own AC, hit points and Dodge (mount-combat.ts). The
-  // rider's own wards and reactions answer attacks on the rider only.
-  if (args.targetMount) {
+  // At the mount or the pet beside them, the routine's swings each from
+  // where the creature stands: its reach, its range, its bloodied blow.
+  const swingsBeside = (what: string) => {
     const bloodied = standing.currentHp <= standing.maxHp / 2;
-    let shotsAtMount = 0;
-    const swingsAtMount = planned.map((attack, index) => {
+    let shots = 0;
+    return planned.map((attack, index) => {
       const mode = swingMode(profiles[index], spatial.distance);
       if (!mode) {
-        return { attack, skipped: `${target.name}'s mount is out of this attack's reach` };
+        return { attack, skipped: `${what} is out of this attack's reach` };
       }
-      const past = mode.ranged ? pastRangedLimit(found.stats.traits, attack, shotsAtMount) : null;
+      const past = mode.ranged ? pastRangedLimit(found.stats.traits, attack, shots) : null;
       if (past) {
         return { attack, skipped: past };
       }
-      shotsAtMount += mode.ranged ? 1 : 0;
+      shots += mode.ranged ? 1 : 0;
       return { attack: alternativeBlow(attack, { ranged: mode.ranged, bloodied }), ranged: mode.ranged };
     });
+  };
+  const requested = () => claimedAdvantage({ requested: args.advantage, source: args.advantageSource, reason: args.advantageReason, byAi: turn.actor === "ai" }).requested;
+  // At the pet: its own AC, conditions, save and hit points (pet-strike.ts).
+  if (args.targetPet) {
+    return strikePet({ campaign, turn, encounterId: encounter.id, enemy: standing, owner: target, petName: args.targetPet, swings: swingsBeside(`${target.name}'s ${args.targetPet}`), distance: spatial.distance, cover, requested: requested() });
+  }
+  // At the mount: its own AC, hit points and Dodge (mount-combat.ts). The
+  // rider's own wards and reactions answer attacks on the rider only.
+  if (args.targetMount) {
     return strikeMount({
       campaign,
       turn,
       encounterId: encounter.id,
       enemy: standing,
       rider: target,
-      swings: swingsAtMount,
+      swings: swingsBeside(`${target.name}'s mount`),
       distance: spatial.distance,
       cover,
-      requested: claimedAdvantage({ requested: args.advantage, source: args.advantageSource, reason: args.advantageReason, byAi: turn.actor === "ai" }).requested,
+      requested: requested(),
       sheets,
       sheetsById,
     });

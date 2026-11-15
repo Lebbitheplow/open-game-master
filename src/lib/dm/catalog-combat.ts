@@ -256,6 +256,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
       { name: "attack", label: "Attack", kind: "text", help: "Blank picks from the stat block." },
       ...advantageFields(),
       { name: "nonlethal", label: "Knock out", kind: "boolean", help: "Melee only. A player dropped to 0 falls unconscious and stable instead of dying." },
+      { name: "targetPet", label: "At their pet", kind: "text", help: "The target's pet takes the attack instead, by name.", host: { feature: "petStrikes" } },
     ],
   },
   {
