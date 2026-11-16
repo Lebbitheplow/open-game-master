@@ -6,6 +6,7 @@ import type { ItemProposal } from "@/lib/db/item-proposals";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { computeTrade, normalizeTradeOffer, tradeSummary } from "@/lib/dm/trade-logic";
+import { capacityProblem } from "@/lib/dm/load-rules";
 import { publishEphemeral, publishPersisted } from "@/lib/events";
 
 // Carrying out an accepted trade (docs/vtt-parity-implementation-plan.md
@@ -31,6 +32,14 @@ export function applyTrade(campaign: Campaign, proposal: ItemProposal): { ok: tr
   const computed = computeTrade(from, to, offer);
   if ("error" in computed) {
     return computed;
+  }
+  // Strength x 15 is all either side can carry, as a grant holds it
+  // (load-rules.ts); a trade that would take one past it does not happen.
+  for (const [sheet, patch] of [[from, computed.from], [to, computed.to]] as const) {
+    const tooHeavy = capacityProblem(sheet, patch.equipment, "what the trade gives them", patch);
+    if (tooHeavy) {
+      return { error: `${tooHeavy.error} The trade did not happen.` };
+    }
   }
   const summary = tradeSummary(offer, from.name, to.name);
   getDatabase().transaction(() => {

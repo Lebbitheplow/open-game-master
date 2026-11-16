@@ -145,7 +145,7 @@ export const PARTY_ADJUDICATIONS: CatalogEntry[] = [
           { value: "kit", label: "A use of their healer's kit" },
           { value: "spell", label: "Spare the Dying" },
         ],
-        help: "The server rolls the check; a kit or the spell needs none.",
+        help: "The server rolls the check; a kit or the spell needs none. Left empty, a healer's kit they carry is used, else the check.",
       },
       REASON,
     ],

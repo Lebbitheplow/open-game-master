@@ -214,6 +214,12 @@ export const equipmentItemSchema = z.object({
   // against the three attunements while it waits. Absent on every row
   // written before it.
   attuning: z.boolean().optional(),
+  // The sheet id of the creature still attuned to this item while it is in
+  // someone else's pack or on the ground: lending it, trading it or setting
+  // it down ends no attunement (SRD 5.1, Attunement), so it is attuned again
+  // the moment it comes back to them (src/lib/dm/mutation-math.ts
+  // handedOverRow). Absent on every other row.
+  attunedBy: z.string().trim().max(80).optional(),
   // A warlock's pact weapon (SRD 5.1, Pact of the Blade): "conjured:<the
   // warlock's sheet id>" for the weapon the pact made, which exists only
   // while the pact holds it there; "bonded" for a magic weapon the ritual

@@ -55,6 +55,7 @@ import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
 import { hexWarriorSwing, shillelaghSwing } from "@/lib/dm/attack-features";
 import { isUndeadOrFiend, otherHandArmed, smiteDice } from "@/lib/dm/attack-rules";
 import { wearsUntrainedArmor } from "@/lib/srd/armor";
+import { heavyLoadOnAttack } from "@/lib/dm/load-rules";
 import { liftsSmallHeavyPenalty } from "@/lib/srd/feat-combat";
 import { gearCritRiders, itemRidersAgainst } from "@/lib/dm/gear-attack";
 import { foldDamageRiders, landBlow, strikesAsMagic, withSneakAttack } from "@/lib/dm/pc-attack-damage";
@@ -225,11 +226,10 @@ export function pcOpportunitySwing(input: {
   });
   const light = lightOnAttack(sight, { attacker: sheet.name, target: enemy.displayName });
   const attackRiders = conditionRollRiders(sheet.conditions, "attack");
-  // What the attacker's own body and gear do to any attack roll of theirs,
-  // as pc-attack-situation.ts reads them for the turn's swing: armor worn
-  // untrained, and a heavy weapon in Small hands, each disadvantage (SRD 5.1,
-  // Armor; Weapons, Heavy). The reaction's swing skipped both.
-  const untrained = wearsUntrainedArmor(sheet);
+  // The attacker's own body and gear, as the turn's swing reads them
+  // (pc-attack-situation.ts): untrained armor, a heavy weapon in Small hands
+  // and a heavy load (load-rules.ts) are each disadvantage, skipped here once.
+  const untrained = wearsUntrainedArmor(sheet) || Boolean(heavyLoadOnAttack(campaign, sheet));
   const smallWithHeavy = profile.heavy && sizeForRace(sheet.race) === "Small" && !liftsSmallHeavyPenalty(sheet);
   // Under the water, as on pc_attack (underwater.ts).
   const underwater = underwaterOpportunity(campaign.id, sheet.id, { weapon: profile.weapon, base: profile.base, swims: characterSwims(sheet) });

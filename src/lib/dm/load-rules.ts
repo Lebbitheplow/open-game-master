@@ -27,6 +27,7 @@ import { purseCoins, type Purse } from "@/lib/srd/currency";
 import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
 import type { AuthoredSheet } from "@/lib/srd/authored-effects";
 import { carrySize } from "@/lib/srd/mt-species-traits";
+import type { Campaign } from "@/lib/db/campaigns";
 
 // The authored fields too: a feature that multiplies what the character
 // carries (Peerless Athlete) is read from them (authoredCarryFactor).
@@ -95,4 +96,26 @@ export function liftLimits(sheet: Carrier & { equipment: CarriedItem[] }): { cap
   const multiplier = carryMultiplier(carrySize(size, sheet as Wearer)) * factor;
   const lifting = carryMultiplier(carrySize(size, sheet as Wearer, "lift")) * factor;
   return { capacityLb: strength * 15 * multiplier, liftLb: strength * 30 * lifting, pushLb: strength * 30 * multiplier };
+}
+
+// Variant: Encumbrance's heavy load, as an attack roll carries it, or null
+// (the variant off, or ten times Strength or less). SRD 5.1: "you are instead
+// heavily encumbered, which means your speed drops by 20 feet and you have
+// disadvantage on ability checks, attack rolls, and saving throws that use
+// Strength, Dexterity, or Constitution." Asked by the turn's swing
+// (pc-attack-situation.ts) and the reaction's (opportunity-strike.ts), so the
+// two read one load: the opportunity attack rolled a single d20.
+export function heavyLoadOnAttack(campaign: Pick<Campaign, "gameSettings">, sheet: Carrier & { equipment: CarriedItem[] }): string | null {
+  if (!campaign.gameSettings.variantRules.encumbrance) {
+    return null;
+  }
+  const load = encumbranceFor({
+    strength: sheet.abilities.str,
+    equipment: sheet.equipment ?? [],
+    coins: purseCoins({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
+    // A feature that doubles what they carry (Peerless Athlete) lifts the tiers.
+    carryFactor: carryFactorOf(sheet),
+    wearer: sheet as Wearer,
+  });
+  return load.disadvantage && load.note ? load.note : null;
 }

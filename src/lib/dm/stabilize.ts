@@ -185,7 +185,13 @@ export function handleStabilize(
   if (spent && !spent.ok) {
     return toolError(spent);
   }
-  const method = input.method ?? "check";
+  // No method named: a healer's kit they carry with a use left, else the
+  // check. SRD 5.1, Healer's Kit: "As an action, you can expend one use of
+  // the kit to stabilize a creature that has 0 hit points, without needing to
+  // make a Wisdom (Medicine) check." The Hand's Stabilize card promises the
+  // kit and names no method, and the check was rolled beside an unopened kit.
+  const carried = findCarriedItem(healer.equipment, "healer's kit");
+  const method = input.method ?? (carried && (carried.charges ?? HEALERS_KIT_USES) > 0 ? "kit" : "check");
   let kitPatch: FullPatchSheetInput | null = null;
   let how = "";
   if (method === "kit") {

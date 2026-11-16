@@ -281,6 +281,25 @@ await test("A strapped-on shield is not dropped for free: taking it off is the a
   assert.match(dropped.error, /taking it off is an action/);
 });
 
+// Audit 1116, I09. SRD 5.1, Getting Into and Out of Armor: doffing takes
+// minutes (a shield one action), so worn armor never comes off in a fight
+// and a strapped shield comes off with the action; the drop refused both,
+// and handing them to an ally took them off for free.
+await test("I09: worn armor is not handed over in a fight, and a strapped-on shield only once it is taken off", async () => {
+  await freshFight();
+  kit.place(ally.id, 2, 3);
+  world.patch(fighter.id, { equipment: GEAR().map((item) => (item.name === "Shield" ? { ...item, equipped: true } : item)) });
+  const armor = await handle({ action: "hand", item: "Chain Mail", toCharacterId: ally.id });
+  assert.equal(armor.ok, false, "the armor was handed over mid-fight");
+  assert.match(armor.error, /minutes/);
+  const shield = await handle({ action: "hand", item: "Shield", toCharacterId: ally.id });
+  assert.equal(shield.ok, false, "the strapped-on shield was handed over for free");
+  assert.match(shield.error, /taking it off is an action/);
+  assert.equal(row(fighter, "Chain Mail").equipped, true);
+  assert.equal(row(fighter, "Shield").equipped, true);
+  assert.equal(row(ally, "Shield"), undefined);
+});
+
 await test("Handing something over takes being within 5 ft and the interaction, and the ally holds it", async () => {
   await freshFight();
   kit.place(ally.id, 8, 8);

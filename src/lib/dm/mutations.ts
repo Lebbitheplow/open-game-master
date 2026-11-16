@@ -270,7 +270,7 @@ export const mutationTools: ToolDef[] = [
       method: {
         type: "string",
         enum: [...STABILIZE_METHODS],
-        description: "Default: 'check'.",
+        description: "Default: 'kit' when they carry a healer's kit, else 'check'.",
       },
     },
     ["healerId"],

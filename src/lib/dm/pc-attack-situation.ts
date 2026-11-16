@@ -34,9 +34,7 @@ import type { ManeuverPick } from "@/lib/dm/pc-attack-plan";
 import type { BuiltAttack } from "@/lib/dm/pc-attack-profile";
 import { sheetSize } from "@/lib/srd";
 import { wearsUntrainedArmor } from "@/lib/srd/armor";
-import { encumbranceFor } from "@/lib/srd/encumbrance";
-import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
-import { purseCoins } from "@/lib/srd/currency";
+import { heavyLoadOnAttack } from "@/lib/dm/load-rules";
 import type { CombatRiders } from "@/lib/srd/feature-effects";
 import { weatherRangedRider } from "@/lib/srd/weather";
 import { characterSwims, isImmersed, underwaterSwing } from "@/lib/dm/underwater";
@@ -291,19 +289,10 @@ export function attackSituation(input: {
     );
   }
   // Variant: Encumbrance. A heavily loaded character swings at disadvantage
-  // like any other physical roll.
-  const load = campaign.gameSettings.variantRules.encumbrance
-    ? encumbranceFor({
-        strength: sheet.abilities.str,
-        equipment: sheet.equipment ?? [],
-        coins: purseCoins({ gold: sheet.gold ?? 0, copper: sheet.copper ?? 0 }),
-        // A feature that doubles what they carry (Peerless Athlete) lifts the tiers.
-        carryFactor: authoredCarryFactor(sheet),
-        wearer: sheet,
-      })
-    : null;
-  if (load?.disadvantage && load.note) {
-    conditionContext.notes.push(load.note);
+  // like any other physical roll (load-rules.ts heavyLoadOnAttack).
+  const heavyLoad = heavyLoadOnAttack(campaign, sheet);
+  if (heavyLoad) {
+    conditionContext.notes.push(heavyLoad);
   }
   // A gale over an outdoor board: disadvantage on ranged attacks past 30 ft.
   const gale = spatials.outdoors
@@ -334,7 +323,7 @@ export function attackSituation(input: {
   const sources: Advantage[] = [
     ...conditionContext.sources,
     exhaustion.advantage,
-    ...(load?.disadvantage ? ["disadvantage" as const] : []),
+    ...(heavyLoad ? ["disadvantage" as const] : []),
     ...attackRiders.advantageSources,
     ...(input.attackEffect.advantage ? ["advantage" as const] : []),
     ...(input.attackEffect.disadvantage ? ["disadvantage" as const] : []),
