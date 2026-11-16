@@ -170,7 +170,38 @@ export function getDmTurn(turnId: string): DmTurn | null {
   return row ? mapTurn(row) : null;
 }
 
+// A roll made on this turn where no call held it in hand (a player's own
+// request, the clock) is written straight to the stored row
+// (src/lib/dm/roll-record.ts). Returns false when the turn is gone or
+// already lists the roll.
+export function joinStoredTurn(turnId: string, rollId: string): boolean {
+  const joined = getDatabase()
+    .prepare(
+      `
+        UPDATE dm_turns SET roll_ids_json = json_insert(roll_ids_json, '$[#]', ?)
+        WHERE id = ? AND NOT EXISTS (SELECT 1 FROM json_each(dm_turns.roll_ids_json) WHERE json_each.value = ?)
+      `,
+    )
+    .run(rollId, turnId, rollId);
+  return joined.changes > 0;
+}
+
+// The rolls the stored row lists that this copy does not: joined to the row
+// after the copy was read (joinStoredTurn). Saved as it stood, an older copy
+// wrote them away, and the chronicle lost their cards (issue #915). A call
+// that parks is rolled back row and all (held-call.ts), so a roll it took
+// back is not on the row to be kept.
+function keepStoredRolls(turn: DmTurn) {
+  const row = getDatabase().prepare(`SELECT roll_ids_json FROM dm_turns WHERE id = ?`).get(turn.id) as { roll_ids_json: string } | undefined;
+  for (const id of parseJson<string[]>(row?.roll_ids_json ?? "[]", [])) {
+    if (!turn.rollIds.includes(id)) {
+      turn.rollIds.push(id);
+    }
+  }
+}
+
 export function saveDmTurn(turn: DmTurn) {
+  keepStoredRolls(turn);
   const saved = getDatabase()
     .prepare(
       `
