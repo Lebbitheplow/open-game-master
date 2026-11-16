@@ -15,11 +15,12 @@
 // Rage implacable, Plénitude physique, Maître de l’occulte, Sorts de
 // prédilection, Surcharge magique, Chance du ténébreux, Traversée des
 // enfers, Nimbe sacré, Intervention divine, Inspiration). The exceptions:
-// the feats are not printed in the bundled FR book (its Dons page carries
-// the intro only), so Inspiring Leader and the Lucky feat's Luck Points get
-// the established FR glossary names, and the three feat-pour counters
-// (Tome of Heroes / Level Up A5E) have no official French at all: they are
-// direct-translated like the A5E feats, their rows marked below.
+// the feats the counters come from are not in the bundled FR book (it prints
+// one feat, Empoigneur), so the Lucky feat's Luck Points, Inspiring Leader and
+// the three feat-pour counters (Tome of Heroes / Level Up A5E) are plain
+// word-for-word translations of their English labels, their rows marked
+// below. No name is taken from another French book: the app's French is the
+// SRD 5.1's own (src/lib/content/names-fr.ts).
 //
 // GUIDANCE keeps the third-person voice of the English lines (DM-model text
 // that also displays to players), tool names verbatim (pc_attack,
@@ -49,8 +50,8 @@ export const RESOURCE_FR: Record<string, { name: string; guidance: string }> = {
     guidance:
       "Les points de sorcellerie achètent la Métamagie sur un sort en train d’être lancé (dépensez-les avec amount), ou se convertissent en emplacements de sort et inversement : appelez use_resource avec variant 'create slot' (coûte 2/3/5/6/7 points pour les niveaux 1 à 5) ou 'convert slot' (l’emplacement rendu en points égaux à son niveau), le niveau de l’emplacement dans amount, et le serveur déplace les points et les emplacements. Chacune des deux conversions est une action bonus à son tour dans un combat. Les emplacements créés disparaissent au repos long. Sort accéléré : appelez use_resource avec variant 'Quickened Spell' avant l’incantation ; le serveur dépense 2 points et le prochain sort d’une action de ce tour prend l’action bonus. Le sort lui-même passe toujours par use_spell_slot ou cast_at_enemy, normalement.",
   },
-  // No official French: the feats are not printed in the bundled FR SRD;
-  // the established FR glossary names (Chanceux, Leader inspirant).
+  // No official French: the feat is not printed in the bundled FR SRD, so
+  // its words are translated as they read (Chanceux, Points de chance).
   luck_points: {
     name: "Points de chance",
     guidance:
@@ -74,8 +75,8 @@ export const RESOURCE_FR: Record<string, { name: string; guidance: string }> = {
     guidance:
       "Adepte en métamagie : 2 points de sorcellerie pour les deux options de Métamagie que le don a enseignées, en plus du propre de l’ensorceleur ; de retour après un repos long.",
   },
-  // No official French: a feat not printed in the bundled FR SRD; the
-  // established FR glossary name.
+  // No official French: a feat not printed in the bundled FR SRD, its name
+  // translated as it reads.
   inspiring_leader: {
     name: "Leader inspirant",
     guidance:

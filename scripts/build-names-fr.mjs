@@ -15,7 +15,7 @@
 // of the System Reference Document 5.1 (CC-BY-4.0, docs/LICENSES.md), into one
 // JSON per table outside the repository; --from <dir> merges such a folder
 // (<table>-fr.json files) into names-fr.ts again. --check reads every name
-// but the feats' against the French book the repository ships
+// against the French book the repository ships
 // (src/lib/rulebook/srd-5.1-fr.json, built from the same PDF), so a name that
 // is not the print's is caught without the PDF.
 //
@@ -31,24 +31,14 @@
 //   slug the rulebook's item pages carry (srd-5.1.json; "Ammunition, +1, +2,
 //   or +3" is "ammunition-1-2-or-3") and the sheet's item rows spell;
 // - conditions: the lowercase condition id ("blinded");
-// - feats: the feat's slug ("crossbow-expert"), the open5e row slug and the
-//   slug of the stored English name are the same slugify, so one key serves
-//   both. The official French SRD 5.1 prints a single feat (« Empoigneur »,
-//   the English SRD 5.1 it translates has only Grappler as a feat); the other
-//   official names come from Wizards' official French SRD 5.2.1 (its « Dons »
-//   section, pp. 92-94, prints Vigilant, Initié à la magie, Sauvagerie
-//   martiale, Doué, Empoigneur) and, for the feats the SRD does not carry,
-//   from the official French editions of the books (Manuel des Joueurs, Guide
-//   complet de Xanathar, Le chaudron de tout de Tasha) as documented by
-//   aidedd.org's dons pages and cross-checked with the "Glossaire D&D 5"
-//   (gdfl.be). The feats of the content pack itself (A5E's Ace Driver,
-//   Athletic, Rimecaster…) are translated too, as an adaptation the user
-//   approved: no official French A5E exists (EN Publishing, BBE, GitHub and
-//   5etools-translated carry none), the English name stays searchable on
-//   a5e.tools, and where a pack feat adapts an SRD feat the map carries, its
-//   official French name is reused verbatim (Athletic is Athlète,
-//   Battle Caster is Mage de guerre…). Being from other books, the feats are
-//   the one table --check does not read against the French SRD;
+// - feats: the feat's slug ("grappler"), the open5e row slug and the slug
+//   of the stored English name are the same slugify, so one key serves both.
+//   The French SRD 5.1 prints a single feat (« Empoigneur », as the English
+//   SRD 5.1 it translates has only Grappler), so the table carries that one.
+//   A name from another source (the French SRD 5.2.1, the French editions of
+//   the other books, a translation of a content pack's feat) is not the
+//   SRD 5.1's, and --check refuses it like any other table's: a feat the
+//   table does not carry keeps its English name at a French table;
 // - classes: 12 bare class ids ("cleric") plus class-feature keys of the
 //   canonical form the render helper slugs a display name to
 //   ("cleric:bonus-proficiency-heavy-armor", "cleric:channel-divinity-1-rest",
@@ -140,21 +130,14 @@ function writeNamesFrom(dir) {
 // Wizards of the Coast (CC-BY-4.0), extraits de SRD_CC_v5.1_FR.pdf : la
 // traduction française officielle des noms du SRD 5.1 (sorts, monstres,
 // espèces, Historiques, classes et leurs aptitudes, conditions, dons, armes,
-// armures, objets magiques et équipement d'aventurier). Les dons font
-// exception : le SRD 5.1 français n'imprime qu'un don (« Empoigneur »), les
-// autres noms viennent du SRD 5.2.1 français officiel (« Dons », pp. 92-94)
-// et des éditions françaises officielles des livres, documentées par
-// aidedd.org et recoupées avec le « Glossaire D&D 5 » (gdfl.be). Les dons du
-// paquet de contenu (Level Up A5E et autres éditeurs tiers) font une seconde
-// exception : il n'existe aucune traduction française officielle de
-// Level Up: Advanced 5th Edition (EN Publishing), ils reçoivent donc une
-// traduction adaptée pour la table francophone, le nom anglais restant
-// recherchable sur a5e.tools ; ceux qui adaptent un don du SRD portent le
-// nom officiel français de celui-ci (Athletic est Athlète, Battle Caster est
-// Mage de guerre…). Dans le dépôt, ce fichier est la source : corriger un
-// nom ici, puis lancer node scripts/build-names-fr.mjs, qui régénère
-// src/lib/srd/item-names-fr.ts (--from <dossier> le réécrit depuis les
-// tables d'extraction).
+// armures, objets magiques et équipement d'aventurier), et elle seule : le
+// SRD 5.1 français n'imprime qu'un don (« Empoigneur »), la table des dons
+// n'en porte donc qu'un. Un don qu'elle ne porte pas (ceux des autres livres,
+// ceux du paquet de contenu) garde son nom anglais à une table francophone.
+// Dans le dépôt, ce fichier est la source : corriger un nom ici, puis lancer
+// node scripts/build-names-fr.mjs, qui régénère src/lib/srd/item-names-fr.ts
+// (--from <dossier> le réécrit depuis les tables d'extraction) ; --check
+// vérifie que chaque nom, dons compris, est imprimé dans le livre français.
 //
 // Les clés suivent la convention de chaque table (voir le script) : le slug
 // de la ligne, ou le gearKey du nom anglais, ou "<classe>:<aptitude>" pour
@@ -270,19 +253,19 @@ if (check) {
   if (!existsSync(itemFile) || readFileSync(itemFile, "utf8").replace(/\r\n/g, "\n") !== itemModule) {
     problems.push("src/lib/srd/item-names-fr.ts is not what names-fr.ts gives: run node scripts/build-names-fr.mjs");
   }
-  // Every name but a feat's is the French book's: a page title, or words its
-  // pages print. The two saddles are sub-rows of « Selle » in the mounts
+  // Every name is the French book's: a page title, or words its pages print. The two saddles are sub-rows of « Selle » in the mounts
   // table, printed as "de bât" and "d'équitation" under it.
   const PRINTED_AS_SUBROWS = new Set(["gear saddle pack", "gear saddle riding"]);
   const plain = (text) => text.normalize("NFC").replace(/[‘’ʼ]/g, "'").toLowerCase();
   const book = pagesOf("srd-5.1-fr.json");
   const print = plain(book.map((page) => `${page.title}\n${page.md ?? ""}`).join("\n"));
+  const featsPage = plain(book.find((page) => page.id === "feats")?.md ?? "");
   for (const [table, names] of Object.entries(FR_NAMES_BY_TABLE)) {
-    if (table === "feats") {
-      continue;
-    }
     for (const [key, french] of Object.entries(names)) {
-      if (!print.includes(plain(french)) && !PRINTED_AS_SUBROWS.has(`${table} ${key}`)) {
+      // A feat is a heading of the book's Dons page, not a word its pages
+      // use: « Mobile » and « Robuste » are printed, but as no feat.
+      const printed = table === "feats" ? featsPage.includes(`## ${plain(french)}\n`) : print.includes(plain(french));
+      if (!printed && !PRINTED_AS_SUBROWS.has(`${table} ${key}`)) {
         problems.push(`${table} ${key}: "${french}" is not printed in the French book (src/lib/rulebook/srd-5.1-fr.json)`);
       }
     }
