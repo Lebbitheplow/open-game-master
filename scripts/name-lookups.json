@@ -1024,6 +1024,7 @@
     "lib/battlemap/hand-class.ts#whole": [["identity",1,"a feature by its whole name, its note stripped"]],
     "lib/battlemap/hand-core.ts#normalizer": [["key",1,"slugs, hosts, file names, ids, env values, display text, throttle keys, model ids (src/: every site read)"],["key",1,"the once-per-turn key pc_attack leaves for a granted strike (pc-attack-spend.ts, grantedRideMark)"]],
     "lib/dm/sword-wounding.ts#keyed": [["key",1,"a condition's own meta, by the condition name isConditionNamed found on the creature"]],
+    "lib/dm/sword-wounding-logic.ts#keyed": [["key",1,"a condition's own meta, by the condition name isConditionNamed found on the creature"]],
     "lib/dm/oathbow.ts#keyed": [["key",1,"a condition's own meta, by the condition name isConditionNamed found on the archer"]],
     "lib/dm/opportunity-ask-logic.ts#number": [["key",1,"a slot table's own level keys (\"1\" to \"9\") read as their numbers to find the lowest open slot: no record's name"]],
     "lib/battlemap/hand-core.ts#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],

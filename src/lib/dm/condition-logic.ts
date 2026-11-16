@@ -50,6 +50,9 @@ export type ConditionMeta = {
   // (src/lib/dm/sword-wounding.ts).
   stacks?: number;
   woundedOn?: string;
+  // The hit points a mark holds back from every healing but a rest (a Sword
+  // of Wounding's, src/lib/dm/sword-wounding-logic.ts).
+  heldHp?: number;
   // Re-save at each round wrap; success ends the condition.
   // `or`: a second ability the creature may roll instead, choosing again at
   // each save (Nature's Wrath: Strength or Dexterity; see likelierSave).

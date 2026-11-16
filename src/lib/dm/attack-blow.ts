@@ -201,7 +201,7 @@ export function landSwingBlow(
   if (ask.stunDc !== undefined && !over) {
     out.stunningStrike = stunningStrikeSave(campaign, enemy.encounterId, enemy.id, sheet.id, ask.stunDc);
   }
-  Object.assign(out, hitExtras(scene, record, dead, over));
+  Object.assign(out, hitExtras(scene, record, dead, over, Number(applied.damageApplied ?? dealt) || 0));
   // Dark One's Blessing: a kill gives a Fiend warlock temporary hit points.
   const blessing = dead ? darkOnesBlessing(campaign, sheet.id) : null;
   if (blessing) {
@@ -271,7 +271,7 @@ function bonusActionsOpened(scene: SwingScene, record: AttackRecord, crit: boole
 // poison, a creature's natural attack rider, Open Hand Technique, Hurl Through
 // Hell (attack-onhit.ts, natural-onhit.ts). A kill or the fight's end leaves
 // nothing to land the riders on.
-function hitExtras(scene: SwingScene, record: AttackRecord, dead: boolean, over: boolean): Record<string, unknown> {
+function hitExtras(scene: SwingScene, record: AttackRecord, dead: boolean, over: boolean, lost: number): Record<string, unknown> {
   const { campaign, sheet, enemy } = scene;
   const extras = record.extras ?? {};
   const out: Record<string, unknown> = {};
@@ -295,7 +295,7 @@ function hitExtras(scene: SwingScene, record: AttackRecord, dead: boolean, over:
     const spent = charged();
     return spent.length ? { ...out, charge: spent } : out;
   }
-  const wound = extras.wounds ? woundOnHit(campaign, enemy.id, sheet.id) : null;
+  const wound = extras.wounds ? woundOnHit(campaign, enemy.id, sheet.id, lost) : null;
   if (wound) {
     out.wound = wound;
   }

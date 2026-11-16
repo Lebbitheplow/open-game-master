@@ -1732,6 +1732,7 @@
     "lib/dm/pc-attack-profile.ts#str-includes": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/pc-attack-profile.ts#toLowerCase": [["key",4,"damage type; SRD weapon names as proficiency keys"],["key",2,"ODM's own lineage weapon line kept to a form (\"Fangs (while shifted, ...)\"), by the racial weapon's name"],["display",1,"a weapon's name in a sentence"]],
     "lib/dm/attack-blow.ts#str-eq": [["key",4,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/improvise.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/attack-blow.ts#toUpperCase": [["display",2,"ability abbreviation shown"]],
     "lib/dm/pc-attack-riders.ts#re-word": [["english-source",1,"the \"Maneuver:\" prefix the builder writes"]],
     "lib/dm/pc-attack-riders.ts#str-eq": [["english-source",1,"reference: an SRD feature name (Curving Shot)"]],

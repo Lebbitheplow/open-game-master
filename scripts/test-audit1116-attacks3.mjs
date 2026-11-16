@@ -89,6 +89,94 @@ await test("G22: of the +1 arrows spent in a fight, the half recovered comes bac
   tracking(false);
 });
 
+// ---- G23: Sword of Wounding's hit points and the Medicine action ----
+
+const SAVES_ZERO = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
+const REGENERATION = "Regeneration: The creature regains 10 hit points at the start of its turn.";
+const swordWound = () => kit.dummy().conditions.find((entry) => /sword wound/i.test(entry));
+const { refillLegendaryForTurn } = await import("../src/lib/dm/legendary-tools.ts");
+const { turnStartEffects } = await import("../src/lib/dm/turn-start-effects.ts");
+
+function regenerate() {
+  const encounter = world.encounter();
+  refillLegendaryForTurn(encounter, kit.dummy());
+  encounters.saveEncounter(encounter);
+  return kit.dummy().currentHp;
+}
+
+function creatureTurnStart(...faces) {
+  world.clearDice();
+  world.dice(...faces);
+  const enemy = kit.dummy();
+  turnStartEffects(world.campaign(), world.encounter(), [enemy.id], new Map([[enemy.id, enemy]]), []);
+  world.clearDice();
+}
+
+await test("G23: hit points lost to a Sword of Wounding, its hit and its bleeding both, are not regained by regeneration; other damage still is", async () => {
+  // SRD 5.1, Sword of Wounding: "Hit points lost to this weapon's damage can
+  // be regained only through a short or long rest, rather than by
+  // regeneration, magic, or any other means." A troll the blade cut
+  // regenerated it all back at its next turn.
+  await freshArena();
+  dress({ saveMods: SAVES_ZERO, traits: [REGENERATION] });
+  arm({ str: 16, equipment: [{ name: "Sword of Wounding", qty: 1, attuned: true }] });
+  kit.stand(hero.id, 1);
+  const full = kit.dummy().maxHp;
+  // The longsword's d8 of 4 + 3: 7 slashing, and a wound.
+  const swing = await kit.swing(hero.id, { weapon: "Sword of Wounding" }, 15, 4);
+  assert.equal(swing.ok, true, swing.error);
+  assert.equal(kit.dummy().currentHp, full - 7);
+  assert.equal(regenerate(), full - 7, "the creature regenerated what the blade took");
+  // Its turn: the wound bleeds 3 necrotic, then a save of 18 closes it. The
+  // 3 are the blade's too.
+  creatureTurnStart(3, 18);
+  assert.equal(swordWound(), undefined, "the made save left the wound open");
+  assert.equal(regenerate(), full - 10, "the creature regenerated what the wound bled");
+  // Damage from anything else comes back as before.
+  const other = await world.invoke("damage_enemy", { enemyId: kit.dummy().id, amount: 5, type: "bludgeoning" });
+  assert.equal(other.ok, true, other.error);
+  assert.equal(kit.dummy().currentHp, full - 15);
+  assert.equal(regenerate(), full - 10, "the club's 5 were not regenerated");
+});
+
+await test("G23: a hero within 5 feet closes a creature's sword wounds with an action and a DC 15 Wisdom (Medicine) check (take_action improvise, skill medicine)", async () => {
+  // SRD 5.1, Sword of Wounding: "you or any creature within 5 feet of the
+  // wounded target can use an action to make a DC 15 Wisdom (Medicine)
+  // check, ending the effect of such wounds on it on a success." There was
+  // no door for it: the improvised Medicine check rolled a contest and
+  // closed nothing.
+  await freshArena();
+  dress({ saveMods: SAVES_ZERO, traits: [] });
+  arm({ str: 16, wis: 14, skills: ["medicine"], equipment: [{ name: "Sword of Wounding", qty: 1, attuned: true }] });
+  kit.stand(hero.id, 1);
+  const swing = await kit.swing(hero.id, { weapon: "Sword of Wounding" }, 15, 4);
+  assert.equal(swing.ok, true, swing.error);
+  assert.ok(swordWound(), "the hit left no wound");
+  const tend = (...faces) =>
+    kit.onTurnOf(hero.id, async () => {
+      kit.freshTurn();
+      world.clearDice();
+      world.dice(...faces);
+      const out = await world.invoke("take_action", { characterId: hero.id, action: "improvise", skill: "medicine", targetEnemyId: kit.dummy().id, reason: "presses the wound closed" });
+      world.clearDice();
+      return out;
+    });
+  // Out of reach: refused, nothing spent.
+  kit.stand(hero.id, 3);
+  const far = await tend(20);
+  assert.equal(far.ok, false, `a wound was tended from 15 feet: ${JSON.stringify(far.result)}`);
+  assert.ok(swordWound());
+  kit.stand(hero.id, 1);
+  // 2 + 2 + 3 = 7: the wound stays.
+  const failed = await tend(2);
+  assert.equal(failed.ok, true, failed.error);
+  assert.ok(swordWound(), "a failed Medicine check closed the wound");
+  // 12 + 2 + 3 = 17: closed.
+  const made = await tend(12);
+  assert.equal(made.ok, true, made.error);
+  assert.equal(swordWound(), undefined, `a made DC 15 Medicine check left the wound open: ${JSON.stringify(made.result)}`);
+});
+
 await kit.endFight();
 world.close();
 finish();
