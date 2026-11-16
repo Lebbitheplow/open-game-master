@@ -12,7 +12,7 @@ import { heroRollTag } from "@/lib/dice-script-logic";
 import { mayTypeFaces } from "@/lib/dice/held-rolls";
 import { optionsForPending } from "@/lib/dm/after-roll";
 import { afterRollDeadline, armAfterRollKeep } from "@/lib/dm/after-roll-timer";
-import { throwDamage } from "@/lib/dm/attack-blow";
+import { throwDamage } from "@/lib/dm/attack-damage-dice";
 import type { DamageAsk } from "@/lib/dm/attack-record";
 import { landedBody, landPendingRoll } from "@/lib/dm/pending-roll-land";
 import { answerOpportunityAsk } from "@/lib/dm/opportunity-ask-timer";
@@ -131,7 +131,7 @@ export async function POST(
   // A pc_attack's damage roll carries the feats the hit spent on its dice
   // (attack-swing.ts spendDamageFeats). The player rolling real dice is told
   // the steps on the card; dice the server throws take them here, as its own
-  // throw of the damage does (attack-blow.ts throwDamage). Thrown plain, a
+  // throw of the damage does (attack-damage-dice.ts throwDamage). Thrown plain, a
   // released hold or "Roll digitally" lost Piercer, Savage Attacker, Brutal
   // Attack and Great Weapon Fighting the hit had already spent.
   const damageAsk = pending.kind === "damage" ? ((pending.attack as { damage?: DamageAsk } | null)?.damage ?? null) : null;

@@ -512,7 +512,7 @@ const SITES = {
   "lib/dm/mt-mr-offers.ts#dieOf": "H the Psionic Energy die a choice on the after-the-roll card adds (Homing Strikes, Psi-Bolstered Knack)",
   "lib/dm/mt-mr-offers.ts#rerolled": "H a d20 thrown again from the after-the-roll card (Unerring Accuracy, Draconic Presence)",
   "lib/dm/ar-ws-bombardment.ts#spellBombardment": "D a spell's exploded damage die (Spell Bombardment), where the area roll's own card carries it",
-  "lib/dm/attack-blow.ts#throwDamage": "D an attack's damage on the server's dice",
+  "lib/dm/attack-damage-dice.ts#throwDamage": "D an attack's damage on the server's dice",
   // An opportunity attack's damage with Great Weapon Fighting's rerolls,
   // thrown through the character's door as its throwIt (audit 1116, A06).
   "lib/dm/opportunity-strike.ts#pcOpportunitySwing": "D an opportunity attack's damage, its 1s and 2s rerolled for Great Weapon Fighting",

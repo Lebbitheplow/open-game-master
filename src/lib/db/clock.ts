@@ -14,6 +14,7 @@ import { fireCalendarEvents } from "@/lib/dm/calendar-fire";
 import { tickClockConditions } from "@/lib/dm/condition-tick";
 import { commandedHourlySaves } from "@/lib/dm/ar-ws-command-hours";
 import { settleInfusions } from "@/lib/dm/infuse-item";
+import { oathsAtDawn } from "@/lib/dm/oathbow";
 import { getDatabase, parseJson } from "@/lib/db/core";
 import { getSheetById } from "@/lib/db/sheets";
 import { publishEphemeral, publishPersisted } from "@/lib/events";
@@ -151,6 +152,10 @@ export function advanceClock(
   // and, under the supplies variant, ends a day of eating and drinking.
   rechargeAtDawn(campaignId, current.instant, moved.instant);
   const dawns = dawnsBetween(current.instant, moved.instant);
+  // An Oathbow's oath ends at a dawn (oathbow.ts).
+  if (dawns) {
+    oathsAtDawn(campaignId);
+  }
   const hunger = upkeepAtDawns(campaignId, dawns, clock.supplies ?? {}, clock.mealAtDawn === true, options.lifestyle);
   if (hunger || (dawns && clock.mealAtDawn)) {
     // The dawn uses the meal up, with the variant since turned off as well.

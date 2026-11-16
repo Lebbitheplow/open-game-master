@@ -103,8 +103,10 @@ export type Encounter = {
   // Ammunition spent in this fight, keyed "<characterId>|<inventory line>".
   // Empty unless the `ammunition` variant rule is on (src/lib/srd/ammunition.ts).
   // A line whose last one was spent keeps itself beside its count, so what
-  // is recovered comes back as that line, its row and tags with it.
-  ammoSpent: Record<string, number | { spent: number; line: EquipmentItem }>;
+  // is recovered comes back as that line, its row and tags with it. A magic
+  // line counts its pieces that hit (src/lib/dm/ammo-tally.ts), which come
+  // back as ordinary ammunition.
+  ammoSpent: Record<string, number | { spent: number; line?: EquipmentItem; hits?: number }>;
   // Who attacked whom this round (attacker ref id to target ref ids), so
   // every client draws the same hairlines. Only meaningful while `round`
   // matches the encounter's; written by recordEncounterTarget.

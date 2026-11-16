@@ -46,10 +46,16 @@ export type ConditionMeta = {
   // before the turn it was meant to cost (audit 2026-11-13, T04).
   countsOn?: string;
   // A condition that stacks (a Sword of Wounding's wounds): how many, and the
-  // turn ("round:turnIndex") the last was laid on, for a once-per-turn rider
-  // (src/lib/dm/sword-wounding.ts).
+  // turn (encounters.ts turnKey) the last was laid on, for a once-per-turn
+  // rider (src/lib/dm/sword-wounding.ts).
   stacks?: number;
   woundedOn?: string;
+  // The hit points a mark holds back from every healing but a rest (a Sword
+  // of Wounding's, src/lib/dm/sword-wounding-logic.ts).
+  heldHp?: number;
+  // An Oathbow's oath (src/lib/dm/oathbow.ts): the clock instants it was
+  // sworn at and its sworn enemy died at.
+  oath?: { swornAt: number; diedAt?: number };
   // Re-save at each round wrap; success ends the condition.
   // `or`: a second ability the creature may roll instead, choosing again at
   // each save (Nature's Wrath: Strength or Dexterity; see likelierSave).

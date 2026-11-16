@@ -51,6 +51,7 @@ import {
 } from "@/lib/dm/improvise-logic";
 import { landTheFlightless } from "@/lib/dm/map-tools";
 import { applyRiderCondition } from "@/lib/dm/pc-attack-riders";
+import { tendSwordWounds } from "@/lib/dm/sword-wounding";
 import { rollContest, type Opponent } from "@/lib/dm/roll-gates";
 import { rollCard } from "@/lib/dm/roll-card";
 import { strictnessShift } from "@/lib/dm/safety-logic";
@@ -181,6 +182,15 @@ export function improviseAction(
       error: "An improvised action needs what the character attempts in reason, e.g. reason: 'kicks sand in the bandit's eyes'. Nothing was spent.",
       retry: true,
     };
+  }
+  // A Sword of Wounding's wounds tended with a Medicine check (DC 15, within
+  // 5 feet): the item's own action, with no scene to quote and no contest.
+  const tended = args.targetEnemyId && args.skill === "medicine" ? tendSwordWounds(campaign, encounter, sheet, args.targetEnemyId, spendAction) : null;
+  if (tended) {
+    if (tended.rollId) {
+      turn.rollIds.push(tended.rollId);
+    }
+    return tended.result;
   }
   // Swallowed (swallow.ts): from inside, the scene the narration shows is
   // outside the swallower, so an action on it reaches nothing; one at the

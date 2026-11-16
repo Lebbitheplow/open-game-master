@@ -2,6 +2,8 @@ import type { ToolError } from "@/lib/dm/tool-errors";
 import { containsPhrase, textKey } from "@/lib/language/text-logic";
 import { REGENERATION_NAME } from "@/lib/dm/regeneration-text";
 import { parseSaveEffect, type SaveEffect } from "@/lib/dm/save-effect";
+import { woundHeldHp } from "@/lib/dm/sword-wounding-logic";
+import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 
 // A monster's special actions as numbers the engine runs (SRD 5.1,
 // Monsters): the save, DC and dice an ability prints, whether it recharges
@@ -382,9 +384,14 @@ export function exhaustedTiles(conditions: string[], tiles: number): number {
   return level >= 5 ? 0 : level >= 2 ? Math.floor(tiles / 2) : tiles;
 }
 
-// The most hit points a creature may have: halved from level 4.
-export function enemyHpCap(enemy: { maxHp: number; conditions: string[] }): number {
-  return enemyExhaustion(enemy.conditions) >= 4 ? Math.floor(enemy.maxHp / 2) : enemy.maxHp;
+// The most hit points a creature may have: halved from level 4. Every way a
+// creature regains hit points reads it, so the hit points a Sword of
+// Wounding took stay lost to all of them (sword-wounding-logic.ts); never
+// below what it has now, which no healing takes away.
+export function enemyHpCap(enemy: { maxHp: number; conditions: string[]; conditionMeta?: ConditionMetaMap; currentHp?: number }): number {
+  const cap = enemyExhaustion(enemy.conditions) >= 4 ? Math.floor(enemy.maxHp / 2) : enemy.maxHp;
+  const held = woundHeldHp(enemy);
+  return held > 0 ? Math.min(cap, Math.max(enemy.currentHp ?? 0, enemy.maxHp - held)) : cap;
 }
 
 // ---- traits the engine reads ----

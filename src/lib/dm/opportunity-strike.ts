@@ -426,7 +426,8 @@ export function pcOpportunitySwing(input: {
     // What a natural attack's hit carries (a wolf's bite: a Strength save or
     // prone), as the turn's swing lands it (attack-blow.ts).
     // A Sword of Wounding's wound, once per turn (sword-wounding.ts).
-    const wound = !dropped && profile.gearWounds && !isSheetFoe(enemy) ? woundOnHit(campaign, enemy.id, sheet.id) : null;
+    const landed = typeof applied.damageApplied === "number" ? applied.damageApplied : dealt;
+    const wound = !dropped && profile.gearWounds && !isSheetFoe(enemy) ? woundOnHit(campaign, enemy.id, sheet.id, landed) : null;
     if (wound) {
       notes.push(wound);
     }
@@ -434,7 +435,6 @@ export function pcOpportunitySwing(input: {
       notes.push(...landNaturalOnHit(campaign, { turn, attacker: { kind: "sheet", sheetId: sheet.id, name: sheet.name }, holderId: sheet.id, attack: profile.weapon, enemyId: enemy.id, onHit: profile.creatureOnHit }));
     }
     const after = getFoe(enemy.id);
-    const landed = typeof applied.damageApplied === "number" ? applied.damageApplied : dealt;
     return {
       note: `${sheet.name} catches ${enemy.displayName} with an opportunity attack as it breaks away: ${
         crit ? "a critical hit, " : ""

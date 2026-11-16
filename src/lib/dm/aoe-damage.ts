@@ -615,7 +615,9 @@ export function handleAoeDamage(
     total = partsTotal(rolled);
   }
   if (args.damage !== undefined && args.damage !== 0 && args.damage !== "0") {
-    total = Math.max(1, total + (plan?.flat ?? 0) + (plan?.flatSecond ?? 0));
+    // No floor of 1 (SRD 5.1 gives damage none): a total a penalty brings to
+    // 0 or less deals nothing, as every attack door leaves it.
+    total = Math.max(0, total + (plan?.flat ?? 0) + (plan?.flatSecond ?? 0));
   }
   // The blast as it lands: one part, or the first type with the caster's
   // flat bonus and the second type's own roll with its own (Elemental

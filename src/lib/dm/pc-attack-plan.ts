@@ -117,6 +117,9 @@ export type AttackPlan = {
   // An Oathbow shot that swears its target, written once the shot is made
   // (pc-attack.ts, oathbow.ts).
   swearOath?: boolean;
+  // A magic ammunition line spent by the shot, as the fight's tally names it
+  // (pc-attack.ts, ammo-tally.ts): its hit is counted there.
+  magicAmmo?: string;
   // A weapon not in hand, drawn as part of the attack (issue #424): the pack
   // after the draw, and the line the result says.
   drawn: { equipment: EquipmentItem[]; note: string } | null;
@@ -367,6 +370,9 @@ export function planPcAttack(input: {
   // The Oathbow's sworn enemy: no cover but total, no long-range
   // disadvantage, advantage and 3d6 below (oathbow.ts).
   const oath = weaponAttack ? oathbowShot(sheet, profile, enemy.id, atRange) : null;
+  if (oath?.waits) {
+    featNotes.push("Oathbow: the sworn enemy died; no new one is sworn before the next dawn");
+  }
   if (oath?.sworn) {
     featNotes.push(`Oathbow: ${enemy.displayName} is the sworn enemy${geometry.cover ? ", its cover does not count" : ""}`);
     geometry = { ...geometry, effectiveAc: geometry.effectiveAc - geometry.cover, cover: 0, screen: null, spatials: { ...geometry.spatials, longRange: false } };

@@ -24,7 +24,7 @@ import { afterToHitLanded, runQueuedParts } from "@/lib/dm/pc-attack-parts";
 import { moteAfterRoll } from "@/lib/dm/authored-mote";
 import { rollExpression, type RollResult } from "@/lib/dice";
 import { heroRollTag } from "@/lib/dice-script-logic";
-import { throwDamage } from "@/lib/dm/attack-blow";
+import { throwDamage } from "@/lib/dm/attack-damage-dice";
 import { endTurnOnLanding, recordInitiativeRoll, settleTurn, turnHolder } from "@/lib/dm/encounter-tools";
 import { applyInitiativeRefills } from "@/lib/dm/feature-hooks";
 import { applyPendingDamageRoll } from "@/lib/dm/enemy-damage";
