@@ -9,7 +9,7 @@ import { Bot, Check, Crown, Heart, ImagePlus, PawPrint, Save, Sparkles, UserPlus
 import { describeExhaustion } from "@/lib/dm/condition-logic";
 import { namesLookup } from "@/lib/battlemap/condition-notes";
 import { conditionIconKey } from "@/lib/battlemap/condition-glyphs";
-import { conditionDetail, maxHpView, petConditionDetail } from "@/components/sheet/sheet-state";
+import { conditionDetail, maxHpView, petAwayNote, petConditionDetail } from "@/components/sheet/sheet-state";
 import type { PublicEncounter } from "@/lib/db/encounter-view";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { spellGlyphIcon } from "@/lib/battlemap/spell-glyph-table";
@@ -703,40 +703,47 @@ export function PartyPanel({
               </div>
             ) : null}
 
-            {(sheet.pets ?? []).map((pet) => (
-              <div key={pet.name} className="mt-1">
-                <div className="flex items-center justify-between text-[10px] text-stone-400" title={pet.notes || pet.form}>
-                  <span className="flex min-w-0 items-center gap-1 truncate">
-                    <PawPrint className="size-3 shrink-0 text-stone-500" />
-                    {pet.name}
-                    {textKey(pet.name) !== textKey(pet.form) ? ` (${pet.form}${pet.creatureType ? `, ${pet.creatureType}` : ""})` : pet.creatureType ? ` (${pet.creatureType})` : ""}
-                  </span>
-                  <span className={cn("font-mono", pet.hp <= 0 && "text-red-400")}>
-                    {pet.hp}/{pet.maxHp}
-                  </span>
-                </div>
-                {/* What holds the pet (Hold Monster's paralysis, a net), with
-                    what is left of it, as the character's own chips read. */}
-                {pet.conditions?.length ? (
-                  <div className="mt-0.5 flex flex-wrap gap-1 pl-4">
-                    {pet.conditions.map((condition) => {
-                      const detail = petConditionDetail(sheet, pet, condition, nameOf);
-                      return (
-                        <span
-                          key={condition}
-                          className="motion-pop inline-flex max-w-full items-center gap-1 rounded-full bg-red-950 px-1.5 py-0.5 text-[10px] text-red-300"
-                          title={detail ? `${pet.name}: ${condition} (${detail})` : `${pet.name}: ${condition}`}
-                        >
-                          <GameIcon icon={{ kind: "condition", key: conditionIconKey(condition) }} size="size-3" className="border-red-800/60" />
-                          {condition}
-                          {detail ? <span className="truncate text-red-300/70">({detail})</span> : null}
-                        </span>
-                      );
-                    })}
+            {(sheet.pets ?? []).map((pet) => {
+              const away = petAwayNote(pet);
+              return (
+                <div key={pet.name} className={cn("mt-1", away && "opacity-60")}>
+                  <div className="flex items-center justify-between text-[10px] text-stone-400" title={away ?? (pet.notes || pet.form)}>
+                    <span className="flex min-w-0 items-center gap-1 truncate">
+                      <PawPrint className="size-3 shrink-0 text-stone-500" />
+                      {pet.name}
+                      {textKey(pet.name) !== textKey(pet.form) ? ` (${pet.form}${pet.creatureType ? `, ${pet.creatureType}` : ""})` : pet.creatureType ? ` (${pet.creatureType})` : ""}
+                    </span>
+                    {away ? (
+                      <span className="shrink-0 italic">{away}</span>
+                    ) : (
+                      <span className={cn("font-mono", pet.hp <= 0 && "text-red-400")}>
+                        {pet.hp}/{pet.maxHp}
+                      </span>
+                    )}
                   </div>
-                ) : null}
-              </div>
-            ))}
+                  {/* What holds the pet (Hold Monster's paralysis, a net), with
+                      what is left of it, as the character's own chips read. */}
+                  {pet.conditions?.length ? (
+                    <div className="mt-0.5 flex flex-wrap gap-1 pl-4">
+                      {pet.conditions.map((condition) => {
+                        const detail = petConditionDetail(sheet, pet, condition, nameOf);
+                        return (
+                          <span
+                            key={condition}
+                            className="motion-pop inline-flex max-w-full items-center gap-1 rounded-full bg-red-950 px-1.5 py-0.5 text-[10px] text-red-300"
+                            title={detail ? `${pet.name}: ${condition} (${detail})` : `${pet.name}: ${condition}`}
+                          >
+                            <GameIcon icon={{ kind: "condition", key: conditionIconKey(condition) }} size="size-3" className="border-red-800/60" />
+                            {condition}
+                            {detail ? <span className="truncate text-red-300/70">({detail})</span> : null}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
 
             {/* A track beside hit points is no dying (death-logic.ts isDying):
                 a revert that gave the hit points back read "Dying" at full

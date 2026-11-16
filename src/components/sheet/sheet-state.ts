@@ -144,6 +144,13 @@ export function conditionDetail(sheet: CharacterSheet, condition: string, nameOf
   return conditionNoteLine(conditionNote(condition, sheet.conditionMeta?.[condition], nameOf, sheet.id));
 }
 
+// A familiar tucked into its pocket dimension (pet-pocket.ts) is out of reach
+// of everything until summon_pet calls it back. The party panel listed it with
+// its hit points like one at its owner's side, so the player reached for it.
+export function petAwayNote(pet: Pick<SheetPet, "pocketed">): string | null {
+  return pet.pocketed === true ? "In its pocket dimension" : null;
+}
+
 // The same for a pet's condition: its turn is its owner's (pet-conditions.ts).
 export function petConditionDetail(owner: CharacterSheet, pet: SheetPet, condition: string, nameOf: (id: string) => string | null): string {
   return conditionNoteLine(conditionNote(condition, pet.conditionMeta?.[condition], nameOf, owner.id));
