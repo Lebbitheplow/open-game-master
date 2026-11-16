@@ -509,15 +509,6 @@ export function isIncapacitated(conditions: string[]): boolean {
   return has(conditions, INCAPACITATING) !== null;
 }
 
-// Whether a Dodge still does anything: "You lose this benefit if you are
-// incapacitated ... or if your speed drops to 0" (SRD 5.1, Dodge). Read here,
-// where every attack and every saving throw reads it: the enemy's swing and
-// the opportunity attack dropped a grappled dodger's Dodge, while a hero's
-// attack at a grappled dodging foe and every Dexterity save kept it.
-function dodgeHolds(conditions: string[]): boolean {
-  return has(conditions, [DODGING]) !== null && !isIncapacitated(conditions) && !has(conditions, SPEED_ZERO);
-}
-
 // The condition that stops this combatant acting, for refusal messages.
 export function incapacitatedBy(conditions: string[]): string | null {
   return has(conditions, INCAPACITATING);
