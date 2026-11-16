@@ -343,6 +343,39 @@ await test("A paladin knocked prone who fails the save falls from the steed, whi
   assert.ok(orderIds(world).includes(steed.id), "the steed its rider fell from has no turn");
 });
 
+await test("A steed moved against its will keeps a paladin who makes the save, still ridden and off the board, and one who fails it is thrown and the steed stands beside them again.", async () => {
+  const { world, sheets: [paladin] } = await outOfFight([PALADIN()]);
+  await world.invoke("cast_buff", { characterId: paladin.id, spell: "Find Steed", level: 2, variant: "warhorse" });
+  const [steed] = summonsOf(world, "Find Steed");
+  await thenFight(world, paladin.id);
+  holdTurn(world, paladin.id);
+  place(world, paladin.id, 3, 3);
+  place(world, steed.id, 4, 3);
+  const up = await world.invoke("mount_up", { characterId: paladin.id, mount: "Warhorse" });
+  assert.equal(up.ok, true, up.error);
+  world.clearDice();
+  // A 20 on the DC 10 Dexterity save.
+  world.dice(20);
+  const held = await world.invoke("dismount", { characterId: paladin.id, cause: "forced-move" });
+  world.clearDice();
+  assert.equal(held.ok, true, held.error);
+  assert.equal(getMounts(world.campaignId)[paladin.id]?.sheetId, steed.id, "the paladin who made the save no longer rides the steed's own sheet");
+  assert.ok(!tokenOf(world, steed.id), "a steed still ridden stands on a token of its own");
+  assert.ok(!orderIds(world).includes(steed.id), "a steed still ridden takes a turn of its own");
+  // A 1 on the same save.
+  world.dice(1);
+  const thrown = await world.invoke("dismount", { characterId: paladin.id, cause: "forced-move" });
+  world.clearDice();
+  assert.equal(thrown.ok, true, thrown.error);
+  assert.equal(getMounts(world.campaignId)[paladin.id], undefined, "the paladin who failed the save still rides");
+  const rider = tokenOf(world, paladin.id);
+  const horse = tokenOf(world, steed.id);
+  assert.ok(horse, "the steed that threw its rider has no token");
+  assert.ok(Math.max(Math.abs(horse.x - rider.x), Math.abs(horse.y - rider.y)) <= 2, "the steed did not come back beside its rider");
+  const order = orderIds(world);
+  assert.equal(order.indexOf(steed.id), order.indexOf(paladin.id) + 1, "the steed does not act right after its rider");
+});
+
 await test("A ridden steed brought to 0 hit points disappears, and its rider comes off as from a mount that went down.", async () => {
   const { world, sheets: [paladin] } = await outOfFight([PALADIN()]);
   await world.invoke("cast_buff", { characterId: paladin.id, spell: "Find Steed", level: 2, variant: "warhorse" });

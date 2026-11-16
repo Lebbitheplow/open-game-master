@@ -42,7 +42,6 @@ import { rowName } from "@/lib/srd/item-row";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { summonedSteed } from "@/lib/dm/mount-link";
 import { leaveFightAsMount, standBesideRider } from "@/lib/dm/summon-store";
-import { getSheetById } from "@/lib/db/sheets";
 import { tilesApart } from "@/lib/dm/board-reach";
 
 // The SRD's exotic saddle row, every spelling of it.
