@@ -34,7 +34,7 @@ Software:
     KoboldCpp: supported, with llama.cpp the one we recommend), or a remote API
     key like OpenAI or OpenRouter. Or:
   - a CLI agent already installed and signed in on the server's computer: Claude
-    Code, Codex, opencode or Grok Build, running on the plan you already pay for.
+    Code, Codex, opencode, Grok Build or Pi, running on the plan you already pay for.
     Pick it in **Admin > Agent program**. Works for a server started with npm or
     systemd, not inside the Docker image
     ([agent-harness.md](agent-harness.md)).
@@ -88,7 +88,7 @@ takes it from there, one question at a time:
   this machine; an Ollama it finds is connected through Ollama's own API, so
   the app sets the model's window. Or paste an API key (OpenAI, OpenRouter, any OpenAI-compatible
   provider) and pick from the models it can reach. Or pick an agent program you
-  already pay for (Claude Code, Codex, opencode, Grok Build): it shows whether each
+  already pay for (Claude Code, Codex, opencode, Grok Build, Pi): it shows whether each
   is installed and signed in, and the exact command to fix it when not. Or choose a
   person at the table. Each choice is tested the way a campaign uses it before you
   move on.
