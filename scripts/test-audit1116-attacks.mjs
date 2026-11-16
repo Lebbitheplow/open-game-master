@@ -519,6 +519,31 @@ await test("G13: a damage roll the GM sends at a creature that totals 0 deals 0,
   assert.equal(kit.dummy().currentHp, dummy.currentHp, `a total under 1 took a hit point: ${JSON.stringify(out.result)}`);
 });
 
+// ---- G14: a character on the foes' side keeps its weapon's reach and range ----
+
+await test("G14: a character fighting for the foes is read with its glaive's 10-foot reach and its longbow's 150/600 range", async () => {
+  // SRD 5.1, Weapons: a glaive has reach ("adds 5 feet to your reach"), a
+  // longbow "Ammunition (range 150/600)". The block a turncoat is read by
+  // (sheet-foe-stats.ts) gave its weapon no reach and no range, so every
+  // reader of a foe's block (an opportunity attack's reach, Confusion's
+  // creature in reach, a ranged swing's range) saw 5 feet and the
+  // 20/60 a block with no range is given.
+  const { sheetEnemyStats } = await import("../src/lib/dm/sheet-foe-stats.ts");
+  arm({ str: 16, dex: 10, equipment: [{ name: "Glaive", qty: 1 }] });
+  let attack = sheetEnemyStats(world.sheet(hero.id)).attacks[0];
+  assert.equal(attack.name, "Glaive");
+  assert.equal(attack.reach, 10, JSON.stringify(attack));
+  arm({ str: 10, dex: 16, equipment: [{ name: "Longbow", qty: 1 }, { name: "Arrows", qty: 20 }] });
+  attack = sheetEnemyStats(world.sheet(hero.id)).attacks[0];
+  assert.equal(attack.name, "Longbow");
+  assert.deepEqual(attack.range, { normal: 150, long: 600 }, JSON.stringify(attack));
+  arm({ str: 16, dex: 10, equipment: [{ name: "Javelin", qty: 2 }] });
+  attack = sheetEnemyStats(world.sheet(hero.id)).attacks[0];
+  assert.equal(attack.mode, "both");
+  assert.equal(attack.reach, 5);
+  assert.deepEqual(attack.range, { normal: 30, long: 120 }, JSON.stringify(attack));
+});
+
 await kit.endFight();
 world.close();
 finish();
