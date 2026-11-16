@@ -10,6 +10,8 @@ import { resolveAttackWeapon, weaponOf, type ResolvedWeapon } from "@/lib/dm/att
 import { magicWeaponOfRow } from "@/lib/dm/gear-attack";
 import { matchWeapon } from "@/lib/srd/weapons";
 import { acBreakdownFor } from "@/lib/srd";
+import { otherHandArmed } from "@/lib/dm/attack-rules";
+import type { CombatRiders } from "@/lib/srd/feature-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 const UNARMED: ResolvedWeapon = { displayName: "Unarmed strike", srd: null, unarmed: true, carried: true };
@@ -30,4 +32,20 @@ export function opportunityWeaponFor(sheet: CharacterSheet): ResolvedWeapon {
   return resolveAttackWeapon(melee, sheet.proficiencies.weapons, undefined, {
     shieldOnArm: acBreakdownFor(sheet).shieldName !== null,
   });
+}
+
+// The grip the reaction's swing takes. SRD 5.1, Versatile: "This weapon can
+// be used with one or two hands ... the damage when the weapon is used with
+// two hands to make a melee attack." With the other hand free (no shield,
+// no second weapon) the swing takes both hands, as a player would: the
+// reaction's swing never did, so a free-handed longsword rolled a d8 on
+// every opportunity attack. A Dueling fighter keeps one hand, as the style's
+// +2 outweighs the larger die (Dueling: "wielding a melee weapon in one hand
+// and no other weapons").
+export function opportunityTwoHanded(sheet: CharacterSheet, resolved: ResolvedWeapon, riders: Pick<CombatRiders, "oneHandedMeleeDamageBonus">): boolean {
+  if (!resolved.srd || resolved.unarmed || !(resolved.srd.properties ?? []).includes("versatile") || riders.oneHandedMeleeDamageBonus > 0) {
+    return false;
+  }
+  const shieldName = acBreakdownFor(sheet).shieldName;
+  return shieldName === null && !otherHandArmed({ equipment: sheet.equipment, weapon: resolved.displayName, shieldName });
 }

@@ -57,6 +57,7 @@ import { gearCritRiders, itemRidersAgainst } from "@/lib/dm/gear-attack";
 import { foldDamageRiders, landBlow, strikesAsMagic, withSneakAttack } from "@/lib/dm/pc-attack-damage";
 import { clearHitSpent, spendOnHit } from "@/lib/dm/pc-attack-riders";
 import { smiteSlotOf } from "@/lib/dm/opportunity-ask-logic";
+import { opportunityTwoHanded } from "@/lib/dm/opportunity-weapon";
 import { acBreakdownFor, computeSheetDerived, sizeForRace } from "@/lib/srd";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
 import { conditionsSpentAgainst } from "@/lib/srd/condition-effect-queries";
@@ -142,6 +143,8 @@ function weaponSwing(sheet: CharacterSheet, resolved: ResolvedWeapon, riders: Re
     worn: magicItemRiders(sheet.equipment, sheet).weaponRiders,
     // Dueling wants the other hand empty of weapons, here as on the turn.
     otherWeaponInHand: otherHandArmed({ equipment: sheet.equipment, weapon: resolved.displayName, shieldName: acBreakdownFor(sheet).shieldName }),
+    // A versatile weapon in both hands when the other is free (opportunity-weapon.ts).
+    twoHanded: opportunityTwoHanded(sheet, resolved, riders),
   });
   // The blade's material (a silvered sword), for the resistances that name
   // it, as the turn's swing carries it (pc-attack-profile.ts): the reaction

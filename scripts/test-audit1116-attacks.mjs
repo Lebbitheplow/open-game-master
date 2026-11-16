@@ -577,6 +577,21 @@ await test("G15: a hero carrying only a bow makes the opportunity attack with an
   assert.deepEqual(out.damageDice, []);
 });
 
+await test("G16: a longsword with the other hand free strikes an opportunity attack with both hands, the d10; beside a shield, the d8", async () => {
+  // SRD 5.1, Versatile: "This weapon can be used with one or two hands. A
+  // damage value in parentheses appears with the property, the damage when
+  // the weapon is used with two hands to make a melee attack." The reaction's
+  // swing never took the second hand, so a fighter's free-handed longsword
+  // rolled a d8 on every opportunity attack.
+  arm({ str: 16, equipment: [{ name: "Longsword", qty: 1 }] });
+  let out = await walkAway([15, 7]);
+  assert.deepEqual(out.damageDice, [10], `the longsword was swung in one hand: ${JSON.stringify(out.notes)}`);
+  assert.equal(out.dealt, 7 + abilityMod(16));
+  arm({ str: 16, equipment: [{ name: "Longsword", qty: 1 }, { name: "Shield", qty: 1 }] });
+  out = await walkAway([15, 7]);
+  assert.deepEqual(out.damageDice, [8], "the longsword took both hands beside a shield");
+});
+
 await kit.endFight();
 world.close();
 finish();
