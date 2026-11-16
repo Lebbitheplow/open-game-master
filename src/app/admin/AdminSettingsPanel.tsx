@@ -122,7 +122,7 @@ export function AdminSettingsPanel() {
           setEmbedding(data.embedding ?? null);
           setSpeedNotes(data.speedStatus ?? {});
           setToolHealth(data.toolCallHealth ?? null);
-          setLanguageCampaigns(data.tableLanguageCampaigns);
+          setLanguageCampaigns(data.tableLanguageCampaigns ?? []);
         }
       });
   }, []);
