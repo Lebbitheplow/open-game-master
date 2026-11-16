@@ -519,9 +519,11 @@ export function weaponAttackProfile(
   const ranged = srd.kind === "ranged";
   const str = derived.abilityMods.str;
   const dex = derived.abilityMods.dex;
-  // Ranged-kind weapons shoot with DEX; thrown ranged-kind (darts, vials)
-  // and melee weapons use STR, with finesse taking the better of the two.
-  const mod = finesse ? Math.max(str, dex) : ranged && !thrown ? dex : str;
+  // Ranged weapons use DEX, thrown or not, and melee weapons STR, with
+  // finesse taking the better of the two. SRD 5.1's Thrown property keeps the
+  // melee ability only for a melee weapon thrown; the net, a ranged weapon,
+  // was thrown with Strength.
+  const mod = finesse ? Math.max(str, dex) : ranged ? dex : str;
   // SRD 5.1, Bracers of Archery: "you have proficiency with the longbow and
   // shortbow, and you gain a +2 bonus to damage rolls on ranged attacks made
   // with such weapons".
@@ -597,7 +599,7 @@ export function weaponAttackProfile(
     proficient,
     improvised: false,
     // Mirrors the `mod` choice above; a tie counts as Strength.
-    ability: finesse ? (dex > str ? "dex" : "str") : ranged && !thrown ? "dex" : "str",
+    ability: finesse ? (dex > str ? "dex" : "str") : ranged ? "dex" : "str",
     magicBonus,
     twoHanded,
     // Sneak Attack rides on finesse and ranged weapons only; a monk weapon
