@@ -29,7 +29,9 @@ import {
 } from "@/lib/dm/attack-logic";
 import { RAGING } from "@/lib/srd/class-resources";
 import { acBreakdownFor, computeSheetDerived } from "@/lib/srd";
-import { matchWeapon } from "@/lib/srd/weapons";
+import { matchWeapon, weaponNamed } from "@/lib/srd/weapons";
+import { underwaterOpportunity } from "@/lib/dm/underwater";
+import { swimsFrom } from "@/lib/battlemap/types";
 import { magicWeaponOfRow } from "@/lib/dm/gear-attack";
 import { combatRiders } from "@/lib/srd/feature-effects";
 import { conditionBlocksReactions } from "@/lib/srd/condition-effects";
@@ -306,10 +308,12 @@ export function resolveOpportunityAttacks(
     // "no attack roll against you has advantage", read as on its own turn
     // (enemy-swing-odds.ts targetSwingMarks). It strikes from beside them.
     const marks = targetSwingMarks(enemy, sheet, conditionsOf(sheet), 1);
+    // Under the water, as on enemy_attack (underwater.ts).
+    const underwater = underwaterOpportunity(campaign.id, enemy.id, { weapon: attack.name, base: weaponNamed(attack.name)?.name, swims: swimsFrom(enemy.stats.speed) });
     const odds: Advantage[] = [
       ...context.sources,
       ...light.sources,
-      ...(escapes ? ["disadvantage" as const] : []),
+      ...(escapes || underwater.disadvantage ? ["disadvantage" as const] : []),
       ...(eagle ? ["disadvantage" as const] : []),
       ...(attackEffect.advantage ? ["advantage" as const] : []),
       ...(attackEffect.disadvantage ? ["disadvantage" as const] : []),
@@ -657,7 +661,7 @@ export function resolvePcOpportunityWalk(
       continue;
     }
     if (
-      !canAct({ sheet, encounter, kind: "reaction" }).ok ||
+      !canAct({ sheet, encounter, kind: "reaction", actingId: enemyId }).ok ||
       conditionBlocksReactions(sheet.conditions)
     ) {
       continue;

@@ -8,6 +8,8 @@ import { d20Expression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import { watchfulPassivePerception } from "@/lib/bestiary/enemy-numbers";
 import { passiveScore } from "@/lib/dm/check-tools";
+import { getClock } from "@/lib/db/clock";
+import { pacePerceptionShift } from "@/lib/dm/notice-logic";
 import { applyInitiativeRefills } from "@/lib/dm/feature-spends";
 import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
 import { initiativeWaits, rollCharacterD20 } from "@/lib/dm/character-roll";
@@ -51,23 +53,26 @@ export function decideAmbush(
       stealth.push(outcome.total);
     }
     const lowest = Math.min(...stealth);
+    // A party jumped on a fast march watches with -5 (notice-logic.ts).
+    const pace = pacePerceptionShift(getClock(campaign.id).travelPace);
     const surprised = sheets.filter((stale) => {
       const sheet = getSheetById(stale.id) ?? stale;
       if (cannotBeSurprised(sheet, enemies)) {
         return false;
       }
+      const passive = passiveScore(campaign, sheet, "perception") + pace;
       // Only the hiders that can surprise this one count: Anticipate
       // Violence and Scent the Wind (src/lib/dm/genre-b-surprise.ts).
       const counted = stealth.filter((_, index) => canSurprise(sheet, enemies[index]));
       if (counted.length < stealth.length) {
-        return counted.length > 0 && Math.min(...counted) >= passiveScore(campaign, sheet, "perception");
+        return counted.length > 0 && Math.min(...counted) >= passive;
       }
-      return lowest >= passiveScore(campaign, sheet, "perception");
+      return lowest >= passive;
     });
     return {
       surprisedIds: surprised.map((sheet) => sheet.id),
       lines: [
-        `The enemies' Stealth: ${stealth.join(", ")}.`,
+        `The enemies' Stealth: ${stealth.join(", ")}${pace ? " (the party marches at a fast pace: -5 to passive Perception)" : ""}.`,
         surprised.length
           ? `${surprised.map((sheet) => sheet.name).join(", ")} ${surprised.length === 1 ? "notices" : "notice"} nothing and ${surprised.length === 1 ? "is" : "are"} surprised.`
           : "Everyone in the party notices the ambush in time.",
