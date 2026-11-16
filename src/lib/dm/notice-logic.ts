@@ -158,6 +158,16 @@ export function lightHangsOnSense(light: Light | null | undefined, skill: string
   return light === "dim" && skill === "perception" && !spared;
 }
 
+// The march's own penalty to every passive Perception, by sight or by ear
+// (SRD 5.1, Travel Pace: a fast pace is "-5 penalty to passive Wisdom
+// (Perception) scores"). check_notice and the ambush that opens a fight
+// (encounter-open.ts decideAmbush) both read it here: the ambush read the
+// passive score without it, so a party racing down the road was jumped as
+// rarely as one walking.
+export function pacePerceptionShift(pace: "fast" | "normal" | "slow" | undefined): number {
+  return pace === "fast" ? -5 : 0;
+}
+
 // The shift to a passive Perception that relies on sight, with the reasons
 // for the result.
 // In darkness a creature that cannot see is effectively blinded, and a
@@ -174,10 +184,9 @@ export function sightPassiveShift(input: {
   byEar?: boolean;
   spared?: string | null;
 }): { shift: number; blind: boolean; disadvantage: boolean; notes: string[] } {
-  let shift = 0;
+  let shift = pacePerceptionShift(input.pace);
   const notes: string[] = [];
-  if (input.pace === "fast") {
-    shift -= 5;
+  if (shift) {
     notes.push("fast pace: -5");
   }
   if (input.byEar) {
