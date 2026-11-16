@@ -860,6 +860,9 @@ export const petSchema = z.object({
   // character's are (src/lib/dm/pet-conditions.ts), with the same metadata.
   conditions: z.array(z.string().trim().min(1).max(60)).max(15).optional(),
   conditionMeta: conditionMetaSchema.optional(),
+  // A familiar its owner dismissed into its pocket dimension (Find
+  // Familiar): kept, out of reach, until called back (src/lib/dm/pet-pocket.ts).
+  pocketed: z.boolean().optional(),
 });
 export type SheetPet = z.infer<typeof petSchema>;
 

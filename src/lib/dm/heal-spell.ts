@@ -92,6 +92,9 @@ export function castHealingSpell(
     reason: string;
     // The casting a heal list's entries share (action-parts-logic.ts).
     casting?: OneCasting;
+    // The target stands in for a pet of its owner (pet-heal.ts): the reach
+    // is the owner's, and nothing below writes to the owner's sheet.
+    pet?: boolean;
   },
   cast: Cast,
 ): HealSpellOutcome | null {
@@ -279,18 +282,18 @@ export function castHealingSpell(
       mayWait: !casting || casting.creatures < 2 || casting.oneCall === true,
     });
     // The dice Empowered Healing may roll again (ar-ws-empowered-healing.ts).
-    if (roll) noteHealingRoll(campaign, { roll, caster, target, spell: name });
+    if (roll && !input.pet) noteHealingRoll(campaign, { roll, caster, target, spell: name });
     amount = outcome.total;
   }
   // Regenerate goes on healing at the start of each of the target's turns
   // (src/lib/dm/spell-aura.ts reads the mark).
-  if (mech?.regainEachTurn) {
+  if (mech?.regainEachTurn && !input.pet) {
     markRegenerating(campaign, target.id, name, caster.id);
     riders.push(`${mech.regainEachTurn} more at the start of each of their turns for an hour`);
   }
   // Blessed Healer (Life 6): healing another creature with a slot heals the
   // cleric 2 + the slot's level.
-  if (slotLevel >= 1 && target.id !== caster.id && holdsFeature(caster, "blessed healer")) {
+  if (slotLevel >= 1 && (input.pet || target.id !== caster.id) && holdsFeature(caster, "blessed healer")) {
     const self = getSheetById(caster.id) ?? caster;
     // Through the healing door (regain.ts): a cursed or chilled cleric
     // regains nothing.
@@ -300,14 +303,14 @@ export function castHealingSpell(
     }
   }
   // Spell Breaker (Arcana 6): one spell of the slot's level or lower ends.
-  const broken = spellBreaker(campaign, caster, target.id, slotLevel);
+  const broken = input.pet ? null : spellBreaker(campaign, caster, target.id, slotLevel);
   if (broken) {
     riders.push(broken);
   }
   // Catalyst Stone's die is spent, Baptism of Ash blesses (genre-b-spell-hits.ts).
-  riders.push(...genreBHealed(campaign, caster, target, effectiveMaxHp(target) > 0 && target.currentHp * 2 < effectiveMaxHp(target)));
+  if (!input.pet) riders.push(...genreBHealed(campaign, caster, target, effectiveMaxHp(target) > 0 && target.currentHp * 2 < effectiveMaxHp(target)));
   // Controlled Dosage: a plague doctor's remedy cures a poison or a disease too.
-  const dosed = controlledDosage(campaign, caster, target);
+  const dosed = input.pet ? null : controlledDosage(campaign, caster, target);
   if (dosed) {
     riders.push(dosed);
   }

@@ -29,6 +29,8 @@ import { attackContext, DODGING, mergeAdvantage, type AdvantageState } from "@/l
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { handleDismount } from "@/lib/dm/mount-tools";
 import { mountedPet } from "@/lib/dm/pet-mount";
+import { mountBlow, mountRider } from "@/lib/dm/mount-blow";
+import { hasTrait } from "@/lib/dm/monster-abilities";
 import { strikePet } from "@/lib/dm/pet-strike";
 import { enemyOpportunityRiders } from "@/lib/dm/opportunity-strike";
 import { effectOutcome } from "@/lib/dm/effect-tools";
@@ -212,8 +214,21 @@ export function strikeMount(input: {
     });
     publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll: damageRoll, source: "digital" });
     turn.rollIds.push(damageRoll.id);
-    hp = Math.max(0, hp - damage.total);
-    rows.push({ attack: attack.name, rolled: toHit.total, vsAc: ac, hit: true, ...(crit ? { crit: true } : {}), ...(swing.underwater ? { situation: swing.underwater } : {}), damage: damage.total });
+    // Each type against the mount's own block and the water it stands in,
+    // and what the hit carries onto it (mount-blow.ts).
+    const magical = hasTrait(enemy.stats, "magicWeapons") || Boolean(attack.magical);
+    const blow = mountBlow(campaign.id, rider.id, mount, attack, damage, crit, magical);
+    hp = Math.max(0, hp - blow.dealt);
+    const carried = attack.onHit && hp > 0 ? mountRider(campaign, turn, rider, enemy, attack, attack.onHit, mount) : null;
+    hp = Math.max(0, hp - (carried?.dealt ?? 0));
+    rows.push({ attack: attack.name, rolled: toHit.total, vsAc: ac, hit: true, ...(crit ? { crit: true } : {}), ...(swing.underwater ? { situation: swing.underwater } : {}), damage: blow.dealt, ...(blow.defenses ? { defenses: blow.defenses } : {}), ...(carried?.lines ?? {}) });
+    // Knocked prone, the mount throws its rider (SRD 5.1, Mounted Combat):
+    // the swings left are at a mount no longer ridden.
+    if (carried?.prone && hp > 0) {
+      setMount(campaign.id, rider.id, { ...mount, hp });
+      const fall = handleDismount(campaign, JSON.stringify({ characterId: rider.id, cause: "mount-prone" }), input.sheets, input.sheetsById, turn);
+      return { ok: true, attack: rows[0]?.attack, target: mount.name, rider: rider.name, swings: rows, mountProne: `${mount.name} is knocked prone.`, fall, ...(light.notes.length || dodging ? { notes: [...light.notes, ...(dodging ? [`${mount.name} is dodging: disadvantage`] : [])] } : {}) };
+    }
   }
   const notes = [...light.notes, ...(dodging ? [`${mount.name} is dodging: disadvantage`] : [])];
   if (hp > 0) {

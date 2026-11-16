@@ -557,6 +557,7 @@ const SITES = {
   "lib/dm/zone-quake.ts#quakeFissures": "F",
   "lib/dm/fate-turn.ts#turned": "D Bend Luck's d4 on another creature's roll (a call already rolled)",
   "lib/dm/mount-area.ts#areaOnMount": "F a mount's own Dexterity save against an area that caught its rider",
+  "lib/dm/mount-blow.ts#mountRider": "F a mount's own save against the rider a creature's hit carries, and the rider's damage, rolled by the server as a pet's are",
   "lib/dm/pet-save-roll.ts#rollPetSave": "F a pet's own save against an area or an effect that caught it, rolled by the server as a mount's is",
 };
 // A character's d20 no row of this suite reaches, and what it would take.

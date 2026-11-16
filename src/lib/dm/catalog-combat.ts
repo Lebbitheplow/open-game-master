@@ -433,6 +433,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
       { name: "bonus", label: "As a bonus action", kind: "boolean", help: "Cunning Action, Step of the Wind, Patient Defense." },
       { name: "targetEnemyId", label: "Enemy", kind: "enemy" },
       { name: "targetCharacterId", label: "Ally", kind: "character" },
+      { name: "petName", label: "Their familiar helps", kind: "text", help: "Help only: the character's familiar takes it with its own action, by name.", host: { feature: "familiarHelp" } },
       { name: "trigger", label: "Readied trigger", kind: "text", placeholder: "when the ogre comes through the door" },
       {
         name: "readied",

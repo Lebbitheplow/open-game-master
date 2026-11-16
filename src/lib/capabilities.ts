@@ -219,6 +219,13 @@ export const SERVER_FEATURES = {
   // save. An older host strips it unread and forces the save on the owner,
   // so it stays hidden there.
   petSaves: true,
+  // heal's `petName` (the console's "Their pet"): the pet is healed. An
+  // older host strips it unread and heals the owner, so it stays hidden there.
+  petHealing: true,
+  // take_action's `petName` (the console's "Their familiar helps"): the
+  // familiar takes the Help action. An older host strips it unread and the
+  // character helps with their own action, so it stays hidden there.
+  familiarHelp: true,
   // enemy_attack's `targetPet` (the console's "At their pet"): the creature
   // strikes the pet at its own AC and conditions. An older host strips it
   // unread and strikes the owner, so it stays hidden there.

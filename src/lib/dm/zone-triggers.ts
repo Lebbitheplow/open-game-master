@@ -293,7 +293,7 @@ function petsStruck(campaign: Campaign, encounter: Encounter, map: BattleMap, zo
   if (victim.kind !== "pc" || !row || !trigger || (trigger.who === "hostile" && !hostileTo(zone, "pc"))) {
     return [];
   }
-  if (!getSheetById(victim.id)?.pets.some((pet) => pet.hp > 0)) {
+  if (!getSheetById(victim.id)?.pets.some((pet) => pet.hp > 0 && !pet.pocketed)) {
     return [];
   }
   const once = trigger.oncePerTurn ? turnKey(encounter) : null;

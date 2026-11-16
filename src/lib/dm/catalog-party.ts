@@ -124,6 +124,7 @@ export const PARTY_ADJUDICATIONS: CatalogEntry[] = [
       { name: "casterId", label: "Caster", kind: "character" },
       { name: "level", label: "Slot level", kind: "number", min: 1, max: 9 },
       { name: "temp", label: "Temporary hit points", kind: "boolean" },
+      { name: "petName", label: "Their pet", kind: "text", help: "The character's pet is healed instead, by name.", host: { feature: "petHealing" } },
       REASON,
     ],
   },

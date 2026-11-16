@@ -112,7 +112,7 @@ export function quakeShake(campaign: Campaign, map: BattleMap, zone: SpellZone, 
       // The pets in their square are on the same ground (ruling D2), unless
       // they fly: each its own DEX save or prone (pet-condition-lay.ts).
       for (const pet of getSheetById(sheet.id)?.pets ?? []) {
-        if (pet.hp <= 0 || pet.fly || prone(pet.conditions ?? [])) {
+        if (pet.hp <= 0 || pet.pocketed || pet.fly || prone(pet.conditions ?? [])) {
           continue;
         }
         const owner = getSheetById(sheet.id) ?? sheet;

@@ -773,6 +773,11 @@ export function describeSheet(
     lines.push(foretold);
   }
   for (const pet of sheet.pets ?? []) {
+    // Out of reach until called back (pet-pocket.ts).
+    if (pet.pocketed) {
+      lines.push(`  Pet: ${pet.name} (${pet.form} familiar): in its pocket dimension; summon_pet calls it back (an action).`);
+      continue;
+    }
     const attacks = pet.attacks.length
       ? ` Attacks (pet_attack): ${pet.attacks
           .map((attack) => `${attack.name} +${attack.toHit} (${attack.damage} ${attack.type})`)

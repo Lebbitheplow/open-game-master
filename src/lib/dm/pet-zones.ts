@@ -67,7 +67,8 @@ export function strikePetsInZone(campaign: Campaign, ownerId: string, strike: Pe
   }
   const lines: string[] = [];
   for (const pet of owner.pets) {
-    if (pet.hp <= 0) {
+    // A familiar in its pocket dimension stands in no zone (pet-pocket.ts).
+    if (pet.hp <= 0 || pet.pocketed) {
       continue;
     }
     // "Only creatures of these rules types": the pet's own type.

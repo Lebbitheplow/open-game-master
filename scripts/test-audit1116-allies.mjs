@@ -181,7 +181,7 @@ await test("U03: a pet's attack reads the light, its target's cover and its bow'
   // U01's fight left the mastiff hurt: whole again.
   world.patch(keeper.id, { pets: world.sheet(keeper.id).pets.map((pet) => ({ ...pet, hp: pet.maxHp, conditions: [], conditionMeta: {} })) });
   const warlock = world.addHero({ class: "warlock", level: 5, maxHp: 40, proficiencies: { ...TRAINED } });
-  world.patch(warlock.id, { features: [...world.sheet(warlock.id).features, { name: "Pact of the Chain", source: "class" }] });
+  world.patch(warlock.id, { gold: world.sheet(warlock.id).gold + 10, spellcasting: { ...world.sheet(warlock.id).spellcasting, ability: "cha", slots: { 1: { max: 2, used: 0 }, ...(world.sheet(warlock.id).spellcasting?.slots ?? {}) }, known: [...(world.sheet(warlock.id).spellcasting?.known ?? []), "Find Familiar"], prepared: world.sheet(warlock.id).spellcasting?.prepared ?? [], cantrips: world.sheet(warlock.id).spellcasting?.cantrips ?? [] }, features: [...world.sheet(warlock.id).features, { name: "Pact Boon: Pact of the Chain", source: "class" }] });
   const sprite = await world.invoke("summon_pet", { characterId: warlock.id, kind: "familiar", form: "sprite" });
   assert.equal(sprite.ok, true, sprite.error);
   await kit.fight(2);
@@ -406,6 +406,320 @@ await test("U08: a Beast Master with Extra Attack makes one weapon attack beside
   assert.equal(first.ok, true, first.error);
   const twice = await forced([15, 1, 1, 20], () => world.invoke("pet_attack", { characterId: ranger.id, targetEnemyId: enemy.id }));
   assert.equal(twice.ok, false, "the companion was commanded to attack twice in one turn");
+  await kit.endFight();
+});
+
+// U09. SRD 5.1, Cure Wounds: "A creature you touch regains a number of hit
+// points equal to 1d8 + your spellcasting ability modifier. This spell has no
+// effect on undead or constructs." Potion of Healing: "You regain hit points
+// when you drink this potion": any creature it is poured into. heal took no
+// petName, so the cleric's Cure Wounds on the ranger's snake healed the
+// ranger, and nothing healed a pet at all.
+await test("U09: a healing spell or a potion heals a pet, up to its maximum, and Cure Wounds does nothing to an undead pet", async () => {
+  await kit.endFight();
+  const cleric = world.addHero({
+    class: "cleric", level: 5, maxHp: 40, abilities: { wis: 16 }, proficiencies: { ...TRAINED },
+    spellcasting: { ability: "wis", slots: { 1: { max: 4, used: 0 } }, prepared: ["Cure Wounds"], known: [], cantrips: [] },
+  });
+  const hiss = () => petOf(keeper.id, "hiss");
+  world.patch(keeper.id, { currentHp: 30, pets: world.sheet(keeper.id).pets.map((pet) => (pet.name === "Hiss" ? { ...pet, hp: 1, conditions: [], conditionMeta: {} } : pet)) });
+  const used = () => world.sheet(cleric.id).spellcasting.slots[1].used;
+
+  // 1d8 (a 5) + the cleric's Wisdom 3: 8 hit points onto the snake's 1.
+  const cured = await forced([5], () => world.invoke("heal", { characterId: keeper.id, petName: "Hiss", spell: "Cure Wounds", casterId: cleric.id }));
+  assert.equal(cured.ok, true, cured.error);
+  assert.equal(hiss().hp, 9, `Cure Wounds on the snake: ${JSON.stringify(cured.result)}`);
+  assert.equal(world.sheet(keeper.id).currentHp, 30, "the snake's healing went to its owner");
+  assert.equal(used(), 1, "the slot is spent");
+
+  // A potion poured into it: no more than its maximum.
+  const potion = await world.invoke("heal", { characterId: keeper.id, petName: "Hiss", amount: 50, reason: "a potion of healing" });
+  assert.equal(potion.ok, true, potion.error);
+  assert.equal(hiss().hp, hiss().maxHp, "healed past its maximum");
+  assert.equal(world.sheet(keeper.id).currentHp, 30, "the potion went to the owner");
+
+  // An undead pet: Cure Wounds has no effect, and nothing is spent on it.
+  const bones = await world.invoke("summon_pet", { characterId: keeper.id, kind: "other", form: "Skeleton", name: "Rattle" });
+  assert.equal(bones.ok, true, bones.error);
+  world.patch(keeper.id, { pets: world.sheet(keeper.id).pets.map((pet) => (pet.name === "Rattle" ? { ...pet, hp: 2 } : pet)) });
+  const refused = await world.invoke("heal", { characterId: keeper.id, petName: "Rattle", spell: "Cure Wounds", casterId: cleric.id });
+  assert.equal(refused.ok, false, "Cure Wounds healed a skeleton");
+  assert.equal(used(), 1, "a slot was spent on a spell with no effect");
+  assert.equal(petOf(keeper.id, "rattle").hp, 2);
+  // Plain healing is not the spell's: the potion still mends it.
+  const mended = await world.invoke("heal", { characterId: keeper.id, petName: "Rattle", amount: 3, reason: "a potion of healing" });
+  assert.equal(mended.ok, true, mended.error);
+  assert.equal(petOf(keeper.id, "rattle").hp, 5);
+  await world.invoke("dismiss_pet", { characterId: keeper.id, petName: "Rattle" });
+});
+
+// U10. SRD 5.1, Animate Dead: "On each of your turns, you can use a bonus
+// action to mentally command any creature you made with this spell if the
+// creature is within 60 feet of you (if you control multiple creatures, you
+// can command any or all of them at the same time ...). If you issue no
+// commands, the creature only defends itself against hostile creatures."
+// The command was charged nowhere: the skeleton shot whoever the GM liked on
+// its own turn, and its caster's bonus action stayed whole.
+await test("U10: an animated skeleton attacks only in self-defence until its caster spends a bonus action to command it", async () => {
+  await kit.endFight();
+  const necro = world.addHero({
+    class: "wizard", level: 5, maxHp: 30, abilities: { int: 16 }, proficiencies: { ...TRAINED },
+    spellcasting: { ability: "int", slots: { 3: { max: 2, used: 0 } }, prepared: ["Animate Dead"], known: [], cantrips: [] },
+  });
+  const raised = await world.invoke("cast_buff", { characterId: necro.id, spell: "Animate Dead", variant: "skeleton" });
+  assert.equal(raised.ok, true, raised.error);
+  const [bones] = raised.result.summoned;
+  await kit.fight(2);
+  const [near, far] = world.enemies();
+  kit.setEnemy(near.id, { maxHp: 200 });
+  kit.setEnemy(far.id, { maxHp: 200, stats: { ...kit.enemy(far.id).stats, attacks: [{ name: "Shortbow", toHit: 4, damage: "1d6+2", type: "piercing", range: 80, longRange: 320 }] } });
+  kit.place(necro.id, 3, 3);
+  kit.place(bones.characterId, 5, 5);
+  kit.place(near.id, 5, 6);
+  kit.place(far.id, 12, 5);
+  const shoot = (target) => kit.swing(bones.characterId, target, [15, 3, 15], { weapon: "Shortbow" });
+
+  // No command: the creature 35 feet off has neither attacked it nor stands
+  // beside it.
+  kit.giveTurn(bones.characterId);
+  const unbidden = await shoot(far.id);
+  assert.equal(unbidden.ok, false, "an uncommanded skeleton shot a creature that never threatened it");
+  // The goblin beside it threatens it: it defends itself.
+  const beside = await kit.swing(bones.characterId, near.id, [15, 3], { weapon: "Shortsword" });
+  assert.equal(beside.ok, true, beside.error);
+
+  // The caster's bonus action commands it; a second command is refused.
+  kit.giveTurn(necro.id);
+  const slotsBefore = world.sheet(necro.id).spellcasting.slots[3].used;
+  const command = await world.invoke("cast_buff", { characterId: necro.id, spell: "Animate Dead", variant: "command" });
+  assert.equal(command.ok, true, command.error);
+  assert.equal(world.encounter().turnBudget.bonusUsed, true, `the command left the bonus action whole: ${JSON.stringify(world.encounter().turnBudget)}`);
+  assert.equal(world.sheet(necro.id).spellcasting.slots[3].used, slotsBefore, "the command spent a slot");
+  const again = await world.invoke("cast_buff", { characterId: necro.id, spell: "Animate Dead", variant: "command" });
+  assert.equal(again.ok, false, "two bonus actions in one turn");
+  kit.giveTurn(bones.characterId);
+  const bidden = await shoot(far.id);
+  assert.equal(bidden.ok, true, bidden.error);
+
+  // Too far to hear the command: refused, nothing spent.
+  world.patch(bones.characterId, { conditions: [], conditionMeta: {} });
+  kit.place(necro.id, 1, 1);
+  kit.place(bones.characterId, 16, 1);
+  kit.giveTurn(necro.id);
+  const farOff = await world.invoke("cast_buff", { characterId: necro.id, spell: "Animate Dead", variant: "command" });
+  assert.equal(farOff.ok, false, "a command reached a skeleton 75 feet away");
+  assert.equal(world.encounter().turnBudget?.bonusUsed ?? false, false, "the refused command spent the bonus action");
+
+  // A creature that attacked it is one it defends itself against.
+  kit.place(bones.characterId, 5, 5);
+  enemyHoldsTheFloor();
+  const struck = await forced([2, 1], () => world.invoke("enemy_attack", { enemyId: far.id, targetCharacterId: bones.characterId }));
+  assert.equal(struck.ok, true, struck.error);
+  kit.giveTurn(bones.characterId);
+  const answered = await shoot(far.id);
+  assert.equal(answered.ok, true, answered.error);
+  await kit.endFight();
+});
+
+// U11. SRD 5.1, Find Familiar: "1st-level conjuration (ritual)", casting
+// time 1 hour, "M (10 gp worth of charcoal, incense, and herbs that must be
+// consumed by fire in a brass brazier)". cast_buff paid the casting;
+// summon_pet's familiar, the other door to the same spell, cost nothing.
+await test("U11: a familiar summoned with summon_pet casts Find Familiar: the ritual's hour and 10 gp of incense, refused without the gold", async () => {
+  await kit.endFight();
+  const { getClock } = await import("../src/lib/db/clock.ts");
+  const wizardWith = (gold) => world.addHero({
+    class: "wizard", level: 3, maxHp: 20, abilities: { int: 16 }, gold, proficiencies: { ...TRAINED },
+    spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 } }, prepared: ["Find Familiar"], known: [], cantrips: [] },
+  });
+  const mage = wizardWith(50);
+  const before = getClock(world.campaignId).instant;
+  const owl = await world.invoke("summon_pet", { characterId: mage.id, kind: "familiar", form: "owl", name: "Hoot" });
+  assert.equal(owl.ok, true, owl.error);
+  assert.equal(petOf(mage.id, "hoot")?.form, "Owl");
+  assert.equal(world.sheet(mage.id).gold, 40, "the incense cost nothing");
+  assert.equal(world.sheet(mage.id).spellcasting.slots[1].used, 0, "a wizard's ritual spent a slot");
+  assert.ok(getClock(world.campaignId).instant > before, "the hour's casting took no time");
+  // No 10 gp of incense, and none carried: no familiar, nothing spent.
+  const poor = wizardWith(0);
+  const broke = await world.invoke("summon_pet", { characterId: poor.id, kind: "familiar", form: "cat" });
+  assert.equal(broke.ok, false, "a familiar bound with no incense");
+  assert.equal(world.sheet(poor.id).pets.length, 0);
+});
+
+// U12. SRD 5.1, Find Familiar: "As an action, you can temporarily dismiss
+// your familiar into a pocket dimension. Alternatively, you can dismiss it
+// forever. As an action while it is temporarily dismissed, you can cause it
+// to reappear in any unoccupied space within 30 feet of you." dismiss_pet
+// struck the familiar off the sheet, so calling it back was a new casting:
+// another hour and another 10 gp.
+await test("U12: a familiar dismissed to its pocket dimension is out of reach, and comes back for an action with no casting", async () => {
+  await kit.endFight();
+  const { getClock } = await import("../src/lib/db/clock.ts");
+  const mage = world.addHero({
+    class: "wizard", level: 3, maxHp: 20, abilities: { int: 16 }, gold: 20, proficiencies: { ...TRAINED },
+    spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 } }, prepared: ["Find Familiar"], known: [], cantrips: [] },
+  });
+  // A cat (2 hit points), so the fire that shows it is back leaves it standing.
+  const called = await world.invoke("summon_pet", { characterId: mage.id, kind: "familiar", form: "cat", name: "Hoot" });
+  assert.equal(called.ok, true, called.error);
+  const hoot = () => world.sheet(mage.id).pets.find((pet) => pet.name === "Hoot");
+
+  // Out of a fight: into the pocket, and nothing reaches it there.
+  const away = await world.invoke("dismiss_pet", { characterId: mage.id, petName: "Hoot" });
+  assert.equal(away.ok, true, away.error);
+  assert.ok(hoot(), "the familiar was struck off rather than set aside");
+  const burned = await world.invoke("apply_damage", { characterId: mage.id, petName: "Hoot", amount: 1, type: "fire" });
+  assert.equal(burned.ok, false, "fire reached a familiar in its pocket dimension");
+  assert.equal(hoot().hp, hoot().maxHp);
+
+  // In a fight, on the wizard's turn: back for their action, no casting.
+  await kit.fight(1);
+  kit.giveTurn(mage.id);
+  const gold = world.sheet(mage.id).gold;
+  const clock = getClock(world.campaignId).instant;
+  const back = await world.invoke("summon_pet", { characterId: mage.id, kind: "familiar", form: "cat" });
+  assert.equal(back.ok, true, back.error);
+  assert.equal(world.sheet(mage.id).gold, gold, "the recall burned incense");
+  assert.equal(getClock(world.campaignId).instant, clock, "the recall took the hour's casting");
+  assert.equal(world.encounter().turnBudget?.actionUsed, true, "the recall cost no action");
+  const struck = await world.invoke("apply_damage", { characterId: mage.id, petName: "Hoot", amount: 1, type: "fire" });
+  assert.equal(struck.ok, true, struck.error);
+  // Its action spent, the wizard cannot send it away again this turn.
+  const again = await world.invoke("dismiss_pet", { characterId: mage.id, petName: "Hoot" });
+  assert.equal(again.ok, false, "a second action in the turn");
+  await kit.endFight();
+
+  // Dismissed while in the pocket: gone for good.
+  await world.invoke("dismiss_pet", { characterId: mage.id, petName: "Hoot" });
+  const forever = await world.invoke("dismiss_pet", { characterId: mage.id, petName: "Hoot" });
+  assert.equal(forever.ok, true, forever.error);
+  assert.equal(hoot(), undefined, "a familiar dismissed from its pocket stayed bound");
+});
+
+// U13. SRD 5.1, Find Familiar: "A familiar can't attack, but it can take
+// other actions as normal"; Help: "you can aid a friendly creature in
+// attacking a creature within 5 feet of you ... If your ally attacks the
+// target before your next turn, the first attack roll is made with
+// advantage." U06 gave the Beast Master's companion its Help; a familiar had
+// no door for it (take_action took a character as the helper), so the
+// wizard spent their own action on the Help, or the owl's was only told.
+await test("U13: a familiar takes the Help action with its own action: the fighter's next swing at the goblin beside it has advantage", async () => {
+  await kit.endFight();
+  const mage = world.addHero({
+    class: "wizard", level: 3, maxHp: 20, abilities: { int: 16 }, gold: 20, proficiencies: { ...TRAINED },
+    spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 } }, prepared: ["Find Familiar"], known: [], cantrips: [] },
+  });
+  const blade = world.addHero({ class: "fighter", level: 3, maxHp: 30, abilities: { str: 16 }, proficiencies: { ...TRAINED }, equipment: [{ name: "Longsword", qty: 1 }] });
+  const called = await world.invoke("summon_pet", { characterId: mage.id, kind: "familiar", form: "cat", name: "Whiskers" });
+  assert.equal(called.ok, true, called.error);
+  await kit.fight(2);
+  const [near, far] = world.enemies();
+  kit.setEnemy(near.id, { maxHp: 200 });
+  kit.place(mage.id, 5, 5);
+  kit.place(near.id, 5, 6);
+  kit.place(blade.id, 6, 6);
+  kit.place(far.id, 12, 12);
+  kit.giveTurn(mage.id);
+  const help = (target) => world.invoke("take_action", { characterId: mage.id, petName: "Whiskers", action: "help", targetCharacterId: blade.id, targetEnemyId: target });
+
+  // The goblin 35 feet off is not within 5 feet of the cat at the wizard's feet.
+  const tooFar = await help(far.id);
+  assert.equal(tooFar.ok, false, "a familiar helped against a creature 35 feet off");
+  const helped = await help(near.id);
+  assert.equal(helped.ok, true, helped.error);
+  assert.equal(world.encounter().turnBudget?.actionUsed ?? false, false, "the familiar's Help took the wizard's action");
+  const twice = await help(near.id);
+  assert.equal(twice.ok, false, "the familiar took two actions in one turn");
+
+  kit.giveTurn(blade.id);
+  const swing = await kit.swing(blade.id, near.id, [15, 3, 4], { weapon: "Longsword" });
+  assert.equal(swing.ok, true, swing.error);
+  assert.equal(d20Faces(swing.toHit).length, 2, `the cat's Help gave the fighter's swing no advantage: ${JSON.stringify(swing.result).slice(0, 300)}`);
+  await kit.endFight();
+});
+
+// U14. SRD 5.1, Underwater Combat: "Creatures and objects that are fully
+// immersed in water have resistance to fire damage"; a wolf's Bite: "If the
+// target is a creature, it must succeed on a DC 11 Strength saving throw or
+// be knocked prone"; Mounted Combat: "If your mount is knocked prone, you
+// can use your reaction to dismount it as it falls and land on your feet.
+// Otherwise, you are dismounted and fall prone." A blow at a plain mount
+// took its dice whole, untyped, and carried nothing onto the horse: the
+// bite that would have thrown it left its rider in the saddle.
+await test("U14: a blow at a plain mount meets its defenses by type, and a bite that knocks it prone throws its rider", async () => {
+  await kit.endFight();
+  const { getMounts } = await import("../src/lib/db/mounts.ts");
+  const rider = world.addHero({ class: "fighter", level: 5, maxHp: 50, proficiencies: { ...TRAINED } });
+  await kit.fight(1);
+  const [enemy] = world.enemies();
+  const flame = { name: "Flame Bite", toHit: 4, damage: "2d6", type: "fire" };
+  const bite = { name: "Bite", toHit: 4, damage: "1d6", type: "piercing", onHit: { save: "str", dc: 11, condition: "prone" } };
+  kit.openField([[5, 5, "~"], [5, 6, "~"]]);
+  kit.place(rider.id, 5, 5);
+  kit.place(enemy.id, 5, 6);
+  const up = await world.invoke("mount_up", { characterId: rider.id, mount: "Warhorse" });
+  assert.equal(up.ok, true, up.error);
+  const horse = () => getMounts(world.campaignId)[rider.id];
+  const full = horse().hp;
+
+  // The horse stands in its rider's water: the fire is halved.
+  kit.setEnemy(enemy.id, { maxHp: 200, stats: { ...kit.enemy(enemy.id).stats, attacks: [flame] } });
+  enemyHoldsTheFloor();
+  const burned = await forced([18, 18, 4, 4], () => world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: rider.id, targetMount: true }));
+  assert.equal(burned.ok, true, burned.error);
+  assert.equal(horse().hp, full - 4, `8 fire on a horse in the water: ${JSON.stringify(burned.result.swings)}`);
+
+  // Out of the water, the wolf's bite: the horse's Strength save fails, it
+  // goes down, and its rider comes off.
+  kit.openField();
+  kit.place(rider.id, 5, 5);
+  kit.place(enemy.id, 5, 6);
+  kit.setEnemy(enemy.id, { stats: { ...kit.enemy(enemy.id).stats, attacks: [bite] } });
+  kit.freshRound();
+  enemyHoldsTheFloor();
+  const thrown = await forced([18, 18, 3, 2, 2, 1, 1], () => world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: rider.id, targetMount: true }));
+  assert.equal(thrown.ok, true, thrown.error);
+  assert.equal(horse(), undefined, `the horse knocked prone kept its rider: ${JSON.stringify(thrown.result.swings)}`);
+  await kit.endFight();
+});
+
+// U15. Ranger's Companion (as the engine implements it): "Once you have the
+// Extra Attack feature, you can make one weapon attack yourself when you
+// command the beast to take the Attack action." U08 made the command one
+// swing of the ranger's Attack action, which leaves a ranger with three
+// attacks (a fighter's Extra Attack (2) beside the ranger's levels) two of
+// their own.
+await test("U15: a Beast Master with three attacks makes exactly one weapon attack of their own beside commanding the companion", async () => {
+  await kit.endFight();
+  const ranger = world.addHero({ class: "ranger", subclass: "Beast Master", level: 16, maxHp: 120, abilities: { str: 16 }, proficiencies: { ...TRAINED }, equipment: [{ name: "Longsword", qty: 1 }] });
+  world.patch(ranger.id, { features: [...world.sheet(ranger.id).features, { name: "Extra Attack (2)", source: "class" }] });
+  const summoned = await world.invoke("summon_pet", { characterId: ranger.id, kind: "beast_companion", form: "wolf" });
+  assert.equal(summoned.ok, true, summoned.error);
+  await kit.fight(1);
+  const [enemy] = world.enemies();
+  kit.setEnemy(enemy.id, { maxHp: 400 });
+  kit.place(ranger.id, 5, 5);
+  kit.place(enemy.id, 5, 6);
+
+  // The command, then the ranger's one swing, and no second.
+  kit.giveTurn(ranger.id);
+  const bite = await forced([15, 1, 1, 20], () => world.invoke("pet_attack", { characterId: ranger.id, targetEnemyId: enemy.id }));
+  assert.equal(bite.ok, true, bite.error);
+  const own = await kit.swing(ranger.id, enemy.id, [15, 3], { weapon: "Longsword" });
+  assert.equal(own.ok, true, own.error);
+  const second = await kit.swing(ranger.id, enemy.id, [15, 3], { weapon: "Longsword" });
+  assert.equal(second.ok, false, "a second weapon attack of the ranger's own beside the command");
+
+  // The ranger's swing first, then the command: nothing more of their own.
+  kit.freshTurn();
+  kit.giveTurn(ranger.id);
+  const first = await kit.swing(ranger.id, enemy.id, [15, 3], { weapon: "Longsword" });
+  assert.equal(first.ok, true, first.error);
+  const then = await forced([15, 1, 1, 20], () => world.invoke("pet_attack", { characterId: ranger.id, targetEnemyId: enemy.id }));
+  assert.equal(then.ok, true, then.error);
+  const more = await kit.swing(ranger.id, enemy.id, [15, 3], { weapon: "Longsword" });
+  assert.equal(more.ok, false, "a second weapon attack of the ranger's own after commanding");
   await kit.endFight();
 });
 
