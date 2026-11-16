@@ -68,6 +68,8 @@ export function foldDamageRiders(input: {
   surprised?: boolean;
   // Thrown past its reach (attack-damage-riders.ts).
   atRange?: boolean;
+  // Made off the attacker's own turn (attack-damage-riders.ts).
+  offTurn?: boolean;
 }) {
   const { campaignId, sheet } = input;
   // Gutter Fighting's "a creature that has not acted yet this combat".

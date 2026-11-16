@@ -267,4 +267,50 @@ await test("A06: Great Weapon Fighting rerolls the 1s and 2s of an opportunity a
   getDatabase().prepare("UPDATE character_sheets SET is_companion = 0 WHERE id = ?").run(fighter.id);
 });
 
+// A07. SRD 5.1, Life Domain, Divine Strike: "Once on each of your turns
+// when you hit a creature with a weapon attack, you can cause the attack to
+// deal an extra 1d8 radiant damage to the target." An opportunity attack is
+// made on someone else's turn, and the cleric's mace dealt the 1d8 there too.
+await test("A07: Divine Strike rides a hit on the cleric's own turn, never an opportunity attack on another's", async () => {
+  await kit.endFight();
+  const { getDatabase } = await import("../src/lib/db/core.ts");
+  const cleric = world.addHero({
+    class: "cleric",
+    subclass: "Life Domain",
+    level: 8,
+    abilities: { str: 14 },
+    proficiencies: { ...TRAINED },
+    equipment: [{ name: "Mace", qty: 1 }],
+    features: [{ name: "Divine Strike", source: "class", classId: "cleric" }],
+  });
+  getDatabase().prepare("UPDATE character_sheets SET is_companion = 1 WHERE id = ?").run(cleric.id);
+  await kit.fight(1);
+  const [goblin] = world.enemies();
+  kit.setEnemy(goblin.id, { maxHp: 80, currentHp: 80 });
+  kit.place(cleric.id, 6, 7);
+  kit.place(goblin.id, 5, 7);
+  const d8s = () => world.diceLog().filter((die) => die.sides === 8).length;
+  kit.giveTurn(cleric.id);
+  world.clearDice();
+  world.diceLog();
+  world.dice(18, 3, 4);
+  const own = await kit.attack(cleric.id, goblin.id, { weapon: "Mace" });
+  world.clearDice();
+  assert.equal(own.ok, true, own.error);
+  const ownD8s = d8s();
+  // The goblin's own turn: it walks off, and the cleric strikes as it goes.
+  foesTurn(goblin);
+  world.clearDice();
+  world.diceLog();
+  world.dice(18, 3);
+  const walked = await world.invoke("move_token", { token: goblin.id, x: 2, y: 7 });
+  world.clearDice();
+  assert.equal(walked.ok, true, walked.error);
+  const offTurnD8s = d8s();
+  assert.equal(ownD8s, 1, "the staging: Divine Strike's 1d8 rides the cleric's own hit");
+  assert.equal(offTurnD8s, 0, "Divine Strike's 1d8 rode an opportunity attack on the goblin's turn");
+  await kit.endFight();
+  getDatabase().prepare("UPDATE character_sheets SET is_companion = 0 WHERE id = ?").run(cleric.id);
+});
+
 finish();

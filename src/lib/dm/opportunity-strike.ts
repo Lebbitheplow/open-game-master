@@ -158,6 +158,8 @@ export function pcOpportunitySwing(input: {
     kind: "weapon",
     enemy,
     marked: marks.applies,
+    // Always on the walker's turn, never the attacker's own.
+    offTurn: true,
   });
   // A magic weapon's dice against this creature, each kept at its own type
   // (a Flame Tongue's fire), as on the character's own turn

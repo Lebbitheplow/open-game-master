@@ -55,6 +55,9 @@ export type AttackDamageRiders = {
   toHitRiders: Array<{ feature: string; amount: number }>;
 };
 
+// Riders whose text gives them only on the attacker's own turns.
+const OWN_TURN_RIDERS = ["divine strike", "divine fury"];
+
 export function attackDamageRiders(input: {
   sheet: CharacterSheet;
   profile: AttackProfile;
@@ -84,6 +87,9 @@ export function attackDamageRiders(input: {
   ranFt?: number;
   // The attacker is aloft on the board (genre-gb-airborne.ts).
   airborne?: boolean;
+  // Made off the attacker's own turn (an opportunity attack, a readied
+  // swing): a rider written for "each of your turns" stays off it.
+  offTurn?: boolean;
 }): AttackDamageRiders {
   const { sheet, riders, kind, marked } = input;
   // A thrown handaxe 20 feet off took Rage's bonus as a melee swing did.
@@ -126,6 +132,12 @@ export function attackDamageRiders(input: {
             }
             // A rider of one weapon (the lightning launcher's extra 1d6).
             if (rider.weapon && textKey(rider.weapon) !== textKey(profile.weapon)) {
+              return false;
+            }
+            // SRD 5.1, Divine Strike: "Once on each of your turns when you hit"
+            // (Divine Fury: "the first creature you hit on each of your turns").
+            // An opportunity attack on the goblin's turn dealt the 1d8 too.
+            if (input.offTurn && OWN_TURN_RIDERS.some((name) => isNamed(rider.feature, name))) {
               return false;
             }
             // An authored rider's own gate holds too (Empowered Arms: the
