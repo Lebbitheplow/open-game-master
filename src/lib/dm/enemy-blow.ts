@@ -50,7 +50,14 @@ function applyBlow(
   damageType: string | undefined,
   blow: DamageBlow | undefined,
 ): Record<string, unknown> {
-  const amount = Math.max(1, roll.total);
+  // No floor of 1 (SRD 5.1 gives damage none): a total a penalty brings to 0
+  // or less deals nothing, as pc_attack and every attack door deal it. A
+  // GM's "1d4-2" that rolled a 1 took a hit point, and so did a player's
+  // physical damage die landed through here.
+  const amount = Math.max(0, roll.total);
+  if (amount === 0) {
+    return { ok: true, name: enemy.displayName, hp: `${enemy.currentHp}/${enemy.maxHp}`, damageApplied: 0 };
+  }
   const magical = blow?.magical === true;
   const material = blow?.material ?? {};
   const parts =

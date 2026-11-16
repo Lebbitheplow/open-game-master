@@ -501,6 +501,24 @@ await test("G12: a Champion's held Bardic Inspiration die lifts a natural 19 tha
   assert.deepEqual(card.thrown.options.map((option) => option.id), ["bardic"]);
 });
 
+// ---- G13: the GM's targeted damage roll of 0 deals 0 ----
+
+await test("G13: a damage roll the GM sends at a creature that totals 0 deals 0, not 1", async () => {
+  // SRD 5.1 gives damage no floor: a penalty can leave nothing, as pc_attack
+  // and every attack door leave 0 (G04). request_roll with targetEnemyId
+  // floored the total at 1 (enemy-blow.ts applyBlow).
+  const dummy = await freshArena();
+  world.clearDice();
+  world.dice(1);
+  // The GM's own roll (an NPC ally's cut): a party character's damage on a
+  // creature goes through pc_attack instead.
+  const out = await world.invoke("request_roll", { kind: "damage", expression: "1d4-2", targetEnemyId: dummy.id, reason: "a weak cut" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.total, -1);
+  assert.equal(kit.dummy().currentHp, dummy.currentHp, `a total under 1 took a hit point: ${JSON.stringify(out.result)}`);
+});
+
 await kit.endFight();
 world.close();
 finish();
