@@ -120,4 +120,37 @@ await test("U01: a pet in its owner's water swings, is struck and burns by the u
   await kit.endFight();
 });
 
+// U02. Ranger's Companion: "Add your proficiency bonus to the beast's AC,
+// attack rolls, and damage rolls, as well as to any saving throws and skills
+// it is proficient in. Its hit point maximum equals its normal maximum or
+// four times your ranger level, whichever is higher." summon_pet wrote the
+// numbers once: a 4th-level ranger's wolf kept 16 hit points and its +2
+// after the ranger reached 5th level.
+await test("U02: a ranger's companion keeps up with the ranger's level-ups", async () => {
+  const { buildLevelUp } = await import("../src/lib/srd/level-up.ts");
+  const { classGrantsFor } = await import("../src/lib/characters/catalog.ts");
+  const ranger = world.addHero({ class: "ranger", subclass: "Beast Master", level: 4, maxHp: 36, proficiencies: { ...TRAINED } });
+  const summoned = await world.invoke("summon_pet", { characterId: ranger.id, kind: "beast_companion", form: "wolf" });
+  assert.equal(summoned.ok, true, summoned.error);
+  const wolf = () => petOf(ranger.id, "wolf");
+  const at4 = wolf();
+  assert.equal(at4.maxHp, 16, "four times the ranger's 4th level");
+  assert.equal(at4.ac, 13 + 2);
+  // Hurt by 3 before the level comes.
+  world.patch(ranger.id, { pets: [{ ...at4, hp: 13 }], xp: 6500 });
+  const sheet = world.sheet(ranger.id);
+  const context = { hpMethod: "average", multiclassAllowed: true, classOf: classGrantsFor, racialCantrips: 0, spellOf: () => null, featOf: () => null, subclassOffered: () => true, rollDie: () => 1 };
+  const leveled = buildLevelUp(sheet, { level: 5, maxHp: sheet.maxHp, currentHp: sheet.currentHp, hitDice: sheet.hitDice }, context);
+  assert.ok(!("error" in leveled), leveled.error);
+  const at5 = leveled.patch.pets?.find((pet) => pet.name === at4.name);
+  assert.ok(at5, "the level-up left the wolf as summoned at 4th level");
+  assert.equal(at5.maxHp, 20, "four times the ranger's 5th level");
+  assert.equal(at5.hp, 17, "the 4 hit points the maximum gained, on top of its 13");
+  assert.equal(at5.ac, 13 + 3, "the wolf's 13 and the ranger's new +3");
+  assert.equal(at5.attacks[0].toHit, at4.attacks[0].toHit + 1, "the bite's bonus rises with the proficiency bonus");
+  assert.match(at5.attacks[0].damage, /\+3$/, `the bite's damage adds the new +3: ${at5.attacks[0].damage}`);
+  assert.equal(at5.saves.dex, at4.saves.dex, "a save the wolf is not proficient in stays its own");
+  assert.deepEqual(at5.conditions, at4.conditions, "what it is doing is its own");
+});
+
 finish();
