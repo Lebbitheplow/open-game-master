@@ -250,7 +250,7 @@ html[data-theme-ornaments="true"][data-theme] .theme-overlay .cine-tabletop-clos
 @media (max-width: 1023px) {
   html[data-theme-ornaments="true"][data-theme] .theme-overlay {
     border-width: 4px;
-    --theme-overlay-gutter: max(1.25rem, calc(var(--theme-table-frame-width-small, 28px) - 4px + 8px));
+    --theme-overlay-gutter: max(1.25rem, calc(var(--theme-table-frame-width-small, 20px) - 4px + 8px));
   }
 }
 @media (forced-colors: active) {

@@ -1,7 +1,7 @@
 /* gothic: both brightness palettes. See docs/appearance-themes.md. */
 [data-appearance="gothic"] {
   --theme-table-corner-size: 48px;
-  --theme-table-corner-size-small: 32px;
+  --theme-table-corner-size-small: 23px;
   --material-fitting-radius: 50% 50% 3px 3px;
   --material-control-radius: 12px 12px 2px 2px;
   --material-panel-radius: 18px 18px 3px 3px;

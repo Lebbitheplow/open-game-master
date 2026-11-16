@@ -1,7 +1,7 @@
 /* arcane: both brightness palettes. See docs/appearance-themes.md. */
 [data-appearance="arcane"] {
   --theme-table-corner-size: 48px;
-  --theme-table-corner-size-small: 32px;
+  --theme-table-corner-size-small: 23px;
   --material-fitting-radius: 50%;
   --material-control-radius: 6px;
   --material-panel-radius: 12px 4px;
