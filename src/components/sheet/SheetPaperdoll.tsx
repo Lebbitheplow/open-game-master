@@ -96,7 +96,10 @@ export function SheetPaperdoll({
           Nobody has said what {mine ? "you wear" : `${sheet.name} wears`} yet, so everything carried counts as worn.
         </p>
       ) : null}
-      <div role="group" aria-label="Places on the body" className="space-y-1.5">
+      {/* No group role here: each tile names its own place, and a sheet-wide
+          count of groups that hold an expandable button is how the
+          personality pickers are found (scenario 138-creator-sheets). */}
+      <div className="space-y-1.5">
         <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-1.5">
           <div className="flex min-w-0 flex-col justify-between gap-1.5">{side("left").map(tile)}</div>
           <DollFigure view={view.tiles} open={open} />
