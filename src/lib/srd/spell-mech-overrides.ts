@@ -165,6 +165,7 @@ export const MECH_OVERRIDES: Record<string, SpellMech> = {
       condition: "blinded",
       rounds: 1,
       skipConditions: ["unconscious", "blinded"],
+      untilCasterTurnEnd: true,
     },
     note: "No saving throw: one roll of the pool for the casting, spent from the lowest hit points up; blinded until the end of the caster's next turn.",
   },

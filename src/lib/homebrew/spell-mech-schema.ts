@@ -165,6 +165,7 @@ export const spellMechSchema = z.object({
       immuneCondition: word().optional(),
       skipConditions: words(6).optional(),
       endsOnDamage: z.boolean().optional(),
+      untilCasterTurnEnd: z.boolean().optional(),
     })
     .optional(),
   targets: z.object({ count: int(1, 100), perSlotLevel: int(0, 10).optional() }).optional(),

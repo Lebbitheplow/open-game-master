@@ -23,7 +23,7 @@ import { findSpellByName, spellMechanicsFor } from "@/lib/content";
 import { bakedSlotDurations, bakedSpellDuration } from "@/lib/content/baked-spells";
 import { authoredSpellRow, durationRounds } from "@/lib/srd/spell-mechanics";
 import { roundsAtSlot, slotDurationsFromText } from "@/lib/srd/spell-duration";
-import type { SpellCondition } from "@/lib/srd/spell-mech-types";
+import type { SpellCondition, SpellMech } from "@/lib/srd/spell-mech-types";
 import { conditionEffectsFor, type SaveAbilityId } from "@/lib/srd/condition-effects";
 import { MECH_OVERRIDES } from "@/lib/srd/spell-mechanics";
 import { getDmTurn } from "@/lib/db/dm-turns";
@@ -111,6 +111,30 @@ export function spellConditionMeta(
       ? { saveOnDamage: { ability: save.ability, dc: save.dc, ...(condition.saveOnDamage === "advantage" ? { advantage: true } : {}) } }
       : {}),
   };
+}
+
+// What a hit point pool lays on each creature it takes (Sleep, Color Spray):
+// the pool's rounds, or, for Color Spray ("blinded until the end of your next
+// turn", SRD 5.1), a tie to the end of the caster's next turn. Counted as one
+// round from the caster's turn start, the blindness ended as that next turn
+// began, and the caster's own attacks lost the advantage it gives.
+export function poolConditionMeta(pool: Pick<NonNullable<SpellMech["hitPointPool"]>, "rounds" | "endsOnDamage" | "untilCasterTurnEnd">, source: SpellSource): ConditionMeta {
+  if (pool.untilCasterTurnEnd) {
+    return {
+      spell: source.spell.slice(0, 80),
+      source: source.casterId.slice(0, 80),
+      ...(source.slotLevel ? { slotLevel: source.slotLevel } : {}),
+      ...(pool.endsOnDamage ? { endsOnDamage: true } : {}),
+      untilTurnEndOf: source.casterId.slice(0, 80),
+    };
+  }
+  return spellConditionMeta({ rounds: pool.rounds, endsOnDamage: pool.endsOnDamage }, source, null);
+}
+
+// The line a tool result gives for how long it lasts.
+export function poolDurationLine(pool: Pick<NonNullable<SpellMech["hitPointPool"]>, "rounds" | "endsOnDamage" | "untilCasterTurnEnd">, damage: string): string {
+  const span = pool.untilCasterTurnEnd ? "until the end of the caster's next turn" : `${pool.rounds} round${pool.rounds === 1 ? "" : "s"}`;
+  return `${span}${pool.endsOnDamage ? damage : ""}`;
 }
 
 // Lays a spell's conditions on a living enemy, each one it is not immune to.

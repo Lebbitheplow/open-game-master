@@ -200,6 +200,10 @@ export type SpellMech = {
     // skips the unconscious and the blinded).
     skipConditions?: string[];
     endsOnDamage?: boolean;
+    // Lasts until the end of the caster's next turn, not a count of rounds
+    // (Color Spray): a round counted at the caster's turn start ended it as
+    // that turn began.
+    untilCasterTurnEnd?: boolean;
   };
   // How many creatures one casting may affect, and how many more each slot
   // level above the spell's own adds. Absent means one, or with `area` every

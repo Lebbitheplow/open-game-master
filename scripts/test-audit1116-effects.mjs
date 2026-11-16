@@ -90,13 +90,15 @@ await test("Y01: the warded creature's opportunity attack ends its Sanctuary", a
 // throw. On a successful save, the spell ends for that creature." The row
 // laid the fright for its minute with no save at all, so a goblin that fled
 // behind a wall stayed frightened for the whole minute.
-async function fearStage() {
+// A wizard, a goblin and a fighter, in that order, on a board, the wizard's
+// turn: the stage the spells below are cast on.
+async function castStage(prepared) {
   const { openWorld } = await import("./lib/enforce-world.mjs");
   const world = await openWorld({ gameSettings: { ttsEnabled: false } });
   const kit = await combatKit(world);
   const wizard = world.addHero({
-    name: "Wiz", class: "wizard", level: 5, abilities: { int: 18, con: 14, dex: 12 }, proficiencies: { ...TRAINED, saves: ["int", "wis"] },
-    spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 }, 3: { max: 2, used: 0 } }, known: [], prepared: ["Fear"], cantrips: [] },
+    name: "Wiz", class: "wizard", level: 9, abilities: { int: 18, con: 14, dex: 12 }, proficiencies: { ...TRAINED, saves: ["int", "wis"] },
+    spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 }, 3: { max: 3, used: 0 }, 4: { max: 3, used: 0 }, 5: { max: 1, used: 0 } }, known: [], prepared, cantrips: [] },
   });
   const fighter = world.addHero({ name: "Fig", class: "fighter", level: 5, abilities: { str: 16 }, proficiencies: TRAINED, equipment: [{ name: "Longsword", qty: 1 }] });
   await kit.fight(1, { heroFaces: { [wizard.id]: 20, [fighter.id]: 5 } });
@@ -107,6 +109,18 @@ async function fearStage() {
   kit.place(wizard.id, 2, 7);
   kit.place(goblin.id, 4, 7);
   kit.place(fighter.id, 2, 2);
+  // The goblin's turn ends after the wizard's: the pointer walks past it,
+  // and its turn's end comes with the next move (test-enforce-turn-end-saves.mjs).
+  const roundOn = () => {
+    assert.equal(kit.endTurn(wizard.userId), true);
+    assert.equal(kit.endTurn(fighter.userId), true);
+  };
+  return { world, kit, wizard, fighter, goblin, roundOn };
+}
+
+async function fearStage() {
+  const staged = await castStage(["Fear"]);
+  const { world, kit, wizard, goblin } = staged;
   world.dice(1);
   const cast = await world.invoke("aoe_damage", { casterCharacterId: wizard.id, spell: "Fear", enemyIds: [goblin.id], level: 3 });
   world.clearDice();
@@ -114,13 +128,7 @@ async function fearStage() {
   assert.ok(kit.enemy(goblin.id).conditions.includes("frightened"), "the goblin failed and is frightened");
   // From here any save it rolls succeeds.
   kit.setEnemy(goblin.id, { stats: { saveMods: { ...DUMMY.saveMods, wis: 40 } } });
-  // The goblin's turn ends after the wizard's: the pointer walks past it,
-  // and its turn's end comes with the next move (test-enforce-turn-end-saves.mjs).
-  const roundOn = () => {
-    assert.equal(kit.endTurn(wizard.userId), true);
-    assert.equal(kit.endTurn(fighter.userId), true);
-  };
-  return { world, kit, wizard, goblin, roundOn };
+  return staged;
 }
 
 await test("Y02: a creature frightened by Fear that ends its turn behind a wall, out of the caster's sight, saves and shakes it off", async () => {
@@ -138,6 +146,28 @@ await test("Y02: a creature frightened by Fear that ends its turn still in the c
   kit.place(goblin.id, 14, 7);
   roundOn();
   assert.ok(kit.enemy(goblin.id).conditions.includes("frightened"), "in plain sight the fear holds");
+});
+
+// ---- Y03: Color Spray blinds until the end of the caster's next turn ----
+
+// SRD 5.1, Color Spray: "Each creature affected by this spell is blinded
+// until the end of your next turn." The pool's one round was counted at the
+// caster's turn start, so the blindness ended as the caster's next turn
+// began, and the caster's own attacks that turn lost the advantage.
+await test("Y03: a goblin blinded by Color Spray is still blinded through the caster's next turn, and sees again as it ends", async () => {
+  const { world, kit, wizard, fighter, goblin } = await castStage(["Color Spray"]);
+  kit.setEnemy(goblin.id, { maxHp: 10, currentHp: 10 });
+  world.dice(10, 10, 10, 10, 10, 10);
+  const cast = await world.invoke("aoe_damage", { casterCharacterId: wizard.id, spell: "Color Spray", enemyIds: [goblin.id], level: 1 });
+  world.clearDice();
+  assert.equal(cast.ok, true, cast.error);
+  assert.ok(kit.enemy(goblin.id).conditions.includes("blinded"), "the spray blinded it");
+  kit.endTurn(wizard.userId);
+  kit.endTurn(fighter.userId);
+  assert.equal(kit.current()?.characterId, wizard.id, "the caster's next turn");
+  assert.ok(kit.enemy(goblin.id).conditions.includes("blinded"), "blinded through the caster's next turn");
+  kit.endTurn(wizard.userId);
+  assert.ok(!kit.enemy(goblin.id).conditions.includes("blinded"), "it ends as that turn ends");
 });
 
 closeTables();
