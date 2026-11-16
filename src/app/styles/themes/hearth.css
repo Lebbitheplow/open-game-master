@@ -76,7 +76,8 @@
 }
 
 /* Cabinet beading echoes the painted rail without introducing forest motifs. */
-html[data-appearance="hearth"] :is(.ornate::before, .ornate::after) {
+html[data-appearance="hearth"] .ornate::before,
+html[data-appearance="hearth"] .ornate::after {
   border-style: double;
   border-radius: 3px;
 }

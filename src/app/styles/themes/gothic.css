@@ -73,5 +73,6 @@
   --appearance-motif-size: 160px 240px;
   --appearance-corner: 0.3rem;
 }
-html[data-appearance="gothic"] :is(.ornate::before, .ornate::after) { width: 20px; height: 20px; border-style: double; }
+html[data-appearance="gothic"] .ornate::before,
+html[data-appearance="gothic"] .ornate::after { width: 20px; height: 20px; border-style: double; }
 [data-appearance="gothic"] > .appearance-preview-frame { border-radius: 48% 48% 0.2rem 0.2rem; }

@@ -60,7 +60,8 @@
   --appearance-motif-size: 200px 120px;
   --appearance-corner: 1.1rem;
 }
-html[data-appearance="tide"] :is(.ornate::before, .ornate::after) { border-radius: 50%; width: 18px; height: 18px; }
+html[data-appearance="tide"] .ornate::before,
+html[data-appearance="tide"] .ornate::after { border-radius: 50%; width: 18px; height: 18px; }
 
 /* Driftwood is a pale grain, so the night washes are nearly opaque: enough
    shows through to read as wood without lifting the surface under the text.

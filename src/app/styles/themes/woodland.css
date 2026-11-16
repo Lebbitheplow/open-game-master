@@ -57,7 +57,8 @@
   --appearance-motif-size: 180px 240px;
   --appearance-corner: 1.25rem 0.4rem 1.25rem 0.4rem;
 }
-html[data-appearance="woodland"] :is(.ornate::before, .ornate::after) { border-radius: 80% 0; width: 22px; height: 22px; }
+html[data-appearance="woodland"] .ornate::before,
+html[data-appearance="woodland"] .ornate::after { border-radius: 80% 0; width: 22px; height: 22px; }
 [data-appearance="woodland"] {
   --material-grain: var(--theme-art-texture);
   --material-frame: var(--theme-art-frame);

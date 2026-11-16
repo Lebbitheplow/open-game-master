@@ -93,7 +93,8 @@
   --appearance-corner: 0.2rem;
 }
 /* Riveted corner brackets where a flat panel keeps the app's own. */
-html[data-appearance="forge"] :is(.ornate::before, .ornate::after) { width: 18px; height: 18px; border-width: 2px; }
+html[data-appearance="forge"] .ornate::before,
+html[data-appearance="forge"] .ornate::after { width: 18px; height: 18px; border-width: 2px; }
 [data-appearance="forge"] {
   /* The stone rail is opaque to its inner edge. At the shared 40px it sat
      over the last letter of the desktop rail's labels with enlarged text

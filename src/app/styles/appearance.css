@@ -45,7 +45,8 @@ html[data-appearance][data-theme-base="plain"] :is(.gold-title, .kit-select-chev
 html[data-appearance][data-theme-base="plain"] :is(.section-head-rule, .lobby-head-rule) {
   background: linear-gradient(90deg, var(--appearance-rule), transparent);
 }
-html[data-appearance][data-theme-base="plain"] :is(.ornate::before, .ornate::after) { border-color: var(--color-amber-500); }
+html[data-appearance][data-theme-base="plain"] .ornate::before,
+html[data-appearance][data-theme-base="plain"] .ornate::after { border-color: var(--color-amber-500); }
 html[data-appearance][data-theme-base="plain"] .kit-switch {
   background: var(--color-stone-800);
   border-color: var(--appearance-rule);

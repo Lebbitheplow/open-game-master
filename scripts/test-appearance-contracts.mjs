@@ -31,6 +31,15 @@ await test('scoping guard rejects leaks rather than merely finding an owner subs
   assert.throws(()=>assertSharedCss('[data-appearance="probe"] {color:red}','shared.css'));
   assertThemeCss('@media (width < 40rem) {html[data-appearance="probe"] :is(.a,.b), [data-appearance="probe"] > .c {color:red}}','probe');
 });
+await test('no stylesheet puts a pseudo-element inside :is() or :where(), where it matches nothing', () => {
+  // :is(.ornate::before, .ornate::after) is invalid; the build compiled six
+  // theme rules to an empty :is() and none of them ever applied.
+  const styles=path.join(repo,'src/app/styles');
+  for (const file of readdirSync(styles,{recursive:true}).filter(file=>file.endsWith('.css'))) {
+    const css=readFileSync(path.join(styles,file),'utf8').replace(/\/\*[\s\S]*?\*\//g,'');
+    assert.doesNotMatch(css,/:(?:is|where)\([^)]*::/,`src/app/styles/${file}: write each pseudo-element as its own selector`);
+  }
+});
 await test('shipped art satisfies transparent frame/corner and opaque surface contracts', async () => {
   for (const theme of APPEARANCE_THEMES) for (const [slot,asset] of Object.entries(theme.art??{})) {
     try {await assertArtAsset(path.join(repo,'public',asset),slot,theme.cornerScale??1,theme.frameSlice??22);}
