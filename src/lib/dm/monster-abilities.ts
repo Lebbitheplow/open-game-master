@@ -383,8 +383,11 @@ export function exhaustedTiles(conditions: string[], tiles: number): number {
 }
 
 // The most hit points a creature may have: halved from level 4.
+// Never below 1 by the halving, as a hero's maximum (condition-logic.ts
+// exhaustionMaxHp): a 1 hit point creature at exhaustion 4 was capped at 0
+// and left alive at 0.
 export function enemyHpCap(enemy: { maxHp: number; conditions: string[] }): number {
-  return enemyExhaustion(enemy.conditions) >= 4 ? Math.floor(enemy.maxHp / 2) : enemy.maxHp;
+  return enemyExhaustion(enemy.conditions) >= 4 ? Math.max(1, Math.floor(enemy.maxHp / 2)) : enemy.maxHp;
 }
 
 // ---- traits the engine reads ----

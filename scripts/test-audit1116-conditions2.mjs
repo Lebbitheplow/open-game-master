@@ -318,4 +318,13 @@ await test("D16: a rider's exhaustion does not slow the mount", async () => {
   assert.equal(budget.speed, 60, `the warhorse moved at ${budget.speed} under a tired rider`);
 });
 
+// D19. The halving never leaves a living creature no maximum at all, as a
+// hero's never does (condition-logic.ts exhaustionMaxHp keeps 1): a 1 hit
+// point creature at exhaustion 4 was capped at 0 and left "alive" at 0.
+await test("D19: a creature's halved maximum is never below 1", async () => {
+  const { enemyHpCap } = await import("../src/lib/dm/monster-abilities.ts");
+  assert.equal(enemyHpCap({ maxHp: 1, conditions: ["exhaustion 4"] }), 1);
+  assert.equal(enemyHpCap({ maxHp: 7, conditions: ["exhaustion 4"] }), 3);
+});
+
 finish();
