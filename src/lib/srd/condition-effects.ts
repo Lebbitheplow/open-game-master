@@ -212,6 +212,7 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
     ],
     onHitDice: { dice: "1d4", type: "" },
     weaponOnly: true,
+    sizesWeapons: true,
   },
   {
     id: "reduced",
@@ -224,6 +225,8 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
     ],
     onHitDice: { dice: "-1d4", type: "" },
     weaponOnly: true,
+    sizesWeapons: true,
+    damageFloor: 1,
   },
   ...STRIKE_CONDITION_EFFECTS,
   {

@@ -379,5 +379,50 @@ await test("Y09: an invisible goblin outlined in Faerie Fire attacks with no adv
   assert.equal(d20Faces(lastAttack()).length, 1, "one die");
 });
 
+// ---- Y10: Enlarge/Reduce on a creature's own weapon, and Reduce's floor of 1 ----
+
+// SRD 5.1, Enlarge/Reduce: enlarged, "the target's attacks with them deal
+// 1d4 extra damage"; reduced, "1d4 less damage (this can't reduce the damage
+// below 1)". The die rode a character's weapon, and could take a dagger's
+// hit to nothing; a creature's stat-block attacks never met it, so the
+// wizard's Reduce on the ogre changed nothing it dealt.
+const sizeOn = (goblin, condition, source) =>
+  getDatabase().prepare("UPDATE encounter_enemies SET conditions_json = ?, condition_meta_json = ? WHERE id = ?")
+    .run(JSON.stringify([condition]), JSON.stringify({ [condition]: { spell: "Enlarge/Reduce", source, rounds: 10 } }), goblin.id);
+
+await test("Y10: a reduced character's dagger hit deals at least 1 however low the dice fall", async () => {
+  const { world, sheets: [fighter], enemies: [goblin] } = await table([{ ...FIGHTER, abilities: { str: 10, dex: 10 }, equipment: [{ name: "Dagger", qty: 1, equipped: true }] }]);
+  world.patch(fighter.id, { conditions: ["reduced"], conditionMeta: { reduced: { spell: "Enlarge/Reduce", source: fighter.id, rounds: 10 } } });
+  // The attack's d20, the dagger's d4 at 1, Reduce's d4 at 4.
+  world.dice(15, 1, 4);
+  const out = await world.invoke("pc_attack", { characterId: fighter.id, targetEnemyId: goblin.id, weapon: "Dagger" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(enemyOf(world, goblin.id).currentHp, 89, "1 damage, not 0");
+});
+
+await test("Y10: a reduced goblin's club deals 1d4 less", async () => {
+  const { world, sheets: [fighter], enemies: [goblin] } = await table([FIGHTER]);
+  sizeOn(goblin, "reduced", fighter.id);
+  const before = world.sheet(fighter.id).currentHp;
+  // The attack's d20, the club's d6 at 6, Reduce's d4 at 4: 6 + 2 - 4.
+  world.dice(19, 6, 4);
+  const out = await world.invoke("enemy_attack", { enemyId: goblin.id, targetCharacterId: fighter.id, characterId: fighter.id });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(before - world.sheet(fighter.id).currentHp, 4);
+});
+
+await test("Y10: an enlarged goblin's club deals 1d4 more", async () => {
+  const { world, sheets: [fighter], enemies: [goblin] } = await table([FIGHTER]);
+  sizeOn(goblin, "enlarged", goblin.id);
+  const before = world.sheet(fighter.id).currentHp;
+  world.dice(19, 6, 4);
+  const out = await world.invoke("enemy_attack", { enemyId: goblin.id, targetCharacterId: fighter.id, characterId: fighter.id });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(before - world.sheet(fighter.id).currentHp, 12, "6 + 2 + 4");
+});
+
 closeTables();
 finish();

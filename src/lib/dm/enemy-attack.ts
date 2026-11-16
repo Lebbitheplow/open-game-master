@@ -55,7 +55,7 @@ import { critDamageExpression, ordinaryOfCritical } from "@/lib/dm/encounter-log
 import { wornArmorTurnsCrits } from "@/lib/srd/armor";
 import { resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
 import { approachTarget, reachesThisTurn, spendEnemyAction, standUpIfProne } from "@/lib/dm/enemy-approach";
-import { blowByType, resolveOnHit, scaledParts } from "@/lib/dm/enemy-hit";
+import { blowByType, resolveOnHit, scaledParts, sizedAttack } from "@/lib/dm/enemy-hit";
 import { applyPcDamage, blowDefenses, meetDefenses, type BlowFlags } from "@/lib/dm/pc-damage";
 import { thoughtShieldBack } from "@/lib/dm/thought-shield";
 import { effectOutcome } from "@/lib/dm/effect-tools";
@@ -896,6 +896,10 @@ export function handleEnemyAttack(
     if (charge) {
       attack = withChargeDice(attack, charge);
     }
+    // Enlarge/Reduce on the creature: its weapons grew or shrank with it
+    // (enemy-hit.ts sizedAttack).
+    const sized = sizedAttack(attack, standing.conditions);
+    attack = sized.attack;
     // Martial Advantage and Surprise Attack add their dice to the blow
     // (src/lib/dm/monster-traits.ts), doubled on a critical hit like the rest.
     const bonus = hitTraitDice(encounter, standing, target.id, attack, martialSpent);
@@ -932,7 +936,7 @@ export function handleEnemyAttack(
     // hit's damage to 0, never below it.
     const blow = blowByType(attack, damageOutcome, crit);
     // Sepulchral Aura and Numb to the Lash (genre-a-dark-fantasy-wards.ts).
-    const warded = darkFantasyWeaponWard(encounter.id, standing.id, getSheetById(target.id) ?? target, attack, shrunk(blow.amount));
+    const warded = darkFantasyWeaponWard(encounter.id, standing.id, getSheetById(target.id) ?? target, attack, shrunk(Math.max(sized.floor, blow.amount)));
     const dealt = warded.amount;
     notes.push(...warded.notes);
     // A critical that came only from the target lying unconscious at 0 within
