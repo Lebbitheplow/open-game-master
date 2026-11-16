@@ -97,6 +97,7 @@ import { normalizeAbility } from "@/lib/dm/arg-coerce";
 import { breakConcentration } from "@/lib/dm/concentration";
 import { CASTING, castingHeldBy } from "@/lib/dm/long-casting-logic";
 import {
+  characterHealNamed,
   computePurchase,
   computeUseItem,
   computeUseResource,
@@ -1450,6 +1451,13 @@ function dmMutation(
       const walled = swallowCoverError(sheet.id, target.id) ?? (args.targetEnemyId ? swallowCoverError(sheet.id, args.targetEnemyId.trim()) : null);
       if (walled) {
         return { result: walled };
+      }
+      // A healing feature reaches the character targetCharacterId names, and its
+      // user when none is named: aimed at a creature on the board alone, Lay on
+      // Hands healed the paladin instead, from the pool (audit 1116, A08).
+      const healer = !args.targetCharacterId && args.targetEnemyId?.trim() ? characterHealNamed(sheet, resourceName) : null;
+      if (healer) {
+        return { result: { error: `${healer} heals a character: pass their targetCharacterId from GAME STATE, or none for ${sheet.name}. It does not reach ${args.targetEnemyId}, and nobody else is healed in its place. Nothing was spent.`, retry: true } };
       }
       // Intimidating Presence, Holy Nimbus and Divine Intervention resolve in
       // the fight (src/lib/dm/combat-features.ts).

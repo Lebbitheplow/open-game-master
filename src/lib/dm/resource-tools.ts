@@ -406,6 +406,14 @@ function reachRefusal(
   return null;
 }
 
+// The display name of a feature whose spend heals a character (Lay on Hands,
+// a pool of healing dice, a feature's healing roll), or null. Its target is a
+// character named by targetCharacterId, and the user when none is named.
+export function characterHealNamed(sheet: CharacterSheet, resourceName: string): string | null {
+  const def = matchResource(resourceName, sheetCatalog(sheet));
+  return def && (def.effect.kind === "heal_pool" || def.effect.kind === "heal_dice_pool" || def.effect.kind === "heal_target") ? def.displayName : null;
+}
+
 export function computeUseResource(
   campaign: Campaign,
   sheet: CharacterSheet,

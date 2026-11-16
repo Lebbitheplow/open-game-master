@@ -313,4 +313,26 @@ await test("A07: Divine Strike rides a hit on the cleric's own turn, never an op
   getDatabase().prepare("UPDATE character_sheets SET is_companion = 0 WHERE id = ?").run(cleric.id);
 });
 
+// A08. SRD 5.1, Lay on Hands: "you can touch a creature and draw power
+// from the pool to restore a number of hit points to that creature". A
+// touch aimed at a creature on the board (targetEnemyId: an allied soldier
+// fighting beside the party, a captive) healed the paladin instead, and
+// spent the pool on them, though the call never named the paladin.
+await test("A08: a healing feature aimed at a creature it cannot reach heals nobody else in its place", async () => {
+  await kit.endFight();
+  const paladin = world.addHero({ class: "paladin", level: 5, maxHp: 40, proficiencies: { ...TRAINED }, features: [{ name: "Lay on Hands", source: "class", classId: "paladin" }] });
+  await kit.fight(1);
+  const [soldier] = world.enemies();
+  kit.giveTurn(paladin.id);
+  kit.place(paladin.id, 5, 5);
+  kit.place(soldier.id, 5, 6);
+  kit.setEnemy(soldier.id, { currentHp: 10, maxHp: 40 });
+  world.patch(paladin.id, { currentHp: 20 });
+  const touch = await world.invoke("use_resource", { characterId: paladin.id, resource: "Lay on Hands", targetEnemyId: soldier.id, amount: 10 });
+  assert.equal(touch.ok, false, "the touch aimed at the soldier went somewhere else");
+  assert.equal(world.sheet(paladin.id).currentHp, 20, "the paladin healed themself with a touch aimed at another");
+  assert.equal(world.sheet(paladin.id).resources.lay_on_hands.used, 0, "the pool was spent");
+  await kit.endFight();
+});
+
 finish();
