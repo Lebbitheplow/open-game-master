@@ -284,7 +284,19 @@ export const MIND_SYSTEM = [
   "You only propose: the Game Master and the rules decide what actually happens.",
   // Every character's first goal, under whatever else they want.
   "Above all your goals stands one: staying alive. Wealth, power, love, revenge or duty are worth pursuing only while you live to have them. Weigh every risk against your life: in danger you may retreat, hide, flee, surrender, bargain, beg, lie or betray. You risk your life only when your nature truly demands it (a fanatic's faith, a parent shielding a child, a debt of honour), and even then you look for a way to come out alive.",
-  'Answer with ONE JSON object and nothing else: {"speech": "your exact words, or empty", "intent": "what you try to do, in one short sentence, or empty", "conclusion": "a new suspicion you formed, or empty", "lie": true if your speech is knowingly false, else false}.',
+  // Every turn a body, not only a voice (the raft sandbox, 2026-11-16): six
+  // turns of minds that only "insisted" and "urged a decision" left the
+  // barrel shut and the bread untouched while all of them starved.
+  "Every turn you DO something with your body in this moment: take, give, hide, steal, strike, threaten with a weapon, move, eat, drink, sleep, keep watch, work, flee. Talking is not an action. If you truly choose to do nothing, say so plainly and why.",
+  // Small models copied the last line they read back as their own.
+  "Your words are your own: never repeat or rephrase what someone else just said, and never echo a slogan already spoken.",
+  // Free text, not JSON (the same sandbox: a role-play model broke the JSON
+  // in 5 of 7 replies). A separate reader turns it into the engine's terms.
+  "Answer in plain text, in exactly these four lines and nothing else:",
+  "SAY: the exact words you speak aloud now, or nothing",
+  "DO: the one physical action you take now, in one sentence",
+  "THINK: a new suspicion or plan you keep to yourself, or nothing",
+  "LYING: yes if what you SAY is knowingly false, otherwise no",
 ].join("\n");
 
 export function renderMindPrompt(brief: MindBrief): string {
@@ -300,6 +312,8 @@ export function renderMindPrompt(brief: MindBrief): string {
     brief.offscreen
       ? `Time passes away from the heroes. ${clipText(brief.perceives, MIND_TEXT_CHARS)}\nSay what you do next to pursue your goals (intent). Speech may stay empty.`
       : `What you perceive right now:\n${clipText(brief.perceives, MIND_TEXT_CHARS * 2)}`,
+    // Last, so the newest words heard are not the last thing it reads.
+    "Now it is your turn. Answer in the four lines SAY, DO, THINK, LYING. DO is required: one action of your body, not words. Do not repeat anyone's words.",
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -336,6 +350,55 @@ export function parseProposal(text: string): { ok: true; proposal: NpcProposal }
     return { ok: false, error: "the reply had neither words nor an intent" };
   }
   return { ok: true, proposal };
+}
+
+// The reader that turns a mind's free reply into the engine's terms (the
+// raft sandbox, 2026-11-16): the character's model plays, a stronger one
+// only transcribes. It keeps the meaning whole, harsh or cruel as it is.
+export const MIND_READER_SYSTEM = [
+  "You transcribe one character's reply in a tabletop role-playing game into a JSON object for the game engine. You are a transcriber, not an author or a censor.",
+  "Keep the meaning exactly: do not soften, refuse, moralize, add, invent or drop anything. Violence, theft, threats, lies and cruelty are transcribed as written; the rules decide what happens.",
+  "The reply should hold SAY, DO, THINK and LYING lines, but it may be messy, labelled in another language, or plain prose: read what the character speaks, does and privately thinks.",
+  'Answer with ONE JSON object and nothing else: {"speech": "the exact words spoken aloud, verbatim in their original language, without narration or quotation marks around the whole, or empty", "intent": "the one physical action the character takes now, one short sentence in the reply\'s language", "conclusion": "a private suspicion or plan, or empty", "lie": true if the character says or plainly shows the speech is knowingly false, else false}.',
+  "intent is never empty: if the reply states no action, write that the character stays where they are and does nothing. Words alone are speech, never the intent.",
+].join("\n");
+
+export function renderReaderPrompt(name: string, reply: string): string {
+  return `The character: ${name}.\n\nTheir reply:\n${clipText(reply, MIND_TEXT_CHARS * 4)}`;
+}
+
+// A reader's transcription: a proposal that always carries an action.
+export function parseReading(text: string): { ok: true; proposal: NpcProposal } | { ok: false; error: string } {
+  const parsed = parseProposal(text);
+  if (parsed.ok && !parsed.proposal.intent) {
+    return { ok: false, error: "the reply declared no action" };
+  }
+  return parsed;
+}
+
+// The words a text quotes: «...», "...", “...”.
+export function quotedLines(text: string): string[] {
+  return [...text.matchAll(/«([^»]+)»|"([^"]+)"|“([^”]+)”/g)].map((match) => (match[1] ?? match[2] ?? match[3] ?? "").trim()).filter(Boolean);
+}
+
+const words = (text: string) => textKey(text).split(/\s+/).filter((word) => word.length > 2);
+
+// Whether a mind's words only say again what someone else said (the raft
+// sandbox: "chi controlla l'acqua controlla la vita", round after round):
+// half or more of its words, and at least four, inside one line it heard.
+export function echoesHeard(speech: string, heard: readonly string[]): boolean {
+  const own = words(speech);
+  if (own.length < 4) {
+    return false;
+  }
+  return heard.some((line) => {
+    const theirs = new Set(words(line));
+    if (theirs.size < 4) {
+      return false;
+    }
+    const shared = own.filter((word) => theirs.has(word)).length;
+    return shared >= 4 && shared / own.length >= 0.5;
+  });
 }
 
 // Who perceives a moment: the NPC addressed and the named NPCs present,

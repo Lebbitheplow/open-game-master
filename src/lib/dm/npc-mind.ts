@@ -26,7 +26,7 @@ import {
   setNpcTier,
   npcVoicedLines,
 } from "@/lib/db/npc-minds";
-import { requestUtilityMessage } from "@/lib/dm/model";
+import { requestDmMessage, requestUtilityMessage } from "@/lib/dm/model";
 import { sideOf } from "@/lib/dm/combatant";
 import { seatForMind } from "@/lib/db/mind-seats";
 import { askSeatHolder } from "@/lib/dm/mind-seat-relay";
@@ -62,6 +62,11 @@ import {
   mentalScoresOf,
   offscreenCandidates,
   parseProposal,
+  parseReading,
+  MIND_READER_SYSTEM,
+  renderReaderPrompt,
+  quotedLines,
+  echoesHeard,
   recipientsOf,
   renderMindPrompt,
   unlearnedNames,
@@ -358,22 +363,60 @@ async function askMind(
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "the model call failed", latencyMs: Date.now() - started };
   }
-  const latencyMs = Date.now() - started;
   if (result.error) {
-    return { ok: false, error: `the model did not answer (${result.error.status})`, latencyMs };
+    return { ok: false, error: `the model did not answer (${result.error.status})`, latencyMs: Date.now() - started };
   }
-  const parsed = parseProposal(stripReasoningArtifacts(String(result.message?.content ?? "")));
-  if (!parsed.ok) {
-    return { ok: false, error: parsed.error, latencyMs };
+  const reply = stripReasoningArtifacts(String(result.message?.content ?? "")).trim();
+  if (!reply) {
+    return { ok: false, error: "the reply was empty", latencyMs: Date.now() - started };
   }
+  const read = await readReply(campaign, npc.name, reply);
+  const latencyMs = Date.now() - started;
+  if (!read.ok) {
+    return { ok: false, error: read.error, latencyMs };
+  }
+  // Words that only say again what it heard are not its own: the action stays.
+  const heard = [...quotedLines(perceives), ...memories.filter((memory) => memory.sourceKind !== "self").flatMap((memory) => quotedLines(memory.content))];
+  const proposal = echoesHeard(read.proposal.speech, heard) ? { ...read.proposal, speech: "", lie: false } : read.proposal;
   return {
     ok: true,
-    proposal: parsed.proposal,
+    proposal,
     memories,
     latencyMs,
     inputTokens: result.usage?.inputTokens ?? 0,
     outputTokens: result.usage?.outputTokens ?? 0,
   };
+}
+
+// The character's model plays in free text; the narrator's model reads the
+// reply into speech, action, thought and lie (MIND_READER_SYSTEM). A reply
+// already in the engine's JSON (a model that still writes it) stands as it is.
+async function readReply(campaign: Campaign, name: string, reply: string): Promise<{ ok: true; proposal: NpcProposal } | { ok: false; error: string }> {
+  const own = parseProposal(reply);
+  if (own.ok) {
+    return own;
+  }
+  let error = "the reader did not answer";
+  try {
+    const result = await requestDmMessage(
+      campaign.settings,
+      [
+        { role: "system", content: MIND_READER_SYSTEM },
+        { role: "user", content: renderReaderPrompt(name, reply) },
+      ],
+      { meta: { task: "npc_mind_reader" }, timeoutMs: MIND_TIMEOUT_MS() },
+    );
+    if (!result.error) {
+      const reading = parseReading(stripReasoningArtifacts(String(result.message?.content ?? "")));
+      if (reading.ok) {
+        return reading;
+      }
+      error = reading.error;
+    }
+  } catch (caught) {
+    error = caught instanceof Error ? caught.message : error;
+  }
+  return { ok: false, error };
 }
 
 // Every name the world holds that a mind could use without having learned

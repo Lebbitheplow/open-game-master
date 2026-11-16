@@ -230,6 +230,41 @@ await test("a whole turn: the narrator asks the mind and voices it, and the mind
   assert.equal(listActiveFacts(world.campaignId).some((fact) => /silver/.test(fact.fact)), false);
 });
 
+// ---- The raft sandbox: free replies, a reader, a deed every turn --------
+
+await test("echoes: words that only say again a line heard are not the mind's own; its own words are", () => {
+  const heard = logic.quotedLines('Volodar dice: «Chi controlla l\'acqua controlla la vita.» Kranz: "Il pane è mio."');
+  assert.deepEqual(heard, ["Chi controlla l'acqua controlla la vita.", "Il pane è mio."]);
+  assert.equal(logic.echoesHeard("Chi controlla il pane, controlla la vita. Ma chi controlla l'acqua controlla tutto.", heard), true);
+  assert.equal(logic.echoesHeard("Stanotte prendo la chiave a quel vecchio, giuro.", heard), false);
+  assert.equal(logic.echoesHeard("Sì.", heard), false, "a word or two is never an echo");
+});
+
+await test("a free reply is read by the narrator's model into words and a deed; an echo loses its words, never its deed", async () => {
+  npc("Volodar");
+  const reader = () => model.requests.filter((request) => String(request.messages?.[0]?.content ?? "").startsWith("You transcribe"));
+  model.script([
+    reply({ text: "SAY: Nessuno tocca il barile.\nDO: Punto la balestra contro Kranz.\nTHINK: Kranz ruba di notte.\nLYING: no" }),
+    answer({ speech: "Nessuno tocca il barile.", intent: "punta la balestra contro Kranz", conclusion: "Kranz ruba di notte" }),
+  ]);
+  const said = await speak({ name: "Volodar", perceives: "Kranz stringe il sacco del pane." });
+  assert.equal(said.says, "Nessuno tocca il barile.");
+  assert.equal(said.intends, "punta la balestra contro Kranz");
+  const [asked] = reader();
+  assert.match(asked.messages[1].content, /DO: Punto la balestra/, "the reader reads the mind's own reply");
+  assert.match(mindText(mindRequests().at(-1)), /DO is required/);
+  model.script([
+    reply({ text: "Dico che chi controlla l'acqua controlla la vita, e prendo la chiave." }),
+    answer({ speech: "Chi controlla l'acqua controlla la vita.", intent: "afferra la chiave" }),
+  ]);
+  const echoed = await speak({ name: "Volodar", perceives: 'Kranz dice: «Chi controlla l\'acqua controlla la vita.»' });
+  assert.equal(echoed.says, "", "an echo is not voiced");
+  assert.equal(echoed.intends, "afferra la chiave", "the deed stands");
+  model.script([reply({ text: "Resto zitto." }), answer({ speech: "", intent: "" })]);
+  const idle = await speak({ name: "Volodar", perceives: "La pioggia batte sulle tavole." });
+  assert.ok(idle.error, "a reading with no deed is no answer");
+});
+
 // ---- Ticket 02: news, the absent, late messages --------------------------
 
 await test("an absent NPC learns of an event only when news reaches them, from that source, at that time (A2)", async () => {
