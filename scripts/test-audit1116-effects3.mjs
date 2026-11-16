@@ -202,5 +202,51 @@ await test("Y21: a sleeper diagonally beside the waker with one wall at the corn
   assert.ok(!world.sheet(wizard.id).conditions.includes("unconscious"), "awake");
 });
 
+// ---- Y22: Help refused through a wall says so ----
+
+// SRD 5.1, Help: "you can aid a friendly creature in attacking a creature
+// within 5 feet of you"; Cover: total cover. Help already refused a creature
+// on the other side of a wall (combat-actions.ts, pet-help.ts), but its words
+// gave the distance alone ("Fig is 5 ft from Goblin 1; Help ... is against a
+// creature within 5 ft"), which contradicts itself, and the GM tried again.
+await test("Y22: Help at a creature beyond a diagonal run of wall is refused, and the refusal names the wall", async () => {
+  const { world, kit, fighter, wizard } = await wakeStage();
+  const [goblin] = world.enemies();
+  world.patch(wizard.id, { conditions: [], conditionMeta: {} });
+  kit.openField([[6, 5, "#"], [5, 6, "#"]]);
+  kit.place(fighter.id, 5, 5);
+  kit.place(goblin.id, 6, 6);
+  kit.place(wizard.id, 2, 2);
+  const out = await world.invoke("take_action", { characterId: fighter.id, action: "help", targetCharacterId: wizard.id, targetEnemyId: goblin.id });
+  assert.notEqual(out.ok, true, "the Help went through the wall");
+  assert.match(out.error, /wall/i, out.error);
+  assert.ok(!world.sheet(wizard.id).conditions.includes("helped"));
+});
+
+await test("Y22: a wolf's Help at a creature beyond a wall from its owner is refused, and the refusal names the wall", async () => {
+  const { world, kit, fighter, wizard } = await wakeStage();
+  const [goblin] = world.enemies();
+  world.patch(wizard.id, { conditions: [], conditionMeta: {} });
+  const { petHelp } = await import("../src/lib/dm/pet-help.ts");
+  kit.openField([[6, 5, "#"], [5, 6, "#"]]);
+  kit.place(fighter.id, 5, 5);
+  kit.place(goblin.id, 6, 6);
+  const wolf = { name: "Wolf", kind: "beast_companion", form: "wolf", hp: 11, maxHp: 11 };
+  const out = petHelp(world.campaign(), world.sheet(fighter.id), wolf, { targetCharacterId: wizard.id, targetEnemyId: goblin.id });
+  assert.ok("error" in out, "the wolf's Help went through the wall");
+  assert.match(out.error, /wall/i, out.error);
+});
+
+await test("Y22: a grapple at a creature beyond a diagonal run of wall is refused, and the refusal names the wall", async () => {
+  const { world, kit, fighter } = await wakeStage();
+  const [goblin] = world.enemies();
+  kit.openField([[6, 5, "#"], [5, 6, "#"]]);
+  kit.place(fighter.id, 5, 5);
+  kit.place(goblin.id, 6, 6);
+  const out = await world.invoke("take_action", { characterId: fighter.id, action: "grapple", targetEnemyId: goblin.id });
+  assert.notEqual(out.ok, true, "the grapple went through the wall");
+  assert.match(out.error, /wall/i, out.error);
+});
+
 closeTables();
 finish();

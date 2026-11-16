@@ -157,9 +157,18 @@ export function help(
     // Tactical Support: the creature may be 30 feet away (feat-combat.ts).
     // Master of Tactics: "at up to 30 feet" for a Mastermind (mt-mr-turn.ts).
     const reach = Math.max(helpReachTiles(sheet), holdsRow(sheet, "rogue::Master of Tactics") ? 6 : 0);
-    if (apart !== null && (apart > reach || wallBetween(encounter.id, sheet.id, foe.id))) {
+    if (apart !== null && apart > reach) {
       return {
         error: `${sheet.name} is ${apart * 5} ft from ${foe.displayName}; Help on an attack is against a creature within ${reach * 5} ft of the helper. They move next to it first, or help an ability check instead.`,
+        retry: true,
+      };
+    }
+    // A wall between is total cover. The refusal gave the distance alone
+    // ("5 ft from the goblin ... within 5 ft"), which contradicts itself, and
+    // the GM sent the same Help again (Y22).
+    if (wallBetween(encounter.id, sheet.id, foe.id)) {
+      return {
+        error: `A wall stands between ${sheet.name} and ${foe.displayName}; Help on an attack is against a creature the helper can reach, with no wall between. They move to its side of the wall first, or help an ability check instead.`,
         retry: true,
       };
     }
@@ -229,9 +238,16 @@ export function contest(
   }
   // Hands on the target: it has to be within reach, with no wall between.
   const apart = tilesBetween(encounter.id, sheet.id, enemy.id);
-  if (apart !== null && (apart > 1 || wallBetween(encounter.id, sheet.id, enemy.id))) {
+  if (apart !== null && apart > 1) {
     return {
       error: `${sheet.name} is ${apart * 5} ft from ${enemy.displayName}; a ${action} needs the target within 5 ft. They move their token next to it first.`,
+      retry: true,
+    };
+  }
+  // The refusal for a wall names the wall, as Help's does (Y22).
+  if (wallBetween(encounter.id, sheet.id, enemy.id)) {
+    return {
+      error: `A wall stands between ${sheet.name} and ${enemy.displayName}; a ${action} needs hands on the target. They move their token to its side of the wall first.`,
       retry: true,
     };
   }
