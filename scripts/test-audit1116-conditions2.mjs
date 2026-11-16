@@ -192,4 +192,41 @@ await test("D12: a creature frightened by two heroes walks closer to neither", a
   assert.ok(at.x <= 7, `the frightened goblin walked toward Brin to (${at.x},${at.y}): ${JSON.stringify(out)}`);
 });
 
+// D13. SRD 5.1, Heal: "This spell also ends blindness, deafness, and any
+// diseases affecting the target." Mass Heal: "Each creature healed by this
+// spell is also cured of all diseases and any effect making it blinded or
+// deafened." Both only healed: a blinded, plague-sick hero got 70 hit points
+// and stayed blind and sick.
+const { caster } = await import("./lib/enforce-spell-kit.mjs");
+async function ailing(world, name) {
+  const hero = world.addHero({ name, class: "fighter", level: 5, maxHp: 120 });
+  world.patch(hero.id, { currentHp: 20, conditions: ["blinded", "deafened"], conditionMeta: { blinded: { minutes: 600 }, deafened: { minutes: 600 } } });
+  world.dice(1);
+  const sick = await world.invoke("afflict", { characterId: hero.id, kind: "disease", name: "Sewer Plague", save: false, symptomsNow: true });
+  world.clearDice();
+  assert.equal(sick.ok, true, sick.error);
+  assert.ok(world.sheet(hero.id).conditions.includes("sewer plague"), JSON.stringify(world.sheet(hero.id).conditions));
+  return hero;
+}
+const cured = (sheet) => ["blinded", "deafened", "sewer plague"].filter((name) => sheet.conditions.includes(name));
+
+await test("D13: Heal ends blindness, deafness and the disease", async () => {
+  const temple = await openWorld();
+  const priest = temple.addHero(caster("cleric", "wis", ["Heal", "Mass Heal"], [], 17));
+  const hero = await ailing(temple, "Wren");
+  const out = await temple.invoke("heal", { characterId: hero.id, casterId: priest.id, spell: "Heal", level: 6 });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(temple.sheet(hero.id).currentHp, 90, JSON.stringify(out.result));
+  assert.deepEqual(cured(temple.sheet(hero.id)), [], `Heal left ${cured(temple.sheet(hero.id))}: ${JSON.stringify(out.result)}`);
+});
+
+await test("D13: Mass Heal does the same for each creature it heals", async () => {
+  const temple = await openWorld();
+  const priest = temple.addHero(caster("cleric", "wis", ["Heal", "Mass Heal"], [], 17));
+  const hero = await ailing(temple, "Ostra");
+  const out = await temple.invoke("heal", { characterId: hero.id, casterId: priest.id, spell: "Mass Heal", level: 9, amount: 50 });
+  assert.equal(out.ok, true, out.error);
+  assert.deepEqual(cured(temple.sheet(hero.id)), [], `Mass Heal left ${cured(temple.sheet(hero.id))}: ${JSON.stringify(out.result)}`);
+});
+
 finish();

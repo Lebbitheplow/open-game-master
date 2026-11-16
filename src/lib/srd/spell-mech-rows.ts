@@ -310,13 +310,18 @@ export const SRD_EFFECT_ROWS: Record<string, SpellMech> = {
   },
 
   // ---- healing and bringing back ----
+  // SRD 5.1: Heal "also ends blindness, deafness, and any diseases affecting
+  // the target"; Mass Heal cures each creature it heals "of all diseases and
+  // any effect making it blinded or deafened" (src/lib/dm/heal-cures.ts).
   heal: {
     resolution: "heal",
     healing: { flat: 70, perSlotLevel: 10 },
+    cures: { conditions: ["blinded", "deafened", "disease"], all: true },
   },
   "mass heal": {
     resolution: "heal",
     healPool: 700,
+    cures: { conditions: ["blinded", "deafened", "disease"], all: true },
     note: "700 hit points divided among any number of creatures: one entry per creature in heal's targets, each with its amount; one slot.",
   },
   "mass healing word": { resolution: "heal", targets: { count: 6 } },
