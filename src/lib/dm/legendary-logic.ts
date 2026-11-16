@@ -7,7 +7,7 @@ import type { TurnBudget } from "@/lib/dm/action-budget";
 import { legendaryRoutes, type LegendaryRoute } from "@/lib/dm/legendary-route-logic";
 import { isNamed } from "@/lib/srd/feature-names";
 import { normalizeEnemyTurns, type EnemyTurns } from "@/lib/dm/enemy-turn-logic";
-import { lairForbidsRepeat, lairRepeatRefusal, type LairHolder } from "@/lib/dm/lair-logic";
+import { lairForbidsRepeat, lairHolderRefusal, lairRepeatRefusal, type LairHolder } from "@/lib/dm/lair-logic";
 
 // The lair's own readers live in lair-logic.ts; callers keep importing them here.
 export { lairCountPassed, lairForbidsRepeat, lairRepeatRefusal, lairResolution, lairSave, pickLairOption, type LairSave } from "@/lib/dm/lair-logic";
@@ -530,7 +530,7 @@ export function lairChoices(
   return enemies.flatMap((enemy) =>
     legendaryLairLines([enemy]).map((line) => {
       number += 1;
-      return { number, line, enemyId: enemy.id, refusal: lairRepeatRefusal(options, line, legendary, due, noRepeat) };
+      return { number, line, enemyId: enemy.id, refusal: lairHolderRefusal(enemy) ?? lairRepeatRefusal(options, line, legendary, due, noRepeat) };
     }),
   );
 }

@@ -60,18 +60,18 @@ import { publishEphemeral } from "@/lib/events";
 import { resolveSheetRef } from "@/lib/dm/rolls";
 import { resolvePcOpportunityWalk } from "@/lib/dm/opportunity";
 import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
-import { isIncapacitated } from "@/lib/dm/condition-logic";
+import { isIncapacitated, type ConditionMeta } from "@/lib/dm/condition-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { canAct, canEnemyAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal, ownTurnOf } from "@/lib/dm/held-turn";
 import { afterMoveLeashes, leashRefusal } from "@/lib/dm/condition-leash";
 import { auraMenaceAsk } from "@/lib/dm/aura-menace";
-import { awayFromFear, enemyMoveTraits, fearSourceAt, standUpCost, standUpIfProne } from "@/lib/dm/enemy-approach";
+import { awayFromFear, enemyMoveTraits, fearSourcesAt, standUpCost, standUpIfProne } from "@/lib/dm/enemy-approach";
 import { enemyMoveBudget } from "@/lib/dm/enemy-speed";
 import { movementLeft, spendEnemyDisengage } from "@/lib/dm/enemy-actions";
 import { picketHolds } from "@/lib/dm/genre-b-mystery-enforcer";
 import { forgetEnemyTurns, enemyTurnEntry, speedWords } from "@/lib/dm/enemy-turn-logic";
-import { nearerSquares } from "@/lib/dm/flee-logic";
+import { nearerAnySquares } from "@/lib/dm/flee-logic";
 import { aggressiveSteps, approachSteps } from "@/lib/dm/enemy-aggressive";
 import { enemyTurnRefusal } from "@/lib/dm/enemy-turn-order";
 import { declaredThisTurn, walkHeld } from "@/lib/dm/player-word";
@@ -716,12 +716,12 @@ export function handleMoveToken(
   // it fears, when there is one: the cheapest path stepped closer first, and
   // the walk stopped there (issue #621, a turned zombie that could not run).
   const feared = resolved.kind === "enemy" && resolved.enemy && !args.forced
-    ? fearSourceAt(map.id, resolved.enemy.conditions, resolved.enemy.conditionMeta as Record<string, { source?: string }>)
-    : null;
+    ? fearSourcesAt(map.id, resolved.enemy.conditions, resolved.enemy.conditionMeta as Record<string, ConditionMeta>)
+    : [];
   const pathAvoiding = (blocked: Set<number>) =>
     findPath(map.terrain, map.width, map.height, blocked, resolved.token, { x: args.x, y: args.y }, moverFootprint, resolved.token.movement === "fly" || Boolean(allowance?.fly), traits);
   const path =
-    (feared ? pathAvoiding(new Set([...occupied, ...nearerSquares(map.width, map.height, resolved.token, feared)])) : null) ??
+    (feared.length ? pathAvoiding(new Set([...occupied, ...nearerAnySquares(map.width, map.height, resolved.token, feared)])) : null) ??
     pathAvoiding(occupied);
   if (!path) {
     return {
@@ -780,7 +780,7 @@ export function handleMoveToken(
       steps = awayFromFear(
         resolved.token,
         path,
-        fearSourceAt(map.id, resolved.enemy.conditions, resolved.enemy.conditionMeta as Record<string, { source?: string }>),
+        feared,
       );
       fearCut = steps.length < path.length;
       // Aggressive's speed goes only toward a hostile it can see, and

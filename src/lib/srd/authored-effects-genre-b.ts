@@ -295,7 +295,7 @@ export const GENRE_B_AUTHORED: GenreRow[] = [
   // "hostile beasts and mutants within 30 ft save (WIS) or cower (no move
   // toward you) for 1 minute": a mutant is a monstrosity on the SRD engine, and
   // the cowering creature's walk never comes nearer the packmaster
-  // (src/lib/dm/enemy-approach.ts fearSourceAt).
+  // (src/lib/dm/enemy-approach.ts fearSourcesAt).
   spend("Alpha's Roar", ["packmaster"], "post_apocalyptic_alpha_s_roar", undefined, { kind: "save_area", save: "wis", dcAbility: "wis", rangeFt: 30, types: ["beast", "monstrosity"], condition: "cowering", rounds: 10 }),
   // "a stinking cloud fills a 10-ft radius for 1 minute: creatures inside save
   // (CON) or retch, losing their action": the cloud stands on the alchemist,

@@ -384,12 +384,14 @@ export function exhaustedTiles(conditions: string[], tiles: number): number {
   return level >= 5 ? 0 : level >= 2 ? Math.floor(tiles / 2) : tiles;
 }
 
-// The most hit points a creature may have: halved from level 4. Every way a
-// creature regains hit points reads it, so the hit points a Sword of
-// Wounding took stay lost to all of them (sword-wounding-logic.ts); never
+// The most hit points a creature may have: halved from level 4, never below
+// 1 by the halving, as a hero's maximum (condition-logic.ts exhaustionMaxHp):
+// a 1 hit point creature at exhaustion 4 was capped at 0 and left alive at 0.
+// Every way a creature regains hit points reads it, so the hit points a Sword
+// of Wounding took stay lost to all of them (sword-wounding-logic.ts); never
 // below what it has now, which no healing takes away.
 export function enemyHpCap(enemy: { maxHp: number; conditions: string[]; conditionMeta?: ConditionMetaMap; currentHp?: number }): number {
-  const cap = enemyExhaustion(enemy.conditions) >= 4 ? Math.floor(enemy.maxHp / 2) : enemy.maxHp;
+  const cap = enemyExhaustion(enemy.conditions) >= 4 ? Math.max(1, Math.floor(enemy.maxHp / 2)) : enemy.maxHp;
   const held = woundHeldHp(enemy);
   return held > 0 ? Math.min(cap, Math.max(enemy.currentHp ?? 0, enemy.maxHp - held)) : cap;
 }

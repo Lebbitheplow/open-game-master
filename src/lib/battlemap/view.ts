@@ -182,10 +182,13 @@ export function pcMoveBudget(
   // condition or by exhaustion (src/lib/srd/genre-b-post-apocalyptic.ts), nor
   // is the speed of a character a singing dirgesinger's Funeral March covers
   // (src/lib/dm/genre-cc-a-march.ts).
+  // A rider's exhaustion is their own speed's, not the mount's: a tired
+  // knight's warhorse still walks its 60 feet (SRD 5.1, Exhaustion, "Speed
+  // halved"; Mounted Combat, the mount's speed).
   const speed = soleSurvivorSpeed(
     campaignId,
     sheet,
-    speedCannotBeReduced(sheet) || funeralMarchCovers(encounter, sheet.id) ? effectiveSpeed(sheet.conditions, moved + ambush, true) : exhaustionSpeed(sheet.exhaustion ?? 0, effectiveSpeed(sheet.conditions, moved + ambush)),
+    speedCannotBeReduced(sheet) || funeralMarchCovers(encounter, sheet.id) ? effectiveSpeed(sheet.conditions, moved + ambush, true) : exhaustionSpeed(mount ? 0 : (sheet.exhaustion ?? 0), effectiveSpeed(sheet.conditions, moved + ambush)),
   );
   // A scene has no rounds, so there is no per-round budget to spend: the
   // party walks the board while the DM describes it.

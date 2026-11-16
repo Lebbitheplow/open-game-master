@@ -32,9 +32,10 @@ import { needsNoFoodOrWater } from "@/lib/dm/mt-srd-monk";
 import { characterSave, lifestyleOf } from "@/lib/dm/between-io";
 import { livedLifestyle, purseOf } from "@/lib/dm/lifestyle";
 import { afterMeal, lifestyleFeeds, type Hunger } from "@/lib/dm/supplies-logic";
-import { listSheets } from "@/lib/db/sheets";
+import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { exhaustionPatch } from "@/lib/dm/vitals-logic";
+import { settleExhaustionDeath } from "@/lib/dm/exhaustion-death";
 import { abilityMod } from "@/lib/srd";
 import { computeAbilityScore } from "@/lib/dm/roll-riders";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
@@ -176,8 +177,12 @@ export function upkeepAtDawns(
           ...(upkeep.exhaustion ? { exhaustion: patch.exhaustion } : {}),
         },
       });
+      // The sixth level kills, with all a death brings (exhaustion-death.ts).
+      if (patch.exhaustion !== undefined) {
+        settleExhaustionDeath(campaign, null, sheet, patch.exhaustion);
+      }
       if (updated) {
-        sheet = updated;
+        sheet = getSheetById(sheet.id) ?? updated;
       }
       if (sheet.deathSaves?.dead) {
         break;

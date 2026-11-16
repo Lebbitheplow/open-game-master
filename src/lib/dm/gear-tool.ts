@@ -157,6 +157,17 @@ export function handleItemCall(
   if (sheet.deathSaves?.dead) {
     return refuse(`${sheet.name} is dead and handles nothing.`);
   }
+  // Down or out of action in a fight, they handle nothing, and are told so
+  // before the item is looked for (tool-errors.ts: the character's state
+  // first). What they held fell from their hands as they went down
+  // (fallen-gear.ts), so a dying hero's unequip was answered "carries no
+  // Shield", a mistake in the call, when the game was saying no.
+  if (encounter) {
+    const able = canAct({ sheet, encounter, kind: "free" });
+    if (!able.ok && (able.reason === "down" || able.reason === "incapacitated")) {
+      return toolError(able);
+    }
+  }
   if (action === "pick_up") {
     return pickUp(campaign, turn, encounter, sheet, itemName, qty, reason);
   }

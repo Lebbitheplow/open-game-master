@@ -30,6 +30,7 @@ import { genreBHealed } from "@/lib/dm/genre-b-spell-hits";
 import { mendedHide } from "@/lib/dm/genre-b-post-apocalyptic-beast";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { recordCast } from "@/lib/dm/last-save";
+import { endHealCures } from "@/lib/dm/heal-cures";
 // The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
 import "@/lib/db/item-cast-credits";
 import { itemCastNumbers, runningItemSpell } from "@/lib/srd/item-cast-credit";
@@ -216,16 +217,20 @@ export function castHealingSpell(
   // The casting at the creature it heals, on record (last-save.ts): what
   // answers a spell aimed at an ally (Voice of Authority) reads it.
   recordCast(campaign.id, { id: caster.id, name: caster.name }, name, slotLevel ?? 0, [target.id]);
+  // What it ends besides (Heal's and Mass Heal's blindness, deafness and
+  // diseases: heal-cures.ts).
+  const ended = mech?.cures ? endHealCures(campaign, turnId, { caster, target, spell: name, cures: mech.cures }) : [];
+  const ends = ended.length ? ` It also ends ${ended.join(", ")} on ${target.name}.` : "";
   if (mech?.healPool) {
     // What is left of the pool bounds this share (cast-guard.ts open casts).
     const amount = typeof paid.uses === "number" ? paid.uses : (input.amount ?? 0);
-    return { amount, note: `${name}: ${amount} of its ${mech.healPool} hit points.` };
+    return { amount, note: `${name}: ${amount} of its ${mech.healPool} hit points.${ends}` };
   }
   const shared = `${paid.continuing ? ` ${String(paid.continuing)}` : paid.shares ? ` ${String(paid.shares)}` : ""}${paid.metamagic ? ` ${String(paid.metamagic)}` : ""}`;
 
   if (mech?.healing) {
     const amount = mech.healing.flat + (mech.healing.perSlotLevel ?? 0) * Math.max(0, slotLevel - facts.level);
-    return { amount, note: `${name}: ${amount} hit points.${shared}` };
+    return { amount, note: `${name}: ${amount} hit points.${shared}${ends}` };
   }
   if (!readable) {
     return { amount: input.amount ?? 0, note: `${name}: ${input.amount} hit points as sent.${shared}` };

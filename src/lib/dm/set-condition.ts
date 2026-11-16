@@ -17,13 +17,13 @@ import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
 import { dominatedByFoe } from "@/lib/dm/companion-command";
 import { announceDominated } from "@/lib/dm/combat-sides";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
-import { insertCharacterEvent } from "@/lib/db/character-events";
 import { listConditions } from "@/lib/content";
 import { CONDITIONS } from "@/lib/bestiary/kit";
 import { publishPersisted } from "@/lib/events";
 import { planConditionFx } from "@/lib/battlemap/fx-plan";
 import { publishFx, tokenPosition } from "@/lib/dm/fx";
 import { breakConcentration } from "@/lib/dm/concentration";
+import { settleExhaustionDeath } from "@/lib/dm/exhaustion-death";
 import {
   addConditionInstance,
   conditionRoundsFrom,
@@ -211,16 +211,7 @@ export function raiseExhaustion(
     patch as Record<string, unknown>,
   );
   publishSheet(campaign, sheet.id);
-  if (patch.exhaustion >= 6) {
-    breakConcentration(campaign, turnId, sheet.id, "died of exhaustion");
-    insertCharacterEvent({
-      libraryCharacterId: sheet.libraryCharacterId,
-      campaignCharacterId: sheet.id,
-      campaignId: campaign.id,
-      seq: allocateSeq(campaign.id),
-      kind: "death",
-      summary: "Died: exhaustion.",
-    });
+  if (settleExhaustionDeath(campaign, turnId, sheet, patch.exhaustion)) {
     return {
       ok: true,
       level: patch.exhaustion,

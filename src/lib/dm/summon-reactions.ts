@@ -27,6 +27,7 @@ import { rollCard } from "@/lib/dm/action-common";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { rollHitAgainAtDisadvantage } from "@/lib/dm/authored-reactions";
 import { withinFeet } from "@/lib/dm/authored-saves";
+import { incapacitatedBy } from "@/lib/dm/condition-logic";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { answerKey, attackerFoeId } from "@/lib/dm/last-hit";
 import { petPlaceOf } from "@/lib/dm/pet-place";
@@ -110,6 +111,13 @@ export function petReaction(ctx: Ctx): ToolResult | null {
   }
   if (drake.hp <= 0) {
     return { error: `${drake.name} is down and takes no reaction. Nothing was spent.`, refused: "rules" };
+  }
+  // Held, stunned or asleep, it takes none either (SRD 5.1, Incapacitated:
+  // "can't take actions or reactions"): a drake under Hold Monster still
+  // infused the ranger's hit.
+  const stoppedBy = incapacitatedBy(drake.conditions ?? []);
+  if (stoppedBy) {
+    return { error: `${drake.name} is ${stoppedBy} and takes no reaction until the condition ends. Nothing was spent.`, refused: "rules" };
   }
   const encounter = getActiveEncounter(ctx.campaign.id);
   if (!encounter) {

@@ -24,6 +24,7 @@ import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import { WEAPON_HIT } from "@/lib/dm/action-budget";
 import { damageDice, damageEnemy, enemyCondition, type SpendContext } from "@/lib/dm/authored-spend-effects";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
+import { canEnemyAct } from "@/lib/dm/can-act";
 import { tilesApart } from "@/lib/dm/board-reach";
 import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
 import { enemyAttackProfile } from "@/lib/dm/enemy-profile";
@@ -169,6 +170,13 @@ export function forcedStrikePlan(ctx: SpendContext, attacker: EncounterEnemy): S
   }
   if (encounter.reactionsUsed.includes(attacker.id)) {
     return { error: `${attacker.displayName} has used its reaction this round and has none to attack with: choose the psychic damage (variant "damage"). Nothing was spent.`, refused: "rules" };
+  }
+  // Out of action it has no reaction at all (SRD 5.1, Incapacitated: "can't
+  // take actions or reactions"): a held or stunned creature was made to
+  // swing with one.
+  const able = canEnemyAct({ enemy: attacker, encounter, kind: "reaction" });
+  if (!able.ok) {
+    return { error: `${able.error} It has no reaction to attack with: choose the psychic damage (variant "damage"). Nothing was spent.`, refused: "rules" };
   }
   const tiles = tilesBetween(encounter.id, attacker.id, victim.id);
   const melee = attacker.stats.attacks

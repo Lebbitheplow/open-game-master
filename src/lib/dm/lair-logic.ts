@@ -7,9 +7,24 @@
 import type { EnemyStats } from "@/lib/bestiary/statblock";
 import { ABILITY_WORDS, parseSaveEffect } from "@/lib/dm/save-effect";
 import { textKey } from "@/lib/language/text-logic";
+import { incapacitatedBy } from "@/lib/dm/condition-logic";
 import type { LegendaryState } from "@/lib/dm/legendary-logic";
 
-export type LairHolder = { id: string; stats: Pick<EnemyStats, "traits" | "lairOptions"> };
+export type LairHolder = { id: string; stats: Pick<EnemyStats, "traits" | "lairOptions">; displayName?: string; status?: string; conditions?: string[] };
+
+// Why the creature whose block prints the lair's options cannot take one
+// now, or null. The lair rule of the books that print lair actions (SRD 5.1
+// prints none): it "can't do so while incapacitated or otherwise unable to
+// take actions". A stunned or slain dragon's lair still acted on initiative
+// 20.
+export function lairHolderRefusal(holder: LairHolder): string | null {
+  const who = holder.displayName ?? "The lair's creature";
+  if (holder.status !== undefined && holder.status !== "alive") {
+    return `${who} is ${holder.status} and takes no lair action.`;
+  }
+  const stoppedBy = incapacitatedBy(holder.conditions ?? []);
+  return stoppedBy ? `${who} is ${stoppedBy} and takes no lair action until the condition ends.` : null;
+}
 
 // Lair actions happen on initiative count 20, losing ties: once every
 // combatant at 20 or above has had its turn, before anyone below. Whether a

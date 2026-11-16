@@ -1,5 +1,6 @@
 import { noteMarkFell } from "@/lib/dm/attack-marks";
 import { settleDroppedOnFightEnd } from "@/lib/db/dropped-items";
+import { gatherFallenGear } from "@/lib/dm/fallen-gear";
 import { layFlamesOnDeath } from "@/lib/dm/cauterizing-flames";
 import { recordTrigger } from "@/lib/dm/last-save";
 import { darkFantasyOnDeath } from "@/lib/dm/genre-a-dark-fantasy-deaths";
@@ -146,7 +147,7 @@ export function finishEncounter(
   if (outcome !== "party_defeated") {
     sayFightOver(campaign, encounter, true);
   }
-  const { itemsLeft, swallowedOut } = settleFightState(campaign, encounter.id);
+  const { itemsLeft, gearBack, swallowedOut } = settleFightState(campaign, encounter.id);
   // A spell of a minute or more still being cast takes effect as the fight
   // ends, its slot spent then (long-casting.ts finishCastingsAtFightEnd).
   const castingsFinished = finishCastingsAtFightEnd(campaign);
@@ -215,6 +216,7 @@ export function finishEncounter(
     ...(itemsLeft.length
       ? { itemsLeft: `On the ground after the fight: ${itemsLeft.join("; ")}. The party can collect them (handle_item pick_up).` }
       : {}),
+    ...(gearBack.length ? { gearBack: `Let go of as they fell, now ${gearBack.join("; ")}.` } : {}),
     ...(swallowedOut ? { swallowedOut } : {}),
     outcome,
     ...(guestsGone.length
@@ -247,7 +249,7 @@ export function finishEncounter(
 
 // What ends with a fight's state, however the fight ends: right after the
 // encounter row closes, before the experience is shared out.
-export function settleFightState(campaign: Campaign, encounterId: string): { itemsLeft: string[]; swallowedOut: string | null } {
+export function settleFightState(campaign: Campaign, encounterId: string): { itemsLeft: string[]; gearBack: string[]; swallowedOut: string | null } {
   // An effect set "until the fight ends" ends now (active-effects.ts).
   endFightEffects(campaign.id);
   // And what was laid on its foes (active-effects.ts endFoeEffects).
@@ -261,9 +263,12 @@ export function settleFightState(campaign: Campaign, encounterId: string): { ite
   // Whoever is still inside a creature that swallowed them comes out, prone
   // (swallow.ts swallowFightEnd).
   const swallowedOut = swallowFightEnd(campaign, encounterId);
+  // What a hero let go of as they fell unconscious and still lies there goes
+  // back into their pack (fallen-gear.ts), before the rest is settled.
+  const gearBack = gatherFallenGear(campaign);
   // What was dropped stays where it fell; what a fallen enemy held lies with
   // it (src/lib/db/dropped-items.ts, issue #424). Returns what lies there.
-  return { itemsLeft: settleDroppedOnFightEnd(campaign.id, encounterId), swallowedOut };
+  return { itemsLeft: settleDroppedOnFightEnd(campaign.id, encounterId), gearBack, swallowedOut };
 }
 
 // What follows any fight's end, the lead's force-end included (issue 657):

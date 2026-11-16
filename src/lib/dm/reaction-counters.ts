@@ -38,6 +38,7 @@ import { unseenRefusal } from "@/lib/dm/authored-saves";
 import { settleLastHit } from "@/lib/dm/reaction-refund";
 import { pcResistances, removeConditions } from "@/lib/dm/condition-logic";
 import { HOLDING_ON, PRONE, UNCONSCIOUS, exhaustionPatch } from "@/lib/dm/vitals-logic";
+import { settleExhaustionDeath } from "@/lib/dm/exhaustion-death";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { applyEnemyDamage, publishEncounter } from "@/lib/dm/enemy-damage";
 import { wieldsMeleeOrShield } from "@/lib/dm/maneuver-rules";
@@ -278,6 +279,10 @@ export function planCounterReaction(input: Input): Plan | ToolError | null {
             ...(tired ?? {}),
             conditions: [...after.conditions.filter((entry) => !isConditionNamed(entry, HUSK_RECOVERING)), marker],
           });
+          // A level that is the sixth kills, with all a death brings (exhaustion-death.ts).
+          if (woke && tired) {
+            settleExhaustionDeath(campaign, input.turnId, woke, tired.exhaustion);
+          }
           publishSheet(campaign, sheet.id);
           const burst = huskBurst(campaign, input, level);
           return {

@@ -40,7 +40,7 @@ import {
 import { textKey } from "@/lib/language/text-logic";
 import { noteDominationShift } from "@/lib/db/side-watch";
 import { noteGrounding } from "@/lib/db/flight-watch";
-import { noteIncapacity } from "@/lib/db/incapacity-watch";
+import { noteFallUnconscious, noteIncapacity } from "@/lib/db/incapacity-watch";
 import { repairedPets } from "@/lib/srd/familiar-forms";
 import { rowName } from "@/lib/srd/item-row";
 
@@ -1087,6 +1087,11 @@ export function patchSheet(
   noteGrounding(existing.campaignId, existing, next);
   // Falling incapacitated is answered by Faithful Summons (incapacity-watch.ts).
   noteIncapacity(existing.campaignId, sheetId, existing, next);
+  // And falling unconscious lets go of what is in hand (fallen-gear.ts); an
+  // undo putting the fall back is no new fall.
+  if (!options.restoring) {
+    noteFallUnconscious({ kind: "sheet", campaignId: existing.campaignId, id: sheetId }, existing, next);
+  }
 
   // Temporary hit points a spell granted for its duration go when it ends
   // (False Life, Heroism): the instance that granted them carries the claim.
