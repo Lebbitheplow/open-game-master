@@ -110,8 +110,6 @@ await test("G03: a glaive's opportunity attack past an ally meets the half cover
   // creature is an enemy or a friend." The turn's pc_attack counted the ally
   // in the line; the reaction's swing read the bare AC.
   const goblin = await freshArena();
-  // The ally in the line carries only a bow, so it makes no opportunity
-  // attack of its own.
   world.patch(anchor.id, { equipment: [{ name: "Shortbow", qty: 1 }] });
   arm({ str: 16, equipment: [{ name: "Glaive", qty: 1 }] });
   place(goblin.id, 3, 0);
@@ -121,7 +119,10 @@ await test("G03: a glaive's opportunity attack past an ally meets the half cover
   const turn = await kit.swing(hero.id, { weapon: "Glaive" }, 5, 4);
   assert.equal(turn.ok, true, turn.error);
   assert.equal(turn.result.hit, false, "the turn's swing ignored the ally's half cover");
-  // The goblin walks away east, out of the glaive's reach: the same 11.
+  // The goblin walks away east, out of the glaive's reach: the same 11. The
+  // ally in the line has spent its reaction, so only the glaive swings (a
+  // bow-only ally strikes unarmed since G15).
+  encounters.saveEncounter({ ...world.encounter(), reactionsUsed: [anchor.id] });
   world.clearDice();
   world.dice(5, 4);
   const before = kit.dummy().currentHp;
@@ -542,6 +543,38 @@ await test("G14: a character fighting for the foes is read with its glaive's 10-
   assert.equal(attack.mode, "both");
   assert.equal(attack.reach, 5);
   assert.deepEqual(attack.range, { normal: 30, long: 120 }, JSON.stringify(attack));
+});
+
+// ---- G15 to G17: the weapon an opportunity attack swings ----
+
+// A goblin beside the hero walks away east; whatever the hero swings lands
+// on it. The ally stays far off.
+async function walkAway(faces) {
+  const goblin = await freshArena();
+  world.patch(anchor.id, { equipment: [{ name: "Shortbow", qty: 1 }] });
+  place(anchor.id, 9, 9);
+  place(goblin.id, 3, 0);
+  place(hero.id, 2, 0);
+  world.clearDice();
+  world.diceLog();
+  world.dice(...faces);
+  const before = kit.dummy().currentHp;
+  const notes = resolvePcOpportunityAttacks(world.campaign(), goblin.id, { x: 3, y: 0 }, { x: 5, y: 0 }, [{ x: 4, y: 0 }, { x: 5, y: 0 }]);
+  const log = world.diceLog();
+  world.clearDice();
+  return { dealt: before - kit.dummy().currentHp, notes, damageDice: log.filter((die) => die.sides !== 20).map((die) => die.sides) };
+}
+
+await test("G15: a hero carrying only a bow makes the opportunity attack with an unarmed strike", async () => {
+  // SRD 5.1, Opportunity Attacks: "you use your reaction to make one melee
+  // attack against the provoking creature", and an unarmed strike is a
+  // melee attack (Unarmed Strike: "1 + your Strength modifier"). A hero
+  // carrying nothing struck unarmed; one carrying a bow made no swing.
+  arm({ str: 16, dex: 14, equipment: [{ name: "Longbow", qty: 1 }, { name: "Arrows", qty: 20 }] });
+  // 15 + 3 + 3 hits AC 10: 1 + 3 bludgeoning, no die.
+  const out = await walkAway([15]);
+  assert.equal(out.dealt, 1 + abilityMod(16), `no unarmed opportunity attack: ${JSON.stringify(out.notes)}`);
+  assert.deepEqual(out.damageDice, []);
 });
 
 await kit.endFight();
