@@ -315,6 +315,18 @@ function handOver(
 ): ToolResult {
   let budget: TurnBudget | null = null;
   let cost = "";
+  // Worn or strapped on, it does not change hands any more than it falls
+  // (gear-ground.ts drop): armor takes minutes to take off, a shield an
+  // action (SRD 5.1, Getting Into and Out of Armor). Handed over, it came
+  // off for free mid-fight.
+  const kind = gearKindOf(row);
+  if (encounter && (kind === "armor" || kind === "shield") && inHand(row, sheet.equipment)) {
+    return refuse(
+      kind === "shield"
+        ? `${row.name} is strapped on: taking it off is an action (handle_item unequip) before it can be handed over.`
+        : `${sheet.name} is wearing ${row.name}; armor takes minutes to take off, so it is not handed over during a fight.`,
+    );
+  }
   if (encounter) {
     const giver = standing(campaign.id, sheet.id).token;
     const taker = standing(campaign.id, to.id).token;
