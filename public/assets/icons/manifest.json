@@ -25021,6 +25021,50 @@
       "generator": "image_gen",
       "width": 256,
       "height": 256
+    },
+    {
+      "id": "inventory-gear-quiver",
+      "group": "inventory",
+      "key": "gear-quiver",
+      "label": "Quiver",
+      "src": "/assets/icons/inventory/gear-quiver.webp",
+      "bytes": 14424,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-lute",
+      "group": "inventory",
+      "key": "gear-lute",
+      "label": "Lute",
+      "src": "/assets/icons/inventory/gear-lute.webp",
+      "bytes": 15276,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-drum",
+      "group": "inventory",
+      "key": "gear-drum",
+      "label": "Drum",
+      "src": "/assets/icons/inventory/gear-drum.webp",
+      "bytes": 22834,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-magic-dust",
+      "group": "inventory",
+      "key": "magic-dust",
+      "label": "Dust (magic items)",
+      "src": "/assets/icons/inventory/magic-dust.webp",
+      "bytes": 21430,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
     }
   ]
 }

@@ -19,11 +19,14 @@ const MAGIC_FORMS: Record<string, string> = {
   figurine: "figurine", horn: "horn", pipes: "pipes", deck: "deck", broom: "broom", carpet: "carpet",
   lantern: "lantern", bottle: "bottle", decanter: "bottle", candle: "candle", shackles: "shackles", feather: "feather",
   fan: "fan", mirror: "mirror", bowl: "bowl", censer: "censer", brazier: "brazier", cube: "cube", horseshoes: "horseshoes",
+  quiver: "quiver", lute: "lute", drum: "drum",
 };
 const MAGIC_NAMES: Record<string, string> = {
   "crystal-ball": "orb", "dimensional-shackles": "shackles", "efreeti-bottle": "bottle",
   "eversmoking-bottle": "bottle", "wind-fan": "fan", "ioun-stone": "stone", "sending-stones": "stone",
   "handy-haversack": "bag", "instant-fortress": "cube", "scarab-of-protection": "brooch",
+  "efficient-quiver": "quiver", "dust-of-disappearance": "dust",
+  "dust-of-dryness": "dust", "dust-of-sneezing-and-choking": "dust",
 };
 const GEAR_NAMES: Record<string, string> = {
   "acid-vial": "gear-acid", "alchemists-fire-flask": "gear-alchemists-fire",
@@ -34,6 +37,7 @@ const GEAR_NAMES: Record<string, string> = {
   "mirror-steel": "magic-mirror", manacles: "magic-shackles", pouch: "magic-bag", candle: "magic-candle",
   "arcane-focus-wand": "magic-wand", "arcane-focus-rod": "magic-rod", "arcane-focus-staff": "magic-staff",
   "arcane-focus-orb": "magic-orb", "arcane-focus-crystal": "magic-gem",
+  quiver: "gear-quiver", lute: "gear-lute", drum: "gear-drum",
 };
 
 // Match a physical form at the start of a name, never a word hidden inside
@@ -46,7 +50,7 @@ function magicPainting(name: string, known = false): string | null {
   const last = key.split("-").at(-1)!;
   const suffix = known ? MAGIC_FORMS[last] ?? MAGIC_FORMS[last.replace(/s$/, "")] : undefined;
   const form = special ?? MAGIC_FORMS[key.split("-")[0]] ?? suffix;
-  return form ? `magic-${form}` : null;
+  return form ? GEAR_NAMES[form] ?? `magic-${form}` : null;
 }
 
 export function inventoryItemIcon(item: CategoryItem): IconRef {

@@ -287,6 +287,21 @@
       "scale": 0.936
     },
     {
+      "id": "gear-drum",
+      "label": "Drum",
+      "source": "Built-in image_gen",
+      "sourceSha256": "030c578d2a7006ae2e417815af33a7dfffb9deabd4325f814e3bb3f0e7aede0c",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's approved action-card weapons and inventory items: warm ivory highlights, aged brass details, rich chestnut leather and honey-colored wood, crisp silhouettes, restrained believable ornament, painterly material texture. Square canvas with genuine transparent alpha. Physical object only; NO backdrop, external shadow, fog, halo, glow outside the object, floating particles, text, frame, painted circle, hands or character. Center the COMPLETE object with generous margin inside a circle of diameter 82% of the square. Readable at 32–40px, strong substantial forms and a clear three-quarter view. Subject: one compact medieval rope-tension DRUM, stout reddish walnut cylindrical shell, taut warm ivory hide drumhead clearly visible from above, dark wooden hoops, thick natural cord zigzag lacing down the sides and small aged-brass strap fittings. Two short honey-wood drumsticks tucked diagonally together against the near side of the drum, with complete rounded tips visible. Bold round drumhead and sturdy squat body; no modern chrome hardware, no drum kit, no straps spreading beyond the compact silhouette.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-drum.webp",
+        "sha256": "d9221ae15d1c8d21e0c9307cd90b217a391c73f412f413eb185e68c553a3e551",
+        "bytes": 22834,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9776
+    },
+    {
       "id": "gear-healers-kit",
       "label": "Healer's Kit",
       "source": "Reused collaborative action-card artwork",
@@ -332,6 +347,21 @@
       "scale": 1.8
     },
     {
+      "id": "gear-lute",
+      "label": "Lute",
+      "source": "Built-in image_gen",
+      "sourceSha256": "956da08649cca4b026767230c85157dde2c3b418cc2c1390549c7516d8615957",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's approved action-card weapons and inventory items: warm ivory highlights, aged brass details, rich chestnut leather and honey-colored wood, crisp silhouettes, restrained believable ornament, painterly material texture. Square canvas with genuine transparent alpha. Physical object only; NO backdrop, external shadow, fog, halo, glow outside the object, floating particles, text, frame, painted circle, hands or character. Center the COMPLETE object with generous margin inside a circle of diameter 82% of the square. Readable at 32–40px, strong substantial forms and a clear three-quarter view. Subject: one medieval LUTE, recognizable pear-shaped honey-gold wooden soundboard, deep rounded walnut ribbed body, small dark carved rosette soundhole, short narrow neck and distinctly backward-bent pegbox with wooden tuning pegs. Six delicate paired string courses run from the bridge over the neck, straight and coherent. Near upright 20-degree diagonal; broad resonant body dominates the lower half and reads at small size. Modest dark edging, no excessive filigree, no modern guitar shape, no electric hardware.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-lute.webp",
+        "sha256": "273fa93611576f8d34f46922b8f8d92c8582febf78978a0635a87c7fbaaefcfa",
+        "bytes": 15276,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8094
+    },
+    {
       "id": "gear-oil",
       "label": "Oil",
       "source": "Reused collaborative action-card artwork",
@@ -360,6 +390,21 @@
         "height": 256
       },
       "scale": 1.1491
+    },
+    {
+      "id": "gear-quiver",
+      "label": "Quiver",
+      "source": "Built-in image_gen",
+      "sourceSha256": "47ab05c91f7039f0d4f7824547aab2df328841caf04c66e2a84d40eb48ebca75",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's approved action-card weapons and inventory items: warm ivory highlights, aged brass details, rich chestnut leather and honey-colored wood, crisp silhouettes, restrained believable ornament, painterly material texture. Square canvas with genuine transparent alpha. Physical object only; NO backdrop, external shadow, fog, halo, glow outside the object, floating particles, text, frame, painted circle, hands or character. Center the COMPLETE object with generous margin inside a circle of diameter 82% of the square. Readable at 32–40px, strong substantial forms and a clear three-quarter view. Subject: a compact upright chestnut-brown leather archery QUIVER holding five wooden arrows with clearly grouped ivory feather fletching. Thick stitched leather rim, a simple aged-brass buckle and small restrained brass base fitting. A single carrying strap tucked close to the body rather than a sprawling loop. Slight diagonal, arrows projecting from the open top, all feather tips and quiver base fully visible. No bow, no loose arrows outside the quiver.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-quiver.webp",
+        "sha256": "1fe9eb7754ab5b1a071cf90aee06d1011720798af289056cc39accd0b68c1d95",
+        "bytes": 14424,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9104
     },
     {
       "id": "gear-rope",
@@ -690,6 +735,26 @@
         "height": 256
       },
       "scale": 0.894
+    },
+    {
+      "id": "magic-dust",
+      "label": "Dust (magic items)",
+      "source": "Built-in image_gen",
+      "sourceSha256": "fa052629268de32e3bfb30bec3b2c3335f761057ba02bc6c17057524773d7cd3",
+      "prompt": "Use case: precise-object-edit. Revise this RPG inventory illustration: KEEP the same open chestnut leather pouch, aged-brass clasp, stitching, silhouette, viewing angle and premium hand-painted material style. Change the contents from dull beige flour-like powder into unmistakably MAGICAL DUST. Make the fine crystalline grains luminous icy turquoise, opalescent violet and diamond-white, with warm gold flecks. Add several crisp bright four-point star glints of varied size across the powder mound and its small spill, strong enough to remain recognizable at 32–40 pixels. Let a tiny loose upward curl of sparkling motes rise just above the open rim, with 3–5 clearly visible floating star glints, staying close to the pouch within the circular-icon footprint. Give the inner leather rim a restrained turquoise reflected light from the dust. The dust must still be fine sparkling particles, NOT large gemstones or coins, not flour or sand. Preserve the tangible painterly leather and brass, clean cutout silhouette and REAL transparent background. No opaque background, fog cloud, enclosing halo, text, border, hands or extra objects. Keep every sparkle fully visible with generous transparent margins, suitable for a small circular inventory slot.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-dust.webp",
+        "sha256": "a2a21e05b3905aa96f570e12faf7ca88b95a09056dc78f3d695a9eee6274412b",
+        "bytes": 21430,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9619,
+      "revision": {
+        "reason": "User requested visibly magical sparkle rather than flour-like powder",
+        "originalPrompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's approved action-card weapons and inventory items: warm ivory highlights, aged brass details, rich chestnut leather and honey-colored wood, crisp silhouettes, restrained believable ornament, painterly material texture. Square canvas with genuine transparent alpha. Physical object only; NO backdrop, external shadow, fog, halo, glow outside the object, floating particles, text, frame, painted circle, hands or character. Center the COMPLETE object with generous margin inside a circle of diameter 82% of the square. Readable at 32–40px, strong substantial forms and a clear three-quarter view. Subject: magical DUST represented by a small squat OPEN soft brown leather pouch, its broad folded rim revealing a generous mound of fine luminous-looking pale gold powder with a restrained turquoise-iridescent shimmer on the grains. A small connected spill of fine powder curls over the front lip and gathers in a compact little heap at its base. Powder is clearly fine dust, NOT large jewels, pebbles or coins. The bright contents occupy much of the upper half so it is unmistakably a pouch of magical dust at small icon size, distinct from a tall empty bag. One short tied leather drawstring rests against its side. Contained material highlights only; no aura, magic cloud, levitating grains or external sparkles.",
+        "originalSourceSha256": "c42577b4147a4ff7df61ae6f7a2e0beffc26609e8ae19c1082a41c394d059136"
+      }
     },
     {
       "id": "magic-fan",

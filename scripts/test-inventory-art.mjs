@@ -51,7 +51,20 @@ for (const [name, key] of [
   ["Manacles", "magic-shackles"], ["Potion of Healing (Greater)", "gear-potion-of-healing"],
   ["Spell Scroll (3rd level)", "gear-spell-scroll"], ["Crystal Ball", "magic-orb"],
   ["Dimensional Shackles", "magic-shackles"], ["Wind Fan", "magic-fan"],
+  ["Quiver", "gear-quiver"], ["Efficient Quiver", "gear-quiver"],
+  ["Lute", "gear-lute"], ["Drum", "gear-drum"],
+  ["Lute of Echoes", "gear-lute"], ["Drum of Thunder", "gear-drum"],
+  ["Dust of Disappearance", "magic-dust"], ["Dust of Dryness", "magic-dust"],
+  ["Dust of Sneezing and Choking", "magic-dust"],
+  ["Carquois", "gear-quiver"], ["Carquois efficace", "gear-quiver"],
+  ["Luth", "gear-lute"], ["Tambour", "gear-drum"],
+  ["Poudre dessiccative", "magic-dust"], ["Poudre à éternuer", "magic-dust"],
+  ["Poussière de disparition", "magic-dust"],
 ]) expect(name, key);
+expect("Sparkles", "magic-dust", { srdName: "Dust of Disappearance" });
+expect("Unknown powder", "item-gear", { identified: false, srdName: "Dust of Disappearance" });
+expect("Diamond dust", "item-gear");
+expect("Flour", "item-gear");
 expect("Moonblade", "weapon-longsword", { srdName: "Longsword" });
 expect("Blue Wrists", "magic-bracers", { srdName: "Bracers of Defense" });
 expect("Unknown trinket", "item-gear", { identified: false, srdName: "Bracers of Defense", slug: "bracers-of-defense" });
@@ -72,7 +85,7 @@ for (const [name, key] of [["Longsword", "weapon-longsword"], ["Dagger", "weapon
   assert.ok(iconCandidates(card)[0].startsWith("/assets/icons/action/"));
 }
 
-assert.equal(report.length, 108);
+assert.equal(report.length, 112);
 for (const row of report) {
   const bytes = readFileSync(path.join(root, "public", row.export.src));
   assert.equal(createHash("sha256").update(bytes).digest("hex"), row.export.sha256);
@@ -99,4 +112,10 @@ for (const node of [
   createElement(SheetGearRow, { sheet, item, worn: true, onGear() {} }),
   createElement(SheetPaperdoll, { sheet, armor: { armorName: null, shieldName: null }, mine: true, pending: null, onPending() {}, onGear() {} }),
 ]) assert.match(wrap(node), /\/inventory\/magic-bracers.webp/);
-console.log("inventory art: base equipment, magic categories, identity, privacy, genres, card isolation, 108 exports and three rendered surfaces passed");
+for (const name of ["Quiver", "Lute", "Drum", "Dust of Disappearance"]) {
+  const added = { name, qty: 1 };
+  for (const node of [createElement(EquipmentChips, { equipment: [added] }), createElement(SheetGearRow, { sheet, item: added, worn: false, onGear() {} })]) {
+    assert.ok(wrap(node).includes(`/inventory/${resolve(name).key}.webp`), name);
+  }
+}
+console.log("inventory art: base equipment, magic categories, identity, privacy, genres, card isolation, 112 exports and three rendered surfaces passed");
