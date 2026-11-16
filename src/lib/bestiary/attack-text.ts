@@ -5,6 +5,7 @@ import type { SaveAbility } from "@/lib/bestiary/statblock";
 import { textKey } from "@/lib/language/text-logic";
 import { readScoreDrain, SCORE_DRAIN_SENTENCE, type ScoreDrain } from "@/lib/bestiary/score-drain-text";
 import { HOLD_SENTENCE, readHold, type CreatureHold } from "@/lib/bestiary/hold-text";
+import { HIT_DISEASE_SENTENCE, readHitDisease, type HitDisease } from "@/lib/bestiary/affliction-text";
 
 // What an attack's printed line says beyond its bonus and dice (SRD 5.1,
 // Monsters: Actions): melee or ranged, its reach and range, the typed dice
@@ -53,6 +54,9 @@ export type OnHitRider = {
   drainHeals?: boolean;
   // Swallowed whole (a purple worm, a kraken): blinded and restrained.
   swallow?: boolean;
+  // A disease with a save every 24 hours (an otyugh's bite): poisoned until
+  // cured, the dice a failure takes off the maximum (affliction-text.ts).
+  disease?: HitDisease;
   // "The target's Strength score is reduced by 1d4" (a shadow): the score,
   // the dice, death at 0, the rest that ends it (score-drain-text.ts).
   scoreDrain?: ScoreDrain;
@@ -451,6 +455,15 @@ function readOnHit(hit: string, effectOnly: boolean): OnHitRider | null {
   if (rot) {
     rider.condition = MUMMY_ROT;
   }
+  // A disease with a save every 24 hours (SRD 5.1 Otyugh, Bite): its
+  // poisoning, its days and the maximum they eat are the server's
+  // (src/lib/dm/hit-disease.ts). Read as a repeat save, the poisoning ended
+  // at a turn's end and the GM was left the rest.
+  const disease = readHitDisease(hit);
+  if (disease) {
+    rider.disease = disease;
+    delete rider.repeatSave;
+  }
   // The sleep a poisoned hit can bring. Read here, not left in `manual`:
   // the text was dropped unread, so a drow's bolt or a couatl's bite poisoned
   // and never put anyone to sleep.
@@ -517,6 +530,9 @@ function readOnHit(hit: string, effectOnly: boolean): OnHitRider | null {
   if (rot) {
     manual = manual.filter((sentence) => !/\b(?:mummy rot|cursed target|the curse (?:reduces|lasts))\b/i.test(sentence));
   }
+  if (disease) {
+    manual = manual.filter((sentence) => !HIT_DISEASE_SENTENCE.test(sentence));
+  }
   // A drained score is the engine's (src/lib/srd/ability-drain-logic.ts).
   const drained = readScoreDrain(hit);
   if (drained) {
@@ -535,5 +551,5 @@ function readOnHit(hit: string, effectOnly: boolean): OnHitRider | null {
   if (other && (rider.condition || rider.damage)) {
     rider.spares = other[1].split(/,?\s+(?:or|and)\s+/i).map((word) => textKey(word.replace(/^an?\s+/i, ""))).filter(Boolean);
   }
-  return rider.condition || rider.damage || rider.drainMaxHp || rider.swallow || rider.manual || rider.scoreDrain ? rider : null;
+  return rider.condition || rider.damage || rider.drainMaxHp || rider.swallow || rider.manual || rider.scoreDrain || rider.disease ? rider : null;
 }

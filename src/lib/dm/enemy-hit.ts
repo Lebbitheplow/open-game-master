@@ -1,6 +1,7 @@
 import { maxHpCannotFall } from "@/lib/dm/ar-ws-inured-logic";
 import { MUMMY_ROT } from "@/lib/dm/mummy-rot-logic";
 import { startMummyRot } from "@/lib/dm/mummy-rot";
+import { infectHitDisease } from "@/lib/dm/hit-disease";
 import { tieToTurn } from "@/lib/dm/turn-tie";
 import type { Campaign } from "@/lib/db/campaigns";
 import { saveDamageTaken } from "@/lib/srd/trait-rules";
@@ -200,7 +201,8 @@ export function resolveOnHit(
     }
   }
   const asleep = Boolean(rider.save && rider.dc) && asleepOnFailure(rider, saveTotal);
-  const conditions = rider.condition && !saved ? [rider.condition, ...(rider.alsoCondition ? [rider.alsoCondition] : []), ...(asleep ? ["unconscious"] : [])] : [];
+  // A disease's poisoning is the disease's to lay (below), under its name.
+  const conditions = rider.condition && !saved && !rider.disease ? [rider.condition, ...(rider.alsoCondition ? [rider.alsoCondition] : []), ...(asleep ? ["unconscious"] : [])] : [];
   const standing = getSheetById(target.id);
   for (const condition of conditions) {
     if (!standing || (standing.currentHp <= 0 && condition === "prone")) {
@@ -259,6 +261,15 @@ export function resolveOnHit(
           `${condition} lasts until the ${rider.until.edge} of ${rider.until.whose === "source" ? `${enemy.displayName}'s` : "their"} next turn`,
         );
       }
+    }
+  }
+  // A disease with a save every 24 hours (an otyugh's bite): poisoned until
+  // cured, its days on the clock (hit-disease.ts).
+  if (rider.disease && !saved && standing && !standing.deathSaves?.dead) {
+    const infected = infectHitDisease(campaign, turn.id, getSheetById(target.id) ?? target, { creature: enemy.displayName, ability: rider.save ?? "con", dc: rider.dc ?? 10, dice: rider.disease.dice });
+    out.disease = infected.line;
+    if (infected.conditions.length) {
+      out.riderCondition = [...((out.riderCondition as string[] | undefined) ?? []), ...infected.conditions];
     }
   }
   // What holds the restrained target and how it breaks (a giant spider's

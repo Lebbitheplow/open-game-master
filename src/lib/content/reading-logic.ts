@@ -90,7 +90,11 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 //      (a giant spider's webbing), and the kinds a shared 24-hour immunity
 //      covers ("the Dreadful Glare of all mummies (but not mummy lords)";
 //      rules audit 2026-11-15, monsters).
-export const READER_REVISION = 15;
+// 16:  an attack's rider reads a disease with a save every 24 hours (an
+//      otyugh's bite: poisoned until cured, the dice a failure takes off the
+//      maximum) in place of a save at each turn's end (rules audit
+//      2026-11-16, time).
+export const READER_REVISION = 16;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";
 

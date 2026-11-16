@@ -1,5 +1,6 @@
 import type { DiseaseSpec, Poison } from "@/lib/srd/afflictions";
 import { diseaseSpecSchema, poisonSpecSchema } from "@/lib/homebrew/hazard-data";
+import { isValidExpression } from "@/lib/dice";
 // What the campaign clock keeps for life between adventures and for the
 // afflictions that run on it: each character's lifestyle, their downtime
 // progress, and their diseases, madness and lingering poisons. All three
@@ -50,7 +51,14 @@ export type Affliction = {
   // in the workshop never changes one already running.
   poison?: Poison;
   disease?: { name: string; spec: DiseaseSpec };
+  // A disease a monster's hit gave (an otyugh's bite, hit-disease.ts): the
+  // ability of its save every 24 hours and the dice a failure takes off the
+  // hit point maximum.
+  saveAbility?: (typeof SAVE_ABILITIES)[number];
+  dice?: string;
 };
+
+const SAVE_ABILITIES = ["str", "dex", "con", "int", "wis", "cha"] as const;
 
 export type BetweenState = {
   lifestyles?: Record<string, Lifestyle>;
@@ -105,6 +113,8 @@ function normalizeAffliction(raw: unknown): Affliction | null {
     ...optional("doses", 10),
     ...optional("unhealable", 9999),
     ...(typeof entry.flaw === "string" ? { flaw: text(entry.flaw, 200) } : {}),
+    ...(SAVE_ABILITIES.includes(entry.saveAbility as (typeof SAVE_ABILITIES)[number]) ? { saveAbility: entry.saveAbility as (typeof SAVE_ABILITIES)[number] } : {}),
+    ...(typeof entry.dice === "string" && entry.dice.length <= 12 && isValidExpression(entry.dice) ? { dice: entry.dice } : {}),
   };
 }
 
