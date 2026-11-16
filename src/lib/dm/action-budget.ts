@@ -481,15 +481,19 @@ export function claimOncePerTurn(budget: TurnBudget, key: string): TurnBudget | 
 // see what the acting character still has before it decides anything.
 export function describeBudget(budget: TurnBudget): string {
   const parts: string[] = [];
+  // Slow: "either an action or a bonus action, not both", and "it can't use
+  // reactions" (SRD 5.1). The engine refused both (slowedProblem, the
+  // reaction gate), and this line still offered them to the model.
+  const acted = budget.actionUsed || budget.attacksMade > 0;
   if (budget.attacksMade > 0 && attacksLeft(budget) > 0) {
     parts.push(`${attacksLeft(budget)} attack${attacksLeft(budget) === 1 ? "" : "s"} left`);
-  } else if (!budget.actionUsed) {
+  } else if (!budget.actionUsed && !(budget.slowed && budget.bonusUsed)) {
     parts.push("action");
   }
-  if (!budget.bonusUsed) {
+  if (!budget.bonusUsed && !(budget.slowed && acted)) {
     parts.push("bonus action");
   }
-  if (!budget.reactionUsed) {
+  if (!budget.reactionUsed && !budget.slowed) {
     parts.push("reaction");
   }
   if ((budget.grantedActions ?? 0) > 0) {

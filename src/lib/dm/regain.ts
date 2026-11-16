@@ -25,6 +25,20 @@ export function canRegain(sheet: Pick<CharacterSheet, "conditions" | "currentHp"
   return !sheet.deathSaves?.dead && regainBlockedBy(sheet) === null;
 }
 
+// How many hit points healing could restore now: 0 when the creature cannot
+// regain any or is already full, a beast form's own while one holds. A pool
+// that pays point for point (Lay on Hands) draws no more than this.
+export function regainRoom(campaignId: string, target: CharacterSheet): number {
+  const sheet = getSheetById(target.id) ?? target;
+  if (!canRegain(sheet)) {
+    return 0;
+  }
+  if (sheet.wildShape) {
+    return Math.max(0, sheet.wildShape.beastMaxHp - sheet.wildShape.beastHp);
+  }
+  return Math.max(0, healCeiling(campaignId, sheet) - sheet.currentHp);
+}
+
 // The hit points regained (0 when blocked, dead or already full).
 export function regainHitPoints(campaign: Campaign, turnId: string | null, target: CharacterSheet, amount: number, reason: string): number {
   const sheet = getSheetById(target.id) ?? target;

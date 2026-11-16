@@ -157,6 +157,7 @@
     "lib/content/subclass-choices.ts#toLowerCase": [["key",1,"a choice id made from its label"]],
     "lib/dm/attack-damage-riders.ts#re-word": [["table-language",1,"meaning reader: the damage type read from a Divine Strike feature's text (authored, pack and workshop subclasses)"]],
     "lib/dm/attack-damage-riders.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/attack-damage-riders.ts#str-list": [["key",1,"the feature names whose rider rides only the holder's own turns (Divine Strike, Divine Fury), matched with isNamed (engine vocabulary)"]],
     "lib/dm/attack-damage-riders.ts#toLowerCase": [["key",3,"condition labels (engine vocabulary): the rider's gate and the quarry it names; class id"]],
     "lib/dm/attack-roll-extras.ts#re-word": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/attack-roll-extras.ts#toLowerCase": [["key",1,"die notation"]],

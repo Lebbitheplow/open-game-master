@@ -59,6 +59,7 @@ import type { RollResult } from "@/lib/dice";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { recoverSlot, refuelLevel } from "@/lib/dm/infusion-charges";
 import { itemSpellTurnProblem, markItemSpellOnTurn } from "@/lib/dm/item-casts";
+import { casterStateProblem } from "@/lib/dm/cast-rules";
 import { infusionOf } from "@/lib/srd/infusions";
 
 function publishRoll(campaign: Campaign, sheet: CharacterSheet, detail: string, result: RollResult) {
@@ -267,6 +268,16 @@ export function chargedItemUse(
   const barrier = itemBarrier(sheet, carried);
   if (barrier) {
     return { error: barrier, refused: "rules" };
+  }
+  // The item's spell is cast by its user (SRD 5.1, Magic Items, Spells), and
+  // a raging barbarian or a druid in a beast form casts nothing (Rage; Wild
+  // Shape): the cast tools refused both, while a wand's charge was spent
+  // here and the GM sent on to deal its missiles. An item whose every use is
+  // one of its spells (a Wand of Magic Missiles) casts with no spell named.
+  const castsOnly = !power && !powers.length && itemSpellsOfRow(carried).length > 0;
+  const unable = (cast || castsOnly) && !finishing ? casterStateProblem(sheet) : null;
+  if (unable) {
+    return { ...unable, error: `${unable.error} Nothing was spent.` };
   }
   // SRD 5.1, the manuals and tomes: "If you spend 48 hours over a period of
   // 6 days or fewer studying the book's contents" (book-study.ts): never a

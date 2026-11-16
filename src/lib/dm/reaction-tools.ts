@@ -189,7 +189,10 @@ function deflectMissiles(ctx: Ctx): ToolResult {
   if (monk < 3 && !holdsFeature(sheet, "deflect missiles")) {
     return { error: `${sheet.name} does not have Deflect Missiles (a monk's feature from 3rd level). Nothing was spent.`, refused: "rules" };
   }
-  const ranged = (hit: LastHit) => (swing: SwingRecord) => swing.ranged ?? hit.ranged;
+  // "When you are hit by a ranged weapon attack" (SRD 5.1, Deflect Missiles):
+  // a spell's ranged attack (a flameskull's Fire Ray, a mage's Fire Bolt)
+  // throws no missile, and its damage was turned away all the same.
+  const ranged = (hit: LastHit) => (swing: SwingRecord) => (swing.ranged ?? hit.ranged) && !swing.flags?.spell;
   const record = freshLastHit(
     campaign.id,
     sheet.id,

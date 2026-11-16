@@ -678,6 +678,8 @@ export function planPcAttack(input: {
     marked: marks.applies,
     surprised: encounter.round === 1 && encounter.surprisedIds.includes(enemy.id),
     atRange,
+    // A readied swing or a reaction's attack has no turn budget of its own.
+    offTurn: !budget,
   });
   // A magic weapon's dice against this target (src/lib/dm/gear-attack.ts).
   const gear = itemRidersAgainst(folded.profile, enemy.stats.type, atRange);
