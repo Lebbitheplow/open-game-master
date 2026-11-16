@@ -11,8 +11,10 @@
 // card's panel is held to the share: the target chips, the numbers (the
 // chance to hit among them) and the row of buttons are in view without a
 // scroll, the turn's plate shows above, and the buttons stay at the Hand's
-// foot when the rest is scrolled. A desktop's board has room for the whole
-// panel, and is left as it was.
+// foot when the rest is scrolled. At 1280x720 the strip above the cards at
+// rest is one row, and the turn's plate and the camera's row are whole in
+// it and apart. A desktop's board has room for the whole panel, and is left
+// as it was.
 import { axeViolations, check, eventually, untilStill } from "../lib.mjs";
 
 const SHARE = 0.55;
@@ -148,5 +150,41 @@ export default {
     await untilStill(page);
     const back = await stage();
     check(back.tuck === marks.tuck, `the cards come back tucked as they were (${back.tuck}px, ${marks.tuck}px before)`);
+
+    // ---- 1280x720: the strip at rest holds the turn's plate and the camera's row ----
+    // The lead's board there is 213px and the strip above the cards at rest
+    // 48px, one row: the turn's plate under its heading stood on the Hand's
+    // heading, and the camera's row, with no room beside the two, lay over
+    // the heading and touched the plate.
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await eventually(async () => (await rect(".cine-fight-board .board-view")).height < view.height - 20, { label: "the board at 1280x720" });
+    await untilStill(page);
+    const low = await rect(".cine-fight-board .board-view");
+    const top = (await rect(".cine-fight-hand")).top;
+    const parts = await page.evaluate((root) => {
+      const box = (el) => {
+        if (!el?.getClientRects().length) return null;
+        const { left, top, right, bottom } = el.getBoundingClientRect();
+        return { left, top, right, bottom };
+      };
+      const hud = document.querySelector(`${root}.cine-fight-board .board-turn-hud`);
+      return {
+        band: document.querySelector(`${root}.cine-fight-board`)?.getAttribute("data-foot-band") ?? null,
+        heading: box(hud?.querySelector(".board-eyebrow")),
+        plate: box(hud?.querySelector(".board-glass")),
+        round: box(document.querySelector(`${root}.cine-fight-board .board-view [data-tour='battle-initiative']`)),
+        row: [...document.querySelectorAll(`${root}.cine-fight-board .board-corner > *`)].map((el) => ({ name: el.className.split(" ")[0], ...box(el) })).filter((part) => part.left !== undefined),
+      };
+    }, root);
+    const said = (part) => (part ? `${px(part.left)},${px(part.top)} to ${px(part.right)},${px(part.bottom)}` : "none");
+    const whole = (part) => part && part.top >= low.top - 1 && part.bottom <= top + 1;
+    await t.shot("rest-1280x720");
+    check(whole(parts.plate), `at 1280x720 the turn's plate is whole between the board's top (${px(low.top)}) and the Hand (${px(top)}): ${said(parts.plate)}, the strip ${px(top - low.top)}px, band ${parts.band}`);
+    for (const part of parts.row) {
+      check(whole(part), `at 1280x720 the camera's row is whole in the strip (${part.name} at ${said(part)}, the board from ${px(low.top)}, the Hand from ${px(top)})`);
+      for (const [name, other] of [["the turn's heading", parts.heading], ["the turn's plate", parts.plate], ["the round's line", parts.round]]) {
+        check(apart(part, other), `at 1280x720 the camera's row keeps off ${name} (${part.name} at ${said(part)}, ${name} at ${said(other)})`);
+      }
+    }
   },
 };

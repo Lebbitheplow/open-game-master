@@ -146,7 +146,8 @@ function markFootBand(frame: HTMLElement): void {
 // appearance's taller header leaves a 1366x768 window 59px of strip). The
 // row moves left of whichever of them shares its height, where it fits clear
 // of the round's line, and stays where it was where it does not (a narrow
-// board, the order's plates drawn).
+// board, the order's plates drawn). On your own turn the heading gives way
+// in that band (world.css), so the row has only the plate to clear.
 const TURN_HUD_SELECTOR = ".board-turn-hud";
 const ROW_GAP = 8;
 
