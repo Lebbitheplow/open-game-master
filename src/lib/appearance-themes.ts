@@ -84,6 +84,16 @@ export const APPEARANCE_THEMES = [
     },
     provenance: "public/assets/themes/kingdoms/art-provenance.json",
   },
+  {
+    id: "tide", name: "Sunken Tide", description: "Sea-glass teal, pale driftwood, and verdigris bronze.", icon: "waves", stylesheet: "src/app/styles/themes/tide.css",
+    art: {
+      texture: "/assets/themes/tide/driftwood-v1.webp",
+      frame: "/assets/themes/tide/kelp-driftwood-frame-v1.webp",
+      corner: "/assets/themes/tide/shell-bronze-clasp-v1.webp",
+      backdrop: "/assets/themes/tide/tide-shrine-v1.webp",
+    },
+    provenance: "public/assets/themes/tide/art-provenance.json",
+  },
 ] as const satisfies readonly AppearanceDefinition[];
 export type AppearanceTheme = (typeof APPEARANCE_THEMES)[number]["id"];
 export type AppearanceChoice = "campaign" | AppearanceTheme;
