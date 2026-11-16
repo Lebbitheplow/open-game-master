@@ -170,5 +170,31 @@ await test("Y03: a goblin blinded by Color Spray is still blinded through the ca
   assert.ok(!kit.enemy(goblin.id).conditions.includes("blinded"), "it ends as that turn ends");
 });
 
+// ---- Y04: Hideous Laughter passes over a creature of Intelligence 4 or less ----
+
+// SRD 5.1, Hideous Laughter: "A creature with an Intelligence score of 4 or
+// less isn't affected." The row's note said so and nothing read it, so a
+// wolf fell laughing, prone and incapacitated.
+await test("Y04: Hideous Laughter at a creature of Intelligence 3 is cast and spent and leaves it standing", async () => {
+  const { world, kit, wizard, goblin } = await castStage(["Hideous Laughter"]);
+  kit.setEnemy(goblin.id, { stats: { abilities: { ...DUMMY.abilities, int: 3 } } });
+  world.dice(1);
+  const cast = await world.invoke("cast_at_enemy", { characterId: wizard.id, targetEnemyId: goblin.id, spell: "Hideous Laughter", level: 1 });
+  world.clearDice();
+  assert.equal(cast.ok, true, cast.error);
+  assert.deepEqual(kit.enemy(goblin.id).conditions, [], "a beast's mind is not touched");
+  assert.equal(world.sheet(wizard.id).spellcasting.slots["1"].used, 1, "the slot is spent, as for any spell that has no effect");
+});
+
+await test("Y04: Hideous Laughter at a creature of Intelligence 5 that fails still lays it low", async () => {
+  const { world, kit, wizard, goblin } = await castStage(["Hideous Laughter"]);
+  kit.setEnemy(goblin.id, { stats: { abilities: { ...DUMMY.abilities, int: 5 } } });
+  world.dice(1);
+  const cast = await world.invoke("cast_at_enemy", { characterId: wizard.id, targetEnemyId: goblin.id, spell: "Hideous Laughter", level: 1 });
+  world.clearDice();
+  assert.equal(cast.ok, true, cast.error);
+  assert.ok(kit.enemy(goblin.id).conditions.includes("incapacitated"));
+});
+
 closeTables();
 finish();

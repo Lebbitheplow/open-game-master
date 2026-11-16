@@ -348,7 +348,15 @@ export function handleCastAtEnemy(
   }
   // Hold Monster and Command on the undead, Blight on a construct: cast, and
   // spent, to no effect (SRD 5.1).
-  const spared = creatureType && mech?.immuneTypes?.some((type) => creatureType.includes(type)) ? `${spellName} has no effect on ${creatureType} creatures, and ${enemy.displayName} is one.` : null;
+  // Hideous Laughter on a creature of Intelligence 4 or less: "isn't
+  // affected" (SRD 5.1), cast and spent the same way. It laughed a wolf to
+  // the ground.
+  const intelligence = enemy.stats.abilities?.int;
+  const spared =
+    (creatureType && mech?.immuneTypes?.some((type) => creatureType.includes(type)) ? `${spellName} has no effect on ${creatureType} creatures, and ${enemy.displayName} is one.` : null) ??
+    (mech?.sparesIntAtMost !== undefined && typeof intelligence === "number" && intelligence <= mech.sparesIntAtMost
+      ? `${spellName} has no effect on a creature with an Intelligence of ${mech.sparesIntAtMost} or less, and ${enemy.displayName}'s is ${intelligence}.`
+      : null);
   if (args.overchannel) {
     const problem = overchannelProblem(sheet, facts, Boolean(named?.dice ?? callerDice));
     if (problem) {

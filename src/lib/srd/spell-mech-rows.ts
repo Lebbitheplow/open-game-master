@@ -78,6 +78,7 @@ export const SRD_EFFECT_ROWS: Record<string, SpellMech> = {
     resolution: "save",
     save: "wis",
     condition: { name: "incapacitated", also: ["prone"], saveEnds: true, saveOnDamage: "advantage" },
+    sparesIntAtMost: 4,
     noDamage: true,
     note: "Prone and incapacitated, unable to stand; it saves again at the end of each of its turns and each time it takes damage, with advantage then. A creature with Intelligence 4 or less is unaffected.",
   },

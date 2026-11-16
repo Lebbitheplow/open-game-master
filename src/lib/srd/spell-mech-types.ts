@@ -228,6 +228,9 @@ export type SpellMech = {
   targetTypes?: string[];
   // Creature types it has no effect on (Command: undead).
   immuneTypes?: string[];
+  // A creature whose Intelligence score is this or lower is not affected
+  // (Hideous Laughter: 4).
+  sparesIntAtMost?: number;
   // A creature immune to this condition is immune to the spell (Suggestion
   // and Irresistible Dance: charmed).
   immuneIfImmuneTo?: string;

@@ -177,6 +177,7 @@ export const spellMechSchema = z.object({
   repeatDice: dice.optional(),
   targetTypes: words(14).optional(),
   immuneTypes: words(14).optional(),
+  sparesIntAtMost: int(1, 30).optional(),
   immuneIfImmuneTo: word().optional(),
   revive: z
     .object({
