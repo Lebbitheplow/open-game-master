@@ -136,21 +136,30 @@ export function spendSlotMath(slot: SlotState | undefined | null): SlotState | n
 // sword its weapon (issue #424, found beside it). A bundle of ammunition
 // travels as its rounds (src/lib/srd/ammo-bundles.ts): one "Arrows (20)"
 // handed to a friend who had one merged into a line of two arrows.
-export function handedOverRow<Row extends EquipmentRow>(row: Row, qty: number): Row {
+//
+// The attunement stays with whoever holds it, not with the row: SRD 5.1,
+// Attunement, ends it only "if the item has been more than 100 feet away for
+// at least 24 hours, if the creature dies, or if another creature attunes to
+// the item", so a cloak lent for a moment came back needing a short rest.
+// `move` names who it leaves (`from`) and who takes it (`to`): the row keeps
+// its lender in attunedBy, and is attuned again when it reaches them.
+export function handedOverRow<Row extends EquipmentRow>(row: Row, qty: number, move: { from?: string; to?: string } = {}): Row {
   const {
     equipped: _equipped,
-    attuned: _attuned,
+    attuned,
     attuning: _attuning,
+    attunedBy,
     layered: _layered,
     gear: _gear,
     ...kept
-  } = row as Row & { equipped?: boolean; attuned?: boolean; attuning?: boolean; layered?: boolean; gear?: unknown };
+  } = row as Row & { equipped?: boolean; attuned?: boolean; attuning?: boolean; attunedBy?: string; layered?: boolean; gear?: unknown };
   void _equipped;
-  void _attuned;
   void _attuning;
   void _layered;
   void _gear;
-  return carriedAsRounds(kept as Row, qty);
+  const lender = attuned ? move.from : attunedBy;
+  const bond = lender && lender === move.to ? { attuned: true } : lender ? { attunedBy: lender } : {};
+  return carriedAsRounds({ ...(kept as Row), ...bond }, qty);
 }
 
 // Whether two rows are the same thing, the rule grantItemMath merges by:

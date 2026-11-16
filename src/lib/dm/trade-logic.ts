@@ -90,6 +90,9 @@ function moveItem(
   giver: Row[],
   taker: Row[],
   line: TradeLine,
+  // Who gives it and who takes it: an attunement travels with neither
+  // (mutation-math.ts handedOverRow).
+  move: { from: string; to: string },
 ): { giver: Row[]; taker: Row[] } | null {
   const removal = removeItemMath(giver, line.name, line.qty);
   if (!removal || removal.removed < line.qty) {
@@ -98,7 +101,7 @@ function moveItem(
   // The row removeItemMath took is the one that travels (a line naming the
   // row finds the table-language item, #431). What the item is travels
   // with it; how the giver wore it does not (mutation-math.ts handedOverRow).
-  return { giver: removal.equipment, taker: addRowMath(taker, handedOverRow(removal.item, line.qty)) };
+  return { giver: removal.equipment, taker: addRowMath(taker, handedOverRow(removal.item, line.qty, move)) };
 }
 
 // Both patches, or the reason it cannot happen. Everything is checked
@@ -117,7 +120,7 @@ export function computeTrade(from: CharacterSheet, to: CharacterSheet, offer: Tr
     }
   }
   for (const line of offer.give) {
-    const moved = moveItem(fromEquipment, toEquipment, line);
+    const moved = moveItem(fromEquipment, toEquipment, line, { from: from.id, to: to.id });
     if (!moved) {
       return { error: `${from.name} no longer carries ${line.qty > 1 ? `${line.qty} ` : ""}${line.name}.` };
     }
@@ -125,7 +128,7 @@ export function computeTrade(from: CharacterSheet, to: CharacterSheet, offer: Tr
     toEquipment = moved.taker;
   }
   for (const line of offer.want) {
-    const moved = moveItem(toEquipment, fromEquipment, line);
+    const moved = moveItem(toEquipment, fromEquipment, line, { from: to.id, to: from.id });
     if (!moved) {
       return { error: `${to.name} does not carry ${line.qty > 1 ? `${line.qty} ` : ""}${line.name}.` };
     }

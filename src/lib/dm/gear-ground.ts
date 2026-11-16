@@ -94,7 +94,7 @@ export function drop(
     x: token?.x ?? null,
     y: token?.y ?? null,
     place: placeName(campaign.id),
-    item: handedOverRow(row, removal.removed),
+    item: handedOverRow(row, removal.removed, { from: sheet.id }),
     droppedBy: sheet.name,
   });
   saveEquipment(campaign, turn, sheet, removal.equipment, "drop_item", { name: row.name, dropped: removal.removed }, reason || `Dropped ${row.name}`);
@@ -138,7 +138,7 @@ export function throwToGround(campaign: Campaign, turn: DmTurn | null, sheet: Ch
     x: token?.x ?? null,
     y: token?.y ?? null,
     place: placeName(campaign.id),
-    item: handedOverRow(row, 1),
+    item: handedOverRow(row, 1, { from: sheet.id }),
     droppedBy: sheet.name,
   });
   saveEquipment(campaign, turn, fresh, equipment, "throw_item", { name: row.name, thrown: 1 }, `Threw ${row.name}`);
@@ -244,7 +244,7 @@ export function pickUp(
   const taken = Math.min(qty, found.item.item.qty);
   takeFromDroppedItem(found.item.id, taken);
   const fresh = getSheetById(sheet.id) ?? sheet;
-  const hold = holdIfFree(addRowMath(fresh.equipment, handedOverRow(found.item.item, taken)), found.item.item.name);
+  const hold = holdIfFree(addRowMath(fresh.equipment, handedOverRow(found.item.item, taken, { to: fresh.id })), found.item.item.name);
   saveEquipment(campaign, turn, fresh, hold.equipment, "pick_up_item", { name: found.item.item.name, taken }, reason || `Picked up ${found.item.item.name}`);
   if (encounter && budget) {
     storeBudget(encounter, budget);

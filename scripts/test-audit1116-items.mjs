@@ -129,5 +129,46 @@ await test("I02: Remove Curse breaks the attunement to a cursed item, and then t
   assert.equal(dropped.ok, true, dropped.error);
 });
 
+// I03. SRD 5.1, Attunement: "A creature's attunement to an item ends if the
+// creature no longer satisfies the prerequisites for attunement, if the item
+// has been more than 100 feet away for at least 24 hours, if the creature
+// dies, or if another creature attunes to the item." A hand-over is none of
+// these: the fighter who lends the cloak for a moment is still attuned when
+// it comes back. The engine ended the attunement with every hand-over and
+// trade, so the cloak came back needing a short rest.
+const acOf = (id) => world.sheet(id).ac;
+await test("I03: a cloak lent to a friend and handed back is still attuned, with its +1, and no short rest", async () => {
+  const owner = world.addHero({ class: "fighter", level: 5, acOverride: false, equipment: [{ name: "Cloak of Protection", qty: 1, attuned: true, equipped: true }] });
+  const friend = world.addHero({ class: "wizard", level: 5 });
+  const before = acOf(owner.id);
+  const lent = await world.invoke("handle_item", { characterId: owner.id, action: "hand", item: "Cloak of Protection", toCharacterId: friend.id });
+  assert.equal(lent.ok, true, lent.error);
+  assert.notEqual(world.sheet(friend.id).equipment[0].attuned, true, "the friend is not attuned to it");
+  const back = await world.invoke("handle_item", { characterId: friend.id, action: "hand", item: "Cloak of Protection", toCharacterId: owner.id });
+  assert.equal(back.ok, true, back.error);
+  const cloak = world.sheet(owner.id).equipment.find((item) => item.name === "Cloak of Protection");
+  assert.equal(cloak?.attuned, true, "the owner's attunement held");
+  await world.invoke("handle_item", { characterId: owner.id, action: "equip", item: "Cloak of Protection" });
+  assert.equal(acOf(owner.id), before, "the cloak's +1 is back with it");
+});
+
+await test("I03: a trade away and back keeps the attunement; one to a third friend and on keeps it too", async () => {
+  const { computeTrade } = await import("../src/lib/dm/trade-logic.ts");
+  const owner = world.addHero({ class: "fighter", level: 5, equipment: [{ name: "Ring of Protection", qty: 1, attuned: true, equipped: true }] });
+  const a = world.addHero({ class: "rogue", level: 5 });
+  const b = world.addHero({ class: "cleric", level: 5 });
+  const move = (from, to) => {
+    const done = computeTrade(world.sheet(from), world.sheet(to), { toCharacterId: to, give: [{ name: "Ring of Protection", qty: 1 }], giveCp: 0, want: [], wantCp: 0 });
+    assert.ok(!("error" in done), done.error);
+    world.patch(from, done.from);
+    world.patch(to, done.to);
+  };
+  move(owner.id, a.id);
+  move(a.id, b.id);
+  assert.notEqual(world.sheet(b.id).equipment[0].attuned, true);
+  move(b.id, owner.id);
+  assert.equal(world.sheet(owner.id).equipment.find((item) => item.name === "Ring of Protection")?.attuned, true);
+});
+
 world.close();
 finish();
