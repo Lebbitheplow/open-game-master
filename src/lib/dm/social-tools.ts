@@ -55,7 +55,8 @@ import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { stepTakenThisExchange } from "@/lib/dm/step-exchange";
 import { fittedText } from "@/lib/dm/fitted-text";
-import { npcStateKeepsInView, npcStateWords } from "@/lib/dm/npc-state-logic";
+import { needsWords, npcStateKeepsInView, npcStateWords } from "@/lib/dm/npc-state-logic";
+import { getClock } from "@/lib/db/clock";
 import { noteBelievedLie, socialEdge } from "@/lib/dm/genre-b-mystery-dossier";
 
 // The social-interaction engine: NPC disposition was pure narration with no
@@ -614,6 +615,7 @@ export function npcRosterForPrompt(campaignId: string, options: { romance?: bool
   // Archived NPCs stay out of the prompt until someone names them again
   // (src/lib/dm/npc-archive-logic.ts). They are never deleted. A companion
   // in the party is in the Party block, not here.
+  const now = getClock(campaignId).instant;
   return listCastNpcs(campaignId)
     .filter((npc) => !npc.archived)
     .map((npc) => ({
@@ -636,7 +638,7 @@ export function npcRosterForPrompt(campaignId: string, options: { romance?: bool
     identity: npcIdentity(npc, options.romance ?? false),
     // Prisoner, bound, down (npc_state): said every turn, so nobody
     // forgets the man tied on the cart (src/lib/dm/npc-state-logic.ts).
-    state: npcStateWords(npc.state),
+    state: [npcStateWords(npc.state), needsWords(npc.state, now)].filter(Boolean).join(", "),
     inView: npcStateKeepsInView(npc.state),
   }));
 }

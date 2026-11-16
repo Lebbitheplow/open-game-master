@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { getClock } from "@/lib/db/clock";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getCurrentLocation } from "@/lib/db/locations";
 import { getNpcAway } from "@/lib/db/npc-minds";
@@ -29,7 +30,7 @@ export const npcStateTools = [
     function: {
       name: "npc_state",
       description:
-        "When a tracked NPC is taken prisoner, tied, freed, wounded, knocked out or killed on screen, or sets out with the party or leaves it, record it here; their roster line then says it every turn. Give only what changed.",
+        "When a tracked NPC is taken prisoner, tied, freed, wounded, knocked out or killed on screen, sets out with the party or leaves it, or eats or drinks, record it here; their roster line then says it every turn. Give only what changed.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -43,6 +44,8 @@ export const npcStateTools = [
           disarmed: { type: "boolean" },
           revealedName: { type: "string", description: "the name the story just revealed for someone tracked under a description; the old one stays an alias" },
           carries: { type: "array", items: { type: "string" }, description: "replaces the list: only things that matter to the story (proof, a key), not ordinary gear" },
+          drank: { type: "boolean", description: "they drank enough just now: their thirst starts again from this moment" },
+          ate: { type: "boolean", description: "they ate a meal just now: their hunger starts again from this moment" },
         },
         required: ["name"],
       },
@@ -61,6 +64,8 @@ const stateSchema = z.object({
   // Measured by applyNpcStatePatch, which says what to shorten.
   carries: z.array(z.string().max(400)).max(40).optional(),
   revealedName: z.string().trim().min(1).max(80).optional(),
+  drank: z.boolean().optional(),
+  ate: z.boolean().optional(),
 });
 
 export function handleNpcState(campaign: Campaign, rawArguments: string): ToolResult {
@@ -80,8 +85,8 @@ export function handleNpcState(campaign: Campaign, rawArguments: string): ToolRe
       retry: true,
     };
   }
-  if (!args.custody && !args.heldBy && !args.restraint && !args.condition && args.withParty === undefined && args.disarmed === undefined && !args.carries && !args.revealedName) {
-    return { error: "npc_state needs at least one of custody, heldBy, restraint, condition, withParty, disarmed, carries or revealedName: what changed.", retry: true };
+  if (!args.custody && !args.heldBy && !args.restraint && !args.condition && args.withParty === undefined && args.disarmed === undefined && !args.carries && !args.revealedName && !args.drank && !args.ate) {
+    return { error: "npc_state needs at least one of custody, heldBy, restraint, condition, withParty, disarmed, carries, drank, ate or revealedName: what changed.", retry: true };
   }
   // A name the story revealed (the armed man at the mill is Rugo): the same
   // person under it, memories, bonds and tier and all, the old one kept as
@@ -112,6 +117,8 @@ export function handleNpcState(campaign: Campaign, rawArguments: string): ToolRe
     withParty: args.withParty,
     disarmed: args.disarmed,
     carries: args.carries,
+    ...(args.drank ? { drankAt: getClock(campaign.id).instant } : {}),
+    ...(args.ate ? { ateAt: getClock(campaign.id).instant } : {}),
   });
   if ("error" in applied) {
     return { error: `${npc.name}: ${applied.error}`, retry: true };

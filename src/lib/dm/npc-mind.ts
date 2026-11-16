@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { npcSeenStateWords, npcSilencedBy } from "@/lib/dm/npc-state-logic";
+import { needsWords, npcSeenStateWords, npcSilencedBy } from "@/lib/dm/npc-state-logic";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getClock } from "@/lib/db/clock";
 import { describeInstant } from "@/lib/dm/calendar";
@@ -293,6 +293,10 @@ function identityOf(campaign: Campaign, npc: Npc): string[] {
     agencyFragment(npc.agency) ? `Your temperament and aims: ${agencyFragment(npc.agency)}` : "",
     npc.agency.goals.scene ? `What you want right now: ${npc.agency.goals.scene}` : "",
     npc.location ? `You are usually found at ${npc.location}.` : "",
+    // Its own things, which only the sheet held: two days on the raft the
+    // minds forgot who had the key and the bread (2026-11-16).
+    npc.state.carries.length ? `What you have on you now (yours, and nobody else's): ${npc.state.carries.join("; ")}.` : "You carry nothing that matters beyond your clothes.",
+    needsWords(npc.state, nowInstant(campaign.id)) ? `Your body right now: ${needsWords(npc.state, nowInstant(campaign.id))}. You feel it in everything you do, and it grows until you drink or eat.` : "",
     `Your attitude toward the heroes in general: ${npc.attitude}.`,
     // A companion knows all of itself, as a player reads their own sheet.
     sheet
@@ -375,8 +379,13 @@ async function askMind(
   if (!read.ok) {
     return { ok: false, error: read.error, latencyMs };
   }
-  // Words that only say again what it heard are not its own: the action stays.
-  const heard = [...quotedLines(perceives), ...memories.filter((memory) => memory.sourceKind !== "self").flatMap((memory) => quotedLines(memory.content))];
+  // Words that only say again what it heard, or what it already said
+  // itself, are not new: the action stays.
+  const heard = [
+    ...quotedLines(perceives),
+    ...memories.filter((memory) => memory.sourceKind !== "self").flatMap((memory) => quotedLines(memory.content)),
+    ...memories.filter((memory) => memory.kind === "said" || memory.kind === "lie").map((memory) => memory.content),
+  ];
   const proposal = echoesHeard(read.proposal.speech, heard) ? { ...read.proposal, speech: "", lie: false } : read.proposal;
   return {
     ok: true,
@@ -657,6 +666,10 @@ export async function handleNpcSpeak(campaign: Campaign, rawArguments: string): 
   }
   if (proposal.conclusion) {
     addNpcMemories(campaign.id, [npc.id], { kind: "hypothesis", sourceKind: "self", sourceName: "", content: proposal.conclusion, learnedAt: now }, turnId);
+  }
+  // What it set out to do, so the next turn knows it already did it.
+  if (proposal.intent) {
+    addNpcMemories(campaign.id, [npc.id], { kind: "did", sourceKind: "self", sourceName: "", content: proposal.intent, learnedAt: now }, turnId);
   }
   recordNpcProposal(campaign.id, {
     npcId: npc.id,

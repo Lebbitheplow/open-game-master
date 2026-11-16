@@ -14,7 +14,7 @@ const { test, finish } = suite("test-npc-mind");
 const logic = await import("../src/lib/dm/npc-mind-logic.ts");
 const mind = await import("../src/lib/dm/npc-mind.ts");
 const minds = await import("../src/lib/db/npc-minds.ts");
-const { upsertNpc, getNpcByName, patchNpcAgency } = await import("../src/lib/db/npcs.ts");
+const { upsertNpc, getNpcByName, patchNpcAgency, setNpcState } = await import("../src/lib/db/npcs.ts");
 const { recordExtractedFacts, listActiveFacts } = await import("../src/lib/db/facts.ts");
 const { advanceClock, getClock } = await import("../src/lib/db/clock.ts");
 const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
@@ -263,6 +263,17 @@ await test("a free reply is read by the narrator's model into words and a deed; 
   model.script([reply({ text: "Resto zitto." }), answer({ speech: "", intent: "" })]);
   const idle = await speak({ name: "Volodar", perceives: "La pioggia batte sulle tavole." });
   assert.ok(idle.error, "a reading with no deed is no answer");
+});
+
+await test("a mind sees what it carries and how long it has gone without water, and remembers the deed it set out to do", async () => {
+  const kranz = npc("Kranz");
+  setNpcState(kranz.id, { custody: "free", heldBy: "", restraint: "none", condition: "up", withParty: false, disarmed: false, carries: ["il sacco delle gallette"], drankAt: getClock(world.campaignId).instant - 20 * 60 });
+  model.script([reply({ text: "SAY: nulla\nDO: Nascondo il sacco sotto la giacca.\nTHINK: nulla\nLYING: no" }), answer({ speech: "", intent: "nasconde il sacco sotto la giacca" })]);
+  await speak({ name: "Kranz", perceives: "La notte scende sulla zattera." });
+  const asked = mindText(mindRequests().at(-1));
+  assert.match(asked, /What you have on you now \(yours, and nobody else's\): il sacco delle gallette/);
+  assert.match(asked, /thirsty \(20 hours without water\)/);
+  assert.ok(memories("Kranz").some((entry) => entry.kind === "did" && /nasconde il sacco/.test(entry.content)), "its deed is remembered");
 });
 
 // ---- Ticket 02: news, the absent, late messages --------------------------

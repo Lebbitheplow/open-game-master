@@ -36,6 +36,10 @@ export type NpcState = {
   disarmed: boolean;
   // What they carry that matters to the story; notes, not an inventory.
   carries: string[];
+  // When they last drank and ate, as clock instants (minutes); absent when
+  // the story never tracked it, and then nothing is said of hunger or thirst.
+  drankAt?: number;
+  ateAt?: number;
 };
 
 export const DEFAULT_NPC_STATE: NpcState = { custody: "free", heldBy: "", restraint: "none", condition: "up", withParty: false, disarmed: false, carries: [] };
@@ -71,6 +75,8 @@ export function parseNpcState(raw: string | null | undefined): NpcState {
     carries: Array.isArray(record.carries)
       ? record.carries.filter((item): item is string => typeof item === "string" && Boolean(item.trim())).map((item) => item.trim().slice(0, NPC_CARRIED_MAX_CHARS)).slice(0, NPC_CARRIES_MAX)
       : [],
+    ...(typeof record.drankAt === "number" && Number.isFinite(record.drankAt) ? { drankAt: record.drankAt } : {}),
+    ...(typeof record.ateAt === "number" && Number.isFinite(record.ateAt) ? { ateAt: record.ateAt } : {}),
   };
 }
 
@@ -81,7 +87,9 @@ export function isDefaultNpcState(state: NpcState): boolean {
     state.condition === DEFAULT_NPC_STATE.condition &&
     state.withParty === DEFAULT_NPC_STATE.withParty &&
     !state.disarmed &&
-    state.carries.length === 0
+    state.carries.length === 0 &&
+    state.drankAt === undefined &&
+    state.ateAt === undefined
   );
 }
 
@@ -130,6 +138,12 @@ export function applyNpcStatePatch(current: NpcState, patch: NpcStatePatch): { s
     }
     next.carries = carries;
   }
+  if (typeof patch.drankAt === "number") {
+    next.drankAt = patch.drankAt;
+  }
+  if (typeof patch.ateAt === "number") {
+    next.ateAt = patch.ateAt;
+  }
   if (current.condition === "dead" && next.condition !== "dead") {
     return { error: "they are dead on the record; the dead do not get up. Leave condition dead." };
   }
@@ -156,6 +170,30 @@ export function npcStateWords(state: NpcState): string {
   ]
     .filter(Boolean)
     .join(", ");
+}
+
+// Hunger and thirst (the raft sandbox, 2026-11-16: two days adrift and
+// nobody drank, ate or fought over the barrel). Words for how long a body has
+// gone without, read at the clock's instant: thirst bites after 12 hours and
+// kills in about three days, hunger after a day and kills in weeks.
+export function needsWords(state: Pick<NpcState, "drankAt" | "ateAt" | "condition">, now: number): string {
+  if (state.condition === "dead") {
+    return "";
+  }
+  const hours = (at: number | undefined) => (at === undefined ? -1 : Math.floor((now - at) / 60));
+  const dry = hours(state.drankAt);
+  const empty = hours(state.ateAt);
+  const thirst =
+    dry >= 60 ? `dying of thirst (${dry} hours without water): delirious, too weak to stand long`
+    : dry >= 36 ? `parched (${dry} hours without water): cracked lips, dizzy, weak`
+    : dry >= 12 ? `thirsty (${dry} hours without water)`
+    : "";
+  const hunger =
+    empty >= 96 ? `starving (${empty} hours without food): faint and shaking`
+    : empty >= 48 ? `very hungry (${empty} hours without food), growing weak`
+    : empty >= 24 ? `hungry (${empty} hours without food)`
+    : "";
+  return [thirst, hunger].filter(Boolean).join("; ");
 }
 
 // Whether the roster keeps them near its head wherever the record puts them:

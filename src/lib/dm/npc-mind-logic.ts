@@ -289,7 +289,9 @@ export const MIND_SYSTEM = [
   // barrel shut and the bread untouched while all of them starved.
   "Every turn you DO something with your body in this moment: take, give, hide, steal, strike, threaten with a weapon, move, eat, drink, sleep, keep watch, work, flee. Talking is not an action. If you truly choose to do nothing, say so plainly and why.",
   // Small models copied the last line they read back as their own.
-  "Your words are your own: never repeat or rephrase what someone else just said, and never echo a slogan already spoken.",
+  "Your words are your own: never repeat or rephrase what someone else just said, and never echo a slogan already spoken, yours included.",
+  // Washing hands and fishing, turn after turn: a habit is not a plan.
+  "Your memories list what you already did (marked as set out to). Do not just repeat it: move toward what you want, or react to what changed.",
   // Free text, not JSON (the same sandbox: a role-play model broke the JSON
   // in 5 of 7 replies). A separate reader turns it into the engine's terms.
   "Answer in plain text, in exactly these four lines and nothing else:",
@@ -360,7 +362,7 @@ export const MIND_READER_SYSTEM = [
   "Keep the meaning exactly: do not soften, refuse, moralize, add, invent or drop anything. Violence, theft, threats, lies and cruelty are transcribed as written; the rules decide what happens.",
   "The reply should hold SAY, DO, THINK and LYING lines, but it may be messy, labelled in another language, or plain prose: read what the character speaks, does and privately thinks.",
   'Answer with ONE JSON object and nothing else: {"speech": "the exact words spoken aloud, verbatim in their original language, without narration or quotation marks around the whole, or empty", "intent": "the one physical action the character takes now, one short sentence in the reply\'s language", "conclusion": "a private suspicion or plan, or empty", "lie": true if the character says or plainly shows the speech is knowingly false, else false}.',
-  "intent is never empty: if the reply states no action, write that the character stays where they are and does nothing. Words alone are speech, never the intent.",
+  "intent is never empty: if the reply states no action, write, in the reply's language, that the character stays where they are and does nothing. Words alone are speech, never the intent.",
 ].join("\n");
 
 export function renderReaderPrompt(name: string, reply: string): string {

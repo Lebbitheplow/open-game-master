@@ -359,4 +359,21 @@ await test("taken along with the party, a character left on the record elsewhere
 });
 
 model.close();
+await test("hunger and thirst: nothing said until tracked; then they grow with the clock, and a drink or a meal starts them again", async () => {
+  assert.equal(logic.needsWords(logic.DEFAULT_NPC_STATE, 99_999), "", "untracked says nothing");
+  assert.equal(logic.needsWords({ condition: "up", drankAt: 0, ateAt: 0 }, 11 * 60), "");
+  assert.match(logic.needsWords({ condition: "up", drankAt: 0, ateAt: 0 }, 13 * 60), /^thirsty \(13 hours/);
+  assert.match(logic.needsWords({ condition: "up", drankAt: 0, ateAt: 0 }, 40 * 60), /parched .*; hungry/);
+  assert.match(logic.needsWords({ condition: "up", drankAt: 0, ateAt: 0 }, 70 * 60), /dying of thirst/);
+  assert.equal(logic.needsWords({ condition: "dead", drankAt: 0 }, 70 * 60), "");
+  const kept = logic.parseNpcState(JSON.stringify({ drankAt: 5, ateAt: 7 }));
+  assert.equal(kept.drankAt, 5);
+  assert.equal(logic.serializeNpcState(kept) !== "", true, "a tracked thirst is kept");
+  upsertNpc({ campaignId: world.campaignId, name: "Volodar" });
+  const drank = state({ name: "Volodar", drank: true, ate: true });
+  assert.equal(drank.ok, true, drank.error);
+  assert.equal(typeof sheetOf("Volodar").drankAt, "number");
+  assert.equal(typeof sheetOf("Volodar").ateAt, "number");
+});
+
 finish();
