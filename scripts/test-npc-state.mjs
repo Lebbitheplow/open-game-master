@@ -168,6 +168,22 @@ await test("a mind apart from the party is not moved with it", async () => {
   assert.equal(placeOf("Far sentry"), "the wall", "a mind apart from the party stays apart");
 });
 
+await test("a prisoner who answers from their cell stays in it: only who holds them moves them", async () => {
+  upsertCurrentLocation({ campaignId: world.campaignId, name: "the cells" });
+  const row = upsertNpc({ campaignId: world.campaignId, name: "Caged man", location: "the cells" });
+  minds.setNpcTier(row.id, "primary");
+  upsertNpc({ campaignId: world.campaignId, name: "Lieutenant", location: "the cells" });
+  state({ name: "Caged man", custody: "captive", heldBy: "Lieutenant", restraint: "locked_up" });
+  upsertCurrentLocation({ campaignId: world.campaignId, name: "the courtyard" });
+  model.script([reply({ text: JSON.stringify({ speech: "Pull that thread.", intent: "", conclusion: "", lie: false }) })]);
+  const spoken = await mind.handleNpcSpeak(world.campaign(), JSON.stringify({ name: "Caged man", perceives: "Brakk walks off down the corridor." }));
+  assert.ok(spoken.ok, JSON.stringify(spoken));
+  assert.equal(placeOf("Caged man"), "the cells", "still behind his bars");
+  mind.everyoneHears(world.campaign(), "turn-yard", [{ speaker: "Brakk", words: "Where is Ferran on duty today?" }]);
+  assert.ok(!minds.listNpcMemories(world.campaignId, row.id).some((entry) => /Ferran on duty/.test(entry.content)), "the courtyard is not heard from the cell");
+  model.requests.length = 0;
+});
+
 // ---- What they carry (ticket 04) -----------------------------------------
 
 await test("what an NPC carries is a short list of story things, replaced whole, and disarming is noted", () => {

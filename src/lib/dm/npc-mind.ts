@@ -647,10 +647,13 @@ export async function handleNpcSpeak(campaign: Campaign, rawArguments: string): 
 
 // Someone who speaks in the scene, or hears it from close by, is in it: a
 // record that still puts them somewhere else is brought to where the party
-// is (docs/specs/ogm-npc-state.md, rule 3). A mind apart is left where it is.
+// is (docs/specs/ogm-npc-state.md, rule 3). A mind apart is left where it is,
+// and so is a prisoner: only who holds them moves them (the party's move,
+// npc_state). Live play: Aldren, locked in his cell, answered as Brakk walked
+// off and stood in the courtyard, hearing the lieutenant there.
 function bringToScene(campaign: Campaign, npc: Npc) {
   const here = getCurrentLocation(campaign.id)?.name ?? "";
-  if (here && npc.location !== here && !getNpcAway(npc.id)) {
+  if (here && npc.location !== here && !getNpcAway(npc.id) && npc.state.custody !== "captive") {
     setNpcPlace(npc.id, { location: here });
   }
 }
