@@ -328,4 +328,32 @@ await test("U05: a creature's swings at a pet or a mount spend a one-shot rider 
   await kit.endFight();
 });
 
+// U06. Exceptional Training: "a bonus action can command it to Dash,
+// Disengage or Help"; SRD 5.1, Help: "you can aid a friendly creature in
+// attacking a creature within 5 feet of you ... If your ally attacks the
+// target before your next turn, the first attack roll is made with
+// advantage." The command marked the wolf "helping" and laid nothing.
+await test("U06: a companion commanded to Help gives the ranger's next attack at the creature beside it advantage", async () => {
+  await kit.endFight();
+  const ranger = world.addHero({ class: "ranger", subclass: "Beast Master", level: 7, maxHp: 60, abilities: { str: 16 }, proficiencies: { ...TRAINED }, equipment: [{ name: "Longsword", qty: 1 }] });
+  const summoned = await world.invoke("summon_pet", { characterId: ranger.id, kind: "beast_companion", form: "wolf" });
+  assert.equal(summoned.ok, true, summoned.error);
+  await kit.fight(2);
+  const [enemy, far] = world.enemies();
+  kit.setEnemy(enemy.id, { maxHp: 200 });
+  kit.place(ranger.id, 5, 5);
+  kit.place(enemy.id, 5, 6);
+  kit.place(far.id, 12, 12);
+  kit.giveTurn(ranger.id);
+  // Out of the wolf's reach: refused, nothing spent.
+  const tooFar = await world.invoke("use_resource", { characterId: ranger.id, resource: "Exceptional Training", variant: "help", targetEnemyId: far.id });
+  assert.equal(tooFar.ok, false, "a Help at a creature 35 feet from the wolf was taken");
+  const helped = await world.invoke("use_resource", { characterId: ranger.id, resource: "Exceptional Training", variant: "help", targetEnemyId: enemy.id });
+  assert.equal(helped.ok, true, helped.error);
+  const swing = await kit.swing(ranger.id, enemy.id, [15, 3, 4], { weapon: "Longsword" });
+  assert.equal(swing.ok, true, swing.error);
+  assert.equal(d20Faces(swing.toHit).length, 2, `the wolf's Help gave the ranger's swing no advantage: ${JSON.stringify(swing.result).slice(0, 300)}`);
+  await kit.endFight();
+});
+
 finish();

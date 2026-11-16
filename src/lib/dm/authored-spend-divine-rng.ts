@@ -9,6 +9,7 @@ import type { SpendContext } from "@/lib/dm/authored-spend-effects";
 import { giveBack, swarmDieBack } from "@/lib/dm/authored-spend-more";
 import { planFeatureMove } from "@/lib/dm/feature-move";
 import { commandPet, PET_COMMANDS } from "@/lib/dm/pet-command";
+import { petHelp } from "@/lib/dm/pet-help";
 import { incapacitatedBy } from "@/lib/dm/condition-logic";
 import { spellTurnHold } from "@/lib/srd/condition-effect-queries";
 import { petAttackedKey } from "@/lib/dm/pet-attack-cost";
@@ -77,9 +78,17 @@ function petCommand(ctx: SpendContext, does: Extract<SpendDoes, { kind: "pet_com
   if (marks.includes(petAttackedKey(companion.name))) {
     return { error: `${companion.name} attacked this turn, and ${ctx.spend.name}'s command comes on a turn it does not attack. Nothing was spent.`, refused: "rules" };
   }
-  const doing = PET_COMMANDS[["dash", "disengage", "help"].indexOf(textKey(option))] ?? textKey(option);
+  const command = ["dash", "disengage", "help"].indexOf(textKey(option));
+  const doing = PET_COMMANDS[command] ?? textKey(option);
+  // Its Help lands where a character's does (pet-help.ts); asked first, so
+  // a creature out of its reach spends nothing.
+  const helping = command === PET_COMMANDS.length - 1 ? petHelp(ctx.campaign, ctx.sheet, companion, ctx.args) : null;
+  if (helping && "error" in helping) {
+    return helping;
+  }
   commandPet(ctx.campaign, ctx.sheet.id, companion.name, doing);
-  return { result: { applied: [`${companion.name} takes the ${option.charAt(0).toUpperCase()}${option.slice(1)} action at ${ctx.sheet.name}'s command.`] } };
+  const helped = helping ? [helping.lay()] : [];
+  return { result: { applied: [`${companion.name} takes the ${option.charAt(0).toUpperCase()}${option.slice(1)} action at ${ctx.sheet.name}'s command.`, ...helped] } };
 }
 
 // Gathered Swarm: "Once per turn, a hit lets your swarm ... move you 5 feet
