@@ -12,6 +12,7 @@ import { getActiveEncounter, patchEnemyConditions, type EncounterEnemy } from "@
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { withinFeet } from "@/lib/dm/authored-saves";
+import { wallBetween } from "@/lib/dm/attack-spatial";
 import { publishEncounter, resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import { shakenAwake, wakeableSpells } from "@/lib/dm/shake-awake-logic";
@@ -62,6 +63,17 @@ export function shakeAwake(
   // board the fiction says where everyone stands.
   if (encounter && !withinFeet(encounter.id, actor.id, held.id, REACH_FEET)) {
     return { error: `${actor.name} is not within 5 feet of ${name}, and shaking a sleeper awake takes a hand on them. Move beside them first. Nothing was spent.`, refused: "rules" };
+  }
+  // Nor through a wall (SRD 5.1, Cover: total cover "can't be targeted
+  // directly"). Within 5 feet the only wall between two squares is a diagonal
+  // run of it pinching the corner they share; the distance alone let a
+  // fighter shake an ally awake through it (Y21). The check is the one Help
+  // and a grapple make for a hand on a creature (combat-actions.ts
+  // wallBetween); attack-spatial.ts reachWalled, which leaves squares toe to
+  // toe alone, never refuses anything at 5 feet. Off the board nothing is
+  // measured.
+  if (encounter && wallBetween(encounter.id, actor.id, held.id)) {
+    return { error: `A wall stands between ${actor.name} and ${name}, and shaking a sleeper awake takes a hand on them. Move to their side of it first. Nothing was spent.`, refused: "rules" };
   }
   spend();
   const woken = shakenAwake(held.conditions, held.conditionMeta as ConditionMetaMap);

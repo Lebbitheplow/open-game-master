@@ -8,7 +8,7 @@ import "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { call } from "./lib/enforce-campaign.mjs";
 import { caster, closeTables, FIGHTER, table } from "./lib/enforce-spell-kit.mjs";
-import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
+import { combatKit, DUMMY, TRAINED } from "./lib/enforce-combat.mjs";
 import { dropMap, layMap } from "./lib/enforce-spells.mjs";
 
 const { test, finish } = suite("test-audit1116-effects3");
@@ -152,6 +152,54 @@ await test("Y20: an attacker that cannot see in magical darkness strikes at the 
 await test("Y20: an attacker with Devil's Sight sees the duplicates in magical darkness and meets them", async () => {
   const { decoyRolled } = await mirroredInDarkness({ senses: { devilsSight: 120, passivePerception: 10 }, traits: ["Devil's Sight. Magical darkness doesn't impede the creature's darkvision."] });
   assert.equal(decoyRolled, true, "the duplicates' d20 is rolled");
+});
+
+// ---- Y21: shaking a sleeper awake does not reach through a wall ----
+
+// SRD 5.1, Sleep: "someone uses an action to shake or slap the sleeper
+// awake"; Cover: "A target with total cover can't be targeted directly". The
+// Wake measured 5 feet and nothing else, so a fighter shook an ally awake
+// through the diagonal run of wall between their two squares, where Help and
+// a grapple (combat-actions.ts) are refused.
+const SLEEP = (source) => ({ spell: "Sleep", source, rounds: 10, endsOnDamage: true });
+
+async function wakeStage() {
+  const { openWorld } = await import("./lib/enforce-world.mjs");
+  const world = await openWorld({ gameSettings: { ttsEnabled: false } });
+  const kit = await combatKit(world);
+  const fighter = world.addHero({ name: "Fig", class: "fighter", level: 5, abilities: { str: 16 }, proficiencies: TRAINED, equipment: [{ name: "Longsword", qty: 1 }] });
+  const wizard = world.addHero({ name: "Wiz", class: "wizard", level: 5, abilities: { int: 16 }, proficiencies: TRAINED });
+  await kit.fight(1, { heroFaces: { [fighter.id]: 20, [wizard.id]: 2 } });
+  const [goblin] = world.enemies();
+  kit.setEnemy(goblin.id, { maxHp: 40, currentHp: 40, stats: { ...DUMMY } });
+  kit.scatter();
+  const encounter = world.encounter();
+  kit.saveEncounter({ ...encounter, turnIndex: encounter.order.findIndex((slot) => slot.characterId === fighter.id), turnBudget: null });
+  world.patch(wizard.id, { conditions: ["unconscious"], conditionMeta: { unconscious: SLEEP(goblin.id) } });
+  return { world, kit, fighter, wizard };
+}
+
+await test("Y21: a sleeper beyond a diagonal run of wall is not shaken awake, and nothing is spent", async () => {
+  const { world, kit, fighter, wizard } = await wakeStage();
+  kit.openField([[6, 5, "#"], [5, 6, "#"]]);
+  kit.place(fighter.id, 5, 5);
+  kit.place(wizard.id, 6, 6);
+  const out = await world.invoke("take_action", { characterId: fighter.id, action: "wake", targetCharacterId: wizard.id });
+  assert.equal(out.refused, "rules", out.error ?? "it woke them through the wall");
+  assert.match(out.error, /wall/i);
+  assert.ok(world.sheet(wizard.id).conditions.includes("unconscious"), "still asleep");
+  const dodge = await world.invoke("take_action", { characterId: fighter.id, action: "dodge" });
+  assert.equal(dodge.ok, true, "the action is still theirs");
+});
+
+await test("Y21: a sleeper diagonally beside the waker with one wall at the corner is shaken awake", async () => {
+  const { world, kit, fighter, wizard } = await wakeStage();
+  kit.openField([[6, 5, "#"]]);
+  kit.place(fighter.id, 5, 5);
+  kit.place(wizard.id, 6, 6);
+  const out = await world.invoke("take_action", { characterId: fighter.id, action: "wake", targetCharacterId: wizard.id });
+  assert.equal(out.ok, true, out.error);
+  assert.ok(!world.sheet(wizard.id).conditions.includes("unconscious"), "awake");
 });
 
 closeTables();
