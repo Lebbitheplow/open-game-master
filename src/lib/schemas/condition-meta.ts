@@ -46,6 +46,8 @@ const conditionInstanceSchema = z.object({
         or: z.enum(ABILITIES).optional(),
         // Saved against only while farther than this from the source (Dreadful Aspect).
         beyondFeet: z.number().int().min(5).max(300).optional(),
+        // Saved against only out of the source's sight (Fear).
+        unseen: z.boolean().optional(),
       })
       .optional(),
     // The spell that laid the condition down, and the slot it was cast

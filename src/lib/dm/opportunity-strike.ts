@@ -40,6 +40,7 @@ import { landNaturalOnHit } from "@/lib/dm/natural-onhit";
 import { weaponMaterial } from "@/lib/dm/damage-logic";
 import { lineNamed } from "@/lib/srd/item-row";
 import { endInvisibilityOnCast, planMarks, writeMarks } from "@/lib/dm/attack-marks";
+import { sanctuaryEndedByAttack } from "@/lib/dm/spell-defenses";
 import {
   attackContext,
   exhaustionRollState,
@@ -394,13 +395,16 @@ export function pcOpportunitySwing(input: {
   });
 }
 
-// What the swing uses up: the attacker's hiding and Invisibility (an attack
-// gives both away), their one-shot roll riders (True Strike), and the
+// What the swing uses up: the attacker's hiding, Invisibility and Sanctuary
+// (an attack gives them away), their one-shot roll riders (True Strike), and the
 // target's one-shot conditions (Guiding Bolt's advantage).
 function spendAttackCarriers(campaign: Campaign, sheet: CharacterSheet, enemy: EncounterEnemy, riders: string[]) {
   const fresh = getSheetById(sheet.id) ?? sheet;
   const mine = [
     ...fresh.conditions.filter((entry) => entry.trim().toLowerCase() === "hidden"),
+    // An opportunity attack is an attack, and the warded creature's own
+    // attack ends its Sanctuary (SRD 5.1), as pc_attack's does.
+    ...sanctuaryEndedByAttack(fresh),
     ...riders,
   ];
   if (mine.length) {

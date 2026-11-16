@@ -6,7 +6,7 @@
 
 import { RAGING } from "@/lib/srd/class-resources";
 import { conditionIncomingAttackState, conditionSpeed } from "@/lib/srd/condition-effects";
-import { conditionSeesInvisible } from "@/lib/srd/condition-effect-queries";
+import { benefitsFromInvisible, conditionSeesInvisible } from "@/lib/srd/condition-effect-queries";
 import { itemAbilityScore, type Wearer } from "@/lib/srd/magic-items";
 import { textKey } from "@/lib/language/text-logic";
 import type { CreatureHold } from "@/lib/bestiary/hold-text";
@@ -50,7 +50,9 @@ export type ConditionMeta = {
   // each save (Nature's Wrath: Strength or Dexterity; see likelierSave).
   // `beyondFeet`: the save comes only at the end of a turn the holder ends
   // farther than this from the source (Dreadful Aspect: 30 feet).
-  saveEnds?: { ability: SaveAbilityId; dc: number; or?: SaveAbilityId; beyondFeet?: number };
+  // `unseen`: only at the end of a turn the holder ends where it cannot see
+  // the source (Fear).
+  saveEnds?: { ability: SaveAbilityId; dc: number; or?: SaveAbilityId; beyondFeet?: number; unseen?: boolean };
   // Who or what put the condition there: the characterId or enemyId of the
   // charmer, the grappler or the source of the fear, or an engine word
   // ("stable" on the unconscious of a stabilized creature). Optional, and
@@ -469,7 +471,7 @@ export function sightBlockedBy(
   if (has(viewerConditions, ["blinded"]) && !options.blindsight) {
     return "blinded";
   }
-  if (has(seenConditions, ["invisible"]) && !seesInvisible(viewerConditions, options)) {
+  if (benefitsFromInvisible(seenConditions) && !seesInvisible(viewerConditions, options)) {
     return "invisible";
   }
   return options.hidden !== false && has(seenConditions, ["hidden"]) ? "hidden" : null;
@@ -563,7 +565,8 @@ export function attackContext(input: {
     notes.push(`attacker is ${attackerDown}: disadvantage`);
   }
   // See Invisibility and True Seeing see the invisible (condition-effects-last.ts).
-  if (has(input.attackerConditions, ["invisible"]) && !seesInvisible(input.targetConditions, targetSees)) {
+  // Outlined by Faerie Fire, invisibility counts for nothing (benefitsFromInvisible).
+  if (benefitsFromInvisible(input.attackerConditions) && !seesInvisible(input.targetConditions, targetSees)) {
     if (input.targetAlert) notes.push("attacker is invisible: no advantage against an Alert target");
     else {
       sources.push("advantage");
@@ -593,7 +596,7 @@ export function attackContext(input: {
     sources.push("advantage");
     notes.push(`target is ${targetOpen}: advantage`);
   }
-  if (has(input.targetConditions, ["invisible"]) && !seesInvisible(input.attackerConditions, attackerSees)) {
+  if (benefitsFromInvisible(input.targetConditions) && !seesInvisible(input.attackerConditions, attackerSees)) {
     sources.push("disadvantage");
     notes.push("target is invisible: disadvantage");
   }
@@ -614,7 +617,7 @@ export function attackContext(input: {
     notes.push("target is dodging: disadvantage");
   }
   // Effect conditions on the target (blur, faerie fire, protected).
-  const incoming = conditionIncomingAttackState(input.targetConditions, input.attackerType);
+  const incoming = conditionIncomingAttackState(input.targetConditions, input.attackerType, Boolean(attackerSees.blindsight || attackerSees.truesight));
   sources.push(...incoming.sources);
   notes.push(...incoming.notes);
 

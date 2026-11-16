@@ -38,6 +38,7 @@ import {
   type ConditionMetaMap,
 } from "@/lib/dm/condition-logic";
 import { tickConcentrationClocks } from "@/lib/dm/concentration-clock";
+import { settleRunningOut } from "@/lib/dm/full-duration-settle";
 import { settleDying, wakeStable } from "@/lib/dm/death";
 import { deathSavesInMinutes, isDying } from "@/lib/dm/death-logic";
 import { breakConcentration, endLethargicConcentration, lethargyMeta, withLethargy } from "@/lib/dm/concentration";
@@ -62,7 +63,7 @@ import { spellSchoolFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
-import { withinFeet } from "@/lib/dm/authored-saves";
+import { unseenBecause, withinFeet } from "@/lib/dm/authored-saves";
 
 // Condition upkeep: timed conditions count down and expire, save-ends
 // conditions get their re-save rolled server-side (enemy saves from stat
@@ -111,6 +112,9 @@ export function tickEncounterConditions(campaign: Campaign, encounter: Encounter
     counts: (source) => !source || !inOrder.has(source),
     saves: (holderId) => !inOrder.has(holderId),
   };
+  // A spell held to its end leaves what it leaves before the count ends what
+  // it holds (full-duration-settle.ts).
+  lines.push(...settleRunningOut(campaign, 1, (casterId) => !inOrder.has(casterId)));
   tickEnemyConditions(campaign, encounter, 1, lines, outside);
   tickSheetConditions(campaign, 1, lines, { encounter, ...outside });
   rollEffectSaves(campaign, encounter, (holderId) => !inOrder.has(holderId), lines);
@@ -160,6 +164,7 @@ export function tickClockConditions(campaign: Campaign, minutes: number, started
   // How long each creature lies senseless into the stretch, read before the
   // stretch runs: one that wakes on its last round has had no time to get up.
   const downFor = new Map(listSheets(campaign.id).map((sheet) => [sheet.id, roundsSenseless(sheet)]));
+  lines.push(...settleRunningOut(campaign, rounds, () => true));
   tickSheetConditions(campaign, rounds, lines, { endTurnBound: true });
   // Full Throttle that the stretch ended burns its knight (genre-b-steampunk-ends.ts).
   lines.push(...settleFullThrottle(campaign));
@@ -344,6 +349,10 @@ export function countTurnStarts(campaign: Campaign, encounter: Encounter, ids: s
   const starting = new Set(ids);
   const counted: string[] = [];
   const ownTurn: HolderTick = { counts: (source) => Boolean(source && starting.has(source)), saves: () => false };
+  // Settled before the conditions count: a banished fiend or a creature
+  // held by Flesh to Stone, its own minute run out first, was gone from the
+  // spell when the clock asked what it held (full-duration-settle.ts).
+  counted.push(...settleRunningOut(campaign, 1, (casterId) => starting.has(casterId)));
   tickEnemyConditions(campaign, encounter, 1, counted, ownTurn);
   tickSheetConditions(campaign, 1, counted, { encounter, ...ownTurn });
   counted.push(...tickConcentrationClocks(campaign, 1, (casterId) => starting.has(casterId)));
@@ -551,10 +560,20 @@ export function walkedEnemiesHeld(campaign: Campaign, encounter: Encounter): str
 // that ends its turn more than 30 feet away). Measured on the board as reach
 // is (authored-saves.ts): off the board it counts as close, as the fear's
 // reach did; a source no longer on the board is far.
+// Or only out of its sight (Fear: "If the creature ends its turn in a
+// location where it doesn't have line of sight to you, the creature can make
+// a Wisdom saving throw"): held while the holder still sees the caster, by
+// the board's line of sight and the conditions (a blinded holder, an
+// invisible caster). Without the save at all, Fear held its whole minute
+// whatever wall the creature fled behind.
 function heldClose(encounter: Encounter | undefined, holderId: string, instance: ConditionMeta | undefined): boolean {
-  const feet = instance?.saveEnds?.beyondFeet;
-  if (!feet || !encounter || !instance?.source) return false;
-  return withinFeet(encounter.id, instance.source, holderId, feet);
+  if (!encounter || !instance?.source) return false;
+  const feet = instance.saveEnds?.beyondFeet;
+  if (feet && withinFeet(encounter.id, instance.source, holderId, feet)) return true;
+  if (!instance.saveEnds?.unseen) return false;
+  const holder = getSheetById(holderId) ?? getEnemy(holderId);
+  const source = getSheetById(instance.source) ?? getEnemy(instance.source);
+  return Boolean(holder && source && !unseenBecause(encounter.id, holder, source));
 }
 
 function tickEnemyConditions(campaign: Campaign, encounter: Encounter, by: number, lines: string[], options: HolderTick = {}) {

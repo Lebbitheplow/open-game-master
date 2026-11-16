@@ -73,8 +73,8 @@ export function opportunityWards(campaign: Campaign, encounterId: string, enemy:
 }
 
 // After the roll: a duplicate Mirror Image puts in the way, or null.
-export function opportunityDecoy(campaignId: string, sheetId: string, total: number): string | null {
-  return mirrorImageDecoy(campaignId, sheetId, total);
+export function opportunityDecoy(campaignId: string, sheetId: string, total: number, enemy: EncounterEnemy): string | null {
+  return mirrorImageDecoy(campaignId, sheetId, total, enemy);
 }
 
 // The blow as it reaches the character: halved by a mark that halves it,

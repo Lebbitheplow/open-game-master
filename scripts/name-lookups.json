@@ -9,6 +9,8 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
+    "lib/dm/full-duration-settle.ts#keyed": [["key", 1, "a creature's conditionMeta by the condition key it was written under"]],
+    "lib/dm/full-duration-settle.ts#partial": [["identity", 1, "a spell's condition instances by the spell's textKey, both sides (as concentration.ts settles them)"]],
     "lib/theme-mode.ts#keyed": [["key",2,"browser preference cache entries are addressed by fixed storage keys, never by player-written names"]],
     "lib/theme-mode.ts#whole": [["key",1,"stored preference and artwork sentinel values select display behavior, not game records named by people"]],
     "components/ui/LobbyIcon.tsx#fallback": [["key",1,"a fixed heading-glyph key selects a decorative icon; an unknown key gets a generic settings fitting and changes no game identity"]],
@@ -2566,7 +2568,7 @@
     "lib/srd/class-spell-grants.ts#whole": [["identity",1,"spells by whole name"]],
     "lib/srd/companion-build.ts#partial": [["identity",3,"a spell pick by its whole name"]],
     "lib/srd/companion-build.ts#whole": [["identity",4,"a spell pick by its whole name"],["identity",2,"a skill by its id, or by its whole name as the GM wrote it"],["identity",1,"a spell's level from the candidates by its whole name (textKey on both sides), else the catalog's"]],
-    "lib/srd/condition-effect-queries.ts#partial": [["key",1,"the SRD row's creature type against ODM's type words"]],
+    "lib/srd/condition-effect-queries.ts#partial": [["key",1,"the SRD row's creature type against ODM's type words"],["key",1,"a registry row's own dice expression read for its sign (Reduce's -1d4)"]],
     "lib/srd/condition-effect-queries.ts#whole": [["identity",1,"condition instances by whole name or key"]],
     "lib/srd/condition-effects.ts#partial": [["key",1,"the SRD row's creature type against ODM's type words"],["key",3,"ODM's own condition parameters (\"(+2)\", \"(1d4 fire)\")"],["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/srd/currency.ts#number": [["key",1,"the pack's own cost notation (fixed English, ',' thousands)"]],

@@ -349,7 +349,9 @@ export function clearSpellConditionsByName(
 export function settleFullDuration(campaign: Campaign, spell: string, casterId: string): string[] {
   const resolved = spellMechanicsFor({ spell, userIds: spellAuthorsFor(campaign) });
   const rule = fullDurationRule(resolved?.runsAs ?? resolved?.name ?? spell) ?? fullDurationRule(spell);
-  if (!rule) {
+  // Banishment's creatures go home or come back (concentration-clock.ts
+  // banishedHome); nothing of theirs stays held.
+  if (!rule || rule.sendsHome) {
     return [];
   }
   const names = new Set([textKey(spell), ...(resolved ? [textKey(resolved.name)] : [])]);

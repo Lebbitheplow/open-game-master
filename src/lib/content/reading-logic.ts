@@ -90,7 +90,11 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 //      (a giant spider's webbing), and the kinds a shared 24-hour immunity
 //      covers ("the Dreadful Glare of all mummies (but not mummy lords)";
 //      rules audit 2026-11-15, monsters).
-export const READER_REVISION = 15;
+// 16: Fear's hand-written row saves again at the end of a turn the creature
+//      ends out of the caster's sight, Color Spray's blinds until the end of
+//      the caster's next turn, and Hideous Laughter's passes over a creature
+//      of Intelligence 4 or less (rules audit 2026-11-16, effects).
+export const READER_REVISION = 16;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";
 

@@ -48,6 +48,8 @@ const conditionBase = {
   // [the slot level it starts at, its rounds or null for "until dispelled"], ascending (Geas).
   roundsBySlot: z.array(z.tuple([level, rounds.nullable()])).max(9).optional(),
   saveEnds: z.boolean().optional(),
+  // The save only out of the caster's sight (Fear): a workshop copy keeps it.
+  saveUnseen: z.boolean().optional(),
   also: words(4).optional(),
   variants: words(12).optional(),
   endsOnDamage: z.boolean().optional(),
@@ -163,6 +165,7 @@ export const spellMechSchema = z.object({
       immuneCondition: word().optional(),
       skipConditions: words(6).optional(),
       endsOnDamage: z.boolean().optional(),
+      untilCasterTurnEnd: z.boolean().optional(),
     })
     .optional(),
   targets: z.object({ count: int(1, 100), perSlotLevel: int(0, 10).optional() }).optional(),
@@ -174,6 +177,7 @@ export const spellMechSchema = z.object({
   repeatDice: dice.optional(),
   targetTypes: words(14).optional(),
   immuneTypes: words(14).optional(),
+  sparesIntAtMost: int(1, 30).optional(),
   immuneIfImmuneTo: word().optional(),
   revive: z
     .object({

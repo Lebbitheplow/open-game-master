@@ -4,6 +4,8 @@
 //
 //   Flesh to Stone  the creature is turned to stone until the effect is removed
 //   True Polymorph  the transformation lasts until it is dispelled
+//   Banishment      a target native to another plane "doesn't return"; one
+//                   native to this plane reappears as the spell ends
 //
 // (Wall of Stone's permanent wall is the table's to narrate: the server lays
 // no wall for it.) Read by src/lib/dm/concentration-clock.ts as the clock runs
@@ -15,11 +17,17 @@ export type FullDurationRule = {
   // What every creature the casting still holds becomes, for good; absent,
   // its conditions simply stay, no longer bound to the spell.
   becomes?: string;
+  // A creature of these types the casting still holds goes home for good,
+  // out of the fight; any other is left to the spell's end, which frees it.
+  sendsHome?: string[];
 };
 
 const FULL_DURATION: Record<string, FullDurationRule> = {
   "flesh to stone": { becomes: "petrified" },
   "true polymorph": {},
+  // The planes the SRD's creature types call home (Divine Word sends the
+  // same four back).
+  banishment: { sendsHome: ["celestial", "elemental", "fey", "fiend"] },
 };
 
 export function fullDurationRule(spell: string): FullDurationRule | null {

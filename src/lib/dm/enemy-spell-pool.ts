@@ -7,7 +7,7 @@ import type { EnemyUse } from "@/lib/dm/enemy-casting";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { rollCard } from "@/lib/dm/roll-card";
 import { conditionImmunity, handleSetCondition } from "@/lib/dm/set-condition";
-import { laySpellConditionsOnEnemy, spellConditionMeta } from "@/lib/dm/spell-effects";
+import { laySpellConditionsOnEnemy, poolConditionMeta, poolDurationLine } from "@/lib/dm/spell-effects";
 import { sheetCreatureType } from "@/lib/dm/summon-rules";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -38,7 +38,7 @@ export function enemySpellPool(
   const caster = { kind: "enemy" as const, id: use.enemy.id, name: use.enemy.displayName };
   use.commit();
   const rolled = rollCard(campaign, turn, null, "custom", `${use.name}: hit points it can affect`, dice, caster).total;
-  const meta = spellConditionMeta({ rounds: pool.rounds, endsOnDamage: pool.endsOnDamage }, { spell: use.name, casterId: use.enemy.id, slotLevel: use.slotLevel ?? null }, null);
+  const meta = poolConditionMeta(pool, { spell: use.name, casterId: use.enemy.id, slotLevel: use.slotLevel ?? null });
   type Caught = { kind: "sheet"; sheet: CharacterSheet } | { kind: "enemy"; enemy: EncounterEnemy };
   const hp = (entry: Caught) => (entry.kind === "sheet" ? entry.sheet.currentHp : entry.enemy.currentHp);
   const creatures: Caught[] = [
@@ -90,6 +90,6 @@ export function enemySpellPool(
     noSave: true,
     pool: `${dice}: ${rolled} hit points, ${left} left`,
     results,
-    duration: `${pool.rounds} round${pool.rounds === 1 ? "" : "s"}${pool.endsOnDamage ? ", or until a sleeper takes damage or is shaken awake" : ""}`,
+    duration: poolDurationLine(pool, ", or until a sleeper takes damage or is shaken awake"),
   };
 }

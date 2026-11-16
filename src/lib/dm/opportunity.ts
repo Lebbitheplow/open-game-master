@@ -61,7 +61,7 @@ import { holdsFeat } from "@/lib/srd/feat-effects";
 import { warCasterOpportunity } from "@/lib/dm/ar-wbf-feat-warcaster";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
-import { blowByType, resolveOnHit, scaledParts } from "@/lib/dm/enemy-hit";
+import { blowByType, resolveOnHit, scaledParts, sizedAttack } from "@/lib/dm/enemy-hit";
 import { effectOutcome } from "@/lib/dm/effect-tools";
 import { hasTrait } from "@/lib/dm/monster-abilities";
 import { allyBeside } from "@/lib/dm/side-allies";
@@ -221,7 +221,11 @@ export function resolveOpportunityAttacks(
     if (!weapon) {
       continue;
     }
-    const { attack, reachTiles: reach } = weapon;
+    const { reachTiles: reach } = weapon;
+    // Enlarge/Reduce on the creature: its weapon grew or shrank with it
+    // (enemy-hit.ts sizedAttack), as on its own turn.
+    const sized = sizedAttack(weapon.attack, enemy.conditions);
+    const attack = sized.attack;
     const leftFrom = leavesReachAt(steps, token, reach, footprintForSize(enemy.stats.size));
 
     // A wall between them is total cover (attack-spatial.ts reachWalled).
@@ -350,7 +354,7 @@ export function resolveOpportunityAttacks(
       source: "digital",
     });
     // Mirror Image: a duplicate may take the attack instead (spell-defenses.ts).
-    const decoy = opportunityDecoy(campaign.id, sheet.id, hitOutcome.total);
+    const decoy = opportunityDecoy(campaign.id, sheet.id, hitOutcome.total, enemy);
     if (decoy) {
       notes.push(`${shownName(encounter.id, enemy.id, enemy.displayName)} takes an opportunity attack as ${sheet.name} pulls away: ${decoy}.`);
       continue;
@@ -399,7 +403,7 @@ export function resolveOpportunityAttacks(
     // hit points, a beast form's pool first, Relentless Endurance, the rage
     // ending at 0, the death engine, and the concentration save.
     const blow = blowByType(attack, damageOutcome, crit);
-    const warded = opportunityBlow(encounter.id, enemy, sheet, wards, enfeebledBlow(enemy, attack, false, Math.max(0, blow.amount)));
+    const warded = opportunityBlow(encounter.id, enemy, sheet, wards, enfeebledBlow(enemy, attack, false, Math.max(sized.floor, blow.amount)));
     const rolled = warded.amount;
     // The blow without its critical dice when the natural 20 alone made it one,
     // for a reaction that rolls the attack again (last-hit.ts plainOfReroll).

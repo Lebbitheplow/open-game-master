@@ -16,6 +16,7 @@ import { guessStands } from "@/lib/dm/gear-hands";
 import { lastAttackDetail } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
 import { wearingIsExplicit } from "@/lib/srd/armor";
+import { endedByDonning } from "@/lib/dm/armor-donned-logic";
 import { settleLevelChange, withoutDuplicateClasses } from "@/lib/srd/level-change";
 import { normalizeSpellcasting } from "@/lib/srd/spell-lists";
 import { settleAttunement, type Wearer } from "@/lib/srd/magic-items";
@@ -1112,6 +1113,13 @@ export function patchSheet(
     ? next.equipment
     : wearGained(existing.equipment, next.equipment, hydrateHomebrewGear(existing.userId, next.equipment, { campaignId: existing.campaignId }));
   next.equipment = capAttunement(keepHeldGuess(existing.equipment, gained, options.guessing || options.restoring), next);
+  // Mage Armor ends when its creature dons armor (armor-donned-logic.ts); an
+  // undo puts back the sheet as it was.
+  const doffed = options.restoring ? null : endedByDonning(existing, { ...next, conditionMeta: next.conditionMeta as ConditionMetaMap });
+  if (doffed) {
+    next.conditions = doffed.conditions;
+    next.conditionMeta = doffed.conditionMeta as typeof next.conditionMeta;
+  }
   if (!next.acOverride) {
     next.ac = deriveAc({
       class: next.class,

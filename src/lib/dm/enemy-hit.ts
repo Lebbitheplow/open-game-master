@@ -16,6 +16,7 @@ import { isValidExpression, rollExpression, type RollResult } from "@/lib/dice";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
 import { sheetCreatureType } from "@/lib/dm/summon-rules";
 import type { EnemyAttack, TypedDice } from "@/lib/bestiary/statblock";
+import { conditionWeaponSize } from "@/lib/srd/condition-effect-queries";
 import { asleepOnFailure, riderSpares } from "@/lib/bestiary/attack-text";
 import { durationArgsFor, effectiveMaxHp, maxHpRiders, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { handleSetCondition } from "@/lib/dm/set-condition";
@@ -58,6 +59,15 @@ export function legacyRiders(attack: Pick<EnemyAttack, "damage" | "type">): Type
     return [];
   }
   return types.slice(1).map((type, index) => ({ dice: dice[index + 1], type }));
+}
+
+// A creature's weapon attack as Enlarge/Reduce leaves it (condition-effect-
+// queries.ts conditionWeaponSize): the die appended to its damage, as the
+// traits' dice are, and the least the hit deals. A spell attack is no
+// weapon's and stays as printed.
+export function sizedAttack(attack: EnemyAttack, conditions: string[]): { attack: EnemyAttack; floor: number } {
+  const size = attack.spellAttack ? { term: "", floor: 0 } : conditionWeaponSize(conditions);
+  return { attack: size.term ? { ...attack, damage: `${attack.damage}${size.term}` } : attack, floor: size.floor };
 }
 
 // The blow's damage by type, as rolled. The attack rolled one expression;

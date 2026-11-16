@@ -109,6 +109,9 @@ export type ConditionEffectRow = {
   // Attack rolls AGAINST the holder are made at disadvantage (blur,
   // protected) or advantage (faerie fire).
   attacksAgainstDisadvantage?: boolean;
+  // That disadvantage fools only sight: an attacker whose blindsight or
+  // truesight reaches the holder is unaffected (Blur).
+  sightOnly?: boolean;
   attacksAgainstAdvantage?: boolean;
   // Attack rolls against the holder by creatures of these types only are
   // made at disadvantage (Protection from Evil and Good).
@@ -207,6 +210,16 @@ export type ConditionEffectRow = {
   // The holder sees invisible creatures (See Invisibility, True Seeing), and
   // has truesight this far (src/lib/srd/condition-effects-last.ts).
   seesInvisible?: boolean;
+  // Enlarge/Reduce: the holder's weapons grow or shrink with it, so this
+  // die rides its weapon attacks whoever the holder is (a creature's
+  // stat-block attack too), and the hit deals at least `damageFloor`
+  // ("this can't reduce the damage below 1").
+  sizesWeapons?: boolean;
+  damageFloor?: number;
+  // The holder can't benefit from being invisible (Faerie Fire): its
+  // invisibility gives no advantage and imposes no disadvantage, and it is
+  // seen as if it were not invisible.
+  revealsInvisible?: boolean;
   truesightFeet?: number;
   // The holder sees nothing farther away than this (Shadow Arrow: 5 feet),
   // whatever the light (src/lib/dm/attack-light.ts attackSight).

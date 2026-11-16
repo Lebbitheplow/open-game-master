@@ -49,6 +49,7 @@ import { brawlerUnarmed, CRUSHER_USED, GREAT_WEAPON_MASTER_READY, SLASHER_USED, 
 import { holdsFeat } from "@/lib/srd/feat-effects";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { grantedStrikeMark } from "@/lib/dm/ar-wbf-warlock-strike";
+import { conditionDamageFloor } from "@/lib/srd/condition-effect-queries";
 
 // The server's dice for a damage roll, with the feats the hit spent on them:
 // Brutal Attack rolls it twice and keeps the better, Savage Attacker the
@@ -171,8 +172,10 @@ export function landSwingBlow(
   }
   const crit = ask.crit;
   const critExtraDice = record.critExtraDice ?? 0;
-  // A penalty can bring a hit's damage to 0, never below it.
-  const dealt = Math.max(0, damageOutcome.total);
+  // A penalty can bring a hit's damage to 0, never below it; Reduce's die
+  // never below 1 ("this can't reduce the damage below 1", SRD 5.1), which a
+  // reduced rogue's dagger did.
+  const dealt = Math.max(record.spell ? 0 : conditionDamageFloor(sheet.conditions), damageOutcome.total);
   const hitLog = isSheetFoe(enemy) ? openLastHit(campaign.id, enemy.id) : null;
   emitAttackFx(campaign.id, attackStage(campaign.id, sheet, enemy), { hit: true, crit, ranged: record.ranged === true, damage: dealt, damageType: record.damageType ?? "", visibility });
   // Death Strike: a surprised creature's failed save doubles the blow.

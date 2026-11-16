@@ -41,8 +41,12 @@ export function enemyAcWithEffects(campaignId: string, enemy: EncounterEnemy): n
   if (sheet) {
     return acWithEffects(campaignId, sheet);
   }
+  // Barkskin's floor too, as a character's AC reads it (srd/index.ts): "the
+  // target's AC can't be less than 16". A druid's Barkskin on itself left
+  // its AC 11.
+  const riders = conditionAcRiders(enemy.conditions);
   return applyField(
-    enemy.ac + conditionAcRiders(enemy.conditions).bonus,
+    Math.max(enemy.ac + riders.bonus, riders.floor),
     effectOutcome(campaignId, { kind: "enemy", id: enemy.id }, "ac"),
   );
 }
