@@ -46,7 +46,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { enemyContestTag, rollEnemyContest } from "@/lib/dm/action-common";
 import { canEnemyAct } from "@/lib/dm/can-act";
 import { spendEnemyAction } from "@/lib/dm/enemy-approach";
-import { removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { instancesOf, removeConditionInstances, removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { contestShift, rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { publishEncounter, resolveEnemyRef, unknownEnemyRef } from "@/lib/dm/enemy-damage";
 import { enemyAttackProfile } from "@/lib/dm/enemy-profile";
@@ -56,29 +56,37 @@ import { releaseLostPins } from "@/lib/dm/grappler-pin";
 
 const GRAPPLED = "grappled";
 
-function grappleOf(meta: ConditionMetaMap | undefined): { name: string; source: string | null; escapeDc: number | null } | null {
-  for (const [name, entry] of Object.entries(meta ?? {})) {
-    if (name.toLowerCase() === GRAPPLED) {
-      return { name, source: entry?.source ?? null, escapeDc: typeof entry?.escapeDc === "number" ? entry.escapeDc : null };
-    }
-  }
-  return null;
+type GrappleHold = { name: string; source: string | null; escapeDc: number | null };
+
+// Every grapple on a creature, one for each grappler: two crabs that both
+// hold a hero are two instances of the condition (condition-logic.ts
+// addConditionInstance), and "each instance of the condition has its own
+// duration" (SRD 5.1, Conditions). Only the first was read, so the second
+// crab falling, or one escape, freed the hero from both.
+function grapplesOf(conditions: string[], meta: ConditionMetaMap | undefined): GrappleHold[] {
+  const name = conditions.find((entry) => entry.toLowerCase() === GRAPPLED);
+  return name
+    ? instancesOf(meta?.[name]).map((entry) => ({ name, source: entry.source ?? null, escapeDc: typeof entry.escapeDc === "number" ? entry.escapeDc : null }))
+    : [];
 }
 
-// The grapple's end: grappled goes, and so does a restraint the same
-// grappler holds, which a constrictor's grapple brings and which lasts only
-// "until this grapple ends".
+// The grapple's end: that grappler's grip goes, and so does a restraint the
+// same grappler holds, which a constrictor's grapple brings and which lasts
+// only "until this grapple ends". Another grappler's grip stays. A grapple
+// that names nobody (written before sources were kept) goes whole.
 export function withoutGrapple(
   conditions: string[],
   meta: ConditionMetaMap | undefined,
   held: { name: string; source: string | null },
 ): { conditions: string[]; meta: ConditionMetaMap } {
-  const restrained = held.source
-    ? Object.entries(meta ?? {})
-        .filter(([name, entry]) => name.toLowerCase() === "restrained" && entry?.source === held.source)
-        .map(([name]) => name)
-    : [];
-  return removeConditions(conditions, meta, [held.name, ...restrained]);
+  if (!held.source) {
+    return removeConditions(conditions, meta, [held.name]);
+  }
+  const theirs = (entry: { source?: string }) => entry.source === held.source;
+  const loosed = removeConditionInstances(conditions, meta, held.name, theirs);
+  const restrained = loosed.conditions.find((entry) => entry.toLowerCase() === "restrained");
+  const unbound = restrained ? removeConditionInstances(loosed.conditions, loosed.meta, restrained, theirs) : loosed;
+  return { conditions: unbound.conditions, meta: unbound.meta };
 }
 
 // The skill a character escapes with: the better of their Athletics and
@@ -98,9 +106,8 @@ export function characterEscape(
   // Manacles' escape: "dex" slips them, "str" breaks them (manacles.ts).
   ability?: string,
 ): ToolResult {
-  const held = sheet.conditions.some((entry) => entry.toLowerCase() === GRAPPLED)
-    ? grappleOf(sheet.conditionMeta as ConditionMetaMap)
-    : null;
+  // One action escapes one grapple; another grappler's grip waits for the next.
+  const [held = null] = grapplesOf(sheet.conditions, sheet.conditionMeta as ConditionMetaMap);
   if (!held) {
     // A spell's hold (Entangle, Web): src/lib/dm/spell-escape.ts. A trap's
     // (a falling net): src/lib/dm/trap-escape.ts.
@@ -174,9 +181,11 @@ export function characterEscape(
       )
     : { mine: mine.total, theirs };
   const escaped = !mine.autoFailed && (settled.theirs === null ? settled.mine >= (held.escapeDc ?? 0) : settled.mine > settled.theirs);
+  let stillHeld = false;
   if (escaped) {
     const fresh = getSheetById(sheet.id) ?? sheet;
     const cleared = withoutGrapple(fresh.conditions, fresh.conditionMeta as ConditionMetaMap, held);
+    stillHeld = grapplesOf(cleared.conditions, cleared.meta).length > 0;
     const updated = patchSheet(sheet.id, { conditions: cleared.conditions, conditionMeta: cleared.meta });
     if (updated) {
       publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
@@ -188,7 +197,9 @@ export function characterEscape(
     ...(theirs === null ? { check: `${mine.total} vs escape DC ${held.escapeDc}` } : { contest: `${mine.total} vs ${theirs}` }),
     success: escaped,
     note: escaped
-      ? `${sheet.name} breaks free of ${holderName}'s grapple; the server cleared grappled (and the restraint it held) and their speed is back.`
+      ? stillHeld
+        ? `${sheet.name} breaks free of ${holderName}'s grapple (and the restraint it held), but another grappler still holds them: still grappled, speed 0.`
+        : `${sheet.name} breaks free of ${holderName}'s grapple; the server cleared grappled (and the restraint it held) and their speed is back.`
       : `${holderName} holds on; ${sheet.name} is still grappled.`,
   };
 }
@@ -209,9 +220,7 @@ export function enemyEscape(
   if (!enemy) {
     return unknownEnemyRef(encounter.id, "enemyId", enemyRef);
   }
-  const held = enemy.conditions.some((entry) => entry.toLowerCase() === GRAPPLED)
-    ? grappleOf(enemy.conditionMeta)
-    : null;
+  const [held = null] = grapplesOf(enemy.conditions, enemy.conditionMeta);
   if (!held) {
     if (!enemySpellHold(campaign, enemy) && enemyBurning(enemy)) {
       const able = canEnemyAct({ enemy, encounter, kind: "action" });
@@ -307,11 +316,11 @@ export function releaseGrapplesHeldByAny(campaign: Campaign, grapplers: Iterable
   const ids = new Set(grapplers);
   const released: string[] = [];
   for (const sheet of listSheets(campaign.id)) {
-    const held = grappleOf(sheet.conditionMeta as ConditionMetaMap);
-    if (!held?.source || !ids.has(held.source)) {
+    const loosed = grapplesOf(sheet.conditions, sheet.conditionMeta as ConditionMetaMap).filter((held) => held.source && ids.has(held.source));
+    if (!loosed.length) {
       continue;
     }
-    const cleared = withoutGrapple(sheet.conditions, sheet.conditionMeta as ConditionMetaMap, held);
+    const cleared = loosed.reduce((state, held) => withoutGrapple(state.conditions, state.meta, held), { conditions: sheet.conditions, meta: sheet.conditionMeta as ConditionMetaMap });
     const updated = patchSheet(sheet.id, { conditions: cleared.conditions, conditionMeta: cleared.meta });
     if (updated) {
       publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
@@ -343,26 +352,24 @@ export function releaseGrapplesOutOfReach(campaign: Campaign): string[] {
 
   };
   const released: string[] = [];
+  // The grips whose grappler now stands out of reach, each on its own.
+  const outOfReach = (heldId: string, conditions: string[], meta: ConditionMetaMap | undefined) =>
+    grapplesOf(conditions, meta).filter((held) => {
+      const gap = held.source ? apart(heldId, held.source) : null;
+      return held.source !== null && gap !== null && gap > reachOf(enemies.find((entry) => entry.id === held.source) ?? null, held.source);
+    });
   for (const enemy of enemies) {
-    const held = grappleOf(enemy.conditionMeta);
-    if (enemy.status !== "alive" || !held?.source || !enemy.conditions.some((c) => c.toLowerCase() === GRAPPLED)) {
-      continue;
-    }
-    const gap = apart(enemy.id, held.source);
-    if (gap !== null && gap > reachOf(enemies.find((entry) => entry.id === held.source) ?? null, held.source)) {
-      const cleared = withoutGrapple(enemy.conditions, enemy.conditionMeta, held);
+    const loosed = enemy.status === "alive" ? outOfReach(enemy.id, enemy.conditions, enemy.conditionMeta) : [];
+    if (loosed.length) {
+      const cleared = loosed.reduce((state, held) => withoutGrapple(state.conditions, state.meta, held), { conditions: enemy.conditions, meta: enemy.conditionMeta });
       patchEnemyConditions(enemy.id, cleared.conditions, cleared.meta);
       released.push(enemy.displayName);
     }
   }
   for (const sheet of listSheets(campaign.id)) {
-    const held = grappleOf(sheet.conditionMeta as ConditionMetaMap);
-    if (!held?.source || !sheet.conditions.some((c) => c.toLowerCase() === GRAPPLED)) {
-      continue;
-    }
-    const gap = apart(sheet.id, held.source);
-    if (gap !== null && gap > reachOf(enemies.find((entry) => entry.id === held.source) ?? null, held.source)) {
-      const cleared = withoutGrapple(sheet.conditions, sheet.conditionMeta as ConditionMetaMap, held);
+    const loosed = outOfReach(sheet.id, sheet.conditions, sheet.conditionMeta as ConditionMetaMap);
+    if (loosed.length) {
+      const cleared = loosed.reduce((state, held) => withoutGrapple(state.conditions, state.meta, held), { conditions: sheet.conditions, meta: sheet.conditionMeta as ConditionMetaMap });
       const updated = patchSheet(sheet.id, { conditions: cleared.conditions, conditionMeta: cleared.meta });
       if (updated) {
         publishPersisted(campaign.id, "sheet_updated", { sheet: updated });

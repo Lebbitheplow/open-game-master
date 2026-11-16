@@ -1584,7 +1584,7 @@
     "lib/dm/genre-b-spell-hits.ts#str-list": [["key",1,"the etched condition names the engine lays, by depth (engine vocabulary)"]],
     "lib/dm/genre-b-spell-hits.ts#str-eq": [["key",3,"damage type ids (engine vocabulary)"]],
     "lib/dm/grapple.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
-    "lib/dm/grapple.ts#toLowerCase": [["key",6,"condition labels (engine vocabulary)"]],
+    "lib/dm/grapple.ts#toLowerCase": [["key",2,"condition labels (engine vocabulary)"]],
     "lib/dm/grappler-pin.ts#toLowerCase": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/hazard-tools.ts#str-eq": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/hazard-tools.ts#str-list": [["key",4,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],

@@ -209,5 +209,61 @@ await test("D05: each failed hour in the cold reports the level it reached, and 
   assert.match(String(last.result.note), /Ilse dies? of exhaustion/, String(last.result.note));
 });
 
+// D06. SRD 5.1: "If multiple effects impose the same condition on a
+// creature, each instance of the condition has its own duration", and a
+// grapple ends on its own grappler's terms ("You can use your action to
+// escape a grapple"; it "ends if the grappler is incapacitated"). The grapple
+// code read one grappler: the second crab's grip rewrote the first's (its
+// source and escape DC), and the second crab falling, or one escape, freed
+// the hero from both.
+const CRAB = {
+  ...DUMMY,
+  attacks: [{ name: "Claw", toHit: 3, damage: "1d6+1", type: "bludgeoning", mode: "melee", onHit: { condition: "grappled", escapeDc: 11 } }],
+};
+const grapplers = (sheet) => {
+  const entry = sheet.conditionMeta?.grappled;
+  return sheet.conditions.includes("grappled") && entry ? [entry, ...(entry.others ?? [])].map((instance) => instance.source) : [];
+};
+async function twoCrabs() {
+  await board.endFight();
+  await board.fight(3, { heroFaces: { [kara.id]: 20 } });
+  const [crabA, crabB] = field.enemies();
+  for (const crab of [crabA, crabB]) {
+    board.setEnemy(crab.id, { stats: CRAB, maxHp: 20, currentHp: 20 });
+  }
+  board.place(kara.id, 6, 7);
+  board.place(crabA.id, 5, 7);
+  board.place(crabB.id, 7, 7);
+  for (const crab of [crabA, crabB]) {
+    board.freshRound();
+    field.dice(15, 2);
+    const claw = await field.invoke("enemy_attack", { enemyId: crab.id, targetCharacterId: kara.id });
+    field.clearDice();
+    assert.equal(claw.ok, true, claw.error);
+  }
+  return [crabA, crabB];
+}
+
+await test("D06: a second creature's grapple joins the first, and the second falling leaves the first holding", async () => {
+  const [crabA, crabB] = await twoCrabs();
+  assert.deepEqual(grapplers(field.sheet(kara.id)).sort(), [crabA.id, crabB.id].sort(), `the grapples: ${JSON.stringify(field.sheet(kara.id).conditionMeta.grappled)}`);
+  const slain = await field.invoke("damage_enemy", { enemyId: crabB.id, amount: 50 });
+  assert.equal(slain.ok, true, slain.error);
+  assert.deepEqual(grapplers(field.sheet(kara.id)), [crabA.id], "the first crab let go when the second died");
+});
+
+await test("D06: one escape breaks one grapple", async () => {
+  const [crabA, crabB] = await twoCrabs();
+  board.giveTurn(kara.id);
+  field.dice(20);
+  const out = await field.invoke("take_action", { characterId: kara.id, action: "escape" });
+  field.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.success, true, JSON.stringify(out.result));
+  assert.equal(grapplers(field.sheet(kara.id)).length, 1, `one escape broke ${2 - grapplers(field.sheet(kara.id)).length} grapples`);
+  void crabA;
+  void crabB;
+});
+
 closeTables();
 finish();
