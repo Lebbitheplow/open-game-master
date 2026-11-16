@@ -12,7 +12,7 @@ const { cardArtwork } = await import("../src/lib/battlemap/card-art.ts");
 const { iconCandidates, iconSlug, iconPath, isPainted } = await import("../src/lib/icons.ts");
 const { SRD_WEAPONS, WEAPON_ALIASES, weaponNamed } = await import("../src/lib/srd/weapons.ts");
 const { SRD_ARMOR } = await import("../src/lib/srd/armor.ts");
-const { SRD_GEAR, SRD_GOODS, gearKey } = await import("../src/lib/srd/adventuring-gear.ts");
+const { SRD_GEAR, SRD_GOODS, gearKey, matchGear } = await import("../src/lib/srd/adventuring-gear.ts");
 const { pluralForms } = await import("../src/lib/srd/name-forms.ts");
 const { withoutBonus } = await import("../src/lib/srd/item-row.ts");
 const { buildEquipmentArtAliases } = await import("./generate-equipment-art-aliases.mjs");
@@ -96,8 +96,11 @@ assert.deepEqual(read("src/lib/equipment-art-aliases.json"), buildEquipmentArtAl
   let compared = 0;
   for (const [genre, variants] of GENRE_VARIANTS) {
     for (const key of spellings) {
-      // #961's resolver, which loaded the weapon catalogue into every page.
-      const variant = variants.get(iconSlug(weaponNamed(key)?.name ?? withoutBonus(key)));
+      // #961's resolver, which loaded the weapon catalogue into every page,
+      // and #963's gear reading: a catalogue spelling ("backpacks") finds
+      // the painting of the gear it names.
+      const gear = matchGear(withoutBonus(key))?.name;
+      const variant = variants.get(iconSlug(weaponNamed(key)?.name ?? withoutBonus(key))) ?? (gear ? variants.get(iconSlug(gear)) : undefined);
       const ref = { kind: "item", key };
       for (const [surface, kind, painting] of [["inventory", "item", variant?.item], ["card", "action", variant?.card]]) {
         const expected = painting && isPainted(iconPath(kind, painting)) ? painting : key;
@@ -119,4 +122,4 @@ for (const ref of [{ kind: "spell", key: "Shield" }, { kind: "feature", key: "Da
 assert.equal(cardArtwork({ kind: "item", key: "Longsword" }, "cyberpunk").key, "weapon-longsword");
 assert.equal(cardArtwork({ kind: "action", key: "attack" }, "cyberpunk").key, "cyberpunk-attack");
 assert.ok(renderToStaticMarkup(h(GameIcon, { icon: { kind: "item", key: "Dagger" } })).includes('/assets/icons/item/dagger.webp'));
-console.log("shared genre equipment: 49 mappings, 98 exports, hashes, alpha, framing, generator preservation and fallbacks passed");
+console.log("shared genre equipment: 49 mappings (of 136 with the everyday set), 98 exports, hashes, alpha, framing, generator preservation and fallbacks passed");
