@@ -93,7 +93,7 @@ export const HALTED = "halted";
 export const GROVELING = "groveling";
 
 // What a creature under one of these may still do on that turn.
-export type HeldAct = "attack" | "use" | "dash" | "disengage" | "dodge" | "escape";
+export type HeldAct = "attack" | "use" | "dash" | "disengage" | "dodge" | "escape" | "wake";
 
 const DUTIES: Record<string, { word: string; duty: string; moves: boolean }> = {
   [APPROACHING]: { word: "approach", duty: "it moves toward its caster by the most direct route, and its turn ends once within 5 feet", moves: true },
@@ -109,6 +109,7 @@ const ACT_WORDS: Record<HeldAct, string> = {
   disengage: "Disengage with its action",
   dodge: "Dodge",
   escape: "escape attempt",
+  wake: "shake to wake a sleeper",
 };
 
 // The refusal for an act a creature's turn is spent away from (issue #621):

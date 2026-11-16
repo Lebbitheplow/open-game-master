@@ -430,6 +430,8 @@ export function composeSentence(
       return "I stand up.";
     case "stabilize":
       return `I try to stabilize ${who || "my dying ally"}.`;
+    case "wake":
+      return `I shake ${who || "my ally"} awake.`;
     case "dismount":
       return "I dismount.";
   }

@@ -30,7 +30,7 @@ export type HandCardType = "attack" | "rider" | "spell" | "control" | "mend" | "
 export type HandTarget = "enemy" | "ally" | "self" | "none";
 export type BasicActionId =
   | "dodge" | "dash" | "disengage" | "help" | "hide" | "ready" | "grapple" | "shove" | "use-object" | "end-turn"
-  | "search" | "escape" | "stand-up" | "stabilize" | "dismount";
+  | "search" | "escape" | "stand-up" | "stabilize" | "dismount" | "wake";
 
 // What the structured commit carries beside the sentence. An optional extra
 // field on the action body: a server that does not know it drops it. The
@@ -425,6 +425,11 @@ export type HandGearContext = {
   mount?: string | null;
   allies?: number;
   dying?: Array<{ id: string; name: string }>;
+  // Allies held by Sleep or Hypnotic Pattern (shake-awake-logic.ts), with
+  // their feet from this character where the board measures them: the Wake
+  // card. Absent from a host that does not resolve it (capabilities.ts
+  // shakeAwake).
+  sleepers?: Array<{ id: string; name: string; feet?: number }>;
 };
 
 // The fan's seats, End turn's included (src/lib/battlemap/hand-layout.ts).

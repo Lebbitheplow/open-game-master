@@ -24,7 +24,7 @@ export const SRD_EFFECT_ROWS: Record<string, SpellMech> = {
     area: true,
     areaFeet: 30,
     noDamage: true,
-    note: "Charmed and incapacitated with a speed of 0 for the duration, no repeat save; it ends for a creature that takes damage (the server ends it) or is shaken out of it with an action.",
+    note: "Charmed and incapacitated with a speed of 0 for the duration, no repeat save; it ends for a creature that takes damage (the server ends it) or is shaken out of it (take_action wake, an action from within 5 feet).",
   },
   "blindness/deafness": {
     resolution: "save",

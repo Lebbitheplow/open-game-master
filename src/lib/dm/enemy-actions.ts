@@ -41,6 +41,8 @@ import { heldTurnRefusal } from "@/lib/dm/flee-logic";
 import { hasTrait } from "@/lib/dm/monster-abilities";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
+import { listSheets } from "@/lib/db/sheets";
+import { shakeAwake } from "@/lib/dm/shake-awake";
 
 // Slow: an action or a bonus action on its turn, not both (SRD 5.1). The
 // refusal, or null.
@@ -317,6 +319,23 @@ function manacleUse(campaign: Campaign, turn: DmTurn, enemy: EncounterEnemy, enc
   return done ?? { error: "Manacles need a target: targetCharacterId names the character bound or freed. Nothing was spent.", retry: true };
 }
 
+// Shaking an ally awake out of Sleep or Hypnotic Pattern (shake-awake.ts):
+// its action, paid once the sleeper is named and beside it.
+function wake(campaign: Campaign, enemy: EncounterEnemy, encounter: Encounter, bonus: boolean, args: { targetCharacterId?: string; targetEnemyId?: string }): ToolResult {
+  const route = routeFor(encounter, enemy, bonus, null, false, "Wake");
+  if (typeof route !== "string") {
+    return route;
+  }
+  const sheets = listSheets(campaign.id);
+  const done = shakeAwake(campaign, { id: enemy.id, name: enemy.displayName }, args, sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])), () => {
+    const live = getActiveEncounter(campaign.id) ?? encounter;
+    spendEnemyAction(live, enemy.id);
+    noteSpent(live, enemy.id, route, "wake");
+    saveEncounter(live);
+  });
+  return "error" in done ? done : { ...done, cost: COSTS[route] };
+}
+
 export function handleEnemyTakeAction(
   campaign: Campaign,
   turn: DmTurn,
@@ -351,7 +370,7 @@ export function handleEnemyTakeAction(
       return toolError(allowed);
     }
     return {
-      error: `An enemy's take_action is dash, disengage, dodge, escape, or use_object with Manacles on a character; ${args.action.replace(/_/g, " ")} is a character's here. Its attacks are enemy_attack, its spells and abilities cast_at_player or aoe_damage. Nothing was spent.`,
+      error: `An enemy's take_action is dash, disengage, dodge, escape, wake, or use_object with Manacles on a character; ${args.action.replace(/_/g, " ")} is a character's here. Its attacks are enemy_attack, its spells and abilities cast_at_player or aoe_damage. Nothing was spent.`,
       retry: true,
     };
   }
@@ -372,5 +391,7 @@ export function handleEnemyTakeAction(
       return dodge(campaign, enemy, encounter, bonus);
     case "escape":
       return escape(campaign, turn, enemy, encounter, bonus, args.ability);
+    case "wake":
+      return wake(campaign, enemy, encounter, bonus, args);
   }
 }

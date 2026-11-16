@@ -24,6 +24,8 @@ import { holdPendingCards, useHandChoices, useHandPending } from "@/app/campaign
 import { deriveHand, waitingHand, type HandCard, type HandGearContext } from "@/lib/battlemap/hand";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 import { boardFactsForHost } from "@/lib/battlemap/mt-mr-hand";
+import { wakeableSpells } from "@/lib/dm/shake-awake-logic";
+import type { ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { feetForHost } from "@/lib/battlemap/zone-feet";
 import type { PlayerMapView } from "@/lib/battlemap/view-types";
 import { HAND_FAN_CAP, arrangeHand, isUrgentCard, seatPicked, startingLayout } from "@/lib/battlemap/hand-layout";
@@ -299,6 +301,10 @@ function HandInner({
         : [],
     [sheet, hits, sheets, meUserId, multiCharacter, encounter, floorName, companionsReact, runsTable, reactionsSent],
   );
+  // The allies Sleep or Hypnotic Pattern holds, for the Wake card: only from
+  // a host that resolves it (src/lib/capabilities.ts shakeAwake), with the
+  // board's feet to each where it measures this character.
+  const wakes = hostOffers(capabilities, "shakeAwake");
   const gear = useMemo<HandGearContext | undefined>(
     () =>
       sheet
@@ -309,9 +315,16 @@ function HandInner({
             dying: sheets
               .filter((entry) => entry.currentHp <= 0 && !entry.deathSaves?.dead && !entry.deathSaves?.stable)
               .map((entry) => ({ id: entry.id, name: entry.name })),
+            ...(wakes
+              ? {
+                  sleepers: sheets
+                    .filter((entry) => entry.id !== sheet.id && wakeableSpells(entry.conditions, entry.conditionMeta as ConditionMetaMap).length)
+                    .map((entry) => ({ id: entry.id, name: entry.name, ...(ownFeet?.[entry.id] !== undefined ? { feet: ownFeet[entry.id] } : {}) })),
+                }
+              : {}),
           }
         : undefined,
-    [sheet, sheets, drops, mounts],
+    [sheet, sheets, drops, mounts, wakes, ownFeet],
   );
   // A host too old to catch the creatures in a laid blast keeps its blasts
   // aimed at one enemy (src/lib/capabilities.ts handBlasts).

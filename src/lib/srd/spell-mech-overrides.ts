@@ -153,7 +153,7 @@ export const MECH_OVERRIDES: Record<string, SpellMech> = {
       skipConditions: ["unconscious"],
       endsOnDamage: true,
     },
-    note: "No saving throw: one roll of the pool for the casting, spent from the lowest hit points up. Undead and creatures immune to being charmed are not affected. A sleeper wakes when it takes damage (the server ends it) or is shaken awake.",
+    note: "No saving throw: one roll of the pool for the casting, spent from the lowest hit points up. Undead and creatures immune to being charmed are not affected. A sleeper wakes when it takes damage (the server ends it) or is shaken awake (take_action wake, an action from within 5 feet).",
   },
   "color spray": {
     resolution: "auto",

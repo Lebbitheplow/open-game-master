@@ -232,7 +232,7 @@ export const NUMBERED_CONDITION_EFFECTS: ConditionEffectRow[] = [
     // them (spell-mech-rows.ts).
     id: "hypnotized",
     match: ["hypnotized"],
-    summary: "Hypnotic Pattern: speed 0 while its charm holds; damage, or a creature's action to shake it, ends the spell for it.",
+    summary: "Hypnotic Pattern: speed 0 while its charm holds; damage, or a creature's action to shake it (take_action wake), ends the spell for it.",
     speedSet: 0,
   },
   {
