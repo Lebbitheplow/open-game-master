@@ -35,7 +35,8 @@ import { coverFor } from "@/lib/dm/attack-spatial";
 import { isPactWeapon } from "@/lib/srd/pact-weapon";
 import { textKey } from "@/lib/language/text-logic";
 import { attackSenses, attackSight, characterSenses, enemySenses, fearAsRolled, lightOnAttack } from "@/lib/dm/attack-light";
-import { adjudicateHit, weaponAttackProfile, type ResolvedWeapon } from "@/lib/dm/attack-logic";
+import { adjudicateHit, weaponAttackProfile, type AttackProfile, type ResolvedWeapon } from "@/lib/dm/attack-logic";
+import { landNaturalOnHit } from "@/lib/dm/natural-onhit";
 import { endInvisibilityOnCast, planMarks, writeMarks } from "@/lib/dm/attack-marks";
 import {
   attackContext,
@@ -120,12 +121,37 @@ function turnUnderWay(encounter: Encounter, walkerId: string): string {
   return entry ? orderEntryId(entry) : walkerId;
 }
 
+// The profile of a weapon swung as the reaction, as the turn's swing builds
+// it (pc-attack-profile.ts).
+function weaponSwing(sheet: CharacterSheet, resolved: ResolvedWeapon, riders: ReturnType<typeof combatRiders>): AttackProfile {
+  const derived = computeSheetDerived(sheet);
+  const shillelagh = shillelaghSwing(sheet, resolved, derived);
+  // Hex Warrior's Charisma, as on the turn's swing (pc-attack-profile.ts).
+  const hexed = shillelagh ? null : hexWarriorSwing(sheet, resolved, derived);
+  // SRD 5.1, Pact of the Blade: "You are proficient with it while you wield
+  // it", on the reaction's swing as on the turn's (pc-attack-profile.ts). A
+  // warlock's pact longsword struck without the bonus.
+  const pactForm = resolved.srd && isPactWeapon(sheet, resolved.displayName, resolved.srd.kind === "melee") ? [textKey(resolved.srd.name)] : [];
+  const profile = weaponAttackProfile(shillelagh?.derived ?? hexed?.derived ?? derived, [...sheet.proficiencies.weapons, ...pactForm], shillelagh?.resolved ?? resolved, {
+    riders,
+    martialArts: martialArtsApplies(sheet),
+    // A worn item's bonus rides the reaction's swing as it does the turn's.
+    worn: magicItemRiders(sheet.equipment, sheet).weaponRiders,
+    // Dueling wants the other hand empty of weapons, here as on the turn.
+    otherWeaponInHand: otherHandArmed({ equipment: sheet.equipment, weapon: resolved.displayName, shieldName: acBreakdownFor(sheet).shieldName }),
+  });
+  return shillelagh ? { ...profile, magicWeapon: true } : profile;
+}
+
 export function pcOpportunitySwing(input: {
   campaign: Campaign;
   encounter: Encounter;
   sheet: CharacterSheet;
   enemy: EncounterEnemy;
-  resolved: ResolvedWeapon;
+  resolved: ResolvedWeapon | null;
+  // A beast form's or a summoned creature's own attack, in place of a
+  // weapon (opportunity-natural.ts).
+  natural?: AttackProfile | null;
   adjacent: boolean;
   // The target's conditions as the swing meets them (a Dodge lost with its
   // speed already left out, opportunity.ts withLiveDodge).
@@ -134,26 +160,10 @@ export function pcOpportunitySwing(input: {
   moverAt: XY | null;
 }): { note: string; dropped: boolean } {
   const { campaign, encounter, sheet, enemy, resolved } = input;
-  const derived = computeSheetDerived(sheet);
+  const natural = input.natural ?? null;
+  const kind = natural ? "natural" : "weapon";
   const riders = combatRiders(sheet);
-  const shillelagh = shillelaghSwing(sheet, resolved, derived);
-  // Hex Warrior's Charisma, as on the turn's swing (pc-attack-profile.ts).
-  const hexed = shillelagh ? null : hexWarriorSwing(sheet, resolved, derived);
-  // SRD 5.1, Pact of the Blade: "You are proficient with it while you wield
-  // it", on the reaction's swing as on the turn's (pc-attack-profile.ts). A
-  // warlock's pact longsword struck without the bonus.
-  const pactForm = resolved.srd && isPactWeapon(sheet, resolved.displayName, resolved.srd.kind === "melee") ? [textKey(resolved.srd.name)] : [];
-  let profile = weaponAttackProfile(shillelagh?.derived ?? hexed?.derived ?? derived, [...sheet.proficiencies.weapons, ...pactForm], shillelagh?.resolved ?? resolved, {
-    riders,
-    martialArts: martialArtsApplies(sheet),
-    // A worn item's bonus rides the reaction's swing as it does the turn's.
-    worn: magicItemRiders(sheet.equipment, sheet).weaponRiders,
-    // Dueling wants the other hand empty of weapons, here as on the turn.
-    otherWeaponInHand: otherHandArmed({ equipment: sheet.equipment, weapon: resolved.displayName, shieldName: acBreakdownFor(sheet).shieldName }),
-  });
-  if (shillelagh) {
-    profile = { ...profile, magicWeapon: true };
-  }
+  let profile = natural ?? weaponSwing(sheet, resolved!, riders);
   // What rides the swing, as on the character's own turn: Rage, the on-hit
   // dice of their effects (a mark only on its creature), their features.
   const marks = planMarks({ sheet, enemy, encounterEnemies: [enemy], budget: null });
@@ -162,7 +172,7 @@ export function pcOpportunitySwing(input: {
     sheet,
     profile,
     riders,
-    kind: "weapon",
+    kind,
     enemy,
     marked: marks.applies,
   });
@@ -329,7 +339,7 @@ export function pcOpportunitySwing(input: {
       dealt,
       crit,
       critExtraDice: riders.critExtraDice,
-      magical: strikesAsMagic({ kind: "weapon", profile, riders, sheet }),
+      magical: strikesAsMagic({ kind, profile, riders, sheet }),
       holdVictory: true,
     });
     if (!("error" in applied)) {
@@ -349,11 +359,17 @@ export function pcOpportunitySwing(input: {
       ranged: false,
       ...(normalRoll ? { normal: { raw: Math.max(0, normalRoll.total), from: dealt } } : {}),
       // As the blow met the damage path, for a reaction's replay (last-hit.ts flags).
-      flags: { ...(strikesAsMagic({ kind: "weapon", profile, riders, sheet }) ? { magical: true } : {}), ...(profile.material ?? {}) },
+      flags: { ...(strikesAsMagic({ kind, profile, riders, sheet }) ? { magical: true } : {}), ...(profile.material ?? {}) },
     });
     closeLog();
+    const struck = getFoe(enemy.id);
+    const dropped = Boolean(applied.dead) || struck?.status === "dead";
+    // What a natural attack's hit carries (a wolf's bite: a Strength save or
+    // prone), as the turn's swing lands it (attack-blow.ts).
+    if (!dropped && profile.creatureOnHit && !isSheetFoe(enemy)) {
+      notes.push(...landNaturalOnHit(campaign, { turn, attacker: { kind: "sheet", sheetId: sheet.id, name: sheet.name }, holderId: sheet.id, attack: profile.weapon, enemyId: enemy.id, onHit: profile.creatureOnHit }));
+    }
     const after = getFoe(enemy.id);
-    const dropped = Boolean(applied.dead) || after?.status === "dead";
     const landed = typeof applied.damageApplied === "number" ? applied.damageApplied : dealt;
     return {
       note: `${sheet.name} catches ${enemy.displayName} with an opportunity attack as it breaks away: ${

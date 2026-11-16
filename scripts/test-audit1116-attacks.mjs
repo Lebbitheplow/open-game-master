@@ -309,6 +309,31 @@ await test("G07: a Pact of the Blade warlock's opportunity attack with the pact 
   world.patch(hero.id, { features: plain });
 });
 
+// ---- G08: a beast form strikes with its own attack on an opportunity ----
+
+await test("G08: a druid in wolf form makes its opportunity attack with the wolf's bite, prone rider and all, not the scimitar merged into the form", async () => {
+  // SRD 5.1, Wild Shape: "Your game statistics are replaced by the
+  // statistics of the beast ... you can't ... wield ... equipment that merged
+  // into the form." pc_attack swings the form's natural attacks; the
+  // reaction's swing reached for the sheet's carried weapon.
+  const goblin = await freshArena();
+  world.patch(anchor.id, { equipment: [{ name: "Shortbow", qty: 1 }] });
+  arm({ str: 8, dex: 10, equipment: [{ name: "Scimitar", qty: 1 }], wildShape: { form: "Wolf", beastHp: 11, beastMaxHp: 11, beastAc: 13 } });
+  place(anchor.id, 9, 9);
+  place(goblin.id, 3, 0);
+  place(hero.id, 2, 0);
+  // A hit (15 + 4), the bite's 2d4 of 3s (+2 = 8), and the goblin's
+  // Strength save of 1 against the prone.
+  world.clearDice();
+  world.dice(15, 3, 3, 1);
+  const before = kit.dummy().currentHp;
+  const notes = resolvePcOpportunityAttacks(world.campaign(), goblin.id, { x: 3, y: 0 }, { x: 5, y: 0 }, [{ x: 4, y: 0 }, { x: 5, y: 0 }]);
+  world.clearDice();
+  world.patch(hero.id, { wildShape: null });
+  assert.equal(before - kit.dummy().currentHp, 3 + 3 + 2, `the wolf did not bite: ${JSON.stringify(notes)}`);
+  assert.ok(kit.dummy().conditions.includes("prone"), `the bite's rider never landed: ${JSON.stringify(notes)}`);
+});
+
 await kit.endFight();
 world.close();
 finish();
