@@ -1,13 +1,16 @@
-// Local CPU embeddings: MiniLM by default (384-dim, EMBEDDING_MODEL picks
-// another) via @huggingface/transformers ONNX, weights cached under
-// models/embeddings so the app stays fully on-device. CPU-only by design:
-// the iGPU belongs to the DM model. The pipeline loads lazily on first use
-// and all embed calls run through one serial queue so background indexing
-// never fans out across every core mid-turn.
+// Local CPU embeddings: MiniLM by default (384-dim), a multilingual model when
+// the server's language is not English, EMBEDDING_MODEL over both (src/lib/
+// language/server-language.ts), via @huggingface/transformers ONNX, weights
+// cached under models/embeddings so the app stays fully on-device. CPU-only
+// by design: the iGPU belongs to the DM model. The pipeline loads lazily on
+// first use and all embed calls run through one serial queue so background
+// indexing never fans out across every core mid-turn.
 
 import path from "node:path";
 import type { DataType } from "@huggingface/transformers";
 import { serverEnv } from "./server-env.ts";
+import { embeddingModelFor, type EmbeddingModelChoice } from "./language/server-language.ts";
+import type { TableLanguage } from "./schemas/game-settings-options.ts";
 
 export const EMBEDDING_DIM = 384;
 
@@ -34,20 +37,66 @@ export function resolveEmbeddingDtype(raw: string): DataType {
   return "fp32";
 }
 
-export const MODEL_ID = serverEnv("EMBEDDING_MODEL", "Xenova/all-MiniLM-L6-v2").trim();
-const DTYPE = resolveEmbeddingDtype(serverEnv("EMBEDDING_DTYPE", "fp32"));
+// What the operator pinned in .env.server, read once at start like every
+// other start-up setting.
+const PINNED = { model: serverEnv("EMBEDDING_MODEL"), dtype: serverEnv("EMBEDDING_DTYPE") };
+
+declare global {
+  // The server's language (global config serverLanguage), set at boot and on
+  // every admin save (src/lib/dm/embedding-reindex.ts applyServerLanguage).
+  // On globalThis because route bundles and instrumentation each load their
+  // own copy of this module.
+  var __odmEmbeddingLanguage: TableLanguage | undefined;
+}
+
+// The model the GM's memory reads with now.
+// Resolved once per language, so an unknown EMBEDDING_DTYPE is warned about
+// once and not on every embed.
+const RESOLVED = new Map<TableLanguage, EmbeddingModelChoice & { dtype: DataType }>();
+
+export function embeddingModel(): EmbeddingModelChoice & { dtype: DataType } {
+  const language = globalThis.__odmEmbeddingLanguage ?? "english";
+  let resolved = RESOLVED.get(language);
+  if (!resolved) {
+    const choice = embeddingModelFor(language, PINNED);
+    resolved = { ...choice, dtype: resolveEmbeddingDtype(choice.dtype) };
+    RESOLVED.set(language, resolved);
+  }
+  return resolved;
+}
+
+export function embeddingModelId(): string {
+  return embeddingModel().id;
+}
 
 // Vectors from two models compare without error but rank at random, so the
 // database records which model and dtype built its vectors (src/lib/dm/
 // embedding-reindex.ts) and re-embeds everything when this key changes.
-export const EMBEDDING_KEY = `${MODEL_ID}@${DTYPE}`;
+export function embeddingKey(): string {
+  const { id, dtype } = embeddingModel();
+  return `${id}@${dtype}`;
+}
+
+// Points the GM's memory at the model this language reads with. True when
+// that is another model than before: the loaded pipeline is dropped so the
+// next embed loads the new one (the caller re-embeds what was stored).
+export function setEmbeddingLanguage(language: TableLanguage): boolean {
+  const before = embeddingKey();
+  globalThis.__odmEmbeddingLanguage = language;
+  if (embeddingKey() === before) {
+    return false;
+  }
+  globalThis.__odmEmbedderPromise = undefined;
+  globalThis.__odmEmbedderFailure = undefined;
+  return true;
+}
 // Every database indexed before the key was recorded was built by the
 // original hard-coded model at its default fp32 weights.
 export const LEGACY_EMBEDDING_KEY = "Xenova/all-MiniLM-L6-v2@fp32";
 
 // Whether vectors stored under `stored` (null: never recorded) are unusable
 // with the configured model.
-export function embeddingIndexStale(stored: string | null, current = EMBEDDING_KEY): boolean {
+export function embeddingIndexStale(stored: string | null, current = embeddingKey()): boolean {
   return (stored ?? LEGACY_EMBEDDING_KEY) !== current;
 }
 
@@ -117,9 +166,10 @@ export function checkEmbeddingDim(modelId: string, size: number): void {
 async function loadEmbedder(): Promise<Embedder> {
   const { pipeline, env } = await import("@huggingface/transformers");
   env.cacheDir = path.join(/*turbopackIgnore: true*/ process.cwd(), "models", "embeddings");
-  const pipe = (await pipeline("feature-extraction", MODEL_ID, { dtype: DTYPE })) as unknown as Embedder;
+  const { id, dtype } = embeddingModel();
+  const pipe = (await pipeline("feature-extraction", id, { dtype })) as unknown as Embedder;
   const probe = await pipe(["probe"], { pooling: "mean", normalize: true });
-  checkEmbeddingDim(MODEL_ID, probe.tolist()[0].length);
+  checkEmbeddingDim(id, probe.tolist()[0].length);
   return pipe;
 }
 
@@ -316,7 +366,8 @@ export async function embed(
     return queueEmbed(texts, false);
   }
   const cache = queryVectors();
-  const keys = texts.map((text) => `${EMBEDDING_KEY}\u0000${text}`);
+  const model = embeddingKey();
+  const keys = texts.map((text) => `${model}\u0000${text}`);
   const missing = [...new Set(keys.filter((key) => !cache.done.has(key) && !cache.pending.has(key)))];
   if (missing.length) {
     const batch = queueEmbed(

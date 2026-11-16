@@ -1,4 +1,5 @@
 import type { CampaignDraft } from "@/app/create-campaign/draft";
+import type { TableLanguage } from "@/lib/schemas/game-settings-options";
 
 // The slice of /api/capabilities this dialog gates on. null means the
 // endpoint never answered, and the dialog assumes everything is available:
@@ -6,7 +7,9 @@ import type { CampaignDraft } from "@/app/create-campaign/draft";
 export type ServerCapabilities = {
   story: { configured: boolean; reachable: boolean };
   images: { configured: boolean };
-  tts: { configured: boolean };
+  tts: { configured: boolean; provider?: string };
+  // The server's language; absent on an older host.
+  language?: TableLanguage;
 };
 
 // What the server cannot do right now, laid over a draft: a missing or

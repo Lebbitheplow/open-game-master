@@ -1,0 +1,89 @@
+/* Small joinery fittings leave the dense table and map controls unobstructed. */
+[data-appearance="hearth"] {
+  --theme-table-corner-size: 48px;
+  --theme-table-corner-size-small: 32px;
+  --theme-lobby-corner-size: 144px;
+  --theme-lobby-corner-size-small: 88px;
+  --material-fitting-radius: 30% 30% 12% 12%;
+  --material-control-radius: 5px;
+  --material-panel-radius: 8px;
+  --material-primary-wash: linear-gradient(#754019f5, #48240ef5);
+  --material-send-wash: linear-gradient(#754019, #48240e);
+  --material-send-edge: #b4792c;
+  --material-chosen-wash: linear-gradient(#704518, #51300f);
+  --material-metal-finish: linear-gradient(135deg, #ffe3a0, #b4792c 48%, #e5b35e 51%, #8b5422);
+  --material-metal-ink: #39200d;
+  --material-rail-wash: linear-gradient(#48250d35, #30190e55);
+  --appearance-corner: 0.4rem;
+}
+[data-appearance="hearth"][data-theme="dark"] {
+  --background: #1d140e;
+  --foreground: #f3e4cc;
+  --color-stone-950: #21170f;
+  --color-stone-900: #302117;
+  --color-stone-800: #443023;
+  --color-stone-700: #5e4531;
+  --color-stone-600: #917456;
+  --color-stone-500: #b69a7a;
+  --color-stone-400: #ccb394;
+  --color-stone-300: #dfc9ac;
+  --color-stone-200: #eddbc0;
+  --color-stone-100: #f7ead4;
+  --color-stone-50: #fff6e8;
+  --color-amber-950: #392008;
+  --color-amber-900: #51300f;
+  --color-amber-800: #704518;
+  --color-amber-700: #936324;
+  --color-amber-600: #b58136;
+  --color-amber-500: #d7a34e;
+  --color-amber-400: #e6ba6e;
+  --color-amber-300: #f0cd8d;
+  --color-amber-200: #f7dfae;
+  --color-amber-100: #fbeccc;
+  --color-amber-50: #fff7e6;
+  --material-body-wash: linear-gradient(#21170fea, #1d140ef2);
+  --material-panel-wash: linear-gradient(#302117e8, #21170ff2);
+  --material-control-wash: linear-gradient(#543720d9, #302117ed);
+}
+[data-appearance="hearth"][data-theme="light"] {
+  --background: #f2e5c9;
+  --foreground: #392717;
+  --color-stone-950: #fff7e5;
+  --color-stone-900: #f3e6ca;
+  --color-stone-800: #e7d5b3;
+  --color-stone-700: #c8ac83;
+  --color-stone-600: #9b7953;
+  --color-stone-500: #765735;
+  --color-stone-400: #614426;
+  --color-stone-300: #4f351e;
+  --color-stone-200: #3e2816;
+  --color-stone-100: #2e1c10;
+  --color-stone-50: #211208;
+  --color-amber-950: #fff1d2;
+  --color-amber-900: #f6dfb2;
+  --color-amber-800: #e6c58c;
+  --color-amber-700: #c9a15c;
+  --color-amber-600: #9f7539;
+  --color-amber-500: #83551f;
+  --color-amber-400: #704315;
+  --color-amber-300: #5c340e;
+  --color-amber-200: #49270a;
+  --color-amber-100: #361c07;
+  --color-amber-50: #251204;
+  --material-body-wash: linear-gradient(#f2e5c9eb, #e8d4b0ed);
+  --material-panel-wash: linear-gradient(#f7ecd5eb, #ead6b4ed);
+  --material-control-wash: linear-gradient(#f2dfb9e8, #dabc8de8);
+}
+
+/* Cabinet beading echoes the painted rail without introducing forest motifs. */
+html[data-appearance="hearth"] .ornate::before,
+html[data-appearance="hearth"] .ornate::after {
+  border-style: double;
+  border-radius: 3px;
+}
+
+/* The hand stays over the dark map painting even when surrounding paper is
+   light. Keep the player's label bright; monster-hand semantic red is separate. */
+html[data-appearance="hearth"] .cine-fight-hand [data-tour="battle-hand"] .hand-label {
+  color: #f7dfae;
+}

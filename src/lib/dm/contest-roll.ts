@@ -39,7 +39,10 @@ export type CharacterCheck = {
 // `spell`: the spell the check is made as part of (Counterspell, Dispel
 // Magic), for what a feature adds to such a check (ar-ws-spell-check.ts).
 // `about`: what the check is about (roll-about.ts), for the features keyed to it.
-type CheckAsked = { skill?: string; ability?: Ability; advantage?: "advantage" | "disadvantage"; dc?: number; charmedTarget?: string; spell?: string; about?: CheckAbout };
+// `tool`: an ability check made with a tool ("thieves' tools"), which adds
+// the tool's proficiency; with `about: "locks"` a lock pick, which Gloves of
+// Thievery ride (item-check-riders.ts).
+type CheckAsked = { skill?: string; ability?: Ability; tool?: string; advantage?: "advantage" | "disadvantage"; dc?: number; charmedTarget?: string; spell?: string; about?: CheckAbout };
 
 // The check as the resolver builds it, before any die is rolled.
 // `keepHeldDie`: a held die is settled after the d20 (forced-save.ts
@@ -48,7 +51,7 @@ function resolveCheck(campaign: Campaign, sheet: CharacterSheet, check: CheckAsk
   const args = (
     check.skill
       ? { kind: "skill_check", skill: check.skill }
-      : { kind: "ability_check", ability: check.ability ?? "str" }
+      : { kind: "ability_check", ability: check.ability ?? "str", ...(check.tool ? { tool: check.tool } : {}) }
   ) as RollArgs;
   const resolved = resolveRollExpression(
     { ...args, ...(check.advantage ? { advantage: check.advantage } : {}), ...(check.about ? { about: check.about } : {}) },

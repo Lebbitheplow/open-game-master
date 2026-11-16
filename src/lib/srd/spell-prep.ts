@@ -19,6 +19,7 @@ import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { classSpellGrants } from "@/lib/srd/class-spell-grants";
 import { arcanumExtraProblem, arcanumSplit, mysticArcanumTop } from "@/lib/srd/mystic-arcanum";
+import { effectiveAbilities, type Wearer, type WornMagicItem } from "@/lib/srd/magic-items";
 
 // How a caster's spell list works, and the 5e (SRD 5.1) timing for changing
 // it. Pure and database-free, shared by the sheet, the builder, the server
@@ -96,7 +97,22 @@ export type CasterView = {
 type SheetLike = Pick<CharacterSheet, "class" | "level" | "subclass" | "classes" | "abilities"> & {
   spellcasting: CharacterSheet["spellcasting"];
   features?: Array<{ name: string }>;
+  equipment?: readonly WornMagicItem[];
+  conditions?: string[];
 };
+
+// The scores a spell count reads (a prepared caster's level plus the casting
+// modifier): the sheet's own, or `scores` (a level-up's, after its
+// improvement), once a worn item sets or raises them, as every other number
+// reads them (magic-items.ts effectiveAbilities, the one computeSheetDerived
+// uses). The sheet's own scores held a wizard in a Headband of Intellect
+// (INT 19) to the count of their own INT (audit 2026-11-15, S12).
+export function countingScores(
+  sheet: Wearer & { abilities: CharacterSheet["abilities"]; equipment?: readonly WornMagicItem[] },
+  scores: CharacterSheet["abilities"] = sheet.abilities,
+): CharacterSheet["abilities"] {
+  return effectiveAbilities(scores, [...(sheet.equipment ?? [])], sheet);
+}
 
 const has = (list: string[], name: string) => list.some((entry) => textKey(entry) === textKey(name));
 const without = (list: string[], name: string) => list.filter((entry) => textKey(entry) !== textKey(name));
@@ -551,7 +567,7 @@ export function spellListProblems(
     }
     const granted = grantedSpellsOf(view);
     const held = dedupeNames([...heldSpells(view), ...view.pending]).filter((name) => !isCantripName(name) && !freeSpells.has(textKey(name)));
-    const tableCap = spellCapOf(view, sheet.abilities);
+    const tableCap = spellCapOf(view, countingScores(sheet));
     const cap = tableCap ? { ...tableCap, count: tableCap.count + grants.extraSpells } : null;
     // A warlock's arcana sit beside the Spells Known column: one of each
     // arcanum level is left out of the count, a second of one level refused.

@@ -271,7 +271,7 @@ function magicFindings(item: ItemDraft): Finding[] {
     if (most > 50) {
       findings.push({ page: "magic-items", level: "warn", text: `${charges.max} charges: the SRD's largest pool, a staff of the magi, holds 50.` });
     }
-    if (!charges.regain && !charges.spentAway && !charges.daily) {
+    if (!charges.regain && !charges.regainDays && !charges.regainHours && !charges.spentAway && !charges.daily) {
       findings.push({ page: "magic-items", level: "note", text: "Its charges never come back: no regain at dawn and nothing said of the last one." });
     }
     if (charges.regain && charges.regain !== "all" && averageOf(charges.regain) === null) {

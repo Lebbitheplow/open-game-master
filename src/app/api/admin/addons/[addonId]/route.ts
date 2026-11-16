@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { isErrorResponse, requireAdmin } from "@/lib/admin-api";
 import { adminAddon, installedResponse } from "@/lib/addons/admin-view";
-import { conflictsWith, findInstalledAddon, listInstalledAddons } from "@/lib/addons/installed";
+import { conflictsWith, findInstalledAddon, hostFacts, listInstalledAddons } from "@/lib/addons/installed";
+import { partProblem } from "@/lib/addons/parts";
 import { removeAddon, updateFromGitHub } from "@/lib/addons/install";
 import { checkRequirements } from "@/lib/addons/requirements";
 import { probeAddon, readAddonLog, runningAddonIds, stopAddon } from "@/lib/addons/runtime";
-import { cancelSetup, settingsEdit, setupIfDue, startSetup } from "@/lib/addons/setup";
+import { cancelSetup, partsEdit, settingsEdit, setupIfDue, startSetup } from "@/lib/addons/setup";
 import { readAddonConfig, setAddonState } from "@/lib/addons/store";
 import { taskView } from "@/lib/addons/tasks";
 
@@ -15,8 +16,10 @@ export const dynamic = "force-dynamic";
 // One installed addon, for the admin.
 //
 // GET: its state, its log, and whether the programs it needs are here.
-// PATCH { enabled?, accept?, settings? }: switch it on (accepting the
-//   permissions it asks for, all at once) or off, and fill in its settings.
+// PATCH { enabled?, accept?, settings?, parts? }: switch it on (accepting
+//   the permissions it asks for, all at once) or off, fill in its settings,
+//   and choose its parts (a change makes its setup due: it fetches what was
+//   added and removes what was left out).
 //   It is stopped after any change; its next call starts it with the new
 //   settings. Switching it on is refused while an addon it conflicts with is
 //   on. A change to a setting its setup reads makes the setup due again.
@@ -34,6 +37,7 @@ const patchSchema = z.object({
   enabled: z.boolean().optional(),
   accept: z.array(z.string().max(40)).max(20).optional(),
   settings: z.record(z.string().max(40), z.union([z.string().max(4_000), z.number(), z.boolean()])).optional(),
+  parts: z.array(z.string().min(1).max(40)).max(30).optional(),
 });
 
 export async function GET(_request: Request, { params }: Params) {
@@ -89,6 +93,14 @@ export async function PATCH(request: Request, { params }: Params) {
   if (body.settings) {
     if (!addon.manifest) return Response.json({ error: "Its manifest does not read, so its settings cannot be checked." }, { status: 409 });
     const edited = settingsEdit({ ...addon, manifest: addon.manifest }, body.settings);
+    if (!edited.ok) return Response.json({ error: edited.error }, { status: edited.status });
+    Object.assign(patch, edited.patch);
+  }
+  if (body.parts) {
+    if (!addon.manifest) return Response.json({ error: "Its manifest does not read, so its parts cannot be checked." }, { status: 409 });
+    const withManifest = { ...addon, manifest: addon.manifest };
+    const facts = hostFacts();
+    const edited = partsEdit(withManifest, body.parts, (partId) => partProblem(withManifest, partId, `${facts.platform}-${facts.arch}`));
     if (!edited.ok) return Response.json({ error: edited.error }, { status: edited.status });
     Object.assign(patch, edited.patch);
   }

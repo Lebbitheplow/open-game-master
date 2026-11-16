@@ -380,6 +380,7 @@ export function MonsterKitPanel({
                 addAttack(
                   draft,
                   weaponAttack(weapon, {
+                    // A stat block's level, not a character's sheet.
                     profBonus: proficiencyBonus(level),
                     abilityMod: weaponMod,
                   }),

@@ -513,6 +513,38 @@ await test("An end_turn that hands over the last enemy of the round says it clos
   assert.doesNotMatch(ended.result.note, /acts before Scout|It is now Scout's turn/);
 });
 
+// ---- a rider the backstop knocks prone (C:G25) ----
+
+// combat, Mounting and Dismounting: 'If you're knocked prone while mounted, you must make the same saving throw.'
+await test("A rider an enemy played by the backstop knocks prone makes the DC 10 Dexterity save to stay mounted, as one the model's own call knocks prone does.", async () => {
+  const { getMounts, setMount } = await import("../src/lib/db/mounts.ts");
+  const [enemy] = await stage();
+  // A wolf's Bite (SRD 5.1): a DC 11 Strength save or be knocked prone.
+  kit.setEnemy(enemy.id, {
+    stats: { attacks: [{ name: "Bite", toHit: 4, damage: "2d4+2", type: "piercing", mode: "melee", reach: 5, onHit: { save: "str", dc: 11, condition: "prone" } }] },
+  });
+  const mounted = await world.invoke("mount_up", { characterId: scout.id, mount: "Riding horse" });
+  assert.equal(mounted.ok, true, mounted.error);
+  try {
+    const turn = mk.aiTurn();
+    world.say("player", "That's my turn.", scout);
+    const ended = await mk.ai(turn, "end_turn", { characterId: scout.id });
+    assert.equal(ended.ok, true, ended.error);
+    // The model plays no enemy: the backstop does. A 15 hits, the 2d4 rolls 2
+    // and 2, the Strength save's 1 fails, then the Dexterity save's 1 fails.
+    world.dice(15, 2, 2, 1, 1);
+    advanceAfterTurn(world.campaign(), getDmTurn(turn.id));
+    const unused = world.clearDice();
+    assert.ok(world.sheet(scout.id).conditions.includes("prone"), "the bite did not knock the rider prone");
+    assert.equal(unused, 0, "the rider the backstop knocked prone rolled no save to stay mounted");
+    assert.equal(getMounts(world.campaignId)[scout.id], undefined, "a rider who failed the save is still mounted");
+  } finally {
+    setMount(world.campaignId, scout.id, null);
+    world.clearDice();
+    world.patch(scout.id, { conditions: [], conditionMeta: {} });
+  }
+});
+
 await kit.endFight();
 world.close();
 finish();

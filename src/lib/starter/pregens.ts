@@ -1,4 +1,5 @@
 import type { CreateSheetInput } from "@/lib/schemas/sheet";
+type Locale = "en" | "fr";
 
 // Four ready-made heroes for a table that wants to start in ten minutes.
 // Each is a complete level 1 sheet in the shape the character builder
@@ -188,18 +189,54 @@ export const PREGENS: Pregen[] = [
   },
 ];
 
-export function pregenById(id: string): Pregen | null {
-  return PREGENS.find((pregen) => pregen.id === id) ?? null;
+export function pregenById(id: string, locale: Locale = "en"): Pregen | null {
+  const pregen = PREGENS.find((pregen) => pregen.id === id) ?? null;
+  if (!pregen || locale !== "fr") {
+    return pregen;
+  }
+  const fr = PREGEN_TEXT_FR[id];
+  return fr ? { ...pregen, tagline: fr.tagline, blurb: fr.blurb, sheet: { ...pregen.sheet, backstory: fr.backstory } } : pregen;
 }
 
+// The heroes' own words in French: the picker's line, the card's pitch and
+// the backstory the character keeps, chosen when the hero takes a seat, so
+// a French table's library reads French and an English table's stays as it
+// was. Equipment, spells and traits are not here: those translate at render
+// (src/lib/content/names.ts).
+const PREGEN_TEXT_FR: Record<string, { tagline: string; blurb: string; backstory: string }> = {
+  brakk: {
+    tagline: "Brakk, barbare humain",
+    blurb: "Frappe d’abord, demande ensuite. Brandis la hache à deux mains, encaisse les coups et garde les autres en vie en te tenant devant eux.",
+    backstory: "Né dans les hauts cols, Brakk est redescendu dans les terres basses quand les troupeaux ont péri, et il n’a jamais trouvé de raison d’y remonter.",
+  },
+  kara: {
+    tagline: "Kara, guerrière humaine",
+    blurb: "Bouclier, épée et cotte de mailles. La main la plus sûre de la table : difficile à toucher, plus difficile encore à déplacer, et toujours un plan face à une porte.",
+    backstory: "Dix ans dans la garde d’un baron du fleuve, renvoyée quand le baron n’a plus eu d’argent. Elle salue encore par habitude.",
+  },
+  vex: {
+    tagline: "Vex, roublard humain",
+    blurb: "Serrures, ombres et rapière. Pars en éclaireur, trouve le piège avant qu’il ne te trouve, et frappe où ça fait mal.",
+    backstory: "A quitté une guilde citadine juste avant qu’une dette ne le rattrape. Vex tient la liste de ceux à qui l’on doit quelque chose, et une plus courte de ceux à qui Vex doit.",
+  },
+  sera: {
+    tagline: "Sera, clerc humaine de la Vie",
+    blurb: "Masse d’armes, bouclier et des mains de soigneuse. Elle garde le groupe debout avec Mot de guérison et Bénédiction, et sait tenir la ligne elle-même.",
+    backstory: "Orpheline de la chapelle, elle a appris qu’une voix posée et une main plus ferme encore font plus de bien qu’un sermon.",
+  },
+};
+
 // What the picker shows: no sheet, nothing to tamper with.
-export function pregenSummaries() {
-  return PREGENS.map((pregen) => ({
-    id: pregen.id,
-    name: pregen.sheet.name,
-    tagline: pregen.tagline,
-    blurb: pregen.blurb,
-    race: pregen.sheet.race,
-    class: pregen.sheet.class,
-  }));
+export function pregenSummaries(locale: Locale = "en") {
+  return PREGENS.map((pregen) => {
+    const fr = locale === "fr" ? PREGEN_TEXT_FR[pregen.id] : undefined;
+    return {
+      id: pregen.id,
+      name: pregen.sheet.name,
+      tagline: fr ? fr.tagline : pregen.tagline,
+      blurb: fr ? fr.blurb : pregen.blurb,
+      race: pregen.sheet.race,
+      class: pregen.sheet.class,
+    };
+  });
 }

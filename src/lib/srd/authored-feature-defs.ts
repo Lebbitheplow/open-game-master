@@ -19,7 +19,8 @@ export function authoredFeatureDefs(): Array<{
     | { kind: "initiative_proficiency" }
     | {
         kind: "weapon_damage_rider";
-        dice: (level: number) => string;
+        // `mods.prof`: the character's proficiency bonus (Genie's Wrath).
+        dice: (level: number, mods?: Record<string, number>) => string;
         type: string;
         when: "weapon" | "melee" | "ranged" | "attack";
         oncePerTurn?: boolean;
@@ -48,7 +49,7 @@ export function authoredFeatureDefs(): Array<{
           effects: [
             {
               kind: "weapon_damage_rider",
-              dice: (level) => resolveFormula(dice, level),
+              dice: (level, mods) => resolveFormula(dice, level, mods),
               type: effect.type,
               when: effect.when,
               ...(effect.oncePerTurn ? { oncePerTurn: true } : {}),

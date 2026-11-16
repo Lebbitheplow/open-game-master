@@ -688,6 +688,10 @@ for (const viewport of ["desktop", "phone"]) {
         { name: "Cloak of Protection", qty: 1, equipped: true, attuned: true },
         { name: "Cloak of Elvenkind", qty: 1, equipped: false, attuned: true },
         { name: "Ring of Spell Storing", qty: 1, equipped: true, storedSpells: [{ spell: "Fireball", level: 3, saveDc: 15, attackBonus: 7 }] },
+        // For the paperdoll: a wand is held, in hand beside the weapons, and
+        // an orb has no place on the body, so it is under Other items.
+        { name: "Wand of Magic Missiles", qty: 1, equipped: false },
+        { name: "Crystal Ball", qty: 1, equipped: false },
       ],
     }),
   );
@@ -3448,6 +3452,55 @@ for (const viewport of ["desktop", "phone"]) {
   clockTables[viewport] = { id: table.id, hero: hero.id, heroName: hero.name };
 }
 
+// The 2026-11-15 rules audit's new GM console fields and a pet's conditions
+// on the party panel (139-console-audit-fields), one table per viewport the
+// lead runs: a wizard whose cat lies restrained under a weighted net, in a
+// fight with two goblins the wizard leads off. The scenario only opens forms.
+const auditFields = {};
+{
+  const { invokeEngine } = await import("../../src/lib/dm/invoke.ts");
+  const { dice, clearDice } = await import("../lib/enforce-world.mjs");
+  for (const viewport of ["desktop", "phone"]) {
+    const table = campaigns.createCampaign(world.owner.id, {
+      title: `Audit Fields Table (${viewport})`,
+      description: "A wizard, her cat and two goblins in a wine cellar.",
+      theme: "high-fantasy",
+      maxPlayers: 4,
+      startingLevel: 5,
+      difficulty: "normal",
+      gameSettings: { ttsEnabled: false, dmMode: "human" },
+    });
+    // Seated in the lobby: a table in play turns a newcomer away.
+    const seated = campaigns.joinByInviteCode(player.id, campaigns.getCampaignById(table.id).inviteCode);
+    if ("error" in seated) {
+      throw new Error(`could not seat the player at the audit fields table: ${seated.error}`);
+    }
+    campaigns.setCampaignStatus(table.id, "active");
+    const hero = sheets.createSheet(table.id, player.id, 5, heroInput({ name: "Maelis Thorn", class: "wizard", level: 5, maxHp: 30 }));
+    const run = async (name, args) => {
+      const result = await invokeEngine(campaigns.getCampaignById(table.id), { kind: "human", userId: world.owner.id }, { name, args });
+      if (!result.ok) {
+        throw new Error(`the audit fields table's ${name} failed: ${result.error}`);
+      }
+    };
+    await run("summon_pet", { characterId: hero.id, kind: "other", form: "cat", name: "Soot" });
+    // The goblins' initiative (one roll for the pair), then the wizard's.
+    clearDice();
+    dice(1, 20);
+    await run("start_encounter", { enemies: [{ monster: "goblin", count: 2 }] });
+    clearDice();
+    // DC 30 is past any cat's Dexterity save: the net holds it.
+    dice(2);
+    await run("cast_at_player", { characterId: hero.id, petName: "Soot", saveAbility: "dex", dc: 30, condition: "restrained", rounds: 10, source: "a weighted net" });
+    clearDice();
+    const soot = sheets.getSheetById(hero.id)?.pets?.find((pet) => pet.name === "Soot");
+    if (!soot?.conditions?.includes("restrained")) {
+      throw new Error(`the audit fields table's cat is not restrained: ${JSON.stringify(soot ?? null)}`);
+    }
+    auditFields[viewport] = { id: table.id, hero: hero.id, heroName: hero.name, pet: soot.name };
+  }
+}
+
 // Issue 685, gap 4: a table the lead runs as its GM, in a fight on the
 // player's wizard's turn, so her Web card waits in the console's "Waiting on
 // you" list and the GM resolves it as played. One per viewport, since the
@@ -4302,6 +4355,7 @@ const ids = {
   creatorAudit,
   fallenTables,
   clockTables,
+  auditFields,
   resolveTables,
   ringTables,
   itemTables,
@@ -4445,6 +4499,7 @@ const ids = {
     ...Object.fromEntries(Object.values(weekly).map((table) => [table.id, table.title])),
     ...Object.fromEntries(Object.entries(fallenTables).map(([viewport, id]) => [id, `The Fallen Watch (${viewport})`])),
     ...Object.fromEntries(Object.entries(clockTables).map(([viewport, table]) => [table.id, `Clock Table (${viewport})`])),
+    ...Object.fromEntries(Object.entries(auditFields).map(([viewport, table]) => [table.id, `Audit Fields Table (${viewport})`])),
     ...Object.fromEntries(Object.entries(resolveTables).map(([viewport, table]) => [table.id, `${RESOLVE_TITLE} (${viewport})`])),
     ...Object.fromEntries(Object.entries(ringTables).flatMap(([viewport, table]) => [[table.id, `Ring Table (${viewport})`], [table.study, `Ring Study (${viewport})`]])),
     ...Object.fromEntries(Object.entries(itemTables).flatMap(([viewport, table]) => [[table.id, `Item Table (${viewport})`], [table.study, `Item Study (${viewport})`]])),

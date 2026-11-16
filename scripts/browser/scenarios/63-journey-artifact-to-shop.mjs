@@ -313,8 +313,14 @@ export default {
       const sheetDialog = playerPage.getByRole("dialog").filter({ hasText: ARTIFACT }).first();
       await eventually(() => sheetDialog.isVisible(), { timeoutMs: 20_000, label: "the player's sheet, the cloak among the gear" });
       const shownAc = async () => Number((await sheetDialog.innerText()).match(/Armou?r class\s*(\d+)/i)?.[1]);
-      const wearing = playerPage.getByRole("button", { name: /^(wear|worn)$/ });
-      const gearRow = sheetDialog.locator("li, div").filter({ hasText: ARTIFACT }).filter({ has: wearing }).last();
+      // The sheet's paperdoll has the cloak on the shoulders; its row, with the
+      // wear toggle, is in that place, opened here from the keyboard.
+      const shoulders = sheetDialog.locator('[data-doll-place="cloak"]').first();
+      await eventually(async () => ((await shoulders.getAttribute("aria-label").catch(() => null)) ?? "").startsWith(`Shoulders: ${ARTIFACT}`), { timeoutMs: 15_000, label: "the paperdoll's shoulders tile naming the cloak" });
+      await shoulders.focus();
+      await playerPage.keyboard.press("Enter");
+      const gearRow = sheetDialog.locator(`[data-gear-row="${ARTIFACT}"]`).first();
+      await eventually(() => gearRow.count(), { label: "the cloak's row in the opened place" });
       const toggle = gearRow.getByRole("button", { name: /^(wear|worn)$/ });
       const acBefore = Number(hero.ac);
       await eventually(async () => (await toggle.innerText()).trim() === "worn" && (await shownAc()) === acBefore + BONUS, { timeoutMs: 15_000, label: `the sheet reading AC ${acBefore + BONUS} with the cloak worn` });

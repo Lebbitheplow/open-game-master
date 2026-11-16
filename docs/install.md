@@ -34,7 +34,7 @@ Software:
     KoboldCpp: supported, with llama.cpp the one we recommend), or a remote API
     key like OpenAI or OpenRouter. Or:
   - a CLI agent already installed and signed in on the server's computer: Claude
-    Code, Codex, opencode or Grok Build, running on the plan you already pay for.
+    Code, Codex, opencode, Grok Build or Pi, running on the plan you already pay for.
     Pick it in **Admin > Agent program**. Works for a server started with npm or
     systemd, not inside the Docker image
     ([agent-harness.md](agent-harness.md)).
@@ -88,7 +88,7 @@ takes it from there, one question at a time:
   this machine; an Ollama it finds is connected through Ollama's own API, so
   the app sets the model's window. Or paste an API key (OpenAI, OpenRouter, any OpenAI-compatible
   provider) and pick from the models it can reach. Or pick an agent program you
-  already pay for (Claude Code, Codex, opencode, Grok Build): it shows whether each
+  already pay for (Claude Code, Codex, opencode, Grok Build, Pi): it shows whether each
   is installed and signed in, and the exact command to fix it when not. Or choose a
   person at the table. Each choice is tested the way a campaign uses it before you
   move on.
@@ -134,8 +134,16 @@ longer bundled in the repo. transformers.js downloads it from HuggingFace into
 `models/embeddings/` the first time the app needs it, so first use requires network;
 `npm run fetch-model` fetches it ahead of time.
 
-The default, `Xenova/all-MiniLM-L6-v2`, understands English only. For a table that
-plays in another language (its Table language setting), set a multilingual model in `.env.server`:
+Which model is used follows the server's language, picked with its flag in the
+setup wizard or under **Admin > Settings > Language**: English uses
+`Xenova/all-MiniLM-L6-v2`, which understands English only, and any other language
+uses `Xenova/multilingual-e5-small` (q8), which reads every table language. New
+campaigns also start in that language. Changing it on a running server switches the
+model at once and re-embeds the stored story in the background;
+`npm run fetch-model -- --language french` fetches the multilingual model ahead of time.
+
+An `EMBEDDING_MODEL` in `.env.server` wins over the language, for a server that wants
+a model of its own:
 
 ```bash
 EMBEDDING_MODEL=Xenova/multilingual-e5-small

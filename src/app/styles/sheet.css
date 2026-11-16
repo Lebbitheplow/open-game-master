@@ -353,12 +353,10 @@ html[data-theme="light"] .sheet-medallion-emblem { background: #f6efdc; }
     transform: translateY(-1px);
     border-color: rgba(212, 171, 58, 0.5);
   }
-  .spell-tile[data-state="available"] { opacity: 0.72; }
-  .spell-tile[data-state="available"]:hover { opacity: 1; }
-  /* Cannot be chosen right now (the list is full, the wrong school): dimmer
-     than available and no lift, the reason on its state line. */
+  /* Availability is conveyed by the frame and state line. Whole-tile opacity
+     also faded the readable explanation and the still-active detail button. */
   .spell-tile[data-blocked],
-  .spell-tile[data-blocked]:hover { opacity: 0.45; }
+  .spell-tile[data-blocked]:hover { border-style: dashed; }
   .spell-tile[data-blocked]:has(button:not(:disabled)):hover {
     transform: none;
     border-color: rgba(120, 100, 160, 0.25);
@@ -384,7 +382,7 @@ html[data-theme="light"] .sheet-medallion-emblem { background: #f6efdc; }
     border-color: rgba(167, 139, 250, 0.45);
     background: rgba(139, 92, 246, 0.07);
   }
-  .spell-tile-state { color: var(--color-stone-500); }
+  .spell-tile-state { color: var(--color-stone-400); }
   .spell-tile[data-state="ready"] .spell-tile-state { color: rgba(244, 224, 166, 0.75); }
   .spell-tile[data-state="pending"] .spell-tile-state { color: rgba(125, 211, 252, 0.85); }
   .spell-tile[data-state="granted"] .spell-tile-state { color: rgba(255, 190, 143, 0.8); }

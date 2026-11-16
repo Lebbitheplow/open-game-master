@@ -10,10 +10,11 @@ import Database from "better-sqlite3-multiple-ciphers";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import {
-  EMBEDDING_KEY,
   LEGACY_EMBEDDING_KEY,
   embed as embedVectors,
   embeddingIndexStale,
+  embeddingKey,
+  setEmbeddingLanguage,
   vectorToBuffer,
 } from "../src/lib/embeddings.ts";
 import { serverEnv } from "../src/lib/server-env.ts";
@@ -57,6 +58,15 @@ if (!hasSceneChunks) {
 // compare without error and rank at random. The server re-embeds the whole
 // database at its next start after a model change (app_settings.embedding_model,
 // src/lib/dm/embedding-reindex.ts); this script only fills gaps.
+// The server's language picks the model, as it does in the server
+// (src/lib/language/server-language.ts).
+const configRow = db.prepare(`SELECT value_json FROM app_settings WHERE key = 'global_config'`).get();
+try {
+  const language = configRow ? JSON.parse(configRow.value_json).serverLanguage : undefined;
+  if (typeof language === "string") setEmbeddingLanguage(language);
+} catch {
+  // An unreadable config is the server's to report; English stands.
+}
 const stampRow = db
   .prepare(`SELECT value_json FROM app_settings WHERE key = 'embedding_model'`)
   .get();
@@ -65,7 +75,7 @@ if (embeddingIndexStale(stamp)) {
   db.close();
   fail(
     `This database was indexed with ${stamp ?? LEGACY_EMBEDDING_KEY}, but the configured model is ` +
-      `${EMBEDDING_KEY}. Start the server once: it re-embeds everything with the configured model.`,
+      `${embeddingKey()}. Start the server once: it re-embeds everything with the configured model.`,
   );
 }
 

@@ -10,7 +10,9 @@
 // Pure: the sheet and the spell's facts come in as values.
 
 import type { SubclassExtras } from "@/lib/srd/subclass-tables";
-import type { CharacterSheet } from "@/lib/schemas/sheet";
+import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
+import { hasItemTag } from "@/lib/srd/item-tags";
+import { scrollSpell } from "@/lib/srd/scrolls";
 import { subclassSpellsFor } from "@/lib/srd/features";
 import type { SpellFacts } from "@/lib/srd/spell-facts";
 import { cantripCapOf, casterListOf, casterViewsOf, grantedCantripsOf, maxSpellLevelOf, mysticArcanumLevels, spellOnCasterList, type CasterView } from "@/lib/srd/spell-prep";
@@ -65,6 +67,27 @@ export function learnProblem(sheet: Learner, spell: string, facts: SpellFacts | 
     return { error: `${facts.name} is a level ${facts.level} spell and ${sheet.name} has slots up to level ${top}; it can be learned once they can cast spells of that level.`, refused: "rules" };
   }
   return null;
+}
+
+// SRD 5.1, Spell Scroll: "When a spell is copied from a spell scroll, the
+// copier must succeed on an Intelligence (Arcana) check with a DC equal to
+// 10 + the spell's level. ... Whether the check succeeds or fails, the spell
+// scroll is destroyed." Left to the GM, the number came out wrong (a See
+// Invisibility scroll copied against DC 8 where the rule says 12).
+export function scrollCopyDc(level: number): number {
+  return 10 + level;
+}
+
+// The carried Spell Scroll that holds this spell, or null. An unidentified
+// scroll holds nothing the reader knows of (scrolls.ts scrollSpell).
+export function scrollHolding(equipment: readonly EquipmentItem[], spell: string): EquipmentItem | null {
+  const key = textKey(spell);
+  return equipment.find((item) => item.qty > 0 && hasItemTag(item, "scroll") && textKey(scrollSpell(item) ?? "") === key) ?? null;
+}
+
+// The pack with that one scroll gone, the copy's or the attempt's.
+export function withoutOneScroll(equipment: readonly EquipmentItem[], row: EquipmentItem): EquipmentItem[] {
+  return equipment.flatMap((item) => (item !== row ? [item] : item.qty > 1 ? [{ ...item, qty: item.qty - 1 }] : []));
 }
 
 // What copying a spell into the spellbook costs: gold and hours.

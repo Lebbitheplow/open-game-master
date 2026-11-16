@@ -169,7 +169,7 @@ const KIND_LINES: Record<Exclude<ClaimKind, "bond">, string> = {
   aside:
     '{"kind":"aside","quote":Q}: the narrator steps out of the story to talk to itself about its own work: what it will do, check, look up or set up next, or the game\'s bookkeeping that work waits on ("The quay is not on the map yet.", "I\'ll check how the table records that first."). Unlike the other kinds it is not about what happens in the story. One claim per such sentence; quote is copied from that one sentence. Never for: any character\'s words, however they are written (quoted in any style, a letter, an inscription, a song, a voice in someone\'s head); an out-of-character answer to a player; a question or an offer to the players ("What do you do?", "Let me know if you search the boat."); the story itself, even told by a narrator who says "I" because the table asked for one.',
   turn_over:
-    '{"kind":"turn_over","quote":Q}: the narration says the acting character\'s own turn is over now, or hands the turn to whoever acts next ("Your turn ends.", "It is now Bram\'s turn.", "The goblins act next."); in a player\'s words, that they end their turn ("...then I end my turn.", "That\'s my turn."). Never for: a question, whether about what they do next or about ending the turn ("Do you use your last step or end your turn here?"); an offer of what they could still do; a turn that ends only later or not yet ("Don\'t end my turn yet.", "Before I end my turn I cast Web."); an action taken on its own, such as an attack, a spell, a Dash or a Dodge, since movement and a bonus action can still follow it.',
+    '{"kind":"turn_over","quote":Q}: the narration says the acting character\'s own turn is over now, or hands the turn to whoever acts next ("Your turn ends.", "It is now Bram\'s turn.", "The goblins act next."); in a player\'s words, that they end their turn ("...then I end my turn.", "That\'s my turn."). Never for: a question, whether about what they do next or about ending the turn ("Do you use your last step or end your turn here?"); an offer of what they could still do; a turn that ends only later or not yet ("Don\'t end my turn yet.", "Before I end my turn I cast Web."); an action or a bonus action taken on its own, such as an attack, a spell, Second Wind, a Dash or a Dodge, since movement and the rest of the turn can still follow it.',
   deed: `{"kind":"deed","actor":PARTY_REF,"deed":DEED,"quote":Q}: a party character commits one of these deeds now. DEED is one of: murder_helpless (kills someone who cannot fight back: a prisoner, the bound, the surrendered, the sleeping), torture, theft_from_poor, necromancy (raises or commands the dead), desecration (of graves, the dead or a holy place), slaving (takes, sells or keeps slaves), cruelty, betrayal (of an ally), broke_word, mercy (spares a beaten foe who could be killed), laid_to_rest (buries or gives rites to the dead), freed_captives (sets prisoners, slaves or hostages free), upheld_law (hands a wrongdoer to the law instead of killing, freeing or selling them). Never for a threat, a plan, a deed someone else does, or killing an enemy who is still fighting.`,
   speaker:
     '{"kind":"speaker","ref":SPEAKER_REF,"quote":Q}: the one claim about quoted dialogue, saying only who speaks a line of it; quote is copied from inside that line\'s quotation marks. Only when the words around the line tie it to one listed person: a tag that names them or one of their other names, the person the narration is about just before or after it, or a word like "she" that points back to them. Leave the line out when its tag names nobody listed ("a guard calls", "you say"), when it answers the line before with no tag of its own, or when you would be guessing: a line left out stays the narrator\'s, and a line given to the wrong person is a mistake. One claim per quoted line.',
@@ -202,6 +202,21 @@ export function englishEndsTurn(text: string): boolean {
     const asks = /^[^.!;\n]*\?/.test(text.slice(match.index + match[0].length));
     return !asks && !ENGLISH_NOT_YET.test(clause);
   });
+}
+
+// A player's English words that only declare what their character does: an
+// action, a bonus action or a feature, with no word that ends the turn ("I
+// use Second Wind as a bonus action."). The helper model read that line as
+// the end of the fighter's turn, the enemies went, and the off-hand attack
+// was never asked for (issue 966); the reader is told never to read an
+// action taken on its own as one. A reader's turn_over claim on such a quote
+// ends nothing. Words in another language, or an English phrasing the
+// pattern above does not hold ("Over to the goblin."), stay the reader's.
+const ENGLISH_DECLARES = /\b(?:i|i['’]ll|i will)\s+(?:(?:also|then|now|quickly)\s+)?(?:use|attack|cast|take|drink|dodge|dash|disengage|hide|help|shove|grapple|throw|swing|strike|stab|slash|shoot|fire|move|step|run|activate|draw|ready|heal|channel|rage|pray)\b|\bbonus action\b/i;
+const ENGLISH_TURN_WORDS = /\b(?:turn|done|finish(?:ed|es)?|over|pass(?:es|ing)?|end(?:s|ed|ing)?|nothing (?:else|more)|that['’]?s (?:it|all))\b/i;
+
+export function englishOnlyDeclares(quote: string): boolean {
+  return ENGLISH_DECLARES.test(quote) && !ENGLISH_TURN_WORDS.test(quote);
 }
 
 // A player's English words that name the end of their turn only to keep it

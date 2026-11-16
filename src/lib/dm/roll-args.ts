@@ -84,8 +84,8 @@ export const rollArgsSchema = z.object({
   // Spend a luck point (Lucky): an extra d20 on this roll, the best kept.
   luck: z.preprocess((value) => (value === "false" ? false : value), z.coerce.boolean()).optional(),
   // A check contested by a creature (SRD 5.1, Contests): the server rolls
-  // the creature's own check from its stat block and the character must
-  // beat it (src/lib/dm/roll-gates.ts). An enemy in the fight by id, or a
+  // the creature's own check from its stat block, and a tie changes nothing
+  // (src/lib/dm/roll-gates.ts). An enemy in the fight by id, or a
   // monster by name out of one; `contestSkill` names the creature's skill
   // when the usual pairing (Deception against Insight, Stealth against
   // Perception) is not the one wanted.

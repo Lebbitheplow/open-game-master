@@ -125,32 +125,9 @@ export function enemySwingOdds(input: {
   const lit = lightOnAttack(sight, { attacker: standing.displayName, target: target.name });
   // The light's advantage is the target not seeing the attacker: none for Alert.
   const light = alert && sight?.targetSees === false ? { ...lit, sources: lit.sources.filter((source) => source !== "advantage") } : lit;
-  // Chill Touch: an undead the caster struck attacks the caster at
-  // disadvantage until the end of the caster's next turn (CHILL_TOUCH_DREAD,
-  // src/lib/dm/spell-attack-riders.ts; an older row carries only the spell).
-  const chillMeta = standing.conditionMeta as Record<string, { source?: string }>;
-  const chilled =
-    /undead/i.test(standing.stats.type ?? "") &&
-    [CHILL_TOUCH_DREAD, "chill touch"].some(
-      (name) => standing.conditions.includes(name) && chillMeta[name]?.source === target.id,
-    );
-  // Elusive (rogue 18): no attack roll against them has advantage while
-  // they are not incapacitated.
   const liveTarget = live;
-  // Trance of Order (Clockwork Soul): "attacks against you cannot have
-  // advantage" while the trance holds, as Elusive's.
-  // A wildhunt shifter's form likewise ("attacks on you lose advantage",
-  // src/lib/srd/authored-conditions-mt-species.ts).
-  // Wildhunt: "no creature within 30 feet of you can make an attack roll with
-  // advantage against you, unless you're incapacitated".
-  const wildhunt =
-    liveTarget.conditions.some((entry) => isConditionNamed(entry, WILDHUNT_SHIFT)) &&
-    (distance === null || distance * 5 <= 30) &&
-    !isIncapacitated(upright ?? liveTarget.conditions);
-  const elusive =
-    (hasFeatureNamed(liveTarget, /^elusive$/i) && !isIncapacitated(upright ?? liveTarget.conditions)) ||
-    liveTarget.conditions.some((entry) => isConditionNamed(entry, TRANCE_OF_ORDER)) ||
-    wildhunt;
+  const marks = targetSwingMarks(standing, liveTarget, upright ?? liveTarget.conditions, distance);
+  const { chilled, elusive, wildhunt } = marks;
   // Authored subclass features (Among the Dead, Fungal Body, a guardian's mark): authored-hooks.ts.
   const authored = authoredIncomingAttack({ campaignId: campaign.id, encounterId, attacker: standing, target: liveTarget });
   const sources: Advantage[] = [
@@ -196,6 +173,54 @@ export function enemySwingOdds(input: {
     ...authored.notes,
   ];
   return { advantage, notes, autoCrit: conditionContext.autoCrit, authored, attackBonus: effect.bonus };
+}
+
+// What the spells and defences between a creature and the character it
+// swings at bring to the roll, through whichever door the swing comes (its
+// own turn above, its opportunity attack in opportunity.ts, which read none
+// of them: a zombie Chill Touch had struck swung at its caster walking away
+// on a plain d20, and an Elusive rogue was struck with advantage).
+//   chilled  Chill Touch: an undead the caster struck attacks the caster at
+//            disadvantage until the end of the caster's next turn
+//            (CHILL_TOUCH_DREAD, src/lib/dm/spell-attack-riders.ts; an older
+//            row carries only the spell).
+//   cursed   Bestow Curse: disadvantage on its attacks at the caster
+//            (spell-retort.ts).
+//   goaded   a goad by another character (goaded.ts).
+//   elusive  no attack roll against them has advantage: Elusive (rogue 18)
+//            while not incapacitated, Trance of Order (Clockwork Soul), and a
+//            wildhunt shifter's form within 30 feet ("no creature within 30
+//            feet of you can make an attack roll with advantage against you,
+//            unless you're incapacitated").
+// `conditions`: the target's, as the roll reads them. `distance`: tiles
+// between the two, null off the map.
+export function targetSwingMarks(standing: EncounterEnemy, target: CharacterSheet, conditions: string[], distance: number | null) {
+  const chillMeta = standing.conditionMeta as Record<string, { source?: string }>;
+  const chilled =
+    /undead/i.test(standing.stats.type ?? "") &&
+    [CHILL_TOUCH_DREAD, "chill touch"].some(
+      (name) => standing.conditions.includes(name) && chillMeta[name]?.source === target.id,
+    );
+  const cursed = cursedAgainst(standing, target.id);
+  const goaded = goadedAway(standing, target.id) !== null;
+  const wildhunt =
+    target.conditions.some((entry) => isConditionNamed(entry, WILDHUNT_SHIFT)) &&
+    (distance === null || distance * 5 <= 30) &&
+    !isIncapacitated(conditions);
+  const elusive =
+    (hasFeatureNamed(target, /^elusive$/i) && !isIncapacitated(conditions)) ||
+    target.conditions.some((entry) => isConditionNamed(entry, TRANCE_OF_ORDER)) ||
+    wildhunt;
+  return {
+    chilled,
+    elusive,
+    wildhunt,
+    sources: [...(chilled ? ["disadvantage" as const] : []), ...(cursed ? ["disadvantage" as const] : []), ...(goaded ? ["disadvantage" as const] : [])] as Advantage[],
+    notes: [
+      ...(chilled ? ["Chill Touch: an undead attacks its caster at disadvantage"] : []),
+      ...(goaded ? ["goaded: disadvantage on attacks at anyone but the one who goaded it"] : []),
+    ],
+  };
 }
 
 // The same odds for a swing at another creature's row (issue 503,

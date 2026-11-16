@@ -159,7 +159,9 @@ html[data-theme="light"] .palette-option[aria-selected="true"] {
   font-size: 0.62rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  opacity: 0.55;
+  /* A muted palette colour stays readable on opaque theme surfaces; fading
+     the whole heading washed out the name menu's day-mode labels. */
+  color: var(--color-stone-400);
 }
 
 /* ---- the composer's @ menu (src/app/campaigns/[campaignId]/NameMenu.tsx) ---- */

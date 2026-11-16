@@ -28,6 +28,7 @@ import { budgetApplies } from "@/lib/dm/action-budget";
 import { aggressiveRefusal } from "@/lib/dm/mt-species-board";
 import { crossesAnyGround, noteStraightRun } from "@/lib/dm/ar-wbf-feat-turn";
 import { resolveOpportunityAttacks } from "@/lib/dm/opportunity";
+import { landWaits } from "@/lib/dm/retort-wait";
 import { riskyOrderGate } from "@/lib/dm/party-conduct";
 import { canAct } from "@/lib/dm/can-act";
 import { dominatedRefusal } from "@/lib/dm/companion-command";
@@ -182,6 +183,13 @@ export async function POST(
     return Response.json({ error: "Invalid destination." }, { status: 400 });
   }
   const { x, y } = parsed.data;
+  // An answer still waiting on the reaction to a hit lands before the walk
+  // (retort-wait.ts): the move is the next thing done, so that reaction's
+  // moment has passed. Left waiting, a goblin it slays struck the walker's
+  // opportunity attack, and only the next call through the door landed it.
+  if (campaign) {
+    landWaits(campaign, null, { holdVictory: true, tell: true });
+  }
 
   // Grappled/restrained/paralyzed... = speed 0; exhaustion 2+ halves speed
   // and 5+ zeroes it. speedFor applies the class bonuses with their armor
@@ -414,7 +422,8 @@ export async function POST(
     }
     carried = placed;
   }
-  moveToken(token.id, x, y, scene ? 0 : token.movedThisRound + (readied ? 0 : spend));
+  moveToken(token.id, x, y, scene ? 0 : token.movedThisRound + (readied ? 0 : spend),
+    path && token.movement === "walk" ? [from, ...path] : undefined);
   // The run a charge is measured from begins where they stood (mt-fb-charge.ts).
   if (!scene && !readied) {
     noteRun(campaignId, sheet, from);

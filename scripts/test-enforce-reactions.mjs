@@ -604,6 +604,39 @@ await test("off the battle map, an opportunity attack through use_reaction is on
   assert.ok(!world.sheet(guard.id).conditions.includes("readied"));
 });
 
+// SRD 5.1, Multiclassing, Spellcasting: each spell is cast with the ability
+// of the class it was learned as, and Counterspell's check uses "your
+// spellcasting ability". A wizard/sorcerer who learned Counterspell as a
+// sorcerer rolled the check with the sheet's first ability, Intelligence
+// (audit 2026-11-15, S14; Dispel Magic the same, S04).
+await test("S14: a wizard and sorcerer whose Counterspell is a sorcerer spell checks with Charisma", async () => {
+  // The table is full: the suite's wizard becomes a wizard 5 / sorcerer 5
+  // (the last test here, so nothing after it reads the old sheet).
+  const both = wizard;
+  world.patch(both.id, {
+    level: 10,
+    abilities: { ...world.sheet(both.id).abilities, int: 8, cha: 18 },
+    classes: [{ id: "wizard", subclass: "", level: 5 }, { id: "sorcerer", subclass: "", level: 5 }],
+    spellcasting: {
+      ability: "int", slots: { 3: { max: 3, used: 0 } }, known: ["Counterspell"], prepared: ["Shield"], cantrips: [],
+      casters: [
+        { classId: "wizard", ability: "int", known: [], prepared: ["Shield"], cantrips: [], spellbook: ["Shield"] },
+        { classId: "sorcerer", ability: "cha", known: ["Counterspell"], prepared: [], cantrips: [] },
+      ],
+    },
+  });
+  const enemy = await stage();
+  kit.setEnemy(enemy.id, { stats: { spellcasting: SHAMAN } });
+  kit.place(both.id, 5, 5);
+  // Cone of Cold is 5th level, DC 15: 11 + CHA 4 counters it, 11 + INT -1 would not.
+  world.dice(11);
+  const out = await react(both, "Counterspell", { targetEnemyId: enemy.id, spell: "Cone of Cold" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.match(JSON.stringify(out.result), /CHA check 15 against DC 15/);
+  assert.equal(out.result.countered, true);
+});
+
 await kit.endFight();
 world.close();
 finish();

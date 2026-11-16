@@ -412,6 +412,8 @@ export function applyClassChassis(draft: MonsterDraft, pick: ChassisPick): Monst
     return draft;
   }
   const level = Math.max(1, Math.min(20, Math.round(pick.level)));
+  // A stat block built to a class level: the level's bonus is the block's
+  // (it carries no attuned items to raise it).
   const prof = proficiencyBonus(level);
   const saves = { ...(draft.stats.saveMods ?? { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 }) };
   for (const ability of klass.saves) {

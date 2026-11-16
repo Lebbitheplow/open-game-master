@@ -4,10 +4,12 @@
 import { z } from "zod";
 import { ABILITIES } from "@/lib/schemas/abilities";
 
-// The longest lifetime a count of rounds can hold: a year. Spells that last
-// days (Geas's thirty, Contagion's seven) are counted in rounds like every
-// other duration, ten to the minute; "until dispelled" carries no count.
-export const ROUND_CEILING = 365 * 24 * 60 * 10;
+// The longest lifetime a count of rounds can hold: a year and a day, Mass
+// Suggestion's from a 9th-level slot (a year alone cut it a day short).
+// Spells that last days (Geas's thirty, Contagion's seven) are counted in
+// rounds like every other duration, ten to the minute; "until dispelled"
+// carries no count.
+export const ROUND_CEILING = 366 * 24 * 60 * 10;
 
 // One instance of a condition: its lifetime, its source, what ends it.
 const conditionInstanceSchema = z.object({
@@ -84,12 +86,30 @@ const conditionInstanceSchema = z.object({
     // A monster's grapple prints its escape DC, which the escape is rolled
     // against instead of a contest (src/lib/dm/grapple.ts).
     escapeDc: z.number().int().min(1).max(40).optional(),
+    // Manacles the party's foes put on: the key is theirs (src/lib/dm/manacles.ts).
+    keyWithFoes: z.boolean().optional(),
+    // What holds a restrained creature and breaks it (a giant spider's
+    // webbing: a DC 12 Strength check, or the webbing destroyed as an object
+    // of its own numbers), src/lib/dm/creature-hold.ts.
+    hold: z
+      .object({
+        name: z.string().trim().min(1).max(40),
+        check: z.object({ ability: z.enum(["str", "dex"]), dc: z.number().int().min(1).max(30) }),
+        ac: z.number().int().min(1).max(30).optional(),
+        hp: z.number().int().min(1).max(500).optional(),
+        vulnerable: z.string().trim().max(120).optional(),
+        immune: z.string().trim().max(200).optional(),
+      })
+      .optional(),
     // The Grappler feat's pin: on the grappler's own restraint, the creature
     // they hold pinned; it lasts while that grapple does
     // (src/lib/dm/grappler-pin.ts).
     pinning: z.string().trim().min(1).max(80).optional(),
     // Ends when the creature finishes a long rest (Life Drain, Draining Kiss).
     untilLongRest: z.boolean().optional(),
+    // A drained score's value before the first drain (a shadow's Strength
+    // Drain on a creature's row): src/lib/srd/creature-drain-logic.ts.
+    scoreFrom: z.number().int().min(0).max(30).optional(),
     // Ends when the rest it was raised for ends, short or long (Hearth of
     // Moonlight and Shadow, src/lib/dm/rest-logic.ts).
     untilRestEnds: z.boolean().optional(),

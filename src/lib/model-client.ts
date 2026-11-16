@@ -201,6 +201,10 @@ export type ChatRequestOptions = {
   // Which of the server's two models this call is for: the admin's Fast
   // setting is per role (issue 255). Unset reads as the story model.
   role?: "story" | "utility";
+  // The llama-server slot the call is pinned to (id_slot). Set only for a
+  // narrator that answered as a llama-server keeping prompt snapshots
+  // (src/lib/dm/prompt-snapshot.ts); no other backend is sent the field.
+  slot?: number;
   // Only read by the "harness" provider (src/lib/harness/bridge.ts). An agent
   // program reads its tool list once, when it starts, so the DM loop hands
   // over every tool the turn could offer; the bridge still refuses a call
@@ -1255,6 +1259,9 @@ async function requestCustomMessageNow(
       reasoningKnobs.get(routeKey) === "effort"
     ) {
       requestPayload.reasoning_effort = options.reasoningEffort;
+    }
+    if (options.slot !== undefined) {
+      requestPayload.id_slot = options.slot;
     }
   }
 

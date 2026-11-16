@@ -7,7 +7,14 @@
 // (enemy-profile.ts opportunityWeapon), once, spending its reaction: an
 // attack roll against the walker's Armor Class with both sides' conditions,
 // and the damage through applyEnemyDamage, the fight left open for the next
-// turn to end (holdVictory, as every opportunity attack leaves it).
+// turn to end (holdVictory, as every opportunity attack leaves it). It
+// carries what the same swing at a character carries (opportunity.ts):
+// Pack Tactics and the Flanking variant on the square the walker left from,
+// a spell on the reactor (Bless, Bane), exhaustion, sunlight, an active
+// effect, Magic Weapons against a resistance to nonmagical blows, Ray of
+// Enfeeblement, and the rider its attack prints. It read conditions alone,
+// so a wolf's bite at a dominated goblin walking off its packmate rolled one
+// d20 and never knocked it down.
 
 import { allocateSeq, getCampaignById } from "@/lib/db/campaigns";
 import { getActiveEncounter, getEnemy, listEnemies, saveEncounter, type EncounterEnemy } from "@/lib/db/encounters";
@@ -29,9 +36,15 @@ import { blowByType } from "@/lib/dm/enemy-hit";
 import { opportunityWeapon } from "@/lib/dm/enemy-profile";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { leavesReachAt } from "@/lib/dm/opportunity-reach-logic";
-import { withOpportunityTurn } from "@/lib/dm/opportunity-strike";
 import { conditionBlocksReactions } from "@/lib/srd/condition-effects";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
+import { enemyOpportunityRiders, withOpportunityTurn } from "@/lib/dm/opportunity-strike";
+import { enfeebledBlow, spendEnemyRiders } from "@/lib/dm/spell-retort";
+import { hasTrait } from "@/lib/dm/monster-abilities";
+import { allyBeside } from "@/lib/dm/side-allies";
+import { enemyFlanks } from "@/lib/dm/attack-spatial";
+import { effectOutcome } from "@/lib/dm/effect-tools";
+import { resolveRowOnHit } from "@/lib/dm/enemy-hit-rows";
 
 type XY = { x: number; y: number };
 
@@ -101,9 +114,20 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
       requested: "none",
       targetSeesAttacker: sight?.targetSees !== false,
     });
-    const advantage = mergeAdvantage(context.sources);
+    const own = enemyOpportunityRiders(campaignId, reactor);
+    const pack = hasTrait(reactor.stats, "packTactics") && allyBeside(encounter.id, { kind: "enemy", id: reactor.id }, walker.id, leftFrom);
+    const flanking = campaign.gameSettings.variantRules.flanking && enemyFlanks(encounter.id, reactor.id, walker.id, leftFrom);
+    const effect = effectOutcome(campaignId, { kind: "enemy", id: reactor.id }, "attack");
+    const advantage = mergeAdvantage([
+      ...context.sources,
+      ...own.sources,
+      ...(pack || flanking ? ["advantage" as const] : []),
+      ...(effect.advantage ? ["advantage" as const] : []),
+      ...(effect.disadvantage ? ["disadvantage" as const] : []),
+    ]);
     const vsAc = enemyAcWithEffects(campaign.id, walker);
-    const toHit = rollExpression(d20Expression(attack.toHit, advantage), undefined, { purpose: { roller: "enemy", kind: "attack", who: reactor.displayName } });
+    const toHit = rollExpression(`${d20Expression(attack.toHit + effect.bonus, advantage)}${own.riders.diceSuffix}`, undefined, { purpose: { roller: "enemy", kind: "attack", who: reactor.displayName } });
+    spendEnemyRiders(reactor, own.riders);
     const label = rollAgainst(`${attack.name} (opportunity attack)`, walker.displayName);
     const hitRoll = insertRoll({ campaignId, characterId: null, requestedBy: "dm", kind: "attack", detail: label, advantage, result: toHit, attacker: { kind: "enemy", id: reactor.id, name: reactor.displayName } });
     publishWithSeq(campaignId, allocateSeq(campaignId), "roll_result", { roll: hitRoll, source: "digital" });
@@ -113,22 +137,30 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
       continue;
     }
     const crit = toHit.crit === "nat20" || context.autoCrit;
+    const effectDamage = effectOutcome(campaignId, { kind: "enemy", id: reactor.id }, "damage").bonus;
+    const base = effectDamage > 0 ? `${attack.damage}+${effectDamage}` : effectDamage < 0 ? `${attack.damage}-${-effectDamage}` : attack.damage;
     const damage = rollExpression(
       crit
-        ? critDamageExpression(attack.damage, 0, { powerfulCritical: campaign.gameSettings.variantRules.powerfulCritical, multiplyNumeric: campaign.gameSettings.variantRules.criticalDamageMods })
-        : attack.damage,
+        ? critDamageExpression(base, 0, { powerfulCritical: campaign.gameSettings.variantRules.powerfulCritical, multiplyNumeric: campaign.gameSettings.variantRules.criticalDamageMods })
+        : base,
       undefined,
       { purpose: { roller: "enemy", kind: "damage", who: reactor.displayName } },
     );
     const damageRoll = insertRoll({ campaignId, characterId: null, requestedBy: "dm", kind: "damage", detail: label, result: damage, attacker: { kind: "enemy", id: reactor.id, name: reactor.displayName } });
     publishWithSeq(campaignId, allocateSeq(campaignId), "roll_result", { roll: damageRoll, source: "digital" });
     const blow = blowByType(attack, damage, crit);
+    const dealt = Math.max(1, enfeebledBlow(reactor, attack, false, Math.max(0, blow.amount)));
     const sheets = listSheets(campaignId);
-    const landed = withOpportunityTurn(campaignId, (turn) =>
-      applyEnemyDamage(campaign, turn, encounter, walker, Math.max(1, blow.amount), sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])), blow.type, { crit, holdVictory: true }),
-    );
+    const sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
+    const magical = hasTrait(reactor.stats, "magicWeapons") || attack.magical === true;
+    const { landed, rider } = withOpportunityTurn(campaignId, (turn) => {
+      const hit = applyEnemyDamage(campaign, turn, encounter, walker, dealt, sheets, sheetsById, blow.type, { crit, holdVictory: true, ...(magical ? { magical: true } : {}) });
+      const necrotic = /necrotic/i.test(blow.type ?? attack.type) ? dealt : 0;
+      return { landed: hit, rider: hit.dead ? null : resolveRowOnHit(campaign, turn, reactor, attack, walker.id, { sheets, sheetsById, dealt: { total: dealt, necrotic } }) };
+    });
+    const laid = Array.isArray(rider?.riderCondition) ? ` ${walker.displayName} is ${(rider.riderCondition as string[]).join(" and ")}.` : "";
     notes.push(
-      `${reactor.displayName} takes an opportunity attack as ${walker.displayName} pulls away: ${crit ? "a critical hit for " : "hit for "}${blow.amount} damage${landed.dead ? `, and ${walker.displayName} falls` : ""}.`,
+      `${reactor.displayName} takes an opportunity attack as ${walker.displayName} pulls away: ${crit ? "a critical hit for " : "hit for "}${dealt} damage${landed.dead ? `, and ${walker.displayName} falls` : ""}.${laid}`,
     );
   }
   for (const content of notes) {

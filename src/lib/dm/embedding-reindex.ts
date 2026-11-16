@@ -2,7 +2,8 @@ import { getDatabase, nowIso } from "@/lib/db/core";
 import { embedPendingLore } from "@/lib/db/lore";
 import { embedPendingNotes } from "@/lib/db/notes";
 import { embedRuleChunks } from "@/lib/db/rules";
-import { EMBEDDING_DIM, EMBEDDING_KEY, embed, embeddingIndexStale } from "@/lib/embeddings";
+import { EMBEDDING_DIM, embed, embeddingIndexStale, embeddingKey, setEmbeddingLanguage } from "@/lib/embeddings";
+import type { TableLanguage } from "@/lib/schemas/game-settings-options";
 import {
   embedPendingChapterSummaries,
   embedPendingFacts,
@@ -58,7 +59,7 @@ export function readEmbeddingModelStamp(): string | null {
 }
 
 // Synchronous and idempotent: a no-op once the stamp matches.
-export function reconcileEmbeddingModel(current = EMBEDDING_KEY): EmbeddingReconcile {
+export function reconcileEmbeddingModel(current = embeddingKey()): EmbeddingReconcile {
   const db = getDatabase();
   const previous = readEmbeddingModelStamp();
   if (previous === current) {
@@ -111,6 +112,34 @@ export function countMissingVectors(): number {
 
 declare global {
   var __odmEmbeddingCatchUp: Promise<number> | undefined;
+}
+
+// The server's language, at boot and on every admin save: the GM's memory
+// takes the model that language reads with (src/lib/language/
+// server-language.ts). When that is another model, everything stored is
+// re-embedded with it in the background, as a change of EMBEDDING_MODEL is
+// at a restart; until a row is re-embedded, search finds it by its words.
+// `boot`: the start-up pass runs its own reconcile and catch-up after this.
+// The save that asked never waits on the re-embed.
+export function applyServerLanguage(language: TableLanguage, options: { boot?: boolean } = {}): boolean {
+  const changed = setEmbeddingLanguage(language);
+  if (!changed || options.boot) {
+    return changed;
+  }
+  // The language check of each table read the old model.
+  globalThis.__odmEmbeddingVerdicts = undefined;
+  // A pass already running finishes first, so nothing it writes with the
+  // old model lands after the stored vectors are cleared.
+  const running = globalThis.__odmEmbeddingCatchUp?.catch(() => 0) ?? Promise.resolve(0);
+  void running
+    .then(() => {
+      reconcileEmbeddingModel();
+      return embedMissingVectors();
+    })
+    .catch((error) => {
+      console.error("[embeddings] re-embedding after the language change failed", error);
+    });
+  return true;
 }
 
 // Fills every missing vector, campaign by campaign, through the shared embed

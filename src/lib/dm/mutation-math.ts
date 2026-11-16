@@ -35,7 +35,7 @@ export function isIdentified(item: { identified?: boolean }): boolean {
 // xpTargetLevel is levelForXp(patch.xp), computed by the caller so this module
 // stays import-free; leave it undefined when the patch does not set xp.
 export function sheetBuffViolation(
-  sheet: { name: string; level: number; maxHp: number; gold: number },
+  sheet: { name: string; level: number; maxHp: number; gold: number; abilities?: Record<string, number> },
   patch: { level?: number; maxHp?: number; gold?: number; abilities?: Record<string, number> },
   xpTargetLevel?: number,
 ): ToolError | null {
@@ -51,10 +51,17 @@ export function sheetBuffViolation(
   if (typeof patch.gold === "number" && patch.gold - sheet.gold > 1000) {
     return { error: `Coin moves through purchases, loot, and roll_treasure, not a direct sheet edit; ${sheet.name}'s gold is unchanged.`, retry: true };
   }
+  // Past 20 a score rises only by a manual or tome read (use_item,
+  // src/lib/srd/studied-books.ts) or Primal Champion; one already past it
+  // keeps its number.
   if (patch.abilities) {
     for (const [ability, score] of Object.entries(patch.abilities)) {
-      if (typeof score === "number" && score > 20) {
-        return { error: `Ability scores cap at 20 here; leave ${sheet.name}'s ${ability.toUpperCase()} at 20 or lower.`, retry: true };
+      const cap = Math.max(20, sheet.abilities?.[ability] ?? 0);
+      if (typeof score === "number" && score > cap) {
+        return {
+          error: `Ability scores cap at ${cap} here; leave ${sheet.name}'s ${ability.toUpperCase()} at ${cap} or lower. A manual or tome the character reads raises a score past 20 through use_item.`,
+          retry: true,
+        };
       }
     }
   }

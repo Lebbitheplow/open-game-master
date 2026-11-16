@@ -3,8 +3,16 @@
 // check (rollExtrasFor, src/lib/dm/forced-save.ts), so the two never
 // disagree about whether the party can see: before this, check_notice said
 // "darkness: sees nothing" while a request_roll Perception by sight beside it
-// rolled as in daylight. A board keeps its own light (null here).
+// rolled as in daylight. On a board the light is the board's, read on the
+// character's own square (boardLightFor).
 import { getActiveBattleMap, sheetDarkvisionTiles } from "@/lib/battlemap/view";
+import { getTokenByRef, listTokens } from "@/lib/db/battle-maps";
+import { effectiveAmbient } from "@/lib/battlemap/daylight";
+import { hasLineOfSight } from "@/lib/battlemap/los";
+import { ambientAt, magicalDarknessAt } from "@/lib/battlemap/scene";
+import { carriedDimRadius, chebyshev } from "@/lib/battlemap/types";
+import { characterSenses } from "@/lib/dm/attack-light";
+import { lightSourcesWithZones, lightsWithZones } from "@/lib/dm/zone-rules";
 import { campaignLanguage } from "@/lib/db/campaigns";
 import { getClock } from "@/lib/db/clock";
 import { getCurrentLocation } from "@/lib/db/locations";
@@ -46,8 +54,52 @@ export function lightForSheet(ambient: Light, sheet: CharacterSheet): Light {
   return lightSeenBy(ambient, carriedLight(sheet).radius > 0, sheetDarkvisionTiles(sheet) > 0);
 }
 
-// The light a character's own check by sight is made in, off the board.
+// The light on a character's own square of the battle map as they see by
+// it (SRD 5.1, Vision and Light): the board's ambient there (a zone's, the
+// sky's by the hour outdoors), raised by any lamp or carried light reaching
+// the square (bright inside its bright radius, dim out to its dim one), then
+// darkvision lifting it a step (darkness to dim, dim to bright) and Devil's
+// Sight seeing the dark plainly; magical darkness stays dark but to
+// truesight and Devil's Sight. Null with no board or no token. Before, a
+// board gave no light at all to a check by sight: a human's Perception in
+// an unlit cave rolled as in daylight, and check_notice let them spot what
+// lay in the dark.
+export function boardLightFor(campaignId: string, sheet: CharacterSheet): Light | null {
+  const map = getActiveBattleMap(campaignId);
+  const at = map ? getTokenByRef(map.id, sheet.id) : null;
+  if (!map || !at) {
+    return null;
+  }
+  const senses = characterSenses(sheet);
+  const zones = lightsWithZones(map);
+  if (zones.length && magicalDarknessAt(zones, at.x, at.y)) {
+    return senses.truesight > 0 || senses.devilsSight > 0 ? "bright" : "dark";
+  }
+  const clock = getClock(campaignId);
+  const base = effectiveAmbient(map.ambient, map.outdoors, breakDown(clock.calendar, clock.instant).hour, clock.weather);
+  let light: Light = zones.length ? ambientAt(zones, at.x, at.y, base) : base;
+  const sources = [
+    ...lightSourcesWithZones(map),
+    ...listTokens(map.id)
+      .filter((token) => token.lightRadius > 0)
+      .map((token) => ({ x: token.x, y: token.y, brightRadius: token.lightRadius, dimRadius: carriedDimRadius(token) })),
+  ];
+  for (const source of sources) {
+    const apart = chebyshev(source.x, source.y, at.x, at.y);
+    if (light === "bright" || apart > source.dimRadius || (apart > 0 && !hasLineOfSight(map.terrain, map.width, source.x, source.y, at.x, at.y))) {
+      continue;
+    }
+    light = apart <= source.brightRadius ? "bright" : "dim";
+  }
+  if (light === "dark" && senses.devilsSight > 0) {
+    return "bright";
+  }
+  return senses.darkvision > 0 ? (light === "dark" ? "dim" : "bright") : light;
+}
+
+// The light a character's own check by sight is made in: the place's off
+// the board, their square's on it.
 export function rollerLight(campaignId: string, sheet: CharacterSheet): Light | null {
   const ambient = offBoardAmbient(campaignId);
-  return ambient ? lightForSheet(ambient, sheet) : null;
+  return ambient ? lightForSheet(ambient, sheet) : boardLightFor(campaignId, sheet);
 }

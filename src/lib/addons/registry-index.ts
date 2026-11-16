@@ -77,6 +77,28 @@ export const registryAddonSchema = z.object({
     .max(10)
     .default([]),
   exclusive: z.array(z.string().max(30)).max(8).default([]),
+  // From its manifest: what it changes in the app, so the panel can say so
+  // and refuse two that replace the same thing (manifest-parts.ts).
+  modifies: z
+    .array(z.object({ what: z.string().max(80), how: z.enum(["replace", "add"]) }))
+    .max(12)
+    .default([]),
+  // Its parts, each installed or left out by the admin, with what each
+  // downloads at most and the GitHub repositories beyond its own that it
+  // comes from (a setting's pack kept in a repository of its own).
+  parts: z
+    .array(
+      z.object({
+        id: z.string().max(40),
+        title: z.string().trim().min(1).max(60),
+        description: z.string().trim().max(300).default(""),
+        default: z.boolean().default(false),
+        bytes: z.number().int().min(0).default(0),
+        repos: z.array(z.string().max(201)).max(20).default([]),
+      }),
+    )
+    .max(30)
+    .default([]),
 });
 
 export type RegistryAddon = z.infer<typeof registryAddonSchema>;

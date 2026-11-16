@@ -196,7 +196,7 @@ export const SRD_EFFECT_ROWS: Record<string, SpellMech> = {
   "warding bond": {
     resolution: "buff",
     buff: { condition: "warding bond", target: "ally", rounds: HOUR },
-    note: "Each time the warded creature takes damage the caster takes the same amount (apply_damage); it ends if the two are more than 60 feet apart.",
+    note: "Each time the warded creature takes damage the caster takes the same amount; the server deals it, once. It ends if the two are more than 60 feet apart.",
   },
   "enhance ability": {
     resolution: "buff",
@@ -228,7 +228,7 @@ export const SRD_EFFECT_ROWS: Record<string, SpellMech> = {
       rounds: TEN_MINUTES,
       variants: ["fire shield (cold)", "fire shield (fire)"],
     },
-    note: "The warm shield resists cold, the chill shield fire (pass variant). A creature within 5 feet that hits with a melee attack takes 2d8 of the other type (apply_damage).",
+    note: "The warm shield resists cold, the chill shield fire (pass variant). A creature within 5 feet that hits with a melee attack takes 2d8 of the other type; the server deals it.",
   },
   "branding smite": {
     resolution: "buff",

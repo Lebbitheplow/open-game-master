@@ -185,6 +185,11 @@ export type ConditionEffectRow = {
   // frightened), and damage types that do nothing to it (Heroes' Feast:
   // poison).
   conditionImmunities?: string[];
+  // Conditions only magic is kept from laying (Freedom of Movement: "magic
+  // can neither ... cause the target to be paralyzed or restrained"): a
+  // net's or a grapple's restraint still holds, and the spell's own 5-foot
+  // slip ends it (src/lib/dm/ar-ws-squeeze.ts).
+  conditionImmunitiesMagic?: string[];
   damageImmunities?: string[];
   // Conditions creatures of these types cannot lay on the holder
   // (Protection from Evil and Good: no charm or fear from a fiend).

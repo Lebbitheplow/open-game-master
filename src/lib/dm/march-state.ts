@@ -39,6 +39,11 @@ export type MarchState = {
   // the hours each traveller marched before it that day (src/lib/srd/
   // travel.ts forcedMarchSpan). Absent: none.
   marched?: Array<{ end: number; minutes: number; ids: string[]; carried?: true }>;
+  // Each character's hours in a row in extreme heat and the instant the
+  // last of them ended, so the next hour's save goes on from that DC (5 for
+  // the first hour, 1 more for each further hour) instead of starting at 5
+  // again with each call or leg (src/lib/srd/hazards.ts heatHoursSoFar).
+  heat?: Record<string, { hours: number; until: number }>;
 };
 
 // One named object as the clock keeps it. A clock written before the
@@ -125,6 +130,15 @@ export function normalizeMarch(record: Record<string, unknown>): MarchState {
     }))
     .filter((leg): leg is { end: number; minutes: number; ids: string[]; carried?: true } => leg.end !== undefined && leg.minutes !== undefined && leg.ids.length > 0)
     .slice(-12);
+  const heatEntries = (record.heat && typeof record.heat === "object" ? Object.entries(record.heat as Record<string, { hours?: unknown; until?: unknown } | null>) : [])
+    .filter(([id]) => id.length <= 80)
+    .map(([id, run]): [string, { hours: number; until: number } | null] => {
+      const hours = bounded(run?.hours, 1, 1000);
+      const until = bounded(run?.until, 0, Number.MAX_SAFE_INTEGER);
+      return [id, hours !== undefined && until !== undefined ? { hours, until } : null];
+    })
+    .filter((entry): entry is [string, { hours: number; until: number }] => entry[1] !== null)
+    .slice(-50);
   return {
     ...(travelPace ? { travelPace } : {}),
     ...(supplies ? { supplies } : {}),
@@ -133,5 +147,6 @@ export function normalizeMarch(record: Record<string, unknown>): MarchState {
     ...(shortRest ? { shortRest } : {}),
     ...(objects ? { objects } : {}),
     ...(marched.length ? { marched } : {}),
+    ...(heatEntries.length ? { heat: Object.fromEntries(heatEntries) } : {}),
   };
 }

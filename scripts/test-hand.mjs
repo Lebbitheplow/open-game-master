@@ -198,6 +198,19 @@ test("two light weapons buy an off-hand swing, after the first attack", () => {
   assert.equal(byId(deriveHand(sheet({ equipment: [item("Longsword"), item("Dagger")] })), "offhand:dagger"), undefined);
 });
 
+// A player with "Shortsword x2" equipped on one row saw two Shortsword cards
+// and took the second for a copy: the off-hand card now says what it is.
+test("one row of two shortswords, equipped, is a blade in each hand, and the off-hand card says so", () => {
+  const pair = sheet({ class: "rogue", equipment: [{ name: "Shortsword", qty: 2, equipped: true }] });
+  const offHand = byId(deriveHand(pair), "offhand:shortsword");
+  assert.ok(offHand, "no off-hand card for a pair of shortswords on one row");
+  assert.equal(offHand.cost, "bonus");
+  assert.match(offHand.rules, /^Off-hand attack, your bonus action: the Shortsword in your other hand/);
+  assert.doesNotMatch(byId(deriveHand(pair), "attack:shortsword").rules, /Off-hand/);
+  const turn = afterCommit(FRESH_TURN, byId(deriveHand(pair), "attack:shortsword"));
+  assert.equal(byId(deriveHand(pair, turn), "offhand:shortsword").disabled, null);
+});
+
 // Issue 210: the card opened on ANY first attack, so a rapier swing lit the
 // off-hand dagger the engine then refused. It asks the engine's rule now.
 test("the off-hand card opens only after the Attack action earns it", () => {

@@ -28,21 +28,20 @@ import {
   gendersIn,
   keyOf,
   LEAD,
-  nameAt,
   opensSentence,
-  englishPronounAt,
   QUOTE,
   QUOTE_OPEN,
   quotedText,
   sentencesOf,
   speakerMatchers,
+  strangerLines,
   subjectOf,
+  tagOf,
   wordCount,
   written,
   type Named,
   type Pointer,
   type Reading,
-  type Subject,
 } from "@/lib/dm/speech-prose";
 
 // `pc` is a character at the table (a player's, or an AI companion), and
@@ -65,39 +64,6 @@ export type SpokenLine = { line: string; speaker: Speaker };
 
 // How far a tag may run between the two halves of one split line.
 export const SPEECH_WINDOW_WORDS = 8;
-
-// The tag straight after a line that runs on into it: "...," says Marla;
-// "...", dice Marla; "...?" she asks. A line that ends its own sentence
-// has none the words can tell from an action ("Not tonight." Venn frowns.),
-// so the prose around it decides.
-function tagOf(line: string, after: string, reading: Reading): Subject | null {
-  const text = (sentencesOf(after)[0]?.text ?? "").replace(LEAD, "").trimEnd();
-  if (!text) {
-    return null;
-  }
-  const continues = /[,—–-]$/.test(line.trimEnd()) || /^\s*[,—–]/.test(after) || /^\p{Ll}/u.test(text);
-  if (!continues) {
-    return null;
-  }
-  const subject = subjectOf(text, reading, false);
-  if (subject.kind !== "other") {
-    return subject;
-  }
-  // One word, then the speaker: "says Old Pike", "dice Marla", "orders the
-  // Captain".
-  const verb = /^(\p{Ll}+)\s+/u.exec(text);
-  if (!verb) {
-    return subject;
-  }
-  const rest = text.slice(verb[0].length);
-  const found = nameAt(rest, reading, false);
-  const pronoun = englishPronounAt(rest, reading);
-  return found
-    ? { kind: "name", speaker: found.speaker, text: rest, end: found.end }
-    : pronoun
-      ? { kind: "pronoun", text: rest, end: pronoun[0].length }
-      : { kind: "other" };
-}
 
 // A sentence that hands the floor straight to the line after it: a known
 // name, a word or two, and the comma or colon before the line ("Pike
@@ -357,6 +323,22 @@ export function attributeSpeech(
     out.push({ kind: "prose", text: text.slice(last) });
   }
   return out.filter((segment) => segment.text.trim().length > 0);
+}
+
+// The quoted lines the prose gives to somebody the table does not list, each
+// with the people its paragraph does name (speech-prose.ts strangerLines),
+// read with the same words attributeSpeech reads by. A reader's speaker for
+// such a line is held to them (speech-lines.ts modelTextLines, issue 965).
+export function unlistedSpeakerLines(
+  text: string,
+  speakers: Speaker[],
+  options: { common?: ReadonlySet<string>; englishPronouns: boolean },
+): Map<string, Set<string>> {
+  return strangerLines(text, {
+    matchers: speakerMatchers(speakers),
+    common: new Set([...(options.common ?? []), ...commonWords([text])]),
+    englishPronouns: options.englishPronouns,
+  });
 }
 
 // Who is stored as a line's speaker: who they are, never what they were

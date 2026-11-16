@@ -5,6 +5,7 @@
 // it runs without the content pack, which only the price parity reads.
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync, statSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -30,6 +31,9 @@ const { wearSlotOf } = await import("../src/lib/srd/wear-slots.ts");
 const { itemTags } = await import("../src/lib/srd/item-tags.ts");
 const { armorOfRow } = await import("../src/lib/srd/armor.ts");
 const { gearDefFor } = await import("../src/lib/srd/magic-gear.ts");
+const { magicItemBonus, withoutBonus } = await import("../src/lib/srd/item-row.ts");
+const { ITEM_EN_BY_FR } = await import("../src/lib/srd/item-names-fr.ts");
+const { textKey } = await import("../src/lib/language/text-logic.ts");
 const require = createRequire(import.meta.url);
 
 let passed = 0;
@@ -313,6 +317,31 @@ test("an item whose own name and srdName both name rows reads the srdName row; E
   assert.equal(matchWeapon({ name: "+1 Longsword" })?.name, "Longsword");
   assert.equal(matchArmor({ name: "Spada lunga" }), null, "a table-language name with no srdName is no row");
   assert.equal(matchMagicItem({ name: "Grandmother's band", slug: "ring-of-protection" })?.name, "Ring of Protection");
+});
+
+// The official French SRD names (src/lib/srd/item-names-fr.ts) are rows by
+// themselves: a French table's "Cotte de mailles" is worn as Chain Mail with
+// no srdName, a bonus in the name kept, and no English name changes meaning.
+test("an official French SRD item name is its row without srdName, and every English item name reads as before", () => {
+  assert.equal(matchWeapon({ name: "Épée longue" })?.name, "Longsword");
+  assert.equal(matchWeapon({ name: "Épée longue +1" })?.name, "Longsword");
+  assert.equal(magicItemBonus("Épée longue +1"), 1);
+  assert.equal(matchArmor({ name: "Cotte de mailles" })?.name, "Chain Mail");
+  assert.equal(matchArmor({ name: "cotte  de MAILLES" })?.name, "Chain Mail", "read by its textKey");
+  assert.equal(matchMagicItem({ name: "Cape de protection" })?.name, "Cloak of Protection");
+  const wearer = hero([{ name: "Cotte de mailles", qty: 1, equipped: true }], { abilities: { str: 14, dex: 10, con: 12, int: 10, wis: 10, cha: 10 } });
+  assert.equal(acBreakdownFor(wearer).ac, 16, "Chain Mail is AC 16");
+  assert.equal(matchWeapon({ name: "Lance" })?.name, "Lance", "the French Spear's name stays the English Lance");
+  assert.equal(matchWeapon({ name: "Épée de famille" }), null, "a French name the SRD does not print is no row");
+
+  const table = JSON.parse(readFileSync(new URL("../src/lib/classes/item-tags.json", import.meta.url), "utf8"));
+  for (const [name] of table.items) {
+    const key = textKey(withoutBonus(name));
+    const french = ITEM_EN_BY_FR[key];
+    assert.ok(!french || textKey(french) === key, `the English "${name}" would read as "${french}"`);
+  }
+  const built = spawnSync(process.execPath, [fileURLToPath(new URL("./build-names-fr.mjs", import.meta.url)), "--check"], { encoding: "utf8" });
+  assert.equal(built.status, 0, `build-names-fr --check: ${built.stderr}`);
 });
 
 test("rowName is the one place an item's srdName is read before its own name", () => {

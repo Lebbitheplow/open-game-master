@@ -179,6 +179,73 @@ await test("A narration that hands the turn on ends nothing while the Attack act
   }
 });
 
+// Issue 966: a two-weapon fighter's scimitar swing was narrated as the whole
+// turn ("Your turn ends."), the enemies went, and the shortsword's off-hand
+// attack, a bonus action the Attack action had earned, was lost with the
+// fighter's life. The turn stays theirs, and the story does not tell it over.
+const PAIR = [
+  { name: "Scimitar", qty: 1, equipped: true },
+  { name: "Shortsword", qty: 1, equipped: true },
+];
+const LONGSWORD = [{ name: "Longsword", qty: 1, equipped: true }];
+
+await test("A narration that hands the turn on ends nothing while the Attack action's off-hand attack is open, and the hand-off is cut from the story", async () => {
+  const goblin = await stage();
+  world.patch(avery.id, { equipment: PAIR });
+  try {
+    world.dice(15, 4);
+    const message = await playerTurn(
+      "I attack the goblin with my Scimitar.",
+      [
+        reply({ calls: [call("pc_attack", { characterId: avery.id, targetEnemyId: goblin.id, weapon: "Scimitar" })] }),
+        reply({ text: "Avery's scimitar bites deep into the goblin's side, and it staggers back. Your turn ends." }),
+      ],
+      [[{ kind: "turn_over", quote: "Your turn ends." }], [{ kind: "turn_over", quote: "Your turn ends." }]],
+    );
+    assert.equal(current(), avery.id, "the off-hand attack two-weapon fighting earned was lost to the narration");
+    assert.equal(world.encounter().turnBudget?.bonusUsed, false);
+    assert.ok(message && !/Your turn ends/.test(message.content), `the story still tells the kept turn over: ${message?.content}`);
+    assert.match(message?.content ?? "", /scimitar bites deep/, "the rest of the story was cut with the hand-off");
+    // Once the bonus action is spent, the hand-off ends the turn as before.
+    world.dice(15, 4);
+    await playerTurn(
+      "I follow up with my Shortsword.",
+      [
+        reply({ calls: [call("pc_attack", { characterId: avery.id, targetEnemyId: goblin.id, weapon: "Shortsword", offHand: true })] }),
+        reply({ text: "The shortsword finds the goblin's ribs. It is now Kara's turn." }),
+      ],
+      [[{ kind: "turn_over", quote: "It is now Kara's turn." }], [{ kind: "turn_over", quote: "It is now Kara's turn." }]],
+    );
+    assert.equal(current(), kara.id, "the hand-off after the off-hand attack ended nothing");
+  } finally {
+    world.patch(avery.id, { equipment: LONGSWORD });
+  }
+});
+
+await test("pc_attack's endTurn keeps the turn open while the off-hand attack is open, unless the player's words end it", async () => {
+  const goblin = await stage();
+  world.patch(avery.id, { equipment: PAIR });
+  try {
+    world.dice(15, 4);
+    await playerTurn("I attack the goblin with my Scimitar.", [
+      reply({ calls: [call("pc_attack", { characterId: avery.id, targetEnemyId: goblin.id, weapon: "Scimitar", endTurn: true })] }),
+      reply({ text: "Avery's scimitar bites." }),
+    ]);
+    const attack = model.requests.at(-1) && model.results(model.requests.at(-1)).at(-1)?.result;
+    assert.equal(current(), avery.id, "the model's endTurn took the off-hand attack");
+    assert.match(String(attack?.turnNotEnded ?? ""), /off-hand attack with Shortsword/, JSON.stringify(attack));
+    const second = await stage();
+    world.dice(15, 4);
+    await playerTurn("I slash at the goblin with my Scimitar, then I end my turn.", [
+      reply({ calls: [call("pc_attack", { characterId: avery.id, targetEnemyId: second.id, weapon: "Scimitar", endTurn: true })] }),
+      reply({ text: "Avery's scimitar bites, and Avery falls back a step." }),
+    ]);
+    assert.equal(current(), kara.id, "the player's own words ended nothing");
+  } finally {
+    world.patch(avery.id, { equipment: LONGSWORD });
+  }
+});
+
 await test("A narration that asks what they do next ends nothing", async () => {
   await stage();
   await playerTurn("I feint at the goblin.", [reply({ text: "Avery feints, and the goblin flinches back. What does Avery do with the rest of the turn?" })], [[]]);
@@ -272,6 +339,24 @@ await test("The English phrases are read at an English table only: at every othe
     assert.equal(current(), kara.id, `${language}: the reader read the end and the turn stayed open`);
   }
   updateGameSettings(world.campaignId, { tableLanguage: "english" });
+});
+
+// Issue 966: the helper model read "I use Second Wind as a bonus action." as
+// the end of the fighter's turn. At an English table a reader's end on words
+// that only declare an action or a bonus action ends nothing.
+await test("At an English table a reader's turn end on words that only declare a bonus action ends nothing", async () => {
+  const swing = (goblin) => [
+    reply({ calls: [call("pc_attack", { characterId: avery.id, targetEnemyId: goblin.id, weapon: "Longsword" })] }),
+    reply({ text: "The goblin is too far off for Avery's blade to reach. What does Avery do?" }),
+  ];
+  const goblin = await stage();
+  kit.place(goblin.id, 15, 5);
+  await playerTurn("I use Second Wind as a bonus action.", swing(goblin), [[], [{ kind: "turn_over", quote: "I use Second Wind as a bonus action." }]]);
+  assert.equal(current(), avery.id, "a bonus action read as the end of the turn ended it");
+  const again = await stage();
+  kit.place(again.id, 15, 5);
+  await playerTurn("Over to the goblin.", swing(again), [[], [{ kind: "turn_over", quote: "Over to the goblin." }]]);
+  assert.equal(current(), kara.id, "a phrasing the pattern does not hold, read by the reader, ended nothing");
 });
 
 await test("The player's words end nothing when the DM only asked them a question", async () => {

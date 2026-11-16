@@ -4,6 +4,7 @@ import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
 import { Select, type SelectOption } from "@/components/ui/Select";
 import type { HarnessConfig } from "@/lib/harness/types";
+import type { TableLanguage } from "@/lib/schemas/game-settings-options";
 
 // The shapes and the field furniture the admin settings sections share.
 
@@ -11,6 +12,8 @@ export type MaskedConfig = {
   signupsEnabled: boolean;
   signupMode: "open" | "invite" | "closed";
   serverName: string;
+  // Absent from a host older than the language picker.
+  serverLanguage?: TableLanguage;
   accountDeletionGraceDays: number;
   abilityRerollBelow: number;
   publicUrl: string;

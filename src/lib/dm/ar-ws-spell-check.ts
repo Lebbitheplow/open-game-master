@@ -15,7 +15,7 @@ import { spellSchoolFor } from "@/lib/content";
 import type { Campaign } from "@/lib/db/campaigns";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { textKey } from "@/lib/language/text-logic";
-import { proficiencyBonus } from "@/lib/srd";
+import { proficiencyBonusOf } from "@/lib/srd/proficiency";
 import { activeAuthored } from "@/lib/srd/authored-effects";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -31,7 +31,7 @@ export function spellCheckBonus(campaign: Campaign, sheet: CharacterSheet, spell
   if (!row) {
     return null;
   }
-  const amount = proficiencyBonus(sheet.level);
+  const amount = proficiencyBonusOf(sheet);
   return { amount, note: `${row.held.feature}: +${amount} (proficiency bonus), the check is part of ${spell}` };
 }
 

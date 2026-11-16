@@ -11,6 +11,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
+import { formulaMods } from "@/lib/srd/proficiency";
 import { authoredConcentrationGuard } from "@/lib/srd/authored-effects-more";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -20,7 +21,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 // `runsAs`); `named` the name it was cast under.
 export function castTempHp(campaign: Campaign, stale: CharacterSheet, spell: string, named: string = spell): string | null {
   const sheet = getSheetById(stale.id) ?? stale;
-  const guard = authoredConcentrationGuard(sheet, spell, computeSheetDerived(sheet).abilityMods);
+  const guard = authoredConcentrationGuard(sheet, spell, formulaMods(computeSheetDerived(sheet)));
   if (!guard || guard.tempHp <= 0) {
     return null;
   }

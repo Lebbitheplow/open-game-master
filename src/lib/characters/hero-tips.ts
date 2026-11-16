@@ -9,7 +9,7 @@
 import { carriedWeapons, deriveHand, FRESH_TURN, SAVE_LABEL, type HandCard, type SpellFact } from "@/lib/battlemap/hand";
 import type { CharacterSheet, CreateSheetInput } from "@/lib/schemas/sheet";
 import { computeSheetDerived, SRD_SKILLS, formatModifier } from "@/lib/srd";
-import { populateResources, resourceDef } from "@/lib/srd/class-resources";
+import { populateResources, rechargeOf, resourceDef } from "@/lib/srd/class-resources";
 import { ammoKindForWeapon, findAmmo } from "@/lib/srd/ammunition";
 import { combatRiders } from "@/lib/srd/feature-effects";
 import { weaponAttackProfile } from "@/lib/dm/attack-logic";
@@ -17,6 +17,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { ABILITIES, type Ability } from "@/lib/schemas/abilities";
 import type { IconRef } from "@/lib/icons";
 import { cardIcon } from "@/lib/battlemap/spell-glyph-logic";
+import { proficiencyBonusOf } from "@/lib/srd/proficiency";
 
 // The library row the hero page reads: the sheet as saved, with its level.
 export type LibraryHero = {
@@ -102,7 +103,7 @@ export function freshPlaySheet(hero: LibraryHero): CharacterSheet {
     spellcasting: sheet.spellcasting,
     conditions: [],
     conditionMeta: {},
-    resources: populateResources(sheet.features, level, abilityMods, {}, sheet.classes, sheet.feats, undefined, { race: sheet.race, variant: sheet.racialChoices?.variant }),
+    resources: populateResources(sheet.features, level, abilityMods, {}, sheet.classes, sheet.feats, undefined, { race: sheet.race, variant: sheet.racialChoices?.variant }, proficiencyBonusOf({ ...sheet, level })),
     wildShape: null,
     pets: [],
     exhaustion: 0,
@@ -245,7 +246,7 @@ function bestFeature(cards: HandCard[], sheet: CharacterSheet): { card: HandCard
     const def = resourceDef(card.intent.resourceId);
     const state = sheet.resources[card.intent.resourceId];
     if (!def || !state || state.max <= 0) continue;
-    return { card, uses: state.max, recharge: def.recharge };
+    return { card, uses: state.max, recharge: rechargeOf(def, sheet) };
   }
   return null;
 }

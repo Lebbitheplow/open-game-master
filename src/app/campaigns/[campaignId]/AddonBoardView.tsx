@@ -23,6 +23,7 @@ import {
 import type { OfferedBoardView } from "@/lib/addons/offered";
 import { normalizeOptionValues } from "@/lib/addons/contracts";
 import type { FxEvent } from "@/lib/battlemap/fx-plan";
+import { boardScenery, loadManifests } from "@/lib/battlemap/render/painted";
 import type { TokenIntent } from "@/lib/battlemap/intent";
 import type { PlayerMapView } from "@/lib/battlemap/view-types";
 import type { Ruler } from "@/lib/battlemap/board-move";
@@ -177,6 +178,18 @@ export function AddonBoardView({
   const src = `${pageOrigin()}${boardView.url}`;
   const assetsUrl = `${pageOrigin()}/api/addons/${encodeURIComponent(boardView.addonId)}/assets/`;
 
+  const [paintManifests, setPaintManifests] = useState<Awaited<ReturnType<typeof loadManifests>>>(null);
+  const hasPaintedTerrain = Boolean(view) && !view?.backdrop;
+  useEffect(() => {
+    if (!hasPaintedTerrain) return;
+    let cancelled = false;
+    void loadManifests().then((manifests) => {
+      if (!cancelled && manifests) setPaintManifests(manifests);
+    }, () => {});
+    return () => { cancelled = true; };
+  }, [hasPaintedTerrain]);
+  const scenery = useMemo(() => view && paintManifests ? boardScenery(view, genre, paintManifests) : undefined, [view, genre, paintManifests]);
+
   // The newest of everything the message handler reads, so it is attached
   // once per frame rather than once per board update.
   const latest = useRef({ view, onTile, onToken, onHover, onCancel, faceFor, onAnchors, onCameraState, onFailure, actionMenu, onAction, nativeActive, battlefieldHud, onBoardControl, hudSignature, onDraw });
@@ -215,7 +228,7 @@ export function AddonBoardView({
       // Native startup must not wait for a cached iframe's one-time ready event.
       const send = readyAt ? postTo : postNativeBoard;
       if (!view) {
-        send(frame.current, { type: "scene", genre, appearance, options: normalizeOptionValues(boardView.options, viewOptions), assetsUrl });
+        send(frame.current, { type: "scene", genre, appearance, options: normalizeOptionValues(boardView.options, viewOptions), assetsUrl, parts: boardView.parts ?? [] });
         return;
       }
       send(frame.current, {
@@ -229,11 +242,13 @@ export function AddonBoardView({
           intents,
           moveAim,
           assetsUrl,
+          scenery,
+          parts: boardView.parts,
           viewOptions: { fields: boardView.options, values: viewOptions },
         }),
       });
     }
-  }, [readyAt, view, canDirect, genre, appearance, boardView.addonId, boardView.options, boardView.sessionLayout, looks, intents, moveAim, assetsUrl, viewOptions, nativeActive]);
+  }, [readyAt, view, canDirect, genre, appearance, boardView.addonId, boardView.options, boardView.sessionLayout, boardView.parts, looks, intents, moveAim, assetsUrl, viewOptions, nativeActive, scenery]);
 
 
 

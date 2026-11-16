@@ -1,0 +1,26 @@
+{
+  "generator": "OpenAI built-in image_gen",
+  "date": "2026-11-14",
+  "encoding": "Frame: lossless WebP with original alpha. Texture and backdrop: WebP quality 88. Source PNGs retained in workspace appearance-review/art-source.",
+  "corner": "The corner slot reuses the frame asset. CSS shows its top-left quadrant at 400% background size; shared rendering rotates the quadrant for the other corners.",
+  "assets": [
+    {
+      "source": "exec-0b9ce238-7720-47e1-a70c-e4d28752ee8c.png",
+      "file": "cathedral-iron-frame-v1.webp",
+      "transparent": true,
+      "prompt": "Use case: stylized-concept. Asset type: production fantasy strategy-game UI nine-slice square frame, 1024x1024. Front-facing orthographic. A narrow richly hand-painted frame of dark weathered cathedral stone and blackened wrought iron, with antique silver filigree, tiny garnet-red stained-glass inlays and sharp Gothic tracery. Tactile chiseled recesses and sculpted iron, austere medieval cathedral craft, subtle dusty rose silver highlights, no gold. Four straight continuous rails occupy only the outer 10 percent, pointed architectural corner joints occupy the outer 18 percent. Keep middle rails simple, straight and repeatable for responsive nine-slice rendering; the overall opening remains RECTANGULAR rather than arched. Completely transparent empty central rectangle occupying at least 64 percent in both dimensions; transparent outside frame with 2 percent margin. Front-on square, no perspective, no scenery, no characters, no skulls, no interface controls, no text, no logos. Actual alpha transparency, not a checkerboard. All ornaments contained in canvas with nothing cropped. This is a usable border asset, not a UI mockup."
+    },
+    {
+      "source": "exec-c92e51eb-9eb5-456b-a6d8-7e93a2fb6e72.png",
+      "file": "cathedral-slate-v1.webp",
+      "transparent": false,
+      "prompt": "Use case: stylized-concept. Production seamless square material tile, 1024x1024, for a dark Gothic fantasy interface. Close-up of finely worked charcoal cathedral slate, subtle fine stone grain, hairline natural veins, a faint burgundy mineral undertone, shallow chisel wear. Tactile hand-painted strategy-game material, softly evenly lit with understated antique silver-gray pores. Restrained low contrast for controls and panels under readable text. Seamless repeat in both axes, no vignette or strong light gradients. Edge-to-edge opaque surface, front-on orthographic, no border, no objects, no scenery, no skulls, no emblems, no text or logos."
+    },
+    {
+      "source": "exec-0806cf6c-8177-4282-aaa4-35a011a70262.png",
+      "file": "moonlit-cloister-v1.webp",
+      "transparent": false,
+      "prompt": "Use case: stylized-concept. Production wide 3:1 environment banner for a Gothic fantasy game interface. Rich hand-painted premium strategy-game environment art: a magnificent ancient cathedral cloister of charcoal carved stone, pointed arches and ornate wrought-iron screens. A tall glowing garnet-red rose stained-glass window dominates the right third, silver moonlight and soft crimson glass light fall across worn flagstones. On the left an open arch leads through mist to distant towers and a dark mountain landscape. Small warm candle groups, architectural grandeur, quiet mystery, atmospheric depth, elaborate stone tracery with restrained antique silver highlights. Composition must read in a shallow wide header crop: bold architectural forms, detail concentrated on right and open depth on left. Entire canvas opaque scenery. No characters, skulls, gore, text, symbols resembling logos, UI controls, or rectangular picture frame."
+    }
+  ]
+}

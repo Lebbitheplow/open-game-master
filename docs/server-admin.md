@@ -27,7 +27,7 @@ Log in as an admin and open `/admin` (linked from the account menu):
   image-worker URLs and image model, TTS / STT URLs, Discord sign-in credentials, and
   the sign-up toggle (close registration once your party is in). The model pickers
   list what each backend serves ([text-backends.md](text-backends.md#choosing-a-model-the-catalog-and-discovery)).
-- **Agent program**: Claude Code, Codex, opencode or Grok Build as the storyteller,
+- **Agent program**: Claude Code, Codex, opencode, Grok Build or Pi as the storyteller,
   with the models each program lists for its sign-in
   ([agent-harness.md](agent-harness.md)).
 - **Player agents**: the HTTPS receiver addresses a player's own agent may be woken

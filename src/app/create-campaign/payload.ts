@@ -101,6 +101,8 @@ export function campaignPayload(draft: CampaignDraft, { solo, aiNarrates }: Pick
       worldPack,
       voice: voiceChat,
       // These gameSettings fields are deliberately not offered here.
+      // `appearanceTheme` defaults to following the genre. It belongs in the
+      // Atmosphere settings after creation, alongside each player's override.
       //
       // `stages` trades turn quality for speed on a slow local model,
       // which is an operator decision, not a table decision, so it

@@ -325,7 +325,8 @@ export function RulebookContents({
               </nav>
 
               <p className="rb-legal">
-                This work includes material taken from the System Reference Document 5.1 (&ldquo;SRD 5.1&rdquo;) by
+                {/* The source's own title: the book the reader has open, English or French, is the one credited. */}
+                This work includes material taken from the {contents.source.title} (&ldquo;SRD 5.1&rdquo;) by
                 Wizards of the Coast LLC, licensed under{" "}
                 <a href={contents.source.licenseUrl} target="_blank" rel="noreferrer">
                   CC-BY-4.0

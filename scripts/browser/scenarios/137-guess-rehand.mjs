@@ -54,6 +54,12 @@ export default {
     await t.tap(party);
     const sheet = page.locator(`${root}[role="dialog"]`).filter({ hasText: "Worn gear sets your AC" }).first();
     await eventually(() => sheet.count(), { timeoutMs: 20_000, label: "Ayla's sheet with her gear" });
+    // The weapons' rows are in the paperdoll's In hand place.
+    const held = sheet.locator('[data-doll-place="held"]').first();
+    await eventually(() => held.count(), { label: "the In hand place" });
+    await held.scrollIntoViewIfNeeded().catch(() => undefined);
+    check((await held.getAttribute("aria-label")) === "In hand: Shortsword.", "the In hand tile names the sword the guess drew");
+    await t.tap(held);
     const toggle = (name) => sheet.locator(`[data-gear-row="${name}"] button`).first();
     await eventually(async () => ((await toggle("Longbow").textContent()) ?? "").trim() === "Packed", { label: "the longbow's row reads Packed" });
     check(((await toggle("Shortsword").textContent()) ?? "").trim() === "In hand", "the shortsword's row reads In hand");

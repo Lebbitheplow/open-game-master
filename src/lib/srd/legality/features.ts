@@ -30,6 +30,7 @@ import { ABILITY_NAMES, type FeatFacts } from "@/lib/srd/legality/types";
 import { textKey } from "@/lib/language/text-logic";
 import { speciesLineage } from "@/lib/srd/race-id";
 import { isSwapRecord } from "@/lib/dm/ar-ws-spell-swap-record";
+import { studiedRaise } from "@/lib/srd/studied-books";
 
 let tableNames: Set<string> | null = null;
 
@@ -72,8 +73,9 @@ export function isMechanicalFeature(name: string): boolean {
   if (grantedNames().has(key)) {
     return true;
   }
-  // A spell swap's record is the level-up's to write (src/lib/dm/ar-ws-spell-swap-record.ts).
-  if (isSwapRecord(name)) {
+  // A spell swap's record is the level-up's to write (src/lib/dm/ar-ws-spell-swap-record.ts),
+  // and a manual's or tome's reading use_item's (src/lib/srd/studied-books.ts).
+  if (isSwapRecord(name) || studiedRaise(name)) {
     return true;
   }
   if (findOptionByFeatureName(name) || chosenFightingStyles([{ name }]).length) {

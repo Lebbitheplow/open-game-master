@@ -117,7 +117,7 @@ export const LAST_CONDITION_EFFECTS: ConditionEffectRow[] = [
     id: "freedom_of_movement",
     match: ["freedom of movement"],
     summary: "Freedom of Movement: difficult terrain does not slow them, magic cannot reduce their speed, paralyze or restrain them, and 5 feet of movement frees them from a nonmagical grapple or restraint.",
-    conditionImmunities: ["paralyzed", "restrained"],
+    conditionImmunitiesMagic: ["paralyzed", "restrained"],
   },
   {
     id: "spider_climb",

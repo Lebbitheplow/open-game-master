@@ -53,6 +53,9 @@ await test("the models come from --list-models, with provider, window and effort
       ["local/tiny", 32_000, 0],
     ],
   );
+  // What Pi 1.5.2 prints on stdout when no provider is signed in.
+  const none = "No models available. Use /login to log into a provider via OAuth or API key. See:\n  /usr/lib/node_modules/pi/docs/providers.md\n";
+  assert.deepEqual(parsePiModels(none), []);
 });
 
 await test("a run with ODM's tools loads MCP alone and allows only ODM's tools; a completion has none", async () => {
@@ -88,6 +91,9 @@ if (unix) {
     assert.equal(ready.models.length, 3);
     const out = await piAdapter.probe(stub("pi-out", `case "$1" in --version) echo "1.5.2";; --list-models) echo "provider model context max-out thinking images";; esac`), env);
     assert.equal(out.auth.state, "signed-out");
+    const nowhere = await piAdapter.probe(stub("pi-nowhere", `case "$1" in --version) echo "1.5.2";; --list-models) echo "No models available. Use /login to log into a provider via OAuth or API key. See:";; esac`), env);
+    assert.equal(nowhere.auth.state, "signed-out");
+    assert.deepEqual(nowhere.models, []);
     assert.match(out.message, /pi auth login/);
   });
 

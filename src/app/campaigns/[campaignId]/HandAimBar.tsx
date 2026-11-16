@@ -517,16 +517,19 @@ export function HandAimBar({
         </div>
       ) : null}
 
-      <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,15rem)_minmax(0,1fr)]">
+      {/* On a short board (world.css, data-hand-share) the numbers are one
+          line beside the sentence and this row of buttons stays at the
+          Hand's foot while the rest scrolls: the three are named for it. */}
+      <div className="hand-aim-foot mt-2 grid gap-2 sm:grid-cols-[minmax(0,15rem)_minmax(0,1fr)]">
         <div className="hand-rows-box">
           <HandPreviewRows rows={rows} />
         </div>
-        <div className="flex min-w-0 flex-col justify-between gap-2">
+        <div className="hand-aim-say flex min-w-0 flex-col justify-between gap-2">
           <p className="font-serif text-sm italic leading-snug text-stone-300">
             <span className="not-italic text-stone-500">Sends: </span>
             {sentence}
           </p>
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="hand-aim-send flex flex-wrap items-center justify-end gap-2">
             <button type="button" onClick={onBack} className={cn(ui.btnSmall, "min-h-10")}>
               <ArrowLeft className="size-4" /> Back
             </button>

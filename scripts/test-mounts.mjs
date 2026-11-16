@@ -11,6 +11,7 @@ const {
   describeMount,
   DISMOUNT_SAVE_DC,
   dismountSave,
+  riderKnockedProne,
   MOUNTS,
   mountCost,
   mountProfile,
@@ -128,6 +129,13 @@ test("being thrown calls for the save; choosing to get off does not", () => {
   assert.deepEqual(dismountSave("forced-move"), { dc: DISMOUNT_SAVE_DC, ability: "dex" });
   assert.deepEqual(dismountSave("rider-prone"), { dc: DISMOUNT_SAVE_DC, ability: "dex" });
   assert.equal(dismountSave("voluntary"), null);
+});
+
+test("a rider owes the save for being laid prone, not for lying prone", () => {
+  assert.equal(riderKnockedProne(false, true), true);
+  assert.equal(riderKnockedProne(true, true), false);
+  assert.equal(riderKnockedProne(true, false), false);
+  assert.equal(riderKnockedProne(false, false), false);
 });
 
 test("a mount describes itself with what matters at the table", () => {

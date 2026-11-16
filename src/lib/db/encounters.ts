@@ -18,6 +18,7 @@ import { isKnockedOut } from "@/lib/dm/knockout";
 import { storedGender, type Gender } from "@/lib/gender";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { pickedGender } from "@/lib/actor-sex-logic";
+import { drainedBlock } from "@/lib/srd/creature-drain-logic";
 import { keepNew, keepRow } from "@/lib/db/turn-rows";
 
 // Server-authoritative combat state. Enemy HP lives here and changes ONLY
@@ -304,6 +305,8 @@ function mapEncounter(row: EncounterRow): Encounter {
 }
 
 function mapEnemy(row: EnemyRow): EncounterEnemy {
+  const conditions = parseJson<string[]>(row.conditions_json, []);
+  const conditionMeta = parseJson<ConditionMetaMap>(row.condition_meta_json, {});
   return {
     id: row.id,
     encounterId: row.encounter_id,
@@ -317,11 +320,14 @@ function mapEnemy(row: EnemyRow): EncounterEnemy {
     status: row.status,
     cr: row.cr,
     xp: row.xp,
-    conditions: parseJson<string[]>(row.conditions_json, []),
-    conditionMeta: parseJson<ConditionMetaMap>(row.condition_meta_json, {}),
+    conditions,
+    conditionMeta,
     concentration: row.concentration ?? null,
     concentrationRounds: row.concentration_rounds ?? null,
-    stats: parseJson<EnemyStats>(row.stat_json, {
+    // The block as a drained creature fights with it (a shadow's Strength
+    // Drain): the row keeps its own numbers, so the drain lifts with its
+    // condition (creature-drain-logic.ts).
+    stats: drainedBlock(parseJson<EnemyStats>(row.stat_json, {
       ac: row.ac,
       maxHp: row.max_hp,
       dexMod: 0,
@@ -334,7 +340,7 @@ function mapEnemy(row: EnemyRow): EncounterEnemy {
       conditionImmune: "",
       cr: row.cr,
       xp: row.xp,
-    }),
+    }), conditions, conditionMeta),
     ...(row.npc_id ? { npcId: row.npc_id } : {}),
     ...(row.carried_from ? { carriedFrom: row.carried_from } : {}),
     ...(row.race ? { race: row.race } : {}),

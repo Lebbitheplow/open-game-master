@@ -1,13 +1,15 @@
 import type { Campaign } from "@/lib/db/campaigns";
-import { getActiveEncounter, saveEncounter, turnKey, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy, saveEncounter, setEnemyConcentration, turnKey, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { clearSpellConditionsByName } from "@/lib/dm/concentration";
 import type { EnemyAttack, SaveAbility } from "@/lib/bestiary/statblock";
 import { splitDamageExpression } from "@/lib/dm/aoe-parts";
 import type { SpellCondition, SpellMech } from "@/lib/srd/spell-mech-types";
-import type { TurnTie } from "@/lib/dm/save-effect";
+import type { SaveEffect, TurnTie } from "@/lib/dm/save-effect";
 import { spellDamageFor, spellFactsFor, spellMechanicsFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { canEnemyAct, markEnemyBonus } from "@/lib/dm/can-act";
 import { spendEnemyAction } from "@/lib/dm/enemy-approach";
+import { enemyTurnEntry, recordEnemyTurn, routineUseLeft } from "@/lib/dm/enemy-turn-logic";
 import { castingHold } from "@/lib/dm/spell-planes";
 import { heldTurnRefusal } from "@/lib/dm/flee-logic";
 import { antimagicProblem } from "@/lib/dm/zone-rules";
@@ -19,6 +21,7 @@ import {
   abilityRefusal,
   findMonsterAbility,
   findMonsterSpell,
+  multiattackAbilities,
   slotFor,
   spellUsesLeft,
   spendAbility,
@@ -70,6 +73,9 @@ export type EnemyUse = {
   followUp?: string;
   // A spell or a magical ability, which Magic Resistance answers.
   magical: boolean;
+  // A creature that made the save is immune to this use for a while, by
+  // the block (save-effect.ts immuneAfter): save-immunity.ts holds it.
+  immuneAfter?: SaveEffect["immuneAfter"];
   // The numbers are the block's (or the spell's): the caller's are ignored.
   // False only for a creature whose block lists nothing to match (a
   // synthesized enemy), which keeps the caller's numbers.
@@ -140,6 +146,10 @@ export function prepareEnemyUse(campaign: Campaign, input: Input): EnemyUse | To
   let partOf = false;
   // An ability printed among the Bonus Actions is the creature's bonus action.
   let bonus = false;
+  // An ability its Multiattack folds in (a dragon's Frightful Presence): its
+  // key, so the routine's attacks and this use are one action
+  // (monster-abilities.ts multiattackAbilities).
+  let routineKey: string | null = null;
   const use: Omit<EnemyUse, "commit"> = { enemy, name: "", magical: false, fromBlock: false, corrections: [] };
   let spend: (ledger: AbilityLedger | undefined) => AbilityLedger | undefined = (ledger) => ledger;
 
@@ -256,6 +266,8 @@ export function prepareEnemyUse(campaign: Campaign, input: Input): EnemyUse | To
         partOf = true;
       } else if (ability.bonusAction) {
         bonus = true;
+      } else if (!legendary && multiattackAbilities(enemy.stats).includes(key)) {
+        routineKey = key;
       }
       spend = (next) => spendAbility(ability, next, now);
       const second = (enemy.stats.specials ?? []).find((entry) => entry.partOf && abilityKey(entry.partOf) === key);
@@ -276,6 +288,7 @@ export function prepareEnemyUse(campaign: Campaign, input: Input): EnemyUse | To
         ...(ability.endsOnDamage ? { endsOnDamage: true } : {}),
         ...(ability.failBy ? { failBy: ability.failBy } : {}),
         ...(second ? { followUp: second.name } : {}),
+        ...(ability.immuneAfter ? { immuneAfter: ability.immuneAfter } : {}),
         magical: Boolean(ability.magical),
       });
     }
@@ -290,7 +303,10 @@ export function prepareEnemyUse(campaign: Campaign, input: Input): EnemyUse | To
   // second save is part of the action already taken, so it is held only to
   // what stops any act (incapacitated, surprised).
   const allowed = canEnemyAct({ enemy, encounter, kind: legendary || partOf ? "legendary" : bonus ? "bonus" : "action" });
-  if (!allowed.ok) {
+  // After its Multiattack's attacks, the ability the routine folds in is
+  // still that action's, once.
+  const routineFree = !allowed.ok && allowed.reason === "already_acted" && routineKey !== null && routineUseLeft(enemyTurnEntry(encounter, enemy.id), routineKey);
+  if (!allowed.ok && !routineFree) {
     return toolError(allowed);
   }
   // Its own turn spent on Command's word or Fear's flight has no spell or
@@ -331,13 +347,29 @@ export function prepareEnemyUse(campaign: Campaign, input: Input): EnemyUse | To
       } else if (bonus) {
         markEnemyBonus(live, enemy.id);
       } else if (!partOf) {
-        spendEnemyAction(live, enemy.id);
+        if (!routineFree) {
+          spendEnemyAction(live, enemy.id);
+        }
+        if (routineKey) {
+          recordEnemyTurn(live, enemy.id, { routineUses: [...(enemyTurnEntry(live, enemy.id).routineUses ?? []), routineKey] });
+        }
       }
       if (ledger) {
         abilities[enemy.id] = ledger;
       }
       live.legendary.abilities = abilities;
       saveEncounter(live);
+      // A new casting of a concentration spell ends the one the creature
+      // holds, an earlier casting of the same spell too (SRD 5.1,
+      // Concentration), before this casting's own effects land: each commit
+      // is one casting, and its targets all come after it. Ended afterwards,
+      // and only for a different spell, a hag's second Hold Person kept the
+      // first one's hero paralyzed beside the new one's.
+      const held = use.spell ? getEnemy(enemy.id)?.concentration : null;
+      if (held) {
+        setEnemyConcentration(enemy.id, null);
+        clearSpellConditionsByName(campaign, held, undefined, enemy.id);
+      }
     },
   };
 }

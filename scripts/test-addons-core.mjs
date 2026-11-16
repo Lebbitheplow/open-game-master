@@ -51,6 +51,16 @@ await test("native controls accept only the bounded offer sent to the renderer",
   assert.equal(source.controls.length, 21, "projection must not mutate the host's controls");
   assert.equal(choice.options.length, 2049);
 });
+await test("native pickers check the chosen option across all groups of the same action", () => {
+  const cantrips = { id: "hand-card", label: "Cantrips", disabled: null, options: [{ value: "fire-bolt", disabled: null }] };
+  const levelOne = { id: "hand-card", label: "Level 1", disabled: null, options: [{ value: "shield", disabled: "No slots" }, { value: "bless", disabled: null }] };
+  const hud = { panel: { controls: [cantrips, levelOne] }, controls: [], pending: false };
+  assert.equal(offeredBoardControl(hud, "hand-card", "fire-bolt"), cantrips);
+  assert.equal(offeredBoardControl(hud, "hand-card", "bless"), levelOne);
+  assert.equal(offeredBoardControl(hud, "hand-card", "shield"), null);
+  assert.equal(offeredBoardControl(hud, "hand-card", "unknown"), null);
+  assert.equal(offeredBoardControl({ ...hud, pending: true }, "hand-card", "bless"), null);
+});
 await test("native portrait bytes survive JSON and reject oversized transfers", () => {
   const packet={type:"file",requestId:"face-1",ok:true,name:"pc",mime:"image/png",bytes:Uint8Array.from([0,1,127,255]).buffer};
   const encoded=JSON.parse(JSON.stringify(nativeFilePacket(packet)));
@@ -585,6 +595,15 @@ await test("a snapshot is the viewer's projection, with only this addon's view d
   assert.equal(boardSnapshot(view, "other-addon", { canDirect: false, appearance }).view, null);
 });
 
+await test("the optional cosmetic scenery goes to board views without competing with a backdrop", () => {
+  const scenery = [{ section: "props", id: "test-prop", x: 0.5, y: 0.5, size: 0.8, rotation: 0 }];
+  const options = { canDirect: false, appearance: { theme: "night", reducedMotion: false }, scenery };
+  const ordinary = { ...view, backdrop: null };
+  assert.deepEqual(boardSnapshot(ordinary, "hello-dungeon", options).scenery, scenery);
+  assert.equal(boardSnapshot(view, "hello-dungeon", options).scenery, undefined);
+  assert.equal(boardSnapshot(ordinary, "hello-dungeon", { ...options, scenery: undefined }).scenery, undefined);
+});
+
 await test("character gender is optional and only travels with projected figures", () => {
   const appearance = { theme: "night", reducedMotion: false };
   for (const gender of ["Female", "Male", "Nonbinary", ""]) {
@@ -619,6 +638,18 @@ await test("a walk's first tap is named to the view as its aim, and nothing else
   assert.deepEqual(aimed.moveAim, { x: 2, y: 1 });
   const board = readFileSync(new URL("../src/app/campaigns/[campaignId]/BattleMapPanel.tsx", import.meta.url), "utf8");
   assert.match(board, /moveAim=\{moveAim\}/, "the table does not tell the view its aim");
+});
+
+await test("every addon sees the projected walk and side; reduced motion omits the walk", () => {
+  const walkPath = [{ x: 0, y: 0 }, { x: 1, y: 0 }];
+  const projected = { ...view, tokens: [{ ...view.tokens[0], x: 1, y: 0, walkPath, side: "foe" }] };
+  const snapshot = (addon, reducedMotion) => boardSnapshot(projected, addon, {
+    canDirect: false, appearance: { theme: "night", reducedMotion },
+  }).tokens[0];
+  assert.deepEqual(snapshot("hello-dungeon", false).walkPath, walkPath);
+  assert.equal(snapshot("another-addon", false).side, "foe");
+  assert.equal(snapshot("another-addon", true).side, "foe");
+  assert.equal(snapshot("another-addon", true).walkPath, undefined);
 });
 
 await test("a snapshot carries the flat board's layers, only about figures this viewer sees", () => {

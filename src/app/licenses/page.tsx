@@ -6,6 +6,7 @@ import { contentPackInstalled, contentPackStale } from "@/lib/content/db";
 import { listWorldPackSummaries } from "@/lib/worlds";
 import { installedTracks } from "@/lib/ambience/library";
 import { cueById } from "@/lib/ambience/catalog";
+import { addonCredits } from "@/lib/addons/offered";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export default function LicensesPage() {
   const stale = contentPackStale();
   const worldPacks = listWorldPackSummaries();
   const ambience = installedTracks();
+  const addons = addonCredits();
 
   return (
     <PageShell
@@ -48,6 +50,18 @@ export default function LicensesPage() {
           https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under
           the Creative Commons Attribution 4.0 International License available at
           https://creativecommons.org/licenses/by/4.0/legalcode.
+        </p>
+        <p>
+          A reader whose browser asks for French reads the rulebook in Wizards of the Coast&rsquo;s official
+          French translation, the <span lang="fr">Document de Référence du Système 5.1</span>, under the same
+          license.{" "}
+          <span lang="fr">
+            Ce travail comprend la documentation tirée du Document de Référence du Système 5.1 (« SRD 5.1 »)
+            par Wizards of the Coast LLC et disponible à l&rsquo;adresse
+            https://dnd.wizards.com/fr/resources/systems-reference-document. Le SRD 5.1 est distribué en vertu
+            de la licence Creative Commons Attribution 4.0 International disponible à l&rsquo;adresse
+            https://creativecommons.org/licenses/by/4.0/legalcode.fr.
+          </span>
         </p>
         <p>
           Expanded character options, spells, items, and monsters are imported from the{" "}
@@ -151,6 +165,51 @@ export default function LicensesPage() {
                     {track.source}
                   </a>
                 ) : null}
+              </li>
+            ))}
+          </ul>
+        </PageSection>
+      ) : null}
+
+      {addons.length ? (
+        <PageSection heading="Addons">
+          <p className="text-sm leading-6 text-stone-400">
+            Addons switched on here add to what this server does. Each is its creator&apos;s own project, kept in
+            their own repository: <span className="text-stone-200">not distributed with Open Game Master</span> and
+            not covered by its MIT license.
+          </p>
+          <ul className="mt-4 space-y-2">
+            {addons.map((addon) => (
+              <li key={addon.id} className="rounded-lg border border-stone-800 bg-stone-900/60 p-3 text-sm">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="text-stone-100">
+                    {addon.name}
+                    <span className="ml-2 text-xs text-stone-500">v{addon.version}</span>
+                  </span>
+                  <span className="text-xs text-amber-200">{addon.license}</span>
+                </div>
+                <p className="mt-1 text-xs text-stone-400">
+                  by{" "}
+                  {addon.profile ? (
+                    <a href={addon.profile} target="_blank" rel="noreferrer" className="text-stone-300 hover:text-amber-200">
+                      {addon.author}
+                    </a>
+                  ) : (
+                    addon.author
+                  )}
+                </p>
+                {addon.description ? <p className="mt-1 text-xs text-stone-500">{addon.description}</p> : null}
+                {[addon.url, ...addon.also.map((repo) => `https://github.com/${repo}`)].filter(Boolean).map((url) => (
+                  <a
+                    key={url}
+                    href={url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 mr-3 inline-block break-all text-xs text-stone-500 hover:text-stone-300"
+                  >
+                    {url}
+                  </a>
+                ))}
               </li>
             ))}
           </ul>

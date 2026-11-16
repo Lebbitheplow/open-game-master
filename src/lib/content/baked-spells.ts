@@ -4,13 +4,15 @@
 
 import bakedSpellMechJson from "@/lib/srd/manifest/spell-mech.json";
 import type { SpellMech } from "@/lib/srd/spell-mechanics";
+import type { SlotDurations } from "@/lib/srd/spell-duration";
 import { textKey } from "@/lib/language/text-logic";
 
 // What the SRD rows' text answers, baked at build time
 // (scripts/annotate-spell-manifest.mjs) for a server with no content pack:
-// the parsed mechanics, the dice by slot level or cantrip tier, and how many
-// rounds the spell lasts.
-type BakedSpell = { n: string; a?: string[]; m?: SpellMech; x?: Record<string, string>; u?: number };
+// the parsed mechanics, the dice by slot level or cantrip tier, how many
+// rounds the spell lasts, and what a higher slot makes of that.
+type BakedSpell = { n: string; a?: string[]; m?: SpellMech; x?: Record<string, string>; u?: number; s?: SlotScaling };
+type SlotScaling = { at: SlotDurations; each?: { above: number; rounds: number } };
 const BAKED = new Map<string, BakedSpell>(
   (bakedSpellMechJson as unknown as { spells: BakedSpell[] }).spells.flatMap((spell) =>
     [spell.n, ...(spell.a ?? [])].map((name) => [textKey(name), spell] as const),
@@ -37,6 +39,13 @@ function bakedDice(spell: BakedSpell, spellLevel: number, casterLevel: number, s
 // dispelled, or not an SRD spell).
 export function bakedSpellDuration(name: string): number | null {
   return bakedSpell(name)?.u ?? null;
+}
+
+// The lifetimes a higher slot buys, as spell-duration.ts reads the SRD row's
+// "At Higher Levels" text (Mass Suggestion: 10 days from a 7th-level slot,
+// a year and a day from a 9th), or null when the slot changes nothing.
+export function bakedSlotDurations(name: string): SlotScaling | null {
+  return bakedSpell(name)?.s ?? null;
 }
 
 // A baked spell's parsed mechanics, or null.

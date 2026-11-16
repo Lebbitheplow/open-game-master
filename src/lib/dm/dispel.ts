@@ -26,6 +26,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
 import { gainPowerSurge } from "@/lib/dm/spell-damage-mark";
+import { spellAbilityFor } from "@/lib/srd";
 
 const SRD_CONDITIONS = new Set([
   "blinded", "charmed", "deafened", "frightened", "grappled", "incapacitated",
@@ -54,7 +55,9 @@ function legacySpellOf(condition: string): string | null {
   return null;
 }
 
-type Held = { spell: string; key: string; conditions: string[] };
+// `slotLevel`: the slot the casting was made from, as its conditions record it
+// (spell-effects.ts), when they do.
+type Held = { spell: string; key: string; conditions: string[]; slotLevel?: number };
 
 // One casting's key on a condition instance: the spell and its caster.
 function castingKey(condition: string, instance: ConditionMeta): string | null {
@@ -76,6 +79,9 @@ function spellsOn(conditions: string[], meta: ConditionMetaMap): Held[] {
       const spell = instance.spell ?? legacySpellOf(condition) ?? "";
       const entry = bySpell.get(key) ?? { spell, key, conditions: [] };
       entry.conditions.push(condition);
+      if (instance.slotLevel && instance.slotLevel > (entry.slotLevel ?? 0)) {
+        entry.slotLevel = instance.slotLevel;
+      }
       bySpell.set(key, entry);
     }
   }
@@ -160,13 +166,19 @@ export function handleDispelMagic(
     return { ok: true, spell: input.spell, target: holder.name, ...(cast.slot ? { slot: cast.slot } : {}), dispelled: [], ...castToNoEffect(ward) };
   }
   const slotLevel = typeof cast.slotLevel === "number" ? cast.slotLevel : 3;
-  const ability = caster.spellcasting?.ability ?? "int";
+  // The ability of the class Dispel Magic is cast through (a wizard and
+  // cleric's cleric spell checks with Wisdom), not the sheet's first one.
+  const ability = spellAbilityFor(caster, input.spell) ?? caster.spellcasting?.ability ?? "int";
   const ended: string[] = [];
   const endedKeys = new Set<string>();
   const kept: string[] = [];
   const lines: string[] = [];
   for (const entry of held) {
-    const level = spellMechanicsFor({ spell: entry.spell, userIds: authors })?.spellLevel ?? 1;
+    // A spell cast from a higher slot is a spell of that level (SRD 5.1,
+    // Casting a Spell at a Higher Level): a Hold Person cast at 4th needs the
+    // check against a 3rd-level Dispel Magic. The printed level let it end
+    // outright.
+    const level = Math.max(spellMechanicsFor({ spell: entry.spell, userIds: authors })?.spellLevel ?? 1, entry.slotLevel ?? 0);
     if (level <= slotLevel) {
       ended.push(...entry.conditions);
       endedKeys.add(entry.key);

@@ -2,7 +2,7 @@
 // creatures and their lairs. Split out of catalog-combat.ts to keep each
 // file readable; catalog-combat.ts spreads these into COMBAT_ADJUDICATIONS,
 // so every caller still finds one combat list.
-import type { CatalogEntry } from "@/lib/dm/catalog-types";
+import { CHARGED_RUN, type CatalogEntry } from "@/lib/dm/catalog-types";
 import { REASON_FIELD as REASON } from "@/lib/dm/catalog-vocab";
 
 export const BOARD_ADJUDICATIONS: CatalogEntry[] = [
@@ -99,6 +99,7 @@ export const BOARD_ADJUDICATIONS: CatalogEntry[] = [
       { name: "petName", label: "Pet", kind: "text", help: "Empty when they have only one." },
       { name: "targetEnemyId", label: "Target", kind: "enemy", required: true },
       { name: "attack", label: "Attack", kind: "text" },
+      CHARGED_RUN,
     ],
   },
   {

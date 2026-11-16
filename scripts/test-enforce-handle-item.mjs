@@ -338,7 +338,7 @@ await test("What an enemy lets fall is asked what it is, as grant_item asks, at 
     assert.equal(taken.ok, true, taken.error);
     assert.equal(matchWeapon(row(fighter, "Scimitarra"))?.name, "Scimitar");
   }
-  for (const name of ["Sciabola", "Cimeterre", "Cimitarra", "Krummsäbel", "Curved blade"]) {
+  for (const name of ["Sciabola", "Cimitarra", "Krummsäbel", "Curved blade"]) {
     await freshFight();
     const [enemy] = world.enemies();
     kit.place(enemy.id, 3, 2);

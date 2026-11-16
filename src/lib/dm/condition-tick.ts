@@ -22,9 +22,11 @@ import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
 import { rollCharacterSave, rollEnemySave } from "@/lib/dm/forced-save";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
+import { endPetTurnStartHolds, tickPetConditions } from "@/lib/dm/pet-conditions";
 import {
   ROUNDS_PER_MINUTE,
   effectiveMaxHp,
+  endInstancesBoundTo,
   incapacitatedBy,
   instanceIdentity,
   instancesOf,
@@ -55,7 +57,9 @@ import { CASTING, castingOf } from "@/lib/dm/long-casting-logic";
 import { sweepSummons } from "@/lib/dm/summon-store";
 import { textKey } from "@/lib/language/text-logic";
 import { isConditionNamed } from "@/lib/srd/feature-names";
-import { listedAgainst } from "@/lib/dm/roll-about";
+import { listedAgainst, saveAgainst } from "@/lib/dm/roll-about";
+import { spellSchoolFor } from "@/lib/content";
+import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 import { withinFeet } from "@/lib/dm/authored-saves";
@@ -240,6 +244,8 @@ export function endTurnBoundAtFightEnd(campaign: Campaign): void {
       delta: { ended: tick.expired, added: [] },
     });
   }
+  // The pets' too, which wait on their owners' turns (pet-conditions.ts).
+  tickPetConditions(campaign, 0, [], { endTurnBound: true, saves: () => false });
 }
 
 // The rounds a creature stays senseless from now: none awake, its
@@ -390,6 +396,7 @@ export function endTurnStartHolds(campaign: Campaign, encounterId: string, start
       delta: { ended: ending, added: [] },
     });
   }
+  endPetTurnStartHolds(campaign, starting);
   return enemiesChanged;
 }
 
@@ -611,7 +618,7 @@ function tickEnemyConditions(campaign: Campaign, encounter: Encounter, by: numbe
         due.ability,
         due.dc,
         {
-          magical: Boolean(instance.spell),
+          magical: Boolean(instance.spell) || instance.magical === true,
           // A creature with Legendary Resistance spends one to end what binds
           // it, as it would against the first save (src/lib/dm/legendary-tools.ts).
           resist: true,
@@ -729,7 +736,8 @@ function tickSheetConditions(
       }
       // A hold that lets the character pick its save (Nature's Wrath).
       const due = listed.or ? { ...listed, ability: likelierSave(conditions, listed.ability, listed.or, listed.dc, (each) => computeSheetDerived(sheet).saves[each]) } : listed;
-      if (heldClose(options?.encounter, sheet.id, instancesOf((meta as ConditionMetaMap)[due.name]).find((instance) => instanceIdentity(instance) === due.key && instance.saveEnds?.dc === due.dc))) {
+      const holding = instancesOf((meta as ConditionMetaMap)[due.name]).find((instance) => instanceIdentity(instance) === due.key && instance.saveEnds?.dc === due.dc);
+      if (heldClose(options?.encounter, sheet.id, holding)) {
         continue;
       }
       const effect = effectOf(listed);
@@ -748,6 +756,13 @@ function tickSheetConditions(
       // die, a halfling's Lucky, and the traits keyed to what it resists
       // (Brave against fear, Fey Ancestry against charm).
       const heldBefore = new Set(getSheetById(sheet.id)?.conditions ?? sheet.conditions);
+      // A spell's hold is a save against that spell, as its first save was
+      // (cast-at-player.ts): Gnome Cunning, Magic Resistance and a Mantle of
+      // Spell Resistance answer it, and so do the traits keyed to the
+      // caster's type and the spell's school. An enemy's repeat save was
+      // told so; a character's was not, so those traits helped with the
+      // first save against Hold Person and none after (finding K06).
+      const forcer = forcerOf(due.key);
       const save = rollCharacterSave(
         campaign,
         null,
@@ -755,9 +770,11 @@ function tickSheetConditions(
         due.ability,
         due.dc,
         `${due.ability.toUpperCase()} save to end ${due.name}`,
-        { against: listedAgainst(due.name) },
+        holding?.spell
+          ? saveAgainst({ condition: due.name, magical: true, spellBy: forcer?.stats?.type, school: spellSchoolFor(holding.spell, spellAuthorsFor(campaign)) })
+          : { against: listedAgainst(due.name) },
         // The creature whose effect it is (its source), which forced it.
-        forcerOf(due.key),
+        forcer,
       );
       // A carrier the save spent (an inspiration die) is gone from the
       // stored sheet; the conditions this tick writes back must not restore it.
@@ -833,6 +850,16 @@ function tickSheetConditions(
       lines.push(finished);
     }
   }
+  // The pets beside them, whose turn is their owner's (pet-conditions.ts):
+  // the same counts, and their saves as their owner's turn ends. Before, a
+  // condition on a pet had no clock at all.
+  tickPetConditions(campaign, by, lines, {
+    endTurnBound: options?.endTurnBound,
+    counts: options?.counts,
+    saves: options?.saves,
+    only: options?.only,
+    due: options?.due ? (ownerId, name, key, dc) => options.due!(ownerId, holdKey(ownerId, name, key, dc)) : undefined,
+  });
 }
 
 // These combatants' turns have ended: each makes the saves its save-ends
@@ -867,34 +894,6 @@ export function endTurnSaves(
     });
     noteAtTable(campaign.id, lines);
   }
-}
-
-// The instances that end because these combatants' turns are starting
-// (Dodge, Shield, the Protection style: untilTurnOf). A condition another
-// source still holds stays.
-function endInstancesBoundTo(
-  conditions: string[],
-  meta: ConditionMetaMap,
-  starting: Set<string>,
-): { conditions: string[]; meta: ConditionMetaMap; ended: string[]; changed: boolean } {
-  let nextConditions = conditions;
-  let nextMeta = meta;
-  const ended: string[] = [];
-  let changed = false;
-  for (const name of conditions) {
-    const result = removeConditionInstances(nextConditions, nextMeta, name, (instance) =>
-      Boolean(instance.untilTurnOf && starting.has(instance.untilTurnOf)),
-    );
-    if (result.removed) {
-      changed = true;
-      nextConditions = result.conditions;
-      nextMeta = result.meta;
-      if (result.ended) {
-        ended.push(name);
-      }
-    }
-  }
-  return { conditions: nextConditions, meta: nextMeta, ended, changed };
 }
 
 function noteAtTable(campaignId: string, lines: string[]) {

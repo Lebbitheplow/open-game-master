@@ -27,6 +27,7 @@ const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
 const { describeSheet } = await import("../src/lib/dm/prompt.ts");
 const { heldCheckTraits } = await import("../src/lib/srd/check-traits.ts");
 const { heldFeatChecks } = await import("../src/lib/srd/feat-combat.ts");
+const { itemCheckKeys } = await import("../src/lib/srd/item-check-riders.ts");
 const { authoredRows } = await import("../src/lib/srd/authored-effects.ts");
 const { GENRE_AUTHORED } = await import("../src/lib/srd/authored-effects-genre.ts");
 
@@ -178,7 +179,9 @@ await test("Every circumstance a check can be about is read by a trait's key, so
     features: ["Favored Enemy (undead)", "Stonecunning", "Artificer's Lore", "Stone Camouflage", "Expert Forgery"].map((name) => ({ name, source: "race" })),
     feats: ["Actor", "Stalker", "Forest Denizen", "Floriographer", "Surgical Combatant", "Monster Hunter", "Crafting Expert", "Ace Driver"],
   };
-  const read = new Set([...heldCheckTraits(everything), ...heldFeatChecks(everything)].map((key) => key.about));
+  // A worn item's key too (Gloves of Thievery on a lock: item-check-riders.ts).
+  const worn = [{ name: "Gloves of Thievery", qty: 1, equipped: true }];
+  const read = new Set([...heldCheckTraits(everything), ...heldFeatChecks(everything), ...itemCheckKeys(worn)].map((key) => key.about));
   // The genre classes' rows are trait keys too (Ear to the Ground, Blackmail
   // Files): authoredRows() holds the SRD subclasses' alone.
   for (const row of [...authoredRows(), ...GENRE_AUTHORED]) {

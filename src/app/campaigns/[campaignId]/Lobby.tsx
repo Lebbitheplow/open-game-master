@@ -1,5 +1,7 @@
 "use client";
 
+import { ThemeOrnaments } from "@/components/ThemeOrnaments";
+
 import Link from "next/link";
 import { appConfirm } from "@/components/ui/ConfirmDialog";
 import { ArrowLeft, Play } from "lucide-react";
@@ -33,6 +35,9 @@ import type { CampaignState } from "@/app/campaigns/[campaignId]/useCampaignStre
 import { navigateTo } from "@/lib/navigation";
 import { SceneBackdrop } from "@/app/campaigns/[campaignId]/CinematicParts";
 import { ArrivalBanner } from "@/app/campaigns/[campaignId]/ArrivalBanner";
+import { EmbeddingLanguageNotice } from "@/app/campaigns/[campaignId]/EmbeddingLanguageBanner";
+import { revealSettingsRow } from "@/app/campaigns/[campaignId]/reveal-settings-row";
+import { seesEmbeddingWarning } from "@/lib/embedding-language-logic";
 import { StorySetupNotice } from "@/components/StorySetupNotice";
 import {
   STORY_SETUP_WARNING,
@@ -495,12 +500,13 @@ export function Lobby({
         </Link>
       )}
 
-      <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-start lg:gap-x-8">
-        <div className="contents lg:flex lg:min-w-0 lg:flex-col">
+      <div className="theme-lobby-shell lobby-layout flex flex-col lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-start lg:gap-x-8">
+        <ThemeOrnaments surface="lobby" />
+        <div className="lobby-primary contents lg:flex lg:min-w-0 lg:flex-col">
           {/* A player taking a seat, for everyone here (F27): the banner
               rides on the lobby card's art, so it never covers another
               card's words. */}
-          <div className="relative order-1">
+          <div className="lobby-hero-slot relative order-1">
             <LobbyHero
               campaign={campaign}
               eyebrow={prep ? "The adventure is under way" : undefined}
@@ -511,6 +517,16 @@ export function Lobby({
             />
             <ArrivalBanner sheets={sheets} />
           </div>
+
+          {/* A table in a language this server's embedding model cannot
+              read, said to whoever can fix it before play starts. */}
+          {seesEmbeddingWarning({ steersStory, isAdmin: Boolean(me.isAdmin) }) ? (
+            <EmbeddingLanguageNotice
+              language={campaign.gameSettings.tableLanguage}
+              className="order-1"
+              onChangeLanguage={steersStory ? () => revealSettingsRow("table-language") : undefined}
+            />
+          ) : null}
 
           {!isSolo || showCompanions ? (
             <LobbyParty
@@ -539,7 +555,7 @@ export function Lobby({
             />
           ) : null}
 
-          <div className={cn("lobby-enter order-4", prep ? "mb-4" : "mb-8")} style={enter(3)}>
+          <div className={cn("lobby-actions lobby-enter order-4", prep ? "mb-4" : "mb-8")} style={enter(3)}>
             {campaign.gameSettings.multiCharacter !== "off" && mySheets.length > 1 ? (
               <div className="mb-3 flex flex-wrap justify-center gap-2" aria-label="Your characters">
                 {mySheets.map((sheet) => (
@@ -643,7 +659,7 @@ export function Lobby({
           </section>
         </div>
 
-        <div className="contents lg:flex lg:min-w-0 lg:flex-col">
+        <div className="lobby-secondary contents lg:flex lg:min-w-0 lg:flex-col">
           {showRoomCode ? (
             <LobbyRoomCode
               campaignId={campaign.id}

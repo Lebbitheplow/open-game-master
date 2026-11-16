@@ -137,7 +137,7 @@ export default function EquipmentSection({
                   className="py-1 hover:text-amber-100 pointer-coarse:min-h-10"
                 >
                   + {itemLabel(entry.name)}
-                  <span className="ml-1 text-amber-200/50">{entry.note}</span>
+                  <span className="ml-1 text-stone-400">{entry.note}</span>
                 </button>
                 <InfoButton
                   label={entry.name}

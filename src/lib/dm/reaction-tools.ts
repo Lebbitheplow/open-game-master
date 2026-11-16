@@ -342,6 +342,9 @@ function cuttingWords(ctx: Ctx): ToolResult {
     applied: missed
       ? `${record.attacker.name}'s roll falls from ${swing.total} to ${swing.total - die} against AC ${swing.vsAc}: the hit on ${target.name} becomes a miss, and ${settled.given} hit points come back. HP ${settled.hp}.`
       : `The roll still hits, so the die comes off the damage: ${settled.given} hit points come back to ${target.name}. HP ${settled.hp}.`,
+    // What the correction undid beyond hit points: the flame or frost a miss
+    // never set off, concentration kept (reaction-refund.ts).
+    ...(settled.notes.length ? { notes: settled.notes } : {}),
   };
 }
 

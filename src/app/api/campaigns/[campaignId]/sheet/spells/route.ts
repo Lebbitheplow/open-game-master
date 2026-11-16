@@ -11,6 +11,7 @@ import type { FullPatchSheetInput } from "@/lib/schemas/sheet";
 import {
   casterViewsOf,
   changePreparation,
+  countingScores,
   maxSpellLevelOf,
   spellOnCasterList,
   withCasterViews,
@@ -110,7 +111,8 @@ async function changeSpell(
 
   const authors = spellAuthorsFor(context.campaign);
   const result = changePreparation(view, action, spell, {
-    abilities: sheet.abilities,
+    // A worn Headband of Intellect's 19 counts (spell-prep.ts countingScores).
+    abilities: countingScores(sheet),
     inClassList,
     onList: (name) => {
       const facts = spellFactsFor(name, authors);

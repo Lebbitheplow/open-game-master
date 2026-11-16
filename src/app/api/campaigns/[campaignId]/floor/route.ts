@@ -4,7 +4,7 @@ import { refuseDuringBreak } from "@/lib/dm/table-break";
 import { getFloor, setFloor, type Floor } from "@/lib/db/campaigns";
 import { listSheets } from "@/lib/db/sheets";
 import { heroFell } from "@/lib/characters/fallen-logic";
-import { fightOwnsFloor, floorAfterRelease, skipCurrentTurn } from "@/lib/dm/encounter-tools";
+import { fightHoldsFloor, floorAfterRelease, skipCurrentTurn } from "@/lib/dm/encounter-tools";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { handOnFromBanner } from "@/lib/dm/invoke";
 import { keepRollsLeftBehind } from "@/lib/dm/pending-roll-land";
@@ -71,7 +71,7 @@ export async function POST(
     // Initiative is the encounter's to own; nothing sets the floor into or
     // out of it but the combat engine. That includes a hold that opens back
     // into it, which "open floor" used to discard.
-    if (fightOwnsFloor(campaignId)) {
+    if (fightHoldsFloor(campaignId)) {
       return Response.json(
         { error: "The initiative order owns the floor while a fight is running." },
         { status: 409 },

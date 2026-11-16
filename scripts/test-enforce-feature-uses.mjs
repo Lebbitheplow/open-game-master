@@ -406,6 +406,8 @@ await test("F:M17: Dark One's Blessing gives temporary hit points on a kill, and
   await kit.endFight();
   assert.equal(swing.ok, true, swing.error);
   assert.equal(tempHp, abilityMod(16) + 10);
+  // The type is chosen as a rest ends (SRD 5.1, Fiendish Resilience).
+  await world.invoke("take_rest", { kind: "short" });
   const chosen = await world.invoke("use_resource", { characterId: fiend.id, resource: "Fiendish Resilience", variant: "fire" });
   assert.equal(chosen.ok, true, chosen.error);
   fresh(fiend.id, { currentHp: 60 });

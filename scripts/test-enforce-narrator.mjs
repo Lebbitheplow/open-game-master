@@ -373,7 +373,11 @@ await test("The monster rules match the monster engine: apply_damage on an enemy
   for (const source of ["hazard", "environment"]) {
     assert.ok(sources.includes(source), `apply_damage does not take source ${source}`);
   }
-  assert.match(text, /an enemy that falls takes it with fallFeet instead of an amount/);
+  // An enemy in a trap, a fall or a hazard of the GM's own goes through
+  // apply_hazard's enemyIds, which rolls its save from its block (audit
+  // 2026-11-15, N10); apply_damage's fallFeet stays for a fall by itself.
+  assert.match(text, /an enemy caught in a trap, a fall or a hazard of your own goes in enemyIds/);
+  assert.ok(offeredTool("apply_hazard").parameters.properties.enemyIds, "apply_hazard takes no enemyIds");
   assert.ok(offeredTool("apply_damage").parameters.properties.fallFeet, "apply_damage takes no fallFeet");
   assert.match(text, /Pass casterEnemyId with enemyAbility or spell by the name its block uses/);
   assert.match(text, /a Recharge ability is refused until it recharges/);

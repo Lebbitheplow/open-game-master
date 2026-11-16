@@ -23,6 +23,9 @@ import { holdsFeat } from "@/lib/srd/feat-effects";
 import { genreEscapeAdvantage, genreGripDisadvantage } from "@/lib/srd/genre-b-combat";
 import { characterNetEscape, enemyNetEscape, netHolds } from "@/lib/dm/net-hold";
 import { characterTrapEscape, trapHoldOn } from "@/lib/dm/trap-escape";
+import { enemyTrapEscape } from "@/lib/dm/enemy-trap";
+import { characterManaclesEscape, enemyManaclesEscape, manaclesHold } from "@/lib/dm/manacles";
+import { characterHoldEscape, enemyHoldEscape, holdOn } from "@/lib/dm/creature-hold";
 import { characterExtinguish, enemyBurning, enemyExtinguish, sheetBurning } from "@/lib/dm/gear-weapon-hit";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
@@ -92,6 +95,8 @@ export function characterEscape(
   turn: DmTurn,
   sheet: CharacterSheet,
   spend: () => void,
+  // Manacles' escape: "dex" slips them, "str" breaks them (manacles.ts).
+  ability?: string,
 ): ToolResult {
   const held = sheet.conditions.some((entry) => entry.toLowerCase() === GRAPPLED)
     ? grappleOf(sheet.conditionMeta as ConditionMetaMap)
@@ -99,10 +104,15 @@ export function characterEscape(
   if (!held) {
     // A spell's hold (Entangle, Web): src/lib/dm/spell-escape.ts. A trap's
     // (a falling net): src/lib/dm/trap-escape.ts.
-    return characterSpellHold(campaign, sheet)
+    // A creature's hold (a giant spider's webbing): creature-hold.ts.
+    return holdOn(sheet)
+      ? characterHoldEscape(campaign, turn, sheet, spend)
+      : characterSpellHold(campaign, sheet)
       ? characterSpellEscape(campaign, turn, sheet, spend)
       : netHolds(sheet)
         ? characterNetEscape(campaign, turn, sheet, spend)
+        : manaclesHold(sheet)
+        ? characterManaclesEscape(campaign, turn, sheet, ability, spend)
         : trapHoldOn(campaign, sheet)
         ? characterTrapEscape(campaign, turn, sheet, spend)
         // Alchemist's fire: the action's DC 10 Dexterity check puts it out.
@@ -189,6 +199,7 @@ export function enemyEscape(
   campaign: Campaign,
   turn: DmTurn,
   enemyRef: string,
+  ability?: string,
 ): ToolResult {
   const encounter = getActiveEncounter(campaign.id);
   if (!encounter) {
@@ -211,12 +222,20 @@ export function enemyEscape(
       saveEncounter(encounter);
       return enemyExtinguish(campaign, turn, enemy);
     }
-    // A net's hold (net-hold.ts): the action and a DC 10 Strength check.
-    return enemySpellHold(campaign, enemy)
+    // A net's hold (net-hold.ts): the action and a DC 10 Strength check. A
+    // trap's (a hunting trap's jaws): the trap's own check (enemy-trap.ts).
+    // A creature's hold (a giant spider's webbing): creature-hold.ts.
+    return holdOn(enemy)
+      ? enemyHoldEscape(campaign, turn, enemy)
+      : enemySpellHold(campaign, enemy)
       ? enemySpellEscape(campaign, turn, enemy)
       : netHolds(enemy)
         ? enemyNetEscape(campaign, turn, enemy)
-        : { error: `${enemy.displayName} is not grappled; there is nothing to escape.`, retry: true };
+        : manaclesHold(enemy)
+        ? enemyManaclesEscape(campaign, turn, enemy, ability)
+        : trapHoldOn(campaign, enemy)
+          ? enemyTrapEscape(campaign, turn, enemy)
+          : { error: `${enemy.displayName} is not grappled; there is nothing to escape.`, retry: true };
   }
   const allowed = canEnemyAct({ enemy, encounter, kind: "action" });
   if (!allowed.ok) {

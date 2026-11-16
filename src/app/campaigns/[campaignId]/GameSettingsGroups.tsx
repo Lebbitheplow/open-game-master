@@ -3,6 +3,7 @@
 import { STAGES, isStageEnabled } from "@/lib/dm/stages";
 import { DELEGATIONS, DELEGATION_HINTS, DELEGATION_LABELS } from "@/lib/dm/delegation";
 import { Select } from "@/components/ui/Select";
+import { LanguageSelect } from "@/components/LanguageSelect";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { InfoButton } from "@/components/ui/InfoDialog";
 import { SettingToggle, panelField } from "./PanelKit";
@@ -11,11 +12,14 @@ import { GENRE_PRESETS, type GenrePreset } from "@/lib/genres";
 import type { WorldPackSummary } from "@/lib/worlds/types";
 import { WorldPackGallery } from "@/components/WorldPackGallery";
 import { NarratorLanguageNote, VoicePicker } from "@/components/VoicePicker";
+import { EmbeddingLanguageLine } from "@/components/EmbeddingLanguageLine";
 import { NarrationNote } from "@/app/campaigns/[campaignId]/NarrationNote";
 import { CharacterVoices } from "@/app/campaigns/[campaignId]/CharacterVoices";
 import { VoicePreviewButton } from "@/components/VoicePreviewButton";
 import { SafetyToneFields } from "@/components/SafetyToneFields";
 import type { GameSettings } from "@/lib/schemas/game-settings";
+import { APPEARANCE_THEMES, type CampaignAppearance } from "@/lib/appearance-themes";
+import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 import { REROLL_LOW_DEFAULT, rerollBelowFor, rerollChoiceOf, type RerollChoice } from "@/lib/srd/ability-rerolls";
 import {
   CAMPAIGN_LENGTH_LABELS,
@@ -27,13 +31,10 @@ import {
   HP_METHODS,
   STARTING_WEALTH,
   TABLE_LANGUAGE_HELP,
-  TABLE_LANGUAGE_LABELS,
-  TABLE_LANGUAGES,
   type CampaignLengthSetting,
   type ConscienceSetting,
   type DicePolicy,
   type Genre,
-  type TableLanguage,
 } from "@/lib/schemas/game-settings-options";
 import { alliesShown, conscienceShown } from "@/app/campaigns/[campaignId]/table-settings-groups";
 import { NarrationStyleRows } from "@/app/campaigns/[campaignId]/NarrationStyleRows";
@@ -141,18 +142,18 @@ export function WorldGroup({
           />
         </div>
       ) : null}
-      <div className="flex flex-wrap items-center gap-2">
+      <div data-settings-row="table-language" className="flex flex-wrap items-center gap-2">
         <span className="pk-rowlabel">Language</span>
-        <Select<TableLanguage>
+        <LanguageSelect
           size="sm"
           label="Table language"
           value={settings.tableLanguage}
           onChange={(tableLanguage) => patch({ tableLanguage })}
-          options={TABLE_LANGUAGES.map((value) => ({ value, label: TABLE_LANGUAGE_LABELS[value] }))}
           className={selectClass}
         />
         <span className="text-stone-500">{TABLE_LANGUAGE_HELP}</span>
       </div>
+      <EmbeddingLanguageLine languages={[settings.tableLanguage]} />
       {aiNarrates ? (
         <div className="reveal flex flex-wrap items-center gap-2">
           <span className="pk-rowlabel">Length</span>
@@ -301,8 +302,21 @@ export function AtmosphereGroup({
   ambienceInstalled: boolean;
   ambienceCounts: Record<"bed" | "music" | "sting", { installed: number; total: number }> | null;
 }) {
+  const capabilities = useCapabilities();
   return (
     <>
+      {hostOffers(capabilities, "appearanceThemes") ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="pk-rowlabel">Visual theme</span>
+          <Select<CampaignAppearance>
+            value={settings.appearanceTheme ?? "genre"}
+            onChange={(appearanceTheme) => patch({ appearanceTheme })}
+            options={[{ value: "genre", label: "Follow genre" }, ...APPEARANCE_THEMES.map((theme) => ({ value: theme.id, label: theme.name }))]}
+            label="Campaign visual theme"
+          />
+          <span className="text-stone-500">Sets the table’s appearance. Each player keeps their own brightness and can choose a personal theme.</span>
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-center gap-2">
         <span className="pk-rowlabel">Maps</span>
         <SettingToggle on={settings.mapsEnabled} onToggle={() => patch({ mapsEnabled: !settings.mapsEnabled })}>

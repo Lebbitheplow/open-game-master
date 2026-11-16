@@ -591,7 +591,7 @@
         },
         "downloads": {
           "default": [],
-          "maxItems": 20,
+          "maxItems": 60,
           "type": "array",
           "items": {
             "type": "object",
@@ -608,6 +608,26 @@
               "sha256": {
                 "type": "string",
                 "pattern": "^[a-f0-9]{64}$"
+              },
+              "github": {
+                "type": "object",
+                "properties": {
+                  "repo": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_.-]{1,100}\\/[A-Za-z0-9_.-]{1,100}$"
+                  },
+                  "path": {
+                    "default": "",
+                    "type": "string",
+                    "maxLength": 200,
+                    "pattern": "^(?:[A-Za-z0-9_.-]+(?:\\/[A-Za-z0-9_.-]+)*)?$"
+                  },
+                  "commit": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{40}$"
+                  }
+                },
+                "additionalProperties": false
               },
               "bytes": {
                 "type": "integer",
@@ -685,12 +705,14 @@
                   "setting",
                   "equals"
                 ]
+              },
+              "part": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_]{0,39}$"
               }
             },
             "required": [
               "id",
-              "url",
-              "sha256",
               "bytes",
               "to"
             ]
@@ -739,6 +761,64 @@
       "items": {
         "type": "string",
         "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+      }
+    },
+    "modifies": {
+      "default": [],
+      "maxItems": 12,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "what": {
+            "type": "string",
+            "maxLength": 80,
+            "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\\/[a-z][a-z0-9]*(?:-[a-z0-9]+)*)?$"
+          },
+          "how": {
+            "type": "string",
+            "enum": [
+              "replace",
+              "add"
+            ]
+          }
+        },
+        "required": [
+          "what",
+          "how"
+        ]
+      }
+    },
+    "parts": {
+      "default": [],
+      "maxItems": 30,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]{0,39}$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "description": {
+            "default": "",
+            "type": "string",
+            "maxLength": 300
+          },
+          "default": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ]
       }
     },
     "contributes": {

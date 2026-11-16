@@ -8,6 +8,7 @@
 import { gearDefOfRow, type ChargeRule } from "@/lib/srd/magic-gear";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
 import { beadCount, beadsOf } from "@/lib/srd/prayer-beads";
+import { textKey } from "@/lib/language/text-logic";
 
 // The charge rule of a carried row, or null for an item with no charges.
 // A workshop item's own rule rides on its line (gearDefOfRow); a row with no
@@ -62,19 +63,109 @@ export function chargesLeft(item: Pick<EquipmentItem, "charges">, rule: ChargeRu
 
 // Why this use cannot be paid, or null: the words use_item refuses with and the
 // card greys with. A count still to be rolled (a Necklace of Fireballs' first use)
-// and a Wind Fan, which may be used past its last charge at a risk, are not short.
+// and a Wind Fan or a Ring of X-ray Vision, which may be used past the last at a
+// risk, are not short.
 export function chargesShort(item: Pick<EquipmentItem, "name" | "charges">, rule: ChargeRule, count: number, rolled?: number): string | null {
   if (typeof item.charges !== "number" && typeof rule.max === "string" && rolled === undefined) {
     return null;
   }
   const left = chargesLeft(item, rule, rolled);
-  if (count <= left || (rule.overuseRisk && left === 0)) {
+  if (count <= left || ((rule.overuseRisk || rule.overuseSave) && left === 0)) {
     return null;
   }
-  const regains = rule.regain
-    ? rule.regain === "all"
-      ? `It regains all its charges at ${rule.regainAtDusk ? "dusk" : "dawn"}.`
-      : `It regains ${rule.regain} charges at ${rule.regainAtDusk ? "dusk" : "dawn"}.`
-    : "It does not regain charges.";
-  return `${item.name} has ${left} charge${left === 1 ? "" : "s"} left and this use needs ${count}. ${regains}`;
+  return `${item.name} has ${chargeNoun(rule, left)} left and this use needs ${count}. ${regainSentence(rule)}`;
+}
+
+// A count in the rule's own unit: "3 charges", "1 minute", "0 uses".
+export function chargeNoun(rule: Pick<ChargeRule, "unit">, count: number): string {
+  const unit = rule.unit ?? "charge";
+  return `${count} ${unit}${count === 1 ? "" : "s"}`;
+}
+
+// When the count comes back, said on its refusal and its use's note.
+export function regainWhen(rule: ChargeRule): string | null {
+  if (rule.regainDays) {
+    return `${rule.regainDays} days after the last is spent`;
+  }
+  if (rule.regainHours) {
+    return `${rule.regainHours} hour${rule.regainHours === 1 ? "" : "s"} after the last is spent`;
+  }
+  if (!rule.regain) {
+    return null;
+  }
+  return rule.regainOn === "long_rest" ? "when its owner finishes a long rest" : `at ${rule.regainAtDusk ? "dusk" : "dawn"}`;
+}
+
+// When an item's charges come back, for its refusal: at dawn (or dusk), at
+// a long rest, days after it empties, or never.
+export function regainSentence(rule: ChargeRule): string {
+  const units = `${rule.unit ?? "charge"}s`;
+  const when = regainWhen(rule);
+  if (!when) {
+    return `It does not regain ${units}.`;
+  }
+  return rule.regain && rule.regain !== "all" ? `It regains ${rule.regain} ${units} ${when}.` : `It regains all its ${units} ${when}.`;
+}
+
+// The properties of an item that each keep a count of their own (SRD 5.1,
+// Staff of Thunder and Lightning: "When one of these properties is used, it
+// can't be used again until the next dawn"), or null.
+export function itemPowersOf(item: Pick<EquipmentItem, "name" | "slug" | "gear">): Record<string, ChargeRule> | null {
+  return gearDefOfRow(item)?.powers ?? null;
+}
+
+// The property a name names, as the SRD heads it ("thunderclap" is the
+// staff's Thunderclap), or null.
+export function powerNamed(item: Pick<EquipmentItem, "name" | "slug" | "gear">, name: string | undefined): { name: string; rule: ChargeRule } | null {
+  const powers = itemPowersOf(item);
+  const key = textKey(name ?? "");
+  const found = powers && key ? Object.keys(powers).find((power) => textKey(power) === key) : undefined;
+  return powers && found ? { name: found, rule: powers[found] } : null;
+}
+
+// The row as one property's count reads it, so chargesLeft, chargesShort and
+// spendChargesMath take it as they take a charged row.
+export function powerView(item: Pick<EquipmentItem, "name" | "powerCharges">, power: string): Pick<EquipmentItem, "name" | "charges"> {
+  const left = item.powerCharges?.[power];
+  return { name: `${item.name}'s ${power}`, ...(typeof left === "number" ? { charges: left } : {}) };
+}
+
+// The properties' counts a dawn (or a long rest) gives back: each property
+// whose count returns then is whole again. The row as it was when none do.
+export function powersRefilled<T extends Pick<EquipmentItem, "name" | "slug" | "gear" | "powerCharges">>(item: T, at: "dawn" | "long_rest"): T {
+  const powers = itemPowersOf(item);
+  if (!powers || !item.powerCharges) {
+    return item;
+  }
+  const kept = Object.fromEntries(
+    Object.entries(item.powerCharges).filter(([power]) => {
+      const rule = powers[power];
+      return !rule?.regain || (rule.regainOn === "long_rest") !== (at === "long_rest");
+    }),
+  );
+  if (Object.keys(kept).length === Object.keys(item.powerCharges).length) {
+    return item;
+  }
+  const { powerCharges: _was, ...rest } = item;
+  void _was;
+  return (Object.keys(kept).length ? { ...rest, powerCharges: kept } : rest) as T;
+}
+
+// The pack after a long rest: what returns "when you finish a long rest"
+// (Boots of Speed's ten minutes) is whole again. Null when nothing changed.
+export function rechargeAtLongRest(equipment: readonly EquipmentItem[] | undefined): EquipmentItem[] | null {
+  if (!equipment?.length) {
+    return null;
+  }
+  let changed = false;
+  const out = equipment.map((row) => {
+    const item = powersRefilled(row, "long_rest");
+    const rule = chargeRuleOf(item);
+    const whole = rule?.regainOn === "long_rest" && typeof item.charges === "number" && item.charges < chargeMax(rule) ? { ...item, charges: chargeMax(rule) } : item;
+    if (whole !== row) {
+      changed = true;
+    }
+    return whole;
+  });
+  return changed ? out : null;
 }

@@ -43,6 +43,7 @@ const PINNED = new Map([
   ["onnx/encoder_model_quantized.onnx", "the built-in Whisper's encoder file"],
   ["onnx/decoder_model_merged_quantized.onnx", "the built-in Whisper's decoder file"],
   ["Xenova/all-MiniLM-L6-v2", "the CPU embedding model retrieval runs on (src/lib/embeddings.ts)"],
+  ["Xenova/multilingual-e5-small", "the multilingual embedding model the warning tells a table in another language to set (src/lib/embedding-language-text.ts, docs/install.md)"],
 ]);
 
 // Folders whose names are all such dependencies.

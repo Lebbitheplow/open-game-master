@@ -68,7 +68,7 @@ export function DeleteAccountDialog({
             type="button"
             onClick={onConfirm}
             disabled={!ready || deleting}
-            className={cn(ui.btnPrimary, "from-red-200 via-red-300 to-red-500 text-red-950")}
+            className={cn(ui.btnPrimary, "theme-key-danger from-red-200 via-red-300 to-red-500 text-red-950")}
           >
             {deleting ? <Loader2 className="size-4 animate-spin" /> : null}
             {graceDays === 0 ? "Delete forever" : "Delete my account"}

@@ -11,6 +11,7 @@ import { DAMAGE_TYPES } from "@/app/workshop/homebrew/types";
 import { MechGroup, list, num, sub, type Mech } from "@/app/workshop/homebrew/MechGroup";
 import { addChip, rowIcon } from "@/app/workshop/kit";
 import { textKey } from "@/lib/language/text-logic";
+import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 
 // The rest of a magic item's magic, in the words the engines read the SRD's
 // by (src/lib/homebrew/item-magic-schema.ts): what a magic weapon adds to a
@@ -22,6 +23,11 @@ type Props = { data: Mech; set: (patch: Mech) => void };
 
 const CREATURE_WORDS = CREATURE_TYPES.map((type) => type as string);
 const SKILL_LABELS = Object.fromEntries(SKILL_IDS.map((id) => [id, id.replace(/_/g, " ")])) as Record<(typeof SKILL_IDS)[number], string>;
+// One more check a bonus can ride beside the skills: a Dexterity check to
+// pick a lock (SRD 5.1, Gloves of Thievery), kept as the item's lockBonus.
+const LOCKS = "locks";
+const CHECK_TARGETS = [...SKILL_IDS, LOCKS] as const;
+const CHECK_LABELS: Record<(typeof CHECK_TARGETS)[number], string> = { ...SKILL_LABELS, [LOCKS]: "picking locks" };
 const RIDER_TYPES = [{ value: "weapon", label: "the weapon's own" }, ...DAMAGE_TYPES.map((value) => ({ value, label: value }))];
 const optional = (value: number | ""): number | undefined => (value === "" || value === 0 ? undefined : value);
 const clean = (value: Mech): Mech | undefined => {
@@ -158,16 +164,33 @@ export function ChecksBlock({ data, set }: Props) {
   const skillBonus = sub(checks.skillBonus) as Record<string, number>;
   const put = (patch: Mech) => set({ checks: clean({ ...checks, ...patch }) });
   const bonused = Object.keys(skillBonus);
+  const locks = typeof checks.lockBonus === "number";
+  // The app's workshop can open a host from before the lock pick, whose item
+  // schema drops lockBonus unread: the chip is offered only where it keeps.
+  const offersLocks = hostOffers(useCapabilities(), "itemLockBonus");
   return (
-    <MechGroup title="What it adds to checks" summary={[num(checks.bonus) ? `+${num(checks.bonus)} to every check` : "", ...bonused.map((skill) => `+${skillBonus[skill]} ${skill.replace(/_/g, " ")}`), list(checks.advantage).length ? `advantage on ${list(checks.advantage).join(", ").replace(/_/g, " ")}` : ""].filter(Boolean).join(", ") || "nothing"} open={Object.keys(checks).length > 0}>
+    <MechGroup title="What it adds to checks" summary={[num(checks.bonus) ? `+${num(checks.bonus)} to every check` : "", ...bonused.map((skill) => `+${skillBonus[skill]} ${skill.replace(/_/g, " ")}`), locks ? `+${num(checks.lockBonus)} picking locks` : "", list(checks.advantage).length ? `advantage on ${list(checks.advantage).join(", ").replace(/_/g, " ")}` : ""].filter(Boolean).join(", ") || "nothing"} open={Object.keys(checks).length > 0}>
       <NumberField label="Every ability check" value={num(checks.bonus)} min={-5} max={5} onChange={(bonus) => put({ bonus: optional(bonus) })} />
       <div className="col-span-2 sm:col-span-4">
-        <span className="text-[11px] text-stone-400">A bonus to these skills</span>
-        <ToggleChips options={SKILL_IDS} labels={SKILL_LABELS} selected={bonused} onChange={(next) => put({ skillBonus: clean(Object.fromEntries(next.map((skill) => [skill, skillBonus[skill] ?? 2]))) })} />
+        <span className="text-[11px] text-stone-400">A bonus to these checks</span>
+        <ToggleChips
+          options={offersLocks ? CHECK_TARGETS : SKILL_IDS}
+          labels={CHECK_LABELS}
+          selected={locks ? [...bonused, LOCKS] : bonused}
+          onChange={(next) =>
+            put({
+              skillBonus: clean(Object.fromEntries(next.filter((skill) => skill !== LOCKS).map((skill) => [skill, skillBonus[skill] ?? 2]))),
+              lockBonus: next.includes(LOCKS) ? (locks ? num(checks.lockBonus) : 2) : undefined,
+            })
+          }
+        />
       </div>
       {bonused.map((skill) => (
         <NumberField key={skill} label={skill.replace(/_/g, " ")} value={skillBonus[skill]} min={-10} max={10} onChange={(value) => put({ skillBonus: clean({ ...skillBonus, [skill]: value === "" ? undefined : value }) })} />
       ))}
+      {locks ? (
+        <NumberField label="picking locks" value={num(checks.lockBonus)} min={-10} max={10} onChange={(value) => put({ lockBonus: value === "" ? undefined : value })} hint="A Dexterity check to pick a lock, with thieves' tools or without." />
+      ) : null}
       <div className="col-span-2 sm:col-span-4">
         <span className="text-[11px] text-stone-400">Advantage on</span>
         <ToggleChips options={SKILL_IDS} labels={SKILL_LABELS} selected={list(checks.advantage)} onChange={(next) => put({ advantage: next.length ? next : undefined })} />
