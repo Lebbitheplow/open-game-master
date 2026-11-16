@@ -213,4 +213,18 @@ await test("V08: GAME STATE names the spell a hero with no spellcasting block is
   assert.match(told, /Concentrating on: Darkness/, told.split("\n").filter((line) => /spell|Spell/.test(line)).join(" / "));
 });
 
+// V09. SRD 5.1, Exhaustion: "6: Death." The level's line (GAME STATE, the
+// sheet's tag) listed level 6 exactly as level 5, "speed 0" its last word,
+// so the GM read a hero at exhaustion 6 as one who could not move.
+await test("V09: exhaustion 6 reads as death in GAME STATE and on the sheet's tag", async () => {
+  const { describeExhaustion } = await import("../src/lib/dm/condition-logic.ts");
+  assert.match(describeExhaustion(6), /death/i, describeExhaustion(6));
+  assert.doesNotMatch(describeExhaustion(5), /death/i, "level 5 is not death");
+  const hero = world.addHero({ class: "fighter", level: 3, proficiencies: { ...TRAINED } });
+  world.patch(hero.id, { exhaustion: 6 });
+  const tag = sheetState.stateTags(world.sheet(hero.id)).find((entry) => entry.id === "exhaustion");
+  assert.match(tag?.note ?? "", /death/i, `the tag: ${tag?.note}`);
+  world.patch(hero.id, { exhaustion: 0 });
+});
+
 finish();
