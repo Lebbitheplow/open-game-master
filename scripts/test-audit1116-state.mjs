@@ -141,4 +141,37 @@ await test("V05: the Hand shuts a slowed hero's bonus action and second swing af
   assert.equal(pips.Reaction, true, "the Reaction pip reads open");
 });
 
+// V06. SRD 5.1, Damage Resistance and Vulnerability: "If a creature or an
+// object has resistance to a damage type, damage of that type is halved
+// against it." enemy_attack landed the halved blow, but its result said the
+// blow as rolled (`damage: 6`, `totalDamage: 6` for a raging barbarian who
+// lost 3) with no word of the resistance, so the GM narrated 6 and the table
+// line the server writes for a monster's turn read "HIT for 6".
+await test("V06: enemy_attack reports the damage a resistant hero took, with the resistance, and the table line says it", async () => {
+  await kit.endFight();
+  const { attackLine } = await import("../src/lib/dm/turn-lines-logic.ts");
+  const hero = world.addHero({ class: "barbarian", level: 3, maxHp: 40, proficiencies: { ...TRAINED } });
+  await kit.fight(1);
+  const [foe] = world.enemies();
+  kit.place(hero.id, 5, 5);
+  kit.place(foe.id, 5, 6);
+  world.patch(hero.id, { conditions: ["raging"] });
+  kit.freshRound();
+  kit.enemyTurn(foe.id);
+  world.clearDice();
+  world.dice(15, 4);
+  const before = world.sheet(hero.id).currentHp;
+  const struck = await world.invoke("enemy_attack", { enemyId: foe.id, targetCharacterId: hero.id });
+  world.clearDice();
+  assert.equal(struck.ok, true, struck.error);
+  const lost = before - world.sheet(hero.id).currentHp;
+  assert.ok(lost > 0, `the staging: the club lands (${JSON.stringify(struck.result)})`);
+  const [swing] = struck.result.swings;
+  assert.equal(swing.damage, lost, `the hero lost ${lost}, the swing says ${swing.damage}`);
+  assert.equal(struck.result.totalDamage, lost, "the total");
+  assert.match(swing.resistance ?? "", /resistant/, "the result does not say why");
+  const line = attackLine({ name: foe.displayName, target: hero.name, attack: struck.result.attack, swings: struck.result.swings, vsAc: struck.result.vsAc, fell: false });
+  assert.match(line, new RegExp(`HIT for ${lost}\\b`), line);
+});
+
 finish();
