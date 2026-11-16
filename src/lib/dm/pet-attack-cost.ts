@@ -72,7 +72,19 @@ export function petAttackCost(
     if (budget.oncePerTurn.includes(attacked)) {
       return { error: `${pet.name} already attacked at ${sheet.name}'s command this turn; the Attack action's other swing is ${sheet.name}'s own.`, refused: "limit" };
     }
+    // One weapon attack of the ranger's own, however many the Attack action
+    // holds: a ranger with a third attack from another class (a fighter's
+    // Extra Attack (2)) kept two beside the command. Swings already made in
+    // this Attack action are the ranger's own (a second command is refused).
+    const ownSoFar = budget.actionUsed && budget.attacksMade < budget.attacksAllowed ? budget.attacksMade : 0;
+    if (ownSoFar > 1) {
+      return { error: `${sheet.name} has made ${ownSoFar} weapon attacks of their own this Attack action, and commanding ${pet.name} leaves them one. Nothing was spent.`, refused: "limit" };
+    }
     spent = spendAttack(budget, sheet.name, { hasteOk: false });
+    if (spent.ok && spent.budget.attacksAllowed > 2) {
+      const ownLeft = Math.max(0, 1 - (spent.budget.attacksMade - 1));
+      spent = { ...spent, budget: { ...spent.budget, attacksMade: Math.max(spent.budget.attacksMade, spent.budget.attacksAllowed - ownLeft) } };
+    }
     economy = `Commanding ${pet.name} took ${sheet.name}'s Attack action; one weapon attack of their own goes with it.`;
   } else if (pet.kind === "drake") {
     spent = spendAction(budget, "bonus", `commanding ${pet.name}`, sheet.name);

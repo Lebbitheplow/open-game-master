@@ -684,4 +684,43 @@ await test("U14: a blow at a plain mount meets its defenses by type, and a bite 
   await kit.endFight();
 });
 
+// U15. Ranger's Companion (as the engine implements it): "Once you have the
+// Extra Attack feature, you can make one weapon attack yourself when you
+// command the beast to take the Attack action." U08 made the command one
+// swing of the ranger's Attack action, which leaves a ranger with three
+// attacks (a fighter's Extra Attack (2) beside the ranger's levels) two of
+// their own.
+await test("U15: a Beast Master with three attacks makes exactly one weapon attack of their own beside commanding the companion", async () => {
+  await kit.endFight();
+  const ranger = world.addHero({ class: "ranger", subclass: "Beast Master", level: 16, maxHp: 120, abilities: { str: 16 }, proficiencies: { ...TRAINED }, equipment: [{ name: "Longsword", qty: 1 }] });
+  world.patch(ranger.id, { features: [...world.sheet(ranger.id).features, { name: "Extra Attack (2)", source: "class" }] });
+  const summoned = await world.invoke("summon_pet", { characterId: ranger.id, kind: "beast_companion", form: "wolf" });
+  assert.equal(summoned.ok, true, summoned.error);
+  await kit.fight(1);
+  const [enemy] = world.enemies();
+  kit.setEnemy(enemy.id, { maxHp: 400 });
+  kit.place(ranger.id, 5, 5);
+  kit.place(enemy.id, 5, 6);
+
+  // The command, then the ranger's one swing, and no second.
+  kit.giveTurn(ranger.id);
+  const bite = await forced([15, 1, 1, 20], () => world.invoke("pet_attack", { characterId: ranger.id, targetEnemyId: enemy.id }));
+  assert.equal(bite.ok, true, bite.error);
+  const own = await kit.swing(ranger.id, enemy.id, [15, 3], { weapon: "Longsword" });
+  assert.equal(own.ok, true, own.error);
+  const second = await kit.swing(ranger.id, enemy.id, [15, 3], { weapon: "Longsword" });
+  assert.equal(second.ok, false, "a second weapon attack of the ranger's own beside the command");
+
+  // The ranger's swing first, then the command: nothing more of their own.
+  kit.freshTurn();
+  kit.giveTurn(ranger.id);
+  const first = await kit.swing(ranger.id, enemy.id, [15, 3], { weapon: "Longsword" });
+  assert.equal(first.ok, true, first.error);
+  const then = await forced([15, 1, 1, 20], () => world.invoke("pet_attack", { characterId: ranger.id, targetEnemyId: enemy.id }));
+  assert.equal(then.ok, true, then.error);
+  const more = await kit.swing(ranger.id, enemy.id, [15, 3], { weapon: "Longsword" });
+  assert.equal(more.ok, false, "a second weapon attack of the ranger's own after commanding");
+  await kit.endFight();
+});
+
 finish();
