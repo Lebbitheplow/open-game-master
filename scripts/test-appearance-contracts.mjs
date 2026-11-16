@@ -6,14 +6,14 @@ import {fileURLToPath} from 'node:url';
 import sharp from 'sharp';
 import {assertThemeCss, assertSharedCss, assertArtAsset} from './appearance/contracts.mjs';
 register('./lib/register-alias.mjs', import.meta.url);
-const {APPEARANCE_THEMES} = await import('../src/lib/appearance-themes.ts');
+const {APPEARANCE_THEMES, themeStylesheet} = await import('../src/lib/appearance-themes.ts');
 const repo = fileURLToPath(new URL('../', import.meta.url));
 let passed=0;
 async function test(name, fn) {await fn();passed++;console.log(`ok: ${name}`);}
 
 await test('every theme owns one scoped stylesheet, including its material overrides', () => {
-  const owned = new Set(APPEARANCE_THEMES.map(theme=>theme.stylesheet));
-  for (const theme of APPEARANCE_THEMES) assertThemeCss(readFileSync(path.join(repo,theme.stylesheet),'utf8'),theme.id);
+  const owned = new Set(APPEARANCE_THEMES.map(theme=>themeStylesheet(theme.id)));
+  for (const theme of APPEARANCE_THEMES) assertThemeCss(readFileSync(path.join(repo,themeStylesheet(theme.id)),'utf8'),theme.id);
   const styles=path.join(repo,'src/app/styles');
   for (const file of readdirSync(styles,{recursive:true}).filter(file=>file.endsWith('.css'))) {
     const relative='src/app/styles/'+file.replaceAll('\\','/');

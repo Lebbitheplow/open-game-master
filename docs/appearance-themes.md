@@ -31,9 +31,12 @@ written story theme. A player can use Woodland in either day or night mode.
 | Automated checks | `scripts/test-appearance.mjs`, `scripts/appearance/` | Catalog checks and a disposable browser preview |
 
 The catalog is safe to import on the server. It defines the ID union and the
-settings schema's allowed IDs, so there is no second ID list to update. The
-`stylesheet` field is checked against `globals.css`; it does not dynamically load
-CSS. Next must see each CSS import when building the app.
+settings schema's allowed IDs, so there is no second ID list to update. A theme's
+stylesheet is `src/app/styles/themes/<id>.css` and its artwork record is
+`public/assets/themes/<id>/art-provenance.json`, by its ID (`themeStylesheet()`
+and `themeProvenance()`); the catalog every page ships does not repeat them. The
+checks hold the stylesheet against `globals.css`; nothing loads CSS dynamically.
+Next must see each CSS import when building the app.
 
 `public/assets/themes/default/theme.config.json` belongs to the 3D dice library.
 It is not the app appearance registry. Leave it alone when adding an appearance.
@@ -58,7 +61,6 @@ It is not the app appearance registry. Leave it alone when adding an appearance.
      name: "Moonlit",
      description: "Cool stone, pale silver, and a quiet night sky.",
      icon: "sparkles",
-     stylesheet: "src/app/styles/themes/moonlit.css",
    },
    ```
 
@@ -84,7 +86,7 @@ It is not the app appearance registry. Leave it alone when adding an appearance.
    options rather than naming a theme.
 
 5. Add artwork if the design needs it, following the next section. A palette-only
-   theme can omit `art` and `provenance`. Test both brightness modes before
+   theme can omit `art` and its provenance record. Test both brightness modes before
    describing the theme as complete.
 
 6. Run the checks below and inspect the captured views. Include the guide link,
@@ -116,8 +118,9 @@ art: {
   corner: "/assets/themes/moonlit/corner-v1.webp",
   backdrop: "/assets/themes/moonlit/courtyard-v1.webp",
 },
-provenance: "public/assets/themes/moonlit/art-provenance.json",
 ```
+
+Record every image's source in `public/assets/themes/moonlit/art-provenance.json`.
 
 These are example paths. Supply real files before registering them. Each slot is
 optional. `themeArtStyle()` writes all four CSS variables, using `none` for an

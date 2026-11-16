@@ -4,7 +4,7 @@ import { register } from "node:module";
 import { readFileSync, existsSync, statSync } from "node:fs";
 register("./lib/register-alias.mjs", import.meta.url);
 
-const { APPEARANCE_THEMES, APPEARANCE_THEME_IDS, THEME_ART_SLOTS, themeArtStyle, artSlotStyle, campaignAppearance, genreAppearance, resolveAppearance, appearanceDefinition } = await import("../src/lib/appearance-themes.ts");
+const { APPEARANCE_THEMES, APPEARANCE_THEME_IDS, THEME_ART_SLOTS, themeArtStyle, artSlotStyle, campaignAppearance, genreAppearance, resolveAppearance, appearanceDefinition, themeStylesheet, themeProvenance } = await import("../src/lib/appearance-themes.ts");
 const { GENRES } = await import("../src/lib/schemas/game-settings-options.ts");
 const { gameSettingsSchema, normalizeGameSettings } = await import("../src/lib/schemas/game-settings.ts");
 const prefs = await import("../src/lib/theme-mode.ts");
@@ -59,11 +59,11 @@ test("every registered theme ships imported palettes and traceable local artwork
   const imports = readFileSync(new URL("../src/app/globals.css", import.meta.url), "utf8");
   for (const theme of APPEARANCE_THEMES) {
     assert.match(theme.id, /^[a-z][a-z0-9-]*$/);
-    assert.ok(imports.includes(`@import "./${theme.stylesheet.replace("src/app/", "")}";`), `${theme.id}: import its stylesheet`);
+    assert.ok(imports.includes(`@import "./${themeStylesheet(theme.id).replace("src/app/", "")}";`), `${theme.id}: import its stylesheet`);
     const assets = Object.values(theme.art ?? {});
     if (!assets.length) continue;
-    assert.ok(theme.provenance, `${theme.id}: artwork provenance is required`);
-    const provenance = JSON.parse(readFileSync(new URL(`../${theme.provenance}`, import.meta.url), "utf8"));
+    assert.ok(existsSync(new URL(`../${themeProvenance(theme.id)}`, import.meta.url)), `${theme.id}: artwork provenance is required`);
+    const provenance = JSON.parse(readFileSync(new URL(`../${themeProvenance(theme.id)}`, import.meta.url), "utf8"));
     for (const asset of assets) {
       assert.match(asset, new RegExp(`^/assets/themes/${theme.id}/[a-zA-Z0-9_-]+\\.(webp|png|svg)$`), "Use versioned local theme assets");
       const file = new URL(`../public${asset}`, import.meta.url);
@@ -88,7 +88,7 @@ test("every registered palette has the full token set and legible text", () => {
   }
   for (const definition of APPEARANCE_THEMES) {
     const theme = definition.id;
-    const css = readFileSync(new URL(`../${definition.stylesheet}`, import.meta.url), "utf8");
+    const css = readFileSync(new URL(`../${themeStylesheet(definition.id)}`, import.meta.url), "utf8");
     for (const mode of ["light", "dark"]) {
       const selector = `[data-appearance="${theme}"][data-theme="${mode}"]`;
       assert.ok(css.includes(selector), `${theme}: missing ${mode} palette`);
