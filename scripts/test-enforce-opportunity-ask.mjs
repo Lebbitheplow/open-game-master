@@ -298,6 +298,37 @@ await test("A seat on real dice that strikes rolls the swing's own dice, as any 
   assert.equal(dice[0].parkedFor, "real_dice");
 });
 
+// Audit 1116 D17. SRD 5.1, Great Weapon Fighting: "When you roll a 1 or 2 on
+// a damage die for an attack you make with a melee weapon that you are
+// wielding with two hands, you can reroll the die and must use the new
+// roll." The turn's own attack card tells a player rolling real dice to do
+// it (attack-blow.ts damageDiceSteps); the opportunity attack's damage card
+// named the weapon and the target only, so the player entered their 1s and
+// 2s as they lay.
+await test("D17: a seat on real dice with Great Weapon Fighting is told on the opportunity attack's damage card to reroll 1s and 2s", async () => {
+  const goblin = await stage();
+  setMemberRealDice(world.campaignId, karaUser.id, true);
+  const own = world.sheet(kara.id);
+  world.patch(kara.id, {
+    equipment: [{ name: "Greatsword", qty: 1, equipped: true }],
+    features: [...own.features, { name: "Fighting Style: Great Weapon Fighting", source: "choice" }],
+  });
+  kit.place(kara.id, 6, 7);
+  await walk(goblin, 2, 7);
+  const [ask] = asks();
+  assert.ok(ask, "no card asked Kara's player");
+  await answer(ask, { strike: true }, karaUser);
+  const [swing] = listOpenPendingRolls(world.campaignId).filter((pending) => pending.characterId === kara.id && pending.kind === "attack");
+  assert.ok(swing, "Strike parked no attack roll for the seat on real dice");
+  world.signIn(karaUser);
+  const rolled = await call(route.submit, "POST", { dice: [18] }, { campaignId: world.campaignId, pendingRollId: swing.id });
+  await settleQueue(world.campaignId);
+  const [damage] = listOpenPendingRolls(world.campaignId).filter((pending) => pending.characterId === kara.id && pending.kind === "damage");
+  world.patch(kara.id, { equipment: own.equipment, features: own.features });
+  assert.ok(damage, `the hit asked for no damage dice: ${JSON.stringify(rolled.json)}`);
+  assert.match(String(damage.reason), /reroll any die of 2 or less once \(Great Weapon Fighting\)/, `the damage card says: ${damage.reason}`);
+});
+
 await test("A screen that knows nothing of the card answers it as a roll: that is a Strike.", async () => {
   const goblin = await stage();
   kit.place(kara.id, 6, 7);

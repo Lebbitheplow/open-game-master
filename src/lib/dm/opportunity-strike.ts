@@ -21,7 +21,9 @@ import { hasSentinel } from "@/lib/srd/feat-combat";
 import { attackerUnseen, tryParry } from "@/lib/dm/enemy-reactions";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import type { XY } from "@/lib/battlemap/types";
-import { closeStandInTurn, openStandInTurn, type DmTurn } from "@/lib/db/dm-turns";
+import { closeStandInTurn, dicePreferencesOf, openStandInTurn, type DmTurn } from "@/lib/db/dm-turns";
+import { parkReasonFor } from "@/lib/dice/held-rolls";
+import { damageDiceSteps } from "@/lib/dm/attack-blow";
 import { orderEntryId, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { insertRoll, markRollApplied } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
@@ -279,6 +281,7 @@ export function pcOpportunitySwing(input: {
   clearHitSpent(campaign, sheet.id, folded.hitSpent);
   writeMarks(campaign.id, sheet.id, marks.assign);
   const damageOutcome = rollCharacterD20(campaign, sheet, {
+    reason: opportunityDamageReason(campaign.id, sheet, profile, riders, enemy.displayName),
     kind: "damage",
     tag: { roller: "hero", kind: "damage", who: sheet.name },
     expression: crit
@@ -400,4 +403,30 @@ export function enemyOpportunityRiders(campaignId: string, enemy: EncounterEnemy
       ...(sunlit ? ["Sunlight Sensitivity: disadvantage in direct sunlight"] : []),
     ],
   };
+}
+
+// The damage card's words for a player rolling real dice: the weapon, the
+// target and what Great Weapon Fighting asks of their dice (SRD 5.1: "When
+// you roll a 1 or 2 on a damage die for an attack you make with a melee
+// weapon that you are wielding with two hands, you can reroll the die"), in
+// the words the turn's own attack card uses (attack-blow.ts
+// damageDiceSteps). The card named the weapon and the target only, so the
+// player entered their 1s and 2s as they lay. Undefined, so the card reads
+// its detail, when nothing changes the dice or the server throws them.
+function opportunityDamageReason(
+  campaignId: string,
+  sheet: CharacterSheet,
+  profile: { weapon: string; twoHanded?: boolean; ranged?: boolean },
+  riders: { greatWeaponRerollBelow?: number },
+  target: string,
+): string | undefined {
+  const rerollBelow = riders.greatWeaponRerollBelow && profile.twoHanded && !profile.ranged ? riders.greatWeaponRerollBelow : 0;
+  if (!rerollBelow) {
+    return undefined;
+  }
+  const { dicePolicy, member } = dicePreferencesOf(campaignId, sheet.userId);
+  if (parkReasonFor(dicePolicy, member) !== "real_dice") {
+    return undefined;
+  }
+  return `${profile.weapon} damage against ${target} (opportunity attack). ${damageDiceSteps({ rerollBelow })}`;
 }

@@ -109,13 +109,15 @@ export function damageDiceNote(ask: DamageAsk): string {
 // The same steps said to the player on their damage roll card. The model's
 // note above is not enough: the feat is spent the moment the hit parks the
 // roll, and a GM who does not pass the note on leaves the player entering
-// dice the feat never touched. Empty when no feat changes the dice.
-export function damageDiceSteps(ask: DamageAsk): string {
+// dice the feat never touched. Empty when no feat changes the dice. An
+// opportunity attack's card asks it too, with no feats spent
+// (opportunity-strike.ts).
+export function damageDiceSteps(ask: Pick<DamageAsk, "rerollBelow" | "empower"> & { feats?: DamageAsk["feats"] }): string {
   const steps = [
     ask.rerollBelow ? `reroll any die of ${ask.rerollBelow} or less once (Great Weapon Fighting)` : "",
-    ask.feats.brutal ? "roll the damage a second time and keep the better total (Brutal Attack)" : "",
-    ask.feats.savage ? "roll the weapon's dice a second time and keep the better total (Savage Attacker)" : "",
-    ask.feats.piercer ? "reroll the lowest damage die once and keep the new roll (Piercer)" : "",
+    ask.feats?.brutal ? "roll the damage a second time and keep the better total (Brutal Attack)" : "",
+    ask.feats?.savage ? "roll the weapon's dice a second time and keep the better total (Savage Attacker)" : "",
+    ask.feats?.piercer ? "reroll the lowest damage die once and keep the new roll (Piercer)" : "",
     ask.empower ? `reroll up to ${ask.empower} of the damage dice and keep the new rolls (Empowered Spell)` : "",
   ].filter(Boolean);
   return steps.length ? `Before you enter your dice: ${steps.join(", then ")}.` : "";
