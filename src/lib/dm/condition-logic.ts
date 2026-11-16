@@ -46,8 +46,8 @@ export type ConditionMeta = {
   // before the turn it was meant to cost (audit 2026-11-13, T04).
   countsOn?: string;
   // A condition that stacks (a Sword of Wounding's wounds): how many, and the
-  // turn ("round:turnIndex") the last was laid on, for a once-per-turn rider
-  // (src/lib/dm/sword-wounding.ts).
+  // turn (encounters.ts turnKey) the last was laid on, for a once-per-turn
+  // rider (src/lib/dm/sword-wounding.ts).
   stacks?: number;
   woundedOn?: string;
   // The hit points a mark holds back from every healing but a rest (a Sword

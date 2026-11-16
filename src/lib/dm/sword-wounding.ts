@@ -27,7 +27,7 @@
 // sheet-foe-stats.ts), so no hero is ever wounded by one.
 
 import type { Campaign } from "@/lib/db/campaigns";
-import { getActiveEncounter, getEnemy, listEnemies, patchEnemyConditions, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy, listEnemies, patchEnemyConditions, turnKey, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { listSheets } from "@/lib/db/sheets";
 import { publicDie } from "@/lib/dm/between-io";
 import { removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logic";
@@ -96,16 +96,18 @@ export function woundOnHit(campaign: Campaign, enemyId: string, wielderId: strin
   if (!enemy || enemy.status !== "alive" || !encounter) {
     return null;
   }
-  const turnKey = `${encounter.round}:${encounter.turnIndex}`;
+  // The turn by whose it is (encounters.ts turnKey), not by its slot in the
+  // order, which moves when a creature joins or leaves it.
+  const thisTurn = turnKey(encounter);
   const held = woundOf(enemy);
-  if (held?.woundedOn === turnKey) {
+  if (held?.woundedOn === thisTurn) {
     return null;
   }
   const stacks = (held?.stacks ?? 0) + 1;
   const meta = enemy.conditionMeta as ConditionMetaMap;
   patchEnemyConditions(enemy.id, [...enemy.conditions.filter((entry) => entry !== held?.name), SWORD_WOUND], {
     ...meta,
-    [SWORD_WOUND]: { source: wielderId, stacks, woundedOn: turnKey },
+    [SWORD_WOUND]: { source: wielderId, stacks, woundedOn: thisTurn },
   } as typeof enemy.conditionMeta);
   publishEncounter(campaign.id);
   return `Sword of Wounding: ${enemy.displayName} is wounded (${stacks} ${stacks === 1 ? "wound" : "wounds"}): ${stacks}d4 necrotic at the start of each of its turns, until a DC ${WOUND_DC} Constitution save ends them all, or a creature within 5 feet tends them with an action (a character: take_action improvise, skill medicine, DC ${TEND_DC}). The hit points the blade takes come back only with a rest.`;
