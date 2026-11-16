@@ -233,10 +233,14 @@ type Target = { dc: number | null } | { ac: number; critRange: number };
 type Reading = { kind: string; outcome: RollResult; target: Target; taken: ReadonlySet<string> };
 
 // An attack that hits as it stands: a natural 1 misses whatever is added to
-// it, a natural in the critical range hits.
-export function attackHits(outcome: RollResult, ac: number, critRange: number): boolean {
+// it, a natural 20 hits whatever the AC (SRD 5.1, Rolling 1 or 20), and any
+// other face hits by its total. A face in a widened critical range (a
+// Champion's 19) is a critical only once it hits, as attack-logic.ts
+// adjudicateHit rules the attack itself: read here as a hit, a 19 that
+// missed was offered nothing a miss is offered.
+export function attackHits(outcome: RollResult, ac: number): boolean {
   const natural = outcome.natural;
-  return natural !== undefined && natural !== 1 && (natural >= critRange || outcome.total >= ac);
+  return natural !== undefined && natural !== 1 && (natural === 20 || outcome.total >= ac);
 }
 
 // Whether the row, once paid, could turn this roll that falls short. A
@@ -318,7 +322,7 @@ export function afterAttackOptions(
   }
   const taken = new Set(roll.spent ?? []);
   const reading: Reading = { kind: "attack", outcome, target: { ac, critRange }, taken };
-  if (attackHits(outcome, ac, critRange)) {
+  if (attackHits(outcome, ac)) {
     return [
       ...ownOptions(sheet, reading, "hit", { melee: roll.melee, weapon: roll.weapon, wrathDice: roll.wrathDice }),
       // A Valor bard's die on the hit's damage (ar-wbf-bard-dice-logic.ts).
@@ -340,7 +344,7 @@ export function shiftCanHelp(roll: { kind: string; outcome: RollResult; dc: numb
     return false;
   }
   if ("ac" in roll) {
-    return natural === 1 || (natural !== undefined && natural < roll.critRange && outcome.total < roll.ac);
+    return natural === 1 || (natural !== undefined && !attackHits(outcome, roll.ac));
   }
   if (!canWaitOnRoll(roll.kind) || roll.dc === null || outcome.total >= roll.dc) {
     return false;
@@ -367,7 +371,7 @@ export function helperOption(
   }
   const target: Target = "ac" in roll ? { ac: roll.ac, critRange: roll.critRange } : { dc: roll.dc };
   if ("ac" in target) {
-    if (outcome.natural === undefined || attackHits(outcome, target.ac, target.critRange)) return null;
+    if (outcome.natural === undefined || attackHits(outcome, target.ac)) return null;
   } else if ((!input.own && target.dc === null) || (target.dc !== null && outcome.total >= target.dc) || !canWaitOnRoll(roll.kind)) {
     return null;
   }
@@ -385,7 +389,7 @@ export function helperOption(
 // you can see within 60 feet hits with a weapon attack").
 export function hitHelperOption(helper: CharacterSheet, id: AfterRollId, roll: { outcome: RollResult; ac: number; critRange: number; weapon: boolean }, rollerName: string): AfterRollOption | null {
   const row = afterRollRow(id);
-  if (row.when !== "hit" || row.whose === "own" || !attackHits(roll.outcome, roll.ac, roll.critRange) || (row.hitBy === "weapon" && !roll.weapon) || !holdsRow(helper, row)) {
+  if (row.when !== "hit" || row.whose === "own" || !attackHits(roll.outcome, roll.ac) || (row.hitBy === "weapon" && !roll.weapon) || !holdsRow(helper, row)) {
     return null;
   }
   return optionOf(helper, row, "attack", { by: helper.id, rollerName });

@@ -448,6 +448,59 @@ await test("G11: a dominated creature's blow at a mage, on its turn or as it wal
   assert.equal(hpOf(goblin.id), 100, `the opportunity attack went through the Shield: ${notes.join(" ")}`);
 });
 
+// ---- G12: a Champion's natural 19 that misses is a miss after the roll too ----
+
+// SRD 5.1, Improved Critical: "Your weapon attacks score a critical hit on a
+// roll of 19 or 20"; Rolling 1 or 20: only a natural 20 "hits regardless of
+// any modifiers or the target's AC". The attack itself rules a 19 that
+// misses the AC a miss (attack-logic.ts adjudicateHit); the helpers that run
+// after the roll read any face in the critical range as a hit, so a held
+// Bardic Inspiration die, an ally's Chronal Shift or Fate's bend was never
+// offered to a 19 that missed.
+const { adjudicateHit } = await import("../src/lib/dm/attack-logic.ts");
+const { attackHits, shiftCanHelp } = await import("../src/lib/dm/after-roll-logic.ts");
+const { fateSucceeds } = await import("../src/lib/dm/fate-turn-logic.ts");
+const { rollExpression } = await import("../src/lib/dice.ts");
+
+await test("G12: a natural 19 in a widened critical range that misses the AC is a miss to every after-the-roll helper, as the attack rules it", async () => {
+  world.clearDice();
+  world.dice(19);
+  const nineteen = rollExpression("1d20+5");
+  world.clearDice();
+  assert.equal(nineteen.natural, 19);
+  // 24 against AC 25 with a critical range of 19.
+  assert.equal(adjudicateHit(nineteen.total, nineteen.crit, 25, { natural: 19, critRange: 19 }).hit, false);
+  assert.equal(attackHits(nineteen, 25, 19), false, "attackHits read the 19 as a hit");
+  assert.equal(shiftCanHelp({ kind: "attack", outcome: nineteen, ac: 25, critRange: 19 }), true, "no shift was offered to a 19 that misses");
+  assert.equal(fateSucceeds({ kind: "attack", outcome: nineteen, ac: 25, critRange: 19 }), false, "Fate read the 19 as a hit");
+  // A natural 20 still hits whatever the AC.
+  world.dice(20);
+  const twenty = rollExpression("1d20+5");
+  world.clearDice();
+  assert.equal(attackHits(twenty, 40, 19), true);
+});
+
+await test("G12: a Champion's held Bardic Inspiration die lifts a natural 19 that misses, as it lifts any miss", async () => {
+  await freshArena();
+  const plain = world.sheet(hero.id).features.filter((feature) => !/critical/i.test(feature.name));
+  arm({ str: 16, equipment: [{ name: "Longsword", qty: 1 }], features: [...plain, { name: "Improved Critical", source: "class" }], conditions: ["Bardic Inspiration (d6)"], conditionMeta: {} });
+  const row = kit.dummy();
+  getDatabase().prepare("UPDATE encounter_enemies SET ac = 30, stat_json = ? WHERE id = ?").run(JSON.stringify({ ...row.stats, ac: 30 }), row.id);
+  // 19 + 3 + 3 = 25 misses AC 30; the held d6 of 6 makes it 31. The hit's
+  // dice are a critical's: 19 is in the range once it hits.
+  // A player at the table is asked on the after-the-roll card, as for any
+  // miss the die could lift (after-roll.ts); read here as a hit, the 19 was
+  // never offered it and simply missed.
+  const { listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
+  const swing = await kit.swing(hero.id, { weapon: "Longsword" }, 19, 6, 4, 4);
+  const card = listOpenPendingRolls(world.campaignId).find((pending) => pending.characterId === hero.id && pending.parkedFor === "after_roll");
+  getDatabase().prepare("DELETE FROM pending_rolls WHERE campaign_id = ?").run(world.campaignId);
+  world.patch(hero.id, { features: plain, conditions: [] });
+  assert.equal(swing.ok, true, swing.error);
+  assert.ok(card, `the held die was never offered to the 19: ${JSON.stringify(swing.result)}`);
+  assert.deepEqual(card.thrown.options.map((option) => option.id), ["bardic"]);
+});
+
 await kit.endFight();
 world.close();
 finish();

@@ -75,7 +75,10 @@ export function throwToHit(plan: AttackPlan, strike: Strike): RollResult {
 export function shiftedThrow(plan: AttackPlan, strike: Strike, ac: number, critRange: number): RollResult {
   const thrown = throwToHit(plan, strike);
   const natural = thrown.natural ?? 0;
-  const hits = natural !== 1 && (natural >= critRange || thrown.total >= ac);
+  // A natural 20 hits whatever the AC; a Champion's 19 by its total, as the
+  // attack rules it (attack-logic.ts adjudicateHit), so a 19 that misses may
+  // be thrown again.
+  const hits = natural !== 1 && (natural === 20 || thrown.total >= ac);
   const tag = { roller: "hero" as const, kind: "attack" as const, who: plan.sheet.name };
   const by = takeShift(plan.campaign.id, tag, hits);
   if (!by) {
@@ -104,7 +107,7 @@ export function rollPcAttack(plan: AttackPlan, strike: Strike, mote: HeldMote | 
   // Notes written from here on; the plan's own ride the answer before them.
   const notes = context.notes;
   const thrown = thrownForPlayer ?? shiftedThrow(plan, strike, recordTargetAc(campaign.id, record), record.critRange ?? 20);
-  const hitOutcome = thrownForPlayer ? thrownForPlayer : settleAttackDie(campaign.id, sheet, thrown, recordTargetAc(campaign.id, record), record.critRange ?? 20);
+  const hitOutcome = thrownForPlayer ? thrownForPlayer : settleAttackDie(campaign.id, sheet, thrown, recordTargetAc(campaign.id, record));
   if (hitOutcome !== thrown) {
     notes.push(`spends their Bardic Inspiration die on the miss: ${thrown.total} becomes ${hitOutcome.total}`);
   }
