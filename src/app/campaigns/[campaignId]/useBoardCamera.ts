@@ -57,6 +57,25 @@ function footToClear(frame: HTMLElement | null): number {
   return Math.max(0, frame.getBoundingClientRect().bottom - foot.getBoundingClientRect().top - FOOT_LAP);
 }
 
+// How much of the board shows above the Hand, said on the stage for its
+// stylesheet (world.css, data-foot-band). The Hand is as tall as its cards
+// and the board as tall as the window leaves it, so on a laptop the strip
+// above the cards can be lower than what stands in it: under BAND_CLOSE End
+// turn has no room over the camera's row and stood on the turn's own plate
+// or was cut by the board's top edge, and under BAND_TIGHT the order's
+// plates lie under the Hand's heading.
+const BAND_CLOSE = 128;
+const BAND_TIGHT = 96;
+
+function markFootBand(frame: HTMLElement): void {
+  const stage = frame.closest<HTMLElement>(STAGE_SELECTOR);
+  if (!stage) return;
+  const foot = footOf(frame);
+  const band = foot?.offsetHeight ? foot.getBoundingClientRect().top - frame.getBoundingClientRect().top : Infinity;
+  if (band < BAND_CLOSE) stage.setAttribute("data-foot-band", band < BAND_TIGHT ? "tight" : "close");
+  else stage.removeAttribute("data-foot-band");
+}
+
 function cornerToClear(frame: HTMLElement | null): { width: number; height: number } | null {
   const corner = frame?.querySelector<HTMLElement>(CLEAR_SELECTOR);
   if (!corner || !corner.offsetWidth) return null;
@@ -346,7 +365,18 @@ export function useBoardCamera(
         observer.observe(corner);
       }
     };
+    // The Hand folds, deals and gains a reaction's row without the frame
+    // changing size, and can come to the stage after the board has.
+    const watchFoot = () => {
+      const foot = footOf(frameEl);
+      if (foot && !watched.has(foot)) {
+        watched.add(foot);
+        observer.observe(foot);
+      }
+      markFootBand(frameEl);
+    };
     const observer = new ResizeObserver(() => {
+      watchFoot();
       if (!enabledRef.current) return;
       const width = frameEl.clientWidth;
       if (!width) {
@@ -373,12 +403,14 @@ export function useBoardCamera(
     });
     observer.observe(frameEl);
     watchCorner();
+    watchFoot();
     // The order's strip mounts once the order is rolled, after the frame.
     const mounted = new MutationObserver(watchCorner);
     mounted.observe(frameEl, { childList: true });
     return () => {
       observer.disconnect();
       mounted.disconnect();
+      frameEl.closest(STAGE_SELECTOR)?.removeAttribute("data-foot-band");
     };
   }, [frameEl, fit, options.enabled]);
 
