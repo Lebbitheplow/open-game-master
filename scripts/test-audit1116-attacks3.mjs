@@ -288,6 +288,53 @@ await test("G24: once the sworn enemy dies, the Oathbow swears no new one before
   world.patch(hero.id, { conditions: [], conditionMeta: {} });
 });
 
+// ---- G25: a lance on foot on an opportunity attack ----
+
+const { resolvePcOpportunityAttacks } = await import("../src/lib/dm/opportunity.ts");
+const { setMount } = await import("../src/lib/db/mounts.ts");
+
+// A goblin beside the hero walks away east; whatever the hero swings lands
+// on it. The ally stays far off with a bow.
+async function walkAway(faces) {
+  const goblin = await freshArena();
+  world.patch(anchor.id, { equipment: [{ name: "Shortbow", qty: 1 }] });
+  place(anchor.id, 9, 9);
+  place(goblin.id, 3, 0);
+  place(hero.id, 2, 0);
+  world.clearDice();
+  world.diceLog();
+  world.dice(...faces);
+  const notes = resolvePcOpportunityAttacks(world.campaign(), goblin.id, { x: 3, y: 0 }, { x: 5, y: 0 }, [{ x: 4, y: 0 }, { x: 5, y: 0 }]);
+  const log = world.diceLog();
+  world.clearDice();
+  return { notes, damageDice: log.filter((die) => die.sides !== 20).map((die) => die.sides) };
+}
+
+await test("G25: a hero on foot never swings a lance on an opportunity attack beside a shield or with a weapon in the other hand; mounted, the lance swings", async () => {
+  // SRD 5.1, Lance: "a lance requires two hands to wield when you aren't
+  // mounted." pc_attack refuses a lance on foot beside a shield
+  // (attack-rules.ts handsRuling); the reaction's swing took it anyway.
+  await freshArena();
+  arm({ str: 16, armor: ["shields"], equipment: [{ name: "Lance", qty: 1 }, { name: "Shield", qty: 1 }] });
+  const turn = await kit.swing(hero.id, { weapon: "Lance" }, 15, 3, 3);
+  assert.equal(turn.ok, false, "the turn's swing took the lance on foot beside a shield");
+  let out = await walkAway([15, 15, 6]);
+  assert.deepEqual(out.damageDice, [], `the lance swung on foot beside a shield: ${JSON.stringify(out.notes)}`);
+  // A longsword in the other hand: the longsword swings, one-handed.
+  arm({ str: 16, equipment: [{ name: "Lance", qty: 1, equipped: true }, { name: "Longsword", qty: 1, equipped: true }] });
+  out = await walkAway([15, 15, 6]);
+  assert.deepEqual(out.damageDice, [8], `the lance swung on foot with a longsword in the other hand: ${JSON.stringify(out.notes)}`);
+  // Mounted, the lance needs one hand, beside a shield too.
+  arm({ str: 16, armor: ["shields"], equipment: [{ name: "Lance", qty: 1 }, { name: "Shield", qty: 1 }] });
+  setMount(world.campaignId, hero.id, { ref: "warhorse", name: "Warhorse", speed: 60, controlled: true, size: "Large" });
+  try {
+    out = await walkAway([15, 15, 6]);
+    assert.deepEqual(out.damageDice, [12], `a mounted lance was not swung: ${JSON.stringify(out.notes)}`);
+  } finally {
+    setMount(world.campaignId, hero.id, null);
+  }
+});
+
 await kit.endFight();
 world.close();
 finish();

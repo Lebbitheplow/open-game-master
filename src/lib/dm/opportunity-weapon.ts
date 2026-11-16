@@ -8,7 +8,8 @@
 
 import { resolveAttackWeapon, weaponOf, type ResolvedWeapon } from "@/lib/dm/attack-logic";
 import { magicWeaponOfRow } from "@/lib/dm/gear-attack";
-import { matchWeapon } from "@/lib/srd/weapons";
+import { matchWeapon, SPECIAL_WEAPONS } from "@/lib/srd/weapons";
+import { getMounts } from "@/lib/db/mounts";
 import { acBreakdownFor } from "@/lib/srd";
 import { otherHandArmed } from "@/lib/dm/attack-rules";
 import type { CombatRiders } from "@/lib/srd/feature-effects";
@@ -22,14 +23,23 @@ const UNARMED: ResolvedWeapon = { displayName: "Unarmed strike", srd: null, unar
 // "1 + your Strength modifier". It made no opportunity attack at all, though
 // one carrying nothing struck unarmed.
 export function opportunityWeaponFor(sheet: CharacterSheet): ResolvedWeapon {
+  const shieldName = acBreakdownFor(sheet).shieldName;
+  const shieldOnArm = shieldName !== null;
+  const mounted = Boolean(getMounts(sheet.campaignId)[sheet.id]);
   const melee = sheet.equipment.filter((item) => {
     const weapon = magicWeaponOfRow(item).srd ?? weaponOf(item) ?? matchWeapon(item);
-    return weapon !== null && weapon.kind === "melee";
+    if (weapon === null || weapon.kind !== "melee") {
+      return false;
+    }
+    // SRD 5.1, Lance: "a lance requires two hands to wield when you aren't
+    // mounted." On foot the turn's swing refuses it beside a shield
+    // (attack-rules.ts handsRuling); the reaction's swing took it there, and
+    // with a weapon held in the other hand. It swings what the hands allow.
+    return weapon.name !== SPECIAL_WEAPONS.lance || mounted || (!shieldOnArm && !otherHandArmed({ equipment: sheet.equipment, weapon: item.name, shieldName }));
   });
   if (!melee.length) {
     return UNARMED;
   }
-  const shieldOnArm = acBreakdownFor(sheet).shieldName !== null;
   const resolved = resolveAttackWeapon(melee, sheet.proficiencies.weapons, undefined, { shieldOnArm });
   // SRD 5.1, Two-Handed: "This weapon requires two hands when you attack
   // with it." With only a greatsword and a shield on the arm, the best pick
