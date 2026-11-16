@@ -36,6 +36,9 @@ export const SRD_LAST_ROWS: Record<string, SpellMech> = {
   "freedom of movement": { resolution: "buff", buff: { condition: "freedom of movement", target: "ally", rounds: HOUR } },
   "spider climb": { resolution: "buff", buff: { condition: "spider climb", target: "ally", rounds: HOUR } },
   "water walk": { resolution: "buff", buff: { condition: "water walk", target: "allies", rounds: HOUR } },
+  // Up to ten willing creatures breathe underwater for 24 hours; the
+  // condition is the one a Potion of Water Breathing lays, which drowning reads.
+  "water breathing": { resolution: "buff", buff: { condition: "water breathing", target: "allies", rounds: 24 * HOUR } },
   jump: { resolution: "buff", buff: { condition: "jumping", target: "ally", rounds: MINUTE } },
   "see invisibility": { resolution: "buff", buff: { condition: "see invisibility", target: "self", rounds: HOUR } },
   "true seeing": { resolution: "buff", buff: { condition: "true seeing", target: "ally", rounds: HOUR } },

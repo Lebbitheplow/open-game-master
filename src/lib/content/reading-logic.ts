@@ -98,8 +98,8 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 //      hours (an otyugh's bite: poisoned until cured, the dice a failure takes
 //      off the maximum) in place of a save at each turn's end, and a curse that
 //      takes every rest's benefit (a rakshasa's claw) as the condition the
-//      rests read (time). Both from the rules audit of 2026-11-16, one bump
-//      over main's 15.
+//      rests read (time); Water Breathing's row lays the condition drowning
+//      reads. All from the rules audit of 2026-11-16, one bump over main's 15.
 export const READER_REVISION = 16;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";
