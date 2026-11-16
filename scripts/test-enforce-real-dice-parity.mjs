@@ -301,7 +301,7 @@ await test("Mote of Potential: a saving throw entered on real dice gives the bar
 // Dice the server throws for a parked damage roll (the lead's "Roll
 // digitally", every face set to the server, a held roll released) take the
 // feats the hit already spent, as its own throw of the damage does
-// (attack-blow.ts throwDamage). They were thrown plain, so Piercer, Brutal
+// (attack-damage-dice.ts throwDamage). They were thrown plain, so Piercer, Brutal
 // Attack, Savage Attacker and Great Weapon Fighting were spent for nothing.
 async function serverThrownDamage(hero, weapon, body, faces, { hold = false } = {}) {
   const enemy = await stage(hero);

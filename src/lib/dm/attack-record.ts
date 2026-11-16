@@ -45,7 +45,7 @@ export type DamageAsk = {
   // A spell's half damage on a miss (Acid Arrow): half the total lands.
   half?: boolean;
   // The once-a-turn feats that change the dice, already spent: the server
-  // rolls them, a player is told how to (attack-blow.ts damageDiceNote).
+  // rolls them, a player is told how to (attack-damage-dice.ts damageDiceNote).
   feats: { brutal?: boolean; savage?: boolean; piercer?: boolean };
   rerollBelow: number;
   // Empowered Spell on a spell attack's damage: how many low dice are thrown
