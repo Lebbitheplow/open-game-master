@@ -239,5 +239,52 @@ await test("Y15: an enfeebled creature's opportunity attack at a pet deals half"
   assert.equal(await petStage("enfeebled"), 4, "(6 + 2) / 2");
 });
 
+// ---- Y16: Hypnotic Pattern's speed of 0 ----
+
+// SRD 5.1, Hypnotic Pattern: "While charmed by this spell, the creature is
+// incapacitated and has a speed of 0." The row laid charmed and
+// incapacitated, and incapacitated stops actions, not feet, so a hypnotized
+// goblin walked on its turn and GAME STATE gave a held hero their full speed.
+const onTurnOf = (kit, world, id) => {
+  const encounter = world.encounter();
+  const at = encounter.order.findIndex((slot) => (slot.kind === "pc" ? slot.characterId : slot.enemyId) === id);
+  kit.saveEncounter({ ...encounter, turnIndex: at, turnBudget: null, legendary: { ...encounter.legendary, due: encounter.order[at].kind === "pc" ? [] : [id], acted: null } });
+};
+
+await test("Y16: a creature held by Hypnotic Pattern has a speed of 0 and cannot walk on its turn", async () => {
+  const { world, kit, wizard, goblin } = await castStage(["Hypnotic Pattern"]);
+  world.dice(1);
+  const cast = await world.invoke("aoe_damage", { casterCharacterId: wizard.id, spell: "Hypnotic Pattern", enemyIds: [goblin.id], level: 3 });
+  world.clearDice();
+  assert.equal(cast.ok, true, cast.error);
+  assert.ok(kit.enemy(goblin.id).conditions.includes("charmed"), "the goblin failed and is charmed");
+  const { enemySpeedTiles } = await import("../src/lib/dm/enemy-speed.ts");
+  assert.equal(enemySpeedTiles(kit.enemy(goblin.id)), 0, "speed 0");
+  onTurnOf(kit, world, goblin.id);
+  await world.invoke("move_token", { token: goblin.id, x: 8, y: 7 });
+  assert.deepEqual([kit.token(goblin.id).x, kit.token(goblin.id).y], [4, 7], "it stays where the pattern caught it");
+  const hurt = await world.invoke("damage_enemy", { enemyId: goblin.id, amount: 1 });
+  assert.equal(hurt.ok, true, hurt.error);
+  assert.deepEqual(kit.enemy(goblin.id).conditions, [], "damage ends the charm and its hold on its feet together");
+  assert.ok(enemySpeedTiles(kit.enemy(goblin.id)) > 0);
+});
+
+await test("Y16: a hero held by a creature's Hypnotic Pattern has no movement on their turn", async () => {
+  const { world, kit, fighter, goblin } = await castStage([]);
+  kit.setEnemy(goblin.id, { stats: { spells: ["Hypnotic Pattern"] } });
+  kit.place(fighter.id, 5, 7);
+  world.dice(1);
+  const cast = await world.invoke("aoe_damage", { casterEnemyId: goblin.id, spell: "Hypnotic Pattern", saveAbility: "wis", dc: 15, characterIds: [fighter.id], level: 3 });
+  world.clearDice();
+  assert.equal(cast.ok, true, cast.error);
+  assert.ok(world.sheet(fighter.id).conditions.includes("charmed"), "the fighter failed and is charmed");
+  onTurnOf(kit, world, fighter.id);
+  const { pcMoveBudget } = await import("../src/lib/battlemap/view.ts");
+  const budget = pcMoveBudget(world.campaignId, world.encounter(), kit.map(), world.sheet(fighter.id), kit.token(fighter.id));
+  assert.deepEqual([budget.speed, budget.tiles], [0, 0], "GAME STATE's movement left reads this count");
+  await world.invoke("move_token", { token: fighter.id, x: 8, y: 7 });
+  assert.deepEqual([kit.token(fighter.id).x, kit.token(fighter.id).y], [5, 7]);
+});
+
 closeTables();
 finish();

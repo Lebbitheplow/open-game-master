@@ -228,6 +228,14 @@ export const NUMBERED_CONDITION_EFFECTS: ConditionEffectRow[] = [
     summary: "Banishment: gone to a harmless demiplane, incapacitated; it cannot be targeted and returns when the spell ends early.",
   },
   {
+    // Laid beside Hypnotic Pattern's charm and incapacitation, ended with
+    // them (spell-mech-rows.ts).
+    id: "hypnotized",
+    match: ["hypnotized"],
+    summary: "Hypnotic Pattern: speed 0 while its charm holds; damage, or a creature's action to shake it, ends the spell for it.",
+    speedSet: 0,
+  },
+  {
     id: "dancing",
     match: ["dancing"],
     summary:
