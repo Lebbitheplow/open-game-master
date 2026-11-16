@@ -29,6 +29,7 @@ import type { ItemTag } from "@/lib/schemas/item-tags";
 import { ownBudget, refuse, retry, saveEquipment } from "@/lib/dm/gear-store";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { addRowMath, handedOverRow, removeItemMath } from "@/lib/dm/mutation-math";
+import { outOfHand } from "@/lib/dm/fallen-gear-logic";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { storeBudget } from "@/lib/dm/turn-budget";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
@@ -244,7 +245,10 @@ export function pickUp(
   const taken = Math.min(qty, found.item.item.qty);
   takeFromDroppedItem(found.item.id, taken);
   const fresh = getSheetById(sheet.id) ?? sheet;
-  const hold = holdIfFree(addRowMath(fresh.equipment, handedOverRow(found.item.item, taken)), found.item.item.name);
+  // A row its owner let go of as they fell comes back still attuned
+  // (fallen-gear.ts): letting go never ends an attunement; a hand-over does.
+  const row = found.item.ownerId === sheet.id ? outOfHand(found.item.item, taken) : handedOverRow(found.item.item, taken);
+  const hold = holdIfFree(addRowMath(fresh.equipment, row), found.item.item.name);
   saveEquipment(campaign, turn, fresh, hold.equipment, "pick_up_item", { name: found.item.item.name, taken }, reason || `Picked up ${found.item.item.name}`);
   if (encounter && budget) {
     storeBudget(encounter, budget);

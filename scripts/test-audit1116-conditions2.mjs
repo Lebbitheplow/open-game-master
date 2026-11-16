@@ -1,0 +1,131 @@
+// GM rules audit 2026-11-16, conditions lens follow-up (D11 and on): the
+// leftovers the first pass named, with the lead's rulings. Each test failed
+// before its fix.
+//
+// SRD 5.1 as printed. Dice forced; every check reads a stored row.
+import assert from "node:assert/strict";
+import { openWorld } from "./lib/enforce-world.mjs";
+import { suite } from "./lib/enforce-harness.mjs";
+import { combatKit, DUMMY, TRAINED } from "./lib/enforce-combat.mjs";
+
+const { test, finish } = suite("test-audit1116-conditions2");
+const encounters = await import("../src/lib/db/encounters.ts");
+const dropped = await import("../src/lib/db/dropped-items.ts");
+
+// A board: dummies (AC 13, 40 hp) and Kara with an attuned Frost Brand and a
+// shield.
+const field = await openWorld();
+const board = await combatKit(field);
+const KARA_GEAR = [
+  { name: "Frost Brand", qty: 1, equipped: true, attuned: true },
+  { name: "Shield", qty: 1, equipped: true },
+  { name: "Dagger", qty: 2, equipped: false },
+];
+const kara = field.addHero({
+  name: "Kara", class: "fighter", level: 5, maxHp: 40, proficiencies: TRAINED, acOverride: false,
+  abilities: { str: 16, dex: 12, con: 14, int: 10, wis: 10, cha: 10 },
+  equipment: KARA_GEAR,
+});
+async function stage(count = 1) {
+  await board.endFight();
+  field.patch(kara.id, { equipment: KARA_GEAR });
+  await board.fight(count, { heroFaces: { [kara.id]: 20 } });
+  const foes = field.enemies();
+  for (const foe of foes) {
+    board.setEnemy(foe.id, { stats: { ...DUMMY }, maxHp: 40 });
+  }
+  board.place(kara.id, 6, 7);
+  board.place(foes[0].id, 5, 7);
+  return foes;
+}
+const ground = () => dropped.listDroppedItems(field.campaignId);
+const row = (sheet, name) => sheet.equipment.find((item) => item.name === name);
+
+// D11. SRD 5.1, Unconscious: "The creature drops whatever it's holding and
+// falls prone." A hero dropped to 0 hit points kept the sword and the shield
+// in hand: GAME STATE and the Hand showed them held, the shield still counted
+// in the armor class, and nothing lay on the board. The ruling: what is held
+// lies in the creature's square, attunement kept; picking it back up is the
+// free object interaction; what still lies there when the fight ends goes
+// back into its owner's pack.
+await test("D11: a hero who falls unconscious drops the sword and the shield in their square, attunement kept", async () => {
+  const [foe] = await stage();
+  field.patch(kara.id, { currentHp: 3 });
+  const ac = field.sheet(kara.id).ac;
+  board.enemyTurn(foe.id);
+  // The club's d20 and its 1d6.
+  field.dice(19, 6);
+  const club = await field.invoke("enemy_attack", { enemyId: foe.id, targetCharacterId: kara.id });
+  field.clearDice();
+  assert.equal(club.ok, true, club.error);
+  const down = field.sheet(kara.id);
+  assert.ok(down.conditions.includes("unconscious"), JSON.stringify(club.result));
+  assert.equal(row(down, "Frost Brand"), undefined, `the sword is still on the sheet: ${JSON.stringify(down.equipment)}`);
+  assert.equal(row(down, "Shield"), undefined, "the shield is still on the sheet");
+  assert.equal(row(down, "Dagger")?.qty, 2, "the packed daggers fell too");
+  assert.equal(down.ac, ac - 2, "the shield still counts in the armor class");
+  const lying = ground();
+  const sword = lying.find((entry) => entry.item.name === "Frost Brand");
+  assert.ok(sword, `nothing lies on the board: ${JSON.stringify(lying)}`);
+  assert.deepEqual([sword.x, sword.y], [6, 7], "the sword is not in Kara's square");
+  assert.equal(sword.item.attuned, true, "the sword on the ground lost its attunement");
+  assert.equal(sword.item.equipped, undefined);
+  assert.ok(lying.some((entry) => entry.item.name === "Shield"), "the shield is not on the ground");
+});
+
+await test("D11: the hero picks the sword back up with the free object interaction, still attuned", async () => {
+  // Woken by healing on the same board.
+  const healed = await field.invoke("heal", { characterId: kara.id, amount: 5 });
+  assert.equal(healed.ok, true, healed.error);
+  board.giveTurn(kara.id);
+  const pick = await field.invoke("handle_item", { characterId: kara.id, action: "pick_up", item: "Frost Brand" });
+  assert.equal(pick.ok, true, pick.error);
+  assert.match(String(pick.result.cost ?? ""), /free object interaction/, JSON.stringify(pick.result));
+  const sword = row(field.sheet(kara.id), "Frost Brand");
+  assert.ok(sword, "the sword is not back on the sheet");
+  assert.equal(sword.equipped, true, "the sword is not in hand");
+  assert.equal(sword.attuned, true, "picking it back up cost the attunement");
+});
+
+await test("D11: what still lies there when the fight ends goes back into its owner's pack", async () => {
+  // The shield was left lying from the last test.
+  assert.ok(ground().some((entry) => entry.item.name === "Shield"), "the shield is not lying there");
+  const ended = await field.invoke("end_encounter", { outcome: "truce" });
+  assert.equal(ended.ok, true, ended.error);
+  assert.equal(ground().length, 0, `still on the ground: ${JSON.stringify(ground())}`);
+  const shield = row(field.sheet(kara.id), "Shield");
+  assert.ok(shield, "the shield did not go back to Kara");
+  assert.equal(shield.equipped, false, "the shield went back on the arm, not into the pack");
+});
+
+await test("D11: a hero put to sleep off the board lets go too, and draws the sword again", async () => {
+  await board.endFight();
+  field.patch(kara.id, { equipment: KARA_GEAR });
+  await field.beginFight([{ monster: "goblin", count: 1 }], { heroFaces: { [kara.id]: 20 } });
+  // No token on the board: Kara has no square for it to lie in.
+  const maps = await import("../src/lib/db/battle-maps.ts");
+  for (const token of maps.listTokens(board.map().id)) {
+    maps.deleteToken(token.id);
+  }
+  const slept = await field.invoke("set_condition", { characterId: kara.id, condition: "unconscious", reason: "Sleep", rounds: 10 });
+  assert.equal(slept.ok, true, slept.error);
+  const asleep = field.sheet(kara.id);
+  assert.equal(row(asleep, "Frost Brand")?.equipped, false, `the sleeper still holds the sword: ${JSON.stringify(asleep.equipment)}`);
+  assert.equal(row(asleep, "Frost Brand")?.attuned, true);
+  assert.equal(ground().length, 0, "a board-less fall left something on a board");
+});
+
+// An enemy holds only what the engine knows it took up (handle_item pick_up
+// for an enemy): that falls with it as it falls asleep.
+await test("D11: a creature that falls asleep drops what it picked up", async () => {
+  const [foe] = await stage();
+  const theirs = dropped.insertDroppedItem({ campaignId: field.campaignId, mapId: board.map().id, x: 5, y: 7, place: "", item: { name: "Lantern key", qty: 1 }, droppedBy: "", heldByEnemy: foe.id });
+  const laid = await field.invoke("set_condition", { enemyId: foe.id, condition: "unconscious", reason: "Sleep", rounds: 10 });
+  assert.equal(laid.ok, true, laid.error);
+  const key = dropped.getDroppedItem(theirs.id);
+  assert.equal(key.heldByEnemy, null, "the sleeping creature still holds the key");
+  assert.deepEqual([key.x, key.y], [5, 7]);
+  void encounters;
+});
+
+finish();
