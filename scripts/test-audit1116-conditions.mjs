@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { caster, closeTables, enemyOf, FIGHTER, table } from "./lib/enforce-spell-kit.mjs";
+import { kit as conditionsKit, FIGHTER as SWORD_FIGHTER } from "./lib/enforce-conditions.mjs";
 
 const { test, finish } = suite("test-audit1116-conditions");
 const encounters = await import("../src/lib/db/encounters.ts");
@@ -46,6 +47,40 @@ await test("D01: the same through set_condition, on a creature and on a hero", a
   const woken = await world.invoke("clear_condition", { characterId: hero.id, condition: "unconscious", reason: "shaken awake" });
   assert.equal(woken.ok, true, woken.error);
   assert.ok(prone(world.sheet(hero.id).conditions), "the hero shaken awake is on their feet already");
+});
+
+// One fight off the board for the rules that read conditions alone.
+const arena = await openWorld();
+const arenaKit = conditionsKit(arena);
+const swordsman = arena.addHero(SWORD_FIGHTER);
+await arena.beginFight([{ monster: "goblin", count: 1 }], { heroFaces: { [swordsman.id]: 20 } });
+arenaKit.offBoard();
+const [goblin] = arena.enemies();
+
+// D02. SRD 5.1, Dodge: "You lose this benefit if you are incapacitated or if
+// your speed drops to 0." The enemies' swings and the opportunity attacks
+// dropped a Dodge at speed 0 (opportunity.ts withLiveDodge); a hero's own
+// swing and the Dexterity save did not, so a goblin that took the Dodge and
+// was then grappled still turned the fighter's sword at disadvantage and
+// still saved against Burning Hands with advantage.
+await test("D02: a dodger held at speed 0 gets nothing from the Dodge on a hero's swing", async () => {
+  arenaKit.reset(swordsman.id);
+  arenaKit.resetEnemy(goblin.id, ["dodging", "grappled"], { grappled: { source: swordsman.id } });
+  const out = await arenaKit.swing([3, 17, 4, 4, 4], swordsman.id, goblin.id, { weapon: "Longsword" });
+  assert.equal(out.outcome.ok, true, out.outcome.error);
+  assert.equal(arenaKit.d20s(out.dice), 1, `the grappled dodger still turned the sword: ${out.dice.join(" ")}`);
+});
+
+await test("D02: ... nor on its Dexterity save", async () => {
+  arenaKit.resetEnemy(goblin.id, ["dodging", "restrained"]);
+  const out = await arenaKit.withDice([10, 10, 1], "aoe_damage", {
+    damage: "1d4", saveAbility: "dex", dc: 25, halfOnSave: false, enemyIds: [goblin.id],
+  });
+  assert.equal(out.outcome.ok, true, out.outcome.error);
+  // Restrained alone: disadvantage. With the Dodge still counted the two
+  // cancelled to one die.
+  assert.equal(arenaKit.d20s(out.dice), 2, `the held dodger's DEX save rolled ${out.dice.join(" ")}`);
+  arenaKit.resetEnemy(goblin.id);
 });
 
 closeTables();
