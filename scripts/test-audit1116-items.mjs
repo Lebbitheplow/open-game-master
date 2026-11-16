@@ -256,6 +256,37 @@ await test("I05: a heavily encumbered hero's opportunity attack is made at disad
   assert.equal(d20s, 2, `the swing rolled ${d20s} d20 (disadvantage throws two): ${notes.join(" ")}`);
 });
 
+// I06. SRD 5.1, Adventuring Gear, Healer's Kit: "As an action, you can
+// expend one use of the kit to stabilize a creature that has 0 hit points,
+// without needing to make a Wisdom (Medicine) check." The Hand's Stabilize
+// card says "a DC 10 Medicine check, or a healer's kit with no roll", and
+// sends no method; the server rolled the check whatever the healer carried,
+// so a 4 on the die left the ally dying beside an unopened kit.
+await test("I06: a healer carrying a healer's kit stabilizes with it, no roll, when no method is named", async () => {
+  const medic = world.addHero({ class: "cleric", level: 3, equipment: [{ name: "Healer's Kit", qty: 1 }] });
+  const fallen = world.addHero({ class: "fighter", level: 3 });
+  world.patch(fallen.id, { currentHp: 0, conditions: ["unconscious", "prone"], deathSaves: { successes: 0, failures: 1, stable: false, dead: false } });
+  world.clearDice();
+  world.diceLog();
+  world.dice(1);
+  const out = await world.invoke("stabilize", { characterId: fallen.id, healerId: medic.id });
+  const d20s = world.diceLog().filter((die) => die.sides === 20).length;
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(d20s, 0, "no Medicine check is rolled");
+  assert.equal(world.sheet(fallen.id).deathSaves.stable, true);
+  assert.equal(world.sheet(medic.id).equipment.find((item) => item.name === "Healer's Kit")?.charges, 9, "one use of ten spent");
+  // Without a kit the check is rolled as before.
+  const plain = world.addHero({ class: "fighter", level: 3 });
+  const other = world.addHero({ class: "fighter", level: 3 });
+  world.patch(other.id, { currentHp: 0, conditions: ["unconscious", "prone"], deathSaves: { successes: 0, failures: 0, stable: false, dead: false } });
+  world.dice(15);
+  const checked = await world.invoke("stabilize", { characterId: other.id, healerId: plain.id });
+  world.clearDice();
+  assert.equal(checked.ok, true, checked.error);
+  assert.match(JSON.stringify(checked.result), /Medicine/);
+});
+
 world.close();
 loaded.close();
 finish();
