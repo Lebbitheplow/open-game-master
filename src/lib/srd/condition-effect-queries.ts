@@ -6,6 +6,7 @@
 // registry file so it does not grow past reading. Pure and database-free.
 
 import { activeConditionEffects } from "@/lib/srd/condition-effects";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 
 // The conditions on a TARGET that the next attack against it spends
 // (Guiding Bolt's advantage).
@@ -67,6 +68,14 @@ export function conditionBlocksAttacks(conditions: string[]): string | null {
 // truesight in feet the holder's effects give (0 for none).
 export function conditionSeesInvisible(conditions: string[]): string | null {
   return activeConditionEffects(conditions).find(({ row }) => row.seesInvisible)?.condition ?? null;
+}
+
+// Whether the holder's invisibility counts: invisible, and nothing on it
+// that keeps it from benefiting (Faerie Fire: "can't benefit from being
+// invisible", SRD 5.1). Outlined, an invisible imp still cancelled the
+// advantage Faerie Fire gives against it, and kept its own on its attacks.
+export function benefitsFromInvisible(conditions: string[]): boolean {
+  return conditions.some((entry) => isConditionNamed(entry, "invisible")) && !activeConditionEffects(conditions).some(({ row }) => row.revealsInvisible);
 }
 
 export function conditionTruesightFeet(conditions: string[]): number {

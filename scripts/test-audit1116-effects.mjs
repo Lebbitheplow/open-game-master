@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { freshTurn } from "./lib/enforce-spells.mjs";
-import { caster, closeTables, enemyOf, table } from "./lib/enforce-spell-kit.mjs";
+import { caster, closeTables, enemyOf, FIGHTER, table } from "./lib/enforce-spell-kit.mjs";
 import { combatKit, d20Faces, DUMMY, TRAINED } from "./lib/enforce-combat.mjs";
 
 const { test, finish } = suite("test-audit1116-effects");
@@ -339,6 +339,44 @@ await test("Y08: an attacker with blindsight rolls one d20 against a blurred cas
 
 await test("Y08: an attacker that sees by sight alone rolls with disadvantage against a blurred caster", async () => {
   assert.equal(await blurredAttackD20s({}), 2);
+});
+
+// ---- Y09: a creature outlined by Faerie Fire gains nothing from being invisible ----
+
+// SRD 5.1, Faerie Fire: "Any attack roll against an affected creature or
+// object has advantage if the attacker can see it, and the affected
+// creature or object can't benefit from being invisible." The registry's
+// row gave the advantage and nothing read the second half, so an outlined
+// invisible imp still imposed disadvantage (the two cancelled to a straight
+// roll) and still attacked with advantage.
+async function outlinedGoblin() {
+  const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
+  const { world, sheets: [fighter], enemies: [goblin] } = await table([FIGHTER]);
+  getDatabase().prepare("UPDATE encounter_enemies SET conditions_json = ?, condition_meta_json = ? WHERE id = ?")
+    .run(JSON.stringify(["invisible", "faerie fire"]), JSON.stringify({ "faerie fire": { spell: "Faerie Fire", source: fighter.id, rounds: 10 } }), goblin.id);
+  const lastAttack = () => listRecentRolls(world.campaignId, 10).find((entry) => entry.kind === "attack");
+  return { world, fighter, goblin, lastAttack };
+}
+
+await test("Y09: an attack at an invisible goblin outlined in Faerie Fire has advantage", async () => {
+  const { world, fighter, goblin, lastAttack } = await outlinedGoblin();
+  world.dice(5, 15, 4);
+  const out = await world.invoke("pc_attack", { characterId: fighter.id, targetEnemyId: goblin.id, weapon: "Longsword" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  const roll = lastAttack();
+  assert.equal(d20Faces(roll).length, 2, "two dice");
+  // Longsword: Strength +3 and proficiency +3 on the higher die.
+  assert.equal(roll.total, 21, "the higher die kept: advantage");
+});
+
+await test("Y09: an invisible goblin outlined in Faerie Fire attacks with no advantage for its invisibility", async () => {
+  const { world, fighter, goblin, lastAttack } = await outlinedGoblin();
+  world.dice(15, 15, 3);
+  const out = await world.invoke("enemy_attack", { enemyId: goblin.id, targetCharacterId: fighter.id, characterId: fighter.id });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(d20Faces(lastAttack()).length, 1, "one die");
 });
 
 closeTables();

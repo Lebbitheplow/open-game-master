@@ -154,6 +154,7 @@ export const CONDITION_EFFECTS: ConditionEffectRow[] = [
     match: ["faerie fire", "outlined in faerie fire"],
     summary: "Faerie Fire: attack rolls against them have advantage, and they cannot benefit from being invisible.",
     attacksAgainstAdvantage: true,
+    revealsInvisible: true,
   },
   {
     id: "guidance",

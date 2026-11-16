@@ -210,6 +210,10 @@ export type ConditionEffectRow = {
   // The holder sees invisible creatures (See Invisibility, True Seeing), and
   // has truesight this far (src/lib/srd/condition-effects-last.ts).
   seesInvisible?: boolean;
+  // The holder can't benefit from being invisible (Faerie Fire): its
+  // invisibility gives no advantage and imposes no disadvantage, and it is
+  // seen as if it were not invisible.
+  revealsInvisible?: boolean;
   truesightFeet?: number;
   // The holder sees nothing farther away than this (Shadow Arrow: 5 feet),
   // whatever the light (src/lib/dm/attack-light.ts attackSight).

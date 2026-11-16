@@ -6,7 +6,7 @@
 
 import { RAGING } from "@/lib/srd/class-resources";
 import { conditionIncomingAttackState, conditionSpeed } from "@/lib/srd/condition-effects";
-import { conditionSeesInvisible } from "@/lib/srd/condition-effect-queries";
+import { benefitsFromInvisible, conditionSeesInvisible } from "@/lib/srd/condition-effect-queries";
 import { itemAbilityScore, type Wearer } from "@/lib/srd/magic-items";
 import { textKey } from "@/lib/language/text-logic";
 import type { CreatureHold } from "@/lib/bestiary/hold-text";
@@ -471,7 +471,7 @@ export function sightBlockedBy(
   if (has(viewerConditions, ["blinded"]) && !options.blindsight) {
     return "blinded";
   }
-  if (has(seenConditions, ["invisible"]) && !seesInvisible(viewerConditions, options)) {
+  if (benefitsFromInvisible(seenConditions) && !seesInvisible(viewerConditions, options)) {
     return "invisible";
   }
   return options.hidden !== false && has(seenConditions, ["hidden"]) ? "hidden" : null;
@@ -565,7 +565,8 @@ export function attackContext(input: {
     notes.push(`attacker is ${attackerDown}: disadvantage`);
   }
   // See Invisibility and True Seeing see the invisible (condition-effects-last.ts).
-  if (has(input.attackerConditions, ["invisible"]) && !seesInvisible(input.targetConditions, targetSees)) {
+  // Outlined by Faerie Fire, invisibility counts for nothing (benefitsFromInvisible).
+  if (benefitsFromInvisible(input.attackerConditions) && !seesInvisible(input.targetConditions, targetSees)) {
     if (input.targetAlert) notes.push("attacker is invisible: no advantage against an Alert target");
     else {
       sources.push("advantage");
@@ -595,7 +596,7 @@ export function attackContext(input: {
     sources.push("advantage");
     notes.push(`target is ${targetOpen}: advantage`);
   }
-  if (has(input.targetConditions, ["invisible"]) && !seesInvisible(input.attackerConditions, attackerSees)) {
+  if (benefitsFromInvisible(input.targetConditions) && !seesInvisible(input.attackerConditions, attackerSees)) {
     sources.push("disadvantage");
     notes.push("target is invisible: disadvantage");
   }
