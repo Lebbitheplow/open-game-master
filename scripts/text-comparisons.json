@@ -2051,7 +2051,7 @@
     "lib/harness/adapters/grok.ts#str-eq": [["key",4,"CLI flags, content types, tool kinds and model ids (protocol)"]],
     "lib/harness/adapters/grok.ts#str-list": [["key",1,"CLI flags, content types, tool kinds and model ids (protocol)"]],
     "lib/harness/adapters/pi.ts#re-word": [["english-source",3,"Pi's and its providers' own English error output, read to name the failure kind"]],
-    "lib/harness/adapters/pi.ts#str-eq": [["key",8,"Pi's RPC event types, roles, stop reasons, CLI flags and model-list columns (protocol)"]],
+    "lib/harness/adapters/pi.ts#str-eq": [["key",9,"Pi's RPC event types, roles, stop reasons, CLI flags and model-list columns (protocol)"]],
     "lib/harness/adapters/pi.ts#str-list": [["key",2,"Pi's RPC event types, roles, stop reasons, CLI flags and model-list columns (protocol)"]],
     "lib/harness/adapters/pi.ts#toUpperCase": [["key",1,"Pi's RPC event types, roles, stop reasons, CLI flags and model-list columns (protocol)"]],
     "lib/harness/adapters/pi.ts#\\w": [["key",1,"Pi's RPC event types, roles, stop reasons, CLI flags and model-list columns (protocol)"]],
