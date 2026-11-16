@@ -240,6 +240,14 @@ function number(ctx: GateContext, args: Record<string, unknown>, what: "damage" 
     const rolled = rollCard(ctx.campaign, ctx.turn, sheet ? sheet.id : null, what === "damage" ? "damage" : "custom", label, dice, null);
     const { dice: _sent, ...rest } = args;
     void _sent;
+    // SRD 5.1 gives damage no floor: dice a penalty brings to 0 or less deal
+    // nothing, as every attack door and the GM's targeted roll leave it
+    // (enemy-blow.ts applyBlow). The total was floored at 1, so a "1d4-2"
+    // that rolled a 1 took a hit point. The damage tools take no 0, so
+    // nothing is sent to them.
+    if (what === "damage" && rolled.total <= 0) {
+      return { result: { ok: true, damageApplied: 0, note: `The dice came to ${rolled.total}: no damage. Nothing was applied; narrate the blow doing no harm.` } };
+    }
     return { args: JSON.stringify({ ...rest, amount: Math.max(1, rolled.total) }) };
   }
   const amount = Number(args.amount);

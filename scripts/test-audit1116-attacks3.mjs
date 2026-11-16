@@ -335,6 +335,40 @@ await test("G25: a hero on foot never swings a lance on an opportunity attack be
   }
 });
 
+// ---- G26: damage totals of 0 or less deal 0 ----
+
+await test("G26: damage dice sent to apply_damage or damage_enemy that total 0 or less deal 0, not 1", async () => {
+  // SRD 5.1 gives damage no floor: a penalty can leave nothing, as pc_attack,
+  // every attack door and the GM's targeted damage roll (G13) leave 0. The
+  // damage tools' dice floored the total at 1 (ai-gate.ts).
+  const dummy = await freshArena();
+  world.patch(hero.id, { currentHp: 20 });
+  world.clearDice();
+  world.dice(1);
+  const onHero = await world.invoke("apply_damage", { characterId: hero.id, dice: "1d4-2", type: "bludgeoning", reason: "a weak cut" });
+  world.clearDice();
+  assert.equal(onHero.ok, true, onHero.error);
+  assert.equal(world.sheet(hero.id).currentHp, 20, `a total under 1 took a hit point: ${JSON.stringify(onHero.result)}`);
+  world.dice(1);
+  const onFoe = await world.invoke("damage_enemy", { enemyId: dummy.id, dice: "1d4-2", type: "bludgeoning", reason: "a weak cut" });
+  world.clearDice();
+  assert.equal(onFoe.ok, true, onFoe.error);
+  assert.equal(kit.dummy().currentHp, dummy.currentHp, `a total under 1 took a hit point: ${JSON.stringify(onFoe.result)}`);
+});
+
+await test("G26: an area's damage that totals 0 or less deals 0, not 1", async () => {
+  // The same for aoe_damage's total (aoe-damage.ts), floored at 1.
+  const dummy = await freshArena();
+  dress({ saveMods: SAVES_ZERO, traits: [] });
+  world.clearDice();
+  // The d4 of 1, then the dummy's failed save.
+  world.dice(1, 1);
+  const out = await world.invoke("aoe_damage", { enemyIds: [dummy.id], damage: "1d4-2", type: "fire", saveAbility: "dex", dc: 20, reason: "a sputtering flame" });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(kit.dummy().currentHp, dummy.currentHp, `a total under 1 took a hit point: ${JSON.stringify(out.result)}`);
+});
+
 await kit.endFight();
 world.close();
 finish();
