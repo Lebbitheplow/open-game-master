@@ -264,6 +264,13 @@ The documents below are the server's own reference.
 - **Contributing**
   - [Contributing guide](.github/CONTRIBUTING.md): the conventions, the checks, a new DM tool, route or test suite, and what a pull request carries
 
+## Building appearance themes
+
+For palettes, painted borders, materials, registration and disposable preview
+checks, see [Build an appearance theme](docs/appearance-themes.md). The guide
+uses Ancient Woodland as a worked example and includes the commands needed to
+validate a new theme without live campaign data.
+
 ## Credits and licenses
 
 **The application is [MIT licensed](LICENSE). Third-party and unofficial campaign

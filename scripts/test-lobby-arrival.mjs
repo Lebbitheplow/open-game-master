@@ -116,7 +116,7 @@ await test("the lobby raises it from the stream's sheets, with no new channel", 
   assert.match(lobby, /<ArrivalBanner sheets=\{sheets\} \/>/, "fed the sheets the lobby already has");
   assert.match(
     lobby,
-    /<div className="relative order-1">\s*<LobbyHero[\s\S]*?\/>\s*<ArrivalBanner sheets=\{sheets\} \/>\s*<\/div>/,
+    /<div className="lobby-hero-slot relative order-1">\s*<LobbyHero[\s\S]*?\/>\s*<ArrivalBanner sheets=\{sheets\} \/>\s*<\/div>/,
     "it rides on the lobby card, not over the grid",
   );
   const stream = read("src/app/campaigns/[campaignId]/useCampaignStream.ts");

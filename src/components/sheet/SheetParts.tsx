@@ -273,7 +273,7 @@ export function TrainingLines({
       {rows.map(([label, values]) => (
         <div key={label} className="contents">
           <dt className="text-stone-500">{label}</dt>
-          <dd className="text-stone-200">{values.length ? [...new Set(values.map(nice))].join(", ") : <span className="text-stone-600">none</span>}</dd>
+          <dd className="text-stone-200">{values.length ? [...new Set(values.map(nice))].join(", ") : <span className="text-stone-400">none</span>}</dd>
         </div>
       ))}
       {conditional.length ? (

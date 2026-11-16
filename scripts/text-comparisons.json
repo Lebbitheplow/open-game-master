@@ -14,6 +14,8 @@
     "lib/db/core.ts"
   ],
   "sites": {
+    "components/ui/LobbyIcon.tsx#str-key": [["key",1,"fixed heading-glyph keys select decorative fittings"]],
+    "lib/appearance-themes.ts#str-list": [["key",1,"registered icon keys define the checked picker and lobby symbol vocabulary, not player-written text"]],
     "lib/dm/genre-cc-a-drones.ts#str-eq": [["key",2,"a gas's damage type and condition, the engine's own vocabulary (zone rows)"]],
     "lib/dm/genre-cc-a-saves.ts#str-eq": [["key",1,"a save's against, one of the engine's own condition names (src/lib/dm/roll-about.ts SAVE_AGAINST)"]],
     "lib/dm/genre-cc-a-saves.ts#str-includes": [["key",1,"a save's against, one of the engine's own condition names (src/lib/dm/roll-about.ts SAVE_AGAINST)"]],
@@ -2618,7 +2620,7 @@
     "lib/table-layout.ts#str-eq": [["key",3,"stored layout values"]],
     "lib/text-models.ts#str-eq": [["key",4,"provider ids"]],
     "lib/text-models.ts#toLowerCase": [["key",4,"model ids"]],
-    "lib/theme-mode.ts#str-eq": [["key",2,"stored theme values"]],
+    "lib/theme-mode.ts#str-eq": [["key",4,"stored theme values and CSS artwork none sentinels; these are fixed display tokens, never human-written text"]],
     "lib/tours/account-logic.ts#str-eq": [["key",1,"stored tour state"]],
     "lib/tours/registry.ts#str-key": [["key",2,"tour ids, for the version and the edition each tour is at"]],
     "lib/tours/table.ts#str-list": [["key",8,"tour anchor ids"]],

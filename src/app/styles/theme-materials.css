@@ -1,0 +1,383 @@
+/* Shared painted surfaces. Each theme supplies material tokens and artwork.
+   Borders are decorative; reading insets remain opaque and controls usable. */
+:where([data-appearance]) {
+  --material-grain: var(--theme-art-texture);
+  --material-frame: var(--theme-art-frame);
+  --material-frame-width: 64px;
+  --material-inset: var(--color-stone-950);
+  --material-paper: var(--color-stone-900);
+  --material-metal: var(--color-amber-200);
+  --material-edge: var(--color-amber-600);
+  --material-panel-wash: linear-gradient(color-mix(in srgb, var(--color-stone-900) 85%, transparent), color-mix(in srgb, var(--color-stone-950) 90%, transparent));
+  --material-control-wash: linear-gradient(color-mix(in srgb, var(--color-stone-800) 72%, transparent), color-mix(in srgb, var(--color-stone-900) 85%, transparent));
+  --material-body-wash: linear-gradient(color-mix(in srgb, var(--background) 94%, transparent), color-mix(in srgb, var(--background) 94%, transparent));
+  --material-rail-wash: linear-gradient(#12101c70, #12101c70);
+  --material-primary-wash: linear-gradient(#55421ee8, #342345eb);
+  /* The table's send key, chosen say/do key and health bar. The defaults are
+     the greens every painted theme had before these were variables. */
+  --material-send-wash: linear-gradient(#456332, #233b1d);
+  --material-send-edge: #b4c99c;
+  --material-chosen-wash: linear-gradient(#344d2d, #203522);
+  --material-vital-fill: linear-gradient(90deg, #668449, #b9d88e);
+  --material-metal-finish: linear-gradient(135deg, #f2dda1, #ac803b 48%, #e8cf88 51%, #826128);
+  --material-metal-ink: #251b10;
+  --material-fitting-radius: 50%;
+  --material-control-radius: 6px;
+  --material-panel-radius: 12px 4px;
+  --material-crest-tilt: 0deg;
+  --material-scrim: linear-gradient(color-mix(in srgb, var(--background) 65%, transparent), color-mix(in srgb, var(--background) 40%, transparent) 45%, color-mix(in srgb, var(--background) 80%, transparent));
+}
+
+html[data-theme-ornaments="true"][data-theme] body {
+  background:
+    radial-gradient(ellipse at 50% 0%, var(--appearance-wash), transparent 70%),
+    var(--material-body-wash),
+    var(--material-grain) center / 680px;
+}
+html[data-theme-ornaments="true"][data-theme="light"] body {
+  background:
+    radial-gradient(ellipse at 50% 0%, var(--appearance-wash), transparent 70%),
+    var(--material-body-wash),
+    var(--material-grain) center / 680px;
+}
+html[data-theme-ornaments="true"][data-theme] body::before { background-image: none; }
+
+/* Quiet, opaque insets keep prose separate from the ornamental wood.
+   The toolbar and controls retain grain beneath a controlled wash. */
+html[data-theme-ornaments="true"][data-theme] :is(.panel, .glass, .bell-panel) {
+  background: var(--material-inset);
+  border-color: var(--appearance-rule);
+  box-shadow: inset 0 2px 5px #0002, 0 1px 0 #c6ceb51f;
+}
+html[data-theme-ornaments="true"][data-theme] .glass {
+  border-bottom: 3px ridge var(--material-edge);
+  background-image: var(--material-control-wash), var(--material-grain);
+  background-size: auto, 620px;
+}
+html[data-theme-ornaments="true"][data-theme] :is(.cine-rail, .cine-panel) {
+  background-image: var(--material-panel-wash), var(--material-grain);
+  background-size: auto, 620px;
+  border-color: var(--material-edge);
+}
+html[data-theme-ornaments="true"][data-theme] .cine-rail {
+  background-image: var(--material-control-wash), var(--material-grain);
+  box-shadow: inset 3px 0 0 #0b160c40, inset 4px 0 0 #a89b6a40;
+}
+
+/* Explicit opt-in keeps dense tables, popovers and unpadded lists compact.
+   Border-image's corners stay fixed while the middle rails stretch. */
+html[data-theme-ornaments="true"][data-theme] .theme-framed {
+  border: 24px solid transparent;
+  border-image-source: var(--material-frame);
+  border-image-slice: var(--theme-frame-slice, 22%);
+  border-image-width: var(--material-frame-width);
+  border-image-outset: 8px;
+  border-image-repeat: stretch;
+  border-radius: 0;
+  background-clip: padding-box;
+  box-shadow: 0 12px 30px #0004;
+}
+/* Existing corner brackets would compete with the painted fittings. */
+html[data-theme-ornaments="true"][data-theme] .theme-framed.ornate::before,
+html[data-theme-ornaments="true"][data-theme] .theme-framed.ornate::after { display: none; }
+
+/* Buttons feel like inset wooden keys. Destructive and semantic controls
+   keep their own colours; only the shared neutral/primary buttons opt in. */
+html[data-theme-ornaments="true"][data-theme] :is(.theme-key:not(.theme-key-danger), .kit-select, .lobby-sigil) {
+  background-image: var(--material-control-wash), var(--material-grain);
+  background-size: auto, 420px;
+  background-color: var(--color-stone-900);
+  border: 1px solid var(--material-edge);
+  color: var(--color-stone-100);
+  box-shadow: inset 0 1px 0 #d8c39440, inset 0 -2px 0 #0b160c60, 0 2px 5px #0003;
+  border-radius: var(--material-control-radius);
+}
+html[data-theme-ornaments="true"][data-theme] .theme-key:not(.theme-key-danger):hover:not(:disabled) {
+  border-color: var(--color-amber-400);
+  box-shadow: inset 0 1px 0 #dfd7af66, 0 0 0 1px var(--appearance-rule), 0 3px 8px #0003;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-key:not(.theme-key-danger):active:not(:disabled) {
+  box-shadow: inset 0 2px 5px #0005;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-key-primary:not(.theme-key-danger) {
+  border-color: var(--color-amber-500);
+  background-image: var(--material-primary-wash), var(--material-grain);
+  color: #f4f4da;
+}
+html[data-theme-ornaments="true"][data-theme="light"] .theme-key-primary:not(.theme-key-danger) {
+  background-image: var(--material-primary-wash), var(--material-grain);
+}
+html[data-theme-ornaments="true"][data-theme] .kit-select-list {
+  background-image: var(--material-panel-wash), var(--material-grain);
+  background-size: auto, 620px;
+}
+html[data-theme-ornaments="true"][data-theme] .danger-zone {
+  border-color: var(--color-red-500);
+}
+/* Allegiance is information, so a decorative panel edge must not hide it. */
+html[data-theme-ornaments="true"][data-theme] .party-card[data-against] {
+  border-color: var(--color-rose-500);
+}
+html[data-theme-ornaments="true"][data-theme] :is(.section-head-title, .lobby-head-title) {
+  letter-spacing: 0.13em;
+  text-shadow: 0 1px 1px #0002;
+}
+html[data-theme-ornaments="true"][data-theme] :is(.section-head-rule, .lobby-head-rule) {
+  height: 3px;
+  background: linear-gradient(90deg, var(--appearance-rule), transparent);
+  border-top: 1px solid var(--appearance-rule);
+  border-bottom: 1px solid var(--appearance-wash);
+}
+
+/* Picker thumbnails show the actual materials, rather than a symbolic leaf.
+   Fixed corners retain their foliage at thumbnail sizes. */
+.appearance-preview[data-theme-ornaments="true"][data-theme] {
+  background-image: var(--material-panel-wash), var(--material-grain);
+  background-size: auto, 360px;
+  padding: 0.6rem;
+}
+.appearance-preview[data-theme-ornaments="true"][data-theme="light"] {
+  background-image: var(--material-panel-wash), var(--material-grain);
+}
+.appearance-preview[data-theme-ornaments="true"][data-theme] > .appearance-preview-frame {
+  border: 12px solid transparent;
+  border-image: var(--material-frame) var(--theme-frame-slice, 22%) / 26px / 3px stretch;
+  border-radius: 0;
+  background-image: var(--material-panel-wash), var(--material-grain);
+  background-size: auto, 360px;
+  background-clip: padding-box;
+  padding: 0.3rem;
+  gap: 0.3rem;
+}
+@media (max-width: 540px) {
+  html[data-theme-ornaments="true"][data-theme] .theme-framed {
+    --material-frame-width: 42px;
+    border-width: 16px;
+    border-image-outset: 4px;
+  }
+  .appearance-preview[data-theme-ornaments="true"][data-theme] > .appearance-preview-frame {
+    border-width: 8px;
+    border-image-width: 18px;
+    padding: 0.2rem;
+  }
+}
+
+/* The campaign lobby is one piece of furniture. The banner spans the
+   enclosure; the desktop's secondary column remains one continuous stack.
+   DOM and keyboard order are unchanged, including the mobile order. */
+.theme-crest, .theme-heading-icon { display: none; }
+.lobby-painted-icon { display: contents; }
+html[data-theme-ornaments="true"][data-theme] .lobby-painted-icon { display: none; }
+html[data-theme-ornaments="true"][data-theme] .cine-lobby { background: transparent; }
+html[data-theme-ornaments="true"][data-theme] .cine-lobby .cine-backdrop,
+html[data-theme-ornaments="true"][data-theme] .cine-lobby .cine-scrim-stack { display: none; }
+html[data-theme-ornaments="true"][data-theme] .theme-lobby-shell {
+  position: relative;
+  border: 26px solid transparent;
+  border-radius: 12px;
+  background:
+    linear-gradient(var(--material-paper), var(--material-paper)) padding-box,
+    var(--material-rail-wash) border-box,
+    var(--material-grain) center / 420px border-box;
+  padding: 16px;
+  margin: 8px 0 24px;
+  box-shadow: inset 0 0 0 2px #a5ac8c80, 0 2px 0 #a9a07a66, 0 16px 50px #0005;
+}
+/* Corner paintings keep their aspect ratio. The rails use a repeating
+   material, so long pages never stretch bark or foliage into stripes. */
+html[data-theme-ornaments="true"][data-theme] .theme-lobby-shell :is(button, a):focus-visible {
+  outline: 2px solid var(--material-metal);
+  outline-offset: 4px;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-lobby-shell .panel {
+  border-radius: 4px;
+}
+html[data-theme-ornaments="true"][data-theme] .lobby-hero {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: hidden;
+}
+html[data-theme-ornaments="true"][data-theme] .lobby-hero::before,
+html[data-theme-ornaments="true"][data-theme] .lobby-hero::after { display: none; }
+html[data-theme-ornaments="true"][data-theme] .lobby-hero-art {
+  mask-image: none;
+  -webkit-mask-image: none;
+  border-radius: 3px;
+  border-bottom: 3px ridge var(--material-edge);
+}
+html[data-theme-ornaments="true"][data-theme] .lobby-hero-art::after { display: none; }
+html[data-theme-ornaments="true"][data-theme] .lobby-hero-art > * {
+  height: clamp(176px, 20vw, 230px);
+  aspect-ratio: auto;
+  animation: none;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-default-cover > div {
+  background: var(--theme-art-backdrop) center / cover;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-default-cover img { display: none; }
+html[data-theme-ornaments="true"][data-theme] .cine-lobby .lobby-hero-caption {
+  margin-top: 0;
+  padding: 30px 24px 24px;
+  border-bottom: 1px solid var(--appearance-rule);
+}
+html[data-theme-ornaments="true"][data-theme] .theme-crest {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: -25px;
+  right: 28px;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--material-fitting-radius);
+  border: 2px solid var(--material-edge);
+  background: var(--material-metal-finish);
+  color: var(--material-metal-ink);
+  box-shadow: inset 0 0 0 3px var(--material-metal-ink), 0 4px 10px #0006;
+  transform: rotate(var(--material-crest-tilt));
+}
+html[data-theme-ornaments="true"][data-theme] .lobby-hero-caption > p:last-child {
+  max-width: 70ch;
+}
+html[data-theme-ornaments="true"][data-theme] .lobby-hero-caption > p:first-of-type { text-shadow: none; }
+html[data-theme-ornaments="true"][data-theme] .lobby-head {
+  padding: 8px 10px;
+  background: transparent;
+  border-bottom: 1px solid var(--appearance-rule);
+}
+html[data-theme-ornaments="true"][data-theme] .theme-heading-icon,
+html[data-theme-ornaments="true"][data-theme] .lobby-head > span[aria-hidden]:first-child {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: var(--material-metal-ink);
+  border: 1px solid var(--material-edge);
+  border-radius: var(--material-fitting-radius);
+  border-color: var(--material-edge);
+  background: var(--material-metal-finish);
+  box-shadow: inset 0 0 0 2px var(--material-metal-ink);
+}
+html[data-theme-ornaments="true"][data-theme] .lobby-head > span[aria-hidden]:first-child img {
+  filter: grayscale(1) brightness(1.25);
+}
+html[data-theme-ornaments="true"][data-theme] :is(.lobby-head-title, .lobby-head-rule) { color: var(--material-metal); }
+html[data-theme-ornaments="true"][data-theme] .lobby-head-rule {
+  height: 1px;
+  border: 0;
+  background: linear-gradient(90deg, var(--material-edge), transparent);
+}
+html[data-theme-ornaments="true"][data-theme] :is(.lobby-seat-badge, .lobby-hero-chip) {
+  border-radius: 9px 2px;
+  border-color: var(--material-edge);
+  color: var(--material-metal);
+  background: var(--material-inset);
+}
+html[data-theme-ornaments="true"][data-theme] .lobby-medallion {
+  border-radius: 50%;
+  padding: 3px;
+  border-color: var(--material-edge);
+  background: var(--material-metal-finish);
+  box-shadow: inset 0 0 0 2px #ccd3bc50, 0 3px 9px #0004;
+}
+html[data-theme-ornaments="true"][data-theme] .lobby-medallion-face {
+  border-color: var(--material-edge);
+  box-shadow: 0 0 0 1px #233523;
+}
+html[data-theme-ornaments="true"][data-theme] .lobby-party > .lobby-head {
+  padding: 12px;
+  background: var(--material-control-wash), var(--material-grain) center / 420px;
+  border: 1px solid var(--material-edge);
+  border-radius: var(--material-panel-radius);
+}
+html[data-theme-ornaments="true"][data-theme] .lobby-actions {
+  padding: 14px;
+  border: 1px solid var(--material-edge);
+  border-radius: var(--material-panel-radius);
+  background: var(--material-control-wash), var(--material-grain) center / 420px;
+  box-shadow: inset 0 0 0 3px #8c9b7840, 0 6px 16px #0003;
+}
+html[data-theme-ornaments="true"][data-theme] .lobby-actions .panel { padding: 18px; }
+html[data-theme-ornaments="true"][data-theme] .lobby-actions .theme-key-primary:not(:disabled) {
+  min-height: 48px;
+  border-color: var(--material-edge);
+  box-shadow: inset 0 1px 0 #e3eac080, inset 0 -3px 0 #0b1b0b99, 0 3px 12px #0004;
+}
+html[data-theme-ornaments="true"][data-theme] .lobby-actions .lobby-ready[aria-pressed="true"] {
+  background: var(--material-inset);
+  color: var(--material-metal);
+  border-color: var(--material-edge);
+  box-shadow: inset 0 3px 8px #0005;
+}
+html[data-theme-ornaments="true"][data-theme] .lobby-code { box-shadow: none; }
+html[data-theme-ornaments="true"][data-theme] .lobby-code .lobby-qr { width: 104px; height: 104px; }
+html[data-theme-ornaments="true"][data-theme] .lobby-code-seal { display: none; }
+html[data-theme-ornaments="true"][data-theme] .lobby-code .lobby-head { padding-right: 10px; }
+html[data-theme-ornaments="true"][data-theme] .lobby-code .lobby-sigil {
+  min-width: 1.5rem;
+  height: 2rem;
+  font-size: 1.15rem;
+  border-radius: 8px 2px;
+  border-color: var(--material-edge);
+  background: var(--material-paper);
+  color: var(--material-metal);
+  box-shadow: inset 0 2px 4px #0002;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-lobby-shell button[aria-expanded="true"] {
+  background: var(--material-inset);
+  border-color: var(--material-edge);
+  box-shadow: inset 0 2px 6px #0004;
+}
+html[data-theme-ornaments="true"][data-theme] .theme-lobby-shell .ornate::before,
+html[data-theme-ornaments="true"][data-theme] .theme-lobby-shell .ornate::after { display: none; }
+html[data-theme-ornaments="true"][data-theme] .lobby-seat[data-ready] {
+  border-left: 3px solid var(--color-amber-500);
+  box-shadow: inset 3px 0 10px var(--appearance-wash);
+}
+@media (min-width: 1024px) {
+  html[data-theme-ornaments="true"][data-theme] .lobby-layout {
+    column-gap: 24px;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  }
+  html[data-theme-ornaments="true"][data-theme] .lobby-primary { display: contents; }
+  html[data-theme-ornaments="true"][data-theme] .lobby-primary > * { grid-column: 1; }
+  html[data-theme-ornaments="true"][data-theme] .lobby-primary > :is(.lobby-hero, .lobby-hero-slot) { grid-column: 1 / -1; }
+  html[data-theme-ornaments="true"][data-theme] .lobby-secondary {
+    grid-column: 2;
+    grid-row: 2 / span 4;
+    order: 2;
+    border-left: 1px solid var(--appearance-rule);
+    padding-left: 24px;
+  }
+}
+@media (max-width: 1023px) {
+  html[data-theme-ornaments="true"][data-theme] .lobby-code { order: 4; }
+  html[data-theme-ornaments="true"][data-theme] .lobby-actions { order: 3; }
+}
+@media (max-width: 540px) {
+  html[data-theme-ornaments="true"][data-theme] .cine-lobby { padding: 12px 8px; }
+  html[data-theme-ornaments="true"][data-theme] .theme-lobby-shell {
+    border-width: 12px;
+    padding: 8px;
+  }
+  html[data-theme-ornaments="true"][data-theme] .lobby-actions { padding: 8px; }
+  html[data-theme-ornaments="true"][data-theme] .cine-lobby .lobby-hero-caption { padding: 27px 8px 18px; }
+  html[data-theme-ornaments="true"][data-theme] .lobby-hero-art > * { height: 176px; }
+  html[data-theme-ornaments="true"][data-theme] .theme-default-cover > div { background-position: 66% center; }
+  html[data-theme-ornaments="true"][data-theme] .theme-crest { right: 14px; }
+}
+@media (forced-colors: active) {
+  html[data-theme-ornaments="true"][data-theme] .theme-lobby-shell {
+    border-image: none;
+    border: 1px solid CanvasText;
+  }
+}
+@media (forced-colors: active) {
+  html[data-theme-ornaments="true"][data-theme] .theme-framed {
+    border-image: none;
+    border: 1px solid CanvasText;
+  }
+}

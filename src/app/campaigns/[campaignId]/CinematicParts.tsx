@@ -74,7 +74,7 @@ export function SceneBackdrop({
     return () => window.clearTimeout(timer);
   }, [layers]);
   return (
-    <div className="cine-backdrop" data-dark={dark ? "true" : undefined} aria-hidden="true">
+    <div className="cine-backdrop" data-placeholder={!painted && !cover ? "true" : undefined} data-dark={dark ? "true" : undefined} aria-hidden="true">
       {layers.map((src, index) => (
         // eslint-disable-next-line @next/next/no-img-element
         <img key={src} src={src} alt="" className={cn("cine-art", index === layers.length - 1 && "cine-art-in")} />
