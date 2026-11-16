@@ -15,6 +15,7 @@ import {
   coverFor,
   tilesBetween,
   wallBetween,
+  wallsBeside,
 } from "@/lib/dm/attack-spatial";
 import { attackSenses, characterSenses, enemySenses } from "@/lib/dm/attack-light";
 import { attackSightVerdict } from "@/lib/dm/attack-sight";
@@ -140,5 +141,9 @@ export function ownSquareFacts(campaignId: string, encounter: Pick<Encounter, "i
   // An ally's aura on this character's attack rolls (genre-b-auras.ts).
   const aura = genreBAuraAttack(campaignId, sheet);
   if (aura.bonus) out.attackAura = aura;
+  // Who beside them a wall stands between: the engine measures a hand on a
+  // creature only in a fight (shake-awake.ts reads the active fight).
+  const walled = encounter.kind === "fight" ? wallsBeside(encounter.id, sheet.id) : [];
+  if (walled.length) out.walled = walled;
   return out;
 }

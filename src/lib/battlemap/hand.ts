@@ -576,7 +576,7 @@ export function deriveHand(sheet: CharacterSheet, turn: HandTurn = FRESH_TURN, o
     ...featureDoorCards(sheet, turn, spells),
     ...kiCards(sheet, turn),
     ...basicCards(sheet, turn, riders, options.board).map((card) => (card.id === "basic:ready" ? withReadySpells(card, spells) : card)),
-    ...gearCards(sheet, turn, options.gear),
+    ...gearCards(sheet, turn, options.gear, options.board?.walled),
     ...fastHandsCards(sheet, turn),
   ];
 }

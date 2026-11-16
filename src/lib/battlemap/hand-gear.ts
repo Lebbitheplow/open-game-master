@@ -104,7 +104,8 @@ function interactionCost(sheet: CharacterSheet, turn: HandTurn): { cost: HandCos
   };
 }
 
-export function gearCards(sheet: CharacterSheet, turn: HandTurn, context: HandGearContext = {}): HandCard[] {
+// `walled`: who beside this character a wall stands between (HandBoardFacts).
+export function gearCards(sheet: CharacterSheet, turn: HandTurn, context: HandGearContext = {}, walled: readonly string[] = []): HandCard[] {
   const standing = standingGate(sheet, turn, "action");
   const free = standingGate(sheet, turn, "free");
   const interaction = interactionCost(sheet, turn);
@@ -266,9 +267,11 @@ export function gearCards(sheet: CharacterSheet, turn: HandTurn, context: HandGe
     );
   }
   // Wake: only beside an ally Sleep or Hypnotic Pattern holds, within 5 feet
-  // as take_action's reach says; off the board nothing measures it
-  // (shake-awake.ts).
-  if ((context.sleepers ?? []).some((ally) => ally.id !== sheet.id && (ally.feet === undefined || ally.feet <= 5))) {
+  // as take_action's reach says, and with no wall between, which it refuses
+  // too (Y21); off the board nothing measures it (shake-awake.ts).
+  const wakeable = (ally: { id: string; feet?: number }) =>
+    ally.id !== sheet.id && (ally.feet === undefined || ally.feet <= 5) && !walled.includes(ally.id);
+  if ((context.sleepers ?? []).some(wakeable)) {
     cards.push(
       gated(
         {

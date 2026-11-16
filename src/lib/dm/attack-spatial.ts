@@ -17,6 +17,7 @@ import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { coverBetweenSpaces, hasLineOfSightBetween } from "@/lib/battlemap/los";
 import { blockedLines, type XY } from "@/lib/battlemap/sight-lines";
 import { footprintTiles, type Footprint } from "@/lib/battlemap/footprint";
+import type { BattleToken } from "@/lib/battlemap/types";
 import { spaceOf, spotOf, tilesApart, tokenFootprint } from "@/lib/dm/board-reach";
 import { isIncapacitated } from "@/lib/dm/condition-logic";
 
@@ -64,7 +65,27 @@ export function wallBetween(encounterId: string, refA: string, refB: string): bo
   if (!map || !a || !b) {
     return false;
   }
-  return !hasLineOfSightBetween(map.terrain, map.width, spaceOf(a), spaceOf(b));
+  return walledApart(map, a, b);
+}
+
+const walledApart = (map: { terrain: string; width: number }, a: BattleToken, b: BattleToken) =>
+  !hasLineOfSightBetween(map.terrain, map.width, spaceOf(a), spaceOf(b));
+
+// The creatures within 5 feet of a combatant that a wall stands between, by
+// wallBetween's own check, for the board view's facts on the viewer's square
+// (view-tactics.ts ownSquareFacts). Help, a grapple and a shake awake are
+// refused there (combat-actions.ts, shake-awake.ts), so the Hand reads it not
+// to deal a card the engine turns back. Within 5 feet the only such wall is
+// the diagonal run pinching the corner two squares share.
+export function wallsBeside(encounterId: string, ref: string): string[] {
+  const map = getBattleMapForEncounter(encounterId);
+  const self = map ? getTokenByRef(map.id, ref) : null;
+  if (!map || !self) {
+    return [];
+  }
+  return listTokens(map.id)
+    .filter((token) => token.id !== self.id && tilesApart(self, token) <= 1 && walledApart(map, self, token))
+    .map((token) => token.refId);
 }
 
 
