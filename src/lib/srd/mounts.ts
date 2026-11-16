@@ -173,6 +173,11 @@ export type MountState = {
   // now (src/lib/dm/mount-thrown.ts): that prone asks no second save, from
   // the engine or a dismount sent for it, until they have stood up.
   keptSaddle?: boolean;
+  // The creature sheet that is this mount: a steed its rider called up (Find
+  // Steed's warhorse). Its Armor Class and hit points are that sheet's and
+  // are not kept here, so a blow to the mount and a healing word to the
+  // steed reach the same creature.
+  sheetId?: string;
 };
 
 // A controlled mount "has only three action options: Dash, Disengage, and
@@ -262,6 +267,37 @@ export function checkMount(input: {
       controlled: profile.controllable,
       size: profile.size,
     },
+  };
+}
+
+// A creature's printed size as a mount's, or null for one too small to carry
+// anyone. Gargantuan carries as Huge does: the size rule asks only for one
+// size larger than the rider.
+export function mountSizeOf(size: string): MountSize | null {
+  const key = textKey(size);
+  if (key === "gargantuan") {
+    return "huge";
+  }
+  return MOUNT_SIZES.find((entry) => entry === key) ?? null;
+}
+
+// Mounting a creature the table already keeps as a sheet (issue 986): "A
+// willing creature that is at least one size larger than you and that has an
+// appropriate anatomy can serve as a mount" (SRD 5.1, Mounted Combat). The
+// size rule is checked; the anatomy is the GM's to judge. It does as its
+// maker directs, so it is ridden as a controlled mount.
+export function checkCreatureMount(input: { sheetId: string; name: string; speed: number; size: string; riderSize?: MountSize }): MountCheck {
+  const riderSize = input.riderSize ?? "medium";
+  const size = mountSizeOf(input.size);
+  if (!size || !canCarry(size, riderSize)) {
+    return {
+      error: `A mount has to be at least one size larger than its rider; ${input.name} is ${input.size.trim() || "too small"} and cannot carry a ${riderSize} rider.`,
+      refused: "rules",
+    };
+  }
+  return {
+    ok: true,
+    state: { ref: `sheet:${input.sheetId}`, name: input.name.slice(0, 60), speed: Math.min(200, Math.max(0, Math.round(input.speed))), controlled: true, size, sheetId: input.sheetId },
   };
 }
 
