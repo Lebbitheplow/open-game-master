@@ -253,4 +253,26 @@ await test("W07 a torch carried but not lit gives no light to see by off the boa
   assert.deepEqual(seen.result.noticedBy, [world.sheet(scout.id).name], "the lit torch shows it");
 });
 
+await test("W08 a long-term madness cured before its hours run out ends there: no line says it passes later", async () => {
+  // SRD 5.1, Madness, Curing Madness: "A calm emotions spell can suppress the
+  // effects of madness, while a lesser restoration spell can rid a character
+  // of a short-term or long-term madness." Long-term madness lasts 1d10 x 10
+  // hours; once rid of it, there is nothing left to pass.
+  await peace();
+  const { listRecentMessages } = await import("../src/lib/db/messages.ts");
+  const thinker = world.addHero({ class: "fighter", level: 3, maxHp: 30 });
+  world.clearDice();
+  world.dice(25, 2);
+  const mad = await world.invoke("afflict", { characterId: thinker.id, kind: "madness", duration: "long" });
+  world.clearDice();
+  assert.equal(mad.ok, true, mad.error);
+  assert.ok(world.sheet(thinker.id).conditions.includes("paranoid"), "paranoid for twenty hours");
+  const cured = await world.invoke("clear_condition", { characterId: thinker.id, condition: "paranoid", reason: "lesser restoration" });
+  assert.equal(cured.ok, true, cured.error);
+  const waited = await world.invoke("pass_time", { amount: 21, unit: "hours" });
+  assert.equal(waited.ok, true, waited.error);
+  const said = listRecentMessages(world.campaignId, 8).map((message) => message.content).join(" ");
+  assert.doesNotMatch(said, /long-term madness passes/, "the cured madness was said to pass when its hours ran out");
+});
+
 finish();
