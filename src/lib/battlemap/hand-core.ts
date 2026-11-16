@@ -421,7 +421,10 @@ export type HandOptions = {
 // `attackAura`: what an ally's aura adds to this character's attack rolls
 // where they stand (src/lib/dm/genre-b-auras.ts genreBAuraAttack: Warlord of
 // the Wastes), which pc_attack adds and the attack cards print.
-export type HandBoardFacts = { hide?: string; silence?: { by: string }; bright?: string; attackAura?: { bonus: number; features: string[] } };
+// `walled`: the creatures within 5 feet a wall stands between, by id
+// (attack-spatial.ts wallsBeside): take_action refuses to shake one awake
+// through it, so the Wake card is not dealt for them.
+export type HandBoardFacts = { hide?: string; silence?: { by: string }; bright?: string; attackAura?: { bonus: number; features: string[] }; walled?: string[] };
 
 // The board and the party as the gear cards read them: what lies on the
 // ground near this character (the board view's drops), the mount they ride,

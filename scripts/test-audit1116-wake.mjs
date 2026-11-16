@@ -115,6 +115,46 @@ await test("Y17: the Hand deals Wake only beside an ally held by Sleep or Hypnot
   assert.deepEqual(call, { name: "take_action", args: { characterId: fighter.id, action: "wake", targetCharacterId: wizard.id } });
 });
 
+// take_action refuses a waker shaking themselves ("cannot shake themselves
+// awake"), but the card's ally picks offered the holder's own chip beside the
+// sleeper's, as a card that may aim at its holder does.
+await test("Y17: the Wake card's picks leave out the hero holding it", async () => {
+  const { world, fighter, wizard, first } = await stage();
+  world.patch(wizard.id, { conditions: ["unconscious"], conditionMeta: { unconscious: SLEEP(first.id) } });
+  const hero = world.sheet(fighter.id);
+  const card = deriveHand(hero, undefined, { gear: { sleepers: [{ id: wizard.id, name: "Wiz", feet: 5 }] } }).find((entry) => entry.id === "basic:wake");
+  assert.equal(card?.othersOnly, true, "the aim bar offered the waker their own chip");
+  const self = await world.invoke("take_action", { characterId: fighter.id, action: "wake", targetCharacterId: fighter.id });
+  assert.notEqual(self.ok, true, "the engine refuses a shake of oneself");
+});
+
+// Y21 on the Hand: take_action wake refuses a sleeper beyond the diagonal run
+// of wall pinching the corner two squares share (shake-awake.ts wallBetween),
+// but the card measured the 5 feet alone, so it was dealt there and every
+// play of it came back refused. The board's facts on the viewer's own square
+// (view-tactics.ts ownSquareFacts) carry the engine's own check.
+const { ownSquareFacts } = await import("../src/lib/battlemap/view-tactics.ts");
+
+await test("Y21: the Hand deals no Wake for a sleeper beyond a diagonal run of wall, where the engine refuses it, and deals it past one wall at the corner", async () => {
+  const { world, kit, fighter, wizard, first } = await stage();
+  world.patch(wizard.id, { conditions: ["unconscious"], conditionMeta: { unconscious: SLEEP(first.id) } });
+  const wake = () => {
+    const hero = world.sheet(fighter.id);
+    const board = ownSquareFacts(world.campaignId, world.encounter(), hero);
+    return deriveHand(hero, undefined, { gear: { sleepers: [{ id: wizard.id, name: "Wiz", feet: 5 }] }, board }).find((card) => card.id === "basic:wake");
+  };
+  kit.openField([[6, 5, "#"], [5, 6, "#"]]);
+  kit.place(fighter.id, 5, 5);
+  kit.place(wizard.id, 6, 6);
+  assert.equal(wake(), undefined, "a Wake card dealt through the wall");
+  const refused = await world.invoke("take_action", { characterId: fighter.id, action: "wake", targetCharacterId: wizard.id });
+  assert.equal(refused.refused, "rules", "the engine and the card read the wall alike");
+  kit.openField([[6, 5, "#"]]);
+  assert.ok(wake(), "one wall at the corner leaves the way open");
+  const out = await world.invoke("take_action", { characterId: fighter.id, action: "wake", targetCharacterId: wizard.id });
+  assert.equal(out.ok, true, out.error);
+});
+
 // ---- the console ----
 
 await test("Y17: the console's take_action offers Wake on a host that has it, and an older host is offered none", async () => {
