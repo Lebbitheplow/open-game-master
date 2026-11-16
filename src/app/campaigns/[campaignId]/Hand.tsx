@@ -894,6 +894,9 @@ function HandInner({
       data-tour="battle-hand"
       data-tutorial={showTutorial ? "true" : undefined}
       data-group-open={openGroup ? "true" : undefined}
+      // The aim panel is up: on the board the Hand holds it to its share
+      // and scrolls (world.css).
+      data-aim={picked && !boardNative ? "true" : undefined}
       aria-label="Your hand"
       onKeyDown={(event) => {
         if (event.key !== "Escape") return;

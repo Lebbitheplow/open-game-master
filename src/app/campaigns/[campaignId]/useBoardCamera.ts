@@ -60,18 +60,79 @@ function footToClear(frame: HTMLElement | null): number {
 // How much of the board shows above the Hand, said on the stage for its
 // stylesheet (world.css, data-foot-band). The Hand is as tall as its cards
 // and the board as tall as the window leaves it, so on a laptop the strip
-// above the cards can be lower than what stands in it: under BAND_CLOSE End
-// turn has no room over the camera's row and stood on the turn's own plate
-// or was cut by the board's top edge, and under BAND_TIGHT the order's
-// plates lie under the Hand's heading.
-const BAND_CLOSE = 128;
+// above the cards can be lower than what stands in it: under BAND_CLOSE the
+// camera's buttons have no room to stand in a column under the turn's own
+// plate, nor End turn over them in a row, and stood on the plate or were cut
+// by the board's top edge; under BAND_TIGHT the order's plates lie under
+// the Hand's heading.
+const BAND_CLOSE = 236;
 const BAND_TIGHT = 96;
+// The Hand keeps to the share of the board the camera already counts on
+// (FOOT_SHARE): nothing held it there, and on a laptop a picked card's aim
+// panel covered the board to its top edge (issue 992). The share is said on
+// the stage (--hand-share), where the stylesheet caps the aim panel to it
+// and scrolls the rest. Under SHARE_SHORT the full panel cannot fit, so the
+// stylesheet lays it out in fewer rows (data-hand-share) and the cards at
+// rest slide under the frame's lower edge by what the Hand is over
+// (--hand-tuck), never so far that a card's name goes under it. A board
+// with room for the whole Hand is left as it was.
+const SHARE_SHORT = 304;
+// Room kept under the lowest name.
+const NAME_CLEAR = 4;
+// The fan's cards lean about a point this far under their top (hand.css).
+const FAN_PIVOT = 470;
+
+// How far down the fan the lowest card name ends: by the layout, with each
+// card's own lean and droop (HandCardFace.tsx), and not by the cards' boxes,
+// which are still rising while they are dealt. A legendary card says its cost
+// and what is left at its foot (fight-bench-2 holds them in view), so it
+// counts to its foot and a fan that holds one keeps it whole.
+function nameLine(fan: HTMLElement): number {
+  let line = 0;
+  for (const name of fan.querySelectorAll<HTMLElement>(".hand-name")) {
+    const card = name.closest<HTMLElement>(".hand-card");
+    const slot = card?.closest<HTMLElement>(".hand-slot");
+    if (!card || !slot) continue;
+    let end = name.offsetHeight;
+    for (let at: HTMLElement | null = name; at && at !== card; at = at.offsetParent as HTMLElement | null) end += at.offsetTop;
+    if (card.dataset.cost === "legendary") end = card.offsetHeight;
+    const lean = (Math.abs(parseFloat(slot.style.getPropertyValue("--rot")) || 0) * Math.PI) / 180;
+    const droop = parseFloat(slot.style.getPropertyValue("--ty")) || 0;
+    line = Math.max(line, end + droop + (FAN_PIVOT - end) * (1 - Math.cos(lean)) + (card.offsetWidth / 2) * Math.sin(lean));
+  }
+  return parseFloat(getComputedStyle(fan).paddingTop) + line + NAME_CLEAR;
+}
+
+function clearHandMarks(stage: HTMLElement): void {
+  for (const mark of ["data-foot-band", "data-hand-share", "data-hand-tuck"]) stage.removeAttribute(mark);
+  for (const value of ["--hand-share", "--hand-tuck", "--turn-hud-room"]) stage.style.removeProperty(value);
+}
 
 function markFootBand(frame: HTMLElement): void {
   const stage = frame.closest<HTMLElement>(STAGE_SELECTOR);
   if (!stage) return;
   const foot = footOf(frame);
-  const band = foot?.offsetHeight ? foot.getBoundingClientRect().top - frame.getBoundingClientRect().top : Infinity;
+  if (!foot?.offsetHeight) {
+    clearHandMarks(stage);
+    return;
+  }
+  const share = Math.round(frame.clientHeight * FOOT_SHARE);
+  const short = share < SHARE_SHORT;
+  stage.style.setProperty("--hand-share", `${share}px`);
+  stage.toggleAttribute("data-hand-share", short);
+  // The Hand as it would stand untucked, against its share. The tuck in
+  // force lowers it only while the fan is shown: a picked card folds the
+  // fan away behind the aim panel.
+  const fan = foot.querySelector<HTMLElement>(".hand-fan");
+  const shown = fan?.offsetHeight ? fan : null;
+  const whole = foot.offsetHeight + (shown ? parseFloat(stage.style.getPropertyValue("--hand-tuck")) || 0 : 0);
+  const tuck = short && shown ? Math.round(Math.max(0, Math.min(whole - share, shown.offsetHeight - nameLine(shown)))) : 0;
+  if (tuck) stage.style.setProperty("--hand-tuck", `${tuck}px`);
+  else stage.style.removeProperty("--hand-tuck");
+  stage.toggleAttribute("data-hand-tuck", tuck > 0);
+  // From the Hand's foot, which does not move, so the strip is right before
+  // the cards have come down by a change in the tuck.
+  const band = foot.getBoundingClientRect().bottom - frame.getBoundingClientRect().top - (whole - tuck);
   if (band < BAND_CLOSE) stage.setAttribute("data-foot-band", band < BAND_TIGHT ? "tight" : "close");
   else stage.removeAttribute("data-foot-band");
   const room = band < BAND_TIGHT ? roomBesideTurnHud(frame) : null;
@@ -453,8 +514,7 @@ export function useBoardCamera(
       observer.disconnect();
       mounted.disconnect();
       const stage = frameEl.closest<HTMLElement>(STAGE_SELECTOR);
-      stage?.removeAttribute("data-foot-band");
-      stage?.style.removeProperty("--turn-hud-room");
+      if (stage) clearHandMarks(stage);
     };
   }, [frameEl, fit, options.enabled]);
 

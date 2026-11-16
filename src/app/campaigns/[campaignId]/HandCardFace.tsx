@@ -96,7 +96,9 @@ export function HandPreviewRows({ rows }: { rows: PreviewRow[] }) {
   return (
     <span className="hand-rows">
       {rows.map((row, index) => (
-        <span key={row.key} className="hand-row" style={{ "--i": index } as CSSProperties}>
+        // A row an earlier one already says (the type, after "1d8+3
+        // piercing") is left out where the rows are laid in one line.
+        <span key={row.key} className="hand-row" data-said={rows.slice(0, index).some((earlier) => earlier.value.includes(row.value)) ? "" : undefined} style={{ "--i": index } as CSSProperties}>
           <span className="hand-row-key">{row.key}</span>
           {/* Keyed by what it says, so a number that changes with the target
               arrives as a new one (hand-motion.css) instead of cutting. */}
