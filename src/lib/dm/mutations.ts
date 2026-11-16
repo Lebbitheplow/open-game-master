@@ -74,6 +74,7 @@ import { castSpell } from "@/lib/dm/cast-guard";
 import { characterCallUnasked } from "@/lib/dm/player-word";
 import { ZONE_ARGS, zoneArgsSchema, zonePlacement } from "@/lib/dm/zone-args";
 import { castHealingSpell } from "@/lib/dm/heal-spell";
+import { healPet } from "@/lib/dm/pet-heal";
 import { spendWardDice } from "@/lib/dm/ar-ws-bastion";
 import { listedCalls, listRefusal, oneCasting, PART_LISTS, partsResult, type OneCasting } from "@/lib/dm/action-parts-logic";
 import { advanceClock, recordShapeEnd } from "@/lib/db/clock";
@@ -238,6 +239,7 @@ export const mutationTools: ToolDef[] = [
       type: "boolean",
       description: "True for TEMPORARY HP instead of healing (they do not stack; the higher value wins).",
     },
+    petName: { type: "string", description: "Their pet is healed instead." },
     // Instead of characterId, so neither is required. Kept small: the
     // compact first call of a 16K window holds it beside an opened group
     // (scripts/test-tool-profiles.mjs); each entry is a heal call's own
@@ -497,6 +499,8 @@ const argsSchema = z.object({
   ...zoneArgsSchema,
   // heal: temporary hit points instead of healing.
   temp: z.coerce.boolean().optional(),
+  // heal: the owner's pet is healed instead (pet-heal.ts).
+  petName: z.string().trim().min(1).max(60).optional(),
   delta: z.coerce.number().int().optional(),
   // party_award: XP for each character, and gold in all.
   xp: z.coerce.number().int().optional(),
@@ -939,6 +943,21 @@ function dmMutation(
       const unasked = characterCallUnasked(campaign.id, getDmTurn(turnId), rawArguments, "casterId");
       if (unasked) {
         return { result: unasked };
+      }
+      // The owner's familiar, companion or drake (pet-heal.ts).
+      if (args.petName) {
+        const named = args.casterId ? resolve(args.casterId) : null;
+        if (args.casterId && !named) {
+          return { result: unknownSheetRef("casterId", args.casterId, sheets) };
+        }
+        return {
+          result: healPet(
+            campaign,
+            turnId,
+            { owner: sheet, petName: args.petName, caster: named, spell: (args.spell ?? "").trim(), level: args.level, amount: args.amount ?? 0, temp: args.temp === true, reason, casting },
+            (castArgs) => applyDmMutation(campaign, turnId, "use_spell_slot", JSON.stringify(castArgs), sheets, sheetsById).result,
+          ),
+        };
       }
       // A named healing spell is rolled by the server from the content
       // pack's own dice, exactly as a healing potion is, so the model never

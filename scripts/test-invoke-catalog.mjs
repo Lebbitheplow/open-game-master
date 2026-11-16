@@ -1315,6 +1315,7 @@ test("the rules audit's new console fields ask for the host", () => {
   for (const [tool, name, flag] of [
     ["learn_spell", "from", "scrollCopy"],
     ["cast_at_player", "petName", "petSaves"],
+    ["heal", "petName", "petHealing"],
     ["apply_hazard", "enemyIds", "enemyHazards"],
     ["apply_hazard", "minutes", "frigidWater"],
     ["apply_hazard", "place", "setTraps"],

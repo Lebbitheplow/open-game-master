@@ -409,4 +409,48 @@ await test("U08: a Beast Master with Extra Attack makes one weapon attack beside
   await kit.endFight();
 });
 
+// U09. SRD 5.1, Cure Wounds: "A creature you touch regains a number of hit
+// points equal to 1d8 + your spellcasting ability modifier. This spell has no
+// effect on undead or constructs." Potion of Healing: "You regain hit points
+// when you drink this potion": any creature it is poured into. heal took no
+// petName, so the cleric's Cure Wounds on the ranger's snake healed the
+// ranger, and nothing healed a pet at all.
+await test("U09: a healing spell or a potion heals a pet, up to its maximum, and Cure Wounds does nothing to an undead pet", async () => {
+  await kit.endFight();
+  const cleric = world.addHero({
+    class: "cleric", level: 5, maxHp: 40, abilities: { wis: 16 }, proficiencies: { ...TRAINED },
+    spellcasting: { ability: "wis", slots: { 1: { max: 4, used: 0 } }, prepared: ["Cure Wounds"], known: [], cantrips: [] },
+  });
+  const hiss = () => petOf(keeper.id, "hiss");
+  world.patch(keeper.id, { currentHp: 30, pets: world.sheet(keeper.id).pets.map((pet) => (pet.name === "Hiss" ? { ...pet, hp: 1, conditions: [], conditionMeta: {} } : pet)) });
+  const used = () => world.sheet(cleric.id).spellcasting.slots[1].used;
+
+  // 1d8 (a 5) + the cleric's Wisdom 3: 8 hit points onto the snake's 1.
+  const cured = await forced([5], () => world.invoke("heal", { characterId: keeper.id, petName: "Hiss", spell: "Cure Wounds", casterId: cleric.id }));
+  assert.equal(cured.ok, true, cured.error);
+  assert.equal(hiss().hp, 9, `Cure Wounds on the snake: ${JSON.stringify(cured.result)}`);
+  assert.equal(world.sheet(keeper.id).currentHp, 30, "the snake's healing went to its owner");
+  assert.equal(used(), 1, "the slot is spent");
+
+  // A potion poured into it: no more than its maximum.
+  const potion = await world.invoke("heal", { characterId: keeper.id, petName: "Hiss", amount: 50, reason: "a potion of healing" });
+  assert.equal(potion.ok, true, potion.error);
+  assert.equal(hiss().hp, hiss().maxHp, "healed past its maximum");
+  assert.equal(world.sheet(keeper.id).currentHp, 30, "the potion went to the owner");
+
+  // An undead pet: Cure Wounds has no effect, and nothing is spent on it.
+  const bones = await world.invoke("summon_pet", { characterId: keeper.id, kind: "other", form: "Skeleton", name: "Rattle" });
+  assert.equal(bones.ok, true, bones.error);
+  world.patch(keeper.id, { pets: world.sheet(keeper.id).pets.map((pet) => (pet.name === "Rattle" ? { ...pet, hp: 2 } : pet)) });
+  const refused = await world.invoke("heal", { characterId: keeper.id, petName: "Rattle", spell: "Cure Wounds", casterId: cleric.id });
+  assert.equal(refused.ok, false, "Cure Wounds healed a skeleton");
+  assert.equal(used(), 1, "a slot was spent on a spell with no effect");
+  assert.equal(petOf(keeper.id, "rattle").hp, 2);
+  // Plain healing is not the spell's: the potion still mends it.
+  const mended = await world.invoke("heal", { characterId: keeper.id, petName: "Rattle", amount: 3, reason: "a potion of healing" });
+  assert.equal(mended.ok, true, mended.error);
+  assert.equal(petOf(keeper.id, "rattle").hp, 5);
+  await world.invoke("dismiss_pet", { characterId: keeper.id, petName: "Rattle" });
+});
+
 finish();
