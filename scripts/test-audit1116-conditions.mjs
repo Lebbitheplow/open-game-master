@@ -326,5 +326,24 @@ await test("D08: time passing does not stand a hero up at exhaustion 5", async (
   assert.equal(still, true, "a hero at speed 0 stood up as the minutes passed");
 });
 
+// D09. A creature immune to exhaustion (the skeleton Animate Dead raises,
+// SRD 5.1: "Condition Immunities exhaustion, poisoned"; a conjured
+// elemental) takes no level of it. set_condition asked a character's and a
+// summon's immunities for every condition but exhaustion, whose branch
+// returned first: a forced march wore the wizard's skeletons down a level an
+// hour, and at six they died.
+await test("D09: a summoned skeleton takes no exhaustion", async () => {
+  const yard = await openWorld();
+  const necromancer = yard.addHero(caster("wizard", "int", ["Animate Dead"], [], 9));
+  const raised = await yard.invoke("cast_buff", { characterId: necromancer.id, spell: "Animate Dead", level: 3, variant: "skeleton" });
+  assert.equal(raised.ok, true, raised.error);
+  const skeleton = yard.sheets().find((sheet) => sheet.summon?.spell === "Animate Dead");
+  assert.ok(skeleton, "no skeleton was raised");
+  assert.match(String(skeleton.summon.conditionImmune ?? ""), /exhaustion/i, JSON.stringify(skeleton.summon));
+  const worn = await yard.invoke("set_condition", { characterId: skeleton.id, condition: "exhaustion", reason: "a forced march" });
+  assert.equal(yard.sheet(skeleton.id).exhaustion ?? 0, 0, `the skeleton took a level: ${JSON.stringify(worn)}`);
+  assert.equal(worn.ok, false);
+});
+
 closeTables();
 finish();

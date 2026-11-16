@@ -409,6 +409,14 @@ export function handleSetCondition(
   // raises a character one level (6 = death), "exhaustion" or "exhaustion
   // N" alike; set_enemy_condition, whose call carries the level, sets it.
   if (namesExhaustion(raw)) {
+    // Asked first, as every other condition is below: a skeleton raised by
+    // Animate Dead ("Condition Immunities exhaustion, poisoned", SRD 5.1)
+    // or a conjured elemental took a level an hour of a forced march and
+    // died at six.
+    const immune = conditionImmunity(campaign, sheet, "exhaustion", false, args.sourceEnemyId);
+    if (immune) {
+      return { error: `${sheet.name} cannot gain exhaustion: ${immune}. No level was added.`, refused: "rules" };
+    }
     return raiseExhaustion(campaign, turnId, sheet, reason);
   }
   const normalized = canonicalCondition(raw);
