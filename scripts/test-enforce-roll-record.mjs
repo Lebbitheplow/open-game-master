@@ -26,12 +26,12 @@
 //   - at the engine: Sleep's pool and a creature's initiative are on the
 //     turn of the call that rolled them.
 //
-// One known gap, which the door widens and does not open: the number gate
-// for an AI GM's heal and apply_damage (src/lib/dm/ai-gate.ts) takes a bare
-// number that equals any damage or custom roll of the turn that nothing has
-// marked applied, and the engine marks none of the rolls it throws and uses
-// itself. A roll that missed its turn was out of the gate's sight by that
-// accident, and is in it now.
+// And one thing the door must not widen: the number gate for an AI GM's heal
+// and apply_damage (src/lib/dm/ai-gate.ts) takes a bare number that equals a
+// total the model asked for this turn. A roll that missed its turn was out of
+// the gate's sight by that accident. It is on the turn now, and is the
+// engine's own, spent as its call ends (src/lib/dm/held-call.ts
+// spendOwnRolls), so it pays for no number the model sends.
 import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
@@ -39,7 +39,7 @@ import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 import { call as modelCall, fakeModel, reply, settleQueue } from "./lib/enforce-narrator.mjs";
 import { announced, homeProblem, lastSeq, rollHomes, rollMark, rollsAfter } from "./lib/roll-homes.mjs";
 
-const { test, gap, finish } = suite("test-enforce-roll-record");
+const { test, finish } = suite("test-enforce-roll-record");
 const world = await openWorld({ campaign: { maxPlayers: 8 } });
 const kit = await combatKit(world);
 
@@ -309,38 +309,30 @@ await test("an AI GM's answer to a whisper stays out of the shared chat when the
   }
 });
 
-// ---- what the door widens ----
+// ---- a roll that joins its turn pays for no number of the model's ----
 
-await gap(
-  "gate.engine-roll-pays-bare-number",
-  {
-    rule: "An AI GM's bare number for healing or damage is taken only for a total it asked the server to roll this turn that nothing has applied, never for a roll the engine threw and used itself.",
-    where: "src/lib/dm/ai-gate.ts number",
-    severity: "medium",
-    note: "Open on main for every engine roll that is on its turn: dice the gate itself rolls for heal or apply_damage pay for a second, bare call of the same total. The door puts the rolls that used to miss the turn (here Sleep's pool) in the gate's sight as well.",
-  },
-  async () => {
-    await kit.fight(2, { heroFaces: { [mage.id]: 19, [hero.id]: 5 } });
-    const [enemy] = world.enemies();
-    world.patch(hero.id, { currentHp: 4 });
-    // An AI GM's turn, after the mage's player has spoken (player-word.ts).
-    world.say("player", "I cast Sleep on it.", getSheetById(mage.id));
-    const turn = createDmTurn(world.campaignId, [], "ai");
-    const call = (name, args) => invokeEngine(campaign(), { kind: "ai", turnId: turn.id }, { name, args });
-    const mark = rollMark();
-    const cast = await call("cast_at_enemy", { characterId: mage.id, targetEnemyId: enemy.id, spell: "Sleep", saveAbility: "wis", level: 1, condition: "unconscious" });
-    const found = rollsAfter(world.campaignId, mark).find((roll) => /Sleep: hit points it can affect/.test(roll.detail));
-    if (!cast.ok || !found) {
-      throw new Error(`Sleep was not cast, or rolled no pool: ${cast.error ?? "no pool"}`);
-    }
-    const pool = getRoll(found.id);
-    const healed = await call("heal", { characterId: hero.id, amount: pool.total });
-    const hp = world.sheet(hero.id).currentHp;
-    world.patch(hero.id, { currentHp: 44 });
-    await kit.endFight();
-    assert.equal(healed.ok, false, `a bare heal of ${pool.total}, the total of Sleep's pool, was taken and healed ${hp - 4}`);
-  },
-);
+await test("an AI GM's bare heal equal to Sleep's pool is refused: the pool is on the turn now, and it is the engine's own, spent as its call ends", async () => {
+  await kit.fight(2, { heroFaces: { [mage.id]: 19, [hero.id]: 5 } });
+  const [enemy] = world.enemies();
+  world.patch(hero.id, { currentHp: 4 });
+  // An AI GM's turn, after the mage's player has spoken (player-word.ts).
+  world.say("player", "I cast Sleep on it.", getSheetById(mage.id));
+  const turn = createDmTurn(world.campaignId, [], "ai");
+  const call = (name, args) => invokeEngine(campaign(), { kind: "ai", turnId: turn.id }, { name, args });
+  const mark = rollMark();
+  const cast = await call("cast_at_enemy", { characterId: mage.id, targetEnemyId: enemy.id, spell: "Sleep", saveAbility: "wis", level: 1, condition: "unconscious" });
+  assert.equal(cast.ok, true, `refused: ${cast.error}`);
+  const found = rollsAfter(world.campaignId, mark).find((roll) => /Sleep: hit points it can affect/.test(roll.detail));
+  assert.ok(found, "Sleep rolled no pool");
+  const pool = getRoll(found.id);
+  assert.deepEqual(rollHomes(pool.id).turns, [turn.id], "the pool is not on the AI's turn");
+  const healed = await call("heal", { characterId: hero.id, amount: pool.total });
+  const hp = world.sheet(hero.id).currentHp;
+  world.patch(hero.id, { currentHp: 44 });
+  await kit.endFight();
+  assert.equal(healed.ok, false, `a bare heal of ${pool.total}, the total of Sleep's pool, was taken and healed ${hp - 4}`);
+  assert.equal(hp, 4);
+});
 
 world.close();
 finish();
