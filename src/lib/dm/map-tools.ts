@@ -768,7 +768,11 @@ export function handleMoveToken(
     let fearCut = false;
     if (walking && resolved.enemy) {
       standCost = standUpCost(encounter.id, resolved.enemy) ?? 0;
-      steps = awayFromFear(resolved.token, path, feared);
+      steps = awayFromFear(
+        resolved.token,
+        path,
+        feared,
+      );
       fearCut = steps.length < path.length;
       // Aggressive's speed goes only toward a hostile it can see, and
       // Command's Approach only toward the caster (enemy-aggressive.ts).
