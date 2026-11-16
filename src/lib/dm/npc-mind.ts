@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { needsWords, npcSeenStateWords, npcSilencedBy } from "@/lib/dm/npc-state-logic";
+import { dominantDrive, needsWords, npcSeenStateWords, npcSilencedBy } from "@/lib/dm/npc-state-logic";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getClock } from "@/lib/db/clock";
 import { describeInstant } from "@/lib/dm/calendar";
@@ -65,6 +65,11 @@ import {
   parseReading,
   MIND_READER_SYSTEM,
   renderReaderPrompt,
+  driveWords,
+  presentPeople,
+  knowsOfThing,
+  repeatsDeed,
+  type MindGround,
   quotedLines,
   echoesHeard,
   recipientsOf,
@@ -297,6 +302,7 @@ function identityOf(campaign: Campaign, npc: Npc): string[] {
     // minds forgot who had the key and the bread (2026-11-16).
     npc.state.carries.length ? `What you have on you now (yours, and nobody else's): ${npc.state.carries.join("; ")}.` : "You carry nothing that matters beyond your clothes.",
     needsWords(npc.state, nowInstant(campaign.id)) ? `Your body right now: ${needsWords(npc.state, nowInstant(campaign.id))}. You feel it in everything you do, and it grows until you drink or eat.` : "",
+    (dominantDrive(npc.state, nowInstant(campaign.id))?.urgency ?? 0) >= 60 ? "This need cannot wait any longer: this turn you act to satisfy it, by whatever means are yours (ask, bargain, take, threaten, strike). A gesture or a fine phrase is not enough." : "",
     `Your attitude toward the heroes in general: ${npc.attitude}.`,
     // A companion knows all of itself, as a player reads their own sheet.
     sheet
@@ -374,7 +380,7 @@ async function askMind(
   if (!reply) {
     return { ok: false, error: "the reply was empty", latencyMs: Date.now() - started };
   }
-  const read = await readReply(campaign, npc.name, reply);
+  const read = await readReply(campaign, npc.name, reply, offscreen ? undefined : groundOf(campaign, npc, memories, perceives, present));
   const latencyMs = Date.now() - started;
   if (!read.ok) {
     return { ok: false, error: read.error, latencyMs };
@@ -400,30 +406,64 @@ async function askMind(
 // The character's model plays in free text; the narrator's model reads the
 // reply into speech, action, thought and lie (MIND_READER_SYSTEM). A reply
 // already in the engine's JSON (a model that still writes it) stands as it is.
-async function readReply(campaign: Campaign, name: string, reply: string): Promise<{ ok: true; proposal: NpcProposal } | { ok: false; error: string }> {
+// What the Ego stands on (MindGround): the character's nature, its drive,
+// its things, others' things as far as it has seen or heard of them, who is
+// here, and its last deeds.
+function groundOf(campaign: Campaign, npc: Npc, memories: NpcMemory[], perceives: string, present: MindPerson[]): MindGround {
+  const lived = `${perceives}\n${memories.map((memory) => memory.content).join("\n")}`;
+  const here = new Set(present.map((person) => textKey(person.name)));
+  // Those it was told are here, and anyone else standing in the same place.
+  const place = getCurrentLocation(campaign.id)?.name ?? "";
+  const others = listNpcs(campaign.id)
+    .filter((entry) => entry.id !== npc.id && !entry.archived && (here.has(textKey(entry.name)) || (place && entry.location === place && npc.location === place && !getNpcAway(entry.id))))
+    .flatMap((entry) => entry.state.carries.filter((thing) => knowsOfThing(thing, lived)).map((thing) => `${entry.name}: ${thing}`));
+  return {
+    nature: [npc.role, npc.trait, agencyFragment(npc.agency)].filter(Boolean).map((line) => clipText(line, 300)),
+    drive: driveWords(dominantDrive(npc.state, nowInstant(campaign.id)), npc.agency.goals.scene ?? ""),
+    own: npc.state.carries,
+    others,
+    people: presentPeople(present, memories),
+    recent: memories.filter((memory) => memory.kind === "did" && memory.sourceKind === "self").slice(-4).map((memory) => memory.content),
+  };
+}
+
+// One more asking when the Ego only did a recent deed again.
+const REPEAT_NOTE = (intent: string) => `\n\nREFUSED: "${intent}" only repeats a recent deed. Choose a different, concrete step toward the drive.`;
+
+async function readReply(campaign: Campaign, name: string, reply: string, ground?: MindGround): Promise<{ ok: true; proposal: NpcProposal } | { ok: false; error: string }> {
   const own = parseProposal(reply);
   if (own.ok) {
     return own;
   }
   let error = "the reader did not answer";
-  try {
-    const result = await requestDmMessage(
-      campaign.settings,
-      [
-        { role: "system", content: MIND_READER_SYSTEM },
-        { role: "user", content: renderReaderPrompt(name, reply) },
-      ],
-      { meta: { task: "npc_mind_reader" }, timeoutMs: MIND_TIMEOUT_MS() },
-    );
-    if (!result.error) {
-      const reading = parseReading(stripReasoningArtifacts(String(result.message?.content ?? "")));
-      if (reading.ok) {
-        return reading;
+  let refused = "";
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const result = await requestDmMessage(
+        campaign.settings,
+        [
+          { role: "system", content: MIND_READER_SYSTEM },
+          { role: "user", content: `${renderReaderPrompt(name, reply, ground)}${refused}` },
+        ],
+        { meta: { task: "npc_mind_reader" }, timeoutMs: MIND_TIMEOUT_MS() },
+      );
+      if (result.error) {
+        break;
       }
-      error = reading.error;
+      const reading = parseReading(stripReasoningArtifacts(String(result.message?.content ?? "")));
+      if (!reading.ok) {
+        error = reading.error;
+        break;
+      }
+      if (attempt === 0 && ground && repeatsDeed(reading.proposal.intent, ground.recent)) {
+        refused = REPEAT_NOTE(reading.proposal.intent);
+        continue;
+      }
+      return reading;
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : error;
+      break;
     }
-  } catch (caught) {
-    error = caught instanceof Error ? caught.message : error;
   }
   return { ok: false, error };
 }
@@ -697,7 +737,7 @@ export async function handleNpcSpeak(campaign: Campaign, rawArguments: string): 
       ? { unlearned: flags, flagNote: `${npc.name} named ${flags.join(", ")} without having learned it: treat it as their guess or lie, never as a fact of the world.` }
       : {}),
     narrate:
-      "Voice their words as given and show their intent. The intent is only an attempt: resolve it through the engine's tools when it needs a roll or changes anything. Add nothing they know beyond their words.",
+      "Voice their words as given and show their intent. The intent is only an attempt, but it is made now: never write it as about to happen or left hanging. Resolve it through the engine's tools when it needs a roll or changes anything, and say how it ends. When they drink or eat, or a thing changes hands, record it with npc_state (drank, ate, carries). Add nothing they know beyond their words.",
   };
 }
 

@@ -242,7 +242,7 @@ await test("echoes: words that only say again a line heard are not the mind's ow
 
 await test("a free reply is read by the narrator's model into words and a deed; an echo loses its words, never its deed", async () => {
   npc("Volodar");
-  const reader = () => model.requests.filter((request) => String(request.messages?.[0]?.content ?? "").startsWith("You transcribe"));
+  const reader = () => model.requests.filter((request) => String(request.messages?.[0]?.content ?? "").startsWith("You are the Ego"));
   model.script([
     reply({ text: "SAY: Nessuno tocca il barile.\nDO: Punto la balestra contro Kranz.\nTHINK: Kranz ruba di notte.\nLYING: no" }),
     answer({ speech: "Nessuno tocca il barile.", intent: "punta la balestra contro Kranz", conclusion: "Kranz ruba di notte" }),
@@ -283,6 +283,43 @@ await test("a crowded stage never pushes a mind's own last words and deeds out o
   assert.equal(seen.length, logic.MIND_MEMORY_LIMIT);
   assert.deepEqual(seen.slice(0, 3).map((entry) => entry.content), ["deed 0", "deed 1", "deed 2"], "its deeds stay, in order");
   assert.equal(seen.at(-1).content, "scene 79", "the newest scene line too");
+});
+
+await test("the Ego stands on the character's ground: its drive, its things, others' things only as far as it knows of them, and its last deeds", async () => {
+  assert.equal(logic.knowsOfThing("la chiave del barile d'acqua", "Volodar stringe la chiave del barile."), true);
+  assert.equal(logic.knowsOfThing("una fiala di cicuta cucita nell'orlo", "Gruoch si lava le mani."), false, "a hidden thing stays hidden");
+  assert.equal(logic.repeatsDeed("Faccio scorrere un dito su uno dei miei anelli d'oro.", ["Faccio scorrere un dito su uno dei miei anelli d'oro, avvicinando il volto a Brakk."]), true);
+  assert.equal(logic.repeatsDeed("Strappo la chiave dal pugno di Volodar.", ["Faccio scorrere un dito su uno dei miei anelli d'oro."]), false);
+  assert.match(logic.driveWords({ need: "water", urgency: 67 }, "comandare"), /thirst: you must drink \(67 out of 100, it cannot wait\); beyond that, comandare/);
+  assert.equal(logic.driveWords({ need: "food", urgency: 30 }, "comandare"), "comandare");
+
+  const now = getClock(world.campaignId).instant;
+  const bare = { custody: "free", heldBy: "", restraint: "none", condition: "up", withParty: false, disarmed: false };
+  const mairon = npc("Mairon");
+  const keeper = npc("Volodar");
+  setNpcState(mairon.id, { ...bare, carries: ["anelli d'oro"], drankAt: now - 40 * 60 });
+  setNpcState(keeper.id, { ...bare, carries: ["la chiave del barile d'acqua", "una lettera nascosta nello stivale"] });
+  const before = model.requests.length;
+  model.script([
+    reply({ text: "SAY: nulla\nDO: Faccio scorrere un dito su un anello.\nTHINK: nulla\nLYING: no" }),
+    answer({ intent: "Faccio scorrere un dito su un anello." }),
+    answer({ intent: "Offro un anello d'oro a Volodar in cambio di un sorso dal barile." }),
+  ]);
+  await speak({ name: "Mairon", perceives: "Volodar stringe la chiave del barile d'acqua.", alsoPresent: ["Volodar"] });
+  model.script([
+    reply({ text: "SAY: nulla\nDO: Faccio scorrere un dito su un anello.\nTHINK: nulla\nLYING: no" }),
+    answer({ intent: "Faccio scorrere un dito su un anello." }),
+    answer({ intent: "Offro un anello d'oro a Volodar in cambio di un sorso dal barile." }),
+  ]);
+  const second = await speak({ name: "Mairon", perceives: "Volodar non si muove.", alsoPresent: ["Volodar"] });
+  const asked = model.requests.slice(before).map(mindText).filter((text) => text.startsWith("You are the Ego"));
+  assert.match(asked.at(-1), /Their most pressing drive: thirst: you must drink \(67 out of 100, it cannot wait\)/);
+  assert.match(asked.at(-1), /What they have on them:\n- anelli d'oro/);
+  assert.match(asked.at(-1), /Volodar: la chiave del barile d'acqua/);
+  assert.doesNotMatch(asked.at(-1), /lettera nascosta/, "what it never saw is not on its ground");
+  assert.match(asked.at(-1), /REFUSED: "Faccio scorrere un dito su un anello\." only repeats a recent deed/);
+  assert.equal(second.intends, "Offro un anello d'oro a Volodar in cambio di un sorso dal barile.");
+  assert.match(mindText(mindRequests().at(-1)), /This need cannot wait any longer/);
 });
 
 // ---- Ticket 02: news, the absent, late messages --------------------------

@@ -369,6 +369,10 @@ await test("hunger and thirst: nothing said until tracked; then they grow with t
   const kept = logic.parseNpcState(JSON.stringify({ drankAt: 5, ateAt: 7 }));
   assert.equal(kept.drankAt, 5);
   assert.equal(logic.serializeNpcState(kept) !== "", true, "a tracked thirst is kept");
+  assert.equal(logic.dominantDrive(logic.DEFAULT_NPC_STATE, 99_999), null);
+  assert.deepEqual(logic.dominantDrive({ condition: "up", drankAt: 0, ateAt: 0 }, 40 * 60), { need: "water", urgency: 67 });
+  assert.deepEqual(logic.dominantDrive({ condition: "up", ateAt: 0 }, 60 * 60), { need: "food", urgency: 50 });
+  assert.equal(logic.dominantDrive({ condition: "dead", drankAt: 0 }, 60 * 60), null);
   upsertNpc({ campaignId: world.campaignId, name: "Volodar" });
   const drank = state({ name: "Volodar", drank: true, ate: true });
   assert.equal(drank.ok, true, drank.error);

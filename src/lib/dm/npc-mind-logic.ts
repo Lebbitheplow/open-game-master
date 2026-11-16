@@ -366,16 +366,71 @@ export function parseProposal(text: string): { ok: true; proposal: NpcProposal }
 // The reader that turns a mind's free reply into the engine's terms (the
 // raft sandbox, 2026-11-16): the character's model plays, a stronger one
 // only transcribes. It keeps the meaning whole, harsh or cruel as it is.
+// The Ego (docs/specs/ogm-npc-ego.md). The character's own model is its voice:
+// it wants and speaks, in free text. The narrator's model, the stronger one,
+// is its Ego: it reads the impulse and turns it into one real action among
+// those the world allows, within the character's nature. Seven minds on Gemma
+// alone stroked a ring, clenched a key and spoke of hunger for three hours
+// beside a full barrel (the raft sandbox, 2026-11-16).
 export const MIND_READER_SYSTEM = [
-  "You transcribe one character's reply in a tabletop role-playing game into a JSON object for the game engine. You are a transcriber, not an author or a censor.",
-  "Keep the meaning exactly: do not soften, refuse, moralize, add, invent or drop anything. Violence, theft, threats, lies and cruelty are transcribed as written; the rules decide what happens.",
-  "The reply should hold SAY, DO, THINK and LYING lines, but it may be messy, labelled in another language, or plain prose: read what the character speaks, does and privately thinks.",
-  'Answer with ONE JSON object and nothing else: {"speech": "the exact words spoken aloud, verbatim in their original language, without narration or quotation marks around the whole, or empty", "intent": "the one physical action the character takes now, one short sentence in the reply\'s language", "conclusion": "a private suspicion or plan, or empty", "lie": true if the character says or plainly shows the speech is knowingly false, else false}.',
-  "intent is never empty: if the reply states no action, write, in the reply's language, that the character stays where they are and does nothing. Words alone are speech, never the intent.",
+  "You are the Ego of one character in a tabletop role-playing game: the part that turns the character's impulse into one real action in the world. Another model wrote the impulse below, in the character's voice. You are not an author of their words and not a censor.",
+  "Keep the meaning: do not soften, refuse or moralize. Violence, theft, threats, lies and cruelty stand as written; the rules decide what happens.",
+  "The impulse should hold SAY, DO, THINK and LYING lines, but it may be messy, labelled in another language, or plain prose: read what the character speaks, does and privately thinks.",
+  "speech: the exact words spoken aloud, verbatim, in their original language. Never rewrite them.",
+  "intent: ONE concrete physical action taken now, naming who or what it is aimed at, in the impulse's language. If the impulse already states such an action, keep it exactly.",
+  "A gesture, a pose or a feeling is NOT an action (stroking a ring, gripping a key, tightening lips, shifting weight, staring, waiting, an exercise), and neither is a deed already listed as recent. When that is all the impulse gives, YOU choose the next real step this character would take toward their most pressing drive: asking, bargaining, offering, taking, stealing, threatening, striking, opening, drinking, eating, hiding, giving. Use only what the ground says is here; stay inside the character's nature (what they would never do stays undone; what they would do without scruple, they do).",
+  "The stronger the drive, the bolder the step: at 60 or more out of 100 the character acts on it this turn, by the means that fit them.",
+  "With no ground given, only transcribe: if the impulse states no action, intent says the character stays where they are and does nothing.",
+  'Answer with ONE JSON object and nothing else: {"speech": "...", "intent": "...", "conclusion": "a private suspicion or plan, or empty", "lie": true if the character says or plainly shows the speech is knowingly false, else false}. intent is never empty. Words alone are speech, never the intent.',
 ].join("\n");
 
-export function renderReaderPrompt(name: string, reply: string): string {
-  return `The character: ${name}.\n\nTheir reply:\n${clipText(reply, MIND_TEXT_CHARS * 4)}`;
+// What the Ego stands on: who the character is, what presses them, and what
+// the world holds here. Others' things only as far as the character knows.
+export type MindGround = {
+  nature: string[];
+  drive: string;
+  own: string[];
+  others: string[];
+  people: string[];
+  recent: string[];
+};
+
+export function renderReaderPrompt(name: string, reply: string, ground?: MindGround): string {
+  const list = (title: string, lines: readonly string[]) => (lines.length ? `${title}\n${lines.map((line) => `- ${line}`).join("\n")}` : "");
+  const stage = ground
+    ? [
+        list("Their nature:", ground.nature),
+        ground.drive ? `Their most pressing drive: ${ground.drive}` : "",
+        list("What they have on them:", ground.own),
+        list("What they know others here hold:", ground.others),
+        list("Who is here:", ground.people),
+        list("Their recent deeds (not to be repeated):", ground.recent),
+      ].filter(Boolean)
+    : [];
+  return [`The character: ${name}.`, ...stage, `Their impulse:\n${clipText(reply, MIND_TEXT_CHARS * 4)}`].join("\n\n");
+}
+
+// The drive in words, for the voice and for the Ego alike.
+export function driveWords(drive: { need: "water" | "food"; urgency: number } | null, want: string): string {
+  if (drive && drive.urgency >= 40) {
+    return `${drive.need === "water" ? "thirst: you must drink" : "hunger: you must eat"} (${drive.urgency} out of 100${drive.urgency >= 60 ? ", it cannot wait" : ""})${want ? `; beyond that, ${want}` : ""}`;
+  }
+  return want;
+}
+
+// Whether a thing another carries is one this mind has seen or heard of:
+// most of its telling words stand in what it lived. A vial sewn in a hem
+// nobody spoke of stays unknown.
+export function knowsOfThing(thing: string, lived: string): boolean {
+  const telling = words(thing).filter((word) => word.length > 3);
+  const text = new Set(words(lived));
+  return telling.length > 0 && telling.filter((word) => text.has(word)).length * 2 >= telling.length;
+}
+
+// Whether an action only does again a recent one (the same test as an echo
+// of words, on deeds).
+export function repeatsDeed(intent: string, recent: readonly string[]): boolean {
+  return echoesHeard(intent, recent);
 }
 
 // A reader's transcription: a proposal that always carries an action.

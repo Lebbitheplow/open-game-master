@@ -196,6 +196,22 @@ export function needsWords(state: Pick<NpcState, "drankAt" | "ateAt" | "conditio
   return [thirst, hunger].filter(Boolean).join("; ");
 }
 
+// The body's most pressing need, as a number the engine holds (the Es of the
+// mind: docs/specs/ogm-npc-ego.md): thirst fills in 60 hours, hunger in 120.
+// Null while nothing is tracked or nothing presses yet.
+export type NpcDrive = { need: "water" | "food"; urgency: number };
+
+export function dominantDrive(state: Pick<NpcState, "drankAt" | "ateAt" | "condition">, now: number): NpcDrive | null {
+  if (state.condition === "dead") {
+    return null;
+  }
+  const filled = (at: number | undefined, hours: number) => (at === undefined ? 0 : Math.max(0, Math.min(100, Math.round(((now - at) / 60 / hours) * 100))));
+  const water = filled(state.drankAt, 60);
+  const food = filled(state.ateAt, 120);
+  const urgency = Math.max(water, food);
+  return urgency >= 20 ? { need: water >= food ? "water" : "food", urgency } : null;
+}
+
 // Whether the roster keeps them near its head wherever the record puts them:
 // a prisoner goes where their captor goes, and must not slide off the list.
 export function npcStateKeepsInView(state: NpcState): boolean {
