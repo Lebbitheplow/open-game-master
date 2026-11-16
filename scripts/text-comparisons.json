@@ -14,6 +14,10 @@
     "lib/db/core.ts"
   ],
   "sites": {
+    "components/ui/GameIcon.tsx#re-word": [["key",2,"fixed inventory and item asset paths select the measured circular-image scale"]],
+    "lib/inventory-art-logic.ts#re-affix": [["english-source",1,"the plural suffix of a resolved English catalog item's physical form, never an unknown item name"]],
+    "lib/inventory-art-logic.ts#re-word": [["english-source",1,"staff, wand and rod prefixes of the resolved English magic-item catalog name select its focus painting"],["english-extra",4,"wooden shield, potion, scroll and rope painting aliases after locale-aware equipment resolution; an unmatched name retains its category icon and no mechanics depend on the painting"]],
+    "lib/inventory-art-logic.ts#str-key": [["english-extra",2,"physical-form and gear painting aliases after locale-aware canonical item matching; unidentified loot is excluded, and a name with no painting keeps its category icon without changing rules or identity"]],
     "components/ui/LobbyIcon.tsx#str-key": [["key",1,"fixed heading-glyph keys select decorative fittings"]],
     "lib/appearance-themes.ts#str-list": [["key",1,"registered icon keys define the checked picker and lobby symbol vocabulary, not player-written text"]],
     "lib/dm/genre-cc-a-drones.ts#str-eq": [["key",2,"a gas's damage type and condition, the engine's own vocabulary (zone rows)"]],
