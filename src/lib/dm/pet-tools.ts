@@ -27,7 +27,7 @@ import { landBlow } from "@/lib/dm/pc-attack-damage";
 import { badArguments, noneNamed, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCoverError } from "@/lib/dm/swallow";
 import { buildPet, defenseWords, DRAKE_ESSENCES, petCreatureType } from "@/lib/dm/pet-build";
-import { attackContext, incapacitatedBy, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { attackContext, incapacitatedBy, mergeAdvantage, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { charmedBy } from "@/lib/dm/enemy-profile";
 import { rollPetSave } from "@/lib/dm/pet-save-roll";
 import { settleOnDamage } from "@/lib/dm/spell-effects";
@@ -37,6 +37,7 @@ import { findTableMonster } from "@/lib/bestiary/homebrew-monsters";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { resolveMonster } from "@/lib/bestiary";
 import { commandPet, drakeSummonCost, essenceChoice } from "@/lib/dm/pet-command";
+import { petResistLine, petUnderwaterSwing } from "@/lib/dm/pet-underwater";
 
 // The creatures bound to a character: familiars (Find Familiar, Pact of the
 // Chain), the Beast Master's companion, the Drakewarden's drake, and story
@@ -386,7 +387,18 @@ export function handlePetAttack(
     requested: "none",
     attackerType: petCreatureType(pet),
   });
-  const advantage = incoming.advantage;
+  // Its owner's water is its own (pet-underwater.ts): a bite without a
+  // swimming speed at disadvantage, a shot past normal range a miss.
+  const water = petUnderwaterSwing(campaign, sheet.id, pet, { attack: attack.name, ranged, beyondNormal: ranged && feetTo !== null && feetTo > (attack.range ?? feetTo) });
+  if (water?.note) {
+    incoming.notes.push(water.note);
+  }
+  if (water?.misses) {
+    const economy = charge.commit();
+    commandPet(campaign, sheet.id, pet.name);
+    return { ok: true, attack: `${pet.name}: ${attack.name}`, hit: false, missed: water.note, economy };
+  }
+  const advantage = water?.disadvantage ? mergeAdvantage([...incoming.sources, "disadvantage"]) : incoming.advantage;
   // Tagged as an ally's attack, so a foretold number a watch stop armed for
   // the pet lands on its d20 (foresight-saves.ts).
   const hitOutcome = rollExpression(d20Expression(attack.toHit, advantage), undefined, { purpose: { roller: "hero", kind: "attack", who: pet.name } });
@@ -538,7 +550,7 @@ export function hurtPet(
   // an imp takes no fire, a drake none of its essence. Two types are two
   // shares, each meeting its own (Flame Strike's fire and radiant).
   const adjusted = input.parts.map((part) =>
-    damageAdjust(part.amount, part.type, current.resist ?? "", current.immune ?? "", current.vulnerable ?? "", { magical: input.magical }),
+    damageAdjust(part.amount, part.type, petResistLine(campaign.id, sheet.id, current), current.immune ?? "", current.vulnerable ?? "", { magical: input.magical }),
   );
   const dealt = adjusted.reduce((sum, entry) => sum + entry.amount, 0);
   const types = input.parts.map((part) => part.type?.trim() ?? "").filter(Boolean);

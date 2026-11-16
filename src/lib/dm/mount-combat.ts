@@ -106,7 +106,8 @@ export function strikeMount(input: {
   encounterId: string;
   enemy: EncounterEnemy;
   rider: CharacterSheet;
-  swings: Array<{ attack: EnemyAttack; ranged: boolean } | { attack: EnemyAttack; skipped: string }>;
+  // `underwater`: made from the water at disadvantage (pet-underwater.ts).
+  swings: Array<{ attack: EnemyAttack; ranged: boolean; underwater?: string } | { attack: EnemyAttack; skipped: string }>;
   distance: number | null;
   cover: number;
   requested: AdvantageState;
@@ -151,7 +152,7 @@ export function strikeMount(input: {
       attackerType: enemy.stats.type,
       targetSeesAttacker: sight?.targetSees !== false,
     });
-    const advantage = mergeAdvantage([...context.sources, ...light.sources]);
+    const advantage = mergeAdvantage([...context.sources, ...light.sources, ...(swing.underwater ? ["disadvantage" as const] : [])]);
     const toHit = rollExpression(d20Expression(attack.toHit, advantage));
     const hitRoll = insertRoll({
       campaignId: campaign.id,
@@ -168,7 +169,7 @@ export function strikeMount(input: {
     const ac = mount.ac + input.cover;
     const hit = toHit.crit !== "nat1" && (toHit.crit === "nat20" || toHit.total >= ac);
     if (!hit) {
-      rows.push({ attack: attack.name, rolled: toHit.total, vsAc: ac, hit: false });
+      rows.push({ attack: attack.name, rolled: toHit.total, vsAc: ac, hit: false, ...(swing.underwater ? { situation: swing.underwater } : {}) });
       continue;
     }
     const crit = toHit.crit === "nat20" || context.autoCrit;
@@ -188,7 +189,7 @@ export function strikeMount(input: {
     publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll: damageRoll, source: "digital" });
     turn.rollIds.push(damageRoll.id);
     hp = Math.max(0, hp - damage.total);
-    rows.push({ attack: attack.name, rolled: toHit.total, vsAc: ac, hit: true, ...(crit ? { crit: true } : {}), damage: damage.total });
+    rows.push({ attack: attack.name, rolled: toHit.total, vsAc: ac, hit: true, ...(crit ? { crit: true } : {}), ...(swing.underwater ? { situation: swing.underwater } : {}), damage: damage.total });
   }
   const notes = [...light.notes, ...(dodging ? [`${mount.name} is dodging: disadvantage`] : [])];
   if (hp > 0) {

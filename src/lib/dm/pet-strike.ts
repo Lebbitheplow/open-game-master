@@ -62,7 +62,9 @@ export function strikePet(input: {
   enemy: EncounterEnemy;
   owner: CharacterSheet;
   petName: string;
-  swings: Array<{ attack: EnemyAttack; ranged: boolean } | { attack: EnemyAttack; skipped: string }>;
+  // `underwater`: the swing is made from the water at disadvantage, and why
+  // (pet-underwater.ts creatureUnderwaterSwing).
+  swings: Array<{ attack: EnemyAttack; ranged: boolean; underwater?: string } | { attack: EnemyAttack; skipped: string }>;
   distance: number | null;
   cover: number;
   requested: AdvantageState;
@@ -106,8 +108,17 @@ export function strikePet(input: {
       attackerType: enemy.stats.type,
       targetSeesAttacker: sight?.targetSees !== false,
     });
+    if (swing.underwater) {
+      context.notes.push(swing.underwater);
+    }
     const effect = effectOutcome(campaign.id, { kind: "enemy", id: enemy.id }, "attack");
-    const advantage = mergeAdvantage([...context.sources, ...light.sources, ...own.sources, ...(effect.advantage ? ["advantage" as const] : []), ...(effect.disadvantage ? ["disadvantage" as const] : [])]);
+    const advantage = mergeAdvantage([
+      ...context.sources,
+      ...light.sources,
+      ...own.sources,
+      ...(effect.advantage ? ["advantage" as const] : []),
+      ...(effect.disadvantage || swing.underwater ? ["disadvantage" as const] : []),
+    ]);
     const label = rollAgainst(attack.name, pet.name);
     const toHit = rollExpression(`${d20Expression(attack.toHit + effect.bonus, advantage)}${own.riders.diceSuffix}`, undefined, { purpose: { roller: "enemy", kind: "attack", who: enemy.displayName } });
     spendEnemyRiders(enemy, own.riders);
