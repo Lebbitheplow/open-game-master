@@ -610,9 +610,7 @@ export function handlePassTime(
   // A stretch of time is a timeskip: the off-screen world moves once per
   // four hours, the same rate travel uses.
   const ticks = Math.min(24, Math.floor(moved.minutes / (4 * 60)));
-  if (ticks > 0) {
-    tickWorldTimeskip(campaign.id, ticks);
-  }
+  const disturbed = ticks > 0 ? tickWorldTimeskip(campaign.id, ticks, "wait") : null;
   // The sky moves with the clock: a new day rolls new weather.
   const sky = refreshSky(campaign.id, { before, minutes: moved.minutes });
   tableNote(
@@ -629,6 +627,8 @@ export function handlePassTime(
     ...(moved.deathSaves.length ? { deathSaves: moved.deathSaves } : {}),
     // A commanded undead's hourly save (ar-ws-command-hours.ts), rolled the same way.
     ...(moved.hourSaves.length ? { hourlySaves: moved.hourSaves } : {}),
+    // Something found the party while the time passed (world-tick-logic.ts).
+    ...(disturbed ? { disturbed } : {}),
   };
 }
 
@@ -697,7 +697,9 @@ function travelDays(
     // The meal is the journey's first: it covers one dawn, not one a day.
     const leg = travelStretch(campaign, turn, { ...args, hours: dayHours, meal: count === 1 ? args.meal : undefined }, travellers, sheets, sheetsById);
     legs.push(leg);
-    if (typeof leg.error === "string" || count === args.days) {
+    // Something that finds the party on the road or in camp stops the
+    // journey there: the table plays it out before the road goes on.
+    if (typeof leg.error === "string" || typeof leg.disturbed === "string" || count === args.days) {
       break;
     }
     // The evening in camp, then the night's rest to the next morning. The
@@ -715,7 +717,7 @@ function travelDays(
     // Only the travellers camp: whoever stayed behind rests on their own.
     const rest = handleTakeRest(campaign, turn.id, JSON.stringify({ kind: night, reason: sailing ? "the night aboard" : "the night's camp" }), travellers, sheetsById);
     nights.push(sailing && typeof rest.error !== "string" ? { ...rest, sailedOn: nightMiles } : rest);
-    if (typeof rest.error === "string") {
+    if (typeof rest.error === "string" || typeof rest.disturbed === "string") {
       break;
     }
   }
@@ -725,6 +727,7 @@ function travelDays(
   }
   const travelled = legs.filter((leg) => typeof leg.error !== "string").length;
   const stopped = [...legs, ...nights].find((result) => typeof result.error === "string");
+  const disturbed = [...legs, ...nights].map((result) => result.disturbed).find((note): note is string => typeof note === "string");
   // "1 night", never "1 nights".
   const nightsTold = nights.length === 1 ? "1 night" : `${nights.length} nights, each`;
   return {
@@ -732,8 +735,10 @@ function travelDays(
     days: travelled,
     legs,
     nights,
-    note:
-      typeof stopped?.error === "string"
+    ...(disturbed ? { disturbed } : {}),
+    note: disturbed
+      ? `The journey stopped after ${travelled} of ${args.days} days, ${nights.length} ${nights.length === 1 ? "night" : "nights"} in camp: something found the party (disturbed). Narrate what was travelled up to it, then play it out; the rest of the road is a new travel call afterwards.`
+      : typeof stopped?.error === "string"
         ? `The journey stopped after ${travelled} of ${args.days} days: ${stopped.error} Narrate what was travelled.`
         : sailing
           ? `${args.days} days aboard the ${args.aboard}, under way day and night: ${nightsTold} with a ${night} rest aboard while she sailed on ${nightMiles} miles more. Narrate the voyage from the legs and the nights.`
@@ -783,7 +788,7 @@ function travelStretch(
 
   // A journey is a timeskip: the off-screen world moves roughly once per
   // four hours on the road (world arcs, NPC goals; zero model calls).
-  tickWorldTimeskip(campaign.id, Math.max(1, Math.round(legHours / 4)));
+  const disturbed = tickWorldTimeskip(campaign.id, Math.max(1, Math.round(legHours / 4)), "journey");
 
   // The hours the party spent on the road are hours the world spent too, so
   // the clock moves with them. Before this the in-world date never changed
@@ -898,6 +903,7 @@ function travelStretch(
       passivePerceptionMod: effect.passivePerceptionMod,
       ...(now ? { now } : {}),
       ...weatherOutcome,
+      ...(disturbed ? { disturbed } : {}),
       note: `${args.aboard ? `Riding aboard the ${args.aboard} is not marching: these hours add nothing to a forced march.` : "A day within 8 hours of marching; no exhaustion."} ${paceNote}${weatherNotes.length ? ` ${weatherNotes.join(" ")}` : ""}`,
     };
   }
@@ -954,6 +960,7 @@ function travelStretch(
     results,
     ...(now ? { now } : {}),
     ...weatherOutcome,
+    ...(disturbed ? { disturbed } : {}),
     note:
       (worn.length
         ? `Forced march (the day's march reaches ${8 + forced.to} hours, one save for each hour past 8, up to DC ${dc}): ${worn.join(", ")} failed and gained a level of exhaustion for each failed hour (server-applied).`
