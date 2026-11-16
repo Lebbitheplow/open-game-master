@@ -70,6 +70,37 @@ await test("the captain and the prisoner on the cart are on the board on the par
   assert.ok(fight.order.some((entry) => entry.enemyId === mara.id) || encounters.getActiveEncounter(world.campaignId).order.some((entry) => entry.enemyId === mara.id), "she has a place in the order");
 });
 
+await test("whether an ally strikes is theirs: a turn nobody played, they hold; a first-tier one's mind chooses first", async () => {
+  const tools = await import("../src/lib/dm/encounter-tools.ts");
+  const { onPersonsTurn } = await import("../src/lib/dm/invoke.ts");
+  const mind = await import("../src/lib/dm/npc-mind.ts");
+  const minds = await import("../src/lib/db/npc-minds.ts");
+  const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
+  const { runInTurnScope } = await import("../src/lib/dm/job-control.ts");
+  const fight = world.encounter();
+  const rows = encounters.listEnemies(fight.id);
+  const mara = rows.find((row) => row.displayName === "Capitana Mara");
+  const wolf = rows.find((row) => row.slug === "wolf");
+  // Live play: the lieutenant shouted «Nobody strike!», the garrison's men
+  // held, and the captain swung at once because the server swung for her.
+  const sheets = world.sheets();
+  onPersonsTurn(world.campaign(), (turn) => tools.autoActSkippedEnemies(world.campaign(), turn, world.encounter(), [mara.id], sheets, new Map(sheets.map((sheet) => [sheet.id, sheet]))));
+  const { listRecentMessages } = await import("../src/lib/db/messages.ts");
+  const note = listRecentMessages(world.campaignId, 5).map((message) => message.content).find((content) => /resolve automatically/.test(content)) ?? "";
+  assert.match(note, /Capitana Mara does not attack this turn/, note);
+  assert.equal(encounters.listEnemies(fight.id).find((row) => row.id === wolf.id).currentHp, wolf.currentHp, "the server did not swing for her");
+  const minded = { ...world.campaign(), gameSettings: { ...world.campaign().gameSettings, npcMinds: true } };
+  minds.setNpcTier(mara.npcId, "primary");
+  const swing = JSON.stringify({ enemyId: mara.id, targetCharacterId: wolf.id });
+  const turn = createDmTurn(world.campaignId, [], "human_dm");
+  await runInTurnScope(turn.id, async () => {
+    assert.match(mind.mindTurnRefusal(minded, "enemy_attack", swing)?.error ?? "", /npc_speak for Capitana Mara first/);
+    assert.equal(mind.mindTurnRefusal(minded, "enemy_attack", JSON.stringify({ enemyId: wolf.id, targetCharacterId: brakk.id })), null, "a wolf is not asked");
+    assert.equal(mind.mindTurnRefusal(world.campaign(), "enemy_attack", swing), null, "without minds the narrator plays her");
+  });
+  minds.setNpcTier(mara.npcId, "secondary");
+});
+
 await test("an ally killed in the fight is dead in their record; the wolves still end it as a victory", async () => {
   const fight = world.encounter();
   const rows = encounters.listEnemies(fight.id);

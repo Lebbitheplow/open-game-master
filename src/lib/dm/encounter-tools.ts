@@ -585,7 +585,7 @@ function handleStartEncounter(
     ...(allies.length
       ? {
           allies: allies.map((ally) => ({ enemyId: ally.id, name: ally.displayName, ac: ally.ac, hp: `${ally.currentHp}/${ally.maxHp}`, ...(ally.conditions.length ? { conditions: ally.conditions.join(", ") } : {}) })),
-          alliesNote: `${allies.map((ally) => ally.displayName).join(", ")} travel with the party and stand on its side of the board, with initiative and a token: foes may strike them, and on their turns you play them with the enemy tools against the foes (a prisoner in bonds does nothing). If one falls, their record follows when the fight ends.`,
+          alliesNote: `${allies.map((ally) => ally.displayName).join(", ")} travel with the party and stand on its side of the board, with initiative and a token: foes may strike them, and on their turns you play them with the enemy tools against the foes (a prisoner in bonds does nothing). Each chooses for themselves whether and whom to strike: a first-tier NPC through npc_speak before enemy_attack, any other as you judge them, heeding orders like a call to hold. A turn you leave unplayed, they hold; the server never swings for them. If one falls, their record follows when the fight ends.`,
         }
       : {}),
     difficulty: `${evaluation.verdict} for this party`,
@@ -2189,6 +2189,13 @@ function playSkippedEnemyNow(
       return [standStillLine(name, { why: "incapacitated", by })];
     }
     return allowed.reason === "surprised" ? [standStillLine(name, { why: "surprised" })] : [];
+  }
+  // An NPC travelling with the party (src/lib/dm/party-npcs-fight.ts) is a
+  // person, not a monster: whether they strike is theirs to choose (their
+  // mind, or the narrator for one without), and an order to hold is heard.
+  // A turn nobody played, they hold rather than the server swinging for them.
+  if (enemy.npcId && sideOf(live, "enemy", enemy.id, enemy) === "party") {
+    return [standStillLine(name, { why: "other" })];
   }
   // Turned, fleeing Fear or told to flee, it spends its turn running: its
   // attack was played here and refused, so it stood still (issue #621).
