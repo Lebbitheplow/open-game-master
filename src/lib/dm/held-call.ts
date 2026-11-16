@@ -44,7 +44,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, turnKey } from "@/lib/db/encounters";
 import { ownTurnOf } from "@/lib/dm/held-turn";
-import { getRoll, insertRoll, type RollKind, type RollVisibility, type StoredRoll } from "@/lib/db/rolls";
+import { getRoll, insertRoll, markRollSpent, type RollKind, type RollVisibility, type StoredRoll } from "@/lib/db/rolls";
 import type { Advantage, RollResult } from "@/lib/dice";
 import type { ThrownRoll } from "@/lib/dm/after-roll-logic";
 import type { ToolResult } from "@/lib/dm/tool-errors";
@@ -274,6 +274,30 @@ function rearm(campaignId: string, armed: ReturnType<typeof armedNow>) {
   }
 }
 
+// The dice a call threw are the engine's own, used where they were thrown: a
+// spell's damage, a hazard's, a potion's healing. An AI GM may send a bare
+// number for damage or healing only when it is a total it asked the server
+// for this turn and nothing has spent (request_roll; src/lib/dm/ai-gate.ts
+// number). So as a call of any other name ends on an AI's turn, the damage
+// and custom rolls it added to the turn are stamped spent. Left unspent, the
+// total of a blow the engine had already landed paid for the model's own
+// apply_damage of the same number, and the blow landed twice.
+function spendOwnRolls(turn: DmTurn, call: HeldCallSpec, from: number, result: unknown) {
+  if (turn.actor !== "ai" || call.name === "request_roll") {
+    return;
+  }
+  const spend = () => {
+    for (const id of turn.rollIds.slice(from)) {
+      markRollSpent(id);
+    }
+  };
+  spend();
+  // An async handler's dice after its first wait.
+  if (result && typeof (result as { then?: unknown }).then === "function") {
+    void (result as unknown as Promise<unknown>).then(spend, () => {});
+  }
+}
+
 // Runs one tool call so a roll inside it may wait on its player. A call
 // inside another held call is part of it: the outer one is what waits.
 export function runHeld<T>(campaign: Campaign, turn: DmTurn, call: HeldCallSpec, run: () => T, previous?: Previous): T | ToolResult {
@@ -365,6 +389,7 @@ export function runHeld<T>(campaign: Campaign, turn: DmTurn, call: HeldCallSpec,
   }
   if (!rolledBack || (!trial.park && !trial.watchStop)) {
     deliveries.release(true);
+    spendOwnRolls(turn, call, rollIds, result);
     return result as T;
   }
   // The watch's card was opened inside the run and rolled back with it:
