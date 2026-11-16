@@ -9,7 +9,7 @@ import { Bot, Check, Crown, Heart, ImagePlus, PawPrint, Save, Sparkles, UserPlus
 import { describeExhaustion } from "@/lib/dm/condition-logic";
 import { namesLookup } from "@/lib/battlemap/condition-notes";
 import { conditionIconKey } from "@/lib/battlemap/condition-glyphs";
-import { conditionDetail, maxHpView, petAwayNote, petConditionDetail } from "@/components/sheet/sheet-state";
+import { acView, conditionDetail, maxHpView, petAwayNote, petConditionDetail } from "@/components/sheet/sheet-state";
 import type { PublicEncounter } from "@/lib/db/encounter-view";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { spellGlyphIcon } from "@/lib/battlemap/spell-glyph-table";
@@ -812,7 +812,7 @@ export function PartyPanel({
             <div className="party-card-stats mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-0.5">
               {(
                 [
-                  ["AC", String(shape ? shape.beastAc : sheet.ac)],
+                  ["AC", String(acView(sheet).ac)],
                   ["PP", String(derived.passivePerception)],
                   ["Init", formatModifier(derived.initiative)],
                 ] as const
@@ -821,9 +821,7 @@ export function PartyPanel({
                   key={statLabel}
                   className={cn("inline-flex items-baseline gap-1.5", shape && statLabel === "AC" && "text-lime-300")}
                   title={
-                    shape && statLabel === "AC"
-                      ? `The beast form's armor class; ${sheet.name}'s own is ${sheet.ac}.`
-                      : undefined
+                    statLabel === "AC" ? (acView(sheet).note ?? undefined) : undefined
                   }
                 >
                   <span className="eyebrow text-[9px] text-stone-500">{statLabel}</span>

@@ -79,4 +79,35 @@ await test("V03: GAME STATE gives an enemy the AC the attacks are rolled against
   }
 });
 
+// V04. SRD 5.1, Barkskin: "the target's AC can't be less than 16"; Wild
+// Shape: "your game statistics are replaced by the statistics of the beast";
+// Shield of Faith: "+2 bonus to AC". Attacks on a character read
+// acWithEffects (the beast's AC under a shaped druid, with these riders and
+// any effect's change), but GAME STATE's hero line printed the druid's own
+// AC, the beast line the wolf's bare 13, and the party panel and the sheet
+// the same: a Barkskinned wolf (AC 16) read 13, a cursed fighter (AC 10) 12.
+await test("V04: GAME STATE, the party panel and the sheet give a character the AC attacks against them meet", async () => {
+  await kit.endFight();
+  const { acWithEffects } = await import("../src/lib/dm/ac-effects.ts");
+  const druid = world.addHero({
+    class: "druid", level: 4, maxHp: 30, proficiencies: { ...TRAINED },
+    spellcasting: { ability: "wis", slots: { 1: { max: 4, used: 0 } }, prepared: [], known: [], cantrips: [] },
+  });
+  const shaped = await world.invoke("use_resource", { characterId: druid.id, resource: "wild_shape", form: "wolf" });
+  assert.equal(shaped.ok, true, shaped.error);
+  world.patch(druid.id, { conditions: ["barkskin"] });
+  assert.equal(acWithEffects(world.campaignId, world.sheet(druid.id)), 16, "the staging: a Barkskinned wolf is AC 16");
+  const told = describeSheet(world.sheet(druid.id), "a player", false);
+  assert.match(told, /\| AC 16 \|/, `the hero line: ${told.split("\n")[1]}`);
+  assert.match(told, /beast HP, AC 16\b/, "the beast line");
+  assert.equal(sheetState.acView?.(world.sheet(druid.id)).ac, 16, "the party panel and the sheet");
+
+  const fighter = world.addHero({ class: "fighter", level: 3, proficiencies: { ...TRAINED } });
+  const cursed = await world.invoke("set_effect", { characterId: fighter.id, name: "Curse of Rust", modifiers: [{ field: "ac", value: -2 }], durationRounds: 10 });
+  assert.equal(cursed.ok, true, cursed.error);
+  const engine = acWithEffects(world.campaignId, world.sheet(fighter.id));
+  assert.equal(engine, world.sheet(fighter.id).ac - 2, "the staging: the curse lowers the AC attacks meet");
+  assert.match(describeSheet(world.sheet(fighter.id), "a player", false), new RegExp(`\\| AC ${engine} \\|`));
+});
+
 finish();
