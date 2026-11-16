@@ -1779,6 +1779,8 @@
     "lib/dm/undead-command.ts#str-eq": [["key",1,"cast_buff's variant against the engine's own word for the command (engine vocabulary)"]],
     "lib/dm/undead-command.ts#str-key": [["key",1,"the command's reach by the spell's engine name (summon-spells.ts rows, engine vocabulary)"]],
     "lib/dm/familiar-help.ts#str-eq": [["key",1,"take_action's action (schema enum)"]],
+    "lib/dm/mount-blow.ts#toUpperCase": [["display",1,"ability abbreviation shown on the save's dice card"]],
+    "lib/dm/mount-blow.ts#toLowerCase": [["key",2,"the mount block's condition immunities line and a rider's condition label, cased alike to compare (engine vocabulary)"]],
     "lib/dm/pregen-draft-logic.ts#re-word": [["key",1,"a model's JSON code fence"]],
     "lib/dm/pregen-draft-logic.ts#str-list": [["key",1,"the playstyle ids and the reply's field names"]],
     "lib/dm/prep-logic.ts#re-affix": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],

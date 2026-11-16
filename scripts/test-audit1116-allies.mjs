@@ -639,4 +639,49 @@ await test("U13: a familiar takes the Help action with its own action: the fight
   await kit.endFight();
 });
 
+// U14. SRD 5.1, Underwater Combat: "Creatures and objects that are fully
+// immersed in water have resistance to fire damage"; a wolf's Bite: "If the
+// target is a creature, it must succeed on a DC 11 Strength saving throw or
+// be knocked prone"; Mounted Combat: "If your mount is knocked prone, you
+// can use your reaction to dismount it as it falls and land on your feet.
+// Otherwise, you are dismounted and fall prone." A blow at a plain mount
+// took its dice whole, untyped, and carried nothing onto the horse: the
+// bite that would have thrown it left its rider in the saddle.
+await test("U14: a blow at a plain mount meets its defenses by type, and a bite that knocks it prone throws its rider", async () => {
+  await kit.endFight();
+  const { getMounts } = await import("../src/lib/db/mounts.ts");
+  const rider = world.addHero({ class: "fighter", level: 5, maxHp: 50, proficiencies: { ...TRAINED } });
+  await kit.fight(1);
+  const [enemy] = world.enemies();
+  const flame = { name: "Flame Bite", toHit: 4, damage: "2d6", type: "fire" };
+  const bite = { name: "Bite", toHit: 4, damage: "1d6", type: "piercing", onHit: { save: "str", dc: 11, condition: "prone" } };
+  kit.openField([[5, 5, "~"], [5, 6, "~"]]);
+  kit.place(rider.id, 5, 5);
+  kit.place(enemy.id, 5, 6);
+  const up = await world.invoke("mount_up", { characterId: rider.id, mount: "Warhorse" });
+  assert.equal(up.ok, true, up.error);
+  const horse = () => getMounts(world.campaignId)[rider.id];
+  const full = horse().hp;
+
+  // The horse stands in its rider's water: the fire is halved.
+  kit.setEnemy(enemy.id, { maxHp: 200, stats: { ...kit.enemy(enemy.id).stats, attacks: [flame] } });
+  enemyHoldsTheFloor();
+  const burned = await forced([18, 18, 4, 4], () => world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: rider.id, targetMount: true }));
+  assert.equal(burned.ok, true, burned.error);
+  assert.equal(horse().hp, full - 4, `8 fire on a horse in the water: ${JSON.stringify(burned.result.swings)}`);
+
+  // Out of the water, the wolf's bite: the horse's Strength save fails, it
+  // goes down, and its rider comes off.
+  kit.openField();
+  kit.place(rider.id, 5, 5);
+  kit.place(enemy.id, 5, 6);
+  kit.setEnemy(enemy.id, { stats: { ...kit.enemy(enemy.id).stats, attacks: [bite] } });
+  kit.freshRound();
+  enemyHoldsTheFloor();
+  const thrown = await forced([18, 18, 3, 2, 2, 1, 1], () => world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: rider.id, targetMount: true }));
+  assert.equal(thrown.ok, true, thrown.error);
+  assert.equal(horse(), undefined, `the horse knocked prone kept its rider: ${JSON.stringify(thrown.result.swings)}`);
+  await kit.endFight();
+});
+
 finish();
