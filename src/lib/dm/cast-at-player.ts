@@ -1,4 +1,5 @@
 import { canAct } from "@/lib/dm/can-act";
+import { sheetIntelligence, sparedByIntelligence } from "@/lib/dm/spell-spares-logic";
 import { sheetCreatureType } from "@/lib/dm/summon-rules";
 import { castFromFoeSheet } from "@/lib/dm/sheet-foe-cast";
 import { hasDungeonDelver, shieldMasterSaveBonus, spellSaveAdvantageReach } from "@/lib/srd/feat-combat";
@@ -416,6 +417,10 @@ export function handleCastAtPlayer(
     }
     use = prepared;
   }
+  // Hideous Laughter at a character of Intelligence 4 or less (a polymorphed
+  // hero's beast mind, a beast companion): cast, spent, no effect.
+  const laughed = use?.spell ?? args.spell;
+  ward = ward ?? (laughed ? sparedByIntelligence(laughed, spellMechanicsFor({ spell: laughed, userIds: spellAuthorsFor(campaign) })?.mech.sparesIntAtMost, { name: sheet.name, int: sheetIntelligence(sheet) }) : null);
   // A spell that hits without a roll or a save (Magic Missile, SRD 5.1:
   // "Each dart hits a creature of your choice"): no save is asked, and the
   // darts land as one hit kept for Shield to answer. It once asked for a

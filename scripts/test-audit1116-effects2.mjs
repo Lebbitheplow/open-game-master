@@ -92,5 +92,71 @@ await test("Y13: off the board, a hero frightened by a creature's Fear saves fro
   assert.ok(!world.sheet(fighter.id).conditions.includes("frightened"), "the second turn's end brings the save");
 });
 
+// ---- Y14: a creature's Hideous Laughter passes over an Intelligence of 4 or less ----
+
+// SRD 5.1, Hideous Laughter: "A creature with an Intelligence score of 4 or
+// less isn't affected." Y04 read it on a hero's cast_at_enemy alone, so a
+// creature's Hideous Laughter still laid a polymorphed hero, a beast
+// companion or a wolf low with laughter.
+const LAUGHTER = { spell: "Hideous Laughter", level: 1, saveAbility: "wis", dc: 15, condition: "incapacitated" };
+const laughingStage = () => table([{ ...FIGHTER, name: "Kara" }, { class: "ranger", subclass: "Beast Master", level: 5, name: "Rook", abilities: { wis: 14, int: 3 } }], 1, { spells: ["Hideous Laughter"], type: "humanoid" });
+
+await test("Y14: a creature's Hideous Laughter at a hero polymorphed into a wolf is cast and spent with no effect", async () => {
+  const { world, sheets: [kara], enemies: [hag] } = await laughingStage();
+  world.patch(kara.id, { wildShape: { form: "Wolf", beastHp: 11, beastMaxHp: 11, beastAc: 13, kind: "polymorph", abilities: { str: 12, dex: 15, con: 12, int: 3, wis: 12, cha: 6 } } });
+  world.dice(1);
+  const out = await world.invoke("cast_at_player", { characterId: kara.id, casterEnemyId: hag.id, ...LAUGHTER });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.ok(!world.sheet(kara.id).conditions.includes("incapacitated"), "a wolf's mind is not touched");
+});
+
+await test("Y14: a creature's Hideous Laughter at a companion of Intelligence 3 has no effect", async () => {
+  const { world, sheets: [, rook], enemies: [hag] } = await laughingStage();
+  world.dice(1);
+  const out = await world.invoke("cast_at_player", { characterId: rook.id, casterEnemyId: hag.id, ...LAUGHTER });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.ok(!world.sheet(rook.id).conditions.includes("incapacitated"));
+});
+
+await test("Y14: a creature's Hideous Laughter at a ranger's wolf has no effect", async () => {
+  const { world, sheets: [, rook], enemies: [hag] } = await laughingStage();
+  const summoned = await world.invoke("summon_pet", { characterId: rook.id, kind: "beast_companion", form: "wolf" });
+  assert.equal(summoned.ok, true, summoned.error);
+  world.dice(1, 1);
+  const out = await world.invoke("cast_at_player", { characterId: rook.id, petName: "wolf", casterEnemyId: hag.id, ...LAUGHTER });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.ok(!(world.sheet(rook.id).pets.find((pet) => pet.form.toLowerCase() === "wolf").conditions ?? []).includes("incapacitated"), "the wolf keeps its feet");
+});
+
+await test("Y14: a creature's Hideous Laughter sent through aoe_damage passes over a companion of Intelligence 3", async () => {
+  const { world, sheets: [, rook], enemies: [hag] } = await laughingStage();
+  world.dice(1, 1);
+  const out = await world.invoke("aoe_damage", { casterEnemyId: hag.id, spell: "Hideous Laughter", level: 1, saveAbility: "wis", dc: 15, characterIds: [rook.id] });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.ok(!world.sheet(rook.id).conditions.includes("incapacitated"));
+});
+
+await test("Y14: a hero's Hideous Laughter sent through aoe_damage passes over a creature of Intelligence 3", async () => {
+  const { world, sheets: [bard], enemies: [wolf] } = await table([caster("bard", "cha", ["Hideous Laughter"])], 1, { abilities: { str: 10, dex: 10, con: 10, int: 3, wis: 10, cha: 10 } });
+  world.dice(1, 1);
+  const out = await world.invoke("aoe_damage", { casterCharacterId: bard.id, spell: "Hideous Laughter", level: 1, enemyIds: [wolf.id] });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.deepEqual(world.enemies().find((entry) => entry.id === wolf.id).conditions, []);
+});
+
+await test("Y14: a creature's Hideous Laughter at a hero of Intelligence 10 still lays them low", async () => {
+  const { world, sheets: [kara], enemies: [hag] } = await laughingStage();
+  world.dice(1);
+  const out = await world.invoke("cast_at_player", { characterId: kara.id, casterEnemyId: hag.id, ...LAUGHTER });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.ok(world.sheet(kara.id).conditions.includes("incapacitated"));
+});
+
 closeTables();
 finish();

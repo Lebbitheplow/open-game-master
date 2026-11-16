@@ -19,6 +19,7 @@
 // failed save's condition is laid on the pet as on a character
 // (pet-condition-lay.ts) and ends on the pet's clock (pet-conditions.ts).
 
+import { sparedByIntelligence } from "@/lib/dm/spell-spares-logic";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import type { RollAttacker } from "@/lib/db/rolls";
@@ -36,7 +37,7 @@ import { prepareEnemyUse, type EnemyUse } from "@/lib/dm/enemy-casting";
 import { petCreatureType } from "@/lib/dm/pet-build";
 import { layPetFailedSave, layPetSpellConditions, type PetLaid } from "@/lib/dm/pet-condition-lay";
 import { petDamageShare } from "@/lib/dm/pet-save-logic";
-import { rollPetSave, type PetSave } from "@/lib/dm/pet-save-roll";
+import { petIntelligence, rollPetSave, type PetSave } from "@/lib/dm/pet-save-roll";
 import { findPet, hurtPet, noPet } from "@/lib/dm/pet-tools";
 import { rollCard } from "@/lib/dm/roll-card";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
@@ -179,6 +180,9 @@ export function castAtPet(campaign: Campaign, turn: DmTurn, args: CastAtPetArgs,
     ward = spellWardOn({ encounterId: prepared.enemy.encounterId, casterId: prepared.enemy.id, targetId: owner.id, targetName: pet.name, facts: args.spell ? spellFactsFor(args.spell, authors) : null });
     use = prepared;
   }
+  // Hideous Laughter at a wolf or an owl (Intelligence 4 or less): cast, spent, no effect.
+  const laughed = use?.spell ?? args.spell;
+  ward = ward ?? (laughed ? sparedByIntelligence(laughed, spellMechanicsFor({ spell: laughed, userIds: authors })?.mech.sparesIntAtMost, { name: pet.name, int: petIntelligence(campaign, pet) }) : null);
   const castName = use?.name || args.spell;
   if (use?.hitPointPool) {
     return { error: `${castName} counts hit points across the creatures it reaches, with no save to make; resolve it with aoe_damage. Nothing was spent.`, retry: true };
