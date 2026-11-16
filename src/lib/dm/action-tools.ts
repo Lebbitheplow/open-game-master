@@ -43,6 +43,7 @@ import { readySpell } from "@/lib/dm/readied-spell";
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { DODGING } from "@/lib/dm/condition-logic";
 import { handleMountAction } from "@/lib/dm/mount-combat";
+import { familiarAction } from "@/lib/dm/familiar-help";
 import { contest, help, hide } from "@/lib/dm/combat-actions";
 import { payGrapplingStrike } from "@/lib/dm/maneuver-reactions";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -100,6 +101,7 @@ export const actionTools: ToolDef[] = [
             description: "As a bonus action: Cunning Action, Fast Hands, Expeditious Retreat or a monk's ki. The server checks the feature and spends the ki.",
           },
           mount: { type: "boolean", description: "The mount's own action (dash, disengage, dodge)." },
+          petName: { type: "string", description: "Help: their familiar helps instead." },
           targetEnemyId: {
             type: "string",
             description:
@@ -224,6 +226,8 @@ const takeActionSchema = z.object({
   bonus: z.coerce.boolean().optional(),
   // A controlled mount's Dash, Disengage or Dodge (SRD 5.1, Controlling a Mount).
   mount: z.coerce.boolean().optional(),
+  // A familiar's own Help (familiar-help.ts).
+  petName: z.string().trim().min(1).max(60).optional(),
   targetEnemyId: z.string().optional(),
   targetCharacterId: z.string().optional(),
   shove: z.enum(["prone", "push"]).optional(),
@@ -388,6 +392,10 @@ export function handleTakeAction(
   // The controlled mount's own action, not the rider's (mount-combat.ts).
   if (args.mount) {
     return handleMountAction(campaign, sheet, args.action);
+  }
+  // The familiar's own Help, not its owner's (familiar-help.ts).
+  if (args.petName) {
+    return familiarAction(campaign, sheet, { petName: args.petName, action: args.action, targetCharacterId: args.targetCharacterId, targetEnemyId: args.targetEnemyId });
   }
   const encounter = getActiveEncounter(campaign.id);
   // Revelation in Flesh's slip out of a grapple or a nonmagical restraint: 5

@@ -597,4 +597,46 @@ await test("U12: a familiar dismissed to its pocket dimension is out of reach, a
   assert.equal(hoot(), undefined, "a familiar dismissed from its pocket stayed bound");
 });
 
+// U13. SRD 5.1, Find Familiar: "A familiar can't attack, but it can take
+// other actions as normal"; Help: "you can aid a friendly creature in
+// attacking a creature within 5 feet of you ... If your ally attacks the
+// target before your next turn, the first attack roll is made with
+// advantage." U06 gave the Beast Master's companion its Help; a familiar had
+// no door for it (take_action took a character as the helper), so the
+// wizard spent their own action on the Help, or the owl's was only told.
+await test("U13: a familiar takes the Help action with its own action: the fighter's next swing at the goblin beside it has advantage", async () => {
+  await kit.endFight();
+  const mage = world.addHero({
+    class: "wizard", level: 3, maxHp: 20, abilities: { int: 16 }, gold: 20, proficiencies: { ...TRAINED },
+    spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 } }, prepared: ["Find Familiar"], known: [], cantrips: [] },
+  });
+  const blade = world.addHero({ class: "fighter", level: 3, maxHp: 30, abilities: { str: 16 }, proficiencies: { ...TRAINED }, equipment: [{ name: "Longsword", qty: 1 }] });
+  const called = await world.invoke("summon_pet", { characterId: mage.id, kind: "familiar", form: "cat", name: "Whiskers" });
+  assert.equal(called.ok, true, called.error);
+  await kit.fight(2);
+  const [near, far] = world.enemies();
+  kit.setEnemy(near.id, { maxHp: 200 });
+  kit.place(mage.id, 5, 5);
+  kit.place(near.id, 5, 6);
+  kit.place(blade.id, 6, 6);
+  kit.place(far.id, 12, 12);
+  kit.giveTurn(mage.id);
+  const help = (target) => world.invoke("take_action", { characterId: mage.id, petName: "Whiskers", action: "help", targetCharacterId: blade.id, targetEnemyId: target });
+
+  // The goblin 35 feet off is not within 5 feet of the cat at the wizard's feet.
+  const tooFar = await help(far.id);
+  assert.equal(tooFar.ok, false, "a familiar helped against a creature 35 feet off");
+  const helped = await help(near.id);
+  assert.equal(helped.ok, true, helped.error);
+  assert.equal(world.encounter().turnBudget?.actionUsed ?? false, false, "the familiar's Help took the wizard's action");
+  const twice = await help(near.id);
+  assert.equal(twice.ok, false, "the familiar took two actions in one turn");
+
+  kit.giveTurn(blade.id);
+  const swing = await kit.swing(blade.id, near.id, [15, 3, 4], { weapon: "Longsword" });
+  assert.equal(swing.ok, true, swing.error);
+  assert.equal(d20Faces(swing.toHit).length, 2, `the cat's Help gave the fighter's swing no advantage: ${JSON.stringify(swing.result).slice(0, 300)}`);
+  await kit.endFight();
+});
+
 finish();
