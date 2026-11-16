@@ -185,7 +185,7 @@ export function sightPassiveShift(input: {
   byEar?: boolean;
   spared?: string | null;
 }): { shift: number; blind: boolean; disadvantage: boolean; notes: string[] } {
-  let shift = pacePerceptionShift(input.pace);
+  const shift = pacePerceptionShift(input.pace);
   const notes: string[] = [];
   if (shift) {
     notes.push("fast pace: -5");
