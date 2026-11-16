@@ -1,11 +1,12 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { cn } from "@/lib/cn";
-import { WIELD_LABEL, changeWears, gearWornState, isWeaponRow, isWornGear, itemStatus } from "@/components/sheet/sheet-state";
+import { WIELD_LABEL, changeWears, gearWornState, isAttunable, isWeaponRow, isWornGear, itemStatus } from "@/components/sheet/sheet-state";
+import { isHeldFocus } from "@/components/sheet/paperdoll-logic";
 import { armorChangeMinutes } from "@/lib/dm/don-doff";
 import { guessStands, matchArmor } from "@/lib/srd/armor";
-import { matchMagicItem } from "@/lib/srd/magic-items";
 import { swapQuestion, wearConflict, type WearConflict } from "@/lib/srd/wear-slots";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import { ITEM_CATEGORY_LABEL, itemCategory, itemCategoryIcon, itemToneStyle } from "@/lib/srd/item-category-logic";
@@ -63,6 +64,11 @@ export function SheetGearRow({
   // own turn; while nobody has said, the first change is free.
   const isWeapon = !isArmor && isWeaponRow(item);
   const weaponLocked = inCombat && isWeapon && !myTurn;
+  // A cloak, a ring or boots go on and come off with the same free object
+  // interaction, on the character's own turn (issue #424). The route refused
+  // it off turn while the button stayed open, so the refusal was the first a
+  // player heard of it.
+  const wornLocked = inCombat && !isArmor && !isWeapon && !myTurn;
   const weaponHint = !isWeapon
     ? undefined
     : weaponLocked
@@ -72,18 +78,23 @@ export function SheetGearRow({
         : inCombat
           ? "Drawing or stowing a weapon takes your free object interaction, on your own turn."
           : undefined;
-  const wearLabel = isWeapon ? WIELD_LABEL[worn ? "in-hand" : "stowed"] : worn ? "worn" : "wear";
+  // A wand, staff or rod is held too, and sits with the weapons on the
+  // paperdoll's In hand place: its button reads as theirs do.
+  const inHand = isWeapon || (!isArmor && isHeldFocus(item));
+  const wearLabel = inHand ? WIELD_LABEL[worn ? "in-hand" : "stowed"] : worn ? "worn" : "wear";
   const status = itemStatus(sheet, item);
-  // Only an item that asks for attunement offers it; plain
-  // armor and "+1" gear work without one, and the server
-  // refuses the rest (srd/magic-items.ts attunementProblem).
-  // One already attuned keeps the control so it can end.
-  const def = matchMagicItem(item);
   const category = itemCategory(item);
-  const attunable =
-    Boolean(item.attuned) ||
-    Boolean(item.gear?.magic?.requiresAttunement) ||
-    Boolean(def?.requiresAttunement);
+  const attunable = isAttunable(item);
+  // The question opens under the row that was pressed. In the paperdoll's
+  // open place that row can be the last thing on a phone's screen, which
+  // left the question, and its answer buttons, below the fold.
+  const question = useRef<HTMLDivElement>(null);
+  const asking = conflict?.item ?? null;
+  useEffect(() => {
+    if (asking) {
+      question.current?.scrollIntoView({ block: "nearest" });
+    }
+  }, [asking]);
   return (
     <>
     <div data-gear-row={item.name} data-tone={category} style={itemToneStyle(category, "row")} className="flex items-center gap-2 text-xs text-stone-300">
@@ -123,9 +134,9 @@ export function SheetGearRow({
       {isWornGear(item) ? (
       <button
         type="button"
-        disabled={busy || armorLocked || shieldLocked || weaponLocked || dead}
+        disabled={busy || armorLocked || shieldLocked || weaponLocked || wornLocked || dead}
         aria-busy={busy}
-        aria-label={isWeapon ? `${item.name}: ${wearLabel}. ${worn ? "Pack it away" : "Take it in hand"}.` : undefined}
+        aria-label={inHand ? `${item.name}: ${wearLabel}. ${worn ? "Pack it away" : "Take it in hand"}.` : undefined}
         title={
           dead
             ? `${sheet.name} is dead and cannot change what they wear or are attuned to.`
@@ -135,7 +146,9 @@ export function SheetGearRow({
               ? // What the route will charge the clock (don-doff.ts), before the press.
                 armorChangeMinutes(sheet.equipment, { [item.name]: { equipped: !worn } }).lines.join(" ") || undefined
               : !isArmor
-                ? undefined
+                ? wornLocked
+                  ? "Putting something on or taking it off happens on your own turn; it is not your turn."
+                  : "Putting something on or taking it off takes your free object interaction, on your own turn."
                 : isShield
                   ? shieldLocked
                     ? "A shield takes your action, on your own turn; it is not your turn."
@@ -183,7 +196,7 @@ export function SheetGearRow({
     </div>
     {status.stored ? <p className="ml-8 text-[11px] text-stone-400">{status.stored}</p> : null}
     {conflict ? (
-      <div role="group" aria-label={`Wear ${item.name}?`} className="reveal ml-8 space-y-1.5 rounded border border-amber-800/60 bg-amber-950/30 px-2 py-1.5 text-[11px] text-amber-100">
+      <div ref={question} role="group" aria-label={`Wear ${item.name}?`} className="reveal ml-8 space-y-1.5 rounded border border-amber-800/60 bg-amber-950/30 px-2 py-1.5 text-[11px] text-amber-100">
         <p>{swapQuestion(conflict)}</p>
         <div className="flex flex-wrap gap-1.5">
           <button type="button" disabled={busy} onClick={onSwap} className="motion-press rounded border border-amber-700/70 bg-amber-950/40 px-1.5 py-0.5 text-amber-200 disabled:opacity-40">

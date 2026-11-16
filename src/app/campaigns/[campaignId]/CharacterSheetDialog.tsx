@@ -46,7 +46,8 @@ import { SheetBetween } from "@/components/sheet/SheetBetween";
 import { conditionDetail, hitDiceLine, itemStatus, maxHpView, otherSpeedsLine, speedView, wearableGear } from "@/components/sheet/sheet-state";
 import { FeatureChoicePicker, OtherSpeeds } from "@/components/sheet/SheetChoices";
 import { OwedPicks } from "@/components/sheet/OwedPicks";
-import { SheetGearRows, type PendingWear } from "@/components/sheet/SheetGearRow";
+import type { PendingWear } from "@/components/sheet/SheetGearRow";
+import { SheetPaperdoll } from "@/components/sheet/SheetPaperdoll";
 import { LoadBreakdown } from "@/components/sheet/LoadBreakdown";
 import { ResourceRow, SlotRow, STEP_BUTTON } from "@/components/sheet/SheetCounters";
 import { namesLookup } from "@/lib/battlemap/condition-notes";
@@ -122,7 +123,8 @@ export function CharacterSheetDialog({
   const attunedCount = sheet.equipment.filter((item) => item.attuned).length;
   // Only gear worth a toggle: armor, shields, magic, weapons (In hand or
   // Packed) and anything with a place on the body
-  // (src/components/sheet/sheet-state.ts wearableGear).
+  // (src/components/sheet/sheet-state.ts wearableGear). The paperdoll places
+  // each one (src/components/sheet/paperdoll-logic.ts).
   const wearable = wearableGear(sheet.equipment);
   const magic = magicItemRiders(sheet.equipment, sheet);
   // Carried weight is always worth showing once the pack has weights on it;
@@ -573,10 +575,10 @@ export function CharacterSheetDialog({
                         .join(" \u00b7 ") || "worn"}
                     </p>
                   ) : null}
-                  <SheetGearRows
+                  <SheetPaperdoll
                     sheet={sheet}
-                    items={wearable}
                     armor={armor}
+                    mine={mine}
                     corrects={corrects}
                     inCombat={inCombat}
                     myTurn={myTurn}

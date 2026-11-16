@@ -688,6 +688,10 @@ for (const viewport of ["desktop", "phone"]) {
         { name: "Cloak of Protection", qty: 1, equipped: true, attuned: true },
         { name: "Cloak of Elvenkind", qty: 1, equipped: false, attuned: true },
         { name: "Ring of Spell Storing", qty: 1, equipped: true, storedSpells: [{ spell: "Fireball", level: 3, saveDc: 15, attackBonus: 7 }] },
+        // For the paperdoll: a wand is held, in hand beside the weapons, and
+        // an orb has no place on the body, so it is under Other items.
+        { name: "Wand of Magic Missiles", qty: 1, equipped: false },
+        { name: "Crystal Ball", qty: 1, equipped: false },
       ],
     }),
   );

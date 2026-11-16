@@ -260,6 +260,14 @@ export function isWornGear(item: Pick<EquipmentItem, "name" | "slug" | "srdName"
   return tags.some((tag) => HELD_FOCI.includes(tag));
 }
 
+// Whether a row offers the attune toggle. Only an item that asks for
+// attunement does; plain armor and "+1" gear work without one, and the
+// server refuses the rest (srd/magic-items.ts attunementProblem). One
+// already attuned keeps the control so it can end.
+export function isAttunable(item: Pick<EquipmentItem, "name" | "slug" | "srdName" | "attuned" | "gear">): boolean {
+  return Boolean(item.attuned) || Boolean(item.gear?.magic?.requiresAttunement) || Boolean(matchMagicItem(item)?.requiresAttunement);
+}
+
 // Where a weapon is, in the words the Hand's cards, its More sheet, its
 // weapon picker and the sheet's own toggle all use (HandCard.wield).
 export const WIELD_LABEL: Record<"in-hand" | "stowed", string> = { "in-hand": "In hand", stowed: "Packed" };
