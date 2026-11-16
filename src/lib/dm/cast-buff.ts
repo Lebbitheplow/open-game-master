@@ -56,6 +56,7 @@ import type { FreeLimit } from "@/lib/srd/counter-casts";
 import { paidByItem } from "@/lib/srd/item-cast-credit";
 import { itemCastOpen } from "@/lib/dm/item-casts";
 import type { CastingSheet } from "@/lib/srd";
+import { armorBarsBuff } from "@/lib/dm/armor-donned-logic";
 
 // Temporary hit points a chosen variant grants on top of its condition.
 const VARIANT_TEMP_HP: Record<string, string> = {
@@ -320,6 +321,10 @@ export function handleCastBuff(
       error: `${sheet.name} casts ${resolvedMech.name} through ${granted?.source ?? "an invocation"} on themselves only; another creature takes it from a slot of a spell they know. Nothing was spent.`,
       refused: "rules",
     };
+  }
+  const armored = targetSheets.find((target) => armorBarsBuff(condition, target.equipment ?? []));
+  if (armored) {
+    return { error: `${armored.name} is wearing armor, and ${resolvedMech.name} touches a creature who isn't. Nothing was spent.`, refused: "rules" };
   }
   // How many creatures one casting touches: Bless three, one more for each
   // slot level above 1st; Aid three; a single-target buff one, or one more
