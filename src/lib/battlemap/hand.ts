@@ -20,6 +20,7 @@ import { attackOptionsFor, bonusStrikeCards, fastHandsCards, kiCards } from "@/l
 import { beastAttackIcon } from "@/lib/battlemap/attack-art";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { acBreakdownFor, computeSheetDerived } from "@/lib/srd";
+import { ammoChoice } from "@/lib/battlemap/hand-ammo";
 import { AMMO_LABELS, ammoKindForWeapon, findAmmo } from "@/lib/srd/ammunition";
 import { attackDamageLine, attackReach, attackRollLine, toHitWords } from "@/lib/battlemap/hand-attack-lines";
 import { grappleHandsProblem } from "@/lib/dm/cast-rules";
@@ -192,6 +193,7 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
       notes.push(profile.thrown ? "Versatile: say two hands in melee for the bigger die." : "Versatile: say two hands for the bigger die.");
     }
     const ammoKind = srd?.properties?.includes("ammunition") ? ammoKindForWeapon(srd.name) : null;
+    const ammoPick = ammoKind && !offHand && options.magicAmmo !== false ? ammoChoice(sheet.equipment, srd?.name) : null;
     const ammo = ammoKind ? findAmmo(sheet.equipment, ammoKind) : null;
     const empty = ammoKind !== null && ammo === null;
     const card: HandCard = {
@@ -218,6 +220,9 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
       ...(wield ? { wield } : {}),
       intent: { card: "attack", weapon: name, ...(offHand ? { offHand: true } : {}) },
       ...(offHand ? {} : { options: attackOptionsFor(sheet, turn, profile, derived, { allowed }) }),
+      // Magic ammunition the weapon can fire, picked per shot (hand-ammo.ts),
+      // from a host that reads the pick (capabilities.ts magicAmmo).
+      ...(ammoPick ? { choice: ammoPick } : {}),
     };
     const ammoGate: Gate =
       empty && options.trackAmmo ? { reason: `Out of ${AMMO_LABELS[ammoKind!]}.`, spent: true } : null;

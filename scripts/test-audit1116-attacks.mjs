@@ -604,6 +604,81 @@ await test("G17: a greatsword is never swung beside a shield on an opportunity a
   assert.equal(out.dealt, 1 + abilityMod(16));
 });
 
+// ---- G18: magic ammunition ----
+
+// SRD 5.1, Ammunition, +1, +2, or +3: "You have a bonus to attack and damage
+// rolls made with this piece of magic ammunition. The bonus is determined by
+// the rarity of the ammunition." The engine read no bonus off an ammunition
+// line, and with ammunition tracking on it drew the first quiver line,
+// spending a +1 arrow as a plain one. Ruled: a shot fires ordinary
+// ammunition unless it names the magic line (pc_attack `ammo`), and the
+// named piece is spent as ammunition is.
+const campaignsDb = await import("../src/lib/db/campaigns.ts");
+const tracking = (on) => campaignsDb.updateGameSettings(world.campaignId, { variantRules: { ...world.campaign().gameSettings.variantRules, ammunition: on } });
+const line = (name) => world.sheet(hero.id).equipment.find((item) => item.name === name);
+
+await test("G18: a shot that names its +1 arrows adds 1 to the attack and the damage and spends one; a shot that names none fires ordinary arrows", async () => {
+  await freshArena();
+  tracking(false);
+  arm({ str: 10, dex: 16, equipment: [{ name: "Longbow", qty: 1 }, { name: "Arrows", qty: 20 }, { name: "+1 Arrows", qty: 3 }] });
+  kit.stand(hero.id, 4);
+  // Ordinary: 15 + 3 + 3, the d8 of 4 + 3.
+  let before = kit.dummy().currentHp;
+  let shot = await kit.swing(hero.id, { weapon: "Longbow" }, 15, 4);
+  assert.equal(shot.ok, true, shot.error);
+  assert.equal(shot.result.rolled, 15 + abilityMod(16) + PB);
+  assert.equal(before - kit.dummy().currentHp, 4 + abilityMod(16));
+  assert.equal(line("+1 Arrows")?.qty, 3, "a shot that named no magic arrow spent one");
+  // Named: one more on both rolls, and the piece is spent.
+  kit.freshTurn();
+  before = kit.dummy().currentHp;
+  shot = await kit.swing(hero.id, { weapon: "Longbow", ammo: "+1 Arrows" }, 15, 4);
+  assert.equal(shot.ok, true, shot.error);
+  assert.equal(shot.result.rolled, 15 + abilityMod(16) + PB + 1, `the +1 arrow added nothing to the attack: ${JSON.stringify(shot.result)}`);
+  assert.equal(before - kit.dummy().currentHp, 4 + abilityMod(16) + 1, "the +1 arrow added nothing to the damage");
+  assert.equal(line("+1 Arrows")?.qty, 2, "the +1 arrow was not spent");
+});
+
+await test("G18: with ammunition tracking on, a shot that names none draws the ordinary arrows even when the +1 line comes first", async () => {
+  await freshArena();
+  tracking(true);
+  arm({ str: 10, dex: 16, equipment: [{ name: "Longbow", qty: 1 }, { name: "+1 Arrows", qty: 3 }, { name: "Arrows", qty: 20 }] });
+  kit.stand(hero.id, 4);
+  const shot = await kit.swing(hero.id, { weapon: "Longbow" }, 15, 4);
+  assert.equal(shot.ok, true, shot.error);
+  assert.equal(shot.result.rolled, 15 + abilityMod(16) + PB);
+  assert.equal(line("+1 Arrows")?.qty, 3, "the +1 arrow was drawn as a plain one");
+  assert.equal(line("Arrows")?.qty, 19);
+  // Only magic arrows left: a shot that names none is refused, naming them.
+  arm({ str: 10, dex: 16, equipment: [{ name: "Longbow", qty: 1 }, { name: "+1 Arrows", qty: 3 }] });
+  kit.freshTurn();
+  const dry = await kit.swing(hero.id, { weapon: "Longbow" }, 15, 4);
+  assert.equal(dry.ok, false, "a +1 arrow was fired unnamed");
+  assert.match(dry.error, /\+1 Arrows/);
+  // Ammunition that does not fit the bow is refused.
+  arm({ str: 10, dex: 16, equipment: [{ name: "Longbow", qty: 1 }, { name: "Arrows", qty: 20 }, { name: "+1 Bolts", qty: 3 }] });
+  const wrong = await kit.swing(hero.id, { weapon: "Longbow", ammo: "+1 Bolts" }, 15, 4);
+  assert.equal(wrong.ok, false, "a longbow fired a bolt");
+  tracking(false);
+});
+
+await test("G18: the Hand's longbow card offers the +1 arrows the hero carries, ordinary first, and sends the pick as pc_attack's ammo", async () => {
+  const { deriveHand } = await import("../src/lib/battlemap/hand.ts");
+  const { directCardCall } = await import("../src/lib/dm/intent-logic.ts");
+  arm({ str: 10, dex: 16, equipment: [{ name: "Longbow", qty: 1 }, { name: "Arrows", qty: 20 }, { name: "+1 Arrows", qty: 3 }] });
+  const card = (options = {}) => deriveHand(world.sheet(hero.id), undefined, options).find((entry) => entry.id === "attack:longbow");
+  const offered = card()?.choice;
+  assert.ok(offered, "the longbow's card offered no ammunition");
+  assert.deepEqual(offered.options.map((option) => option.value), ["", "+1 Arrows"]);
+  assert.equal(offered.fallback, "", "the card fires the +1 arrows unless told otherwise");
+  assert.equal(card({ magicAmmo: false })?.choice, undefined, "a host that does not read the pick was offered it");
+  arm({ str: 10, dex: 16, equipment: [{ name: "Longbow", qty: 1 }, { name: "Arrows", qty: 20 }] });
+  assert.equal(card()?.choice, undefined, "a card asked about magic ammunition the hero does not carry");
+  const call = directCardCall({ card: "attack", weapon: "Longbow", item: "+1 Arrows", targetId: "e1", targetKind: "enemy" }, hero.id);
+  assert.equal(call?.name, "pc_attack");
+  assert.equal(call?.args.ammo, "+1 Arrows", JSON.stringify(call));
+});
+
 await kit.endFight();
 world.close();
 finish();

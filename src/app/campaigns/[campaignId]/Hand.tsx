@@ -325,6 +325,9 @@ function HandInner({
   // A wand's, a staff's or a scroll's spell as a card: a host that cannot
   // resolve one leaves them typed.
   const items = hostOffers(capabilities, "handItemCasts");
+  // Magic ammunition on a weapon's card: a host that does not read the pick
+  // would fire ordinary arrows, so the card does not offer it there.
+  const magicAmmo = hostOffers(capabilities, "magicAmmo");
   const turnHeld = useTurnHeld(encounter);
   const squareLight = hostOffers(capabilities, "handSquareLight");
   const cards = useMemo(() => {
@@ -335,13 +338,13 @@ function HandInner({
     // The light on the square is read only from a host that says it sends it
     // (src/lib/capabilities.ts handSquareLight).
     const ownBoard = sheet.userId === meUserId ? boardFactsForHost(board, squareLight) : undefined;
-    const dealt = [...othersReactions, ...holdPendingCards(withReactions(reactions, deriveHand(sheet, turn, { spells, trackAmmo, gear, blasts, summons, items, board: ownBoard })), waiting)];
+    const dealt = [...othersReactions, ...holdPendingCards(withReactions(reactions, deriveHand(sheet, turn, { spells, trackAmmo, gear, blasts, summons, items, magicAmmo, board: ownBoard })), waiting)];
     // Their End Turn is in and the move waits on a watcher's stop
     // (turn-hold.ts): the turn takes nothing more but a reaction, and every
     // other card says why, End turn's own included.
     const ending = turnHeld?.characterId === sheet.id ? turnHeldLine(turnHeld, true) : null;
     return ending ? dealt.map((card) => (card.cost === "reaction" ? card : { ...card, disabled: ending })) : dealt;
-  }, [sheet, turn, reactions, othersReactions, reactionsOnly, spells, trackAmmo, gear, blasts, summons, items, waiting, board, meUserId, turnHeld, squareLight]);
+  }, [sheet, turn, reactions, othersReactions, reactionsOnly, spells, trackAmmo, gear, blasts, summons, items, magicAmmo, waiting, board, meUserId, turnHeld, squareLight]);
 
   // Cards that spend one thing (spell slots, ki, superiority dice, gear, the
   // basic actions) gather under one card each (issue 528, hand-groups.ts).
