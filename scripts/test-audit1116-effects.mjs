@@ -234,5 +234,46 @@ await test("Y05: a humanoid banished and held for the whole minute reappears as 
   assert.ok(!kit.enemy(goblin.id).conditions.includes("banished"), "back from the demiplane");
 });
 
+// ---- Y06: Mage Armor ends when its creature dons armor ----
+
+// SRD 5.1, Mage Armor: "The spell ends if the target dons armor or if you
+// dismiss the spell as an action." The armor took over the AC while worn,
+// but the spell stayed, so taking the armor off again gave 13 + Dexterity
+// back for the rest of the eight hours.
+await test("Y06: a wizard who puts on leather armor over Mage Armor ends the spell, and taking it off does not bring it back", async () => {
+  const { openWorld } = await import("./lib/enforce-world.mjs");
+  const world = await openWorld({ gameSettings: { ttsEnabled: false } });
+  const mage = world.addHero({
+    name: "Wiz", class: "wizard", level: 5, abilities: { int: 18, con: 14, dex: 14 }, proficiencies: { ...TRAINED, saves: ["int", "wis"] }, acOverride: false,
+    equipment: [{ name: "Leather armor", qty: 1, equipped: false }],
+    spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 } }, known: [], prepared: ["Mage Armor"], cantrips: [] },
+  });
+  const cast = await world.invoke("cast_buff", { characterId: mage.id, spell: "Mage Armor", targetCharacterIds: [mage.id] });
+  assert.equal(cast.ok, true, cast.error);
+  assert.equal(world.sheet(mage.id).ac, 15, "13 + Dexterity");
+  const don = await world.invoke("handle_item", { characterId: mage.id, item: "Leather armor", action: "equip" });
+  assert.equal(don.ok, true, don.error);
+  assert.equal(world.sheet(mage.id).ac, 13, "leather: 11 + Dexterity");
+  assert.ok(!world.sheet(mage.id).conditions.includes("mage armor"), "donning armor ends the spell");
+  const doff = await world.invoke("handle_item", { characterId: mage.id, item: "Leather armor", action: "unequip" });
+  assert.equal(doff.ok, true, doff.error);
+  assert.equal(world.sheet(mage.id).ac, 12, "10 + Dexterity: the spell is gone");
+});
+
+await test("Y06: a shield taken up over Mage Armor leaves the spell running", async () => {
+  const { openWorld } = await import("./lib/enforce-world.mjs");
+  const world = await openWorld({ gameSettings: { ttsEnabled: false } });
+  const mage = world.addHero({
+    name: "Wiz", class: "wizard", level: 5, abilities: { int: 18, con: 14, dex: 14 }, proficiencies: { ...TRAINED, saves: ["int", "wis"] },
+    equipment: [{ name: "Shield", qty: 1, equipped: false }],
+    spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 } }, known: [], prepared: ["Mage Armor"], cantrips: [] },
+  });
+  const cast = await world.invoke("cast_buff", { characterId: mage.id, spell: "Mage Armor", targetCharacterIds: [mage.id] });
+  assert.equal(cast.ok, true, cast.error);
+  const raised = await world.invoke("handle_item", { characterId: mage.id, item: "Shield", action: "equip" });
+  assert.equal(raised.ok, true, raised.error);
+  assert.ok(world.sheet(mage.id).conditions.includes("mage armor"), "a shield is not armor donned");
+});
+
 closeTables();
 finish();
