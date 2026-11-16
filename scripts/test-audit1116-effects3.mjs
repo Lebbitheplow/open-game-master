@@ -7,12 +7,13 @@ import assert from "node:assert/strict";
 import "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { call } from "./lib/enforce-campaign.mjs";
-import { closeTables, FIGHTER, table } from "./lib/enforce-spell-kit.mjs";
+import { caster, closeTables, FIGHTER, table } from "./lib/enforce-spell-kit.mjs";
 import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
-import { dropMap } from "./lib/enforce-spells.mjs";
+import { dropMap, layMap } from "./lib/enforce-spells.mjs";
 
 const { test, finish } = suite("test-audit1116-effects3");
 const { endTurnSaves } = await import("../src/lib/dm/condition-tick.ts");
+const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
 
 // ---- Y18: a pet frightened by Fear saves only out of the caster's sight ----
 
@@ -117,6 +118,40 @@ await test("Y19: an area that spares an Intelligence of 4 or less passes over th
   assert.ok(world.sheet(rook.id).conditions.includes("incapacitated"), "the ranger, Intelligence 10, failed and laughs");
   assert.ok(!(wolfOf(world, rook.id).conditions ?? []).includes("incapacitated"), `the wolf, Intelligence 3, is not affected: ${JSON.stringify(out.result.results[0].pets)}`);
   assert.match(JSON.stringify(out.result.results[0].pets ?? []), /Intelligence of 4 or less/, "the result says why");
+});
+
+// ---- Y20: Mirror Image does not fool an attacker that cannot see in magical darkness ----
+
+// SRD 5.1, Mirror Image: "A creature is unaffected by this spell if it can't
+// see". Y07 read "can't see" from the blinded condition alone, so a goblin
+// swinging blind into a Darkness the wizard stood in still rolled against the
+// duplicates. The attack engine already reads that sight for the roll
+// (attack-light.ts attackSight): the same reading decides the duplicates.
+async function mirroredInDarkness(stats = {}) {
+  const { placeSpellZone } = await import("../src/lib/dm/zone-cast.ts");
+  const { world, sheets: [wizard], enemies: [goblin] } = await table([caster("wizard", "int", ["Mirror Image"])], 1, stats);
+  const cast = await world.invoke("cast_buff", { characterId: wizard.id, spell: "Mirror Image" });
+  assert.equal(cast.ok, true, cast.error);
+  await layMap(world, Array.from({ length: 12 }, () => ".".repeat(12)), { [wizard.id]: { x: 5, y: 5 }, [goblin.id]: { x: 6, y: 5 } });
+  const dark = placeSpellZone(world.campaign(), { spell: "Darkness", caster: { kind: "enemy", id: goblin.id, name: goblin.displayName }, slotLevel: 2, at: { x: 5, y: 5 } });
+  assert.ok(dark, "the Darkness is on the board");
+  world.dice(15, 15, 15, 15, 3, 3);
+  const out = await world.invoke("enemy_attack", { enemyId: goblin.id, targetCharacterId: wizard.id, characterId: wizard.id });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  const decoyRolled = listRecentRolls(world.campaignId, 10).some((roll) => /^Mirror Image/.test(roll.detail ?? ""));
+  return { world, wizard, decoyRolled };
+}
+
+await test("Y20: an attacker that cannot see in magical darkness strikes at the caster, not a duplicate", async () => {
+  const { world, wizard, decoyRolled } = await mirroredInDarkness();
+  assert.equal(decoyRolled, false, "no d20 for the duplicates it cannot see");
+  assert.ok(world.sheet(wizard.id).conditions.includes("mirror image"), "all three duplicates stand");
+});
+
+await test("Y20: an attacker with Devil's Sight sees the duplicates in magical darkness and meets them", async () => {
+  const { decoyRolled } = await mirroredInDarkness({ senses: { devilsSight: 120, passivePerception: 10 }, traits: ["Devil's Sight. Magical darkness doesn't impede the creature's darkvision."] });
+  assert.equal(decoyRolled, true, "the duplicates' d20 is rolled");
 });
 
 closeTables();
