@@ -182,5 +182,32 @@ await test("D04: a creature paralyzed by another creature's hit loses its concen
   assert.equal(field.sheet(kara.id).conditions.includes("grappled"), false, "the paralyzed goblin still holds the hero");
 });
 
+// D05. SRD 5.1, Exhaustion: each failed save is a level, and "6: Death".
+// The hourly Constitution saves (a forced march, extreme cold or heat,
+// frigid water) read the new level from set_condition's answer, which never
+// said it, so the GM was told only "failed" and never the level, and a hero
+// the cold took to level 6 was listed as one more level of exhaustion.
+await test("D05: each failed hour in the cold reports the level it reached, and a death at level 6", async () => {
+  const camp = await openWorld();
+  const walker = camp.addHero({ name: "Ilse", abilities: { con: 10 } });
+  camp.dice(1);
+  const first = await camp.invoke("apply_hazard", { type: "extreme_cold", hours: 1, characterIds: [walker.id] });
+  camp.clearDice();
+  assert.equal(first.ok, true, first.error);
+  const [hour] = first.result.results[0].saves;
+  assert.equal(hour.failed, true, JSON.stringify(first.result));
+  assert.equal(camp.sheet(walker.id).exhaustion, 1);
+  assert.equal(hour.exhaustion, 1, `the failed hour did not say the level: ${JSON.stringify(hour)}`);
+  camp.patch(walker.id, { exhaustion: 5 });
+  camp.dice(1);
+  const last = await camp.invoke("apply_hazard", { type: "extreme_cold", hours: 1, characterIds: [walker.id] });
+  camp.clearDice();
+  assert.equal(camp.sheet(walker.id).deathSaves?.dead, true);
+  const [fatal] = last.result.results[0].saves;
+  assert.equal(fatal.exhaustion, 6, JSON.stringify(last.result));
+  assert.equal(fatal.dead, true, "the hour that killed them did not say so");
+  assert.match(String(last.result.note), /Ilse dies? of exhaustion/, String(last.result.note));
+});
+
 closeTables();
 finish();

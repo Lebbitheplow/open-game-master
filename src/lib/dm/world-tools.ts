@@ -12,7 +12,7 @@ import { publishWithSeq } from "@/lib/events";
 import { asSentence, textKey } from "@/lib/language/text-logic";
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { resolveSheetRef } from "@/lib/dm/rolls";
-import { hourlyConSaves, type HourSave } from "@/lib/dm/endurance";
+import { exhaustionDeaths, hourlyConSaves, type HourSave } from "@/lib/dm/endurance";
 import {
   hoardItemCount,
   treasureGoldRoll,
@@ -956,7 +956,7 @@ function travelStretch(
     ...weatherOutcome,
     note:
       (worn.length
-        ? `Forced march (the day's march reaches ${8 + forced.to} hours, one save for each hour past 8, up to DC ${dc}): ${worn.join(", ")} failed and gained a level of exhaustion for each failed hour (server-applied).`
+        ? `Forced march (the day's march reaches ${8 + forced.to} hours, one save for each hour past 8, up to DC ${dc}): ${worn.join(", ")} failed and gained a level of exhaustion for each failed hour (server-applied).${exhaustionDeaths(results)}`
         : `Forced march (the day's march reaches ${8 + forced.to} hours, one save for each hour past 8, up to DC ${dc}): everyone holds up.`) + ` ${paceNote}${weatherNotes.length ? ` ${weatherNotes.join(" ")}` : ""}`,
   };
 }

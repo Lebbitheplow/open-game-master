@@ -31,7 +31,15 @@ export type HourSave = {
   save: number | null;
   failed: boolean;
   exhaustion?: number;
+  // The hour's level was the sixth (SRD 5.1, Exhaustion: "6: Death").
+  dead?: true;
 };
+
+// "Ilse dies of exhaustion." for whoever an hour of saves killed, or "".
+export function exhaustionDeaths(results: Array<{ name: string; saves?: HourSave[] }>): string {
+  const dead = results.filter((entry) => entry.saves?.some((hour) => hour.dead)).map((entry) => entry.name);
+  return dead.length ? ` ${dead.join(" and ")} ${dead.length === 1 ? "dies" : "die"} of exhaustion (level 6).` : "";
+}
 
 // One character's saves, hour by hour. Stops at death: exhaustion 6 kills.
 export function hourlyConSaves(input: {
@@ -95,9 +103,14 @@ export function hourlyConSaves(input: {
         JSON.stringify({ characterId: sheet.id, condition: "exhaustion", reason: input.reason }),
         input.sheets,
         input.sheetsById,
-      ).result as { level?: number };
+      ).result as { level?: number; dead?: boolean };
+      // set_condition's answer: the level reached, and a death at the sixth.
+      // Neither was read before, so the GM heard only "failed".
       if (typeof applied.level === "number") {
         entry.exhaustion = applied.level;
+      }
+      if (applied.dead) {
+        entry.dead = true;
       }
     }
     out.push(entry);

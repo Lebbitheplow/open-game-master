@@ -218,12 +218,15 @@ export function raiseExhaustion(
     });
     return {
       ok: true,
+      level: patch.exhaustion,
       dead: true,
       note: `${sheet.name} reaches exhaustion level 6 and DIES.`,
     };
   }
   return {
     ok: true,
+    // The level reached: the hourly saves (endurance.ts) report it per hour.
+    level: patch.exhaustion,
     condition: describeExhaustion(patch.exhaustion),
     ...(patch.currentHp !== undefined
       ? { hp: `${patch.currentHp}/${patch.currentHp}`, halved: "Their hit point maximum is halved while the level lasts." }
