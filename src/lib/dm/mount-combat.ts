@@ -12,7 +12,7 @@
 import type { Campaign } from "@/lib/db/campaigns";
 import { allocateSeq } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { getActiveEncounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy, type EncounterEnemy } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getMounts, setMount } from "@/lib/db/mounts";
 import { insertRoll } from "@/lib/db/rolls";
@@ -30,6 +30,9 @@ import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { handleDismount } from "@/lib/dm/mount-tools";
 import { mountedPet } from "@/lib/dm/pet-mount";
 import { strikePet } from "@/lib/dm/pet-strike";
+import { enemyOpportunityRiders } from "@/lib/dm/opportunity-strike";
+import { effectOutcome } from "@/lib/dm/effect-tools";
+import { spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { getSheetById } from "@/lib/db/sheets";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
@@ -161,8 +164,20 @@ export function strikeMount(input: {
       attackerType: enemy.stats.type,
       targetSeesAttacker: sight?.targetSees !== false,
     });
-    const advantage = mergeAdvantage([...context.sources, ...light.sources, ...(swing.underwater ? ["disadvantage" as const] : [])]);
-    const toHit = rollExpression(d20Expression(attack.toHit, advantage));
+    // The creature's own state, as its swing at the rider reads it (Bane's
+    // d4 off, Bless's on, Vicious Mockery's one disadvantage, exhaustion,
+    // sunlight) and the effects on it: the swing at the mount read none.
+    const own = enemyOpportunityRiders(campaign.id, getEnemy(enemy.id) ?? enemy);
+    const effect = effectOutcome(campaign.id, { kind: "enemy", id: enemy.id }, "attack");
+    const advantage = mergeAdvantage([
+      ...context.sources,
+      ...light.sources,
+      ...own.sources,
+      ...(effect.advantage ? ["advantage" as const] : []),
+      ...(effect.disadvantage || swing.underwater ? ["disadvantage" as const] : []),
+    ]);
+    const toHit = rollExpression(`${d20Expression(attack.toHit + effect.bonus, advantage)}${own.riders.diceSuffix}`, undefined, { purpose: { roller: "enemy", kind: "attack", who: enemy.displayName } });
+    spendEnemyRiders(enemy, own.riders);
     const hitRoll = insertRoll({
       campaignId: campaign.id,
       characterId: rider.id,

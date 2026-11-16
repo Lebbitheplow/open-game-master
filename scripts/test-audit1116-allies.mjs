@@ -283,4 +283,49 @@ await test("U04: a ridden drake is struck as the drake, once, and its rider come
   await kit.endFight();
 });
 
+// U05. SRD 5.1, Vicious Mockery: "it has disadvantage on the next attack
+// roll it makes before the end of its next turn"; Bane: "Whenever a target
+// that fails this saving throw makes an attack roll ... the target must roll
+// a d4 and subtract the number rolled". The swing at a pet read the
+// attacker's riders once for the whole routine, so a mocked creature's every
+// swing at the pet was at disadvantage; the swing at a mount read none, so
+// a baned creature struck the warhorse on a whole roll.
+await test("U05: a creature's swings at a pet or a mount spend a one-shot rider once and keep a lasting one", async () => {
+  await kit.endFight();
+  world.patch(keeper.id, { pets: world.sheet(keeper.id).pets.map((pet) => ({ ...pet, hp: pet.maxHp, conditions: [], conditionMeta: {} })) });
+  await kit.fight(1);
+  const [enemy] = world.enemies();
+  kit.place(keeper.id, 5, 5);
+  kit.place(enemy.id, 5, 6);
+  const twoSwings = { ...kit.enemy(enemy.id).stats, attacksPerTurn: 2 };
+  const attackRolls = (count) => kit.lastRolls(12).filter((roll) => roll.kind === "attack" && /^Club/.test(roll.detail ?? "")).slice(-count);
+
+  // Mocked: the first swing at the mastiff at disadvantage, the second not.
+  kit.setEnemy(enemy.id, { maxHp: 200, stats: twoSwings, conditions: ["mocked"], conditionMeta: { mocked: { source: keeper.id } } });
+  enemyHoldsTheFloor();
+  const atDog = await forced([2, 2, 2], () => world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: keeper.id, targetPet: "Brute" }));
+  assert.equal(atDog.ok, true, atDog.error);
+  const [dogFirst, dogSecond] = attackRolls(2);
+  assert.equal(d20Faces(dogFirst).length, 2, "the mocked swing is at disadvantage");
+  assert.equal(d20Faces(dogSecond).length, 1, `the mockery was spent on the first swing, and the second rolled at disadvantage too: ${JSON.stringify(atDog.result.swings)}`);
+
+  // Baned and mocked at the keeper's horse: the d4 off both swings, the
+  // disadvantage on the first.
+  const up = await world.invoke("mount_up", { characterId: keeper.id, mount: "Warhorse" });
+  assert.equal(up.ok, true, up.error);
+  kit.freshRound();
+  kit.setEnemy(enemy.id, { conditions: ["mocked", "baned"], conditionMeta: { mocked: { source: keeper.id }, baned: { source: keeper.id } } });
+  enemyHoldsTheFloor();
+  const atHorse = await forced([2, 2, 1, 2, 1], () => world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: keeper.id, targetMount: true }));
+  assert.equal(atHorse.ok, true, atHorse.error);
+  const [horseFirst, horseSecond] = attackRolls(2);
+  assert.equal(d20Faces(horseFirst).length, 2, "the mocked swing at the horse is at disadvantage");
+  assert.equal(d20Faces(horseSecond).length, 1, "the second swing at the horse is not");
+  for (const roll of [horseFirst, horseSecond]) {
+    assert.match(roll.expression ?? "", /-1d4/, `Bane's d4 comes off the swing at the horse: ${roll.expression}`);
+  }
+  await world.invoke("dismount", { characterId: keeper.id });
+  await kit.endFight();
+});
+
 finish();

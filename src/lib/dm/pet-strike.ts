@@ -18,7 +18,7 @@
 
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import type { EncounterEnemy } from "@/lib/db/encounters";
+import { getEnemy, type EncounterEnemy } from "@/lib/db/encounters";
 import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById } from "@/lib/db/sheets";
 import { d20Expression, isValidExpression, rollExpression } from "@/lib/dice";
@@ -84,7 +84,6 @@ export function strikePet(input: {
   });
   const light = lightOnAttack(sight, { attacker: enemy.displayName, target: name });
   const attackerSenses = sensesReaching(input.encounterId, { refId: enemy.id, senses: enemySenses(enemy) }, { refId: owner.id });
-  const own = enemyOpportunityRiders(campaign.id, enemy);
   const rows: Array<Record<string, unknown>> = [];
   for (const swing of input.swings) {
     const pet = currentPet(owner.id, name);
@@ -111,6 +110,10 @@ export function strikePet(input: {
     if (swing.underwater) {
       context.notes.push(swing.underwater);
     }
+    // Read again each swing: the swing before spent a one-shot rider
+    // (Vicious Mockery's disadvantage on "the next attack roll"), which
+    // rode every swing of the routine when it was read once.
+    const own = enemyOpportunityRiders(campaign.id, getEnemy(enemy.id) ?? enemy);
     const effect = effectOutcome(campaign.id, { kind: "enemy", id: enemy.id }, "attack");
     const advantage = mergeAdvantage([
       ...context.sources,
