@@ -1091,6 +1091,11 @@ function dmMutation(
       // Tincture's damage is beyond it (afflictions.ts healCeiling).
       const ceiling = healCeiling(campaign.id, target);
       const math = healMath(Math.min(target.currentHp, ceiling), ceiling, Math.min(amount, 200));
+      // What came back, the maximum capping it ("A creature can't regain more
+      // hit points than its hit point maximum"): the result said the amount
+      // asked, so a hero 5 short told of 20 was narrated 20 (and the board
+      // floated +20).
+      const restored = math.currentHp - Math.min(target.currentHp, ceiling);
       // A regained hit point ends a caltrops wound in patchSheet itself
       // (condition-logic.ts endedByRegain), whichever path healed.
       patchSheet(target.id, { currentHp: math.currentHp });
@@ -1100,10 +1105,10 @@ function dmMutation(
       publishSheet(campaign, target.id);
       {
         const pos = tokenPosition(campaign.id, target.id);
-        if (pos && amount > 0) {
+        if (pos && restored > 0) {
           publishFx(
             campaign.id,
-            planHealFx({ to: pos.at, toTokenId: pos.tokenId, amount: Math.min(amount, 200) }),
+            planHealFx({ to: pos.at, toTokenId: pos.tokenId, amount: restored }),
           );
         }
       }
@@ -1116,7 +1121,7 @@ function dmMutation(
         result: {
           ok: true,
           hp: `${math.currentHp}/${ceiling}`,
-          healed: amount,
+          healed: restored,
           ...(healNote ? { spell: healNote } : {}),
           ...(alsoHealed.length ? { alsoHealed } : {}),
           ...deathInfo,

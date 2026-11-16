@@ -36,4 +36,22 @@ await test("V01: the party panel says a familiar in its pocket dimension is away
   assert.match(describeSheet(world.sheet(mage.id), "a player", false), /Hoot \(owl familiar\): in its pocket dimension/i);
 });
 
+// V02. SRD 5.1, Hit Points: "A creature can't regain more hit points than its
+// hit point maximum." The engine capped the healing, but heal's result said
+// `healed: 20` for a hero 5 short of their maximum, so the GM narrated twenty
+// hit points coming back (and the board floated +20).
+await test("V02: heal reports the hit points restored, not the amount asked, when the maximum caps it", async () => {
+  await kit.endFight();
+  const hero = world.addHero({ class: "fighter", level: 5, maxHp: 40, proficiencies: { ...TRAINED } });
+  world.patch(hero.id, { currentHp: 35 });
+  const healed = await world.invoke("heal", { characterId: hero.id, amount: 20 });
+  assert.equal(healed.ok, true, healed.error);
+  assert.equal(world.sheet(hero.id).currentHp, 40);
+  assert.equal(healed.result.healed, 5, `restored 5, told ${JSON.stringify(healed.result)}`);
+  // Uncapped, the whole amount.
+  world.patch(hero.id, { currentHp: 10 });
+  const whole = await world.invoke("heal", { characterId: hero.id, amount: 7 });
+  assert.equal(whole.result.healed, 7);
+});
+
 finish();
