@@ -81,7 +81,9 @@ const shippedCatalog = path.join(ROOT, "addons", "catalog.json");
 
 function creditedReadme() {
   const entries = (readCatalog(shippedCatalog).addons ?? []).map((entry) => registryAddonSchema.safeParse(entry)).filter((read) => read.success).map((read) => read.data);
-  const current = fs.readFileSync(README, "utf8");
+  // A Windows checkout reads the README with CRLF line ends; the table is
+  // compared by its text, not its line ends.
+  const current = fs.readFileSync(README, "utf8").replace(/\r\n/g, "\n");
   return { current, next: withCredits(current, entries) };
 }
 

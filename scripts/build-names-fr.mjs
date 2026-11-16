@@ -267,7 +267,7 @@ ${record("ITEM_EN_BY_FR", sorted, "Readonly<Record<string, string>>")}`;
 
 const problems = [];
 if (check) {
-  if (!existsSync(itemFile) || readFileSync(itemFile, "utf8") !== itemModule) {
+  if (!existsSync(itemFile) || readFileSync(itemFile, "utf8").replace(/\r\n/g, "\n") !== itemModule) {
     problems.push("src/lib/srd/item-names-fr.ts is not what names-fr.ts gives: run node scripts/build-names-fr.mjs");
   }
   // Every name but a feat's is the French book's: a page title, or words its

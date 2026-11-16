@@ -239,7 +239,8 @@ await test("an addon's credit names its creator and links their repository and p
 
 await test("the README's creators table says what addons/catalog.json says", () => {
   const shipped = JSON.parse(fs.readFileSync(path.join(repoRoot, "addons", "catalog.json"), "utf8"));
-  const readme = fs.readFileSync(path.join(repoRoot, "README.md"), "utf8");
+  // CRLF on a Windows checkout: the table is compared by its text.
+  const readme = fs.readFileSync(path.join(repoRoot, "README.md"), "utf8").replace(/\r\n/g, "\n");
   const entries = shipped.addons.map((entry) => registryAddonSchema.parse(entry));
   assert.equal(withCredits(readme, entries), readme, "run node scripts/addon-catalog.mjs credits");
   for (const entry of entries) assert.ok(readme.includes(`https://github.com/${entry.source.repo}`), `${entry.id} is credited`);
