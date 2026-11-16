@@ -4144,6 +4144,16 @@
               "giant"
             ]
           }
+        ],
+        "onHit": [
+          {
+            "vs": [
+              "giant"
+            ],
+            "save": "str",
+            "dc": 15,
+            "condition": "prone"
+          }
         ]
       }
     },

@@ -1785,7 +1785,7 @@
     "lib/dm/frenzy.ts#whole": [["identity",1,"a condition by whole name"]],
     "lib/dm/fusion-logic.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/dm/fusion-logic.ts#partial": [["search",6,"retrieval scoring"]],
-    "lib/dm/gear-attack.ts#partial": [["key",3,"the SRD row's creature type against a magic weapon's English type list"],["parse",1,"a damage string's dice"]],
+    "lib/dm/gear-attack.ts#partial": [["key",4,"the SRD row's creature type against a magic weapon's English type list (its dice, its on-hit save)"],["parse",1,"a damage string's dice"]],
     "lib/dm/genre-b-steampunk-spends.ts#bypass": [["identity",1,"moving the fallen line by its own name"]],
     "lib/dm/genre-b-steampunk-spends.ts#whole": [["identity",2,"what the holder let fall, by who dropped it and the place it lies, textKey on both sides"]],
     "lib/dm/gear-ground.ts#bypass": [["identity",2,"moving a line by its own name"]],

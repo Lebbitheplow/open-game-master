@@ -679,6 +679,44 @@ await test("G18: the Hand's longbow card offers the +1 arrows the hero carries, 
   assert.equal(call?.args.ammo, "+1 Arrows", JSON.stringify(call));
 });
 
+// ---- G19: Giant Slayer's prone ----
+
+await test("G19: a Giant Slayer's hit asks a giant for a DC 15 Strength save or it falls prone, on the turn's swing and the opportunity attack; a goblin is asked nothing", async () => {
+  // SRD 5.1, Giant Slayer: "When you hit a giant with it, the giant takes an
+  // extra 2d6 damage of the weapon's type and must succeed on a DC 15
+  // Strength saving throw or fall prone." The 2d6 was wired; the save was
+  // not, on any door.
+  await freshArena();
+  dress({ type: "giant", saveMods: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 }, traits: [] });
+  arm({ str: 16, equipment: [{ name: "Giant Slayer", qty: 1 }] });
+  kit.stand(hero.id, 1);
+  // A hit, the longsword's d8 of 4, the 2d6 of 3s, a save of 5.
+  const swing = await kit.swing(hero.id, { weapon: "Giant Slayer" }, 15, 4, 3, 3, 5);
+  assert.equal(swing.ok, true, swing.error);
+  assert.ok(kit.dummy().conditions.includes("prone"), `the giant never fell: ${JSON.stringify(swing.result)}`);
+  assert.equal(swing.unused, 0, "the save was never rolled");
+  // The opportunity attack as it walks away, on its feet again.
+  encounters.patchEnemyConditions(kit.dummy().id, [], {});
+  world.patch(anchor.id, { equipment: [{ name: "Shortbow", qty: 1 }] });
+  encounters.saveEncounter({ ...world.encounter(), reactionsUsed: [anchor.id] });
+  place(anchor.id, 9, 9);
+  place(kit.dummy().id, 3, 0);
+  place(hero.id, 2, 0);
+  world.clearDice();
+  world.dice(15, 4, 3, 3, 5);
+  const notes = resolvePcOpportunityAttacks(world.campaign(), kit.dummy().id, { x: 3, y: 0 }, { x: 5, y: 0 }, [{ x: 4, y: 0 }, { x: 5, y: 0 }]);
+  world.clearDice();
+  assert.ok(kit.dummy().conditions.includes("prone"), `the opportunity attack's hit left the giant standing: ${JSON.stringify(notes)}`);
+  // A goblin is no giant: no 2d6, no save.
+  await freshArena();
+  arm({ str: 16, equipment: [{ name: "Giant Slayer", qty: 1 }] });
+  kit.stand(hero.id, 1);
+  const plain = await kit.swing(hero.id, { weapon: "Giant Slayer" }, 15, 4, 20);
+  assert.equal(plain.ok, true, plain.error);
+  assert.equal(plain.unused, 1, "a goblin was asked for a save");
+  assert.equal(kit.dummy().conditions.includes("prone"), false);
+});
+
 await kit.endFight();
 world.close();
 finish();

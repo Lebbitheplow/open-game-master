@@ -20,6 +20,8 @@
 //                weapon's own type), vs (creature types), ranged (only on a
 //                ranged attack) }
 //   critExtra    dice added when the attack roll is a natural 20
+//   onHit        a save the creature hit makes or takes a condition: { vs
+//                (creature types), save (ability), dc, condition }
 // cursed: attuning curses the wearer, and the attunement cannot be ended
 //   (nor the item set aside) until remove curse or similar magic.
 // armor:
@@ -50,7 +52,10 @@ export const GEAR_RIDERS = {
   },
   "flame tongue": { weapon: { extra: [d("2d6", "fire")] } },
   "frost brand": { weapon: { extra: [d("1d6", "cold")] } },
-  "giant slayer": { weapon: { bonus: 1, extra: [d("2d6", "weapon", { vs: ["giant"] })] } },
+  // "When you hit a giant with it, the giant takes an extra 2d6 damage of
+  // the weapon's type and must succeed on a DC 15 Strength saving throw or
+  // fall prone."
+  "giant slayer": { weapon: { bonus: 1, extra: [d("2d6", "weapon", { vs: ["giant"] })], onHit: [{ vs: ["giant"], save: "str", dc: 15, condition: "prone" }] } },
   "hammer of thunderbolts": { weapon: { bonus: 1 } },
   "holy avenger": { weapon: { bonus: 3, extra: [d("2d10", "radiant", { vs: ["fiend", "undead"] })] } },
   "javelin of lightning": { weapon: {} },

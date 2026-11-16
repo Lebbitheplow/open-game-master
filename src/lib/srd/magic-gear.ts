@@ -39,7 +39,12 @@ export type WeaponRiders = {
   dropProperties?: string[];
   extra?: GearDice[];
   critExtra?: GearDice[];
+  // A save the creature hit makes or falls to a condition (Giant Slayer: a
+  // giant's DC 15 Strength save or prone), against these creature types.
+  onHit?: GearOnHit[];
 };
+
+export type GearOnHit = { vs?: string[]; save: Ability; dc: number; condition: string };
 
 export type ArmorRiders = {
   bonus?: number;

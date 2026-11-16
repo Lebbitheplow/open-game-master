@@ -16,7 +16,7 @@ import {
 } from "@/lib/dm/gear-attack";
 import type { TypedRider } from "@/lib/dm/damage-parts";
 import type { CreatureOnHit } from "@/lib/srd/creature-attacks";
-import type { GearDice } from "@/lib/srd/magic-gear";
+import type { GearDice, GearOnHit } from "@/lib/srd/magic-gear";
 import type { WornWeaponRider } from "@/lib/srd/magic-items";
 import type { CombatRiders } from "@/lib/srd/feature-effects";
 import { rageDamageBonus } from "@/lib/srd/class-resources";
@@ -120,6 +120,9 @@ export type AttackProfile = {
   gearDice?: GearDice[];
   gearCritDice?: GearDice[];
   gearBonusVs?: { types: string[]; bonus: number };
+  // The save a magic weapon's hit asks of the creatures it names (Giant
+  // Slayer's prone), laid as creatureOnHit by itemRidersAgainst.
+  gearOnHit?: GearOnHit[];
   // A creature's natural attack (a beast form, a summoned creature): what
   // its hit does besides the damage (src/lib/dm/natural-onhit.ts), and the
   // "one prone creature" its hooves and stomps strike only.
