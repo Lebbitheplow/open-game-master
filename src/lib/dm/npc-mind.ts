@@ -236,6 +236,15 @@ export function awayArrivalNote(campaign: Campaign, place: string): string {
 
 const MIND_TIMEOUT_MS = () => resolveTextTimeoutMs(undefined, "NPC_MIND_TIMEOUT_MS", 120_000);
 
+// The Ego's own model and effort on the table's agent program: sorting a
+// reply and mending its spelling needs no story model. Unset, it runs as the
+// table's story model.
+function egoChoice(): { model: string; effort: string } | null {
+  const model = (process.env.OGM_EGO_MODEL ?? "").trim();
+  const effort = (process.env.OGM_EGO_EFFORT ?? "").trim();
+  return model || effort ? { model, effort } : null;
+}
+
 function nowInstant(campaignId: string): number {
   return getClock(campaignId).instant;
 }
@@ -445,7 +454,7 @@ async function readReply(campaign: Campaign, name: string, reply: string, ground
           { role: "system", content: MIND_READER_SYSTEM },
           { role: "user", content: `${renderReaderPrompt(name, reply, ground)}${refused}` },
         ],
-        { meta: { task: "npc_mind_reader" }, timeoutMs: MIND_TIMEOUT_MS() },
+        { meta: { task: "npc_mind_reader" }, timeoutMs: MIND_TIMEOUT_MS(), mindChoice: egoChoice() },
       );
       if (result.error) {
         break;

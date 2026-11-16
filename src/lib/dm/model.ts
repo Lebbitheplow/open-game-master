@@ -471,6 +471,13 @@ export async function requestDmMessage(
   // The agent policy (src/lib/harness/policy.ts) answers for the agent
   // program, inside the bridge.
   const route = storyRoute(settings);
+  // A light job on the table's agent program (the Ego reading a mind's
+  // reply) may ask for its own model and effort, as a mind does.
+  const choice = options.mindChoice;
+  if (route.provider === "harness" && choice && (choice.model || choice.effort)) {
+    const own: Route = { ...route, backendRole: "utility", choice, model: choice.model || route.model, key: `harness|story|${choice.model}|${choice.effort}` };
+    return attempt(own, "story", messages, options, null);
+  }
   const result = await attempt(route, "story", messages, options, null);
   // A server that refused the request as too big for it and named its real
   // window (model-client.ts contextOverflowWindow) gets the request once
