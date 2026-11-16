@@ -149,5 +149,38 @@ await test("D03: a second charmer binds the hero as the first does", async () =>
   field.patch(kara.id, { conditions: [], conditionMeta: {} });
 });
 
+// D04. SRD 5.1: a paralyzed creature is incapacitated, and "a creature's
+// concentration ends if it is incapacitated"; "the condition [grappled]
+// ends if the grappler is incapacitated". Every lay path ran that follow-up
+// but one creature's hit on another creature's row (enemy-hit-rows.ts): a
+// dominated ghoul's claws paralyzed a goblin that kept its spell and kept
+// holding the hero.
+const GHOUL = {
+  ...DUMMY,
+  attacks: [{ name: "Claws", toHit: 4, damage: "2d4+2", type: "slashing", mode: "melee", onHit: { save: "con", dc: 10, condition: "paralyzed" } }],
+};
+await test("D04: a creature paralyzed by another creature's hit loses its concentration and lets go", async () => {
+  await board.endFight();
+  await board.fight(3, { heroFaces: { [kara.id]: 20 } });
+  const [ghoul, goblin] = field.enemies();
+  board.setEnemy(ghoul.id, { stats: GHOUL, maxHp: 200, currentHp: 200 });
+  board.setEnemy(goblin.id, { stats: { ...DUMMY }, maxHp: 200, currentHp: 200 });
+  encounters.patchEnemyConditions(ghoul.id, ["charmed"], { charmed: { spell: "Dominate Person", source: kara.id } });
+  board.place(kara.id, 12, 2);
+  board.place(ghoul.id, 10, 2);
+  board.place(goblin.id, 11, 2);
+  encounters.setEnemyConcentration(goblin.id, "Bless", 10);
+  field.patch(kara.id, { conditions: ["grappled"], conditionMeta: { grappled: { source: goblin.id } } });
+  // The claws' d20, their 2d4, the concentration save the damage asks
+  // (held), then the rider's CON save of 1.
+  field.dice(15, 2, 2, 20, 1);
+  const claws = await field.invoke("enemy_attack", { enemyId: ghoul.id, targetCharacterId: goblin.id });
+  field.clearDice();
+  assert.equal(claws.ok, true, claws.error);
+  assert.ok(board.enemy(goblin.id).conditions.includes("paralyzed"), JSON.stringify(claws.result));
+  assert.equal(board.enemy(goblin.id).concentration, null, "the paralyzed goblin kept its concentration");
+  assert.equal(field.sheet(kara.id).conditions.includes("grappled"), false, "the paralyzed goblin still holds the hero");
+});
+
 closeTables();
 finish();

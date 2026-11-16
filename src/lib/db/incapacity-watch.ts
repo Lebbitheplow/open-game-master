@@ -41,3 +41,42 @@ export function noteIncapacity(campaignId: string, sheetId: string, before: Held
     }
   });
 }
+
+// The same for a creature's row (patchEnemyConditions). A creature taken out
+// of action loses its concentration and lets go of whoever it grapples (SRD
+// 5.1, Conditions; Concentration), and only the lay paths that asked for
+// that ran it: another creature's hit (a ghoul's claws on a creature the
+// party dominates), a feat's or a subclass's stun, a spell's last failed
+// save each wrote the condition straight to the row, and the paralyzed
+// creature kept its spell and its hold. The rule registers itself
+// (src/lib/dm/enemy-incapacitation.ts); answering twice does nothing more.
+const creatureAnswers: Array<(enemyId: string) => void> = [];
+const creaturesDue = new Set<string>();
+
+export function onCreatureIncapacity(listener: (enemyId: string) => void) {
+  creatureAnswers.push(listener);
+}
+
+export function noteCreatureIncapacity(
+  enemyId: string,
+  before: { conditions: string[] } | null,
+  after: { conditions: string[]; status: string } | null,
+) {
+  if (!creatureAnswers.length || creaturesDue.has(enemyId) || !after || after.status !== "alive") {
+    return;
+  }
+  if (!isIncapacitated(after.conditions) || (before && isIncapacitated(before.conditions))) {
+    return;
+  }
+  creaturesDue.add(enemyId);
+  queueMicrotask(() => {
+    creaturesDue.delete(enemyId);
+    for (const listener of creatureAnswers) {
+      try {
+        listener(enemyId);
+      } catch {
+        // Nothing to undo: the rows are written.
+      }
+    }
+  });
+}
