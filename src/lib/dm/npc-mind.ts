@@ -673,7 +673,12 @@ export function everyoneHears(campaign: Campaign, turnId: string, lines: readonl
     // Where the NPC is, not whether it travels with the party: one left in
     // the courtyard while some of the party went on hears nothing said there.
     const present = here === "" || !npc.location.trim() ? npc.state.withParty : textKey(npc.location) === here;
-    if (tierOfNpc(npc) !== "primary" || npc.archived || !present || getNpcAway(npc.id) || npcSilencedBy(npc.state)) {
+    // Left behind where the scene now is (a prisoner in the cells the party
+    // came back to), the mind is in the scene again: only being apart
+    // somewhere else keeps it from hearing.
+    const away = getNpcAway(npc.id);
+    const elsewhere = Boolean(away) && textKey(away?.place ?? "") !== here;
+    if (tierOfNpc(npc) !== "primary" || npc.archived || !present || elsewhere || npcSilencedBy(npc.state)) {
       continue;
     }
     const heard = lines.filter((line) => textKey(line.speaker) !== textKey(npc.name)).slice(0, 12);

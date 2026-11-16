@@ -184,6 +184,20 @@ await test("a prisoner who answers from their cell stays in it: only who holds t
   model.requests.length = 0;
 });
 
+await test("a mind left behind hears the party once the party is back where it was left", async () => {
+  upsertCurrentLocation({ campaignId: world.campaignId, name: "the lockup" });
+  const row = upsertNpc({ campaignId: world.campaignId, name: "Locked sergeant", location: "the lockup" });
+  minds.setNpcTier(row.id, "primary");
+  state({ name: "Locked sergeant", custody: "captive", heldBy: "Lieutenant", restraint: "locked_up" });
+  minds.setNpcAway(row.id, { place: "the lockup", since: 0 });
+  upsertCurrentLocation({ campaignId: world.campaignId, name: "the palace" });
+  mind.everyoneHears(world.campaign(), "turn-palace", [{ speaker: "Brakk", words: "The hearing is before noon." }]);
+  assert.ok(!minds.listNpcMemories(world.campaignId, row.id).some((entry) => /before noon/.test(entry.content)), "the palace is not heard from the lockup");
+  upsertCurrentLocation({ campaignId: world.campaignId, name: "the lockup" });
+  mind.everyoneHears(world.campaign(), "turn-back", [{ speaker: "Brakk", words: "Three separate escorts to the palace." }]);
+  assert.ok(minds.listNpcMemories(world.campaignId, row.id).some((entry) => /separate escorts/.test(entry.content)), "back in the lockup, the party is heard");
+});
+
 // ---- What they carry (ticket 04) -----------------------------------------
 
 await test("what an NPC carries is a short list of story things, replaced whole, and disarming is noted", () => {
