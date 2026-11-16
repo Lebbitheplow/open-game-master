@@ -124,6 +124,23 @@ export const LAST_CONDITION_EFFECTS: ConditionEffectRow[] = [
     match: ["spider climb"],
     summary: "Spider Climb: a climbing speed equal to their walking speed; they climb walls and ceilings with their hands free.",
   },
+  // A Potion of Climbing's hour (SRD 5.1: "a climbing speed equal to your
+  // walking speed for 1 hour. During this time, you have advantage on
+  // Strength (Athletics) checks you make to climb"), read by the board's
+  // walk (zones-movers.ts moverSpellTraits).
+  {
+    id: "climbing_speed",
+    match: ["climbing speed"],
+    summary: "Climbing speed: they climb at their walking speed, no extra movement, and have advantage on Strength (Athletics) checks to climb.",
+  },
+  // A Potion of Water Breathing's hour (SRD 5.1: "You can breathe underwater
+  // for 1 hour"), read by suffocation and drowning (mt-species-traits.ts
+  // breathOf).
+  {
+    id: "water_breathing",
+    match: ["water breathing"],
+    summary: "Water breathing: they breathe underwater and do not drown.",
+  },
   {
     id: "water_walk",
     match: ["water walk"],

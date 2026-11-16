@@ -170,5 +170,50 @@ await test("I03: a trade away and back keeps the attunement; one to a third frie
   assert.equal(world.sheet(owner.id).equipment.find((item) => item.name === "Ring of Protection")?.attuned, true);
 });
 
+// I04. SRD 5.1, Potions: Climbing, "you gain a climbing speed equal to your
+// walking speed for 1 hour"; Water Breathing, "You can breathe underwater for
+// 1 hour after drinking this potion"; Gaseous Form, "you gain the effect of
+// the gaseous form spell for 1 hour (no concentration required)"; Flying,
+// "You gain a flying speed equal to your walking speed for 1 hour and can
+// hover"; Oil of Slipperiness, "the covered creature is affected as if under
+// the effect of a freedom of movement spell for 8 hours". Each was drunk and
+// narrated: the board still charged the climber double, the drowning hazard
+// still drowned the water breather, and flight never left the ground.
+const drink = async (potion, extra = {}) => {
+  const hero = world.addHero({ class: "fighter", level: 5, speed: 30, equipment: [{ name: potion, qty: 1 }], ...extra });
+  const drunk = await world.invoke("use_item", { characterId: hero.id, item: potion });
+  assert.equal(drunk.ok, true, `${potion}: ${drunk.error}`);
+  return { hero, result: drunk.result, sheet: world.sheet(hero.id) };
+};
+const { moverSpellTraits } = await import("../src/lib/battlemap/zones-movers.ts");
+const { flyingSpeedOf } = await import("../src/lib/battlemap/types.ts");
+const { aloftByMagic } = await import("../src/lib/dm/flight-logic.ts");
+
+await test("I04: a Potion of Climbing gives an hour of climbing at the walking cost", async () => {
+  const { sheet } = await drink("Potion of Climbing");
+  assert.equal(moverSpellTraits({ conditions: sheet.conditions }).climbs, true, `conditions: ${sheet.conditions.join(", ")}`);
+});
+
+await test("I04: a Potion of Water Breathing keeps its drinker from drowning for an hour", async () => {
+  const { hero } = await drink("Potion of Water Breathing");
+  const hazard = await world.invoke("apply_hazard", { type: "drowning", characterIds: [hero.id], roundsWithoutAir: 99 });
+  assert.equal(hazard.ok, true, hazard.error);
+  assert.equal(world.sheet(hero.id).currentHp, world.sheet(hero.id).maxHp, "no drop to 0");
+  assert.match(JSON.stringify(hazard.result), /does not drown/i);
+});
+
+await test("I04: Gaseous Form and Flying potions hold their drinker aloft; Flying at the walking speed", async () => {
+  const gas = await drink("Potion of Gaseous Form");
+  assert.equal(aloftByMagic(gas.sheet.conditions), true, `conditions: ${gas.sheet.conditions.join(", ")}`);
+  const wings = await drink("Potion of Flying", { speed: 25 });
+  assert.equal(aloftByMagic(wings.sheet.conditions), true);
+  assert.equal(flyingSpeedOf({ conditions: wings.sheet.conditions, walkingFeet: 25 }), 25);
+});
+
+await test("I04: Oil of Slipperiness is freedom of movement for 8 hours", async () => {
+  const { sheet } = await drink("Oil of Slipperiness");
+  assert.equal(moverSpellTraits({ conditions: sheet.conditions }).landStride, true, `conditions: ${sheet.conditions.join(", ")}`);
+});
+
 world.close();
 finish();

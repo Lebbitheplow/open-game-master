@@ -67,6 +67,8 @@ type PotionPlan =
   // `hoursDice`: the duration is rolled when the potion is drunk, as a card.
   | { kind: "condition"; condition: string; minutes: number; hoursDice?: string }
   | { kind: "poison" }
+  // A flying speed equal to the drinker's walking speed (Potion of Flying).
+  | { kind: "flying"; minutes: number }
   | { kind: "narrated" };
 
 // The SRD potions the engines hold the effect of, by the row's name; the
@@ -81,6 +83,19 @@ const POTION_PLANS: Record<string, PotionPlan> = {
   "potion of growth": { kind: "condition", condition: "enlarged", minutes: 0, hoursDice: "1d4" },
   "potion of diminution": { kind: "condition", condition: "reduced", minutes: 0, hoursDice: "1d4" },
   "potion of poison": { kind: "poison" },
+  // SRD 5.1: Climbing, "a climbing speed equal to your walking speed for 1
+  // hour"; Water Breathing, "breathe underwater for 1 hour"; Gaseous Form,
+  // "the effect of the gaseous form spell for 1 hour (no concentration
+  // required)"; Flying, "a flying speed equal to your walking speed for 1
+  // hour and can hover"; Oil of Slipperiness, "as if under the effect of a
+  // freedom of movement spell for 8 hours". Narrated before, so the board
+  // charged the climber double, the drowning hazard drowned the drinker and
+  // flight never left the ground.
+  "potion of climbing": { kind: "condition", condition: "climbing speed", minutes: 60 },
+  "potion of water breathing": { kind: "condition", condition: "water breathing", minutes: 60 },
+  "potion of gaseous form": { kind: "condition", condition: "gaseous form", minutes: 60 },
+  "potion of flying": { kind: "flying", minutes: 60 },
+  "oil of slipperiness": { kind: "condition", condition: "freedom of movement", minutes: 480 },
 };
 
 // What a potion does, from the row it names, or null for anything that is
@@ -254,6 +269,13 @@ export function applyConsumable(
       return "error" in applied
         ? { effect: `No effect: ${String(applied.error)}` }
         : { effect: `${sheet.name} is ${plan.condition} for ${minutes >= 60 ? `${minutes / 60} hour${minutes === 60 ? "" : "s"}` : `${minutes} minute${minutes === 1 ? "" : "s"}`}.` };
+    }
+    case "flying": {
+      // "flying (N ft)" flies that far (src/lib/battlemap/types.ts
+      // flyingSpeedOf), and magic holds it up (flight-logic.ts aloftByMagic).
+      const feet = Math.max(5, sheet.speed ?? 30);
+      const applied = condition(campaign, turnId, sheet, `flying (${feet} ft)`, plan.minutes, reason);
+      return "error" in applied ? { effect: `No effect: ${String(applied.error)}` } : { effect: `${sheet.name} can fly at ${feet} feet, and hover, for an hour; if the hour ends aloft they fall.` };
     }
     case "poison": {
       const damage = rollCard(campaign, null, sheet.id, "damage", `${itemName}: it was poison`, "3d6", null);

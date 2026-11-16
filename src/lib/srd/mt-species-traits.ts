@@ -10,11 +10,11 @@
 // src/lib/dm/load-rules.ts), apply_hazard (src/lib/dm/hazard-tools.ts), the
 // long rest (src/lib/dm/rest-tools.ts), a melee swing's reach and the board's
 // walking cost. Pure and database-free, like the rest of src/lib/srd.
-import { holdsFeature } from "@/lib/srd/feature-names";
+import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { proficiencyBonusOf } from "@/lib/srd/proficiency";
 import type { WornMagicItem } from "@/lib/srd/magic-items";
 
-type Held = { features?: ReadonlyArray<{ name: string }> | null; feats?: ReadonlyArray<string> | null };
+type Held = { features?: ReadonlyArray<{ name: string }> | null; feats?: ReadonlyArray<string> | null; conditions?: ReadonlyArray<string> | null };
 // A feat that gives the body what a lineage's trait does (Dragon Hide's
 // scales and claws), as the trait lines the readers below and
 // racial-weapons.ts already read.
@@ -84,6 +84,11 @@ export function breathOf(sheet: Held | null | undefined): Breath {
   }
   if (holdsFeature(features, "amphibious")) {
     out.water = "Amphibious";
+  }
+  // A Potion of Water Breathing's hour (condition-effects-last.ts): drunk and
+  // narrated, its drinker drowned all the same.
+  if (!out.water && (sheet?.conditions ?? []).some((name) => isConditionNamed(name, "water breathing"))) {
+    out.water = "Water breathing";
   }
   return out;
 }
