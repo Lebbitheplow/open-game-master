@@ -211,6 +211,28 @@ await test("G04: the same bite as an opportunity attack at a creature walking aw
   assert.equal(hpOf(walker.id), 100, `a blow of 0 took hit points: ${notes.join(" ")}`);
 });
 
+await test("G05: a creature's two-type bite at a pet walking off with its owner meets the pet's immunity part by part", async () => {
+  // enemy_attack at a pet already split the blow (pet-strike.ts); the
+  // opportunity attack at a pet landed it as one type.
+  const { strikePetsOnWalk } = await import("../src/lib/dm/opportunity-pets.ts");
+  const goblin = await freshArena();
+  dress({ attacks: [HOUND_BITE], traits: [] });
+  const EMBER = { name: "Ember", kind: "familiar", form: "imp", hp: 30, maxHp: 30, ac: 10, speed: 20, attacks: [], notes: "", immune: "fire" };
+  world.patch(hero.id, { pets: [EMBER] });
+  place(goblin.id, 5, 5);
+  place(hero.id, 6, 5);
+  world.clearDice();
+  // A hit, the d6 of 4 (+2 = 6 piercing, halved by an imp's resistance to
+  // nonmagical piercing: 3), the 2d6 of 6s (12 fire, none to an imp).
+  world.dice(15, 4, 6, 6);
+  const notes = strikePetsOnWalk(world.campaign(), hero.id, [{ x: 6, y: 5 }, { x: 7, y: 5 }, { x: 8, y: 5 }]);
+  world.clearDice();
+  const ember = world.sheet(hero.id).pets.find((pet) => pet.name === "Ember");
+  world.patch(hero.id, { pets: [] });
+  assert.ok(notes.length, "no opportunity attack was made at the pet");
+  assert.equal(ember.hp, 30 - 3, `the bite met the imp's defences as one type: ${notes.join(" ")}`);
+});
+
 await kit.endFight();
 world.close();
 finish();
