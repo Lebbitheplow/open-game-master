@@ -191,7 +191,7 @@ export function poisonClockTick(campaignId: string, to: number) {
         const dealt = !save.success && poison.repeat?.damage ? damage(campaign, "", fresh.id, poison.repeat.damage, false, poison) : 0;
         current = { ...current, successes, nextAt: current.nextAt + MINUTES_PER_DAY, ...(dealt ? { unhealable: (current.unhealable ?? 0) + dealt } : {}) };
         if (successes >= (poison.repeat?.successes ?? 1)) {
-          dropConditions(campaignId, fresh.id, current.conditions);
+          dropConditions(campaignId, fresh.id, current.conditions, poison.name);
           tableNote(campaign, `${fresh.name} is free of ${poison.name}.`, "cue-heal");
           current = { ...current, nextAt: undefined };
           break;

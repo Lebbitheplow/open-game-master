@@ -7,7 +7,7 @@ import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 
 const { test, finish } = suite("test-audit1116-time");
-const world = await openWorld();
+const world = await openWorld({ campaign: { maxPlayers: 20 } });
 const { getClock } = await import("../src/lib/db/clock.ts");
 const { setLocationLinks, upsertCurrentLocation } = await import("../src/lib/db/locations.ts");
 const { getTokenByRef, getBattleMapForEncounter } = await import("../src/lib/db/battle-maps.ts");
@@ -153,6 +153,28 @@ await test("W04 Protection from Poison neutralizes the poison its target holds, 
   const rolled = world.diceLog();
   assert.equal(rolled.filter((die) => die.sides === 6).length, 0, "no 9d6 at midnight for a neutralized poison");
   assert.equal(world.sheet(drinker.id).currentHp, 44);
+});
+
+await test("W05 a poison that runs its course ends its own poisoning and leaves another poison's alone", async () => {
+  // SRD 5.1, Conditions: "If multiple effects impose the same condition on
+  // a creature, each instance of the condition has its own duration, and
+  // the condition's effects don't get worse." Pale Tincture: "After seven
+  // successful saving throws, the effect ends".
+  await peace();
+  const victim = world.addHero({ class: "fighter", level: 5, maxHp: 44 });
+  world.patch(victim.id, { currentHp: 44 });
+  world.clearDice();
+  world.dice(2);
+  const tincture = await world.invoke("afflict", { characterId: victim.id, kind: "poison", name: "Pale Tincture", save: false });
+  world.clearDice();
+  assert.equal(tincture.ok, true, tincture.error);
+  const venom = await world.invoke("set_condition", { characterId: victim.id, condition: "poisoned", days: 10, reason: "a basilisk-gut stew that sours for ten days" });
+  assert.equal(venom.ok, true, venom.error);
+  world.dice(20, 20, 20, 20, 20, 20, 20);
+  const week = await world.invoke("pass_time", { amount: 7, unit: "days" });
+  world.clearDice();
+  assert.equal(week.ok, true, week.error);
+  assert.ok(world.sheet(victim.id).conditions.includes("poisoned"), "the ten days' poisoning outlasts the tincture's");
 });
 
 finish();
