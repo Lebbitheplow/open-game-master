@@ -38,7 +38,7 @@ import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { resolveMonster } from "@/lib/bestiary";
 import { commandPet, drakeSummonCost, essenceChoice } from "@/lib/dm/pet-command";
 import { petResistLine, petUnderwaterSwing } from "@/lib/dm/pet-underwater";
-import { petAttackBoard } from "@/lib/dm/pet-attack-board";
+import { petAttackBoard, spendMarksAgainst } from "@/lib/dm/pet-attack-board";
 import { fallFromPet, ridesPet } from "@/lib/dm/pet-mount";
 
 // The creatures bound to a character: familiars (Find Familiar, Pact of the
@@ -428,6 +428,8 @@ export function handlePetAttack(
   const economy = charge.commit();
   // Commanded, the creature is not dodging this turn (pet-command.ts).
   commandPet(campaign, sheet.id, pet.name);
+  // What the roll used up on the target (pet-attack-board.ts).
+  spendMarksAgainst(enemy);
 
   // The enemy's real AC today: a spell or an effect on it counts, and its cover.
   const vsAc = enemyAcWithEffects(campaign.id, enemy) + board.cover;

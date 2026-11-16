@@ -15,16 +15,18 @@
 
 import { findTableMonster } from "@/lib/bestiary/homebrew-monsters";
 import type { Campaign } from "@/lib/db/campaigns";
-import type { EncounterEnemy } from "@/lib/db/encounters";
+import { patchEnemyConditions, type EncounterEnemy } from "@/lib/db/encounters";
 import type { SheetPet } from "@/lib/schemas/sheet";
 import type { SummonAttack } from "@/lib/schemas/summon";
 import { findShapeForm } from "@/lib/srd/beast-forms";
 import { sensesFromBlock, type Senses } from "@/lib/srd/senses";
 import { attackSight, enemySenses, lightOnAttack, sensesReaching } from "@/lib/dm/attack-light";
 import { characterShootsInMelee, coverFor } from "@/lib/dm/attack-spatial";
-import type { AdvantageState, PastSight } from "@/lib/dm/condition-logic";
+import { removeConditions, type AdvantageState, type PastSight } from "@/lib/dm/condition-logic";
 import { petPlaceOf } from "@/lib/dm/pet-place";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
+import { getFoe } from "@/lib/dm/sheet-foe";
+import { conditionsSpentAgainst } from "@/lib/srd/condition-effect-queries";
 
 // The darkvision a Drake Companion's block gives it.
 const DRAKE_SENSES = { darkvision: 60 };
@@ -79,4 +81,19 @@ export function petAttackBoard(input: {
     attackerSenses: sensesReaching(encounterId, { refId: place, senses }, { refId: enemy.id }),
     targetSeesAttacker: sight?.targetSees !== false,
   };
+}
+
+// The target's one-shot marks the pet's roll used (Guiding Bolt: "the next
+// attack roll made against this target before the end of your next turn has
+// advantage"), spent as pc_attack spends them (pc-attack.ts targetSpent).
+// The pet's bite took the advantage and left the glimmer, so the hero's
+// swing after it had advantage from the same bolt.
+export function spendMarksAgainst(enemy: Pick<EncounterEnemy, "id" | "conditions">): void {
+  const spent = conditionsSpentAgainst(enemy.conditions);
+  const live = spent.length ? getFoe(enemy.id) : null;
+  if (!live) {
+    return;
+  }
+  const cleared = removeConditions(live.conditions, live.conditionMeta, spent);
+  patchEnemyConditions(live.id, cleared.conditions, cleared.meta);
 }

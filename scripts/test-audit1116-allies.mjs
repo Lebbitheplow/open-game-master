@@ -356,4 +356,24 @@ await test("U06: a companion commanded to Help gives the ranger's next attack at
   await kit.endFight();
 });
 
+// U07. SRD 5.1, Guiding Bolt: "the next attack roll made against this
+// target before the end of your next turn has advantage." The pet's attack
+// read the glimmer's advantage and left it there, so the hero's swing after
+// the bite had advantage from the same bolt.
+await test("U07: a pet's attack spends the Guiding Bolt advantage it used", async () => {
+  await kit.endFight();
+  world.patch(keeper.id, { pets: world.sheet(keeper.id).pets.map((pet) => ({ ...pet, hp: pet.maxHp, conditions: [], conditionMeta: {} })) });
+  await kit.fight(1);
+  const [enemy] = world.enemies();
+  kit.setEnemy(enemy.id, { maxHp: 200, conditions: ["guiding bolt"], conditionMeta: { "guiding bolt": { source: keeper.id } } });
+  kit.place(keeper.id, 5, 5);
+  kit.place(enemy.id, 5, 6);
+  kit.giveTurn(keeper.id);
+  const bite = await forced([2, 15, 1], () => world.invoke("pet_attack", { characterId: keeper.id, petName: "Hiss", targetEnemyId: enemy.id }));
+  assert.equal(bite.ok, true, bite.error);
+  assert.equal(lastAttackDice(/^Bite/), 2, "the glimmer gives the snake's bite advantage");
+  assert.ok(!kit.enemy(enemy.id).conditions.includes("guiding bolt"), `the bite left the glimmer for the next attack: ${JSON.stringify(kit.enemy(enemy.id).conditions)}`);
+  await kit.endFight();
+});
+
 finish();
