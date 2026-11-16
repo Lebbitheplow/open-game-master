@@ -40,6 +40,7 @@ import { commandPet, drakeSummonCost, essenceChoice } from "@/lib/dm/pet-command
 import { petResistLine, petUnderwaterSwing } from "@/lib/dm/pet-underwater";
 import { petAttackBoard, spendMarksAgainst } from "@/lib/dm/pet-attack-board";
 import { fallFromPet, ridesPet } from "@/lib/dm/pet-mount";
+import { dismissFamiliar, pocketed } from "@/lib/dm/pet-pocket";
 
 // The creatures bound to a character: familiars (Find Familiar, Pact of the
 // Chain), the Beast Master's companion, the Drakewarden's drake, and story
@@ -118,7 +119,7 @@ export const petTools: ToolDef[] = [
     function: {
       name: "dismiss_pet",
       description:
-        "Remove a pet from its owner's sheet when it is dismissed, sent away, or dies in the fiction. Call it when the story ends the bond.",
+        "Remove a pet from its owner's sheet when it is dismissed, sent away, or dies in the fiction. Call it when the story ends the bond. A familiar goes to its pocket dimension (an action); dismissed again, it is gone.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -178,7 +179,8 @@ const dismissSchema = z.object({
 // A creature the call names that the sheet does not hold: the call's to fix,
 // from the creatures they have.
 export function noPet(sheet: CharacterSheet, petName?: string): ToolError {
-  const held = sheet.pets.map((pet) => `${pet.name} (${pet.form})`);
+  // A familiar in its pocket dimension is out of reach (pet-pocket.ts).
+  const held = sheet.pets.map((pet) => `${pet.name} (${pet.form}${pocketed(pet) ? ", in its pocket dimension until summon_pet calls it back" : ""})`);
   if (!petName && held.length > 1) {
     return { error: `${sheet.name} has several bound creatures; name one: ${held.join(", ")}.`, retry: true };
   }
@@ -192,13 +194,16 @@ export function noPet(sheet: CharacterSheet, petName?: string): ToolError {
 
 // The creature a call names, by its whole name or form; with no name, the
 // only one there is. Never the nearest name, nor the first of several.
-// A watch stop names the pet the same way (foresight-saves.ts).
-export function findPet(sheet: CharacterSheet, petName?: string): SheetPet | null {
+// A watch stop names the pet the same way (foresight-saves.ts). A familiar
+// in its pocket dimension is found only by the calls that dismiss or recall
+// it (`withPocketed`): no attack, save, damage or heal reaches it there.
+export function findPet(sheet: CharacterSheet, petName?: string, withPocketed = false): SheetPet | null {
+  const pets = withPocketed ? sheet.pets : sheet.pets.filter((pet) => !pocketed(pet));
   const wanted = textKey(petName ?? "");
   if (!wanted) {
-    return sheet.pets.length === 1 ? sheet.pets[0] : null;
+    return pets.length === 1 ? pets[0] : null;
   }
-  return sheet.pets.find((pet) => textKey(pet.name) === wanted || textKey(pet.form) === wanted) ?? null;
+  return pets.find((pet) => textKey(pet.name) === wanted || textKey(pet.form) === wanted) ?? null;
 }
 
 function publishSheet(campaign: Campaign, sheetId: string) {
@@ -637,9 +642,13 @@ export function handleDismissPet(
   if (!sheet) {
     return unknownSheetRef("characterId", args.characterId, sheets);
   }
-  const pet = findPet(sheet, args.petName);
+  const pet = findPet(sheet, args.petName, true);
   if (!pet) {
     return noPet(sheet, args.petName);
+  }
+  // A familiar goes to its pocket dimension first (pet-pocket.ts).
+  if (pet.kind === "familiar") {
+    return dismissFamiliar(campaign, sheet, pet);
   }
   patchSheet(sheet.id, { pets: sheet.pets.filter((entry) => entry !== pet) });
   publishSheet(campaign, sheet.id);

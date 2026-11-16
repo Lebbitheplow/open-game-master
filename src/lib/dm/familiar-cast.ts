@@ -14,6 +14,7 @@ import { getSheetById } from "@/lib/db/sheets";
 import { spellFactsFor } from "@/lib/content";
 import { ritualProblem } from "@/lib/dm/cast-rules";
 import { buildPet, handleSummonPet } from "@/lib/dm/pet-tools";
+import { recallFamiliar } from "@/lib/dm/pet-pocket";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -101,6 +102,12 @@ export function summonFamiliar(
   const caster = stale ? (getSheetById(stale.id) ?? stale) : null;
   if (!caster) {
     return unknownSheetRef("characterId", args.characterId, sheets);
+  }
+  // A familiar waiting in its pocket dimension comes back for an action,
+  // with no casting (pet-pocket.ts).
+  const back = recallFamiliar(campaign, caster, args.form);
+  if (back) {
+    return back;
   }
   const castAs = "Find Familiar";
   const ritual = !ritualProblem(caster, castAs, spellFactsFor(castAs, spellAuthorsFor(campaign)));

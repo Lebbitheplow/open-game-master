@@ -58,7 +58,8 @@ export function petProvokes(pet: SheetPet): boolean {
   if (effectiveSpeed(pet.conditions ?? [], Math.max(pet.speed, pet.fly ?? 0, 5), true) === 0) {
     return false;
   }
-  return pet.hp > 0 && !(pet.conditions ?? []).some((entry) => isConditionNamed(entry, "disengaging"));
+  // A familiar in its pocket dimension walks nowhere (pet-pocket.ts).
+  return pet.hp > 0 && !pet.pocketed && !(pet.conditions ?? []).some((entry) => isConditionNamed(entry, "disengaging"));
 }
 
 // The swings at the owner's pets over the walk; the lines posted.

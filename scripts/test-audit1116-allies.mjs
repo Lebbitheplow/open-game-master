@@ -547,4 +547,54 @@ await test("U11: a familiar summoned with summon_pet casts Find Familiar: the ri
   assert.equal(world.sheet(poor.id).pets.length, 0);
 });
 
+// U12. SRD 5.1, Find Familiar: "As an action, you can temporarily dismiss
+// your familiar into a pocket dimension. Alternatively, you can dismiss it
+// forever. As an action while it is temporarily dismissed, you can cause it
+// to reappear in any unoccupied space within 30 feet of you." dismiss_pet
+// struck the familiar off the sheet, so calling it back was a new casting:
+// another hour and another 10 gp.
+await test("U12: a familiar dismissed to its pocket dimension is out of reach, and comes back for an action with no casting", async () => {
+  await kit.endFight();
+  const { getClock } = await import("../src/lib/db/clock.ts");
+  const mage = world.addHero({
+    class: "wizard", level: 3, maxHp: 20, abilities: { int: 16 }, gold: 20, proficiencies: { ...TRAINED },
+    spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 } }, prepared: ["Find Familiar"], known: [], cantrips: [] },
+  });
+  // A cat (2 hit points), so the fire that shows it is back leaves it standing.
+  const called = await world.invoke("summon_pet", { characterId: mage.id, kind: "familiar", form: "cat", name: "Hoot" });
+  assert.equal(called.ok, true, called.error);
+  const hoot = () => world.sheet(mage.id).pets.find((pet) => pet.name === "Hoot");
+
+  // Out of a fight: into the pocket, and nothing reaches it there.
+  const away = await world.invoke("dismiss_pet", { characterId: mage.id, petName: "Hoot" });
+  assert.equal(away.ok, true, away.error);
+  assert.ok(hoot(), "the familiar was struck off rather than set aside");
+  const burned = await world.invoke("apply_damage", { characterId: mage.id, petName: "Hoot", amount: 1, type: "fire" });
+  assert.equal(burned.ok, false, "fire reached a familiar in its pocket dimension");
+  assert.equal(hoot().hp, hoot().maxHp);
+
+  // In a fight, on the wizard's turn: back for their action, no casting.
+  await kit.fight(1);
+  kit.giveTurn(mage.id);
+  const gold = world.sheet(mage.id).gold;
+  const clock = getClock(world.campaignId).instant;
+  const back = await world.invoke("summon_pet", { characterId: mage.id, kind: "familiar", form: "cat" });
+  assert.equal(back.ok, true, back.error);
+  assert.equal(world.sheet(mage.id).gold, gold, "the recall burned incense");
+  assert.equal(getClock(world.campaignId).instant, clock, "the recall took the hour's casting");
+  assert.equal(world.encounter().turnBudget?.actionUsed, true, "the recall cost no action");
+  const struck = await world.invoke("apply_damage", { characterId: mage.id, petName: "Hoot", amount: 1, type: "fire" });
+  assert.equal(struck.ok, true, struck.error);
+  // Its action spent, the wizard cannot send it away again this turn.
+  const again = await world.invoke("dismiss_pet", { characterId: mage.id, petName: "Hoot" });
+  assert.equal(again.ok, false, "a second action in the turn");
+  await kit.endFight();
+
+  // Dismissed while in the pocket: gone for good.
+  await world.invoke("dismiss_pet", { characterId: mage.id, petName: "Hoot" });
+  const forever = await world.invoke("dismiss_pet", { characterId: mage.id, petName: "Hoot" });
+  assert.equal(forever.ok, true, forever.error);
+  assert.equal(hoot(), undefined, "a familiar dismissed from its pocket stayed bound");
+});
+
 finish();

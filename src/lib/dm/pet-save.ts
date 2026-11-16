@@ -95,7 +95,8 @@ export function areaOnPets(input: {
     return null;
   }
   const owner = getSheetById(input.owner.id) ?? input.owner;
-  const standing = owner.pets.filter((pet) => pet.hp > 0);
+  // A familiar in its pocket dimension is not in the area (pet-pocket.ts).
+  const standing = owner.pets.filter((pet) => pet.hp > 0 && !pet.pocketed);
   if (!standing.length) {
     return null;
   }
