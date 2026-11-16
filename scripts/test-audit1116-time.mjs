@@ -119,4 +119,40 @@ await test("W03 pass_time sends a night's sleep to take_rest, in the full descri
   }
 });
 
+await test("W04 Protection from Poison neutralizes the poison its target holds, ending a day's poisoning", async () => {
+  // SRD 5.1, Protection from Poison: "You touch a creature. If it is
+  // poisoned, you neutralize the poison. If more than one poison afflicts the
+  // target, you neutralize one poison that you know is present, or you
+  // neutralize one at random." Assassin's Blood: "poisoned for 24 hours".
+  await peace();
+  const { cleric } = await import("./lib/enforce-spells.mjs");
+  const priest = world.addHero({ name: "Sera", ...cleric(5, { spellcasting: { prepared: ["Protection from Poison"] } }), equipment: [{ name: "Holy Symbol", qty: 1 }] });
+  const victim = world.addHero({ class: "fighter", level: 5, maxHp: 44 });
+  world.clearDice();
+  world.dice(1, 3);
+  const poisoned = await world.invoke("afflict", { characterId: victim.id, kind: "poison", name: "Assassin's Blood" });
+  world.clearDice();
+  assert.equal(poisoned.ok, true, poisoned.error);
+  assert.ok(world.sheet(victim.id).conditions.includes("poisoned"), "poisoned for 24 hours");
+  const cast = await world.invoke("cast_buff", { characterId: priest.id, spell: "Protection from Poison", targetCharacterIds: [victim.id] });
+  assert.equal(cast.ok, true, cast.error);
+  const after = world.sheet(victim.id).conditions;
+  assert.ok(!after.includes("poisoned"), `the poison is neutralized: ${after.join(", ")}`);
+  assert.ok(after.some((name) => /protected from poison/i.test(name)), "and the hour's protection is on");
+  // Midnight Tears: "doesn't suffer any effect until the stroke of midnight.
+  // If the poison has not been neutralized before then, the creature must
+  // succeed on a DC 17 Constitution saving throw".
+  const drinker = world.addHero({ class: "fighter", level: 5, maxHp: 44 });
+  world.patch(drinker.id, { currentHp: 44 });
+  const tears = await world.invoke("afflict", { characterId: drinker.id, kind: "poison", name: "Midnight Tears" });
+  assert.equal(tears.ok, true, tears.error);
+  const second = await world.invoke("cast_buff", { characterId: priest.id, spell: "Protection from Poison", targetCharacterIds: [drinker.id] });
+  assert.equal(second.ok, true, second.error);
+  world.diceLog();
+  await world.invoke("pass_time", { amount: 1, unit: "days" });
+  const rolled = world.diceLog();
+  assert.equal(rolled.filter((die) => die.sides === 6).length, 0, "no 9d6 at midnight for a neutralized poison");
+  assert.equal(world.sheet(drinker.id).currentHp, 44);
+});
+
 finish();
