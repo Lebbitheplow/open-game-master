@@ -398,7 +398,12 @@ export function endInstancesBoundTo(
   return { conditions: nextConditions, meta: nextMeta, ended, changed };
 }
 
-const INCAPACITATING = ["incapacitated", "paralyzed", "stunned", "unconscious", "petrified"];
+// Banished is among them: "While there, the target is incapacitated" (SRD
+// 5.1, Banishment), and so is every banishment that borrows the word (Banishing
+// Arrow: "it is incapacitated"; Arcane Abjuration "as the banishment spell";
+// a Mortal Bulwark or a violet ray sending one home). Only the spell laid an
+// incapacitated beside it, so a creature the arrow sent off still reacted.
+const INCAPACITATING = ["incapacitated", "paralyzed", "stunned", "unconscious", "petrified", "banished"];
 // Each of these says "can't move" (or speed 0) in its own text (SRD 5.1,
 // Conditions); bare "incapacitated" takes actions and reactions only.
 // A hunting trap's jaws too (src/lib/srd/trap-specs.ts): the creature

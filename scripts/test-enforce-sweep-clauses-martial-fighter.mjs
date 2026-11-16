@@ -287,6 +287,12 @@ const d20sOf = (log) => log.filter((die) => die.sides === 20).map((die) => die.f
     assert.equal(r.foeHas(held.enemy, "shadow arrow"), false, `a ${dc} against DC ${dc} failed: ${show(held.out)}`);
     const sent = await loose(sage, "banishing", [1]);
     assert.equal(r.foeHas(sent.enemy, "banished"), true, `a failed Charisma save left the creature here: ${show(sent.out)}`);
+    // Audit 1116 D21. "While banished in this way, its speed is 0, and it is
+    // incapacitated": banished alone took no action or reaction from it, as
+    // the Banishment spell's own incapacitation does.
+    const { canEnemyAct } = await import("../src/lib/dm/can-act.ts");
+    const away = foe(sent.enemy);
+    assert.equal(canEnemyAct({ enemy: away, encounter: world.encounter(), kind: "reaction" }).ok, false, `the banished creature can still react: [${away.conditions.join(", ")}]`);
   });
 
   // "Beguiling, Bursting, Enfeebling, Grasping and Shadow deal 2d6 damage,
