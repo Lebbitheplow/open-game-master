@@ -95,6 +95,59 @@ await test("G02: a critical hit with a weapon of one damage type drops a zombie 
   assert.equal(swing.unused, 1, "the save's die is never rolled");
 });
 
+// ---- G03: cover counts on an opportunity attack ----
+
+const maps = await import("../src/lib/db/battle-maps.ts");
+const { resolvePcOpportunityAttacks, resolveOpportunityAttacks } = await import("../src/lib/dm/opportunity.ts");
+const place = (refId, x, y) => {
+  const map = kit.board();
+  maps.placeToken(maps.getTokenByRef(map.id, refId).id, x, y);
+};
+
+await test("G03: a glaive's opportunity attack past an ally meets the half cover the ally gives, as the turn's swing does", async () => {
+  // SRD 5.1, Cover: "A target has half cover if an obstacle blocks at least
+  // half of its body. The obstacle might be ... a creature, whether that
+  // creature is an enemy or a friend." The turn's pc_attack counted the ally
+  // in the line; the reaction's swing read the bare AC.
+  const goblin = await freshArena();
+  // The ally in the line carries only a bow, so it makes no opportunity
+  // attack of its own.
+  world.patch(anchor.id, { equipment: [{ name: "Shortbow", qty: 1 }] });
+  arm({ str: 16, equipment: [{ name: "Glaive", qty: 1 }] });
+  place(goblin.id, 3, 0);
+  place(anchor.id, 2, 0);
+  place(hero.id, 1, 0);
+  // The turn's swing at 10 feet: 5 + 3 + 3 = 11 misses AC 10 + 2.
+  const turn = await kit.swing(hero.id, { weapon: "Glaive" }, 5, 4);
+  assert.equal(turn.ok, true, turn.error);
+  assert.equal(turn.result.hit, false, "the turn's swing ignored the ally's half cover");
+  // The goblin walks away east, out of the glaive's reach: the same 11.
+  world.clearDice();
+  world.dice(5, 4);
+  const before = kit.dummy().currentHp;
+  resolvePcOpportunityAttacks(world.campaign(), goblin.id, { x: 3, y: 0 }, { x: 5, y: 0 }, [{ x: 4, y: 0 }, { x: 5, y: 0 }]);
+  world.clearDice();
+  assert.equal(kit.dummy().currentHp, before, "the opportunity attack hit through the ally's half cover");
+});
+
+await test("G03: a creature's 10-foot opportunity attack past another hero meets that hero's half cover", async () => {
+  const ogre = await freshArena();
+  // A reach of 10 feet, as a giant's or a glaive-armed creature's.
+  dress({ attacks: [{ name: "Glaive", toHit: 5, damage: "1d10+3", type: "slashing", mode: "melee", reach: 10 }], traits: [] });
+  world.patch(anchor.id, { equipment: [{ name: "Shortbow", qty: 1 }], ac: 12, acOverride: true });
+  world.patch(hero.id, { ac: 12, acOverride: true, currentHp: 30, tempHp: 0 });
+  place(ogre.id, 3, 0);
+  place(anchor.id, 2, 0);
+  place(hero.id, 1, 0);
+  // The hero walks west, out of the reach. 8 + 5 = 13 hits AC 12, not 14.
+  world.clearDice();
+  world.dice(8, 6);
+  const out = resolveOpportunityAttacks(world.campaign(), hero.id, { x: 1, y: 0 }, { x: 0, y: 0 }, false, [{ x: 0, y: 0 }]);
+  world.clearDice();
+  assert.ok(out.notes.some((note) => /opportunity attack/i.test(note)), `no opportunity attack was made: ${JSON.stringify(out.notes)}`);
+  assert.equal(world.sheet(hero.id).currentHp, 30, `the swing hit through the other hero's half cover: ${out.notes.join(" ")}`);
+});
+
 await kit.endFight();
 world.close();
 finish();

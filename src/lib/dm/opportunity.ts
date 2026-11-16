@@ -46,6 +46,7 @@ import {
 } from "@/lib/dm/condition-logic";
 import type { Senses } from "@/lib/srd/senses";
 import { acWithEffects } from "@/lib/dm/ac-effects";
+import { coverFor } from "@/lib/dm/attack-spatial";
 import { canAct, canEnemyAct } from "@/lib/dm/can-act";
 import { opportunityReactionKey } from "@/lib/srd/authored-effects-more";
 import { conditionsOf } from "@/lib/dm/vitals-logic";
@@ -319,7 +320,10 @@ export function resolveOpportunityAttacks(
       ...wards.sources,
     ];
     const advantage = mergeAdvantage(marks.elusive ? odds.filter((source) => source !== "advantage") : odds);
-    const targetAc = acWithEffects(campaign.id, sheet, enemy);
+    // Cover where they stood as it swung (SRD 5.1, Cover), as enemy_attack
+    // adds it: another hero between them and a 10-foot reach gives half.
+    const cover = coverFor(encounter.id, enemy.id, sheet.id, leftFrom);
+    const targetAc = acWithEffects(campaign.id, sheet, enemy) + cover;
     const hitOutcome = rollExpression(`${d20Expression(attack.toHit + attackEffect.bonus, advantage)}${own.riders.diceSuffix}`, undefined, {
       purpose: { roller: "enemy", kind: "attack", who: enemy.displayName },
     });

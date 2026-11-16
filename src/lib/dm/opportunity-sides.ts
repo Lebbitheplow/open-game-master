@@ -42,7 +42,7 @@ import { enemyOpportunityRiders, withOpportunityTurn } from "@/lib/dm/opportunit
 import { enfeebledBlow, spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { hasTrait } from "@/lib/dm/monster-abilities";
 import { allyBeside } from "@/lib/dm/side-allies";
-import { enemyFlanks } from "@/lib/dm/attack-spatial";
+import { coverFor, enemyFlanks } from "@/lib/dm/attack-spatial";
 import { effectOutcome } from "@/lib/dm/effect-tools";
 import { resolveRowOnHit } from "@/lib/dm/enemy-hit-rows";
 
@@ -125,7 +125,8 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
       ...(effect.advantage ? ["advantage" as const] : []),
       ...(effect.disadvantage ? ["disadvantage" as const] : []),
     ]);
-    const vsAc = enemyAcWithEffects(campaign.id, walker);
+    // Cover where the walker stood as it swung (SRD 5.1, Cover).
+    const vsAc = enemyAcWithEffects(campaign.id, walker) + coverFor(encounter.id, reactor.id, walker.id, leftFrom);
     const toHit = rollExpression(`${d20Expression(attack.toHit + effect.bonus, advantage)}${own.riders.diceSuffix}`, undefined, { purpose: { roller: "enemy", kind: "attack", who: reactor.displayName } });
     spendEnemyRiders(reactor, own.riders);
     const label = rollAgainst(`${attack.name} (opportunity attack)`, walker.displayName);

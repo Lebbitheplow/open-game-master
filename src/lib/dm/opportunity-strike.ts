@@ -31,6 +31,7 @@ import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { healthState } from "@/lib/bestiary/health";
 import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
+import { coverFor } from "@/lib/dm/attack-spatial";
 import { attackSenses, attackSight, characterSenses, enemySenses, fearAsRolled, lightOnAttack } from "@/lib/dm/attack-light";
 import { adjudicateHit, weaponAttackProfile, type ResolvedWeapon } from "@/lib/dm/attack-logic";
 import { endInvisibilityOnCast, planMarks, writeMarks } from "@/lib/dm/attack-marks";
@@ -206,7 +207,14 @@ export function pcOpportunitySwing(input: {
     notes,
   }).profile;
 
-  const targetAc = enemyAcWithEffects(campaign.id, enemy);
+  // Cover where the walker stood as the swing was made: an ally between a
+  // glaive and a goblin 10 feet off gives half cover (SRD 5.1, Cover), as on
+  // the turn's swing (pc-attack-situation.ts). The reaction read the bare AC.
+  const cover = coverFor(encounter.id, sheet.id, enemy.id, input.moverAt ?? undefined);
+  if (cover) {
+    notes.push(`${enemy.displayName} has ${cover === 2 ? "half" : "three-quarters"} cover: +${cover} AC`);
+  }
+  const targetAc = enemyAcWithEffects(campaign.id, enemy) + cover;
   const hitLog = isSheetFoe(enemy) ? openLastHit(campaign.id, enemy.id) : null;
   const closeLog = () => hitLog?.close({ attacker: { kind: "sheet", id: sheet.id, name: sheet.name }, attack: `${profile.weapon} (opportunity attack)`, type: profile.damageType, ranged: false });
   // The character's own attack roll (src/lib/dm/character-roll.ts): on
