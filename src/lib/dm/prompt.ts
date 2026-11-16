@@ -36,6 +36,7 @@ import { authoredFeatureTags } from "@/lib/srd/authored-effects";
 import { rollKeyCue } from "@/lib/srd/roll-keys";
 import { heldRollKeys } from "@/lib/dm/roll-feature-riders";
 import { describeConditionDuration, describeExhaustion, effectiveMaxHp } from "@/lib/dm/condition-logic";
+import { slowedSpeed } from "@/lib/dm/vitals-logic";
 import { describeConditionEffects } from "@/lib/srd/condition-effects";
 import { presetFor, packFor } from "@/lib/worlds/preset";
 import { nameRegisterHint } from "@/lib/genres";
@@ -724,7 +725,7 @@ export function describeSheet(
   // storyteller a halved hero at full health was badly hurt.
   const lines = [
     `- ${sheet.name} (${sheetSize(sheet)} ${raceWords(sheet)} ${classLabel}) characterId=${sheet.id} played by ${playedBy}${realDice ? " (rolls PHYSICAL dice)" : ""}`,
-    `  HP ${sheet.currentHp}/${effectiveMaxHp(sheet)}${sheet.tempHp ? ` (+${sheet.tempHp} temp)` : ""}${deathNote} | AC ${sheet.ac} | Speed ${speedFor(sheet, { encumbrance: options.encumbrance })} | Passive Perception ${derived.passivePerception} | Initiative ${formatModifier(derived.initiative)} | Hit Dice ${hitDiceLabel}`,
+    `  HP ${sheet.currentHp}/${effectiveMaxHp(sheet)}${sheet.tempHp ? ` (+${sheet.tempHp} temp)` : ""}${deathNote} | AC ${sheet.ac} | Speed ${slowedSpeed(sheet, speedFor(sheet, { encumbrance: options.encumbrance }))} | Passive Perception ${derived.passivePerception} | Initiative ${formatModifier(derived.initiative)} | Hit Dice ${hitDiceLabel}`,
     `  ${abilities} | Save proficiencies: ${sheet.proficiencies.saves.map((save) => save.toUpperCase()).join(", ") || "none"}`,
     `  Skill proficiencies: ${proficientSkills || "none"}`,
     `  Languages (complete list; they cannot speak, read, or understand any other language): ${sheet.proficiencies.languages.join(", ") || "Common only"} | Tool proficiencies: ${sheet.proficiencies.tools.join(", ") || "none"} | Armor training: ${sheet.proficiencies.armor.join(", ") || "none"} | Weapon training: ${sheet.proficiencies.weapons.join(", ") || "none"}`,

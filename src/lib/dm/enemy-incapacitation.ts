@@ -12,6 +12,17 @@ import { isIncapacitated } from "@/lib/dm/condition-logic";
 import { onEnemyIncapacitated } from "@/lib/dm/enemy-conditions";
 import { releaseGrapplesHeldBy } from "@/lib/dm/set-condition";
 import { swallowerAway } from "@/lib/dm/swallow";
+import { onCreatureIncapacity } from "@/lib/db/incapacity-watch";
+import { publishEncounter } from "@/lib/dm/enemy-damage";
+
+// Whichever door wrote the condition to the row (db/incapacity-watch.ts):
+// a lay path that already settled it finds nothing left to end.
+onCreatureIncapacity((enemyId) => {
+  const enemy = getEnemy(enemyId);
+  if (enemy && settleEnemyIncapacitation(enemyId, false).length) {
+    publishEncounter(enemy.campaignId);
+  }
+});
 
 // `wasOut`: whether it was already out of action before these landed (its
 // concentration went then). Returns lines for the result.

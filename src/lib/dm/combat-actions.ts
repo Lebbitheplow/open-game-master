@@ -15,7 +15,7 @@ import { sizeRank, watchfulPassivePerception } from "@/lib/bestiary/enemy-number
 import type { TurnBudget } from "@/lib/dm/action-budget";
 import { addSheetCondition, enemyContestTag, rollEnemyContest } from "@/lib/dm/action-common";
 import { grappleHandsProblem } from "@/lib/dm/cast-rules";
-import { incapacitatedBy } from "@/lib/dm/condition-logic";
+import { addConditionInstance, incapacitatedBy } from "@/lib/dm/condition-logic";
 import { tilesBetween, wallBetween } from "@/lib/dm/attack-spatial";
 import { hideRefusal } from "@/lib/dm/hide-traits";
 import { contestShift, rollCharacterCheck } from "@/lib/dm/contest-roll";
@@ -318,17 +318,13 @@ export function contest(
       note: `${enemy.displayName} cannot be ${condition}; it is immune. Narrate the attempt failing against its nature.`,
     };
   }
-  patchEnemyConditions(
-    enemy.id,
-    [...enemy.conditions, condition],
-    {
-      ...enemy.conditionMeta,
-      // Who holds the grapple, so it can end when they are incapacitated
-      // or move away (src/lib/dm/set-condition.ts releaseGrapplesHeldBy,
-      // src/lib/dm/grapple.ts), and so the grappled creature can escape.
-      [condition]: condition === "grappled" ? { source: sheet.id } : {},
-    },
-  );
+  // Who holds the grapple, so it can end when they are incapacitated or
+  // move away (src/lib/dm/set-condition.ts releaseGrapplesHeldBy,
+  // src/lib/dm/grapple.ts), and so the grappled creature can escape. One
+  // more instance beside any grip already on it: written over, a second
+  // hero's grapple erased the first's.
+  const laid = addConditionInstance(enemy.conditions, enemy.conditionMeta, condition, condition === "grappled" ? { source: sheet.id } : undefined);
+  patchEnemyConditions(enemy.id, laid.conditions, laid.meta);
   publishEncounter(campaign.id);
   // Battlerager Armor: a grapple won while raging in spiked armor drives the
   // spikes in, 3 piercing (src/lib/dm/battlerager.ts).

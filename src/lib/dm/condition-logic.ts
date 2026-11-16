@@ -428,6 +428,14 @@ const BLIND = ["blinded"];
 // and they get advantage on DEX saves. Applied by take_action
 // (src/lib/dm/action-tools.ts); named here because the mechanics are here.
 export const DODGING = "dodging";
+
+// "You lose this benefit if you are incapacitated or if your speed drops to
+// 0" (SRD 5.1, Dodge). Only the enemies' swings dropped it at speed 0
+// (opportunity.ts withLiveDodge), so a goblin that dodged and was then
+// grappled still turned a hero's sword and still saved with advantage.
+function dodgeHolds(conditions: string[]): boolean {
+  return Boolean(has(conditions, [DODGING])) && !isIncapacitated(conditions) && effectiveSpeed(conditions, 30) > 0;
+}
 // Ability checks suffer disadvantage.
 const CHECK_DISADVANTAGE = ["poisoned", "frightened"];
 
@@ -612,7 +620,7 @@ export function attackContext(input: {
   // 5.1, Dodge): not while blinded, nor against an invisible attacker it
   // cannot see through or a hidden one, nor one the dark hides.
   const dodgerSees = !sightBlockedBy(input.targetConditions, input.attackerConditions, targetSees) && input.targetSeesAttacker !== false;
-  if (has(input.targetConditions, [DODGING]) && !isIncapacitated(input.targetConditions) && dodgerSees) {
+  if (dodgeHolds(input.targetConditions) && dodgerSees) {
     sources.push("disadvantage");
     notes.push("target is dodging: disadvantage");
   }
@@ -658,7 +666,7 @@ export function rollDerivation(
       notes.push("restrained: disadvantage on DEX saves");
     }
     // The other half of the Dodge action.
-    if (ability === "dex" && has(conditions, [DODGING]) && !isIncapacitated(conditions)) {
+    if (ability === "dex" && dodgeHolds(conditions)) {
       sources.push("advantage");
       notes.push("dodging: advantage on DEX saves");
     }

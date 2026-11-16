@@ -18,7 +18,7 @@ import { sheetCreatureType } from "@/lib/dm/summon-rules";
 import type { EnemyAttack, TypedDice } from "@/lib/bestiary/statblock";
 import { conditionWeaponSize } from "@/lib/srd/condition-effect-queries";
 import { asleepOnFailure, riderSpares } from "@/lib/bestiary/attack-text";
-import { durationArgsFor, effectiveMaxHp, maxHpRiders, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { durationArgsFor, effectiveMaxHp, instancesOf, maxHpRiders, packInstances, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { handleSetCondition } from "@/lib/dm/set-condition";
 import { swallowCreature } from "@/lib/dm/swallow";
 import { swallowRuleOf } from "@/lib/dm/swallow-logic";
@@ -292,7 +292,12 @@ export function resolveOnHit(
     const key = Object.keys(held?.conditionMeta ?? {}).find((name) => name.toLowerCase() === "grappled") ?? "grappled";
     if (held) {
       const meta = { ...(held.conditionMeta as ConditionMetaMap) };
-      meta[key] = { ...meta[key], source: enemy.id, escapeDc: rider.escapeDc };
+      // On this grappler's own instance: a second crab's DC was written over
+      // the first crab's grip, which then named the second crab and was gone.
+      const grips = instancesOf(meta[key]);
+      const mine = grips.findIndex((entry) => entry.source === enemy.id);
+      const at = mine >= 0 ? mine : grips.findIndex((entry) => !entry.source);
+      meta[key] = packInstances(at >= 0 ? grips.map((entry, index) => (index === at ? { ...entry, source: enemy.id, escapeDc: rider.escapeDc } : entry)) : [...grips, { source: enemy.id, escapeDc: rider.escapeDc }]) ?? { source: enemy.id, escapeDc: rider.escapeDc };
       const updated = patchSheet(held.id, { conditionMeta: meta });
       if (updated) {
         publishPersisted(campaign.id, "sheet_updated", { sheet: updated });

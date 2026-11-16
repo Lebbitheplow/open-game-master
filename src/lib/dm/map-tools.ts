@@ -991,6 +991,12 @@ export function pushTokenAway(
     return { moved: false, reason: "someone stands behind it" };
   }
   moveToken(target.id, at.x, at.y, target.movedThisRound);
+  // A push is forced movement, and "the condition also ends if an effect
+  // removes the grappled creature from the reach of the grappler ... such
+  // as when a creature is hurled away by the thunderwave spell" (SRD 5.1,
+  // Grappled). Only a walk asked this, so a hero who shoved the goblin
+  // holding them 5 feet back stayed grappled.
+  releaseGrapplesOutOfReach(campaign);
   publishBattleMapUpdate(campaign.id);
   return { moved: true, at };
 }
@@ -1025,6 +1031,12 @@ export function pullTokenToward(
     return { moved: false, reason: "someone stands in the way" };
   }
   moveToken(target.id, at.x, at.y, target.movedThisRound);
+  // A push is forced movement, and "the condition also ends if an effect
+  // removes the grappled creature from the reach of the grappler ... such
+  // as when a creature is hurled away by the thunderwave spell" (SRD 5.1,
+  // Grappled). Only a walk asked this, so a hero who shoved the goblin
+  // holding them 5 feet back stayed grappled.
+  releaseGrapplesOutOfReach(campaign);
   publishBattleMapUpdate(campaign.id);
   return { moved: true, at };
 }

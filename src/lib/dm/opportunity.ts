@@ -55,7 +55,7 @@ import { canAct, canEnemyAct } from "@/lib/dm/can-act";
 import { opportunityReactionKey } from "@/lib/srd/authored-effects-more";
 import { conditionsOf } from "@/lib/dm/vitals-logic";
 import { attackSenses, characterSenses, enemySenses, fearAsRolled, lightOnAttack, sensesReaching } from "@/lib/dm/attack-light";
-import { opportunityWeapon } from "@/lib/dm/enemy-profile";
+import { charmedBy, opportunityWeapon } from "@/lib/dm/enemy-profile";
 import { enemyOpportunityRiders, opportunitySight, pcOpportunitySwing, withOpportunityTurn } from "@/lib/dm/opportunity-strike";
 import { holdsFeat } from "@/lib/srd/feat-effects";
 import { warCasterOpportunity } from "@/lib/dm/ar-wbf-feat-warcaster";
@@ -209,6 +209,12 @@ export function resolveOpportunityAttacks(
     }
     // Panache: no opportunity attack at anyone but the swashbuckler (goaded.ts).
     if (goadBarsOpportunity(enemy, characterId)) {
+      continue;
+    }
+    // "A charmed creature can't attack the charmer" (SRD 5.1, Charmed): an
+    // opportunity attack is an attack, and a bandit the bard charmed struck
+    // the bard as the bard stepped away.
+    if (charmedBy(enemy.conditions, enemy.conditionMeta, characterId)) {
       continue;
     }
     const token = getTokenByRef(map.id, enemy.id);
@@ -617,6 +623,10 @@ export function resolvePcOpportunityWalk(
       continue;
     }
     if (disengaged && !strikesTheDisengaged(sheet) && !alsoStrikesDisengaged?.(sheet)) {
+      continue;
+    }
+    // Nor the charmer: a hero under its charm is not offered the swing.
+    if (charmedBy(sheet.conditions, sheet.conditionMeta, enemyId)) {
       continue;
     }
     const token = getTokenByRef(map.id, sheet.id);

@@ -18,7 +18,7 @@ import { getParty } from "@/lib/db/party";
 import { formationView } from "@/lib/dm/formation-logic";
 import { formationPartyIds } from "@/lib/dm/roster";
 import { acBreakdownFor, computeSheetDerived } from "@/lib/srd";
-import { hourlyConSaves } from "@/lib/dm/endurance";
+import { exhaustionDeaths, hourlyConSaves } from "@/lib/dm/endurance";
 import {
   breathHoldMinutes,
   extremeColdSave,
@@ -507,7 +507,7 @@ function resolveHazard(
         cold ? " (DC 10)" : " (DC 5 for the first hour in a row, one higher each further hour; medium or heavy armor or heavy clothing at disadvantage)"
       }; each failure is a level of exhaustion, applied by the server. ${
         cold ? "Cold weather gear or" : "Fire"
-      } resistance negates it. Narrate the toll.`,
+      } resistance negates it. Narrate the toll.${exhaustionDeaths(perTarget)}`,
     };
   }
 
@@ -542,7 +542,7 @@ function resolveHazard(
       type: "frigid_water",
       minutes,
       results: perTarget,
-      note: "Minutes in frigid water up to the Constitution score are free; each one after is a DC 10 Constitution save, a level of exhaustion on each failure, applied by the server. Cold resistance negates it. Narrate the cold.",
+      note: `Minutes in frigid water up to the Constitution score are free; each one after is a DC 10 Constitution save, a level of exhaustion on each failure, applied by the server. Cold resistance negates it. Narrate the cold.${exhaustionDeaths(perTarget)}`,
     };
   }
 

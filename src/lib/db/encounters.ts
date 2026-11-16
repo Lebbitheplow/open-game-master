@@ -13,8 +13,10 @@ import { endUnsensed } from "@/lib/dm/ar-ws-senses-logic";
 import { endedByRegain } from "@/lib/dm/condition-logic";
 import { noteDominationShift } from "@/lib/db/side-watch";
 import { noteGrounding } from "@/lib/db/flight-watch";
+import { noteCreatureIncapacity } from "@/lib/db/incapacity-watch";
 import { publishPersisted } from "@/lib/events";
 import { isKnockedOut } from "@/lib/dm/knockout";
+import { proneAsItFalls } from "@/lib/dm/mt-srd-unconscious";
 import { storedGender, type Gender } from "@/lib/gender";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { pickedGender } from "@/lib/actor-sex-logic";
@@ -742,9 +744,12 @@ export function patchEnemyConditions(
     return null;
   }
   const before = getEnemy(enemyId);
+  // A creature that falls unconscious falls prone, whichever route laid it
+  // (mt-srd-unconscious.ts).
+  const fallen = proneAsItFalls(before?.conditions ?? [], conditions) ?? conditions;
   // The cap drops the oldest free mark, never the condition just laid
   // (condition-cap-logic.ts).
-  const kept = keptConditions(conditions, conditionMeta ?? before?.conditionMeta);
+  const kept = keptConditions(fallen, conditionMeta ?? before?.conditionMeta);
   if (conditionMeta !== undefined) {
     getDatabase()
       .prepare(
@@ -763,6 +768,9 @@ export function patchEnemyConditions(
   noteDominationShift(after?.campaignId ?? before?.campaignId ?? "", before, after);
   // A flyer knocked prone or held to a speed of 0 falls (flight-watch.ts).
   noteGrounding(after?.campaignId ?? before?.campaignId ?? "", before, after);
+  // Taken out of action by whatever wrote it: its concentration and grapples
+  // end (incapacity-watch.ts).
+  noteCreatureIncapacity(enemyId, before, after);
   const own = after?.stats.polymorphedFrom;
   if (!own || after.conditions.some((name) => name.toLowerCase() === "polymorphed")) {
     return after;

@@ -69,6 +69,7 @@
     "lib/dm/sense-magic.ts#keyed": [["identity",1,"a record by its whole name (textKey on both sides)"]],
     "lib/dm/sense-magic.ts#helper": [["identity",2,"a record by its whole name (textKey on both sides)"]],
     "lib/dm/mt-srd-artificer.ts#bypass": [["identity",2,"a record by its whole name (textKey on both sides)"]],
+    "lib/dm/grapple.ts#keyed": [["key",1,"a creature's conditionMeta by the condition key it was written under"]],
     "lib/dm/goaded.ts#keyed": [["identity",4,"a condition's own meta, read by the key it was laid under"]],
     "lib/dm/scribe-mind.ts#whole": [["identity",1,"the mind token by its whole name, textKey on both sides (or by its id or ref)"]],
     "lib/dm/scribe-mind.ts#partial": [["key",1,"the mind token's own ref, written by the engine: read by its prefix, and the prefix read back off it"]],

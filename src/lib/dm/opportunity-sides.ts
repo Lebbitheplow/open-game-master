@@ -33,7 +33,7 @@ import { attackContext, mergeAdvantage, sightBlockedBy } from "@/lib/dm/conditio
 import { attackSenses, attackSight, enemySenses, fearAsRolled, sensesReaching } from "@/lib/dm/attack-light";
 import { landCreatureBlow } from "@/lib/dm/enemy-blow";
 import { blowByType } from "@/lib/dm/enemy-hit";
-import { opportunityWeapon } from "@/lib/dm/enemy-profile";
+import { charmedBy, opportunityWeapon } from "@/lib/dm/enemy-profile";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { leavesReachAt } from "@/lib/dm/opportunity-reach-logic";
 import { conditionBlocksReactions } from "@/lib/srd/condition-effects";
@@ -81,6 +81,10 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
       continue;
     }
     if (encounter.reactionsUsed.includes(reactor.id)) {
+      continue;
+    }
+    // A charmed creature makes no attack at its charmer (SRD 5.1, Charmed).
+    if (charmedBy(reactor.conditions, reactor.conditionMeta, walkerId)) {
       continue;
     }
     const token = getTokenByRef(map.id, reactor.id);

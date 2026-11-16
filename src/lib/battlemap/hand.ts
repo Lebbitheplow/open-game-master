@@ -14,7 +14,7 @@ import { dualWields, handsRuling, offHandProblem } from "@/lib/dm/attack-rules";
 import { shillelaghSwing } from "@/lib/dm/attack-features";
 import { magicWeaponOfRow, type WeaponGear } from "@/lib/dm/gear-attack";
 import { bonusRouteFor, kiLeft, usesLeft, type BonusRoute, type MoveAction } from "@/lib/dm/bonus-routes";
-import { effectiveSpeed, exhaustionSpeed } from "@/lib/dm/condition-logic";
+import { slowedSpeed } from "@/lib/dm/vitals-logic";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
 import { attackOptionsFor, bonusStrikeCards, fastHandsCards, kiCards } from "@/lib/battlemap/hand-class";
 import { beastAttackIcon } from "@/lib/battlemap/attack-art";
@@ -490,7 +490,7 @@ function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders,
       // Movement, not an action (SRD 5.1, Being Prone): no standing at speed
       // 0, whether a condition or exhaustion stops them.
       const still: Gate =
-        exhaustionSpeed(sheet.exhaustion ?? 0, effectiveSpeed(sheet.conditions, sheet.speed)) === 0
+        slowedSpeed(sheet) === 0
           ? { reason: "Your speed is 0, so you cannot stand up.", spent: false }
           : null;
       cards.push(gated(card, standingGate(sheet, turn, "move"), still));
@@ -503,7 +503,7 @@ function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders,
     }
     const contest = basic.id === "grapple" || basic.id === "shove";
     const still: Gate =
-      basic.id === "dash" && effectiveSpeed(sheet.conditions, sheet.speed) === 0
+      basic.id === "dash" && slowedSpeed(sheet) === 0
         ? { reason: "Your speed is 0, so a Dash goes nowhere.", spent: false }
         : null;
     cards.push(

@@ -30,11 +30,11 @@ import {
   describeConditionDuration,
   describeExhaustion,
   isIncapacitated,
-  removeConditions,
   wakesOnDamage,
   type ConditionMeta,
   type ConditionMetaMap,
   type SaveAbilityId,
+  instancesOf,
 } from "@/lib/dm/condition-logic";
 import { petrifiedRefusal } from "@/lib/dm/damage-logic";
 import { exhaustionPatch, namesExhaustion } from "@/lib/dm/vitals-logic";
@@ -140,9 +140,11 @@ function publishSheet(campaign: Campaign, sheetId: string) {
 // the names of those let go.
 export function releaseGrapplesHeldBy(campaign: Campaign, holderId: string): string[] {
   const released: string[] = [];
+  // Every instance is read: a second grappler's grip is one more instance of
+  // the condition, and only that grappler's goes (grapple.ts withoutGrapple).
   const heldBy = (meta: ConditionMetaMap | undefined) =>
     Object.entries((meta ?? {}) as ConditionMetaMap)
-      .filter(([name, entry]) => name.toLowerCase() === "grappled" && entry.source === holderId)
+      .filter(([name, entry]) => name.toLowerCase() === "grappled" && instancesOf(entry).some((instance) => instance.source === holderId))
       .map(([name]) => name);
   for (const stale of listSheets(campaign.id)) {
     const names = heldBy(stale.conditionMeta);
@@ -150,7 +152,10 @@ export function releaseGrapplesHeldBy(campaign: Campaign, holderId: string): str
       continue;
     }
     const sheet = getSheetById(stale.id) ?? stale;
-    const cleared = removeConditions(sheet.conditions, sheet.conditionMeta, names);
+    const cleared = names.reduce(
+      (state, name) => withoutGrapple(state.conditions, state.meta, { name, source: holderId }),
+      { conditions: sheet.conditions, meta: sheet.conditionMeta as ConditionMetaMap },
+    );
     const updated = patchSheet(sheet.id, {
       conditions: cleared.conditions,
       conditionMeta: cleared.meta,
@@ -218,12 +223,15 @@ export function raiseExhaustion(
     });
     return {
       ok: true,
+      level: patch.exhaustion,
       dead: true,
       note: `${sheet.name} reaches exhaustion level 6 and DIES.`,
     };
   }
   return {
     ok: true,
+    // The level reached: the hourly saves (endurance.ts) report it per hour.
+    level: patch.exhaustion,
     condition: describeExhaustion(patch.exhaustion),
     ...(patch.currentHp !== undefined
       ? { hp: `${patch.currentHp}/${patch.currentHp}`, halved: "Their hit point maximum is halved while the level lasts." }
@@ -401,6 +409,14 @@ export function handleSetCondition(
   // raises a character one level (6 = death), "exhaustion" or "exhaustion
   // N" alike; set_enemy_condition, whose call carries the level, sets it.
   if (namesExhaustion(raw)) {
+    // Asked first, as every other condition is below: a skeleton raised by
+    // Animate Dead ("Condition Immunities exhaustion, poisoned", SRD 5.1)
+    // or a conjured elemental took a level an hour of a forced march and
+    // died at six.
+    const immune = conditionImmunity(campaign, sheet, "exhaustion", false, args.sourceEnemyId);
+    if (immune) {
+      return { error: `${sheet.name} cannot gain exhaustion: ${immune}. No level was added.`, refused: "rules" };
+    }
     return raiseExhaustion(campaign, turnId, sheet, reason);
   }
   const normalized = canonicalCondition(raw);
