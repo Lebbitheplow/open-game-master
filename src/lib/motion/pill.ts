@@ -52,7 +52,13 @@ function place(group: HTMLElement): void {
   if (!pill) return;
 
   // Read the chosen button's own highlight with the stand-in switched off,
-  // or the blanked style is what gets copied.
+  // or the blanked style is what gets copied. Its own transition is held
+  // while it is read: a button that eases its fill (the Hand's picks,
+  // hand-motion.css .hand-option) gave back the first frame of the ease
+  // from the blank, transparent, so every placement after the first (a
+  // theme switched, a resize) took the chosen pick's fill away.
+  const ease = chosen.style.transition;
+  chosen.style.transition = "none";
   group.removeAttribute("data-pill-ready");
   const look = getComputedStyle(chosen);
   pill.style.backgroundImage = look.backgroundImage;
@@ -62,16 +68,24 @@ function place(group: HTMLElement): void {
   // The button keeps its own border (an underlined tab is nothing but one);
   // the pill carries only the fill and the glow.
 
+  // The button's box at rest: a chosen pick springs in from 94% of its size
+  // (hand-chip-on), and a pill measured mid-spring fell short of its edges
+  // until the next choice. Its own size, around the middle the spring keeps.
   const from = group.getBoundingClientRect();
   const to = chosen.getBoundingClientRect();
-  const x = to.left - from.left - group.clientLeft + group.scrollLeft;
-  const y = to.top - from.top - group.clientTop + group.scrollTop;
+  const width = chosen.offsetWidth || to.width;
+  const height = chosen.offsetHeight || to.height;
+  const x = to.left + to.width / 2 - width / 2 - from.left - group.clientLeft + group.scrollLeft;
+  const y = to.top + to.height / 2 - height / 2 - from.top - group.clientTop + group.scrollTop;
   if (first) pill.style.transition = "none";
-  pill.style.width = `${to.width}px`;
-  pill.style.height = `${to.height}px`;
+  pill.style.width = `${width}px`;
+  pill.style.height = `${height}px`;
   pill.style.translate = `${x}px ${y}px`;
   pill.style.opacity = "1";
   group.setAttribute("data-pill-ready", "");
+  // Blanked again while still held, so it does not ease back out.
+  void chosen.offsetWidth;
+  chosen.style.transition = ease;
   if (first) {
     // Land in place on the first frame, slide from then on.
     void pill.offsetWidth;
