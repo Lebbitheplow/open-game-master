@@ -83,4 +83,47 @@ await test("A01: a dodger whose speed drops to 0 (grappled, restrained) loses th
   await kit.endFight();
 });
 
+// The dice of one size a damage roll threw.
+const diceOf = (roll, sides) => (roll?.breakdown?.terms ?? []).filter((term) => term.kind === "dice" && term.sides === sides).reduce((sum, term) => sum + term.count, 0);
+
+// A02. SRD 5.1, Hunter's Mark: "If the target drops to 0 hit points before
+// this spell ends, you can use a bonus action on a subsequent turn of yours
+// to mark a new creature." Hex reads the same. A ranger with Extra Attack
+// who dropped the marked goblin with the first swing moved the mark to the
+// second goblin with the second swing of the same turn, and its 1d6 rode it.
+await test("A02: a mark whose creature falls moves only on a later turn of its holder", async () => {
+  const ranger = world.addHero({
+    class: "ranger",
+    level: 5,
+    abilities: { str: 16 },
+    proficiencies: { ...TRAINED },
+    equipment: [{ name: "Longsword", qty: 1 }],
+    features: [{ name: "Extra Attack", source: "class", classId: "ranger" }],
+  });
+  await kit.endFight();
+  await kit.fight(2);
+  const [first, second] = world.enemies();
+  kit.giveTurn(ranger.id);
+  kit.place(ranger.id, 5, 5);
+  kit.place(first.id, 5, 6);
+  kit.place(second.id, 6, 6);
+  kit.setEnemy(first.id, { currentHp: 1 });
+  world.patch(ranger.id, { conditions: ["hunter's mark"], conditionMeta: { "hunter's mark": { quarry: first.id, spell: "Hunter's Mark", source: ranger.id } } });
+  const kill = await kit.swing(ranger.id, first.id, [15, 4, 4], { weapon: "Longsword" });
+  assert.equal(kill.ok, true, kill.error);
+  assert.equal(diceOf(kill.damage, 6), 1, "the staging: the marked goblin takes the mark's 1d6");
+  assert.notEqual(kit.enemy(first.id).status, "alive", "the staging: the marked goblin falls");
+  const next = await kit.swing(ranger.id, second.id, [15, 4, 4], { weapon: "Longsword" });
+  assert.equal(next.ok, true, next.error);
+  assert.equal(diceOf(next.damage, 6), 0, "the mark moved and rode a swing on the turn its creature fell");
+  assert.equal(world.encounter().turnBudget?.bonusUsed, false, "the bonus action went on a move the rules do not allow yet");
+  // The ranger's next turn: the mark moves with the bonus action.
+  kit.giveTurn(ranger.id);
+  const later = await kit.swing(ranger.id, second.id, [15, 4, 4], { weapon: "Longsword" });
+  assert.equal(later.ok, true, later.error);
+  assert.equal(diceOf(later.damage, 6), 1, "on a later turn the mark moves to the second goblin");
+  assert.equal(world.encounter().turnBudget?.bonusUsed, true, "moving the mark is the bonus action");
+  await kit.endFight();
+});
+
 finish();

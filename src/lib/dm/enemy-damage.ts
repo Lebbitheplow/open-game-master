@@ -1,3 +1,4 @@
+import { noteMarkFell } from "@/lib/dm/attack-marks";
 import { settleDroppedOnFightEnd } from "@/lib/db/dropped-items";
 import { layFlamesOnDeath } from "@/lib/dm/cauterizing-flames";
 import { recordTrigger } from "@/lib/dm/last-save";
@@ -615,6 +616,8 @@ export function applyEnemyDamage(
   // A creature that falls lets go: its grapples, charms and fears on others
   // end with it (src/lib/dm/enemy-conditions.ts).
   if (math.dropped) {
+    // A mark on it moves only on a later turn of its holder's (attack-marks.ts).
+    noteMarkFell(campaign.id, enemy.id);
     const freed = endConditionsHeldBy(campaign, enemy.id);
     if (freed.length) {
       base.released = `${freed.join("; ")}: no longer held by ${updated.displayName}.`;

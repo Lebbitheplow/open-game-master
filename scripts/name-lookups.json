@@ -1488,7 +1488,7 @@
     "lib/dm/genre-a-horror-hits.ts#partial": [["key",3,"the SRD row's creature type"]],
     "lib/dm/genre-a-horror-marks.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/dm/attack-marks.ts#partial": [["identity",1,"the enemy a mark's \"(note)\" names, by whole display name"]],
-    "lib/dm/attack-marks.ts#whole": [["identity",1,"the enemy a mark's \"(note)\" names, by whole display name"],["identity",1,"condition instances by whole name or key"]],
+    "lib/dm/attack-marks.ts#whole": [["identity",1,"the enemy a mark's \"(note)\" names, by whole display name"],["identity",1,"condition instances by whole name or key"],["key",1,"the turn budget's own once-per-turn keys (a marked creature that fell this turn)"]],
     "lib/dm/attack-onhit.ts#keyed": [["key",2,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
     "lib/dm/attack-onhit.ts#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"],["key",1,"the SRD row's creature type"]],
     "lib/dm/attack-onhit.ts#whole": [["identity",1,"condition instances by whole name or key"]],
