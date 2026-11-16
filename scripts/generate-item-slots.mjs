@@ -4,7 +4,11 @@
 // hats and helmets on the head, and rings on the finger"). The engines look
 // an item up by its whole name (src/lib/srd/wear-slots.ts), never by words
 // read inside a name someone wrote, so the place is read here, once, from
-// the English rows' names and categories.
+// the English rows' names and categories, and from a row's own rules text
+// where its name does not say what it is: Wings of Flying is a cloak ("While
+// wearing this cloak, you can use an action to speak its command word"), and
+// before the text was read it had no place, so it counted beside a second
+// cloak.
 //
 // Armor and shields are left out: the armor engine (src/lib/srd/armor.ts)
 // already knows a suit from a shield. So is anything carried rather than
@@ -28,17 +32,20 @@ const outPath = join(root, "src", "lib", "classes", "item-slots.json");
 // The SRD's kinds of worn item, checked in order: the first a name holds
 // wins ("Cloak of the Bat" is a cloak whatever else it says).
 const SLOT_WORDS = [
-  ["cloak", /\b(?:cloaks?|capes?|mantles?)\b/i],
-  ["head", /\b(?:helms?|helmets?|hats?|caps?|circlets?|crowns?|diadems?|headbands?|tiaras?|hoods?|coronets?|headdress)\b/i],
-  ["feet", /\b(?:boots|slippers|sandals|shoes|footwear)\b/i],
-  ["hands", /\b(?:gloves?|gauntlets?)\b/i],
-  ["wrists", /\b(?:bracers?|vambraces?)\b/i],
-  ["neck", /\b(?:amulets?|necklaces?|periapts?|medallions?|pendants?|torcs?|brooch(?:es)?)\b/i],
-  ["waist", /\b(?:belts?|girdles?)\b/i],
-  ["ring", /\brings?\b/i],
-  ["eyes", /\b(?:goggles|lenses|spectacles)\b|^eyes of\b/i],
-  ["robe", /\brobes?\b/i],
+  ["cloak", "cloaks?|capes?|mantles?"],
+  ["head", "helms?|helmets?|hats?|caps?|circlets?|crowns?|diadems?|headbands?|tiaras?|hoods?|coronets?|headdress"],
+  ["feet", "boots|slippers|sandals|shoes|footwear"],
+  ["hands", "gloves?|gauntlets?"],
+  ["wrists", "bracers?|vambraces?"],
+  ["neck", "amulets?|necklaces?|periapts?|medallions?|pendants?|torcs?|brooch(?:es)?"],
+  ["waist", "belts?|girdles?"],
+  ["ring", "rings?"],
+  ["eyes", "goggles|lenses|spectacles|glasses"],
+  ["robe", "robes?"],
 ];
+// A word that owns the next one names someone else, not the item:
+// "Culdarath the Ninth Ring's True Name" is a slip of parchment.
+const NAME_WORDS = SLOT_WORDS.map(([slot, words]) => [slot, new RegExp(`\\b(?:${words})\\b(?!['’]s\\b)${slot === "eyes" ? "|^eyes of\\b" : ""}`, "i")]);
 
 // Held or carried, never worn, whatever else the name says.
 const CARRIED = /\b(?:wand|rod|staff|potion|philter|elixir|scroll|oil|dust|ammunition|arrows?|bolts?|bag|pouch|deck|figurine|horn|pipes|drum|lute|harp|candle|orb|stone|feather token|bead)\b/i;
@@ -46,14 +53,45 @@ const CARRIED = /\b(?:wand|rod|staff|potion|philter|elixir|scroll|oil|dust|ammun
 // Suits, shields and weapons are the armor and weapon engines' own.
 const NOT_WORN_HERE = /armor|shield|weapon/i;
 
-export function slotOf(name, kind, category) {
-  if (kind === "armor" || kind === "weapon" || NOT_WORN_HERE.test(category ?? "") || CARRIED.test(name)) {
+// What the rules text calls the thing its wearer has on, for a row whose
+// name does not say. Only the text's own words for wearing it count: "while
+// wearing this cloak" (Wings of Flying), "while you wear these gauntlets", or
+// the thing named in the opening sentence and worn as "it" or "them" after
+// ("this cap has 9 charges ... while wearing it"). A word that only
+// describes the next one is not the thing (a belt pouch, a belt quiver, a
+// belt buckle), and neither is what the wearer has on beside it ("if you are
+// wearing armor").
+const ANY_WORD = SLOT_WORDS.map(([, words]) => words).join("|");
+const ITS_KIND = `(?:(?!(?:as|or|and|a|an|of|in|on|with|to|from|is|are|that|which|it|its|you|your)\\b)[\\w'’,-]+\\s+){0,4}?(${ANY_WORD})\\b(?!\\s+(?:pouch|quiver|buckle|clasp|pin|case)\\b)`;
+const WORN_AS = new RegExp(`\\b(?:wear|wears|wearing|worn)\\s+(?:and\\s+attuned\\s+to\\s+)?(?:this|these|the)\\s+${ITS_KIND}`, "i");
+const NAMED_FIRST = new RegExp(`\\b(?:this|these)\\s+${ITS_KIND}`, "i");
+const WORN_AFTER = /\b(?:wear|wears|wearing)\s+(?:it|them)\b/i;
+const placeOfWord = (word) => SLOT_WORDS.find(([, words]) => new RegExp(`^(?:${words})$`, "i").test(word))?.[0] ?? null;
+
+export function slotInText(text) {
+  const body = String(text ?? "");
+  const worn = body.match(WORN_AS);
+  if (worn) {
+    return placeOfWord(worn[1]);
+  }
+  const opening = body.split(/(?<=[.!?])\s/)[0] ?? "";
+  const named = WORN_AFTER.test(body) ? opening.match(NAMED_FIRST) : null;
+  return named ? placeOfWord(named[1]) : null;
+}
+
+export function slotOf(name, kind, category, text) {
+  if (kind === "armor" || kind === "weapon" || NOT_WORN_HERE.test(category ?? "")) {
     return null;
   }
   if ((category ?? "").toLowerCase() === "ring") {
     return "ring";
   }
-  return SLOT_WORDS.find(([, words]) => words.test(name))?.[0] ?? null;
+  // The text speaks last, and over a carried word in the name: a Potion Belt
+  // is a belt ("While wearing the belt, you can use an action...").
+  // A carried word counts where it is the thing, not what the thing is of:
+  // a Belt of Stone Giant Strength is a belt, a Belt Pouch a pouch.
+  const named = CARRIED.test(name.split(/\s+of\s+/i)[0]) ? null :(NAME_WORDS.find(([, words]) => words.test(name))?.[0] ?? null);
+  return named ?? slotInText(text);
 }
 
 if (!existsSync(contentDb)) {
@@ -62,7 +100,10 @@ if (!existsSync(contentDb)) {
 }
 
 const db = new Database(contentDb, { readonly: true });
-const rows = db.prepare("SELECT name, kind, category FROM items ORDER BY name").all();
+const rows = db
+  .prepare("SELECT name, kind, category, data_json FROM items ORDER BY name")
+  .all()
+  .map((row) => ({ name: row.name, kind: row.kind, category: row.category, text: JSON.parse(row.data_json).desc }));
 db.close();
 // The magic-item table's own rows too (scripts/generate-magic-items.mjs): it
 // splits a pack row into the variants the engines read ("Belt of Hill Giant
@@ -79,7 +120,7 @@ for (const [slot] of SLOT_WORDS) {
 }
 const seen = new Set();
 for (const row of rows) {
-  const slot = slotOf(row.name, row.kind, row.category);
+  const slot = slotOf(row.name, row.kind, row.category, row.text);
   const key = row.name.trim().toLowerCase();
   if (!slot || seen.has(key)) {
     continue;
