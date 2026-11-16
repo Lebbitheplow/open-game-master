@@ -177,6 +177,117 @@ await test("G23: a hero within 5 feet closes a creature's sword wounds with an a
   assert.equal(swordWound(), undefined, `a made DC 15 Medicine check left the wound open: ${JSON.stringify(made.result)}`);
 });
 
+// ---- G24: the Oathbow's oath on the clock ----
+
+const clockDb = await import("../src/lib/db/clock.ts");
+const DAY = 24 * 60;
+const swornOn = () => {
+  const sheet = world.sheet(hero.id);
+  const name = sheet.conditions.find((entry) => /sworn enemy/i.test(entry));
+  return name ? sheet.conditionMeta[name]?.source : undefined;
+};
+const OATH_KIT = [{ name: "Oathbow", qty: 1, attuned: true }, { name: "Arrows", qty: 20 }, { name: "Dagger", qty: 1 }];
+
+// A new fight, the hero `tiles` from its goblin; the last one's end is not
+// a death.
+async function nextFight(tiles) {
+  await kit.arena({ first: anchor.id });
+  kit.stand(hero.id, tiles);
+  return kit.dummy();
+}
+
+// The dagger's d20s, for the disadvantage with another weapon.
+async function stab() {
+  kit.freshTurn();
+  kit.stand(hero.id, 1);
+  const out = await kit.swing(hero.id, { weapon: "Dagger" }, 15, 2, 3);
+  assert.equal(out.ok, true, out.error);
+  return out.d20s.length;
+}
+
+await test("G24: the Oathbow's oath outlives the fight and a long rest: another creature is not sworn and other weapons keep their disadvantage, until the dawn seven days later", async () => {
+  // SRD 5.1, Oathbow: "The target of your attack becomes your sworn enemy
+  // until it dies or until dawn seven days later. You can have only one such
+  // sworn enemy at a time." The oath ended with the fight it was sworn in:
+  // a goblin that fled was forgotten, and the next creature shot was sworn.
+  await kit.endFight();
+  world.patch(hero.id, { conditions: [], conditionMeta: {} });
+  const first = await nextFight(4);
+  arm({ str: 10, dex: 16, equipment: OATH_KIT });
+  kit.stand(hero.id, 4);
+  const swornAt = clockDb.getClock(world.campaignId).instant;
+  const shot = await kit.swing(hero.id, { weapon: "Oathbow" }, 2, 15, 4, 3, 3, 3);
+  assert.equal(shot.ok, true, shot.error);
+  assert.equal(swornOn(), first.id);
+  // It flees: the fight ends with it alive.
+  const fled = await world.invoke("end_encounter", { outcome: "enemies_fled" });
+  assert.equal(fled.ok, true, fled.error);
+  const rest = await world.invoke("take_rest", { kind: "long" });
+  assert.equal(rest.ok, true, rest.error);
+  // Another fight, another goblin: the oath still binds.
+  await nextFight(4);
+  const other = await kit.swing(hero.id, { weapon: "Oathbow" }, 15, 4);
+  assert.equal(other.ok, true, other.error);
+  assert.equal(other.d20s.length, 1, `a second creature was sworn while the first lives: ${JSON.stringify(other.result)}`);
+  assert.equal(swornOn(), first.id, "the oath moved to another creature");
+  assert.equal(await stab(), 2, "the dagger lost its disadvantage while the sworn enemy lives");
+  await kit.endFight();
+  // Six days on, it still binds.
+  clockDb.setClockInstant(world.campaignId, swornAt + 6 * DAY);
+  await nextFight(1);
+  assert.equal(await stab(), 2, "the oath ended before seven days");
+  await kit.endFight();
+  // Past the dawn seven days later, it is over: no disadvantage, and the bow
+  // swears the creature it is shot at.
+  clockDb.setClockInstant(world.campaignId, swornAt + 8 * DAY);
+  const third = await nextFight(1);
+  assert.equal(await stab(), 1, "the oath outlived the dawn seven days later");
+  kit.freshTurn();
+  kit.stand(hero.id, 4);
+  const fresh = await kit.swing(hero.id, { weapon: "Oathbow" }, 2, 15, 4, 3, 3, 3);
+  assert.equal(fresh.ok, true, fresh.error);
+  assert.equal(fresh.d20s.length, 2, "the bow could not swear anew once the oath had run out");
+  assert.equal(swornOn(), third.id);
+  await kit.endFight();
+  world.patch(hero.id, { conditions: [], conditionMeta: {} });
+});
+
+await test("G24: once the sworn enemy dies, the Oathbow swears no new one before the next dawn", async () => {
+  // SRD 5.1, Oathbow: "When your sworn enemy dies, you can choose a new one
+  // after the next dawn." The next creature shot was sworn at once.
+  await kit.endFight();
+  world.patch(hero.id, { conditions: [], conditionMeta: {} });
+  // Mid-morning, so the next dawn is a day off.
+  const today = Math.floor(clockDb.getClock(world.campaignId).instant / DAY) * DAY;
+  clockDb.setClockInstant(world.campaignId, today + 10 * 60);
+  const first = await nextFight(4);
+  arm({ str: 10, dex: 16, equipment: OATH_KIT });
+  kit.stand(hero.id, 4);
+  getDatabase().prepare("UPDATE encounter_enemies SET current_hp = 5 WHERE id = ?").run(first.id);
+  const kill = await kit.swing(hero.id, { weapon: "Oathbow" }, 2, 15, 4, 3, 3, 3);
+  assert.equal(kill.ok, true, kill.error);
+  assert.equal(encounters.getEnemy(first.id).status, "dead");
+  await kit.endFight();
+  // That evening, a new foe: the bow swears nothing, and the dagger is free.
+  clockDb.setClockInstant(world.campaignId, today + 20 * 60);
+  await nextFight(4);
+  const early = await kit.swing(hero.id, { weapon: "Oathbow" }, 15, 4);
+  assert.equal(early.ok, true, early.error);
+  assert.equal(early.d20s.length, 1, `a new sworn enemy before the next dawn: ${JSON.stringify(early.result)}`);
+  assert.notEqual(swornOn(), kit.dummy().id);
+  assert.equal(await stab(), 1, "the dagger kept its disadvantage after the sworn enemy died");
+  await kit.endFight();
+  // After the dawn: the bow swears again.
+  clockDb.setClockInstant(world.campaignId, today + DAY + 7 * 60);
+  const next = await nextFight(4);
+  const sworn = await kit.swing(hero.id, { weapon: "Oathbow" }, 2, 15, 4, 3, 3, 3);
+  assert.equal(sworn.ok, true, sworn.error);
+  assert.equal(sworn.d20s.length, 2);
+  assert.equal(swornOn(), next.id);
+  await kit.endFight();
+  world.patch(hero.id, { conditions: [], conditionMeta: {} });
+});
+
 await kit.endFight();
 world.close();
 finish();

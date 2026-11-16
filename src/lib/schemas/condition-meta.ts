@@ -131,6 +131,9 @@ const conditionInstanceSchema = z.object({
     // (src/lib/dm/mummy-rot-logic.ts).
     rotFrom: z.number().int().min(0).optional(),
     rotDrain: z.number().int().min(0).max(5000).optional(),
+    // An Oathbow's oath (src/lib/dm/oathbow.ts): the clock instants it was
+    // sworn at and its sworn enemy died at.
+    oath: z.object({ swornAt: z.number().int().min(0), diedAt: z.number().int().min(0).optional() }).optional(),
     // The temporary hit points the effect granted, gone when it ends.
     tempHp: z.number().int().min(1).max(500).optional(),
     // A once-a-turn rider spent: the turn it went in (encounters.ts turnKey),

@@ -53,6 +53,9 @@ export type ConditionMeta = {
   // The hit points a mark holds back from every healing but a rest (a Sword
   // of Wounding's, src/lib/dm/sword-wounding-logic.ts).
   heldHp?: number;
+  // An Oathbow's oath (src/lib/dm/oathbow.ts): the clock instants it was
+  // sworn at and its sworn enemy died at.
+  oath?: { swornAt: number; diedAt?: number };
   // Re-save at each round wrap; success ends the condition.
   // `or`: a second ability the creature may roll instead, choosing again at
   // each save (Nature's Wrath: Strength or Dexterity; see likelierSave).

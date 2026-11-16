@@ -370,6 +370,9 @@ export function planPcAttack(input: {
   // The Oathbow's sworn enemy: no cover but total, no long-range
   // disadvantage, advantage and 3d6 below (oathbow.ts).
   const oath = weaponAttack ? oathbowShot(sheet, profile, enemy.id, atRange) : null;
+  if (oath?.waits) {
+    featNotes.push("Oathbow: the sworn enemy died; no new one is sworn before the next dawn");
+  }
   if (oath?.sworn) {
     featNotes.push(`Oathbow: ${enemy.displayName} is the sworn enemy${geometry.cover ? ", its cover does not count" : ""}`);
     geometry = { ...geometry, effectiveAc: geometry.effectiveAc - geometry.cover, cover: 0, screen: null, spatials: { ...geometry.spatials, longRange: false } };
