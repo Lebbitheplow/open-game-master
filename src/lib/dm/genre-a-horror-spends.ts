@@ -21,7 +21,7 @@ import { isConditionNamed } from "@/lib/srd/feature-names";
 import { horrorHolds } from "@/lib/srd/genre-a-horror-holds";
 import type { FullPatchSheetInput } from "@/lib/schemas/sheet";
 import type { SpendDoes } from "@/lib/srd/authored-effects-types";
-import { GH_HORROR_PLAYS } from "@/lib/dm/genre-gh-horror-plays";
+import { ghHorrorPlays } from "@/lib/dm/genre-gh-horror-plays";
 
 type Resolution = ToolError | { patch?: FullPatchSheetInput; result: Record<string, unknown> };
 
@@ -142,14 +142,20 @@ function observerEffect(ctx: SpendContext): Resolution {
   return { ...out, result: { ...out.result, revealed: `${enemy.displayName} is no longer ${hiding.join(" or ") || "hidden from sight"}.` } };
 }
 
-const PLAYS: Record<string, (ctx: SpendContext) => Resolution> = {
-  terminal_focus: terminalFocus,
-  observer_effect: observerEffect,
-  // The cc1113 genre-c pass's (src/lib/dm/genre-gh-horror-plays.ts).
-  ...GH_HORROR_PLAYS,
-};
+// Built on first use, for the same import loop as ghHorrorPlays.
+let playsCache: Record<string, (ctx: SpendContext) => Resolution> | null = null;
+
+function plays(): Record<string, (ctx: SpendContext) => Resolution> {
+  playsCache ??= {
+    terminal_focus: terminalFocus,
+    observer_effect: observerEffect,
+    // The cc1113 genre-c pass's (src/lib/dm/genre-gh-horror-plays.ts).
+    ...ghHorrorPlays(),
+  };
+  return playsCache;
+}
 
 export function horrorSpend(ctx: SpendContext, play: string): Resolution {
-  const run = PLAYS[play];
+  const run = plays()[play];
   return run ? run(ctx) : { error: `No horror play called "${play}".`, retry: true };
 }

@@ -74,10 +74,11 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${uiSans.variable} ${codeMono.variable} ${sourceSerif.variable} ${cinzel.variable} h-full antialiased`}
-      // browser extensions inject attributes into <html> before React loads
+      // browser extensions (Grammarly among them) inject attributes into <html>
+      // and <body> before React loads
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
         {/* The reader's theme and scale, applied to <html> before anything
             else paints (docs/vtt-parity-implementation-plan.md section 14). */}
         <ThemeApplier />
