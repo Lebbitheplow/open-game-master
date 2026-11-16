@@ -43,9 +43,17 @@ export function petHelp(
   }
   if (foe && encounter) {
     const apart = tilesBetween(encounter.id, petPlaceOf(owner), foe.id);
-    if (apart !== null && (apart > 1 || wallBetween(encounter.id, petPlaceOf(owner), foe.id))) {
+    if (apart !== null && apart > 1) {
       return {
         error: `${foe.displayName} is ${apart * 5} ft from ${pet.name}, which stands with ${owner.name}: Help on an attack is against a creature within 5 feet of the helper. Nothing was spent.`,
+        retry: true,
+      };
+    }
+    // A wall between is total cover, and the refusal names it rather than a
+    // distance that is within reach (Y22, as take_action help's).
+    if (wallBetween(encounter.id, petPlaceOf(owner), foe.id)) {
+      return {
+        error: `A wall stands between ${foe.displayName} and ${pet.name}, which stands with ${owner.name}: Help on an attack is against a creature the helper can reach, with no wall between. Nothing was spent.`,
         retry: true,
       };
     }

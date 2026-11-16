@@ -29,12 +29,17 @@ import {
   type ConditionMeta,
   type ConditionMetaMap,
 } from "@/lib/dm/condition-logic";
-import { petSaveBlockFor, rollPetSave } from "@/lib/dm/pet-save-roll";
+import { petPlaceOf } from "@/lib/dm/pet-place";
+import { petSaveBlockFor, petSenses, rollPetSave } from "@/lib/dm/pet-save-roll";
+import { markTurnEnded, saveHoldAtTurnEnd } from "@/lib/dm/unseen-save";
 import type { CharacterSheet, SheetPet } from "@/lib/schemas/sheet";
 
 // Which instances a tick counts and which owners' pets save in it, as
 // condition-tick.ts asks of a character's (HolderTick), keyed by the owner.
+// `encounterId`: the fight being ticked, whose board a hold reads (Fear's
+// save only out of the caster's sight); the clock path has none.
 export type PetTick = {
+  encounterId?: string;
   endTurnBound?: boolean;
   counts?: (source: string | undefined) => boolean;
   saves?: (ownerId: string) => boolean;
@@ -100,6 +105,20 @@ function tickPet(campaign: Campaign, owner: CharacterSheet, pet: SheetPet, by: n
       continue;
     }
     const holds = (instance: ConditionMeta) => instanceIdentity(instance) === listed.key && instance.saveEnds?.dc === listed.dc;
+    // Fear's save comes only out of the caster's sight, Dreadful Aspect's only
+    // far from it (unseen-save.ts), as a creature's and a character's do. The
+    // pet has no token: it looks from its owner's square (pet-place.ts), with
+    // its own conditions and its block's senses. It saved at every end of its
+    // owner's turn, a wolf in plain sight of the caster shaking off Fear as
+    // readily as one behind a wall.
+    const looker = { id: petPlaceOf(owner), name: pet.name, conditions, ownSenses: petSenses(campaign, pet) };
+    const held = options.encounterId ? saveHoldAtTurnEnd(options.encounterId, looker, instancesOf(meta[listed.name]).find(holds)) : null;
+    if (held === "first") {
+      meta = markTurnEnded(meta, listed.name, holds);
+    }
+    if (held) {
+      continue;
+    }
     const effect = listed.key === "|" ? null : `${listed.key}|${listed.ability}|${listed.dc}`;
     const settled = effect ? effectSaves.get(effect) : undefined;
     if (settled !== undefined) {

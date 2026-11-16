@@ -13,33 +13,17 @@
 // odds, and a sprite's arrow ignored the low wall its target crouched
 // behind, while the hero beside them was held to all of it.
 
-import { findTableMonster } from "@/lib/bestiary/homebrew-monsters";
 import type { Campaign } from "@/lib/db/campaigns";
 import { patchEnemyConditions, type EncounterEnemy } from "@/lib/db/encounters";
 import type { SheetPet } from "@/lib/schemas/sheet";
 import type { SummonAttack } from "@/lib/schemas/summon";
-import { findShapeForm } from "@/lib/srd/beast-forms";
-import { sensesFromBlock, type Senses } from "@/lib/srd/senses";
 import { attackSight, enemySenses, lightOnAttack, sensesReaching } from "@/lib/dm/attack-light";
 import { characterShootsInMelee, coverFor } from "@/lib/dm/attack-spatial";
 import { removeConditions, type AdvantageState, type PastSight } from "@/lib/dm/condition-logic";
 import { petPlaceOf } from "@/lib/dm/pet-place";
-import { spellAuthorsFor } from "@/lib/dm/spell-authors";
+import { petSenses } from "@/lib/dm/pet-save-roll";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { conditionsSpentAgainst } from "@/lib/srd/condition-effect-queries";
-
-// The darkvision a Drake Companion's block gives it.
-const DRAKE_SENSES = { darkvision: 60 };
-
-// A pet's own senses, from its block: a familiar's or a companion's form, a
-// story pet's (the workshop's monster first), a drake's.
-export function petSenses(campaign: Campaign, pet: SheetPet): Senses {
-  if (pet.kind === "drake") {
-    return sensesFromBlock(DRAKE_SENSES);
-  }
-  const table = pet.kind === "other" ? findTableMonster(spellAuthorsFor(campaign), pet.form) : null;
-  return sensesFromBlock(table ? table.draft.stats.senses : findShapeForm(pet.form)?.senses);
-}
 
 export type PetAttackBoard = {
   sources: AdvantageState[];

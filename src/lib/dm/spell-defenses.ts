@@ -26,7 +26,8 @@ import { removeConditions, type ConditionMetaMap } from "@/lib/dm/condition-logi
 import { tranquilityDc } from "@/lib/dm/srd-defenses";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { isConditionNamed } from "@/lib/srd/feature-names";
-import { enemySenses, sensesReaching } from "@/lib/dm/attack-light";
+import { attackSight, characterSenses, enemySenses, sensesReaching } from "@/lib/dm/attack-light";
+import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // Why the enemy cannot attack this character now, or null.
 export function sanctuaryRefusal(campaignId: string, enemy: EncounterEnemy, targetId: string): ToolError | null {
@@ -53,9 +54,19 @@ export function sanctuaryRefusal(campaignId: string, enemy: EncounterEnemy, targ
 // or truesight reaches the caster (measured as an attack's senses are,
 // attack-light.ts). The duplicates turned a dragon's bite and a giant
 // spider's, both with blindsight, and a blinded ogre's club.
-function unfooledBy(attacker: EncounterEnemy, targetId: string): boolean {
-  const past = sensesReaching(attacker.encounterId, { refId: attacker.id, senses: enemySenses(attacker) }, { refId: targetId });
-  return past.blindsight || past.truesight || attacker.conditions.some((entry) => isConditionNamed(entry, "blinded"));
+// Or it cannot see the caster on the board, read as the attack's own roll
+// reads it (attackSight): magical darkness with no Devil's Sight, a dark
+// square past its darkvision, a cloud on the line. A goblin swinging blind
+// into the Darkness the wizard stood in was turned by duplicates it could
+// not see (Y20). Off the board nothing says it cannot see.
+function unfooledBy(campaignId: string, attacker: EncounterEnemy, target: CharacterSheet): boolean {
+  const senses = enemySenses(attacker);
+  const past = sensesReaching(attacker.encounterId, { refId: attacker.id, senses }, { refId: target.id });
+  if (past.blindsight || past.truesight || attacker.conditions.some((entry) => isConditionNamed(entry, "blinded"))) {
+    return true;
+  }
+  const sight = attackSight({ campaignId, encounterId: attacker.encounterId, attacker: { refId: attacker.id, senses }, target: { refId: target.id, senses: characterSenses(target) } });
+  return sight?.attackerSees === false;
 }
 
 // The attack's fate when the target holds Mirror Image: null when it goes
@@ -63,7 +74,7 @@ function unfooledBy(attacker: EncounterEnemy, targetId: string): boolean {
 export function mirrorImageDecoy(campaignId: string, targetId: string, attackTotal: number, attacker: EncounterEnemy): string | null {
   const target = getSheetById(targetId);
   const held = target?.conditions.find((entry) => isConditionNamed(entry, "mirror image", "mirror images"));
-  if (!target || !held || unfooledBy(attacker, targetId)) {
+  if (!target || !held || unfooledBy(campaignId, attacker, target)) {
     return null;
   }
   const left = Number(/\((\d)\)/.exec(held)?.[1] ?? 3);

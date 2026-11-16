@@ -29,6 +29,7 @@ import { sightTerrainFor } from "@/lib/dm/zone-rules";
 import { characterSenses, enemySenses, sensesReaching } from "@/lib/dm/attack-light";
 
 import type { Advantage } from "@/lib/dice";
+import type { Senses } from "@/lib/srd/senses";
 import { activeAuthored, hasCondition } from "@/lib/srd/authored-effects";
 import { removeConditions, sightBlockedBy, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -103,9 +104,13 @@ export function bothOnBoard(encounterId: string, fromRef: string, toRef: string)
 // and Plants asks whether the beast can see the cleric). Blindsight or
 // truesight that reaches the other sees past invisibility (attack-light.ts
 // sensesReaching, the rule an attack roll reads too).
-type Looker = { id: string; conditions: string[]; name?: string; displayName?: string } & (
+// A pet looks too (Fear's save, unseen-save.ts): it has no token, so its id
+// is its owner's, whose square it stands in (pet-place.ts), and its senses
+// are its block's (pet-save-roll.ts petSenses).
+export type Looker = { id: string; conditions: string[]; name?: string; displayName?: string } & (
   | Pick<CharacterSheet, "features" | "race">
   | Pick<EncounterEnemy, "stats">
+  | { ownSenses: Senses }
 );
 
 const lookerName = (looker: Looker) => looker.displayName ?? looker.name ?? "";
@@ -116,7 +121,7 @@ export function unseenBecause(encounterId: string, viewer: Looker, seen: Looker,
 
 // The conditions' part alone: blinded, invisible, hidden, and the senses that see past them.
 export function unseenByConditions(encounterId: string | null, viewer: Looker, seen: Looker, options: { hidden?: boolean }): string | null {
-  const senses = "stats" in viewer ? enemySenses(viewer) : characterSenses(viewer);
+  const senses = "ownSenses" in viewer ? viewer.ownSenses : "stats" in viewer ? enemySenses(viewer) : characterSenses(viewer);
   const reach = sensesReaching(encounterId, { refId: viewer.id, senses }, { refId: seen.id });
   const blocked = sightBlockedBy(viewer.conditions, seen.conditions, { ...reach, hidden: options.hidden });
   if (!blocked) {
