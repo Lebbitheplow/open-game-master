@@ -177,4 +177,58 @@ await test("W05 a poison that runs its course ends its own poisoning and leaves 
   assert.ok(world.sheet(victim.id).conditions.includes("poisoned"), "the ten days' poisoning outlasts the tincture's");
 });
 
+await test("W06 downtime and a pass_time of whole days give a long rest for each day as the days pass, with no more time and no second lifestyle", async () => {
+  // SRD 5.1, Resting, Long Rest: "A long rest is a period of extended
+  // downtime, at least 8 hours long, during which a character sleeps or
+  // performs light activity" and "A character can't benefit from more than
+  // one long rest in a 24-hour period, and a character must have at least 1
+  // hit point at the start of the rest to gain its benefits." A day of
+  // downtime or of waiting is a day the hero sleeps through, so each one
+  // gives its night's benefits: a level of exhaustion a night, half the hit
+  // dice a night.
+  await peace();
+  const { listRecentMessages } = await import("../src/lib/db/messages.ts");
+  const { dawnsBetween } = await import("../src/lib/dm/item-charges.ts");
+  const said = () => listRecentMessages(world.campaignId, 4).map((message) => message.content).join(" ");
+  const scholar = world.addHero({ class: "fighter", level: 6, maxHp: 52, hitDice: { die: "d10", total: 6, spent: 6 }, gold: 20 });
+  world.patch(scholar.id, { currentHp: 9, exhaustion: 3 });
+  const began = now();
+  const studied = await world.invoke("downtime", { days: 3, characterId: scholar.id, activity: "research", topic: "the toll-keeper's ledger" });
+  assert.equal(studied.ok, true, studied.error);
+  assert.equal(now() - began, 3 * 1440, "three days pass, and no rest's eight hours on top");
+  const after = world.sheet(scholar.id);
+  assert.equal(after.exhaustion, 0, "three nights lift three levels, one a night");
+  assert.equal(after.hitDice.spent, 0, "half the hit dice a night: all six back by the second");
+  assert.equal(after.currentHp, 52);
+  assert.match(said(), /long rest/i, "the chronicle says they rested");
+
+  // Waiting: twenty hours is no whole day; forty-seven hold one night; two
+  // days hold two. The lifestyle is paid for the dawns once, as before.
+  const waiter = world.addHero({ class: "fighter", level: 4, maxHp: 40, gold: 10 });
+  world.patch(waiter.id, { currentHp: 5, exhaustion: 3 });
+  const lived = await world.invoke("set_lifestyle", { characterIds: [waiter.id], lifestyle: "modest" });
+  assert.equal(lived.ok, true, lived.error);
+  const from = now();
+  const purse = (id) => world.sheet(id).gold * 100 + (world.sheet(id).copper ?? 0);
+  await world.invoke("pass_time", { amount: 20, unit: "hours" });
+  assert.equal(world.sheet(waiter.id).currentHp, 5, "twenty hours hold no whole day, so no rest");
+  const storm = await world.invoke("pass_time", { amount: 47, unit: "hours", reason: "the snow closes the pass" });
+  assert.equal(storm.ok, true, storm.error);
+  assert.equal(world.sheet(waiter.id).exhaustion, 2, "forty-seven hours hold one night's rest");
+  assert.equal(world.sheet(waiter.id).currentHp, 40);
+  assert.match(said(), /long rest/i, "and the chronicle says so");
+  await world.invoke("pass_time", { amount: 2, unit: "days" });
+  assert.equal(world.sheet(waiter.id).exhaustion, 0, "two more days, two more nights");
+  assert.equal(now() - from, (20 + 47 + 48) * 60, "the clock moved only by the time asked");
+  assert.equal(purse(waiter.id), 1000 - 100 * dawnsBetween(from, now()), "the modest life paid once for each dawn");
+
+  // A day waited out in the middle of a fight is no rest.
+  const guard = world.addHero({ class: "fighter", level: 4, maxHp: 40 });
+  world.patch(guard.id, { currentHp: 12 });
+  await world.beginFight([{ monster: "goblin", count: 1 }]);
+  await world.invoke("pass_time", { amount: 1, unit: "days" });
+  assert.equal(world.sheet(guard.id).currentHp, 12, "no rest in a fight");
+  await peace();
+});
+
 finish();

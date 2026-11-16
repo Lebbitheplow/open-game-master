@@ -8,10 +8,11 @@
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { advanceClock, setTravelPace } from "@/lib/db/clock";
+import { setTravelPace } from "@/lib/db/clock";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById } from "@/lib/db/sheets";
-import { describeDuration, describeInstant } from "@/lib/dm/calendar";
+import { describeDuration, describeInstant, MINUTES_PER_DAY } from "@/lib/dm/calendar";
+import { passRestingDays, restingDaysLine, restingDaysResult } from "@/lib/dm/rest-benefits";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import { liftLimits, weighed } from "@/lib/dm/load-rules";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
@@ -342,16 +343,19 @@ export function handleExploreCall(
       // (spendDowntime), so those dawns feed them.
       lifestyle[sheet.id] = coverOf(sheet, fixed);
     }
-    const moved = advanceClock(campaign.id, args.days, "days", { lifestyle });
+    // Downtime is lived and slept through: each day ends in the night's long
+    // rest for the party (rest-benefits.ts), with no more time and no second
+    // lifestyle. Left out, a week's crafting kept every wound.
+    const moved = passRestingDays(campaign, turn.id, sheets, args.days * MINUTES_PER_DAY, { lifestyle }, args.reason ?? "downtime");
     if ("error" in moved) {
       return moved;
     }
     setTravelPace(campaign.id, null);
     const lines = resolved.flatMap((entry) => spendDowntime(campaign, turn.id, entry, args.days));
     const now = describeInstant(moved.clock.calendar, moved.clock.instant);
-    tableNote(campaign, `${describeDuration(moved.minutes)} of downtime passes. It is now ${now}.`, "cue-bell");
+    tableNote(campaign, `${describeDuration(moved.minutes)} of downtime passes. It is now ${now}.${restingDaysLine(moved.rests)}`, "cue-bell");
     // The death saves the days rolled for the dying, already at the table.
-    return { ok: true, days: args.days, now, results: lines, ...(moved.deathSaves.length ? { deathSaves: moved.deathSaves } : {}), note: "Narrate the days from these results." };
+    return { ok: true, days: args.days, now, results: lines, ...restingDaysResult(moved.rests), ...(moved.deathSaves.length ? { deathSaves: moved.deathSaves } : {}), note: "Narrate the days from these results." };
   }
   if (name === "afflict") {
     const args = parse(afflictSchema, rawArguments);

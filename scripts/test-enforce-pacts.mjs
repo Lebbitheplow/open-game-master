@@ -128,7 +128,7 @@ await test("once per long rest: the road the same day tries nothing more, the ne
   t.world.clearDice();
   assert.equal(travel.ok, true, travel.error);
   assert.equal(secretRolls(t.world).filter((roll) => /to turn/.test(roll.detail)).length, 1, "none on the road before the next rest");
-  await t.world.invoke("pass_time", { amount: 24, unit: "hours" });
+  await t.world.invoke("pass_time", { amount: 16, unit: "hours" });
   await longRest(t.world, [20, 20, 20]);
   assert.equal(secretRolls(t.world).filter((roll) => /to turn/.test(roll.detail)).length, 2, "the next long rest tries again");
   assert.equal(t.pacts().length, 1);
@@ -253,7 +253,7 @@ await test("a tell: a passive Insight that beats a member's Deception is whisper
   assert.equal(brinNotes.filter((text) => /Brin notices something about/.test(text)).length, 1, "Brin is told, once");
   assert.equal(kaelNotes.length, 0, "Kael is told nothing");
   assert.deepEqual(t.pacts()[0].toldTo, [t.brin.id]);
-  await t.world.invoke("pass_time", { amount: 24, unit: "hours" });
+  await t.world.invoke("pass_time", { amount: 16, unit: "hours" });
   await longRest(t.world, [1, 1]);
   assert.equal(whispers.listWhispersForUser(t.world.campaignId, t.brinUser.id).filter((entry) => /notices something/.test(entry.content)).length, 1, "never twice for one pact");
 });

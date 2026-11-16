@@ -281,7 +281,7 @@ function engineCall(
     case "travel":
       return handleTravel(campaign, turn, rawArguments, sheets, sheetsById);
     case "pass_time":
-      return handlePassTime(campaign, rawArguments);
+      return handlePassTime(campaign, turn.id, rawArguments, sheets);
     case "set_weather":
       return handleSetWeather(campaign, rawArguments);
     case "show_title":
