@@ -27,11 +27,11 @@ async function freshArena() {
 }
 await freshArena();
 
-function arm({ str = 10, dex = 10, weapons = ["simple", "martial"], equipment = [], race = "human", ...rest }) {
+function arm({ str = 10, dex = 10, weapons = ["simple", "martial"], armor = [], equipment = [], race = "human", ...rest }) {
   return world.patch(hero.id, {
     race,
     abilities: { str, dex, con: 10, int: 10, wis: 10, cha: 10 },
-    proficiencies: profs({ weapons }),
+    proficiencies: profs({ weapons, armor }),
     equipment,
     ...rest,
   });
@@ -587,9 +587,21 @@ await test("G16: a longsword with the other hand free strikes an opportunity att
   let out = await walkAway([15, 7]);
   assert.deepEqual(out.damageDice, [10], `the longsword was swung in one hand: ${JSON.stringify(out.notes)}`);
   assert.equal(out.dealt, 7 + abilityMod(16));
-  arm({ str: 16, equipment: [{ name: "Longsword", qty: 1 }, { name: "Shield", qty: 1 }] });
+  arm({ str: 16, armor: ["shields"], equipment: [{ name: "Longsword", qty: 1 }, { name: "Shield", qty: 1 }] });
   out = await walkAway([15, 7]);
   assert.deepEqual(out.damageDice, [8], "the longsword took both hands beside a shield");
+});
+
+await test("G17: a greatsword is never swung beside a shield on an opportunity attack; the hero strikes unarmed, as the turn's swing is refused", async () => {
+  // SRD 5.1, Two-Handed: "This weapon requires two hands when you attack
+  // with it." pc_attack refuses a greatsword with a shield on the arm
+  // (attack-rules.ts handsRuling); the reaction's swing took it anyway.
+  arm({ str: 16, armor: ["shields"], equipment: [{ name: "Greatsword", qty: 1 }, { name: "Shield", qty: 1 }] });
+  const turn = await kit.swing(hero.id, { weapon: "Greatsword" }, 15, 3, 3);
+  assert.equal(turn.ok, false, "the turn's swing took the greatsword beside a shield");
+  const out = await walkAway([15, 3, 3]);
+  assert.deepEqual(out.damageDice, [], `the greatsword swung beside the shield: ${JSON.stringify(out.notes)}`);
+  assert.equal(out.dealt, 1 + abilityMod(16));
 });
 
 await kit.endFight();

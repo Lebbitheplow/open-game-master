@@ -29,9 +29,17 @@ export function opportunityWeaponFor(sheet: CharacterSheet): ResolvedWeapon {
   if (!melee.length) {
     return UNARMED;
   }
-  return resolveAttackWeapon(melee, sheet.proficiencies.weapons, undefined, {
-    shieldOnArm: acBreakdownFor(sheet).shieldName !== null,
-  });
+  const shieldOnArm = acBreakdownFor(sheet).shieldName !== null;
+  const resolved = resolveAttackWeapon(melee, sheet.proficiencies.weapons, undefined, { shieldOnArm });
+  // SRD 5.1, Two-Handed: "This weapon requires two hands when you attack
+  // with it." With only a greatsword and a shield on the arm, the best pick
+  // is still the greatsword, and the turn's swing refuses it (attack-rules.ts
+  // handsRuling); the reaction's swing took it beside the shield. It strikes
+  // unarmed instead, the melee attack the hands still allow.
+  if (shieldOnArm && (resolved.srd?.properties ?? []).includes("two-handed")) {
+    return UNARMED;
+  }
+  return resolved;
 }
 
 // The grip the reaction's swing takes. SRD 5.1, Versatile: "This weapon can
