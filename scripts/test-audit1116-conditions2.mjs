@@ -339,4 +339,16 @@ await test("D19: a creature's halved maximum is never below 1", async () => {
   assert.equal(enemyHpCap({ maxHp: 7, conditions: ["exhaustion 4"] }), 3);
 });
 
+// D22. SRD 5.1, Incapacitated: "can't take actions or reactions". The
+// Drakewarden's drake (Infused Strikes, its reaction) checked only that it
+// was above 0 hit points, so a drake held by Hold Monster still infused the
+// ranger's hit.
+await test("D22: a drake out of action takes no Infused Strikes reaction", async () => {
+  const { petReaction } = await import("../src/lib/dm/summon-reactions.ts");
+  const ranger = { ...field.sheet(kara.id), pets: [{ kind: "drake", name: "Ember", hp: 20, conditions: ["paralyzed"] }] };
+  const out = petReaction({ campaign: field.campaign(), sheet: ranger, args: { feature: "Infused Strikes" } });
+  assert.equal(out?.refused, "rules", JSON.stringify(out));
+  assert.match(String(out.error), /paralyzed/, `the held drake was refused for something else: ${out.error}`);
+});
+
 finish();
