@@ -74,6 +74,42 @@ function markFootBand(frame: HTMLElement): void {
   const band = foot?.offsetHeight ? foot.getBoundingClientRect().top - frame.getBoundingClientRect().top : Infinity;
   if (band < BAND_CLOSE) stage.setAttribute("data-foot-band", band < BAND_TIGHT ? "tight" : "close");
   else stage.removeAttribute("data-foot-band");
+  const room = band < BAND_TIGHT ? roomBesideTurnHud(frame) : null;
+  if (room === null) stage.style.removeProperty("--turn-hud-room");
+  else stage.style.setProperty("--turn-hud-room", `${room}px`);
+}
+
+// Under BAND_TIGHT the strip is about one row tall, and the turn's own
+// heading and plate (BoardChrome.tsx TurnHud) stand at its right: the
+// camera's row lay over the plate and End turn over the heading (a painted
+// appearance's taller header leaves a 1366x768 window 59px of strip). The
+// row moves left of whichever of them shares its height, where it fits clear
+// of the round's line, and stays where it was where it does not (a narrow
+// board, the order's plates drawn).
+const TURN_HUD_SELECTOR = ".board-turn-hud";
+const ROW_GAP = 8;
+
+function roomBesideTurnHud(frame: HTMLElement): number | null {
+  const hud = frame.querySelector<HTMLElement>(TURN_HUD_SELECTOR);
+  const row = frame.querySelector<HTMLElement>(".board-corner");
+  if (!hud?.offsetWidth || !row) return null;
+  const parts = [...row.children].filter((child): child is HTMLElement => child instanceof HTMLElement && child.offsetWidth > 0);
+  if (!parts.length) return null;
+  const boxes = parts.map((part) => part.getBoundingClientRect());
+  const top = Math.min(...boxes.map((box) => box.top));
+  const bottom = Math.max(...boxes.map((box) => box.bottom));
+  const need = boxes.reduce((sum, box) => sum + box.width, 0) + ROW_GAP * (boxes.length - 1);
+  const frameBox = frame.getBoundingClientRect();
+  // The row's height does not change with where it stands across.
+  const lefts = [...hud.children]
+    .map((child) => child.getBoundingClientRect())
+    .filter((box) => box.width > 0 && box.bottom > top && box.top < bottom)
+    .map((box) => box.left);
+  if (!lefts.length) return null;
+  const room = frameBox.right - Math.min(...lefts) + ROW_GAP;
+  const order = frame.querySelector<HTMLElement>("[data-tour='battle-initiative']");
+  const left = order?.offsetWidth ? order.getBoundingClientRect().right + ROW_GAP : frameBox.left + ROW_GAP;
+  return frameBox.right - room - need >= left ? Math.ceil(room) : null;
 }
 
 function cornerToClear(frame: HTMLElement | null): { width: number; height: number } | null {
@@ -373,6 +409,12 @@ export function useBoardCamera(
         watched.add(foot);
         observer.observe(foot);
       }
+      // The turn's heading changes width with whose turn it is.
+      const hud = frameEl.querySelector(TURN_HUD_SELECTOR);
+      if (hud && !watched.has(hud)) {
+        watched.add(hud);
+        observer.observe(hud);
+      }
       markFootBand(frameEl);
     };
     const observer = new ResizeObserver(() => {
@@ -410,7 +452,9 @@ export function useBoardCamera(
     return () => {
       observer.disconnect();
       mounted.disconnect();
-      frameEl.closest(STAGE_SELECTOR)?.removeAttribute("data-foot-band");
+      const stage = frameEl.closest<HTMLElement>(STAGE_SELECTOR);
+      stage?.removeAttribute("data-foot-band");
+      stage?.style.removeProperty("--turn-hud-room");
     };
   }, [frameEl, fit, options.enabled]);
 

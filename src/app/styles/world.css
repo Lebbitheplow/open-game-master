@@ -2961,6 +2961,9 @@ button.cine-chronicle-earlier:focus-visible { outline: 2px solid #f4e0a6; outlin
      the row, to the row's left. */
   .cine-fight-board[data-foot-band] .board-corner { display: flex; justify-content: flex-end; align-items: flex-end; gap: 0.5rem; padding: 0 0.5rem 0.125rem; }
   .cine-fight-board[data-foot-band] .board-corner > * { position: relative; inset: auto; }
+  /* Lower still the row shares its one line with the turn's heading and
+     plate at the right, so it stands to their left (--turn-hud-room). */
+  .cine-fight-board[data-foot-band="tight"] .board-corner { padding-right: var(--turn-hud-room, 0.5rem); }
   /* The Hand's hint is a second sentence beside its heading. On a narrow
      board it pushed the pips and Hide to a second row, and the Hand stood
      21px further up the map for it. */
