@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { stateWithThings } from "@/lib/db/cast-sheets";
 import { reactionBias } from "@/lib/dm/safety-logic";
 import { reputationDcOffset } from "@/lib/dm/faction-logic";
 import { getParty } from "@/lib/db/party";
@@ -638,7 +639,7 @@ export function npcRosterForPrompt(campaignId: string, options: { romance?: bool
     identity: npcIdentity(npc, options.romance ?? false),
     // Prisoner, bound, down (npc_state): said every turn, so nobody
     // forgets the man tied on the cart (src/lib/dm/npc-state-logic.ts).
-    state: [npcStateWords(npc.state), needsWords(npc.state, now)].filter(Boolean).join(", "),
+    state: [npcStateWords(stateWithThings(npc)), needsWords(npc.state, now)].filter(Boolean).join(", "),
     inView: npcStateKeepsInView(npc.state),
   }));
 }

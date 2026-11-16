@@ -14,6 +14,7 @@
 //     (src/lib/db/dropped-items.ts) until someone within reach takes it.
 // One handler for the AI DM, the console and connected agents
 // (src/lib/dm/invoke-dispatch.ts).
+import { isCastUserId } from "@/lib/db/users";
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -308,7 +309,10 @@ function handOver(
 ): ToolResult {
   let budget: TurnBudget | null = null;
   let cost = "";
-  if (encounter) {
+  // A first-tier NPC hands over from its cast sheet (src/lib/db/cast-sheets.ts):
+  // it has no seat in the order and its turn is its own record's, so no
+  // sheet budget is spent for it.
+  if (encounter && !isCastUserId(sheet.userId)) {
     const giver = standing(campaign.id, sheet.id).token;
     const taker = standing(campaign.id, to.id).token;
     if (giver && taker) {

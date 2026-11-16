@@ -317,7 +317,7 @@ await test("the reader's reply is held to the people asked about and to words re
   assert.deepEqual(reading.unrecorded, [{ name: "Rugo", change: "wounded" }]);
   assert.equal(guard.parseStateReading("no json", narration, people), null);
   assert.equal(guard.parseStateReading('{"clashes":[]}', narration, people), null);
-  assert.match(guard.stateGuardPrompt({ clashes: [], unrecorded: [{ name: "Rugo", change: "taken prisoner" }] }), /Call npc_state[\s\S]*Your narration stands/);
+  assert.match(guard.stateGuardPrompt({ clashes: [], unrecorded: [{ name: "Rugo", change: "taken prisoner" }] }), /handle_item action "hand"[\s\S]*anything else with npc_state[\s\S]*Your narration stands/);
   assert.match(guard.stateGuardPrompt(reading), /narrate this moment again in full/);
 });
 

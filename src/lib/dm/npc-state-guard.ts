@@ -5,6 +5,7 @@
 // the prose shows a body changing, or the party moves while it holds anyone.
 // A read that fails finds nothing.
 
+import { stateWithThings } from "@/lib/db/cast-sheets";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { listNpcs } from "@/lib/db/npcs";
@@ -52,8 +53,8 @@ export async function readStateGuard(
   }
   const cast = listNpcs(campaign.id).filter((npc) => !npc.archived && !npc.companionSheetId);
   const record = (npc: (typeof cast)[number]) =>
-    [npcStateWords(npc.state), npc.location ? `at ${npc.location}` : ""].filter(Boolean).join(", ");
-  const people: GuardPerson[] = cast.map((npc) => ({ name: npc.name, aliases: npc.aliases, record: npcStateWords(npc.state) ? record(npc) : "" }));
+    [npcStateWords(stateWithThings(npc)), npc.location ? `at ${npc.location}` : ""].filter(Boolean).join(", ");
+  const people: GuardPerson[] = cast.map((npc) => ({ name: npc.name, aliases: npc.aliases, record: npcStateWords(stateWithThings(npc)) ? record(npc) : "" }));
   const named = peopleNamed(narration, people);
   const partyMoved = calls.some((call) => PARTY_MOVES.has(call.name));
   const followers = new Set(

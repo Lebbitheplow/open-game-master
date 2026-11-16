@@ -291,7 +291,7 @@ export function usageOverview(): { campaigns: CampaignUsage[]; accounts: Account
     .prepare(
       `SELECT c.id, c.title, c.kind, c.status, c.owner_user_id, c.party_lead_user_id, c.created_at, c.updated_at,
          (SELECT COUNT(*) FROM campaign_members m WHERE m.campaign_id = c.id) AS members,
-         (SELECT COUNT(*) FROM character_sheets s WHERE s.campaign_id = c.id) AS characters,
+         (SELECT COUNT(*) FROM character_sheets s WHERE s.campaign_id = c.id AND s.sheet_kind != 'cast') AS characters,
          (SELECT COUNT(*) FROM dm_turns t WHERE t.campaign_id = c.id) AS turns,
          (SELECT COUNT(DISTINCT substr(t.created_at, 1, 10)) FROM dm_turns t WHERE t.campaign_id = c.id) AS active_days,
          (SELECT MAX(created_at) FROM campaign_messages g WHERE g.campaign_id = c.id) AS last_message_at

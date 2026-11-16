@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { PasswordBusyError, hashPassword, mintSession, passwordBusyResponse } from "@/lib/auth";
-import { firstAccountId, getUserByUsername, isCompanionUserId, listUsers, setUserPassword } from "@/lib/db/users";
+import { firstAccountId, getUserByUsername, isBotUserId, listUsers, setUserPassword } from "@/lib/db/users";
 import { clientIp, recordPasswordSuccess } from "@/lib/login-throttle";
 import { isDeviceWorld } from "@/lib/server-env";
 import { firstAccountTakesCode, setupCodeLength, setupCodeMatches } from "@/lib/setup-code";
@@ -47,7 +47,7 @@ function worldOwner(username: string | undefined) {
   const firstAdmin = () => listUsers().find((user) => user.isAdmin) ?? null;
   if (!username) return firstAdmin();
   const named = getUserByUsername(username);
-  if (!named || isCompanionUserId(named.id)) return null;
+  if (!named || isBotUserId(named.id)) return null;
   if (named.isAdmin || named.id === firstAccountId()) return named;
   return firstAdmin();
 }

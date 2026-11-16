@@ -421,7 +421,7 @@ export function deleteCampaign(campaignId: string) {
   // them before the cascade orphans the rows (sheet delete cascades from
   // the campaign, but nothing else references the bot user).
   db.prepare(
-    `DELETE FROM users WHERE id LIKE 'comp\\_%' ESCAPE '\\'
+    `DELETE FROM users WHERE (id LIKE 'comp\\_%' ESCAPE '\\' OR id LIKE 'cast\\_%' ESCAPE '\\')
        AND id IN (SELECT user_id FROM character_sheets WHERE campaign_id = ?)`,
   ).run(campaignId);
   db.prepare(`DELETE FROM campaigns WHERE id = ?`).run(campaignId);

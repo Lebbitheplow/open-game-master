@@ -1,7 +1,7 @@
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { compareNames } from "@/lib/language/text-logic";
 import { contactBlocked } from "@/lib/db/moderation";
-import { getUserByUsername, isCompanionUserId, type UserAvatar } from "@/lib/db/users";
+import { getUserByUsername, isBotUserId, type UserAvatar } from "@/lib/db/users";
 
 // Per-server friendships over the friends table (schema note in core.ts):
 // one row per pair, requester in user_id, and accepting flips 'pending' to
@@ -28,7 +28,7 @@ export type SendRequestResult = {
 
 export function sendRequest(userId: string, username: string): SendRequestResult {
   const target = getUserByUsername(username.trim());
-  if (!target || target.id === userId || isCompanionUserId(target.id)) {
+  if (!target || target.id === userId || isBotUserId(target.id)) {
     return { outcome: "noop", targetUserId: null };
   }
   // Same silent answer as an unknown name: a block must not be probeable.

@@ -128,7 +128,7 @@ export function stateGuardPrompt(reading: StateReading): string {
   const clashes = reading.clashes.map((entry) => `- ${entry.name} (${entry.problem}). You wrote: "${entry.quote}"`).join("\n");
   return [
     "[Table note] The server's record of who is a prisoner, bound or down does not match your narration.",
-    changes ? `The narration shows these changes, which no npc_state call recorded. Call npc_state for each now, with what really happened:\n${changes}` : "",
+    changes ? `The narration shows these changes, which no call recorded. Record each now, with what really happened: a thing that changed hands with handle_item action "hand" (giver and taker by name), a thing found with grant_item, a thing lost with remove_item, anything else with npc_state:\n${changes}` : "",
     clashes
       ? `These passages contradict the record:\n${clashes}\nIf the record is out of date because the story changed it, call npc_state to set it right. Then narrate this moment again in full, consistent with the record; your previous narration of it has been withdrawn.`
       : "Your narration stands: do not narrate it again.",

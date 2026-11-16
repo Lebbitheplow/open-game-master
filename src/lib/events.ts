@@ -165,10 +165,24 @@ function fanOut(campaignId: string, chunk: string) {
   }
 }
 
+function isCastSheetPayload(payload: unknown): boolean {
+  const id = (payload as { sheet?: { id?: unknown } } | null)?.sheet?.id;
+  if (typeof id !== "string") {
+    return false;
+  }
+  const row = getDatabase().prepare(`SELECT sheet_kind FROM character_sheets WHERE id = ?`).get(id) as { sheet_kind?: string } | undefined;
+  return row?.sheet_kind === "cast";
+}
+
 // Persisted events are replayable after reconnect and carry an SSE id (the
 // campaign seq). Use publishWithSeq when the seq was already allocated so a
 // row (e.g. a campaign message) can share it.
 export function publishWithSeq(campaignId: string, seq: number, type: string, payload: unknown) {
+  // A cast sheet (src/lib/db/cast-sheets.ts) is a first-tier NPC's pack,
+  // not a seat at the table: no player's list of characters ever shows it.
+  if (type === "sheet_updated" && isCastSheetPayload(payload)) {
+    return seq;
+  }
   // The log holds what the whole table may read: every member can replay
   // it. What one seat is owed beyond that is added when it is sent.
   const stored = tablePayloadFor(campaignId, type, payload);

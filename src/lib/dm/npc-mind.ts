@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { npcThings } from "@/lib/db/cast-sheets";
 import { dominantDrive, needsWords, npcSeenStateWords, npcSilencedBy } from "@/lib/dm/npc-state-logic";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getClock } from "@/lib/db/clock";
@@ -309,7 +310,7 @@ function identityOf(campaign: Campaign, npc: Npc): string[] {
     npc.location ? `You are usually found at ${npc.location}.` : "",
     // Its own things, which only the sheet held: two days on the raft the
     // minds forgot who had the key and the bread (2026-11-16).
-    npc.state.carries.length ? `What you have on you now (yours, and nobody else's): ${npc.state.carries.join("; ")}.` : "You carry nothing that matters beyond your clothes.",
+    npcThings(npc).length ? `What you have on you now (yours, and nobody else's): ${npcThings(npc).join("; ")}.` : "You carry nothing that matters beyond your clothes.",
     needsWords(npc.state, nowInstant(campaign.id)) ? `Your body right now: ${needsWords(npc.state, nowInstant(campaign.id))}. You feel it in everything you do, and it grows until you drink or eat.` : "",
     (dominantDrive(npc.state, nowInstant(campaign.id))?.urgency ?? 0) >= 60 ? "This need cannot wait any longer: this turn you act to satisfy it, by whatever means are yours (ask, bargain, take, threaten, strike). A gesture or a fine phrase is not enough." : "",
     `Your attitude toward the heroes in general: ${npc.attitude}.`,
@@ -425,11 +426,11 @@ function groundOf(campaign: Campaign, npc: Npc, memories: NpcMemory[], perceives
   const place = getCurrentLocation(campaign.id)?.name ?? "";
   const others = listNpcs(campaign.id)
     .filter((entry) => entry.id !== npc.id && !entry.archived && (here.has(textKey(entry.name)) || (place && entry.location === place && npc.location === place && !getNpcAway(entry.id))))
-    .flatMap((entry) => entry.state.carries.filter((thing) => knowsOfThing(thing, lived)).map((thing) => `${entry.name}: ${thing}`));
+    .flatMap((entry) => npcThings(entry).filter((thing) => knowsOfThing(thing, lived)).map((thing) => `${entry.name}: ${thing}`));
   return {
     nature: [npc.role, npc.trait, agencyFragment(npc.agency)].filter(Boolean).map((line) => clipText(line, 300)),
     drive: driveWords(dominantDrive(npc.state, nowInstant(campaign.id)), npc.agency.goals.scene ?? ""),
-    own: npc.state.carries,
+    own: npcThings(npc),
     others,
     people: presentPeople(present, memories),
     recent: memories.filter((memory) => memory.kind === "did" && memory.sourceKind === "self").slice(-4).map((memory) => memory.content),
@@ -746,7 +747,7 @@ export async function handleNpcSpeak(campaign: Campaign, rawArguments: string): 
       ? { unlearned: flags, flagNote: `${npc.name} named ${flags.join(", ")} without having learned it: treat it as their guess or lie, never as a fact of the world.` }
       : {}),
     narrate:
-      "Voice their words as given and show their intent. The intent is only an attempt, but it is made now: never write it as about to happen or left hanging. Resolve it through the engine's tools when it needs a roll or changes anything, and say how it ends. When they drink or eat, or a thing changes hands, record it with npc_state (drank, ate, carries). Add nothing they know beyond their words.",
+      "Voice their words as given and show their intent. The intent is only an attempt, but it is made now: never write it as about to happen or left hanging. Resolve it through the engine's tools when it needs a roll or changes anything, and say how it ends. When they drink or eat, record it with npc_state (drank, ate); when a thing changes hands, with handle_item action \"hand\" (giver and taker by name), grant_item or remove_item. Add nothing they know beyond their words.",
   };
 }
 

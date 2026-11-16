@@ -2,7 +2,7 @@ import { z } from "zod";
 import { getClock } from "@/lib/db/clock";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getCurrentLocation } from "@/lib/db/locations";
-import { getNpcAway } from "@/lib/db/npc-minds";
+import { getNpcAway, getNpcTier } from "@/lib/db/npc-minds";
 import { getNpcByName, listNpcs, nearestNpcName, renameNpc, setNpcPlace, setNpcState, touchCast } from "@/lib/db/npcs";
 import { planRename } from "@/lib/dm/entity-review-logic";
 import { textKey } from "@/lib/language/text-logic";
@@ -43,7 +43,7 @@ export const npcStateTools = [
           withParty: { type: "boolean", description: "travels with the party: goes where they go" },
           disarmed: { type: "boolean" },
           revealedName: { type: "string", description: "the name the story just revealed for someone tracked under a description; the old one stays an alias" },
-          carries: { type: "array", items: { type: "string" }, description: "replaces the list: only things that matter to the story (proof, a key), not ordinary gear" },
+          carries: { type: "array", items: { type: "string" }, description: "second-tier NPCs only, replaces the list: only things that matter to the story (proof, a key), not ordinary gear. A first-tier NPC's things move with handle_item hand, grant_item and remove_item." },
           drank: { type: "boolean", description: "they drank enough just now: their thirst starts again from this moment" },
           ate: { type: "boolean", description: "they ate a meal just now: their hunger starts again from this moment" },
         },
@@ -87,6 +87,14 @@ export function handleNpcState(campaign: Campaign, rawArguments: string): ToolRe
   }
   if (!args.custody && !args.heldBy && !args.restraint && !args.condition && args.withParty === undefined && args.disarmed === undefined && !args.carries && !args.revealedName && !args.drank && !args.ate) {
     return { error: "npc_state needs at least one of custody, heldBy, restraint, condition, withParty, disarmed, carries, drank, ate or revealedName: what changed.", retry: true };
+  }
+  // A first-tier NPC keeps its things on a cast sheet (src/lib/db/cast-sheets.ts):
+  // a list rewritten here would be the half-recorded hand-over the sheet ends.
+  if (args.carries && (npc.castSheetId || getNpcTier(npc.id) === "primary")) {
+    return {
+      error: `${npc.name} keeps their things on their own sheet, not in carries. A thing changing hands: handle_item with action "hand" (characterId the giver, toCharacterId the taker; ${npc.name} is named by name). A thing found or made: grant_item. A thing lost or destroyed: remove_item. Send npc_state again without carries for anything else that changed.`,
+      retry: true,
+    };
   }
   // A name the story revealed (the armed man at the mill is Rugo): the same
   // person under it, memories, bonds and tier and all, the old one kept as

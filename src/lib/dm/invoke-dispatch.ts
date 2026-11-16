@@ -17,6 +17,7 @@ import { playLegendaryAction, playsWhole } from "@/lib/dm/legendary-play";
 import { handleApplyHazard } from "@/lib/dm/hazard-tools";
 import { handleSearchLore } from "@/lib/dm/lore-search";
 import { handleReadCard } from "@/lib/dm/prep-card-tool";
+import { withCastSheets } from "@/lib/dm/cast-sheet-refs";
 import { applyDmMutation, MUTATION_TOOL_NAMES } from "@/lib/dm/mutations";
 import { handleWriteCampaignNote } from "@/lib/dm/note-tools";
 import {
@@ -137,6 +138,8 @@ async function dispatchCall(
   // One entry of a heal list: the casting its entries share.
   casting?: OneCasting,
 ): Promise<ToolResult> {
+  // An item call may name a first-tier NPC's cast sheet (cast-sheet-refs.ts).
+  context = withCastSheets(context, name, sentArguments);
   const { campaign, turn, sheets, sheetsById } = context;
   // The arguments as every gate and handler reads them, as the model's turn
   // loop reads them (turn.ts modelCallArguments).

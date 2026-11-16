@@ -105,22 +105,42 @@ export function isCompanionUserId(userId: string): boolean {
   return userId.startsWith("comp_");
 }
 
+// The unloginable owner of a first-tier NPC's cast sheet
+// (src/lib/db/cast-sheets.ts): one per sheet, like a companion's.
+export function createCastUser(npcName: string): User {
+  const db = getDatabase();
+  const id = `cast_${crypto.randomUUID()}`;
+  const username = ["cast", asciiSlugOf(npcName).slice(0, 24), id.slice(5, 13)].filter((part) => part !== "").join("-");
+  db.prepare(`INSERT INTO users (id, username, password_hash, created_at, is_admin) VALUES (?, ?, ?, ?, 0)`).run(id, username, NO_PASSWORD_SENTINEL, nowIso());
+  return { id, username, avatar: null, createdAt: nowIso(), isAdmin: false, mustChangePassword: false, deletionRequestedAt: null, deletionDueAt: null };
+}
+
+// A user no person plays: a companion's or a cast sheet's owner.
+export function isCastUserId(userId: string): boolean {
+  return userId.startsWith("cast_");
+}
+
+export function isBotUserId(userId: string): boolean {
+  return isCompanionUserId(userId) || isCastUserId(userId);
+}
+
 // The bot user behind a companion's sheet, put back under the id it had: a
 // chapter rewound across a dismissal restores the sheet (src/lib/db/
 // snapshots.ts), and the sheet's user_id must name a user or the restore
 // fails whole. Users are not snapshotted, so this is the one row it needs.
 export function restoreCompanionUser(userId: string, companionName: string) {
-  if (!isCompanionUserId(userId)) {
+  if (!isBotUserId(userId)) {
     return;
   }
-  const username = ["companion", asciiSlugOf(companionName).slice(0, 24), userId.slice(5, 13)].filter((part) => part !== "").join("-");
+  const prefix = isCompanionUserId(userId) ? "companion" : "cast";
+  const username = [prefix, asciiSlugOf(companionName).slice(0, 24), userId.slice(5, 13)].filter((part) => part !== "").join("-");
   getDatabase()
     .prepare(`INSERT OR IGNORE INTO users (id, username, password_hash, created_at, is_admin) VALUES (?, ?, ?, ?, 0)`)
     .run(userId, username, NO_PASSWORD_SENTINEL, nowIso());
 }
 
 export function deleteCompanionUser(userId: string) {
-  if (!isCompanionUserId(userId)) {
+  if (!isBotUserId(userId)) {
     return;
   }
   getDatabase().prepare(`DELETE FROM users WHERE id = ?`).run(userId);

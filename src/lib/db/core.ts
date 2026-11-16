@@ -1743,6 +1743,10 @@ function ensureSchema(db: SqliteDatabase) {
     // UNIQUE(campaign_id, user_id) and the users FK stay satisfied. The DM
     // drives these sheets (src/lib/dm/companion-tools.ts).
     ["is_companion", `INTEGER NOT NULL DEFAULT 0`],
+    // 'cast' = the sheet a first-tier NPC keeps its things on
+    // (src/lib/db/cast-sheets.ts, docs/specs/ogm-npc-cast-sheet.md): neither a
+    // hero nor a companion, so listSheets never returns it. '' otherwise.
+    ["sheet_kind", `TEXT NOT NULL DEFAULT ''`],
     // 'party' = travels with the party until dismissed; 'guest' = scene-
     // scoped ally the DM writes out when the scene ends.
     ["companion_kind", `TEXT`],
@@ -2493,6 +2497,9 @@ function ensureSchema(db: SqliteDatabase) {
     // 0.1): their personality axes, kept when the sheet is dismissed so a
     // deed still weighs by who they are. '' for every ordinary NPC.
     ["companion_sheet_id", `TEXT NOT NULL DEFAULT ''`],
+    // The cast sheet a first-tier NPC keeps its things on
+    // (src/lib/db/cast-sheets.ts); '' until it first needs one.
+    ["cast_sheet_id", `TEXT NOT NULL DEFAULT ''`],
   ]);
 
   addColumns("relationships", [

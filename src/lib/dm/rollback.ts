@@ -3,7 +3,7 @@ import { forgetCampaignItemCasts } from "@/lib/db/item-cast-credits";
 import { allocateSeq, getCampaignById } from "@/lib/db/campaigns";
 import { insertCampaignMessage, listRecentMessages } from "@/lib/db/messages";
 import { markRolledBack, recordRollbackCorrections } from "@/lib/db/turn-ledger";
-import { deleteCompanionUser, isCompanionUserId } from "@/lib/db/users";
+import { deleteCompanionUser, isBotUserId } from "@/lib/db/users";
 import {
   capturePreRollbackSnapshot,
   deleteBoundarySnapshotsAfter,
@@ -186,7 +186,7 @@ function rollbackNow(
     db.prepare(`SELECT user_id FROM character_sheets WHERE campaign_id = ?`).all(campaignId) as Array<{ user_id: string }>
   )
     .map((row) => row.user_id)
-    .filter(isCompanionUserId);
+    .filter(isBotUserId);
 
   const corrections = db.transaction(() => {
     // The biggest correction there is, kept before its evidence goes: one

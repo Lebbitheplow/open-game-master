@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { currentUser, unauthorized } from "@/lib/auth";
 import { blockUser, listBlockedUsers, unblockUser } from "@/lib/db/moderation";
-import { getUserById, isCompanionUserId } from "@/lib/db/users";
+import { getUserById, isBotUserId } from "@/lib/db/users";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid request." }, { status: 400 });
   }
   const target = getUserById(parsed.data.userId);
-  if (!target || isCompanionUserId(target.id)) {
+  if (!target || isBotUserId(target.id)) {
     return Response.json({ error: "That player no longer exists." }, { status: 404 });
   }
   if (target.id === user.id) {

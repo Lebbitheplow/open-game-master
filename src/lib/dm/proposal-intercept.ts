@@ -1,4 +1,5 @@
 import type { Campaign } from "@/lib/db/campaigns";
+import { isBotUserId } from "@/lib/db/users";
 import { allocateSeq } from "@/lib/db/campaigns";
 import {
   insertItemProposal,
@@ -69,6 +70,10 @@ export function maybeProposeItemChange(
     return null;
   }
   const sheet = args.characterId ? sheetsById.get(String(args.characterId)) : undefined;
+  // A first-tier NPC's cast sheet has no player to offer it to.
+  if (sheet && isBotUserId(sheet.userId)) {
+    return null;
+  }
   if (!shouldProposeChange(campaign.gameSettings, toolName, sheet ?? null)) {
     return null;
   }

@@ -765,10 +765,25 @@ export function playingAsByCampaign(userId: string): Map<string, string> {
 export function listSheets(campaignId: string): CharacterSheet[] {
   const rows = getDatabase()
     .prepare(
-      `SELECT ${SHEET_COLUMNS} FROM character_sheets WHERE campaign_id = ? ORDER BY created_at ASC, rowid ASC`,
+      `SELECT ${SHEET_COLUMNS} FROM character_sheets WHERE campaign_id = ? AND sheet_kind != 'cast' ORDER BY created_at ASC, rowid ASC`,
     )
     .all(campaignId) as SheetRow[];
   return rows.map(mapSheet);
+}
+
+// The cast sheets of a campaign (src/lib/db/cast-sheets.ts): the things
+// first-tier NPCs carry. Never in listSheets, so nothing that means "the
+// heroes and their companions" sees them.
+export function listCastSheets(campaignId: string): CharacterSheet[] {
+  const rows = getDatabase()
+    .prepare(`SELECT ${SHEET_COLUMNS} FROM character_sheets WHERE campaign_id = ? AND sheet_kind = 'cast' ORDER BY created_at ASC, rowid ASC`)
+    .all(campaignId) as SheetRow[];
+  return rows.map(mapSheet);
+}
+
+export function markSheetAsCast(sheetId: string): CharacterSheet | null {
+  getDatabase().prepare(`UPDATE character_sheets SET sheet_kind = 'cast', updated_at = ? WHERE id = ?`).run(nowIso(), sheetId);
+  return getSheetById(sheetId);
 }
 
 // Mirror of per-class hit-die pools into the legacy single hitDice field:

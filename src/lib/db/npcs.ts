@@ -90,6 +90,9 @@ export type Npc = {
   // The lasting AI companion this row stands behind (#503 Phase 0.1), by
   // sheet id; "" for an ordinary NPC. Kept after a dismissal.
   companionSheetId: string;
+  // The cast sheet this first-tier NPC keeps its things on
+  // (src/lib/db/cast-sheets.ts); "" until it first needs one.
+  castSheetId: string;
   // Kept out of the Active NPCs prompt block; restored on a name mention.
   archived: boolean;
   // When the party first dealt with them through a rule: a reaction roll, a
@@ -139,6 +142,7 @@ type NpcRow = {
   stat_block?: string | null;
   attraction_json?: string | null;
   companion_sheet_id?: string | null;
+  cast_sheet_id?: string | null;
   archived: number;
   met_at?: string | null;
   heard_at?: string | null;
@@ -161,6 +165,7 @@ function mapNpc(row: NpcRow): Npc {
     race: storedRace(row.race),
     attraction: normalizeAttraction(row.attraction_json ?? ""),
     companionSheetId: row.companion_sheet_id ?? "",
+    castSheetId: row.cast_sheet_id ?? "",
     lastShiftTurn: row.last_shift_turn,
     aliases: parseJson<string[]>(row.aliases_json, []),
     agency: {
@@ -206,6 +211,12 @@ export function listNpcs(campaignId: string): Npc[] {
 export function listCastNpcs(campaignId: string): Npc[] {
   const live = liveSheetIds(campaignId);
   return listNpcs(campaignId).filter((npc) => !npc.companionSheetId || !live.has(npc.companionSheetId));
+}
+
+// Links a first-tier NPC to the cast sheet its things live on
+// (src/lib/db/cast-sheets.ts).
+export function setNpcCastSheet(npcId: string, sheetId: string): void {
+  getDatabase().prepare(`UPDATE npcs SET cast_sheet_id = ?, updated_at = ? WHERE id = ?`).run(sheetId, nowIso(), npcId);
 }
 
 export function standsBehindLiveCompanion(npc: Npc): boolean {
