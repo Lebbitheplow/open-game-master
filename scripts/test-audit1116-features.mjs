@@ -335,4 +335,22 @@ await test("A08: a healing feature aimed at a creature it cannot reach heals nob
   await kit.endFight();
 });
 
+// A09. SRD 5.1, Slow: "it can't use reactions", and "On its turn, it can use
+// either an action or a bonus action, not both." The engine refused both,
+// but GAME STATE told the model a slowed hero who had acted still had a
+// bonus action and a reaction left, and the model offered them.
+await test("A09: GAME STATE's turn line offers a slowed hero no bonus action after their action, and no reaction", async () => {
+  const { describeBudget, freshBudget } = await import("../src/lib/dm/action-budget.ts");
+  const slowed = freshBudget({ ownerId: "hero", round: 1, slowed: true });
+  const acted = describeBudget({ ...slowed, actionUsed: true, attacksMade: 1 });
+  assert.doesNotMatch(acted, /bonus action/, `after the action: ${acted}`);
+  assert.doesNotMatch(acted, /reaction/, `a slowed hero takes no reaction: ${acted}`);
+  const bonus = describeBudget({ ...slowed, bonusUsed: true });
+  assert.doesNotMatch(bonus, /\baction\b(?! \()/, `after the bonus action, no action: ${bonus}`);
+  // Unslowed, both stay on offer.
+  const free = describeBudget({ ...freshBudget({ ownerId: "hero", round: 1 }), actionUsed: true, attacksMade: 1 });
+  assert.match(free, /bonus action/);
+  assert.match(free, /reaction/);
+});
+
 finish();
