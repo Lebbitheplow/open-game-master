@@ -8,6 +8,7 @@
 // disadvantage is -5; in darkness a creature without darkvision sees nothing,
 // and darkvision turns darkness into dim light and dim light into bright.
 import { isConditionNamed } from "../srd/feature-names.ts";
+import { paceEffect, type TravelPace } from "../srd/travel.ts";
 import type { TableLanguage } from "../schemas/game-settings-options.ts";
 
 export type Light = "bright" | "dim" | "dark";
@@ -161,11 +162,11 @@ export function lightHangsOnSense(light: Light | null | undefined, skill: string
 // The march's own penalty to every passive Perception, by sight or by ear
 // (SRD 5.1, Travel Pace: a fast pace is "-5 penalty to passive Wisdom
 // (Perception) scores"). check_notice and the ambush that opens a fight
-// (encounter-open.ts decideAmbush) both read it here: the ambush read the
-// passive score without it, so a party racing down the road was jumped as
-// rarely as one walking.
-export function pacePerceptionShift(pace: "fast" | "normal" | "slow" | undefined): number {
-  return pace === "fast" ? -5 : 0;
+// (encounter-open.ts decideAmbush) both read it here, from the pace table
+// (srd/travel.ts): the ambush read the passive score without it, so a party
+// racing down the road was jumped as rarely as one walking.
+export function pacePerceptionShift(pace: TravelPace | undefined): number {
+  return pace ? paceEffect(pace).passivePerceptionMod : 0;
 }
 
 // The shift to a passive Perception that relies on sight, with the reasons
