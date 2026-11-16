@@ -153,4 +153,85 @@ await test("U02: a ranger's companion keeps up with the ranger's level-ups", asy
   assert.deepEqual(at5.conditions, at4.conditions, "what it is doing is its own");
 });
 
+// U03. SRD 5.1, Unseen Attackers and Targets: "When you attack a target
+// that you can't see, you have disadvantage on the attack roll"; Cover:
+// "A target with half cover has a +2 bonus to AC"; Ranged Attacks: "Attacking
+// at long range imposes disadvantage", and "you have disadvantage on a
+// ranged attack roll if you are within 5 feet of a hostile creature who can
+// see you and who isn't incapacitated". The hero's attack from a square read
+// all four; the pet's attack from the same square (ruling D2) read none.
+await test("U03: a pet's attack reads the light, its target's cover and its bow's range from its owner's square", async () => {
+  const maps = await import("../src/lib/db/battle-maps.ts");
+  const { getDatabase } = await import("../src/lib/db/core.ts");
+  const { clearLitTilesCache } = await import("../src/lib/battlemap/lit-cache.ts");
+  const lightsOut = () => {
+    const board = kit.map();
+    maps.setBattleMapOutdoors(board.id, false);
+    getDatabase().prepare(`UPDATE battle_maps SET ambient = 'dark', lights_json = '[]', zones_json = '[]' WHERE id = ?`).run(board.id);
+    for (const token of maps.listTokens(board.id)) {
+      maps.setTokenLight(token.id, 0);
+    }
+    clearLitTilesCache();
+  };
+  const lightsOn = () => {
+    getDatabase().prepare(`UPDATE battle_maps SET ambient = 'bright' WHERE id = ?`).run(kit.map().id);
+    clearLitTilesCache();
+  };
+  await kit.endFight();
+  // U01's fight left the mastiff hurt: whole again.
+  world.patch(keeper.id, { pets: world.sheet(keeper.id).pets.map((pet) => ({ ...pet, hp: pet.maxHp, conditions: [], conditionMeta: {} })) });
+  const warlock = world.addHero({ class: "warlock", level: 5, maxHp: 40, proficiencies: { ...TRAINED } });
+  world.patch(warlock.id, { features: [...world.sheet(warlock.id).features, { name: "Pact of the Chain", source: "class" }] });
+  const sprite = await world.invoke("summon_pet", { characterId: warlock.id, kind: "familiar", form: "sprite" });
+  assert.equal(sprite.ok, true, sprite.error);
+  await kit.fight(2);
+  const [enemy, other] = world.enemies();
+  kit.setEnemy(enemy.id, { maxHp: 200, stats: { ...kit.enemy(enemy.id).stats, senses: { passivePerception: 10, darkvision: 60 } } });
+  kit.setEnemy(other.id, { maxHp: 200 });
+
+  // In the dark, the mastiff (no darkvision) bites a creature that sees it.
+  kit.openField();
+  kit.place(keeper.id, 5, 5);
+  kit.place(enemy.id, 5, 6);
+  kit.place(other.id, 15, 15);
+  kit.place(warlock.id, 12, 2);
+  lightsOut();
+  kit.giveTurn(keeper.id);
+  const bite = await forced([15, 15, 1], () => world.invoke("pet_attack", { characterId: keeper.id, petName: "Brute", targetEnemyId: enemy.id }));
+  assert.equal(bite.ok, true, bite.error);
+  assert.equal(lastAttackDice(/^Bite/), 2, "a mastiff bit a creature it could not see in the dark at full odds");
+  lightsOn();
+
+  // The sprite's shortbow (40/160 ft.) at a creature crouched behind a low
+  // wall 15 feet off: half cover.
+  kit.setEnemy(enemy.id, { conditions: [], conditionMeta: {} });
+  kit.openField([[5, 7, "|"]]);
+  kit.place(warlock.id, 5, 5);
+  kit.place(keeper.id, 15, 2);
+  kit.place(enemy.id, 5, 8);
+  kit.giveTurn(warlock.id);
+  const behind = await forced([12, 1], () => world.invoke("pet_attack", { characterId: warlock.id, targetEnemyId: enemy.id, attack: "Shortbow" }));
+  assert.equal(behind.ok, true, behind.error);
+  assert.equal(behind.result.vsAc, 13 + 2, `the low wall's half cover: ${JSON.stringify(behind.result)}`);
+  assert.equal(lastAttackDice(/^Shortbow/), 1, "a shot within normal range with nobody close is a straight roll");
+  // 45 feet off, past its normal range.
+  kit.openField();
+  kit.setEnemy(enemy.id, { conditions: [], conditionMeta: {} });
+  kit.place(enemy.id, 14, 5);
+  kit.giveTurn(warlock.id);
+  const far = await forced([12, 12, 1], () => world.invoke("pet_attack", { characterId: warlock.id, targetEnemyId: enemy.id, attack: "Shortbow" }));
+  assert.equal(far.ok, true, far.error);
+  assert.equal(lastAttackDice(/^Shortbow/), 2, `a shot past the sprite's normal range rolled one d20: ${JSON.stringify(far.result)}`);
+
+  // Within normal range with a creature at the warlock's elbow.
+  kit.setEnemy(enemy.id, { conditions: [], conditionMeta: {} });
+  kit.place(enemy.id, 5, 9);
+  kit.place(other.id, 5, 4);
+  kit.giveTurn(warlock.id);
+  const close = await forced([12, 12, 1], () => world.invoke("pet_attack", { characterId: warlock.id, targetEnemyId: enemy.id, attack: "Shortbow" }));
+  assert.equal(close.ok, true, close.error);
+  assert.equal(lastAttackDice(/^Shortbow/), 2, "a shot with a hostile creature within 5 feet rolled one d20");
+  await kit.endFight();
+});
+
 finish();

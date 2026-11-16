@@ -38,6 +38,7 @@ import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { resolveMonster } from "@/lib/bestiary";
 import { commandPet, drakeSummonCost, essenceChoice } from "@/lib/dm/pet-command";
 import { petResistLine, petUnderwaterSwing } from "@/lib/dm/pet-underwater";
+import { petAttackBoard } from "@/lib/dm/pet-attack-board";
 
 // The creatures bound to a character: familiars (Find Familiar, Pact of the
 // Chain), the Beast Master's companion, the Drakewarden's drake, and story
@@ -379,6 +380,9 @@ export function handlePetAttack(
   // made it (pet-build.ts petCreatureType). Only the warding spells counted.
   const feetTo = petFeetTo(encounter.id, sheet, enemy.id);
   const ranged = Boolean(attack.range) && !(attack.thrown && feetTo !== null && feetTo <= (attack.reach ?? 5));
+  // The light, its senses, the target's cover and the bow's range, read from
+  // its owner's square as the hero's attack reads them (pet-attack-board.ts).
+  const board = petAttackBoard({ campaign, encounterId: encounter.id, ownerId: sheet.id, pet, enemy, attack, ranged, feetTo });
   const incoming = attackContext({
     attackerConditions: pet.conditions ?? [],
     targetConditions: enemy.conditions,
@@ -386,7 +390,10 @@ export function handlePetAttack(
     adjacent: feetTo === null ? !ranged : feetTo <= 5,
     requested: "none",
     attackerType: petCreatureType(pet),
+    attackerSenses: board.attackerSenses,
+    targetSeesAttacker: board.targetSeesAttacker,
   });
+  incoming.notes.push(...board.notes);
   // Its owner's water is its own (pet-underwater.ts): a bite without a
   // swimming speed at disadvantage, a shot past normal range a miss.
   const water = petUnderwaterSwing(campaign, sheet.id, pet, { attack: attack.name, ranged, beyondNormal: ranged && feetTo !== null && feetTo > (attack.range ?? feetTo) });
@@ -398,7 +405,7 @@ export function handlePetAttack(
     commandPet(campaign, sheet.id, pet.name);
     return { ok: true, attack: `${pet.name}: ${attack.name}`, hit: false, missed: water.note, economy };
   }
-  const advantage = water?.disadvantage ? mergeAdvantage([...incoming.sources, "disadvantage"]) : incoming.advantage;
+  const advantage = mergeAdvantage([...incoming.sources, ...board.sources, ...(water?.disadvantage ? ["disadvantage" as const] : [])]);
   // Tagged as an ally's attack, so a foretold number a watch stop armed for
   // the pet lands on its d20 (foresight-saves.ts).
   const hitOutcome = rollExpression(d20Expression(attack.toHit, advantage), undefined, { purpose: { roller: "hero", kind: "attack", who: pet.name } });
@@ -421,8 +428,8 @@ export function handlePetAttack(
   // Commanded, the creature is not dodging this turn (pet-command.ts).
   commandPet(campaign, sheet.id, pet.name);
 
-  // The enemy's real AC today: a spell or an effect on it counts.
-  const vsAc = enemyAcWithEffects(campaign.id, enemy);
+  // The enemy's real AC today: a spell or an effect on it counts, and its cover.
+  const vsAc = enemyAcWithEffects(campaign.id, enemy) + board.cover;
   const hit = hitOutcome.crit !== "nat1" && (hitOutcome.crit === "nat20" || hitOutcome.total >= vsAc);
   const crit = hit && (hitOutcome.crit === "nat20" || incoming.autoCrit);
   if (!hit) {
