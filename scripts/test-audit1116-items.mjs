@@ -4,6 +4,7 @@
 import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
+import { gearKit, profs } from "./lib/enforce-equipment.mjs";
 
 const { test, finish } = suite("test-audit1116-items");
 const world = await openWorld({ campaign: { maxPlayers: 40 } });
@@ -215,5 +216,46 @@ await test("I04: Oil of Slipperiness is freedom of movement for 8 hours", async 
   assert.equal(moverSpellTraits({ conditions: sheet.conditions }).landStride, true, `conditions: ${sheet.conditions.join(", ")}`);
 });
 
+// I05. SRD 5.1, Variant: Encumbrance: "If you carry weight in excess of 10
+// times your Strength score, up to your maximum carrying capacity, you are
+// instead heavily encumbered, which means your speed drops by 20 feet and you
+// have disadvantage on ability checks, attack rolls, and saving throws that
+// use Strength, Dexterity, or Constitution." The turn's swing rolled at
+// disadvantage; the same hero's opportunity attack rolled one d20.
+const RULES = {
+  flanking: false, criticalFumbles: false, encumbrance: true, lingeringInjuries: false,
+  powerfulCritical: false, criticalDamageMods: false, ammunition: false, restVariant: "standard",
+};
+const loaded = await openWorld({ campaign: { maxPlayers: 10 }, gameSettings: { variantRules: RULES } });
+const loadedKit = await gearKit(loaded);
+const porter = loaded.addHero({ class: "fighter", level: 5 });
+const mule = loaded.addHero({ class: "fighter", level: 5 });
+const { resolvePcOpportunityAttacks } = await import("../src/lib/dm/opportunity.ts");
+const loadedMaps = await import("../src/lib/db/battle-maps.ts");
+
+await test("I05: a heavily encumbered hero's opportunity attack is made at disadvantage, as the turn's swing is", async () => {
+  await loadedKit.arena({ first: porter.id });
+  // Strength 8: heavily encumbered past 80 lb, carrying up to 120.
+  loaded.patch(mule.id, {
+    abilities: { str: 8, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
+    proficiencies: profs({ weapons: ["simple", "martial"], armor: [] }),
+    equipment: [{ name: "Longsword", qty: 1, equipped: true }, { name: "Anvil", qty: 1, weight: 100 }],
+  });
+  const goblin = loadedKit.dummy();
+  const map = loadedKit.board();
+  loadedMaps.placeToken(loadedMaps.getTokenByRef(map.id, porter.id).id, 9, 9);
+  loadedMaps.placeToken(loadedMaps.getTokenByRef(map.id, goblin.id).id, 3, 0);
+  loadedMaps.placeToken(loadedMaps.getTokenByRef(map.id, mule.id).id, 2, 0);
+  loaded.clearDice();
+  loaded.diceLog();
+  loaded.dice(15, 2, 4);
+  const notes = resolvePcOpportunityAttacks(loaded.campaign(), goblin.id, { x: 3, y: 0 }, { x: 5, y: 0 }, [{ x: 4, y: 0 }, { x: 5, y: 0 }]);
+  const d20s = loaded.diceLog().filter((die) => die.sides === 20).length;
+  loaded.clearDice();
+  assert.ok(notes.some((note) => /breaks away/i.test(note)), `no opportunity attack: ${JSON.stringify(notes)}`);
+  assert.equal(d20s, 2, `the swing rolled ${d20s} d20 (disadvantage throws two): ${notes.join(" ")}`);
+});
+
 world.close();
+loaded.close();
 finish();
