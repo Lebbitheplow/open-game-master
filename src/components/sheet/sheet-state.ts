@@ -23,7 +23,7 @@ import {
 } from "@/lib/dm/condition-logic";
 import { attunementRefusal } from "@/lib/dm/usage-rules";
 import type { CharacterSheet, EquipmentItem, SheetPet } from "@/lib/schemas/sheet";
-import { speedFor } from "@/lib/srd";
+import { effectiveAcFor, speedFor } from "@/lib/srd";
 import { UNLIMITED_USES, resourceDef } from "@/lib/srd/class-resources";
 import { chargeMax, chargeRuleOf, chargesLeft } from "@/lib/srd/item-charge-rules";
 import { gearDefFor } from "@/lib/srd/magic-gear";
@@ -51,6 +51,23 @@ export function maxHpView(sheet: CharacterSheet): { max: number; stored: number;
           ? `Raised by worn, attuned gear that sets Constitution (${sheet.maxHp} without it).`
           : `The rules put the maximum at ${max} right now (${sheet.maxHp} on the sheet).`;
   return { max, stored: sheet.maxHp, note };
+}
+
+// ---- armor class ----
+
+// The AC attacks meet, as the attack engine reads it (effectiveAcFor): a beast
+// form's own AC with Barkskin's floor, Shield of Faith and Haste on it, and
+// those riders on a pinned AC. The panel and the sheet showed the wolf's bare
+// 13 under a Barkskin that held it at 16. (A curse laid with set_effect is
+// the server's alone and shows in GAME STATE.)
+export function acView(sheet: CharacterSheet): { ac: number; note: string | null } {
+  const ac = effectiveAcFor(sheet);
+  const note = sheet.wildShape
+    ? `The ${sheet.wildShape.form}'s armor class${ac !== sheet.wildShape.beastAc ? `, ${sheet.wildShape.beastAc} before the spells on it` : ""}; ${sheet.name}'s own is ${sheet.ac}.`
+    : ac !== sheet.ac
+      ? `Spells on them change it from ${sheet.ac}.`
+      : null;
+  return { ac, note };
 }
 
 // ---- speed ----
@@ -142,6 +159,13 @@ export function stateTags(sheet: CharacterSheet): StateTag[] {
 // ends (WIS 13)", "from Goblin 2", "3 rounds".
 export function conditionDetail(sheet: CharacterSheet, condition: string, nameOf: (id: string) => string | null): string {
   return conditionNoteLine(conditionNote(condition, sheet.conditionMeta?.[condition], nameOf, sheet.id));
+}
+
+// A familiar tucked into its pocket dimension (pet-pocket.ts) is out of reach
+// of everything until summon_pet calls it back. The party panel listed it with
+// its hit points like one at its owner's side, so the player reached for it.
+export function petAwayNote(pet: Pick<SheetPet, "pocketed">): string | null {
+  return pet.pocketed === true ? "In its pocket dimension" : null;
 }
 
 // The same for a pet's condition: its turn is its owner's (pet-conditions.ts).

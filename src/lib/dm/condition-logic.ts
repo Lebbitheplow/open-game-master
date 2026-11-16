@@ -1023,6 +1023,9 @@ export function describeExhaustion(level: number): string {
     level >= 3 ? "disadvantage on attacks and saves" : null,
     level >= 4 ? "hit point maximum halved" : null,
     level >= 5 ? "speed 0" : null,
+    // SRD 5.1: "6: Death." Listed as level 5, a hero at 6 read as one who
+    // could not move.
+    level >= 6 ? "death" : null,
   ].filter(Boolean);
   return `exhaustion level ${level}${effects.length ? ` (${effects.join("; ")})` : ""}`;
 }

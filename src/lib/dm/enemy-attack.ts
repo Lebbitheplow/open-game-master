@@ -990,8 +990,14 @@ export function handleEnemyAttack(
     everyHitTurnable &&= waits;
     const psychicBack = measureRetort(enemy.id, () => thoughtShieldBack(campaign, turn, struck, enemy.id, { amount: Math.min(dealt, 200), type: blow.type, parts: blow.parts ? scaledParts(blow.parts, dealt) : undefined, flags }, sheets, sheetsById, waits), (back) => (back.thoughtShield && !back.waiting ? ["Thought Shield"] : []));
     Object.assign(applied, psychicBack.result);
+    // What the target took after its resistances, immunities and
+    // vulnerabilities (SRD 5.1: "If a creature or an object has resistance
+    // to a damage type, damage of that type is halved against it"). The
+    // result said the blow as rolled: a raging hero who lost 3 of a club's 6
+    // was narrated 6, and the table line read "HIT for 6".
+    const taken = dealt > 0 ? meetDefenses(blowDefenses(campaign.id, struck, flags), Math.min(dealt, 200), blow.type, blow.parts ? scaledParts(blow.parts, dealt) : undefined, 0).amount : 0;
     totalDamage += dealt;
-    takenTotal += dealt > 0 ? meetDefenses(blowDefenses(campaign.id, struck, flags), Math.min(dealt, 200), blow.type, blow.parts ? scaledParts(blow.parts, dealt) : undefined, 0).amount : 0;
+    takenTotal += taken;
     previousHit = true;
     if (multiattackDefense) {
       defended = 4;
@@ -1092,7 +1098,8 @@ export function handleEnemyAttack(
       rolled: hitOutcome.total,
       hit: true,
       ...(crit ? { crit: true } : {}),
-      damage: dealt,
+      damage: taken,
+      ...(typeof applied.resistance === "string" ? { resistance: applied.resistance } : {}),
       ...(byType ? { damageByType: byType } : {}),
       ...(onHit ?? {}),
       ...(charged.length ? { charge: charged } : {}),
@@ -1126,7 +1133,7 @@ export function handleEnemyAttack(
     ...(planned.length > 1 ? { multiattack: planned.map((attack) => attack.name).join(", ") } : {}),
     swings,
     hit: swings.some((entry) => entry.hit),
-    ...(totalDamage > 0 ? { totalDamage, damageType: [...damageTypes].join("/") } : {}),
+    ...(totalDamage > 0 ? { totalDamage: takenTotal, damageType: [...damageTypes].join("/") } : {}),
     ...(notes.length ? { conditionEffects: notes } : {}),
     ...(targetHp ? { targetHp } : {}),
     ...(dropped ? { dropped: true, note: `${target.name} falls to 0 HP.` } : {}),

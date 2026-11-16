@@ -89,7 +89,8 @@ import { slayersCounterAtStop } from "@/lib/dm/slayers-counter";
 import { layCloudTurn } from "@/lib/dm/cloud-rune";
 import { runWithShift } from "@/lib/dm/chronal-shift";
 import { adoptTurnAudit } from "@/lib/db/sheet-audit";
-import { describeConditionDuration } from "@/lib/dm/condition-logic";
+import { describeConditionDuration, incapacitatedBy } from "@/lib/dm/condition-logic";
+import { canAct } from "@/lib/dm/can-act";
 import { heldRollUserIds } from "@/lib/dice/held-rolls";
 import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events";
 import { generateImageTool, parseGenerateImageToolCall } from "@/lib/image-tool";
@@ -276,6 +277,7 @@ import {
   mutationTools,
 } from "@/lib/dm/mutations";
 import { describeBudget } from "@/lib/dm/action-budget";
+import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
 import { turnStillOwes } from "@/lib/dm/turn-budget";
 import { castBuffTool } from "@/lib/dm/cast-tools";
 import {
@@ -516,8 +518,11 @@ export function buildEncounterState(campaignId: string, sheets: CharacterSheet[]
     // never on the budget's own flag: read from the budget alone, a hero who
     // took Shield on their own turn was told to the model as still holding
     // their reaction.
+    // One dropped or stunned mid-turn has nothing left to spend: the line
+    // still offered an unconscious fighter "1 attack left, bonus action,
+    // reaction" (can-act.ts refuses them all).
     turnBudget: encounter.turnBudget
-      ? describeBudget({ ...encounter.turnBudget, reactionUsed: encounter.turnBudget.reactionUsed || encounter.reactionsUsed.includes(encounter.turnBudget.ownerId) })
+      ? stoppedMidTurn(actingSheet, encounter) ?? describeBudget({ ...encounter.turnBudget, reactionUsed: encounter.turnBudget.reactionUsed || encounter.reactionsUsed.includes(encounter.turnBudget.ownerId) })
       : null,
     ...(actingSheet && bonusSwing ? { bonusSwingOpen: `${actingSheet.name}'s Attack action earned ${bonusSwing}. Their turn is not over until their player makes it or ends the turn: never narrate the turn ending or the next combatant acting.` } : {}),
     // The printed lair options lair_action takes by number: a block's own
@@ -544,7 +549,10 @@ export function buildEncounterState(campaignId: string, sheets: CharacterSheet[]
       enemyId: enemy.id,
       name: enemy.displayName,
       hp: `${enemy.currentHp}/${enemy.maxHp}`,
-      ac: enemy.ac,
+      // The AC its attackers roll against (Slow's -2, Shield's +5, an
+      // effect's change): the bare column told the GM a slowed goblin was AC
+      // 15 while every swing was rolled against 13.
+      ac: enemyAcWithEffects(campaignId, enemy),
       status: enemy.status,
       // Durations render inline so the model sees "stunned (2 more rounds)".
       conditions: enemy.conditions.map((condition) => {
@@ -573,6 +581,15 @@ export function buildEncounterState(campaignId: string, sheets: CharacterSheet[]
     ...sidesForState(encounter),
     map: buildMapText(encounter.id, sheets),
   };
+}
+
+// The turn line of a character who can no longer act on it, or null.
+function stoppedMidTurn(sheet: CharacterSheet | undefined, encounter: Encounter): string | null {
+  const refused = sheet ? canAct({ sheet, encounter, kind: "action" }) : null;
+  if (!refused || refused.ok || !["dead", "down", "incapacitated"].includes(refused.reason)) {
+    return null;
+  }
+  return `can take no action, bonus action or reaction (${refused.reason === "down" ? "at 0 HP" : refused.reason === "dead" ? "dead" : incapacitatedBy(sheet!.conditions) ?? "held"})`;
 }
 
 // The hits a reaction may still answer (src/lib/dm/last-hit.ts), by the

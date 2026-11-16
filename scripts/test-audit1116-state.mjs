@@ -1,0 +1,259 @@
+// What the GM and the players are told against what the engine holds, from
+// the 2026-11-16 rules audit (the state lens, findings V01..). The GM
+// narrates from GAME STATE, tool results and refusals, and players act from
+// the sheet and the Hand: a line that says something the engine does not
+// hold has the GM narrate the wrong rule while the engine is right. Each test
+// builds the state, reads the text, and names the SRD 5.1 rule it holds.
+import assert from "node:assert/strict";
+import { openWorld } from "./lib/enforce-world.mjs";
+import { suite } from "./lib/enforce-harness.mjs";
+import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
+
+const { test, finish } = suite("test-audit1116-state");
+const world = await openWorld({ campaign: { maxPlayers: 30 } });
+const kit = await combatKit(world);
+const { describeSheet } = await import("../src/lib/dm/prompt.ts");
+const sheetState = await import("../src/components/sheet/sheet-state.ts");
+
+// V01. SRD 5.1, Find Familiar: "As an action, you can temporarily dismiss
+// your familiar into a pocket dimension." The engine and GAME STATE treat a
+// pocketed familiar as gone (U12), but the party panel listed it with its
+// hit points like one at the wizard's side.
+await test("V01: the party panel says a familiar in its pocket dimension is away, and one at hand is not", async () => {
+  await kit.endFight();
+  const mage = world.addHero({
+    class: "wizard", level: 3, maxHp: 20, abilities: { int: 16 }, gold: 20, proficiencies: { ...TRAINED },
+    spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 } }, prepared: ["Find Familiar"], known: [], cantrips: [] },
+  });
+  const called = await world.invoke("summon_pet", { characterId: mage.id, kind: "familiar", form: "owl", name: "Hoot" });
+  assert.equal(called.ok, true, called.error);
+  const hoot = () => world.sheet(mage.id).pets.find((pet) => pet.name === "Hoot");
+  assert.equal(sheetState.petAwayNote?.(hoot()) ?? null, null, "a familiar at hand reads as away");
+  const away = await world.invoke("dismiss_pet", { characterId: mage.id, petName: "Hoot" });
+  assert.equal(away.ok, true, away.error);
+  assert.equal(typeof sheetState.petAwayNote, "function", "the panel has no word for a pocketed familiar");
+  assert.match(sheetState.petAwayNote(hoot()) ?? "", /pocket dimension/);
+  assert.match(describeSheet(world.sheet(mage.id), "a player", false), /Hoot \(owl familiar\): in its pocket dimension/i);
+});
+
+// V02. SRD 5.1, Hit Points: "A creature can't regain more hit points than its
+// hit point maximum." The engine capped the healing, but heal's result said
+// `healed: 20` for a hero 5 short of their maximum, so the GM narrated twenty
+// hit points coming back (and the board floated +20).
+await test("V02: heal reports the hit points restored, not the amount asked, when the maximum caps it", async () => {
+  await kit.endFight();
+  const hero = world.addHero({ class: "fighter", level: 5, maxHp: 40, proficiencies: { ...TRAINED } });
+  world.patch(hero.id, { currentHp: 35 });
+  const healed = await world.invoke("heal", { characterId: hero.id, amount: 20 });
+  assert.equal(healed.ok, true, healed.error);
+  assert.equal(world.sheet(hero.id).currentHp, 40);
+  assert.equal(healed.result.healed, 5, `restored 5, told ${JSON.stringify(healed.result)}`);
+  // Uncapped, the whole amount.
+  world.patch(hero.id, { currentHp: 10 });
+  const whole = await world.invoke("heal", { characterId: hero.id, amount: 7 });
+  assert.equal(whole.result.healed, 7);
+});
+
+// V03. SRD 5.1, Slow: "A target takes a -2 penalty to AC"; Shield of Faith:
+// "+2 bonus to AC"; Shield: "+5 bonus to AC". The attack engine reads an
+// enemy's AC through enemyAcWithEffects (ac-effects.ts), but GAME STATE gave
+// the GM the bare column, so a slowed goblin read AC 15 while every swing
+// was rolled against 13.
+await test("V03: GAME STATE gives an enemy the AC the attacks are rolled against, with Slow, Shield of Faith and Shield", async () => {
+  await kit.endFight();
+  world.addHero({ class: "fighter", level: 3, proficiencies: { ...TRAINED } });
+  await kit.fight(1);
+  const { buildEncounterState } = await import("../src/lib/dm/turn.ts");
+  const { enemyAcWithEffects } = await import("../src/lib/dm/ac-effects.ts");
+  const { publicEncounter } = await import("../src/lib/db/encounter-view.ts");
+  const [foe] = world.enemies();
+  kit.setEnemy(foe.id, { ac: 15 });
+  for (const [held, ac] of [["slowed", 13], ["shield of faith", 17], ["shielded", 20]]) {
+    kit.setEnemy(foe.id, { conditions: [held], conditionMeta: {} });
+    assert.equal(enemyAcWithEffects(world.campaignId, kit.enemy(foe.id)), ac, `the staging: ${held}`);
+    const told = buildEncounterState(world.campaignId, world.sheets()).enemies.find((entry) => entry.enemyId === foe.id);
+    assert.equal(told.ac, ac, `${held}: GAME STATE says AC ${told.ac}, the attacks roll against ${ac}`);
+    // The GM console's encounter panel and the monster Hand read the same.
+    const shown = publicEncounter(world.encounter(), world.enemies(), { enemyNumbers: true }).enemies.find((entry) => entry.id === foe.id);
+    assert.equal(shown.ac, ac, `${held}: the console says AC ${shown.ac}`);
+  }
+});
+
+// V04. SRD 5.1, Barkskin: "the target's AC can't be less than 16"; Wild
+// Shape: "your game statistics are replaced by the statistics of the beast";
+// Shield of Faith: "+2 bonus to AC". Attacks on a character read
+// acWithEffects (the beast's AC under a shaped druid, with these riders and
+// any effect's change), but GAME STATE's hero line printed the druid's own
+// AC, the beast line the wolf's bare 13, and the party panel and the sheet
+// the same: a Barkskinned wolf (AC 16) read 13, a cursed fighter (AC 10) 12.
+await test("V04: GAME STATE, the party panel and the sheet give a character the AC attacks against them meet", async () => {
+  await kit.endFight();
+  const { acWithEffects } = await import("../src/lib/dm/ac-effects.ts");
+  const druid = world.addHero({
+    class: "druid", level: 4, maxHp: 30, proficiencies: { ...TRAINED },
+    spellcasting: { ability: "wis", slots: { 1: { max: 4, used: 0 } }, prepared: [], known: [], cantrips: [] },
+  });
+  const shaped = await world.invoke("use_resource", { characterId: druid.id, resource: "wild_shape", form: "wolf" });
+  assert.equal(shaped.ok, true, shaped.error);
+  world.patch(druid.id, { conditions: ["barkskin"] });
+  assert.equal(acWithEffects(world.campaignId, world.sheet(druid.id)), 16, "the staging: a Barkskinned wolf is AC 16");
+  const told = describeSheet(world.sheet(druid.id), "a player", false);
+  assert.match(told, /\| AC 16 \|/, `the hero line: ${told.split("\n")[1]}`);
+  assert.match(told, /beast HP, AC 16\b/, "the beast line");
+  assert.equal(sheetState.acView?.(world.sheet(druid.id)).ac, 16, "the party panel and the sheet");
+
+  const fighter = world.addHero({ class: "fighter", level: 3, proficiencies: { ...TRAINED } });
+  const cursed = await world.invoke("set_effect", { characterId: fighter.id, name: "Curse of Rust", modifiers: [{ field: "ac", value: -2 }], durationRounds: 10 });
+  assert.equal(cursed.ok, true, cursed.error);
+  const engine = acWithEffects(world.campaignId, world.sheet(fighter.id));
+  assert.equal(engine, world.sheet(fighter.id).ac - 2, "the staging: the curse lowers the AC attacks meet");
+  assert.match(describeSheet(world.sheet(fighter.id), "a player", false), new RegExp(`\\| AC ${engine} \\|`));
+});
+
+// V05. SRD 5.1, Slow: "it can't use reactions", "On its turn, it can use
+// either an action or a bonus action, not both", and "Regardless of the
+// creature's abilities or magic items, it can't make more than one melee or
+// ranged attack during its turn." The engine's budget knew (slowedProblem),
+// but the public turn view dropped it, so after the Attack action the Hand
+// still offered a slowed fighter's bonus action and their Extra Attack swing,
+// and the turn's pips showed Bonus and Reaction open.
+await test("V05: the Hand shuts a slowed hero's bonus action and second swing after their attack, as the engine does", async () => {
+  await kit.endFight();
+  const { publicEncounter } = await import("../src/lib/db/encounter-view.ts");
+  const { turnFromEncounter, turnPips } = await import("../src/lib/battlemap/hand-table.ts");
+  const { costGate, attackGate } = await import("../src/lib/battlemap/hand-core.ts");
+  const hero = world.addHero({ class: "fighter", level: 5, maxHp: 44, proficiencies: { ...TRAINED } });
+  await kit.fight(1);
+  const [foe] = world.enemies();
+  world.patch(hero.id, { conditions: ["slowed"], conditionMeta: { slowed: { source: foe.id } } });
+  kit.giveTurn(hero.id);
+  kit.place(hero.id, 5, 5);
+  kit.place(foe.id, 5, 6);
+  const swung = await kit.swing(hero.id, foe.id, [15, 3]);
+  assert.equal(swung.ok, true, swung.error);
+  const turn = turnFromEncounter(publicEncounter(world.encounter(), world.enemies(), {}), world.sheet(hero.id), { myTurn: true });
+  const engineBonus = await world.invoke("take_action", { characterId: hero.id, action: "dash", bonus: true });
+  assert.equal(engineBonus.ok, false, "the staging: the engine refuses a slowed hero's bonus action after the attack");
+  assert.ok(costGate("bonus", turn, world.sheet(hero.id), "Second Wind"), "the Hand offers the bonus action the engine refuses");
+  assert.ok(attackGate(turn, 2, world.sheet(hero.id)), "the Hand offers a second swing a slowed hero cannot make");
+  const pips = Object.fromEntries(turnPips(turn).map((pip) => [pip.label, pip.used]));
+  assert.equal(pips.Bonus, true, "the Bonus pip reads open");
+  assert.equal(pips.Reaction, true, "the Reaction pip reads open");
+});
+
+// V06. SRD 5.1, Damage Resistance and Vulnerability: "If a creature or an
+// object has resistance to a damage type, damage of that type is halved
+// against it." enemy_attack landed the halved blow, but its result said the
+// blow as rolled (`damage: 6`, `totalDamage: 6` for a raging barbarian who
+// lost 3) with no word of the resistance, so the GM narrated 6 and the table
+// line the server writes for a monster's turn read "HIT for 6".
+await test("V06: enemy_attack reports the damage a resistant hero took, with the resistance, and the table line says it", async () => {
+  await kit.endFight();
+  const { attackLine } = await import("../src/lib/dm/turn-lines-logic.ts");
+  const hero = world.addHero({ class: "barbarian", level: 3, maxHp: 40, proficiencies: { ...TRAINED } });
+  await kit.fight(1);
+  const [foe] = world.enemies();
+  kit.place(hero.id, 5, 5);
+  kit.place(foe.id, 5, 6);
+  world.patch(hero.id, { conditions: ["raging"] });
+  kit.freshRound();
+  kit.enemyTurn(foe.id);
+  world.clearDice();
+  world.dice(15, 4);
+  const before = world.sheet(hero.id).currentHp;
+  const struck = await world.invoke("enemy_attack", { enemyId: foe.id, targetCharacterId: hero.id });
+  world.clearDice();
+  assert.equal(struck.ok, true, struck.error);
+  const lost = before - world.sheet(hero.id).currentHp;
+  assert.ok(lost > 0, `the staging: the club lands (${JSON.stringify(struck.result)})`);
+  const [swing] = struck.result.swings;
+  assert.equal(swing.damage, lost, `the hero lost ${lost}, the swing says ${swing.damage}`);
+  assert.equal(struck.result.totalDamage, lost, "the total");
+  assert.match(swing.resistance ?? "", /resistant/, "the result does not say why");
+  const line = attackLine({ name: foe.displayName, target: hero.name, attack: struck.result.attack, swings: struck.result.swings, vsAc: struck.result.vsAc, fell: false });
+  assert.match(line, new RegExp(`HIT for ${lost}\\b`), line);
+});
+
+// V07. SRD 5.1, Damage Resistance and Vulnerability: "damage of that type
+// is halved against it." aoe_damage landed a trap's 20 slashing on a raging
+// barbarian as 10, but its row said `damage: 20` with no resistance note:
+// apply_damage's own result carried no damageApplied, so the row's "what
+// landed" was never filled, and the GM narrated twenty.
+await test("V07: an area's row says what a resistant hero took, and why; apply_damage says it too", async () => {
+  await kit.endFight();
+  const hero = world.addHero({ class: "barbarian", level: 3, maxHp: 44, proficiencies: { ...TRAINED } });
+  await kit.fight(1);
+  world.patch(hero.id, { conditions: ["raging"] });
+  world.clearDice();
+  world.dice(2, 6, 6, 6, 6);
+  const before = world.sheet(hero.id).currentHp;
+  const area = await world.invoke("aoe_damage", { characterIds: [hero.id], saveAbility: "dex", dc: 25, damage: "4d6", type: "slashing", reason: "Blade trap" });
+  world.clearDice();
+  assert.equal(area.ok, true, area.error);
+  const lost = before - world.sheet(hero.id).currentHp;
+  const [row] = area.result.results;
+  assert.equal(row.damageApplied ?? row.damage, lost, `the hero lost ${lost}: ${JSON.stringify(row)}`);
+  assert.match(row.resistance ?? "", /resistant/, "the row does not say why");
+  const hurt = await world.invoke("apply_damage", { characterId: hero.id, amount: 8, type: "slashing" });
+  assert.equal(hurt.result.damageApplied, 4, `apply_damage: ${JSON.stringify(hurt.result)}`);
+});
+
+// V08. SRD 5.1, Concentration: "If you cast another spell that requires
+// concentration, you lose concentration on the first" and "Taking damage"
+// calls for a Constitution save. GAME STATE named the spell a hero holds
+// only inside the spell-slot line, so a tiefling fighter holding Darkness
+// (a species spell, no spellcasting block) read as holding nothing: the GM
+// had no word that a hit could end it, or that a second one would.
+await test("V08: GAME STATE names the spell a hero with no spellcasting block is concentrating on", async () => {
+  await kit.endFight();
+  const hero = world.addHero({ class: "fighter", level: 5, race: "tiefling", maxHp: 44, proficiencies: { ...TRAINED } });
+  world.patch(hero.id, { concentratingOn: "Darkness" });
+  assert.equal(world.sheet(hero.id).spellcasting ?? null, null, "the staging: no spellcasting block");
+  const told = describeSheet(world.sheet(hero.id), "a player", false);
+  assert.match(told, /Concentrating on: Darkness/, told.split("\n").filter((line) => /spell|Spell/.test(line)).join(" / "));
+});
+
+// V09. SRD 5.1, Exhaustion: "6: Death." The level's line (GAME STATE, the
+// sheet's tag) listed level 6 exactly as level 5, "speed 0" its last word,
+// so the GM read a hero at exhaustion 6 as one who could not move.
+await test("V09: exhaustion 6 reads as death in GAME STATE and on the sheet's tag", async () => {
+  const { describeExhaustion } = await import("../src/lib/dm/condition-logic.ts");
+  assert.match(describeExhaustion(6), /death/i, describeExhaustion(6));
+  assert.doesNotMatch(describeExhaustion(5), /death/i, "level 5 is not death");
+  const hero = world.addHero({ class: "fighter", level: 3, proficiencies: { ...TRAINED } });
+  world.patch(hero.id, { exhaustion: 6 });
+  const tag = sheetState.stateTags(world.sheet(hero.id)).find((entry) => entry.id === "exhaustion");
+  assert.match(tag?.note ?? "", /death/i, `the tag: ${tag?.note}`);
+  world.patch(hero.id, { exhaustion: 0 });
+});
+
+// V10. SRD 5.1, Unconscious: "An unconscious creature is incapacitated";
+// Incapacitated: "An incapacitated creature can't take actions or
+// reactions." A fighter dropped (or stunned) after the first swing of
+// Extra Attack still read in GAME STATE as having "1 attack left, bonus
+// action, reaction", and the turn was held open for that swing
+// (turnStillOwes): the narration guard and pc_attack's end of turn waited
+// on an attack an unconscious hero cannot make.
+await test("V10: a hero dropped mid-turn owes no swing, and GAME STATE's turn line offers them nothing", async () => {
+  await kit.endFight();
+  const { buildEncounterState } = await import("../src/lib/dm/turn.ts");
+  const { turnStillOwes } = await import("../src/lib/dm/turn-budget.ts");
+  const hero = world.addHero({ class: "fighter", level: 5, maxHp: 20, proficiencies: { ...TRAINED } });
+  await kit.fight(1);
+  const [foe] = world.enemies();
+  kit.giveTurn(hero.id);
+  kit.place(hero.id, 5, 5);
+  kit.place(foe.id, 5, 6);
+  const swung = await kit.swing(hero.id, foe.id, [3, 1]);
+  assert.equal(swung.ok, true, swung.error);
+  assert.equal(turnStillOwes(world.campaignId, hero.id).swings, 1, "the staging: Extra Attack's second swing is owed");
+  const dropped = await world.invoke("apply_damage", { characterId: hero.id, amount: 30, type: "slashing" });
+  assert.equal(dropped.ok, true, dropped.error);
+  assert.equal(world.sheet(hero.id).currentHp, 0);
+  assert.equal(turnStillOwes(world.campaignId, hero.id).swings, 0, "the turn waits on a swing a hero at 0 HP cannot make");
+  const line = buildEncounterState(world.campaignId, world.sheets()).turnBudget ?? "";
+  assert.doesNotMatch(line, /attack left|remaining/, `GAME STATE: ${line}`);
+  assert.match(line, /no action, bonus action or reaction/, line);
+});
+
+finish();
