@@ -125,7 +125,7 @@ await test("an install left on the defaults keys the index as the original model
   const embeddingsUrl = new URL("../src/lib/embeddings.ts", import.meta.url).href;
   const child = spawnSync(
     process.execPath,
-    ["--input-type=module", "-e", `const m = await import(${JSON.stringify(embeddingsUrl)}); console.log(m.EMBEDDING_KEY);`],
+    ["--input-type=module", "-e", `const m = await import(${JSON.stringify(embeddingsUrl)}); console.log(m.embeddingKey());`],
     { cwd: dir, env, encoding: "utf8" },
   );
   assert.equal(child.status, 0, child.stderr);

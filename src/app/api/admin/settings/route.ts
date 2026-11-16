@@ -11,6 +11,9 @@ import { announcedAddressFor, isUnroutableAddress, voiceConfig } from "@/lib/voi
 import { forgetHarnessStatus } from "@/lib/harness/status";
 import { HARNESS_EFFORTS } from "@/lib/harness/types";
 import { rescueStrandedCampaigns, type RescueMove } from "@/lib/image-backend-rescue";
+import { TABLE_LANGUAGES } from "@/lib/schemas/game-settings-options";
+import { embeddingModel } from "@/lib/embeddings";
+import { applyServerLanguage } from "@/lib/dm/embedding-reindex";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,6 +29,7 @@ function maskedConfig(config: GlobalConfig) {
     // say so instead of showing a policy the host cannot change.
     signupModeForced: isDeviceWorld(),
     serverName: config.serverName,
+    serverLanguage: config.serverLanguage,
     accountDeletionGraceDays: config.accountDeletionGraceDays,
     abilityRerollBelow: config.abilityRerollBelow,
     publicUrl: config.publicUrl,
@@ -112,6 +116,13 @@ function envDefaults() {
   };
 }
 
+// The model the GM's memory reads with, for the line under the server's
+// language: which one, and whether .env.server or the language picked it.
+function embeddingStatus() {
+  const { id, source } = embeddingModel();
+  return { model: id, source };
+}
+
 // SFU voice announcing an address remote browsers cannot dial is the silent
 // call failure (src/lib/voice/config.ts). Decided server side because the
 // announced-address fallback chain ends at the bind address, which the
@@ -138,6 +149,7 @@ export async function GET() {
     envDefaults: envDefaults(),
     voiceAnnounceUnroutable: voiceAnnounceUnroutable(),
     deviceWorld: deviceWorld(),
+    embedding: embeddingStatus(),
     // What the last Fast calls actually ran at (issue 255).
     speedStatus: speedStatus(),
     // Whether the GM's last call kept its tools (src/lib/tool-call-health.ts).
@@ -152,6 +164,7 @@ const patchSchema = z.object({
   signupsEnabled: z.boolean().optional(),
   signupMode: z.enum(["open", "invite", "closed"]).optional(),
   serverName: z.string().trim().max(100).optional(),
+  serverLanguage: z.enum(TABLE_LANGUAGES).optional(),
   accountDeletionGraceDays: z.number().int().min(0).max(90).optional(),
   abilityRerollBelow: z.number().int().min(0).max(108).optional(),
   publicUrl: z.string().trim().max(500).optional(),
@@ -275,6 +288,11 @@ export async function PATCH(request: Request) {
   if (moved) {
     forgetHarnessStatus();
   }
+  // A language that reads with another model switches the GM's memory to
+  // it now and re-embeds the stored story in the background.
+  if (parsed.data.serverLanguage !== undefined) {
+    await applyServerLanguage(saved.serverLanguage);
+  }
   // A save that changes where pictures come from moves the campaigns stuck
   // on a backend that cannot paint onto the new default, when it can
   // (src/lib/image-backend-rescue.ts). A device world's shell owns its own.
@@ -285,6 +303,7 @@ export async function PATCH(request: Request) {
     envDefaults: envDefaults(),
     voiceAnnounceUnroutable: voiceAnnounceUnroutable(),
     deviceWorld: deviceWorld(),
+    embedding: embeddingStatus(),
     rescued,
   });
 }

@@ -4,17 +4,14 @@ import { ImageIcon } from "lucide-react";
 import { useState, type CSSProperties } from "react";
 import { InfoButton } from "@/components/ui/InfoDialog";
 import { EmbeddingLanguageLine } from "@/components/EmbeddingLanguageLine";
-import { Select } from "@/components/ui/Select";
+import { LanguageSelect } from "@/components/LanguageSelect";
 import { useTtsVoices } from "@/components/VoicePicker";
 import { cn } from "@/lib/cn";
 import { GENRE_PRESETS } from "@/lib/genres";
 import { narratorVoiceFor } from "@/lib/tts-voices";
 import {
   TABLE_LANGUAGE_HELP,
-  TABLE_LANGUAGE_LABELS,
-  TABLE_LANGUAGES,
   type Genre,
-  type TableLanguage,
 } from "@/lib/schemas/game-settings-options";
 import type { WorldPackSummary } from "@/lib/worlds/types";
 import { FieldLabel } from "@/app/create-campaign/fields";
@@ -243,12 +240,11 @@ export function WorldDetailsFields({
           <span className="cc-eyebrow">Table language</span>
           <span className="cc-note">what the story is written in</span>
         </div>
-        <Select<TableLanguage>
+        <LanguageSelect
           value={draft.tableLanguage}
           onChange={(tableLanguage) => patch({ tableLanguage, ttsVoice: narratorVoiceFor(tableLanguage, draft.ttsVoice, voices.provider === "openai") })}
           label="Table language"
           className="w-full"
-          options={TABLE_LANGUAGES.map((value) => ({ value, label: TABLE_LANGUAGE_LABELS[value] }))}
         />
         <p className="mt-1 text-xs text-stone-500">{TABLE_LANGUAGE_HELP}</p>
         <EmbeddingLanguageLine languages={[draft.tableLanguage]} className="mt-1" />

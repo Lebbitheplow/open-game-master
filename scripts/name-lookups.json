@@ -712,7 +712,6 @@
     "app/settings/PlayerReceiverSetup.tsx#number": [["key",1,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "app/settings/PlayerReceiverSetup.tsx#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "app/setup/MediaSteps.tsx#first": [["key",1,"the first recommended model (no text names it)"]],
-    "app/setup/SetupWizard.tsx#whole-single": [["key",1,"change detection, UI keys, ids, slugs, password confirmation, a saved selection (src/app: every site read)"]],
     "app/setup/StorytellerStep.tsx#whole": [["key",1,"model ids, the first text backend found"]],
     "app/setup/draft.ts#fallback": [["key",1,"model ids, the first text backend found"]],
     "app/workshop/AddonImportButton.tsx#fallback": [["authoring",1,"workshop authoring (pickers, drafts, copied rows); every site read, none reads a carried item's row"]],
@@ -3264,6 +3263,9 @@
     "lib/dm/creature-hold.ts#first": [["key",2,"the hold a restrained creature carries, found on its own instance (a creature holds one at a time)"]],
     "lib/dm/opportunity-sides.ts#partial": [["key",1,"a blow's damage type, the necrotic part a drain reads"]],
     "lib/dm/opportunity-pets.ts#partial": [["pattern",2,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
-    "lib/dm/save-immunity.ts#partial": [["key",2,"a shared mark's own kind keys, by the prefix it stored them under"],["identity",1,"the kind a creature is among those a shared immunity names, by its block's slug or its name as whole words (textKey on both sides), the longest that fits"]]
+    "lib/dm/save-immunity.ts#partial": [["key",2,"a shared mark's own kind keys, by the prefix it stored them under"],["identity",1,"the kind a creature is among those a shared immunity names, by its block's slug or its name as whole words (textKey on both sides), the longest that fits"]],
+    "lib/language/server-language.ts#partial": [["parse", 1, "a BCP 47 locale tag split at its first hyphen or underscore into the ISO 639 code a table language is keyed by; never a record's name"]],
+    "lib/embeddings.ts#whole-single": [["key", 1, "the embedding key before and after a language change compared (model id and dtype, never a name)"]],
+    "lib/setup/patches.ts#whole-single": [["key", 1, "the picked server language against the saved one (a language id)"]]
   }
 }

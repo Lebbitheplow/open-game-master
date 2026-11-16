@@ -25,7 +25,7 @@ export function embeddingWarning(checks: readonly EmbeddingLanguageCheck[]): Emb
       title: "The GM's memory is not running",
       body:
         "This server's embedding model did not load, so the GM finds earlier scenes, lore and facts only by their " +
-        "exact words. The server log says why: make sure the server can download EMBEDDING_MODEL (or run npm run " +
+        "exact words. The server log says why: make sure the server can download its embedding model (or run npm run " +
         "fetch-model), then restart it.",
       languages: checks.map((check) => check.language),
     };
@@ -39,8 +39,10 @@ export function embeddingWarning(checks: readonly EmbeddingLanguageCheck[]): Emb
     title: `The GM's memory cannot read ${names}`,
     body:
       `This server's embedding model reads only English, so at a table playing in ${names} the GM misses earlier ` +
-      "scenes, lore and facts the players describe in other words. Set a multilingual model in .env.server " +
-      "(EMBEDDING_MODEL=Xenova/multilingual-e5-small and EMBEDDING_DTYPE=q8) and restart the server, or play in English.",
+      "scenes, lore and facts the players describe in other words. An admin can set the server's language under " +
+      "Admin > Settings > Language: any language but English switches to a model that reads them all. An " +
+      "EMBEDDING_MODEL in .env.server wins over the language: set it to Xenova/multilingual-e5-small (with " +
+      "EMBEDDING_DTYPE=q8) or remove it, then restart. Or play in English.",
     languages: unread,
   };
 }

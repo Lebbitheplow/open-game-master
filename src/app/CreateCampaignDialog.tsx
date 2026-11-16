@@ -22,6 +22,7 @@ import { ReviewStep, type EditTarget } from "@/app/create-campaign/ReviewStep";
 import type { GroupId, StepKey } from "@/app/create-campaign/groups";
 import { useCampaignDefaults } from "@/app/create-campaign/useCampaignDefaults";
 import { withCapabilities, type ServerCapabilities } from "@/app/create-campaign/capabilities";
+import { narratorVoiceFor } from "@/lib/tts-voices";
 import { campaignPayload } from "@/app/create-campaign/payload";
 
 const STEP_KEYS: readonly StepKey[] = ["essentials", "experience", "review"];
@@ -69,6 +70,9 @@ export function CreateCampaignDialog({
   const edited = useRef(false);
   // What they wanted where the server overrode it (withCapabilities).
   const wanted = useRef<Partial<Pick<CampaignDraft, "dmMode" | "ttsEnabled">>>({});
+  // Whether a saved setup was laid over the draft: its language stands over
+  // the server's.
+  const fromSaved = useRef(false);
   const [step, setStep] = useState(0);
   const [openGroups, setOpenGroups] = useState<ReadonlySet<GroupId>>(() => new Set());
   // Arrived at a step from the review's Edit, so the way back is offered.
@@ -142,9 +146,15 @@ export function CreateCampaignDialog({
   // A saved setup (or the app's own) laid over the draft, then the server's
   // limits over that. The campaign's own fields stay (defaults.ts).
   const startFromSettings = (source: StartFrom, settings: CampaignDefaultSettings) => {
+    fromSaved.current = source === "mine";
     const applied = applyDefaults(latest.current, settings, selectedPack);
     const limits = capabilitiesNow.current;
-    const limited = limits ? withCapabilities(applied.draft, limits) : { draft: applied.draft, wanted: {} };
+    // The app's own setup plays in the server's language, as a fresh draft does.
+    const language = source === "mine" ? undefined : limits?.language;
+    const base = language
+      ? { ...applied.draft, tableLanguage: language, ttsVoice: narratorVoiceFor(language, applied.draft.ttsVoice, limits?.tts?.provider === "openai") }
+      : applied.draft;
+    const limited = limits ? withCapabilities(base, limits) : { draft: base, wanted: {} };
     wanted.current = limited.wanted;
     write(limited.draft);
     setKept(applied.kept);
@@ -192,9 +202,16 @@ export function CreateCampaignDialog({
         }
         capabilitiesNow.current = data;
         setCapabilities(data);
+        // A new table plays in the server's language, unless the person
+        // already chose one or their saved setup names one.
+        const language = data.language;
+        const start =
+          language && !edited.current && !fromSaved.current && latest.current.tableLanguage === DEFAULT_DRAFT.tableLanguage
+            ? { ...latest.current, tableLanguage: language, ttsVoice: narratorVoiceFor(language, latest.current.ttsVoice, data.tts?.provider === "openai") }
+            : latest.current;
         // Defaults follow reality: a table should not discover on turn one
         // that the AI seat was never fillable.
-        const limited = withCapabilities(latest.current, data);
+        const limited = withCapabilities(start, data);
         Object.assign(wanted.current, limited.wanted);
         write(limited.draft);
       })

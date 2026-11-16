@@ -21,6 +21,7 @@ import type { CampaignLanguage } from "@/lib/db/campaigns";
 import { ToolsDroppedLine } from "@/app/admin/ToolsDroppedLine";
 import { EmbeddingLanguageLine } from "@/components/EmbeddingLanguageLine";
 import { AdminNetworkSections } from "@/app/admin/AdminNetworkSections";
+import { AdminLanguageSection, type EmbeddingStatus } from "@/app/admin/AdminLanguageSection";
 import { AdminPlayerAgentsSection } from "@/app/admin/AdminPlayerAgentsSection";
 import { AdminBackupSection } from "@/app/admin/AdminBackupSection";
 import { AdminStorageSection } from "@/app/admin/AdminStorageSection";
@@ -48,6 +49,7 @@ import {
 // world hides the section itself.
 const STOPS: Array<{ id: string; label: string; glyph: string; server?: boolean }> = [
   { id: "admin-server", label: "Server", glyph: "tab-settings", server: true },
+  { id: "admin-language", label: "Language", glyph: "tab-story" },
   { id: "admin-accounts", label: "Accounts", glyph: "ui-accounts", server: true },
   { id: "admin-text", label: "Text model", glyph: "ui-ai" },
   { id: "admin-harness", label: "Agent", glyph: "ui-agent" },
@@ -95,6 +97,7 @@ export function AdminSettingsPanel() {
   // public address, sign-up mode, voice transport and there is no usable
   // Discord redirect, so those sections disappear and only AI settings stay.
   const [deviceWorld, setDeviceWorld] = useState(false);
+  const [embedding, setEmbedding] = useState<EmbeddingStatus | null>(null);
   // What the last Fast calls ran at, per role (issue 255).
   const [speedNotes, setSpeedNotes] = useState<Partial<Record<SpeedChannel, SpeedNote>>>({});
   // Whether the GM's last call kept its tools (src/lib/tool-call-health.ts).
@@ -116,6 +119,7 @@ export function AdminSettingsPanel() {
           setEnv(data.envDefaults);
           setVoiceUnroutable(Boolean(data.voiceAnnounceUnroutable));
           setDeviceWorld(Boolean(data.deviceWorld));
+          setEmbedding(data.embedding ?? null);
           setSpeedNotes(data.speedStatus ?? {});
           setToolHealth(data.toolCallHealth ?? null);
           setLanguageCampaigns(data.tableLanguageCampaigns);
@@ -212,6 +216,8 @@ export function AdminSettingsPanel() {
         // stale) copy back would fight it, so those keys stay out entirely
         // and the PATCH route keeps the stored values.
         body: JSON.stringify({
+          // A host older than the language picker sends none, and gets none back.
+          ...(config.serverLanguage ? { serverLanguage: config.serverLanguage } : {}),
           ...(deviceWorld
             ? {}
             : {
@@ -270,6 +276,7 @@ export function AdminSettingsPanel() {
       }
       setConfig(data.config);
       setSavedConfig(data.config);
+      setEmbedding(data.embedding ?? null);
       setVoiceUnroutable(Boolean(data.voiceAnnounceUnroutable));
       setApiKey(SECRET_KEPT);
       setUtilityApiKey(SECRET_KEPT);
@@ -366,6 +373,15 @@ export function AdminSettingsPanel() {
           </Field>
         </PageSection>
       )}
+
+      {config.serverLanguage ? (
+        <AdminLanguageSection
+          value={config.serverLanguage}
+          onChange={(serverLanguage) => setConfig({ ...config, serverLanguage })}
+          embedding={embedding}
+          changed={config.serverLanguage !== savedConfig?.serverLanguage}
+        />
+      ) : null}
 
       {deviceWorld ? null : (
         <PageSection id="admin-accounts" heading="Accounts" glyph="ui-accounts">

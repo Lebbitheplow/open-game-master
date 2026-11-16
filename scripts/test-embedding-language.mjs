@@ -213,7 +213,8 @@ await test("the warning names the languages and gives one fix, and says nothing 
   const englishOnly = embeddingWarning([{ language: "italian", verdict: "english_only" }]);
   assert.match(englishOnly.title, /cannot read Italian$/);
   assert.match(englishOnly.body, /playing in Italian /);
-  assert.match(englishOnly.body, /EMBEDDING_MODEL=Xenova\/multilingual-e5-small and EMBEDDING_DTYPE=q8/);
+  assert.match(englishOnly.body, /Admin > Settings > Language/);
+  assert.match(englishOnly.body, /EMBEDDING_MODEL in .env.server wins over the language: set it to Xenova\/multilingual-e5-small/);
   assert.match(englishOnly.body, /\.env\.server/);
   assert.deepEqual(englishOnly.languages, ["italian"]);
 

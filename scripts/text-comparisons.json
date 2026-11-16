@@ -3268,6 +3268,10 @@
     "lib/dm/creature-hold.ts#toUpperCase": [["display",2,"ability abbreviation shown"]],
     "lib/dm/opportunity-sides.ts#re-word": [["key",1,"damage type (engine vocabulary)"]],
     "lib/dm/opportunity-pets.ts#\\b": [["english-source",4,"a pet record's notes, written from its SRD block (familiar-forms.ts familiarNotes): its fly speed and the Flyby trait"]],
-    "lib/dm/opportunity-pets.ts#re-word": [["english-source",2,"a pet record's notes, written from its SRD block (familiar-forms.ts familiarNotes): its fly speed and the Flyby trait"]]
+    "lib/dm/opportunity-pets.ts#re-word": [["english-source",2,"a pet record's notes, written from its SRD block (familiar-forms.ts familiarNotes): its fly speed and the Flyby trait"]],
+    "lib/language/server-language.ts#toLowerCase": [["key", 1, "a browser's locale tag folded to its ISO 639 code (a key, never text a person wrote)"]],
+    "app/CreateCampaignDialog.tsx#str-eq": [["key", 2, "a speech provider id and the defaults' source id compared (keys, never text a person wrote)"]],
+    "lib/language/server-language.ts#str-key": [["key", 1, "a table language id compared against english (a key)"]],
+    "components/ui/LanguageFlag.tsx#str-key": [["key", 1, "a flag drawing by its ISO 3166 country code (a key)"]]
   }
 }

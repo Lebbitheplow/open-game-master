@@ -3,6 +3,7 @@
 import { STAGES, isStageEnabled } from "@/lib/dm/stages";
 import { DELEGATIONS, DELEGATION_HINTS, DELEGATION_LABELS } from "@/lib/dm/delegation";
 import { Select } from "@/components/ui/Select";
+import { LanguageSelect } from "@/components/LanguageSelect";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { InfoButton } from "@/components/ui/InfoDialog";
 import { SettingToggle, panelField } from "./PanelKit";
@@ -30,13 +31,10 @@ import {
   HP_METHODS,
   STARTING_WEALTH,
   TABLE_LANGUAGE_HELP,
-  TABLE_LANGUAGE_LABELS,
-  TABLE_LANGUAGES,
   type CampaignLengthSetting,
   type ConscienceSetting,
   type DicePolicy,
   type Genre,
-  type TableLanguage,
 } from "@/lib/schemas/game-settings-options";
 import { alliesShown, conscienceShown } from "@/app/campaigns/[campaignId]/table-settings-groups";
 import { NarrationStyleRows } from "@/app/campaigns/[campaignId]/NarrationStyleRows";
@@ -146,12 +144,11 @@ export function WorldGroup({
       ) : null}
       <div data-settings-row="table-language" className="flex flex-wrap items-center gap-2">
         <span className="pk-rowlabel">Language</span>
-        <Select<TableLanguage>
+        <LanguageSelect
           size="sm"
           label="Table language"
           value={settings.tableLanguage}
           onChange={(tableLanguage) => patch({ tableLanguage })}
-          options={TABLE_LANGUAGES.map((value) => ({ value, label: TABLE_LANGUAGE_LABELS[value] }))}
           className={selectClass}
         />
         <span className="text-stone-500">{TABLE_LANGUAGE_HELP}</span>

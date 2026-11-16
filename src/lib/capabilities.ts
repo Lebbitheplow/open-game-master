@@ -1,3 +1,4 @@
+import type { TableLanguage } from "@/lib/schemas/game-settings-options";
 import { configValue, getGlobalConfig } from "@/lib/app-config";
 import { comfyModelPicked } from "@/lib/comfyui";
 import { openAiImagesConfigured, openAiImagesNeedModel } from "@/lib/openai-images";
@@ -49,6 +50,9 @@ export type Capabilities = {
   // What this server's routes offer beyond its backends, one flag per
   // control an older host lacks (SERVER_FEATURES below).
   features: ServerFeatures;
+  // The server's language (global config serverLanguage): new campaigns
+  // start in it. Absent on a host older than the language picker.
+  language?: TableLanguage;
 };
 
 // The apps' own screens can be newer than the host they are opened on. A
@@ -783,6 +787,7 @@ export async function capabilitiesSnapshot(): Promise<Capabilities> {
   const dictation = await sttInputs(async () => sttReachable);
 
   return {
+    language: cfg.serverLanguage,
     story: {
       configured: storyReady,
       reachable: storyReachable,
