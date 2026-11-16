@@ -265,5 +265,30 @@ await test("D06: one escape breaks one grapple", async () => {
   void crabB;
 });
 
+// D07. SRD 5.1, Grappled: "The condition also ends if an effect removes the
+// grappled creature from the reach of the grappler or grappling effect,
+// such as when a creature is hurled away by the thunderwave spell." Every
+// walk asked releaseGrapplesOutOfReach, but no push or pull did (a shove,
+// Thunderwave and Repelling Blast's riders, a monk's push): the hero shoved
+// the goblin holding them 5 feet back and stayed grappled at speed 0.
+await test("D07: shoving the grappler out of reach ends its grapple", async () => {
+  await board.endFight();
+  await board.fight(1, { heroFaces: { [kara.id]: 20 } });
+  const [goblin] = field.enemies();
+  board.setEnemy(goblin.id, { stats: { ...DUMMY }, maxHp: 40, currentHp: 40 });
+  board.place(kara.id, 6, 7);
+  board.place(goblin.id, 5, 7);
+  field.patch(kara.id, { conditions: ["grappled"], conditionMeta: { grappled: { source: goblin.id } } });
+  board.giveTurn(kara.id);
+  // Kara's Athletics, then the goblin's.
+  field.dice(20, 1);
+  const shove = await field.invoke("take_action", { characterId: kara.id, action: "shove", targetEnemyId: goblin.id, shove: "push" });
+  field.clearDice();
+  assert.equal(shove.ok, true, shove.error);
+  assert.equal(shove.result.success, true, JSON.stringify(shove.result));
+  assert.deepEqual([board.token(goblin.id).x, board.token(goblin.id).y], [4, 7], JSON.stringify(shove.result));
+  assert.equal(field.sheet(kara.id).conditions.includes("grappled"), false, "the goblin let go from 10 feet away");
+});
+
 closeTables();
 finish();
