@@ -10,6 +10,7 @@ import authoredFeatsJson from "@/lib/srd/authored-feats.json";
 import type { Ability } from "@/lib/schemas/sheet";
 import { textKey } from "@/lib/language/text-logic";
 import { isNamed } from "@/lib/srd/feature-names";
+import { raisedTowardCap } from "@/lib/srd/asi";
 
 const ABILITIES: Ability[] = ["str", "dex", "con", "int", "wis", "cha"];
 const ABILITY_WORDS: Record<string, Ability> = {
@@ -255,7 +256,8 @@ export function applyFeatIncrease(
     };
   }
   return {
-    abilities: { ...abilities, [ability]: Math.min(20, abilities[ability] + increase.amount) },
+    // To 20 at most, and a score a manual or tome took past 20 keeps it.
+    abilities: { ...abilities, [ability]: raisedTowardCap(abilities[ability], increase.amount) },
     raised: ability,
   };
 }

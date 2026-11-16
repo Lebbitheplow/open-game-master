@@ -3,6 +3,7 @@
 import { Download, GitBranch, Loader2, Upload } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AdminAddonCard } from "@/app/admin/AdminAddonCard";
+import { CreditLine, formatBytes, ModifiesLine, PartsPicker } from "@/app/admin/AddonParts";
 import { EmptyState } from "@/components/EmptyState";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { appConfirm } from "@/components/ui/ConfirmDialog";
@@ -10,6 +11,7 @@ import { SectionHead } from "@/components/ui/SectionHead";
 import { Switch } from "@/components/ui/Switch";
 import type { AdminAddonsState, CatalogAddon } from "@/lib/addons/admin-view";
 import { platformName } from "@/lib/addons/manifest";
+import { catalogCredit } from "@/lib/addons/credits";
 import { sourceFacts } from "@/lib/addons/registry-index";
 import { forgetAddons } from "@/lib/addons/use-addons";
 import { cn } from "@/lib/cn";
@@ -125,8 +127,8 @@ export function AdminAddonsPanel() {
       : `Installed ${data.installed.name}${from}. It is off until you switch it on below.${asks}`;
   }
 
-  async function install(addonId: string) {
-    const data = await post({ do: "install", addonId }, `install:${addonId}`);
+  async function install(addonId: string, parts?: string[]) {
+    const data = await post({ do: "install", addonId, ...(parts ? { parts } : {}) }, `install:${addonId}`);
     if (!data) return;
     forgetAddons();
     await changed(installedNotice(data));
@@ -277,7 +279,7 @@ export function AdminAddonsPanel() {
                         entry={entry}
                         permissions={state.permissions}
                         busy={busyId === `install:${entry.id}`}
-                        onInstall={() => void install(entry.id)}
+                        onInstall={(parts) => void install(entry.id, parts)}
                       />
                     ))}
                 </ul>
@@ -406,28 +408,31 @@ function CatalogEntry({
   entry: CatalogAddon;
   permissions: AdminAddonsState["permissions"];
   busy: boolean;
-  onInstall: () => void;
+  onInstall: (parts?: string[]) => void;
 }) {
   const adds = Object.entries(entry.contributes)
     .filter(([, titles]) => titles.length)
     .map(([kind, titles]) => `${KIND_LABEL[kind] ?? kind}: ${titles.join(", ")}`);
   const source = sourceFacts(entry.source);
+  const parts = entry.parts ?? [];
+  const [chosen, setChosen] = useState<string[]>(() => parts.filter((part) => part.default).map((part) => part.id));
+  const partBytes = parts.filter((part) => chosen.includes(part.id)).reduce((sum, part) => sum + part.bytes, 0);
   return (
     <li className="plate-row" data-layout="stack">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <span className="font-display text-sm text-amber-100">{entry.name}</span>
         <span className="text-[11px] text-stone-500">v{entry.version}</span>
       </div>
-      <p className="text-[11px] text-stone-500">
-        {entry.author ? `by ${entry.author}` : null}
-        {entry.author && source ? " · " : null}
-        {source ? (
-          <a href={source.url} target="_blank" rel="noreferrer" className="text-amber-200/80 hover:text-amber-200" title={`${source.repo} at the reviewed commit`}>
-            @{source.owner} on GitHub
+      <CreditLine credit={entry.credit ?? catalogCredit(entry)} />
+      {source ? (
+        <p className="text-[11px] leading-4 text-stone-500">
+          <a href={source.url} target="_blank" rel="noreferrer" className="hover:text-amber-200" title={`${source.repo} at the reviewed commit`}>
+            The reviewed commit, {entry.source.commit.slice(0, 7)}
           </a>
-        ) : null}
-      </p>
+        </p>
+      ) : null}
       <p className="mt-1 text-xs text-stone-400">{entry.description}</p>
+      <ModifiesLine modifies={entry.modifies} className="mt-1" />
       {adds.length ? <p className="mt-1 text-[11px] text-stone-400">{adds.join(" · ")}</p> : null}
       {entry.needs.length ? <p className="mt-1 text-[11px] text-stone-500">Needs installed: {entry.needs.join(", ")}</p> : null}
       {entry.permissions.length ? (
@@ -445,14 +450,21 @@ function CatalogEntry({
         </p>
       ))}
       {!entry.fit.ok ? <p className="mt-1 text-[11px] text-amber-300/90">{entry.fit.reason}</p> : null}
+      <PartsPicker idPrefix={`catalog-${entry.id}`} parts={parts} chosen={chosen} onChange={setChosen} disabled={busy} upTo />
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        <button type="button" onClick={onInstall} disabled={busy || !entry.fit.ok} className={cn(ui.btnSmall, "text-xs")}>
+        <button
+          type="button"
+          onClick={() => onInstall(parts.length ? chosen : undefined)}
+          disabled={busy || !entry.fit.ok}
+          className={cn(ui.btnSmall, "text-xs")}
+        >
           {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-          Install
+          {parts.length ? `Install with ${chosen.length} of ${parts.length} parts` : "Install"}
         </button>
         <span className="text-[10px] text-stone-500">
           {Math.max(1, Math.round(entry.bytes / 1024 / 1024))} MB
           {entry.setupMB ? `, then about ${entry.setupMB >= 1024 ? `${(entry.setupMB / 1024).toFixed(1)} GB` : `${entry.setupMB} MB`} at setup` : ""}
+          {partBytes ? `, and up to ${formatBytes(partBytes)} for its parts` : ""}
         </span>
         {entry.homepage && !source ? (
           <a href={entry.homepage} target="_blank" rel="noreferrer" className="text-[11px] text-amber-200/80 hover:text-amber-200">

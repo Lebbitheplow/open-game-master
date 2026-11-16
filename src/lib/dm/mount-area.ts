@@ -17,6 +17,7 @@
 // Dexterity is written here. An area that asks another save leaves the mount
 // to the GM, as before.
 
+import { saveAuraBeside } from "@/lib/dm/aura";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getMounts, setMount } from "@/lib/db/mounts";
@@ -50,7 +51,11 @@ export function areaOnMount(input: {
   if (input.ability !== "dex" || input.total <= 0 || !mount || mount.hp === undefined || mount.hp <= 0) {
     return null;
   }
-  const bonus = MOUNT_DEX[mount.ref] ?? 0;
+  // Aura of Protection covers "a friendly creature within 10 feet" (SRD
+  // 5.1, Paladin), and the mount shares its rider's square (aura.ts
+  // saveAuraBeside). The steed's save took only its Dexterity before.
+  const aura = saveAuraBeside(campaign.id, rider)?.bonus ?? 0;
+  const bonus = (MOUNT_DEX[mount.ref] ?? 0) + aura;
   const outcome = rollExpression(`1d20${bonus < 0 ? bonus : `+${bonus}`}`);
   const roll = insertRoll({
     campaignId: campaign.id,
@@ -71,6 +76,7 @@ export function areaOnMount(input: {
   const row = {
     mount: mount.name,
     save: outcome.total,
+    ...(aura ? { aura: `Aura of Protection: +${aura} on the mount's save` } : {}),
     success,
     damage,
     ...(feat ? { mountedCombatant: success ? "no damage" : "half damage" } : {}),

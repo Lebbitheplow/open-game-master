@@ -15,6 +15,7 @@
 //     tool releases it off their turn for the reaction (readied-release.ts;
 //     a readied attack through pc_attack, src/lib/dm/pc-attack-plan.ts).
 
+import { revealSetTraps } from "@/lib/dm/set-traps";
 import { coatsAsBonusAction, drinksAsBonusAction } from "@/lib/srd/feat-combat";
 import { isBasicPoison } from "@/lib/dm/attack-onhit";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -43,6 +44,8 @@ import { saveEquipment } from "@/lib/dm/gear-store";
 import { lightOil, spreadGear } from "@/lib/dm/gear-zones";
 import { matchGear } from "@/lib/srd/adventuring-gear";
 import { scrollSpell } from "@/lib/srd/scrolls";
+import { checklistSpell } from "@/lib/srd/spell-lists";
+import { itemSpellTurnProblem } from "@/lib/dm/item-casts";
 
 // The tinderbox, by its catalog row: "using it to light a torch, or anything
 // else with abundant, exposed fuel, takes an action".
@@ -129,6 +132,12 @@ export function prepareUseItem(
         return {};
       },
     };
+  }
+  // A scroll's spell is cast with this action, and the bonus-action spell rule
+  // counts it (item-casts.ts): asked before the scroll is spent.
+  const ruled = scroll ? itemSpellTurnProblem(budget, sheet.name, checklistSpell(scroll)?.name ?? scroll, checklistSpell(scroll)?.level ?? 1, "action") : null;
+  if (ruled) {
+    return ruled;
   }
   const drinking = drinksAsBonusAction(sheet) && Boolean(carried && hasItemTag(carried, "potion"));
   const asBonus = drinking || (coatsAsBonusAction(sheet) && isBasicPoison(carried ?? { name }, sheet.campaignId));
@@ -229,13 +238,16 @@ export function searchAction(
   if (check.rollId) {
     turn.rollIds.push(check.rollId);
   }
+  // A hidden trap set on the board that the check meets (set-traps.ts).
+  const traps = revealSetTraps(campaign, sheet, skill, check.total);
   return {
     ok: true,
     action: "Search",
     skill,
     total: check.total,
+    ...(traps ? { found: traps } : {}),
     ...(check.notes.length ? { notes: check.notes } : {}),
-    note: `${sheet.name} searches: ${skill} ${check.total}. Compare it with the DC of what is there to find (a hidden creature's Stealth, a trap's DC); what they do not beat stays unfound.`,
+    note: `${sheet.name} searches: ${skill} ${check.total}. Compare it with what is there to find: a hidden creature's Stealth must be beaten (a tie keeps it hidden), a trap's or a clue's DC only met.`,
   };
 }
 

@@ -21,7 +21,7 @@ import {
   dictationPatch,
   joiningPatch,
   mergePatches,
-  namePatch,
+  welcomePatch,
   narrationPatch,
   picturesPatch,
   storyPatch,
@@ -155,7 +155,7 @@ export function SetupWizard({ config: initialConfig, env, info }: { config: Mask
   // What Continue saves for the step being left.
   function patchFor(key: StepKey): Patch | { error: string } | null {
     if (key === "welcome") {
-      return draft.serverName.trim() === config.serverName.trim() ? null : namePatch(draft.serverName);
+      return welcomePatch(draft, config);
     }
     if (key === "story") {
       const choice = storyChoice(draft, scan?.text ?? []);

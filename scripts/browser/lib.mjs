@@ -555,6 +555,21 @@ export async function axeViolations(page, selector) {
   return page.evaluate(async (scope) => {
     const root = document.querySelector(scope);
     if (!root) return [{ id: "missing-root", impact: "critical", help: `no ${scope}`, nodes: [] }];
+    // axe blends text with what is behind it at the opacity of the moment, so
+    // a list measured while it fades in reads as low contrast though it
+    // settles well above the threshold. Wait for the finite animations on the
+    // part, inside it and on what holds it; ones that loop are left running,
+    // and two seconds is several times the longest entrance here.
+    const entering = document.getAnimations().filter((animation) => {
+      const target = animation.effect?.target;
+      const ends = animation.effect?.getComputedTiming().endTime;
+      return target && Number.isFinite(ends) && animation.playState === "running"
+        && (root.contains(target) || target.contains(root));
+    });
+    await Promise.race([
+      Promise.allSettled(entering.map((animation) => animation.finished)),
+      new Promise((resolve) => setTimeout(resolve, 2000)),
+    ]);
     const result = await window.axe.run(root, {
       runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"] },
     });

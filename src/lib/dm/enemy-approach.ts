@@ -301,7 +301,8 @@ export function approachTarget(
       stoppedBySwing = true;
     }
     if (landing.x !== origin.x || landing.y !== origin.y) {
-      moveToken(attacker.id, landing.x, landing.y, attacker.movedThisRound + cost);
+      moveToken(attacker.id, landing.x, landing.y, attacker.movedThisRound + cost,
+        attacker.movement === "walk" ? [origin, ...walked] : undefined);
       publishEphemeral(campaign.id, "battle_map_updated", {});
       // The spell areas it walked into (src/lib/dm/zone-triggers.ts).
       provoked.push(...zonesAfterMove(campaign, encounterId, { kind: "enemy", refId: enemy.id }, origin, walked.length ? walked : [landing]));

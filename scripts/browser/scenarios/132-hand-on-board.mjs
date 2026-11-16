@@ -52,6 +52,30 @@ export default {
     // It is this hero's turn, so the board offers End turn: above the cards.
     const end = await box(".board-endturn");
     check(end && hand && end.bottom <= hand.top + 16, `End turn (bottom ${Math.round(end?.bottom ?? 0)}) stands above the Hand (top ${Math.round(hand?.top ?? 0)})`);
+    // What stands in the strip of board above the cards stands apart. On a
+    // laptop that strip is low: the Hand's heading, two rows tall for its
+    // hint, lay over the order's plates, the camera's row lay over the turn's
+    // own plate, and End turn, with no room over that row, was cut by the
+    // board's top edge wherever the strip was lower still.
+    const rect = (selector) =>
+      page.evaluate((sel) => {
+        const element = [...document.querySelectorAll(sel)].find((el) => el.getClientRects().length);
+        if (!element) return null;
+        const { left, top, right, bottom } = element.getBoundingClientRect();
+        return { left, top, right, bottom };
+      }, `${root}${selector}`);
+    const apart = (one, two) => !one || !two || one.right <= two.left || two.right <= one.left || one.bottom <= two.top || two.bottom <= one.top;
+    const at = (box) => (box ? `${Math.round(box.left)},${Math.round(box.top)} to ${Math.round(box.right)},${Math.round(box.bottom)}` : "not shown");
+    const heading = await rect(".cine-fight-hand .hand > :first-child");
+    const plates = await rect(".board-view [data-tour='battle-initiative']");
+    const turnPlate = await rect(".board-view .board-glass.rounded-lg");
+    const endTurn = await rect(".board-endturn");
+    const camera = await rect(".board-cam");
+    const view = await rect(".cine-fight-board .board-view");
+    check(heading && apart(heading, plates), `the Hand's heading (${at(heading)}) keeps off the order's plates (${at(plates)})`);
+    check(endTurn && view && endTurn.top >= view.top, `End turn (${at(endTurn)}) is whole inside the board (${at(view)})`);
+    check(turnPlate && apart(endTurn, turnPlate) && apart(camera, turnPlate), `End turn (${at(endTurn)}) and the camera's buttons (${at(camera)}) keep off the turn's plate (${at(turnPlate)})`);
+    check(apart(endTurn, camera), `End turn (${at(endTurn)}) keeps off the camera's buttons (${at(camera)})`);
     // Folded, the Hand is its heading alone and the corner comes down.
     const fold = page.getByRole("button", { name: /^Hide your hand$/ }).locator("visible=true").first();
     check(/hide/i.test((await fold.textContent()) ?? ""), "on the board the fold button says Hide in a word");
@@ -66,6 +90,7 @@ export default {
     await page.getByRole("button", { name: /^Show your hand$/ }).locator("visible=true").first().click();
     await eventually(async () => (await motion(".cine-fight-hand .hand-slot")).includes("hand-fan-in"), { timeoutMs: 2_000, every: 30, label: "the cards dealing back in" });
     await eventually(() => page.locator(`${root}.cine-fight-board .cine-fight-hand .hand-card`).locator("visible=true").count(), { label: "the cards back on the board" });
+    await untilStill(page);
     await t.shot("hand-on-board");
   },
 };

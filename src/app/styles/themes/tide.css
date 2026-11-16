@@ -1,0 +1,106 @@
+/* tide: both brightness palettes, then its materials. See docs/appearance-themes.md.
+   Surfaces sit at a blue-teal hue (about 190) so night does not read as
+   Arcane's indigo and neither mode drifts to Woodland's leaf green. The accent
+   ramp is sea glass, paling to pearl. */
+[data-appearance="tide"][data-theme="dark"] {
+  --background: #05141a;
+  --foreground: #dcecee;
+  --color-stone-950: #07171d;
+  --color-stone-900: #0e252d;
+  --color-stone-800: #173640;
+  --color-stone-700: #29505c;
+  --color-stone-600: #527a86;
+  --color-stone-500: #9bbcc4;
+  --color-stone-400: #a8c7cd;
+  --color-stone-300: #c2dade;
+  --color-stone-200: #d8e9ec;
+  --color-stone-100: #e7f2f4;
+  --color-stone-50: #f3f9fa;
+  --color-amber-950: #072627;
+  --color-amber-900: #0d3d3e;
+  --color-amber-800: #175a5b;
+  --color-amber-700: #267b7b;
+  --color-amber-600: #469d9b;
+  --color-amber-500: #70bfbb;
+  --color-amber-400: #97d6d1;
+  --color-amber-300: #b7e4df;
+  --color-amber-200: #d2eeea;
+  --color-amber-100: #e6f5f3;
+  --color-amber-50: #f4fbfa;
+}
+[data-appearance="tide"][data-theme="light"] {
+  --background: #e2eff0;
+  --foreground: #10303a;
+  --color-stone-950: #f3f9f9;
+  --color-stone-900: #e4f0f1;
+  --color-stone-800: #d1e4e6;
+  --color-stone-700: #a9c8cd;
+  --color-stone-600: #698d95;
+  --color-stone-500: #3b5f69;
+  --color-stone-400: #33555f;
+  --color-stone-300: #26444e;
+  --color-stone-200: #1a353f;
+  --color-stone-100: #11282f;
+  --color-stone-50: #091b21;
+  --color-amber-950: #e8f6f4;
+  --color-amber-900: #d2ece9;
+  --color-amber-800: #a9d8d3;
+  --color-amber-700: #6fb5b0;
+  --color-amber-600: #3f8a87;
+  --color-amber-500: #2a6e6d;
+  --color-amber-400: #205a5b;
+  --color-amber-300: #184849;
+  --color-amber-200: #123a3b;
+  --color-amber-100: #0c2c2d;
+  --color-amber-50: #071f20;
+}
+
+[data-appearance="tide"] {
+  --appearance-motif: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='120' viewBox='0 0 200 120'%3E%3Cg fill='none' stroke='%235f9c9c' stroke-width='1'%3E%3Cpath d='M0 30Q25 10 50 30T100 30T150 30T200 30M0 70Q25 50 50 70T100 70T150 70T200 70M0 110Q25 90 50 110T100 110T150 110T200 110'/%3E%3Cpath d='M88 58A12 12 0 0 1 112 58M94 58A6 6 0 0 1 106 58'/%3E%3C/g%3E%3C/svg%3E");
+  --appearance-motif-size: 200px 120px;
+  --appearance-corner: 1.1rem;
+}
+html[data-appearance="tide"] .ornate::before,
+html[data-appearance="tide"] .ornate::after { border-radius: 50%; width: 18px; height: 18px; }
+
+/* Driftwood is a pale grain, so the night washes are nearly opaque: enough
+   shows through to read as wood without lifting the surface under the text.
+   Fittings are verdigris bronze with one warm glint; keys and panels are
+   rounded like sea-worn pebbles, unlike Woodland's leaf or Gothic's arch. */
+[data-appearance="tide"] {
+  --material-panel-wash: linear-gradient(#0b2129e0, #081b22eb);
+  --material-control-wash: linear-gradient(#1a424edb, #10303aeb);
+  --material-inset: #0b2027;
+  --material-paper: #10272f;
+  --material-metal: #a6d9cf;
+  --material-edge: #4f8b88;
+  --material-body-wash: linear-gradient(#05141af2, #071a21f2);
+  --material-rail-wash: linear-gradient(#12303a9e, #12303a9e);
+  --material-primary-wash: linear-gradient(#236b69eb, #154a4cf2);
+  --material-send-wash: linear-gradient(#236b69, #154a4c);
+  --material-send-edge: var(--color-amber-400);
+  --material-chosen-wash: linear-gradient(#236b69, #154a4c);
+  --material-vital-fill: linear-gradient(90deg, #2f8f8a, #8fdcd2);
+  --material-metal-finish: linear-gradient(135deg, #cfe8dc, #5c9f92 46%, #c9b27c 52%, #3d7b71);
+  --material-metal-ink: #0d2f2c;
+  --material-fitting-radius: 50% 50% 50% 50% / 66% 66% 34% 34%;
+  --material-control-radius: 18px;
+  --material-panel-radius: 20px;
+  --material-crest-tilt: 8deg;
+  --material-scrim: linear-gradient(#05161ca6, #05161c66 45%, #05161ccc);
+}
+[data-appearance="tide"][data-theme="light"] {
+  --material-panel-wash: linear-gradient(#f4f8f5e6, #e6f0eee6);
+  --material-control-wash: linear-gradient(#f1f6f2d6, #d3e5e2db);
+  --material-inset: #f2f6f2;
+  --material-paper: #e8f0ee;
+  --material-metal: #1d5a58;
+  --material-edge: #6a9a97;
+  --material-body-wash: linear-gradient(#e0eeeeeb, #cfe3e4eb);
+  --material-rail-wash: linear-gradient(#5c747240, #5c747240);
+  --material-primary-wash: linear-gradient(#27726feb, #164d4ef2);
+  --material-send-wash: linear-gradient(#27726f, #164d4e);
+  --material-send-edge: var(--material-edge);
+  --material-chosen-wash: linear-gradient(#27726f, #164d4e);
+  --material-scrim: linear-gradient(#d6eaea99, #d6eaea40 45%, #d6eaeabb);
+}

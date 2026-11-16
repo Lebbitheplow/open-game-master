@@ -12,7 +12,7 @@
 // still stops the hide.
 import { hasSkulker } from "@/lib/srd/feat-combat";
 import { zoneHidesFrom } from "@/lib/dm/zone-rules";
-import { enemySenses } from "@/lib/dm/attack-light";
+import { attackSight, characterSenses, enemySenses } from "@/lib/dm/attack-light";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getBattleMapForEncounter, getTokenByRef, listTokens } from "@/lib/db/battle-maps";
 import { listEnemies } from "@/lib/db/encounters";
@@ -122,7 +122,15 @@ export function seenClearlyDespiteTraits(
     }
     const sighted = hasLineOfSight(map.terrain, map.width, token.x, token.y, hider.x, hider.y);
     const cover = coverBetween(map.terrain, map.width, map.height, token.x, token.y, hider.x, hider.y);
-    const dark = map.ambient === "dark" && hider.lightRadius <= 0;
+    // Darkness hides only from a watcher who cannot see into it: the board's
+    // whole light (its lamps, every carried light, magical darkness) and the
+    // watcher's darkvision, blindsight and the rest, read as an attack reads
+    // them (attack-light.ts). Darkvision sees darkness as dim light, which
+    // only lightly obscures (SRD 5.1, Vision and Light): before, any dark
+    // board hid a rogue from a goblin with darkvision, and a rogue standing
+    // in an ally's torchlight hid because the torch was not their own.
+    const sight = attackSight({ campaignId: campaign.id, encounterId, attacker: { refId: enemy.id, senses: enemySenses(enemy) }, target: { refId: sheet.id, senses: characterSenses(sheet) } });
+    const dark = sight ? !sight.attackerSees : map.ambient === "dark" && hider.lightRadius <= 0;
     // A fog cloud or magical darkness between them hides as darkness does (zone-rules.ts).
     if (!sighted || cover > 0 || dark || zoneHidesFrom(map, token, hider, enemySenses(enemy))) {
       continue;

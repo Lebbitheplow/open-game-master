@@ -50,7 +50,7 @@ import { ringSpellCards, ringSpellNames } from "@/lib/battlemap/hand-ring";
 import { intimidatingPresenceCards, subclassSpendCards } from "@/lib/battlemap/hand-subclass";
 import { DOOR_COUNTERS, featureDoorCards } from "@/lib/battlemap/hand-feature-doors";
 import { spellHoldOf } from "@/lib/battlemap/hand-escape";
-import { squeezeSlips } from "@/lib/dm/ar-ws-revelation";
+import { slipFeatureOf, squeezeSlips } from "@/lib/dm/ar-ws-revelation";
 import { gearCards, guessDrawNote, undrawnGate, wieldOf } from "@/lib/battlemap/hand-gear";
 import { grantedAttackCards } from "@/lib/battlemap/hand-granted";
 import { textKey } from "@/lib/language/text-logic";
@@ -161,6 +161,11 @@ function attackCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders
     const rolled = attackRollLine(sheet, profile.toHit, options.board?.attackAura, profile);
     const damage = line.damage;
     const notes: string[] = [];
+    // The off-hand card bears the same weapon's name as the main-hand one (a
+    // pair of shortswords is one row of two), so it says what it is first: a
+    // player with two blades equipped took it for a second copy and thought
+    // two-weapon fighting was missing.
+    if (offHand) notes.push(`Off-hand attack, your bonus action: the ${name} in your other hand, after you take the Attack action with a ${dualWields(sheet.feats, sheet.campaignId) ? "one-handed melee" : "light melee"} weapon.`);
     // Which weapon is out, on the card itself (held-default.ts): a player
     // could not tell, and asked for one they thought was drawn.
     const wield = natural ? undefined : wieldOf(sheet, name);
@@ -463,11 +468,12 @@ function basicCards(sheet: CharacterSheet, turn: HandTurn, riders: CombatRiders,
     };
   };
   for (const basic of BASICS) {
-    // Revelation in Flesh's slip out of a grapple or a nonmagical restraint,
-    // as take_action escape answers it (src/lib/dm/ar-ws-squeeze.ts): 5 feet
-    // of movement, so the card costs no action and rolls nothing.
+    // Revelation in Flesh's or Freedom of Movement's slip out of a grapple
+    // or a nonmagical restraint, as take_action escape answers it
+    // (src/lib/dm/ar-ws-squeeze.ts): 5 feet of movement, so the card costs
+    // no action and rolls nothing.
     if (basic.id === "escape" && squeezeSlips(sheet)) {
-      const slip: HandCard = { ...make(basic, null), cost: "free", dice: "", roll: "no roll", condition: "", rules: "Revelation in Flesh: you slip free for 5 feet of movement. No action, no roll." };
+      const slip: HandCard = { ...make(basic, null), cost: "free", dice: "", roll: "no roll", condition: "", rules: `${slipFeatureOf(sheet)?.name ?? "Your slip"}: you slip free for 5 feet of movement. No action, no roll.` };
       cards.push(gated(slip, standingGate(sheet, turn, "move")));
       continue;
     }

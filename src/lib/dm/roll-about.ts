@@ -66,6 +66,9 @@ export const CHECK_ABOUT = [
   "death_rites",
   // Guild Dues (plague doctor): sourcing rare reagents, poisons or cadavers.
   "rare_reagents",
+  // Gloves of Thievery: a Dexterity check made to pick a lock (a trap's
+  // disarm is "traps", and the gloves add nothing to it).
+  "locks",
 ] as const;
 export type CheckAbout = (typeof CHECK_ABOUT)[number];
 

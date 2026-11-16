@@ -10,8 +10,12 @@ const HARDWARE_GUIDE = "https://github.com/Lebbitheplow/open-game-master/blob/ma
 // screen says it (src/lib/model-registry/hardware.ts storytellerFit).
 function machineLine(machine: NonNullable<ScanResult["machine"]>): string {
   switch (machine.fit) {
+    // The command below names the Q8_0 file; a smaller card holds a smaller
+    // quantization whole, never one that spills into system memory.
     case "recommended":
-      return `This machine (${machine.summary}) has room for the default storyteller, the first command below.`;
+      return machine.quant && machine.quant !== "Q8_0"
+        ? `This machine (${machine.summary}) holds the default storyteller whole at ${machine.quant}: the first command below, with its ${machine.quant} file in place of Q8_0.`
+        : `This machine (${machine.summary}) holds the default storyteller whole: the first command below.`;
     case "minimum":
       return `This machine (${machine.summary}) has room for the 16 GB minimum, the gpt-oss-20b command below.`;
     case "below":

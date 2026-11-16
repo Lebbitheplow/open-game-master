@@ -83,7 +83,7 @@ if (world.hasPack) {
   });
 
   await test("Crafting a thing the table names in its own words takes its row as srdName, as grant_item does: priced by that row, and the line made carries it.", async () => {
-    for (const item of ["Scudo", "Bouclier", "Escudo", "Schild", "Round shield"]) {
+    for (const item of ["Scudo", "Escudo", "Schild", "Round shield"]) {
       const crafter = world.addHero({ class: "fighter", level: 1, gold: 100, proficiencies: profs({ tools: ["Smith's tools"] }) });
       const before = world.campaign().clock.instant;
       const asked = await world.invoke("downtime", { days: 2, characterId: crafter.id, activity: "crafting", item, tool: "smith's tools" });
@@ -97,6 +97,15 @@ if (world.hasPack) {
       assert.equal(world.sheet(crafter.id).equipment.find((line) => line.name === item)?.srdName, "Shield", item);
       assert.equal(purse(crafter.id), 9500, item);
     }
+  });
+
+  await test("Crafting a thing by its official French SRD name is that row with no srdName: Bouclier is priced as a Shield.", async () => {
+    const crafter = world.addHero({ class: "fighter", level: 1, gold: 100, proficiencies: profs({ tools: ["Smith's tools"] }) });
+    const made = await world.invoke("downtime", { days: 2, characterId: crafter.id, activity: "crafting", item: "Bouclier", tool: "smith's tools" });
+    assert.equal(made.ok, true, made.error);
+    assert.match(made.result.results[0], /buys 5 gp of raw materials for Bouclier/);
+    assert.equal(world.sheet(crafter.id).equipment.filter((line) => line.name === "Bouclier").length, 1);
+    assert.equal(purse(crafter.id), 9500);
   });
 }
 

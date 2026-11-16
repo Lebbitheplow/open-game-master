@@ -28,13 +28,14 @@
 //     feature; the proficiency bonus is the character's own.
 
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { proficiencyBonus } from "@/lib/srd";
+import { proficiencyBonusOf } from "@/lib/srd/proficiency";
 import { activeAuthored } from "@/lib/srd/authored-effects";
 import type { SummonForm } from "@/lib/srd/summon-forms";
 import type { SummonSpell } from "@/lib/srd/summon-spells";
 import { containsPhrase, textKey } from "@/lib/language/text-logic";
 
-type Holder = Pick<CharacterSheet, "level"> & Parameters<typeof activeAuthored>[0];
+// The equipment for an Ioun Stone of Mastery's +1 to the proficiency bonus.
+type Holder = Pick<CharacterSheet, "level" | "equipment"> & Parameters<typeof activeAuthored>[0];
 
 // The spell as this caster casts it: one more creature per casting where a
 // feature says so. The same object for everybody else.
@@ -53,7 +54,7 @@ export function thrallForm(caster: Holder, spell: Pick<SummonSpell, "school">, f
       continue;
     }
     const hp = Math.max(1, held.level);
-    const bonus = proficiencyBonus(caster.level);
+    const bonus = proficiencyBonusOf(caster);
     return {
       form: { ...form, hp: form.hp + hp, attacks: form.attacks.map((attack) => ({ ...attack, damage: `${attack.damage}+${bonus}` })) },
       note: `${held.feature}: ${hp} more hit points each, and +${bonus} on their weapon damage.`,

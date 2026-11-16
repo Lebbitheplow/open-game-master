@@ -272,10 +272,10 @@ this opted-in layout retain their original behavior.
 After `ready`, a session view without a tactical map receives:
 
 ```js
-{ odm: 1, type: "scene", genre, appearance, options, assetsUrl }
+{ odm: 1, type: "scene", genre, appearance, options, assetsUrl, parts }
 ```
 
-`appearance` and `options` have the same meaning as in a board snapshot.
+`appearance`, `options` and `parts` have the same meaning as in a board snapshot.
 This message supplies no map, tokens, story text, campaign state, or permissions.
 Tile/token/hover/anchor input is ignored without a map; map-file and portrait
 requests fail. A later mapped frame receives the normal projected snapshot.
@@ -462,6 +462,9 @@ revision, actionId }`. The finite `BOARD_VALUE_CONTROLS` may include a `value`
 string, capped at 200 characters. IDs are the finite `BOARD_CONTROL_IDS` in
 `board-bridge.ts`. A control may offer exact enabled `options` or a bounded
 text `input`; the host validates the value against that current offer.
+Several pickers may share an action ID. For example, Cast offers playable
+spells by level with a `hand-card` picker for each level. Send the chosen
+option's value with that ID.
 The host checks the current map, turn/viewer and HUD contents, revision,
 offered/enabled control and pending state, and consumes each offer once before
 calling the existing handler. Repeated equivalent renders keep the same
@@ -557,6 +560,7 @@ latest state when `active` becomes true. Older views may ignore the hint.
   hasBackdrop,
   view,             // { data, files: [{ name, type, bytes }] } from your own generator, or null
   assetsUrl,        // where your asset library is served, ending in "/"
+  parts,            // your addon's parts set up on this server, e.g. ["highFantasy"] (authoring.md, "Parts"); [] from older hosts
   options,          // this viewer's choices for your view's options, e.g. { pixelScale: "2" }
   viewer: { canDirect },
   appearance: { theme: "night" | "day", reducedMotion, audio: { muted, volume } /* optional */ }
@@ -613,6 +617,16 @@ extension point is added to the server with its own contract, checks and tests,
 in a release, and documented here; the contract version goes up only when an
 existing contract has to change.
 
+### Painted scenery
+
+The optional `scenery` snapshot list contains the flat painter's seeded
+decorations on explored terrain. Each entry has `section` (`props` or
+`decals`), a catalog `id`, `x`, `y`, and `size` measured in squares,
+and `rotation` in radians. Views can use a 3D model at the same spot.
+Placed props already come as board tokens. Automatic scenery is cosmetic.
+Hosts omit the list if the map has a backdrop or the painted catalog is
+unavailable. Bridge version 1 remains compatible with views that ignore it.
+
 ### Remaining movement and the native ruler
 
 A board snapshot's optional budgetLeft is remaining movement in squares. The authoritative reachable list is already filtered by the native movement mode; use it for movement shading instead of calculating another range. A zero budget hides movement shading. Older hosts omit budgetLeft.
@@ -620,6 +634,18 @@ A board snapshot's optional budgetLeft is remaining movement in squares. The aut
 A separate host message { odm: 1, type: "ruler", mapId, ruler } carries the normal board's current hover or first-tap preview. ruler is null to clear it, otherwise { path: [{ x, y }, ...], label, overBudget }. Paths contain only in-bounds known terrain from this viewer's projection. Draw over-budget previews distinctly. The path is an existing native estimate from the same ruler the normal board uses; it is not movement authority. Continue forwarding tile taps to the host for normal aim/confirmation and server validation.
 
 Ruler updates are separate from snapshots so hovering does not require rebuilding terrain, figures or other expensive scene resources. Ignore messages for other map IDs. This additive message retains bridge version 1; older views may ignore it and older hosts do not send it.
+
+### Miniature movement and sides
+
+A projected token may carry `walkPath`, a recent, confirmed ground walk from
+its origin through its current position. Each square must be visible to that
+viewer. Views can use it for animation when the position changes, starting
+from the token's previous position. The host omits it for reduced motion and
+when there is no matching recent visible walk, such as a teleport or undo.
+
+The optional `side` is `"party"` or `"foe"` when the game overrides a
+figure's usual allegiance. Without it, use the normal side for the token's
+kind. Both fields are additive and can be absent on older hosts.
 
 ### Enemy and NPC sex
 

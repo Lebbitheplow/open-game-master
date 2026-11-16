@@ -1,0 +1,1476 @@
+{
+  "date": "2026-11-14",
+  "tool": "built-in image_gen",
+  "scope": "Shared equipment used in each of the six genre starting kits; named genre equipment from the previous set is excluded.",
+  "expectedCount": 49,
+  "records": [
+    {
+      "genre": "cyberpunk",
+      "label": "Dagger",
+      "category": "weapon",
+      "subject": "a short single cyberpunk utility dagger with a dark ceramic-coated steel blade, sharply lit bevel, textured black polymer grip and one restrained cyan inset in the handle; solid physical blade, not an energy sword",
+      "id": "cyberpunk-dagger",
+      "itemId": "dagger",
+      "cardId": "cyberpunk-weapon-dagger",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: a short single cyberpunk utility dagger with a dark ceramic-coated steel blade, sharply lit bevel, textured black polymer grip and one restrained cyan inset in the handle; solid physical blade, not an energy sword. Full object in a shallow diagonal across the wide canvas, nearly side-on, minimal foreshortening; all ends visible.",
+      "sourceFile": "exec-33c53cda-3043-4807-a250-73109d348003.png",
+      "sourceSha256": "9dd91be47611f8aa73bfadd6396f57c7ea75d615d69c7b716bfd34920787529e",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/cyberpunk-weapon-dagger.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 7610,
+          "sha256": "8b32b5fa5d57fa0cc1c102e11eeb37fcb6ff620baa2bf55d5b8e7c292e91b947"
+        },
+        "icons": {
+          "file": "/assets/icons/item/cyberpunk-dagger.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 3912,
+          "sha256": "784698772b1810d84c5a4666b3c68cf2bfe0d95ce725db3bede41f6f7ca54f19"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "cyberpunk",
+      "label": "Forgery Kit",
+      "category": "item",
+      "subject": "an open compact black document-work case containing a small cyan-lit inspection tablet, blank plastic ID cards, a stylus and a compact embossing tool; fictional unmarked props, no readable documents or instructions",
+      "id": "cyberpunk-forgery-kit",
+      "itemId": "forgery-kit",
+      "cardId": "cyberpunk-gear-forgery-kit",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: an open compact black document-work case containing a small cyan-lit inspection tablet, blank plastic ID cards, a stylus and a compact embossing tool; fictional unmarked props, no readable documents or instructions. One compact coherent inventory arrangement, shallow three-quarter view; all parts inside the frame.",
+      "sourceFile": "exec-6c79cefc-ed7e-4635-993b-646b7736e2c2.png",
+      "sourceSha256": "bd05011824505d93d849e10cf98ca756e0268f8c259045e869306512e4016324",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/cyberpunk-gear-forgery-kit.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 10270,
+          "sha256": "7a5ac3d7c6ca019c61d7e2b6d3b4e999e666a1cc44b8fc748fc0a6bddde065f6"
+        },
+        "icons": {
+          "file": "/assets/icons/item/cyberpunk-forgery-kit.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 6032,
+          "sha256": "bd9cd363bba703ea327fab1bbcffd4526f329e752db6e3f5d35998e00e3f1126"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "dark_fantasy",
+      "label": "Longsword",
+      "category": "weapon",
+      "subject": "a complete medieval longsword with a straight double-edged blade, austere blackened iron crossguard, worn oxblood leather grip and small tarnished silver pommel; somber old-world craftsmanship, no skulls or blood",
+      "id": "dark-fantasy-longsword",
+      "itemId": "longsword",
+      "cardId": "dark-fantasy-weapon-longsword",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: a complete medieval longsword with a straight double-edged blade, austere blackened iron crossguard, worn oxblood leather grip and small tarnished silver pommel; somber old-world craftsmanship, no skulls or blood. Full object in a shallow diagonal across the wide canvas, nearly side-on, minimal foreshortening; all ends visible.",
+      "sourceFile": "exec-d07ac843-ad71-4418-89e0-7a49a288a559.png",
+      "sourceSha256": "72daf260b533771d180560c69b35c79406b91b22bd57f5dd870f799c526f8b6b",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/dark-fantasy-weapon-longsword.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 6488,
+          "sha256": "7e82aba0800ec4da4f1b1a93b4b6280b8d04f6667325725107fb5cfb319094a2"
+        },
+        "icons": {
+          "file": "/assets/icons/item/dark-fantasy-longsword.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 3516,
+          "sha256": "a41f79f34eb21d5972fa57726fa12d198704f4a36763a09a4c861f68cd70a5c4"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "dark_fantasy",
+      "label": "Chain Shirt",
+      "category": "armor",
+      "subject": "a sleeveless short chain shirt made of closely linked dark iron rings, worn brown leather edging and a simple throat buckle; clearly chainmail links rather than plate, empty garment without a body",
+      "id": "dark-fantasy-chain-shirt",
+      "itemId": "chain-shirt",
+      "cardId": "dark-fantasy-armor-chain-shirt",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: a sleeveless short chain shirt made of closely linked dark iron rings, worn brown leather edging and a simple throat buckle; clearly chainmail links rather than plate, empty garment without a body. Empty armor shown at a shallow three-quarter front view; full garment or shield visible, no mannequin, body or stand.",
+      "sourceFile": "exec-02b8daf5-944b-4402-a7f2-0ee5393888d3.png",
+      "sourceSha256": "0ac7bfc6de4a531f1b7487514b87ee94c9caa2e82248ed44018630df98b7af52",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/dark-fantasy-armor-chain-shirt.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 7332,
+          "sha256": "71957c73fba302dd66292f4f65ac2579b9fe1cc448cb912cc5fad157dc2345a5"
+        },
+        "icons": {
+          "file": "/assets/icons/item/dark-fantasy-chain-shirt.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 10892,
+          "sha256": "367c4fb122c3787669346a890d6e68d948f4437525124e9da2496125049331fa"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "dark_fantasy",
+      "label": "Manacles",
+      "category": "item",
+      "subject": "a pair of heavy medieval blackened iron wrist manacles linked by a short intact chain, rough forged texture and simple closed locking hasps; isolated equipment with no captive or body",
+      "id": "dark-fantasy-manacles",
+      "itemId": "manacles",
+      "cardId": "dark-fantasy-gear-manacles",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: a pair of heavy medieval blackened iron wrist manacles linked by a short intact chain, rough forged texture and simple closed locking hasps; isolated equipment with no captive or body. One compact coherent inventory arrangement, shallow three-quarter view; all parts inside the frame.",
+      "sourceFile": "exec-9f0bf5c5-dc9c-431e-991a-dc1335bf83b9.png",
+      "sourceSha256": "7ea9fdbc757dc889bceaccf9c4d2552ea064af19c6fd74eecb80d6f2c18318ba",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/dark-fantasy-gear-manacles.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 14252,
+          "sha256": "31e05169d9d82e9b519454210f19499aabb6a7f42e8bf501945795a3db289e7b"
+        },
+        "icons": {
+          "file": "/assets/icons/item/dark-fantasy-manacles.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 7246,
+          "sha256": "5bac379ec7f0e611027ca0a01ced4167818d2c1db02c10057839f0105e523f8a"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "dark_fantasy",
+      "label": "Dagger",
+      "category": "weapon",
+      "subject": "a short medieval dagger with a straight silver-gray double-edged blade, blackened crossguard and worn oxblood leather handle; austere gothic profile, no blood or skull ornaments",
+      "id": "dark-fantasy-dagger",
+      "itemId": "dagger",
+      "cardId": "dark-fantasy-weapon-dagger",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: a short medieval dagger with a straight silver-gray double-edged blade, blackened crossguard and worn oxblood leather handle; austere gothic profile, no blood or skull ornaments. Full object in a shallow diagonal across the wide canvas, nearly side-on, minimal foreshortening; all ends visible.",
+      "sourceFile": "exec-002ac1dc-ee5e-4cd1-a2ff-492d9ac3d154.png",
+      "sourceSha256": "1d4170e7091b9a121542b50da76257ae3f99d1ef7c2128c4aaf4944c5fba8769",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/dark-fantasy-weapon-dagger.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 8296,
+          "sha256": "0475744a574d2b8392c58ed0cdcb00bb7667bec517d725e06b4e06723522b238"
+        },
+        "icons": {
+          "file": "/assets/icons/item/dark-fantasy-dagger.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 4404,
+          "sha256": "b239d562ca6663213371dde6b612ef760453074f477de95c715bc638fdd9b7e7"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "dark_fantasy",
+      "label": "Leather",
+      "category": "armor",
+      "subject": "an empty fitted medieval leather cuirass with short shoulder guards, dark oxblood and soot-brown hardened leather panels, visible hand stitching and restrained tarnished buckles; clearly leather armor, no metal breastplate",
+      "id": "dark-fantasy-leather",
+      "itemId": "leather",
+      "cardId": "dark-fantasy-armor-leather",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: an empty fitted medieval leather cuirass with short shoulder guards, dark oxblood and soot-brown hardened leather panels, visible hand stitching and restrained tarnished buckles; clearly leather armor, no metal breastplate. Empty armor shown at a shallow three-quarter front view; full garment or shield visible, no mannequin, body or stand.",
+      "sourceFile": "exec-59ca8269-48c3-4633-b3fe-188d7f606ae5.png",
+      "sourceSha256": "8fcb49a7c19cddf2beea2e8e790156287282fd783b0b86d7f1b10cddfc2f87e9",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/dark-fantasy-armor-leather.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 7726,
+          "sha256": "42145cef3986462465a9805a779b64f0a163560d6064e7cd3de4f7b18ac95726"
+        },
+        "icons": {
+          "file": "/assets/icons/item/dark-fantasy-leather.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 10776,
+          "sha256": "9e803cfa8111275c8a5da7aca948f1d0f0369ef91085f2b3c7f74987f6ad9ece"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "dark_fantasy",
+      "label": "Herbalism Kit",
+      "category": "item",
+      "subject": "an open weathered brown leather herbalist roll containing a small stone mortar and pestle, tied bundles of sage-colored dried leaves and three corked amber bottles; restrained medieval materials, one coherent compact kit",
+      "id": "dark-fantasy-herbalism-kit",
+      "itemId": "herbalism-kit",
+      "cardId": "dark-fantasy-gear-herbalism-kit",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: an open weathered brown leather herbalist roll containing a small stone mortar and pestle, tied bundles of sage-colored dried leaves and three corked amber bottles; restrained medieval materials, one coherent compact kit. One compact coherent inventory arrangement, shallow three-quarter view; all parts inside the frame.",
+      "sourceFile": "exec-cdfb04d0-0d5d-4460-8951-475a96310e09.png",
+      "sourceSha256": "e3d739b86e7d9267f2bd02eeb646e16608e44f15e1ceb8948c6d0fdd85a00a27",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/dark-fantasy-gear-herbalism-kit.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 15466,
+          "sha256": "c412cd71577d92bb82684abbfd285195a4bf9c665009b2b10d77dbd2a22907fc"
+        },
+        "icons": {
+          "file": "/assets/icons/item/dark-fantasy-herbalism-kit.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 8038,
+          "sha256": "16923c9f576f6b12d1114983709dbf3663c4b63f7887c7056557d6b2f7700d2f"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "dark_fantasy",
+      "label": "Shield",
+      "category": "armor",
+      "subject": "a medieval kite shield of dark stained timber with a plain blackened iron rim and central boss, worn oxblood leather face panels and a few repaired scratches; complete shield, no crest, text or skull",
+      "id": "dark-fantasy-shield",
+      "itemId": "shield",
+      "cardId": "dark-fantasy-armor-shield",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: a medieval kite shield of dark stained timber with a plain blackened iron rim and central boss, worn oxblood leather face panels and a few repaired scratches; complete shield, no crest, text or skull. Empty armor shown at a shallow three-quarter front view; full garment or shield visible, no mannequin, body or stand.",
+      "sourceFile": "exec-b89a5445-f6c1-432c-af56-978a14854c83.png",
+      "sourceSha256": "d451e3b42405a9faa556b9410a0061c8645c5ce55aef08de1c63c4c1d0db9cc9",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/dark-fantasy-armor-shield.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 5484,
+          "sha256": "dd752f6b5575bf38408c2b03f63e6c3196de544def039421c007cc2fab2e56b6"
+        },
+        "icons": {
+          "file": "/assets/icons/item/dark-fantasy-shield.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 8758,
+          "sha256": "895aa9f84d8507c247284e88fd4a50eb88e58b17cea0e79eb85c782b211b7be9"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "dark_fantasy",
+      "label": "Flail",
+      "category": "weapon",
+      "subject": "a complete short medieval flail: one worn leather-wrapped wooden handle, one short visible iron chain and one single small flanged iron ball; arranged diagonally as one connected object, blackened iron and oxblood leather",
+      "id": "dark-fantasy-flail",
+      "itemId": "flail",
+      "cardId": "dark-fantasy-weapon-flail",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: a complete short medieval flail: one worn leather-wrapped wooden handle, one short visible iron chain and one single small flanged iron ball; arranged diagonally as one connected object, blackened iron and oxblood leather. Full object in a shallow diagonal across the wide canvas, nearly side-on, minimal foreshortening; all ends visible.",
+      "sourceFile": "exec-e1fe4954-0606-47e1-b899-3259dc687fce.png",
+      "sourceSha256": "ff7fc754a681021eede0d67c1647344487bb384a53cd69da6772915f8912579d",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/dark-fantasy-weapon-flail.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 10784,
+          "sha256": "449709bac6f373cbad0e7ef3638b3f509d0f7c7be687bd39b15003dfa53512ef"
+        },
+        "icons": {
+          "file": "/assets/icons/item/dark-fantasy-flail.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 5486,
+          "sha256": "bb923a9af9dde146da3a96a3e9eebd2df1db326bfbe2c9e5f7ac72545cea85a3"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "dark_fantasy",
+      "label": "Whip",
+      "category": "weapon",
+      "subject": "one complete dark brown braided leather whip, neatly coiled into a compact oval beside its short oxblood-wrapped grip; the coil, thin tapered lash and handle clearly connected, somber medieval equipment",
+      "id": "dark-fantasy-whip",
+      "itemId": "whip",
+      "cardId": "dark-fantasy-weapon-whip",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: one complete dark brown braided leather whip, neatly coiled into a compact oval beside its short oxblood-wrapped grip; the coil, thin tapered lash and handle clearly connected, somber medieval equipment. Full object in a shallow diagonal across the wide canvas, nearly side-on, minimal foreshortening; all ends visible.",
+      "sourceFile": "exec-ddafddc5-6de4-481b-a664-6e98a14781f8.png",
+      "sourceSha256": "fb40d3cd4424f8c5347c50010bc6e651f168ab9b219b86f44d17e5260b57ac5d",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/dark-fantasy-weapon-whip.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 14604,
+          "sha256": "94849c4630ab7e5823f71276df28effb9366f9983de470c33d964fa621d3f4b2"
+        },
+        "icons": {
+          "file": "/assets/icons/item/dark-fantasy-whip.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 7234,
+          "sha256": "c4917b41d372e489ef5eacff20e748b9c1bda0ea5fb9cca21cf6be537c8762b4"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "dark_fantasy",
+      "label": "Lute",
+      "category": "item",
+      "subject": "one medieval pear-shaped lute with a rounded dark walnut body, pale carved soundboard rosette, visible strings, short neck and angled pegbox; worn polished wood with a restrained oxblood strap, complete instrument",
+      "id": "dark-fantasy-lute",
+      "itemId": "lute",
+      "cardId": "dark-fantasy-gear-lute",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: one medieval pear-shaped lute with a rounded dark walnut body, pale carved soundboard rosette, visible strings, short neck and angled pegbox; worn polished wood with a restrained oxblood strap, complete instrument. One compact coherent inventory arrangement, shallow three-quarter view; all parts inside the frame.",
+      "sourceFile": "exec-2a249116-6fbd-4c84-9c8e-17bd35655f13.png",
+      "sourceSha256": "9f6a3fd1c7e0f90ac2d2d7189731829dbcf54d7e7ff9687f2a59434a6020c9ac",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/dark-fantasy-gear-lute.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 13484,
+          "sha256": "d469f9a11bead254192fd74949c2fae1b9a55f07dcef71017bf2ab64236074ed"
+        },
+        "icons": {
+          "file": "/assets/icons/item/dark-fantasy-lute.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 8078,
+          "sha256": "d1c7c9d5bac3ea3e2e428f0a333ad43e328290d782b3261524ecbc45ffe0fa86"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "dark_fantasy",
+      "label": "Club",
+      "category": "weapon",
+      "subject": "a short heavy medieval hardwood club with dark gnarled grain, one plain blackened iron reinforcing band and a worn brown leather grip; blunt rounded head with no sharp spikes",
+      "id": "dark-fantasy-club",
+      "itemId": "club",
+      "cardId": "dark-fantasy-weapon-club",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: a short heavy medieval hardwood club with dark gnarled grain, one plain blackened iron reinforcing band and a worn brown leather grip; blunt rounded head with no sharp spikes. Full object in a shallow diagonal across the wide canvas, nearly side-on, minimal foreshortening; all ends visible.",
+      "sourceFile": "exec-6ea93d69-5431-4730-a123-23c577f029a5.png",
+      "sourceSha256": "4e643a097e91e14248066fa6d6b34d177717303c44988f138ae478667973576f",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/dark-fantasy-weapon-club.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 9830,
+          "sha256": "656817f27b27d6987aed42b79cf0830fefe8a82a557b991a7a826b505469a37a"
+        },
+        "icons": {
+          "file": "/assets/icons/item/dark-fantasy-club.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 4822,
+          "sha256": "8af89d9615fb84a22c2c458a280e740579d55471b3ebdfc69a22f341ac127041"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "dark_fantasy",
+      "label": "Poisoner's Kit",
+      "category": "item",
+      "subject": "an open aged leather apothecary case holding three sealed muted green glass vials, a small brass balance spoon and a folded cloth; clearly fictional medieval inventory equipment, no ingredients, labels or instructions",
+      "id": "dark-fantasy-poisoners-kit",
+      "itemId": "poisoners-kit",
+      "cardId": "dark-fantasy-gear-poisoners-kit",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: an open aged leather apothecary case holding three sealed muted green glass vials, a small brass balance spoon and a folded cloth; clearly fictional medieval inventory equipment, no ingredients, labels or instructions. One compact coherent inventory arrangement, shallow three-quarter view; all parts inside the frame.",
+      "sourceFile": "exec-c8005da2-63e3-48c4-ac77-e2ea94ea30d3.png",
+      "sourceSha256": "61b3f94588783596fa4b6d579ab8ebef2d15e4d8788c143fb0c561a0e7e80bde",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/dark-fantasy-gear-poisoners-kit.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 12310,
+          "sha256": "9027ad83e94e99a18ff1cdd932267bfda328f7d5ad3374d774d44f919be44f29"
+        },
+        "icons": {
+          "file": "/assets/icons/item/dark-fantasy-poisoners-kit.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 9590,
+          "sha256": "ed6b7beaf1b840f4968ad9ed52c49e98187dcb3e9121e4e443bff64fee1ee290"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "horror",
+      "label": "Leather",
+      "category": "armor",
+      "subject": "an empty early-twentieth-century hunter's protective leather vest with a short high collar, reinforced dark umber shoulder panels, weathered stitching and dull nickel buckles; practical worn leather, no modern ballistic plates, no gore",
+      "id": "horror-leather",
+      "itemId": "leather",
+      "cardId": "horror-armor-leather",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: an empty early-twentieth-century hunter's protective leather vest with a short high collar, reinforced dark umber shoulder panels, weathered stitching and dull nickel buckles; practical worn leather, no modern ballistic plates, no gore. Empty armor shown at a shallow three-quarter front view; full garment or shield visible, no mannequin, body or stand.",
+      "sourceFile": "exec-21028b5e-e369-4bbc-9667-f919737500a0.png",
+      "sourceSha256": "2066e289ad57478ff91e30a6e18b790a2464ed97057760de21ed3f37f34c1ee2",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/horror-armor-leather.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 6742,
+          "sha256": "dff93ef34cf71c97ccd2de1a8fd0aaa5885908713fba21cba738ff6ebec522a0"
+        },
+        "icons": {
+          "file": "/assets/icons/item/horror-leather.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 9554,
+          "sha256": "7dd0a8018c2fe9e9bf2920ddf2d301c62ca4f8a70b07c9531734ebb7953be0a5"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "horror",
+      "label": "Holy Symbol",
+      "category": "item",
+      "subject": "one tarnished silver sunburst devotional pendant on a short dark rosary-like chain, an abstract amber center and worn edges; fictional protective religious symbol for an occult investigator, understated period craft, no letters",
+      "id": "horror-holy-symbol",
+      "itemId": "holy-symbol",
+      "cardId": "horror-gear-holy-symbol",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: one tarnished silver sunburst devotional pendant on a short dark rosary-like chain, an abstract amber center and worn edges; fictional protective religious symbol for an occult investigator, understated period craft, no letters. One compact coherent inventory arrangement, shallow three-quarter view; all parts inside the frame.",
+      "sourceFile": "exec-3fd97aad-04f3-42f5-b1b6-1b99f5bf95b4.png",
+      "sourceSha256": "a58e50f1fa32fe40fcb84c4e41014f8f6d8e33a61ca32ff94c0a26eb8f455ea8",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/horror-gear-holy-symbol.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 12854,
+          "sha256": "966f42e0ef443b56b3cc8b3431e647260303e9d66ab9e27785ddf4531419ec5e"
+        },
+        "icons": {
+          "file": "/assets/icons/item/horror-holy-symbol.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 12774,
+          "sha256": "4e20c790adfab7fa405de2a18137cab38cd42c898b2b2c6d52beb832cc7b107c"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "horror",
+      "label": "Dagger",
+      "category": "weapon",
+      "subject": "a compact antique occult hunter's dagger with a narrow polished physical steel blade, simple tarnished silver guard and dark ebonized wooden grip; restrained early-twentieth-century heirloom, no blood, no symbols or written runes",
+      "id": "horror-dagger",
+      "itemId": "dagger",
+      "cardId": "horror-weapon-dagger",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: a compact antique occult hunter's dagger with a narrow polished physical steel blade, simple tarnished silver guard and dark ebonized wooden grip; restrained early-twentieth-century heirloom, no blood, no symbols or written runes. Full object in a shallow diagonal across the wide canvas, nearly side-on, minimal foreshortening; all ends visible.",
+      "sourceFile": "exec-2537b799-0178-4c0d-aa7d-f874ebcdc0f5.png",
+      "sourceSha256": "cca58d8cc379db736ccf74481218c70fcf7b50bf17e9807870bef9a613214f2a",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/horror-weapon-dagger.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 7208,
+          "sha256": "1ffeeb9a4c6a7eda6ab9a3a9e8c37ae2fe74f48c8ec447b339a4cce2d3acbae3"
+        },
+        "icons": {
+          "file": "/assets/icons/item/horror-dagger.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 3846,
+          "sha256": "1c68d0454596c02b599f5ecd212074f304b9cd42baf7dd192a1e61239029ea96"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "horror",
+      "label": "Component Pouch",
+      "category": "item",
+      "subject": "an open weathered charcoal leather occult investigator's belt pouch holding two small corked bottles, a pale stone charm and a tied bundle of dried herbs; period brass clasp, subtle violet glass accents, compact coherent pouch",
+      "id": "horror-component-pouch",
+      "itemId": "component-pouch",
+      "cardId": "horror-gear-component-pouch",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: an open weathered charcoal leather occult investigator's belt pouch holding two small corked bottles, a pale stone charm and a tied bundle of dried herbs; period brass clasp, subtle violet glass accents, compact coherent pouch. One compact coherent inventory arrangement, shallow three-quarter view; all parts inside the frame.",
+      "sourceFile": "exec-4416f64e-86f0-4dbb-a0d9-97f50d6458cb.png",
+      "sourceSha256": "889466ba78098bb55c142d1e37d0922fd14edc39a62aa11c29d46e3f95015dd9",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/horror-gear-component-pouch.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 12778,
+          "sha256": "eb6fba96881ed37fd13994d28a88f7bb3099b8864fb072dd98248998882fa59c"
+        },
+        "icons": {
+          "file": "/assets/icons/item/horror-component-pouch.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 10150,
+          "sha256": "3093048a27c153504e6a4223f5c991e62a73f09b270b18d6642c33176b6a7ef2"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "horror",
+      "label": "Longsword",
+      "category": "weapon",
+      "subject": "a complete antique straight longsword kept by an occult hunter, long polished steel blade with a muted silver sheen, narrow tarnished crossguard and dark carved hardwood grip; elegant practical heirloom with no supernatural glow, blood or symbols",
+      "id": "horror-longsword",
+      "itemId": "longsword",
+      "cardId": "horror-weapon-longsword",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: a complete antique straight longsword kept by an occult hunter, long polished steel blade with a muted silver sheen, narrow tarnished crossguard and dark carved hardwood grip; elegant practical heirloom with no supernatural glow, blood or symbols. Full object in a shallow diagonal across the wide canvas, nearly side-on, minimal foreshortening; all ends visible.",
+      "sourceFile": "exec-776120fb-9847-41df-95fc-1ac4ab8f8dbd.png",
+      "sourceSha256": "98768b0622b0aa7779b806ce550cfbb51bb4d52f222a053bbd0a9a65135e7d24",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/horror-weapon-longsword.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 6360,
+          "sha256": "5948c1569df446d8c2d5644572a330c4b9038a94d5467922e35f996e6fc5b154"
+        },
+        "icons": {
+          "file": "/assets/icons/item/horror-longsword.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 3582,
+          "sha256": "d3cd745a7824e0a2480b10af659895a7c6160cdee0b47a192b934544aa72288a"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "horror",
+      "label": "Chain Shirt",
+      "category": "armor",
+      "subject": "an empty short antique chainmail shirt, close-set dull silver iron rings over a narrow dark leather collar and shoulder edging; aged but intact protective heirloom for a monster hunter, unmistakable mail, no body or gore",
+      "id": "horror-chain-shirt",
+      "itemId": "chain-shirt",
+      "cardId": "horror-armor-chain-shirt",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: an empty short antique chainmail shirt, close-set dull silver iron rings over a narrow dark leather collar and shoulder edging; aged but intact protective heirloom for a monster hunter, unmistakable mail, no body or gore. Empty armor shown at a shallow three-quarter front view; full garment or shield visible, no mannequin, body or stand.",
+      "sourceFile": "exec-705ad446-ee15-4fa3-8f52-1257ba528d15.png",
+      "sourceSha256": "f6666ec05ce343ea26f82235b80d2cd343e50a147f72353171339553b86c213e",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/horror-armor-chain-shirt.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 8116,
+          "sha256": "0ca4f7162b381a011de4e2f8228079ff67bbd5ed5a625e313a0c5d1627344eca"
+        },
+        "icons": {
+          "file": "/assets/icons/item/horror-chain-shirt.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 12574,
+          "sha256": "583e79719a8b8d8832745bd3202ecfc1b6b7ccf896203258be44a92923e97648"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "mystery",
+      "label": "Club",
+      "category": "weapon",
+      "subject": "one early-twentieth-century detective's compact wooden truncheon, smooth dark walnut barrel, rounded blunt end, turned handle and short brown leather wrist loop; restrained period police equipment, no markings",
+      "id": "mystery-club",
+      "itemId": "club",
+      "cardId": "mystery-weapon-club",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: one early-twentieth-century detective's compact wooden truncheon, smooth dark walnut barrel, rounded blunt end, turned handle and short brown leather wrist loop; restrained period police equipment, no markings. Full object in a shallow diagonal across the wide canvas, nearly side-on, minimal foreshortening; all ends visible.",
+      "sourceFile": "exec-42ba0a0f-f11b-4cf3-a875-eddd7e203cbe.png",
+      "sourceSha256": "bc8237a93eaf9ec3ed577381f2d18848252bc7ae7ef4f40708e20c9734c00f99",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/mystery-weapon-club.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 9546,
+          "sha256": "e186a82d992173b97bb3280995d8b1d61f95cce413c905221ed173d695b3b686"
+        },
+        "icons": {
+          "file": "/assets/icons/item/mystery-club.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 4962,
+          "sha256": "872afdfa2333881d904fcac616917b71c00271b591d35344f38ec414a43e5f3e"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "mystery",
+      "label": "Leather",
+      "category": "armor",
+      "subject": "an empty fitted early-twentieth-century protective leather waistcoat, warm chestnut leather with discreet reinforced front panels, tailored seams and small antique brass side buckles; clearly leather armor in the shape of a period vest",
+      "id": "mystery-leather",
+      "itemId": "leather",
+      "cardId": "mystery-armor-leather",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: an empty fitted early-twentieth-century protective leather waistcoat, warm chestnut leather with discreet reinforced front panels, tailored seams and small antique brass side buckles; clearly leather armor in the shape of a period vest. Empty armor shown at a shallow three-quarter front view; full garment or shield visible, no mannequin, body or stand.",
+      "sourceFile": "exec-e97ada66-a6b8-48bf-b004-d868867bc8db.png",
+      "sourceSha256": "e1b8901e90b3a349581f396c7edd78af81b9c817e1804b5218dbd9a36eae0ace",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/mystery-armor-leather.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 6488,
+          "sha256": "bfaffd79928796f528734ffb8dfc4dacc1667038fc0636fe6469cf505011acfb"
+        },
+        "icons": {
+          "file": "/assets/icons/item/mystery-leather.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 9062,
+          "sha256": "34473250addefc03b0c3ff7a536f5e1aaeabaac3dc9c93672dcfcd3725bd91c0"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "mystery",
+      "label": "Dagger",
+      "category": "weapon",
+      "subject": "one period gentleman's short dagger with a bright tapered steel blade, modest nickel crossguard, finely polished walnut handle and brass end cap; elegant late-Victorian craftsmanship, no disguise mechanism or extra objects",
+      "id": "mystery-dagger",
+      "itemId": "dagger",
+      "cardId": "mystery-weapon-dagger",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: one period gentleman's short dagger with a bright tapered steel blade, modest nickel crossguard, finely polished walnut handle and brass end cap; elegant late-Victorian craftsmanship, no disguise mechanism or extra objects. Full object in a shallow diagonal across the wide canvas, nearly side-on, minimal foreshortening; all ends visible.",
+      "sourceFile": "exec-fc7279f9-b74d-45fc-9bec-6fab7cfb19b7.png",
+      "sourceSha256": "1ca681bfb73bc6f6d869891bf1bc05282374e39b2ca26150902a0340ad3aa1a2",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/mystery-weapon-dagger.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 7298,
+          "sha256": "4aa1902d7892156f62a970be7b3c9c01f96d497b57691248c815b42a8727fa91"
+        },
+        "icons": {
+          "file": "/assets/icons/item/mystery-dagger.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 4102,
+          "sha256": "4c9cfd8c206923ef988f0a020a9e8d3cffbd92e266fb760b0005969b37c2002d"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "mystery",
+      "label": "Quarterstaff",
+      "category": "weapon",
+      "subject": "one complete long straight hardwood quarterstaff, polished warm walnut with simple nickel end caps and a central textured leather handgrip; period travel and self-defense staff, clearly long and blunt, no concealed blade",
+      "id": "mystery-quarterstaff",
+      "itemId": "quarterstaff",
+      "cardId": "mystery-weapon-quarterstaff",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: one complete long straight hardwood quarterstaff, polished warm walnut with simple nickel end caps and a central textured leather handgrip; period travel and self-defense staff, clearly long and blunt, no concealed blade. Full object in a shallow diagonal across the wide canvas, nearly side-on, minimal foreshortening; all ends visible.",
+      "sourceFile": "exec-cfa8a996-45f9-4483-afc7-15d0859c92a9.png",
+      "sourceSha256": "18d2f578454c3c875814e97f6f802018b5efe84fdfa10dd85dac9a2c2fbd5c1f",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/mystery-weapon-quarterstaff.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 5356,
+          "sha256": "c550427f4b00844f0bcadc3054813f1e05befbdf32525489b5c9964eac9d29fc"
+        },
+        "icons": {
+          "file": "/assets/icons/item/mystery-quarterstaff.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 3130,
+          "sha256": "62308eba5dcbc7b7c1daeab5e38389e27724e0bcb7efbe6ad1fb11d12d77c519"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "mystery",
+      "label": "Disguise Kit",
+      "category": "item",
+      "subject": "an open compact brown leather theatrical makeup case with a small mirror, three neutral cream pans, one makeup brush, a folded dark hairpiece and plain round spectacles; early-twentieth-century investigator's kit, no faces or labels",
+      "id": "mystery-disguise-kit",
+      "itemId": "disguise-kit",
+      "cardId": "mystery-gear-disguise-kit",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: an open compact brown leather theatrical makeup case with a small mirror, three neutral cream pans, one makeup brush, a folded dark hairpiece and plain round spectacles; early-twentieth-century investigator's kit, no faces or labels. One compact coherent inventory arrangement, shallow three-quarter view; all parts inside the frame.",
+      "sourceFile": "exec-776fc0a9-15bf-4bc9-9b0a-16cf7f1505c3.png",
+      "sourceSha256": "ef746366b818bdee99d7f2baf762462e0b6e497f868a9fabe26f6c58e20e6a0e",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/mystery-gear-disguise-kit.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 12076,
+          "sha256": "4c1885047d3282436331b3d1d78a93704b0e7f8914bd253cb9555cfffee4b7d5"
+        },
+        "icons": {
+          "file": "/assets/icons/item/mystery-disguise-kit.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 9162,
+          "sha256": "cd397d6151253ab713ee21ab67f5c2922de88a26bad5bf0da900c162fbaa4e08"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "mystery",
+      "label": "Warhammer",
+      "category": "weapon",
+      "subject": "one compact antique warhammer with a rectangular polished steel striking head, a short blunt peen, smooth walnut shaft and small nickel grip ferrules; elegant period craftsmanship while remaining unmistakably a hammer, no spikes or gears",
+      "id": "mystery-warhammer",
+      "itemId": "warhammer",
+      "cardId": "mystery-weapon-warhammer",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: one compact antique warhammer with a rectangular polished steel striking head, a short blunt peen, smooth walnut shaft and small nickel grip ferrules; elegant period craftsmanship while remaining unmistakably a hammer, no spikes or gears. Full object in a shallow diagonal across the wide canvas, nearly side-on, minimal foreshortening; all ends visible.",
+      "sourceFile": "exec-86bc733d-dcda-4753-abeb-bd57bd4e6393.png",
+      "sourceSha256": "88d03fee998a28c58876be7a426c41a7c11d917f28f6f88c13e94c2e3e4e7795",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/mystery-weapon-warhammer.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 10082,
+          "sha256": "d9867fbe036100f26e4505c5355f6867d06975a7c72689ede726efda4c9fc2d1"
+        },
+        "icons": {
+          "file": "/assets/icons/item/mystery-warhammer.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 5072,
+          "sha256": "c9dfc0faebdd77296484fe452450573abdbd71dcf37cdc2efa1cc5cf0e75cfdf"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "mystery",
+      "label": "Studded Leather",
+      "category": "armor",
+      "subject": "an empty tailored dark chestnut protective leather waistcoat with evenly spaced small domed brass studs on reinforced panels and a high-cut period collar; clearly studded leather armor, distinct from a plain vest, no body",
+      "id": "mystery-studded-leather",
+      "itemId": "studded-leather",
+      "cardId": "mystery-armor-studded-leather",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: an empty tailored dark chestnut protective leather waistcoat with evenly spaced small domed brass studs on reinforced panels and a high-cut period collar; clearly studded leather armor, distinct from a plain vest, no body. Empty armor shown at a shallow three-quarter front view; full garment or shield visible, no mannequin, body or stand.",
+      "sourceFile": "exec-9ac70f59-9d76-4148-b0d2-a7b685265f9e.png",
+      "sourceSha256": "022ef6936db6ecff34fac16eb6997044c1cee1a37329638a88224f69625ee08d",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/mystery-armor-studded-leather.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 6668,
+          "sha256": "d55bd150eaf52dfefdef51a40f39b0f0ba3069eca3274cf28392a77d71aadc41"
+        },
+        "icons": {
+          "file": "/assets/icons/item/mystery-studded-leather.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 10420,
+          "sha256": "5eb5edc05de56a7b57b35082a27d62a28519df30b161af045ade5019bcc0cf29"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "post_apocalyptic",
+      "label": "Leather",
+      "category": "armor",
+      "subject": "an empty patchwork motorcycle-style leather armor vest with mismatched dark brown and faded ochre leather panels, thick repair stitching and salvaged belt buckles; tough practical salvaged leather, no metal breastplate or spikes",
+      "id": "post-apocalyptic-leather",
+      "itemId": "leather",
+      "cardId": "post-apocalyptic-armor-leather",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: an empty patchwork motorcycle-style leather armor vest with mismatched dark brown and faded ochre leather panels, thick repair stitching and salvaged belt buckles; tough practical salvaged leather, no metal breastplate or spikes. Empty armor shown at a shallow three-quarter front view; full garment or shield visible, no mannequin, body or stand.",
+      "sourceFile": "exec-341d3f54-a833-4999-a07e-539c36fe8f39.png",
+      "sourceSha256": "07a9b12dd30183d4c13931864243af3bf204696e63b99a393e6b2f0d5c19a538",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/post-apocalyptic-armor-leather.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 8054,
+          "sha256": "b8995ff7491ea87fa1bdb10d0c11952d14f7677fac4d1e81a30b33547cf44ec1"
+        },
+        "icons": {
+          "file": "/assets/icons/item/post-apocalyptic-leather.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 11510,
+          "sha256": "63afa5f746627d09828ed6bf7a5f4fae26b44d134babf564007ffde01efbb8f3"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "post_apocalyptic",
+      "label": "Tinker's Tools",
+      "category": "item",
+      "subject": "an open patched canvas tool roll containing a compact adjustable spanner, screwdriver, pliers, a spool of wire and a small salvaged gauge; sun-faded fabric, worn steel and orange repair tape, compact coherent kit",
+      "id": "post-apocalyptic-tinkers-tools",
+      "itemId": "tinkers-tools",
+      "cardId": "post-apocalyptic-gear-tinkers-tools",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: an open patched canvas tool roll containing a compact adjustable spanner, screwdriver, pliers, a spool of wire and a small salvaged gauge; sun-faded fabric, worn steel and orange repair tape, compact coherent kit. One compact coherent inventory arrangement, shallow three-quarter view; all parts inside the frame.",
+      "sourceFile": "exec-90793891-0824-4264-82cb-c224c24a004a.png",
+      "sourceSha256": "4416062207cf7132fb95f3231480a1bf45f9a0b88cf696a9213748a2507ea1e3",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/post-apocalyptic-gear-tinkers-tools.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 16438,
+          "sha256": "a5360496e9624b7956f7db5223202d797ef5bb481dae9de7de8dd15c49a6f981"
+        },
+        "icons": {
+          "file": "/assets/icons/item/post-apocalyptic-tinkers-tools.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 9044,
+          "sha256": "5a89f2e74a38cfa0ffeb5eb3aff71b38a36e82cdd27ba16e292e9aed3458a90c"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "post_apocalyptic",
+      "label": "Battleaxe",
+      "category": "weapon",
+      "subject": "one salvaged battleaxe with a broad recognizable axe head of repaired weathered steel, a sturdy short wooden haft reinforced by two metal bands, and faded orange cloth wrapped around the grip; complete silhouette, no gore",
+      "id": "post-apocalyptic-battleaxe",
+      "itemId": "battleaxe",
+      "cardId": "post-apocalyptic-weapon-battleaxe",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: one salvaged battleaxe with a broad recognizable axe head of repaired weathered steel, a sturdy short wooden haft reinforced by two metal bands, and faded orange cloth wrapped around the grip; complete silhouette, no gore. Full object in a shallow diagonal across the wide canvas, nearly side-on, minimal foreshortening; all ends visible.",
+      "sourceFile": "exec-7dfa586d-c825-4f64-bac9-92d226df7e54.png",
+      "sourceSha256": "bd2936fd915ee101c864a262e76be2946874aa0ad12c3e8e7d461600504f45ad",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/post-apocalyptic-weapon-battleaxe.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 12256,
+          "sha256": "2400660d1ac94f90597a670a81af6912c04a86d68448bbe1048ef91d35fe8eaf"
+        },
+        "icons": {
+          "file": "/assets/icons/item/post-apocalyptic-battleaxe.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 6364,
+          "sha256": "cb8b0850cf37ef8dbfec1d2c0d8676af5af2ce1dfe8906944f1bc4f1dddecf8d"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "post_apocalyptic",
+      "label": "Hide",
+      "category": "armor",
+      "subject": "an empty primitive protective vest made from layered tan and dark brown animal hide, rough-cut edges, broad leather ties and patched suede shoulder flaps; wasteland survival craft, no head, body, fresh flesh or metal plate",
+      "id": "post-apocalyptic-hide",
+      "itemId": "hide",
+      "cardId": "post-apocalyptic-armor-hide",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: an empty primitive protective vest made from layered tan and dark brown animal hide, rough-cut edges, broad leather ties and patched suede shoulder flaps; wasteland survival craft, no head, body, fresh flesh or metal plate. Empty armor shown at a shallow three-quarter front view; full garment or shield visible, no mannequin, body or stand.",
+      "sourceFile": "exec-ff6199cf-cee1-4556-95e8-eb776ae06749.png",
+      "sourceSha256": "7919d5e000b35cf1e41e419065b5e96d3fb0848e0f9f51fb746268f1416e6805",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/post-apocalyptic-armor-hide.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 10142,
+          "sha256": "0d804029f221aedd7cdee4cdfc1e72bd75e303390f76a6acf4b40aa773be9ea7"
+        },
+        "icons": {
+          "file": "/assets/icons/item/post-apocalyptic-hide.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 11758,
+          "sha256": "e10a572eedfefbbdb23cdcc9820f147d2ade600e3554130bda56180b93363528"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "post_apocalyptic",
+      "label": "Spear",
+      "category": "weapon",
+      "subject": "one complete long wasteland spear with a broad weathered steel spearhead, straight salvaged wooden shaft and secure-looking wrapped bindings with faded orange cloth below the socket; unmistakable spear, sparse practical construction",
+      "id": "post-apocalyptic-spear",
+      "itemId": "spear",
+      "cardId": "post-apocalyptic-weapon-spear",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: one complete long wasteland spear with a broad weathered steel spearhead, straight salvaged wooden shaft and secure-looking wrapped bindings with faded orange cloth below the socket; unmistakable spear, sparse practical construction. Full object in a shallow diagonal across the wide canvas, nearly side-on, minimal foreshortening; all ends visible.",
+      "sourceFile": "exec-6df2b6d5-94bd-4812-b7bf-96bfdf777339.png",
+      "sourceSha256": "568998d1de8ef1030d68d70e396f1e6f2d1ac4578754647dc1f859d61ad37448",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/post-apocalyptic-weapon-spear.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 7076,
+          "sha256": "87af6d737290491972be85b4d29cfe65863f8fee7a092bdc8eb5a5352c70613f"
+        },
+        "icons": {
+          "file": "/assets/icons/item/post-apocalyptic-spear.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 3724,
+          "sha256": "94d8b7c88934a82f5986bf9f064c8544c0314ed9357f5970e60b5698d2593980"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "post_apocalyptic",
+      "label": "Dagger",
+      "category": "weapon",
+      "subject": "one short salvaged survival dagger with a worn gray steel blade, simple squared guard and grip wrapped in faded orange fabric over dark wood; convincing intact knife silhouette with repaired materials, no blood",
+      "id": "post-apocalyptic-dagger",
+      "itemId": "dagger",
+      "cardId": "post-apocalyptic-weapon-dagger",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: one short salvaged survival dagger with a worn gray steel blade, simple squared guard and grip wrapped in faded orange fabric over dark wood; convincing intact knife silhouette with repaired materials, no blood. Full object in a shallow diagonal across the wide canvas, nearly side-on, minimal foreshortening; all ends visible.",
+      "sourceFile": "exec-9004e62e-f8b9-47bf-980b-f2c333b69b93.png",
+      "sourceSha256": "f79ae6aba9ba26314f369592a9e45105d4067bd8c8abae8c0f218451a6570bfa",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/post-apocalyptic-weapon-dagger.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 9712,
+          "sha256": "e2af7976ef393e49cd6947e0b2ca62b8980be34a7aeb5d18cc18ad836159c4bc"
+        },
+        "icons": {
+          "file": "/assets/icons/item/post-apocalyptic-dagger.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 4998,
+          "sha256": "d62791e9b6aa14882d4dd180bb1f1ec8cd4fb3e29051242bd3bd43d9ec98a0ed"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "post_apocalyptic",
+      "label": "Mace",
+      "category": "weapon",
+      "subject": "one compact wasteland mace with a blunt faceted steel head, short repaired hardwood shaft, dark metal collar and worn ochre fabric grip; clearly a mace with a solid striking head, no spikes, blades or gore",
+      "id": "post-apocalyptic-mace",
+      "itemId": "mace",
+      "cardId": "post-apocalyptic-weapon-mace",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: one compact wasteland mace with a blunt faceted steel head, short repaired hardwood shaft, dark metal collar and worn ochre fabric grip; clearly a mace with a solid striking head, no spikes, blades or gore. Full object in a shallow diagonal across the wide canvas, nearly side-on, minimal foreshortening; all ends visible.",
+      "sourceFile": "exec-2f5c91c7-6b02-4627-9080-d24f0756fede.png",
+      "sourceSha256": "658fabc44c63d1e720d52ac3182d3835b03225a8a04e5fda9b8739f26cc6652d",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/post-apocalyptic-weapon-mace.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 10188,
+          "sha256": "10116ee24f80220e661ae83bc346b637fb99528380ce1e8c9759b511e69b89ea"
+        },
+        "icons": {
+          "file": "/assets/icons/item/post-apocalyptic-mace.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 5134,
+          "sha256": "7e14c2d0ef58e62c64a63ae1dcf91b4fccbd355acbd3c67a8a2123bf93c8b1c6"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "post_apocalyptic",
+      "label": "Herbalism Kit",
+      "category": "item",
+      "subject": "an open patched canvas field herbalism pouch containing a small battered metal mortar and pestle, tied dry leaves and three reused small amber jars with plain lids; earthy green and ochre materials, no labels or instructions",
+      "id": "post-apocalyptic-herbalism-kit",
+      "itemId": "herbalism-kit",
+      "cardId": "post-apocalyptic-gear-herbalism-kit",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: an open patched canvas field herbalism pouch containing a small battered metal mortar and pestle, tied dry leaves and three reused small amber jars with plain lids; earthy green and ochre materials, no labels or instructions. One compact coherent inventory arrangement, shallow three-quarter view; all parts inside the frame.",
+      "sourceFile": "exec-5c61c989-4efb-4300-adc7-ebef1a47be7c.png",
+      "sourceSha256": "2fb3906095dc938bd7aff09dd13cf49520749108b6fa428d4e1313b0b5b6224b",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/post-apocalyptic-gear-herbalism-kit.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 14546,
+          "sha256": "1abc323a8fb57d0231424ed02b6354ecbc442e51ce9e14059bc4bfc40aff9b2d"
+        },
+        "icons": {
+          "file": "/assets/icons/item/post-apocalyptic-herbalism-kit.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 11050,
+          "sha256": "45f0d647c4031e1fb94109b794bceb20579c4027c2d22bf523c4e22be23cff41"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "post_apocalyptic",
+      "label": "Shortbow",
+      "category": "weapon",
+      "subject": "one complete compact survival shortbow made of weathered laminated wood, patched leather central grip and one taut intact bowstring; dark brown and faded orange bindings, no arrow nocked and no futuristic attachments",
+      "id": "post-apocalyptic-shortbow",
+      "itemId": "shortbow",
+      "cardId": "post-apocalyptic-weapon-shortbow",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: one complete compact survival shortbow made of weathered laminated wood, patched leather central grip and one taut intact bowstring; dark brown and faded orange bindings, no arrow nocked and no futuristic attachments. Full object in a shallow diagonal across the wide canvas, nearly side-on, minimal foreshortening; all ends visible.",
+      "sourceFile": "exec-6aafcc77-a8c0-42da-8d2c-8b9fc20721a6.png",
+      "sourceSha256": "5924250be3e317ba45d99926d3c91c27bd7677e5fed6083118dcad75329cb55f",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/post-apocalyptic-weapon-shortbow.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 9574,
+          "sha256": "10f6e577520238a6367f69ecc1d624eb4ebab9d6ecbb6d563de833eb64965023"
+        },
+        "icons": {
+          "file": "/assets/icons/item/post-apocalyptic-shortbow.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 5000,
+          "sha256": "b41dd384b7805193b6ea5ba5e95897463350f397510dcb7b3f7a66ce3a9c4c4f"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "post_apocalyptic",
+      "label": "Quiver",
+      "category": "item",
+      "subject": "one empty salvaged arrow quiver made from a scuffed narrow leather cylinder and patched canvas shoulder strap, reinforced rim and bottom, faded ochre repairs; open mouth visibly empty, complete compact equipment silhouette",
+      "id": "post-apocalyptic-quiver",
+      "itemId": "quiver",
+      "cardId": "post-apocalyptic-gear-quiver",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: one empty salvaged arrow quiver made from a scuffed narrow leather cylinder and patched canvas shoulder strap, reinforced rim and bottom, faded ochre repairs; open mouth visibly empty, complete compact equipment silhouette. One compact coherent inventory arrangement, shallow three-quarter view; all parts inside the frame.",
+      "sourceFile": "exec-93a67a3c-4896-496d-a2d3-3ebdc93cd444.png",
+      "sourceSha256": "d75537112f29a11109f54f40d0c69ea95c712edf2220130027caea783298c78a",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/post-apocalyptic-gear-quiver.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 12356,
+          "sha256": "9cb2698fe0fa038f92328f4988cf975d81ec30522cde7b30eace5797e2777f55"
+        },
+        "icons": {
+          "file": "/assets/icons/item/post-apocalyptic-quiver.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 7906,
+          "sha256": "ac889a0f90b3ead0281827f6632ce37e36cfd1fd9deb18055b965f1a97d38127"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "post_apocalyptic",
+      "label": "Arrows",
+      "category": "item",
+      "subject": "a small bundle of exactly three complete wasteland arrows tied at their centers, straight repaired wooden shafts, simple worn steel triangular heads and mismatched muted brown feather fletching; all tips and tails visible",
+      "id": "post-apocalyptic-arrows",
+      "itemId": "arrows",
+      "cardId": "post-apocalyptic-gear-arrows",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: a small bundle of exactly three complete wasteland arrows tied at their centers, straight repaired wooden shafts, simple worn steel triangular heads and mismatched muted brown feather fletching; all tips and tails visible. One compact coherent inventory arrangement, shallow three-quarter view; all parts inside the frame.",
+      "sourceFile": "exec-95060b8f-eb34-4d8b-87da-4433010f0c1d.png",
+      "sourceSha256": "7dcc305b50f456734a37a1974f378f4ea501d700ffcdf6c7ac9297c9476ac01c",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/post-apocalyptic-gear-arrows.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 13506,
+          "sha256": "cc950e755e476085a4eb7a17b408cb1c4b2bf771ffa60e19a7a6052dbf3b1811"
+        },
+        "icons": {
+          "file": "/assets/icons/item/post-apocalyptic-arrows.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 6598,
+          "sha256": "7501adbdd6c7bef51f8438febc9b30ed5436638fec3185d7f168107389d44cb5"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "steampunk",
+      "label": "Light Hammer",
+      "category": "weapon",
+      "subject": "one small steampunk machinist's light hammer with a compact steel head, brass mounting collar and polished walnut handle with a dark leather grip; practical workshop craftsmanship, restrained brass details, no extraneous gears",
+      "id": "steampunk-light-hammer",
+      "itemId": "light-hammer",
+      "cardId": "steampunk-weapon-light-hammer",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: one small steampunk machinist's light hammer with a compact steel head, brass mounting collar and polished walnut handle with a dark leather grip; practical workshop craftsmanship, restrained brass details, no extraneous gears. Full object in a shallow diagonal across the wide canvas, nearly side-on, minimal foreshortening; all ends visible.",
+      "sourceFile": "exec-8079011f-9187-451b-9b08-e1d22ec5ce55.png",
+      "sourceSha256": "555ed8471c81cc90f0e5e67d8be7397b13eb8dade7fa278868b2b6b63b47e1f1",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/steampunk-weapon-light-hammer.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 9672,
+          "sha256": "44ad68126354a310688446c904286f1eb1f71336b5f3690c9e697f7afd83e331"
+        },
+        "icons": {
+          "file": "/assets/icons/item/steampunk-light-hammer.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 4994,
+          "sha256": "3b610993e9474932cd60e7a1531d7ecf28e7a62e7ab3c8620fc71778b24c8e62"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "steampunk",
+      "label": "Tinker's Tools",
+      "category": "item",
+      "subject": "an open dark leather steampunk tool roll containing a small brass-handled screwdriver, compact steel spanner, fine pliers, a winding key and one brass pressure gauge; carefully fitted individual tools, compact coherent kit, no text",
+      "id": "steampunk-tinkers-tools",
+      "itemId": "tinkers-tools",
+      "cardId": "steampunk-gear-tinkers-tools",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: an open dark leather steampunk tool roll containing a small brass-handled screwdriver, compact steel spanner, fine pliers, a winding key and one brass pressure gauge; carefully fitted individual tools, compact coherent kit, no text. One compact coherent inventory arrangement, shallow three-quarter view; all parts inside the frame.",
+      "sourceFile": "exec-5596f4ab-b6ea-4d09-a31f-420840d14b45.png",
+      "sourceSha256": "0773cf29b7d91b537ba85eda450e9fcecffda63e910cc9509852bb552af6272d",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/steampunk-gear-tinkers-tools.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 15582,
+          "sha256": "b7805e9a536ae119612e95ab8a8dd5b6807257e9517b83c55860d66e59adf7a6"
+        },
+        "icons": {
+          "file": "/assets/icons/item/steampunk-tinkers-tools.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 8784,
+          "sha256": "65290a0223c7fd97ab3ce5324afe0ca115a1b5d732971948db6e160c4faee47e"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "steampunk",
+      "label": "Rapier",
+      "category": "weapon",
+      "subject": "one complete elegant steampunk rapier with a long slender steel blade, an open brass swept hilt, copper-accented guard and dark walnut grip; visibly a thrusting rapier, balanced believable period craft, no machine housing or energy blade",
+      "id": "steampunk-rapier",
+      "itemId": "rapier",
+      "cardId": "steampunk-weapon-rapier",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: one complete elegant steampunk rapier with a long slender steel blade, an open brass swept hilt, copper-accented guard and dark walnut grip; visibly a thrusting rapier, balanced believable period craft, no machine housing or energy blade. Full object in a shallow diagonal across the wide canvas, nearly side-on, minimal foreshortening; all ends visible.",
+      "sourceFile": "exec-53e181bc-4d7e-4f12-abc8-e7c81adb1899.png",
+      "sourceSha256": "b77e3107eebe3e4575a92adf0cc6c0a21b60d92d2a2dcbd696fcd3d9adf2e9d1",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/steampunk-weapon-rapier.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 8048,
+          "sha256": "93c61c3d31a1764862e218c451928e049c6f085800de4277d8d50199b829368d"
+        },
+        "icons": {
+          "file": "/assets/icons/item/steampunk-rapier.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 4118,
+          "sha256": "743de08bc7a761cf9acf53617eb03b9ca3db489f2cccb615fff82eb7d46b0452"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "steampunk",
+      "label": "Leather",
+      "category": "armor",
+      "subject": "an empty fitted steampunk leather protective vest with rich cognac leather panels, shoulder caps, neat stitching and restrained brass buckles and rivets; leather remains the dominant material, no brass breastplate, no body",
+      "id": "steampunk-leather",
+      "itemId": "leather",
+      "cardId": "steampunk-armor-leather",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: an empty fitted steampunk leather protective vest with rich cognac leather panels, shoulder caps, neat stitching and restrained brass buckles and rivets; leather remains the dominant material, no brass breastplate, no body. Empty armor shown at a shallow three-quarter front view; full garment or shield visible, no mannequin, body or stand.",
+      "sourceFile": "exec-975fc198-7396-4241-b05a-07e935a0d956.png",
+      "sourceSha256": "bd16530139f2d9704fc05cfa1b4b6263efb44c8ed1bedb82c68c03d0a6a5c237",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/steampunk-armor-leather.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 7546,
+          "sha256": "e99147e842ec7de1157d62669a7275efc97936bb1fde4615888b5024e7fc8099"
+        },
+        "icons": {
+          "file": "/assets/icons/item/steampunk-leather.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 11226,
+          "sha256": "650044cb2b0c6cad04e333903220fed4ce317612810f082d48934563e967b9c1"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "steampunk",
+      "label": "Navigator's Tools",
+      "category": "item",
+      "subject": "a compact steampunk navigator's open dark leather case holding a brass compass with an unlettered simple dial, a small brass sextant and folded blank parchment; readable large silhouettes, warm brass and blue glass, no map text or numbers",
+      "id": "steampunk-navigators-tools",
+      "itemId": "navigators-tools",
+      "cardId": "steampunk-gear-navigators-tools",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: a compact steampunk navigator's open dark leather case holding a brass compass with an unlettered simple dial, a small brass sextant and folded blank parchment; readable large silhouettes, warm brass and blue glass, no map text or numbers. One compact coherent inventory arrangement, shallow three-quarter view; all parts inside the frame.",
+      "sourceFile": "exec-55e701a8-ba21-4457-81aa-88ad5250d2cc.png",
+      "sourceSha256": "6331a5ee46726f09c6f47732dc856f64004d28a3cdd522018e98e5a596996208",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/steampunk-gear-navigators-tools.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 13132,
+          "sha256": "8c2700d073c6cce939d220d0f3c03d2c2be27ec11d3323305b495afba76db646"
+        },
+        "icons": {
+          "file": "/assets/icons/item/steampunk-navigators-tools.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 10744,
+          "sha256": "55ca132f3c8ad15e5668361df85e1a1f16aeda4a3815f6a9605b558cd8a349e8"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "steampunk",
+      "label": "Dagger",
+      "category": "weapon",
+      "subject": "one short steampunk dagger with a bright physical steel blade, restrained brass crossguard, walnut grip, copper rivets and brass pommel; elegant industrial-era craftsmanship with no moving gears, cables or energy blade",
+      "id": "steampunk-dagger",
+      "itemId": "dagger",
+      "cardId": "steampunk-weapon-dagger",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: one short steampunk dagger with a bright physical steel blade, restrained brass crossguard, walnut grip, copper rivets and brass pommel; elegant industrial-era craftsmanship with no moving gears, cables or energy blade. Full object in a shallow diagonal across the wide canvas, nearly side-on, minimal foreshortening; all ends visible.",
+      "sourceFile": "exec-bc997a20-e047-4ca5-8ca0-c438d7702a52.png",
+      "sourceSha256": "cf9661a5f8d7d9bd660db69d360d1f306b4ec4ff241b379b16f33ecee3c36133",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/steampunk-weapon-dagger.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 8646,
+          "sha256": "9f0e890ae2515bcdff7ca475ceac0c49f98fc0d2e31b66f6a8d46b5ebce317db"
+        },
+        "icons": {
+          "file": "/assets/icons/item/steampunk-dagger.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 4850,
+          "sha256": "872014e1ba820297d45faf706bc42509a85458463c82b275694b54aa559d64f2"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "steampunk",
+      "label": "Alchemist's Supplies",
+      "category": "item",
+      "subject": "an open fitted walnut alchemist's case containing two rounded glass flasks with amber and teal liquids, a small brass stand, a glass stirring rod and a compact mortar; steampunk laboratory craft, compact coherent supplies, no labels or formulae",
+      "id": "steampunk-alchemists-supplies",
+      "itemId": "alchemists-supplies",
+      "cardId": "steampunk-gear-alchemists-supplies",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: an open fitted walnut alchemist's case containing two rounded glass flasks with amber and teal liquids, a small brass stand, a glass stirring rod and a compact mortar; steampunk laboratory craft, compact coherent supplies, no labels or formulae. One compact coherent inventory arrangement, shallow three-quarter view; all parts inside the frame.",
+      "sourceFile": "exec-f06ed9a5-c984-4fd8-9f18-416f0cecf5a9.png",
+      "sourceSha256": "e28cc11fb0963c565f3143c5108ca338323c1eb905c87d8251b63f25e1608903",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/steampunk-gear-alchemists-supplies.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 13948,
+          "sha256": "54b76847c16b9d491d0983df31d56b27efff666b3350b3544834dcb8f98adbd5"
+        },
+        "icons": {
+          "file": "/assets/icons/item/steampunk-alchemists-supplies.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 10592,
+          "sha256": "f0fd35249e7a20a3f0c14f74d4b55f5c6b82a584f0057e035fb870b80562a169"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "steampunk",
+      "label": "Quarterstaff",
+      "category": "weapon",
+      "subject": "one complete long steampunk quarterstaff with a straight dark hardwood shaft, slim brass end caps and a textured brown leather central grip; a few restrained copper rings, clearly a blunt staff rather than a rifle or magical beam",
+      "id": "steampunk-quarterstaff",
+      "itemId": "quarterstaff",
+      "cardId": "steampunk-weapon-quarterstaff",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: one complete long steampunk quarterstaff with a straight dark hardwood shaft, slim brass end caps and a textured brown leather central grip; a few restrained copper rings, clearly a blunt staff rather than a rifle or magical beam. Full object in a shallow diagonal across the wide canvas, nearly side-on, minimal foreshortening; all ends visible.",
+      "sourceFile": "exec-f8d1da5f-acfd-4dcd-8d57-6cbdb7ac9322.png",
+      "sourceSha256": "a641e6e5cbe1621e68f3ff1399ced1e8dda83722b013429b15401cb3fbb84a86",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/steampunk-weapon-quarterstaff.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 5572,
+          "sha256": "8da5d2c09cd16d1cd9bdfdd443fbfce7826e032f99ad9a015be5fae5d10f440e"
+        },
+        "icons": {
+          "file": "/assets/icons/item/steampunk-quarterstaff.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 3268,
+          "sha256": "b3cd5e03f1db7ec2e062e4234a4892e75bec19f1b09a34255c06e889453279fc"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "steampunk",
+      "label": "Warhammer",
+      "category": "weapon",
+      "subject": "one steampunk warhammer with a substantial square steel head, a short blunt rear peen, brass side plates, copper rivets and a dark walnut haft; believable physical hammer, restrained mechanical-era ornament, no glowing power source",
+      "id": "steampunk-warhammer",
+      "itemId": "warhammer",
+      "cardId": "steampunk-weapon-warhammer",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: one steampunk warhammer with a substantial square steel head, a short blunt rear peen, brass side plates, copper rivets and a dark walnut haft; believable physical hammer, restrained mechanical-era ornament, no glowing power source. Full object in a shallow diagonal across the wide canvas, nearly side-on, minimal foreshortening; all ends visible.",
+      "sourceFile": "exec-e52dcc50-8766-4e13-8445-355b4152b11f.png",
+      "sourceSha256": "d9ff07cd2c46b0f24b885127fb2a8d965abe8385aae09c1837c77044742aa657",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/steampunk-weapon-warhammer.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 11190,
+          "sha256": "3abb7968bdb8445a1af0d09a71e60bee1083ae272c2a7d25d6ca844ce67a95f3"
+        },
+        "icons": {
+          "file": "/assets/icons/item/steampunk-warhammer.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 5858,
+          "sha256": "acea3251515065a0ab0886b53f616b72e4c5b523a6bca51a2141467815d39bdd"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "steampunk",
+      "label": "Shield",
+      "category": "armor",
+      "subject": "one compact round steampunk shield with a broad dark stained timber face, brass reinforced rim, steel central boss and evenly spaced copper rivets; sturdy circular shield, no clock face, gauges, letters or decorative loose gears",
+      "id": "steampunk-shield",
+      "itemId": "shield",
+      "cardId": "steampunk-armor-shield",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: one compact round steampunk shield with a broad dark stained timber face, brass reinforced rim, steel central boss and evenly spaced copper rivets; sturdy circular shield, no clock face, gauges, letters or decorative loose gears. Empty armor shown at a shallow three-quarter front view; full garment or shield visible, no mannequin, body or stand.",
+      "sourceFile": "exec-ddf952db-a8f5-429a-9ea5-5551a92b01b4.png",
+      "sourceSha256": "b459c0ccbcc9a8906b984472f093d48026cc9420666b9e68b7462d93b4753d59",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/steampunk-armor-shield.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 8362,
+          "sha256": "bc92614fe27285d55b542a9d010814f4bc03286cac9edbcfd7b2acd5acf5d300"
+        },
+        "icons": {
+          "file": "/assets/icons/item/steampunk-shield.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 12954,
+          "sha256": "b5da300a9fda979d99b1a0a1017f23f96cac53b0126429b4ee33c0acdd4c9526"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    },
+    {
+      "genre": "steampunk",
+      "label": "Chain Mail",
+      "category": "armor",
+      "subject": "an empty full-length steampunk chainmail hauberk with short sleeves, dense linked dark steel rings, a reinforced brown leather collar and restrained brass shoulder fittings; clearly linked mail rather than plate, complete garment without a body",
+      "id": "steampunk-chain-mail",
+      "itemId": "chain-mail",
+      "cardId": "steampunk-armor-chain-mail",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 8 percent empty safe margin. No person, hands, labels, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Preserve the recognizable equipment type; the genre changes its craftsmanship and materials, not its function. Subject: an empty full-length steampunk chainmail hauberk with short sleeves, dense linked dark steel rings, a reinforced brown leather collar and restrained brass shoulder fittings; clearly linked mail rather than plate, complete garment without a body. Empty armor shown at a shallow three-quarter front view; full garment or shield visible, no mannequin, body or stand.",
+      "sourceFile": "exec-e17e3c3e-e135-4fa0-918e-f48599f39ecb.png",
+      "sourceSha256": "2326666fb15ae60ee25a92b33c1814280720c9b92b761fe04aab92e7260cc6df",
+      "exports": {
+        "cards": {
+          "file": "/assets/icons/action/steampunk-armor-chain-mail.webp",
+          "width": 256,
+          "height": 128,
+          "bytes": 6482,
+          "sha256": "4e12a5b83a1ef20a173c995bd3d2a824932f10cd047cffa27c6b59bacdc4c0d1"
+        },
+        "icons": {
+          "file": "/assets/icons/item/steampunk-chain-mail.webp",
+          "width": 256,
+          "height": 256,
+          "bytes": 10382,
+          "sha256": "0a627cc80b304c5b045dcc6441e808b2f57793dd5ab20a3d3d5dbf24643101a1"
+        }
+      },
+      "sourceLocation": "Generated PNG retained in the local artwork archive; only WebP exports are shipped."
+    }
+  ],
+  "encoding": {
+    "cards": "256x128 WebP, quality 94, alpha quality 100",
+    "icons": "256x256 WebP, visible artwork within radius 70 before the game inventory zoom of 1.7"
+  },
+  "validation": {
+    "count": 49,
+    "expectedCount": 49,
+    "exports": 98,
+    "alpha": true,
+    "circularFraming": true,
+    "status": "complete"
+  },
+  "revisions": [
+    {
+      "id": "dark-fantasy-longsword",
+      "originalGeneratedFile": "exec-6cec28db-e807-421d-a465-17719bd7f10d.png",
+      "revisedGeneratedFile": "exec-d07ac843-ad71-4418-89e0-7a49a288a559.png",
+      "prompt": "Edit this exact dark fantasy longsword inventory painting. Preserve the single sword's design, diagonal pose, worn steel blade, black iron crossguard, oxblood leather grip, round pommel, painterly material detail and proportions. Remove all pale white/gray background residue and haze outside the sword, especially above the blade from the guard to the tip. The blade must have a clean continuous straight silhouette with a sharp point, no cloudy rim, no aura, no exterior shadow. True transparent background, including all space around the sword. Keep the entire sword fully inside the image with at least eight percent empty margin on every side. No words, no additional objects. Return one polished transparent equipment illustration.",
+      "tool": "built-in image_gen",
+      "date": "2026-11-14"
+    },
+    {
+      "id": "cyberpunk-forgery-kit",
+      "originalGeneratedFile": "exec-922c63d8-7117-4ccf-a9a8-af4761fbd24c.png",
+      "revisedGeneratedFile": "exec-408af009-880d-4424-9167-72fd6d8aab36.png",
+      "prompt": "Edit this exact cyberpunk forgery kit equipment painting. Preserve the open black case, tablet with cyan screen, blank badge cards, stylus, stamping press, material colors, arrangement and painterly rendering. Correct framing: show the whole case including the entire two upper latch tabs and all lower hardware, with at least eight percent empty transparent margin on ALL sides. Reconstruct the tiny cropped top of each latch cleanly. Scale the complete subject down within the canvas; nothing may touch the image boundary. Clean silhouette, no stray pixels, no background, no cast shadow, true transparency. No readable words, logos or additional objects. Return one polished transparent equipment illustration.",
+      "tool": "built-in image_gen",
+      "date": "2026-11-14"
+    },
+    {
+      "id": "cyberpunk-forgery-kit",
+      "originalGeneratedFile": "exec-408af009-880d-4424-9167-72fd6d8aab36.png",
+      "revisedGeneratedFile": "exec-dd5f0ea4-3a2e-4979-9215-fbe359925abe.png",
+      "prompt": "Remove the entire background from this image to create a clean transparent PNG cutout of ONLY the open equipment case. Delete all the black/brown/gray backdrop and every trace of the glow, haze and shadow outside the case silhouette. Preserve the case and contents exactly: black case, cyan tablet, blank badges, stylus and press. Preserve full hardware and framing with empty margins. All pixels outside the case must be fully transparent. The object edge must be crisp, naturally antialiased, with no halo or haze. Do not add or change anything else.",
+      "tool": "built-in image_gen",
+      "date": "2026-11-14"
+    },
+    {
+      "id": "cyberpunk-forgery-kit",
+      "originalGeneratedFile": "exec-dd5f0ea4-3a2e-4979-9215-fbe359925abe.png",
+      "revisedGeneratedFile": "exec-6c79cefc-ed7e-4635-993b-646b7736e2c2.png",
+      "prompt": "Use case: stylized-concept. Asset type: tabletop RPG equipment illustration for wide cards and circular inventory icons. Premium hand-painted game art, crisp believable materials, natural edge highlights, strong readable silhouette at 112x56 pixels. Isolated on a genuinely transparent alpha background. Wide 2:1 composition; full object centered with 12 percent empty safe margin on all four sides. Subject: a compact wide black document-work case in a shallow three-quarter view, lid folded almost flat backward, containing a small cyan-lit inspection tablet, three blank plastic ID cards, a stylus and a small embossing tool. Fictional unmarked props, no readable documents or instructions. Muted gunmetal fittings, black polymer and dark leather, one small cyan accent on the tablet. All case hardware and the entire lid must be inside the frame and away from every canvas edge. One coherent compact equipment arrangement. The case occupies only the central 75 percent of the canvas. Clean precise cutout edges, fully transparent surrounding area. No glow or haze outside the tablet. No background, floor, shadow, aura, person, hands, labels, words, text, logos, frame, scenery, border or decorative streaks. Original unbranded design. Return a single transparent PNG equipment painting.",
+      "tool": "built-in image_gen",
+      "date": "2026-11-14",
+      "method": "regenerated after two edits retained a background glow"
+    }
+  ]
+}

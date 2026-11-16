@@ -84,12 +84,20 @@ export function piMcpConfig(url: string, ownServers: readonly string[]): string 
 
 // `pi --list-models`: a table of provider, model, context, max-out,
 // thinking, images. Ids carry their provider, so two providers' models of
-// the same name stay apart; a model that thinks offers every effort.
+// the same name stay apart; a model that thinks offers every effort. Only
+// the rows under the header count: a Pi signed in nowhere prints a sentence
+// ("No models available. Use /login ...") on stdout instead, which would
+// otherwise read as a model and show the program as ready.
 export function parsePiModels(output: string): HarnessModel[] {
   const models: HarnessModel[] = [];
+  let header = false;
   for (const line of output.split("\n")) {
     const columns = line.trim().split(/\s+/);
-    if (columns.length < 5 || columns[0] === "provider") {
+    if (columns[0] === "provider" && columns[1] === "model") {
+      header = true;
+      continue;
+    }
+    if (!header || columns.length < 5) {
       continue;
     }
     const [provider, model, context, , thinking] = columns;

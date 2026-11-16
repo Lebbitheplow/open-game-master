@@ -114,7 +114,7 @@ and clamped by code.
 ### AI and LLM integration
 
 - **Model client (dual provider)** - streaming against an OpenAI-compatible `/chat/completions` server (llama.cpp, LM Studio, vLLM, OpenAI, OpenRouter) or a local Ollama.
-- **Agent programs as the GM** - Claude Code, Codex, opencode or Grok Build, signed in on the server's computer, narrate on their own subscription. The program is started with none of its own tools; its only tools are the turn's GM tools over the server's MCP endpoint, so the same engines roll and clamp ([docs/agent-harness.md](agent-harness.md)).
+- **Agent programs as the GM** - Claude Code, Codex, opencode, Grok Build or Pi, signed in on the server's computer, narrate on their own subscription. The program is started with none of its own tools; its only tools are the turn's GM tools over the server's MCP endpoint, so the same engines roll and clamp ([docs/agent-harness.md](agent-harness.md)).
 - **Connected agents** - your own Claude Code, Codex or other MCP client connects to the server as you, scoped by a revocable token, to read campaigns, play your character or run a table from the GM seat.
 - **GM turn engine** - a persisted park/resume state machine and tool-calling loop (up to four rounds) that salvages malformed tool calls and streams filtered narration.
 - **GM prompt and tool families** - a rules-as-tools system prompt covering rolls, checks, encounters, casts, resources, rests, conditions, items, hazards, NPCs, notes, maps, and world.

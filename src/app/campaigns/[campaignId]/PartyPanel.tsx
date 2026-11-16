@@ -9,7 +9,7 @@ import { Bot, Check, Crown, Heart, ImagePlus, PawPrint, Save, Sparkles, UserPlus
 import { describeExhaustion } from "@/lib/dm/condition-logic";
 import { namesLookup } from "@/lib/battlemap/condition-notes";
 import { conditionIconKey } from "@/lib/battlemap/condition-glyphs";
-import { conditionDetail, maxHpView } from "@/components/sheet/sheet-state";
+import { conditionDetail, maxHpView, petConditionDetail } from "@/components/sheet/sheet-state";
 import type { PublicEncounter } from "@/lib/db/encounter-view";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { spellGlyphIcon } from "@/lib/battlemap/spell-glyph-table";
@@ -17,6 +17,7 @@ import { SectionHead } from "@/components/ui/SectionHead";
 import { PartyGone } from "@/app/campaigns/[campaignId]/PartyGone";
 import type { DepartingSheet } from "@/app/campaigns/[campaignId]/departing";
 import { KitButton, SettingToggle } from "./PanelKit";
+import { revealSettingsRow } from "@/app/campaigns/[campaignId]/reveal-settings-row";
 import { PartyOrderBar, PartyOrderHandle, usePartyOrder } from "./PartyOrder";
 import { useEffect, useId, useState, Suspense, lazy } from "react";
 import { cn } from "@/lib/cn";
@@ -135,29 +136,6 @@ function RequestCompanionButton({ campaignId }: { campaignId: string }) {
       {state === "sent" ? "The GM has been asked" : "Request a companion"}
     </KitButton>
   );
-}
-
-// Brings a table settings row into view once the Settings tab has mounted
-// it (a moment after the switch) and flashes it, so "change this" lands on
-// the one control meant rather than the top of a long panel. A row inside a
-// closed group is mounted but hidden, so its group is opened first.
-function revealSettingsRow(row: string, tries = 40) {
-  const element = document.querySelector<HTMLElement>(`[data-settings-row="${row}"]`);
-  if (!element) {
-    if (tries > 0) window.setTimeout(() => revealSettingsRow(row, tries - 1), 50);
-    return;
-  }
-  const closed = element.closest<HTMLElement>(".cc-group:not([data-open])");
-  if (closed) {
-    closed.querySelector<HTMLButtonElement>(".cc-group-toggle")?.click();
-    if (tries > 0) window.setTimeout(() => revealSettingsRow(row, tries - 1), 50);
-    return;
-  }
-  const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  element.scrollIntoView({ block: "center", behavior: still ? "auto" : "smooth" });
-  element.removeAttribute("data-flash");
-  void element.offsetWidth;
-  element.setAttribute("data-flash", "");
 }
 
 // A player sheet whose library entry is an ally the DM plays came in through
@@ -730,23 +708,44 @@ export function PartyPanel({
             ) : null}
 
             {(sheet.pets ?? []).map((pet) => (
-              <div
-                key={pet.name}
-                className="mt-1 flex items-center justify-between text-[10px] text-stone-400"
-                title={pet.notes || pet.form}
-              >
-                <span className="flex min-w-0 items-center gap-1 truncate">
-                  <PawPrint className="size-3 shrink-0 text-stone-500" />
-                  {pet.name}
-                  {textKey(pet.name) !== textKey(pet.form) ? ` (${pet.form}${pet.creatureType ? `, ${pet.creatureType}` : ""})` : pet.creatureType ? ` (${pet.creatureType})` : ""}
-                </span>
-                <span className={cn("font-mono", pet.hp <= 0 && "text-red-400")}>
-                  {pet.hp}/{pet.maxHp}
-                </span>
+              <div key={pet.name} className="mt-1">
+                <div className="flex items-center justify-between text-[10px] text-stone-400" title={pet.notes || pet.form}>
+                  <span className="flex min-w-0 items-center gap-1 truncate">
+                    <PawPrint className="size-3 shrink-0 text-stone-500" />
+                    {pet.name}
+                    {textKey(pet.name) !== textKey(pet.form) ? ` (${pet.form}${pet.creatureType ? `, ${pet.creatureType}` : ""})` : pet.creatureType ? ` (${pet.creatureType})` : ""}
+                  </span>
+                  <span className={cn("font-mono", pet.hp <= 0 && "text-red-400")}>
+                    {pet.hp}/{pet.maxHp}
+                  </span>
+                </div>
+                {/* What holds the pet (Hold Monster's paralysis, a net), with
+                    what is left of it, as the character's own chips read. */}
+                {pet.conditions?.length ? (
+                  <div className="mt-0.5 flex flex-wrap gap-1 pl-4">
+                    {pet.conditions.map((condition) => {
+                      const detail = petConditionDetail(sheet, pet, condition, nameOf);
+                      return (
+                        <span
+                          key={condition}
+                          className="motion-pop inline-flex max-w-full items-center gap-1 rounded-full bg-red-950 px-1.5 py-0.5 text-[10px] text-red-300"
+                          title={detail ? `${pet.name}: ${condition} (${detail})` : `${pet.name}: ${condition}`}
+                        >
+                          <GameIcon icon={{ kind: "condition", key: conditionIconKey(condition) }} size="size-3" className="border-red-800/60" />
+                          {condition}
+                          {detail ? <span className="truncate text-red-300/70">({detail})</span> : null}
+                        </span>
+                      );
+                    })}
+                  </div>
+                ) : null}
               </div>
             ))}
 
-            {sheet.deathSaves ? (
+            {/* A track beside hit points is no dying (death-logic.ts isDying):
+                a revert that gave the hit points back read "Dying" at full
+                health (issue 968). Death shows whatever the hit points. */}
+            {sheet.deathSaves && (sheet.deathSaves.dead || sheet.currentHp <= 0) ? (
               <div
                 className={cn(
                   "mt-1.5 flex items-center gap-2 rounded-lg border px-2 py-1.5",

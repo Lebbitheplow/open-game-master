@@ -1,21 +1,12 @@
 "use client";
 
 import { PageSection } from "@/components/PageShell";
-import { GameIcon } from "@/components/ui/GameIcon";
+import { AppearancePicker } from "@/components/AppearancePicker";
 import { Slider } from "@/components/ui/Slider";
 import { ui } from "@/lib/ui";
 import { useUiLanguageChoice, writeUiLanguageChoice } from "@/lib/ui-language";
 import type { UiLanguageChoice } from "@/lib/language/ui-translate-logic";
-import { UI_SCALE_MAX, UI_SCALE_MIN, useThemePrefs, writeThemeChoice, writeUiScale, type ThemeChoice } from "@/lib/theme-mode";
-
-// Appearance (docs/vtt-parity-implementation-plan.md section 14): the night
-// or the day theme, the OS's choice by default, and how large the interface
-// reads. Both are kept on this device, not on the account.
-const CHOICES: Array<{ id: ThemeChoice; label: string; glyph: string }> = [
-  { id: "auto", label: "Follow the system", glyph: "daypart-dusk" },
-  { id: "dark", label: "Arcane night", glyph: "daypart-night" },
-  { id: "light", label: "Parchment day", glyph: "daypart-day" },
-];
+import { UI_SCALE_MAX, UI_SCALE_MIN, useThemePrefs, writeUiScale } from "@/lib/theme-mode";
 
 // The interface's language (docs/specs/ogm-italian-ui.md). A language's own
 // name is never translated, so it reads the same in either.
@@ -26,7 +17,7 @@ const LANGUAGES: Array<{ id: UiLanguageChoice; label: string; own?: true }> = [
 ];
 
 export function AppearanceSection() {
-  const { choice, scale } = useThemePrefs();
+  const { scale } = useThemePrefs();
   const language = useUiLanguageChoice();
   return (
     <PageSection
@@ -34,20 +25,7 @@ export function AppearanceSection() {
       glyph="sense-darkvision"
       intro="Kept on this device. The board and its canvases draw at their own size whatever the scale."
     >
-      <div data-pill-group="" role="group" aria-label="Theme" className="flex flex-wrap gap-2">
-        {CHOICES.map((entry) => (
-          <button
-            data-on={choice === entry.id ? "" : undefined}
-            key={entry.id}
-            type="button"
-            aria-pressed={choice === entry.id}
-            onClick={() => writeThemeChoice(entry.id)}
-            className="theme-card motion-press"
-          >
-            <GameIcon icon={{ kind: "glyph", key: entry.glyph }} size="size-8" /> {entry.label}
-          </button>
-        ))}
-      </div>
+      <AppearancePicker />
       <div className="mt-4 text-xs text-stone-400">
         <p className="mb-1">Interface language</p>
         <div data-pill-group="" role="group" aria-label="Interface language" className="flex flex-wrap gap-2">

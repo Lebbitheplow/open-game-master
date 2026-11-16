@@ -288,6 +288,17 @@ export const equipmentItemSchema = z.object({
   // ("curing"): each casts once a day (src/lib/srd/prayer-beads.ts). Absent
   // on every other row.
   beadsSpent: z.array(z.string().trim().min(1).max(20)).max(12).optional(),
+  // The campaign clock's minute this item's last charge was spent, for one
+  // whose charges come back days after it empties (ChargeRule.regainDays, a
+  // Horn of Valhalla's 7). Absent on every other row.
+  emptiedAt: z.number().int().min(0).optional(),
+  // What is left of each property with a count of its own (GearDef.powers),
+  // by the property's name: a Staff of Thunder and Lightning's "Thunderclap"
+  // at 0 until dawn. A property not listed is whole.
+  powerCharges: z.record(z.string().trim().min(1).max(40), z.number().int().min(0).max(50)).optional(),
+  // The clock's minute each property waiting hours was spent (an Orb of
+  // Dragonkind's Call Dragons, ChargeRule.regainHours), by its name.
+  powersEmptiedAt: z.record(z.string().trim().min(1).max(40), z.number().int().min(0)).optional(),
   // Pounds per unit, for the optional encumbrance rule. Filled in from the
   // content pack when a sheet is read (src/lib/db/sheets.ts), so rows
   // written before the field still get weighed; a value a player typed
@@ -839,7 +850,11 @@ export const petSchema = z.object({
   fly: z.number().int().min(0).max(120).optional(),
   saves: z.record(z.string(), z.number().int().min(-10).max(30)).optional(),
   skills: z.record(z.string(), z.number().int().min(-10).max(30)).optional(),
-  conditions: z.array(z.string().trim().min(1).max(60)).max(8).optional(),
+  // Beside what the bond lays, the conditions a failed save laid (Hold
+  // Monster's paralysis, a net's restraint), timed and ended as a
+  // character's are (src/lib/dm/pet-conditions.ts), with the same metadata.
+  conditions: z.array(z.string().trim().min(1).max(60)).max(15).optional(),
+  conditionMeta: conditionMetaSchema.optional(),
 });
 export type SheetPet = z.infer<typeof petSchema>;
 

@@ -3,6 +3,9 @@
 import { romanceCueAllowed } from "@/lib/dm/director-logic";
 import { gmTurnCompanion, gmTurnDominated, initiativeCharacter, selectedCharacter, typedReactors as typedReactorsOf } from "@/lib/player-characters";
 import { useThemePrefs } from "@/lib/theme-mode";
+import { EquipmentArtProvider } from "@/components/ui/EquipmentArtProvider";
+import { ThemeOrnaments } from "@/components/ThemeOrnaments";
+
 import { LevelUpMoment, LootMoment, MomentVeil, RestMoment, TravelBanner } from "@/app/campaigns/[campaignId]/Moments";
 import { CoordinationPanel } from "@/app/campaigns/[campaignId]/CoordinationPanel";
 import { CorrectionReasonChips } from "@/components/CorrectionReasonChips";
@@ -97,6 +100,10 @@ import {
   useNarrationStatus,
 } from "@/app/campaigns/[campaignId]/NarrationFailureBanner";
 import { AudioWaitingBanner } from "@/app/campaigns/[campaignId]/AudioWaitingBanner";
+import { EmbeddingLanguageBanner } from "@/app/campaigns/[campaignId]/EmbeddingLanguageBanner";
+import { revealSettingsRow } from "@/app/campaigns/[campaignId]/reveal-settings-row";
+import { seesEmbeddingWarning } from "@/lib/embedding-language-logic";
+import { useEmbeddingWarning } from "@/lib/use-embedding-warning";
 import { turnCharacterId, turnFromEncounter, turnHudBudget } from "@/lib/battlemap/hand-table";
 
 import { TabPane } from "@/app/campaigns/[campaignId]/SidePanel";
@@ -1032,6 +1039,38 @@ export function SessionView({
     },
     [openTab, setMobileView],
   );
+  // A table in a language this server's embedding model cannot read, said
+  // above the composer to whoever can fix it (EmbeddingLanguageBanner), and
+  // on a phone's other views as the sound banner is.
+  const embeddingWarning = useEmbeddingWarning(
+    campaign && seesEmbeddingWarning({ steersStory, isAdmin }) ? [campaign.gameSettings.tableLanguage] : [],
+  );
+  const embeddingBanner = useMemo(
+    () =>
+      embeddingWarning ? (
+        <EmbeddingLanguageBanner
+          warning={embeddingWarning}
+          onChangeLanguage={
+            steersStory
+              ? () => {
+                  selectPanelView("settings");
+                  revealSettingsRow("table-language");
+                }
+              : undefined
+          }
+        />
+      ) : null,
+    [embeddingWarning, steersStory, selectPanelView],
+  );
+  const tableNotice = useMemo(
+    () => (
+      <>
+        {embeddingBanner}
+        {narrationNotice}
+      </>
+    ),
+    [embeddingBanner, narrationNotice],
+  );
   // A shop's Browse wares in the chat: the Market on that shop, in the side
   // panel at a desk and in place of the table on a phone.
   const [marketRequest, setMarketRequest] = useState<MarketRequest | null>(null);
@@ -1334,10 +1373,12 @@ export function SessionView({
   } satisfies Omit<SidePanelRouterProps, "tab" | "visible" | "onOpenTab">;
 
   return (
-    <main className="cine-stage flex h-dvh flex-col" data-session-view={sessionLayout ? shownStageView : undefined} data-side-board={boardInPanel ? "" : undefined}
+    <EquipmentArtProvider genre={campaign.genre}>
+    <main className="theme-table cine-stage flex h-dvh flex-col" data-session-view={sessionLayout ? shownStageView : undefined} data-side-board={boardInPanel ? "" : undefined}
       data-prep={prepOpen ? "" : undefined}
       data-addon-theme={sessionTheme ? "" : undefined}
       style={sessionTheme ? { "--session-surface": sessionTheme.surface, "--session-accent": sessionTheme.accent } as CSSProperties : undefined}>
+      <ThemeOrnaments surface="table" />
       {/* The cinematic frame ("ODM World Concepts" 3b): the scene's painting
           behind everything, the party down the left, the turn order along
           the top, the last roll as a pill. CinematicParts.tsx. */}
@@ -1558,7 +1599,7 @@ export function SessionView({
                     encounter={state.encounter}
                     onReleaseFloor={releaseFloor}
                     joinBanner={joinBanner}
-                    notice={narrationNotice}
+                    notice={tableNotice}
                     composerRef={composerRef}
                     highlight={composerPulse}
                     directorArm={state.directorArm}
@@ -1611,8 +1652,11 @@ export function SessionView({
 
       <RollToast staged={stagedRoll} sheets={sheets} />
 
-      {mobileView !== "chat" && (narrationHeld > 0 || ambienceWaiting) ? (
-        <div className="px-2 pb-1 lg:hidden">{audioWaiting}</div>
+      {mobileView !== "chat" && (embeddingBanner || narrationHeld > 0 || ambienceWaiting) ? (
+        <div className="px-2 pb-1 lg:hidden">
+          {embeddingBanner}
+          {audioWaiting}
+        </div>
       ) : null}
       <BottomTabBar
         tabs={panelTabs}
@@ -1759,5 +1803,6 @@ export function SessionView({
         )
       ) : null}
     </main>
+    </EquipmentArtProvider>
   );
 }

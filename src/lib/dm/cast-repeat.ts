@@ -11,7 +11,7 @@ import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
 import type { CastInput, CastResult } from "@/lib/dm/cast-guard";
-import { turnCharge } from "@/lib/dm/cast-rules";
+import { spendAction } from "@/lib/dm/action-budget";
 import { lastCastSlot } from "@/lib/dm/spell-effects";
 import { runningItemSpell } from "@/lib/srd/item-cast-credit";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
@@ -50,25 +50,21 @@ export function repeatSpell(
     return heldOff;
   }
   const budget = budgetFor(fight, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions));
-  // Not a casting: the bonus-action spell rule and the levelled spell mark
-  // do not apply, so the charge is made as for a cantrip of that time.
-  const charge = turnCharge({
-    who: sheet.name,
-    facts: facts ? { ...facts, level: 0, castingTime: cost === "bonus" ? "bonus" : "action" } : null,
-    spell: name,
-    slotLevel: null,
-    inFight: true,
-    budget,
-    reactionSpent: false,
-  });
-  if ("error" in charge) {
-    return charge;
+  // Not a casting, so the turn's action or bonus action is spent as for any
+  // other use of it. Charged as a cantrip with that casting time, the repeat
+  // of Heat Metal or Flaming Sphere on the bonus action was refused after a
+  // levelled spell and barred one after it (SRD 5.1, Casting Time, Bonus
+  // Action limits spells cast, and this is none), and Quickened Spell's mark
+  // was spent on it.
+  const spent = budget ? spendAction(budget, cost === "bonus" ? "bonus" : "action", `${name} again`, sheet.name) : null;
+  if (spent && !spent.ok) {
+    return toolError(spent);
   }
   if (input.dryRun) {
     return { ok: true, dryRun: true, spell: name, slotLevel, repeat: true };
   }
-  if (charge.kind === "budget") {
-    storeBudget(fight, charge.budget);
+  if (spent) {
+    storeBudget(fight, spent.budget);
   }
   return {
     ok: true,

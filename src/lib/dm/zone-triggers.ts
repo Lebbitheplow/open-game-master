@@ -62,6 +62,8 @@ function spaceIn(width: number, mover: { kind: string; refId: string }, at: XY, 
   return Boolean(cells?.length) && footprintIndexes(width, at, mover.kind === "enemy" ? tokenFootprint({ kind: "enemy", refId: mover.refId }) : 1).some((cell) => cells!.includes(cell));
 }
 import { textKey } from "@/lib/language/text-logic";
+import { enterSetTrap, isSetTrap } from "@/lib/dm/set-traps";
+import { strikePetsInZone } from "@/lib/dm/pet-zones";
 
 // A turn for a character's saves and damage, closed once used, as an
 // opportunity attack's is (src/lib/dm/opportunity-strike.ts).
@@ -281,6 +283,45 @@ function strike(
   });
 }
 
+// The pets of a character the area strikes, which stand in that character's
+// square (ruling D2): the same moment, with the area's DC and dice, each
+// making its own save (pet-zones.ts). A creature's area on the party's side
+// ("hostile" only) spares them as it spares their owner.
+function petsStruck(campaign: Campaign, encounter: Encounter, map: BattleMap, zone: SpellZone, victim: Victim, moment: ZoneMoment, times = 1): string[] {
+  const row = zoneRowFor(zone);
+  const trigger = row?.trigger;
+  if (victim.kind !== "pc" || !row || !trigger || (trigger.who === "hostile" && !hostileTo(zone, "pc"))) {
+    return [];
+  }
+  if (!getSheetById(victim.id)?.pets.some((pet) => pet.hp > 0)) {
+    return [];
+  }
+  const once = trigger.oncePerTurn ? turnKey(encounter) : null;
+  if (once && zone.struck?.[`${victim.id}/pets:turn`] === once) {
+    return [];
+  }
+  if (once) {
+    zone.struck = { ...(zone.struck ?? {}), [`${victim.id}/pets:turn`]: once };
+  }
+  const why = moment === "enter" ? `entering ${zone.spell}` : moment === "each5" ? `moving through ${zone.spell}` : `${zone.spell}`;
+  const by: RollAttacker =
+    zone.casterKind === "pc"
+      ? { kind: "sheet", id: zone.casterId, name: zone.casterName }
+      : { kind: "enemy", id: zone.casterId, name: listHiddenRefIds(map.id).includes(zone.casterId) ? "Someone unseen" : zone.casterName };
+  return strikePetsInZone(campaign, victim.id, {
+    zone,
+    row,
+    trigger,
+    moment,
+    dc: dcOf(zone),
+    dice: diceOf(trigger, row, zone, times),
+    by,
+    why,
+    immune: (immunities) => immuneSucceeds(trigger, immunities),
+    stands: () => zoneStands(map, zone),
+  });
+}
+
 // What striking a creature does to the area and to the creature whatever
 // the save: a sigil spent by its first (its budget used up, settle() clears
 // it), a spirit seen as it comes in.
@@ -443,6 +484,13 @@ function areasAfterMove(
   let stopAt: XY | null = null;
   for (const zone of armed) {
     const trigger = zoneRowFor(zone)?.trigger as ZoneTrigger;
+    // A trap set on a square springs by its own numbers (set-traps.ts).
+    if (isSetTrap(zone)) {
+      const sprung = withZoneTurn(campaign.id, (turn) => enterSetTrap(campaign, turn, encounter, map, zone, victim, start, walked));
+      lines.push(...sprung.lines);
+      stopAt = stopAt ?? sprung.stopAt;
+      continue;
+    }
     if (!touches(zone, trigger, victim)) {
       continue;
     }
@@ -461,6 +509,8 @@ function areasAfterMove(
     }
     if (trigger.on.includes("each5") && inside > 0) {
       lines.push(...strike(campaign, encounter, map, zone, victim, "each5", inside));
+      // The pets beside the walker walked the same squares (pet-zones.ts).
+      lines.push(...petsStruck(campaign, encounter, map, zone, victim, "each5", inside));
     }
     const struckKey = `${victim.id}:enter`;
     // "A creature moving through the area at half speed doesn't need to make
@@ -479,6 +529,7 @@ function areasAfterMove(
       // stops the move on the square entered (zones-gear.ts).
       const hadIt = Boolean(trigger.stopsOnFail && trigger.condition && victimHolds(victim, trigger.condition));
       lines.push(...strike(campaign, encounter, map, zone, victim, "enter"));
+      lines.push(...petsStruck(campaign, encounter, map, zone, victim, "enter"));
       if (trigger.condition === "restrained" && stillHeld(victim)) {
         stopAt = stopAt ?? enteredAt;
       }
@@ -618,42 +669,54 @@ function momentFor(
     }
     for (const zone of zones) {
       const trigger = zoneRowFor(zone)?.trigger;
-      if (!trigger?.on.includes(moment) || !touches(zone, trigger, victim)) {
+      if (!trigger?.on.includes(moment)) {
         continue;
       }
       const inArea = spaceIn(map.width, token, token, zone.cells) || (moment === "end" && spaceIn(map.width, token, token, zone.hot));
-      if (inArea && moment === "end" && victim.kind === "enemy") {
-        const begun = zone.struck?.[`${id}:begun`];
-        if (!begun || zone.struck?.[`${id}:end`] === begun) {
-          continue;
+      const owner = (): string[] => {
+        if (!touches(zone, trigger, victim)) {
+          return [];
         }
-        zone.struck = { ...(zone.struck ?? {}), [`${id}:end`]: begun };
-      }
-      // Black Tentacles' hold crushes what THIS casting already restrains at
-      // the start of its turn on its own (src/lib/dm/spell-aura.ts, either
-      // kind of creature); it saves no more. Another restraint is no hold of
-      // this area's.
-      if (!inArea || (trigger.condition === "restrained" && trigger.dice && heldByZone(victim, zone))) {
-        continue;
-      }
-      if (trigger.once) {
-        if (zone.struck?.[`${id}:once`]) {
-          continue;
+        if (inArea && moment === "end" && victim.kind === "enemy") {
+          const begun = zone.struck?.[`${id}:begun`];
+          if (!begun || zone.struck?.[`${id}:end`] === begun) {
+            return [];
+          }
+          zone.struck = { ...(zone.struck ?? {}), [`${id}:end`]: begun };
         }
-        zone.struck = { ...(zone.struck ?? {}), [`${id}:once`]: turnKey(encounter) };
-      }
-      if (trigger.oncePerTurn) {
-        if (zone.struck?.[`${id}:turn`] === turnKey(encounter)) {
-          continue;
+        // Black Tentacles' hold crushes what THIS casting already restrains
+        // at the start of its turn on its own (src/lib/dm/spell-aura.ts,
+        // either kind of creature); it saves no more. Another restraint is no
+        // hold of this area's.
+        if (!inArea || (trigger.condition === "restrained" && trigger.dice && heldByZone(victim, zone))) {
+          return [];
         }
-        zone.struck = { ...(zone.struck ?? {}), [`${id}:turn`]: turnKey(encounter) };
+        if (trigger.once) {
+          if (zone.struck?.[`${id}:once`]) {
+            return [];
+          }
+          zone.struck = { ...(zone.struck ?? {}), [`${id}:once`]: turnKey(encounter) };
+        }
+        if (trigger.oncePerTurn) {
+          if (zone.struck?.[`${id}:turn`] === turnKey(encounter)) {
+            return [];
+          }
+          zone.struck = { ...(zone.struck ?? {}), [`${id}:turn`]: turnKey(encounter) };
+        }
+        // The turn's start is this turn's event: an explicit call for the
+        // same area in this turn finds it spent (src/lib/dm/area-casting.ts).
+        if (moment === "start") {
+          zone.struck = { ...(zone.struck ?? {}), [`${id}:start`]: turnKey(encounter) };
+        }
+        return strike(campaign, encounter, map, zone, victim, moment);
+      };
+      lines.push(...owner());
+      // The pets in the character's square start and end their turns there
+      // too, whatever the area did to their owner (held by it, struck once
+      // already, its own caster): pet-zones.ts.
+      if (inArea) {
+        lines.push(...petsStruck(campaign, encounter, map, zone, victim, moment));
       }
-      // The turn's start is this turn's event: an explicit call for the same
-      // area in this turn finds it spent (src/lib/dm/area-casting.ts).
-      if (moment === "start") {
-        zone.struck = { ...(zone.struck ?? {}), [`${id}:start`]: turnKey(encounter) };
-      }
-      lines.push(...strike(campaign, encounter, map, zone, victim, moment));
     }
   }
   return lines;

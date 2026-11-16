@@ -14,6 +14,8 @@ import { obviousComfyChoice } from "@/lib/image-models/curate";
 import type { ScanResult } from "@/lib/setup/discovery";
 import type { MaskedConfig } from "@/app/admin/AdminSettingsFields";
 import type { HarnessChoiceId } from "@/lib/setup/patches";
+import type { TableLanguage } from "@/lib/schemas/game-settings-options";
+import { languageFromLocale } from "@/lib/language/server-language";
 
 export type StoryKind = "local" | "key" | "agent" | "none";
 
@@ -31,6 +33,8 @@ export type ModelField = "pictures" | "narration" | "whisper" | "transcription";
 
 export type Draft = {
   serverName: string;
+  // The server's language; null on a host older than the language picker.
+  serverLanguage: TableLanguage | null;
   story: StoryKind | "";
   local: { baseUrl: string; model: string; apiKey: string; list: ModelList; typed: boolean };
   key: { provider: KeyProviderId; baseUrl: string; apiKey: string; model: string; list: ModelList };
@@ -78,6 +82,13 @@ export function draftFromConfig(config: MaskedConfig, firstRun: boolean): Draft 
   const images = config.images;
   return {
     serverName: config.serverName,
+    // A fresh server guesses the admin's own browser language; a server
+    // already set up starts from what it plays in now.
+    serverLanguage: config.serverLanguage
+      ? firstRun && config.serverLanguage === "english" && typeof navigator !== "undefined"
+        ? (languageFromLocale(navigator.language) ?? config.serverLanguage)
+        : config.serverLanguage
+      : null,
     story,
     local: {
       baseUrl:

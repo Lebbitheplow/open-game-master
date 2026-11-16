@@ -257,7 +257,7 @@ export function TurnHud({
     hp ? `${hp.current}/${hp.max}` : null,
   ].filter(Boolean);
   return (
-    <div className="pointer-events-none absolute right-2 top-2 z-10 flex max-w-[58%] flex-col items-end gap-1 @md:right-3.5 @md:top-3.5 @md:gap-[7px]">
+    <div className="board-turn-hud pointer-events-none absolute right-2 top-2 z-10 flex max-w-[58%] flex-col items-end gap-1 @md:right-3.5 @md:top-3.5 @md:gap-[7px]">
       <span className="board-eyebrow block max-w-full truncate text-right">{mine ? `${actorName} · ${commanded ? "your orders" : "your turn"}` : `${actorName}'s turn`}</span>
       {mine && budget ? (
         // On a narrow board the pips and the stats sit under the rail's

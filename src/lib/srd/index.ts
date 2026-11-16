@@ -1,6 +1,6 @@
 import { soulOfArtificeBonus } from "@/lib/srd/mt-srd-artificer";
 import { subclassSpellsFor } from "@/lib/srd/features";
-import { FEAT_ONLY_SPEED, auraGranted, combatRiders, defenseRiders, halfProficiencyCovers } from "@/lib/srd/feature-effects";
+import { FEAT_ONLY_SPEED, auraGranted, combatRiders, defenseRiders, halfProficiencyBonus } from "@/lib/srd/feature-effects";
 import { formSees } from "@/lib/srd/form-sees";
 import { hasMediumArmorMaster } from "@/lib/srd/feat-combat";
 import { dualWielderAcBonus } from "@/lib/srd/feat-ac";
@@ -10,12 +10,13 @@ import racesJson from "@/lib/srd/races.json";
 import skillsJson from "@/lib/srd/skills.json";
 import spellSlotsJson from "@/lib/srd/spell-slots.json";
 import { CUSTOM_CLASSES, findCustomClass } from "@/lib/classes";
-import { computeArmorClass, unarmoredFormulaFor, type AcBreakdown } from "@/lib/srd/armor";
+import { computeArmorClass, unarmoredFormulasFor, type AcBreakdown, type UnarmoredFormula } from "@/lib/srd/armor";
 import { conditionAcRiders } from "@/lib/srd/condition-effects";
 import { featureSaveProficiencies, featureSkillProficiencies } from "@/lib/srd/trait-rules";
 import { borrowedProficiencies } from "@/lib/srd/borrowed-proficiency";
 import { authoredAcBonus, authoredCheckSwap, authoredSaveModifier, authoredSpeeds, authoredExpertise, authoredConditionalTraining } from "@/lib/srd/authored-effects";
 import { effectiveAbilities, itemSpeeds, magicItemRiders, type Wearer, type WornMagicItem } from "@/lib/srd/magic-items";
+import { itemProficiencyBonus, levelProficiencyBonus } from "@/lib/srd/proficiency";
 import { encumbranceFor } from "@/lib/srd/encumbrance";
 import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
 import { purseCoins } from "@/lib/srd/currency";
@@ -109,8 +110,10 @@ export function abilityMod(score: number) {
   return Math.floor((score - 10) / 2);
 }
 
+// The level's proficiency bonus alone. A character's own number, with an
+// Ioun Stone of Mastery's +1, is proficiencyBonusOf (src/lib/srd/proficiency.ts).
 export function proficiencyBonus(level: number) {
-  return 2 + Math.floor((Math.max(1, Math.min(20, level)) - 1) / 4);
+  return levelProficiencyBonus(level);
 }
 
 export function formatModifier(value: number) {
@@ -190,7 +193,7 @@ export function acBreakdownFor(source: AcSource): AcBreakdown {
   // and CON that feed the AC, so the effective scores are used throughout.
   const abilities = effectiveAbilities(source.abilities, source.equipment, source);
   const magic = magicItemRiders(source.equipment, source);
-  const input = {
+  const bare = {
     equipment: source.equipment,
     race: source.race,
     armorProfs: source.proficiencies.armor,
@@ -201,11 +204,19 @@ export function acBreakdownFor(source: AcSource): AcBreakdown {
       wis: abilityMod(abilities.wis),
     },
     strength: abilities.str,
-    unarmored: unarmoredFormulaFor(
-      source.classes?.length
-        ? source.classes.map((entry) => entry.id)
-        : source.class,
-      source.features,
+  };
+  // The better of the unarmored formulas held (armor.ts unarmoredFormulasFor).
+  const formulas = unarmoredFormulasFor(
+    source.classes?.length
+      ? source.classes.map((entry) => entry.id)
+      : source.class,
+    source.features,
+  );
+  const input = {
+    ...bare,
+    unarmored: formulas.reduce<UnarmoredFormula | null>(
+      (best, formula) => (!best || computeArmorClass({ ...bare, unarmored: formula }).ac > computeArmorClass({ ...bare, unarmored: best }).ac ? formula : best),
+      null,
     ),
   };
   // The Defense fighting style only counts while actually wearing armor, so
@@ -496,7 +507,9 @@ export function computeSheetDerived(
   // A creature Polymorph, Animal Shapes or True Polymorph made has the
   // proficiency bonus its challenge rating carries, not the character's.
   const shape = sheet.wildShape;
-  const pb = shape?.kind === "polymorph" && !shape.keepsTraining && shape.cr !== undefined ? proficiencyBonus(Math.max(1, shape.cr)) : proficiencyBonus(sheet.level);
+  // The character's own adds an attuned Ioun Stone of Mastery's +1
+  // (src/lib/srd/proficiency.ts).
+  const pb = shape?.kind === "polymorph" && !shape.keepsTraining && shape.cr !== undefined ? proficiencyBonus(Math.max(1, shape.cr)) : proficiencyBonus(sheet.level) + itemProficiencyBonus(sheet.equipment, sheet);
   // Ability-setting magic items raise the scores every other number reads.
   const withItems = sheet.equipment
     ? effectiveAbilities(sheet.abilities, sheet.equipment, sheet)
@@ -523,8 +536,8 @@ export function computeSheetDerived(
   ];
   const defense =
     sheet.class && (sheet.features || sheet.feats)
-      ? defenseRiders({ class: sheet.class, level: sheet.level, features: riderFeatures, campaignId: sheet.campaignId }, abilityMods)
-      : { saveBonus: 0, initiativeBonus: 0, passiveBonus: 0, halfProficiency: null };
+      ? defenseRiders({ class: sheet.class, level: sheet.level, features: riderFeatures, campaignId: sheet.campaignId, proficiencyBonus: pb }, abilityMods)
+      : { saveBonus: 0, initiativeBonus: 0, passiveBonus: 0, halfProficiency: null, halfScopes: [] };
 
   // Saves a feature trains on top of the class table's (Diamond Soul,
   // Slippery Mind): derived here, so no stored sheet has to change.
@@ -563,9 +576,9 @@ export function computeSheetDerived(
 
   // Jack of All Trades / Remarkable Athlete: half the proficiency bonus on
   // any covered check that does not already use it. The bard's rounds down;
-  // the Champion's, which covers the physical abilities only, rounds up.
-  const halfScope = defense.halfProficiency ?? null;
-  const halfPb = halfScope === "physical" ? Math.ceil(pb / 2) : Math.floor(pb / 2);
+  // the Champion's, which covers the physical abilities only, rounds up; a
+  // sheet with both takes the better on each check.
+  const halfOf = (ability: string) => halfProficiencyBonus(defense.halfScopes ?? [], ability, pb);
   // A genre feature's doubled skill (authored-effects.ts authoredExpertise)
   // doubles a proficiency the sheet has, as Expertise does.
   const expertise = [
@@ -589,8 +602,8 @@ export function computeSheetDerived(
         ? { label: "expertise", value: pb * 2 }
         : sheet.proficiencies.skills.includes(skill.id) || featureSkills.includes(skill.id) || formSkills[skill.id] !== undefined
           ? { label: "proficiency", value: pb }
-          : halfProficiencyCovers(halfScope, skill.ability)
-            ? { label: "half proficiency", value: halfPb }
+          : halfOf(skill.ability) > 0
+            ? { label: "half proficiency", value: halfOf(skill.ability) }
             : { label: "untrained", value: 0 };
       const own = keepMeaningful([
         { label: `${skill.ability.toUpperCase()} modifier`, value: abilityMods[skill.ability] },
@@ -616,7 +629,7 @@ export function computeSheetDerived(
     { label: "DEX modifier", value: abilityMods.dex },
     { label: "features", value: defense.initiativeBonus },
     // Sharpened Logic's Intelligence and Wisdom half does not reach it.
-    { label: "half proficiency", value: halfScope && halfProficiencyCovers(halfScope, "dex") ? halfPb : 0 },
+    { label: "half proficiency", value: halfOf("dex") },
   ]);
   const passiveParts = keepMeaningful([
     { label: "base", value: 10 },

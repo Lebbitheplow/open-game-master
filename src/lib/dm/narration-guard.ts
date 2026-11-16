@@ -17,8 +17,7 @@ import {
 import { claimKindsFor, withoutSentences, type ClaimKind, type NarrationClaim, type PartRead } from "@/lib/dm/claims-logic";
 import { hasQuotedLine, type SpokenLine } from "@/lib/dm/speech";
 import { askedThisTurn, guardGate, liveStateFor, readClaims, turnOverFor } from "@/lib/dm/claims";
-import { getActiveEncounter } from "@/lib/db/encounters";
-import { budgetApplies, paidSwingsLeft } from "@/lib/dm/action-budget";
+import { turnStillOwes } from "@/lib/dm/turn-budget";
 import { exchangeWords } from "@/lib/dm/story-moves";
 import type { GuardKind, GuardOutcome, GuardReport } from "@/lib/narrator-quality";
 import { readVoiceLeaks } from "@/lib/dm/voice-knowledge";
@@ -70,7 +69,7 @@ async function readNarration(
   sheets: readonly CharacterSheet[],
   parts: readonly string[],
   partReads: ReadonlyMap<string, PartRead>,
-): Promise<{ contradictions: Contradiction[]; lines: SpokenLine[]; handedOn: string | null; deeds: DeedClaim[]; bonds: BondClaim[]; unread: boolean }> {
+): Promise<{ contradictions: Contradiction[]; lines: SpokenLine[]; handedOn: string | null; keptQuotes: string[]; deeds: DeedClaim[]; bonds: BondClaim[]; unread: boolean }> {
   const outcomes = guardOutcomes(turn.conversation, liveStateFor(campaign.id), campaign.gameSettings.tableLanguage);
   const kinds = guardKinds(campaign, outcomes, sheets);
   const waiting = turnOverFor(campaign.id, turn);
@@ -110,19 +109,29 @@ async function readNarration(
   // A turn whose Attack action is under way, with Extra Attack's swings (or
   // paid Flurry strikes) still to make, is not over because the prose says
   // so: a level 5 fighter's one swing was narrated as their whole turn and
-  // the second attack was lost (issue 761's kin). Their player ends it, or
-  // their own words do (turn.ts readTurnEndInWords).
-  const swingsLeft = handedOn !== null && !answerAwaited ? swingsPaidFor(campaign.id, handedOn) : 0;
-  if (swingsLeft > 0) {
-    console.warn(`[dm-turn] turn ${turn.id}: the narration reads as handing the turn on with ${swingsLeft} paid attack(s) still to make; the turn stays theirs.`);
+  // the second attack was lost (issue 761's kin). Nor is one whose Attack
+  // action earned a bonus swing nothing has spent: a two-weapon fighter's
+  // scimitar swing was told as the whole turn, the enemies went, and the
+  // shortsword's attack was lost (issue 966). Their player ends it, or their
+  // own words do (turn.ts readTurnEndInWords).
+  const owed = handedOn !== null && !answerAwaited ? turnStillOwes(campaign.id, handedOn) : { swings: 0, bonusSwing: null };
+  if (owed.swings > 0) {
+    console.warn(`[dm-turn] turn ${turn.id}: the narration reads as handing the turn on with ${owed.swings} paid attack(s) still to make; the turn stays theirs.`);
+  } else if (owed.bonusSwing) {
+    console.warn(`[dm-turn] turn ${turn.id}: the narration reads as handing the turn on with ${owed.bonusSwing} still open; the turn stays theirs.`);
   }
+  const keptTurn = handedOn !== null && (answerAwaited || owed.swings > 0 || owed.bonusSwing !== null);
   return {
     contradictions: ruleClaims(
       claims.filter((claim) => kinds.includes(claim.kind) && claim.kind !== "deed"),
       outcomes,
     ),
     lines: claims.flatMap((claim) => (claim.kind === "speaker" ? [{ line: claim.line, speaker: claim.speaker }] : [])),
-    handedOn: answerAwaited || swingsLeft > 0 ? null : handedOn,
+    handedOn: keptTurn ? null : handedOn,
+    // What told the table a turn was over that stays open: cut from the
+    // story (cutHandOff), or the player reads their turn ended while the
+    // board still waits on them.
+    keptQuotes: keptTurn ? claims.flatMap((claim) => (claim.kind === "turn_over" ? [claim.quote] : [])) : [],
     // A deed is no contradiction: the turn notes the ones nothing recorded
     // (src/lib/dm/deed-claims.ts).
     deeds: claims.flatMap((claim) => (claim.kind === "deed" ? [claim] : [])),
@@ -132,11 +141,21 @@ async function readNarration(
   };
 }
 
-// The swings the character's live turn has paid for and not made.
-function swingsPaidFor(campaignId: string, characterId: string): number {
-  const encounter = getActiveEncounter(campaignId);
-  const budget = encounter?.turnBudget ?? null;
-  return encounter && budgetApplies(budget, characterId, encounter.round) ? paidSwingsLeft(budget) : 0;
+// The sentences that told a kept turn over, cut from the story while enough
+// of it is left to read (as cutContradictions keeps it): "Your turn ends.
+// Fanatic 1 acts next." over a turn the board still gives the player.
+function cutHandOff(turn: DmTurn, quotes: readonly string[]): void {
+  if (!quotes.length) {
+    return;
+  }
+  const before = turn.narrationParts.join("\n\n").trim();
+  const parts = turn.narrationParts.map((part) => withoutSentences(part, quotes).trim()).filter(Boolean);
+  const after = parts.join("\n\n");
+  if (after === before || after.length < Math.min(120, Math.floor(before.length / 3))) {
+    return;
+  }
+  turn.narrationParts.length = 0;
+  turn.narrationParts.push(...parts);
 }
 
 // What the server did with a spell the prose cast for nothing (castSlotless):
@@ -206,17 +225,19 @@ export async function enforceEngineBoundary(
   // write it out of the story as before.
   castSlotless?: (cast: NonNullable<Contradiction["cast"]>) => Promise<SlotlessCast | null>,
 ): Promise<GuardedNarration> {
-  const narration = turn.narrationParts.join("\n\n").trim();
-  if (!narration) {
+  if (!turn.narrationParts.join("\n\n").trim()) {
     return { spoken: [], handedOn: null, deeds: [], guard: { outcome: "none", kinds: [] } };
   }
   // A line crossed is refused the same way a hit written on a miss is
   // (docs/vtt-parity-implementation-plan.md 9.1), whether or not the
   // outcome check is on: safety is not a setting.
   const lines = campaign.gameSettings.safety?.lines ?? [];
-  const crossed = lineViolations(narration, lines, campaign.gameSettings.tableLanguage);
   const read = await readNarration(campaign, turn, sheets, turn.narrationParts, partReads);
   const { lines: spoken, handedOn, deeds, bonds, unread } = read;
+  cutHandOff(turn, read.keptQuotes);
+  // What the table will read, and what a rewrite is asked to mend.
+  const narration = turn.narrationParts.join("\n\n").trim();
+  const crossed = lineViolations(narration, lines, campaign.gameSettings.tableLanguage);
   // A line the narrator voiced for someone who cannot know what it says
   // (src/lib/dm/voice-knowledge-logic.ts): fixed by the same one rewrite.
   const leaks = await readVoiceLeaks(campaign, turn, sheets, narration);
@@ -316,7 +337,7 @@ export async function enforceEngineBoundary(
   // A rewrite is only an improvement if it actually removes contradictions. A
   // model that swapped one wrong claim for another keeps its original text,
   // which at least the table already saw streaming.
-  const { contradictions: remaining, lines: respoken, handedOn: rehanded } = await readNarration(campaign, turn, sheets, [corrected], new Map());
+  const { contradictions: remaining, lines: respoken, handedOn: rehanded, keptQuotes: rekept } = await readNarration(campaign, turn, sheets, [corrected], new Map());
   const stillCrossed = lineViolations(corrected, lines, campaign.gameSettings.tableLanguage);
   const stillLeaking = leaks.length ? await readVoiceLeaks(campaign, turn, sheets, corrected) : [];
   if (remaining.length + stillLeaking.length + stillCrossed.length >= contradictions.length + crossed.length) {
@@ -338,8 +359,10 @@ export async function enforceEngineBoundary(
       paragraphs.slice(0, -1).join("\n\n"),
       paragraphs[paragraphs.length - 1],
     );
+    cutHandOff(turn, rekept);
     return { spoken: respoken, handedOn: rehanded, deeds, guard: { outcome: "rewritten", kinds: found } };
   }
   turn.narrationParts.push(corrected);
+  cutHandOff(turn, rekept);
   return { spoken: respoken, handedOn: rehanded, deeds, guard: { outcome: "rewritten", kinds: found } };
 }

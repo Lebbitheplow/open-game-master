@@ -91,16 +91,17 @@ test("a vial of basic poison is its row, by any of the row's spellings or its sr
   assert.equal(isBasicPoison({ name: "Veleno base", srdName: "Poison, Basic (vial)" }), true);
 });
 
-// The same thing at five tables: the English row's name, then the name a
-// player writes in Italian, French, Spanish and German, read by no word of it
-// and by the tags it carries. An official Italian SRD name, whole, is the
-// English row's (src/lib/language/srd-names-it.ts): "Razioni (1 giorno)" is
-// not the book's "Razioni (1 giornata)", so it stays unread.
+// The same thing at four tables: the English row's name, then the name a
+// player writes in Italian, Spanish and German, read by no word of it and by
+// the tags it carries. An official Italian SRD name, whole, is the English
+// row's (src/lib/language/srd-names-it.ts): "Razioni (1 giorno)" is not the
+// book's "Razioni (1 giornata)", so it stays unread. French SRD names like
+// "Torche" resolve through ITEM_EN_BY_FR.
 const TABLES = [
-  ["Potion of Healing", "Pozione di guarigione", "Potion de soins", "Poción de curación", "Heiltrank"],
-  ["Torch", "Torcia", "Torche", "Antorcha", "Fackel"],
-  ["Rations (1 day)", "Razioni (1 giorno)", "Vivres (1 jour)", "Raciones (1 día)", "Rationen (1 Tag)"],
-  ["Arrows (20)", "Frecce (20)", "Flèches (20)", "Flechas (20)", "Pfeile (20)"],
+  ["Potion of Healing", "Pozione di guarigione", "Poción de curación", "Heiltrank"],
+  ["Torch", "Torcia", "Antorcha", "Fackel"],
+  ["Rations (1 day)", "Razioni (1 giorno)", "Raciones (1 día)", "Rationen (1 Tag)"],
+  ["Arrows (20)", "Frecce (20)", "Flechas (20)", "Pfeile (20)"],
 ];
 const OFFICIAL_ITALIAN = new Set(["Pozione di guarigione", "Torcia", "Frecce (20)"]);
 const TAGS = [["consumable", "potion", "healing_potion"], ["consumable", "torch"], ["consumable", "food"], ["consumable", "arrows", "carried"]];
@@ -119,6 +120,7 @@ test("an English row's name gives its tags; a name in another language gives non
       assert.deepEqual(itemTags({ name, tags: TAGS[index] }), TAGS[index]);
     }
   }
+  assert.deepEqual(itemTags({ name: "Torche" }), ["consumable", "torch"]);
 });
 
 test("the engines read a tagged item in any language as its English row", () => {
@@ -144,10 +146,12 @@ test("an unidentified item is nothing: its name is the party's description", () 
 // item table: use_item took every one out of the pack as if drunk, a Bow of
 // Accuracy, an Armored Corset and an Apron of the Eager Artisan with the Air
 // Seeds. Each is now kept or used up by its own text (SRD 5.1, Magic Items,
-// Consumables: "Some items are used up when they are activated").
+// Consumables: "Some items are used up when they are activated"). The Iron
+// Bands of Binding left this list for the table, which counts their use
+// once a dawn and keeps them (test-audit1115-rests R12).
 const KEPT_BY_TEXT = [
   "Apron of the Eager Artisan", "Armored Corset", "Bow of Accuracy", "Alembic of Unmaking", "Efreeti Bottle",
-  "Iron Bands of Binding", "Instant Fortress", "Folding Boat", "Handy Haversack", "Birdsong Whistle",
+  "Instant Fortress", "Folding Boat", "Handy Haversack", "Birdsong Whistle",
   "Message Whistle", "Clockwork Calendar", "Pocket Spark", "Dimensional Shackles",
 ];
 const USED_UP_BY_TEXT = [
@@ -197,9 +201,11 @@ test("every magic item no word of its name places is read from its text, each on
     }
   }
   console.log(`read from their text: ${group.length}, kept ${kept}, used up ${usedUp.length}:\n  ${usedUp.join("\n  ")}`);
-  assert.equal(group.length, 284);
+  // 282: the two Iron Bands of Binding rows joined the magic item table with
+  // their once-a-dawn use (test-audit1115-rests R12).
+  assert.equal(group.length, 282);
   assert.equal(usedUp.length, 44);
-  assert.equal(kept, 240);
+  assert.equal(kept, 238);
 });
 
 console.log(`test-item-tags: ${passed} tests passed`);

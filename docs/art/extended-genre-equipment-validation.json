@@ -1,0 +1,50 @@
+{
+  "codeCommit": "b7a1459b7",
+  "artwork": {
+    "newPaintings": 87,
+    "newExports": 174,
+    "preservedGenreVariants": 49,
+    "preservedManifestEntries": 2121
+  },
+  "tests": {
+    "uniqueFilesExercised": 1218,
+    "earlierResumedRunsPassed": 321,
+    "remainingRunPassed": 893,
+    "remainingRunFailed": 4,
+    "targetedRerunsPassed": [
+      "scripts/test-backup-restore.mjs",
+      "scripts/test-backup-in-app.mjs",
+      "scripts/test-player-receiver-setup.mjs",
+      "scripts/test-name-lookups.mjs"
+    ],
+    "rerunNotes": "Backup tests used Windows tar; receiver setup used Windows PowerShell on the process PATH; lookup classifications were corrected for the final resolver. No global environment settings changed.",
+    "finalAffectedChecks": "Artwork, icons, cards, Hand rendering, lookup audit, changed-file lint and component previews passed after the resolver change."
+  },
+  "repositoryLint": { "errors": 0, "existingWarnings": 313 },
+  "componentPreviews": {
+    "inventoryImages": 174,
+    "cardImages": 87,
+    "widths": [1280, 390],
+    "themes": ["dark", "light"],
+    "passed": true
+  },
+  "liveChecks": {
+    "surfaces": ["website", "built client app shell"],
+    "sizes": ["desktop", "phone"],
+    "themes": ["dark", "light"],
+    "equipmentImagesPerCapture": 16,
+    "pageErrors": 0,
+    "missingVariantFallbackPassed": true,
+    "serverMode": "development",
+    "appRuntime": "Chromium, not physical native hardware",
+    "data": "Synthetic local character; no player data"
+  },
+  "build": {
+    "localWebpack": "Compiled, then failed on the unchanged base shops route shopView export during Next.js type checking.",
+    "clientAppShell": "Passed",
+    "standardProductionAndRouteBudgets": "Linux CI passed the production build and all route budgets at b7a1459b7. No budget was raised.",
+    "linuxCiJob": "https://github.com/Lebbitheplow/open-game-master/actions/runs/43647417089/job/132608199036",
+    "tableJsGzipKiB": 824.9,
+    "tableJsBudgetKiB": 825
+  }
+}

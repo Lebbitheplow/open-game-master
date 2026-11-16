@@ -9,6 +9,7 @@ import {
   describeManifestError,
   type AddonManifest,
 } from "@/lib/addons/manifest";
+import { modifiesClash } from "@/lib/addons/manifest-parts";
 import { packageDir } from "@/lib/addons/paths";
 import { missingRequiredSettings } from "@/lib/addons/settings";
 import { readAddonConfig, type AddonState } from "@/lib/addons/store";
@@ -173,6 +174,8 @@ const BLANK_STATE: AddonState = {
   enabled: false,
   granted: [],
   settings: {},
+  parts: null,
+  fetchedFrom: null,
 };
 
 export function listInstalledAddons(): InstalledAddon[] {
@@ -207,12 +210,14 @@ function live(addon: InstalledAddon): boolean {
   return addon.state.enabled && Boolean(addon.manifest) && LIVE.includes(addon.status);
 }
 
-// Why two addons cannot run together, from whichever of them says so, or "".
+// Why two addons cannot run together, or "": whichever of them names the
+// other under `conflicts`, or both replacing the same thing under
+// `modifies`, which needs neither to know the other.
 export function conflictReason(a: Pick<InstalledAddon, "id" | "manifest">, b: Pick<InstalledAddon, "id" | "manifest">): string {
   return (
     a.manifest?.conflicts.find((entry) => entry.id === b.id)?.reason ??
     b.manifest?.conflicts.find((entry) => entry.id === a.id)?.reason ??
-    ""
+    modifiesClash(a.manifest?.modifies ?? [], b.manifest?.modifies ?? [])
   );
 }
 

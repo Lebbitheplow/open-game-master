@@ -6,6 +6,7 @@ import { linkFor, parseGitHubLink, resolveGitHubLink, type GitHubLink } from "@/
 import { hostFacts, readManifestAt } from "@/lib/addons/installed";
 import { addonFit, addonManifestSchema, describeManifestError, type AddonManifest } from "@/lib/addons/manifest";
 import { addonDataDir, packageDir, packagesDir, resolveInside } from "@/lib/addons/paths";
+import { chosenParts } from "@/lib/addons/settings";
 import type { RegistryAddon } from "@/lib/addons/registry-index";
 import { fetchAddonFolder, githubReader, readRepoFile, type RepoFile, type RepoReader } from "@/lib/addons/repo-fetch";
 import { stopAddon } from "@/lib/addons/runtime";
@@ -76,7 +77,9 @@ type InstallSource = Exclude<AddonState["source"], "dev">;
 // Where on GitHub the files came from, for an install from a link; `id` for
 // an update, which must hold the addon it updates; `replace` when the admin
 // agreed to replace a copy of this id that came from somewhere else.
-type From = { github?: GitHubOrigin; id?: string; replace?: boolean };
+// `parts`: the parts the admin picked before an install from the list
+// (left out, an update keeps the ones chosen before).
+type From = { github?: GitHubOrigin; id?: string; replace?: boolean; parts?: string[]; fetchedFrom?: AddonState["fetchedFrom"] };
 // An entry on the addon list: the files must be the ones that were audited.
 type Expected = Pick<RegistryAddon, "id" | "version" | "contentSha256">;
 
@@ -169,13 +172,17 @@ async function stageAndSwap(
     // which is what moving to a fork of the same addon wants.
     const { previous, replacing } = plan;
     const granted = replacing ? [] : (previous?.granted ?? []);
+    const parts = from.parts ? chosenParts(manifest, from.parts) : (previous?.parts ?? null);
+    const sameParts = chosenParts(manifest, parts).join("|") === chosenParts(manifest, previous?.parts ?? null).join("|");
     setAddonState(manifest.id, {
       version: manifest.version,
       source,
       github: from.github ?? null,
-      // Different files mean the setup runs again, even at the same version
-      // (a branch moves on without bumping it).
-      setupVersion: previous?.sha256 === staged.contentSha256 ? previous.setupVersion : "",
+      fetchedFrom: from.fetchedFrom ?? null,
+      parts,
+      // Different files, or different parts, mean the setup runs again, even
+      // at the same version (a branch moves on without bumping it).
+      setupVersion: previous?.sha256 === staged.contentSha256 && sameParts ? previous.setupVersion : "",
       setupError: "",
       sha256: staged.contentSha256,
       installedAt: new Date().toISOString(),
@@ -263,9 +270,11 @@ function githubReaderFor(repo: string, commit: string, folder: string): RepoRead
 
 // An addon on the list: its author's repository at the audited commit,
 // checked against the entry's content hash before it is swapped in.
-export async function installFromRegistry(entry: RegistryAddon, options: { replace?: boolean } = {}): Promise<InstallOutcome> {
+export async function installFromRegistry(entry: RegistryAddon, options: { replace?: boolean; parts?: string[] } = {}): Promise<InstallOutcome> {
   return installFromRepo(githubReaderFor(entry.source.repo, entry.source.commit, entry.source.path), "registry", entry, {
     replace: options.replace,
+    parts: options.parts,
+    fetchedFrom: { repo: entry.source.repo, commit: entry.source.commit },
   });
 }
 
@@ -274,6 +283,7 @@ async function installFromLink(link: GitHubLink, options: { id?: string; replace
   if ("error" in resolved) return fail(502, resolved.error);
   const outcome = await installFromRepo(githubReaderFor(resolved.origin.repo, resolved.origin.commit, link.path), "github", undefined, {
     github: resolved.origin,
+    fetchedFrom: { repo: resolved.origin.repo, commit: resolved.origin.commit },
     id: options.id,
     replace: options.replace,
   });

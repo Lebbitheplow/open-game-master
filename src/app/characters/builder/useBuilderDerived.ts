@@ -270,6 +270,7 @@ function casterDeskOf(
         ? bundledSpellSupply({ spellClass: casting.list, maxSpellLevel: casting.maxSpellLevel, wider: spellWider, free: subclassSpells })
         : null,
     ability: casting.ability,
+    // The level's bonus: a character being built is attuned to nothing yet.
     spellSaveDc: mod === null ? null : 8 + proficiencyBonus(characterLevel) + mod,
     spellAttack: mod === null ? null : proficiencyBonus(characterLevel) + mod,
     lists,

@@ -5,6 +5,7 @@
 // re-exports everything here for the callers that have always found it
 // there.
 import { RAGING } from "@/lib/srd/class-resources";
+import { conditionGrantedImmunity } from "@/lib/srd/condition-effect-queries";
 import { isWorn, matchArmor, type SrdArmor } from "@/lib/srd/armor";
 import { hasItemTag, type TaggedItem } from "@/lib/srd/item-tags";
 
@@ -173,13 +174,24 @@ export function petrifiedRefusal(conditions: string[] | undefined, incoming: str
 // Conditions, Petrified). Every path that lays a condition on an enemy row
 // (a spell and its riders, an area, a save, an on-hit, a contest) asks this
 // one question: a stone creature checked against its list alone was still
-// poisoned by a spell, a rider or a coated blade.
+// poisoned by a spell, a rider or a coated blade. What a spell on the
+// creature makes it immune to counts as on a character (set-condition.ts):
+// Heroism's fear, Mind Blank's charm, and Freedom of Movement's "magic can
+// neither ... cause the target to be paralyzed or restrained", which only a
+// magical lay meets (`magical`: false for a creature's own grip or web, a
+// mechanical trap). Before this an enemy under Heroism was frightened and one
+// under Freedom of Movement held by Hold Person.
 export function immuneToCondition(
   holder: { conditions?: string[]; stats: { conditionImmune?: string | null } },
   condition: string,
+  magical = true,
 ): boolean {
   const wanted = condition.trim().toLowerCase();
-  return String(holder.stats.conditionImmune ?? "").toLowerCase().includes(wanted) || petrifiedRefusal(holder.conditions, wanted) !== null;
+  return (
+    String(holder.stats.conditionImmune ?? "").toLowerCase().includes(wanted) ||
+    petrifiedRefusal(holder.conditions, wanted) !== null ||
+    conditionGrantedImmunity(holder.conditions ?? [], wanted, undefined, magical) !== null
+  );
 }
 
 // Whether poison cannot touch a creature: a defence line that names it (its

@@ -10,7 +10,7 @@ import { register } from "node:module";
 
 register("./lib/register-alias.mjs", import.meta.url);
 
-const { cellSizeFor, paintKey } = await import("../src/lib/battlemap/render/painted.ts");
+const { boardScenery, cellSizeFor, paintKey } = await import("../src/lib/battlemap/render/painted.ts");
 const { skinFor, defaultSkinFor, SKINS } = await import("../src/lib/battlemap/skins.ts");
 const { MAP_THEMES } = await import("../src/lib/battlemap/generate.ts");
 
@@ -39,6 +39,25 @@ test("the picture repaints when the explored terrain, the setting or the quality
   assert.notEqual(paintKey(base), paintKey({ ...base, genre: "cyberpunk" }));
   assert.notEqual(paintKey(base), paintKey({ ...base, quality: "low" }));
   assert.notEqual(paintKey(base), paintKey({ ...base, seedKey: "map-2" }));
+});
+
+test("an addon gets repeatable placements on the same explored ground as the painter", () => {
+  const skin = skinFor("high_fantasy", "field");
+  const manifests = {
+    categories: new Map(),
+    objects: [{ id: "test-scenery", kind: "scatter", span: 0.8, sets: skin.sets }],
+    decals: [{ id: "test-decal", shape: "scatter", on: [skin.ground] }],
+  };
+  const map = { mapId: "known-terrain", width: 24, height: 16, theme: "field", terrain: ("......" + " ".repeat(4) + ".".repeat(14)).repeat(16) };
+  const scenery = boardScenery(map, "high_fantasy", manifests);
+  assert.ok(scenery.some(item => item.section === "props"), "a known meadow gets props");
+  assert.ok(scenery.some(item => item.section === "decals"), "a known meadow gets scatter decals");
+  assert.deepEqual(boardScenery({ ...map }, "high_fantasy", manifests), scenery);
+  for (const { x, y, rotation, size } of scenery) {
+    assert.equal(map.terrain[Math.floor(y) * map.width + Math.floor(x)], ".");
+    assert.ok(Number.isFinite(rotation) && size > 0);
+  }
+  assert.deepEqual(boardScenery({ ...map, backdrop: "/picture.png" }, "high_fantasy", manifests), []);
 });
 
 test("every map theme in every setting resolves to a real skin", () => {

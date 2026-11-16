@@ -49,6 +49,11 @@ export const trapSpecSchema = z.object({
   // 10 Strength): src/lib/dm/trap-escape.ts. Absent, Strength against the
   // save DC.
   escape: z.object({ ability: z.enum(["str", "dex"]), dc: int(1, 30) }).optional(),
+  // The condition a failed save leaves is that hold, and what each failed
+  // check costs (a hunting trap's jaws): without them a copy of the
+  // Hunting Trap was stored as a save-ends condition nobody could escape.
+  heldOnFail: z.literal(true).optional(),
+  escapeHurts: part.optional(),
   rounds: int(1, ROUND_CEILING).optional(),
   summary: text(600).default(""),
 });

@@ -137,11 +137,11 @@ await test("a homebrew spell is of level 0 to 9 and says how it resolves", async
   });
   assert.equal(kept.status, 201, JSON.stringify(kept.json));
   // Keys the normalizer does not know are dropped, and a duration is
-  // bounded: a year of rounds, the ceiling every condition carries
-  // (Geas's seventh-level casting runs exactly that long).
+  // bounded: a year and a day of rounds, the ceiling every condition carries
+  // (Mass Suggestion's ninth-level casting runs exactly that long).
   assert.equal(kept.json.entry.data.damage, undefined);
   assert.equal(kept.json.entry.data.slots, undefined);
-  assert.equal(kept.json.entry.data.mech.condition.rounds, 365 * 24 * 60 * 10);
+  assert.equal(kept.json.entry.data.mech.condition.rounds, 366 * 24 * 60 * 10);
 });
 
 await test("a player's homebrew cannot rewrite a published spell's level", async () => {

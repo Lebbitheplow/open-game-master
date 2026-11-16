@@ -88,6 +88,7 @@ import { deedRefusal } from "@/lib/dm/deed-guard";
 import { heldRollUserIds } from "@/lib/dice/held-rolls";
 import { listMembers } from "@/lib/db/campaigns";
 import { listSheets } from "@/lib/db/sheets";
+import { landWaits } from "@/lib/dm/retort-wait";
 
 const MUTATIONS = new Set<string>(MUTATION_TOOL_NAMES);
 const ENCOUNTERS = new Set<string>(ENCOUNTER_TOOL_NAMES);
@@ -113,9 +114,20 @@ export async function dispatchAdjudication(
   sentArguments: string,
   context: DispatchContext,
 ): Promise<ToolResult> {
+  // An answer that would slay its attacker waits only on the reaction
+  // decision right after the hit (retort-wait.ts): any other call lands it
+  // first, at this one door, in the same GM turn as in a later one. Waiting
+  // out the rest of the turn, the goblin it slays swung again in the same
+  // reply, and a reply that ended the fight dropped it.
+  const landed = name === "use_reaction" || !context.turn ? [] : landWaits(context.campaign, context.turn);
+  // The call reads the sheets as the landing left them (Grim Harvest heals
+  // the one whose spell slew).
+  const sheets = landed.length ? listSheets(context.campaign.id) : context.sheets;
+  const ready = landed.length ? { ...context, sheets, sheetsById: new Map(sheets.map((sheet) => [sheet.id, sheet])) } : context;
   // A romance rung the call moves, up or down, is told to the table here,
   // at the one door the AI's turn and a person's console share (issue 640).
-  return watchRungs(context.campaign, name, () => dispatchCall(name, sentArguments, context));
+  const result = await watchRungs(context.campaign, name, () => dispatchCall(name, sentArguments, ready));
+  return landed.length ? { ...result, answersLanded: landed } : result;
 }
 
 async function dispatchCall(
@@ -341,7 +353,7 @@ function engineCall(
           campaign.gameSettings.mapsEnabled &&
           imageProducerReady(campaign.settings) &&
           (await imagesAvailable(campaign.settings));
-        const result = handleLocationCall(campaign, name, rawArguments, pictures);
+        const result = handleLocationCall(campaign, name, rawArguments, pictures, turn.actor !== "ai");
         // Bookkeeping the model's turn uses to link its narration to a map;
         // a person's narration is a separate message, so it goes no further.
         delete result.movedToNewLocation;

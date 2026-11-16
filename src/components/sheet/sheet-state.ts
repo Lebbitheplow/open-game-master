@@ -22,7 +22,7 @@ import {
   pcResistances,
 } from "@/lib/dm/condition-logic";
 import { attunementRefusal } from "@/lib/dm/usage-rules";
-import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
+import type { CharacterSheet, EquipmentItem, SheetPet } from "@/lib/schemas/sheet";
 import { speedFor } from "@/lib/srd";
 import { UNLIMITED_USES, resourceDef } from "@/lib/srd/class-resources";
 import { chargeMax, chargeRuleOf, chargesLeft } from "@/lib/srd/item-charge-rules";
@@ -144,6 +144,11 @@ export function conditionDetail(sheet: CharacterSheet, condition: string, nameOf
   return conditionNoteLine(conditionNote(condition, sheet.conditionMeta?.[condition], nameOf, sheet.id));
 }
 
+// The same for a pet's condition: its turn is its owner's (pet-conditions.ts).
+export function petConditionDetail(owner: CharacterSheet, pet: SheetPet, condition: string, nameOf: (id: string) => string | null): string {
+  return conditionNoteLine(conditionNote(condition, pet.conditionMeta?.[condition], nameOf, owner.id));
+}
+
 // ---- hit dice ----
 
 export type HitDiceRow = { label: string; die: string; left: number; total: number };
@@ -258,6 +263,14 @@ export function isWornGear(item: Pick<EquipmentItem, "name" | "slug" | "srdName"
   }
   const tags = item.identified === false ? [] : (item.tags ?? item.gear?.tags ?? []);
   return tags.some((tag) => HELD_FOCI.includes(tag));
+}
+
+// Whether a row offers the attune toggle. Only an item that asks for
+// attunement does; plain armor and "+1" gear work without one, and the
+// server refuses the rest (srd/magic-items.ts attunementProblem). One
+// already attuned keeps the control so it can end.
+export function isAttunable(item: Pick<EquipmentItem, "name" | "slug" | "srdName" | "attuned" | "gear">): boolean {
+  return Boolean(item.attuned) || Boolean(item.gear?.magic?.requiresAttunement) || Boolean(matchMagicItem(item)?.requiresAttunement);
 }
 
 // Where a weapon is, in the words the Hand's cards, its More sheet, its

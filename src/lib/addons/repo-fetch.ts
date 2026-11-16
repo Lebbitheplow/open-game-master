@@ -147,11 +147,9 @@ async function fetchOne(reader: RepoReader, file: RepoFile, target: string, sign
 // of what landed: the SHA-256 over each file's path and the SHA-256 of its
 // contents, sorted by path, the same hash archiveContentHash gives a zip of
 // the same files.
-export async function fetchAddonFolder(
-  reader: RepoReader,
-  target: string,
-  options: { signal?: AbortSignal; onProgress?: (done: number, total: number) => void; files?: RepoFile[] } = {},
-): Promise<FetchedFolder> {
+type FetchOptions = { signal?: AbortSignal; onProgress?: (done: number, total: number) => void; files?: RepoFile[] };
+
+export async function fetchAddonFolder(reader: RepoReader, target: string, options: FetchOptions = {}): Promise<FetchedFolder> {
   let files: RepoFile[];
   try {
     files = options.files ?? (await reader.list());
@@ -159,6 +157,30 @@ export async function fetchAddonFolder(
     return { ok: false, error: error instanceof Error ? error.message : String(error) };
   }
   if (!files.some((file) => file.path === "addon.json")) return { ok: false, error: `There is no addon.json in ${reader.label}.` };
+  return fetchRepoFolder(reader, target, { ...options, files });
+}
+
+// What a folder holds, by git's own hashes: the same for the same files at
+// any commit, so a part kept in an addon's repository is not fetched again
+// by an update that left it alone.
+export function folderFingerprint(files: RepoFile[]): string {
+  const sorted = [...files].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+  const outer = createHash("sha256");
+  for (const file of sorted) outer.update(`${file.path}\n${file.sha}\n`);
+  return outer.digest("hex");
+}
+
+// Any folder of a repository at a commit, file by file, as fetchAddonFolder
+// fetches an addon's: a part's files from the addon's own repository or a
+// separate one (src/lib/addons/setup.ts).
+export async function fetchRepoFolder(reader: RepoReader, target: string, options: FetchOptions = {}): Promise<FetchedFolder> {
+  let files: RepoFile[];
+  try {
+    files = options.files ?? (await reader.list());
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
+  if (!files.length) return { ok: false, error: `There are no files in ${reader.label}.` };
   if (files.length > MAX_REPO_FILES) return { ok: false, error: `${reader.label} holds more than ${MAX_REPO_FILES} files.` };
   const bytes = files.reduce((sum, file) => sum + file.size, 0);
   if (bytes > MAX_REPO_BYTES) return { ok: false, error: `${reader.label} holds more than ${MAX_REPO_BYTES / 1024 ** 3} GB.` };

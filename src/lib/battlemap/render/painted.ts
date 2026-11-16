@@ -10,8 +10,9 @@
 // Browser only. Assets load through fetch, which the desktop and Android apps
 // already route to the host with the session token, so the same code paints
 // in a browser tab and in the apps' native screens.
-import { ODMRender, type RenderAssets } from "@/lib/battlemap/render/renderer.js";
+import { ODMRender, type RenderAssets, type SceneryPlacement } from "@/lib/battlemap/render/renderer.js";
 import { mapSkinKey, resolveSkin, type MapSkin, type Skin } from "@/lib/battlemap/skins";
+import type { PlayerMapView } from "@/lib/battlemap/view-types";
 
 export type TileEntry = {
   id: string;
@@ -63,7 +64,7 @@ async function readJson<T>(path: string): Promise<T | null> {
   }
 }
 
-function loadManifests(): Promise<Manifests | null> {
+export function loadManifests(): Promise<Manifests | null> {
   manifests ??= (async () => {
     const [tiles, props] = await Promise.all([
       readJson<{ tiles: TileEntry[] }>("/assets/tiles/manifest.json"),
@@ -167,6 +168,17 @@ function seedOf(key: string): number {
   return (h >>> 0) % 100000;
 }
 
+function terrainRows({ terrain, width, height }: Pick<PaintRequest, "terrain" | "width" | "height">): string[] {
+  return Array.from({ length: height }, (_, y) => terrain.slice(y * width, (y + 1) * width).padEnd(width, " "));
+}
+
+export function boardScenery(view: Pick<PlayerMapView, "mapId" | "terrain" | "width" | "height" | "theme" | "skin" | "backdrop">,
+  genre: string | null | undefined, all: Pick<Manifests, "objects" | "decals" | "categories">): SceneryPlacement[] {
+  if (view.backdrop) return [];
+  const skin = resolveSkin(genre, view.theme, view.skin, all.categories);
+  return ODMRender.scenery(terrainRows(view), skin, all, seedOf(view.mapId));
+}
+
 // Pixels per square. The picture is stretched to the board by the SVG, so this
 // only sets its sharpness: enough for a zoomed board on a desktop, less on a
 // phone or under low effects, and never so large that a big map stalls a tab.
@@ -203,10 +215,7 @@ export async function paintCanvas(request: PaintRequest): Promise<HTMLCanvasElem
   const stamps = (request.stamps ?? []).filter((stamp) => all.objects.some((object) => object.id === stamp.id));
   const assets = await assetsFor(skin, all, stamps, request.quality);
   if (!Object.keys(assets.tiles).length) return null;
-  const rows: string[] = [];
-  for (let y = 0; y < request.height; y++) {
-    rows.push(request.terrain.slice(y * request.width, (y + 1) * request.width).padEnd(request.width, " "));
-  }
+  const rows = terrainRows(request);
   const canvas = document.createElement("canvas");
   ODMRender.render(
     {

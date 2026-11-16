@@ -57,6 +57,9 @@ export type SpellZone = {
   // where its caster chose strikes from there on the casting turn; one the
   // server placed may still be set down beside the target (issue 659).
   named?: boolean;
+  // A trap the GM set on the board (src/lib/dm/set-traps.ts): no player's
+  // board draws it until a character notices it.
+  hidden?: boolean;
 };
 
 export const MAX_ZONES = 24;
@@ -129,6 +132,7 @@ export function normalizeSpellZones(raw: unknown, width: number, height: number)
       ...(int(source.dealt) ? { dealt: int(source.dealt) as number } : {}),
       ...(Object.keys(struck).length ? { struck } : {}),
       ...(source.named === true ? { named: true } : {}),
+      ...(source.hidden === true ? { hidden: true } : {}),
       ...(typeof source.seenThroughBy === "string" && source.seenThroughBy ? { seenThroughBy: source.seenThroughBy.slice(0, 80) } : {}),
     });
     if (out.length >= MAX_ZONES) {

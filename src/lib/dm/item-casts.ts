@@ -17,9 +17,32 @@ import { droppedLine, setConcentration } from "@/lib/dm/concentration";
 import { endInvisibilityOnCast } from "@/lib/dm/attack-marks";
 import { noteRunning, takeFromRing } from "@/lib/dm/ring-store";
 import { getActiveEncounter } from "@/lib/db/encounters";
-import { openCastOf } from "@/lib/dm/cast-rules";
-import { attacksAllowedFor, budgetFor } from "@/lib/dm/turn-budget";
+import { bonusSpellProblem, openCastOf, withSpellMarks } from "@/lib/dm/cast-rules";
+import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
+import type { TurnBudget } from "@/lib/dm/action-budget";
+import { concentratesAtSlot } from "@/lib/srd/spell-duration";
+import type { ToolError } from "@/lib/dm/tool-errors";
+
+// A spell read from a scroll or let loose from a wand on the caster's own turn
+// is a spell cast, so the bonus-action spell rule (cast-rules.ts
+// bonusSpellProblem) asks it before use_item spends anything, and the cast
+// marks the turn as a slot's casting does. `time` is the turn's part the item
+// takes: the action, or the bonus action its text names.
+export function itemSpellTurnProblem(budget: TurnBudget | null, who: string, spell: string, level: number, time: "action" | "bonus"): ToolError | null {
+  const ruled = budget ? bonusSpellProblem(budget.oncePerTurn, { who, name: spell, time, levelled: level > 0 }) : null;
+  return ruled ? { ...ruled, error: `${ruled.error} Nothing was spent.` } : null;
+}
+
+// Marks the caster's own turn with the spell an item just cast (off their
+// turn, a readied release, there is none to mark).
+export function markItemSpellOnTurn(campaignId: string, sheet: CharacterSheet, level: number, time: "action" | "bonus") {
+  const encounter = getActiveEncounter(campaignId);
+  const budget = encounter?.status === "active" ? budgetFor(encounter, sheet.id, attacksAllowedFor(sheet), conditionTurnShape(sheet.conditions)) : null;
+  if (encounter && budget) {
+    storeBudget(encounter, withSpellMarks(budget, time, level > 0));
+  }
+}
 
 // The item whose casting of this spell still holds rays, darts or targets this
 // turn (cast-guard.ts openItemShares), and the level it was cast at, or null.
@@ -60,7 +83,7 @@ export function castFromItem(
     slot: `cast from ${cast.item}: no spell slot spent`,
     ...numbers,
   };
-  if (input.concentration === true || facts?.concentration === true) {
+  if (input.concentration === true || concentratesAtSlot(facts?.runsAs ?? name, facts?.concentration === true, cast.level)) {
     const { displaced } = setConcentration(campaign, turnId, sheet.id, name, cast.level);
     result.concentration = true;
     if (displaced) {

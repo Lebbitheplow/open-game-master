@@ -2,6 +2,7 @@
 
 import { ui } from "@/lib/ui";
 import { GameIcon } from "@/components/ui/GameIcon";
+import { LanguageSelect } from "@/components/LanguageSelect";
 import type { Draft } from "@/app/setup/draft";
 import { Lamp, ScanMark, host, type ScanResult } from "@/app/setup/SetupParts";
 
@@ -50,6 +51,25 @@ export function WelcomeStep({
         />
         <span className="mt-1 block text-[11px] text-stone-500">Shown on the sign-in page and in the apps&apos; server lists.</span>
       </label>
+
+      {draft.serverLanguage ? (
+        <div>
+          <span id="setup-language-label" className="mb-1 block text-xs font-medium text-stone-400">
+            The language your tables play in
+          </span>
+          <LanguageSelect
+            value={draft.serverLanguage}
+            onChange={(serverLanguage) => update((current) => ({ ...current, serverLanguage }))}
+            label="The language your tables play in"
+            className="w-full sm:max-w-xs"
+          />
+          <span className="mt-1 block text-[11px] text-stone-500">
+            {draft.serverLanguage === "english"
+              ? "New campaigns start in it. Each campaign can still pick another."
+              : "New campaigns start in it, and the Game Master's memory switches to a model that reads it (downloaded once, about 120 MB). Each campaign can still pick another."}
+          </span>
+        </div>
+      ) : null}
 
       <div className="space-y-2">
         <h4 className="text-sm font-medium text-stone-200">What we will set up</h4>

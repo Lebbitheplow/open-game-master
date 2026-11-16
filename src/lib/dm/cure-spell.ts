@@ -23,6 +23,7 @@ import { afflictionConditionsFor } from "@/lib/dm/afflictions";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { isConditionNamed } from "@/lib/srd/feature-names";
+import { ABILITY_DRAIN } from "@/lib/srd/ability-drain-logic";
 
 type Cast = (args: Record<string, unknown>) => ToolResult;
 
@@ -31,6 +32,9 @@ const isCurse = (name: string) => isConditionNamed(name, "cursed");
 // Life Drain, Harm): ending it gives the points back to the maximum through
 // patchSheet's riders, and heals nothing.
 const DRAINED = "max hp reduced";
+// And "one reduction to one of the target's ability scores", held as
+// "strength reduced (-N)" (a shadow's touch): ending it gives the score back.
+const SCORE_DRAINED = "ability reduced";
 
 // What the spell would end on this sheet: the conditions, and whether a
 // level of exhaustion goes. Empty when there is nothing it can end.
@@ -50,7 +54,7 @@ export function curePlan(
       ? (sheet.exhaustion ?? 0) > 0
         ? ["exhaustion"]
         : []
-      : sheet.conditions.filter((name) => (entry === "cursed" ? isCurse(name) : entry === DRAINED ? MAX_HP_DRAIN.test(name.trim()) : name.toLowerCase() === entry));
+      : sheet.conditions.filter((name) => (entry === "cursed" ? isCurse(name) : entry === DRAINED ? MAX_HP_DRAIN.test(name.trim()) : entry === SCORE_DRAINED ? ABILITY_DRAIN.test(name.trim()) : name.toLowerCase() === entry));
   const offered = cures.conditions.filter((entry) => !word || entry === word || (entry === "cursed" && isCurse(word)));
   const held = offered.map(heldFor).filter((found) => found.length);
   const chosen = cures.all ? held.flat() : (held[0] ?? []).slice(0, 1);

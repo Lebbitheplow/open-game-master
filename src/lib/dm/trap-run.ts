@@ -87,12 +87,16 @@ export function springTrapOn(
       lines.push(`${amount} ${part.type}.`);
     }
   }
+  // A mechanical trap's hold is no magic (a falling net, a hunting trap's
+  // jaws): what keeps only magic off (Freedom of Movement) does not keep it
+  // off, and that spell's slip takes it off (ar-ws-squeeze.ts).
+  const nonmagical = trap.kind === "mechanical";
   for (const condition of trap.conditionsAlways ?? []) {
     // A trap's block has no word on damage, so a sleep it lays wakes when
     // hurt, as one laid by name does (set-condition.ts) and as the sleep the
     // same trap's failed save lays through cast_at_player does.
     const wakes = wakesOnDamage(canonicalCondition(condition), sheet().currentHp);
-    if (afflictCondition(campaign, turn.id, victim.id, condition, { ...(trap.rounds ? { rounds: trap.rounds } : {}), ...(wakes ? { endsOnDamage: true } : {}), source: name })) {
+    if (afflictCondition(campaign, turn.id, victim.id, condition, { ...(trap.rounds ? { rounds: trap.rounds } : {}), ...(wakes ? { endsOnDamage: true } : {}), source: name, nonmagical })) {
       lines.push(`${victim.name} is ${condition}.`);
     }
   }
@@ -109,13 +113,26 @@ export function springTrapOn(
       dc: trap.save.dc,
       ...(trap.damage ? { damage: trap.damage.dice, damageType: trap.damage.type } : {}),
       halfOnSave: trap.save.halfOnSave,
-      ...(trap.condition ? { condition: trap.condition } : {}),
-      ...(trap.condition && trap.rounds ? { rounds: Math.min(100, trap.rounds) } : {}),
+      ...(trap.condition ? { condition: trap.condition, conditionByTrap: true } : {}),
       hazard: "trap",
       ...from,
     }),
     sheets,
     sheetsById,
   );
+  // What a failed save leaves is the trap's, for as long as the trap says,
+  // with the trap as its source (a hunting trap's jaws are then the hold its
+  // own escape ends: trap-escape.ts). Through cast_at_player it lasted at
+  // most 100 rounds, so a Poison Needle's hour of poison was ten minutes,
+  // and it became save-ends: a Dexterity save at each turn's end shook off a
+  // Rolling Sphere's prone and a hunting trap's jaws, which the SRD ends by
+  // standing up and by a Strength check.
+  if (trap.condition && (saved as { saved?: boolean }).saved === false && !sheet().deathSaves?.dead) {
+    const lasts = !trap.rounds ? {} : trap.rounds > 100 ? { minutes: Math.round(trap.rounds / 10) } : { rounds: trap.rounds };
+    const wakes = wakesOnDamage(canonicalCondition(trap.condition), sheet().currentHp);
+    if (afflictCondition(campaign, turn.id, victim.id, trap.condition, { ...lasts, ...(wakes ? { endsOnDamage: true } : {}), source: name, nonmagical })) {
+      lines.push(`${victim.name} is ${trap.condition}${trap.rounds ? ` for ${trap.rounds >= 600 && trap.rounds % 600 === 0 ? `${trap.rounds / 600} hour${trap.rounds === 600 ? "" : "s"}` : trap.rounds >= 10 && trap.rounds % 10 === 0 ? `${trap.rounds / 10} minute${trap.rounds === 10 ? "" : "s"}` : `${trap.rounds} rounds`}` : ""}.`);
+    }
+  }
   return { name: victim.name, hit: true, ...(crit ? { crit: true } : {}), note: lines.join(" "), ...saved };
 }

@@ -2,6 +2,7 @@
 
 import { ChevronDown, Download, FlaskConical, Loader2, RefreshCw, ScrollText, Trash2, Wrench } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CreditLine, ModifiesLine, PartsPicker } from "@/app/admin/AddonParts";
 import { AddonFields, fieldDefaults, type FieldValues } from "@/components/addons/AddonFields";
 import { appConfirm } from "@/components/ui/ConfirmDialog";
 import { Switch } from "@/components/ui/Switch";
@@ -14,9 +15,8 @@ import { forgetAddons } from "@/lib/addons/use-addons";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
 
-// One installed addon on Admin > Addons: what it is and where it came from,
-// whether it is on, what it asks for, its setup, its settings, the programs
-// it needs, its log, and its update and remove buttons.
+// One installed addon on Admin > Addons: what it is, who made it and where it came from, whether it
+// is on, what it asks for and changes, its parts, setup, settings, programs, log, update and remove.
 
 const SOURCE_LABEL: Record<AdminAddon["source"], string> = {
   registry: "From the addon list",
@@ -61,6 +61,9 @@ export function AdminAddonCard({
   const [dirty, setDirty] = useState(false);
   const [details, setDetails] = useState<Details | null>(null);
   const [test, setTest] = useState("");
+  const savedParts = (addon.parts ?? []).filter((part) => part.chosen).map((part) => part.id);
+  const [parts, setParts] = useState<string[]>(savedParts);
+  const partsDirty = parts.length !== savedParts.length || parts.some((id) => !savedParts.includes(id));
   const status = STATUS[addon.status];
   const name = manifest?.name ?? addon.id;
 
@@ -134,6 +137,22 @@ export function AdminAddonCard({
     }
   }
 
+  async function saveParts() {
+    setWorking("parts");
+    const done = await call("PATCH", { parts });
+    setWorking("");
+    if (done) {
+      forgetAddons();
+      await onChanged(
+        done.setupTask
+          ? `Saved ${name}'s parts. Its setup has started: it fetches what you added and removes what you left out.`
+          : addon.enabled
+            ? `Saved ${name}'s parts.`
+            : `Saved ${name}'s parts. They are fetched when you switch it on.`,
+      );
+    }
+  }
+
   async function check() {
     setWorking("check");
     const data = await call("GET");
@@ -187,18 +206,18 @@ export function AdminAddonCard({
         <div className="min-w-0 flex-1">
           <p className="font-display text-sm text-amber-100">{name}</p>
           <p className="text-[11px] text-stone-500">
-            v{addon.version}
-            {manifest?.author ? ` · by ${manifest.author}` : ""} · {SOURCE_LABEL[addon.source]}
+            v{addon.version} · {SOURCE_LABEL[addon.source]}
+            {addon.origin ? (
+              <>
+                {" · "}
+                <a href={addon.origin.url} target="_blank" rel="noreferrer" className="hover:text-amber-200">
+                  {addon.origin.label}
+                </a>
+              </>
+            ) : null}
           </p>
-          {addon.origin ? (
-            <p className="text-[11px] text-stone-500">
-              GitHub:{" "}
-              <a href={addon.origin.url} target="_blank" rel="noreferrer" className="text-amber-200/80 hover:text-amber-200">
-                {addon.origin.repo}
-              </a>{" "}
-              · {addon.origin.label}
-            </p>
-          ) : null}
+          {/* An older host sends no credit: its author alone, as before. */}
+          <CreditLine credit={addon.credit ?? (manifest?.author ? { author: manifest.author, repo: "", url: "", profile: "", also: [] } : undefined)} />
         </div>
         <span className="flex items-center gap-2 text-[11px] text-stone-400">
           <span className={cn("size-2 rounded-full", status.tone)} aria-hidden="true" />
@@ -215,6 +234,7 @@ export function AdminAddonCard({
         ) : null}
       </div>
       {manifest?.description ? <p className="mt-1 text-xs text-stone-400">{manifest.description}</p> : null}
+      <ModifiesLine modifies={addon.modifies} className="mt-1" />
       {addon.conflicts.length ? (
         <ul className="mt-2 space-y-0.5">
           {addon.conflicts.map((conflict) => (
@@ -253,6 +273,20 @@ export function AdminAddonCard({
           Asks to:{" "}
           {manifest.permissions.map((permission) => permissions[permission as keyof typeof permissions]?.label ?? permission).join("; ")}.
         </p>
+      ) : null}
+      {addon.parts?.length ? (
+        <div className="mt-1">
+          <PartsPicker idPrefix={`addon-${addon.id}`} parts={addon.parts} chosen={parts} onChange={setParts} disabled={working === "parts"} />
+          {partsDirty ? (
+            <div className="reveal mt-1.5 flex flex-wrap gap-2">
+              <button type="button" onClick={() => void saveParts()} disabled={working === "parts"} className={cn(ui.btnSmall, "text-xs")}>
+                {working === "parts" ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+                Save parts
+              </button>
+              <button type="button" onClick={() => setParts(savedParts)} disabled={working === "parts"} className={cn(ui.btnSmall, "text-xs")}>Keep as it was</button>
+            </div>
+          ) : null}
+        </div>
       ) : null}
       {addon.setup.has ? <AddonSetup addon={addon} name={name} onChanged={onChanged} /> : null}
       {error ? <p role="alert" className="motion-shake mt-2 text-xs text-red-400">{error}</p> : null}

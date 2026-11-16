@@ -12,6 +12,7 @@ import { bindsWorthResisting } from "@/lib/dm/legendary-logic";
 import { elementalAdeptApplies, flamesOfPhlegethosApplies, floorDamageDice, rerollOnesDice } from "@/lib/srd/feat-combat";
 import { z } from "zod";
 import { immuneToCondition } from "@/lib/dm/damage-logic";
+import { allyCreatureConditionAura } from "@/lib/dm/aura";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter, getEnemy, listEnemies, type EncounterEnemy } from "@/lib/db/encounters";
 import { insertRoll, type RollAttacker } from "@/lib/db/rolls";
@@ -538,7 +539,7 @@ export function handleAoeDamage(
       return { error: `Invalid damage expression "${args.damage}".`, retry: true };
     }
     // A creature's spell as well as a character's (a mage's Ice Storm).
-    const secondType = plan?.mech?.secondType ?? enemyUse?.secondType;
+    const secondType = plan?.secondType ?? plan?.mech?.secondType ?? enemyUse?.secondType;
     // A character's plan split its dice before the riders' joined (aoe-spell.ts).
     const split = plan?.damageParts ?? splitDamageExpression(args.damage, secondType);
     // Elemental Adept: a spell that deals the chosen type has every 1 on its
@@ -656,7 +657,7 @@ export function handleAoeDamage(
           cover: saveCover(enemy.id),
           // The spell's damage types, for a save that leans only against some
           // (Corona of Light: fire and radiant).
-          ...(plan ? { damageType: [args.type, plan.mech?.secondType].filter(Boolean).join(", ") } : {}),
+          ...(plan ? { damageType: [args.type, plan.secondType ?? plan.mech?.secondType].filter(Boolean).join(", ") } : {}),
           ...(plan ? spellSaveOptions(plan.mech, enemy) : {}),
           ...(plan ? { record: { turn, detail: `${enemy.displayName}: ${ability.toUpperCase()} save against ${plan.spell}` } } : {}),
         });
@@ -674,7 +675,9 @@ export function handleAoeDamage(
     }
     let laid: string[] = [];
     if (!success && plan?.conditions.length) {
-      const landed = layAreaConditions(plan, enemy.id, { ability, dc: saveDc });
+      // Aura of Courage or Devotion over a creature fighting for the party
+      // keeps its condition off (aura.ts).
+      const landed = layAreaConditions({ ...plan, conditions: plan.conditions.filter((name) => !allyCreatureConditionAura(campaign.id, enemy, name)) }, enemy.id, { ability, dc: saveDc });
       laid = landed;
       if (landed.length) {
         row.conditionApplied = landed.join(", ");
@@ -683,8 +686,11 @@ export function handleAoeDamage(
     }
     if (!success && laysCondition) {
       // Its own immunities, and a petrified creature's to poison.
+      const shielded = allyCreatureConditionAura(campaign.id, enemy, laysCondition);
       if (immuneToCondition(enemy, laysCondition)) {
         row.conditionRefused = `${enemy.displayName} is immune to ${laysCondition}.`;
+      } else if (shielded) {
+        row.conditionRefused = `${shielded} keeps ${laysCondition} off ${enemy.displayName}.`;
       } else {
         const incoming = {
           ...(awayCaster ? { source: awayCaster.id } : {}),
@@ -844,6 +850,7 @@ export function handleAoeDamage(
       sheets,
       sheetsById,
       coverOf: saveCover,
+      named: laysCondition ? { condition: laysCondition, rounds: args.rounds } : null,
     }),
   );
 

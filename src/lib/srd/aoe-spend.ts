@@ -12,6 +12,7 @@
 
 import type { ResourceDef, SaveAbilityId } from "@/lib/srd/class-resources";
 import { ancestryOf, breathWeaponFor, findDraconicAncestry, variantBreathOf } from "@/lib/srd/racial-grants";
+import { formulaMods } from "@/lib/srd/proficiency";
 
 export type AoeSpend = {
   dice: string;
@@ -66,7 +67,7 @@ export function aoeSpendFor(
       ? (derived.spellSaveDc ?? 8 + derived.proficiencyBonus + Math.max(mods.int ?? 0, mods.wis ?? 0, mods.cha ?? 0))
       : 8 + derived.proficiencyBonus + (dcAbility ? (mods[dcAbility] ?? 0) : conMod);
   return {
-    dice: def.effect.dice(level),
+    dice: def.effect.dice(level, formulaMods(derived)),
     saveAbility: def.effect.save,
     dc,
     ...(type ? { damageType: type } : {}),

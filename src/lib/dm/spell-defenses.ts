@@ -35,7 +35,10 @@ export function sanctuaryRefusal(campaignId: string, enemy: EncounterEnemy, targ
   const caster = casterId ? getSheetById(casterId) : null;
   // Tranquility's Sanctuary is the monk's own: 8 + WIS + proficiency.
   const dc = (caster ? (tranquilityDc(caster) ?? spellSaveDcFor(caster, "Sanctuary")) : null) ?? 13;
-  const save = rollEnemySave(campaignId, enemy, "wis", dc);
+  // A save against a spell: Magic Resistance gives it advantage (SRD 5.1),
+  // which a fiend attacking the warded cleric was denied. On the record as
+  // every enemy save is.
+  const save = rollEnemySave(campaignId, enemy, "wis", dc, { magical: true, record: { detail: `${enemy.displayName}: WIS save against ${target.name}'s Sanctuary` } });
   if (save.success) {
     return null;
   }

@@ -38,7 +38,7 @@ import { bardOfHeldDie, heldBardicDie, heldOwnLuckDie, holdsMoteDie, sidesOf, wi
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { saveModFor } from "@/lib/bestiary/enemy-numbers";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
-import { allySaveAura } from "@/lib/dm/aura";
+import { allyCreatureSaveAura, allySaveAura } from "@/lib/dm/aura";
 import { allyInitiativeAura } from "@/lib/dm/divine-auras";
 import { genreBSaveAuras } from "@/lib/dm/genre-b-auras";
 import { mergeAdvantage, removeConditions, rollDerivation } from "@/lib/dm/condition-logic";
@@ -646,7 +646,11 @@ export function rollEnemySave(
     ...ashenHymnSources(campaignId, enemy, options.against),
   ]);
   const purpose = { roller: "enemy" as const, kind: "save" as const, who: enemy.displayName };
-  const expression = `${d20Expression(saveModFor(enemy.stats, ability) + effect.bonus + covered, advantage)}${riders.diceSuffix}`;
+  // A paladin's Aura of Protection over a creature fighting for the party
+  // (aura.ts allyCreatureSaveAura): "you or a friendly creature within 10
+  // feet of you" (SRD 5.1), measured on the board as a character's is.
+  const aura = allyCreatureSaveAura(campaignId, enemy);
+  const expression = `${d20Expression(saveModFor(enemy.stats, ability) + effect.bonus + covered + (aura?.bonus ?? 0), advantage)}${riders.diceSuffix}`;
   let outcome = rollExpression(expression, undefined, { purpose });
   // A Chronal Shift a watching wizard set on this save (chronal-shift.ts):
   // a success is rolled again, and the second roll stands. Legendary
@@ -698,6 +702,7 @@ export function rollEnemySave(
       ...(resistsMagic ? ["Magic Resistance: advantage against magic"] : []),
       ...(worn ? ["exhaustion: disadvantage on saving throws"] : []),
       ...coverNote(covered),
+      ...(aura ? [aura.note] : []),
       ...riders.notes,
       ...authored.notes,
       ...(undone ? [undone.note] : []),

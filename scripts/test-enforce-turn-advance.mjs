@@ -988,6 +988,21 @@ await test("Party down: the End Turn whose death save kills the last dying hero 
   assert.match(passed, /^Kara ends their turn\. It is now Brom's turn\./, "the pass is said first");
   assert.match(died, /Brom fails their final death save/, "then the death save that begins his turn");
   assert.match(over, /fight is lost/, "then the end");
+  // Issue 968: the End Turn runs under no GM turn, and the fight's end was
+  // written under none, so no "Revert this turn" could open it again. It is
+  // kept under the stand-in turn the loss opens, whose revert opens it.
+  // The last turn that kept the fight's row: the one its end was written in.
+  const kept = getDatabase().prepare("SELECT turn_id FROM turn_rows WHERE tbl = 'encounters' AND row_id = ? ORDER BY rowid DESC LIMIT 1").get(encounterId);
+  assert.ok(kept?.turn_id, "the fight's end was kept under no turn");
+  world.signIn(world.owner);
+  const handler = await world.route("campaigns/[campaignId]/audit/revert-turn");
+  const response = await handler.POST(
+    new Request("http://test/", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ turnId: kept.turn_id, confirm: true }) }),
+    { params: Promise.resolve({ campaignId: world.campaignId }) },
+  );
+  assert.equal(response.status, 200, JSON.stringify(await response.clone().json()));
+  const after = getDatabase().prepare("SELECT status, outcome FROM encounters WHERE id = ?").get(encounterId);
+  assert.equal(world.encounter()?.id, encounterId, `reverting the loss did not open the fight again: ${JSON.stringify(await response.clone().json())} ${JSON.stringify(after)}`);
 });
 
 await test("Party down: the DM's step forward whose death save kills the last dying hero ends the fight", async () => {

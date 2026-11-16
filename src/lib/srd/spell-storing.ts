@@ -12,11 +12,26 @@
 import { findNamed } from "@/lib/language/text-logic";
 import { isWorn } from "@/lib/srd/armor";
 import { isWorkshopRow, type RowItem } from "@/lib/srd/item-row";
-import { matchMagicItem } from "@/lib/srd/magic-items";
+import { magicItemNamed, matchMagicItem } from "@/lib/srd/magic-items";
+import { IOUN_RESERVE } from "@/lib/srd/proficiency";
 import { isBead } from "@/lib/srd/ar-ws-conjured";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
 
 export const SPELL_STORE_LEVELS = 5;
+// SRD 5.1, Ioun Stone, Reserve: "This vibrant purple prism stores spells
+// cast into it, holding them until you use them. The stone can store up to 3
+// levels worth of spells at a time": the ring's rules at three levels.
+export const RESERVE_STONE_LEVELS = 3;
+
+function isReserveStone(item: StorerRow): boolean {
+  const reserve = magicItemNamed(IOUN_RESERVE);
+  return item.identified !== false && !isWorkshopRow(item) && reserve !== null && matchMagicItem(item) === reserve;
+}
+
+// The most this storer holds, in spell levels.
+export function storeLevelsOf(item: StorerRow): number {
+  return isReserveStone(item) ? RESERVE_STONE_LEVELS : SPELL_STORE_LEVELS;
+}
 
 export type StoredSpell = NonNullable<EquipmentItem["storedSpells"]>[number];
 
@@ -31,7 +46,7 @@ export function isSpellStorer(item: StorerRow): boolean {
   if (isBead(item) || isStoringItem(item)) {
     return true;
   }
-  return item.identified !== false && !isWorkshopRow(item) && Boolean(matchMagicItem(item)?.slugs?.includes("ring-of-spell-storing"));
+  return (item.identified !== false && !isWorkshopRow(item) && Boolean(matchMagicItem(item)?.slugs?.includes("ring-of-spell-storing"))) || isReserveStone(item);
 }
 
 // An artificer's Spell-Storing Item: its one spell counts its castings
@@ -51,7 +66,7 @@ export function storeLevelsFree(item: StorerRow): number {
   if (isBead(item) || isStoringItem(item)) {
     return 0;
   }
-  return SPELL_STORE_LEVELS - storedSpellsOf(item).reduce((sum, entry) => sum + entry.level, 0);
+  return storeLevelsOf(item) - storedSpellsOf(item).reduce((sum, entry) => sum + entry.level, 0);
 }
 
 export function storedSpellNamed(item: StorerRow, spell: string): StoredSpell | null {
@@ -92,7 +107,7 @@ export function storedSpellsLine(item: StorerRow): string {
   if (isStoringItem(item)) {
     return `holds ${held.map(storedWords).join(", ")}; whoever holds it casts it with use_item and spell`;
   }
-  const free = `${storeLevelsFree(item)} of ${SPELL_STORE_LEVELS} levels free`;
+  const free = `${storeLevelsFree(item)} of ${storeLevelsOf(item)} levels free`;
   return held.length ? `holds ${held.map(storedWords).join(", ")}; ${free}` : `holds no spells; ${free}`;
 }
 

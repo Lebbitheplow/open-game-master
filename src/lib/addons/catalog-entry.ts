@@ -1,4 +1,6 @@
 import type { AddonManifest } from "@/lib/addons/manifest";
+import { downloadRepo } from "@/lib/addons/manifest-parts";
+import { partBytes } from "@/lib/addons/settings";
 import {
   ADDON_REGISTRY_KIND,
   ADDON_REGISTRY_VERSION,
@@ -60,6 +62,22 @@ export function catalogEntry(
     setupMB: manifest.setup?.diskMB ?? 0,
     conflicts: manifest.conflicts.map((entry) => ({ id: entry.id, reason: entry.reason })),
     exclusive: manifest.exclusive,
+    modifies: manifest.modifies.map((entry) => ({ what: entry.what, how: entry.how })),
+    parts: manifest.parts.map((part) => ({
+      id: part.id,
+      title: part.title,
+      description: part.description,
+      default: part.default,
+      bytes: partBytes(manifest, part.id),
+      repos: [
+        ...new Set(
+          (manifest.setup?.downloads ?? [])
+            .filter((download) => download.part === part.id)
+            .map(downloadRepo)
+            .filter((repo) => repo && repo.toLowerCase() !== source.repo.toLowerCase()),
+        ),
+      ],
+    })),
   });
 }
 
@@ -100,7 +118,11 @@ export function catalogProblems(raw: unknown): string[] {
 
 // The fields of an entry that differ between two versions of it, for the
 // pull request check to name.
-export function entryDifferences(expected: RegistryAddon, found: RegistryAddon): string[] {
+// An entry written before a field existed reads with that field's default,
+// so a field added to the format is not a difference.
+export function entryDifferences(expected: RegistryAddon, raw: RegistryAddon): string[] {
+  const read = registryAddonSchema.safeParse(raw);
+  const found = read.success ? read.data : raw;
   const keys = new Set([...Object.keys(expected), ...Object.keys(found)]) as Set<keyof RegistryAddon>;
   return [...keys].filter((key) => JSON.stringify(expected[key]) !== JSON.stringify(found[key]));
 }

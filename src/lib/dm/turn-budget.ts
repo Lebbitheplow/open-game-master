@@ -18,6 +18,7 @@ import {
   budgetApplies,
   freshBudget,
   grantAction,
+  paidSwingsLeft,
   releaseHeldAction,
   type StruckSwing,
   type TurnBudget,
@@ -32,6 +33,10 @@ import type { ToolError, ToolResult } from "@/lib/dm/tool-errors";
 import { beginHeldTurnOf, releasesReadiedOffTurn, turnHeldForEnemies } from "@/lib/dm/held-turn";
 import { getSheetById } from "@/lib/db/sheets";
 import { turnExtraAttacks } from "@/lib/dm/turn-extra-attacks-logic";
+import { earnedBonusSwing } from "@/lib/dm/attack-rules";
+import { MARTIAL_ARTS_READY } from "@/lib/dm/pc-attack-options";
+import { canAct } from "@/lib/dm/can-act";
+import { acBreakdownFor } from "@/lib/srd";
 
 // The combatant the initiative pointer is currently on, or null out of
 // combat and while initiative is still being rolled.
@@ -240,3 +245,30 @@ export function grantActionSurge(campaignId: string, sheet: CharacterSheet): str
   storeBudget(encounter, grantAction(budget));
   return `${sheet.name} has one additional action this turn: a second Attack action with every attack it holds, or any other action. The server tracks it.`;
 }
+
+// What the character's live turn still owes them, which a narration that
+// tells the turn over does not take away (narration-guard.ts, the attack's
+// endTurn in encounter-tools.ts): the swings it has paid for and not made,
+// and the bonus-action swing its Attack action earned (attack-rules.ts
+// earnedBonusSwing). Nothing when it is not their turn or they cannot act.
+export function turnStillOwes(campaignId: string, characterId: string): { swings: number; bonusSwing: string | null } {
+  const encounter = getActiveEncounter(campaignId);
+  const budget = encounter?.turnBudget ?? null;
+  const sheet = getSheetById(characterId);
+  if (!encounter || !sheet || !budgetApplies(budget, characterId, encounter.round)) {
+    return { swings: 0, bonusSwing: null };
+  }
+  const bonusSwing = canAct({ sheet, encounter, kind: "bonus" }).ok
+    ? earnedBonusSwing({
+        who: sheet.name,
+        budget,
+        equipment: sheet.equipment,
+        feats: sheet.feats,
+        campaignId,
+        shieldName: acBreakdownFor(sheet).shieldName,
+        martialArtsReady: budget.oncePerTurn.includes(MARTIAL_ARTS_READY),
+      })
+    : null;
+  return { swings: paidSwingsLeft(budget), bonusSwing };
+}
+

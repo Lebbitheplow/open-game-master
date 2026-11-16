@@ -22,11 +22,13 @@ export function conditionGrantedImmunity(
   conditions: string[],
   wanted: string,
   sourceType?: string,
+  // The condition comes from magic (conditionImmunitiesMagic answers only then).
+  magical = true,
 ): string | null {
   const name = wanted.trim().toLowerCase().replace(/\s+/g, " ");
   const type = (sourceType ?? "").toLowerCase();
   for (const { row, condition } of activeConditionEffects(conditions)) {
-    if (row.conditionImmunities?.includes(name)) {
+    if (row.conditionImmunities?.includes(name) || (magical && row.conditionImmunitiesMagic?.includes(name))) {
       return condition;
     }
     const from = row.conditionImmunitiesFrom;

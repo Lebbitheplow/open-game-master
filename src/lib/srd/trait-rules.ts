@@ -19,6 +19,7 @@ import {
   authoredSaveProficiencies,
 } from "@/lib/srd/authored-effects";
 import { holdsFeature } from "@/lib/srd/feature-names";
+import { studiedRaises } from "@/lib/srd/studied-books";
 import { listedAgainst, type SaveAgainst } from "@/lib/dm/roll-about";
 import { keyFits, type RollKey } from "@/lib/srd/roll-keys";
 import { textKey } from "@/lib/language/text-logic";
@@ -423,11 +424,15 @@ export function featureHitPoints(sheet: TraitSheet): number {
 }
 
 // Points a feature adds to ability scores and the cap it lifts them to:
-// Primal Champion (barbarian 20) is +4 Strength and Constitution, to 24.
+// Primal Champion (barbarian 20) is +4 Strength and Constitution, to 24; a
+// manual or tome read is +2 to its score "as does your maximum for that
+// score" (src/lib/srd/studied-books.ts).
 export function featureAbilityGrants(sheet: TraitSheet): Partial<Record<Ability, number>> {
-  return holdsFeature(sheet, "primal champion") || classLevelOf(sheet, "barbarian") >= 20
-    ? { str: 4, con: 4 }
-    : {};
+  const out: Partial<Record<Ability, number>> = holdsFeature(sheet, "primal champion") || classLevelOf(sheet, "barbarian") >= 20 ? { str: 4, con: 4 } : {};
+  for (const [ability, amount] of Object.entries(studiedRaises(sheet.features)) as Array<[Ability, number]>) {
+    out[ability] = (out[ability] ?? 0) + amount;
+  }
+  return out;
 }
 
 export const PRIMAL_CHAMPION_CAP = 24;

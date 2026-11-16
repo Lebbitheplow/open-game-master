@@ -51,6 +51,8 @@ export type PlayerMapView = {
     x: number;
     y: number;
     mine: boolean;
+    // Recent confirmed ground walk from origin through the token's position.
+    walkPath?: Array<{ x: number; y: number }>;
     // PC at 0 HP: rendered downed, never removed from the map.
     down: boolean;
     // Only ever true in the DM's projection: a hidden token is absent from a

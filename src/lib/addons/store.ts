@@ -43,6 +43,12 @@ const addonStateSchema = z.object({
   // The permission list the admin said yes to, as it stood when they did.
   granted: z.array(z.string().max(40)).max(20).default([]),
   settings: z.record(z.string().max(40), settingValueSchema).default({}),
+  // The parts the admin chose (the manifest's `parts`), or null for the
+  // author's defaults until they pick.
+  parts: z.array(z.string().max(40)).max(30).nullable().default(null),
+  // The repository and commit its files were fetched at, from the list or a
+  // GitHub link: where a part kept in the same repository is fetched from.
+  fetchedFrom: z.object({ repo: z.string().max(140), commit: z.string().regex(/^[a-f0-9]{40}$/) }).nullable().default(null),
 });
 
 export type AddonState = z.infer<typeof addonStateSchema>;

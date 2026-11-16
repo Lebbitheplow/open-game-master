@@ -34,6 +34,8 @@ const eslintConfig = defineConfig([
     // this, lint walks every one of them and reports thousands of problems
     // from dependencies rather than from this project's source.
     ".claude/**",
+    // Disposable theme fixtures include Chromium's generated extension code.
+    ".theme-preview/**",
     // pdf.js's worker and data, copied from pdfjs-dist by
     // scripts/copy-dice-assets.mjs: vendored and minified, not our source.
     "public/pdfjs/**",

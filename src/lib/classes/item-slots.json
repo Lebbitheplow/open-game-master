@@ -31,6 +31,7 @@
       "Gliding Cloak",
       "Grasping Cloak",
       "Green Mantle",
+      "Leonino Wings",
       "Magma Mantle",
       "Mantle of Blood Vengeance",
       "Mantle of Spell Resistance",
@@ -43,9 +44,11 @@
       "Tenebrous Mantle",
       "Transforming Cloak",
       "Voidskin Cloak",
-      "Whispering Cloak"
+      "Whispering Cloak",
+      "Wings of Flying"
     ],
     "head": [
+      "Brotherhood of Fezzes",
       "Cap of Thorns",
       "Circlet of Blasting",
       "Circlet of Holly",
@@ -71,6 +74,7 @@
       "Lupine Crown",
       "Phoenix-Feather Cap",
       "Shark Tooth Crown",
+      "Skullcap of Deep Wisdom",
       "Useful Top Hat"
     ],
     "feet": [
@@ -88,9 +92,11 @@
       "Dancing Shoes",
       "Deserter's Boots",
       "Hopeful Slippers",
+      "Ice Riders",
       "Sandals of Sand Skating",
       "Sandals of the Desert Wanderer",
       "Satyr Boots",
+      "Scorpion Feet",
       "Serpentine Sandals",
       "Shoes of the Shingled Canopy",
       "Slippers of Spider Climbing",
@@ -100,6 +106,7 @@
       "Winged Boots"
     ],
     "hands": [
+      "Bear Paws",
       "Clockwork Gauntlet",
       "Crab Gloves",
       "Fletcher's Retort Gloves",
@@ -112,6 +119,8 @@
       "Gloves of Swimming and Climbing",
       "Gloves of the Magister",
       "Gloves of the Walking Shade",
+      "Hand of the Night",
+      "Járngreipr",
       "Legerdemain Gloves",
       "Paired Gauntlets of Striking",
       "Seneschal's Gloves",
@@ -146,7 +155,11 @@
       "Clockwork Pendant",
       "Corpsehunter's Medallion",
       "Death’s Essence Pendant",
+      "Dread Scarab",
+      "Eye of the Golden God",
+      "Lucky Halfling Foot",
       "Medallion of Thoughts",
+      "Mender's Mark",
       "Mourning Medallion",
       "Necklace of Adaptation",
       "Necklace of Fireballs",
@@ -159,8 +172,12 @@
       "Periapt of Proof Against Poison",
       "Periapt of Wound Closure",
       "Sea Witch’s Amulet",
+      "Secret-catching Pearls",
       "Shoulder Dragon Brooch",
+      "Stalking Cat",
       "Torc of the Comet",
+      "Tyrant’s Teeth",
+      "Ward Against Wild Appetites",
       "Wood Woad Amulet",
       "Ziphian Eye Amulet"
     ],
@@ -171,19 +188,24 @@
       "Belt of Frost Giant Strength",
       "Belt of Giant Strength",
       "Belt of Hill Giant Strength",
+      "Belt of Stone Giant Strength",
       "Belt of Storm Giant Strength",
       "Belt of the Wilds",
-      "Girdle of Traveling Alchemy"
+      "Cinch of the Wolfmother",
+      "Girdle of Traveling Alchemy",
+      "Honey Buckle",
+      "Megingjörð",
+      "Potion Belt"
     ],
     "ring": [
       "Alliance Rings",
       "Assassin’s Ring",
       "Brazen Band",
       "Clockwork Rogue Ring",
-      "Culdarath the Ninth Ring’s True Name",
       "Death's Mirror",
       "Devil’s Eye Ring",
       "Fathomer’s Ring",
+      "Friendly Joybuzzer",
       "Glamour Rings",
       "Glass Ring",
       "Heaven's Roof Ring",
@@ -261,6 +283,7 @@
       "Zipline Ring"
     ],
     "eyes": [
+      "Angel Eyes",
       "Captain's Goggles",
       "Clarifying Goggles",
       "Eyes of Charming",
@@ -268,9 +291,11 @@
       "Eyes of the Eagle",
       "Eyes of the Outer Dark",
       "Eyes of the Portal Masters",
+      "Glasses of Rodentius",
       "Goggles of Firesight",
       "Goggles of Night",
-      "Goggles of Shade"
+      "Goggles of Shade",
+      "Perfect Disguise"
     ],
     "robe": [
       "Robe of Eyes",

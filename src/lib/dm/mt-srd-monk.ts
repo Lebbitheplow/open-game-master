@@ -22,6 +22,8 @@ import { gearKindOf, handsFor, heldRows, weaponRowOf } from "@/lib/dm/gear-hands
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { classLevelOf } from "@/lib/srd/trait-rules";
+import { wearsWorkingItem, type WornMagicItem } from "@/lib/srd/magic-items";
+import { IOUN_SUSTENANCE } from "@/lib/srd/proficiency";
 
 // A Way of the Kensei monk's chosen weapons are monk weapons for them, and
 // which ones they chose is not on the sheet: their hands are not judged here.
@@ -47,6 +49,9 @@ export function catchProblem(sheet: Pick<CharacterSheet, "name" | "equipment">, 
   return hands >= 2 ? `${sheet.name} has no hand free to catch the missile (${held.map((row) => row.name).join(", ")}), so it cannot be thrown back.` : null;
 }
 
-export function needsNoFoodOrWater(sheet: Parameters<typeof classLevelOf>[0]): boolean {
-  return classLevelOf(sheet, "monk") >= 15;
+// Timeless Body (monk 15), or an Ioun Stone of Sustenance orbiting its
+// attuned owner (SRD 5.1: "You don't need to eat or drink while this clear
+// spindle orbits your head"); the supplies variant counts no hunger for them.
+export function needsNoFoodOrWater(sheet: Parameters<typeof classLevelOf>[0] & { equipment?: WornMagicItem[] }): boolean {
+  return classLevelOf(sheet, "monk") >= 15 || wearsWorkingItem(sheet.equipment ?? [], sheet, IOUN_SUSTENANCE);
 }

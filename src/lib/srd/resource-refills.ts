@@ -6,7 +6,7 @@
 // database-free.
 
 import { authoredInitiativeRefills } from "@/lib/srd/authored-effects";
-import { resourceDef, resourceLevel, type Recharge, type ResourceMap } from "@/lib/srd/class-resources";
+import { rechargeOf, resourceDef, type Recharge, type ResourceMap } from "@/lib/srd/class-resources";
 import { holdsFeature, isNamed } from "@/lib/srd/feature-names";
 
 // Rest refills: long rests refill everything, short rests only the
@@ -37,9 +37,7 @@ export function refillResources(
       out[id] = held === undefined ? state : { max: state.max, used: Math.max(0, state.max - held) };
       continue;
     }
-    const recharge =
-      def?.rechargeFor && sheet ? def.rechargeFor(resourceLevel(def, sheet)) : def?.recharge;
-    const refill = rest === "long" || recharge === "short";
+    const refill = rest === "long" || (def ? rechargeOf(def, sheet) : undefined) === "short";
     out[id] = { max: state.max, used: refill ? 0 : state.used };
   }
   // Sorcerous Restoration (sorcerer 20): 4 expended sorcery points come back

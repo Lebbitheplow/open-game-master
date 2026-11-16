@@ -21,6 +21,15 @@ export const SRD_LAST_ROWS: Record<string, SpellMech> = {
   "ice storm": {
     resolution: "save", save: "dex", halfOnSave: true, damageType: "bludgeoning", secondType: "cold", area: true, areaFeet: 20,
   },
+  // "5d6 thunder damage and 5d6 radiant or necrotic damage (your choice)":
+  // the prose's choice stops the dice reader at the first term, which rolled
+  // half the wave, so the row names both. Radiant is the second unless the
+  // GM rules necrotic for the caster.
+  "destructive wave": {
+    resolution: "save", save: "con", halfOnSave: true, damageType: "thunder", secondType: "radiant", secondTypeChoice: ["radiant", "necrotic"], condition: { name: "prone" },
+    dice: { base: "5d6+5d6", baseLevel: 5 },
+    note: "The second 5d6 is radiant, or necrotic if the caster chooses: name type necrotic.",
+  },
 
   // Effects on the caster or an ally, each a condition of the registry
   // (src/lib/srd/condition-effects-last.ts) that the engine reads.

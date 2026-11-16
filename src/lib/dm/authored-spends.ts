@@ -16,6 +16,7 @@ import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
+import { formulaMods } from "@/lib/srd/proficiency";
 import { authoredSpendFor, gateHolds, hasCondition, heldAuthored, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
 import { matchResource, resourceDef, resourceName as counterName, sheetCatalog } from "@/lib/srd/class-resources";
 import { holdsFeature, isNamed, nameChoice } from "@/lib/srd/feature-names";
@@ -407,7 +408,9 @@ export function authoredFeatureSpend(
     args,
     units,
     ...(slotLevel !== null ? { paidBySlot: slotLevel } : {}),
-    mods: computeSheetDerived(sheet).abilityMods,
+    // The modifiers and the character's proficiency bonus every formula of
+    // the spend reads (srd/proficiency.ts formulaMods).
+    mods: formulaMods(computeSheetDerived(sheet)),
     reason,
     ...("marks" in charge && charge.marks ? { marks: charge.marks } : {}),
     ...(freeDie ? { freeDie } : {}),

@@ -89,11 +89,39 @@ export function setupSettingKeys(manifest: Pick<AddonManifest, "settings" | "set
   return keys;
 }
 
-// Whether a setup download is wanted on this computer with these settings.
-export function downloadApplies(download: SetupDownload, platformKey: string, settings: Values): boolean {
+// Whether a setup download is wanted on this computer with these settings
+// and these chosen parts (a download for a part left out is not).
+export function downloadApplies(download: SetupDownload, platformKey: string, settings: Values, parts: readonly string[] = []): boolean {
   if (download.platforms && !download.platforms.includes(platformKey)) return false;
+  if (download.part && !parts.includes(download.part)) return false;
   if (!download.when) return true;
   const value = settings[download.when.setting];
   const wanted = Array.isArray(download.when.equals) ? download.when.equals : [download.when.equals];
   return wanted.some((entry) => entry === value);
+}
+
+// The parts an admin chose, or the author's defaults until they pick, held
+// to the parts this version declares (a part a newer version dropped is
+// gone; a new default part arrives with the update until the admin picks).
+export function chosenParts(manifest: Pick<AddonManifest, "parts">, saved: readonly string[] | null | undefined): string[] {
+  const declared = manifest.parts.map((part) => part.id);
+  if (!saved) return manifest.parts.filter((part) => part.default).map((part) => part.id);
+  return declared.filter((id) => saved.includes(id));
+}
+
+// What a part downloads on this computer (or, with no platform, on the
+// platform it downloads most for), in bytes, ignoring `when`: the most it
+// can take, for the panel to say before it is chosen.
+export function partBytes(manifest: Pick<AddonManifest, "setup">, partId: string, platformKey?: string): number {
+  const downloads = (manifest.setup?.downloads ?? []).filter((download) => download.part === partId);
+  const total = (key: string | null) =>
+    downloads.filter((download) => !download.platforms || (key !== null && download.platforms.includes(key))).reduce((sum, download) => sum + download.bytes, 0);
+  if (platformKey) return total(platformKey);
+  const keys = new Set(downloads.flatMap((download) => download.platforms ?? []));
+  return Math.max(total(null), ...[...keys].map((key) => total(key)));
+}
+
+// Whether a part has anything to fetch on this computer.
+export function partFitsHere(manifest: Pick<AddonManifest, "setup">, partId: string, platformKey: string): boolean {
+  return (manifest.setup?.downloads ?? []).some((download) => download.part === partId && (!download.platforms || download.platforms.includes(platformKey)));
 }

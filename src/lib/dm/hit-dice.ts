@@ -35,6 +35,13 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { healCeiling, hitDiceHealingFactor } from "@/lib/dm/afflictions";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { sanctuaryDieBonus } from "@/lib/dm/genie-vessel";
+import { WOUND_CLOSURE, wearsWorkingItem } from "@/lib/srd/magic-items";
+import { textKey } from "@/lib/language/text-logic";
+
+// The day after a Potion of Vitality (src/lib/dm/consumables.ts): "For the
+// next 24 hours, you regain the maximum number of hit points for any Hit
+// Die you spend."
+export const VITAL_HIT_DICE = "vitality";
 
 export type HitDiceOutcome =
   | ToolError
@@ -143,9 +150,14 @@ export function spendHitDice(input: {
   // Sewer plague: hit dice heal half the normal number (afflictions.ts).
   // Durable floors each die at twice the Constitution modifier; Stalwart
   // adds it (src/lib/srd/feat-combat.ts).
-  const rolled = hitDiceHealing(outcome, conMod, (input.songDie ? 1 : 0) + (input.chefDie ? 1 : 0));
   const floored = hitDieHealingFloor(sheet, conMod);
-  const withFeat = (floored ? Math.max(rolled, count * floored.floor) + count * floored.extra : rolled) + count * (sanctuary?.bonus ?? 0);
+  // SRD 5.1, Periapt of Wound Closure: "whenever you roll a Hit Die to
+  // regain hit points, double the number of hit points it restores". The
+  // pendant had no effect at all: worn and attuned, the dice healed as bare.
+  const times = wearsWorkingItem(sheet.equipment, sheet, WOUND_CLOSURE) ? 2 : 1;
+  const highest = sheet.conditions.some((name) => textKey(name) === VITAL_HIT_DICE);
+  const rolled = hitDiceHealing(outcome, conMod, (input.songDie ? 1 : 0) + (input.chefDie ? 1 : 0), { ...(floored ? { floor: floored.floor, add: floored.extra } : {}), times, highest });
+  const withFeat = rolled + count * (sanctuary?.bonus ?? 0);
   const healed = Math.floor(withFeat * hitDiceHealingFactor(sheet));
   // Pale Tincture's damage is beyond what hit dice heal (afflictions.ts).
   const ceiling = healCeiling(campaign.id, sheet);
