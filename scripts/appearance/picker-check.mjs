@@ -26,6 +26,10 @@ export async function checkPicker({send,evaluate,click,waitFor,dimensions,run,sh
       await run(`Appearance picker ${width}px ${mode} scale ${scale}`,async()=>{
         await dimensions(width,height,mode,scale);
         await evaluate('document.fonts.ready.then(()=>true)');
+        // CSS URL equality does not mean its image has decoded. A cold profile
+        // otherwise captures empty frames while reporting a passing preview.
+        const previewArt = [...new Set(APPEARANCE_THEMES.flatMap(theme => Object.values(theme.art ?? {})))];
+        await evaluate(`Promise.all(${JSON.stringify(previewArt)}.map(src=>new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>img.decode().then(resolve,reject);img.onerror=()=>reject(new Error('Preview artwork failed: '+src));img.src=src})))`);
         assert.equal(await evaluate(`document.querySelectorAll('.appearance-option').length`),APPEARANCE_THEMES.length);
         assert.equal(await evaluate(`document.querySelector('.appearance-follow').getAttribute('aria-pressed')`),'true','Picker starts by following the campaign');
         const baseline=await previews();

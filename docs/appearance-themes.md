@@ -63,7 +63,7 @@ It is not the app appearance registry. Leave it alone when adding an appearance.
    ```
 
    The pickers and schema now include it. Existing symbols are `sparkles`, `leaf`,
-   `church`, `flame` and `waves`. To introduce another symbol, add its key to `APPEARANCE_ICONS`
+   `church`, `flame`, `shield` and `waves`. To introduce another symbol, add its key to `APPEARANCE_ICONS`
    and its component to the single map in `ThemeIcon.tsx`. Type checking catches
    a missing mapping.
 

@@ -1,0 +1,27 @@
+{
+  "generator": "OpenAI built-in image_gen",
+  "date": "2026-11-14",
+  "rights": "Original generated artwork for Open Game Master. No third-party art, named published settings or borrowed fictional heraldry supplied. Requested design is an original wheat-sheaf shield; no exclusivity or trademark clearance is asserted.",
+  "encoding": "Frame: lossless WebP retaining generated alpha, original square dimensions. Texture and backdrop: opaque WebP quality 88, original dimensions. No crop, repaint or alpha repair.",
+  "corner": "Frame reused for corner with catalog cornerScale 4; top-left 25% on each axis, rotated by shared renderer. Default frameSlice 22%.",
+  "assets": [
+    {
+      "file": "illuminated-heraldry-frame-v1.webp",
+      "source": "exec-fe55e471-5224-4c8a-a378-ebc1aa6c7214.png",
+      "transparent": true,
+      "prompt": "Use case: stylized-concept. Asset type: production square 1024x1024 fantasy game nine-slice manuscript border, not a UI mockup. A front-on narrow illuminated manuscript frame made of ivory vellum, fine burnished gold leaf, royal-blue enamel ribbons and tiny painted wheat ears. Original heraldic corner medallions: a simple gold sheaf of three wheat stalks inside a blue shield; no borrowed fictional or historical arms. Royal bookbinding craftsmanship, tactile pigment and engraved gold, delicate vermilion dots. All four straight continuous rails stay within the outer 9 percent, four small corner fittings stay within outer 14 percent. Rails straight and repeatable for nine-slice stretching. Center rectangle spanning at least 72 percent each axis completely empty alpha transparency. Transparent outside border with 1 percent margin. Square orthographic composition, no perspective or shadows extending into center. No words, lettering, numbers, stars, moons, cathedral arches, marble, sky, characters, scenery, logos, or controls. All ornament contained in canvas. Genuine alpha transparency, not a checkerboard."
+    },
+    {
+      "file": "ivory-vellum-v1.webp",
+      "source": "exec-78330683-5a48-4860-b037-6693c05c0cff.png",
+      "transparent": false,
+      "prompt": "Use case: stylized-concept. Asset type: production seamless square 1024x1024 repeating material tile for High Kingdoms fantasy interface. Finely prepared warm ivory vellum manuscript leaf, microscopic natural fibres and tiny faint pores, subtle hand-burnished grain, luxurious soft cream surface. Tactile hand-painted material closeup, restrained low contrast so small text can sit over it. Completely flat evenly lit, no shadows or vignette. Seamless in both axes, entire canvas opaque. No words, writing, decoration, borders, creases, large stains, objects, shields, scenery, marble or wood. Ivory and pale oatmeal only."
+    },
+    {
+      "file": "royal-council-hall-v1.webp",
+      "source": "exec-811cff27-6e38-45d7-b32d-86a480248f63.png",
+      "transparent": false,
+      "prompt": "Use case: stylized-concept. Asset type: production wide 3:1 painted environment banner for High Kingdoms fantasy game. A richly crafted secular royal council hall, warm ivory plaster walls, dark carved walnut rafters and paneling, broad blue woven banners bearing an original gold sheaf of three wheat stalks in a simple blue shield, gilt fittings and ceremonial blue upholstered chairs around an illuminated manuscript on a distant council table. No people. Strong royal-blue textile forms and golden manuscript craft, intimate solid palace interior with tangible materials, afternoon light and small candle sconces. Composition reads in shallow wide crop: banners and crafted furnishings across central horizontal band, depth toward left, larger banner at right. Sophisticated hand-painted strategy game environment, painterly detail, restrained stately atmosphere. Entire opaque scene edge to edge. No text, lettering, logos, real or fictional borrowed heraldry, named settings, cathedral tracery, pointed arches, celestial imagery, amethyst, marble columns, open sky, clouds or floating architecture."
+    }
+  ]
+}

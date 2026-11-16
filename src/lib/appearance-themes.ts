@@ -2,7 +2,7 @@
 // This catalog is safe to import in both client components and server schemas.
 import type { Genre } from "@/lib/schemas/game-settings-options";
 
-export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "waves"] as const;
+export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves"] as const;
 export type AppearanceIcon = (typeof APPEARANCE_ICONS)[number];
 export const THEME_ART_SLOTS = {
   texture: "--theme-art-texture",
@@ -72,6 +72,17 @@ export const APPEARANCE_THEMES = [
       backdrop: "/assets/themes/hearth/fireside-haven-v1.webp",
     },
     provenance: "public/assets/themes/hearth/art-provenance.json",
+  },
+  {
+    id: "kingdoms", name: "High Kingdoms", description: "Ivory vellum, royal blue, and illuminated heraldry.", icon: "shield", stylesheet: "src/app/styles/themes/kingdoms.css",
+    cornerScale: 4,
+    art: {
+      texture: "/assets/themes/kingdoms/ivory-vellum-v1.webp",
+      frame: "/assets/themes/kingdoms/illuminated-heraldry-frame-v1.webp",
+      corner: "/assets/themes/kingdoms/illuminated-heraldry-frame-v1.webp",
+      backdrop: "/assets/themes/kingdoms/royal-council-hall-v1.webp",
+    },
+    provenance: "public/assets/themes/kingdoms/art-provenance.json",
   },
 ] as const satisfies readonly AppearanceDefinition[];
 export type AppearanceTheme = (typeof APPEARANCE_THEMES)[number]["id"];
