@@ -37,8 +37,10 @@
 //   SRD 5.1 it translates has only Grappler), so the table carries that one.
 //   A name from another source (the French SRD 5.2.1, the French editions of
 //   the other books, a translation of a content pack's feat) is not the
-//   SRD 5.1's, and --check refuses it like any other table's: a feat the
-//   table does not carry keeps its English name at a French table;
+//   SRD 5.1's, and --check refuses it like any other table's. A feat the
+//   table does not carry shows its English name at a French table until a
+//   translation is added; a translation is not an official name, so it goes
+//   in a table of its own, never this one;
 // - classes: 12 bare class ids ("cleric") plus class-feature keys of the
 //   canonical form the render helper slugs a display name to
 //   ("cleric:bonus-proficiency-heavy-armor", "cleric:channel-divinity-1-rest",
@@ -133,7 +135,9 @@ function writeNamesFrom(dir) {
 // armures, objets magiques et équipement d'aventurier), et elle seule : le
 // SRD 5.1 français n'imprime qu'un don (« Empoigneur »), la table des dons
 // n'en porte donc qu'un. Un don qu'elle ne porte pas (ceux des autres livres,
-// ceux du paquet de contenu) garde son nom anglais à une table francophone.
+// ceux du paquet de contenu) s'affiche sous son nom anglais à une table
+// francophone tant qu'aucune traduction ne lui est donnée. Une traduction
+// n'est pas un nom officiel : elle va dans une table à part, jamais ici.
 // Dans le dépôt, ce fichier est la source : corriger un nom ici, puis lancer
 // node scripts/build-names-fr.mjs, qui régénère src/lib/srd/item-names-fr.ts
 // (--from <dossier> le réécrit depuis les tables d'extraction) ; --check

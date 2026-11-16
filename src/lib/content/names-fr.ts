@@ -5,7 +5,9 @@
 // armures, objets magiques et équipement d'aventurier), et elle seule : le
 // SRD 5.1 français n'imprime qu'un don (« Empoigneur »), la table des dons
 // n'en porte donc qu'un. Un don qu'elle ne porte pas (ceux des autres livres,
-// ceux du paquet de contenu) garde son nom anglais à une table francophone.
+// ceux du paquet de contenu) s'affiche sous son nom anglais à une table
+// francophone tant qu'aucune traduction ne lui est donnée. Une traduction
+// n'est pas un nom officiel : elle va dans une table à part, jamais ici.
 // Dans le dépôt, ce fichier est la source : corriger un nom ici, puis lancer
 // node scripts/build-names-fr.mjs, qui régénère src/lib/srd/item-names-fr.ts
 // (--from <dossier> le réécrit depuis les tables d'extraction) ; --check
