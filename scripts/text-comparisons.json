@@ -1502,7 +1502,7 @@
     "lib/dm/enemy-actions-view.ts#str-key": [["key",1,"ability ids to their names, shown"]],
     "lib/dm/enemy-actions.ts#toLowerCase": [["key",1,"condition labels (engine vocabulary)"]],
     "lib/dm/enemy-approach.ts#str-eq": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
-    "lib/dm/enemy-approach.ts#toLowerCase": [["key",3,"condition labels (engine vocabulary)"]],
+    "lib/dm/enemy-approach.ts#toLowerCase": [["key",4,"condition labels (engine vocabulary)"]],
     "lib/dm/enemy-attack.ts#re-word": [["key",3,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/enemy-turn-logic.ts#str-list": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/enemy-casting.ts#str-includes": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
