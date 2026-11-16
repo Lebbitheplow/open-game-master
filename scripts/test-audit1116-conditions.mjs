@@ -8,6 +8,7 @@ import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { caster, closeTables, enemyOf, FIGHTER, table } from "./lib/enforce-spell-kit.mjs";
 import { kit as conditionsKit, FIGHTER as SWORD_FIGHTER } from "./lib/enforce-conditions.mjs";
+import { combatKit, DUMMY, TRAINED } from "./lib/enforce-combat.mjs";
 
 const { test, finish } = suite("test-audit1116-conditions");
 const encounters = await import("../src/lib/db/encounters.ts");
@@ -81,6 +82,71 @@ await test("D02: ... nor on its Dexterity save", async () => {
   // cancelled to one die.
   assert.equal(arenaKit.d20s(out.dice), 2, `the held dodger's DEX save rolled ${out.dice.join(" ")}`);
   arenaKit.resetEnemy(goblin.id);
+});
+
+// A board: one dummy (AC 13, 40 hp) and Kara with a longsword.
+const field = await openWorld();
+const board = await combatKit(field);
+const kara = field.addHero({
+  name: "Kara", class: "fighter", level: 5, maxHp: 80, proficiencies: TRAINED,
+  abilities: { str: 16, dex: 12, con: 14, int: 10, wis: 10, cha: 10 },
+  equipment: [{ name: "Longsword", qty: 1, equipped: true }],
+});
+async function stage(patch = {}) {
+  await board.endFight();
+  await board.fight(2, { heroFaces: { [kara.id]: 20 } });
+  const [foe] = field.enemies();
+  board.setEnemy(foe.id, { stats: { ...DUMMY }, maxHp: 40, ...patch });
+  board.place(kara.id, 6, 7);
+  board.place(foe.id, 5, 7);
+  return board.enemy(foe.id);
+}
+const moveRoute = await field.route("campaigns/[campaignId]/battle-map/move");
+const reactedBy = (id) => field.encounter().reactionsUsed.some((key) => key.includes(id));
+
+// D03. SRD 5.1, Charmed: "A charmed creature can't attack the charmer or
+// target the charmer with harmful abilities or magical effects." Every
+// attack door refused it (pc_attack, enemy_attack, a spell, an area) but an
+// opportunity attack, which is an attack too: a hero under a creature's charm
+// swung at it as it walked off, and a bandit the bard had charmed struck the
+// bard as the bard stepped away.
+await test("D03: a hero charmed by a creature makes no opportunity attack at it", async () => {
+  const foe = await stage();
+  field.patch(kara.id, { conditions: ["charmed"], conditionMeta: { charmed: { source: foe.id } } });
+  board.enemyTurn(foe.id);
+  board.dice(15, 4);
+  const out = await field.invoke("enemy_flees", { enemyId: foe.id, reason: "it slips away" });
+  field.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.opportunityAttacks, undefined, JSON.stringify(out.result));
+  assert.equal(reactedBy(kara.id), false, "the charmed hero spent a reaction on the charmer");
+  field.patch(kara.id, { conditions: [], conditionMeta: {} });
+});
+
+await test("D03: a creature charmed by a hero makes no opportunity attack at them", async () => {
+  const foe = await stage({ conditions: ["charmed"], conditionMeta: { charmed: { source: kara.id } } });
+  board.giveTurn(kara.id);
+  board.dice(15, 4);
+  // The player's own walk (the board's move route).
+  field.signIn(field.owner);
+  const response = await moveRoute.POST(
+    new Request("http://odm.test/move", { method: "POST", body: JSON.stringify({ x: 9, y: 7 }) }),
+    { params: Promise.resolve({ campaignId: field.campaignId }) },
+  );
+  field.clearDice();
+  assert.equal(response.status, 200, await response.clone().text());
+  assert.equal(reactedBy(foe.id), false, `the charmed creature struck its charmer: ${await response.text()}`);
+});
+
+await test("D03: a second charmer binds the hero as the first does", async () => {
+  const foe = await stage();
+  // Charmed first by someone else, then by this creature: two instances of
+  // one condition (condition-logic.ts addConditionInstance).
+  field.patch(kara.id, { conditions: ["charmed"], conditionMeta: { charmed: { source: "someone-else", others: [{ source: foe.id }] } } });
+  board.giveTurn(kara.id);
+  const out = await board.attack(kara.id, foe.id, { weapon: "Longsword" });
+  assert.equal(out.ok, false, "the hero attacked their second charmer");
+  field.patch(kara.id, { conditions: [], conditionMeta: {} });
 });
 
 closeTables();
