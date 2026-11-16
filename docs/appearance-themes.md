@@ -1,10 +1,10 @@
 # Build an appearance theme
 
 Use this guide to add a visual theme with its own palette, materials and artwork.
-Everything needed to register and validate it lives in this repository. All three
-shipped themes have painted materials, borders and scenery: Woodland uses oak
-and ivy, Arcane uses indigo stone and celestial brass, and Gothic uses cathedral
-stone, silver tracery and garnet glass.
+Everything needed to register and validate it lives in this repository. The
+painted themes have materials, borders and scenery: Woodland uses oak and ivy,
+Arcane uses indigo stone and celestial brass, Gothic uses cathedral stone, silver
+tracery and garnet glass, and Hearth & Haven uses crafted oak and amber lamplight.
 
 The [implementation validation record](appearance-validation.md) lists the checks
 completed for all three themes and the shared infrastructure.
@@ -63,7 +63,7 @@ It is not the app appearance registry. Leave it alone when adding an appearance.
    ```
 
    The pickers and schema now include it. Existing symbols are `sparkles`, `leaf`,
-   `church` and `waves`. To introduce another symbol, add its key to `APPEARANCE_ICONS`
+   `church`, `flame` and `waves`. To introduce another symbol, add its key to `APPEARANCE_ICONS`
    and its component to the single map in `ThemeIcon.tsx`. Type checking catches
    a missing mapping.
 
