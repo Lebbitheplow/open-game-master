@@ -121,7 +121,7 @@ export const petTools: ToolDef[] = [
     function: {
       name: "dismiss_pet",
       description:
-        "Remove a pet from its owner's sheet when it is dismissed, sent away, or dies in the fiction. Call it when the story ends the bond. A familiar goes to its pocket dimension (an action); dismissed again, it is gone.",
+        "Remove a pet when it is dismissed, sent away or dies in the fiction. A familiar goes to its pocket dimension first (an action); dismissed again, it is gone.",
       parameters: {
         type: "object",
         additionalProperties: false,

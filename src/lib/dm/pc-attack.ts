@@ -169,11 +169,11 @@ export const pcAttackTool: ToolDef = {
               nonlethal: {
                 type: "boolean",
                 description:
-                  "A melee attack meant to knock out: a creature it drops to 0 HP falls unconscious, not dying. It is out of the fight.",
+                  "Melee, to knock out: a creature it drops to 0 HP falls unconscious, not dying.",
               },
               useInspiration: {
                 type: "boolean",
-                description: "True when the player spends their character's Inspiration on this attack roll for advantage. Refused when they hold none.",
+                description: "Spend the character's Inspiration for advantage on this roll.",
               },
               strokeOfLuck: {
                 type: "boolean",
@@ -199,7 +199,7 @@ export const pcAttackTool: ToolDef = {
               improvised: {
                 type: "boolean",
                 description:
-                  "True when weapon names an object that is no weapon on their sheet (a chair, a bottle). It strikes as an improvised weapon.",
+                  "weapon names an object that is no weapon (a chair, a bottle): an improvised weapon.",
               },
               twoHanded: {
                 type: "boolean",
@@ -215,7 +215,7 @@ export const pcAttackTool: ToolDef = {
               },
               ammo: {
                 type: "string",
-                description: "Magic ammunition to fire, as its sheet line (+1 Arrows). Omit for ordinary ammunition.",
+                description: "Magic ammunition's sheet line (+1 Arrows); omit for ordinary.",
               },
               level: {
                 type: "integer",

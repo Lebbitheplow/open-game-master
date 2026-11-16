@@ -152,7 +152,7 @@ export const worldTools: ToolDef[] = [
           bound: { type: "string", description: "Manacles: the creature they bind, exact characterId or enemyId from GAME STATE. Needed when several are bound." },
           characterId: { type: "string", description: "The character striking it with a weapon: exact characterId from GAME STATE." },
           weapon: { type: "string", description: "The weapon they strike with, from their equipment." },
-          improvised: { type: "boolean", description: "True when weapon names an object that is no weapon on their sheet (a chair, a bottle). It strikes as an improvised weapon." },
+          improvised: { type: "boolean", description: "weapon names an object that is no weapon (a chair, a bottle): an improvised weapon." },
           damageType: { type: "string", description: "Damage type, for damage you pass yourself." },
           material: { type: "string", enum: MATERIALS, description: "What the object is made of. Default: wood." },
           size: { type: "string", enum: SIZES, description: "Its size class. Default: medium." },
