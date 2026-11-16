@@ -59,8 +59,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { markOpportunityHit } from "@/lib/dm/authored-reactions-more";
 import { enemyExhaustion, hasTrait } from "@/lib/dm/monster-abilities";
 import { inDirectSunlight } from "@/lib/dm/sunlight";
-import { underwaterOpportunity } from "@/lib/dm/underwater";
-import { swimsFrom } from "@/lib/battlemap/types";
+import { characterSwims, underwaterOpportunity } from "@/lib/dm/underwater";
 
 // A turn for the swing's rolls and audit rows, closed as soon as it is used
 // so nothing waits on it.
@@ -189,7 +188,7 @@ export function pcOpportunitySwing(input: {
   const untrained = wearsUntrainedArmor(sheet);
   const smallWithHeavy = profile.heavy && sizeForRace(sheet.race) === "Small" && !liftsSmallHeavyPenalty(sheet);
   // Under the water, as on pc_attack (underwater.ts).
-  const underwater = underwaterOpportunity(campaign.id, sheet.id, { weapon: profile.weapon, base: profile.base, swims: swimsFrom(undefined, sheet.features) });
+  const underwater = underwaterOpportunity(campaign.id, sheet.id, { weapon: profile.weapon, base: profile.base, swims: characterSwims(sheet) });
   const advantage: Advantage = mergeAdvantage([
     ...context.sources,
     ...(untrained || smallWithHeavy || underwater.disadvantage ? ["disadvantage" as const] : []),

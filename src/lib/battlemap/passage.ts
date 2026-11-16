@@ -19,6 +19,7 @@ import { sheetSize } from "@/lib/srd";
 import { holdsFeature, isConditionNamed } from "@/lib/srd/feature-names";
 import { movesThroughEverything } from "@/lib/dm/ar-ws-umbral-logic";
 import { itemSpeeds, type Wearer, type WornMagicItem } from "@/lib/srd/magic-items";
+import { formSpeeds } from "@/lib/srd/beast-forms";
 
 const SIZES = ["tiny", "small", "medium", "large", "huge", "gargantuan"];
 
@@ -97,7 +98,7 @@ export function pcMoveTraits(input: {
   width: number;
   tokens: BattleToken[];
   mover: BattleToken;
-  sheet: { race: string; features: Array<{ name: string }>; equipment?: WornMagicItem[]; speed?: number; conditions?: string[]; class?: string; classes?: Array<{ id: string }> } & Wearer;
+  sheet: { race: string; features: Array<{ name: string }>; equipment?: WornMagicItem[]; speed?: number; conditions?: string[]; class?: string; classes?: Array<{ id: string }>; wildShape?: { form: string } | null } & Wearer;
   footprintOf: (token: BattleToken) => Footprint;
   enemySize: (refId: string) => string | undefined;
   sideOf?: TokenSide;
@@ -124,8 +125,10 @@ export function pcMoveTraits(input: {
   const worn = input.sheet.equipment?.length ? itemSpeeds(input.sheet.equipment, input.sheet, input.sheet.speed ?? 30) : {};
   // Second Adaptation's hour of a climbing or a swimming speed (genre-b-post-apocalyptic.ts).
   const adapted = adaptedSpeeds(input.sheet.conditions);
-  const swim = worn.swim || adapted.swim;
-  const climb = worn.climb || adapted.climb;
+  // A beast form's own speeds (beast-forms.ts formSpeeds).
+  const shape = formSpeeds(input.sheet.wildShape);
+  const swim = worn.swim || adapted.swim || shape.swim;
+  const climb = worn.climb || adapted.climb || shape.climb;
   const traits = typeof freely === "object" && freely !== null && (swim || climb)
     ? { ...freely, ...(swim ? { swims: true } : {}), ...(climb ? { climbs: true } : {}) }
     : freely;

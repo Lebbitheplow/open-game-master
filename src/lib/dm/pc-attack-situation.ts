@@ -39,8 +39,8 @@ import { authoredCarryFactor } from "@/lib/srd/carry-jump-effects";
 import { purseCoins } from "@/lib/srd/currency";
 import type { CombatRiders } from "@/lib/srd/feature-effects";
 import { weatherRangedRider } from "@/lib/srd/weather";
-import { isImmersed, underwaterSwing } from "@/lib/dm/underwater";
-import { swimsFrom, type XY } from "@/lib/battlemap/types";
+import { characterSwims, isImmersed, underwaterSwing } from "@/lib/dm/underwater";
+import type { XY } from "@/lib/battlemap/types";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { footprintDistance } from "@/lib/battlemap/footprint";
 import { tokenFootprint } from "@/lib/dm/board-reach";
@@ -318,7 +318,7 @@ export function attackSituation(input: {
   }
   // Under the water: weapons not made for it (src/lib/dm/underwater.ts).
   const underwater = kind !== "spell" && isImmersed(campaign.id, sheet.id)
-    ? underwaterSwing({ weapon: profile.weapon, base: profile.base, melee: !atRange, swims: swimsFrom(undefined, sheet.features), beyondNormal: spatials.longRange })
+    ? underwaterSwing({ weapon: profile.weapon, base: profile.base, melee: !atRange, swims: characterSwims(sheet), beyondNormal: spatials.longRange })
     : null;
   if (underwater?.note) {
     conditionContext.notes.push(underwater.note);

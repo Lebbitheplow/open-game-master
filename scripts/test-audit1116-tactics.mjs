@@ -120,6 +120,48 @@ await test("Q03: in the round a wholly surprised party lost, only a hero whose l
   table.close();
 });
 
+// Q04. SRD 5.1, Wild Shape: "Your game statistics are replaced by the
+// statistics of the beast", its speeds among them. Climbing, Swimming, and
+// Crawling: "each foot of movement costs 1 extra foot ... unless a creature
+// has a climbing or swimming speed". Underwater Combat: a creature without a
+// swimming speed swings a melee weapon at disadvantage. The board read a
+// swimming speed from the sheet's features and worn items only, never from
+// the beast form, so a druid as a crocodile paddled at double cost and bit
+// at disadvantage in the water it lives in.
+const moveRoute = await world.route("campaigns/[campaignId]/battle-map/move");
+await test("Q04: a druid in a swimming beast's form crosses water at its own cost and bites from the water on one die", async () => {
+  const druid = world.addHero({ class: "druid", level: 4, maxHp: 40, abilities: { wis: 16 }, proficiencies: { ...TRAINED } });
+  await kit.endFight();
+  await kit.fight(1, { heroFaces: { [druid.id]: 20 } });
+  // A river three squares wide across the whole board, so no walk goes round.
+  const height = kit.map().height;
+  kit.openField([3, 4, 5].flatMap((x) => Array.from({ length: height }, (_, y) => [x, y, "~"])));
+  const [enemy] = world.enemies();
+  kit.place(druid.id, 2, 2);
+  kit.place(enemy.id, 9, 9);
+  kit.giveTurn(druid.id);
+  const shaped = await world.invoke("use_resource", { characterId: druid.id, resource: "Wild Shape", form: "Crocodile" });
+  assert.equal(shaped.ok, true, shaped.error);
+  assert.equal(world.sheet(druid.id).wildShape?.form, "Crocodile");
+  kit.freshTurn();
+  // The crocodile walks 20 feet: four squares, all three of water among them.
+  world.signIn({ id: druid.userId });
+  const response = await moveRoute.POST(
+    new Request(`http://odm.test/api/campaigns/${world.campaignId}/battle-map/move`, { method: "POST", body: JSON.stringify({ x: 5, y: 2 }) }),
+    { params: Promise.resolve({ campaignId: world.campaignId }) },
+  );
+  const body = await response.json().catch(() => ({}));
+  assert.equal(response.status, 200, JSON.stringify(body));
+  assert.deepEqual([kit.token(druid.id).x, kit.token(druid.id).y], [5, 2], "the crocodile could not swim three squares of water on its 20 feet");
+  // From the water, its bite.
+  kit.place(enemy.id, 6, 2);
+  kit.freshTurn();
+  const bite = await kit.swing(druid.id, enemy.id, [15, 4], { weapon: "Bite" });
+  assert.equal(bite.ok, true, bite.error);
+  assert.notEqual(bite.toHit?.advantage, "disadvantage", `the crocodile's bite was swung at disadvantage under the water: ${JSON.stringify(bite.result.notes ?? bite.result)}`);
+  await kit.endFight();
+});
+
 await kit.endFight();
 world.close();
 finish();

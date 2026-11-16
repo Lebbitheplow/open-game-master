@@ -16,6 +16,10 @@ import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getActiveBoard } from "@/lib/db/encounters";
 import { TERRAIN, tileAt } from "@/lib/battlemap/types";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
+import { swimsFrom } from "@/lib/battlemap/types";
+import { formSpeeds } from "@/lib/srd/beast-forms";
+import { itemSpeeds, type Wearer } from "@/lib/srd/magic-items";
+import type { CharacterSheet } from "@/lib/schemas/sheet";
 
 // The SRD weapons each rule names, by their rows' names (src/lib/srd/
 // weapons.ts): the weapon an attack swings as, never words in the name it is
@@ -54,6 +58,15 @@ export function underwaterSwing(input: {
   return RANGED_UNDERWATER.includes(input.base ?? "")
     ? CLEAR
     : { disadvantage: true, misses: false, note: `underwater: a ${input.weapon} shot through water is at disadvantage` };
+}
+
+// Whether a character has a swimming speed, "either natural or granted by
+// magic" (SRD 5.1, Underwater Combat): a feature's, a worn item's (a Ring of
+// Swimming), or the beast form they wear (beast-forms.ts formSpeeds). The
+// swing read the features alone, so a druid as a crocodile bit at
+// disadvantage in the water.
+export function characterSwims(sheet: Pick<CharacterSheet, "features" | "equipment" | "speed" | "wildShape"> & Wearer): boolean {
+  return swimsFrom(undefined, sheet.features) || Boolean(itemSpeeds(sheet.equipment ?? [], sheet, sheet.speed ?? 30).swim) || formSpeeds(sheet.wildShape).swim;
 }
 
 // An opportunity attack is a melee weapon attack like the turn's own (SRD
