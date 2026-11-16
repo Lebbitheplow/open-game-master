@@ -388,7 +388,8 @@ function drainMaxHp(campaign: Campaign, targetId: string, sourceId: string, amou
   const before = maxHpRiders(sheet.conditions, meta).drain;
   // No more than the maximum there is to take: the record stays exact, so a
   // long rest gives back what was taken and not a point more.
-  const taken = Math.min(amount, Math.max(0, effectiveMaxHp(sheet)));
+  const had = Math.max(0, effectiveMaxHp(sheet));
+  const taken = Math.min(amount, had);
   const kept = sheet.conditions.filter((name) => !/^max hp reduced \(-\d+\)$/i.test(name.trim()));
   for (const name of sheet.conditions.filter((entry) => !kept.includes(entry))) {
     delete meta[name];
@@ -398,7 +399,9 @@ function drainMaxHp(campaign: Campaign, targetId: string, sourceId: string, amou
   if (!updated) {
     return null;
   }
-  if (effectiveMaxHp(updated) <= 0) {
+  // "The target dies if this effect reduces its hit point maximum to 0":
+  // all of it taken, whatever the halved maximum's floor shows after.
+  if (taken >= had) {
     const dead = patchSheet(updated.id, { currentHp: 0, deathSaves: { successes: 0, failures: 3, stable: false, dead: true } });
     publishPersisted(campaign.id, "sheet_updated", { sheet: dead ?? updated });
     return `${updated.name}'s hit point maximum falls to 0: they die.`;

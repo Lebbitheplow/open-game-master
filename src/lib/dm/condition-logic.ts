@@ -935,12 +935,23 @@ export function exhaustionMaxHp(level: number, maxHp: number): number {
 // stored maxHp is the character's own, and the item's share is added here
 // while it is worn and attuned. A caller without the scores or the gear to
 // hand gets the stored number.
+//
+// A drain on the maximum (a wight's Life Drain: "its hit point maximum is
+// reduced by an amount equal to the damage taken"; mummy rot, Harm) is off
+// the stored number already (maxHpRiders). Exhaustion 4 halves the maximum
+// and the drain takes its whole amount off that: halving the stored number
+// halved the drain too, so at exhaustion 4 a 10-point drain cost 5, healing
+// filled past the maximum the drain left, and a drain as large as the halved
+// maximum killed nobody. Read from the sheet's conditions; a caller without
+// them gets the stored number halved.
 export function effectiveMaxHp(sheet: {
   maxHp: number;
   exhaustion?: number | null;
   level?: number;
   abilities?: Record<"str" | "dex" | "con" | "int" | "wis" | "cha", number>;
   equipment?: Array<{ name: string; equipped?: boolean; attuned?: boolean }>;
+  conditions?: string[];
+  conditionMeta?: unknown;
 }): number {
   let max = sheet.maxHp;
   if (sheet.abilities && sheet.equipment?.length && sheet.level) {
@@ -953,7 +964,14 @@ export function effectiveMaxHp(sheet: {
   }
   // Inured to Undeath: a maximum that cannot be reduced is not halved
   // (ar-ws-inured-logic.ts).
-  return (sheet.exhaustion ?? 0) >= 4 && maxHpCannotFall(sheet) ? max : exhaustionMaxHp(sheet.exhaustion ?? 0, max);
+  const level = sheet.exhaustion ?? 0;
+  if (level < 4 || maxHpCannotFall(sheet)) {
+    return level >= 4 ? max : exhaustionMaxHp(level, max);
+  }
+  const drain = sheet.conditions ? maxHpRiders(sheet.conditions, sheet.conditionMeta as ConditionMetaMap | undefined).drain : 0;
+  // Never below 1 by the halving: the drain that takes the last of it kills,
+  // and says so itself (enemy-hit.ts drainMaxHp).
+  return drain > 0 ? Math.max(1, exhaustionMaxHp(level, max + drain) - drain) : exhaustionMaxHp(level, max);
 }
 
 // Advantage effect of exhaustion on a d20 roll: level 1+ = disadvantage on

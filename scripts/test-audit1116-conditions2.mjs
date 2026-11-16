@@ -263,4 +263,42 @@ await test("D14: a day without water that takes a hero to exhaustion 6 ends thei
   diedProperly(desert, walker);
 });
 
+// D15. SRD 5.1, Exhaustion: "4: Hit point maximum halved"; a wight's Life
+// Drain: "its hit point maximum is reduced by an amount equal to the damage
+// taken ... The target dies if this effect reduces its hit point maximum to
+// 0." The stored maximum carried the drain and the halving was taken of it,
+// so at exhaustion 4 a 10-point drain cost 5 (20 to 15), healing filled to
+// 15, and a drain equal to the whole halved maximum left 10 and killed
+// nobody.
+const { table } = await import("./lib/enforce-spell-kit.mjs");
+const { effectiveMaxHp } = await import("../src/lib/dm/condition-logic.ts");
+const DRAIN = { name: "Life Drain", toHit: 8, damage: "2d10", type: "necrotic", onHit: { save: "con", dc: 13, drainMaxHp: "total" } };
+const { FIGHTER: SPELL_FIGHTER } = await import("./lib/enforce-spell-kit.mjs");
+
+await test("D15: at exhaustion 4 a drain takes its whole amount off the halved maximum, and healing stops there", async () => {
+  const { world, sheets: [hero], enemies: [wight] } = await table([{ ...SPELL_FIGHTER, maxHp: 40 }], 1, { attacks: [DRAIN] });
+  world.patch(hero.id, { exhaustion: 4, tempHp: 30 });
+  assert.equal(effectiveMaxHp(world.sheet(hero.id)), 20);
+  world.dice(15, 5, 5, 1);
+  const out = await world.invoke("enemy_attack", { enemyId: wight.id, targetCharacterId: hero.id });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(effectiveMaxHp(world.sheet(hero.id)), 10, `the 10-point drain took ${20 - effectiveMaxHp(world.sheet(hero.id))}: ${JSON.stringify(out.result.maxHpDrained ?? out.result)}`);
+  const healed = await world.invoke("heal", { characterId: hero.id, amount: 30 });
+  assert.equal(healed.ok, true, healed.error);
+  assert.equal(world.sheet(hero.id).currentHp, 10, "healing went past the drained maximum");
+  world.patch(hero.id, { exhaustion: 3 });
+  assert.equal(effectiveMaxHp(world.sheet(hero.id)), 30, "out of exhaustion 4 the drain still takes 10 of the 40");
+});
+
+await test("D15: at exhaustion 4 a drain as large as the halved maximum kills", async () => {
+  const { world, sheets: [hero], enemies: [wight] } = await table([{ ...SPELL_FIGHTER, maxHp: 40 }], 1, { attacks: [DRAIN] });
+  world.patch(hero.id, { exhaustion: 4, tempHp: 30 });
+  world.dice(15, 10, 10, 1);
+  const out = await world.invoke("enemy_attack", { enemyId: wight.id, targetCharacterId: hero.id });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.sheet(hero.id).deathSaves?.dead, true, `a 20-point drain on a halved 20 left them alive: ${JSON.stringify(out.result.maxHpDrained ?? out.result)}`);
+});
+
 finish();
