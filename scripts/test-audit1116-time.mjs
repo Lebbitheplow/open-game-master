@@ -103,4 +103,20 @@ await test("W02 Pale Tincture cured of its poisoning stops its daily save and le
   assert.ok(!world.sheet(victim.id).conditions.includes("poisoned"), "and no poisoning back");
 });
 
+await test("W03 pass_time sends a night's sleep to take_rest, in the full description and in the compact one small models read", async () => {
+  // SRD 5.1, Resting, Long Rest: "a period of extended downtime, at least 8
+  // hours long, during which a character sleeps". pass_time moves the clock
+  // and rests nobody, so a night at an inn sent to it restored no hit point,
+  // slot or hit die. The compact profile keeps only the first sentence,
+  // which offered "a night at an inn" and "a week of downtime".
+  const { dmTurnTools } = await import("../src/lib/dm/turn.ts");
+  const { compactTool } = await import("../src/lib/dm/tool-profiles.ts");
+  const tool = dmTurnTools(world.campaign(), false, true, false).find((entry) => entry.function.name === "pass_time");
+  assert.ok(tool, "pass_time is offered out of a fight");
+  for (const description of [tool.function.description, compactTool(tool).function.description]) {
+    assert.doesNotMatch(description, /night at an inn|week of downtime/i, description);
+    assert.match(description, /sleep is take_rest/, description);
+  }
+});
+
 finish();

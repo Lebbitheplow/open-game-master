@@ -227,7 +227,7 @@ export const worldTools: ToolDef[] = [
     function: {
       name: "pass_time",
       description:
-        "Move the in-world clock forward when time passes and nothing else accounts for it: waiting out a storm, a night at an inn, a week of downtime, a long conversation. Travel and rests already advance the clock themselves, so do not call it alongside them. Time only moves forward.",
+        "Move the in-world clock forward when nothing else accounts for the time (waiting out a storm, a long conversation); a night's sleep is take_rest. Travel, rests and downtime already advance the clock themselves, so do not call it alongside them. Time only moves forward.",
       parameters: {
         type: "object",
         additionalProperties: false,
