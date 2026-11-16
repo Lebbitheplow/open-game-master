@@ -1,7 +1,7 @@
 // A new campaign starts in the server's language (src/lib/language/
 // server-language.ts): a host that answers French in /api/capabilities opens
 // the creator on Français, and its Table language picker shows flags.
-import { check, eventually } from "../lib.mjs";
+import { check, eventually, untilStill } from "../lib.mjs";
 
 export default {
   name: "server-language-creator",
@@ -30,6 +30,8 @@ export default {
     if (await picker.count()) {
       check((await picker.locator("svg").count()) >= 1, "the Table language picker shows the flag");
     }
+    await picker.scrollIntoViewIfNeeded().catch(() => {});
+    await untilStill(page);
     await t.shot("creator-french");
     await page.unroute(/\/api\/capabilities(\?|$)/);
   },

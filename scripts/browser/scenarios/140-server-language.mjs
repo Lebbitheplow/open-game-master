@@ -3,7 +3,7 @@
 // flag, every row shows a flag beside the language's own name, and picking
 // one says what saving will do to the GM's memory. The rig does not save:
 // switching models would download the multilingual one in the background.
-import { check, eventually } from "../lib.mjs";
+import { check, eventually, untilStill } from "../lib.mjs";
 
 export default {
   name: "server-language",
@@ -27,6 +27,7 @@ export default {
     const french = rows.filter({ hasText: "Français" }).first();
     check(/French/.test(await french.innerText()), "a row names the language in English too");
     check((await french.locator("svg").count()) === 1, "each row carries a flag");
+    await untilStill(page);
     await t.shot("language-open");
     await t.tap(french);
 
@@ -34,6 +35,7 @@ export default {
     await eventually(async () => /Saving switches memory search to a model that reads every language/.test(await section.innerText()), {
       label: "the section says what saving does to the GM's memory",
     });
+    await untilStill(page);
     await t.shot("language-french");
   },
 };
