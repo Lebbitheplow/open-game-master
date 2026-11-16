@@ -122,6 +122,10 @@ await test("pure rules: a hero only gains what the actor really carried and give
   assert.equal(logic.planMove({ thing: "il pesce", from: "Brakk", to: "Kranz" }, "Kranz", people, [{ name: "Brakk", text: "Guardo il mare." }], italian).kind, "refused", "a thing the hero never named stays theirs");
   const pack = [{ name: "Brakk", state: "", carries: ["una bussola d'ottone", "Pesce"], hero: true }, ...people.slice(1)];
   assert.equal(logic.planMove({ thing: "la bussola d'ottone", from: "Brakk", to: "Mairon" }, "Mairon", pack, [{ name: "Brakk", text: "Poi porge la bussola a Mairon: «Tua.»" }], italian).kind, "hand", "its first word names it when nothing else of theirs shares it");
+  const recorded = [{ thing: "Quarto di pesce crudo", from: "Brakk", to: "Amleth" }];
+  assert.equal(logic.takeRecorded({ thing: "il quarto di pesce crudo", from: "Brakk", to: "Amleth" }, recorded, italian), true, "the master's own hand-over is the one the referee tells");
+  assert.equal(logic.takeRecorded({ thing: "il quarto di pesce crudo", from: "Brakk", to: "Amleth" }, recorded, italian), false, "and it answers once: a second is a second");
+  assert.equal(logic.takeRecorded({ thing: "il quarto di pesce crudo", from: "Brakk", to: "Volodar" }, [{ thing: "Quarto di pesce crudo", from: "Brakk", to: "Amleth" }], italian), false, "another taker is another move");
   const two = [{ name: "Brakk", state: "", carries: ["una bussola d'ottone", "una bussola rotta"], hero: true }, ...people.slice(1)];
   assert.equal(logic.planMove({ thing: "la bussola d'ottone", from: "Brakk", to: "Mairon" }, "Mairon", two, [{ name: "Brakk", text: "Porge la bussola a Mairon." }], italian).kind, "refused", "but not when two of their things share it");
   assert.equal(logic.planMove({ thing: "il pesce", from: "Brakk", to: "Kranz" }, "Mairon", people, offered, italian).kind, "refused", "and only the actor takes it");

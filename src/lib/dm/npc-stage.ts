@@ -31,6 +31,7 @@ import {
   stageNote,
   stageOrder,
   stageSenses,
+  takeRecorded,
   thingNamed,
   type HeroLine,
   type StageMove,
@@ -164,7 +165,7 @@ function thingsOf(npc: Npc): string[] {
 // owns the floor, or the narrator already asked them all).
 export async function runStage(
   campaign: Campaign,
-  calls: ReadonlyArray<{ name: string; args: Record<string, unknown> }>,
+  calls: ReadonlyArray<{ name: string; args: Record<string, unknown>; result?: Record<string, unknown> | null }>,
   narration: string,
   heroLines: readonly HeroLine[] = [],
 ): Promise<{ note: string; heroFacts: number } | null> {
@@ -188,6 +189,16 @@ export async function runStage(
   const silent: string[] = [];
   const handed: StageMove[] = [];
   const thingKey = (thing: string) => withoutLeadingStopWords(textKey(thing), campaign.gameSettings.tableLanguage);
+  // What the master already handed over this turn, by the names the stage uses.
+  const nameOf = (ref: unknown) => {
+    const word = typeof ref === "string" ? ref.trim() : "";
+    const sheet = getSheetById(word);
+    const npc = listNpcs(campaign.id).find((entry) => entry.castSheetId === word || entry.companionSheetId === word);
+    return npc?.name ?? sheet?.name ?? word;
+  };
+  const recorded: StageMove[] = calls
+    .filter((call) => call.name === "handle_item" && call.args.action === "hand" && typeof call.args.item === "string" && call.result?.ok === true)
+    .map((call) => ({ thing: String(call.args.item), from: nameOf(call.args.characterId), to: nameOf(call.args.toCharacterId) }));
   const waiting = new Set(order.map((npc) => npc.id));
   // Every mind reacts to the same moment at once (a local model serves them
   // side by side); only the referee goes in order, so each outcome stands on
@@ -234,6 +245,9 @@ export async function runStage(
       // refuses did not happen, and the narrator is told so.
       const undone: string[] = [];
       for (const move of settled.branch.moves) {
+        if (takeRecorded(move, recorded, thingKey)) {
+          continue;
+        }
         const moved = moveThing(campaign, turnId, move, actor.name, people, heroLines, thingKey);
         if ("done" in moved) {
           handed.push(moved.done);

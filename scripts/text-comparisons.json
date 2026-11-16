@@ -16,6 +16,7 @@
   "sites": {
     "components/ui/LobbyIcon.tsx#str-key": [["key",1,"fixed heading-glyph keys select decorative fittings"]],
     "lib/appearance-themes.ts#str-list": [["key",1,"registered icon keys define the checked picker and lobby symbol vocabulary, not player-written text"]],
+    "lib/dm/npc-stage.ts#str-eq": [["key",1,"the hand action"]],
     "lib/dm/cast-sheet-refs.ts#str-list": [["key",1,"tool names and argument fields"]],
     "lib/dm/npc-state-tools.ts#str-eq": [["key",1,"tiers, conditions, sheet kinds and tool names"]],
     "lib/dm/cast-sheet-refs.ts#str-eq": [["key",2,"tiers, conditions, sheet kinds and tool names"]],

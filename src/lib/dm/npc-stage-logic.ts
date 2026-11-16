@@ -185,6 +185,29 @@ function heroNamedIt(said: string, line: string, words: string, carries: readonl
   return Boolean(word) && carries.filter((thing) => head(thing) === word).length === 1 && spoken.includes(` ${word} `);
 }
 
+// A move the master already made this turn (handle_item hand before the
+// stage): the stage's referee telling the same hand-over is that one, not a
+// second (the Zattera, 2026-11-16: Brakk put a quarter of fish in Amleth's
+// hand, the master recorded it, Amleth "accepted it" on the stage and got
+// another). Each recorded move answers one stage move, and is used up.
+export function takeRecorded(move: StageMove, recorded: StageMove[], keyOf: ThingKey = textKey): boolean {
+  const thing = keyOf(move.thing);
+  const index = recorded.findIndex((done) => {
+    const key = keyOf(done.thing);
+    return (
+      textKey(done.from) === textKey(move.from) &&
+      textKey(done.to) === textKey(move.to) &&
+      Boolean(key && thing) &&
+      (key.includes(thing) || thing.includes(key))
+    );
+  });
+  if (index < 0) {
+    return false;
+  }
+  recorded.splice(index, 1);
+  return true;
+}
+
 // What the server does with one move, or why it does not: the acting
 // character is on one side of it, a hero is never the one who gives it up,
 // and only people present take part.
