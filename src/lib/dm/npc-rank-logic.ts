@@ -13,12 +13,13 @@ import { containsPhrase, textKey } from "../language/text-logic.ts";
 
 export const NPC_PROMPT_MAX = 20;
 
-export type RankableNpc = { name: string; location: string; aliases?: string[] };
+export type RankableNpc = { name: string; location: string; aliases?: string[]; inView?: boolean };
 
 export function rankNpcsForPrompt<T extends RankableNpc>(npcs: readonly T[], moment: { location: string; text: string }): T[] {
   const here = textKey(moment.location);
   const tier = (npc: T): number => {
-    if (here && npc.location && textKey(npc.location) === here) {
+    // A prisoner goes where their captor goes (npc_state): never off the list.
+    if (npc.inView || (here && npc.location && textKey(npc.location) === here)) {
       return 0;
     }
     if (moment.text && [npc.name, ...(npc.aliases ?? [])].some((name) => name && containsPhrase(moment.text, name))) {

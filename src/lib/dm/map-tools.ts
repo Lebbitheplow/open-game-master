@@ -135,6 +135,9 @@ export function createBattleMapForEncounter(
   ambush = false,
   // The party inside a building, the enemies outside (issue 743).
   building?: BuildingPlan,
+  // Rows on the party's side (the NPCs it travels with,
+  // src/lib/dm/party-npcs-fight.ts): they stand among the party.
+  allies: EncounterEnemy[] = [],
 ): { map: BattleMap; formation: string; distance?: string; building?: string } | null {
   const location = getCurrentLocation(campaign.id);
   const askedTiles = distanceFeet ? Math.max(1, Math.round(distanceFeet / TILE_FEET)) : undefined;
@@ -144,7 +147,7 @@ export function createBattleMapForEncounter(
     // The place itself may be the building: an inn's own ambience would draw
     // the yard as more inn, so the ground outside it is open ground.
     scene: building && !holdsBuilding(ground) ? null : ground,
-    pcCount: sheets.length,
+    pcCount: sheets.length + allies.length,
     enemyCount: enemies.length,
     enemyDistanceTiles: askedTiles,
     ambush,
@@ -153,7 +156,7 @@ export function createBattleMapForEncounter(
     ? drawBuilding(drawn, {
         plan: building,
         seed: fnv1a(encounter.id),
-        pcCount: sheets.length,
+        pcCount: sheets.length + allies.length,
         enemyFootprints: enemies.map((enemy) => footprintForSize(enemy.stats.size)),
         enemyDistanceTiles: askedTiles,
       })
@@ -163,11 +166,13 @@ export function createBattleMapForEncounter(
   // its tokens are written together: a failure leaves no board without its
   // tokens (issue 741).
   const taken = new Set<number>();
-  const partySpots = spotsForTokens(generated, generated.pcSpawns, sheets.length, taken);
+  const partySpots = spotsForTokens(generated, generated.pcSpawns, sheets.length + allies.length, taken);
   const enemySpots = spotsForTokens(generated, generated.enemySpawns, enemies.length, taken);
   // The party stands by its travel formation: the front of it nearest the
   // enemy, or the rear when they came from behind (formation-logic.ts).
   const formation = placeByFormation(sheets, partySpots, enemySpots, getParty(campaign.id).marchingOrder, from);
+  const heroSpots = new Set([...formation.spots.values()].map((spot) => `${spot.x},${spot.y}`));
+  const allySpots = partySpots.filter((spot) => !heroSpots.has(`${spot.x},${spot.y}`));
   const map = getDatabase().transaction(() => {
     const created = createBattleMap({
       encounterId: encounter.id,
@@ -195,6 +200,10 @@ export function createBattleMapForEncounter(
         name: enemy.displayName,
         spot: enemySpots[index],
       })),
+      ...allies.flatMap((ally, index) => {
+        const spot = allySpots[index] ?? partySpots[partySpots.length - 1];
+        return spot ? [{ kind: "enemy" as const, refId: ally.id, name: ally.displayName, spot }] : [];
+      }),
     ]);
     return created;
   })();

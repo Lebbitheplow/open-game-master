@@ -335,6 +335,10 @@ export type DmGameState = {
     identity?: string;
     // From the table's WorldForge: hidden truth, ties, secrets kept.
     world?: string;
+    // Prisoner, bound, down, with the party (npc_state); "" for free and standing.
+    state?: string;
+    // Kept near the roster's head wherever the record puts them (a prisoner).
+    inView?: boolean;
   }>;
   // Server-tracked standing between each character and each NPC/companion,
   // one bounded line each (src/lib/dm/relationship-logic.ts).
@@ -1371,7 +1375,7 @@ export function buildGameStateBlock(state: DmGameState): string {
         .slice(0, NPC_PROMPT_MAX)
         .map(
           (npc) =>
-            `- ${npc.name}: ${npc.attitude}${npc.location ? `, at ${npc.location}` : ""}${npc.identity ? `, ${npc.identity}` : ""}${npc.trait ? ` (${npc.trait.slice(0, 120)})` : ""}${npc.aliases?.length ? ` [also called: ${npc.aliases.slice(0, 4).join(", ")}]` : ""}${npc.witnessNote ? ` | ${npc.witnessNote}` : ""}${npc.agency ? ` | ${npc.agency}` : ""}${npc.statBlock ? ` | fights as ${npc.statBlock.startsWith("homebrew:") ? "the GM's own stat block" : npc.statBlock.replace(/-/g, " ")} (start_encounter or add_enemies with monster set to their name)` : ""}${npc.world ? ` | ${npc.world}` : ""}`,
+            `- ${npc.name}: ${npc.attitude}${npc.state ? `, ${npc.state}` : ""}${npc.location ? `, at ${npc.location}` : ""}${npc.identity ? `, ${npc.identity}` : ""}${npc.trait ? ` (${npc.trait.slice(0, 120)})` : ""}${npc.aliases?.length ? ` [also called: ${npc.aliases.slice(0, 4).join(", ")}]` : ""}${npc.witnessNote ? ` | ${npc.witnessNote}` : ""}${npc.agency ? ` | ${npc.agency}` : ""}${npc.statBlock ? ` | fights as ${npc.statBlock.startsWith("homebrew:") ? "the GM's own stat block" : npc.statBlock.replace(/-/g, " ")} (start_encounter or add_enemies with monster set to their name)` : ""}${npc.world ? ` | ${npc.world}` : ""}`,
         )
         .join("\n")}${left > 0 ? `\n(${left} more tracked NPC${left === 1 ? "" : "s"} elsewhere, not listed here; naming one brings their entry back, and recall_story finds what happened with them.)` : ""}`,
     );

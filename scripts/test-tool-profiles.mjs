@@ -104,6 +104,9 @@ await test("the table's state and the players' words open groups without being a
   assert.ok(offered({ englishPlayerText: "I try to jump the chasm." }).has("apply_hazard"));
   assert.ok(!offered({ englishPlayerText: "I ask the innkeeper about the missing girl." }).has("travel"), "ordinary talk opens nothing");
   assert.deepEqual([...profiles.autoGroups({ inEncounter: true, legendary: true })], ["legendary"]);
+  // Someone tracked out of a fight: npc_state rides, and its rule with it.
+  assert.deepEqual([...profiles.autoGroups({ inEncounter: false, trackedNpcs: true })], ["custody"]);
+  assert.deepEqual(profiles.TOOL_GROUPS.custody.tools, ["npc_state"]);
 });
 
 await test("a compacted tool keeps its name, kinds, enums and what is required; more_tools returns the rest", () => {

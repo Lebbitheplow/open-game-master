@@ -228,6 +228,11 @@ const RECIPES = {
   check_notice: one("calm", (c) => ({ difficulty: "moderate", characterIds: [c.hero.id, c.mage.id] })),
   set_npc: one("calm", () => ({ name: "Old Marta", attitude: "friendly", trait: "hums while she works", gender: "female" })),
   npc_reaction: one("calm", () => ({ name: "Gate Sergeant", gender: "male" }), { dice: [4, 4] }),
+  // A body's state (npcs.state_json): taken, tied and brought along, all
+  // written back by the revert.
+  npc_state: one("calm", () => ({ name: "Old Marta", custody: "captive", heldBy: "the party", restraint: "bound", withParty: true, disarmed: true }), {
+    before: (c) => must(c, "set_npc", { name: "Old Marta", attitude: "hostile", trait: "hums while she works", gender: "female" }),
+  }),
   social_check: one("calm", (c) => ({ characterId: c.hero.id, npc: "Old Marta", approach: "persuade" }), {
     before: (c) => must(c, "set_npc", { name: "Old Marta", attitude: "indifferent", trait: "hums while she works", gender: "female" }),
     dice: [15],

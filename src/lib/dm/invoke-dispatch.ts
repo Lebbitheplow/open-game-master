@@ -34,6 +34,7 @@ import {
 } from "@/lib/dm/relationship-tools";
 import { handleTakeRest } from "@/lib/dm/rest-tools";
 import { handleNpcReaction, handleSetNpc, handleSocialCheck } from "@/lib/dm/social-tools";
+import { handleNpcState } from "@/lib/dm/npc-state-tools";
 import { handlePartyStash } from "@/lib/dm/party-tools";
 import { handleClearEffect, handleSetEffect } from "@/lib/dm/effect-tools";
 import { handleEndScene, handleSceneCheck, handleStartScene } from "@/lib/dm/scene-tools";
@@ -264,6 +265,8 @@ function engineCall(
       return handleDismissPet(campaign, rawArguments, sheets, sheetsById);
     case "set_npc":
       return handleSetNpc(campaign, rawArguments);
+    case "npc_state":
+      return handleNpcState(campaign, rawArguments);
     case "npc_reaction":
       return handleNpcReaction(campaign, turn, rawArguments);
     case "social_check":

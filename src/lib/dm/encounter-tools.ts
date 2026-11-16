@@ -59,6 +59,7 @@ import { fightingParty, MAX_COMBATANTS, rosterBudget } from "@/lib/dm/party-budg
 import { suggestEnemies } from "@/lib/bestiary";
 import { enemyRequestSchema, groupInitiatives, resolveEnemyRequests } from "@/lib/dm/encounter-spawn";
 import { arrivalsFor, unknownReturning } from "@/lib/dm/foe-return";
+import { fieldPartyNpcs } from "@/lib/dm/party-npcs-fight";
 import { isKnockedOut } from "@/lib/dm/knockout";
 import { BUILDING_SIDES, MAX_OPENINGS, holdsBuilding } from "@/lib/battlemap/building";
 import { fieldSheetFoes, sheetFoeIds, turnedFoes } from "@/lib/dm/sheet-foes";
@@ -498,12 +499,16 @@ function handleStartEncounter(
   );
   initLegendaryPools(encounter, enemies, args.lair === true, kept);
   saveEncounter(encounter);
+  // Whoever travels with the party is at its fight, on its side
+  // (src/lib/dm/party-npcs-fight.ts): the captain, her guards, the prisoners
+  // on the cart, struck and striking like anyone on the board.
+  const allies = fieldPartyNpcs(campaign, encounter, new Set(resolved.flatMap((entry) => (entry.npcId ? [entry.npcId] : []))));
   const caughtUnawares = Boolean(args.ambush) || (args.surprised !== undefined && args.surprised !== "none");
   // A board that could not be written ends the fight it was for: an open fight
   // with no board has nobody to move and no way to go on (issue 741).
   let placed: ReturnType<typeof createBattleMapForEncounter>;
   try {
-    placed = createBattleMapForEncounter(campaign, encounter, enemies, sheets, args.distanceFeet, args.scene, args.from, caughtUnawares, args.building);
+    placed = createBattleMapForEncounter(campaign, encounter, enemies, sheets, args.distanceFeet, args.scene, args.from, caughtUnawares, args.building, allies);
   } catch (error) {
     endEncounter(encounter.id, "the board could not be set");
     throw error;
@@ -581,6 +586,12 @@ function handleStartEncounter(
         }
       : {}),
     ...(shares.length ? { shares: shares.join(" ") } : {}),
+    ...(allies.length
+      ? {
+          allies: allies.map((ally) => ({ enemyId: ally.id, name: ally.displayName, ac: ally.ac, hp: `${ally.currentHp}/${ally.maxHp}`, ...(ally.conditions.length ? { conditions: ally.conditions.join(", ") } : {}) })),
+          alliesNote: `${allies.map((ally) => ally.displayName).join(", ")} travel with the party and stand on its side of the board, with initiative and a token: foes may strike them, and on their turns you play them with the enemy tools against the foes (a prisoner in bonds does nothing). Each chooses for themselves whether and whom to strike, as you judge them, heeding orders like a call to hold. A turn you leave unplayed, they hold; the server never swings for them. If one falls, their record follows when the fight ends.`,
+        }
+      : {}),
     difficulty: `${evaluation.verdict} for this party`,
     ...(evaluation.verdict === "deadly" || evaluation.verdict === "beyond_deadly"
       ? { warning: "This fight can kill characters. Telegraph the danger." }
@@ -2206,6 +2217,13 @@ function playSkippedEnemyNow(
       return [standStillLine(name, { why: "incapacitated", by })];
     }
     return allowed.reason === "surprised" ? [standStillLine(name, { why: "surprised" })] : [];
+  }
+  // An NPC travelling with the party (src/lib/dm/party-npcs-fight.ts) is a
+  // person, not a monster: whether they strike is the narrator's to play,
+  // and an order to hold is heard. A turn nobody played, they hold rather
+  // than the server swinging for them.
+  if (enemy.npcId && sideOf(live, "enemy", enemy.id, enemy) === "party") {
+    return [standStillLine(name, { why: "other" })];
   }
   // Turned, fleeing Fear or told to flee, it spends its turn running: its
   // attack was played here and refused, so it stood still (issue #621).
