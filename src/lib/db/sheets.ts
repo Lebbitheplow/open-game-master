@@ -5,7 +5,7 @@ import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { touchCampaign } from "@/lib/db/campaigns";
 import { effectiveMaxHp, endedByRegain, maxHpRiders, removeConditions, tempHpClaims, withoutTempHpClaims, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { settlePact, vanishStrays } from "@/lib/dm/mt-srd-pact";
-import { endedByFallingUnconscious, endedByLosingWeapon, fellUnconscious, rageSuspension } from "@/lib/dm/mt-srd-unconscious";
+import { endedByFallingUnconscious, endedByLosingWeapon, fellUnconscious, proneAsItFalls, rageSuspension } from "@/lib/dm/mt-srd-unconscious";
 import { keptFromDrain } from "@/lib/dm/ar-ws-inured";
 import { populateFeaturesForClasses } from "@/lib/srd/features";
 import { populateResources } from "@/lib/srd/class-resources";
@@ -1060,6 +1060,8 @@ export function patchSheet(
   }
   // A fall unconscious ends a rage and a sacred weapon, whichever route laid
   // it, and a sacred weapon ends with the weapon gone (mt-srd-unconscious.ts).
+  // And the one who falls unconscious falls prone, whichever route laid it.
+  next.conditions = proneAsItFalls(existing.conditions, next.conditions) ?? next.conditions;
   const asleep = [...endedByFallingUnconscious(existing.conditions, next.conditions), ...endedByLosingWeapon(next)];
   if (asleep.length) {
     const awake = removeConditions(next.conditions, next.conditionMeta as ConditionMetaMap, asleep);

@@ -15,6 +15,7 @@ import { noteDominationShift } from "@/lib/db/side-watch";
 import { noteGrounding } from "@/lib/db/flight-watch";
 import { publishPersisted } from "@/lib/events";
 import { isKnockedOut } from "@/lib/dm/knockout";
+import { proneAsItFalls } from "@/lib/dm/mt-srd-unconscious";
 import { storedGender, type Gender } from "@/lib/gender";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { pickedGender } from "@/lib/actor-sex-logic";
@@ -742,9 +743,12 @@ export function patchEnemyConditions(
     return null;
   }
   const before = getEnemy(enemyId);
+  // A creature that falls unconscious falls prone, whichever route laid it
+  // (mt-srd-unconscious.ts).
+  const fallen = proneAsItFalls(before?.conditions ?? [], conditions) ?? conditions;
   // The cap drops the oldest free mark, never the condition just laid
   // (condition-cap-logic.ts).
-  const kept = keptConditions(conditions, conditionMeta ?? before?.conditionMeta);
+  const kept = keptConditions(fallen, conditionMeta ?? before?.conditionMeta);
   if (conditionMeta !== undefined) {
     getDatabase()
       .prepare(

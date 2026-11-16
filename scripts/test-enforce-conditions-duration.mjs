@@ -76,15 +76,18 @@ function throughTurnOf(id) {
 for (const condition of SRD_CONDITIONS) {
   await test(`${condition}: set, stored under its SRD name, and cleared`, async () => {
     kit.reset(hero.id);
+    // An unconscious creature falls prone, and stays down when it wakes
+    // (SRD 5.1, Unconscious).
+    const fell = condition === "unconscious" ? ["prone"] : [];
     const upper = await set({ condition: ` ${condition.toUpperCase()} ` });
     assert.equal(upper.ok, true, upper.error);
-    assert.deepEqual(held(), [condition]);
+    assert.deepEqual(held(), [condition, ...fell]);
     const again = await set({ condition });
     assert.equal(again.ok, true);
-    assert.deepEqual(held(), [condition], "a creature either has a condition or does not");
+    assert.deepEqual(held(), [condition, ...fell], "a creature either has a condition or does not");
     const gone = await clear(condition);
     assert.equal(gone.ok, true, gone.error);
-    assert.deepEqual(held(), []);
+    assert.deepEqual(held(), fell);
     assert.deepEqual(meta(), {});
   });
 }

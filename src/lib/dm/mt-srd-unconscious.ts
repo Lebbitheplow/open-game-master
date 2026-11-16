@@ -42,6 +42,16 @@ export function fellUnconscious(before: readonly string[], after: readonly strin
   return holds(after, UNCONSCIOUS) && !holds(before, UNCONSCIOUS);
 }
 
+// SRD 5.1, Unconscious: the creature "falls prone". Only the drop to 0 hit
+// points wrote it, so a goblin put to Sleep, or a hero dropped by a drow's
+// dart, woke on its feet: no half its speed to stand, no advantage for the
+// next sword. Asked by both doors every route writes through (patchSheet,
+// patchEnemyConditions). The conditions with prone added, or null when this
+// write knocks nobody out or they already lie prone.
+export function proneAsItFalls(before: readonly string[], after: readonly string[]): string[] | null {
+  return fellUnconscious(before, after) && !holds(after, "prone") ? [...after, "prone"] : null;
+}
+
 // The conditions that go as the sheet falls unconscious: empty unless this
 // write is the one that knocks them out.
 export function endedByFallingUnconscious(before: readonly string[], after: readonly string[]): string[] {
