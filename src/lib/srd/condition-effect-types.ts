@@ -109,6 +109,9 @@ export type ConditionEffectRow = {
   // Attack rolls AGAINST the holder are made at disadvantage (blur,
   // protected) or advantage (faerie fire).
   attacksAgainstDisadvantage?: boolean;
+  // That disadvantage fools only sight: an attacker whose blindsight or
+  // truesight reaches the holder is unaffected (Blur).
+  sightOnly?: boolean;
   attacksAgainstAdvantage?: boolean;
   // Attack rolls against the holder by creatures of these types only are
   // made at disadvantage (Protection from Evil and Good).

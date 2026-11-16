@@ -616,7 +616,7 @@ export function attackContext(input: {
     notes.push("target is dodging: disadvantage");
   }
   // Effect conditions on the target (blur, faerie fire, protected).
-  const incoming = conditionIncomingAttackState(input.targetConditions, input.attackerType);
+  const incoming = conditionIncomingAttackState(input.targetConditions, input.attackerType, Boolean(attackerSees.blindsight || attackerSees.truesight));
   sources.push(...incoming.sources);
   notes.push(...incoming.notes);
 

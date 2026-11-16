@@ -7,7 +7,7 @@ import "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { freshTurn } from "./lib/enforce-spells.mjs";
 import { caster, closeTables, enemyOf, table } from "./lib/enforce-spell-kit.mjs";
-import { combatKit, DUMMY, TRAINED } from "./lib/enforce-combat.mjs";
+import { combatKit, d20Faces, DUMMY, TRAINED } from "./lib/enforce-combat.mjs";
 
 const { test, finish } = suite("test-audit1116-effects");
 const { getDatabase } = await import("../src/lib/db/core.ts");
@@ -312,6 +312,33 @@ await test("Y07: a blinded attacker strikes the caster, not a duplicate", async 
 await test("Y07: an attacker that sees by sight alone still meets the duplicates", async () => {
   const { world, wizard } = await mirrored();
   assert.ok(world.sheet(wizard.id).conditions.includes("mirror image (2)"), "a duplicate took it");
+});
+
+// ---- Y08: Blur does not trouble an attacker that sees without its eyes ----
+
+// SRD 5.1, Blur: "An attacker is immune to this effect if it doesn't rely
+// on sight, as with blindsight, or can see through illusions, as with
+// truesight." The registry gave every attacker disadvantage against a
+// blurred character, a dragon's bite included.
+async function blurredAttackD20s(stats) {
+  const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
+  const { world, sheets: [wizard], enemies: [goblin] } = await table([caster("wizard", "int", ["Blur"])], 1, stats);
+  const cast = await world.invoke("cast_buff", { characterId: wizard.id, spell: "Blur" });
+  assert.equal(cast.ok, true, cast.error);
+  world.dice(15, 15, 3);
+  const out = await world.invoke("enemy_attack", { enemyId: goblin.id, targetCharacterId: wizard.id, characterId: wizard.id });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  const roll = listRecentRolls(world.campaignId, 10).find((entry) => entry.kind === "attack");
+  return d20Faces(roll).length;
+}
+
+await test("Y08: an attacker with blindsight rolls one d20 against a blurred caster", async () => {
+  assert.equal(await blurredAttackD20s({ senses: { blindsight: 60, passivePerception: 10 } }), 1, "no disadvantage");
+});
+
+await test("Y08: an attacker that sees by sight alone rolls with disadvantage against a blurred caster", async () => {
+  assert.equal(await blurredAttackD20s({}), 2);
 });
 
 closeTables();
