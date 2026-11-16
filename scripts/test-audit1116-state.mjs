@@ -174,4 +174,28 @@ await test("V06: enemy_attack reports the damage a resistant hero took, with the
   assert.match(line, new RegExp(`HIT for ${lost}\\b`), line);
 });
 
+// V07. SRD 5.1, Damage Resistance and Vulnerability: "damage of that type
+// is halved against it." aoe_damage landed a trap's 20 slashing on a raging
+// barbarian as 10, but its row said `damage: 20` with no resistance note:
+// apply_damage's own result carried no damageApplied, so the row's "what
+// landed" was never filled, and the GM narrated twenty.
+await test("V07: an area's row says what a resistant hero took, and why; apply_damage says it too", async () => {
+  await kit.endFight();
+  const hero = world.addHero({ class: "barbarian", level: 3, maxHp: 44, proficiencies: { ...TRAINED } });
+  await kit.fight(1);
+  world.patch(hero.id, { conditions: ["raging"] });
+  world.clearDice();
+  world.dice(2, 6, 6, 6, 6);
+  const before = world.sheet(hero.id).currentHp;
+  const area = await world.invoke("aoe_damage", { characterIds: [hero.id], saveAbility: "dex", dc: 25, damage: "4d6", type: "slashing", reason: "Blade trap" });
+  world.clearDice();
+  assert.equal(area.ok, true, area.error);
+  const lost = before - world.sheet(hero.id).currentHp;
+  const [row] = area.result.results;
+  assert.equal(row.damageApplied ?? row.damage, lost, `the hero lost ${lost}: ${JSON.stringify(row)}`);
+  assert.match(row.resistance ?? "", /resistant/, "the row does not say why");
+  const hurt = await world.invoke("apply_damage", { characterId: hero.id, amount: 8, type: "slashing" });
+  assert.equal(hurt.result.damageApplied, 4, `apply_damage: ${JSON.stringify(hurt.result)}`);
+});
+
 finish();

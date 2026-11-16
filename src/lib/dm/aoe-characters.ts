@@ -198,6 +198,10 @@ export function aoeOnCharacters(input: {
       if (applied.damageByType) {
         row.damageByType = applied.damageByType;
       }
+      // Why it differs: the GM narrated the save's figure with no word of it.
+      if (typeof applied.resistance === "string") {
+        row.resistance = applied.resistance;
+      }
       if (applied.dying) {
         row.dying = applied.dying;
       }
