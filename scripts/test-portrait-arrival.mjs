@@ -9,6 +9,9 @@ import { register } from "node:module";
 register("./lib/register-alias.mjs", import.meta.url);
 
 const { createElement } = await import("react");
+const { translate } = await import("../src/lib/messages-logic.ts");
+// The English line, as the components read on the server.
+const t = (key, vars) => translate("en", key, vars);
 const { renderToStaticMarkup } = await import("react-dom/server");
 const arrival = await import("../src/app/characters/portrait-arrival.ts");
 const { PortraitToast, RosterPortraitSlot, RosterPortraitStatus } = await import("../src/app/characters/RosterPortrait.tsx");
@@ -87,7 +90,7 @@ await test("the ready announcement fires once, on the read where it lands", () =
   assert.deepEqual(read([painted]), [{ id: "c1", name: "Thornwick" }], "it lands: one arrival");
   assert.deepEqual(read([painted]), [], "the next poll is not news");
   assert.deepEqual(read([painted]), [], "nor the one after");
-  assert.equal(arrival.portraitReadyLine("Thornwick"), "Thornwick's portrait is ready");
+  assert.equal(arrival.portraitReadyLine(t, "Thornwick"), "Thornwick's portrait is ready");
 });
 
 await test("a portrait already painted, new to the list, or failed is not announced as ready", () => {

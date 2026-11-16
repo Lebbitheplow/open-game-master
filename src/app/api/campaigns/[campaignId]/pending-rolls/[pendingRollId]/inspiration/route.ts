@@ -7,6 +7,7 @@ import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { inspiredRoll } from "@/lib/dm/pending-inspiration";
 import { spendInspirationCounter } from "@/lib/dm/roll-riders";
 import { publishPersisted } from "@/lib/events";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,7 +17,7 @@ export const dynamic = "force-dynamic";
 // the rule's own sentence (src/lib/dm/pending-inspiration.ts); nothing is
 // spent when it refuses.
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ campaignId: string; pendingRollId: string }> },
 ) {
   const { campaignId, pendingRollId } = await params;
@@ -24,29 +25,32 @@ export async function POST(
   if (isErrorResponse(context)) {
     return context;
   }
+  // The card shows the refusal raw (PendingRollCard.tsx inspire), so it
+  // answers in the asker's language.
+  const t = requestT(request);
   // Inspiration is spent on a roll the break holds parked.
-  const paused = refuseDuringBreak(campaignId);
+  const paused = refuseDuringBreak(campaignId, undefined, request);
   if (paused) {
     return paused;
   }
 
   const pending = getPendingRoll(pendingRollId);
   if (!pending || pending.campaignId !== campaignId) {
-    return Response.json({ error: "Roll not found." }, { status: 404 });
+    return Response.json({ error: t("Roll not found.") }, { status: 404 });
   }
   if (pending.status !== "pending") {
-    return Response.json({ error: "That roll was already resolved." }, { status: 409 });
+    return Response.json({ error: t("That roll was already resolved.") }, { status: 409 });
   }
   if (pending.userId !== context.user.id) {
-    return Response.json({ error: "This is not your roll." }, { status: 403 });
+    return Response.json({ error: t("This is not your roll.") }, { status: 403 });
   }
   // Advantage is chosen before the d20 is thrown, and these dice are thrown.
   if (pending.thrown) {
-    return Response.json({ error: "The dice have already landed, so Inspiration can no longer give this roll advantage." }, { status: 409 });
+    return Response.json({ error: t("The dice have already landed, so Inspiration can no longer give this roll advantage.") }, { status: 409 });
   }
   const sheet = pending.characterId ? getSheetById(pending.characterId) : null;
   if (sheet && sheet.userId !== context.user.id) {
-    return Response.json({ error: "Only the character's own player spends their Inspiration." }, { status: 403 });
+    return Response.json({ error: t("Only the character's own player spends their Inspiration.") }, { status: 403 });
   }
 
   const inspired = inspiredRoll(pending, sheet);
@@ -56,7 +60,7 @@ export async function POST(
   // The roll first, so a roll resolved a moment ago never costs the award.
   const updated = setPendingAdvantage(pending.id, inspired.expression, inspired.advantage);
   if (!updated || !sheet) {
-    return Response.json({ error: "That roll was already resolved." }, { status: 409 });
+    return Response.json({ error: t("That roll was already resolved.") }, { status: 409 });
   }
   const patch = { resources: spendInspirationCounter(sheet.resources) };
   const spent = patchSheet(sheet.id, patch);

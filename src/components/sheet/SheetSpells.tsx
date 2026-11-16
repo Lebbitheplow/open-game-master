@@ -18,9 +18,11 @@ import {
   type CasterView,
 } from "@/lib/srd/spell-prep";
 import { SpellBook, type SpellTile } from "./SpellBook";
+import { useLocale, useT } from "@/lib/locale";
 import { useSpellLookups, useWiderSpellPool, type PoolSpell } from "./useSpellPool";
 import { textKey } from "@/lib/language/text-logic";
 import { revisedOnlySpellProblem } from "@/lib/content/edition";
+import { contentName } from "@/lib/content/names";
 import { speciesSpellsShown, type SpeciesSpellSheet } from "@/lib/srd/species-spell-view";
 
 // A character's spells as a spell book, one per caster class. The owner of a
@@ -48,6 +50,7 @@ export function SheetSpells({
   // The owner, in a campaign: may change prepared spells.
   editable?: boolean;
 }) {
+  const t = useT();
   // A character whose class casts nothing may still hold a feat's spells
   // (Fey Touched's misty step, Ritual Caster's book, src/lib/srd/feat-spells.ts):
   // one book, read as spells known, with no slots to prepare from.
@@ -74,7 +77,7 @@ export function SheetSpells({
       },
     ];
   }
-  const species = sheet.race ? speciesSpellsShown(sheet as SpeciesSpellSheet) : [];
+  const species = sheet.race ? speciesSpellsShown(sheet as SpeciesSpellSheet, t) : [];
   if (!views.length && !species.length) {
     return null;
   }
@@ -97,18 +100,19 @@ export function SheetSpells({
 // The spells the species gives (src/lib/srd/species-spell-view.ts): known
 // for good, never prepared or swapped, each tile saying what it costs.
 function SpeciesBook({ entries, titled }: { entries: ReturnType<typeof speciesSpellsShown>; titled: boolean }) {
+  const t = useT();
   const tiles: SpellTile[] = entries.map((entry) => ({ name: entry.name, level: entry.level, state: "granted", note: entry.note }));
   return (
     <div data-species-spell-book>
-      {titled ? <p className="eyebrow mb-1.5 text-[10px] text-amber-400/80">From the species</p> : null}
+      {titled ? <p className="eyebrow mb-1.5 text-[10px] text-amber-400/80">{t("From the species")}</p> : null}
       <SpellBook
         tiles={tiles}
         maxLevel={Math.max(0, ...entries.map((entry) => entry.level))}
-        counters={[{ label: "From the species", value: entries.length }]}
+        counters={[{ label: t("From the species"), value: entries.length }]}
         canToggle={() => false}
         footer={
           <p className="mt-2 text-[11px] text-stone-500">
-            Known by nature, with no spell slot unless the tile says one casts it too. Cast them like any spell.
+            {t("Known by nature, with no spell slot unless the tile says one casts it too. Cast them like any spell.")}
           </p>
         }
       />
@@ -127,6 +131,8 @@ function CasterBook({
   editable: boolean;
   showClass: boolean;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: "note" | "error"; text: string } | null>(null);
@@ -161,7 +167,7 @@ function CasterBook({
   const full = editing && view.style !== "known" && cap !== null && preparedCount(view) >= cap.count;
   const tiles = buildTiles(view, [...lookups.values(), ...(editing ? pool : [])], editing).map((tile) =>
     full && (tile.state === "available" || tile.state === "inBook") && tile.level !== 0
-      ? { ...tile, blocked: "Prepared list full" }
+      ? { ...tile, blocked: t("Prepared list full") }
       : tile,
   );
   // A 2024-only spell an older sheet still lists: it is not cast here, and
@@ -175,16 +181,16 @@ function CasterBook({
     ),
   ];
   const counters = [
-    ...(view.cantrips.length ? [{ label: "Cantrips", value: view.cantrips.length }] : []),
+    ...(view.cantrips.length ? [{ label: t("Cantrips", { context: "sheet.spells.cantrips" }), value: view.cantrips.length }] : []),
     view.style === "known"
-      ? { label: "Known", value: heldSpells(view).filter((name) => !isGranted(view, name)).length, max: cap?.count }
+      ? { label: t("Known", { context: "sheet.spells.known" }), value: heldSpells(view).filter((name) => !isGranted(view, name)).length, max: cap?.count }
       : {
-          label: "Prepared",
+          label: t("Prepared"),
           value: preparedCount(view),
           max: cap?.count,
-          extra: view.pending.length ? `(${view.pending.length} at long rest)` : undefined,
+          extra: view.pending.length ? t("({count} at long rest)", { count: view.pending.length }) : undefined,
         },
-    ...(view.style === "spellbook" ? [{ label: "Spellbook", value: spellbookOf(view).length }] : []),
+    ...(view.style === "spellbook" ? [{ label: t("Spellbook"), value: spellbookOf(view).length }] : []),
   ];
 
   async function toggle(tile: SpellTile) {
@@ -201,7 +207,7 @@ function CasterBook({
       const data = (await response.json().catch(() => ({}))) as { error?: string; note?: string };
       setMessage(
         response.ok
-          ? { tone: "note", text: data.note ?? "Done." }
+          ? { tone: "note", text: data.note ?? t("Done.", { context: "sheet.spells.done" }) }
           : {
               tone: "error",
               // A 404 means the server answering does not have this action
@@ -209,12 +215,12 @@ function CasterBook({
               text:
                 data.error ??
                 (response.status === 404
-                  ? "The server does not know how to change prepared spells yet (HTTP 404). Restart or update the server this table runs on."
-                  : `Could not change that spell (HTTP ${response.status}).`),
+                  ? t("The server does not know how to change prepared spells yet (HTTP 404). Restart or update the server this table runs on.")
+                  : t("Could not change that spell (HTTP {status}).", { status: response.status })),
             },
       );
     } catch {
-      setMessage({ tone: "error", text: "Could not reach the server." });
+      setMessage({ tone: "error", text: t("Could not reach the server.", { context: "sheet.unreachable" }) });
     } finally {
       setBusy(false);
     }
@@ -223,7 +229,7 @@ function CasterBook({
   return (
     <div>
       {showClass ? (
-        <p className="eyebrow mb-1.5 text-[10px] text-amber-400/80">{titleCase(view.classId)}</p>
+        <p className="eyebrow mb-1.5 text-[10px] text-amber-400/80">{contentName("classes", titleCase(view.classId), locale)}</p>
       ) : null}
       <SpellBook
         tiles={tiles}
@@ -232,7 +238,7 @@ function CasterBook({
         busy={busy}
         onTile={editing ? toggle : undefined}
         canToggle={(tile) => tile.state !== "granted" && tile.level !== 0}
-        emptyText={editing ? (loading ? "Loading the class list..." : "Nothing to prepare at this level.") : "Nothing prepared at this level."}
+        emptyText={editing ? (loading ? t("Loading the class list...") : t("Nothing to prepare at this level.")) : t("Nothing prepared at this level.")}
         header={
           canPrepare ? (
             <button
@@ -247,25 +253,20 @@ function CasterBook({
                   : "ml-auto rounded-full border border-amber-500/50 px-3 py-0.5 text-xs text-amber-200 hover:bg-amber-400/10"
               }
             >
-              {editing ? "Done" : view.style === "spellbook" ? "Prepare from spellbook" : "Change prepared spells"}
+              {editing ? t("Done", { context: "sheet.spells.doneButton" }) : view.style === "spellbook" ? t("Prepare from spellbook") : t("Change prepared spells")}
             </button>
           ) : null
         }
         footer={
           <>
             {editing ? (
-              <p className="mt-2 text-[11px] text-stone-500">
-                Tap a spell to prepare it: it becomes ready after your next long rest. Tapping a
-                ready spell unprepares it at once. Cantrips and subclass spells never change.
-              </p>
+              <p className="mt-2 text-[11px] text-stone-500">{t("Tap a spell to prepare it: it becomes ready after your next long rest. Tapping a ready spell unprepares it at once. Cantrips and subclass spells never change.")}</p>
             ) : view.style === "known" && editable ? (
-              <p className="mt-2 text-[11px] text-stone-500">
-                You know these spells and always have them ready. You can swap one when you level up.
-              </p>
+              <p className="mt-2 text-[11px] text-stone-500">{t("You know these spells and always have them ready. You can swap one when you level up.")}</p>
             ) : null}
             {revised.length ? (
               <p role="note" className="mt-2 text-[11px] text-amber-200/90">
-                {revised.join(" ")} The character&apos;s next edit asks for it.
+                {t("{problems} The character's next edit asks for it.", { problems: revised.join(" ") })}
               </p>
             ) : null}
             {message ? (

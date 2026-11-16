@@ -17,6 +17,7 @@ import type { MapOption } from "@/app/workshop/encounters/types";
 import { RefPicker } from "@/app/workshop/tables/RefPicker";
 import { DictateField } from "@/components/DictateField";
 import { appendDictation } from "@/lib/dictation";
+import { useT } from "@/lib/locale";
 import { EncounterEvents } from "@/app/workshop/encounters/EncounterEvents";
 import { groundMapOf } from "@/app/workshop/encounters/EncounterGround";
 
@@ -44,6 +45,7 @@ export function EncounterExtras({
   onChange: (next: TemplateExtras) => void;
 }) {
   const slots = expandRoster(parseRoster(roster));
+  const t = useT();
   // Which slot the next tap on the map places; -1 is the party's entry.
   const [placing, setPlacing] = useState<number | null>(null);
   const set = (patch: Partial<TemplateExtras>) => onChange({ ...value, ...patch });
@@ -83,11 +85,11 @@ export function EncounterExtras({
         : null;
     })
     .filter((label): label is NonNullable<typeof label> => label !== null);
-  const props = value.entry ? [{ x: value.entry.x, y: value.entry.y, name: "Party enters", kind: "npc" as const }] : [];
+  const props = value.entry ? [{ x: value.entry.x, y: value.entry.y, name: t("Party enters"), kind: "npc" as const }] : [];
 
   return (
     <div className="panel space-y-3 rounded-xl p-3">
-      <SectionHead title="The plan" glyph="tab-battle" className="mb-0" />
+      <SectionHead title={t("The plan")} glyph="tab-battle" className="mb-0" />
 
       {slots.length ? (
         <ul className="stagger space-y-1">
@@ -101,7 +103,7 @@ export function EncounterExtras({
                   type="button"
                   disabled={!canPlace}
                   aria-pressed={placing === slot.slot}
-                  title={canPlace ? "Then tap the map where it starts" : "Link a prepared map to place it"}
+                  title={canPlace ? t("Then tap the map where it starts") : t("Link a prepared map to place it")}
                   onClick={() => setPlacing(placing === slot.slot ? null : slot.slot)}
                   className={cn(ui.btnSmall, chip, "min-w-28 text-left", placing === slot.slot && chipOn)}
                 >
@@ -110,9 +112,9 @@ export function EncounterExtras({
                 </button>
                 <input
                   value={override?.name ?? ""}
-                  placeholder="name"
+                  placeholder={t("name")}
                   maxLength={EXTRAS_LIMITS.name}
-                  aria-label={`${slot.label} name`}
+                  aria-label={t("{label} name", { label: slot.label })}
                   onChange={(event) => setOverride(slot.slot, { name: event.target.value })}
                   className={cn(field, "w-32 py-1.5")}
                 />
@@ -121,20 +123,20 @@ export function EncounterExtras({
                   fallback={1}
                   min={1}
                   max={EXTRAS_LIMITS.hp}
-                  suffix="hp"
-                  label={`${slot.label} hit points`}
+                  suffix={t("hp")}
+                  label={t("{label} hit points", { label: slot.label })}
                   onChange={(next) => setOverride(slot.slot, { hp: next === "" ? undefined : next })}
                 />
                 <button
                   type="button"
                   aria-pressed={hidden}
-                  title="Hidden when the fight opens"
+                  title={t("Hidden when the fight opens")}
                   onClick={() =>
                     set({ hidden: hidden ? value.hidden.filter((entry) => entry !== slot.slot) : [...value.hidden, slot.slot] })
                   }
                   className={cn(ui.btnSmall, addChip, hidden && "border-violet-700 bg-violet-950/40 text-violet-200")}
                 >
-                  <EyeOff className="size-3" /> {hidden ? "Hidden" : "Seen"}
+                  <EyeOff className="size-3" /> {hidden ? t("Hidden", { context: "workshop.encounters.hidden" }) : t("Seen")}
                 </button>
               </li>
             );
@@ -147,13 +149,13 @@ export function EncounterExtras({
               onClick={() => setPlacing(placing === -1 ? null : -1)}
               className={cn(ui.btnSmall, addChip, placing === -1 && chipOn)}
             >
-              <Flag className="size-3" /> Where the party comes in
+              <Flag className="size-3" /> {t("Where the party comes in")}
               {value.entry ? <span className="text-stone-500">({value.entry.x},{value.entry.y})</span> : null}
             </button>
           </li>
         </ul>
       ) : (
-        <p className="text-[11px] text-stone-500">Write the roster above and each creature gets a line here.</p>
+        <p className="text-[11px] text-stone-500">{t("Write the roster above and each creature gets a line here.")}</p>
       )}
 
       {canPlace && map?.terrain && map.width && map.height ? (
@@ -170,24 +172,24 @@ export function EncounterExtras({
           />
           <p className="text-[11px] text-stone-500">
             {placing === null
-              ? "Pick a creature above, then tap where it starts. The party goes where the flag says."
-              : "Tap the tile. Tap the same tile again to clear it."}
+              ? t("Pick a creature above, then tap where it starts. The party goes where the flag says.")
+              : t("Tap the tile. Tap the same tile again to clear it.")}
           </p>
         </>
       ) : (
         <p className="text-[11px] text-stone-500">
-          Link a prepared map above to place each creature on it. Without one the generator seats them.
+          {t("Link a prepared map above to place each creature on it. Without one the generator seats them.")}
         </p>
       )}
 
-      <SectionHead title="What the fight is worth" glyph="coin-purse" className="mb-0" />
-      <Field as="label" label="Rewards">
-        <DictateField label="Rewards" onTranscript={(text) => set({ rewards: appendDictation(value.rewards, text, EXTRAS_LIMITS.rewards) })}>
+      <SectionHead title={t("What the fight is worth")} glyph="coin-purse" className="mb-0" />
+      <Field as="label" label={t("Rewards")}>
+        <DictateField label={t("Rewards")} onTranscript={(text) => set({ rewards: appendDictation(value.rewards, text, EXTRAS_LIMITS.rewards) })}>
           <textarea
             value={value.rewards}
             maxLength={EXTRAS_LIMITS.rewards}
             rows={2}
-            placeholder="120 gp in a locked chest, the captain's signet ring, roll once on Marsh treasure."
+            placeholder={t("120 gp in a locked chest, the captain's signet ring, roll once on Marsh treasure.")}
             onChange={(event) => set({ rewards: event.target.value })}
             className={field}
           />
@@ -207,14 +209,14 @@ export function EncounterExtras({
       />
 
       <div className="space-y-1.5 text-sm">
-        <SectionHead title="What happens when" glyph="tab-timeline" className="mb-1" />
+        <SectionHead title={t("What happens when")} glyph="tab-timeline" className="mb-1" />
         {value.phases.map((phase, index) => (
           <div key={index} className="flex items-center gap-1.5">
             <input
               value={phase}
               maxLength={EXTRAS_LIMITS.phaseText}
-              placeholder="When the shaman drops, the wolves flee."
-              aria-label={`Phase ${index + 1}`}
+              placeholder={t("When the shaman drops, the wolves flee.")}
+              aria-label={t("Phase {index}", { index: index + 1 })}
               onChange={(event) =>
                 set({ phases: value.phases.map((line, at) => (at === index ? event.target.value : line)) })
               }
@@ -222,7 +224,7 @@ export function EncounterExtras({
             />
             <button
               type="button"
-              aria-label="Remove phase"
+              aria-label={t("Remove phase")}
               onClick={() => set({ phases: value.phases.filter((_, at) => at !== index) })}
               className={cn(ui.iconAction, rowIcon, "hover:text-red-300")}
             >
@@ -236,11 +238,11 @@ export function EncounterExtras({
             onClick={() => set({ phases: [...value.phases, ""] })}
             className={cn(ui.btnSmall, addChip)}
           >
-            <Plus className="size-3" /> Add a phase
+            <Plus className="size-3" /> {t("Add a phase")}
           </button>
         ) : null}
         <p className="text-[11px] text-stone-500">
-          Rewards and phases land as a note only you can read when the fight is deployed.
+          {t("Rewards and phases land as a note only you can read when the fight is deployed.")}
         </p>
       </div>
 

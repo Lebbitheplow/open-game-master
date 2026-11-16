@@ -12,6 +12,7 @@ import type { ImportView, ReviewView } from "@/lib/pdf-import/view";
 import type { MatchChoice } from "./PdfMatches";
 import { PdfReview } from "@/app/workshop/pdf-import/PdfReview";
 import { sendBook, type SendProgress } from "@/app/workshop/pdf-import/send-book";
+import { useT } from "@/lib/locale";
 
 // "Import an adventure PDF": the GM picks their own copy of a book, the
 // page reads it (src/lib/pdf-import/read-pdf.ts), the server reads what it
@@ -24,6 +25,8 @@ import { sendBook, type SendProgress } from "@/app/workshop/pdf-import/send-book
 // model it reads the layout (the text, stat blocks, tables, maps, pictures
 // and chapters) and says what a model would add.
 
+type PdfT = (key: string, vars?: Record<string, string | number>) => string;
+
 type Phase =
   | { kind: "idle" }
   | { kind: "sending"; progress: SendProgress; fileName: string }
@@ -32,35 +35,43 @@ type Phase =
 
 const POLL_MS = 2_000;
 
-async function json<T>(url: string, init?: RequestInit): Promise<T> {
+// send-book's "reach the server" sentence, matched by its own retry logic
+// (/reach the server/, send-book.ts): the one wording of this file that
+// stays English at the source and is mapped to the reader's words at the
+// display site (pick's catch, the engineRefusalKey pattern, hand-core.ts).
+const REACH_SENTENCE = "Could not reach the server. Your progress is kept; pick the PDF again to carry on.";
+
+async function json<T>(t: PdfT, url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { ...init, headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) } }).catch(() => {
-    throw new Error("Could not reach the server. Nothing was lost; try again.");
+    throw new Error(t("Could not reach the server. Nothing was lost; try again."));
   });
   const data = (await response.json().catch(() => ({}))) as T & { error?: string };
-  if (!response.ok) throw new Error(data.error || "That did not work. Try again.");
+  if (!response.ok) throw new Error(data.error || t("That did not work. Try again."));
   return data;
 }
 
-function sendingLine(progress: SendProgress): string {
-  if (progress.phase === "opening") return "Opening the book...";
-  if (progress.phase === "pages") return `Reading page ${progress.done} of ${progress.total}`;
-  if (progress.phase === "pictures") return `Keeping its pictures: ${progress.done} of ${progress.total}`;
-  return "Starting the import...";
+function sendingLine(t: PdfT, progress: SendProgress): string {
+  if (progress.phase === "opening") return t("Opening the book...");
+  if (progress.phase === "pages") return t("Reading page {done} of {total}", { done: progress.done, total: progress.total });
+  if (progress.phase === "pictures") return t("Keeping its pictures: {done} of {total}", { done: progress.done, total: progress.total });
+  return t("Starting the import...");
 }
 
 export function PdfImportButton({
   campaignId,
-  label = "Import an adventure PDF",
+  label,
   className = ui.btnSecondary,
   onImported,
 }: {
   // Begun inside a workshop's WorldForge: the world it goes into.
   campaignId?: string;
+  // A caller's own words on the button (WorldForge); default pdf.import.label.
   label?: string;
   className?: string;
   // From WorldForge: what to refresh once the book is in.
   onImported?: () => void;
 }) {
+  const t = useT();
   const capabilities = useCapabilities();
   const offered = hostOffers(capabilities, "pdfImport");
   const withModel = offersStoryModel(capabilities);
@@ -79,17 +90,17 @@ export function PdfImportButton({
 
   const refreshOpen = useCallback(async () => {
     try {
-      const data = await json<{ imports: ImportView[] }>("/api/pdf-imports");
+      const data = await json<{ imports: ImportView[] }>(t, "/api/pdf-imports");
       setOpen(data.imports.filter(mine));
     } catch {
       // The list is a convenience; the button works without it.
     }
-  }, [mine]);
+  }, [t, mine]);
 
   useEffect(() => {
     if (!offered) return;
     let stopped = false;
-    json<{ imports: ImportView[] }>("/api/pdf-imports")
+    json<{ imports: ImportView[] }>(t, "/api/pdf-imports")
       .then((data) => {
         if (!stopped) setOpen(data.imports.filter(mine));
       })
@@ -99,16 +110,16 @@ export function PdfImportButton({
     return () => {
       stopped = true;
     };
-  }, [offered, mine]);
+  }, [offered, mine, t]);
 
   const follow = useCallback(async (item: ImportView) => {
     if (item.state === "review") {
-      const data = await json<{ import: ImportView; review?: ReviewView; srd?: MatchOption[] }>(`/api/pdf-imports/${item.id}`);
+      const data = await json<{ import: ImportView; review?: ReviewView; srd?: MatchOption[] }>(t, `/api/pdf-imports/${item.id}`);
       if (data.review) setPhase({ kind: "review", item: data.import, review: data.review, srd: data.srd ?? [] });
       return;
     }
     setPhase({ kind: "working", item });
-  }, []);
+  }, [t]);
 
   // While the server reads, the card follows it.
   useEffect(() => {
@@ -116,23 +127,23 @@ export function PdfImportButton({
     let stopped = false;
     const timer = setInterval(async () => {
       try {
-        const data = await json<{ import: ImportView; review?: ReviewView; srd?: MatchOption[] }>(`/api/pdf-imports/${phase.item.id}`);
+        const data = await json<{ import: ImportView; review?: ReviewView; srd?: MatchOption[] }>(t, `/api/pdf-imports/${phase.item.id}`);
         if (stopped) return;
         if (data.import.state === "review" && data.review) setPhase({ kind: "review", item: data.import, review: data.review, srd: data.srd ?? [] });
         else if (data.import.state === "failed") {
-          setError(data.import.reason || "The import stopped.");
+          setError(data.import.reason || t("The import stopped."));
           setPhase({ kind: "idle" });
           void refreshOpen();
         } else setPhase({ kind: "working", item: data.import });
       } catch (thrown) {
-        if (!stopped) setError(thrown instanceof Error ? thrown.message : "Lost touch with the import.");
+        if (!stopped) setError(thrown instanceof Error ? thrown.message : t("Lost touch with the import."));
       }
     }, POLL_MS);
     return () => {
       stopped = true;
       clearInterval(timer);
     };
-  }, [phase, refreshOpen]);
+  }, [phase, refreshOpen, t]);
 
   if (!offered) return null;
 
@@ -142,7 +153,7 @@ export function PdfImportButton({
     signal.current = { cancelled: false };
     setPhase({ kind: "sending", progress: { phase: "opening", done: 0, total: 0 }, fileName: file.name });
     try {
-      const item = await sendBook(file, {
+      const item = await sendBook(t, file, {
         campaignId,
         continueId: continueId || undefined,
         signal: signal.current,
@@ -151,7 +162,15 @@ export function PdfImportButton({
       setContinueId("");
       await follow(item);
     } catch (thrown) {
-      setError(thrown instanceof Error ? thrown.message : "That PDF could not be read.");
+      // The retry-matched sentence of send-book stays English at its source
+      // and is worded here; everything else arrives in the reader's words.
+      setError(
+        thrown instanceof Error
+          ? thrown.message === REACH_SENTENCE
+            ? t("Could not reach the server. Your progress is kept; pick the PDF again to carry on.")
+            : thrown.message
+          : t("That PDF could not be read."),
+      );
       setPhase({ kind: "idle" });
       void refreshOpen();
     } finally {
@@ -162,11 +181,11 @@ export function PdfImportButton({
   async function discard(id: string) {
     setBusy(true);
     try {
-      await json(`/api/pdf-imports/${id}`, { method: "DELETE" });
+      await json(t, `/api/pdf-imports/${id}`, { method: "DELETE" });
       setPhase({ kind: "idle" });
       await refreshOpen();
     } catch (thrown) {
-      setError(thrown instanceof Error ? thrown.message : "That import could not be discarded.");
+      setError(thrown instanceof Error ? thrown.message : t("That import could not be discarded."));
     } finally {
       setBusy(false);
     }
@@ -179,10 +198,10 @@ export function PdfImportButton({
     const mine = ++chosen.current;
     setMatchError("");
     try {
-      const data = await json<{ import: ImportView; review: ReviewView }>(`/api/pdf-imports/${item.id}`, { method: "PATCH", body: JSON.stringify({ matches: choices }) });
+      const data = await json<{ import: ImportView; review: ReviewView }>(t, `/api/pdf-imports/${item.id}`, { method: "PATCH", body: JSON.stringify({ matches: choices }) });
       if (mine === chosen.current) setPhase({ kind: "review", item: data.import, review: data.review, srd });
     } catch (thrown) {
-      if (mine === chosen.current) setMatchError(thrown instanceof Error ? thrown.message : "That match could not be saved. Try it again.");
+      if (mine === chosen.current) setMatchError(thrown instanceof Error ? thrown.message : t("That match could not be saved. Try it again."));
     }
   }
 
@@ -190,15 +209,15 @@ export function PdfImportButton({
     setBusy(true);
     setError("");
     try {
-      await json(`/api/pdf-imports/${item.id}`, { method: "PATCH", body: JSON.stringify({ include: choices.include, ...(choices.title ? { title: choices.title } : {}) }) });
-      const done = await json<{ workshopId: string; shelf?: { renamed: string[]; refused: string[] } }>(`/api/pdf-imports/${item.id}`, {
+      await json(t, `/api/pdf-imports/${item.id}`, { method: "PATCH", body: JSON.stringify({ include: choices.include, ...(choices.title ? { title: choices.title } : {}) }) });
+      const done = await json<{ workshopId: string; shelf?: { renamed: string[]; refused: string[] } }>(t, `/api/pdf-imports/${item.id}`, {
         method: "POST",
         body: JSON.stringify({ action: "import", destination: choices.destination }),
       });
       const renamed = (done.shelf?.renamed ?? []).filter(Boolean);
       const refused = (done.shelf?.refused ?? []).filter(Boolean);
       if (renamed.length || refused.length) {
-        await appNotice([...renamed, ...refused].join(" "), "From the book");
+        await appNotice([...renamed, ...refused].join(" "), t("From the book"));
       }
       setPhase({ kind: "idle" });
       if (choices.destination === "world" && campaignId) {
@@ -206,7 +225,7 @@ export function PdfImportButton({
         await refreshOpen();
       } else navigateTo(`/workshop/${done.workshopId}`);
     } catch (thrown) {
-      setError(thrown instanceof Error ? thrown.message : "The book could not be brought in.");
+      setError(thrown instanceof Error ? thrown.message : t("The book could not be brought in."));
     } finally {
       setBusy(false);
     }
@@ -234,29 +253,29 @@ export function PdfImportButton({
         }}
         disabled={sending || working || busy}
         className={className}
-        title="Your own copy of an adventure book, read into a workshop"
+        title={t("Your own copy of an adventure book, read into a workshop")}
       >
         {sending || working ? <Loader2 className="size-4 animate-spin" /> : <BookOpen className="size-4" />}
-        {label}
+        {label ?? t("Import an adventure PDF")}
       </button>
 
       {phase.kind === "idle" && open.length ? (
-        <ul className="stagger mt-2 space-y-1" aria-label="Imports in progress">
+        <ul className="stagger mt-2 space-y-1" aria-label={t("Imports in progress")}>
           {open.map((item) => (
             <li key={item.id} className="reveal flex flex-wrap items-center gap-2 text-xs text-stone-400">
               <span className="text-stone-300">{item.title || item.fileName}</span>
               <span>
                 {item.state === "review"
-                  ? "is read and waiting for you"
+                  ? t("is read and waiting for you")
                   : item.state === "working"
-                    ? item.step || "is being read"
+                    ? item.step || t("is being read")
                     : item.state === "failed"
-                      ? `stopped: ${item.reason}`
-                      : `has ${item.pagesReceived} of ${item.pageCount} pages`}
+                      ? t("stopped: {reason}", { reason: item.reason })
+                      : t("has {received} of {total} pages", { received: item.pagesReceived, total: item.pageCount })}
               </span>
               {item.state === "review" || item.state === "working" ? (
                 <button type="button" className={ui.btnSmall} onClick={() => void follow(item).catch((thrown) => setError(String(thrown?.message ?? thrown)))}>
-                  {item.state === "review" ? "Review it" : "Follow it"}
+                  {item.state === "review" ? t("Review it") : t("Follow it")}
                 </button>
               ) : (
                 <button
@@ -265,17 +284,17 @@ export function PdfImportButton({
                   onClick={() => {
                     setContinueId(item.state === "failed" && item.pagesReceived >= item.pageCount ? "" : item.id);
                     if (item.state === "failed" && item.pagesReceived >= item.pageCount) {
-                      void json<{ import: ImportView }>(`/api/pdf-imports/${item.id}`, { method: "POST", body: JSON.stringify({ action: "start" }) })
+                      void json<{ import: ImportView }>(t, `/api/pdf-imports/${item.id}`, { method: "POST", body: JSON.stringify({ action: "start" }) })
                         .then((data) => follow(data.import))
-                        .catch((thrown) => setError(thrown instanceof Error ? thrown.message : "It could not start again."));
+                        .catch((thrown) => setError(thrown instanceof Error ? thrown.message : t("It could not start again.")));
                     } else input.current?.click();
                   }}
                 >
-                  {item.state === "failed" && item.pagesReceived >= item.pageCount ? "Try again" : "Pick the PDF again"}
+                  {item.state === "failed" && item.pagesReceived >= item.pageCount ? t("Try again", { context: "action.retry" }) : t("Pick the PDF again")}
                 </button>
               )}
               <button type="button" className={ui.btnSmall} disabled={busy} onClick={() => void discard(item.id)}>
-                Discard
+                {t("Discard")}
               </button>
             </li>
           ))}
@@ -284,7 +303,7 @@ export function PdfImportButton({
 
       {sending || working ? (
         <div className={`${ui.card} reveal mt-3 p-4`} role="status" aria-live="polite">
-          <p className="text-sm text-stone-200">{sending ? sendingLine(phase.progress) : phase.item.step || "Reading the book"}</p>
+          <p className="text-sm text-stone-200">{sending ? sendingLine(t, phase.progress) : phase.item.step || t("Reading the book")}</p>
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-stone-800" aria-hidden="true">
             <div
               className={cn("h-full rounded-full bg-amber-400/80 transition-[width] duration-500", percent === null && "w-1/3 animate-pulse")}
@@ -293,18 +312,18 @@ export function PdfImportButton({
           </div>
           <p className="mt-2 text-xs text-stone-500">
             {sending
-              ? "The PDF stays on this device; only what it says and its pictures go to the server."
+              ? t("The PDF stays on this device; only what it says and its pictures go to the server.")
               : withModel
-                ? "The story model is reading the book a piece at a time. A long book takes a while on a local model; you can leave this page and come back."
-                : "Reading the book's layout. With a story model set up, an import also finds its people, places, factions, treasure and fights."}
+                ? t("The story model is reading the book a piece at a time. A long book takes a while on a local model; you can leave this page and come back.")
+                : t("Reading the book's layout. With a story model set up, an import also finds its people, places, factions, treasure and fights.")}
           </p>
           {sending ? (
             <button type="button" className={cn(ui.btnSmall, "mt-2")} onClick={() => (signal.current.cancelled = true)}>
-              Stop
+              {t("Stop", { context: "pdf.stop" })}
             </button>
           ) : (
             <button type="button" className={cn(ui.btnSmall, "mt-2")} disabled={busy} onClick={() => void discard(phase.item.id)}>
-              Stop and discard
+              {t("Stop and discard")}
             </button>
           )}
         </div>
@@ -321,9 +340,9 @@ export function PdfImportButton({
           srd={phase.srd}
           onChoose={(choices) => void choose(phase.item, phase.srd, choices)}
           onReread={() =>
-            void json<{ import: ImportView }>(`/api/pdf-imports/${phase.item.id}`, { method: "POST", body: JSON.stringify({ action: "start" }) })
+            void json<{ import: ImportView }>(t, `/api/pdf-imports/${phase.item.id}`, { method: "POST", body: JSON.stringify({ action: "start" }) })
               .then((data) => follow(data.import))
-              .catch((thrown) => setError(thrown instanceof Error ? thrown.message : "It could not start again."))
+              .catch((thrown) => setError(thrown instanceof Error ? thrown.message : t("It could not start again.")))
           }
           onImport={(choices) => void bringIn(phase.item, choices)}
           onDiscard={() => void discard(phase.item.id)}

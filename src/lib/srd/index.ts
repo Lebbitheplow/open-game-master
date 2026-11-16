@@ -42,6 +42,17 @@ import { infusionWorn } from "@/lib/srd/infusions";
 export type { SrdBackground, SrdClass, SrdRace, SrdSkill } from "@/lib/srd/srd-types";
 
 export const SRD_SKILLS = skillsJson.skills as SrdSkill[];
+
+// A skill's name in the reader's language. The French names come from
+// Wizards of the Coast's official French SRD 5.1 (see skills.json's fr
+// field); a name the locale does not carry stays English.
+export function skillLabel(skillId: string, locale: "en" | "fr"): string {
+  const skill = SRD_SKILLS.find((entry) => entry.id === skillId.trim().toLowerCase());
+  if (!skill) {
+    return skillId;
+  }
+  return locale === "fr" && skill.fr ? skill.fr : skill.name;
+}
 export const SRD_CLASSES = classesJson.classes as SrdClass[];
 export const SRD_RACES = racesJson.races as SrdRace[];
 export const SRD_BACKGROUNDS = backgroundsJson.backgrounds as SrdBackground[];
@@ -418,6 +429,39 @@ export function speedFor(
 // number computed the same way and then threw the reasoning away. A human DM
 // will not trust an engine they cannot audit, so now they all keep it.
 export type DerivedPart = { label: string; value: number };
+
+// The parts' words are the dictionaries' (math.parts.*); the labels the math
+// builds stay the English words above, because rules code matches on them
+// (roll-feature-riders.ts) and the DM's prompt quotes them. The explain
+// builder the sheets use translates each label through here; an unknown
+// label (a pack's own) reads as it was built.
+const MATH_PART_KEYS: Record<string, string> = {
+  base: "base",
+  proficiency: "proficiency",
+  features: "features",
+  "subclass features": "subclass features",
+  "magic items": "magic items",
+  expertise: "expertise",
+  "half proficiency": "half proficiency",
+  untrained: "untrained",
+  Perception: "Perception",
+  Investigation: "Investigation",
+};
+
+// The shape of a translator, as the pure sentence builders take it.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
+export function mathPartLabel(t: T, label: string): string {
+  const modifier = /^([A-Z]{3}) modifier$/.exec(label);
+  if (modifier) {
+    const ability = modifier[1].toLowerCase();
+    if (["str", "dex", "con", "int", "wis", "cha"].includes(ability)) {
+      return t("{ability} modifier", { ability: ({ "str": t("Strength"), "dex": t("Dexterity"), "con": t("Constitution"), "int": t("Intelligence"), "wis": t("Wisdom"), "cha": t("Charisma") } as Record<string, string>)[ability] ?? String(ability) });
+    }
+  }
+  const key = MATH_PART_KEYS[label];
+  return key ? t(key) : label;
+}
 
 // Every derived number's working. Sums are guaranteed to match the totals
 // beside them because the totals are computed BY summing these.

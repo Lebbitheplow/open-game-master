@@ -17,7 +17,12 @@ const {
   normalizeSize,
   pathLength,
   sizeLabel,
+  sizeLabelKey,
 } = await import("../src/lib/overworld/features.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+
+// English-bound: the size names are asserted in the source words.
+const t = (key, vars) => translate("en", key, vars);
 
 let passed = 0;
 function test(name, fn) {
@@ -37,9 +42,9 @@ test("a size is clamped to the limits and falls back when nonsense", () => {
   // Every preset is inside the limits and has a readable name.
   for (const preset of OVERWORLD_SIZES) {
     assert.deepEqual(normalizeSize(preset, fallback), { width: preset.width, height: preset.height });
-    assert.ok(sizeLabel(preset).startsWith(preset.label));
+    assert.ok(sizeLabel(t, preset).startsWith(translate("en", sizeLabelKey(preset.id))));
   }
-  assert.equal(sizeLabel({ width: 50, height: 40 }), "50 by 40");
+  assert.equal(sizeLabel(t, { width: 50, height: 40 }), "50 by 40");
 });
 
 test("a path keeps its in-bounds points, drops repeats, and needs two to exist", () => {

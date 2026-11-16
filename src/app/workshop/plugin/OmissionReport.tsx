@@ -2,7 +2,8 @@
 
 import { SectionHead } from "@/components/ui/SectionHead";
 import { ui } from "@/lib/ui";
-import { OMISSION_GROUPS, type PackOmission } from "@/lib/workshop/to-pack-omissions";
+import { OMISSION_GROUP_KEYS, type PackOmission } from "@/lib/workshop/to-pack-omissions";
+import { useT, useTp } from "@/lib/locale";
 
 // What a world pack leaves out of this workshop, kind by kind, each with
 // the entries it names (src/lib/workshop/to-pack-omissions.ts). Shown on
@@ -24,7 +25,9 @@ export function OmissionReport({
   loading?: boolean;
   error?: string;
 }) {
-  const groups = (Object.keys(OMISSION_GROUPS) as Array<PackOmission["group"]>)
+  const t = useT();
+  const tp = useTp();
+  const groups = (Object.keys(OMISSION_GROUP_KEYS) as Array<PackOmission["group"]>)
     .map((group) => ({ group, items: omissions.filter((omission) => omission.group === group) }))
     .filter((entry) => entry.items.length);
   const count = omissions.reduce((sum, omission) => sum + omission.assets.length, 0);
@@ -32,12 +35,12 @@ export function OmissionReport({
   return (
     <section className={ui.card + " p-4"} data-testid="pack-omissions" aria-labelledby="pack-omissions-title" aria-busy={loading}>
       <SectionHead
-        title={<span id="pack-omissions-title">What the pack leaves out</span>}
+        title={<span id="pack-omissions-title">{t("What the pack leaves out")}</span>}
         glyph="quest-failed"
-        aside={count ? <span className="text-[11px] text-stone-500">{count} {count === 1 ? "entry" : "entries"}</span> : undefined}
+        aside={count ? <span className="text-[11px] text-stone-500">{tp("{count} entry", "{count} entries", { count })}</span> : undefined}
       />
       <p className="mb-3 text-[11px] text-stone-500">
-        A table that installs the pack gets its names and lines, not these. The workshop bundle, from the Share tool, carries all of it.
+        {t("A table that installs the pack gets its names and lines, not these. The workshop bundle, from the Share tool, carries all of it.")}
       </p>
       {notes.map((note) => (
         <p key={note} className="mb-2 text-xs text-stone-400">
@@ -45,14 +48,14 @@ export function OmissionReport({
         </p>
       ))}
       {error ? <p className="text-xs text-red-300">{error}</p> : null}
-      {loading && !omissions.length ? <p className="text-xs text-stone-500">Reading the workshop...</p> : null}
+      {loading && !omissions.length ? <p className="text-xs text-stone-500">{t("Reading the workshop...")}</p> : null}
       {!loading && !error && !groups.length ? (
-        <p className="text-xs text-emerald-300/90">Nothing: everything this workshop holds is in the pack.</p>
+        <p className="text-xs text-emerald-300/90">{t("Nothing: everything this workshop holds is in the pack.")}</p>
       ) : null}
       <div className="space-y-4">
         {groups.map(({ group, items }) => (
           <div key={group} data-group={group}>
-            <h4 className="mb-1.5 font-display text-[11px] tracking-[0.1em] text-amber-300/85">{OMISSION_GROUPS[group]}</h4>
+            <h4 className="mb-1.5 font-display text-[11px] tracking-[0.1em] text-amber-300/85">{t(OMISSION_GROUP_KEYS[group])}</h4>
             <ul className="space-y-1.5">
               {items.map((omission) => (
                 <li key={omission.key} data-omission={omission.key}>

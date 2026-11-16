@@ -10,6 +10,7 @@ import { UnofficialPackNotice } from "@/components/UnofficialPackNotice";
 import { BUNDLE_KIND_LABELS } from "@/lib/workshop/bundle";
 import { slugOf } from "@/lib/language/text-logic";
 import type { PackOmission } from "@/lib/workshop/to-pack";
+import { useT } from "@/lib/locale";
 import { OmissionReport } from "@/app/workshop/plugin/OmissionReport";
 
 // Handing a workshop to somebody else.
@@ -38,6 +39,7 @@ function fileStem(name: string): string {
 }
 
 export function DmSharePanel({ campaignId }: { campaignId: string }) {
+  const t = useT();
   const [name, setName] = useState("");
   const [blurb, setBlurb] = useState("");
   const [author, setAuthor] = useState("");
@@ -76,7 +78,7 @@ export function DmSharePanel({ campaignId }: { campaignId: string }) {
     });
     const data = await response.json();
     if (!response.ok) {
-      throw new Error(data.error ?? "That could not be built.");
+      throw new Error(data.error ?? t("That could not be built.", { context: "share.error.build" }));
     }
     return data;
   }
@@ -92,7 +94,7 @@ export function DmSharePanel({ campaignId }: { campaignId: string }) {
       setShelf(data.shelf ?? null);
       download(`${fileStem(manifest.name)}.odm-workshop.json`, data.bundle);
     } catch (thrown) {
-      setError(thrown instanceof Error ? thrown.message : "That could not be built.");
+      setError(thrown instanceof Error ? thrown.message : t("That could not be built.", { context: "share.error.build" }));
     } finally {
       setBusy("");
     }
@@ -107,14 +109,12 @@ export function DmSharePanel({ campaignId }: { campaignId: string }) {
       setWarnings(data.warnings ?? []);
       setCounts(null);
       if (!data.filled) {
-        setError(
-          "Nothing in this workshop maps onto a world pack yet. Write some lore, places or hook cards first.",
-        );
+        setError(t("Nothing in this workshop maps onto a world pack yet. Write some lore, places or hook cards first."));
         return;
       }
       download(`${fileStem(manifest.name)}.world-pack.json`, data.draft);
     } catch (thrown) {
-      setError(thrown instanceof Error ? thrown.message : "That could not be built.");
+      setError(thrown instanceof Error ? thrown.message : t("That could not be built.", { context: "share.error.build" }));
     } finally {
       setBusy("");
     }
@@ -122,38 +122,34 @@ export function DmSharePanel({ campaignId }: { campaignId: string }) {
 
   return (
     <section className={ui.card + " p-4"}>
-      <SectionHead title="Share this workshop" glyph="system-share" level="h2" />
+      <SectionHead title={t("Share this workshop")} glyph="system-share" level="h2" />
       <p className="mb-4 text-sm text-stone-400">
-        A bundle is everything you prepared here as one file: lore, places, NPCs, fights with
-        their maps and plans, tables, maps with their doors, labels and props, the region map,
-        the board with what each card picks, and your hand-built monsters. Pictures travel with
-        it too, within the size caps. A chapter carries the records its cards pick from its
-        shared workshop. Nothing from any campaign does.
+        {t("A bundle is everything you prepared here as one file: lore, places, NPCs, fights with their maps and plans, tables, maps with their doors, labels and props, the region map, the board with what each card picks, and your hand-built monsters. Pictures travel with it too, within the size caps. A chapter carries the records its cards pick from its shared workshop. Nothing from any campaign does.")}
       </p>
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2" data-tour="share-manifest">
         <label className="block sm:col-span-2">
-          <FieldLabel>Name</FieldLabel>
+          <FieldLabel>{t("Name")}</FieldLabel>
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
             maxLength={70}
-            placeholder="The Sunken Vault"
+            placeholder={t("The Sunken Vault")}
             className={ui.input}
           />
         </label>
         <label className="block sm:col-span-2">
-          <FieldLabel>One line about it</FieldLabel>
+          <FieldLabel>{t("One line about it")}</FieldLabel>
           <input
             value={blurb}
             onChange={(event) => setBlurb(event.target.value)}
             maxLength={200}
-            placeholder="A drowned dwarven city and the things that kept living in it."
+            placeholder={t("A drowned dwarven city and the things that kept living in it.")}
             className={ui.input}
           />
         </label>
         <label className="block">
-          <FieldLabel>Author</FieldLabel>
+          <FieldLabel>{t("Author")}</FieldLabel>
           <input
             value={author}
             onChange={(event) => setAuthor(event.target.value)}
@@ -162,7 +158,7 @@ export function DmSharePanel({ campaignId }: { campaignId: string }) {
           />
         </label>
         <label className="block">
-          <FieldLabel>Version</FieldLabel>
+          <FieldLabel>{t("Version")}</FieldLabel>
           <input
             value={version}
             onChange={(event) => setVersion(event.target.value)}
@@ -171,7 +167,7 @@ export function DmSharePanel({ campaignId }: { campaignId: string }) {
           />
         </label>
         <label className="block sm:col-span-2">
-          <FieldLabel>Homepage (optional)</FieldLabel>
+          <FieldLabel>{t("Homepage (optional)", { context: "share.field.homepage" })}</FieldLabel>
           <input
             value={homepage}
             onChange={(event) => setHomepage(event.target.value)}
@@ -180,46 +176,44 @@ export function DmSharePanel({ campaignId }: { campaignId: string }) {
           />
         </label>
         <label className="block sm:col-span-2">
-          <FieldLabel>Inspired by</FieldLabel>
+          <FieldLabel>{t("Inspired by")}</FieldLabel>
           <input
             value={inspiredBy}
             onChange={(event) => setInspiredBy(event.target.value)}
             maxLength={200}
-            placeholder="Original work, or the setting this is a homage to"
+            placeholder={t("Original work, or the setting this is a homage to")}
             className={ui.input}
           />
         </label>
         <label className="block sm:col-span-2">
-          <FieldLabel>Rights holder</FieldLabel>
+          <FieldLabel>{t("Rights holder", { context: "share.field.rights" })}</FieldLabel>
           <input
             value={rightsHolder}
             onChange={(event) => setRightsHolder(event.target.value)}
             maxLength={120}
-            placeholder="Leave empty if this is your own world"
+            placeholder={t("Leave empty if this is your own world")}
             className={ui.input}
           />
           <span className="mt-1 block text-xs text-stone-500">
-            Fill this in if it is built on somebody else&apos;s setting. It is what turns the
-            notice below into an explicit non-affiliation disclaimer.
+            {t("Fill this in if it is built on somebody else's setting. It is what turns the notice below into an explicit non-affiliation disclaimer.")}
           </span>
         </label>
       </div>
 
       <fieldset className="mb-4 space-y-1">
-        <legend className="mb-1 text-xs text-stone-400">Your homebrew shelf in the bundle</legend>
+        <legend className="mb-1 text-xs text-stone-400">{t("Your homebrew shelf in the bundle")}</legend>
         <SegmentedControl
           options={[
-            { value: "all", label: "All of it" },
-            { value: "used", label: "What this workshop uses" },
+            { value: "all", label: t("All of it") },
+            { value: "used", label: t("What this workshop uses") },
           ]}
           value={shelfScope}
           onChange={(value) => setShelfScope(value as "all" | "used")}
           size="sm"
-          label="Your homebrew shelf in the bundle"
+          label={t("Your homebrew shelf in the bundle")}
         />
         <span className="block text-xs text-stone-500">
-          Used means the monsters its Cast and fights name, what its pregens carry, and anything its prepared text mentions by name. Whoever
-          imports it keeps their own entries of the same name; a different one arrives beside theirs under this bundle&apos;s name.
+          {t("Used means the monsters its Cast and fights name, what its pregens carry, and anything its prepared text mentions by name. Whoever imports it keeps their own entries of the same name; a different one arrives beside theirs under this bundle's name.")}
         </span>
       </fieldset>
 
@@ -242,7 +236,7 @@ export function DmSharePanel({ campaignId }: { campaignId: string }) {
           ) : (
             <Download className="size-4" />
           )}
-          Download bundle
+          {t("Download bundle")}
         </button>
         <button
           type="button"
@@ -255,12 +249,12 @@ export function DmSharePanel({ campaignId }: { campaignId: string }) {
           ) : (
             <Package className="size-4" />
           )}
-          Compile a world pack
+          {t("Compile a world pack")}
         </button>
       </div>
       {!ready ? (
         <p className="reveal mt-2 text-xs text-stone-500">
-          A name, a line about it and what it is inspired by are required before it can leave.
+          {t("A name, a line about it and what it is inspired by are required before it can leave.")}
         </p>
       ) : null}
 
@@ -284,18 +278,18 @@ export function DmSharePanel({ campaignId }: { campaignId: string }) {
       {shelf ? (
         <div className="reveal mt-3 space-y-1 border-t border-stone-800 pt-3 text-xs text-stone-400" data-testid="bundle-shelf">
           <p>
-            <span className="text-stone-300">From your shelf: </span>
-            {shelf.included.length ? shelf.included.join(", ") : "nothing"}.
+            <span className="text-stone-300">{t("From your shelf: ")}</span>
+            {shelf.included.length ? shelf.included.join(", ") : t("nothing")}.
           </p>
           {shelf.unused.length ? (
             <p>
-              <span className="text-stone-300">{shelfScope === "used" ? "Left out (this workshop does not use them): " : "Taken though this workshop does not use them: "}</span>
+              <span className="text-stone-300">{shelfScope === "used" ? t("Left out (this workshop does not use them): ") : t("Taken though this workshop does not use them: ")}</span>
               {shelf.unused.join(", ")}.
             </p>
           ) : null}
           {shelf.missing.length ? (
             <p className="text-amber-300">
-              Named by its Cast, fights, roll tables, shops or Homebrew but found nowhere, here or in the books: {shelf.missing.join(", ")}. The importer&apos;s table will not find them either.
+              {t("Named by its Cast, fights, roll tables, shops or Homebrew but found nowhere, here or in the books: {names}. The importer's table will not find them either.", { names: shelf.missing.join(", ") })}
             </p>
           ) : null}
         </div>

@@ -5,7 +5,7 @@ import { findFactionByName, getFaction, listFactions, updateFaction } from "@/li
 import { insertFact } from "@/lib/db/facts";
 import { getParty, setParty } from "@/lib/db/party";
 import { publishEphemeral } from "@/lib/events";
-import { clampReputation, reputationLabel } from "@/lib/dm/faction-logic";
+import { clampReputation, reputationWord } from "@/lib/dm/faction-logic";
 import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
 import { fittedText, fittedLine } from "@/lib/dm/fitted-text";
 
@@ -109,7 +109,7 @@ export function handleAdjustReputation(campaign: Campaign, rawArguments: string)
     publishEphemeral(campaign.id, "facts_updated", {});
   }
   publishEphemeral(campaign.id, "factions_updated", { at: Date.now() });
-  return { ok: true, faction: faction.name, before, after, standing: reputationLabel(after) };
+  return { ok: true, faction: faction.name, before, after, standing: reputationWord(after) };
 }
 
 const noteSchema = z.object({

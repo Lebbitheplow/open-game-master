@@ -49,6 +49,15 @@ export const BEAT_HINTS: Record<BeatKind, string> = {
   npc_moment: "The scene somebody has been waiting for. Becomes an arc beat.",
 };
 
+// The hints in the reader's language (storyboard.beat.hint.*); the English
+// map stays for anything that reads it without a translator.
+export function beatHintT(
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  kind: keyof typeof BEAT_HINTS,
+): string {
+  return ({ "setting": t("Somewhere the party can stand. Becomes a lore entry."), "backstory": t("What is already true when the campaign opens. Becomes a lore entry."), "event": t("A thing that happens, whether or not the party is there. Becomes an arc beat."), "encounter": t("A fight worth preparing. Becomes a prepared encounter, or the one it picks, and a beat when the arrows run through it."), "hook": t("Why the party would walk toward any of this. Becomes a quest."), "secret": t("What the party is not told. Becomes a GM-only note."), "npc_moment": t("The scene somebody has been waiting for. Becomes an arc beat.") } as Record<string, string>)[kind] ?? String(kind);
+}
+
 export const TITLE_MAX = 120;
 // The same cap a bundle card travels under (src/lib/workshop/bundle-schema.ts
 // reads it from here), so a card that arrived whole can be opened and saved
@@ -111,7 +120,18 @@ export type BeatOrigin =
   | { kind: "bundle"; ref: string }
   | { kind: "copy"; workshopId: string; title: string };
 
-// The origin in the author's words, for the card's editor.
+// The shape of a translator, as the pure sentence builders take it.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
+// The origin in the author's words, for the card's editor. The words are the
+// dictionaries' (workshop.origin.*); the editor passes its translator.
+export function originLineT(t: T, origin: BeatOrigin): string {
+  if (origin.kind === "worldforge") return t("Came in from a WorldForge file. Opening that file again updates this card rather than adding another; what you change here stands.");
+  if (origin.kind === "bundle") return t("Came in with a shared workshop bundle.");
+  return origin.title ? t("Copied from the workshop “{title}”.", { title: origin.title }) : t("Copied from another workshop.");
+}
+
+// English-pinned, for wherever the stored data quotes it back.
 export function originLine(origin: BeatOrigin): string {
   if (origin.kind === "worldforge") return "Came in from a WorldForge file. Opening that file again updates this card rather than adding another; what you change here stands.";
   if (origin.kind === "bundle") return "Came in with a shared workshop bundle.";

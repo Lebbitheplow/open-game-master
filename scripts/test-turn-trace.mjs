@@ -20,6 +20,15 @@ const { traceTurn, isQuietTrace, keptAnswer, PERSON_CALL_ID_PREFIX } = await imp
 const { DIRECT_CALL_ID_PREFIX, INTENT_CORRECTION_MARK } = await import("../src/lib/dm/intent-logic.ts");
 const { getDatabase } = await import("../src/lib/db/core.ts");
 const campaigns = await import("../src/lib/db/campaigns.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+
+// The route's refusals are keyed (turnTrace.refusal.*, request-locale.ts) and
+// the sheet's words are keyed too (turnTrace.*), so the sentences live in the
+// dictionary now: pin the keyed call and the dictionary's English line, the
+// way test-builder-calling-first.mjs pins its sentences.
+const root = path.resolve(import.meta.dirname, "..");
+const en = () => fs.readFileSync(path.join(root, "src/lib/messages/en.ts"), "utf8");
+const enT = (key) => translate("en", key);
 
 // ---- the pure reading ------------------------------------------------------
 
@@ -233,7 +242,7 @@ kit.place(enemy.id, 5, 6);
 await test("at a live table the trace is refused with a plain sentence, and a person's calls there keep no conversation", async () => {
   const out = await read();
   assert.equal(out.status, 403);
-  assert.match(out.json.error, /Only a test fight shows its turn trace/);
+  assert.equal(out.json.error, enT("Only a test fight shows its turn trace. At a table in play, the GM's calls stay behind the screen."));
   assert.ok(personTurns().length > 0, "the fight's opening ran as a person's call");
   assert.ok(personTurns().every((row) => row.c === "[]"), "a live table's person turn kept a conversation");
 });
@@ -244,7 +253,7 @@ getDatabase().prepare(`UPDATE campaigns SET kind = 'playtest' WHERE id = ?`).run
 await test("at a test fight someone other than its author is refused", async () => {
   const out = await read("", stranger);
   assert.equal(out.status, 403);
-  assert.match(out.json.error, /Only the person who started this test fight/);
+  assert.equal(out.json.error, enT("Only the person who started this test fight can read its turn trace."));
 });
 
 await test("after an AI turn with one call done and one refused, the author reads both: the tool, the names, the engine's sentence", async () => {

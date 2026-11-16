@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
 import { Dialog } from "@/components/ui/Dialog";
+import { useT } from "@/lib/locale";
 import { GameIcon } from "@/components/ui/GameIcon";
 
 // The last question before an account goes: the grace copy, the password (or
@@ -32,6 +33,7 @@ export function DeleteAccountDialog({
   onConfirm: () => void;
   onClose: () => void;
 }) {
+  const t = useT();
   return (
     <Dialog
       open
@@ -39,7 +41,7 @@ export function DeleteAccountDialog({
         // A request on the wire cannot be walked away from.
         if (!open && !deleting) onClose();
       }}
-      title="Delete your account?"
+      title={t("Delete your account?")}
       icon={<GameIcon icon={{ kind: "glyph", key: "quest-failed" }} size="size-7" />}
       width="w-[min(92vw,26rem)]"
     >
@@ -50,7 +52,7 @@ export function DeleteAccountDialog({
       {/* Not a form: Enter in the field must never be what erases an account. */}
       <div className="mt-4">
         <label className="block text-xs text-stone-400">
-          {hasPassword ? "Enter your password to confirm" : "Type DELETE to confirm"}
+          {hasPassword ? t("Enter your password to confirm") : t("Type DELETE to confirm")}
           <input
             type={hasPassword ? "password" : "text"}
             autoFocus
@@ -71,7 +73,7 @@ export function DeleteAccountDialog({
             className={cn(ui.btnPrimary, "theme-key-danger from-red-200 via-red-300 to-red-500 text-red-950")}
           >
             {deleting ? <Loader2 className="size-4 animate-spin" /> : null}
-            {graceDays === 0 ? "Delete forever" : "Delete my account"}
+            {graceDays === 0 ? t("Delete forever") : t("Delete my account")}
           </button>
         </div>
       </div>

@@ -8,6 +8,7 @@ import { ui } from "@/lib/ui";
 import type { LoreLinkTarget, LoreVisibility } from "@/lib/dm/world-lore-logic";
 import { Markdown } from "@/components/ui/Markdown";
 import type { LoreEntryView } from "@/app/workshop/lore/types";
+import { useT } from "@/lib/locale";
 
 // The binder's extra fields (docs/workshop-parity-audit.md phase 14): who
 // may read an entry, the picture that makes it a handout, and the body
@@ -23,6 +24,7 @@ export function VisibilitySelect({
   value: LoreVisibility;
   onChange: (next: LoreVisibility) => void;
 }) {
+  const t = useT();
   return (
     <div data-pill-group="" className="flex flex-wrap items-center gap-1.5 text-xs">
       <button data-on={value === "party" ? "" : undefined}
@@ -34,7 +36,7 @@ export function VisibilitySelect({
           value === "party" ? "border-emerald-700 bg-emerald-950/40 text-emerald-200" : "",
         )}
       >
-        <Users className="size-3" /> The table reads it
+        <Users className="size-3" /> {t("The table reads it")}
       </button>
       <button data-on={value === "dm" ? "" : undefined}
         type="button"
@@ -45,12 +47,12 @@ export function VisibilitySelect({
           value === "dm" ? "border-violet-700 bg-violet-950/40 text-violet-200" : "",
         )}
       >
-        <EyeOff className="size-3" /> Only I read it
+        <EyeOff className="size-3" /> {t("Only I read it")}
       </button>
       <span className="text-[11px] text-stone-500">
         {value === "dm"
-          ? "A secret: the GM prompt knows it, the players never see it."
-          : "Part of the world bible players can open, unless WorldForge marks it as not canon yet. With a picture, a handout."}
+          ? t("A secret: the GM prompt knows it, the players never see it.")
+          : t("Part of the world bible players can open, unless WorldForge marks it as not canon yet. With a picture, a handout.")}
       </span>
     </div>
   );
@@ -66,6 +68,7 @@ export function LoreImageField({
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const t = useT();
 
   async function upload(file: File) {
     setUploading(true);
@@ -79,12 +82,12 @@ export function LoreImageField({
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setError(payload.error || "That image would not upload.");
+        setError(payload.error || t("That image would not upload.", { context: "workshop.lore.imageFailed" }));
         return;
       }
       onChange(payload.url);
     } catch {
-      setError("That image would not upload.");
+      setError(t("That image would not upload.", { context: "workshop.lore.imageFailed" }));
     } finally {
       setUploading(false);
     }
@@ -116,11 +119,11 @@ export function LoreImageField({
         className={chip}
       >
         {uploading ? <Loader2 className="size-3 animate-spin" /> : <ImageIcon className="size-3" />}
-        {imagePath ? "Replace the picture" : "Add a picture"}
+        {imagePath ? t("Replace the picture", { context: "workshop.lore.replacePicture" }) : t("Add a picture")}
       </button>
       {imagePath ? (
         <button type="button" onClick={() => onChange("")} className={chip}>
-          <Trash2 className="size-3" /> Take it away
+          <Trash2 className="size-3" /> {t("Take it away", { context: "workshop.lore.takeAway" })}
         </button>
       ) : null}
       {error ? <span className="motion-shake inline-block text-[11px] text-red-400">{error}</span> : null}
@@ -141,6 +144,7 @@ export function LoreBody({
   onLink?: (target: LoreLinkTarget) => void;
   dmView?: boolean;
 }) {
+  const t = useT();
   return (
     <div className="space-y-2">
       {entry.imagePath ? (
@@ -164,12 +168,12 @@ export function LoreBody({
             onClick={() => void window.odm?.openDocument?.(entry.attachmentPath ?? "")}
             className={cn(ui.btnSmall, "mb-2 text-sm")}
           >
-            Open the pages in your reader
+            {t("Open the pages in your reader")}
           </button>
         ) : (
           <iframe
             src={entry.attachmentPath}
-            title={`${entry.title} pages`}
+            title={t("{title} pages", { title: entry.title })}
             className="h-[70vh] w-full rounded-lg border border-stone-800 bg-stone-100"
           />
         )

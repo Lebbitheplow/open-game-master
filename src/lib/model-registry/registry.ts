@@ -6,6 +6,12 @@
 // flagged, never swapped. The one a form recommends for a blank field is
 // named, so a pick saves a real name and nothing is guessed when a request
 // goes out.
+//
+// The verdict and hardware sentences live in the dictionaries
+// (admin.models.*); every entry point takes the translator from its caller,
+// as home/types.ts's agoLabel does. The API routes that serve this bind
+// English, so their answers stay byte-identical until a surface asks in a
+// table's own language.
 
 import { probeHarness } from "@/lib/harness/status";
 import { isHarnessId, type HarnessId } from "@/lib/harness/types";
@@ -74,6 +80,7 @@ function sameId(provider: RegistryProvider, a: string, b: string): boolean {
 }
 
 function row(
+  t: (key: string, vars?: Record<string, string | number>) => string,
   input: { role: ModelRole; provider: RegistryProvider; providerHint: string; selected: string; baseUrl: string; machine?: Machine | null },
   found: Found,
   listed: boolean | null,
@@ -92,7 +99,7 @@ function row(
     listed,
     selected: sameId(input.provider, found.id, input.selected),
     catalog,
-    verdict: assessModel({ role: input.role, id: found.id, catalog: judged, listed, local, tools: found.tools ?? null, memory, contextTokens: found.contextTokens }),
+    verdict: assessModel(t, { role: input.role, id: found.id, catalog: judged, listed, local, tools: found.tools ?? null, memory, contextTokens: found.contextTokens }),
     tested: input.provider === "harness" ? null : probeRecordFor(input.baseUrl, found.id),
     contextTokens: found.contextTokens || catalog?.contextTokens || 0,
     note: found.note ?? "",
@@ -113,7 +120,10 @@ function withSelected(
   return [make({ id }, reachable === true ? false : null), ...models];
 }
 
-export async function modelChoices(input: ModelChoicesInput): Promise<ModelChoices> {
+export async function modelChoices(
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  input: ModelChoicesInput,
+): Promise<ModelChoices> {
   const selected = input.selected.trim();
   const base = {
     role: input.role,
@@ -128,8 +138,8 @@ export async function modelChoices(input: ModelChoicesInput): Promise<ModelChoic
   if (input.provider === "local") {
     const baseUrl = input.baseUrl?.trim() || ollamaBaseUrl();
     const [listing, here] = await Promise.all([listOllamaModels(baseUrl), machine()]);
-    const hardware = { summary: describeMachine(here), budgetGb: memoryBudgetGb(here) };
-    const make = (found: Found, listed: boolean | null) => row({ ...input, providerHint: "", selected, baseUrl, machine: here }, found, listed);
+    const hardware = { summary: describeMachine(t, here), budgetGb: memoryBudgetGb(here) };
+    const make = (found: Found, listed: boolean | null) => row(t, { ...input, providerHint: "", selected, baseUrl, machine: here }, found, listed);
     if (!listing.ok) {
       return { ...base, hardware, baseUrl, reachable: false, error: listing.error, models: withSelected("local", [], make, selected, false) };
     }
@@ -158,7 +168,7 @@ export async function modelChoices(input: ModelChoicesInput): Promise<ModelChoic
   if (input.provider === "custom") {
     const baseUrl = input.baseUrl?.trim() ?? "";
     const hint = providerForBaseUrl(baseUrl, modelCatalog().providers);
-    const make = (found: Found, listed: boolean | null) => row({ ...input, providerHint: hint, selected, baseUrl }, found, listed);
+    const make = (found: Found, listed: boolean | null) => row(t, { ...input, providerHint: hint, selected, baseUrl }, found, listed);
     const listing = await listCustomModels(baseUrl, input.apiKey ?? "");
     if (!listing.ok) {
       return {
@@ -178,7 +188,7 @@ export async function modelChoices(input: ModelChoicesInput): Promise<ModelChoic
     const baseUrl = input.baseUrl?.trim() || "https://api.openai.com/v1";
     const providers = modelCatalog().providers;
     const hint = providerForBaseUrl(baseUrl, providers);
-    const make = (found: Found, listed: boolean | null) => row({ ...input, providerHint: hint, selected, baseUrl }, found, listed);
+    const make = (found: Found, listed: boolean | null) => row(t, { ...input, providerHint: hint, selected, baseUrl }, found, listed);
     const paints = (id: string): boolean | null => {
       const found = findCatalogModel(providers, id, hint);
       return found ? found.output.includes("image") : null;
@@ -202,7 +212,7 @@ export async function modelChoices(input: ModelChoicesInput): Promise<ModelChoic
   if (input.provider === "speech") {
     const baseUrl = input.baseUrl?.trim() ?? "";
     const hint = providerForBaseUrl(baseUrl, modelCatalog().providers);
-    const make = (found: Found, listed: boolean | null) => row({ ...input, providerHint: hint, selected, baseUrl }, found, listed);
+    const make = (found: Found, listed: boolean | null) => row(t, { ...input, providerHint: hint, selected, baseUrl }, found, listed);
     const listing = await listSpeechModels(baseUrl, input.apiKey ?? "");
     if (!listing.ok) {
       return {
@@ -231,9 +241,9 @@ export async function modelChoices(input: ModelChoicesInput): Promise<ModelChoic
   // catalog's word on each.
   const harnessId: HarnessId | null = isHarnessId(input.harnessId) ? input.harnessId : null;
   const make = (found: Found, listed: boolean | null) =>
-    row({ ...input, providerHint: harnessId ? harnessCatalogProvider(harnessId, found.id) : "", selected, baseUrl: "" }, found, listed);
+    row(t, { ...input, providerHint: harnessId ? harnessCatalogProvider(harnessId, found.id) : "", selected, baseUrl: "" }, found, listed);
   if (!harnessId) {
-    return { ...base, baseUrl: "", reachable: null, error: "No agent program is chosen.", models: withSelected("harness", [], make, selected, null) };
+    return { ...base, baseUrl: "", reachable: null, error: t("No agent program is chosen."), models: withSelected("harness", [], make, selected, null) };
   }
   const status = await probeHarness(harnessId);
   const ready = status.installed && status.auth.state === "ready";
@@ -244,7 +254,7 @@ export async function modelChoices(input: ModelChoicesInput): Promise<ModelChoic
     ...base,
     baseUrl: "",
     reachable: ready,
-    error: ready ? "" : status.message || `${status.label} is not ready.`,
+    error: ready ? "" : status.message || t("{label} is not ready.", { label: status.label }),
     models: withSelected("harness", models, make, selected, ready ? true : null),
   };
 }

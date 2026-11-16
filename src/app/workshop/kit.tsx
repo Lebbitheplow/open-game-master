@@ -7,6 +7,7 @@ import { GameIcon } from "@/components/ui/GameIcon";
 import { NumberStepper } from "@/components/ui/NumberStepper";
 import type { ContextMenuItem } from "@/components/ui/ContextMenu";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 import { ui } from "@/lib/ui";
 
 // The workshop's own small pieces over the app kit, shared by every system's
@@ -98,6 +99,7 @@ export function OptionalStepper({
   disabled?: boolean;
   className?: string;
 }) {
+  const t = useT();
   const set = typeof value === "number" && Number.isFinite(value);
   return (
     <span className={cn("inline-flex items-center gap-0.5", className)}>
@@ -113,7 +115,7 @@ export function OptionalStepper({
         disabled={disabled}
       />
       {set && !disabled ? (
-        <button type="button" aria-label={`Clear ${label}`} title="Leave unset" onClick={() => onChange("")} className={cn(ui.iconAction, "shrink-0 opacity-100 pointer-coarse:grid pointer-coarse:size-10 pointer-coarse:place-items-center")}>
+        <button type="button" aria-label={t("Clear {name}", { name: label })} title={t("Leave unset")} onClick={() => onChange("")} className={cn(ui.iconAction, "shrink-0 opacity-100 pointer-coarse:grid pointer-coarse:size-10 pointer-coarse:place-items-center")}>
           <X className="size-3.5" aria-hidden="true" />
         </button>
       ) : null}
@@ -131,13 +133,14 @@ const menuItemClass =
 // The kebab on a row: the same items the row's ContextMenu lists, behind a
 // button, so a phone and a keyboard reach them without a long press.
 export function RowMenu({ items, label, className }: { items: ContextMenuItem[]; label: string; className?: string }) {
+  const t = useT();
   if (!items.length) return null;
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
         <button
           type="button"
-          aria-label={`More for ${label}`}
+          aria-label={t("More for {name}", { name: label })}
           className={cn(ui.iconAction, "grid size-10 shrink-0 place-items-center text-stone-400 opacity-100", className)}
         >
           <EllipsisVertical className="size-4" aria-hidden="true" />

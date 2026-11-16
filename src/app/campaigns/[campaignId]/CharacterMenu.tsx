@@ -16,6 +16,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { useState } from "react";
+import { useT } from "@/lib/locale";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { ReportDialog, type ReportTarget } from "@/app/campaigns/[campaignId]/ReportDialog";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -53,6 +54,7 @@ export function CharacterMenu({
   muted?: boolean;
 }) {
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
+  const t = useT();
 
   const item =
     "flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-xs text-stone-300 outline-none data-[highlighted]:bg-stone-800";
@@ -90,11 +92,11 @@ export function CharacterMenu({
 
   return (
     <DropdownMenu.Root>
-      <Tooltip content={`Options for ${sheet.name}: sheet, notes, message and more`}>
+      <Tooltip content={t("Options for {name}: sheet, notes, message and more", { name: sheet.name })}>
         <DropdownMenu.Trigger asChild>
           <button
             type="button"
-            aria-label={`Options for ${sheet.name}`}
+            aria-label={t("Options for {name}", { name: sheet.name })}
             className="rounded p-1 text-stone-500 hover:bg-stone-900 hover:text-stone-300"
           >
             <MoreVertical className="size-3.5" />
@@ -108,45 +110,45 @@ export function CharacterMenu({
           className="panel z-50 min-w-40 rounded-lg p-1"
         >
           <DropdownMenu.Item className={item} onSelect={defer(onViewSheet)}>
-            <BookUser className="size-3.5 text-stone-500" /> View sheet
+            <BookUser className="size-3.5 text-stone-500" /> {t("View sheet")}
           </DropdownMenu.Item>
           <DropdownMenu.Item className={item} onSelect={defer(onNotes)}>
-            <StickyNote className="size-3.5 text-stone-500" /> Notes
+            <StickyNote className="size-3.5 text-stone-500" /> {t("Notes")}
           </DropdownMenu.Item>
           {onMessage ? (
             <DropdownMenu.Item className={item} onSelect={defer(onMessage)}>
-              <MessageSquare className="size-3.5 text-stone-500" /> Message
+              <MessageSquare className="size-3.5 text-stone-500" /> {t("Message")}
             </DropdownMenu.Item>
           ) : null}
           {onTrade ? (
             <DropdownMenu.Item className={item} onSelect={defer(onTrade)}>
-              <ArrowLeftRight className="size-3.5 text-stone-500" /> Trade
+              <ArrowLeftRight className="size-3.5 text-stone-500" /> {t("Trade")}
             </DropdownMenu.Item>
           ) : null}
           {steersStory ? (
             <DropdownMenu.Item className={item} onSelect={defer(onAdjust)}>
-              <Wrench className="size-3.5 text-stone-500" /> Adjust stats
+              <Wrench className="size-3.5 text-stone-500" /> {t("Adjust stats")}
             </DropdownMenu.Item>
           ) : null}
           {canTransferLead && sheet.userId !== leadUserId && !sheet.isCompanion ? (
             <DropdownMenu.Item className={item} onSelect={makeLead}>
-              <Crown className="size-3.5 text-amber-400" /> Make party lead
+              <Crown className="size-3.5 text-amber-400" /> {t("Make party lead")}
             </DropdownMenu.Item>
           ) : null}
           {steersStory && sheet.isCompanion ? (
             <DropdownMenu.Item className={item} onSelect={dismissCompanion}>
-              <UserMinus className="size-3.5 text-red-400" /> Dismiss companion
+              <UserMinus className="size-3.5 text-red-400" /> {t("Dismiss companion")}
             </DropdownMenu.Item>
           ) : null}
           {canMute ? (
             <DropdownMenu.Item className={item} onSelect={() => setMuted(!muted)}>
               {muted ? (
                 <>
-                  <Volume2 className="size-3.5 text-stone-500" /> Unmute player
+                  <Volume2 className="size-3.5 text-stone-500" /> {t("Unmute player")}
                 </>
               ) : (
                 <>
-                  <VolumeX className="size-3.5 text-orange-400" /> Mute player
+                  <VolumeX className="size-3.5 text-orange-400" /> {t("Mute player")}
                 </>
               )}
             </DropdownMenu.Item>
@@ -160,7 +162,7 @@ export function CharacterMenu({
                   setReportTarget({ userId: sheet.userId, authorType: "player", label: sheet.name }),
                 )}
               >
-                <Flag className="size-3.5 text-amber-400" /> Report player
+                <Flag className="size-3.5 text-amber-400" /> {t("Report player")}
               </DropdownMenu.Item>
               <DropdownMenu.Item
                 className={item}
@@ -173,7 +175,7 @@ export function CharacterMenu({
                   }),
                 )}
               >
-                <ShieldBan className="size-3.5 text-red-400" /> Block player
+                <ShieldBan className="size-3.5 text-red-400" /> {t("Block player")}
               </DropdownMenu.Item>
             </>
           ) : null}

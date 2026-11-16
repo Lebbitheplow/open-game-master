@@ -8,6 +8,7 @@ import { applyRowOps, docOps, type DocOps } from "@/lib/worldforge/ops";
 import { byName } from "@/lib/language/text-logic";
 import type { Editable, EntryConflict } from "@/lib/worldforge/entry-merge";
 import type { Placement, RegionBridge } from "@/lib/db/atlas-region";
+import { useT } from "@/lib/locale";
 
 // The workshop's WorldForge on the client: one load of the document and the
 // records it describes, slice saves that show at once and settle when the
@@ -42,6 +43,7 @@ function fromAnswer(payload: { doc: Omit<WorldDoc, "entries">; entities: WorldEn
 type Answer = Parameters<typeof fromAnswer>[0];
 
 export function useWorld(campaignId: string) {
+  const t = useT();
   const [world, setWorld] = useState<WorldState | null>(null);
   const [error, setError] = useState("");
   // Requests not answered yet, slice saves queued included: "saving" lasts
@@ -63,7 +65,7 @@ export function useWorld(campaignId: string) {
 
   useEffect(() => {
     let cancelled = false;
-    readLoad<Answer>(fetch(lean), "The world").then((outcome) => {
+    readLoad<Answer>(t, fetch(lean), t("The world")).then((outcome) => {
       if (cancelled) return;
       settle(outcome);
       // A reload while saves are still waiting keeps them laid over it.
@@ -72,8 +74,7 @@ export function useWorld(campaignId: string) {
     return () => {
       cancelled = true;
     };
-  }, [lean, reload, settle, withPending]);
-
+  }, [ lean, reload, settle, withPending, t ]);
   const refresh = useCallback(() => setReload((value) => value + 1), []);
 
   const send = useCallback(async (url: string, init: RequestInit) => {

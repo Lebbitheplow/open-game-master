@@ -21,6 +21,7 @@ import type { OpenSystem } from "./WorldForgePanel";
 import { LinkEditor } from "./LinkEditor";
 import { EntityAvatar, SHELF_SYSTEMS, TypeChip, typeOf } from "./world-ui";
 import { PaintPanel, usePaintJobs } from "./PaintJobs";
+import { useT } from "@/lib/locale";
 
 // One entry, read: its picture and names, what the table plays with, its
 // article with every other entry it names linked, its type's fields, its
@@ -40,12 +41,12 @@ const TABLE_WORDS: Record<string, string> = {
   goal: "Goal",
   category: "Lore shelf",
   visibility: "Read by",
-  pinned: "Pinned",
+  pinned: "Pinned: included in every GM turn",
 };
 
-function tableValue(key: string, value: string | number | boolean): string {
-  if (typeof value === "boolean") return value ? "yes" : "";
-  if (key === "visibility") return value === "dm" ? "the GM only" : "the party";
+function tableValue(key: string, value: string | number | boolean, t: (k: string) => string): string {
+  if (typeof value === "boolean") return value ? t("yes") : "";
+  if (key === "visibility") return value === "dm" ? t("the GM only") : t("the party");
   return String(value);
 }
 
@@ -76,6 +77,7 @@ export function EntityPage({
   canPaint: boolean;
 }) {
   const { doc, entities } = world;
+  const t = useT();
   const [editing, setEditing] = useState(false);
   // Paint's jobs for this entry, kept on the server (PaintJobs.tsx): a
   // picture on its way, waiting for a decision or failed is still there
@@ -99,7 +101,7 @@ export function EntityPage({
   const older = olderText(entity);
   const folders = folderPath(doc.folders, entity.entry.folderId);
   const home = SHELF_SYSTEMS[entity.shelf];
-  const facts = Object.entries(entity.table).filter(([, value]) => tableValue("", value) !== "");
+  const facts = Object.entries(entity.table).filter(([, value]) => tableValue("", value, t) !== "");
 
   async function saveLinks(links: WorldLink[]) {
     await api.patch({ links });
@@ -107,9 +109,9 @@ export function EntityPage({
   }
 
   async function remove() {
-    const ok = await appConfirm(`${entity.name} is ${entity.shelf === "lore" ? "a lore entry" : `in ${SHELF_LABELS[entity.shelf]}`}: deleting it here deletes it there too, with every link to it.`, {
-      title: `Delete ${entity.name}?`,
-      actionLabel: "Delete",
+    const ok = await appConfirm(t("{name} is {where}: deleting it here deletes it there too, with every link to it.", { name: entity.name, where: entity.shelf === "lore" ? t("a lore entry") : t("in {shelf}", { shelf: SHELF_LABELS[entity.shelf] }) }), {
+      title: t("Remove the folder {name}?", { name: entity.name }),
+      actionLabel: t("Delete"),
       tone: "danger",
     });
     if (ok && (await api.remove(entity.ref))) onBack();
@@ -146,15 +148,15 @@ export function EntityPage({
         {other.name}
         {link.rank ? <span className="text-stone-500">({link.rank})</span> : null}
       </button>
-      {link.veracity === "hidden" ? <Lock className="size-3 text-red-400" aria-label="Hidden truth" /> : null}
-      {link.veracity === "believed" ? <Theater className="size-3 text-violet-300" aria-label="False belief" /> : null}
-      {link.oneway ? <span className="text-[10px] text-stone-500" title="One way">one way</span> : null}
+      {link.veracity === "hidden" ? <Lock className="size-3 text-red-400" aria-label={t("Hidden truth")} /> : null}
+      {link.veracity === "believed" ? <Theater className="size-3 text-violet-300" aria-label={t("False belief")} /> : null}
+      {link.oneway ? <span className="text-[10px] text-stone-500" title={t("One way: how {name} sees it, not returned", { name: "" })}>{t("one way")}</span> : null}
       {!reverse ? (
         <>
-          <button type="button" aria-label={`Edit the link to ${other.name}`} onClick={() => setLinking(link)} className="reveal-on-hover text-stone-500 hover:text-amber-200 motion-nudge">
+          <button type="button" aria-label={t("Edit the link to {name}", { name: other.name })} onClick={() => setLinking(link)} className="reveal-on-hover text-stone-500 hover:text-amber-200 motion-nudge">
             <Pencil className="size-3" />
           </button>
-          <button type="button" aria-label={`Remove the link to ${other.name}`} onClick={() => saveLinks(doc.links.filter((entry) => entry.id !== link.id))} className="reveal-on-hover text-stone-500 hover:text-red-300 motion-nudge">
+          <button type="button" aria-label={t("Remove the link to {name}", { name: other.name })} onClick={() => saveLinks(doc.links.filter((entry) => entry.id !== link.id))} className="reveal-on-hover text-stone-500 hover:text-red-300 motion-nudge">
             <X className="size-3" />
           </button>
         </>
@@ -185,7 +187,7 @@ export function EntityPage({
   return (
     <article className="flex flex-col gap-4 animate-fade-up" data-tour="world-entry">
       <header className="flex flex-wrap items-start gap-3">
-        <button type="button" onClick={onBack} className="@2xl:hidden" aria-label="Back to the list">
+        <button type="button" onClick={onBack} className="@2xl:hidden" aria-label={t("Entries")}>
           <ArrowLeft className="size-5 text-stone-400" />
         </button>
         <span key={entity.portrait} className="motion-pop">
@@ -197,31 +199,31 @@ export function EntityPage({
             <TypeChip type={type} />
             {entity.entry.canon !== "canon" ? <span className="rounded-md border border-stone-600 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-stone-400">{entity.entry.canon}</span> : null}
           </div>
-          {entity.aliases.length ? <p className="text-xs text-stone-400">Also called {entity.aliases.join(", ")}</p> : null}
+          {entity.aliases.length ? <p className="text-xs text-stone-400">{t("Also called {list}", { list: entity.aliases.join(", ") })}</p> : null}
           {folders.length ? <p className="text-[11px] text-stone-500">{folders.map((folder) => folder.name).join(" / ")}</p> : null}
           {lifeLine ? <p className="text-xs text-stone-400">{lifeLine}</p> : null}
         </div>
         <div className="flex basis-full flex-wrap gap-1.5 @lg:basis-auto">
           <KitButton tone="small" onClick={() => setEditing(true)} data-tour="world-edit">
-            <Pencil className="size-3.5" /> Edit
+            <Pencil className="size-3.5" /> {t("Change", { context: "workshop.world.atlasCard.change" })}
           </KitButton>
           {canPaint ? (
             <KitButton
               tone="small"
               busy={paint.running !== null || paint.busy === "paint"}
               disabled={paint.running !== null || paint.busy !== null}
-              title="Paint a picture for this entry: a portrait, a vista, a sigil or an illustration by its type. It waits beside the current picture until you keep it."
+              title={t("Paint a picture for this entry: a portrait, a vista, a sigil or an illustration by its type. It waits beside the current picture until you keep it.")}
               onClick={paint.start}
             >
-              {paint.running || paint.busy === "paint" ? null : <Brush className="size-3.5" />} {paint.running?.state === "queued" ? "Queued" : paint.running ? "Painting" : "Paint"}
+              {paint.running || paint.busy === "paint" ? null : <Brush className="size-3.5" />} {paint.running?.state === "queued" ? t("Queued") : paint.running ? t("Painting") : t("Paint")}
             </KitButton>
           ) : null}
           {onOpenSystem ? (
-            <KitButton tone="small" onClick={() => onOpenSystem(home.system, { id: entity.id, from: entity.ref })} title={`Open ${entity.name}'s own tool`}>
+            <KitButton tone="small" onClick={() => onOpenSystem(home.system, { id: entity.id, from: entity.ref })} title={t("Open {name}'s own tool", { name: entity.name })}>
               <ExternalLink className="size-3.5" /> {home.label}
             </KitButton>
           ) : null}
-          <KitButton tone="iconDanger" always aria-label={`Delete ${entity.name}`} onClick={remove}>
+          <KitButton tone="iconDanger" always aria-label={t("Delete {name}", { name: entity.name })} onClick={remove}>
             <Trash2 className="size-4" />
           </KitButton>
         </div>
@@ -232,10 +234,10 @@ export function EntityPage({
       <ImportKept key={entity.ref} kept={entity.kept ?? []} onChoose={(key, choice) => api.settleKept(entity.ref, key, choice)} />
 
       {facts.length ? (
-        <div className="flex flex-wrap gap-1.5" aria-label="At the table">
+        <div className="flex flex-wrap gap-1.5" aria-label={t("At the table")}>
           {facts.map(([key, value]) => (
             <span key={key} className="pk-chip motion-pop text-[11px]">
-              <span className="text-stone-500">{TABLE_WORDS[key] ?? key}</span> {tableValue(key, value)}
+              <span className="text-stone-500">{t(TABLE_WORDS[key] ?? key)}</span> {tableValue(key, value, t)}
             </span>
           ))}
         </div>
@@ -255,17 +257,17 @@ export function EntityPage({
           )}
         </p>
       ) : (
-        <p className="text-sm text-stone-500">Nothing written yet.</p>
+        <p className="text-sm text-stone-500">{t("Nothing written yet.")}</p>
       )}
       {arrival ? (
         <div className="flex flex-col gap-1" data-testid="world-arrival">
-          <span className="eyebrow text-[10px] text-stone-500">On arrival</span>
+          <span className="eyebrow text-[10px] text-stone-500">{t("On arrival")}</span>
           <p className="whitespace-pre-wrap text-sm leading-6 text-stone-300">{arrival}</p>
         </div>
       ) : null}
       {older ? (
         <p className="text-xs text-amber-300" data-testid="world-older-text">
-          An older text from an import is kept beside this entry, because the two say different things. Players never see it. Open Edit to choose between them.
+          {t("An older text from an import is kept beside this entry, because the two say different things. Players never see it. Open Edit to choose between them.")}
         </p>
       ) : null}
       <BoundRecords
@@ -283,18 +285,18 @@ export function EntityPage({
             <div key={def.id} className={cn("flex gap-2", def.authorOnly && "text-red-300")}>
               <dt className="text-stone-500">{def.name}</dt>
               <dd>{text}</dd>
-              {def.authorOnly ? <EyeOff className="size-3.5 self-center" aria-label="Author only" /> : null}
+              {def.authorOnly ? <EyeOff className="size-3.5 self-center" aria-label={t("Author only")} /> : null}
             </div>
           ))}
         </dl>
       ) : null}
 
-      <section className="flex flex-col gap-1.5" aria-label="Links">
+      <section className="flex flex-col gap-1.5" aria-label={t("Links")}>
         <div className="flex items-center justify-between">
-          <h4 className="eyebrow text-[10px] text-amber-400/80">Links</h4>
+          <h4 className="eyebrow text-[10px] text-amber-400/80">{t("Links")}</h4>
           {linking === null ? (
             <KitButton tone="link" onClick={() => setLinking("new")} data-tour="world-add-link">
-              <Plus className="size-3.5" /> Add a link
+              <Plus className="size-3.5" /> {t("Add a link")}
             </KitButton>
           ) : null}
         </div>
@@ -308,7 +310,7 @@ export function EntityPage({
             onSave={(link) => saveLinks([...doc.links.filter((entry) => entry.id !== link.id), link])}
           />
         ) : null}
-        {outgoing.length ? grouped(outgoing, false) : linking === null ? <p className="text-xs text-stone-500">No links yet.</p> : null}
+        {outgoing.length ? grouped(outgoing, false) : linking === null ? <p className="text-xs text-stone-500">{t("No links yet.")}</p> : null}
         {incoming.filter((link) => !link.oneway).length ? (
           <div className="mt-1 flex flex-col gap-1.5 border-t border-stone-800/80 pt-2">{grouped(incoming.filter((link) => !link.oneway), true)}</div>
         ) : null}
@@ -316,14 +318,14 @@ export function EntityPage({
       <PlayFields campaignId={campaignId} entity={entity} onChanged={api.refresh} />
 
       {events.length ? (
-        <section className="flex flex-col gap-1" aria-label="Events">
-          <h4 className="eyebrow text-[10px] text-amber-400/80">On the timeline</h4>
+        <section className="flex flex-col gap-1" aria-label={t("Events")}>
+          <h4 className="eyebrow text-[10px] text-amber-400/80">{t("On the timeline")}</h4>
           {events.map((event) => {
             const when = formatYear(event.when, doc.calendars).primary;
             const issue = lifespanIssue(span, absoluteYear(event.when, doc.calendars));
             return (
               <p key={event.id} className="text-sm text-stone-300">
-                <span className="text-stone-500">{when || "Undated"}</span> {event.title}
+                <span className="text-stone-500">{when || t("Undated")}</span> {event.title}
                 {issue ? <span className="ml-2 text-xs text-ember-400">({issue})</span> : null}
               </p>
             );
@@ -332,29 +334,29 @@ export function EntityPage({
       ) : null}
 
       {secrets.length ? (
-        <section className="flex flex-col gap-1" aria-label="Secrets">
-          <h4 className="eyebrow text-[10px] text-amber-400/80">Secrets</h4>
+        <section className="flex flex-col gap-1" aria-label={t("New secret")}>
+          <h4 className="eyebrow text-[10px] text-amber-400/80">{t("New secret")}</h4>
           {secrets.map((secret) => (
             <p key={secret.id} className="text-sm text-stone-300">
               <Lock className="mr-1 inline size-3.5 text-red-400" />
               {secret.title}
-              <span className="ml-2 text-xs text-stone-500">{secret.subject === entity.ref ? "about them" : "they know it"}{secret.partyKnows ? ", the party knows" : ""}</span>
+              <span className="ml-2 text-xs text-stone-500">{secret.subject === entity.ref ? t("about them") : t("they know it")}{secret.partyKnows ? t(", the party knows") : ""}</span>
             </p>
           ))}
         </section>
       ) : null}
 
       {entity.entry.hiddenTruth ? (
-        <section className="rounded-lg border border-red-900/60 bg-red-950/30 p-3" aria-label="Hidden truth">
+        <section className="rounded-lg border border-red-900/60 bg-red-950/30 p-3" aria-label={t("Hidden truth")}>
           <h4 className="eyebrow mb-1 flex items-center gap-1 text-[10px] text-red-300">
-            <Lock className="size-3" /> Hidden truth, kept from players
+            <Lock className="size-3" /> {t("Hidden truth, kept from players")}
           </h4>
           <p className="whitespace-pre-wrap text-sm text-red-100/90">{entity.entry.hiddenTruth}</p>
         </section>
       ) : null}
       {entity.entry.notes ? (
-        <section className="rounded-lg border border-stone-700/70 bg-stone-900/40 p-3" aria-label="Author's notes">
-          <h4 className="eyebrow mb-1 text-[10px] text-stone-400">Author&apos;s notes</h4>
+        <section className="rounded-lg border border-stone-700/70 bg-stone-900/40 p-3" aria-label={t("Author's notes")}>
+          <h4 className="eyebrow mb-1 text-[10px] text-stone-400">{t("Author's notes")}</h4>
           <p className="whitespace-pre-wrap text-sm text-stone-300">{entity.entry.notes}</p>
         </section>
       ) : null}

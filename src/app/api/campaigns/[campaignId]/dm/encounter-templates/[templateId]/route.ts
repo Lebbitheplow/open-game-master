@@ -25,6 +25,7 @@ import { getPreparedMap } from "@/lib/db/prepared-maps";
 import { MAP_THEMES } from "@/lib/battlemap/generate";
 import { sceneIds } from "@/lib/ambience/catalog";
 import { layOver } from "@/lib/schemas/parse-keeping-valid";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,17 +50,18 @@ export async function PATCH(
   if (isErrorResponse(context)) {
     return context;
   }
+  const t = requestT(request);
   const template = getEncounterTemplate(templateId);
   // The id comes from the URL, so the campaign check is what stops one
   // campaign's id being used to edit another's.
   if (!template || template.campaignId !== campaignId) {
-    return Response.json({ error: "No such prepared encounter." }, { status: 404 });
+    return Response.json({ error: t("No such prepared encounter.") }, { status: 404 });
   }
   const body: unknown = await request.json().catch(() => ({}));
   const parsed = patchSchema.safeParse(body);
   if (!parsed.success) {
     return Response.json(
-      { error: eventsUnreadable(body) ? EVENTS_REFUSAL : "Invalid edit." },
+      { error: eventsUnreadable(body) ? EVENTS_REFUSAL : t("Invalid edit.") },
       { status: 400 },
     );
   }
@@ -86,7 +88,7 @@ export async function PATCH(
   // only shape-checks the id.
   if (parsed.data.map !== undefined && map.mapId && !getPreparedMap(campaignId, map.mapId)) {
     return Response.json(
-      { error: "That prepared map is not in this campaign's drawer." },
+      { error: t("That prepared map is not in this campaign's drawer.") },
       { status: 400 },
     );
   }
@@ -116,13 +118,13 @@ export async function PATCH(
       ? { ...updated, readout: templateDifficulty(context.campaign, updated.enemies) }
       : null,
     ...(dropped.length
-      ? { setupNote: `Saved. Its set-up no longer holds ${dropped.join(", ")}: the roster has no such creature now. The rest of the set-up is kept.` }
+      ? { setupNote: t("Saved. Its set-up no longer holds {names}: the roster has no such creature now. The rest of the set-up is kept.", { names: dropped.join(", ") }) }
       : {}),
   });
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ campaignId: string; templateId: string }> },
 ) {
   const { campaignId, templateId } = await params;
@@ -130,9 +132,10 @@ export async function DELETE(
   if (isErrorResponse(context)) {
     return context;
   }
+  const t = requestT(request);
   const template = getEncounterTemplate(templateId);
   if (!template || template.campaignId !== campaignId) {
-    return Response.json({ error: "No such prepared encounter." }, { status: 404 });
+    return Response.json({ error: t("No such prepared encounter.") }, { status: 404 });
   }
   deleteEncounterTemplate(templateId);
   return Response.json({ ok: true });

@@ -11,6 +11,13 @@ import { beastsWithin, crWords, wildShapeCapsFor, BEAST_INDEX } from "@/lib/srd/
 import { classLevelFor, classListFor } from "@/lib/srd/multiclass";
 import { subclassNamed } from "@/lib/srd/subclass-name";
 import { textKey } from "@/lib/language/text-logic";
+import { translate } from "@/lib/messages-logic";
+
+// The picker's own words (table.hand.counter.*) read with the hand's
+// translator, as the cards do; the beast names are the stat blocks' own and
+// stay as they are (the sheet reads them back as the form's value).
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
 
 // A fight is on (true), none is (false), or an older server's Hand cannot
 // tell (null). The board view sends no table out of a fight.
@@ -22,24 +29,24 @@ export function inFightOf(turn: HandTurn): boolean | null {
 // and fly ceilings by druid level; Circle of the Moon's higher CR), sent as
 // the form use_resource asks for. The card sent none, and every play was sent
 // back for "the beast being assumed".
-export function wildShapeChoice(sheet: CharacterSheet): HandChoice {
+export function wildShapeChoice(sheet: CharacterSheet, t: T = enT): HandChoice {
   const druid = classListFor(sheet).find((entry) => textKey(entry.id) === "druid");
   const level = classLevelFor(sheet, "druid") || sheet.level;
   const moon = subclassNamed(druid?.subclass ?? sheet.subclass ?? "", "Circle of the Moon");
   return {
     arg: "variant",
-    label: "Become",
-    options: beastsWithin(wildShapeCapsFor(level, moon)).map((beast) => ({ value: beast.n, label: beast.n, note: `CR ${crWords(beast.cr)}` })),
+    label: t("Become"),
+    options: beastsWithin(wildShapeCapsFor(level, moon)).map((beast) => ({ value: beast.n, label: beast.n, note: t("CR {cr}", { cr: crWords(beast.cr) }) })),
   };
 }
 
 // Polymorph: "any beast whose challenge rating is equal to or less than the
 // target's (or the target's level)". The card cannot know the target's, so it
 // offers every beast, lowest first, and cast_buff holds the ceiling.
-export function polymorphChoice(): HandChoice {
+export function polymorphChoice(t: T = enT): HandChoice {
   return {
     arg: "variant",
-    label: "Become",
-    options: BEAST_INDEX.map((beast) => ({ value: beast.n, label: beast.n, note: `CR ${crWords(beast.cr)}` })),
+    label: t("Become"),
+    options: BEAST_INDEX.map((beast) => ({ value: beast.n, label: beast.n, note: t("CR {cr}", { cr: crWords(beast.cr) }) })),
   };
 }

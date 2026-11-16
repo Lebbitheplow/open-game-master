@@ -23,6 +23,9 @@ const {
 } = await import("../src/lib/help/index.ts");
 const { SRD_CLASSES } = await import("../src/lib/srd/index.ts");
 const { bundledSpellSchool } = await import("../src/lib/srd/spell-facts.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+// The help module builds its sentences for the screen; the test reads them in English.
+const t = (key, vars) => translate("en", key, vars);
 const { THIRD_CASTER_PROFILES, thirdCasterSchoolProblem } = await import("../src/lib/srd/third-caster.ts");
 
 let passed = 0;
@@ -92,7 +95,7 @@ test("a feature name shared by two subclasses resolves to each one's own text", 
 test("every lineage and skill can be described", () => {
   assert.deepEqual(races.filter((race) => !describeRace(race.id)?.trim()), []);
   assert.deepEqual(
-    skills.filter((skill) => !describeSkill(skill.id)?.trim()).map((skill) => skill.id),
+    skills.filter((skill) => !describeSkill(t, skill.id)?.trim()).map((skill) => skill.id),
     [],
   );
   // Content-pack race slugs use hyphens where the bundled ids use underscores.

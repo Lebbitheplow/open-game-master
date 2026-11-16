@@ -9,6 +9,7 @@ import { ContextMenu, type ContextMenuItem } from "@/components/ui/ContextMenu";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { RowMenu } from "@/app/workshop/kit";
 import { ListHead, useListHead } from "@/app/workshop/ListHead";
+import { useT, useTp } from "@/lib/locale";
 import type { Monster } from "@/app/workshop/bestiary/types";
 
 // The workshop's bestiary list: one full-width row per built monster with
@@ -44,19 +45,21 @@ export function MonsterRows({
   onDelete: (monster: Monster) => void;
 }) {
   const head = useListHead(monsters, readMonster);
+  const t = useT();
+  const tp = useTp();
   if (!monsters.length) {
     return (
       <EmptyState
         size="md"
         art="chest"
-        title="Nothing built yet. A monster made here answers to its name wherever a fight starts."
-        hint="Start from a challenge rating or a rulebook monster. Then add it to a fight in Encounters, or give it a World entry to tie it to your setting; a campaign that brings that prep in gets its own copy."
+        title={t("Nothing built yet. A monster made here answers to its name wherever a fight starts.")}
+        hint={t("Start from a challenge rating or a rulebook monster. Then add it to a fight in Encounters, or give it a World entry to tie it to your setting; a campaign that brings that prep in gets its own copy.")}
       />
     );
   }
   return (
     <>
-    <ListHead head={head} noun={["monster", "monsters"]} placeholder="Find a monster" />
+    <ListHead head={head} noun={[t("monster"), t("monsters")]} placeholder={t("Find a monster")} />
     <ul className="stagger space-y-2">
       {head.shown.map((monster) => {
         const { stats } = monster.draft;
@@ -64,9 +67,9 @@ export function MonsterRows({
         // One list for both doors: the kebab on the row and the right-click
         // or long-press menu. Opening stays the row itself.
         const items: ContextMenuItem[] = [
-          { id: "open", label: "Open", glyph: "system-bestiary", onSelect: () => onOpen(monster) },
-          { id: "duplicate", label: "Duplicate", glyph: "ui-duplicate", disabled: busy, onSelect: () => onDuplicate(monster) },
-          { id: "delete", label: "Delete", glyph: "ui-delete", tone: "danger", separated: true, onSelect: () => onDelete(monster) },
+          { id: "open", label: t("Open", { context: "action.open" }), glyph: "system-bestiary", onSelect: () => onOpen(monster) },
+          { id: "duplicate", label: t("Duplicate"), glyph: "ui-duplicate", disabled: busy, onSelect: () => onDuplicate(monster) },
+          { id: "delete", label: t("Delete"), glyph: "ui-delete", tone: "danger", separated: true, onSelect: () => onDelete(monster) },
         ];
         return (
           <ContextMenu
@@ -95,19 +98,19 @@ export function MonsterRows({
                   {monster.draft.name}
                 </span>
                 <span className="rounded-sm border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 font-display text-[10px] tracking-wider text-amber-300">
-                  CR {crLabel(stats.cr)}
+                  {t("CR {cr}", { cr: crLabel(stats.cr) })}
                 </span>
               </div>
               <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-stone-300">
                 <span className="inline-flex items-center gap-1">
-                  <GameIcon icon={{ kind: "glyph", key: "rest-ac" }} size="size-5" /> AC {stats.ac}
+                  <GameIcon icon={{ kind: "glyph", key: "rest-ac" }} size="size-5" /> {t("AC {ac}", { ac: stats.ac })}
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <GameIcon icon={{ kind: "glyph", key: "rest-hp" }} size="size-5" /> {stats.maxHp} hp
+                  <GameIcon icon={{ kind: "glyph", key: "rest-hp" }} size="size-5" /> {t("{hp} hp", { hp: stats.maxHp })}
                 </span>
               </p>
               <p className="text-xs text-stone-500">
-                {swings} swing{swings === 1 ? "" : "s"} a turn · Dex {signed(stats.dexMod)}
+                {tp("{count} swing a turn · Dex {mod}", "{count} swings a turn · Dex {mod}", { count: swings, mod: signed(stats.dexMod) })}
               </p>
               <div className="mt-1">
                 <RatingLine readout={monster.readout} />

@@ -6,8 +6,9 @@ import { cn } from "@/lib/cn";
 import { SessionBanner, bannerButtonClass } from "@/app/campaigns/[campaignId]/SessionBanner";
 import type { Floor } from "@/lib/db/campaigns";
 import type { PublicEncounter } from "@/lib/db/encounter-view";
-import { extraTurnTag, litOrderRows, orderRowKey } from "@/lib/battlemap/initiative-rows";
+import { extraTurnTagT, litOrderRows, orderRowKey } from "@/lib/battlemap/initiative-rows";
 import { floorNoticeKey, liveNotice, type HandNotice } from "@/lib/battlemap/hand-table";
+import { useT } from "@/lib/locale";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { TurnHoldNote, useTurnHeld } from "@/app/campaigns/[campaignId]/TurnHoldNote";
 
@@ -33,6 +34,7 @@ export function FloorBanners({
   onRelease: () => void;
 }) {
   const [endingTurn, setEndingTurn] = useState(false);
+  const t = useT();
   // The end-turn route's refusal, in its own words, under the banner, for
   // the turn it answered only (issue 668).
   const [refusalEntry, setRefusalEntry] = useState<HandNotice | null>(null);
@@ -53,10 +55,10 @@ export function FloorBanners({
       const response = await fetch(`/api/campaigns/${campaignId}/encounter/end-turn`, { method: "POST" });
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
-        setRefusal(data.error ?? "The turn could not be ended.");
+        setRefusal(data.error ?? t("The turn could not be ended."));
       }
     } catch {
-      setRefusal("Could not reach the table.");
+      setRefusal(t("Could not reach the table."));
     } finally {
       setEndingTurn(false);
     }
@@ -68,7 +70,7 @@ export function FloorBanners({
         <SessionBanner
           glyph="attitude-hostile"
           tone="blood"
-          title={<>Round {floor.round}</>}
+          title={<>{t("Round {round}", { round: floor.round })}</>}
           actions={
             myInitiativeTurn || steersStory ? (
               <>
@@ -79,9 +81,9 @@ export function FloorBanners({
                     disabled={endingTurn || Boolean(held)}
                     aria-busy={held ? true : undefined}
                     className={bannerButtonClass(true)}
-                    title="Done with your action, movement, and bonus action? End your combat turn."
+                    title={t("Done with your action, movement, and bonus action? End your combat turn.")}
                   >
-                    {held ? "Ending turn…" : "End turn"}
+                    {held ? t("Ending turn…") : t("End turn")}
                   </button>
                 ) : null}
                 {steersStory ? (
@@ -92,9 +94,9 @@ export function FloorBanners({
                     // Marks the banner as holding something only it offers
                     // (world.css keeps it over a docked Hand for this).
                     data-banner-lead=""
-                    title="Skip the current player's turn"
+                    title={t("Skip the current player's turn")}
                   >
-                    Skip turn
+                    {t("Skip turn")}
                   </button>
                 ) : null}
               </>
@@ -113,7 +115,7 @@ export function FloorBanners({
                     return (
                       <span
                         key={orderRowKey(entry, index)}
-                        title={extraTurnTag(entry)?.title}
+                        title={extraTurnTagT(t, entry)?.title}
                         className={cn(
                           "transition-opacity duration-200",
                           current ? "font-semibold" : "opacity-60",
@@ -121,13 +123,13 @@ export function FloorBanners({
                       >
                         {index > 0 ? " > " : ""}
                         {entry.name}
-                        {entry.reflex ? <sup className="motion-pop ml-0.5 text-[9px] text-amber-300">{extraTurnTag(entry)?.short}</sup> : null}
+                        {entry.reflex ? <sup className="motion-pop ml-0.5 text-[9px] text-amber-300">{extraTurnTagT(t, entry)?.short}</sup> : null}
                       </span>
                     );
                   })}
                 </>
               ) : (
-                <>{floor.currentName}&apos;s turn</>
+                <>{t("{name}'s turn", { name: floor.currentName })}</>
               )}
           </span>
           {held ? <TurnHoldNote held={held} mine={myInitiativeTurn} className="mt-0.5" /> : null}
@@ -141,7 +143,7 @@ export function FloorBanners({
       {floor.mode === "spotlight" ? (
         <SessionBanner
           glyph="sense-truesight"
-          title={floor.respondedUserIds.length ? "Spotlight, waiting on" : "Spotlight"}
+          title={floor.respondedUserIds.length ? t("Spotlight, waiting on") : t("Spotlight")}
           lead={
             spotlighted.some((sheet) => sheet.portrait) ? (
               <span className="flex shrink-0 -space-x-2">
@@ -163,7 +165,7 @@ export function FloorBanners({
           actions={
             steersStory ? (
               <button type="button" onClick={onRelease} className={bannerButtonClass(true)}>
-                Release
+                {t("Release")}
               </button>
             ) : null
           }
@@ -183,7 +185,7 @@ export function FloorBanners({
                       </span>
                     );
                   })
-                : "someone"}
+                : t("Someone")}
               {floor.prompt ? (
                 <span className="opacity-80"> · {floor.prompt}</span>
               ) : null}
@@ -196,37 +198,37 @@ export function FloorBanners({
         // too, and keep their own banner below.
         <SessionBanner
           glyph="tab-battle"
-          title="Enemy turns"
+          title={t("Enemy turns")}
           actions={
             steersStory ? (
               <button type="button" onClick={onRelease} className={bannerButtonClass(true)}>
-                Hand on the turn
+                {t("Hand on the turn", { context: "lead.floor.handOn" })}
               </button>
             ) : null
           }
         >
           <span>
-            The enemies act before {floor.next.currentName || "the next turn"}; the GM hands on the turn.
+            {t("The enemies act before {name}; the GM hands on the turn.", { name: floor.next.currentName || t("the next turn") })}
           </span>
         </SessionBanner>
       ) : floor.mode === "hold" ? (
         <SessionBanner
           glyph="rest-inspiration"
-          title="Responses held"
+          title={t("Responses held")}
           actions={
             steersStory ? (
               <button type="button" onClick={onRelease} className={bannerButtonClass(true)}>
-                Allow responses
+                {t("Allow responses")}
               </button>
             ) : null
           }
         >
           <span>
-            Talk it over; the lead opens the floor.
+            {t("Talk it over; the lead opens the floor.")}
             {heldSpotlightNames.length ? (
               <span className="opacity-80">
                 {" "}
-                Next: spotlight on {heldSpotlightNames.join(", ")}
+                {t("Next: spotlight on {names}", { names: heldSpotlightNames.join(", ") })}
               </span>
             ) : null}
           </span>

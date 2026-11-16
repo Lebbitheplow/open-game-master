@@ -37,6 +37,7 @@ const { queuedIntents } = await import("../src/lib/dm/intent-queue.ts");
 const { summonsOf } = await import("../src/lib/dm/summon-store.ts");
 const { sheetCreatureType } = await import("../src/lib/dm/summon-rules.ts");
 const { speciesAndClassWords } = await import("../src/lib/characters/class-words.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
 
 const dead = summonSpellFor("Animate Dead");
 const objects = summonSpellFor("Animate Objects");
@@ -292,7 +293,11 @@ await test("The console's Each target's form names its steppers for the spell, a
       summon: { catalogue: summonCatalogue(summonSpellFor("Animate Dead")), slotLevel: 3 },
     }),
   );
-  assert.match(html, /role="group" aria-label="Each target&#x27;s form for Animate Dead"/);
+  // The pick's words ride the dictionary (table.summon.mixAria): the pin
+  // reads through the same keyed call the component makes, so it holds the
+  // same bytes before and after the fragment lands.
+  const mixAria = translate("en", "Each target's form for {name}", { name: "Animate Dead" }).replaceAll("'", "&#x27;");
+  assert.ok(html.includes(`role="group" aria-label="${mixAria}"`), "the mix's group is named for the spell");
   assert.match(html, /aria-label="One more Skeleton"/);
   assert.doesNotMatch(html, /for Each target/);
 });

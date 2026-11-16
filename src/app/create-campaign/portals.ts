@@ -1,5 +1,7 @@
-import { GENRE_PRESETS, genrePreset, type GenrePreset } from "@/lib/genres";
+import { GENRE_PRESETS, genrePreset, genrePresetFor, type GenrePreset } from "@/lib/genres";
+import type { Locale } from "@/lib/messages-logic";
 import { campaignPlaceholder } from "@/lib/placeholders";
+import { translate } from "@/lib/messages-logic";
 import type { Genre } from "@/lib/schemas/game-settings";
 
 // The world step's pure half: what a portal card shows, what the DM flavour
@@ -31,12 +33,15 @@ export function portalPlate(genre: string): string {
   return campaignPlaceholder(genre);
 }
 
-export function portalCards(selected: Genre): PortalCard[] {
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
+
+export function portalCards(selected: Genre, t: T = enT): PortalCard[] {
   return GENRE_PRESETS.map((preset, index) => ({
     id: preset.id,
-    name: preset.name,
-    blurb: preset.blurb,
-    climate: preset.climate,
+    name: t(preset.name),
+    blurb: ({ "high_fantasy": t("Classic swords, sorcery, and shining kingdoms."), "dark_fantasy": t("Grim lands where hope is scarce and victories cost."), "mystery": t("Clues, suspects, and secrets behind every door."), "horror": t("Dread, isolation, and things best left unseen."), "cyberpunk": t("Neon streets, chrome bodies, corporate gods. 5e reskinned."), "steampunk": t("Brass, steam, airships, and impossible machines."), "post_apocalyptic": t("Scavenge, survive, and rebuild among the ruins."), "custom": t("Describe your own world and tone.") } as Record<string, string>)[preset.id] ?? String(preset.id),
+    climate: t(preset.climate),
     humansOnly: isHumansOnly(preset),
     plate: portalPlate(preset.id),
     chosen: preset.id === selected,
@@ -48,21 +53,21 @@ export type WorldFact = { key: string; value: string };
 
 // The four things a preset decides besides the DM's tone. A custom world has
 // no name hints of its own, and says so instead of showing an empty chip.
-export function worldFacts(genre: string): WorldFact[] {
+export function worldFacts(genre: string, t: T = enT): WorldFact[] {
   const preset = genrePreset(genre);
   return [
-    { key: "Maps", value: preset.mapStyle },
-    { key: "Names", value: preset.nameHints || "Yours to invent" },
-    { key: "Who lives here", value: preset.raceHint },
-    { key: "Sky", value: `${preset.climate} weather table` },
+    { key: t("Maps"), value: t(preset.mapStyle) },
+    { key: t("Names"), value: preset.nameHints ? t(preset.nameHints) : t("Yours to invent") },
+    { key: t("Who lives here"), value: t(preset.raceHint) },
+    { key: t("Sky"), value: t("{climate} weather table", { climate: t(preset.climate) }) },
   ];
 }
 
 const CUSTOM_FLAVOR =
   "Nothing is added to the briefing for a custom world: what you type in the box above is the whole tone the Game Master is given.";
 
-export function dmFlavorText(genre: string): string {
-  return genrePreset(genre).dmFlavor || CUSTOM_FLAVOR;
+export function dmFlavorText(genre: string, t: T = enT): string {
+  return t(genrePreset(genre).dmFlavor || CUSTOM_FLAVOR);
 }
 
 // ---- the theme that writes itself ----
@@ -72,12 +77,14 @@ type ThemeSlice = { genre: Genre; theme: string; themeTouched: boolean; worldPac
 // The theme a draft should carry once its genre is settled. A theme the
 // person typed is never clobbered, and neither is one a world pack wrote:
 // the pack is the more specific of the two. Otherwise the preset's line is
-// fair game, which is the same rule applyPack follows for packs.
-export function presetTheme<T extends ThemeSlice>(draft: T): T {
+// fair game, which is the same rule applyPack follows for packs. `locale`
+// seeds the line in the creator's language where the preset carries one
+// (genrePresetFor); pure, so server callers keep the "en" default.
+export function presetTheme<T extends ThemeSlice>(draft: T, locale: Locale = "en"): T {
   if (draft.themeTouched || draft.worldPack) {
     return draft;
   }
-  return { ...draft, theme: genrePreset(draft.genre).defaultTheme };
+  return { ...draft, theme: genrePresetFor(draft.genre, locale).defaultTheme };
 }
 
 export const TYPE_MS_PER_CHAR = 22;
@@ -95,11 +102,12 @@ function planFor(text: string): TypeInPlan {
 export function typeInPlan(
   draft: { theme: string; themeTouched: boolean },
   genre: string,
+  locale: Locale = "en",
 ): TypeInPlan | null {
   if (draft.themeTouched) {
     return null;
   }
-  const text = genrePreset(genre).defaultTheme;
+  const text = genrePresetFor(genre, locale).defaultTheme;
   if (!text || text === draft.theme) {
     return null;
   }
@@ -109,9 +117,9 @@ export function typeInPlan(
 // The first time the world step comes on screen, the line the preset already
 // wrote plays once, so the person sees where it came from. A pack's theme and
 // a typed one are left alone.
-export function arrivalTypeIn(draft: ThemeSlice): TypeInPlan | null {
+export function arrivalTypeIn(draft: ThemeSlice, locale: Locale = "en"): TypeInPlan | null {
   if (draft.themeTouched || draft.worldPack || !draft.theme) {
     return null;
   }
-  return draft.theme === genrePreset(draft.genre).defaultTheme ? planFor(draft.theme) : null;
+  return draft.theme === genrePresetFor(draft.genre, locale).defaultTheme ? planFor(draft.theme) : null;
 }

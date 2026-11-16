@@ -14,9 +14,11 @@ import { admitLibraryForSeat } from "@/lib/characters/seat-preview";
 import { hasSeatPicks, seatPicksSchema, type SeatPicks } from "@/lib/characters/seat-picks";
 import { announceMidGameJoin } from "@/lib/characters/mid-game-join";
 import { heroFell } from "@/lib/characters/fallen-logic";
-import { HERO_DOOR_SHUT, heroDoorFor } from "@/lib/characters/hero-door";
+import { heroDoorFor } from "@/lib/characters/hero-door";
 import { listMembers, setMemberReady } from "@/lib/db/campaigns";
 import { pregenSeatRefusal, recordPregenSeat } from "@/lib/db/pregen-offers";
+import { localeFromAcceptLanguage } from "@/lib/rulebook/book";
+import { translate } from "@/lib/messages-logic";
 import {
   admitLibraryCharacter,
   companionRoleRefusal,
@@ -58,7 +60,7 @@ const fromLibrarySchema = z.object({
 
 // The owed choices a player picked on the confirm sheet (JoinConfirmDialog,
 // src/lib/characters/seat-picks.ts), sent beside the library character.
-function picksOf(raw: unknown): { picks: SeatPicks | null } | { error: Response } {
+function picksOf(raw: unknown, t: (key: string, vars?: Record<string, string | number>) => string): { picks: SeatPicks | null } | { error: Response } {
   const sent = raw && typeof raw === "object" ? (raw as { picks?: unknown }).picks : undefined;
   if (sent === undefined || sent === null) {
     return { picks: null };
@@ -66,7 +68,7 @@ function picksOf(raw: unknown): { picks: SeatPicks | null } | { error: Response 
   const parsed = seatPicksSchema.safeParse(sent);
   return parsed.success
     ? { picks: parsed.data }
-    : { error: Response.json({ error: parsed.error.issues[0]?.message || "Those picks could not be read." }, { status: 400 }) };
+    : { error: Response.json({ error: parsed.error.issues[0]?.message || t("Those picks could not be read.") }, { status: 400 }) };
 }
 
 // The library door with the picks made: the hero is adapted and admitted
@@ -85,14 +87,21 @@ const editSchema = z.object({
 
 // Character changes (edit, switch, delete, recreate) are lobby-only; once
 // the adventure starts, the sheet is locked to the lead/engine paths.
-function lobbyGuard(context: MemberContext): Response | null {
+function lobbyGuard(context: MemberContext, t: (key: string, vars?: Record<string, string | number>) => string): Response | null {
   if (context.campaign.status !== "lobby") {
     return Response.json(
-      { error: "Characters can only be changed in the lobby." },
+      { error: t("Characters can only be changed in the lobby.") },
       { status: 409 },
     );
   }
   return null;
+}
+
+// The refusals read the asker's language (Accept-Language, as the rulebook
+// and the pregens do).
+function requestT(request: Request): (key: string, vars?: Record<string, string | number>) => string {
+  const locale = localeFromAcceptLanguage(request.headers.get("accept-language"));
+  return (key, vars) => translate(locale, key, vars);
 }
 
 // Changing your character invalidates your ready vote and swaps the sheet
@@ -165,14 +174,15 @@ export async function POST(
   if (isErrorResponse(context)) {
     return context;
   }
+  const t = requestT(request);
 
   const raw = await request.json().catch(() => ({}));
 
   const targetUserId = typeof raw?.playerUserId === "string" ? raw.playerUserId : context.user.id;
   if (targetUserId !== context.user.id) {
-    if (context.campaign.ownerUserId !== context.user.id) return Response.json({ error: "Only the campaign owner can seat a character for another player." }, { status: 403 });
-    if (!listMembers(campaignId).some((member) => member.userId === targetUserId)) return Response.json({ error: "That player is not a member of this campaign." }, { status: 404 });
-    if (typeof raw.libraryCharacterId === "string") return Response.json({ error: "Players choose characters from their own libraries." }, { status: 403 });
+    if (context.campaign.ownerUserId !== context.user.id) return Response.json({ error: t("Only the campaign owner can seat a character for another player.") }, { status: 403 });
+    if (!listMembers(campaignId).some((member) => member.userId === targetUserId)) return Response.json({ error: t("That player is not a member of this campaign.") }, { status: 404 });
+    if (typeof raw.libraryCharacterId === "string") return Response.json({ error: t("Players choose characters from their own libraries.") }, { status: 403 });
   }
 
   // One door for every way in (src/lib/characters/hero-door.ts): a table
@@ -188,7 +198,7 @@ export async function POST(
   // Path 1: pick an existing library character (adapted to campaign level).
   const fromLibrary = fromLibrarySchema.safeParse(raw);
   if (fromLibrary.success) {
-    const picked = picksOf(raw);
+    const picked = picksOf(raw, t);
     if ("error" in picked) {
       return picked.error;
     }
@@ -197,15 +207,15 @@ export async function POST(
     // Picking the fallen hero again would only seat the dead sheet back in
     // the player's place; their library copy does not know it died here.
     if (reusedSheet && heroFell(reusedSheet)) {
-      return Response.json({ error: `${reusedSheet.name} fell at this table. Bring in someone else.` }, { status: 409 });
+      return Response.json({ error: t("{name} fell at this table. Bring in someone else.", { name: reusedSheet.name }) }, { status: 409 });
     }
     if (!reused && !door.open) {
-      return Response.json({ error: HERO_DOOR_SHUT }, { status: 409 });
+      return Response.json({ error: t("You already have a character in this campaign.") }, { status: 409 });
     }
     // One player per pregen per table (src/lib/db/pregen-offers.ts): a copy of
     // a DM's offered pregen does not sit where another sheet plays it.
     const library = reused ? null : getCharacterForUser(context.user.id, fromLibrary.data.libraryCharacterId);
-    const held = library ? pregenSeatRefusal(campaignId, library, context.user.id) : null;
+    const held = library ? pregenSeatRefusal(campaignId, library, context.user.id, "", t) : null;
     if (held) {
       return Response.json({ error: held }, { status: 409 });
     }
@@ -230,12 +240,12 @@ export async function POST(
 
   // Path 2: create new; also saved to the user's library, then copied in.
   if (!door.open) {
-    return Response.json({ error: HERO_DOOR_SHUT }, { status: 409 });
+    return Response.json({ error: t("You already have a character in this campaign.") }, { status: 409 });
   }
   const parsed = createSheetSchema.safeParse(raw);
   if (!parsed.success) {
     return Response.json(
-      { error: parsed.error.issues[0]?.message || "Invalid character sheet." },
+      { error: parsed.error.issues[0]?.message || t("Invalid character sheet.") },
       { status: 400 },
     );
   }
@@ -294,14 +304,15 @@ export async function PUT(
   if (isErrorResponse(context)) {
     return context;
   }
-  const guard = lobbyGuard(context);
+  const t = requestT(request);
+  const guard = lobbyGuard(context, t);
   if (guard) {
     return guard;
   }
   const existing = getSheetForUser(campaignId, context.user.id);
   if (!existing) {
     return Response.json(
-      { error: "You have no character in this campaign yet; create one first." },
+      { error: t("You have no character in this campaign yet; create one first.") },
       { status: 404 },
     );
   }
@@ -312,18 +323,18 @@ export async function PUT(
   // along; a render only queues if it has none yet.
   const fromLibrary = fromLibrarySchema.safeParse(raw);
   if (fromLibrary.success) {
-    const picked = picksOf(raw);
+    const picked = picksOf(raw, t);
     if ("error" in picked) {
       return picked.error;
     }
     const character = getCharacterForUser(context.user.id, fromLibrary.data.libraryCharacterId);
     if (!character) {
-      return Response.json({ error: "Character not found in your library." }, { status: 404 });
+      return Response.json({ error: t("Character not found in your library.") }, { status: 404 });
     }
     // Held before the old sheet goes: a refused companion must not cost the
     // player the character they have (issue 192).
     if (character.role === "companion") {
-      return Response.json({ error: companionRoleRefusal(character) }, { status: 400 });
+      return Response.json({ error: companionRoleRefusal(character, t) }, { status: 400 });
     }
     // Picks that are not within the rules are refused before the old sheet
     // goes too: the switch is judged first, then made.
@@ -335,7 +346,7 @@ export async function PUT(
     }
     // A pregen someone else holds here is refused before the old sheet goes
     // too (src/lib/db/pregen-offers.ts); the sheet given up holds nothing.
-    const held = pregenSeatRefusal(campaignId, character, context.user.id, existing.id);
+    const held = pregenSeatRefusal(campaignId, character, context.user.id, existing.id, t);
     if (held) {
       return Response.json({ error: held }, { status: 409 });
     }
@@ -375,12 +386,12 @@ export async function PUT(
   if (edit.success) {
     const character = getCharacterForUser(context.user.id, edit.data.editLibraryCharacterId);
     if (!character) {
-      return Response.json({ error: "Character not found in your library." }, { status: 404 });
+      return Response.json({ error: t("Character not found in your library.") }, { status: 404 });
     }
     // Held before the old sheet goes: a refused companion must not cost the
     // player the character they have (issue 192).
     if (character.role === "companion") {
-      return Response.json({ error: companionRoleRefusal(character) }, { status: 400 });
+      return Response.json({ error: companionRoleRefusal(character, t) }, { status: 400 });
     }
     // The copy this edit replaces is the one made from the character it
     // edited. At a table where the player fields several, the seat may be on
@@ -393,7 +404,7 @@ export async function PUT(
       ) ?? existing;
     // The edited sheet takes a new id; a pregen it plays stays this player's
     // (src/lib/db/pregen-offers.ts), and one someone else holds is refused.
-    const held = pregenSeatRefusal(campaignId, character, context.user.id, replaced.id);
+    const held = pregenSeatRefusal(campaignId, character, context.user.id, replaced.id, t);
     if (held) {
       return Response.json({ error: held }, { status: 409 });
     }
@@ -438,7 +449,7 @@ export async function PUT(
       edit.data.sheet,
     );
     if (!updated) {
-      return Response.json({ error: "Could not update the character." }, { status: 400 });
+      return Response.json({ error: t("Could not update the character.") }, { status: 400 });
     }
     deleteSheetById(campaignId, context.user.id, replaced.id);
     // The seat's classes stand at a table that turned multiclassing off
@@ -468,7 +479,7 @@ export async function PUT(
   const parsed = createSheetSchema.safeParse(raw);
   if (!parsed.success) {
     return Response.json(
-      { error: parsed.error.issues[0]?.message || "Invalid character sheet." },
+      { error: parsed.error.issues[0]?.message || t("Invalid character sheet.") },
       { status: 400 },
     );
   }
@@ -508,7 +519,7 @@ export async function PUT(
 // Remove the caller's lobby character entirely; the lobby falls back to
 // its create-a-character state.
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
   const { campaignId } = await params;
@@ -516,13 +527,14 @@ export async function DELETE(
   if (isErrorResponse(context)) {
     return context;
   }
-  const guard = lobbyGuard(context);
+  const t = requestT(request);
+  const guard = lobbyGuard(context, t);
   if (guard) {
     return guard;
   }
   const removed = deleteSheetForUser(campaignId, context.user.id);
   if (!removed) {
-    return Response.json({ error: "You have no character in this campaign." }, { status: 404 });
+    return Response.json({ error: t("You have no character in this campaign.") }, { status: 404 });
   }
   setMemberReady(campaignId, context.user.id, false);
   publishPersisted(campaignId, "member_ready", { userId: context.user.id, ready: false });
@@ -542,6 +554,7 @@ export async function PATCH(
   if (isErrorResponse(context)) {
     return context;
   }
+  const t = requestT(request);
 
   const raw: unknown = await request.json().catch(() => ({}));
   const body = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
@@ -556,18 +569,18 @@ export async function PATCH(
   if (typeof body.sheetId === "string" && body.sheetId) {
     const target = getSheetById(body.sheetId);
     if (!target || target.campaignId !== campaignId || !target.isCompanion) {
-      return Response.json({ error: "That companion is not in this campaign." }, { status: 404 });
+      return Response.json({ error: t("That companion is not in this campaign.") }, { status: 404 });
     }
     if (!steersStory(context)) {
       return Response.json(
-        { error: "Only whoever runs the story can change a companion's portrait." },
+        { error: t("Only whoever runs the story can change a companion's portrait.") },
         { status: 403 },
       );
     }
     const keys = Object.keys(body).filter((key) => key !== "sheetId" && body[key] !== undefined);
     if (keys.length !== 1 || keys[0] !== "portrait") {
       return Response.json(
-        { error: "Only a companion's portrait can be changed from here." },
+        { error: t("Only a companion's portrait can be changed from here.") },
         { status: 403 },
       );
     }
@@ -576,17 +589,17 @@ export async function PATCH(
   } else {
     sheet = typeof body.characterId === "string" ? getSheetById(body.characterId) : getSheetForUser(campaignId, context.user.id);
     if (sheet && (sheet.campaignId !== campaignId || sheet.userId !== context.user.id || sheet.isCompanion)) {
-      return Response.json({ error: "That is not one of your characters." }, { status: 404 });
+      return Response.json({ error: t("That is not one of your characters.") }, { status: 404 });
     }
   }
   if (!sheet) {
-    return Response.json({ error: "You have no character in this campaign." }, { status: 404 });
+    return Response.json({ error: t("You have no character in this campaign.") }, { status: 404 });
   }
 
   const parsed = patchSheetSchema.safeParse(body);
   if (!parsed.success) {
     return Response.json(
-      { error: parsed.error.issues[0]?.message || "Invalid sheet update." },
+      { error: parsed.error.issues[0]?.message || t("Invalid sheet update.") },
       { status: 400 },
     );
   }

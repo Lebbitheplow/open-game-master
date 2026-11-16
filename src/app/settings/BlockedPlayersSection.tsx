@@ -5,6 +5,7 @@ import { readLoad, useLoadStatus } from "@/lib/load-state";
 import { ShieldBan } from "lucide-react";
 import { useEffect, useState } from "react";
 import { UserAvatar, ui } from "@/lib/ui";
+import { useT } from "@/lib/locale";
 import { EmptyState } from "@/components/EmptyState";
 import { PageSection } from "@/components/PageShell";
 
@@ -17,6 +18,7 @@ type Blocked = {
 
 // Who this account has blocked on this server, with the way back.
 export function BlockedPlayersSection() {
+  const t = useT();
   const [blocked, setBlocked] = useState<Blocked[] | null>(null);
   // A refused or failed read is shown in the server's words with a way to
   // ask again, never as "nothing here yet" (issue 140).
@@ -25,14 +27,13 @@ export function BlockedPlayersSection() {
   const [busyId, setBusyId] = useState("");
 
   useEffect(() => {
-    readLoad<{ blocked?: Blocked[] }>(fetch("/api/profile/blocks"), "The blocked list").then((outcome) => {
+    readLoad<{ blocked?: Blocked[] }>(t, fetch("/api/profile/blocks"), t("The blocked list")).then((outcome) => {
       settle(outcome);
       if (outcome.payload) {
         setBlocked(outcome.payload.blocked ?? []);
       }
     });
-  }, [reloads, settle]);
-
+  }, [ reloads, settle, t ]);
   async function unblock(userId: string) {
     setBusyId(userId);
     try {
@@ -52,12 +53,12 @@ export function BlockedPlayersSection() {
 
   return (
     <PageSection
-      heading="Blocked players"
+      heading={t("Blocked players")}
       glyph="attitude-hostile"
-      intro="Blocked players' table messages are hidden from you, and neither of you can open a private chat or send a friend request. Block someone from their message or from the party list."
+      intro={t("Blocked players' table messages are hidden from you, and neither of you can open a private chat or send a friend request. Block someone from their message or from the party list.")}
     >
       {blocked === null ? (
-        <div className="skeleton-block h-12 rounded-xl" aria-label="Loading blocked players" />
+        <div className="skeleton-block h-12 rounded-xl" aria-label={t("Loading blocked players")} />
       ) : blocked.length === 0 ? (
         (loadError ? (
           <LoadFailed
@@ -68,7 +69,7 @@ export function BlockedPlayersSection() {
           <EmptyState
             size="sm"
             art="board"
-            title="Nobody blocked."
+            title={t("Nobody blocked.")}
           />
         ) : null)
       ) : (
@@ -87,7 +88,7 @@ export function BlockedPlayersSection() {
                 onClick={() => unblock(entry.userId)}
                 className={ui.btnSmall}
               >
-                <ShieldBan className="size-3.5" /> Unblock
+                <ShieldBan className="size-3.5" /> {t("Unblock")}
               </button>
             </li>
           ))}

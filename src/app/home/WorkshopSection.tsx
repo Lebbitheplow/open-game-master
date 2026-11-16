@@ -9,6 +9,7 @@ import { cn } from "@/lib/cn";
 import { ContextMenu } from "@/components/ui/ContextMenu";
 import { workshopPlate } from "@/app/workshop/plates";
 import { ui } from "@/lib/ui";
+import { useT } from "@/lib/locale";
 import { Tooltip } from "@/components/ui/Tooltip";
 import type { WorkshopSummary } from "@/app/workshop/types";
 
@@ -29,6 +30,7 @@ export function WorkshopSection({
   pending?: boolean;
 }) {
   const router = useRouter();
+  const t = useT();
   // An empty list and a list not yet loaded look the same from here, and the
   // "nothing on the bench" plate flashing before six workshops arrive is a
   // lie. Until the host passes `pending`, one cheap probe of the same route
@@ -48,14 +50,14 @@ export function WorkshopSection({
   }, [pending]);
   const waiting = !workshops.length && (pending ?? !probed);
   return (
-    <section className="ts-bench" aria-label="Workshop">
+    <section className="ts-bench" aria-label={t("Workshop")}>
       <div className="ts-bench-head">
         <div className="min-w-0">
-          <h2 className="ts-below-eyebrow">The workshop</h2>
-          <p className="ts-below-lede">Build maps, NPCs, monsters, story and rules before a table exists.</p>
+          <h2 className="ts-below-eyebrow">{t("The workshop")}</h2>
+          <p className="ts-below-lede">{t("Build maps, NPCs, monsters, story and rules before a table exists.")}</p>
         </div>
         <Link href="/workshop" className="ts-ghost motion-press">
-          <Hammer className="size-4" /> Open workshop
+          <Hammer className="size-4" /> {t("Open workshop")}
         </Link>
       </div>
 
@@ -74,8 +76,8 @@ export function WorkshopSection({
               label={workshop.title}
               // The row's link and its one button again; both stay on the row.
               items={[
-                { id: "open", label: "Open", glyph: "system-storyboard", onSelect: () => router.push(`/workshop/${workshop.id}`) },
-                { id: "duplicate", label: "Duplicate", glyph: "ui-duplicate", disabled: cloningId === workshop.id, onSelect: () => onClone(workshop.id) },
+                { id: "open", label: t("Open", { context: "action.open" }), glyph: "system-storyboard", onSelect: () => router.push(`/workshop/${workshop.id}`) },
+                { id: "duplicate", label: t("Duplicate"), glyph: "ui-duplicate", disabled: cloningId === workshop.id, onSelect: () => onClone(workshop.id) },
               ]}
             >
               <Link href={`/workshop/${workshop.id}`} className="ts-bench-door" data-no-motion>
@@ -84,15 +86,14 @@ export function WorkshopSection({
                 <span className="min-w-0 pr-8">
                   <span className="ts-slot-title block truncate">{workshop.title}</span>
                   <span className="ts-slot-line block">
-                    Party of {workshop.gameSettings.targetParty.size} at level{" "}
-                    {workshop.gameSettings.targetParty.level}
+                    {t("Party of {count} at level {level}", { count: workshop.gameSettings.targetParty.size, level: workshop.gameSettings.targetParty.level })}
                   </span>
                 </span>
               </Link>
-              <Tooltip content="Copy this workshop and everything in it">
+              <Tooltip content={t("Copy this workshop and everything in it")}>
                 <button
                   type="button"
-                  aria-label={`Duplicate ${workshop.title}`}
+                  aria-label={t("Duplicate")}
                   disabled={cloningId === workshop.id}
                   onClick={() => onClone(workshop.id)}
                   className={cn("absolute right-2 top-2", ui.iconAction, "hover:text-amber-300")}
@@ -108,7 +109,7 @@ export function WorkshopSection({
           ))}
         </ul>
       ) : (
-        <EmptyState size="md" art="map" title="Nothing on the bench yet. A workshop is yours alone, and nothing in it reaches a table until you bring it in." />
+        <EmptyState size="md" art="map" title={t("Nothing on the bench yet. A workshop is yours alone, and nothing in it reaches a table until you bring it in.")} />
       )}
     </section>
   );

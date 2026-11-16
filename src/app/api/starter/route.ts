@@ -2,28 +2,32 @@ import { z } from "zod";
 import { currentUser, unauthorized } from "@/lib/auth";
 import { publicCampaign } from "@/lib/db/campaigns";
 import { campaignCreationRefusal, canCreateCampaigns } from "@/lib/shared-host";
-import { createStarterCampaign, STARTER_ONE_SHOT } from "@/lib/starter/one-shot";
+import { createStarterCampaign, starterSeedFor } from "@/lib/starter/one-shot";
 import { narrationAvailable, NO_STORYTELLER_MESSAGE, storytellerConfigured } from "@/lib/capabilities";
 import { pregenSummaries } from "@/lib/starter/pregens";
+import { bookLocaleOf } from "@/lib/rulebook/book";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // The starter one-shot (src/lib/starter/one-shot.ts): what it is, and the
-// heroes that come with it.
-export async function GET() {
+// heroes that come with it — in the request's language, so the card a
+// French reader sees is the table they will get.
+export async function GET(request: Request) {
   const user = await currentUser();
   if (!user) {
     return unauthorized();
   }
+  const locale = bookLocaleOf(request);
+  const seed = starterSeedFor(locale);
   return Response.json({
     oneShot: {
-      id: STARTER_ONE_SHOT.id,
-      title: STARTER_ONE_SHOT.title,
-      tagline: STARTER_ONE_SHOT.tagline,
-      description: STARTER_ONE_SHOT.description,
+      id: seed.id,
+      title: seed.title,
+      tagline: seed.tagline,
+      description: seed.description,
     },
-    pregens: pregenSummaries(),
+    pregens: pregenSummaries(locale),
   });
 }
 
@@ -52,6 +56,11 @@ export async function POST(request: Request) {
     return Response.json({ error: NO_STORYTELLER_MESSAGE, reason: "no_storyteller" }, { status: 409 });
   }
   // Narration starts on only where the server can read aloud (issue 275).
-  const campaign = createStarterCampaign(user.id, { solo: parsed.data.solo, narration: await narrationAvailable() });
+  // The premise and the DM's spine are written in the creator's language.
+  const campaign = createStarterCampaign(user.id, {
+    solo: parsed.data.solo,
+    narration: await narrationAvailable(),
+    locale: bookLocaleOf(request),
+  });
   return Response.json({ campaign: publicCampaign(campaign) }, { status: 201 });
 }

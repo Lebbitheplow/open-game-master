@@ -13,6 +13,7 @@ import {
   type ReactNode,
 } from "react";
 import type { TableTabId } from "@/lib/dm/table-tabs";
+import { useT } from "@/lib/locale";
 import { TAB_GLYPHS, TABLE_GLYPH } from "@/app/campaigns/[campaignId]/sessionGlyphs";
 import {
   dockFloating,
@@ -85,10 +86,10 @@ import { LayoutApiContext, ShownContext, useBoxSize, type LayoutApi } from "@/ap
 
 export type TablePane = { id: PaneId; node: ReactNode; available?: boolean };
 
-const FIXED_PANES: Record<"table" | "rail" | "panel", { label: string; glyph: string }> = {
-  table: { label: "Table", glyph: TABLE_GLYPH },
-  rail: { label: "Party portraits", glyph: "tab-party" },
-  panel: { label: "Side panel", glyph: "tab-journal" },
+const FIXED_PANES: Record<"table" | "rail" | "panel", { labelKey: string; glyph: string }> = {
+  table: { labelKey: "Table", glyph: TABLE_GLYPH },
+  rail: { labelKey: "Party portraits", glyph: "tab-party" },
+  panel: { labelKey: "Side panel", glyph: "tab-journal" },
 };
 
 const ORDER: PaneId[] = ["rail", "table", "panel", ...TAB_IDS.map(tabPane)];
@@ -132,6 +133,7 @@ export function TableRow({
   // to offer a pane to the others.
   tabs: Array<[TableTabId, string, LucideIcon, string]>;
 }) {
+  const t = useT();
   const saved = useTableLayout(seat);
   const session = useLayoutSession();
   // A drag in progress, drawn but not yet saved.
@@ -165,7 +167,7 @@ export function TableRow({
   const tabInfo = useMemo(() => new Map(tabs.map(([id, label, icon]) => [id, { label, icon }])), [tabs]);
   const labelOf = (id: PaneId) => {
     const tab = paneTab(id);
-    return tab ? (tabInfo.get(tab)?.label ?? tab) : FIXED_PANES[id as keyof typeof FIXED_PANES].label;
+    return tab ? (tabInfo.get(tab)?.label ?? tab) : t(FIXED_PANES[id as keyof typeof FIXED_PANES].labelKey);
   };
   const glyphOf = (id: PaneId) => {
     const tab = paneTab(id);
@@ -224,9 +226,9 @@ export function TableRow({
     const below = split.kind === "stack" ? geometry.docked.find((pane) => pane.column === split.column && pane.index === split.below) : null;
     const label = moving
       ? below
-        ? `Resize ${labelOf(moving.id)} and ${labelOf(below.id)}`
-        : `Resize ${labelOf(moving.id)}`
-      : "Resize";
+        ? t("Resize {first} and {second}", { first: labelOf(moving.id), second: labelOf(below.id) })
+        : t("Resize {name}", { name: labelOf(moving.id) })
+      : t("Resize");
     const apply = (length: number) => {
       const start = base.current ?? { layout: saved, geometry };
       const from = start.geometry.splits.find((entry) => entry.key === split.key) ?? split;

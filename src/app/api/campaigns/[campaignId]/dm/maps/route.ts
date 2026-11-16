@@ -108,11 +108,11 @@ const onePageDungeonImportSchema = z.object({
 const bodySchema = z.union([createSchema, captureSchema, importSchema, onePageDungeonImportSchema]);
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
   const { campaignId } = await params;
-  const context = await requirePrepAuthority(campaignId);
+  const context = await requirePrepAuthority(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }
@@ -124,7 +124,7 @@ export async function POST(
   { params }: { params: Promise<{ campaignId: string }> },
 ) {
   const { campaignId } = await params;
-  const context = await requirePrepAuthority(campaignId);
+  const context = await requirePrepAuthority(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }

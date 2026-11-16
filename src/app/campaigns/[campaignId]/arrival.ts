@@ -1,12 +1,15 @@
 import type { CharacterSheet } from "@/lib/schemas/sheet";
-import { classDisplayName, speciesName } from "@/lib/characters/class-words";
+import { classDisplayNameFor, speciesNameFor } from "@/lib/characters/class-words";
+import type { Locale } from "@/lib/messages-logic";
 
 // The lobby's arrival moment (backlog F27): when a player seats a character,
 // everyone in the lobby sees "Thornwick takes a seat". Read off the sheets
 // the campaign stream already keeps (a seat lands as sheet_updated), so no
 // new channel and nothing about joining changes. The sheets present when
 // the lobby opened are the baseline and never replay; companions are the
-// story's, not a player taking a seat.
+// story's, not a player taking a seat. The line's words live in the
+// dictionaries (table.arrival.*); like home/types.ts's agoLabel, the reading
+// takes the translator from the component that draws it.
 
 export type Arrival = Pick<CharacterSheet, "id" | "name" | "race" | "raceLabel" | "class" | "gender" | "portrait">;
 
@@ -22,13 +25,15 @@ export function newArrivals<T extends Seatable>(known: string[], sheets: T[]): T
   return sheets.filter((sheet) => !sheet.isCompanion && !seen.has(sheet.id));
 }
 
-export function arrivalLine(sheet: Pick<CharacterSheet, "name">) {
-  return `${sheet.name} takes a seat`;
+export function arrivalLine(t: (key: string, vars?: Record<string, string | number>) => string, sheet: Pick<CharacterSheet, "name">) {
+  return t("{name} takes a seat", { name: sheet.name });
 }
 
-// "Hill dwarf · Fighter", as the lobby's party list names them.
-export function arrivalDetail(sheet: Pick<CharacterSheet, "race" | "raceLabel" | "class">) {
-  return `${speciesName(sheet)} · ${classDisplayName(sheet.class)}`;
+// "Hill dwarf · Fighter", as the lobby's party list names them — in the
+// reader's language where the official-name maps carry it (« Nain des
+// collines · Guerrier »).
+export function arrivalDetail(sheet: Pick<CharacterSheet, "race" | "raceLabel" | "class">, locale: Locale = "en") {
+  return `${speciesNameFor(sheet, locale)} · ${classDisplayNameFor(sheet.class, locale)}`;
 }
 
 // What the banner knows: every player character it has seen, and the

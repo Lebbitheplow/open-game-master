@@ -48,7 +48,7 @@ await test("the class step asks the gender above the class cards, and the Hero s
   assert.ok(at > calling.indexOf("<PlaystylePicker") && at < calling.indexOf("<OptionCardGrid"), "between the playstyle question and the cards");
   // The Hero step says it and points back; it holds no control that sets it.
   assert.doesNotMatch(identity, /setGender|<Select/);
-  assert.match(identity, /onClick=\{onEditGender\}[^>]*>\s*Change on the Class step/);
+  assert.match(identity, /onClick=\{onEditGender\}[^>]*>\s*\{t\("Change on the Class step"\)\}/);
   assert.match(builder, /onEditGender=\{\(\) => changePick\("gender"\)\}/);
   assert.match(builder, /target === "gender" \? "calling" :/, "its way back opens the class step");
 });
@@ -97,17 +97,19 @@ await test("unchosen, the cards show a stable mix of all three looks", () => {
   assert.ok(exists(lineageArt("spacefolk", "Spacefolk", "")));
 });
 
-await test("the preview writes no gender: the sheet and the summary keep the player's", () => {
+await test("the preview writes no gender: the sheet and the summary keep the player's", async () => {
   // Only the card art reads the preview.
   for (const path of ["submit.ts", "useBuilderState.ts", "summary.ts", "builderDraft.ts", "CharacterBuilder.tsx"]) {
     assert.doesNotMatch(read(`src/app/characters/builder/${path}`), /previewGender/, path);
   }
   assert.match(read("src/app/characters/builder/submit.ts"), /\n\s+gender: state\.gender,\n/);
+  const { translate } = await import("../src/lib/messages-logic.ts");
+  const t = (key, vars) => translate("en", key, vars);
   const base = { name: "Wren", klass: "Wizard", level: 1, abilities: null, casts: false, cantrips: [], spells: [], gear: [], portrait: false, appearance: false, backstory: false, owed: { identity: [], ancestry: [], calling: [], abilities: [], spells: [] } };
-  const [unset] = summaryRows(base);
+  const [unset] = summaryRows(t, base);
   assert.deepEqual(unset.lines, ["Wizard, level 1"], "an unset gender is not said, and owes nothing");
   assert.deepEqual(unset.owed, []);
-  const [chosen] = summaryRows({ ...base, gender: "Female" });
+  const [chosen] = summaryRows(t, { ...base, gender: "Female" });
   assert.equal(chosen.key, "calling", "its Edit opens the class step");
   assert.deepEqual(chosen.lines, ["Wizard, level 1", "Gender: Female"]);
   assert.match(builder, /gender: state\.gender \|\| undefined,/);

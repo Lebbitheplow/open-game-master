@@ -173,38 +173,56 @@ export function dollView(equipment: EquipmentItem[], armor: { armorName: string 
   return { tiles, unsaid: wearable.length > 0 && !wearingIsExplicit(equipment) };
 }
 
+type Translator = (key: string, vars?: Record<string, string | number>) => string;
+const passthrough: Translator = (key, vars) =>
+  vars ? key.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? `{${k}}`)) : key;
+
 // What a tile says under its label: the worn rows by name, else what waits
 // in the pack, else what goes there. Fingers, a neck or a waist hold as many
 // as are put on (the SRD limits them only by attunement), and a tile is one
 // size whatever it holds: past two it names the first and counts the rest,
 // which the open place lists in full.
-export function dollTileLine(tile: DollTile): string {
+export function dollTileLine(
+  tile: DollTile,
+  t: Translator = passthrough,
+  itemLabel: (name: string) => string = (name) => name,
+): string {
   if (tile.worn.length > 2) {
-    return `${tile.worn[0].name} and ${tile.worn.length - 1} more`;
+    return t("{item} and {count} more", { item: itemLabel(tile.worn[0].name), count: tile.worn.length - 1 });
   }
   if (tile.worn.length) {
-    return dollTileNames(tile);
+    return dollTileNames(tile, itemLabel);
   }
   if (tile.fits.length) {
-    return tile.fits.length === 1 ? "1 in the pack" : `${tile.fits.length} in the pack`;
+    return tile.fits.length === 1 ? t("1 in the pack") : t("{count} in the pack", { count: tile.fits.length });
   }
-  return tile.place.goes;
+  return t(tile.place.goes);
 }
 
 // Everything worn in the place, by name: the hover of a tile that counts.
-export function dollTileNames(tile: DollTile): string {
-  return tile.worn.map((item) => item.name).join(", ");
+export function dollTileNames(
+  tile: DollTile,
+  itemLabel: (name: string) => string = (name) => name,
+): string {
+  return tile.worn.map((item) => itemLabel(item.name)).join(", ");
 }
 
 // The whole tile for a screen reader: "Shoulders: Cloak of Protection,
 // attuned." or "Head: empty. A hat, helm or circlet."
-export function dollTileLabel(tile: DollTile): string {
-  const { label, goes } = tile.place;
+export function dollTileLabel(
+  tile: DollTile,
+  t: Translator = passthrough,
+  itemLabel: (name: string) => string = (name) => name,
+): string {
+  const label = t(tile.place.label);
+  const goes = t(tile.place.goes);
   if (!tile.worn.length) {
-    const waiting = tile.fits.length ? ` ${dollTileLine(tile)}.` : "";
-    return `${label}: empty. ${goes}.${waiting}`;
+    const waiting = tile.fits.length ? ` ${dollTileLine(tile, t, itemLabel)}.` : "";
+    return t("{label}: empty. {goes}.{waiting}", { label, goes, waiting });
   }
   const idle = new Set(tile.idle);
-  const names = tile.worn.map((item) => `${item.name}${item.attuned ? ", attuned" : ""}${idle.has(item) ? ", not in effect" : ""}`);
-  return `${label}: ${names.join("; ")}.`;
+  const names = tile.worn.map(
+    (item) => `${itemLabel(item.name)}${item.attuned ? t(", attuned") : ""}${idle.has(item) ? t(", not in effect") : ""}`,
+  );
+  return t("{label}: {names}.", { label, names: names.join("; ") });
 }

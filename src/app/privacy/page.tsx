@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PIXEL_ICONS } from "@/lib/ui";
 import { PageSection, PageShell } from "@/components/PageShell";
+import { T } from "@/components/T";
 
 export const metadata = {
   title: "Privacy Policy | Open Game Master",
@@ -11,11 +12,11 @@ export default function PrivacyPage() {
     <PageShell
       icon={PIXEL_ICONS.localData}
       glyph="ui-lock"
-      title="Privacy policy"
-      blurb="What this server stores, what it never does, and who is responsible for it."
+      title={<T k="Privacy policy" />}
+      blurb={<T k="What this server stores, what it never does, and who is responsible for it." />}
       actions={
         <Link href="/" className="text-sm text-amber-200 hover:text-amber-100">
-          Back to Open Game Master
+          <T k="Back to Open Game Master" />
         </Link>
       }
     >
@@ -36,7 +37,7 @@ export default function PrivacyPage() {
         </p>
       </PageSection>
 
-      <PageSection heading="What data is stored">
+      <PageSection heading={<T k="What data is stored" />}>
         <p className="text-sm leading-6 text-stone-400">
           Open Game Master stores only the information needed to run your server, in a local
           database on your machine:
@@ -53,7 +54,7 @@ export default function PrivacyPage() {
         </ul>
       </PageSection>
 
-      <PageSection heading="What we do not do">
+      <PageSection heading={<T k="What we do not do" />}>
         <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-stone-400">
           <li>No analytics, telemetry, or usage tracking.</li>
           <li>No cookies or tracking technologies.</li>
@@ -67,7 +68,7 @@ export default function PrivacyPage() {
         </ul>
       </PageSection>
 
-      <PageSection heading="The desktop and Android apps">
+      <PageSection heading={<T k="The desktop and Android apps" />}>
         <p className="text-sm leading-6 text-stone-400">
           The Open Game Master apps are a shell around this same server. They can run a
           world on your own device, share it with friends, or connect to a server somebody
@@ -102,7 +103,7 @@ export default function PrivacyPage() {
         </p>
       </PageSection>
 
-      <PageSection heading="Sharing a world from your device">
+      <PageSection heading={<T k="Sharing a world from your device" />}>
         <p className="text-sm leading-6 text-stone-400">
           When you tap Share, the app opens an outbound tunnel so friends can reach the world
           on your device from anywhere. That involves two things the creator of Open Dungeon
@@ -140,7 +141,7 @@ export default function PrivacyPage() {
         </p>
       </PageSection>
 
-      <PageSection heading="Optional integrations configured by your server operator">
+      <PageSection heading={<T k="Optional integrations configured by your server operator" />}>
         <p className="text-sm leading-6 text-stone-400">
           By default the AI Game Master runs on your own hardware and nothing leaves your
           server. A server operator may optionally enable additional integrations, in which case
@@ -167,7 +168,7 @@ export default function PrivacyPage() {
         </p>
       </PageSection>
 
-      <PageSection heading="You are the server operator">
+      <PageSection heading={<T k="You are the server operator" />}>
         <p className="text-sm leading-6 text-stone-400">
           Because the app is self-hosted, you control who can access your server and the data it
           holds. You are responsible for keeping your server secure: use strong passwords, keep
@@ -177,7 +178,7 @@ export default function PrivacyPage() {
         </p>
       </PageSection>
 
-      <PageSection heading="Your data, and deleting it">
+      <PageSection heading={<T k="Your data, and deleting it" />}>
         <p className="text-sm leading-6 text-stone-400">
           All data belongs to you. You can delete any account, campaign, character, or file at
           any time from within the app, or delete the entire database from your server. No data
@@ -201,7 +202,7 @@ export default function PrivacyPage() {
         </p>
       </PageSection>
 
-      <PageSection heading="Reports and blocks">
+      <PageSection heading={<T k="Reports and blocks" />}>
         <p className="text-sm leading-6 text-stone-400">
           You can report a Game Master passage, a message, or a player from the table, and
           block a player so their messages are hidden from you and neither of you can contact
@@ -211,7 +212,7 @@ export default function PrivacyPage() {
         </p>
       </PageSection>
 
-      <PageSection heading="Changes to this policy">
+      <PageSection heading={<T k="Changes to this policy" />}>
         <p className="text-sm leading-6 text-stone-400">
           This policy is part of the open source project and changes only when the code changes.
           You can review the current version and its history in the project repository at any
@@ -219,7 +220,7 @@ export default function PrivacyPage() {
         </p>
       </PageSection>
 
-      <PageSection heading="Developer and contact">
+      <PageSection heading={<T k="Developer and contact" />}>
         <ul className="list-disc space-y-1 pl-5 text-sm leading-6 text-stone-400">
           <li>
             <span className="text-stone-200">Developer:</span> lebbi, publishing as Open Dungeon

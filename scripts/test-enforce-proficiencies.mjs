@@ -26,6 +26,9 @@ import { suite, abilityMod } from "./lib/enforce-harness.mjs";
 import { openCreation } from "./lib/enforce-creation.mjs";
 import { openBuilder } from "./lib/enforce-builder.mjs";
 
+const { translate } = await import("../src/lib/messages-logic.ts");
+const t = (key, vars) => translate("en", key, vars);
+
 const { test, finish } = suite("test-enforce-proficiencies");
 const {
   world, atTable, throughLibrary, clearSeat, call, characters, sheets, player, sheetRoute, campaignId,
@@ -485,9 +488,9 @@ await test("the builder picks no tool for the player: the ancestry and backgroun
   // tools are asked beside the background, the first step where the
   // class's grants and the background's are both known (backlog F4).
   const bardRow = builder.classes.find((row) => row.id === "bard");
-  assert.equal(builder.submit.callingBlocker(bardRow, none.state, none.derived), null, "the class step no longer holds the tools");
+  assert.equal(builder.submit.callingBlocker(t, bardRow, none.state, none.derived), null, "the class step no longer holds the tools");
   assert.equal(
-    builder.submit.backgroundBlocker(none.state, { id: "acolyte", name: "Acolyte", skills: [] }, none.derived)?.message,
+    builder.submit.backgroundBlocker(t, none.state, { id: "acolyte", name: "Acolyte", skills: [] }, none.derived)?.message,
     "Pick 3 more musical instruments you know how to use (tool proficiency).",
   );
   const two = buildClass("bard", { toolPicks: ["viol", "lute"] });

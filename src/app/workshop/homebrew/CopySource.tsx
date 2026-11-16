@@ -9,6 +9,7 @@ import { CONTENT_KIND } from "@/app/workshop/homebrew/CatalogStart";
 import { draftFromCatalog, type CopiedFrom, type HomebrewDraft } from "@/app/workshop/homebrew/draft";
 import type { PickerEntry } from "@/app/characters/builder/useContentSearch";
 import type { EditorKind } from "@/app/workshop/homebrew/types";
+import { useT } from "@/lib/locale";
 
 // Where a copy came from, kept on the entry (draft.ts copiedFromOf): the
 // entry it started as and its book, the rulebook page it is printed on
@@ -16,8 +17,9 @@ import type { EditorKind } from "@/app/workshop/homebrew/types";
 // copy has changed since, worked out against the source as the catalog
 // serves it now.
 
-// The words a changed field is called by.
-const FIELD_LABELS: Record<string, string> = {
+// The words a changed field is called by, as the dictionary keys that carry
+// them.
+const FIELD_KEYS: Record<string, string> = {
   desc: "description",
   higher_level: "at higher levels",
   level: "level",
@@ -64,16 +66,19 @@ const FIELD_LABELS: Record<string, string> = {
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
-// The fields a draft holds that differ from the draft its source would make.
+// The fields a draft holds that differ from the draft its source would make,
+// as the dictionary keys that name them (a field the dictionaries do not know
+// stays its raw name).
 export function changedFields(draft: HomebrewDraft, source: HomebrewDraft): string[] {
   const keys = new Set([...Object.keys(draft.data), ...Object.keys(source.data)]);
   keys.delete("copiedFrom");
   return [...keys]
     .filter((key) => !same(draft.data[key], source.data[key]) && !(draft.data[key] === "" && source.data[key] === undefined))
-    .map((key) => FIELD_LABELS[key] ?? key);
+    .map((key) => FIELD_KEYS[key] ?? key);
 }
 
 export function CopySource({ kind, draft }: { kind: EditorKind; draft: HomebrewDraft }) {
+  const t = useT();
   const from = draft.data.copiedFrom as CopiedFrom | undefined;
   const [reading, setReading] = useState(false);
   const [source, setSource] = useState<PickerEntry | null>(null);
@@ -109,25 +114,25 @@ export function CopySource({ kind, draft }: { kind: EditorKind; draft: HomebrewD
   if (!from?.name) return null;
   // Where it came from: the table's own shelf, the bundled book, or the
   // book a pack row is printed in.
-  const where = from.source === "homebrew" ? "your homebrew" : from.source === "bundled" ? "the bundled SRD 5.1" : from.document || "the published books";
+  const where = from.source === "homebrew" ? t("your homebrew") : from.source === "bundled" ? t("the bundled SRD 5.1") : from.document || t("the published books");
   return (
     <div className="panel space-y-1 rounded-lg px-3 py-2 text-xs text-stone-400" data-testid="copy-source">
       <div className="flex flex-wrap items-center gap-2">
         <span>
-          Copied from <span className="text-amber-200/80">{from.name}</span> ({where}).
+          {t("Copied from")} <span className="text-amber-200/80">{from.name}</span> {t("({where}).", { where })}
         </span>
         {from.rulebook ? (
           <button type="button" onClick={() => setReading(true)} className={cn(ui.btnSmall, "motion-press gap-1")}>
-            <BookOpen className="size-3.5" /> Read it in the rulebook
+            <BookOpen className="size-3.5" /> {t("Read it in the rulebook", { context: "workshop.homebrew.copy.readRulebook" })}
           </button>
         ) : null}
       </div>
       {changes === null ? (
-        lookedUp ? <p className="text-stone-500">The source is not in the catalog any more, so what changed cannot be shown.</p> : null
+        lookedUp ? <p className="text-stone-500">{t("The source is not in the catalog any more, so what changed cannot be shown.")}</p> : null
       ) : changes.length ? (
-        <p>Changed from it: {changes.join(", ")}.</p>
+        <p>{t("Changed from it: {list}.", { list: changes.map((key) => t(key)).join(", ") })}</p>
       ) : (
-        <p>Nothing changed from it yet.</p>
+        <p>{t("Nothing changed from it yet.")}</p>
       )}
       {from.rulebook ? <RulebookDialog open={reading} onOpenChange={setReading} startAt={from.rulebook} /> : null}
     </div>

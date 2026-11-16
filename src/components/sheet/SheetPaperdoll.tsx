@@ -3,6 +3,8 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { cn } from "@/lib/cn";
+import { contentName } from "@/lib/content/names";
+import { useLocale, useT } from "@/lib/locale";
 import { SheetGearRows, type PendingWear } from "@/components/sheet/SheetGearRow";
 import { DOLL_PLACES, dollPlaceOf, dollTileLabel, dollTileLine, dollTileNames, dollView, type DollPlaceId, type DollTile } from "@/components/sheet/paperdoll-logic";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
@@ -42,6 +44,9 @@ export function SheetPaperdoll({
   onPending: (pending: PendingWear | null) => void;
   onGear: (gear: GearAsk) => void;
 }) {
+  const t = useT();
+  const locale = useLocale();
+  const itemLabel = (name: string) => contentName("items", name, locale);
   const view = dollView(sheet.equipment, armor);
   const [picked, setPicked] = useState<DollPlaceId | null>(null);
   // The swap question is asked on a row, so the place it sits in opens for
@@ -78,6 +83,8 @@ export function SheetPaperdoll({
       tile={view.tiles[id]}
       open={open === id}
       controls={panelId}
+      t={t}
+      itemLabel={itemLabel}
       onPress={() => {
         onPending(null);
         setPicked(open === id ? null : id);
@@ -93,7 +100,9 @@ export function SheetPaperdoll({
     <div data-paperdoll className="space-y-1.5">
       {view.unsaid ? (
         <p className="text-[11px] text-stone-500">
-          Nobody has said what {mine ? "you wear" : `${sheet.name} wears`} yet, so everything carried counts as worn.
+          {mine
+            ? t("Nobody has said what you wear yet, so everything carried counts as worn.")
+            : t("Nobody has said what {name} wears yet, so everything carried counts as worn.", { name: sheet.name })}
         </p>
       ) : null}
       {/* No group role here: each tile names its own place, and a sheet-wide
@@ -112,17 +121,21 @@ export function SheetPaperdoll({
           ref={panel}
           id={panelId}
           role="group"
-          aria-label={`${shown.place.label}: what goes there`}
+          aria-label={t("{place}: what goes there", { place: t(shown.place.label) })}
           data-doll-panel={shown.place.id}
           className="reveal space-y-1 rounded border border-stone-700 px-2 py-1.5"
         >
           <p className="text-[11px] text-stone-400">
-            <span className="text-stone-200">{shown.place.label}.</span> {shown.place.goes}. {shown.place.rule}
+            <span className="text-stone-200">{t(shown.place.label)}.</span> {t(shown.place.goes)}. {t(shown.place.rule)}
           </p>
           {shown.fits.length ? (
             rows(shown.fits)
           ) : (
-            <p className="text-[11px] text-stone-500">Nothing {mine ? "you carry" : `${sheet.name} carries`} goes here.</p>
+            <p className="text-[11px] text-stone-500">
+              {mine
+                ? t("Nothing you carry goes here.")
+                : t("Nothing {name} carries goes here.", { name: sheet.name })}
+            </p>
           )}
         </div>
       ) : null}
@@ -130,7 +143,21 @@ export function SheetPaperdoll({
   );
 }
 
-function DollTileButton({ tile, open, controls, onPress }: { tile: DollTile; open: boolean; controls: string; onPress: () => void }) {
+function DollTileButton({
+  tile,
+  open,
+  controls,
+  t,
+  itemLabel,
+  onPress,
+}: {
+  tile: DollTile;
+  open: boolean;
+  controls: string;
+  t: (key: string, vars?: Record<string, string | number>) => string;
+  itemLabel: (name: string) => string;
+  onPress: () => void;
+}) {
   const first = tile.worn[0];
   const category = first ? itemCategory(first) : null;
   const attuned = tile.worn.some((item) => item.attuned);
@@ -141,8 +168,8 @@ function DollTileButton({ tile, open, controls, onPress }: { tile: DollTile; ope
       data-filled={first ? "true" : undefined}
       aria-expanded={open}
       aria-controls={open ? controls : undefined}
-      aria-label={dollTileLabel(tile)}
-      title={tile.worn.length > 1 ? dollTileNames(tile) : undefined}
+      aria-label={dollTileLabel(tile, t, itemLabel)}
+      title={tile.worn.length > 1 ? dollTileNames(tile, itemLabel) : undefined}
       onClick={onPress}
       style={category ? itemToneStyle(category, "row") : undefined}
       className={cn(
@@ -155,13 +182,13 @@ function DollTileButton({ tile, open, controls, onPress }: { tile: DollTile; ope
     >
       {category ? <GameIcon icon={itemCategoryIcon(category)} size="size-6" className="tone-rim" /> : null}
       <span className="min-w-0 grow">
-        <span className={cn("block text-[10px] leading-tight", first ? "text-stone-400" : "text-stone-300")}>{tile.place.label}</span>
+        <span className={cn("block text-[10px] leading-tight", first ? "text-stone-400" : "text-stone-300")}>{t(tile.place.label)}</span>
         {/* Two lines before it is cut: beside the figure a phone's tile is about a hundred pixels wide, which cut "Cloak of Protection" at "Prote". */}
-        <span className="line-clamp-2 leading-tight">{dollTileLine(tile)}</span>
+        <span className="line-clamp-2 leading-tight">{dollTileLine(tile, t, itemLabel)}</span>
       </span>
       {tile.idle.length ? (
         <span aria-hidden="true" className="shrink-0 rounded-full border border-stone-700 px-1 text-[10px] text-stone-400">
-          idle
+          {t("idle")}
         </span>
       ) : null}
       {attuned ? <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-sky-400" /> : null}

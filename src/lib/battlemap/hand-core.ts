@@ -7,10 +7,10 @@ import {
   spendAction,
   spendAttack,
   type AttackSpendOptions,
-  type SpendResult,
   type TurnBudget,
 } from "@/lib/dm/action-budget";
-import { canAct, type ActKind, type ActingEncounter } from "@/lib/dm/can-act";
+import { canAct, type ActKind, type ActingEncounter, type CannotActReason } from "@/lib/dm/can-act";
+import { translate } from "@/lib/messages-logic";
 import type { OrderEntry } from "@/lib/db/encounters";
 import type { IconRef } from "@/lib/icons";
 import type { SpellGlyph } from "@/lib/battlemap/spell-glyph-logic";
@@ -21,6 +21,7 @@ import type { HandGearAction, HandIntentExtras } from "@/lib/battlemap/hand-inte
 import type { HandArea } from "@/lib/battlemap/hand-area";
 // A type alone: the catalogue's stat blocks stay on the server.
 import type { SummonCatalogue } from "@/lib/srd/summon-spells";
+import { pluralOf } from "@/lib/messages-logic";
 
 // "legendary" and "lair" are the GM's monsters' Hand only: a legendary
 // creature's action at the end of another creature's turn, and the lair's own
@@ -357,6 +358,12 @@ export const FRESH_TURN: HandTurn = {
   attacksMade: 0,
 };
 
+// The translator idiom the Hand's builders share: a caller with a locale
+// passes its t, everyone else reads the English line (see the top of
+// hand.ts, which carries its own copy for its own file).
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
+
 // What the content pack says about a spell. Fetched by the component; the
 // authored rows cover a table without the pack.
 export type SpellFact = {
@@ -440,9 +447,9 @@ export function addFlat(expression: string, bonus: number): string {
   return `${expression}${bonus > 0 ? "+" : "-"}${Math.abs(bonus)}`;
 }
 
-export function feet(range: string): string {
+export function feet(range: string, t: T = enT): string {
   const match = /^(\d+)\s*(feet|foot|ft)/i.exec(range.trim());
-  if (match) return `${match[1]} ft`;
+  if (match) return t("{feet} ft", { feet: match[1] });
   return range.trim() ? range.trim().replace(/^./, (c) => c.toUpperCase()) : "";
 }
 
@@ -500,9 +507,102 @@ export function actingEncounter(turn: HandTurn, kind: ActKind): ActingEncounter 
 // (src/lib/dm/can-act.ts): dead, at 0 HP, incapacitated, surprised, the
 // order not rolled, or somebody else's turn. A reaction is asked as one, so
 // it is open on anyone's turn.
-export function standingGate(sheet: CharacterSheet, turn: HandTurn, kind: ActKind = "action"): Gate {
+export function standingGate(sheet: CharacterSheet, turn: HandTurn, kind: ActKind = "action", t: T = enT): Gate {
   const verdict = canAct({ sheet, encounter: actingEncounter(turn, kind), kind });
-  return verdict.ok ? null : { reason: verdict.error, spent: false };
+  return verdict.ok ? null : { reason: standingReason(sheet, turn, kind, verdict, t), spent: false };
+}
+
+// canAct's own words for each kind of act (src/lib/dm/can-act.ts
+// KIND_WORDS, mirrored here so its sentences can be matched exactly). If
+// that table drifts, the match misses and the refusal falls back to the
+// engine's English rather than mistranslating.
+const KIND_WORDS: Record<ActKind, string> = {
+  action: "take an action",
+  bonus: "take a bonus action",
+  reaction: "take a reaction",
+  attack: "attack",
+  cast: "cast a spell",
+  move: "move",
+  free: "act",
+};
+
+const KIND_KEY: Record<ActKind, string> = {
+  action: "take an action",
+  bonus: "take a bonus action",
+  reaction: "take a reaction",
+  attack: "attack",
+  cast: "cast a spell",
+  move: "move",
+  free: "act",
+};
+
+// canAct's refusal in the reader's words. The sentences are matched exactly
+// and carried into the keys, so the card says what the server will say and
+// says it in the table's language. Each mapping, refusal → key:
+//   dead                           → table.hand.gate.dead
+//   down (0 HP)                    → table.hand.gate.down
+//   incapacitated, by a condition  → table.hand.gate.stopped
+//   incapacitated, by a spell's hold → table.hand.gate.spellHeld
+//   surprised, a reaction          → table.hand.gate.surprisedReaction
+//   surprised, the first round     → table.hand.gate.surprised
+//   no_initiative                  → table.hand.gate.noInitiative
+//   not_your_turn                  → table.hand.gate.notYourTurn
+// A sentence the mirror has drifted from keeps the engine's English.
+function standingReason(sheet: CharacterSheet, turn: HandTurn, kind: ActKind, verdict: { reason: CannotActReason; error: string }, t: T): string {
+  const what = t(KIND_KEY[kind]);
+  const name = sheet.name;
+  switch (verdict.reason) {
+    case "dead":
+      if (verdict.error === `${name} is dead and cannot ${KIND_WORDS[kind]}. Only magic that raises the dead brings them back.`) {
+        return t("{name} is dead and cannot {what}. Only magic that raises the dead brings them back.", { name, what });
+      }
+      break;
+    case "down":
+      if (verdict.error === `${name} is at 0 HP and cannot ${KIND_WORDS[kind]}. They act again once they are healed above 0.`) {
+        return t("{name} is at 0 HP and cannot {what}. They act again once they are healed above 0.", { name, what });
+      }
+      break;
+    case "incapacitated": {
+      const prefix = `${name} is `;
+      const stoppedTail = ` and cannot ${KIND_WORDS[kind]} until the condition ends.`;
+      if (verdict.error.startsWith(prefix) && verdict.error.endsWith(stoppedTail)) {
+        const condition = verdict.error.slice(prefix.length, verdict.error.length - stoppedTail.length);
+        if (condition) {
+          return t("{name} is {condition} and cannot {what} until the condition ends.", { name, condition, what });
+        }
+      }
+      const heldTail = ` and cannot ${KIND_WORDS[kind]} while it lasts.`;
+      if (verdict.error.startsWith(prefix) && verdict.error.endsWith(heldTail)) {
+        const held = verdict.error.slice(prefix.length, verdict.error.length - heldTail.length);
+        if (held) {
+          return t("{name} is {held} and cannot {what} while it lasts.", { name, held, what });
+        }
+      }
+      break;
+    }
+    case "surprised":
+      if (verdict.error === `${name} is surprised and has no reaction until their first turn has passed.`) {
+        return t("{name} is surprised and has no reaction until their first turn has passed.", { name });
+      }
+      if (verdict.error === `${name} is surprised and cannot ${KIND_WORDS[kind]} in the first round. They act from round 2.`) {
+        return t("{name} is surprised and cannot {what} in the first round. They act from round 2.", { name, what });
+      }
+      break;
+    case "no_initiative":
+      if (verdict.error === `Initiative is still being rolled, so ${name} cannot ${KIND_WORDS[kind]} yet. Roll initiative for every character first.`) {
+        return t("Initiative is still being rolled, so {name} cannot {what} yet. Roll initiative for every character first.", { name, what });
+      }
+      break;
+    case "not_your_turn": {
+      const acting = actingEncounter(turn, kind)?.order[0]?.name;
+      const who = acting ?? "someone else";
+      if (verdict.error === `It is ${who}'s turn, not ${name}'s. Off their own turn a character can only use their reaction. What they declared waits for their turn.`) {
+        return t("It is {who}'s turn, not {name}'s. Off their own turn a character can only use their reaction. What they declared waits for their turn.", { who: acting ? acting : t("someone else"), name });
+      }
+      break;
+    }
+  }
+  return verdict.error;
 }
 
 // A hand that is only waiting: the one thing in this character's way is
@@ -516,7 +616,7 @@ export function standingGate(sheet: CharacterSheet, turn: HandTurn, kind: ActKin
 const WAITING: ReadonlySet<string> = new Set(["not_your_turn", "no_initiative"]);
 const ACT_KINDS: ActKind[] = ["action", "attack", "bonus", "move", "free", "cast"];
 
-export function waitingHand(sheet: CharacterSheet, turn: HandTurn): { note: string; sentences: Set<string> } | null {
+export function waitingHand(sheet: CharacterSheet, turn: HandTurn, t: T = enT): { note: string; sentences: Set<string> } | null {
   let note = "";
   const sentences = new Set<string>();
   for (const kind of ACT_KINDS) {
@@ -527,10 +627,78 @@ export function waitingHand(sheet: CharacterSheet, turn: HandTurn): { note: stri
     if (!WAITING.has(verdict.reason)) {
       return null;
     }
-    note ||= verdict.error;
-    sentences.add(verdict.error);
+    // The same mapping the cards' own gates read through (standingReason), so
+    // the sentences match the disabled reasons card by card.
+    const reason = standingReason(sheet, turn, kind, verdict, t);
+    note ||= reason;
+    sentences.add(reason);
   }
   return sentences.size ? { note, sentences } : null;
+}
+
+// handsRuling's refusal (src/lib/dm/attack-rules.ts) as the Hand asks it —
+// a two-handed weapon beside a shield, never a lance on foot — matched
+// exactly and carried into the reader's words. Mapping: the needs-both-hands
+// refusal → table.hand.gate.needsBothHands. Any other wording keeps the
+// engine's English.
+export function handsRulingReason(error: string, weapon: string, who: string, shieldName: string | null, t: T): string {
+  if (
+    shieldName &&
+    error ===
+      `${weapon} needs both hands, and ${who} has ${shieldName} on one arm. They put the shield away first (unequip it on the sheet) or attack with a one-handed weapon.`
+  ) {
+    return t("{weapon} needs both hands, and {name} has {shield} on one arm. They put the shield away first (unequip it on the sheet) or attack with a one-handed weapon.", { weapon, name: who, shield: shieldName });
+  }
+  return error;
+}
+
+// offHandProblem's refusals (src/lib/dm/attack-rules.ts), matched exactly
+// and carried into the reader's words; a sentence the mapping has not met
+// keeps the engine's English. Each mapping, refusal → key:
+//   not one-handed (Dual Wielder)      → table.hand.attack.offhandNotOneHanded
+//   not a light weapon                 → table.hand.attack.offhandNotLight
+//   a shield in the other hand         → table.hand.attack.offhandShield
+//   no second weapon in the pack       → table.hand.attack.offhandCarries
+//   not their turn                     → table.hand.attack.offhandNotYourTurn
+//   no Attack action yet               → table.hand.attack.offhandAfterAttack
+//   earned by a light swing            → table.hand.attack.offhandEarned
+// The noun phrases live under table.hand.attack.offhand.word.*; the rest of
+// the sentence keys around them.
+export function offHandProblemReason(error: string, weapon: string, who: string, shieldName: string | null, dualWielder: boolean, t: T): string {
+  const word = {
+    weapon: t("weapon", { context: "table.hand.attack.offhand.word.weapon" }),
+    light: t("light weapon"),
+    oneHanded: t("one-handed melee weapon"),
+    lightMelee: t("light melee weapon"),
+    oneHandHeld: t("a melee weapon held in one hand"),
+    earnedLight: t("a light melee weapon"),
+  };
+  if (dualWielder && error === `The off-hand attack of two-weapon fighting is made with a melee weapon held in one hand, and ${weapon} is not one. Dual Wielder lifts the need for a light weapon, not for a one-handed one.`) {
+    return t("The off-hand attack of two-weapon fighting is made with a melee weapon held in one hand, and {weapon} is not one. Dual Wielder lifts the need for a light weapon, not for a one-handed one.", { weapon });
+  }
+  if (error === `The off-hand attack of two-weapon fighting is made with a light melee weapon, and ${weapon} is not one. ${who} can make it with a dagger, shortsword, handaxe or another light weapon.`) {
+    return t("The off-hand attack of two-weapon fighting is made with a light melee weapon, and {weapon} is not one. {name} can make it with a dagger, shortsword, handaxe or another light weapon.", { weapon, name: who });
+  }
+  if (shieldName && error === `${who} has ${shieldName} in their other hand, so there is no second weapon to strike with. Two-weapon fighting needs a ${dualWielder ? "weapon" : "light weapon"} in each hand.`) {
+    return t("{name} has {shield} in their other hand, so there is no second weapon to strike with. Two-weapon fighting needs a {word} in each hand.", { name: who, shield: shieldName, word: dualWielder ? word.weapon : word.light });
+  }
+  if (error === (dualWielder
+    ? `Two-weapon fighting needs a one-handed melee weapon in each hand, and ${who} carries only one.`
+    : `Two-weapon fighting needs a light melee weapon in each hand, and ${who} carries only one.`)) {
+    return t("Two-weapon fighting needs a {word} in each hand, and {name} carries only one.", { word: dualWielder ? word.oneHanded : word.lightMelee, name: who });
+  }
+  if (error === `The off-hand attack is a bonus action on ${who}'s own turn; it is not their turn. What they declared waits for their turn.`) {
+    return t("The off-hand attack is a bonus action on {name}'s own turn; it is not their turn. What they declared waits for their turn.", { name: who });
+  }
+  if (error === `The off-hand attack follows the Attack action: ${who} attacks with the weapon in their main hand first, then makes the off-hand attack as a bonus action.`) {
+    return t("The off-hand attack follows the Attack action: {name} attacks with the weapon in their main hand first, then makes the off-hand attack as a bonus action.", { name: who });
+  }
+  if (error === (dualWielder
+    ? `The off-hand attack is earned by attacking with a melee weapon held in one hand, and ${who}'s Attack action this turn was made with something else.`
+    : `The off-hand attack is earned by attacking with a light melee weapon, and ${who}'s Attack action this turn was made with something else.`)) {
+    return t("The off-hand attack is earned by attacking with {word}, and {name}'s Attack action this turn was made with something else.", { word: dualWielder ? word.oneHandHeld : word.earnedLight, name: who });
+  }
+  return error;
 }
 
 // The turn as the engine's own TurnBudget, so a cost is judged by the same
@@ -558,18 +726,70 @@ export function budgetOf(turn: HandTurn, sheet: Pick<CharacterSheet, "id">, allo
   };
 }
 
-const spentGate = (result: SpendResult): Gate => (result.ok ? null : { reason: result.error, spent: true });
+// spendAction's refusals (src/lib/dm/action-budget.ts), matched exactly and// carried into the reader's words; a sentence the mapping has not met keeps
+// the engine's English. Each mapping, refusal → key:
+//   the action gone (with the Haste tail when it applies) → table.hand.gate.actionSpent
+//   the bonus action gone → table.hand.gate.bonusSpent
+//   the reaction gone     → table.hand.gate.reactionSpent
+//   slowed, both halves spent → table.hand.gate.slowedBoth
+function spendActionReason(budget: TurnBudget, kind: "action" | "bonus" | "reaction", what: string, who: string, error: string, t: T): string {
+  const other = kind === "bonus" ? "action" : "bonus action";
+  if (error === `${who} is slowed: an action or a bonus action this turn, not both, and the ${other} is already spent. ${what} does not happen.`) {
+    return t("{name} is slowed: an action or a bonus action this turn, not both, and the {other} is already spent. {what} does not happen.", {
+      name: who,
+      other: (other === "action" ? t("action", { context: "table.hand.gate.word.action" }) : t("bonus action", { context: "table.hand.gate.word.bonus" })),
+      what,
+    });
+  }
+  if (kind === "action") {
+    const hasted = (budget.extraActions ?? 0) > 0;
+    const bonusLeft = !budget.bonusUsed;
+    if (
+      error ===
+      `${who} has already used their action this turn; ${what} needs one.${
+        hasted ? " The extra action from Haste is only for one weapon attack, Dash, Disengage, Hide or Use an Object." : ""
+      } They can still move${bonusLeft ? " or take a bonus action" : ""}, or end their turn.`
+    ) {
+      return t("{name} has already used their action this turn; {what} needs one.{haste} They can still move{bonus}, or end their turn.", {
+        name: who,
+        what,
+        haste: hasted ? t(" The extra action from Haste is only for one weapon attack, Dash, Disengage, Hide or Use an Object.") : "",
+        bonus: bonusLeft ? t(" or take a bonus action") : "",
+      });
+    }
+  }
+  if (kind === "bonus") {
+    if (error === `${who} has already used their bonus action this turn; ${what} needs one.`) {
+      return t("{name} has already used their bonus action this turn; {what} needs one.", { name: who, what });
+    }
+  }
+  if (kind === "reaction") {
+    if (error === `${who} has already used their reaction; it comes back at the start of their next turn. ${what} does not happen.`) {
+      return t("{name} has already used their reaction; it comes back at the start of their next turn. {what} does not happen.", { name: who, what });
+    }
+  }
+  return error;
+}
 
 // `what` is the card's name as the engine would name the spend ("Dash",
 // "Longsword"): Haste's extra action pays only for the ones it allows.
-export function costGate(cost: HandCost, turn: HandTurn, sheet: CharacterSheet, what = "that"): Gate {
+export function costGate(cost: HandCost, turn: HandTurn, sheet: CharacterSheet, what = "that", t: T = enT): Gate {
   if (cost === "reaction") {
     const blocked = conditionBlocksReactions(sheet.conditions);
-    if (blocked) return { reason: `${sheet.name} is ${blocked} and cannot take a reaction.`, spent: false };
-    return spentGate(spendAction(budgetOf(turn, sheet), "reaction", what, sheet.name));
+    if (blocked) {
+      // conditionBlocksReactions' sentence ("{name} is {condition} and cannot
+      // take a reaction."), carried into the reader's words (mapping: a
+      // condition that blocks reactions → table.hand.gate.reactionBlocked).
+      return { reason: t("{name} is {condition} and cannot take a reaction.", { name: sheet.name, condition: blocked }), spent: false };
+    }
+    const budget = budgetOf(turn, sheet);
+    const result = spendAction(budget, "reaction", what, sheet.name);
+    return result.ok ? null : { reason: spendActionReason(budget, "reaction", what, sheet.name, result.error, t), spent: true };
   }
   if (cost === "action" || cost === "bonus") {
-    return spentGate(spendAction(budgetOf(turn, sheet), cost, what, sheet.name));
+    const budget = budgetOf(turn, sheet);
+    const result = spendAction(budget, cost, what, sheet.name);
+    return result.ok ? null : { reason: spendActionReason(budget, cost, what, sheet.name, result.error, t), spent: true };
   }
   return null;
 }
@@ -583,8 +803,38 @@ export function attackGate(
   allowed: number,
   sheet: Pick<CharacterSheet, "id" | "name">,
   options: AttackSpendOptions = {},
+  t: T = enT,
 ): Gate {
-  return spentGate(spendAttack(budgetOf(turn, sheet, allowed), sheet.name, options));
+  const tp = pluralOf(t);
+  const result = spendAttack(budgetOf(turn, sheet, allowed), sheet.name, options);
+  if (result.ok) {
+    return null;
+  }
+  // spendAttack's refusals (src/lib/dm/action-budget.ts), matched exactly
+  // and carried into the reader's words; a sentence the mapping has not met
+  // keeps the engine's English. Each mapping, refusal → key:
+  //   slowed, one attack a turn          → table.hand.gate.slowedOneAttack
+  //   the action went on a casting       → table.hand.gate.castAction
+  //   every swing of the action is made  → table.hand.gate.attacksGone (_one/_other)
+  //   the action spent on something else → table.hand.gate.attackActionSpent
+  const who = sheet.name;
+  const error = result.error;
+  if (error === `${who} is slowed and makes no more than one attack a turn. Another attack does not happen.`) {
+    return { reason: t("{name} is slowed and makes no more than one attack a turn. Another attack does not happen.", { name: who }), spent: true };
+  }
+  if (error === `${who} spent this turn's action casting a spell, so they cannot also take the Attack action. Extra Attack belongs to the Attack action.`) {
+    return { reason: t("{name} spent this turn's action casting a spell, so they cannot also take the Attack action. Extra Attack belongs to the Attack action.", { name: who }), spent: true };
+  }
+  if (
+    error ===
+    `${who} has already made all ${allowed} of their attack${allowed === 1 ? "" : "s"} this turn. They cannot attack again; move, take a bonus action, or end their turn.`
+  ) {
+    return { reason: tp("{name} has already made all {count} of their attack this turn. They cannot attack again; move, take a bonus action, or end their turn.", "{name} has already made all {count} of their attacks this turn. They cannot attack again; move, take a bonus action, or end their turn.", { name: who, count: allowed }), spent: true };
+  }
+  if (error === `${who} has already used their action this turn, so they cannot take the Attack action.`) {
+    return { reason: t("{name} has already used their action this turn, so they cannot take the Attack action.", { name: who }), spent: true };
+  }
+  return { reason: error, spent: true };
 }
 
 export function gated<T extends HandCard>(card: T, ...gates: Gate[]): T {
@@ -612,8 +862,13 @@ export function lowestSlot(sheet: CharacterSheet, spellLevel: number): SlotPick 
   return picks[0] ?? null;
 }
 
-export function slotLine(slot: SlotPick): string {
-  return `${slot.pact ? "Pact" : "Slot"} ${slot.level} · ${slot.left}/${slot.max}`;
+export function slotLine(slot: SlotPick, t: T = enT): string {
+  return t("{kind} {level} · {left}/{max}", {
+    kind: t(slot.pact ? "Pact" : "Slot"),
+    level: slot.level,
+    left: slot.left,
+    max: slot.max,
+  });
 }
 
 

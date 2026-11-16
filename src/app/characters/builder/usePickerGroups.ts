@@ -10,6 +10,9 @@ import { subclassBlurb, subclassGate, subclassNamesFor } from "@/lib/srd/feature
 import { packRecommends, type Reskinned } from "@/lib/worlds/reskin-logic";
 import type { WorldPack } from "@/lib/worlds/types";
 import type { PickerGroup, PickerOption } from "./OptionPicker";
+import { contentName, subclassName } from "@/lib/content/names";
+import { useLocale, useT } from "@/lib/locale";
+import type { Locale } from "@/lib/messages-logic";
 import type {
   ArchetypeOption,
   BackgroundOption,
@@ -76,7 +79,7 @@ const ALIGNMENT_INFO =
 // A pack's own heading for its recommended tier ("Peoples of Middle-earth"),
 // so the group reads like the world rather than like a filter.
 function packGroupLabel(pack: WorldPack | null, prefix: string): string {
-  return pack ? `${prefix} ${pack.name}` : "Recommended for this setting";
+  return pack ? `${prefix} ${pack.name}` : "";
 }
 
 // The canonical name behind a reskin, shown in the option's meta column so a
@@ -173,8 +176,9 @@ function tier<T extends { id: string }>(
 // blurb, then the bundled line, then the content pack's full entry, and for
 // a background what its feature does. Joined so a short line and a long
 // rules text both show rather than one hiding the other.
-export function classInfoText(entry: { packBlurb?: string; blurb?: string; desc?: string }): string | undefined {
-  const parts = [entry.packBlurb || entry.blurb, entry.desc].filter(Boolean);
+export function classInfoText(entry: { packBlurb?: string; blurb?: string; desc?: string }, t?: (key: string) => string): string | undefined {
+  const blurb = entry.packBlurb || (entry.blurb && t ? t(entry.blurb) : entry.blurb);
+  const parts = [blurb, entry.desc].filter(Boolean);
   return parts.length ? parts.join("\n\n") : undefined;
 }
 
@@ -190,6 +194,17 @@ export function backgroundInfoText(entry: {
     : "";
   const parts = [entry.packBlurb || entry.blurb, feature, entry.desc].filter(Boolean);
   return parts.length ? parts.join("\n\n") : undefined;
+}
+
+// An option's own name reads in the reader's language when the official
+// maps carry it; a pack's reskin (packName) is its author's words and
+// stays. The id picked stays whatever it always was.
+function shownOption<T extends { name: string; packName?: string }>(
+  entry: T,
+  table: "species" | "classes" | "backgrounds",
+  locale: Locale,
+): string {
+  return entry.packName ? entry.name : contentName(table, entry.name, locale);
 }
 
 export function usePickerGroups({
@@ -217,7 +232,16 @@ export function usePickerGroups({
   effectiveLevel: number;
   archetypes: ArchetypeOption[];
 }) {
+  const locale = useLocale();
+  const t = useT();
   const steered = genre && genre !== "custom" && genre !== "high_fantasy" ? genre : null;
+  // The alignments' names and blurbs, in the reader's language (the codes
+  // stay the stored values).
+  const alignmentWords = (code: string) => ({
+    name: ({ "info": t("Alignment is a two-word shorthand for how your character treats rules (lawful, neutral, chaotic) and other people (good, neutral, evil). It binds nothing: it is a note to yourself and to the GM about how this person tends to act, and characters drift over a campaign. Pick the one that sounds most like them and stop worrying about it."), "LG": t("Lawful Good"), "NG": t("Neutral Good"), "CG": t("Chaotic Good"), "LN": t("Lawful Neutral"), "N": t("True Neutral"), "CN": t("Chaotic Neutral"), "LE": t("Lawful Evil"), "NE": t("Neutral Evil"), "CE": t("Chaotic Evil") } as Record<string, string>)[code] ?? String(code),
+    blurb: ({ "LG": t("Does the right thing, by the rules. Keeps promises, protects the weak, trusts institutions to be worth defending. The paladin's default."), "NG": t("Does the most good available, law or no law. Helps whoever is in front of them without much regard for who is owed what."), "CG": t("Does the right thing, and breaks whatever rule is in the way. Rebels, smugglers with a conscience, people who free prisoners first and ask later."), "LN": t("Order for its own sake. The judge, the soldier, the monk: the code matters more than any one outcome it produces."), "N": t("No strong pull either way. Gets on with life, takes a side when a side has to be taken. The commonest alignment for ordinary people."), "CN": t("Freedom above all, their own most of all. Unpredictable but not cruel. Easy to play badly; check with your table before choosing it."), "LE": t("Takes what they want, within a system they respect and use. Tyrants, corrupt officials, devils. Keeps their word, which makes them worse."), "NE": t("Takes what they want and feels no need to dress it up. Loyal to nobody but themselves."), "CE": t("Destruction for its own sake. Almost always an NPC alignment; a party rarely survives one.") } as Record<string, string>)[code] ?? String(code),
+  });
+  const recommendedLabel = t("Recommended for this setting");
 
   const raceTier = useMemo(
     () =>
@@ -257,28 +281,28 @@ export function usePickerGroups({
   const alignmentGroups = useMemo<PickerGroup[]>(() => {
     const toOption = (code: string): PickerOption => ({
       id: code,
-      name: `${code}: ${ALIGNMENT_LABELS[code]?.name ?? code}`,
-      infoText: ALIGNMENT_LABELS[code]?.blurb ?? ALIGNMENT_INFO,
+      name: `${code}: ${alignmentWords(code).name}`,
+      infoText: alignmentWords(code).blurb,
     });
     const preferred = (pack?.alignments ?? []).filter((code) => ALIGNMENTS.includes(code));
     if (!preferred.length) {
       return [{ label: null, options: ALIGNMENTS.map(toOption) }];
     }
     return [
-      { label: packGroupLabel(pack, "Common in"), recommended: true, options: preferred.map(toOption) },
+      { label: packGroupLabel(pack, t("Common in {pack}", { pack: pack?.name ?? "" })), recommended: true, options: preferred.map(toOption) },
       {
-        label: "All alignments",
+        label: t("All alignments"),
         options: ALIGNMENTS.filter((code) => !preferred.includes(code)).map(toOption),
       },
     ];
-  }, [pack]);
+  }, [pack, t]);
 
   const raceGroups = useMemo<PickerGroup[]>(() => {
     // `showSource` names the book on the row where the group heading does
     // not: a pack's recommended tier mixes books.
     const toOption = (entry: Reskinned<RaceOption>, showSource: boolean): PickerOption => ({
       id: entry.id,
-      name: entry.name,
+      name: shownOption(entry, "species", locale),
       // Under a reskin the canonical name goes in the meta column, so a
       // player always knows which SRD race they are actually taking.
       meta: entry.packName ? canonicalName(rawRaces, entry.id) : undefined,
@@ -294,11 +318,11 @@ export function usePickerGroups({
     if (raceTier.recommended.length) {
       return [
         {
-          label: packGroupLabel(pack, "Peoples of"),
+          label: pack ? packGroupLabel(pack, t("Peoples of {pack}", { pack: pack.name })) : recommendedLabel,
           recommended: true,
           options: raceTier.recommended.map((entry) => toOption(entry, true)),
         },
-        { label: "All races", options: raceTier.other.map((entry) => toOption(entry, true)) },
+        { label: t("All races"), options: raceTier.other.map((entry) => toOption(entry, true)) },
       ];
     }
     const books = groupByBook(races);
@@ -306,29 +330,29 @@ export function usePickerGroups({
       return books.map((book) => ({ label: book.label, options: book.options.map((entry) => toOption(entry, false)) }));
     }
     return [{ label: null, options: races.map((entry) => toOption(entry, false)) }];
-  }, [races, rawRaces, raceTier, pack]);
+  }, [races, rawRaces, raceTier, pack, locale, t]);
 
   const classGroups = useMemo<PickerGroup[]>(() => {
     const toOption = (entry: Reskinned<ClassOption>, showSource: boolean): PickerOption => ({
       id: entry.id,
-      name: entry.name,
+      name: shownOption(entry, "classes", locale),
       meta: entry.packName
         ? `d${entry.hitDie} · ${canonicalName(rawClasses, entry.id)}`
         : entry.spellAbility
-          ? `d${entry.hitDie} · caster`
+          ? `d${entry.hitDie} · ${t("caster")}`
           : `d${entry.hitDie}`,
       ...(showSource && entry.source && !isCoreDocument(entry.documentSlug) ? { source: entry.source } : {}),
-      infoText: classInfoText(entry),
+      infoText: classInfoText(entry, t),
       reference: { kind: "classes", slug: entry.id, name: entry.name },
     });
     if (classTier.recommended.length) {
       return [
         {
-          label: pack ? packGroupLabel(pack, "Callings of") : "Recommended for this setting",
+          label: pack ? packGroupLabel(pack, t("Callings of {pack}", { pack: pack.name, context: "builder.group.callingsOf" })) : recommendedLabel,
           recommended: true,
           options: classTier.recommended.map((entry) => toOption(entry, true)),
         },
-        { label: "All classes", options: classTier.other.map((entry) => toOption(entry, true)) },
+        { label: t("All classes"), options: classTier.other.map((entry) => toOption(entry, true)) },
       ];
     }
     // With no recommended tier, the other books' and the other settings'
@@ -337,19 +361,19 @@ export function usePickerGroups({
     const bySource = groupBySourceSetting(classTier.other);
     if (bySource.packs.length || bySource.books.length) {
       return [
-        { label: "Standard classes (5e Core Rules)", options: bySource.standard.map((entry) => toOption(entry, false)) },
+        { label: t("Standard classes (5e Core Rules)"), options: bySource.standard.map((entry) => toOption(entry, false)) },
         ...bySource.books.map((book) => ({
-          label: `From ${book.label}`,
+          label: t("From {book}", { book: book.label }),
           options: book.options.map((entry) => toOption(entry, false)),
         })),
         ...bySource.packs.map((source) => ({
-          label: `From the ${source.label} setting`,
+          label: t("From the {setting} setting", { setting: source.label }),
           options: source.options.map((entry) => toOption(entry, false)),
         })),
       ];
     }
     return [{ label: null, options: classTier.other.map((entry) => toOption(entry, false)) }];
-  }, [classTier, rawClasses, pack]);
+  }, [classTier, rawClasses, pack, locale, t]);
 
   // The subclasses we have real feature tables for, offered once the chosen
   // level reaches the class's subclass level. The workshop's subclasses come
@@ -386,22 +410,25 @@ export function usePickerGroups({
   );
 
   const subclassGroups = useMemo<PickerGroup[]>(() => {
-    const groups: PickerGroup[] = [{ label: null, options: [{ id: "", name: "None yet" }] }];
+    const groups: PickerGroup[] = [{ label: null, options: [{ id: "", name: t("None yet") }] }];
     if (builtInSubclasses.length) {
       groups.push({
-        label: "Full features",
-        options: builtInSubclasses.map((subclassName) => {
+        label: t("Full features"),
+        options: builtInSubclasses.map((name) => {
           const match = archetypes.find(
-            (entry) => textKey(entry.name) === textKey(subclassName),
+            (entry) => textKey(entry.name) === textKey(name),
           );
           return {
-            id: subclassName,
-            name: subclassName,
+            // The stored value stays the English name the sheet rules match
+            // by; the label reads in the reader's language where the maps
+            // carry it (the identity line reads the same way).
+            id: name,
+            name: subclassName(klass?.id ?? "", name, locale),
             // The pack's full write-up when it has the row, else the
             // bundled line, so no subclass is a bare name.
-            infoText: match?.desc || subclassBlurb(klass?.id ?? "", subclassName) || undefined,
+            infoText: match?.desc || subclassBlurb(klass?.id ?? "", name) || undefined,
             reference: match
-              ? { kind: "archetypes", slug: match.id, name: subclassName }
+              ? { kind: "archetypes", slug: match.id, name }
               : undefined,
           };
         }),
@@ -410,7 +437,7 @@ export function usePickerGroups({
     const workshopArchetypes = packOnlyArchetypes.filter((entry) => entry.workshop);
     if (workshopArchetypes.length) {
       groups.push({
-        label: "From Homebrew",
+        label: t("From Homebrew"),
         options: workshopArchetypes.map((entry) => ({
           id: entry.name,
           name: entry.name,
@@ -421,7 +448,7 @@ export function usePickerGroups({
     const packArchetypes = packOnlyArchetypes.filter((entry) => !entry.workshop);
     if (packArchetypes.length) {
       groups.push({
-        label: "From the content pack",
+        label: t("From the content pack"),
         options: packArchetypes.map((entry) => ({
           id: entry.name,
           name: entry.name,
@@ -431,12 +458,12 @@ export function usePickerGroups({
       });
     }
     return groups;
-  }, [builtInSubclasses, packOnlyArchetypes, archetypes, klass]);
+  }, [builtInSubclasses, packOnlyArchetypes, archetypes, klass, locale, t]);
 
   const backgroundGroups = useMemo<PickerGroup[]>(() => {
     const toOption = (entry: Reskinned<BackgroundOption>, showSource: boolean): PickerOption => ({
       id: entry.id,
-      name: entry.name,
+      name: shownOption(entry, "backgrounds", locale),
       meta: entry.skills
         .map((skillId) => SRD_SKILLS.find((skill) => skill.id === skillId)?.name ?? skillId)
         .join(", "),
@@ -447,36 +474,36 @@ export function usePickerGroups({
     if (backgroundTier.recommended.length) {
       return [
         {
-          label: pack ? packGroupLabel(pack, "Lives in") : "Recommended for this setting",
+          label: pack ? packGroupLabel(pack, t("Lives in {pack}", { pack: pack.name })) : recommendedLabel,
           recommended: true,
           options: backgroundTier.recommended.map((entry) => toOption(entry, true)),
         },
-        { label: "All backgrounds", options: backgroundTier.other.map((entry) => toOption(entry, true)) },
+        { label: t("All backgrounds"), options: backgroundTier.other.map((entry) => toOption(entry, true)) },
       ];
     }
     const bySource = groupBySourceSetting(backgroundTier.other);
     if (bySource.packs.length || bySource.books.length) {
       return [
         {
-          label: "Standard backgrounds (5e Core Rules)",
+          label: t("Standard backgrounds (5e Core Rules)"),
           options: bySource.standard.map((entry) => toOption(entry, false)),
         },
         ...bySource.books.map((book) => ({
-          label: `From ${book.label}`,
+          label: t("From {book}", { book: book.label }),
           options: book.options.map((entry) => toOption(entry, false)),
         })),
         ...bySource.packs.map((source) => ({
-          label: `From the ${source.label} setting`,
+          label: t("From the {setting} setting", { setting: source.label }),
           options: source.options.map((entry) => toOption(entry, false)),
         })),
       ];
     }
     return [{ label: null, options: backgroundTier.other.map((entry) => toOption(entry, false)) }];
-  }, [backgroundTier, pack]);
+  }, [backgroundTier, pack, locale, t]);
 
   return {
     alignmentGroups,
-    alignmentInfo: ALIGNMENT_INFO,
+    alignmentInfo: t("Alignment is a two-word shorthand for how your character treats rules (lawful, neutral, chaotic) and other people (good, neutral, evil). It binds nothing: it is a note to yourself and to the GM about how this person tends to act, and characters drift over a campaign. Pick the one that sounds most like them and stop worrying about it."),
     raceGroups,
     classGroups,
     subclassGroups,

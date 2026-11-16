@@ -6,8 +6,8 @@ import { cn } from "@/lib/cn";
 import { encodeImageForUpload } from "@/lib/image-encode";
 import {
   BRUSHES,
-  BRUSH_EFFECTS,
-  BRUSH_LABELS,
+  brushEffect,
+  brushLabel,
   MAX_BRUSH_RADIUS,
   type Brush as BrushName,
 } from "@/lib/battlemap/paint";
@@ -28,6 +28,7 @@ import {
 } from "@/lib/battlemap/backdrop";
 import { TERRAIN, TILE_FEET } from "@/lib/battlemap/types";
 import { FLAT_TONES, FinePrint, RangeRow, Swatch, brushChar, mapButton, mapDanger } from "@/app/campaigns/[campaignId]/mapUi";
+import { useT } from "@/lib/locale";
 
 // The three paint dials a map editor needs, shared by the studio (which edits
 // the board on the table) and the library (which edits maps in a drawer).
@@ -54,6 +55,7 @@ export function BrushPalette({
   // Terrain character to the picture of the material the map's skin uses.
   swatches?: Record<string, string>;
 }) {
+  const t = useT();
   return (
     <div className="space-y-2">
       <ul data-pill-group="" className="space-y-1">
@@ -65,7 +67,7 @@ export function BrushPalette({
                 type="button"
                 aria-pressed={active}
                 data-on={active ? "" : undefined}
-                title={`${BRUSH_EFFECTS[option]} (${index + 1})`}
+                title={`${brushEffect(t, option)} (${index + 1})`}
                 onClick={() => onPick(active ? "" : option)}
                 className={cn(
                   "flex w-full items-start gap-2 rounded-lg border px-2 py-1.5 text-left motion-press",
@@ -77,10 +79,10 @@ export function BrushPalette({
                 <Swatch char={brushChar(option)} src={swatches?.[brushChar(option)]} className="mt-0.5" />
                 <span className="min-w-0 flex-1">
                   <span className={cn("flex items-center justify-between text-[12px]", active ? "text-amber-100" : "text-stone-200")}>
-                    {BRUSH_LABELS[option]}
+                    {brushLabel(t, option)}
                     <span className="font-mono text-[8px] text-stone-600">{index + 1}</span>
                   </span>
-                  <span className="block font-mono text-[9px] leading-tight text-stone-500">{BRUSH_EFFECTS[option]}</span>
+                  <span className="block font-mono text-[9px] leading-tight text-stone-500">{brushEffect(t, option)}</span>
                 </span>
               </button>
             </li>
@@ -90,9 +92,9 @@ export function BrushPalette({
       {radius !== undefined && onRadius ? (
         <div className="space-y-1">
           <div className="flex items-center justify-between font-display text-[9px] uppercase tracking-[0.14em] text-stone-500">
-            Nib
+            {t("Nib")}
             <span className="font-mono normal-case tracking-normal text-amber-200">
-              {radius * 2 + 1} × {radius * 2 + 1} tiles
+              {t("{n} × {n} tiles", { n: radius * 2 + 1 })}
             </span>
           </div>
           <div data-pill-group="" className="grid grid-cols-4 gap-1">
@@ -101,7 +103,7 @@ export function BrushPalette({
                 key={nib}
                 type="button"
                 aria-pressed={radius === nib}
-                aria-label={`${nib * 2 + 1} by ${nib * 2 + 1} tiles`}
+                aria-label={t("{n} by {n} tiles", { n: nib * 2 + 1 })}
                 onClick={() => onRadius(nib)}
                 className={cn(
                   "flex h-8 items-center justify-center rounded-md border motion-press",
@@ -117,11 +119,11 @@ export function BrushPalette({
             ))}
           </div>
           {/* The slider stays for the keyboard: arrow keys walk the same four sizes. */}
-          <RangeRow label="Size" min={0} max={MAX_BRUSH_RADIUS} value={radius} readout={`${radius * 2 + 1}x${radius * 2 + 1}`} onChange={onRadius} />
+          <RangeRow label={t("Size")} min={0} max={MAX_BRUSH_RADIUS} value={radius} readout={`${radius * 2 + 1}x${radius * 2 + 1}`} onChange={onRadius} />
         </div>
       ) : null}
       <FinePrint>
-        {brush ? "Drag across the map. Every stroke is checked before it lands." : "Pick a brush, then drag on the map."}
+        {brush ? t("Drag across the map. Every stroke is checked before it lands.") : t("Pick a brush, then drag on the map.")}
       </FinePrint>
     </div>
   );
@@ -178,6 +180,7 @@ export function StampPalette({
   onResize: (size: { width: number; height: number }) => void;
   swatches?: Record<string, string>;
 }) {
+  const t = useT();
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-3 gap-1">
@@ -207,7 +210,7 @@ export function StampPalette({
           {(["width", "height"] as const).map((side) => (
             <RangeRow
               key={side}
-              label={side === "width" ? "Across" : "Down"}
+              label={side === "width" ? t("Across") : t("Down", { context: "maptools.down" })}
               min={STAMP_SIZE.min}
               max={STAMP_SIZE.max}
               value={size[side]}
@@ -215,10 +218,10 @@ export function StampPalette({
               onChange={(value) => onResize({ ...size, [side]: value })}
             />
           ))}
-          <FinePrint>Click once on the map. The outline shows where it will land.</FinePrint>
+          <FinePrint>{t("Click once on the map. The outline shows where it will land.")}</FinePrint>
         </>
       ) : (
-        <FinePrint>Rooms and corridors in one click, drawn in the same five tiles the rules read.</FinePrint>
+        <FinePrint>{t("Rooms and corridors in one click, drawn in the same five tiles the rules read.")}</FinePrint>
       )}
     </div>
   );
@@ -237,6 +240,7 @@ export function BackdropControls({
   onChange: (next: { path: string; transform: BackdropTransform }) => void;
   busy?: boolean;
 }) {
+  const t = useT();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -254,12 +258,12 @@ export function BackdropControls({
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setError(payload.error || "That image would not upload.");
+        setError(payload.error || t("That image would not upload.", { context: "maptools.error.upload" }));
         return;
       }
       onChange({ path: payload.url, transform });
     } catch {
-      setError("That image would not upload.");
+      setError(t("That image would not upload.", { context: "maptools.error.upload" }));
     } finally {
       setUploading(false);
     }
@@ -271,7 +275,7 @@ export function BackdropControls({
   return (
     <div className="space-y-2">
       <p className="flex items-center gap-1.5 font-display text-[9px] uppercase tracking-[0.14em] text-stone-500">
-        <ImageIcon className="size-3.5" /> Picture under the grid
+        <ImageIcon className="size-3.5" /> {t("Picture under the grid")}
       </p>
       <div className="flex flex-wrap items-center gap-1.5">
         <input
@@ -289,7 +293,7 @@ export function BackdropControls({
         />
         <button type="button" disabled={uploading || busy} onClick={() => fileRef.current?.click()} className={mapButton}>
           {uploading ? <Loader2 className="size-3 animate-spin" /> : <ImageIcon className="size-3" />}
-          {backdrop ? "Replace it" : "Add a picture"}
+          {backdrop ? t("Replace it", { context: "maptools.replace" }) : t("Add a picture")}
         </button>
         {backdrop ? (
           <button
@@ -298,7 +302,7 @@ export function BackdropControls({
             onClick={() => onChange({ path: "", transform: DEFAULT_BACKDROP_TRANSFORM })}
             className={mapDanger}
           >
-            <Trash2 className="size-3" /> Take it away
+            <Trash2 className="size-3" /> {t("Take it away", { context: "maptools.takeAway" })}
           </button>
         ) : null}
       </div>
@@ -307,7 +311,7 @@ export function BackdropControls({
         <>
           <div className="space-y-1">
             <RangeRow
-              label="Across"
+              label={t("Across")}
               min={-BACKDROP_LIMITS.maxOffset}
               max={BACKDROP_LIMITS.maxOffset}
               step={0.25}
@@ -316,7 +320,7 @@ export function BackdropControls({
               onChange={(offsetX) => set({ offsetX })}
             />
             <RangeRow
-              label="Down"
+              label={t("Down", { context: "maptools.down" })}
               min={-BACKDROP_LIMITS.maxOffset}
               max={BACKDROP_LIMITS.maxOffset}
               step={0.25}
@@ -325,7 +329,7 @@ export function BackdropControls({
               onChange={(offsetY) => set({ offsetY })}
             />
             <RangeRow
-              label="Size"
+              label={t("Size")}
               min={BACKDROP_LIMITS.minScale}
               max={BACKDROP_LIMITS.maxScale}
               step={0.01}
@@ -334,7 +338,7 @@ export function BackdropControls({
               onChange={(scale) => set({ scale })}
             />
             <RangeRow
-              label="Strength"
+              label={t("Strength", { context: "maptools.strength" })}
               min={0}
               max={1}
               step={0.05}
@@ -344,8 +348,7 @@ export function BackdropControls({
             />
           </div>
           <FinePrint>
-            The picture is scenery. The walls that stop a rogue are the ones painted into the
-            terrain, so line the two up and check them before anyone plays on it.
+            {t("The picture is scenery. The walls that stop a rogue are the ones painted into the terrain, so line the two up and check them before anyone plays on it.")}
           </FinePrint>
         </>
       ) : null}

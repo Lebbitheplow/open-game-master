@@ -8,6 +8,7 @@ import Cropper, { type Area } from "react-easy-crop";
 import { ui } from "@/lib/ui";
 import { cn } from "@/lib/cn";
 import { blobToDataUrl, exportCanvas } from "@/lib/image-encode";
+import { useT } from "@/lib/locale";
 import { Slider } from "@/components/ui/Slider";
 
 // The familiar profile-picture flow: pick a file, pan/zoom a square crop,
@@ -20,11 +21,14 @@ export type UploadedImage = {
   url: string;
 };
 
-async function cropToSquare(imageSrc: string, area: Area): Promise<{ dataUrl: string; type: string }> {
+// The translator's shape (src/lib/story-window.ts): `t` comes in first.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
+async function cropToSquare(t: T, imageSrc: string, area: Area): Promise<{ dataUrl: string; type: string }> {
   const image = await new Promise<HTMLImageElement>((resolve, reject) => {
     const element = new Image();
     element.onload = () => resolve(element);
-    element.onerror = () => reject(new Error("Could not read the image."));
+    element.onerror = () => reject(new Error(t("Could not read the image.")));
     element.src = imageSrc;
   });
   const canvas = document.createElement("canvas");
@@ -32,7 +36,7 @@ async function cropToSquare(imageSrc: string, area: Area): Promise<{ dataUrl: st
   canvas.height = 512;
   const context = canvas.getContext("2d");
   if (!context) {
-    throw new Error("Canvas unavailable.");
+    throw new Error(t("Canvas unavailable."));
   }
   context.drawImage(image, area.x, area.y, area.width, area.height, 0, 0, 512, 512);
   // WebP, or JPEG where the browser cannot write it (src/lib/image-encode.ts).
@@ -49,6 +53,7 @@ export function AvatarCropDialog({
   onUploaded: (image: UploadedImage) => void;
   onClose: () => void;
 }) {
+  const t = useT();
   const [source, setSource] = useState("");
   const [fileName, setFileName] = useState("");
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -68,11 +73,11 @@ export function AvatarCropDialog({
       return;
     }
     if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
-      setError("Only PNG, JPEG, and WebP images are supported.");
+      setError(t("Only PNG, JPEG, and WebP images are supported."));
       return;
     }
     if (file.size > 8 * 1024 * 1024) {
-      setError("Image is larger than 8MB.");
+      setError(t("Image is larger than 8MB."));
       return;
     }
     setError("");
@@ -89,7 +94,7 @@ export function AvatarCropDialog({
     setBusy(true);
     setError("");
     try {
-      const { dataUrl, type } = await cropToSquare(source, areaPixels);
+      const { dataUrl, type } = await cropToSquare(t, source, areaPixels);
       const response = await fetch("/api/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -97,7 +102,7 @@ export function AvatarCropDialog({
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setError(data.error || "Upload failed.");
+        setError(data.error || t("Upload failed."));
         return;
       }
       onUploaded(data as UploadedImage);

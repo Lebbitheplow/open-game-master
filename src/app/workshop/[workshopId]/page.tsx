@@ -4,15 +4,15 @@ import { ArrowLeft } from "lucide-react";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, lazy, use, useCallback, useEffect, useState } from "react";
+import { Suspense, lazy, use, useCallback, useEffect, useMemo, useState } from "react";
 import { SystemCards } from "@/app/workshop/[workshopId]/SystemCards";
 import { SystemView } from "@/app/workshop/[workshopId]/SystemView";
 import { TargetPartyBar } from "@/app/workshop/[workshopId]/TargetPartyBar";
 import { WorkshopHeader } from "@/app/workshop/[workshopId]/WorkshopHeader";
 import {
-  WORKSHOP_SYSTEMS,
   isSystemId,
   systemCount,
+  systemLabel,
   type SystemId,
   type WorldCount,
 } from "@/app/workshop/[workshopId]/systems";
@@ -33,6 +33,7 @@ const WorkshopHelpDialog = lazy(() =>
 );
 import type { WorkshopSummary } from "@/app/workshop/types";
 import { workshopHref, worldEntryPlace } from "@/lib/workshop/links";
+import { useT } from "@/lib/locale";
 import { useWorkshopVersions } from "@/app/workshop/[workshopId]/useWorkshopVersions";
 import { mayLeaveDrafts } from "@/app/workshop/unsaved";
 import { CreateChooser } from "@/app/workshop/[workshopId]/CreateChooser";
@@ -51,6 +52,7 @@ import type { CreateStep } from "@/lib/workshop/create-choices";
 // panel that owns the editor in question answers it.
 
 function WorkshopPageInner({ workshopId }: { workshopId: string }) {
+  const t = useT();
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -279,22 +281,27 @@ function WorkshopPageInner({ workshopId }: { workshopId: string }) {
 
   // What Help can replay from here: the hub's tour and, inside a tool, that
   // tool's own.
-  const helpTours: HelpTour[] = [
-    {
-      label: "Tour the workshop",
-      detail: "The hub: the party bar, the tool cards and the actions on the workshop.",
-      onStart: () => setTour(HUB_TOUR_ID),
-    },
-    ...(system
-      ? [
-          {
-            label: `Tour ${WORKSHOP_SYSTEMS.find((entry) => entry.id === system)?.label ?? system}`,
-            detail: "This tool's controls, one at a time.",
-            onStart: () => setTour(systemTourId(system)),
-          },
-        ]
-      : []),
-  ];
+  // Memoized so the compiler can keep the page's memoization: the labels
+  // follow the locale, and the rest hangs off the tool on screen.
+  const helpTours: HelpTour[] = useMemo(
+    () => [
+      {
+        label: t("Tour the workshop"),
+        detail: t("The hub: the party bar, the tool cards and the actions on the workshop."),
+        onStart: () => setTour(HUB_TOUR_ID),
+      },
+      ...(system
+        ? [
+            {
+              label: t("Tour {system}", { system: systemLabel(t, system) }),
+              detail: t("This tool's controls, one at a time."),
+              onStart: () => setTour(systemTourId(system)),
+            },
+          ]
+        : []),
+    ],
+    [t, system],
+  );
   const tourSteps = tour === HUB_TOUR_ID ? HUB_TOUR : tour ? SYSTEM_TOURS[tour.replace(/^workshop-/, "")] ?? [] : [];
 
   if (loading) {
@@ -310,9 +317,9 @@ function WorkshopPageInner({ workshopId }: { workshopId: string }) {
           href="/workshop"
           className="mb-4 inline-flex items-center gap-1.5 text-sm text-stone-500 hover:text-amber-200"
         >
-          <ArrowLeft className="size-4" /> Workshop
+          <ArrowLeft className="size-4" /> {t("Workshop")}
         </Link>
-        <p className="text-stone-400">That workshop does not exist, or is not yours.</p>
+        <p className="text-stone-400">{t("That workshop does not exist, or is not yours.")}</p>
       </main>
     );
   }
@@ -375,11 +382,11 @@ function WorkshopPageInner({ workshopId }: { workshopId: string }) {
           }
           aside={
             <CommandPalette
-              title="Workshop commands"
-              placeholder="Jump to, or create"
-              commands={workshopCommands({
+              title={t("Workshop commands")}
+              placeholder={t("Jump to, or create")}
+              commands={workshopCommands(t, {
                 current: system,
-                phrase: (id) => systemCount(id, workshop, bestiary, homebrew, pregens, plugin, world).phrase,
+                phrase: (id) => systemCount(t, id, workshop, bestiary, homebrew, pregens, plugin, world).phrase,
                 onJump: openSystem,
                 onCreate: createIn,
                 onHub: () => void go(pathname),

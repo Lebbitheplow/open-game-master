@@ -34,6 +34,10 @@ import {
 import { MAX_TRAITS, type MonsterDraft } from "@/lib/bestiary/monster-draft";
 import { proficiencyBonus } from "@/lib/srd";
 import { textKey } from "@/lib/language/text-logic";
+import { useLocale, useT } from "@/lib/locale";
+import { contentName } from "@/lib/content/names";
+import { damageWords } from "@/lib/dm/damage-logic";
+import type { Locale } from "@/lib/messages-logic";
 
 // The half of the monster editor that picks rather than types.
 //
@@ -60,6 +64,7 @@ export function TermPicker({
   known,
   onChange,
   glossary,
+  wordFor,
 }: {
   label: string;
   value: string;
@@ -67,7 +72,12 @@ export function TermPicker({
   onChange: (value: string) => void;
   // What the known terms mean, one line each, behind a ⓘ in the caption.
   glossary?: readonly GlossaryEntry[];
+  // A catalogue term as the reader reads it (« Tranchants », « Aveuglé »);
+  // left out, the term itself. The extras are the reader's own words and
+  // always read as typed.
+  wordFor?: (term: string) => string;
 }) {
+  const t = useT();
   const extras = parseTerms(value).filter(
     (term) => !known.some((entry) => textKey(entry) === textKey(term)),
   );
@@ -93,7 +103,7 @@ export function TermPicker({
                   : "border-stone-700 text-stone-500 hover:text-stone-200",
               )}
             >
-              {term}
+              {wordFor ? wordFor(term) : term}
             </button>
           );
         })}
@@ -103,7 +113,7 @@ export function TermPicker({
             type="button"
             aria-pressed
             onClick={() => onChange(toggleTerm(value, term))}
-            title="Your own; click to remove"
+            title={t("Your own; click to remove")}
             className={cn(chip, "border-amber-500/50 bg-stone-800 text-amber-100")}
           >
             {term}
@@ -113,11 +123,29 @@ export function TermPicker({
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        placeholder="or type your own, comma separated"
+        placeholder={t("or type your own, comma separated")}
         className={cn(input, "w-full")}
       />
     </div>
   );
+}
+
+// The movement words the French SRD's own stat blocks print (« marche »,
+// « fouissement », « escalade », « vol », « nage »). English keeps the raw
+// mode, exactly as the picker always read it.
+const MOVEMENT_WORDS_FR: Record<string, string> = {
+  walk: "marche",
+  burrow: "fouissement",
+  climb: "escalade",
+  fly: "vol",
+  swim: "nage",
+};
+
+function movementModeWord(mode: string, locale: Locale): string {
+  if (locale !== "fr") {
+    return mode;
+  }
+  return MOVEMENT_WORDS_FR[mode] ?? mode;
 }
 
 // Speed is one printed string ("30, fly 60") because that is what a stat
@@ -130,29 +158,31 @@ export function SpeedPicker({
   value: string;
   onChange: (value: string) => void;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const speeds = parseSpeed(value);
   const set = (mode: "walk" | (typeof MOVEMENT_MODES)[number], feet: number) =>
     onChange(formatSpeed({ ...speeds, [mode]: feet }));
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[10px] uppercase tracking-wide text-stone-500">Speed</span>
+      <span className="text-[10px] uppercase tracking-wide text-stone-500">{t("Speed")}</span>
       <div className="flex flex-wrap gap-2">
         {(["walk", ...MOVEMENT_MODES] as const).map((mode) => (
           <div key={mode} className="flex flex-col gap-0.5">
-            <span className="text-[10px] capitalize text-stone-600">{mode}</span>
+            <span className="text-[10px] capitalize text-stone-600">{movementModeWord(mode, locale)}</span>
             <NumberStepper
               min={0}
               max={999}
               step={5}
               value={speeds[mode] ?? 0}
               onChange={(feet) => set(mode, feet)}
-              label={`${mode} speed in feet`}
+              label={t("{mode} speed in feet", { mode: movementModeWord(mode, locale) })}
               size="sm"
             />
           </div>
         ))}
       </div>
-      <span className="text-[10px] text-stone-600">Reads as &quot;{value || "0"}&quot;. Zero hides a mode.</span>
+      <span className="text-[10px] text-stone-600">{t("Reads as \"{value}\". Zero hides a mode.", { value: value || "0" })}</span>
     </div>
   );
 }
@@ -183,6 +213,32 @@ function Select({
 // The catalogue, aimed at the block. Four independent moves: what it is,
 // what it trained as, what it is holding, and which of that class's
 // abilities it actually brought.
+
+// The dragon colors the French SRD prints ("dragon rouge", "dragon
+// d'airain"...). The stored value stays the English color id; the option
+// label reads the reader's language, capitalized (English keeps the raw id).
+const DRAGON_COLOR_WORDS_FR: Record<string, string> = {
+  black: "noir",
+  blue: "bleu",
+  brass: "airain",
+  bronze: "bronze",
+  copper: "cuivre",
+  gold: "or",
+  green: "vert",
+  red: "rouge",
+  silver: "argent",
+  white: "blanc",
+};
+
+const capital = (value: string) => value.replace(/(^|\s)([a-z])/g, (_, before, letter) => `${before}${letter.toUpperCase()}`);
+
+function dragonColorWord(color: string, locale: Locale): string {
+  if (locale !== "fr") {
+    return color;
+  }
+  return DRAGON_COLOR_WORDS_FR[color] ?? color;
+}
+
 export function MonsterKitPanel({
   draft,
   onChange,
@@ -190,6 +246,8 @@ export function MonsterKitPanel({
   draft: MonsterDraft;
   onChange: (draft: MonsterDraft) => void;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const [ancestryId, setAncestryId] = useState("");
   const [classId, setClassId] = useState("");
   const [subclass, setSubclass] = useState("");
@@ -211,19 +269,18 @@ export function MonsterKitPanel({
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-stone-800 bg-stone-950/50 p-3">
       <h4 className="flex items-center gap-1.5 text-xs text-amber-100">
-        <Wand2 className="size-3.5" /> Build it out of the catalogue
+        <Wand2 className="size-3.5" /> {t("Build it out of the catalogue")}
       </h4>
       <p className="text-[10px] text-stone-600">
-        Everything these add is an ordinary line on the block below: rename it, retune the
-        numbers, or delete it. Mix as many classes as you like.
+        {t("Everything these add is an ordinary line on the block below: rename it, retune the numbers, or delete it. Mix as many classes as you like.")}
       </p>
 
       <div className="flex flex-wrap items-end gap-2">
         <Select
-          label="Ancestry"
+          label={t("Ancestry", { context: "workshop.bestiary.catalogue.ancestry" })}
           value={ancestryId}
           onChange={setAncestryId}
-          options={[{ value: "", label: "Pick one" }, ...ANCESTRY_OPTIONS.map((ancestry) => ({ value: ancestry.id as string, label: ancestry.name }))]}
+          options={[{ value: "", label: t("Pick one") }, ...ANCESTRY_OPTIONS.map((ancestry) => ({ value: ancestry.id as string, label: ancestry.name }))]}
         />
         <button
           type="button"
@@ -231,33 +288,33 @@ export function MonsterKitPanel({
           onClick={() => onChange(applyAncestry(draft, ancestryId))}
           className="rounded-md border border-stone-700 px-2 py-1 text-[11px] text-stone-300 hover:text-amber-100 disabled:opacity-40"
         >
-          Take its size, speed and traits
+          {t("Take its size, speed and traits")}
         </button>
       </div>
 
       <div className="flex flex-wrap items-end gap-2">
         <Select
-          label="Class"
+          label={t("Class")}
           value={classId}
           onChange={(next) => {
             setClassId(next);
             setSubclass("");
           }}
-          options={[{ value: "", label: "Pick one" }, ...CLASS_KIT_OPTIONS.map((klass) => ({ value: klass.id as string, label: klass.name }))]}
+          options={[{ value: "", label: t("Pick one") }, ...CLASS_KIT_OPTIONS.map((klass) => ({ value: klass.id as string, label: klass.name }))]}
         />
         <Select
-          label="Subclass"
+          label={t("Subclass")}
           value={subclass}
           onChange={setSubclass}
-          options={[{ value: "", label: subclasses.length ? "None" : "None available" }, ...subclasses.map((name) => ({ value: name, label: name }))]}
+          options={[{ value: "", label: subclasses.length ? t("None", { context: "workshop.bestiary.catalogue.none" }) : t("None available") }, ...subclasses.map((name) => ({ value: name, label: name }))]}
         />
         <div className="flex flex-col gap-0.5">
-          <span className="text-[10px] uppercase tracking-wide text-stone-500">Level</span>
-          <NumberStepper min={1} max={20} value={level} onChange={setLevel} label="Level" size="sm" />
+          <span className="text-[10px] uppercase tracking-wide text-stone-500">{t("Level")}</span>
+          <NumberStepper min={1} max={20} value={level} onChange={setLevel} label={t("Level")} size="sm" />
         </div>
         <div className="flex flex-col gap-0.5">
-          <span className="text-[10px] uppercase tracking-wide text-stone-500">CON</span>
-          <NumberStepper min={1} max={30} value={con} onChange={setCon} label="CON" size="sm" />
+          <span className="text-[10px] uppercase tracking-wide text-stone-500">{t("CON")}</span>
+          <NumberStepper min={1} max={30} value={con} onChange={setCon} label={t("CON")} size="sm" />
         </div>
         <button
           type="button"
@@ -265,17 +322,17 @@ export function MonsterKitPanel({
           onClick={() => onChange(applyClassChassis(draft, chassis))}
           className="rounded-md border border-stone-700 px-2 py-1 text-[11px] text-stone-300 hover:text-amber-100 disabled:opacity-40"
         >
-          Take its hit points, saves and swings
+          {t("Take its hit points, saves and swings")}
         </button>
       </div>
       {classId ? (
-        <p className="reveal text-[10px] text-stone-600">{describeChassis(chassis)}</p>
+        <p className="reveal text-[10px] text-stone-600">{describeChassis(chassis, t, locale)}</p>
       ) : null}
 
       {features.length ? (
         <div className="reveal flex flex-col gap-1">
           <span className="text-[10px] uppercase tracking-wide text-stone-500">
-            Its abilities at that level {traitsFull ? "(trait list full)" : "(click to add)"}
+            {t("Its abilities at that level")} {traitsFull ? t("(trait list full)") : t("(click to add)")}
           </span>
           <div className="stagger-pop flex flex-wrap gap-1">
             {features.map((feature) => {
@@ -287,7 +344,7 @@ export function MonsterKitPanel({
                   key={`${feature.name}-${feature.level}`}
                   type="button"
                   disabled={on || traitsFull}
-                  title={feature.text || `Gained at level ${feature.level}`}
+                  title={feature.text || t("Gained at level {n}", { n: feature.level })}
                   onClick={() => onChange(addTrait(draft, feature.line))}
                   className={cn(
                     chip,
@@ -308,10 +365,10 @@ export function MonsterKitPanel({
 
       <div className="flex flex-wrap items-end gap-2">
         <Select
-          label="Half-dragon template"
+          label={t("Half-dragon template")}
           value={dragon}
           onChange={(value) => setDragon(value as DragonColor | "")}
-          options={[{ value: "", label: "Dragon half" }, ...DRAGON_COLORS.map((color) => ({ value: color as string, label: color }))]}
+          options={[{ value: "", label: t("Dragon half") }, ...DRAGON_COLORS.map((color) => ({ value: color as string, label: locale === "fr" ? capital(dragonColorWord(color, locale)) : dragonColorWord(color, locale) }))]}
         />
         <button
           type="button"
@@ -328,47 +385,47 @@ export function MonsterKitPanel({
           }}
           className="rounded-md border border-stone-700 px-2 py-1 text-[11px] text-stone-300 hover:text-amber-100 disabled:opacity-40"
         >
-          Make it a half-dragon
+          {t("Make it a half-dragon")}
         </button>
         {templateNote ? <span className="live-in basis-full text-[10px] text-stone-500">{templateNote}</span> : null}
       </div>
 
       <div className="flex flex-wrap items-end gap-2">
         <Select
-          label="Armour"
+          label={t("Armour")}
           value={armorName}
           onChange={setArmorName}
           options={[
-            { value: "", label: "Unarmoured" },
+            { value: "", label: t("Unarmoured") },
             ...armorOptionsFor(classId)
               .filter((armor) => armor.category !== "shield")
               .map((armor) => ({ value: armor.name, label: `${armor.name} (${armor.baseAc})` })),
           ]}
         />
         <label className="flex items-center gap-1.5 pb-1 text-[11px] text-stone-400">
-          <Switch on={shield} onChange={setShield} label="Shield" />
-          Shield
+          <Switch on={shield} onChange={setShield} label={t("Shield")} />
+          {t("Shield")}
         </label>
         <button
           type="button"
           onClick={() => onChange(applyArmor(draft, armorName, shield))}
           className="rounded-md border border-stone-700 px-2 py-1 text-[11px] text-stone-300 hover:text-amber-100"
         >
-          Set the armour class
+          {t("Set the armour class")}
         </button>
       </div>
 
       <div className="flex flex-wrap items-end gap-2">
         <Select
-          label="Weapon"
+          label={t("Weapon")}
           value={weaponName}
           onChange={setWeaponName}
           className="w-44"
-          options={[{ value: "", label: "Pick one" }, ...weaponOptionsFor(classId).map((weapon) => ({ value: weapon.name, label: `${weapon.name} (${weapon.damage})` }))]}
+          options={[{ value: "", label: t("Pick one") }, ...weaponOptionsFor(classId).map((weapon) => ({ value: weapon.name, label: `${contentName("weapons", weapon.name, locale)} (${damageWords(weapon.damage, locale)})` }))]}
         />
         <div className="flex flex-col gap-0.5">
-          <span className="text-[10px] uppercase tracking-wide text-stone-500">Ability mod</span>
-          <NumberStepper min={0} max={10} value={weaponMod} onChange={setWeaponMod} label="Ability mod" size="sm" />
+          <span className="text-[10px] uppercase tracking-wide text-stone-500">{t("Ability mod")}</span>
+          <NumberStepper min={0} max={10} value={weaponMod} onChange={setWeaponMod} label={t("Ability mod")} size="sm" />
         </div>
         <button
           type="button"
@@ -390,10 +447,10 @@ export function MonsterKitPanel({
           }}
           className="rounded-md border border-stone-700 px-2 py-1 text-[11px] text-stone-300 hover:text-amber-100 disabled:opacity-40"
         >
-          {attacksFull ? "Attack list full" : "Add it as an attack"}
+          {attacksFull ? t("Attack list full") : t("Add it as an attack")}
         </button>
         <span className="pb-1 text-[10px] text-stone-600">
-          To hit +{proficiencyBonus(level) + Math.max(0, weaponMod)} at level {level}.
+          {t("To hit +{n} at level {level}.", { n: proficiencyBonus(level) + Math.max(0, weaponMod), level })}
         </span>
       </div>
     </div>

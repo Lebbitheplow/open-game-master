@@ -1,5 +1,8 @@
+import { LocaleApplier, LocaleProvider } from "@/lib/locale";
+import { LOCALE_COOKIE, resolveLocale } from "@/lib/i18n/locale";
 import { ThemeApplier } from "@/lib/theme-mode";
 import type { Metadata, Viewport } from "next";
+import { cookies, headers } from "next/headers";
 import localFont from "next/font/local";
 import TopoBackground from "./TopoBackground";
 import { ServerAddressButton } from "@/components/ServerAddressButton";
@@ -65,14 +68,20 @@ export const viewport: Viewport = {
   interactiveWidget: "resizes-content",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const headerStore = await headers();
+  const initialLocale = resolveLocale({
+    savedLocale: cookieStore.get(LOCALE_COOKIE)?.value ?? null,
+    acceptLanguage: headerStore.get("accept-language"),
+  });
   return (
     <html
-      lang="en"
+      lang={initialLocale === "fr" ? "fr-FR" : "en-US"}
       className={`${uiSans.variable} ${codeMono.variable} ${sourceSerif.variable} ${cinzel.variable} h-full antialiased`}
       // browser extensions inject attributes into <html> before React loads
       suppressHydrationWarning
@@ -81,15 +90,20 @@ export default function RootLayout({
         {/* The reader's theme and scale, applied to <html> before anything
             else paints (docs/vtt-parity-implementation-plan.md section 14). */}
         <ThemeApplier />
+        {/* The reader's language, the same on-device contract: the stored
+            choice (or the browser's) lands on <html lang> before paint. */}
+        <LocaleApplier />
         {/* Dust motes first, so the contour canvas is drawn over them. */}
         <div className="ambient-dust" aria-hidden="true" />
         <TopoBackground />
-        {children}
-        {/* Every page: the QR and address a friend scans to add this server
-            in the app or open it in a browser on the same network. */}
-        <ServerAddressButton />
-        {/* The app's own confirm and notice, asked from anywhere. */}
-        <ConfirmHost />
+        <LocaleProvider initialLocale={initialLocale}>
+          {children}
+          {/* Every page: the QR and address a friend scans to add this server
+              in the app or open it in a browser on the same network. */}
+          <ServerAddressButton />
+          {/* The app's own confirm and notice, asked from anywhere. */}
+          <ConfirmHost />
+        </LocaleProvider>
       </body>
     </html>
   );

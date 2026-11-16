@@ -12,6 +12,25 @@ export const LORE_CHECK_CATEGORIES = [
 ] as const;
 export type LoreCheckCategory = (typeof LORE_CHECK_CATEGORIES)[number];
 
+// The chips' words are the dictionaries' (lorecheck.category.*); the dialog
+// passes its translator. The raw kinds stay the stored values.
+export const LORE_CATEGORY_KEYS: Record<LoreCheckCategory, string> = {
+  wrong_fact: "Wrong fact",
+  contradicts_lore: "Contradicts lore",
+  wrong_npc_place: "Wrong NPC or place",
+  tone_mismatch: "Tone mismatch",
+  out_of_character: "Out of character",
+};
+
+// The shape of a translator, as the pure sentence builders take it.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
+export function loreCategoryLabel(t: T, category: LoreCheckCategory): string {
+  return t(LORE_CATEGORY_KEYS[category] ?? "Wrong fact");
+}
+
+// The categories' English words, pinned: the check's message to the model
+// names the complaint category in the protocol's language.
 export const LORE_CATEGORY_LABELS: Record<LoreCheckCategory, string> = {
   wrong_fact: "Wrong fact",
   contradicts_lore: "Contradicts lore",

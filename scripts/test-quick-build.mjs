@@ -17,6 +17,10 @@ const { QUIZ_ROLES, QUIZ_METHODS, QUIZ_SOURCES, QUIZ_OUTSIDE, asksSource, sugges
 
 const builder = await openBuilder();
 const { call, libraryRoute, world, player } = await openCreation();
+// The English-bound translator the fill's labels are read with
+// (home/types.ts agoLabel pattern).
+const { translate } = await import("../src/lib/messages-logic.ts");
+const t = (key, vars) => translate("en", key, vars);
 world.signIn(player);
 const offered = { classes: builder.classes, races: builder.races, backgrounds: builder.backgrounds };
 const contentRoute = await world.route("content/[kind]");
@@ -79,7 +83,7 @@ async function runFill(start, { answers, only, rng = seeded() } = {}) {
     const klass = builder.classes.find((entry) => entry.id === fields.classId);
     const background = builder.backgrounds.find((entry) => entry.id === fields.backgroundId);
     const pool = derived.casts ? await spellPool(derived.spellSearchClass, derived.maxSpellLevel) : [];
-    const step = fillRound({ fields, derived, race, klass, background, offered, answers, only, rng, spellPool: pool });
+    const step = fillRound({ t, fields, derived, race, klass, background, offered, answers, only, rng, spellPool: pool });
     if (!step.filled.length) break;
     fields = { ...fields, ...step.patch };
     filled.push(...step.filled);

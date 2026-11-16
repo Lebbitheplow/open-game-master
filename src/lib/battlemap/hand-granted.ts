@@ -23,6 +23,11 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { textKey } from "@/lib/language/text-logic";
 import { namedSpellGlyph } from "@/lib/battlemap/hand-spells";
 import { addFlat, attackGate, costGate, gated, grantedRideMark, signed, standingGate, type HandCard, type HandTurn } from "@/lib/battlemap/hand-core";
+import { dmgWithType } from "@/lib/battlemap/hand";
+import { translate } from "@/lib/messages-logic";
+
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
 
 type GrantedMeta = { rounds?: number; spell?: string; slotLevel?: number };
 
@@ -35,38 +40,38 @@ function ridesActivation(attack: GrantedAttack, meta: GrantedMeta | undefined, t
   return spent && !(turn.marks ?? []).includes(grantedRideMark(attack.name));
 }
 
-function rangeOf(attack: GrantedAttack): string {
+function rangeOf(attack: GrantedAttack, t: T): string {
   if (attack.from) {
-    return attack.ranged ? `${attack.from.reachFeet} ft` : `${attack.from.reachFeet} ft of it`;
+    return attack.ranged ? t("{feet} ft", { feet: attack.from.reachFeet }) : t("{feet} ft of it", { feet: attack.from.reachFeet });
   }
   // A melee strike's own reach (Dread Lord's shadows, 30 feet), as
   // pc_attack measures it (pc-attack-profile.ts reachTiles).
-  return attack.ranged ? `${attack.rangeFeet ?? 60} ft` : `${attack.reachFeet ?? 5} ft`;
+  return attack.ranged ? t("{feet} ft", { feet: attack.rangeFeet ?? 60 }) : t("{feet} ft", { feet: attack.reachFeet ?? 5 });
 }
 
-function rulesOf(attack: GrantedAttack, rides: boolean): string {
+function rulesOf(attack: GrantedAttack, rides: boolean, t: T): string {
   const from = attack.from;
-  const label = from?.label ?? "the weapon";
+  const label = from?.label ?? t("the weapon");
   const where = from
     ? rides
-      ? `It strikes a creature within ${from.reachFeet} ft of ${label}.`
-      : `Moves up to ${from.moveFeet} ft, then strikes a creature within ${from.reachFeet} ft of ${label}.`
+      ? t("It strikes a creature within {feet} ft of {label}.", { feet: from.reachFeet, label })
+      : t("Moves up to {move} ft, then strikes a creature within {feet} ft of {label}.", { move: from.moveFeet, feet: from.reachFeet, label })
     : "";
   // Arcane Sword's casting is an action: its strike spends no bonus action
   // either, and the card said "no second bonus action" of one never spent.
   const cost = rides
     ? attack.activation === "action"
-      ? "Comes with the casting."
-      : "Comes with the casting: no second bonus action."
+      ? t("Comes with the casting.")
+      : t("Comes with the casting: no second bonus action.")
     : attack.bonusAction
-      ? "A bonus action."
+      ? t("A bonus action.")
       : attack.wholeAction
-        ? "Takes your action: no swing of the Attack action, so Extra Attack adds none."
+        ? t("Takes your action: no swing of the Attack action, so Extra Attack adds none.")
         : "";
   return [where, cost].filter(Boolean).join(" ");
 }
 
-export function grantedAttackCards(sheet: CharacterSheet, turn: HandTurn, allowed = 1): HandCard[] {
+export function grantedAttackCards(sheet: CharacterSheet, turn: HandTurn, allowed = 1, t: T = enT): HandCard[] {
   const derived = computeSheetDerived(sheet);
   const metaOf = (sheet.conditionMeta ?? {}) as Record<string, GrantedMeta | undefined>;
   const seen = new Set<string>();
@@ -93,10 +98,10 @@ export function grantedAttackCards(sheet: CharacterSheet, turn: HandTurn, allowe
       type: "attack",
       name: attack.name,
       cost,
-      range: rangeOf(attack),
-      dice: `${damage} ${attack.type}`.trim(),
-      roll: toHit === null ? "spell attack" : `${signed(toHit)} to hit`,
-      rules: rulesOf(attack, rides),
+      range: rangeOf(attack, t),
+      dice: dmgWithType(damage, attack.type, t),
+      roll: toHit === null ? t("spell attack") : t("{bonus} to hit", { bonus: `${signed(toHit)}` }),
+      rules: rulesOf(attack, rides, t),
       resource: "",
       condition: "",
       icon: { kind: "spell", key: meta?.spell ?? attack.name, family: null },
@@ -119,7 +124,7 @@ export function grantedAttackCards(sheet: CharacterSheet, turn: HandTurn, allowe
       ...(attack.wholeAction ? { wholeAction: true } : {}),
     };
     const noBonus = toHit === null
-      ? { reason: `${sheet.name}'s sheet has no spell attack bonus (no spellcasting ability), so ${attack.name} cannot be rolled.`, spent: false }
+      ? { reason: t("{name}'s sheet has no spell attack bonus (no spellcasting ability), so {attack} cannot be rolled.", { name: sheet.name, attack: attack.name }), spent: false }
       : null;
     cards.push(
       gated(

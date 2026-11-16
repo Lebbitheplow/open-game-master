@@ -24,7 +24,17 @@ import type { EnemyStats } from "@/lib/bestiary/statblock";
 // working.
 //
 // Pure: no DB, no dice, no model. The rim that fetches the roster is the
-// workbench route.
+// workbench route. The words are the dictionaries' (workbench.*); the route
+// that builds the readout passes the table's translator, and the pinned
+// English below is what the tests read.
+
+import { translate } from "@/lib/messages-logic";
+
+// The shape of a translator, as the pure sentence builders take it.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
+// The pinned English, for the tests and any caller with no table in hand.
+const enT: T = (key, vars) => translate("en", key, vars);
 
 export type WorkbenchPart = {
   label: string;
@@ -110,7 +120,7 @@ export type BudgetReadout = {
   parts: WorkbenchPart[];
 };
 
-function budget(input: WorkbenchInput): BudgetReadout {
+function budget(t: T, input: WorkbenchInput): BudgetReadout {
   const crs = input.roster.flatMap((entry) =>
     Array.from({ length: entry.count }, () => entry.stats.cr),
   );
@@ -119,9 +129,9 @@ function budget(input: WorkbenchInput): BudgetReadout {
   const thresholds = thresholdsForParty(input.partyLevels);
   const sizeNote =
     input.partyLevels.length < 3
-      ? " A party of one or two feels a pack one band harder, so the multiplier is a step up."
+      ? ` ${t("A party of one or two feels a pack one band harder, so the multiplier is a step up.")}`
       : input.partyLevels.length > 5
-        ? " A party of six or more feels a pack one band easier, so the multiplier is a step down."
+        ? ` ${t("A party of six or more feels a pack one band easier, so the multiplier is a step down.")}`
         : "";
   return {
     totalXp: evaluation.totalXp,
@@ -133,28 +143,45 @@ function budget(input: WorkbenchInput): BudgetReadout {
     overCeiling: input.ceiling !== undefined && evaluation.adjustedXp > input.ceiling,
     parts: [
       {
-        label: "Raw XP",
+        label: t("Raw XP"),
         value: String(evaluation.totalXp),
         detail: input.roster
-          .map(
-            (entry) =>
-              `${entry.count} x ${entry.name} at CR ${crLabel(entry.stats.cr)} is ${
-                entry.count * xpForCr(entry.stats.cr)
-              }`,
+          .map((entry) =>
+            t("{count} x {name} at CR {cr} is {xp}", {
+              count: entry.count,
+              name: entry.name,
+              cr: crLabel(entry.stats.cr),
+              xp: entry.count * xpForCr(entry.stats.cr),
+            }),
           )
           .join("; "),
       },
       {
-        label: "Group multiplier",
+        label: t("Group multiplier"),
         value: `x${multiplier}`,
-        detail: `${crs.length} creature${crs.length === 1 ? "" : "s"} against ${
-          input.partyLevels.length
-        } character${input.partyLevels.length === 1 ? "" : "s"}.${sizeNote}`,
+        detail: t("{creatures} {creatureWord} against {characters} {characterWord}.{sizeNote}", {
+          creatures: crs.length,
+          creatureWord: crs.length === 1 ? t("creature") : t("creatures"),
+          characters: input.partyLevels.length,
+          characterWord: input.partyLevels.length === 1 ? t("character") : t("characters"),
+          sizeNote,
+        }),
       },
       {
-        label: "Adjusted XP",
+        label: t("Adjusted XP"),
         value: String(evaluation.adjustedXp),
-        detail: `${evaluation.totalXp} x ${multiplier}. The thresholds for this party are ${thresholds.easy} easy, ${thresholds.medium} medium, ${thresholds.hard} hard, ${thresholds.deadly} deadly.`,
+        detail: t("{total} x {multiplier}. The thresholds for this party are {easy} {easyWord}, {medium} {mediumWord}, {hard} {hardWord}, {deadly} {deadlyWord}.", {
+          total: evaluation.totalXp,
+          multiplier,
+          easy: thresholds.easy,
+          medium: thresholds.medium,
+          hard: thresholds.hard,
+          deadly: thresholds.deadly,
+          easyWord: t("easy"),
+          mediumWord: t("medium", { context: "workbench.band.medium" }),
+          hardWord: t("hard"),
+          deadlyWord: t("deadly", { context: "workbench.band.deadly" }),
+        }),
       },
     ],
   };
@@ -184,6 +211,7 @@ export type AttritionReadout = {
 // so the optional crit rules move these numbers exactly as far as they will
 // move them at the table.
 function partySide(
+  t: T,
   input: WorkbenchInput,
   monsterAc: number,
   monsterHp: number,
@@ -202,9 +230,13 @@ function partySide(
     const perCharacter = forecast.perAttack * baseline.attacks;
     damagePerRound += perCharacter;
     lines.push(
-      `level ${level}: ${baseline.attacks} x ${baseline.damage} at +${
-        baseline.attackBonus
-      } is ${perCharacter.toFixed(1)}`,
+      t("level {level}: {attacks} x {damage} at +{bonus} is {per}", {
+        level,
+        attacks: baseline.attacks,
+        damage: baseline.damage,
+        bonus: baseline.attackBonus,
+        per: perCharacter.toFixed(1),
+      }),
     );
   }
   const hitPoints = input.partyLevels.reduce((total, level) => total + baselineFor(level).hp, 0);
@@ -214,16 +246,18 @@ function partySide(
     rounds: roundsToDrop(monsterHp, damagePerRound),
     parts: [
       {
-        label: "Party output",
-        value: `${damagePerRound.toFixed(1)} a round`,
-        detail: `${lines.join("; ")}. Misses and crits are already counted, against the roster's average AC ${monsterAc}.`,
+        label: t("Party output"),
+        value: t("{per} a round", { per: damagePerRound.toFixed(1) }),
+        detail: t("{lines}. Misses and crits are already counted, against the roster's average AC {ac}.", { lines: lines.join("; "), ac: monsterAc }),
       },
       {
-        label: "Party hit points",
+        label: t("Party hit points"),
         value: String(hitPoints),
-        detail: `The baseline for ${input.partyLevels.length} character${
-          input.partyLevels.length === 1 ? "" : "s"
-        } at ${[...new Set(input.partyLevels)].sort((a, b) => a - b).join(", ")}.`,
+        detail: t("The baseline for {characters} {characterWord} at {levels}.", {
+          characters: input.partyLevels.length,
+          characterWord: input.partyLevels.length === 1 ? t("character") : t("characters"),
+          levels: [...new Set(input.partyLevels)].sort((a, b) => a - b).join(", "),
+        }),
       },
     ],
   };
@@ -233,6 +267,7 @@ function partySide(
 // the engine runs a monster's turn: its best attack, swung as many times as
 // its multiattack allows, capped at three.
 function monsterSide(
+  t: T,
   input: WorkbenchInput,
   partyAc: number,
   partyHp: number,
@@ -255,7 +290,7 @@ function monsterSide(
 
     const attacks = entry.stats.attacks ?? [];
     if (!attacks.length) {
-      warnings.push(`${entry.name} has no attacks, so it contributes no damage to this estimate.`);
+      warnings.push(t("{name} has no attacks, so it contributes no damage to this estimate.", { name: entry.name }));
       continue;
     }
     let best = attacks[0];
@@ -277,14 +312,17 @@ function monsterSide(
     const perBody = forecast.perAttack * swings;
     damagePerRound += perBody * entry.count;
     lines.push(
-      `${entry.count} x ${entry.name}: ${swings} x ${best.damage} at +${best.toHit} is ${(
-        perBody * entry.count
-      ).toFixed(1)}`,
+      t("{count} x {name}: {swings} x {damage} at +{bonus} is {per}", {
+        count: entry.count,
+        name: entry.name,
+        swings,
+        damage: best.damage,
+        bonus: best.toHit,
+        per: (perBody * entry.count).toFixed(1),
+      }),
     );
     if ((entry.stats.traits ?? []).some((trait) => /\d+d\d+/.test(trait))) {
-      warnings.push(
-        `${entry.name} has dice in its traits (a breath weapon or similar) that this estimate does not count. It hits harder than the number says.`,
-      );
+      warnings.push(t("{name} has dice in its traits (a breath weapon or similar) that this estimate does not count. It hits harder than the number says.", { name: entry.name }));
     }
   }
 
@@ -296,21 +334,23 @@ function monsterSide(
       rounds: roundsToDrop(partyHp, damagePerRound),
       parts: [
         {
-          label: "Roster output",
-          value: `${damagePerRound.toFixed(1)} a round`,
+          label: t("Roster output"),
+          value: t("{per} a round", { per: damagePerRound.toFixed(1) }),
           detail: lines.length
-            ? `${lines.join("; ")}. Against the party's baseline AC ${partyAc}, misses and crits counted.`
-            : "Nothing on this roster has an attack.",
+            ? t("{lines}. Against the party's baseline AC {ac}, misses and crits counted.", { lines: lines.join("; "), ac: partyAc })
+            : t("Nothing on this roster has an attack."),
         },
         {
-          label: "Roster hit points",
+          label: t("Roster hit points"),
           value: String(hitPoints),
           detail: input.roster
             .map((entry) => {
               const tough = effectiveHp(entry.stats, entry.stats.cr);
-              return `${entry.count} x ${entry.stats.maxHp}${
-                tough.multiplier !== 1 ? ` at x${tough.multiplier} for what it shrugs off` : ""
-              }`;
+              return t("{count} x {hp}{multiplier}", {
+                count: entry.count,
+                hp: entry.stats.maxHp,
+                multiplier: tough.multiplier !== 1 ? t(" at x{multiplier} for what it shrugs off", { multiplier: tough.multiplier }) : "",
+              });
             })
             .join("; "),
         },
@@ -329,7 +369,7 @@ export type WorkbenchReadout = {
   attrition: AttritionReadout;
 };
 
-export function workbench(input: WorkbenchInput): WorkbenchReadout {
+export function workbench(input: WorkbenchInput, t: T = enT): WorkbenchReadout {
   const partyAc = Math.round(
     input.partyLevels.reduce((total, level) => total + baselineFor(level).ac, 0) /
       Math.max(1, input.partyLevels.length),
@@ -338,42 +378,46 @@ export function workbench(input: WorkbenchInput): WorkbenchReadout {
 
   // The two sides need each other's armour class, so the roster is measured
   // first (its AC does not depend on the party) and the party second.
-  const monsters = monsterSide(input, partyAc, partyHp);
-  const party = partySide(input, monsters.averageAc, monsters.hitPoints);
+  const monsters = monsterSide(t, input, partyAc, partyHp);
+  const party = partySide(t, input, monsters.averageAc, monsters.hitPoints);
 
   const warnings = [...monsters.warnings];
   const partyRounds = party.rounds;
   const monsterRounds = monsters.forecast.rounds;
   let outcome: string;
   if (partyRounds === null) {
-    outcome = "The party cannot get through this, on these numbers.";
+    outcome = t("The party cannot get through this, on these numbers.");
   } else if (monsterRounds === null) {
-    outcome = `The party clears this in about ${partyRounds} round${
-      partyRounds === 1 ? "" : "s"
-    } and takes nothing back.`;
+    outcome = t("The party clears this in about {rounds} {roundWord} and takes nothing back.", {
+      rounds: partyRounds,
+      roundWord: partyRounds === 1 ? t("round") : t("rounds"),
+    });
   } else if (partyRounds < monsterRounds) {
     const margin = monsterRounds - partyRounds;
-    outcome = `The party clears this in about ${partyRounds} round${
-      partyRounds === 1 ? "" : "s"
-    }, with roughly ${margin} round${margin === 1 ? "" : "s"} of margin.`;
+    outcome = t("The party clears this in about {rounds} {roundWord}, with roughly {margin} {marginWord} of margin.", {
+      rounds: partyRounds,
+      roundWord: partyRounds === 1 ? t("round") : t("rounds"),
+      margin,
+      marginWord: margin === 1 ? t("round") : t("rounds"),
+    });
   } else {
-    outcome = `On these numbers the roster drops the party first, in about ${monsterRounds} round${
-      monsterRounds === 1 ? "" : "s"
-    } against the party's ${partyRounds}.`;
+    outcome = t("On these numbers the roster drops the party first, in about {rounds} {roundWord} against the party's {partyRounds}.", {
+      rounds: monsterRounds,
+      roundWord: monsterRounds === 1 ? t("round") : t("rounds"),
+      partyRounds,
+    });
   }
 
   // Both sides are assumed to concentrate fire and nobody heals, retreats or
   // uses a spell slot. Said out loud, because it is why a real fight of this
   // shape usually goes better for the party than the number does.
-  warnings.push(
-    "Both sides are swinging every round with nobody healing, hiding or running. A real fight of this shape usually goes a round or two longer.",
-  );
+  warnings.push(t("Both sides are swinging every round with nobody healing, hiding or running. A real fight of this shape usually goes a round or two longer."));
   if (partyRounds !== null && partyRounds <= 1) {
-    warnings.push("One round is not a fight. This roster will be gone before it acts twice.");
+    warnings.push(t("One round is not a fight. This roster will be gone before it acts twice."));
   }
 
   return {
-    budget: budget(input),
+    budget: budget(t, input),
     attrition: { party, monsters: monsters.forecast, outcome, warnings },
   };
 }

@@ -211,8 +211,16 @@ export async function machine(): Promise<Machine> {
   return found;
 }
 
-export function describeMachine(found: Pick<Machine, "ramGb" | "gpu" | "unified">): string {
-  const memory = `${Math.round(found.ramGb)} GB memory`;
-  if (!found.gpu) return `${memory}, no graphics card found`;
-  return found.unified ? `${found.gpu.name}, ${memory} shared` : `${found.gpu.name} with ${found.gpu.vramGb} GB, ${memory}`;
+// This machine in words, for the admin panel and the setup scan. The
+// sentences live in the dictionaries (admin.models.machine.*); the card's
+// name is the driver's own, and the numbers are the same in every language.
+export function describeMachine(
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  found: Pick<Machine, "ramGb" | "gpu" | "unified">,
+): string {
+  const memory = t("{ram} GB memory", { ram: Math.round(found.ramGb) });
+  if (!found.gpu) return t("{memory}, no graphics card found", { memory });
+  return found.unified
+    ? t("{gpu}, {memory} shared", { gpu: found.gpu.name, memory })
+    : t("{gpu} with {vram} GB, {memory}", { gpu: found.gpu.name, vram: found.gpu.vramGb, memory });
 }

@@ -8,6 +8,7 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { ui } from "@/lib/ui";
 import { cn } from "@/lib/cn";
 import type { DefaultsState } from "@/app/create-campaign/useCampaignDefaults";
+import { useT } from "@/lib/locale";
 
 // The creator's half of personal campaign defaults
 // (src/lib/campaign-defaults.ts): the bar on the first step that says what
@@ -34,7 +35,9 @@ export type DefaultsActions = {
   onManage: () => void;
 };
 
-const SAVED_GROUPS = [
+// What the manager lists as saved alongside the defaults, as dictionary keys
+// (the words live in en.ts and fr.ts).
+const SAVED_GROUP_KEYS = [
   "Who runs the game, party size, starting level and difficulty",
   "The setting, a custom world's description and the table language",
   "Campaign length, AI story setup, the outcome check and the living world",
@@ -46,7 +49,7 @@ const SAVED_GROUPS = [
   "Safety: boundaries, the X-card, lines and veils, strictness and tone",
   "Variant rules and your house rules",
   "Live voice chat and its rules",
-];
+] as const;
 
 const savedOn = (iso: string) => {
   const date = iso ? new Date(iso) : null;
@@ -56,6 +59,7 @@ const savedOn = (iso: string) => {
 };
 
 export function DefaultsBar({ actions }: { actions: DefaultsActions }) {
+  const t = useT();
   const { state, startFrom, late, kept } = actions;
   // Nothing saved yet: one quiet line, since there is nothing to choose
   // between before the person has made a table worth keeping. Saving it
@@ -64,50 +68,52 @@ export function DefaultsBar({ actions }: { actions: DefaultsActions }) {
     return (
       <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-stone-500" role="status">
         <GameIcon icon={{ kind: "glyph", key: "ui-pin" }} size="size-4" className="shrink-0" />
-        <span className="min-w-0 flex-1">Starting from the app&apos;s defaults. Like this table? Save it as your usual one on the last step.</span>
+        <span className="min-w-0 flex-1">{t("Starting from the app's defaults. Like this table? Save it as your usual one on the last step.")}</span>
         <button type="button" onClick={actions.onManage} className="cc-link">
-          About defaults
+          {t("About defaults")}
         </button>
       </p>
     );
   }
   const line =
     state.status === "loading"
-      ? "Looking for your saved defaults..."
+      ? t("Looking for your saved defaults...")
       : state.status === "unavailable"
-        ? `Your saved defaults could not be read (${state.error}). This campaign starts from the app's defaults.`
+        ? t("Your saved defaults could not be read ({error}). This campaign starts from the app's defaults.", { error: state.error })
         : state.status === "none"
-          ? "Starting from the app's defaults. Set this table up the way you like it, then save it as your defaults on the review step."
+          ? t("Starting from the app's defaults. Set this table up the way you like it, then save it as your defaults on the review step.")
           : late && startFrom === "app"
-            ? "Your saved defaults arrived after you began, so nothing you set was changed. Choose My defaults to use them."
+            ? t("Your saved defaults arrived after you began, so nothing you set was changed. Choose My defaults to use them.")
             : startFrom === "mine"
-              ? `Starting from your saved defaults${savedOn(state.defaults.savedAt) ? ` (saved ${savedOn(state.defaults.savedAt)})` : ""}. The name, premise, theme, world pack, lore and prep stay this campaign's own.`
-              : "Starting from the app's defaults. Your saved defaults are one press away.";
+              ? savedOn(state.defaults.savedAt)
+                ? t("Starting from your saved defaults (saved {date}). The name, premise, theme, world pack, lore and prep stay this campaign's own.", { date: savedOn(state.defaults.savedAt) })
+                : t("Starting from your saved defaults. The name, premise, theme, world pack, lore and prep stay this campaign's own.")
+              : t("Starting from the app's defaults. Your saved defaults are one press away.");
   return (
-    <div className="cc-defaults" role="group" aria-label="Starting point">
+    <div className="cc-defaults" role="group" aria-label={t("Starting point")}>
       <GameIcon icon={{ kind: "glyph", key: "ui-pin" }} size="size-5" className="mt-0.5 shrink-0" />
       <div className="min-w-0 flex-1">
-        <span className="cc-eyebrow block">Starting point</span>
+        <span className="cc-eyebrow block">{t("Starting point")}</span>
         <p className="mt-0.5 text-xs leading-relaxed text-stone-400" role="status">
           {line}
-          {kept.length ? ` Kept: ${kept.join("; ")}.` : ""}
+          {kept.length ? t(" Kept: {list}.", { list: kept.join("; ") }) : ""}
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {state.status === "saved" ? (
           <SegmentedControl<StartFrom>
             size="sm"
-            label="Start from"
+            label={t("Start from")}
             value={startFrom}
             onChange={(value) => (value === "mine" ? actions.onUseMine() : actions.onUseApp())}
             options={[
-              { value: "mine", label: "My defaults" },
-              { value: "app", label: "App defaults" },
+              { value: "mine", label: t("My defaults") },
+              { value: "app", label: t("App defaults") },
             ]}
           />
         ) : null}
         <button type="button" onClick={actions.onManage} className="cc-link">
-          Manage
+          {t("Manage")}
         </button>
       </div>
     </div>
@@ -115,24 +121,22 @@ export function DefaultsBar({ actions }: { actions: DefaultsActions }) {
 }
 
 export function DefaultsPanel({ actions }: { actions: DefaultsActions }) {
+  const t = useT();
   const saved = actions.state.status === "saved";
   return (
     <div className="cc-field">
       <div className="cc-field-head">
-        <span className="cc-eyebrow">Your usual table</span>
-        <span className="cc-note">{saved ? "you have saved defaults" : "nothing saved yet"}</span>
+        <span className="cc-eyebrow">{t("Your usual table")}</span>
+        <span className="cc-note">{saved ? t("you have saved defaults") : t("nothing saved yet")}</span>
       </div>
-      <p className="text-xs leading-relaxed text-stone-400">
-        Save these choices as your defaults and every campaign you make after this one starts from them. Saving never
-        creates a campaign, and creating one never changes your defaults.
-      </p>
+      <p className="text-xs leading-relaxed text-stone-400">{t("Save these choices as your defaults and every campaign you make after this one starts from them. Saving never creates a campaign, and creating one never changes your defaults.")}</p>
       <div className="mt-2.5 flex flex-wrap items-center gap-2">
         <button type="button" onClick={actions.onSave} disabled={actions.busy || actions.state.status === "loading"} className={ui.btnSmall}>
           {actions.busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
-          {saved ? "Update my defaults" : "Save as my defaults"}
+          {saved ? t("Update my defaults") : t("Save as my defaults")}
         </button>
         <button type="button" onClick={actions.onManage} className="cc-link">
-          Manage defaults
+          {t("Manage defaults")}
         </button>
       </div>
       <DefaultsMessage actions={actions} />
@@ -161,6 +165,7 @@ export function DefaultsDialog({
   actions: DefaultsActions;
 }) {
   const [confirming, setConfirming] = useState(false);
+  const t = useT();
   const { state } = actions;
   const saved = state.status === "saved";
   return (
@@ -170,54 +175,47 @@ export function DefaultsDialog({
         setConfirming(false);
         onOpenChange(next);
       }}
-      title="Your campaign defaults"
+      title={t("Your campaign defaults")}
       width="w-[min(92vw,36rem)]"
     >
       <div className="space-y-3 text-sm">
-        <p className="text-stone-400">
-          Save the table you usually run, and every new campaign you make starts from it. They belong to your account
-          on this server. Campaigns you already made keep their own settings; changing your defaults never changes
-          them.
-        </p>
+        <p className="text-stone-400">{t("Save the table you usually run, and every new campaign you make starts from it. They belong to your account on this server. Campaigns you already made keep their own settings; changing your defaults never changes them.")}</p>
         <div className="cc-field">
-          <span className="cc-eyebrow mb-1.5 block">Saved with your defaults</span>
+          <span className="cc-eyebrow mb-1.5 block">{t("Saved with your defaults")}</span>
           <ul className="list-disc space-y-0.5 pl-4 text-xs text-stone-300">
-            {SAVED_GROUPS.map((entry) => (
-              <li key={entry}>{entry}</li>
+            {SAVED_GROUP_KEYS.map((key) => (
+              <li key={key}>{t(key)}</li>
             ))}
           </ul>
         </div>
-        <p className="text-xs text-stone-500">
-          Never saved: the title, premise, theme, world pack, starting lore and imported prep. Those belong to one
-          campaign.
-        </p>
+        <p className="text-xs text-stone-500">{t("Never saved: the title, premise, theme, world pack, starting lore and imported prep. Those belong to one campaign.")}</p>
         <p className="text-xs text-stone-400" role="status">
           {state.status === "loading"
-            ? "Looking for your saved defaults..."
+            ? t("Looking for your saved defaults...")
             : state.status === "unavailable"
-              ? `Your saved defaults could not be read: ${state.error}`
+              ? t("Your saved defaults could not be read: {error}", { error: state.error })
               : saved
-                ? `You saved defaults${savedOn(state.defaults.savedAt) ? ` on ${savedOn(state.defaults.savedAt)}` : ""}. This campaign is starting from ${actions.startFrom === "mine" ? "them" : "the app's defaults"}.`
-                : "You have not saved any defaults yet."}
+                ? `${savedOn(state.defaults.savedAt) ? t("You saved defaults on {date}.", { date: savedOn(state.defaults.savedAt) }) : t("You saved defaults.")} ${actions.startFrom === "mine" ? t("This campaign is starting from them.") : t("This campaign is starting from the app's defaults.")}`
+                : t("You have not saved any defaults yet.")}
         </p>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={actions.onSave} disabled={actions.busy || state.status === "loading"} className={ui.btnPrimary}>
             {actions.busy ? <Loader2 className="size-4 animate-spin" /> : null}
-            {saved ? "Update with this campaign's choices" : "Save this campaign's choices"}
+            {saved ? t("Update with this campaign's choices") : t("Save this campaign's choices")}
           </button>
           {saved ? (
             <button type="button" onClick={actions.onUseMine} className={ui.btnSmall}>
-              Start this campaign from my defaults
+              {t("Start this campaign from my defaults")}
             </button>
           ) : null}
           <button type="button" onClick={actions.onUseApp} className={ui.btnSmall}>
-            Start from the app&apos;s defaults
+            {t("Start from the app's defaults")}
           </button>
         </div>
         {saved ? (
           confirming ? (
             <div className="flex flex-wrap items-center gap-2 rounded-lg border border-red-900/50 bg-red-950/20 p-2.5 text-xs text-stone-300">
-              <span className="min-w-0 flex-1">Remove your saved defaults? No campaign changes, and this one keeps what it has.</span>
+              <span className="min-w-0 flex-1">{t("Remove your saved defaults? No campaign changes, and this one keeps what it has.")}</span>
               <button
                 type="button"
                 onClick={() => {
@@ -226,15 +224,15 @@ export function DefaultsDialog({
                 }}
                 className={cn(ui.btnSmall, "border-red-800/60 text-red-300 hover:text-red-200")}
               >
-                Remove
+                {t("Remove", { context: "creator.defaults.remove" })}
               </button>
               <button type="button" onClick={() => setConfirming(false)} className={ui.btnSmall}>
-                Keep them
+                {t("Keep them")}
               </button>
             </div>
           ) : (
             <button type="button" onClick={() => setConfirming(true)} className="cc-link text-red-300/80 hover:text-red-200">
-              Remove my saved defaults
+              {t("Remove my saved defaults")}
             </button>
           )
         ) : null}

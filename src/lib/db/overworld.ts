@@ -25,8 +25,14 @@ import {
   type OverworldSize,
 } from "@/lib/overworld/features";
 import { isUploadedImagePath } from "@/lib/uploads";
+import { translate } from "@/lib/messages-logic";
 import { textKey } from "@/lib/language/text-logic";
 import { drawnAnchors, placeTree } from "@/lib/overworld/places";
+
+// English-bound: the paint's refusals travel through the API's error field,
+// which is protocol text; the UI that shows them lends its own t where it
+// can (OverworldPanel's fallback), as it does for every route refusal.
+const enT = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
 
 // Overworld region map storage: one seeded terrain grid per campaign, with
 // known locations anchored at tile coordinates and lead-placed pins.
@@ -331,7 +337,7 @@ export function paintOverworldTerrain(
   const locations = listLocations(campaignId);
   const locationNames = new Map(locations.map((location) => [location.id, location.name]));
   const tree = placeTree(locations);
-  const painted = paintOverworld({
+  const painted = paintOverworld(enT, {
     terrain: map.terrain,
     width: map.width,
     height: map.height,

@@ -7,6 +7,7 @@ import { CharacterPortrait } from "@/lib/ui";
 import { characterPlaceholder } from "@/lib/placeholders";
 import { KitButton } from "./PanelKit";
 import { useSettlingCards } from "./AdvanceOfferCard";
+import { useT } from "@/lib/locale";
 import type { ItemProposal } from "@/app/campaigns/[campaignId]/useCampaignStream";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 
@@ -75,10 +76,11 @@ function PactOfferCard({
 }) {
   const [busy, setBusy] = useState("");
   const hintBase = useId();
+  const t = useT();
   const from = proposal.from;
-  const who = from?.name || "Someone";
+  const who = from?.name || t("Someone");
   const face = characterPlaceholder({ race: from?.look.race || "human", class: from?.look.class || "fighter", gender: from?.look.gender || "" });
-  const characterName = character?.name ?? "a character";
+  const characterName = character?.name ?? t("a character");
   const choices = proposal.choices ?? [];
 
   async function answer(choice: string) {
@@ -92,10 +94,10 @@ function PactOfferCard({
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        onError(String(data.error ?? "That did not work."));
+        onError(String(data.error ?? t("That did not work.", { context: "proposal.failed" })));
       }
     } catch {
-      onError("Could not reach the server.");
+      onError(t("Could not reach the server.", { context: "creator.error.unreachable" }));
     } finally {
       setBusy("");
     }
@@ -104,7 +106,7 @@ function PactOfferCard({
   return (
     <div className="advance-shell" data-leaving={leaving ? "" : undefined}>
       <section
-        aria-label={`${proposal.summary}, from ${who}`}
+        aria-label={t("{summary}, from {who}", { summary: proposal.summary, who })}
         data-offer-card={proposal.id}
         data-pact-offer={proposal.id}
         className={cn("advance-card panel rounded-xl px-3 py-2.5 text-xs", mine ? "ornate border-violet-400/50" : "border-violet-900/40")}
@@ -118,12 +120,12 @@ function PactOfferCard({
             </p>
             {proposal.reason ? <p className="mt-1 text-sm italic leading-snug text-stone-200">&ldquo;{proposal.reason}&rdquo;</p> : null}
             {mine ? (
-              <p className="mt-1 text-[11px] text-stone-400">Only you see this, and only you answer. Nobody else at the table knows it was asked.</p>
+              <p className="mt-1 text-[11px] text-stone-400">{t("Only you see this, and only you answer. Nobody else at the table knows it was asked.")}</p>
             ) : null}
           </div>
         </div>
         {mine ? (
-          <div role="group" aria-label={`Your answer for ${characterName}`} className="mt-2 grid gap-1.5 sm:grid-cols-2">
+          <div role="group" aria-label={t("Your answer for {name}", { name: characterName })} className="mt-2 grid gap-1.5 sm:grid-cols-2">
             {choices.map((choice, index) => (
               <KitButton
                 key={choice.id}
@@ -143,11 +145,11 @@ function PactOfferCard({
           </div>
         ) : (
           <div className="mt-1.5 flex flex-wrap items-center justify-end gap-1.5">
-            <span className="text-[11px] italic text-stone-500">waiting on {characterName}&apos;s player</span>
+            <span className="text-[11px] italic text-stone-500">{t("waiting on {name}’s player", { name: characterName })}</span>
             {steersStory ? (
               <KitButton className="min-h-10" onClick={() => void answer("cancel")} disabled={Boolean(busy) || leaving} busy={busy === "cancel"}>
                 {busy === "cancel" ? null : <X className="size-3.5" aria-hidden="true" />}
-                Withdraw
+                {t("Withdraw")}
               </KitButton>
             ) : null}
           </div>

@@ -11,6 +11,7 @@ import { BLOCK_LIMITS, SAVE_ABILITY_IDS } from "@/lib/bestiary/block-check";
 import { SIZES } from "@/lib/bestiary/monster-draft";
 import type { EnemyAttack } from "@/lib/bestiary/statblock";
 import type { OnHitRider } from "@/lib/bestiary/attack-text";
+import { useT } from "@/lib/locale";
 import { Field, FieldLabel, OptionalStepper, addChip, rowIcon } from "@/app/workshop/kit";
 
 // The half of an attack line the engine reads besides its bonus and dice
@@ -22,20 +23,6 @@ import { Field, FieldLabel, OptionalStepper, addChip, rowIcon } from "@/app/work
 // row; everything is optional and an attack without any of it swings as
 // before.
 
-const MODE_OPTIONS = [
-  { value: "", label: "Unstated" },
-  { value: "melee", label: "Melee" },
-  { value: "ranged", label: "Ranged" },
-  { value: "both", label: "Melee or thrown" },
-];
-
-const SAVE_OPTIONS = [
-  { value: "", label: "No save" },
-  ...SAVE_ABILITY_IDS.map((ability) => ({ value: ability as string, label: `${ability.toUpperCase()} save` })),
-];
-
-const SIZE_OPTIONS = [{ value: "", label: "Any size" }, ...SIZES.map((size) => ({ value: size as string, label: `${size} or smaller` }))];
-
 type Patch = Partial<EnemyAttack>;
 
 function withoutUnset<T extends object>(value: T): T {
@@ -43,6 +30,7 @@ function withoutUnset<T extends object>(value: T): T {
 }
 
 export function AttackDetails({ attack, onChange }: { attack: EnemyAttack; onChange: (next: EnemyAttack) => void }) {
+  const t = useT();
   const conditionList = useId();
   const typeList = useId();
   const set = (patch: Patch) => onChange(withoutUnset({ ...attack, ...patch }));
@@ -62,6 +50,21 @@ export function AttackDetails({ attack, onChange }: { attack: EnemyAttack; onCha
     set({ alternatives: next.length ? next : undefined });
   };
 
+  const modeOptions = [
+    { value: "", label: t("Unstated") },
+    { value: "melee", label: t("Melee", { context: "workshop.bestiary.attack.modeMelee" }) },
+    { value: "ranged", label: t("Ranged") },
+    { value: "both", label: t("Melee or thrown") },
+  ];
+  const saveOptions = [
+    { value: "", label: t("No save") },
+    ...SAVE_ABILITY_IDS.map((ability) => ({ value: ability as string, label: t("{ability} save", { ability: ability.toUpperCase(), context: "workshop.bestiary.attack.abilitySave" }) })),
+  ];
+  const sizeOptions = [
+    { value: "", label: t("Any size") },
+    ...SIZES.map((size) => ({ value: size as string, label: t("{size} or smaller", { size }) })),
+  ];
+
   return (
     <div className="reveal grid gap-3 rounded-lg border border-stone-800 bg-stone-950/50 p-3">
       <datalist id={conditionList}>
@@ -76,30 +79,30 @@ export function AttackDetails({ attack, onChange }: { attack: EnemyAttack; onCha
       </datalist>
 
       <div className="flex flex-wrap items-end gap-3">
-        <Field label="Kind">
+        <Field label={t("Kind")}>
           <span className="block w-40">
             <Select
-              label="Melee or ranged"
+              label={t("Melee or ranged")}
               size="sm"
               value={attack.mode ?? ""}
               onChange={(mode) => set({ mode: (mode || undefined) as EnemyAttack["mode"] })}
-              options={MODE_OPTIONS}
+              options={modeOptions}
             />
           </span>
         </Field>
-        <Field label="Spell attack">
-          <Switch label="A spell attack" on={attack.spellAttack === true} onChange={(on) => set({ spellAttack: on || undefined })} />
+        <Field label={t("Spell attack", { context: "workshop.bestiary.attack.spellAttack" })}>
+          <Switch label={t("A spell attack")} on={attack.spellAttack === true} onChange={(on) => set({ spellAttack: on || undefined })} />
         </Field>
-        <Field label="Bonus action">
-          <Switch label="Made as a bonus action, beside the action's attacks" on={attack.bonusAction === true} onChange={(on) => set({ bonusAction: on || undefined })} />
+        <Field label={t("Bonus action")}>
+          <Switch label={t("Made as a bonus action, beside the action's attacks")} on={attack.bonusAction === true} onChange={(on) => set({ bonusAction: on || undefined })} />
         </Field>
-        <Field label="Reach">
-          <OptionalStepper label="Reach in feet (0 for a creature in its space)" min={0} max={60} step={5} suffix="ft" fallback={5} value={attack.reach} onChange={(reach) => set({ reach: reach === "" ? undefined : reach })} />
+        <Field label={t("Reach")}>
+          <OptionalStepper label={t("Reach in feet (0 for a creature in its space)")} min={0} max={60} step={5} suffix="ft" fallback={5} value={attack.reach} onChange={(reach) => set({ reach: reach === "" ? undefined : reach })} />
         </Field>
-        <Field label="Range">
+        <Field label={t("Range")}>
           <span className="flex items-center gap-1">
             <OptionalStepper
-              label="Normal range in feet"
+              label={t("Normal range in feet")}
               min={5}
               max={1000}
               step={5}
@@ -114,7 +117,7 @@ export function AttackDetails({ attack, onChange }: { attack: EnemyAttack; onCha
               <>
                 <span className="text-[11px] text-stone-500">/</span>
                 <OptionalStepper
-                  label="Long range in feet"
+                  label={t("Long range in feet")}
                   min={attack.range.normal}
                   max={2000}
                   step={5}
@@ -130,12 +133,12 @@ export function AttackDetails({ attack, onChange }: { attack: EnemyAttack; onCha
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <FieldLabel>Extra dice on a hit</FieldLabel>
+        <FieldLabel>{t("Extra dice on a hit")}</FieldLabel>
         {riders.map((rider, index) => (
           <div key={index} className="live-in flex flex-wrap items-center gap-1.5">
             <input
               value={rider.dice}
-              aria-label="Rider dice"
+              aria-label={t("Rider dice", { context: "workshop.bestiary.attack.riderDiceAria" })}
               placeholder="2d6"
               onChange={(event) => setRiders(riders.map((row, at) => (at === index ? { ...row, dice: event.target.value } : row)))}
               className={cn(ui.input, "w-24")}
@@ -143,26 +146,26 @@ export function AttackDetails({ attack, onChange }: { attack: EnemyAttack; onCha
             <input
               list={typeList}
               value={rider.type}
-              aria-label="Rider damage type"
+              aria-label={t("Rider damage type")}
               placeholder="fire"
               onChange={(event) => setRiders(riders.map((row, at) => (at === index ? { ...row, type: event.target.value } : row)))}
               className={cn(ui.input, "w-28")}
             />
-            <button type="button" aria-label="Remove rider" onClick={() => setRiders(riders.filter((_, at) => at !== index))} className={cn(ui.iconAction, rowIcon, "hover:text-red-300")}>
+            <button type="button" aria-label={t("Remove rider")} onClick={() => setRiders(riders.filter((_, at) => at !== index))} className={cn(ui.iconAction, rowIcon, "hover:text-red-300")}>
               <Trash2 className="size-3.5" />
             </button>
           </div>
         ))}
         {riders.length < BLOCK_LIMITS.riders ? (
           <button type="button" onClick={() => setRiders([...riders, { dice: "1d6", type: "fire" }])} className={cn(ui.btnSmall, addChip, "w-fit")}>
-            <Plus className="size-3" /> Rider dice
+            <Plus className="size-3" /> {t("Rider dice", { context: "workshop.bestiary.attack.riderChip" })}
           </button>
         ) : null}
-        <span className="text-[11px] text-stone-500">Each rider meets its own resistance: a fire rider on a bite is halved by fire resistance, not by piercing.</span>
+        <span className="text-[11px] text-stone-500">{t("Each rider meets its own resistance: a fire rider on a bite is halved by fire resistance, not by piercing.")}</span>
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
-        <Field as="label" label="At half its hit points or fewer">
+        <Field as="label" label={t("At half its hit points or fewer")}>
           <input
             value={bloodied?.damage ?? ""}
             placeholder="1d6"
@@ -171,58 +174,58 @@ export function AttackDetails({ attack, onChange }: { attack: EnemyAttack; onCha
           />
         </Field>
         {bloodied ? (
-          <Field as="label" label="Type">
+          <Field as="label" label={t("Type", { context: "workshop.bestiary.attack.type" })}>
             <input list={typeList} value={bloodied.type} placeholder="piercing" onChange={(event) => setBloodied(bloodied.damage, event.target.value)} className={cn(ui.input, "w-28")} />
           </Field>
         ) : null}
-        <span className="basis-full text-[11px] text-stone-500">The blow it deals instead once it is down to half its hit points, as a swarm&apos;s bite weakens. Leave empty for the same blow throughout.</span>
+        <span className="basis-full text-[11px] text-stone-500">{t("The blow it deals instead once it is down to half its hit points, as a swarm's bite weakens. Leave empty for the same blow throughout.")}</span>
       </div>
 
       <div className="grid gap-2">
-        <FieldLabel>What a hit does besides damage</FieldLabel>
+        <FieldLabel>{t("What a hit does besides damage")}</FieldLabel>
         <div className="flex flex-wrap items-end gap-3">
-          <Field label="Save">
+          <Field label={t("Save", { context: "workshop.bestiary.attack.save" })}>
             <span className="block w-32">
-              <Select label="Save against the hit" size="sm" value={onHit.save ?? ""} onChange={(save) => setOnHit({ save: (save || undefined) as OnHitRider["save"], dc: save ? onHit.dc ?? 13 : undefined })} options={SAVE_OPTIONS} />
+              <Select label={t("Save against the hit")} size="sm" value={onHit.save ?? ""} onChange={(save) => setOnHit({ save: (save || undefined) as OnHitRider["save"], dc: save ? onHit.dc ?? 13 : undefined })} options={saveOptions} />
             </span>
           </Field>
           {onHit.save ? (
-            <Field label="DC">
-              <OptionalStepper label="Save DC" min={1} max={30} fallback={13} value={onHit.dc} onChange={(dc) => setOnHit({ dc: dc === "" ? 13 : dc })} />
+            <Field label={t("DC")}>
+              <OptionalStepper label={t("Save DC")} min={1} max={30} fallback={13} value={onHit.dc} onChange={(dc) => setOnHit({ dc: dc === "" ? 13 : dc })} />
             </Field>
           ) : null}
-          <Field as="label" label="Condition">
+          <Field as="label" label={t("Condition")}>
             <input list={conditionList} value={onHit.condition ?? ""} placeholder="grappled" onChange={(event) => setOnHit({ condition: event.target.value.toLowerCase() || undefined })} className={cn(ui.input, "w-32")} />
           </Field>
-          <Field as="label" label="And also">
+          <Field as="label" label={t("And also")}>
             <input list={conditionList} value={onHit.alsoCondition ?? ""} placeholder="restrained" onChange={(event) => setOnHit({ alsoCondition: event.target.value.toLowerCase() || undefined })} className={cn(ui.input, "w-32")} />
           </Field>
-          <Field label="Escape DC">
-            <OptionalStepper label="Escape DC" min={1} max={30} fallback={13} value={onHit.escapeDc} onChange={(escapeDc) => setOnHit({ escapeDc: escapeDc === "" ? undefined : escapeDc })} />
+          <Field label={t("Escape DC")}>
+            <OptionalStepper label={t("Escape DC")} min={1} max={30} fallback={13} value={onHit.escapeDc} onChange={(escapeDc) => setOnHit({ escapeDc: escapeDc === "" ? undefined : escapeDc })} />
           </Field>
-          <Field label="Rounds">
-            <OptionalStepper label="Rounds the condition lasts" min={1} max={100} fallback={10} value={onHit.rounds} onChange={(rounds) => setOnHit({ rounds: rounds === "" ? undefined : rounds })} />
+          <Field label={t("Rounds")}>
+            <OptionalStepper label={t("Rounds the condition lasts")} min={1} max={100} fallback={10} value={onHit.rounds} onChange={(rounds) => setOnHit({ rounds: rounds === "" ? undefined : rounds })} />
           </Field>
-          <Field label="Save again each turn">
-            <Switch label="Repeat the save at the end of each turn" on={onHit.repeatSave === true} onChange={(on) => setOnHit({ repeatSave: on || undefined })} />
+          <Field label={t("Save again each turn")}>
+            <Switch label={t("Repeat the save at the end of each turn")} on={onHit.repeatSave === true} onChange={(on) => setOnHit({ repeatSave: on || undefined })} />
           </Field>
-          <Field label="Works on">
+          <Field label={t("Works on")}>
             <span className="block w-40">
-              <Select label="Largest size it works on" size="sm" value={onHit.maxSize ?? ""} onChange={(maxSize) => setOnHit({ maxSize: maxSize || undefined })} options={SIZE_OPTIONS} />
+              <Select label={t("Largest size it works on")} size="sm" value={onHit.maxSize ?? ""} onChange={(maxSize) => setOnHit({ maxSize: maxSize || undefined })} options={sizeOptions} />
             </span>
           </Field>
         </div>
         <div className="flex flex-wrap items-end gap-3">
-          <Field as="label" label="Damage on a failed save">
+          <Field as="label" label={t("Damage on a failed save")}>
             <input value={onHit.damage ?? ""} placeholder="3d6" onChange={(event) => setOnHit({ damage: event.target.value || undefined, damageType: event.target.value ? onHit.damageType ?? "poison" : undefined })} className={cn(ui.input, "w-24")} />
           </Field>
           {onHit.damage ? (
             <>
-              <Field as="label" label="Type">
+              <Field as="label" label={t("Type", { context: "workshop.bestiary.attack.type" })}>
                 <input list={typeList} value={onHit.damageType ?? ""} placeholder="poison" onChange={(event) => setOnHit({ damageType: event.target.value || undefined })} className={cn(ui.input, "w-28")} />
               </Field>
-              <Field label="Half on a success">
-                <Switch label="Half damage on a successful save" on={onHit.halfOnSave === true} onChange={(on) => setOnHit({ halfOnSave: on || undefined })} />
+              <Field label={t("Half on a success")}>
+                <Switch label={t("Half damage on a successful save")} on={onHit.halfOnSave === true} onChange={(on) => setOnHit({ halfOnSave: on || undefined })} />
               </Field>
             </>
           ) : null}

@@ -2,6 +2,7 @@
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { ChevronDown, FileCode, FileDown, FileText, FileType, type LucideIcon } from "lucide-react";
+import { useT } from "@/lib/locale";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
@@ -12,10 +13,10 @@ import { ui } from "@/lib/ui";
 
 type ExportFormat = "html" | "odt" | "docx";
 
-const OPTIONS: { format: ExportFormat; label: string; hint: string; icon: LucideIcon }[] = [
-  { format: "html", label: "HTML page", hint: "Opens in any browser", icon: FileCode },
-  { format: "odt", label: "OpenDocument (.odt)", hint: "LibreOffice Writer", icon: FileType },
-  { format: "docx", label: "Word (.docx)", hint: "Microsoft Word", icon: FileText },
+const OPTIONS: { format: ExportFormat; labelKey: string; hintKey: string; icon: LucideIcon }[] = [
+  { format: "html", labelKey: "HTML page", hintKey: "Opens in any browser", icon: FileCode },
+  { format: "odt", labelKey: "OpenDocument (.odt)", hintKey: "LibreOffice Writer", icon: FileType },
+  { format: "docx", labelKey: "Word (.docx)", hintKey: "Microsoft Word", icon: FileText },
 ];
 
 function triggerDownload(campaignId: string, format: ExportFormat) {
@@ -34,13 +35,14 @@ export function ExportMenu({
   campaignId: string;
   variant?: "button" | "tile-icon";
 }) {
+  const t = useT();
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
         {variant === "tile-icon" ? (
           <button
             type="button"
-            aria-label="Export this campaign's story"
+            aria-label={t("Export this campaign's story")}
             // The tile is a link; keep the click from navigating the card.
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => {
@@ -53,7 +55,7 @@ export function ExportMenu({
           </button>
         ) : (
           <button type="button" className={cn(ui.btnSmall, "w-full justify-center")}>
-            <GameIcon icon={{ kind: "glyph", key: "tab-story" }} size="size-5" /> Export story{" "}
+            <GameIcon icon={{ kind: "glyph", key: "tab-story" }} size="size-5" /> {t("Export story")}{" "}
             <ChevronDown className="size-3" />
           </button>
         )}
@@ -64,7 +66,7 @@ export function ExportMenu({
           sideOffset={6}
           className="panel z-50 min-w-56 rounded-lg p-1.5"
         >
-          <DropdownMenu.Label className="ctx-menu-label gold-title">Export story as</DropdownMenu.Label>
+          <DropdownMenu.Label className="ctx-menu-label gold-title">{t("Export story as")}</DropdownMenu.Label>
           {OPTIONS.map((option) => (
             <DropdownMenu.Item
               key={option.format}
@@ -73,8 +75,8 @@ export function ExportMenu({
             >
               <option.icon className="size-4 shrink-0 text-amber-300/80" />
               <span className="min-w-0">
-                {option.label}
-                <span className="session-menu-hint">{option.hint}</span>
+                {t(option.labelKey)}
+                <span className="session-menu-hint">{t(option.hintKey)}</span>
               </span>
             </DropdownMenu.Item>
           ))}

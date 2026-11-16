@@ -7,11 +7,13 @@ import { AppHeader } from "@/components/AppHeader";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { useHandSpells } from "@/app/campaigns/[campaignId]/HandSpells";
 import { cn } from "@/lib/cn";
+import { useLocale, useT } from "@/lib/locale";
 import { useLowEffects } from "@/lib/effects-mode";
 import { freshPlaySheet, revealLine, threeThingsToTry } from "@/lib/characters/hero-tips";
 import type { CreateSheetInput } from "@/lib/schemas/sheet";
 import { classLevelWords, isSplit } from "@/lib/characters/class-words";
 import { workshopClassName } from "@/lib/classes/workshop-registry";
+import { contentName, subclassName } from "@/lib/content/names";
 import { CharacterPortrait, ui } from "@/lib/ui";
 import { UseInCampaignDialog } from "../UseInCampaignDialog";
 
@@ -48,7 +50,9 @@ function spaced(value: string) {
 }
 
 export default function HeroReadyPage({ params }: { params: Promise<{ characterId: string }> }) {
+  const t = useT();
   const { characterId } = use(params);
+  const locale = useLocale();
   const [character, setCharacter] = useState<ReadyCharacter | null>(null);
   const [loading, setLoading] = useState(true);
   const [seating, setSeating] = useState(false);
@@ -107,8 +111,10 @@ export default function HeroReadyPage({ params }: { params: Promise<{ characterI
     [sheet, level, characterId],
   );
   const spells = useHandSpells(play);
-  const tips = useMemo(() => (play ? threeThingsToTry(play, spells) : []), [play, spells]);
-  const reveal = useMemo(() => (play ? revealLine(play) : ""), [play]);
+  // The tips and the reveal read in the reader's own language, like the
+  // heading above them (hero-tips.ts is t-first with the enT default).
+  const tips = useMemo(() => (play ? threeThingsToTry(play, spells, t, locale) : []), [play, spells, t, locale]);
+  const reveal = useMemo(() => (play ? revealLine(play, t) : ""), [play, t]);
 
   async function changeSkip(next: boolean) {
     setSkip(next);
@@ -140,9 +146,9 @@ export default function HeroReadyPage({ params }: { params: Promise<{ characterI
       <main className="mx-auto w-full max-w-3xl flex-1 p-4 sm:p-6">
         <AppHeader />
         <div className={cn(ui.card, "ornate texture-noise flex flex-col items-center gap-3 px-6 py-8 text-center")}>
-          <p className="font-serif text-sm text-stone-300">Character not found.</p>
+          <p className="font-serif text-sm text-stone-300">{t("Character not found.")}</p>
           <Link href="/characters" className={ui.btnSecondary}>
-            Back to your library
+            {t("Back to your library")}
           </Link>
         </div>
       </main>
@@ -150,14 +156,19 @@ export default function HeroReadyPage({ params }: { params: Promise<{ characterI
   }
 
   const portraitUrl = character.sheet.portrait?.url;
-  const ancestry = character.raceLabel ?? spaced(character.race);
+  const ancestry = contentName("species", character.raceLabel ?? spaced(character.race), locale);
   // A split names each class's levels (backlog F9); one class reads the
   // server's name for it, a workshop class's included.
   const split = { ...character, classes: character.sheet.classes };
   const classWords = isSplit(split)
-    ? classLevelWords(split, (id) => workshopClassName(id) ?? spaced(id))
-    : (character.className ?? spaced(character.class));
-  const calling = `${classWords}${character.subclass ? ` (${spaced(character.subclass)})` : ""}`;
+    ? classLevelWords(split, (id) => workshopClassName(id) ?? contentName("classes", spaced(id), locale))
+    : (character.className ?? contentName("classes", spaced(character.class), locale));
+  // The subclass reads in the reader's language where the maps carry it,
+  // the stored string (spaced, as ever) beside every miss.
+  const subclassWords = character.subclass ? subclassName(character.class, character.subclass, locale) : "";
+  const calling = `${classWords}${
+    subclassWords ? ` (${subclassWords === character.subclass ? spaced(character.subclass) : subclassWords})` : ""
+  }`;
   const motion = lowEffects ? "" : "reveal";
 
   return (

@@ -135,25 +135,61 @@ export function spellShortageLines(input: {
   listCap: number | null;
   listVerb: "prepare" | "know" | "write in your spellbook";
   maxSpellLevel: number;
+  // The reader's words (builder.spellshortage.*); without it the English
+  // this pass's tests read.
+  t?: (key: string, vars?: Record<string, string | number>) => string;
 }): string[] {
-  const { className, supply, cantripCap, listCap, listVerb, maxSpellLevel } = input;
+  const { className, supply, cantripCap, listCap, listVerb, maxSpellLevel, t } = input;
+  const say = (key: string, vars: Record<string, string | number>, english: string) =>
+    typeof t === "function" ? t(key, vars) : english;
   const lines: string[] = [];
-  const say = (have: number, cap: number, one: string, many: string, may: string) => {
+  const line = (have: number, cap: number, one: string, many: string, may: string) => {
+    const word = have === 1 ? one : many;
     const missing = cap - have;
-    const taken = have === 0 ? "" : have === 1 ? ` Take it;` : ` Take all ${have};`;
-    lines.push(
-      `This server's spell list has ${have === 0 ? "no" : `only ${have}`} ${className} ${have === 1 ? one : many}, and you may ${may} ${cap}.${taken}${have === 0 ? " The" : " the"} ${missing === 1 ? `missing one does` : `${missing} missing ones do`} not stop you saving.`,
+    const havePart = have === 0 ? say("no", {}, "no") : say("only {have}", { have }, `only ${have}`);
+    const taken =
+      have === 0
+        ? ""
+        : have === 1
+          ? say(" Take it;", {}, " Take it;")
+          : say(" Take all {have};", { have }, ` Take all ${have};`);
+    const tail =
+      have === 0
+        ? say(`builder.spellshortage.tailNone_${missing === 1 ? "one" : "other"}`, { count: missing }, missing === 1 ? " The missing one does not stop you saving." : ` The ${missing} missing ones do not stop you saving.`)
+        : missing === 1
+          ? say(" the missing one does not stop you saving.", {}, " the missing one does not stop you saving.")
+          : say(" the {count} missing ones do not stop you saving.", { count: missing }, ` the ${missing} missing ones do not stop you saving.`);
+    return say(
+      "This server's spell list has {have} {className} {word}, and you may {may} {cap}.{taken}{tail}",
+      { have: havePart, className, word, may, cap, taken, tail },
+      `This server's spell list has ${havePart} ${className} ${word}, and you may ${may} ${cap}.${taken}${tail}`,
     );
   };
   if (cantripCap !== null && supply.cantrips < cantripCap) {
-    say(supply.cantrips, cantripCap, "cantrip", "cantrips", "know");
+    lines.push(
+      line(
+        supply.cantrips,
+        cantripCap,
+        say("cantrip", {}, "cantrip"),
+        say("cantrips", {}, "cantrips"),
+        "know",
+      ),
+    );
   }
   if (listCap !== null && supply.spells < listCap) {
     const upTo = maxSpellLevel > 1 ? ` up to level ${maxSpellLevel}` : "";
-    say(supply.spells, listCap, `spell${upTo}`, `spells${upTo}`, listVerb);
+    lines.push(
+      line(
+        supply.spells,
+        listCap,
+        `${say("spell", {}, "spell")}${upTo}`,
+        `${say("spells", {}, "spells")}${upTo}`,
+        listVerb,
+      ),
+    );
   }
   if (lines.length) {
-    lines.push("Whoever runs this server can add more by installing the content pack.");
+    lines.push(say("Whoever runs this server can add more by installing the content pack.", {}, "Whoever runs this server can add more by installing the content pack."));
   }
   return lines;
 }

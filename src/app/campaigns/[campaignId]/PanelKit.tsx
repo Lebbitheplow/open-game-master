@@ -8,6 +8,7 @@ import { GameIcon } from "@/components/ui/GameIcon";
 import { Switch } from "@/components/ui/Switch";
 import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
+import { useT } from "@/lib/locale";
 
 // The side panels are 20rem wide, so they share one set of kit pieces sized
 // for that column: the kit buttons a step smaller, the kebab that mirrors a
@@ -72,13 +73,14 @@ export function RowMenu({
   className?: string;
   trigger?: { label: string; icon?: ReactNode };
 }) {
+  const t = useT();
   if (!items.length) {
     return null;
   }
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
-        <button type="button" aria-label={trigger?.label ?? `Actions for ${label}`} className={cn(TONE.icon, "pk-always shrink-0", className)}>
+        <button type="button" aria-label={trigger?.label ?? t("Actions for {name}", { name: label, context: "table.panel.kebabAria" })} className={cn(TONE.icon, "pk-always shrink-0", className)}>
           {trigger?.icon ?? <MoreVertical className="size-4" aria-hidden="true" />}
         </button>
       </DropdownMenu.Trigger>
@@ -196,6 +198,7 @@ export function PanelLoading({ label, rows = 3 }: { label: string; rows?: number
 // colour the parchment theme keeps, and the stone ramp flips with the theme,
 // so the sentence reads on night and day alike (red text does not on cream).
 export function LoadFailed({ error, onRetry, className }: { error: string; onRetry: () => void; className?: string }) {
+  const t = useT();
   return (
     <div
       role="alert"
@@ -207,7 +210,7 @@ export function LoadFailed({ error, onRetry, className }: { error: string; onRet
       <TriangleAlert className="size-4 shrink-0 text-ember-500" aria-hidden="true" />
       <p className="min-w-0 flex-1 text-xs leading-5 text-stone-200">{error}</p>
       <button type="button" onClick={onRetry} className={cn(ui.btnSmall, "pk-tap shrink-0 px-2.5 py-1 text-xs")}>
-        <RotateCw className="size-3.5" aria-hidden="true" /> Try again
+        <RotateCw className="size-3.5" aria-hidden="true" /> {t("Try again", { context: "load.retry" })}
       </button>
     </div>
   );

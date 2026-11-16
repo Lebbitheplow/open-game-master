@@ -10,6 +10,7 @@ import { canonMeaning } from "@/lib/worldforge/canon";
 import { CITATION, citationNumbers, omittedLine, partWords, type AskOmitted } from "@/lib/worldforge/ask-words";
 import type { AskPassage } from "@/lib/worldforge/ask";
 import type { WorldApi, WorldState } from "./useWorld";
+import { useT } from "@/lib/locale";
 
 // Ask the world, after WorldForge's grounded chat: a question about the
 // world answered from the world, hidden truths included (it is the DM who
@@ -27,6 +28,7 @@ type Answer = { key: number; question: string; answer: string; sources: AskPassa
 const NO_OMITTED: AskOmitted = { count: 0, names: [], others: 0 };
 
 export function AskView({ api, world, onOpen }: { api: WorldApi; world: WorldState; onOpen: (ref: string) => void }) {
+  const t = useT();
   const [question, setQuestion] = useState("");
   const [busy, setBusy] = useState(false);
   const [answers, setAnswers] = useState<Answer[]>([]);
@@ -51,12 +53,12 @@ export function AskView({ api, world, onOpen }: { api: WorldApi; world: WorldSta
   return (
     <div className="flex flex-col gap-3">
       <form className="flex flex-wrap gap-2" onSubmit={(event) => { event.preventDefault(); void ask(); }}>
-        <input className={cn(ui.input, "min-w-0 flex-1")} placeholder="Who in Gullhaven could have sold the sluice codes?" aria-label="A question about the world" maxLength={1_000} value={question} onChange={(event) => setQuestion(event.target.value)} />
+        <input className={cn(ui.input, "min-w-0 flex-1")} placeholder={t("Who in Gullhaven could have sold the sluice codes?")} aria-label={t("A question about the world")} maxLength={1_000} value={question} onChange={(event) => setQuestion(event.target.value)} />
         <KitButton tone="primary" type="submit" busy={busy} disabled={busy || !question.trim()} data-tour="world-ask">
-          {busy ? null : <MessageCircleQuestion className="size-3.5" />} Ask
+          {busy ? null : <MessageCircleQuestion className="size-3.5" />} {t("Ask")}
         </KitButton>
       </form>
-      <p className="text-[11px] text-stone-500">Answered from this world only, hidden truths included. Each source under an answer is a passage it rests on.</p>
+      <p className="text-[11px] text-stone-500">{t("Answered from this world only, hidden truths included. Each source under an answer is a passage it rests on.")}</p>
       {api.error ? <PanelError>{api.error}</PanelError> : null}
       <ul className="flex flex-col gap-2">
         {answers.map((entry) => (

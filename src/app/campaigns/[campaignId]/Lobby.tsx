@@ -7,6 +7,7 @@ import { appConfirm } from "@/components/ui/ConfirmDialog";
 import { ArrowLeft, Play } from "lucide-react";
 import { Suspense, lazy, useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 import { transcribesVoice, useCapabilities } from "@/lib/use-capabilities";
 import { roomCodeRefused } from "@/lib/shell-host";
 import { useShellShare } from "@/lib/use-shell-share";
@@ -40,9 +41,9 @@ import { revealSettingsRow } from "@/app/campaigns/[campaignId]/reveal-settings-
 import { seesEmbeddingWarning } from "@/lib/embedding-language-logic";
 import { StorySetupNotice } from "@/components/StorySetupNotice";
 import {
-  STORY_SETUP_WARNING,
-  STORY_SETUP_WARNING_COMING,
   storySetupKeptKey,
+  storySetupWarning,
+  storySetupWarningComing,
   storySetupWillRun,
 } from "@/lib/dm/story-setup-logic";
 
@@ -82,6 +83,7 @@ export function Lobby({
 }) {
   const { campaign, me, members, sheets } = state;
   const prep = mode === "prep";
+  const t = useT();
   const voiceSpeaking = useVoiceSpeaking();
   // The call records and announces a transcript only where it can be written.
   const transcribes = transcribesVoice(useCapabilities());
@@ -170,10 +172,10 @@ export function Lobby({
       });
       if (!response.ok) {
         const result = await response.json().catch(() => ({}));
-        setError(result.error || "Could not select the character.");
+        setError(result.error || t("Could not select the character."));
       } else refresh();
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "table.unreachable" }));
     } finally {
       setBusy(false);
     }
@@ -253,10 +255,10 @@ export function Lobby({
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        setStorySetupError(data.error || "Could not change the setting.");
+        setStorySetupError(data.error || t("Could not change the setting."));
       }
     } catch {
-      setStorySetupError("Could not reach the server.");
+      setStorySetupError(t("Could not reach the server.", { context: "table.unreachable" }));
     } finally {
       setStorySetupBusy(false);
     }
@@ -273,6 +275,7 @@ export function Lobby({
   // asks the same function of the same seats, so the Begin button is enabled
   // exactly when the route would accept it.
   const startBlocker = lobbyBlocker(
+    t,
     seats,
     members.map((member) => ({
       userId: member.userId,
@@ -284,7 +287,7 @@ export function Lobby({
   // The one line above the actions that says what happens next for this
   // viewer, from the same seats the Begin button reads.
   const others = members.filter((member) => member.userId !== me.id && !isDmSeatOf(member.userId));
-  const next = lobbyNext({
+  const next = lobbyNext(t, {
     solo: isSolo,
     isDm,
     hasSheet: Boolean(mySheet),
@@ -311,12 +314,12 @@ export function Lobby({
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        setError(data.error || "Could not change your ready state.");
+        setError(data.error || t("Could not change your ready state."));
         return false;
       }
       return true;
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "table.unreachable" }));
       return false;
     } finally {
       setBusy(false);
@@ -341,7 +344,7 @@ export function Lobby({
       }
       refresh();
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "table.unreachable" }));
     } finally {
       setBusy(false);
     }
@@ -352,7 +355,7 @@ export function Lobby({
     if (!myMember?.ready && !(await setReady(true))) {
       return;
     }
-    await activate("Could not start the adventure.");
+    await activate(t("Could not start the adventure."));
   }
 
   async function makeLead(userId: string) {
@@ -385,13 +388,13 @@ export function Lobby({
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        setSeatError(data.error || "Could not move that seat.");
+        setSeatError(data.error || t("Could not move that seat."));
         return;
       }
       setSeatVersion((version) => version + 1);
       refresh();
     } catch {
-      setSeatError("Could not reach the server.");
+      setSeatError(t("Could not reach the server.", { context: "table.unreachable" }));
     }
   }
 
@@ -408,7 +411,7 @@ export function Lobby({
   async function removeCharacter() {
     if (
       !await appConfirm(
-        `Remove ${mySheet?.name ?? "your character"} from this campaign? You can create or pick another afterwards.`,
+        t("Remove {name} from this campaign? You can create or pick another afterwards.", { name: mySheet?.name ?? t("your character") }),
       )
     ) {
       return;
@@ -419,10 +422,10 @@ export function Lobby({
       const response = await fetch(`/api/campaigns/${campaign!.id}/sheet`, { method: "DELETE" });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        setError(data.error || "Could not remove the character.");
+        setError(data.error || t("Could not remove the character."));
       }
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "table.unreachable" }));
     } finally {
       setBusy(false);
     }
@@ -438,19 +441,15 @@ export function Lobby({
       );
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        setError(data.error || "Could not remove the companion.");
+        setError(data.error || t("Could not remove the companion."));
       }
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "table.unreachable" }));
     }
   }
 
   async function deleteCampaign() {
-    if (
-      !await appConfirm(
-        `Delete "${campaign!.title}" for everyone? All characters, messages, and story progress are lost. This cannot be undone.`,
-      )
-    ) {
+    if (!await appConfirm(t("Delete \"{title}\" for everyone? All characters, messages, and story progress are lost. This cannot be undone.", { title: campaign!.title }))) {
       return;
     }
     setBusy(true);
@@ -459,12 +458,12 @@ export function Lobby({
       const response = await fetch(`/api/campaigns/${campaign!.id}`, { method: "DELETE" });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        setError(data.error || "Could not delete the campaign.");
+        setError(data.error || t("Could not delete the campaign."));
         return;
       }
       navigateTo("/");
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "table.unreachable" }));
     } finally {
       setBusy(false);
     }
@@ -482,13 +481,13 @@ export function Lobby({
       {prep ? (
         <div className="prep-banner reveal-banner mb-4" data-prep-banner="">
           <span className="min-w-0 flex-1">
-            <h2 className="font-display text-lg tracking-wide text-amber-100">Campaign prep</h2>
+            <h2 className="font-display text-lg tracking-wide text-amber-100">{t("Campaign prep", { context: "table.lobby.prepTitle" })}</h2>
             <p className="text-sm text-stone-400">
-              The adventure is still running: nothing here ends it, and the table is as you left it.
+              {t("The adventure is still running: nothing here ends it, and the table is as you left it.")}
             </p>
           </span>
           <button type="button" onClick={onResume} className={cn(ui.btnPrimary, "min-h-11 px-5")} data-prep-resume="">
-            <Play aria-hidden="true" className="size-4" /> Back to the table
+            <Play aria-hidden="true" className="size-4" /> {t("Back to the table")}
           </button>
         </div>
       ) : (
@@ -496,7 +495,7 @@ export function Lobby({
           href="/"
           className="mb-3 inline-flex items-center gap-1.5 text-sm text-stone-500 transition-colors hover:text-amber-200"
         >
-          <ArrowLeft className="size-4" /> All campaigns
+          <ArrowLeft className="size-4" /> {t("All campaigns")}
         </Link>
       )}
 
@@ -509,7 +508,7 @@ export function Lobby({
           <div className="lobby-hero-slot relative order-1">
             <LobbyHero
               campaign={campaign}
-              eyebrow={prep ? "The adventure is under way" : undefined}
+              eyebrow={prep ? t("The adventure is under way") : undefined}
               canEdit={isLead}
               onEdit={() => setEditing(true)}
               className="lobby-enter"
@@ -556,7 +555,7 @@ export function Lobby({
 
           <div className={cn("lobby-actions lobby-enter order-4", prep ? "mb-4" : "mb-8")} style={enter(3)}>
             {campaign.gameSettings.multiCharacter !== "off" && mySheets.length > 1 ? (
-              <div className="mb-3 flex flex-wrap justify-center gap-2" aria-label="Your characters">
+              <div className="mb-3 flex flex-wrap justify-center gap-2" aria-label={t("Your characters")}>
                 {mySheets.map((sheet) => (
                   <button key={sheet.id} type="button" disabled={busy}
                     aria-pressed={mySheet?.id === sheet.id}
@@ -569,7 +568,7 @@ export function Lobby({
             ) : null}
             {setupWillRun && state.prepArc ? (
               <StorySetupNotice
-                text={STORY_SETUP_WARNING}
+                text={storySetupWarning(t)}
                 busy={storySetupBusy}
                 error={storySetupError}
                 onTurnOff={() => void turnOffStorySetup()}
@@ -593,7 +592,7 @@ export function Lobby({
               error={error}
               startBlocker={startBlocker}
               onToggleReady={() => void setReady(!myMember?.ready)}
-              onStart={() => void activate("Could not start the campaign.")}
+              onStart={() => void activate(t("Could not start the campaign."))}
               onBeginSolo={() => void beginSolo()}
               onRemoveCharacter={() => void removeCharacter()}
               onDelete={() => void deleteCampaign()}
@@ -605,7 +604,7 @@ export function Lobby({
               party knows each other. Right after the actions so a phone
               reaches Begin first. */}
           <section className="lobby-enter order-4 mb-6" style={enter(4)}>
-            <LobbyGroupHead glyph="tab-party" title="Party story" />
+            <LobbyGroupHead glyph="tab-party" title={t("Party story")} />
             <div className={cn(ui.card, "p-3")}>
               <PartyStory
                 campaignId={campaign.id}
@@ -621,7 +620,7 @@ export function Lobby({
               check. Handing them to the lead alone drew editable panels for a
               player-lead the server would refuse and read-only ones for the DM. */}
           <section className="lobby-enter order-9 mb-6 space-y-3" style={enter(5)}>
-            <LobbyGroupHead glyph="tab-story" title="Rules and lore" />
+            <LobbyGroupHead glyph="tab-story" title={t("Rules and lore")} />
             <RulesPanel
               campaignId={campaign.id}
               settings={campaign.gameSettings}
@@ -635,7 +634,7 @@ export function Lobby({
                 lore, places and prepared fights are the DM's to bring in. */}
             {steersStory ? (
               <div className={cn(ui.card, "p-3")}>
-                <h2 className={cn(ui.sectionEyebrow, "mb-2")}>Bring in prep</h2>
+                <h2 className={cn(ui.sectionEyebrow, "mb-2")}>{t("Bring in prep", { context: "creator.prep.bringIn" })}</h2>
                 <ContentImportPicker
                   campaignId={campaign.id}
                   selection={contentImport}
@@ -644,7 +643,7 @@ export function Lobby({
                   storyboardNote={(arcComing) =>
                     arcComing && setupWillRun ? (
                       <StorySetupNotice
-                        text={STORY_SETUP_WARNING_COMING}
+                        text={storySetupWarningComing(t)}
                         busy={storySetupBusy}
                         error={storySetupError}
                         onTurnOff={() => void turnOffStorySetup()}
@@ -715,14 +714,14 @@ export function Lobby({
               />
               {campaign.gameSettings.voice.transcribe && transcribes ? (
                 <p className="reveal mt-2 text-xs text-amber-300/80">
-                  This table is transcribed: while voice is on, what each person says is written down with their name for the story log. Turn it off in campaign settings.
+                  {t("This table is transcribed: while voice is on, what each person says is written down with their name for the story log. Turn it off in campaign settings.")}
                 </p>
               ) : null}
             </section>
           ) : null}
 
           <div className="lobby-enter order-8" style={enter(4)}>
-            <LobbyGroupHead glyph="tab-settings" title="Table settings" />
+            <LobbyGroupHead glyph="tab-settings" title={t("Table settings")} />
             <GameSettingsPanel
               campaignId={campaign.id}
               settings={campaign.gameSettings}

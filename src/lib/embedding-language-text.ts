@@ -7,26 +7,29 @@
 import type { EmbeddingLanguageCheck, ProbedLanguage } from "./embedding-language-logic.ts";
 import { TABLE_LANGUAGE_NAMES } from "./schemas/game-settings-options.ts";
 
+type Translator = (key: string, vars?: Record<string, string | number>) => string;
+const passthrough: Translator = (key, vars) =>
+  vars ? key.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? `{${k}}`)) : key;
+
 // `languages`: those the warning is about, for naming the campaigns concerned.
 export type EmbeddingWarning = { title: string; body: string; languages: ProbedLanguage[] };
 
 // "Italian", "Italian or French", "Italian, French or German".
-function anyOf(languages: readonly ProbedLanguage[]): string {
-  const names = languages.map((language) => TABLE_LANGUAGE_NAMES[language].english);
-  return [names.slice(0, -1).join(", "), names.slice(-1).join("")].filter(Boolean).join(" or ");
+function anyOf(languages: readonly ProbedLanguage[], t: Translator): string {
+  const names = languages.map((language) => t(TABLE_LANGUAGE_NAMES[language].english));
+  return [names.slice(0, -1).join(", "), names.slice(-1).join("")].filter(Boolean).join(` ${t("or")} `);
 }
 
 // One warning for every language checked (one under a picker, each campaign's
 // on the admin page); null when the model reads them all.
-export function embeddingWarning(checks: readonly EmbeddingLanguageCheck[]): EmbeddingWarning | null {
+export function embeddingWarning(checks: readonly EmbeddingLanguageCheck[], t: Translator = passthrough): EmbeddingWarning | null {
   // A model that did not load reads no language at all.
   if (checks.some((check) => check.verdict === "unavailable")) {
     return {
-      title: "The GM's memory is not running",
-      body:
-        "This server's embedding model did not load, so the GM finds earlier scenes, lore and facts only by their " +
-        "exact words. The server log says why: make sure the server can download its embedding model (or run npm run " +
-        "fetch-model), then restart it.",
+      title: t("The GM's memory is not running"),
+      body: t(
+        "This server's embedding model did not load, so the GM finds earlier scenes, lore and facts only by their exact words. The server log says why: make sure the server can download its embedding model (or run npm run fetch-model), then restart it.",
+      ),
       languages: checks.map((check) => check.language),
     };
   }
@@ -34,15 +37,13 @@ export function embeddingWarning(checks: readonly EmbeddingLanguageCheck[]): Emb
   if (unread.length === 0) {
     return null;
   }
-  const names = anyOf(unread);
+  const names = anyOf(unread, t);
   return {
-    title: `The GM's memory cannot read ${names}`,
-    body:
-      `This server's embedding model reads only English, so at a table playing in ${names} the GM misses earlier ` +
-      "scenes, lore and facts the players describe in other words. An admin can set the server's language under " +
-      "Admin > Settings > Language: any language but English switches to a model that reads them all. An " +
-      "EMBEDDING_MODEL in .env.server wins over the language: set it to Xenova/multilingual-e5-small (with " +
-      "EMBEDDING_DTYPE=q8) or remove it, then restart. Or play in English.",
+    title: t("The GM's memory cannot read {languages}", { languages: names }),
+    body: t(
+      "This server's embedding model reads only English, so at a table playing in {languages} the GM misses earlier scenes, lore and facts the players describe in other words. An admin can set the server's language under Admin > Settings > Language: any language but English switches to a model that reads them all. An EMBEDDING_MODEL in .env.server wins over the language: set it to Xenova/multilingual-e5-small (with EMBEDDING_DTYPE=q8) or remove it, then restart. Or play in English.",
+      { languages: names },
+    ),
     languages: unread,
   };
 }

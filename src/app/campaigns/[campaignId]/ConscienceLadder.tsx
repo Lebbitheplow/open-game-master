@@ -1,7 +1,8 @@
 "use client";
 
 import { cn } from "@/lib/cn";
-import { CONSCIENCE_RUNGS, RUNG_LABEL, type ConscienceRung } from "@/lib/dm/conscience-logic";
+import { useT } from "@/lib/locale";
+import { CONSCIENCE_RUNGS, type ConscienceRung } from "@/lib/dm/conscience-logic";
 
 // A lasting companion's conscience on its Bonds row (issue 503): the five
 // rungs from content to the breaking point, with a marker that slides one
@@ -51,19 +52,31 @@ const WORD: Record<ConscienceRung, string> = {
   breaking: "text-rose-200",
 };
 
+// The rungs' words live in the dictionaries (table.conscience.rung.*), so a
+// language switch rewords the ladder with everything else.
+const RUNG_KEY: Record<ConscienceRung, string> = {
+  content: "Content",
+  uneasy: "Uneasy",
+  warning: "Warning",
+  ultimatum: "Ultimatum",
+  breaking: "Breaking point",
+};
+
 export function ConscienceLadder({ name, conscience }: { name: string; conscience: ConscienceView }) {
+  const t = useT();
   const step = CONSCIENCE_RUNGS.indexOf(conscience.rung);
+  const rungWord = t(RUNG_KEY[conscience.rung]);
   return (
     <div className="mt-1.5" data-conscience-ladder={name} data-rung={conscience.rung}>
       <p className="flex items-baseline gap-1.5 text-[11px] leading-4">
-        <span className="text-stone-400">Conscience</span>
+        <span className="text-stone-400">{t("Conscience")}</span>
         <span key={conscience.rung} className={cn("live-in font-medium", WORD[conscience.rung])}>
-          {RUNG_LABEL[conscience.rung]}
+          {rungWord}
         </span>
       </p>
       <span
         role="img"
-        aria-label={`${name}'s conscience: ${RUNG_LABEL[conscience.rung]}, step ${step + 1} of ${CONSCIENCE_RUNGS.length}, from content to breaking point`}
+        aria-label={t("{name}'s conscience: {word}, step {step} of {total}, from content to breaking point", { name, word: rungWord, step: step + 1, total: CONSCIENCE_RUNGS.length })}
         className="conscience-track relative mt-1 grid h-1.5 grid-cols-5 overflow-hidden rounded-full bg-stone-800"
       >
         {CONSCIENCE_RUNGS.map((rung, index) => (
@@ -76,48 +89,52 @@ export function ConscienceLadder({ name, conscience }: { name: string; conscienc
       </span>
       {conscience.ultimatum ? (
         <p className="reveal mt-1 text-xs leading-5 text-stone-300" data-ultimatum>
-          <span className="font-medium text-rose-300">Ultimatum:</span> {conscience.ultimatum.condition}
+          <span className="font-medium text-rose-300">{t("Ultimatum:")}</span> {conscience.ultimatum.condition}
           <span className="text-stone-400">
-            {" "}
-            · by {conscience.ultimatum.due} · <span data-countdown>{conscience.ultimatum.left} left</span>
+            {t(" · by {due} · ", { due: conscience.ultimatum.due })}
+            <span data-countdown>{t("{left} left", { left: conscience.ultimatum.left })}</span>
           </span>
         </p>
       ) : null}
       {conscience.demand ? (
         <p key={`demand-${conscience.demand}`} className="reveal mt-1 text-xs leading-5 text-stone-300" data-share-demand>
-          <span className="font-medium text-amber-300">Wants their share:</span> {conscience.demand}
+          <span className="font-medium text-amber-300">{t("Wants their share:")}</span> {conscience.demand}
         </p>
       ) : null}
       {conscience.refused ? (
         <p key={`refused-${conscience.refused}`} className="reveal mt-1 text-xs leading-5 text-stone-300" data-refused>
-          <span className="font-medium text-rose-300">Refused:</span> {conscience.refused}
+          <span className="font-medium text-rose-300">{t("Refused:")}</span> {conscience.refused}
         </p>
       ) : null}
       {conscience.plan ? (
         <p className="reveal mt-1 text-xs leading-5 text-stone-300" data-conscience-plan>
-          <span className="font-medium text-violet-300">Their plan, yours alone:</span> {name} {conscience.plan}.
+          <span className="font-medium text-violet-300">{t("Their plan, yours alone:")}</span> {name} {conscience.plan}.
         </p>
       ) : null}
       {conscience.agenda ? (
         <p className="reveal mt-1 text-xs leading-5 text-stone-300" data-conscience-agenda>
-          <span className="font-medium text-violet-300">Their secret, yours alone:</span> {name} {conscience.agenda}.
+          <span className="font-medium text-violet-300">{t("Their secret, yours alone:")}</span> {name} {conscience.agenda}.
         </p>
       ) : null}
       {conscience.hidden ? (
         <p className="reveal mt-1 text-xs leading-5 text-stone-300" data-conscience-hidden>
-          <span className="font-medium text-violet-300">Keeps it hidden, yours alone:</span>{" "}
-          {conscience.hidden.noticedBy.length ? `noticed by ${conscience.hidden.noticedBy.join(", ")}` : "nobody has noticed yet"}.
+          <span className="font-medium text-violet-300">{t("Keeps it hidden, yours alone:")}</span>{" "}
+          {conscience.hidden.noticedBy.length
+            ? t("noticed by {names}", { names: conscience.hidden.noticedBy.join(", ") })
+            : t("nobody has noticed yet")}
+          .
         </p>
       ) : null}
       {conscience.unheard ? (
         <p key={`unheard-${conscience.rung}`} className="reveal mt-1 text-xs leading-5 text-stone-300" data-conscience-unheard>
-          <span className="font-medium text-amber-300">Not yet said at the table:</span> {name} says it when you next narrate, or the
-          server posts their line after it.
+          <span className="font-medium text-amber-300">{t("Not yet said at the table:")}</span>{" "}
+          {t("{name} says it when you next narrate, or the server posts their line after it.", { name })}
         </p>
       ) : null}
       {conscience.noticed ? (
         <p className="reveal mt-1 text-xs leading-5 text-stone-300" data-conscience-noticed>
-          <span className="font-medium text-violet-300">Only you noticed.</span> {name} keeps it from the rest of the party.
+          <span className="font-medium text-violet-300">{t("Only you noticed.")}</span>{" "}
+          {t("{name} keeps it from the rest of the party.", { name })}
         </p>
       ) : null}
     </div>

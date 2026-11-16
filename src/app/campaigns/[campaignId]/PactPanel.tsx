@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { ui } from "@/lib/ui";
 import { KitButton, PanelError } from "./PanelKit";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
+import { useT } from "@/lib/locale";
 
 // A player's own pact (issue 503 Phase 7), at the top of their Bonds tab:
 // who is in it, who leads, what it plans and when, and that character's own
@@ -31,20 +32,27 @@ type PactView = {
   kinds: string[];
 };
 
-const KIND_TEXT: Record<string, { label: string; hint: string }> = {
-  steal: { label: "Steal", hint: "Take something from another character's pack. It leaves their pack now." },
-  scheme: { label: "Quiet scheme", hint: "Something harmless, done where nobody sees." },
-  harm: { label: "Do harm", hint: "Sabotage that hurts the party. Resolved when the pact moves." },
-  attack: { label: "Strike when it moves", hint: "Turn on another player's character, in a fight, as the pact makes its move." },
+// The kinds' and skills' words by value; the keys live with the pact group.
+const KIND_KEYS: Record<string, string> = {
+  steal: "Steal",
+  scheme: "Quiet scheme",
+  harm: "Do harm",
+  attack: "Strike when it moves",
+};
+const KIND_HINT_KEYS: Record<string, string> = {
+  steal: "Take something from another character's pack. It leaves their pack now.",
+  scheme: "Something harmless, done where nobody sees.",
+  harm: "Sabotage that hurts the party. Resolved when the pact moves.",
+  attack: "Turn on another player's character, in a fight, as the pact makes its move.",
+};
+const SKILL_KEYS: Record<string, string> = {
+  stealth: "Stealth",
+  sleight_of_hand: "Sleight of Hand",
+  deception: "Deception",
 };
 
-const SKILLS = [
-  { id: "stealth", label: "Stealth" },
-  { id: "sleight_of_hand", label: "Sleight of Hand" },
-  { id: "deception", label: "Deception" },
-];
-
 export function OwnPacts({ campaignId, refreshKey, sheets, meUserId }: { campaignId: string; refreshKey: number; sheets: CharacterSheet[]; meUserId: string }) {
+  const t = useT();
   const [pacts, setPacts] = useState<PactView[]>([]);
   const [all, setAll] = useState<PactView[]>([]);
   // Bumped after a secret action, so the list reads it back.
@@ -79,10 +87,10 @@ export function OwnPacts({ campaignId, refreshKey, sheets, meUserId }: { campaig
       {all.map((pact) => (
         <section key={pact.id} className="panel rounded-lg border-violet-900/40 px-2.5 py-2 text-xs text-stone-300" data-pact-storyteller={pact.id}>
           <p className="flex items-center gap-1.5 text-violet-200">
-            <Eye className="size-3.5" aria-hidden="true" />A pact ({pact.status}): {pact.members.join(", ")}
+            <Eye className="size-3.5" aria-hidden="true" />{t("A pact ({status}): {members}", { status: pact.status, members: pact.members.join(", ") })}
           </p>
-          <p className="mt-0.5">Led by {pact.leader || "nobody yet"}; means to {pact.plan}.</p>
-          <span className="sr-only">Only whoever runs the story sees this.</span>
+          <p className="mt-0.5">{t("Led by {leader}; means to {plan}.", { leader: pact.leader || t("nobody yet"), plan: pact.plan })}</p>
+          <span className="sr-only">{t("Only whoever runs the story sees this.")}</span>
         </section>
       ))}
     </div>
@@ -90,22 +98,23 @@ export function OwnPacts({ campaignId, refreshKey, sheets, meUserId }: { campaig
 }
 
 function PactCard({ campaignId, pact, sheets, meUserId, onDone }: { campaignId: string; pact: PactView; sheets: CharacterSheet[]; meUserId: string; onDone: () => void }) {
+  const t = useT();
   return (
-    <section className="panel ornate rounded-lg border-violet-400/40 px-2.5 py-2 text-xs" data-own-pact={pact.id} aria-label={`${pact.characterName}'s pact`}>
+    <section className="panel ornate rounded-lg border-violet-400/40 px-2.5 py-2 text-xs" data-own-pact={pact.id} aria-label={t("{name}'s pact", { name: pact.characterName })}>
       <p className="flex items-center gap-1.5 text-[13px] font-medium text-violet-100">
         <VenetianMask className="size-3.5 shrink-0 text-violet-300" aria-hidden="true" />
-        {pact.stance === "spy" ? `${pact.characterName} is playing along with a pact` : `${pact.characterName} is in a pact`}
+        {pact.stance === "spy" ? t("{name} is playing along with a pact", { name: pact.characterName }) : t("{name} is in a pact", { name: pact.characterName })}
       </p>
       <p className="mt-1 leading-5 text-stone-300">
-        With {pact.members.filter((name) => name !== pact.characterName).join(", ")}, led by {pact.leader}. They mean to {pact.plan}.
+        {t("With {members}, led by {leader}. They mean to {plan}.", { members: pact.members.filter((name) => name !== pact.characterName).join(", "), leader: pact.leader, plan: pact.plan })}
       </p>
-      <p className="mt-0.5 text-[11px] text-stone-500">Only you see this.</p>
+      <p className="mt-0.5 text-[11px] text-stone-500">{t("Only you see this.")}</p>
       {pact.secrets.length ? (
-        <ul className="mt-1.5 space-y-1" aria-label="Your secret actions">
+        <ul className="mt-1.5 space-y-1" aria-label={t("Your secret actions")}>
           {pact.secrets.map((secret) => (
             <li key={secret.id} className="flex items-start gap-1.5 text-stone-300" data-own-secret={secret.revealed ? "out" : "held"}>
               <span className={cn("mt-0.5 shrink-0 rounded-full border px-1.5 text-[10px]", secret.caught ? "border-red-800/60 text-red-300" : secret.revealed ? "border-stone-700 text-stone-400" : "border-violet-700/60 text-violet-200")}>
-                {secret.caught ? "caught" : secret.revealed ? "out" : "held"}
+                {secret.caught ? t("caught") : secret.revealed ? t("out") : t("held", { context: "pact.badge.held" })}
               </span>
               <span className="min-w-0">
                 {secret.text} ({secret.total})
@@ -128,6 +137,7 @@ function SecretActionForm({ campaignId, pact, sheets, meUserId, onDone }: { camp
   const [item, setItem] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const t = useT();
   const [confirmation, setConfirmation] = useState<{ text: string; caught: boolean } | null>(null);
   const others = sheets.filter((sheet) => !sheet.isCompanion && !sheet.summon && sheet.id !== pact.characterId && sheet.userId !== meUserId);
   const target = others.find((sheet) => sheet.id === targetId);
@@ -149,15 +159,15 @@ function SecretActionForm({ campaignId, pact, sheets, meUserId, onDone }: { camp
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setError(String(data.error ?? "That did not work."));
+        setError(String(data.error ?? t("That did not work.", { context: "pact.error.failed" })));
         return;
       }
-      setConfirmation(data.caught ? { text: `Caught: ${String(data.revealed ?? "")}`, caught: true } : { text: String(data.confirmation ?? "Done in secret."), caught: false });
+      setConfirmation(data.caught ? { text: t("Caught: {text}", { text: String(data.revealed ?? "") }), caught: true } : { text: String(data.confirmation ?? t("Done in secret.")), caught: false });
       setText("");
       setItem("");
       onDone();
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "creator.error.unreachable" }));
     } finally {
       setBusy(false);
     }
@@ -166,7 +176,7 @@ function SecretActionForm({ campaignId, pact, sheets, meUserId, onDone }: { camp
   return (
     <form
       className="mt-2 space-y-1.5 border-t border-violet-900/40 pt-2"
-      aria-label={`Act in secret as ${pact.characterName}`}
+      aria-label={t("Act in secret as {name}", { name: pact.characterName })}
       onSubmit={(event) => {
         event.preventDefault();
         if (ready) {
@@ -176,14 +186,14 @@ function SecretActionForm({ campaignId, pact, sheets, meUserId, onDone }: { camp
       data-secret-form={pact.characterId}
     >
       <fieldset>
-        <legend className="eyebrow text-[10px] text-violet-300">Act in secret</legend>
-        <div className="mt-1 grid gap-1 sm:grid-cols-2" role="radiogroup" aria-label="What you do">
+        <legend className="eyebrow text-[10px] text-violet-300">{t("Act in secret")}</legend>
+        <div className="mt-1 grid gap-1 sm:grid-cols-2" role="radiogroup" aria-label={t("What you do")}>
           {pact.kinds.map((option) => (
             <label key={option} className={cn("pk-tap flex min-h-10 cursor-pointer items-start gap-1.5 rounded-md border px-2 py-1.5 focus-within:ring-2 focus-within:ring-violet-400/70", kind === option ? "border-violet-400/60 bg-violet-950/40 text-violet-100" : "border-stone-800 text-stone-300")}>
               <input type="radio" name={`${ids}-kind`} value={option} checked={kind === option} onChange={() => setKind(option)} className="mt-0.5 accent-violet-400" />
               <span>
-                <span className="block text-[12px]">{KIND_TEXT[option]?.label ?? option}</span>
-                <span className="block text-[11px] leading-snug text-stone-400">{KIND_TEXT[option]?.hint}</span>
+                <span className="block text-[12px]">{KIND_KEYS[option] ? t(KIND_KEYS[option]) : option}</span>
+                <span className="block text-[11px] leading-snug text-stone-400">{KIND_HINT_KEYS[option] ? t(KIND_HINT_KEYS[option]) : ""}</span>
               </span>
             </label>
           ))}
@@ -191,9 +201,9 @@ function SecretActionForm({ campaignId, pact, sheets, meUserId, onDone }: { camp
       </fieldset>
       {needsTarget ? (
         <label className="block">
-          <span className="text-[11px] text-stone-400">{kind === "steal" ? "From whom" : "Whom"}</span>
+          <span className="text-[11px] text-stone-400">{kind === "steal" ? t("From whom") : t("Whom")}</span>
           <select className={cn(ui.input, "mt-0.5 min-h-10 text-xs")} value={targetId} onChange={(event) => { setTargetId(event.target.value); setItem(""); }} data-secret-target="">
-            <option value="">Choose a character</option>
+            <option value="">{t("Choose a character")}</option>
             {others.map((sheet) => (
               <option key={sheet.id} value={sheet.id}>{sheet.name}</option>
             ))}
@@ -202,9 +212,9 @@ function SecretActionForm({ campaignId, pact, sheets, meUserId, onDone }: { camp
       ) : null}
       {kind === "steal" && target ? (
         <label className="block">
-          <span className="text-[11px] text-stone-400">What</span>
+          <span className="text-[11px] text-stone-400">{t("What")}</span>
           <select className={cn(ui.input, "mt-0.5 min-h-10 text-xs")} value={item} onChange={(event) => setItem(event.target.value)} data-secret-item="">
-            <option value="">Choose an item</option>
+            <option value="">{t("Choose an item")}</option>
             {target.equipment.map((line) => (
               <option key={line.name} value={line.name}>{line.name}</option>
             ))}
@@ -213,22 +223,22 @@ function SecretActionForm({ campaignId, pact, sheets, meUserId, onDone }: { camp
       ) : null}
       {kind === "scheme" || kind === "harm" ? (
         <label className="block">
-          <span className="text-[11px] text-stone-400">Rolled with</span>
+          <span className="text-[11px] text-stone-400">{t("Rolled with")}</span>
           <select className={cn(ui.input, "mt-0.5 min-h-10 text-xs")} value={skill} onChange={(event) => setSkill(event.target.value)}>
-            {SKILLS.map((option) => (
-              <option key={option.id} value={option.id}>{option.label}</option>
+            {Object.keys(SKILL_KEYS).map((id) => (
+              <option key={id} value={id}>{t(SKILL_KEYS[id])}</option>
             ))}
           </select>
         </label>
       ) : null}
       <label className="block">
-        <span className="text-[11px] text-stone-400">{needsTarget ? "In your words (optional)" : "What you do"}</span>
-        <input className={cn(ui.input, "mt-0.5 min-h-10 text-xs")} value={text} maxLength={300} onChange={(event) => setText(event.target.value)} placeholder="Loosen the cart's wheel" data-secret-text="" />
+        <span className="text-[11px] text-stone-400">{needsTarget ? t("In your words (optional)") : t("What you do")}</span>
+        <input className={cn(ui.input, "mt-0.5 min-h-10 text-xs")} value={text} maxLength={300} onChange={(event) => setText(event.target.value)} placeholder={t("Loosen the cart's wheel")} data-secret-text="" />
       </label>
       <div className="flex items-center justify-end">
         <KitButton type="submit" tone="primary" className="min-h-10 px-4" disabled={!ready} busy={busy}>
           {busy ? null : <VenetianMask className="size-3.5" aria-hidden="true" />}
-          Do it in secret
+          {t("Do it in secret")}
         </KitButton>
       </div>
       {error ? <PanelError>{error}</PanelError> : null}

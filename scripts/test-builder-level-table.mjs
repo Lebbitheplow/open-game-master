@@ -191,7 +191,7 @@ await test("The builder's summary shows the table under the summary rows and the
   const summaryAt = finish.indexOf("<SummaryPanel rows={summary}");
   const tableAt = finish.indexOf("<BuilderLevelTable state={state} derived={derived} klass={klass} />");
   assert.ok(summaryAt > 0 && tableAt > summaryAt, "the table follows the summary");
-  assert.ok(tableAt > finish.indexOf('title="Derived stats"'), "and the derived stats, so it never stands before them");
+  assert.ok(tableAt > finish.indexOf('title={t("builder.finish.derivedTitle")}'), "and the derived stats, so it never stands before them");
   assert.match(read("src/app/characters/builder/LevelProgressionTable.tsx"), /derived\.effectiveLevel <= 1/, "a first-level build has no table");
 });
 

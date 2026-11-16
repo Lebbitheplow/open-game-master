@@ -269,14 +269,19 @@ export function unconfirmedOrder(phase: Pick<CoordinationPhase, "entries">): str
   return phase.entries.filter((entry) => entry.orderChanged && !entry.companion).map((entry) => entry.name);
 }
 
+// The shape of a translator, as the pure sentence builders take it: the
+// surface that shows the words passes its own.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
 // Where a character stands in an ordered plan, in words: "step 2 of 3,
-// after Nysa, at the same time as Brann".
-export function placeWords(phase: Pick<CoordinationPhase, "entries">, characterId: string): string {
+// after Nysa, at the same time as Brann". The words are the dictionaries'
+// (coordination.place.*); the showing surface passes its translator.
+export function placeWords(t: T, phase: Pick<CoordinationPhase, "entries">, characterId: string): string {
   const sequence = sequenceOf(phase);
   if (!sequence) {
-    return "everyone acts at once";
+    return t("everyone acts at once");
   }
-  const nameOf = (id: string) => phase.entries.find((entry) => entry.characterId === id)?.name ?? "someone";
+  const nameOf = (id: string) => phase.entries.find((entry) => entry.characterId === id)?.name ?? t("someone");
   const at = sequence.findIndex((step) => step.includes(characterId));
   if (at < 0) {
     return "";
@@ -284,14 +289,14 @@ export function placeWords(phase: Pick<CoordinationPhase, "entries">, characterI
   const before = at > 0 ? sequence[at - 1].map(nameOf) : [];
   const alongside = sequence[at].filter((id) => id !== characterId).map(nameOf);
   return [
-    `step ${at + 1} of ${sequence.length}`,
-    ...(before.length ? [`after ${listWords(before)}`] : ["first"]),
-    ...(alongside.length ? [`at the same time as ${listWords(alongside)}`] : []),
+    t("step {step} of {steps}", { step: at + 1, steps: sequence.length }),
+    ...(before.length ? [t("after {names}", { names: listWords(t, before) })] : [t("first")]),
+    ...(alongside.length ? [t("at the same time as {names}", { names: listWords(t, alongside) })] : []),
   ].join(", ");
 }
 
-function listWords(names: string[]): string {
-  return names.length < 2 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+function listWords(t: T, names: string[]): string {
+  return names.length < 2 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} ${t("and")} ${names[names.length - 1]}`;
 }
 
 // What the DM reads with the turn the plan wakes: every frozen intention,
@@ -372,11 +377,15 @@ export function resolvedNote(phase: Pick<CoordinationPhase, "entries">): string 
   const entries = frozenEntries(phase);
   const sequence = sequenceOf({ entries });
   const nameOf = (id: string) => entries.find((entry) => entry.characterId === id)?.name ?? "someone";
+  // The note is a table record the model reads too: pinned English, so the
+  // name list joins with "and" here rather than through a translator.
+  const list = (names: string[]): string =>
+    names.length < 2 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
   const passed = entries.filter((entry) => !entry.companion && entry.state === "pass").map((entry) => entry.name);
   const asked = entries.filter((entry) => entry.companion && entry.text);
   return [
     sequence
-      ? `The party acts in order: ${sequence.map((ids, index) => `${index + 1}. ${listWords(ids.map(nameOf))}${ids.length > 1 ? " together" : ""}`).join("; ")}. The GM resolves the plan as one scene, step by step.`
+      ? `The party acts in order: ${sequence.map((ids, index) => `${index + 1}. ${list(ids.map(nameOf))}${ids.length > 1 ? " together" : ""}`).join("; ")}. The GM resolves the plan as one scene, step by step.`
       : "The party acts together; the GM resolves the plan as one moment.",
     ...asked.map((entry) => `${entry.requestedBy ?? "The party"} asked ${entry.name} to ${entry.text}.`),
     ...(passed.length ? [`Passed: ${passed.join(", ")}.`] : []),

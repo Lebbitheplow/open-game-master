@@ -5,9 +5,7 @@ import { CampaignCover } from "@/components/CampaignCover";
 import { StorySetupNotice } from "@/components/StorySetupNotice";
 import { useTtsVoices, voiceLabel } from "@/components/VoicePicker";
 import { cn } from "@/lib/cn";
-import { CAMPAIGN_DIFFICULTY_HINTS } from "@/lib/campaign-types";
-import { STORY_SETUP_WARNING_COMING } from "@/lib/dm/story-setup-logic";
-import { genrePreset } from "@/lib/genres";
+import { storySetupWarningComing } from "@/lib/dm/story-setup-logic";
 import { DM_MODE_LABELS } from "@/lib/schemas/game-settings-options";
 import type { WorldPackSummary } from "@/lib/worlds/types";
 import type { StepProps } from "@/app/create-campaign/draft";
@@ -16,6 +14,7 @@ import { coverSheet } from "@/app/create-campaign/cover-sheet";
 import { customRules, narrationSummary, safetySummary } from "@/app/create-campaign/summaries";
 import { featuresOn } from "@/app/create-campaign/table-sheet";
 import { bringsSomething } from "@/app/workshop/ContentImportPicker";
+import { useT } from "@/lib/locale";
 
 export type EditTarget = { step: Exclude<StepKey, "review">; group?: GroupId };
 
@@ -50,10 +49,10 @@ export function ReviewStep({
   defaultsPanel: ReactNode;
 }) {
   const { solo, storyKnownMissing } = gates;
-  const preset = genrePreset(draft.genre);
-  const sheet = coverSheet(draft, gates, selectedPack?.name ?? null);
+  const t = useT();
+  const sheet = coverSheet(draft, gates, selectedPack?.name ?? null, t);
   const voices = useTtsVoices();
-  const rules = customRules(draft);
+  const rules = customRules(t, draft);
   const importing = bringsSomething(draft.contentImport);
   const storyboardClash = Boolean(prep?.arcComing && importing && gates.aiNarrates && draft.aiStorySetup && !draft.storySetupKept);
   let index = 0;
@@ -70,7 +69,7 @@ export function ReviewStep({
           <div className="cc-cover-art rounded-xl">
             <CampaignCover cover={null} title={sheet.title} genre={draft.genre} />
             <span className="cc-cover-caption">
-              <span className="cc-cover-genre">{preset.name}</span>
+              <span className="cc-cover-genre">{({ "high_fantasy": t("High fantasy"), "dark_fantasy": t("Dark fantasy"), "mystery": t("Mystery"), "horror": t("Horror"), "cyberpunk": t("Cyberpunk"), "steampunk": t("Steampunk"), "post_apocalyptic": t("Post-apocalyptic"), "custom": t("Custom", { context: "creator.genre.custom" }), "coverAria": t("{name} cover plate"), "humansOnly": t("all-human world") } as Record<string, string>)[draft.genre] ?? String(draft.genre)}</span>
               <span className="cc-cover-title">{sheet.title}</span>
             </span>
           </div>
@@ -86,34 +85,30 @@ export function ReviewStep({
 
         <div className="flex min-w-0 flex-[1_1_18rem] flex-col gap-2.5">
           <dl className="cc-readback">
-            {row("Runs the game", DM_MODE_LABELS[draft.dmMode], { step: "essentials" }, { gold: true })}
-            {row("Setting", sheet.setting, { step: "essentials", group: selectedPack ? "world" : undefined })}
-            {row("Party", sheet.party, { step: "essentials" })}
-            {row("Difficulty", sheet.difficulty, { step: "essentials" })}
-            {row("Dice", sheet.dice, { step: "essentials", group: "character" })}
+            {row(t("Runs the game"), t(DM_MODE_LABELS[draft.dmMode]), { step: "essentials" }, { gold: true })}
+            {row(t("Setting"), sheet.setting, { step: "essentials", group: selectedPack ? "world" : undefined })}
+            {row(t("Party"), sheet.party, { step: "essentials" })}
+            {row(t("Difficulty"), sheet.difficulty, { step: "essentials" })}
+            {row(t("Dice"), sheet.dice, { step: "essentials", group: "character" })}
             {row(
-              "Narration",
-              narrationSummary(draft, gates, voiceLabel(voices, draft.ttsVoice)),
+              t("Narration", { context: "creator.review.row.narration" }),
+              narrationSummary(t, draft, gates, voiceLabel(voices, draft.ttsVoice)),
               { step: "experience" },
               { wrap: true },
             )}
-            {row("Safety", safetySummary(draft), { step: "experience", group: "safety" }, { wrap: true })}
-            {row("Rules", rules ?? "The book as written", { step: "experience", group: "variants" }, { wrap: true })}
+            {row(t("Safety"), safetySummary(t, draft), { step: "experience", group: "safety" }, { wrap: true })}
+            {row(t("Rules"), rules ?? t("The book as written"), { step: "experience", group: "variants" }, { wrap: true })}
             {row(
-              "Prep",
-              importing ? `From ${prep?.title ?? "a workshop"}` : "None brought in",
+              t("Prep"),
+              importing ? t("From {title}", { title: prep?.title ?? t("a workshop") }) : t("None brought in"),
               { step: "essentials", group: "prep" },
               { wrap: true },
             )}
-            {row("Table features", `${featuresOn(draft, gates)} on`, { step: "experience" }, { gold: true })}
+            {row(t("Table features"), t("{count} on", { count: featuresOn(draft, gates) }), { step: "experience" }, { gold: true })}
           </dl>
-          <p className="text-stone-400">
-            {solo
-              ? "You'll drop into the lobby next to ready up."
-              : "You'll drop into the lobby next to share an invite code and ready up."}
-          </p>
+          <p className="text-stone-400">{solo ? t("You'll drop into the lobby next to ready up.") : t("You'll drop into the lobby next to share an invite code and ready up.")}</p>
           <div className="flex flex-wrap gap-1.5">
-            {[CAMPAIGN_DIFFICULTY_HINTS[draft.difficulty], ...sheet.chips].map((chip, chipIndex) => (
+            {[({ "easy": t("Fights lean easy and the story forgives mistakes. Good for a first table."), "normal": t("Encounters built to the book. A careless party can still lose someone."), "hard": t("Bigger fights, fewer second chances, resources that actually run out."), "deadly": t("Assumes you want to lose characters. Plan retreats and bring spares.") } as Record<string, string>)[draft.difficulty] ?? String(draft.difficulty), ...sheet.chips].map((chip, chipIndex) => (
               <span key={chip} className="cc-review-chip" style={{ "--cc-delay": `${420 + chipIndex * 60}ms` } as CSSProperties}>
                 {chip}
               </span>
@@ -124,33 +119,27 @@ export function ReviewStep({
 
       {storyboardClash ? (
         <StorySetupNotice
-          text={STORY_SETUP_WARNING_COMING}
+          text={storySetupWarningComing(t)}
           onTurnOff={() => patch({ aiStorySetup: false })}
           onKeep={() => patch({ storySetupKept: true })}
         />
       ) : null}
       {defaultsPanel}
       {solo && storyKnownMissing ? (
-        <p className="rounded-lg border border-amber-900/50 bg-amber-950/30 p-3 text-amber-200">
-          A solo adventure needs the AI storyteller, and this server does not have one. Ask the server owner to set
-          up an AI backend first.
-        </p>
+        <p className="rounded-lg border border-amber-900/50 bg-amber-950/30 p-3 text-amber-200">{t("A solo adventure needs the AI storyteller, and this server does not have one. Ask the server owner to set up an AI backend first.")}</p>
       ) : null}
       {error ? <p className="motion-shake text-red-400">{error}</p> : null}
       {followUp ? (
         <div role="alert" className="motion-shake space-y-2 rounded-lg border border-amber-900/50 bg-amber-950/30 p-3 text-amber-200">
-          <p>{solo ? "The adventure is made" : "The campaign is made"}, but part of what you chose for it did not come in:</p>
+          <p>{solo ? t("The adventure is made, but part of what you chose for it did not come in:") : t("The campaign is made, but part of what you chose for it did not come in:")}</p>
           <ul className="list-disc space-y-1 pl-5 text-amber-100/90">
             {followUp.problems.map((problem) => (
               <li key={problem}>{problem}</li>
             ))}
           </ul>
-          <p className="text-xs text-amber-200/80">
-            Try again sends only what failed. Or open it now and bring the rest in from the lobby: Bring in prep for a
-            workshop, House rules and Lore for what you typed here.
-          </p>
+          <p className="text-xs text-amber-200/80">{t("Try again sends only what failed. Or open it now and bring the rest in from the lobby: Bring in prep for a workshop, House rules and Lore for what you typed here.")}</p>
           <button type="button" className="cc-link inline-flex min-h-10 items-center" disabled={followUp.busy} onClick={followUp.onOpen}>
-            {solo ? "Open the adventure as it is" : "Open the campaign as it is"}
+            {solo ? t("Open the adventure as it is") : t("Open the campaign as it is")}
           </button>
         </div>
       ) : null}
@@ -174,13 +163,14 @@ function Row({
   onEdit: () => void;
   children: ReactNode;
 }) {
+  const t = useT();
   return (
     <div className="cc-readback-row" data-wrap={wrap || undefined} style={{ "--cc-delay": `${index * 70}ms` } as CSSProperties}>
       <dt>{label}</dt>
       <dd data-ink={gold ? "gold" : undefined}>
         <span className="cc-readback-value">{children}</span>
-        <button type="button" className="cc-readback-edit" onClick={onEdit} aria-label={`Edit ${label.toLowerCase()}`}>
-          Edit
+        <button type="button" className="cc-readback-edit" onClick={onEdit} aria-label={t("Edit {label}", { label: label.toLowerCase() })}>
+          {t("Edit")}
         </button>
       </dd>
     </div>

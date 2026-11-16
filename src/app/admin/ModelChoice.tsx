@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 import type { ModelChoices, RegistryModel, RegistryProvider } from "@/lib/model-registry/registry";
 import type { ModelRole } from "@/lib/model-registry/catalog-logic";
 import { ui } from "@/lib/ui";
+import { useT, useTp } from "@/lib/locale";
 
 // A model field that lists what the backend serves (POST /api/admin/models):
 // the server's own list, each row with the catalog's word on it, and the
@@ -58,27 +59,35 @@ export function modelTone(model: RegistryModel | undefined): string {
 }
 
 // The one line under the field: what is known of the chosen model.
-export function modelLine(model: RegistryModel | undefined): string {
+export function modelLine(
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  model: RegistryModel | undefined,
+): string {
   if (!model) return "";
   const parts = [...model.verdict.warnings, model.verdict.summary];
   if (model.tested) {
     parts.push(
       model.tested.ok
-        ? `Tested here ${model.tested.at.slice(0, 10)}: runs the storyteller loop.`
-        : `Tested here ${model.tested.at.slice(0, 10)}: failed (${[
-            !model.tested.stages.streaming && "no stream",
-            !model.tested.stages.toolCall && "no tool call",
-            !model.tested.stages.toolContinuation && "no continuation",
-            model.tested.stages.turn === false && "failed the test turn",
-          ]
-            .filter(Boolean)
-            .join(", ")}).`,
+        ? t("Tested here {date}: runs the storyteller loop.", { date: model.tested.at.slice(0, 10) })
+        : t("Tested here {date}: failed ({reasons}).", {
+            date: model.tested.at.slice(0, 10),
+            reasons: [
+              !model.tested.stages.streaming && t("no stream"),
+              !model.tested.stages.toolCall && t("no tool call"),
+              !model.tested.stages.toolContinuation && t("no continuation"),
+              model.tested.stages.turn === false && t("failed the test turn"),
+            ]
+              .filter(Boolean)
+              .join(", "),
+          }),
     );
   }
   return parts.join(" ");
 }
 
 export function ModelChoiceField(props: ModelChoiceProps) {
+  const t = useT();
+  const tp = useTp();
   const { label, hint, role, provider, baseUrl = "", apiKey = "", harnessId, value, onChange, blankLabel, narrow, preselect, onListing } = props;
   const [choices, setChoices] = useState<ModelChoices | null>(null);
   const [loading, setLoading] = useState(false);
@@ -154,10 +163,10 @@ export function ModelChoiceField(props: ModelChoiceProps) {
     ...(blank ? [{ value: BLANK, label: blank }] : []),
     ...[...models.filter((model) => model.id === recommended), ...models.filter((model) => model.id !== recommended)].map((model) => ({
       value: model.id,
-      label: `${model.label}${model.id === recommended ? " (recommended)" : ""}${model.listed === false ? " (not listed)" : ""}${model.verdict.fit === "unfit" ? " (unfit)" : ""}`,
+      label: `${model.label}${model.id === recommended ? t(" (recommended)") : ""}${model.listed === false ? t(" (not listed)") : ""}${model.verdict.fit === "unfit" ? t(" (unfit)") : ""}`,
       hint: [model.note, model.verdict.summary].filter(Boolean).join(" · "),
     })),
-    { value: TYPE_OWN, label: "Type a model id…" },
+    { value: TYPE_OWN, label: t("Type a model id…") },
   ];
 
   return (
@@ -197,46 +206,46 @@ export function ModelChoiceField(props: ModelChoiceProps) {
           }}
           disabled={loading}
           aria-busy={loading}
-          title="List the backend's models again"
+          title={t("List the backend's models again")}
           className={cn(ui.btnSmall, "shrink-0")}
         >
           {loading ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-          Look again
+          {t("Look again", { context: "admin.models.lookAgain" })}
         </button>
       </div>
       {choices && choices.reachable === false ? (
-        <p className="mt-1 text-[11px] leading-4 text-amber-300">{choices.error || "The backend did not answer."}</p>
+        <p className="mt-1 text-[11px] leading-4 text-amber-300">{choices.error || t("The backend did not answer.")}</p>
       ) : null}
       {chosen ? (
-        <p className={cn("mt-1 text-[11px] leading-4", modelTone(chosen))}>{modelLine(chosen)}</p>
+        <p className={cn("mt-1 text-[11px] leading-4", modelTone(chosen))}>{modelLine(t, chosen)}</p>
       ) : value && choices && !loading ? (
-        <p className="mt-1 text-[11px] leading-4 text-stone-500">Not in the catalog; ODM will try it as typed.</p>
+        <p className="mt-1 text-[11px] leading-4 text-stone-500">{t("Not in the catalog; ODM will try it as typed.")}</p>
       ) : null}
       {unfit.length ? (
         <p className="mt-1 text-[11px] leading-4 text-stone-500">
-          {unfit.length} {unfit.length === 1 ? "model" : "models"} the backend lists cannot run the {role === "image" ? "painter" : "storyteller"}
-          {showUnfit ? "" : " and " + (unfit.length === 1 ? "is" : "are") + " left off the list"}.{" "}
+          {tp("1 model the backend lists cannot run the {role}", "{count} models the backend lists cannot run the {role}", { count: unfit.length, role: t(role === "image" ? "painter" : "storyteller") })}
+          {showUnfit ? "" : tp(" and is left off the list. ", " and are left off the list. ", { count: unfit.length })}
           <button type="button" className="underline hover:text-stone-300" onClick={() => setShowUnfit((on) => !on)}>
-            {showUnfit ? "Hide them" : "Show them"}
+            {showUnfit ? t("Hide them") : t("Show them")}
           </button>
         </p>
       ) : null}
       {narrow && (hidden || showAll) ? (
         <p className="mt-1 text-[11px] leading-4 text-stone-500">
-          {showAll ? `Showing every model the server lists. ` : `${hidden} more ${hidden === 1 ? "model" : "models"} the server lists ${hidden === 1 ? "does" : "do"} not look like ${narrow.kind}. `}
+          {showAll ? t("Showing every model the server lists. ") : tp("1 more model the server lists does not look like {kind}. ", "{count} more models the server lists do not look like {kind}. ", { count: hidden, kind: narrow.kind })}
           <button type="button" className="underline hover:text-stone-300" onClick={() => setShowAll((on) => !on)}>
-            {showAll ? `Only ${narrow.kind}` : "Show all"}
+            {showAll ? t("Only {kind}", { kind: narrow.kind }) : t("Show all")}
           </button>
         </p>
       ) : null}
       {choices ? (
         <p className="mt-1 text-[11px] leading-4 text-stone-600">
-          {choices.hardware ? `This machine: ${choices.hardware.summary}. ` : ""}
-          {choices.reachable === true ? `${all.filter((model) => model.listed).length} listed by the backend. ` : ""}
-          Catalog: {choices.catalog.models} models
-          {choices.catalog.fetchedAt ? ` as of ${choices.catalog.fetchedAt.slice(0, 10)}` : ""}
-          {choices.catalog.source === "snapshot" ? " (bundled copy)" : ""}
-          {choices.catalog.error ? `; last refresh failed: ${choices.catalog.error}` : ""}.
+          {choices.hardware ? t("This machine: {summary}. ", { summary: choices.hardware.summary }) : ""}
+          {choices.reachable === true ? t("{count} listed by the backend. ", { count: all.filter((model) => model.listed).length }) : ""}
+          {t("Catalog: {count} models", { count: choices.catalog.models })}
+          {choices.catalog.fetchedAt ? t(" as of {date}", { date: choices.catalog.fetchedAt.slice(0, 10) }) : ""}
+          {choices.catalog.source === "snapshot" ? t(" (bundled copy)") : ""}
+          {choices.catalog.error ? t("; last refresh failed: {error}", { error: choices.catalog.error }) : ""}.
         </p>
       ) : null}
     </Field>

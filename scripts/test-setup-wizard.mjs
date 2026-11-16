@@ -24,6 +24,9 @@ const { listModels } = await import("../src/lib/setup/discovery.ts");
 const { comfyFromScan, picturesBlocker } = await import("../src/app/setup/draft.ts");
 const { getSetupState, markSetup, setupNudgeWanted } = await import("../src/lib/setup/state.ts");
 const suggest = await import("../src/lib/setup/suggest.ts");
+const { translate } = await import("../src/lib/messages-logic.ts");
+// These sentence builders speak for the screen; the test reads them in English.
+const t = (key, vars) => translate("en", key, vars);
 
 let passed = 0;
 async function test(name, fn) {
@@ -199,18 +202,18 @@ try {
     const pickComfy = "Pick the image model, or choose another answer.";
     // Two checkpoints found and none picked (comfyFromScan takes neither):
     // nothing would be painted, so the step says so.
-    assert.equal(picturesBlocker(draft("comfyui"), input), pickComfy);
-    assert.equal(picturesBlocker(draft("comfyui", { comfy: { url: "http://127.0.0.1:8188", checkpoint: "a.safetensors", preset: "checkpoint" } }), input), null);
-    assert.equal(picturesBlocker(draft("comfyui", { comfy: { url: "http://127.0.0.1:8188", checkpoint: "", preset: "z_turbo" } }), input), null, "a catalog model needs no checkpoint");
+    assert.equal(picturesBlocker(t, draft("comfyui"), input), pickComfy);
+    assert.equal(picturesBlocker(t, draft("comfyui", { comfy: { url: "http://127.0.0.1:8188", checkpoint: "a.safetensors", preset: "checkpoint" } }), input), null);
+    assert.equal(picturesBlocker(t, draft("comfyui", { comfy: { url: "http://127.0.0.1:8188", checkpoint: "", preset: "z_turbo" } }), input), null, "a catalog model needs no checkpoint");
     // A ComfyUI that offers nothing to pick, or has not answered, is left to the admin panel.
-    assert.equal(picturesBlocker(draft("comfyui"), { ...input, comfyOffers: false }), null);
-    assert.equal(picturesBlocker(draft("comfyui", { comfy: { url: " ", checkpoint: "", preset: "checkpoint" } }), input), "Type where ComfyUI runs, or choose another answer.");
+    assert.equal(picturesBlocker(t, draft("comfyui"), { ...input, comfyOffers: false }), null);
+    assert.equal(picturesBlocker(t, draft("comfyui", { comfy: { url: " ", checkpoint: "", preset: "checkpoint" } }), input), "Type where ComfyUI runs, or choose another answer.");
     // OpenAI's blockers, unchanged.
-    assert.equal(picturesBlocker(draft("openai"), input), "Pick the picture model, or choose another answer.");
-    assert.equal(picturesBlocker(draft("openai"), { ...input, envImageModel: "env-painter" }), null);
-    assert.equal(picturesBlocker(draft("openai", { picturesModel: "my-painter" }), { ...input, openaiKeySaved: false }), "Paste an OpenAI key, or choose another answer.");
-    assert.equal(picturesBlocker(draft("agent"), input), "Paint a test map first: the tables only get a painter that works.");
-    assert.equal(picturesBlocker(draft("none"), input), null);
+    assert.equal(picturesBlocker(t, draft("openai"), input), "Pick the picture model, or choose another answer.");
+    assert.equal(picturesBlocker(t, draft("openai"), { ...input, envImageModel: "env-painter" }), null);
+    assert.equal(picturesBlocker(t, draft("openai", { picturesModel: "my-painter" }), { ...input, openaiKeySaved: false }), "Paste an OpenAI key, or choose another answer.");
+    assert.equal(picturesBlocker(t, draft("agent"), input), "Paint a test map first: the tables only get a painter that works.");
+    assert.equal(picturesBlocker(t, draft("none"), input), null);
   });
 
   await test("each storyteller answer writes the admin panel's own fields", () => {
@@ -379,17 +382,17 @@ try {
   // never filled in for the admin, since saving them is a deliberate choice.
   await test("the media steps suggest reusing what the storyteller already set up", () => {
     const none = { story: "", agentId: "", storyIsOpenAi: false, comfyFound: false, kokoroFound: false };
-    const codex = suggest.suggestPictures({ ...none, story: "agent", agentId: "codex" });
+    const codex = suggest.suggestPictures(t, { ...none, story: "agent", agentId: "codex" });
     assert.equal(codex.pick, "agent");
     assert.match(codex.reason, /^Codex narrates your tables, and it can paint too/);
-    assert.equal(suggest.suggestPictures({ ...none, story: "agent", agentId: "grok" }).pick, "agent");
-    assert.notEqual(suggest.suggestPictures({ ...none, story: "agent", agentId: "claude" }).pick, "agent", "Claude Code has no image tool");
-    assert.equal(suggest.suggestPictures({ ...none, story: "agent", agentId: "claude", comfyFound: true }).pick, "comfyui");
-    assert.equal(suggest.suggestPictures({ ...none, story: "key", storyIsOpenAi: true, comfyFound: true }).pick, "openai", "the key beats a second service");
-    assert.equal(suggest.suggestPictures(none).pick, "none");
-    assert.equal(suggest.suggestNarration({ ...none, storyIsOpenAi: true }).pick, "openai");
-    assert.equal(suggest.suggestNarration({ ...none, kokoroFound: true }).pick, "kokoro");
-    assert.equal(suggest.suggestNarration({ ...none, story: "agent", agentId: "codex" }).pick, "off", "no agent reads aloud");
+    assert.equal(suggest.suggestPictures(t, { ...none, story: "agent", agentId: "grok" }).pick, "agent");
+    assert.notEqual(suggest.suggestPictures(t, { ...none, story: "agent", agentId: "claude" }).pick, "agent", "Claude Code has no image tool");
+    assert.equal(suggest.suggestPictures(t, { ...none, story: "agent", agentId: "claude", comfyFound: true }).pick, "comfyui");
+    assert.equal(suggest.suggestPictures(t, { ...none, story: "key", storyIsOpenAi: true, comfyFound: true }).pick, "openai", "the key beats a second service");
+    assert.equal(suggest.suggestPictures(t, none).pick, "none");
+    assert.equal(suggest.suggestNarration(t, { ...none, storyIsOpenAi: true }).pick, "openai");
+    assert.equal(suggest.suggestNarration(t, { ...none, kokoroFound: true }).pick, "kokoro");
+    assert.equal(suggest.suggestNarration(t, { ...none, story: "agent", agentId: "codex" }).pick, "off", "no agent reads aloud");
     assert.equal(suggest.fillsStep("agent"), true);
     assert.equal(suggest.fillsStep("none"), false);
     assert.equal(suggest.fillsStep("off"), false);
@@ -402,7 +405,7 @@ try {
     for (const key of ["pictures", "voice", "players"]) {
       assert.match(wizard, new RegExp(`onClick: \\(\\) => skip\\("${key}"\\)`), `${key} can be skipped`);
     }
-    assert.match(wizard, /label: "Save and finish later"/);
+    assert.match(wizard, /label: t\("Save and finish later"\)/, "the secondary action speaks from the dictionary");
     // skip() puts the step back to the saved answer and saves nothing.
     const skipBody = wizard.slice(wizard.indexOf("function skip("), wizard.indexOf("async function finishLater"));
     assert.doesNotMatch(skipBody, /patch\(/, "skip never PATCHes");

@@ -3,6 +3,7 @@
 import { Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { InfoButton } from "@/components/ui/InfoDialog";
+import { useLocale, useT } from "@/lib/locale";
 import { counterView } from "@/components/sheet/sheet-state";
 
 // The character sheet's counters: a spell slot level as marks, and a class
@@ -34,13 +35,14 @@ export function SlotRow({
   onSpend?: () => void;
   onRecover?: () => void;
 }) {
+  const t = useT();
   return (
     <span
       className="flex items-center gap-1.5 rounded-lg border border-stone-800 px-2 py-1"
-      title={`${left} of ${max} ${label.toLowerCase()} slots left`}
+      title={t("{left} of {max} {label} slots left", { left, max, label })}
     >
       <span className="font-display text-[11px] tracking-wide text-stone-400">{label}</span>
-      <span className="flex gap-0.5" aria-label={`${left} of ${max} left`}>
+      <span className="flex gap-0.5" aria-label={t("{left} of {max} left", { left, max })}>
         {Array.from({ length: max }, (_, index) => (
           <span
             key={index}
@@ -58,8 +60,8 @@ export function SlotRow({
           type="button"
           className={STEP_BUTTON}
           disabled={busy || left <= 0}
-          title="Mark one slot as spent"
-          aria-label={`Spend a ${label} slot`}
+          title={t("Mark one slot as spent")}
+          aria-label={t("Spend a {label} slot", { label })}
           onClick={onSpend}
         >
           <Minus className="size-3" />
@@ -70,8 +72,8 @@ export function SlotRow({
           type="button"
           className={STEP_BUTTON}
           disabled={busy || left >= max}
-          title="Correction: give one slot back"
-          aria-label={`Give back a ${label} slot`}
+          title={t("Correction: give one slot back")}
+          aria-label={t("Give back a {label} slot", { label })}
           onClick={onRecover}
         >
           <Plus className="size-3" />
@@ -109,7 +111,9 @@ export function ResourceRow({
   onSpend: () => void;
   onRecover: () => void;
 }) {
-  const counter = counterView(id, pool);
+  const t = useT();
+  const locale = useLocale();
+  const counter = counterView(t, id, pool, locale);
   return (
   <div className="flex items-center gap-2">
     <span className="flex w-36 shrink-0 items-center gap-1 text-stone-400">
@@ -121,7 +125,7 @@ export function ResourceRow({
         type="button"
         className={STEP_BUTTON}
         disabled={busy || pool.used >= pool.max || Boolean(deadNote)}
-        title={deadNote ?? "Spend a use"}
+        title={deadNote ?? t("Spend a use")}
         onClick={onSpend}
       >
         <Minus className="size-3" />
@@ -133,14 +137,14 @@ export function ResourceRow({
     {/* Relentless Rage's DC climbs with each use since the
         last rest (the engine's count). */}
     {id === "relentless_rage" ? (
-      <span className="text-[11px] text-stone-500">next DC {10 + 5 * pool.used}</span>
+      <span className="text-[11px] text-stone-500">{t("next DC {dc}", { dc: 10 + 5 * pool.used })}</span>
     ) : null}
     {corrects ? (
       <button
         type="button"
         className={STEP_BUTTON}
         disabled={busy || pool.used <= 0}
-        title="Correction: give a use back"
+        title={t("Correction: give a use back")}
         onClick={onRecover}
       >
         <Plus className="size-3" />

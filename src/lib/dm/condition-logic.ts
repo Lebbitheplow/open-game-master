@@ -12,6 +12,7 @@ import { textKey } from "@/lib/language/text-logic";
 import type { CreatureHold } from "@/lib/bestiary/hold-text";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { CALTROPS_WOUND } from "@/lib/battlemap/zones-gear";
+import { pluralOf } from "@/lib/messages-logic";
 import { maxHpCannotFall } from "@/lib/dm/ar-ws-inured-logic";
 
 export {
@@ -719,22 +720,32 @@ export function durationArgsFor(rounds: number): { rounds?: number; minutes?: nu
 }
 
 // Rounds left as people say them: "3 rounds", "45 min", "2 h 30 min".
-export function describeConditionDuration(rounds: number): string {
+export function describeConditionDuration(
+  rounds: number,
+  t?: (key: string, vars?: Record<string, string | number>) => string,
+): string {
+  const tp = pluralOf(t);
   if (rounds < ROUNDS_PER_MINUTE) {
-    return `${rounds} round${rounds === 1 ? "" : "s"}`;
+    return t ? tp("{count} round", "{count} rounds", { count: rounds }) : `${rounds} round${rounds === 1 ? "" : "s"}`;
   }
   const minutes = Math.ceil(rounds / ROUNDS_PER_MINUTE);
   if (minutes < 60) {
-    return `${minutes} min`;
+    return t ? t("{minutes} min", { minutes }) : `${minutes} min`;
   }
   const hours = Math.floor(minutes / 60);
   if (hours >= 48) {
     const days = Math.floor(hours / 24);
     const leftHours = hours % 24;
-    return leftHours ? `${days} days ${leftHours} h` : `${days} days`;
+    if (leftHours) {
+      return t ? tp("{count} day {hours} h", "{count} days {hours} h", { count: days, hours: leftHours }) : `${days} days ${leftHours} h`;
+    }
+    return t ? tp("{count} day", "{count} days", { count: days }) : `${days} days`;
   }
   const rest = minutes % 60;
-  return rest ? `${hours} h ${rest} min` : `${hours} h`;
+  if (rest) {
+    return t ? t("{hours} h {minutes} min", { hours, minutes: rest }) : `${hours} h ${rest} min`;
+  }
+  return t ? t("{hours} h", { hours }) : `${hours} h`;
 }
 
 // One tick of `by` rounds (a round wrap in combat, or the in-world clock

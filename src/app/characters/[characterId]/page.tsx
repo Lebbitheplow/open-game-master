@@ -13,6 +13,8 @@ import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { cn } from "@/lib/cn";
 import { downloadBlob } from "@/lib/download";
 import { downloadCharacterSheetPdf } from "@/lib/pdf/download";
+import { useLocale, useT } from "@/lib/locale";
+import { contentName } from "@/lib/content/names";
 import type { CreateSheetInput } from "@/lib/schemas/sheet";
 import { CharacterPortrait, ui } from "@/lib/ui";
 import { offersImages, useCapabilities } from "@/lib/use-capabilities";
@@ -68,6 +70,8 @@ export default function CharacterDetailPage({
   params: Promise<{ characterId: string }>;
 }) {
   const { characterId } = use(params);
+  const t = useT();
+  const locale = useLocale();
   const [character, setCharacter] = useState<LibraryCharacter | null>(null);
   const [events, setEvents] = useState<CharacterEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,7 +115,7 @@ export default function CharacterDetailPage({
     try {
       const response = await fetch(`/api/characters/${characterId}/export`);
       if (!response.ok) {
-        setExportError("Export failed.");
+        setExportError(t("Export failed."));
         return;
       }
       const blob = await response.blob();
@@ -120,10 +124,10 @@ export default function CharacterDetailPage({
       // character-file.ts): said, so the person knows the file is whole.
       const carried = ((JSON.parse(await blob.text()) as { homebrew?: Array<{ name?: string }> }).homebrew ?? []).map((entry) => String(entry.name ?? "")).filter(Boolean);
       if (carried.length) {
-        setExportNote(`The file carries the Homebrew ${character.name} uses: ${carried.join(", ")}. Importing it on another account or server puts those on that shelf too.`);
+        setExportNote(t("The file carries the Homebrew {name} uses: {list}. Importing it on another account or server puts those on that shelf too.", { name: character.name, list: carried.join(", ") }));
       }
     } catch {
-      setExportError("Export failed.");
+      setExportError(t("Export failed."));
     } finally {
       setExporting(false);
     }
@@ -179,7 +183,7 @@ export default function CharacterDetailPage({
       const response = await fetch(`/api/characters/${characterId}/portrait`, { method: "POST" });
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
-        setPortraitError(data.error ?? "Could not queue the portrait.");
+        setPortraitError(data.error ?? t("Could not queue the portrait."));
         return;
       }
       setCharacter((current) =>
@@ -262,9 +266,9 @@ export default function CharacterDetailPage({
         <div className={cn(ui.card, "ornate texture-noise flex flex-col items-center gap-3 px-6 py-8 text-center")}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/assets/ui/empty-notice-board.webp" alt="" className="h-24 w-32 object-contain opacity-90" />
-          <p className="font-serif text-sm text-stone-300">Character not found.</p>
+          <p className="font-serif text-sm text-stone-300">{t("Character not found.")}</p>
           <Link href="/characters" className={ui.btnSecondary}>
-            Back to your library
+            {t("Back to your characters")}
           </Link>
         </div>
       </main>
@@ -279,47 +283,47 @@ export default function CharacterDetailPage({
   const actions: KebabItem[] = [
     {
       id: "pdf",
-      label: pdfBusy ? "Preparing..." : "Download PDF",
-      hint: "Download this character sheet as a fillable PDF",
+      label: pdfBusy ? t("Preparing...") : t("Download PDF", { context: "characters.action.pdf" }),
+      hint: t("Download this character sheet as a fillable PDF"),
       glyph: "ui-export",
       disabled: pdfBusy,
       onSelect: () => void handleDownloadPdf(),
     },
     {
       id: "export",
-      label: exporting ? "Exporting..." : "Export",
-      hint: "Save this character as a file you can import on another device or server",
+      label: exporting ? t("Exporting...") : t("Export"),
+      hint: t("Save this character as a file you can import on another device or server"),
       glyph: "system-share",
       disabled: exporting,
       onSelect: () => void handleExport(),
     },
     {
       id: "edit",
-      label: "Edit build",
-      hint: "Change this character's build choices in the library",
+      label: t("Edit build"),
+      hint: t("Change this character's build choices in the library"),
       glyph: "ui-edit",
       onSelect: () => navigateTo(`/characters/${characterId}/edit`),
     },
     {
       id: "duplicate",
-      label: cloning ? "Copying..." : "Duplicate",
-      hint: "Save a second copy of this character to your library",
+      label: cloning ? t("Copying...") : t("Duplicate"),
+      hint: t("Save a second copy of this character to your library"),
       glyph: "ui-duplicate",
       disabled: cloning,
       onSelect: () => void handleDuplicate(),
     },
     {
       id: "duplicate-edit",
-      label: "Duplicate and edit",
-      hint: "Save a second copy and open it in the build editor; this one stays as it is",
+      label: t("Duplicate and edit"),
+      hint: t("Save a second copy and open it in the build editor; this one stays as it is"),
       glyph: "ui-duplicate",
       disabled: cloning,
       onSelect: () => void handleDuplicate(true),
     },
     {
       id: "portrait",
-      label: sheet.portrait ? "Replace portrait" : "Upload portrait",
-      hint: sheet.portrait ? "Replace the portrait with a photo" : "Upload a portrait",
+      label: sheet.portrait ? t("Replace portrait") : t("Upload portrait"),
+      hint: sheet.portrait ? t("Replace the portrait with a photo") : t("Upload a portrait"),
       glyph: "ui-upload",
       separated: true,
       onSelect: () => setCropping(true),
@@ -328,8 +332,8 @@ export default function CharacterDetailPage({
       ? [
           {
             id: "paint",
-            label: portraitPending ? "Painting..." : "Paint one",
-            hint: "Paint a new portrait on this server's image model",
+            label: portraitPending ? t("Painting...") : t("Paint one"),
+            hint: t("Paint a new portrait on this server's image model"),
             glyph: "ui-paint",
             disabled: painting || portraitPending,
             onSelect: () => void paintPortrait(),
@@ -340,8 +344,8 @@ export default function CharacterDetailPage({
       ? [
           {
             id: "placeholder",
-            label: "Use placeholder",
-            hint: "Take the picture away and show the stand-in for this class or race",
+            label: t("Use placeholder"),
+            hint: t("Take the picture away and show the stand-in for this class or race"),
             glyph: "ui-placeholder",
             onSelect: () => void clearToPlaceholder(),
           },
@@ -357,7 +361,7 @@ export default function CharacterDetailPage({
       <AppHeader />
       <ContextMenu items={actions} label={character.name} className={cn(ui.card, "ornate texture-noise mb-4 p-4 sm:p-5")}>
         <Link href={backTo ?? "/characters"} className="-my-1 inline-flex min-h-10 items-center gap-1.5 text-sm text-stone-400 hover:text-amber-200">
-          <ArrowLeft className="size-4" /> {backTo ? "Back to the workshop" : "Back to your characters"}
+          <ArrowLeft className="size-4" /> {backTo ? t("Back to the workshop") : t("Back to your characters")}
         </Link>
         <div className="mt-2 flex items-start gap-4">
           <span className="relative shrink-0">
@@ -370,7 +374,7 @@ export default function CharacterDetailPage({
               />
             ) : portraitPending ? (
               <span
-                title="Painting portrait..."
+                title={t("Painting portrait...")}
                 className="flex size-20 shrink-0 items-center justify-center rounded-xl border border-amber-500/30 bg-stone-900 sm:size-24"
               >
                 <Loader2 className="size-5 animate-spin text-amber-200" />
@@ -397,15 +401,19 @@ export default function CharacterDetailPage({
             <p className="mt-1 text-sm text-stone-400">
               <span className="mr-1.5 inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-400/10 py-0.5 pl-0.5 pr-2 text-[11px] text-amber-200">
                 <GameIcon icon={{ kind: "glyph", key: "rest-level-up" }} size="size-5" />
-                Level {character.level}
+                {t("Level {level}", { level: character.level })}
               </span>
-              {character.raceLabel ?? titleCase(character.race)}{" "}
-              {classWordsAfterLevel({ ...character, classes: character.sheet?.classes }, (id) => workshopClassName(id) ?? titleCase(id))}
+              {contentName("species", character.raceLabel ?? titleCase(character.race), locale)}{" "}
+              {classWordsAfterLevel({ ...character, classes: character.sheet?.classes }, (id) =>
+                workshopClassName(id) ?? contentName("classes", titleCase(id), locale),
+              )}
               {character.subclass ? ` (${character.subclass})` : ""}
-              {character.background ? ` · ${character.backgroundLabel ?? titleCase(character.background)}` : ""}
+              {character.background
+                ? ` · ${contentName("backgrounds", character.backgroundLabel ?? titleCase(character.background), locale)}`
+                : ""}
             </p>
             {!sheet.portrait && character.portraitStatus === "failed" ? (
-              <p className="reveal mt-1 text-xs text-stone-500">Portrait couldn&apos;t be generated.</p>
+              <p className="reveal mt-1 text-xs text-stone-500">{t("Portrait couldn't be generated.")}</p>
             ) : null}
             {/* Each campaign holds its own copy of this sheet, so one library
                 entry can be at several tables at once. Naming them is what
@@ -430,7 +438,7 @@ export default function CharacterDetailPage({
                   </Link>
                 ))
               ) : (
-                <span className="text-xs text-stone-500">Not in a campaign yet.</span>
+                <span className="text-xs text-stone-500">{t("Not in a campaign yet.")}</span>
               )}
             </div>
           </div>
@@ -442,7 +450,7 @@ export default function CharacterDetailPage({
               share the next without their glyphs. */}
           <button type="button" onClick={() => setSeating(true)} className={cn(ui.btnPrimary, "order-1 min-w-0 flex-1 basis-[calc(100%-3rem)] sm:order-none sm:flex-none sm:basis-auto")}>
             <GameIcon icon={{ kind: "glyph", key: "tab-campaigns" }} size="size-6" />{" "}
-            {character.role === "companion" ? "Bring to a campaign" : "Use in a campaign"}
+            {character.role === "companion" ? t("Bring to a campaign") : t("Use in a campaign")}
           </button>
           {/* Levelling is the change made most often; it opens the level-up
               sheet (backlog F7), only what the next level brings, instead of
@@ -454,16 +462,16 @@ export default function CharacterDetailPage({
               href={`/characters/${characterId}/edit?levelUp=1`}
               className={cn(ui.btnSecondary, "order-3 min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:order-none sm:flex-none sm:basis-auto")}
             >
-              <GameIcon icon={{ kind: "glyph", key: "rest-level-up" }} size="size-6" className="hidden sm:inline-flex" /> Level up to {character.level + 1}
+              <GameIcon icon={{ kind: "glyph", key: "rest-level-up" }} size="size-6" className="hidden sm:inline-flex" /> {t("Level up to {level}", { level: character.level + 1 })}
             </Link>
           ) : null}
           <Link href={`/characters/${characterId}/edit`} className={cn(ui.btnSecondary, "order-3 min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:order-none sm:flex-none sm:basis-auto")}>
-            <GameIcon icon={{ kind: "glyph", key: "ui-edit" }} size="size-6" className="hidden sm:inline-flex" /> Edit build
+            <GameIcon icon={{ kind: "glyph", key: "ui-edit" }} size="size-6" className="hidden sm:inline-flex" /> {t("Edit build")}
           </Link>
           <span className="order-2 inline-flex sm:order-none">
             <KebabMenu
               items={actions}
-              label={`More actions for ${character.name}`}
+              label={t("More actions for {name}", { name: character.name, context: "characters.moreActionsAria" })}
               heading={character.name}
               busy={working}
             />
@@ -471,12 +479,12 @@ export default function CharacterDetailPage({
           {working || portraitPending ? (
             <span role="status" className="live-in text-xs text-stone-400">
               {pdfBusy
-                ? "Preparing the PDF..."
+                ? t("Preparing the PDF...")
                 : exporting
-                  ? "Exporting..."
+                  ? t("Exporting...")
                   : cloning
-                    ? "Copying..."
-                    : "Painting the portrait..."}
+                    ? t("Copying...")
+                    : t("Painting the portrait...")}
             </span>
           ) : null}
         </div>
@@ -503,7 +511,7 @@ export default function CharacterDetailPage({
 
       {cropping ? (
         <AvatarCropDialog
-          title={`Portrait for ${character.name}`}
+          title={t("Portrait for {name}", { name: character.name })}
           onUploaded={(image) => void handlePortraitUploaded(image)}
           onClose={() => setCropping(false)}
         />

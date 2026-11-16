@@ -1,4 +1,12 @@
 import { textKey } from "@/lib/language/text-logic";
+import { translate } from "@/lib/messages-logic";
+
+// The translator shape the pure modules take, t-first with an English
+// default (COMMON.md): the editor passes the reader's translator, while the
+// engine's own summary lines keep the English default, since those words are
+// read by the AI as well as shown.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
 
 // The spells a workshop species gives, and the spells each option of its
 // player's choice gives (issue #833): a Half-Dragon's Topaz ancestry knows
@@ -166,10 +174,17 @@ export function resolveSpeciesSpells(group: SpeciesSpellGroup, where: string, sp
 const ordinal = (n: number) => `${n}${n % 10 === 1 && n !== 11 ? "st" : n % 10 === 2 && n !== 12 ? "nd" : n % 10 === 3 && n !== 13 ? "rd" : "th"}`;
 
 // How often a levelled row casts without a slot, in words: "once a long
-// rest", "2 times a short rest".
-export function speciesSpellUsesWords(row: Pick<SpeciesSpell, "uses" | "rest">): string {
+// rest", "2 times a short rest". With no translator the English words stay
+// inline, so the engine's own lines (speciesSpellLine and on, read by the AI
+// as well as shown) are byte-stable whatever the dictionaries hold; the
+// editor passes the reader's translator (see the note at the top).
+export function speciesSpellUsesWords(row: Pick<SpeciesSpell, "uses" | "rest">, t?: T): string {
   const uses = row.uses ?? 1;
-  return `${uses === 1 ? "once" : `${uses} times`} a ${row.rest === "short" ? "short" : "long"} rest`;
+  if (!t) {
+    return `${uses === 1 ? "once" : `${uses} times`} a ${row.rest === "short" ? "short" : "long"} rest`;
+  }
+  const rest = t(row.rest === "short" ? "short" : "long");
+  return uses === 1 ? t("once a {rest} rest", { rest }) : t("{count} times a {rest} rest", { count: uses, rest });
 }
 
 // One row in plain words: "Misty Step from 5th level, once a long rest, or

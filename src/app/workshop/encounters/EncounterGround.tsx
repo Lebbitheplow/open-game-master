@@ -8,9 +8,10 @@ import { NumberStepper } from "@/components/ui/NumberStepper";
 import { Field, addChip, chipOn } from "@/app/workshop/kit";
 import { TerrainCanvas } from "@/app/campaigns/[campaignId]/TerrainCanvas";
 import type { MapOption } from "@/app/workshop/encounters/types";
-import { BRUSH_EFFECTS, BRUSH_LABELS } from "@/lib/battlemap/paint";
+import { brushEffect, brushLabel } from "@/lib/battlemap/paint";
 import { previewGround } from "@/lib/battlemap/ground-change";
 import type { FightAction } from "@/lib/dm/fight-event-logic";
+import { useT } from "@/lib/locale";
 import {
   fitGroundTiles,
   GROUND_KINDS,
@@ -36,11 +37,13 @@ export function groundMapOf(map: MapOption | null): GroundMap | null {
   return map?.terrain && map.width && map.height ? (map as GroundMap) : null;
 }
 
-const KIND_OPTIONS: SelectOption<GroundKind>[] = GROUND_KINDS.map((kind) => ({
-  value: kind,
-  label: BRUSH_LABELS[kind],
-  hint: BRUSH_EFFECTS[kind],
-}));
+function kindOptions(t: (key: string, vars?: Record<string, string | number>) => string): SelectOption<GroundKind>[] {
+  return GROUND_KINDS.map((kind) => ({
+    value: kind,
+    label: brushLabel(t, kind),
+    hint: brushEffect(t, kind),
+  }));
+}
 
 export function GroundEditor({
   action,
@@ -53,6 +56,7 @@ export function GroundEditor({
   map: GroundMap;
   onChange: (next: FightAction) => void;
 }) {
+  const t = useT();
   const board = { width: map.width, height: map.height };
   // The square the keyboard row points at, and whether it has been moved
   // since the last tap, so the map marks it only for someone steering by
@@ -74,18 +78,18 @@ export function GroundEditor({
     onChange({ ...action, tiles: fitGroundTiles(tiles, board) });
   };
   const here = picked.has(`${cursor.x},${cursor.y}`);
-  const labels = [...(map.labels ?? []), ...(aiming ? [{ x: cursor.x, y: cursor.y, text: "Here", dmOnly: true }] : [])];
+  const labels = [...(map.labels ?? []), ...(aiming ? [{ x: cursor.x, y: cursor.y, text: t("Here"), dmOnly: true }] : [])];
   const aim = (next: { x: number; y: number }) => {
     setCursor(next);
     setAiming(true);
   };
   return (
     <div className="space-y-1.5">
-      <Field label="Becomes" className="min-w-48">
+      <Field label={t("Becomes")} className="min-w-48">
         <Select<GroundKind>
-          label={`${name}: becomes`}
+          label={t("{name}: becomes", { name })}
           value={action.terrain}
-          options={KIND_OPTIONS}
+          options={kindOptions(t)}
           onChange={(terrain) => onChange({ ...action, terrain })}
         />
       </Field>
@@ -106,23 +110,23 @@ export function GroundEditor({
       />
       <p className="text-[11px] text-stone-500" aria-live="polite">
         {action.tiles.length
-          ? `${action.tiles.length} of ${GROUND_LIMITS.tiles} squares change, drawn as they will be. Tap one again to leave it as it is.`
-          : "Tap each square that changes. A change with no squares is not saved."}{" "}
-        The dashed edge of the map stays as it is.
+          ? t("{n} of {max} squares change, drawn as they will be. Tap one again to leave it as it is.", { n: action.tiles.length, max: GROUND_LIMITS.tiles })
+          : t("Tap each square that changes. A change with no squares is not saved.")}{" "}
+        {t("The dashed edge of the map stays as it is.")}
       </p>
-      <div role="group" aria-label={`${name}: pick a square by column and row`} className="flex flex-wrap items-end gap-1.5">
-        <Field label="Column">
+      <div role="group" aria-label={t("{name}: pick a square by column and row", { name })} className="flex flex-wrap items-end gap-1.5">
+        <Field label={t("Column")}>
           <NumberStepper
-            label={`${name}: column`}
+            label={t("{name}: column", { name })}
             value={cursor.x}
             min={1}
             max={Math.max(1, map.width - 2)}
             onChange={(x) => aim({ ...cursor, x })}
           />
         </Field>
-        <Field label="Row">
+        <Field label={t("Row")}>
           <NumberStepper
-            label={`${name}: row`}
+            label={t("{name}: row", { name })}
             value={cursor.y}
             min={1}
             max={Math.max(1, map.height - 2)}
@@ -139,12 +143,11 @@ export function GroundEditor({
           }}
           className={cn(ui.btnSmall, addChip, here && chipOn)}
         >
-          Change this square
+          {t("Change this square")}
         </button>
       </div>
       <p className="text-[11px] text-stone-400">
-        The table reads &ldquo;{groundLine(action.terrain, [])}&rdquo; Anyone standing there is pushed to the nearest open square.
-        Add &ldquo;Tell the table&rdquo; for your own words.
+        {t("The table reads “{line}” Anyone standing there is pushed to the nearest open square. Add “Tell the table” for your own words.", { line: groundLine(action.terrain, []) })}
       </p>
     </div>
   );

@@ -20,7 +20,7 @@ import type { AbilityScores, ClassEntry } from "@/lib/schemas/sheet";
 import { asiLevelsFor } from "@/lib/srd/asi";
 import { subclassCastingProfileFor, subclassLevelFor, subclassSpellsFor } from "@/lib/srd/features";
 import { spellbookAllowance, spellStyleFor, type SpellStyle } from "@/lib/srd/spell-prep";
-import { MULTICLASS_CAP, canMulticlassInto, describeGrant, describePrereq, meetsPrereq, multiclassGrantsFor } from "@/lib/srd/multiclass";
+import { MULTICLASS_CAP, canMulticlassInto, describeGrant, describeGrantT, describePrereq, describePrereqT, meetsPrereq, multiclassGrantsFor } from "@/lib/srd/multiclass";
 import { thirdCasterProfileOf } from "@/lib/srd/third-caster";
 import { findClass } from "@/lib/srd";
 import { spellLevelOf } from "@/lib/srd/spell-lists";
@@ -375,21 +375,28 @@ export function multiclassChoices(input: {
   classList: ReadonlyArray<ClassEntry>;
   abilities: AbilityScores | null;
   rowOf: (id: string) => ClassRow | undefined;
+  // The reader's words (builder.mc.*); without it the English the tests read.
+  t?: (key: string, vars?: Record<string, string | number>) => string;
 }): MulticlassChoice[] {
   const held = new Set(input.classList.map((entry) => textKey(entry.id)));
   const [first] = input.classList;
   const choices = input.rows
     .filter((row) => !held.has(textKey(row.id)))
     .map((row): MulticlassChoice => {
-      const needs = describePrereq(row.id);
-      const grants = describeGrant(multiclassGrantsFor(row.id));
+      const needs = input.t ? describePrereqT(input.t, row.id) : describePrereq(row.id);
+      const grants = input.t ? describeGrantT(input.t, multiclassGrantsFor(row.id)) : describeGrant(multiclassGrantsFor(row.id));
       let reason: string | null = null;
       if (input.classList.length >= MULTICLASS_CAP) {
-        reason = `A character holds at most ${MULTICLASS_CAP} classes here.`;
+        reason = input.t
+          ? input.t("A character holds at most {count} classes here.", { count: MULTICLASS_CAP })
+          : `A character holds at most ${MULTICLASS_CAP} classes here.`;
       } else if (input.abilities) {
         const check = canMulticlassInto({ class: first?.id ?? "", classes: [...input.classList], abilities: input.abilities }, row.id);
         if (!check.ok) {
-          reason = refusalWords(row, input.classList, input.abilities, input.rowOf) ?? check.error ?? "Not available.";
+          reason =
+            refusalWords(row, input.classList, input.abilities, input.rowOf, input.t) ??
+            check.error ??
+            (input.t ? input.t("Not available.") : "Not available.");
         }
       }
       return { row, ok: reason === null, reason, needs, grants };
@@ -406,24 +413,33 @@ function refusalWords(
   classList: ReadonlyArray<ClassEntry>,
   abilities: AbilityScores,
   rowOf: (id: string) => ClassRow | undefined,
+  t?: (key: string, vars?: Record<string, string | number>) => string,
 ): string | null {
+  const say = (key: string, vars: Record<string, string | number>, english: string) =>
+    typeof t === "function" ? t(key, vars) : english;
+  const needs = (id: string) => (typeof t === "function" ? describePrereqT(t, id) : describePrereq(id));
   if (!findClass(row.id)) {
-    return `${row.name} can only be a first class here: the multiclass rules have no entry for it.`;
+    return say("{name} can only be a first class here: the multiclass rules have no entry for it.", { name: row.name }, `${row.name} can only be a first class here: the multiclass rules have no entry for it.`);
   }
   if (!meetsPrereq(abilities, row.id)) {
-    return `Needs ${describePrereq(row.id)}; your scores fall short.`;
+    return say("Needs {needs}; your scores fall short.", { needs: needs(row.id) }, `Needs ${describePrereq(row.id)}; your scores fall short.`);
   }
   const short = classList.find((entry) => !meetsPrereq(abilities, entry.id));
   if (short) {
-    return `Taking a second class means your ${rowOf(short.id)?.name ?? short.id} needs ${describePrereq(short.id)} too, and your scores fall short.`;
+    return say(
+      "Taking a second class means your {klass} needs {needs} too, and your scores fall short.",
+      { klass: rowOf(short.id)?.name ?? short.id, needs: needs(short.id) },
+      `Taking a second class means your ${rowOf(short.id)?.name ?? short.id} needs ${describePrereq(short.id)} too, and your scores fall short.`,
+    );
   }
   return null;
 }
 
-// Each class's prerequisite the final scores miss, in words for the
-// Abilities step's gate: decision 1 of the plan reads the final scores, as
-// the server does.
-export function unmetPrereqs(
+// Each class's prerequisite the final scores miss, in the reader's words
+// for the Abilities step's gate: decision 1 of the plan reads the final
+// scores, as the server does.
+export function unmetPrereqsT(
+  t: (key: string, vars?: Record<string, string | number>) => string,
   classList: ReadonlyArray<ClassEntry>,
   abilities: AbilityScores | null,
   nameOf: (id: string) => string,
@@ -432,7 +448,9 @@ export function unmetPrereqs(
     return [];
   }
   return classList.flatMap((entry) =>
-    meetsPrereq(abilities, entry.id) ? [] : [`${nameOf(entry.id)} beside another class needs ${describePrereq(entry.id)}.`],
+    meetsPrereq(abilities, entry.id)
+      ? []
+      : [t("{klass} beside another class needs {needs}.", { klass: nameOf(entry.id), needs: describePrereqT(t, entry.id) })],
   );
 }
 

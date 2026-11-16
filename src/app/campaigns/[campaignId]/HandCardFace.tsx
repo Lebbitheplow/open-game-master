@@ -7,6 +7,8 @@ import { GameIcon } from "@/components/ui/GameIcon";
 import { cardArtwork } from "@/lib/battlemap/card-art";
 import type { HandCard, HandCardType, HandCost } from "@/lib/battlemap/hand";
 import { previewRows, type HandAim, type PreviewRow } from "@/lib/battlemap/hand-play";
+import { cardDisplayName, conditionWord } from "@/lib/battlemap/hand-display";
+import { useLocale, useT } from "@/lib/locale";
 import { spellGlyphLabel, spellGlyphSrc, targetLines, type SpellGlyph } from "@/lib/battlemap/spell-glyph-logic";
 import { WIELD_LABEL as SHEET_WIELD_LABEL } from "@/components/sheet/sheet-state";
 
@@ -15,7 +17,12 @@ import { WIELD_LABEL as SHEET_WIELD_LABEL } from "@/components/sheet/sheet-state
 // come from the shared pointer module through the motion-card class, so
 // nothing here listens to the pointer.
 
-const TYPE_LABEL: Record<HandCardType, string> = {
+export type Translator = (key: string, vars?: Record<string, string | number>) => string;
+
+// The card's words are dictionary keys (table.hand.type.*, table.hand.cost.*),
+// read with the translator of the component that draws the card, like
+// home/types.ts's agoLabel. The tone stays a plain style map.
+const TYPE_KEY: Record<HandCardType, string> = {
   attack: "Attack",
   rider: "Rider",
   spell: "Spell",
@@ -37,7 +44,7 @@ const TYPE_TONE: Record<HandCardType, string> = {
   basic: "#d6cfc2",
 };
 
-const COST_SHORT: Record<HandCost, string> = {
+const COST_KEY: Record<HandCost, string> = {
   action: "Action",
   bonus: "Bonus",
   reaction: "Reaction",
@@ -47,33 +54,24 @@ const COST_SHORT: Record<HandCost, string> = {
   lair: "Lair",
 };
 
-// What the glyph and the words beside it say, for a screen reader: the card
-// is one button whose label is all it hears.
-// A weapon card's place (HandCard.wield), in the words the More sheet and the
-// weapon picker use too.
-// The words live with the sheet's own toggle, which says the same.
 export const WIELD_LABEL: Record<NonNullable<HandCard["wield"]>, string> = SHEET_WIELD_LABEL;
 const WIELD_SPOKEN: Record<NonNullable<HandCard["wield"]>, string> = {
   "in-hand": "in hand",
   stowed: "packed away",
 };
-
 function spellAside(card: HandCard): string {
   const parts = [card.glyph ? spellGlyphLabel(card.glyph) : "", card.targetWords ?? ""].filter(Boolean);
   return parts.length ? `, ${parts.join(", ")}` : "";
 }
 
-export function typeLabel(type: HandCardType): string {
-  return TYPE_LABEL[type];
+export function typeLabel(t: Translator, type: HandCardType): string {
+  return t(TYPE_KEY[type]);
 }
 
 export function typeTone(type: HandCardType): string {
   return TYPE_TONE[type];
 }
 
-// A spell's glyph at the well's left, where a fanned card still shows it,
-// and the words for what it takes in the room beside it, as large as that
-// room allows (hand.css sizes them from the longest line and the line count).
 function SpellGlyphArt({ glyph, words }: { glyph: SpellGlyph; words?: string }) {
   const lines = targetLines(words ?? "");
   const longest = Math.max(0, ...lines.map((line) => line.length));
@@ -90,6 +88,10 @@ function SpellGlyphArt({ glyph, words }: { glyph: SpellGlyph; words?: string }) 
       ) : null}
     </>
   );
+}
+
+export function costShort(t: Translator, cost: HandCost): string {
+  return t(COST_KEY[cost]);
 }
 
 export function HandPreviewRows({ rows }: { rows: PreviewRow[] }) {
@@ -114,16 +116,18 @@ export function HandPreviewRows({ rows }: { rows: PreviewRow[] }) {
 // The committed card, face up over the hand while the table takes it in: the
 // mockup's card-play and card-spend, both in hand-motion.css. Decoration only,
 // the fan's own card is the one a screen reader hears about.
-export function HandPlayedCard({ card }: { card: HandCard }) {
+export function HandPlayedCard({ card, t }: { card: HandCard; t: Translator }) {
+  const locale = useLocale();
+  const name = cardDisplayName(card, locale);
   return (
     <div className="hand-played" aria-hidden="true">
       <span className="hand-played-top">
         <span className="hand-cost" data-cost={card.cost}>
-          {COST_SHORT[card.cost]}
+          {costShort(t, card.cost)}
         </span>
         <span className="hand-range">{card.range}</span>
       </span>
-      <span className="hand-played-name">{card.name}</span>
+      <span className="hand-played-name">{name}</span>
       {card.dice ? (
         <span className="hand-dice" data-heals={card.heals ? "true" : undefined} data-two-types={card.secondType ? "true" : undefined}>
           {card.dice}
@@ -171,7 +175,10 @@ function HandCardFaceInner({
   fresh?: boolean;
   onPick: (card: HandCard) => void;
 }) {
-  const rows = useMemo(() => previewRows(card, aim, conditions), [card, aim, conditions]);
+  const t = useT();
+  const locale = useLocale();
+  const name = cardDisplayName(card, locale);
+  const rows = useMemo(() => previewRows(card, aim, conditions, {}, t, locale), [card, aim, conditions, t, locale]);
   const artwork = cardArtwork(card.icon, genre);
   const aimName = aim && card.target === "enemy" && aim.kind === "enemy" ? aim.name : "";
   const slotStyle = {
@@ -179,6 +186,8 @@ function HandCardFaceInner({
     "--rot": `${(offset * step).toFixed(2)}deg`,
     "--ty": `${(offset * offset * 3.6 * Math.min(1, step / 4.4)).toFixed(1)}px`,
   } as CSSProperties;
+  const type = typeLabel(t, card.type);
+  const cost = costShort(t, card.cost);
   const button = (
     <button
       type="button"
@@ -196,13 +205,17 @@ function HandCardFaceInner({
       // hover, which is how it says why it cannot be played.
       aria-disabled={card.disabled ? "true" : undefined}
       aria-pressed={card.type === "rider" ? attached : undefined}
-      aria-label={`${card.name}${card.wield ? `, ${WIELD_SPOKEN[card.wield]}` : ""}, ${COST_SHORT[card.cost]}${spellAside(card)}${card.disabled ? `. ${card.disabled}` : ""}`}
+      aria-label={
+        card.disabled
+          ? t("{name}, {cost}. {reason}", { name: `${name}${card.wield ? `, ${WIELD_SPOKEN[card.wield]}` : ""}${spellAside(card)}`, cost, reason: card.disabled })
+          : t("{name}, {cost}", { name: `${name}${card.wield ? `, ${WIELD_SPOKEN[card.wield]}` : ""}${spellAside(card)}`, cost })
+      }
       onClick={() => onPick(card)}
     >
       <span className="hand-card-frame" />
       <span className="hand-card-foil" />
       <span className="hand-card-sheen" />
-      <span className="hand-card-ribbon">{TYPE_LABEL[card.type]}</span>
+      <span className="hand-card-ribbon">{type}</span>
       <span className="hand-card-notch" aria-hidden="true" />
       <span className="hand-card-edge" aria-hidden="true" />
       <span className="hand-card-corner" data-at="tl" />
@@ -210,9 +223,9 @@ function HandCardFaceInner({
       <span className="hand-card-body">
         <span className="hand-card-top">
           <span className="hand-cost" data-cost={card.cost}>
-            {COST_SHORT[card.cost]}
+            {cost}
           </span>
-          {fresh ? <span className="hand-group-new">New</span> : <span className="hand-range">{card.range}</span>}
+          {fresh ? <span className="hand-group-new">{t("New", { context: "table.hand.card.new" })}</span> : <span className="hand-range">{card.range}</span>}
         </span>
         <span className="hand-art" data-glyph={card.glyph ? (card.targetWords ? "words" : "alone") : undefined}>
           {card.glyph ? (
@@ -228,11 +241,11 @@ function HandCardFaceInner({
               part of a card a fan still shows. */}
           {card.wield ? (
             <span key={card.wield} className="hand-wield" data-wield={card.wield} aria-hidden="true">
-              {WIELD_LABEL[card.wield]}
+              {t(WIELD_LABEL[card.wield])}
             </span>
           ) : null}
         </span>
-        <span className="hand-name">{card.name}</span>
+        <span className="hand-name">{name}</span>
         <span className="hand-numbers">
           {card.dice ? (
             <span className="hand-dice" data-heals={card.heals ? "true" : undefined} data-two-types={card.secondType ? "true" : undefined}>
@@ -255,7 +268,7 @@ function HandCardFaceInner({
           ) : (
             <span className="hand-resource">{card.resource}</span>
           )}
-          <span className="hand-cond">{card.condition}</span>
+          <span className="hand-cond">{conditionWord(card.condition, t, locale)}</span>
         </span>
       </span>
     </button>
@@ -288,9 +301,9 @@ function HandCardFaceInner({
         <span className="hand-preview" aria-hidden="true">
           <span className="hand-preview-head">
             <span className="hand-type-chip" style={{ "--chip-tone": TYPE_TONE[card.type] } as CSSProperties}>
-              {TYPE_LABEL[card.type]}
+              {type}
             </span>
-            <span className="hand-preview-name">{aimName ? `${card.name} · ${aimName}` : card.name}</span>
+            <span className="hand-preview-name">{aimName ? `${name} · ${aimName}` : name}</span>
           </span>
           <HandPreviewRows rows={rows} />
           {/* The card's own rules line runs out of room on every card size

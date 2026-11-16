@@ -15,11 +15,11 @@ import {
   DEFAULT_SPECIES_SPELL_ABILITY,
   SPECIES_SPELL_ABILITIES,
   SPECIES_SPELL_LIMITS,
-  speciesSpellAbilityWord,
   speciesSpellUsesWords,
   type SpeciesSpellAbility,
   type SpeciesSpellRest,
 } from "@/lib/content/species-spells";
+import { useT, useTp } from "@/lib/locale";
 
 // The spells a workshop species gives, or one option of its player's
 // choice (issue #833): a Topaz ancestry's Mage Hand at 1st level, Detect
@@ -34,18 +34,24 @@ import {
 const L = SPECIES_SPELL_LIMITS;
 
 // How often a levelled spell is cast without a slot, as one pick: "once a
-// long rest", "2 times a short rest". Its value is "<uses>-<rest>".
-const USE_OPTIONS = (["long", "short"] as const).flatMap((rest) =>
-  Array.from({ length: L.uses }, (_, at) => ({ value: `${at + 1}-${rest}`, label: speciesSpellUsesWords({ uses: at + 1, rest }) })),
-);
+// long rest", "2 times a short rest". Its value is "<uses>-<rest>". The
+// words read the reader's language (speciesSpellUsesWords is t-first).
+const useOptions = (t: (key: string, vars?: Record<string, string | number>) => string) =>
+  (["long", "short"] as const).flatMap((rest) =>
+    Array.from({ length: L.uses }, (_, at) => ({ value: `${at + 1}-${rest}`, label: speciesSpellUsesWords({ uses: at + 1, rest }, t) })),
+  );
 
 const SRD_SPELLS = { srd: "1" };
 
-const ABILITY_OPTIONS = SPECIES_SPELL_ABILITIES.map((ability) => ({ value: ability, label: speciesSpellAbilityWord(ability) }));
+// The ability words are the sheet's own (sheet.ability.*), so the picker
+// reads them in the reader's language like everywhere else in the app.
+const abilityOptions = (t: (key: string) => string) => SPECIES_SPELL_ABILITIES.map((ability) => ({ value: ability, label: ({ "str": t("Strength"), "dex": t("Dexterity"), "con": t("Constitution"), "int": t("Intelligence"), "wis": t("Wisdom"), "cha": t("Charisma") } as Record<string, string>)[ability] ?? String(ability) }));
 
 // A row as the draft holds it; a level the catalog gave is kept with it, so
 // a cantrip shows no uses before the save names it.
 function SpellRow({ row, put, remove }: { row: Data; put: (next: Data) => void; remove: () => void }) {
+  const t = useT();
+  const tp = useTp();
   const name = String(row.spell ?? "");
   const circle = typeof row.circle === "number" ? row.circle : null;
   const cantrip = circle === 0;
@@ -60,29 +66,29 @@ function SpellRow({ row, put, remove }: { row: Data; put: (next: Data) => void; 
     <li className="live-in flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-stone-800/70 pt-1.5 first:border-t-0 first:pt-0" data-species-spell={name}>
       <span className="min-w-32 text-xs text-stone-200">
         {name}
-        <span className="ml-1.5 text-[11px] text-stone-500">{cantrip ? "cantrip, at will" : circle ? `level ${circle} spell` : "spell"}</span>
+        <span className="ml-1.5 text-[11px] text-stone-500">{cantrip ? t("cantrip, at will") : circle ? t("level {level} spell", { level: circle }) : t("spell")}</span>
       </span>
       <span className="flex items-center gap-1.5 text-[11px] text-stone-400">
-        From character level
-        <NumberStepper size="sm" label={`Character level ${name} arrives at`} value={num(row.level, 1)} min={1} max={20} onChange={(level) => field("level", level)} />
+        {t("From character level")}
+        <NumberStepper size="sm" label={t("Character level {name} arrives at", { name })} value={num(row.level, 1)} min={1} max={20} onChange={(level) => field("level", level)} />
       </span>
       {cantrip ? null : (
         <>
           <span className="w-48">
             <Select<string>
-              label={`How often ${name} is cast without a spell slot`}
+              label={t("How often {name} is cast without a spell slot", { name })}
               value={`${uses}-${rest}`}
-              options={USE_OPTIONS}
+              options={useOptions(t)}
               onChange={(value) => {
                 const [count, back] = value.split("-");
                 put({ ...row, uses: Number(count), rest: back });
               }}
             />
           </span>
-          <CheckField label="Spell slots cast it too" checked={row.slots === true} onChange={(on) => field("slots", on || undefined)} />
+          <CheckField label={t("Spell slots cast it too")} checked={row.slots === true} onChange={(on) => field("slots", on || undefined)} />
         </>
       )}
-      <button type="button" aria-label={`Remove ${name}`} onClick={remove} className={cn(ui.iconAction, rowIcon, "ml-auto hover:text-red-300")}>
+      <button type="button" aria-label={t("Remove {name}", { name })} onClick={remove} className={cn(ui.iconAction, rowIcon, "ml-auto hover:text-red-300")}>
         <X className="size-3.5" />
       </button>
     </li>
@@ -103,6 +109,8 @@ export function SpeciesSpellFields({
   // The search box's name for a screen reader: "Find a spell Topaz gives".
   pickLabel: string;
 }) {
+  const t = useT();
+  const tp = useTp();
   const group = sub(value);
   const rows = Array.isArray(group.spells) ? (group.spells as Data[]) : [];
   const ability = (SPECIES_SPELL_ABILITIES as readonly unknown[]).includes(group.ability) ? (group.ability as SpeciesSpellAbility) : DEFAULT_SPECIES_SPELL_ABILITY;
@@ -129,7 +137,7 @@ export function SpeciesSpellFields({
           <ContentPick
             kind="spells"
             label={pickLabel}
-            placeholder="Add a spell..."
+            placeholder={t("Add a spell...")}
             className="min-w-48 flex-1"
             // The SRD's spells answer on a server with no content pack too.
             extraParams={SRD_SPELLS}
@@ -140,17 +148,17 @@ export function SpeciesSpellFields({
           />
         ) : (
           <span role="status" className="live-in text-[11px] text-stone-400">
-            {L.spells} spells, the most it gives.
+            {tp("{count} spell, the most it gives.", "{count} spells, the most it gives.", { count: L.spells })}
           </span>
         )}
         {rows.length ? (
           <SelectField<SpeciesSpellAbility>
-            label="Spellcasting ability"
+            label={t("Spellcasting ability")}
             value={ability}
-            options={ABILITY_OPTIONS}
+            options={abilityOptions(t)}
             onChange={(next) => write(rows, next)}
             className="w-44"
-            hint="Sets their save DC and spell attack."
+            hint={t("Sets their save DC and spell attack.")}
           />
         ) : null}
       </div>

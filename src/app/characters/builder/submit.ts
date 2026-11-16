@@ -18,7 +18,7 @@ import { racialCantripFields } from "@/lib/srd/racial-cantrips";
 import { pickedVariant, variantFeatureNames, withSpeciesVariant } from "@/lib/content/species-variants";
 import { reconcilePicks, type ReconcileContext } from "./reconcile";
 import { builderCasting, builderSpellSlots } from "./casting";
-import { fitExtraClasses, fitSpellLists, primaryLevelOf, unmetPrereqs } from "./multiclassBuild";
+import { fitExtraClasses, fitSpellLists, primaryLevelOf, unmetPrereqsT } from "./multiclassBuild";
 import { multiclassGrantsFor } from "@/lib/srd/multiclass";
 import { unmetFeatMessage, type FeatJudge } from "./featPrereqs";
 import type { BackgroundOption, ClassOption, RaceOption } from "./useBuilderOptions";
@@ -32,6 +32,7 @@ import { subclassPickFeatures } from "@/lib/srd/subclass-choice-picks";
 import { featChoice } from "@/lib/schemas/sheet";
 import { normalizeAttraction } from "@/lib/attraction";
 import { personaOrNothing } from "@/lib/backgrounds/persona-logic";
+import { pluralOf } from "@/lib/messages-logic";
 
 export type BuilderResult = { level: number; sheet: CreateSheetInput };
 
@@ -74,6 +75,15 @@ export type BlockerTarget =
 // species' "Bloodline"), for the line of choices left (owed.ts).
 export type StepBlock = { message: string; target: BlockerTarget; label?: string };
 
+// The gate lines live in the dictionaries under `builder.gate.*`; every
+// builder takes the translator from the caller that shows the message (the
+// agoLabel pattern in home/types.ts), so a language switch rewords the gates
+// with the rest of the builder. Names that ride along (a species', a class's,
+// a list label's) stay the data's own; the SRD's grant texts (a feat's open
+// picks, an unmet prerequisite) arrive already written, in the rulebook's
+// English, from src/lib/srd/feat-grants.ts and featPrereqs.ts.
+type Translator = (key: string, vars?: Record<string, string | number>) => string;
+
 const block = (target: BlockerTarget, message: string, label?: string): StepBlock => ({ target, message, ...(label ? { label } : {}) });
 const blockOf = block;
 
@@ -101,12 +111,12 @@ type SubmitInput = {
 // The name is asked last (backlog F4: how you want to play comes first, who
 // the hero is once they exist), so nothing before the identity step waits
 // on it.
-export function identityBlocks(state: Pick<BuilderState, "name">): StepBlock[] {
-  return state.name.trim() ? [] : [block("name", "Give your character a name.")];
+export function identityBlocks(t: Translator, state: Pick<BuilderState, "name">): StepBlock[] {
+  return state.name.trim() ? [] : [block("name", t("Give your character a name."))];
 }
 
-export function identityBlocker(state: Pick<BuilderState, "name">): StepBlock | null {
-  return identityBlocks(state)[0] ?? null;
+export function identityBlocker(t: Translator, state: Pick<BuilderState, "name">): StepBlock | null {
+  return identityBlocks(t, state)[0] ?? null;
 }
 
 // The background, asked beside the ancestry: the background itself, the
@@ -115,18 +125,20 @@ export function identityBlocker(state: Pick<BuilderState, "name">): StepBlock | 
 // here, the first step where both the class's and the background's grants
 // are known.
 export function backgroundBlocks(
+  t: Translator,
   state: Pick<BuilderState, "backgroundSkills">,
   background?: BackgroundOption,
   derived?: Pick<BuilderDerived, "toolGrants">,
 ): StepBlock[] {
+  const tp = pluralOf(t);
   const owed: StepBlock[] = [];
   // No background stands in until one is picked: the first row used to,
   // and an Acolyte nobody chose owed two languages.
   if (!background) {
-    owed.push(block("background", "Choose what your hero did before adventuring (background)."));
+    owed.push(block("background", t("Choose what your hero did before adventuring (background).")));
   }
   if (background?.skillChoice && state.backgroundSkills.filter(Boolean).length < background.skillChoice.count) {
-    owed.push(block("backgroundSkills", `Pick the skills your ${background.name} past trained (skill proficiencies).`));
+    owed.push(block("backgroundSkills", t("Pick the skills your {past} past trained (skill proficiencies).", { past: background.name })));
   }
   // An open tool grant ("three musical instruments") waits for its pick.
   const grants = derived?.toolGrants;
@@ -134,17 +146,18 @@ export function backgroundBlocks(
   if (grants && toolsOwed >= 0) {
     const left = grants.left[toolsOwed];
     const choice = grants.choices[toolsOwed];
-    owed.push(block("tools", `Pick ${left} more ${choice.label}${left === 1 ? "" : "s"} you know how to use (tool proficiency).`));
+    owed.push(block("tools", tp("Pick {count} more {label} you know how to use (tool proficiency).", "Pick {count} more {label}s you know how to use (tool proficiency).", { count: left, label: choice.label })));
   }
   return owed;
 }
 
 export function backgroundBlocker(
+  t: Translator,
   state: Pick<BuilderState, "backgroundSkills">,
   background?: BackgroundOption,
   derived?: Pick<BuilderDerived, "toolGrants">,
 ): StepBlock | null {
-  return backgroundBlocks(state, background, derived)[0] ?? null;
+  return backgroundBlocks(t, state, background, derived)[0] ?? null;
 }
 
 // Languages the player chooses: the race's bonus ones plus the background's
@@ -176,38 +189,40 @@ function featPicksBlock(
 }
 
 export function ancestryBlocks(
+  t: Translator,
   state: BuilderState,
   race: RaceOption | undefined,
   background?: BackgroundOption,
   derived?: Pick<BuilderDerived, "featSpecOf">,
   featJudge?: FeatJudge,
 ): StepBlock[] {
+  const tp = pluralOf(t);
   if (!race) {
-    return [block("race", "Choose where your hero comes from (race).")];
+    return [block("race", t("Choose where your hero comes from (race)."))];
   }
   const owed: StepBlock[] = [];
   const { bonusLanguages, racialAsi, racialSkills, racialTool, racialCantrips } = state;
   // The species' own choice comes first: it changes what the picks below
   // offer (a +1 it gives cannot take a pick of the player's choice too).
   if (race.variants && !race.variants.options.some((option) => option.id === state.racialVariant)) {
-    owed.push(block("variant", `Pick your ${race.name}'s ${race.variants.label.toLowerCase()}.`, race.variants.label));
+    owed.push(block("variant", t("Pick your {species}'s {choice}.", { species: race.name, choice: race.variants.label.toLowerCase() }), race.variants.label));
   }
   const languageCount = bonusLanguageCount(race, background);
   if (languageCount > 0 && bonusLanguages.filter(Boolean).length < languageCount) {
     const left = languageCount - bonusLanguages.filter(Boolean).length;
-    owed.push(block("languages", `Pick ${left} more ${left === 1 ? "language" : "languages"} your hero can speak.`));
+    owed.push(block("languages", tp("Pick {count} more language your hero can speak.", "Pick {count} more languages your hero can speak.", { count: left })));
   }
   if (race.asiChoice && racialAsi.filter(Boolean).length < race.asiChoice.count) {
-    owed.push(block("racialAsi", `Pick which abilities your ${race.name} heritage makes stronger (ability score increase).`));
+    owed.push(block("racialAsi", t("Pick which abilities your {species} heritage makes stronger (ability score increase).", { species: race.name })));
   }
   const racialFrom = race.skillChoice?.from ?? [];
   if (race.skillChoice && racialSkills.filter(Boolean).length < race.skillChoice.count) {
-    owed.push(block("racialSkills", `Pick the skills your ${race.name} heritage trained (skill proficiencies).`));
+    owed.push(block("racialSkills", t("Pick the skills your {species} heritage trained (skill proficiencies).", { species: race.name })));
   } else if (racialFrom.length && racialSkills.some((skill) => skill && !racialFrom.includes(skill))) {
-    owed.push(block("racialSkills", `Your ${race.name} heritage trains only some skills: pick its skill proficiencies from its list.`));
+    owed.push(block("racialSkills", t("Your {species} heritage trains only some skills: pick its skill proficiencies from its list.", { species: race.name })));
   }
   if (race.toolChoice && !racialTool) {
-    owed.push(block("racialTool", `Pick a tool your ${race.name} knows how to use (tool proficiency).`));
+    owed.push(block("racialTool", t("Pick a tool your {species} knows how to use (tool proficiency).", { species: race.name })));
   }
   if (race.trainingChoice && (state.racialTraining ?? []).filter(Boolean).length < race.trainingChoice.count) {
     owed.push(block("racialTraining", `Pick the ${race.trainingChoice.count} skills or tools your ${race.name} trained in.`));
@@ -228,8 +243,12 @@ export function ancestryBlocks(
       block(
         "racialCantrip",
         cantripChoice.count === 1
-          ? `Pick the simple spell your ${race.name} can cast at will (cantrip).`
-          : `Pick ${left} ${cantripsPicked ? "more " : ""}simple ${left === 1 ? "spell" : "spells"} your ${race.name} can cast at will (${left === 1 ? "cantrip" : "cantrips"}).`,
+          ? t("Pick the simple spell your {species} can cast at will (cantrip).", { species: race.name })
+          : tp("Pick {count} {more}simple spell your {species} can cast at will (cantrip).", "Pick {count} {more}simple spells your {species} can cast at will (cantrips).", {
+              count: left,
+              more: cantripsPicked ? t("more ", { context: "builder.gate.racialCantripMoreWord" }) : "",
+              species: race.name,
+            }),
       ),
     );
   }
@@ -237,7 +256,7 @@ export function ancestryBlocks(
   // to be the one no gate asked for (issue #124).
   const featsOwed = racialFeatCount(race.id) - (state.feats ?? []).length;
   if (featsOwed > 0) {
-    owed.push(block("racialFeat", `Pick your ${race.name}'s special talent (feat).`));
+    owed.push(block("racialFeat", t("Pick your {species}'s special talent (feat).", { species: race.name })));
   }
   // What the feat itself leaves open: Linguist's three languages, Skill
   // Expert's skill and expertise (issue #125).
@@ -251,23 +270,24 @@ export function ancestryBlocks(
     owed.push(block("racialFeat", racialUnmet));
   }
   if (takesDraconicAncestry(race.id) && !findDraconicAncestry(state.racialAncestry ?? "")) {
-    owed.push(block("ancestry", `Pick the kind of dragon your ${race.name} descends from (draconic ancestry).`));
+    owed.push(block("ancestry", t("Pick the kind of dragon your {species} descends from (draconic ancestry).", { species: race.name })));
   }
   const repeats = repeatedGrants(background?.skills, race.skills).length;
   if (repeats && (state.repeatSkills ?? []).filter(Boolean).length < repeats) {
-    owed.push(block("repeatSkills", `Your race and background both give the same skill; pick ${repeats === 1 ? "another skill" : `${repeats} other skills`} in its place.`));
+    owed.push(block("repeatSkills", tp("Your race and background both give the same skill; pick another skill in its place.", "Your race and background both give the same skill; pick {count} other skills in its place.", { count: repeats })));
   }
   return owed;
 }
 
 export function ancestryBlocker(
+  t: Translator,
   state: BuilderState,
   race: RaceOption | undefined,
   background?: BackgroundOption,
   derived?: Pick<BuilderDerived, "featSpecOf">,
   featJudge?: FeatJudge,
 ): StepBlock | null {
-  return ancestryBlocks(state, race, background, derived, featJudge)[0] ?? null;
+  return ancestryBlocks(t, state, race, background, derived, featJudge)[0] ?? null;
 }
 
 // Whether the counts the SRD gives are rules for this class or only advice.
@@ -289,12 +309,14 @@ export function classSkillsRequired(klass: ClassOption): boolean {
 // suggestion a player could scroll past; a character built without them
 // then started play with holes the rules do not allow.
 export function callingBlocks(
+  t: Translator,
   klass: ClassOption | undefined,
   state?: BuilderState,
   derived?: BuilderDerived,
 ): StepBlock[] {
+  const tp = pluralOf(t);
   if (!klass) {
-    return [block("class", "Choose how you fight or use magic (class).")];
+    return [block("class", t("Choose how you fight or use magic (class)."))];
   }
   if (!state || !derived) {
     return [];
@@ -303,16 +325,16 @@ export function callingBlocks(
   const strict = classSkillsRequired(klass);
   const skillsLeft = klass.skillChoices.count - state.chosenSkills.length;
   if (strict && skillsLeft > 0) {
-    owed.push(block("classSkills", `Pick ${skillsLeft} more ${skillsLeft === 1 ? "skill" : "skills"} your training taught you (class skills).`));
+    owed.push(block("classSkills", tp("Pick {count} more skill your training taught you (class skills).", "Pick {count} more skills your training taught you (class skills).", { count: skillsLeft })));
   }
   // Open tool grants are asked with the background (backgroundBlocks).
   // The first class's subclass comes at its own level, not the character's.
   const primaryLevel = derived.primaryLevel ?? derived.effectiveLevel;
   const pickLevel = subclassLevelFor(klass.id);
   if (pickLevel !== null && primaryLevel >= pickLevel && !state.subclass.trim()) {
-    owed.push(block("subclass", `Choose your ${klass.name.toLowerCase()}'s path (subclass): a ${klass.name.toLowerCase()} chooses one at level ${pickLevel}.`));
+    owed.push(block("subclass", t("Choose your {klass}'s path (subclass): a {klass} chooses one at level {level}.", { klass: klass.name.toLowerCase(), level: pickLevel })));
   }
-  owed.push(...multiclassBlocks(state, derived));
+  owed.push(...multiclassBlocks(t, state, derived));
   // What the subclass's training leaves to the player: a Lore bard's three
   // skills, a Knowledge cleric's languages and skills (issue 251).
   // A pick that may wait (a ranger's Favored Enemy language) is asked on the
@@ -326,7 +348,7 @@ export function callingBlocks(
   }
   const stylesLeft = derived.styleSlots - state.stylePicks.slice(0, derived.styleSlots).length;
   if (stylesLeft > 0) {
-    owed.push(block("styles", `Pick how you like to fight (${stylesLeft === 1 ? "fighting style" : `${stylesLeft} fighting styles`}).`));
+    owed.push(block("styles", tp("Pick how you like to fight (fighting style).", "Pick how you like to fight ({count} fighting styles).", { count: stylesLeft })));
   }
   // Each class's own, at its own level (a rogue taken second brings two).
   const expertiseSlots = derived.expertiseSlots ?? expertiseSlotsFor(klass.id, derived.effectiveLevel);
@@ -337,11 +359,11 @@ export function callingBlocks(
     expertiseSlots -
     state.expertisePicks.filter((skillId) => expertiseAllowed(skillId, derived.expertiseSkills ?? derived.proficientSkills, classIds)).length;
   if (expertiseLeft > 0) {
-    owed.push(block("expertise", `Pick ${expertiseLeft} more ${expertiseLeft === 1 ? "skill" : "skills"} you are especially good at (expertise).`));
+    owed.push(block("expertise", tp("Pick {count} more skill you are especially good at (expertise).", "Pick {count} more skills you are especially good at (expertise).", { count: expertiseLeft })));
   }
   const slot = derived.optionSlots.find((entry) => entry.remaining > 0);
   if (slot) {
-    owed.push(block("options", `Pick ${slot.remaining} more ${slot.label.toLowerCase()}.`));
+    owed.push(block("options", t("Pick {count} more {option}.", { count: slot.remaining, option: slot.label.toLowerCase() })));
   }
   // A workshop subclass's own choice, as a pick-list's (issue #833).
   const choice = (derived.subclassChoiceSlots ?? []).find((entry) => !entry.chosen);
@@ -352,17 +374,19 @@ export function callingBlocks(
 }
 
 export function callingBlocker(
+  t: Translator,
   klass: ClassOption | undefined,
   state?: BuilderState,
   derived?: BuilderDerived,
 ): StepBlock | null {
-  return callingBlocks(klass, state, derived)[0] ?? null;
+  return callingBlocks(t, klass, state, derived)[0] ?? null;
 }
 
 // What the classes taken after the first still owe (backlog F9): each one's
 // subclass once its own level reaches the pick, the skill its multiclass
 // grant lets the player choose, and the two rules a split is held to here.
-function multiclassBlocks(state: BuilderState, derived: BuilderDerived): StepBlock[] {
+function multiclassBlocks(t: Translator, state: BuilderState, derived: BuilderDerived): StepBlock[] {
+  const tp = pluralOf(t);
   const extras = derived.extras ?? [];
   if (!extras.length) {
     return [];
@@ -374,18 +398,18 @@ function multiclassBlocks(state: BuilderState, derived: BuilderDerived): StepBlo
   const held = new Set(state.storedClassIds ?? []);
   const keepsHeld = held.size > 1 && derived.classList.every((entry) => held.has(entry.id));
   if (derived.multiclassAllowed === false && !keepsHeld) {
-    owed.push(block("multiclass", "This table turns multiclassing off: remove the second class to make the character here."));
+    owed.push(block("multiclass", t("This table turns multiclassing off: remove the second class to make the character here.")));
   }
   for (const entry of extras) {
     const name = entry.klass.name.toLowerCase();
     const pickLevel = subclassLevelFor(entry.klass.id);
     if (pickLevel !== null && entry.level >= pickLevel && !entry.subclass.trim()) {
-      owed.push(block("multiclass", `Choose your ${name}'s path (subclass): a ${name} chooses one at its level ${pickLevel}.`));
+      owed.push(block("multiclass", t("Choose your {klass}'s path (subclass): a {klass} chooses one at its level {level}.", { klass: name, level: pickLevel })));
     }
     const grant = multiclassGrantsFor(entry.klass.id).skillChoice;
     const left = grant ? grant.count - entry.skills.filter(Boolean).length : 0;
     if (left > 0) {
-      owed.push(block("multiclass", `Pick the ${left === 1 ? "skill" : `${left} skills`} your ${name} levels taught you (skill proficiency).`));
+      owed.push(block("multiclass", tp("Pick the skill your {klass} levels taught you (skill proficiency).", "Pick the {count} skills your {klass} levels taught you (skill proficiency).", { count: left, klass: name })));
     }
   }
   return owed;
@@ -395,6 +419,7 @@ function multiclassBlocks(state: BuilderState, derived: BuilderDerived): StepBlo
 // give them at this level. A setting class borrows an SRD class's list and
 // its counts with it, the same counts the server holds a level-up to.
 export function spellsBlocks(
+  t: Translator,
   derived: BuilderDerived,
   firstClass: ClassOption | undefined,
 ): StepBlock[] {
@@ -408,7 +433,7 @@ export function spellsBlocks(
     : derived.casts
       ? [{ ...derived, klass: derived.casterKlass ?? firstClass, casterLevel: derived.casterLevel ?? derived.effectiveLevel }]
       : [];
-  return desks.flatMap((desk) => deskBlocks(desk, desks.length > 1 ? `${desk.klass.name}: ` : ""));
+  return desks.flatMap((desk) => deskBlocks(t, desk, desks.length > 1 ? `${desk.klass.name}: ` : ""));
 }
 
 // The counts one casting class's spell desk is held to.
@@ -417,7 +442,8 @@ type DeskCounts = Pick<
   "spellSupply" | "cantripAdvice" | "chosenCantrips" | "spellbookAdvice" | "chosenSpells" | "spellAdvice" | "chosenPrepared"
 > & Partial<Pick<BuilderDerived, "arcanumLevels" | "chosenArcanum" | "requiredCantrip">> & { klass: Pick<ClassOption, "name" | "id">; casterLevel: number };
 
-function deskBlocks(desk: DeskCounts, who: string): StepBlock[] {
+function deskBlocks(t: Translator, desk: DeskCounts, who: string): StepBlock[] {
+  const tp = pluralOf(t);
   const derived = desk;
   const { klass, casterLevel } = desk;
   const block = (target: BlockerTarget, message: string) => blockOf(target, `${who}${message}`);
@@ -428,20 +454,20 @@ function deskBlocks(desk: DeskCounts, who: string): StepBlock[] {
   const cantripsLeft = Math.min(derived.cantripAdvice ?? 0, supply?.cantrips ?? Infinity) - derived.chosenCantrips.length;
   const cantripsOver = derived.chosenCantrips.length - (derived.cantripAdvice ?? 0);
   if (cantripsLeft > 0) {
-    owed.push(block("spells", `Pick ${cantripsLeft} more ${cantripsLeft === 1 ? "simple spell" : "simple spells"} you can cast at will (${cantripsLeft === 1 ? "cantrip" : "cantrips"}).`));
+    owed.push(block("spells", tp("Pick {count} more simple spell you can cast at will (cantrip).", "Pick {count} more simple spells you can cast at will (cantrips).", { count: cantripsLeft })));
   }
   if (derived.cantripAdvice !== null && cantripsOver > 0) {
-    owed.push(block("spells", `Remove ${cantripsOver} ${cantripsOver === 1 ? "cantrip" : "cantrips"}: a ${klass.name.toLowerCase()} knows ${derived.cantripAdvice ?? 0} at this level.`));
+    owed.push(block("spells", tp("Remove {count} cantrip: a {klass} knows {known} at this level.", "Remove {count} cantrips: a {klass} knows {known} at this level.", { count: cantripsOver, klass: klass.name.toLowerCase(), known: derived.cantripAdvice ?? 0 })));
   }
   if (derived.spellbookAdvice !== null) {
     // A wizard fills the book first, then prepares from it.
     const bookLeft = Math.min(derived.spellbookAdvice, supply?.spells ?? Infinity) - derived.chosenSpells.length;
     if (bookLeft > 0) {
-      owed.push(block("spells", `Write ${bookLeft} more ${bookLeft === 1 ? "spell" : "spells"} in your spellbook.`));
+      owed.push(block("spells", tp("Write {count} more spell in your spellbook.", "Write {count} more spells in your spellbook.", { count: bookLeft })));
     }
     const bookOver = derived.chosenSpells.length - derived.spellbookAdvice;
     if (bookOver > 0) {
-      owed.push(block("spells", `Remove ${bookOver} ${bookOver === 1 ? "spell" : "spells"} from your spellbook: a level ${casterLevel} wizard starts with ${derived.spellbookAdvice}.`));
+      owed.push(block("spells", tp("Remove {count} spell from your spellbook: a level {level} wizard starts with {known}.", "Remove {count} spells from your spellbook: a level {level} wizard starts with {known}.", { count: bookOver, level: casterLevel, known: derived.spellbookAdvice })));
     }
   }
   if (derived.spellAdvice) {
@@ -456,12 +482,12 @@ function deskBlocks(desk: DeskCounts, who: string): StepBlock[] {
       owed.push(block(
         "spells",
         derived.spellbookAdvice !== null
-          ? `Prepare ${spellsLeft} more ${spellsLeft === 1 ? "spell" : "spells"} from your spellbook.`
-          : `Pick ${spellsLeft} more ${spellsLeft === 1 ? "spell" : "spells"} (${derived.spellAdvice.label}).`,
+          ? tp("Prepare {count} more spell from your spellbook.", "Prepare {count} more spells from your spellbook.", { count: spellsLeft })
+          : tp("Pick {count} more spell ({list}).", "Pick {count} more spells ({list}).", { count: spellsLeft, list: derived.spellAdvice.label }),
       ));
     }
     if (spellsOver > 0) {
-      owed.push(block("spells", `Remove ${spellsOver} ${spellsOver === 1 ? "spell" : "spells"}: the limit is ${derived.spellAdvice.count} ${derived.spellAdvice.label}.`));
+      owed.push(block("spells", tp("Remove {count} spell: the limit is {limit} {list}.", "Remove {count} spells: the limit is {limit} {list}.", { count: spellsOver, limit: derived.spellAdvice.count, list: derived.spellAdvice.label })));
     }
   }
   // An Arcane Trickster's Mage Hand among the cantrips, once they are all
@@ -482,10 +508,11 @@ function deskBlocks(desk: DeskCounts, who: string): StepBlock[] {
 }
 
 export function spellsBlocker(
+  t: Translator,
   derived: BuilderDerived,
   klass: ClassOption | undefined,
 ): StepBlock | null {
-  return spellsBlocks(derived, klass)[0] ?? null;
+  return spellsBlocks(t, derived, klass)[0] ?? null;
 }
 
 const sameNumbers = (left: number[], right: number[]) =>
@@ -497,45 +524,47 @@ const sameNumbers = (left: number[], right: number[]) =>
 // standard array's six numbers once each, a point buy inside its range and
 // its budget, and rolled scores that are the six totals thrown.
 export function abilitiesBlocks(
+  t: Translator,
   derived: BuilderDerived,
   state?: Pick<BuilderState, "method" | "scores"> & Partial<Pick<BuilderState, "rollPool" | "featChoices">>,
   featJudge?: FeatJudge,
 ): StepBlock[] {
+  const tp = pluralOf(t);
   if (!derived.abilities) {
-    return [block("scores", "Give each of the six abilities a score (ability scores).")];
+    return [block("scores", t("Give each of the six abilities a score (ability scores)."))];
   }
   const owed: StepBlock[] = [];
   const placed = state ? Object.values(state.scores).map((score) => score ?? POINT_BUY_MIN) : [];
   if (state?.method === "standard" && !sameNumbers(placed, STANDARD_ARRAY)) {
-    owed.push(block("scores", `The standard array is ${STANDARD_ARRAY.join(", ")}, each used once. Place each number on one ability.`));
+    owed.push(block("scores", t("The standard array is {array}, each used once. Place each number on one ability.", { array: STANDARD_ARRAY.join(", ") })));
   }
   if (state?.method === "pointbuy") {
     const outside = placed.find((score) => score < POINT_BUY_MIN || score > POINT_BUY_MAX);
     if (outside !== undefined) {
-      owed.push(block("scores", `A point buy score runs from ${POINT_BUY_MIN} to ${POINT_BUY_MAX}; ${outside} is outside it.`));
+      owed.push(block("scores", t("A point buy score runs from {min} to {max}; {value} is outside it.", { min: POINT_BUY_MIN, max: POINT_BUY_MAX, value: outside })));
     }
     const over = -pointBuyRemaining(placed);
     if (over > 0) {
-      owed.push(block("scores", `Point buy is ${over} ${over === 1 ? "point" : "points"} over its ${POINT_BUY_BUDGET}. Lower a score first.`));
+      owed.push(block("scores", tp("Point buy is {count} point over its {budget}. Lower a score first.", "Point buy is {count} points over its {budget}. Lower a score first.", { count: over, budget: POINT_BUY_BUDGET })));
     }
   }
   if (state?.method === "roll") {
     const thrown = (state.rollPool ?? []).map((entry) => entry.total);
     if (!sameNumbers(placed, thrown)) {
-      owed.push(block("scores", "Rolled scores are the six totals thrown, each placed on one ability. Roll the dice, then place all six."));
+      owed.push(block("scores", t("Rolled scores are the six totals thrown, each placed on one ability. Roll the dice, then place all six.")));
     }
   }
   // Each class's prerequisite, on the final scores as the server reads
   // them (the plan's decision 1): never dropped, the player chooses what
   // to change.
-  for (const line of unmetPrereqs(derived.classList ?? [], derived.abilities, (id) => classNameOf(derived, id))) {
-    owed.push(block("scores", `${line} Raise that score, or change the classes.`));
+  for (const line of unmetPrereqsT(t, derived.classList ?? [], derived.abilities, (id) => classNameOf(derived, id))) {
+    owed.push(block("scores", t("{line} Raise that score, or change the classes.", { line })));
   }
   const unresolvedSlot = derived.activeAsiChoices.findIndex(
     (choice, index) => choice === null && !derived.asiTakenInPlay[index],
   );
   if (unresolvedSlot !== -1) {
-    owed.push(block("asi", `Choose what your hero gains at level ${derived.asiSlotLevels[unresolvedSlot]}: higher scores or a feat (ability score improvement).`));
+    owed.push(block("asi", t("Choose what your hero gains at level {level}: higher scores or a feat (ability score improvement).", { level: derived.asiSlotLevels[unresolvedSlot] })));
   }
   // A feat taken with an improvement names what it leaves open (issue #125).
   const asiFeats = derived.activeAsiChoices.flatMap((choice) => (choice?.mode === "feat" ? [choice.feat] : []));
@@ -559,15 +588,16 @@ function classNameOf(derived: BuilderDerived, id: string): string {
 }
 
 export function abilitiesBlocker(
+  t: Translator,
   derived: BuilderDerived,
   state?: Pick<BuilderState, "method" | "scores"> & Partial<Pick<BuilderState, "rollPool" | "featChoices">>,
   featJudge?: FeatJudge,
 ): StepBlock | null {
-  return abilitiesBlocks(derived, state, featJudge)[0] ?? null;
+  return abilitiesBlocks(t, derived, state, featJudge)[0] ?? null;
 }
 
 // The pack: what it costs against the coin the character starts with.
-export function gearBlocker(derived: BuilderDerived): StepBlock | null {
+export function gearBlocker(t: Translator, derived: BuilderDerived): StepBlock | null {
   const problems = [...new Set(derived.purse?.problems ?? [])];
   if (!problems.length) {
     return null;
@@ -576,7 +606,7 @@ export function gearBlocker(derived: BuilderDerived): StepBlock | null {
   // says the first and how many more.
   return block(
     "gear",
-    problems.length === 1 ? problems[0] : `${problems[0]} (${problems.length - 1} more listed under Equipment.)`,
+    problems.length === 1 ? problems[0] : t("{problem} ({count} more listed under Equipment.)", { count: problems.length - 1, problem: problems[0] }),
   );
 }
 
@@ -585,6 +615,7 @@ export function gearBlocker(derived: BuilderDerived): StepBlock | null {
 // change adds an ASI slot, a class change empties the spell list), plus the
 // one soft rule: a caster with no spells needs a second press to confirm.
 export function validateBuilder(
+  t: Translator,
   input: SubmitInput,
 ): { kind: "error" | "spellWarning"; message: string; target?: BlockerTarget } | null {
   const { derived, klass, background } = input;
@@ -592,16 +623,16 @@ export function validateBuilder(
   // Each missing piece by its own name and step: this used to say "Assign
   // all six ability scores first." whatever was missing.
   if (!race) {
-    return { kind: "error", message: "Choose where your hero comes from (race).", target: "race" };
+    return { kind: "error", message: t("Choose where your hero comes from (race)."), target: "race" };
   }
   if (!klass) {
-    return { kind: "error", message: "Choose how you fight or use magic (class).", target: "class" };
+    return { kind: "error", message: t("Choose how you fight or use magic (class)."), target: "class" };
   }
   if (!background) {
-    return { kind: "error", message: "Choose what your hero did before adventuring (background).", target: "background" };
+    return { kind: "error", message: t("Choose what your hero did before adventuring (background)."), target: "background" };
   }
   if (!derived.abilities || !derived.preview) {
-    return { kind: "error", message: "Give each of the six abilities a score (ability scores).", target: "scores" };
+    return { kind: "error", message: t("Give each of the six abilities a score (ability scores)."), target: "scores" };
   }
   // The gates read the picks as the sheet will carry them, not as they were
   // typed: buildBuilderResult reconciles once more, and a pick that step
@@ -615,13 +646,13 @@ export function validateBuilder(
   // In the wizard's order, so the save names the earliest step's pick; the
   // name is last, as the wizard asks it.
   const blocked =
-    callingBlocker(klass, state, derived) ??
-    ancestryBlocker(state, race, background, derived, input.featJudge) ??
-    backgroundBlocker(state, background, derived) ??
-    abilitiesBlocker(derived, state, input.featJudge) ??
-    spellsBlocker(derived, klass) ??
-    gearBlocker(derived) ??
-    identityBlocker(state);
+    callingBlocker(t, klass, state, derived) ??
+    ancestryBlocker(t, state, race, background, derived, input.featJudge) ??
+    backgroundBlocker(t, state, background, derived) ??
+    abilitiesBlocker(t, derived, state, input.featJudge) ??
+    spellsBlocker(t, derived, klass) ??
+    gearBlocker(t, derived) ??
+    identityBlocker(t, state);
   if (blocked) {
     return { kind: "error", message: blocked.message, target: blocked.target };
   }
@@ -630,7 +661,10 @@ export function validateBuilder(
   if (derived.castingLabel && !state.spells.length && !state.cantrips.length && !state.spellWarningAck) {
     return {
       kind: "spellWarning",
-      message: `${state.name.trim() || "This character"} has no ${derived.castingLabel.toLowerCase()} selected and will start unable to cast. Press again to continue anyway.`,
+      message: t("{name} has no {kind} selected and will start unable to cast. Press again to continue anyway.", {
+        name: state.name.trim() || t("This character"),
+        kind: derived.castingLabel.toLowerCase(),
+      }),
     };
   }
   return null;

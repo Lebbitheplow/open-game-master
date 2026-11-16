@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { EmptyState } from "@/components/EmptyState";
 import { GameIcon } from "@/components/ui/GameIcon";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 
 // The bell: out-of-game news (sessions planned, moved, called off; someone
 // can't make it; reminders and the idle-table nudge). Live over the
@@ -43,6 +44,7 @@ function ago(iso: string): string {
 }
 
 export function NotificationBell() {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<BellNotification[]>([]);
   const [unread, setUnread] = useState(0);
@@ -192,7 +194,7 @@ export function NotificationBell() {
       <button
         type="button"
         onClick={toggle}
-        aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
+        aria-label={unread > 0 ? t("Notifications, {count} unread", { count: unread }) : t("Notifications")}
         aria-expanded={open}
         className="motion-nudge relative rounded-lg border border-stone-800 bg-stone-900/60 p-2 text-stone-300 transition-colors hover:border-amber-500/40 hover:text-amber-200"
       >
@@ -209,9 +211,9 @@ export function NotificationBell() {
       </button>
       {open ? (
         <div role="menu" className="reveal-scale panel bell-panel absolute right-0 z-40 mt-2 w-80 p-2">
-          <p className="eyebrow px-2 pb-1.5 pt-1 text-[10px] text-amber-300/80">News from your tables</p>
+          <p className="eyebrow px-2 pb-1.5 pt-1 text-[10px] text-amber-300/80">{t("News from your tables")}</p>
           {items.length === 0 ? (
-            <EmptyState art="board" size="sm" title="Nothing yet" hint="Quiet week. Session plans and reminders land here." />
+            <EmptyState art="board" size="sm" title={t("Nothing yet")} hint={t("Quiet week. Session plans and reminders land here.")} />
           ) : (
             <ul className="stagger max-h-96 space-y-1 overflow-y-auto">
               {items.map((item, index) => (

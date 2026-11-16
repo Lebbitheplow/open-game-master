@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle, Info } from "lucide-react";
+import { useT, useTp } from "@/lib/locale";
 import { useContentCampaign } from "@/lib/content-scope";
 import { ui } from "@/lib/ui";
 
@@ -23,6 +24,8 @@ export function TableScopeNote({
   onRetry?: () => void;
 }) {
   const atTable = Boolean(useContentCampaign());
+  const t = useT();
+  const tp = useTp();
   if (!failed && !unadmitted.length) {
     return null;
   }
@@ -32,12 +35,14 @@ export function TableScopeNote({
         <p role="alert" className="flex flex-wrap items-center gap-1.5 text-amber-300/90">
           <AlertTriangle className="size-3.5 shrink-0" aria-hidden="true" />
           <span>
-            Could not load {atTable ? "this table's" : "your"} {noun} from the server, so only the books&apos; own are
-            listed.
+            {t("Could not load {scope} {noun} from the server, so only the books' own are listed.", {
+              scope: atTable ? t("this table's") : t("your", { context: "builder.scope.yours" }),
+              noun,
+            })}
           </span>
           {onRetry ? (
             <button type="button" onClick={onRetry} className={`${ui.btnSmall} min-h-10`}>
-              Try again
+              {t("Try again", { context: "builder.finish.tryAgain" })}
             </button>
           ) : null}
         </p>
@@ -46,10 +51,7 @@ export function TableScopeNote({
         <p className="flex items-start gap-1.5 text-stone-400" data-testid="table-scope-unadmitted">
           <Info className="mt-0.5 size-3.5 shrink-0 text-sky-300/70" aria-hidden="true" />
           <span>
-            Your own {unadmitted.join(", ")} {unadmitted.length === 1 ? "is" : "are"} not offered at this table. Homebrew
-            counts at a table when whoever runs it (the owner, the GM or the assistant GM) keeps it: send them a Workshop
-            bundle with your Homebrew ticked, and it is offered here once they bring it in. In your own library it is
-            offered as it is.
+            {tp("Your own {list} is not offered at this table. Homebrew counts at a table when whoever runs it (the owner, the GM or the assistant GM) keeps it: send them a Workshop bundle with your Homebrew ticked, and it is offered here once they bring it in. In your own library it is offered as it is.", "Your own {list} are not offered at this table. Homebrew counts at a table when whoever runs it (the owner, the GM or the assistant GM) keeps it: send them a Workshop bundle with your Homebrew ticked, and it is offered here once they bring it in. In your own library it is offered as it is.", { count: unadmitted.length, list: unadmitted.join(", ") })}
           </span>
         </p>
       ) : null}

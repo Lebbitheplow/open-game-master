@@ -11,6 +11,7 @@ import { InfoButton } from "@/components/ui/InfoDialog";
 import { describeContentEntry, spellSummary } from "@/lib/help";
 import { useContentSearch, type PickerEntry } from "@/app/characters/builder/useContentSearch";
 import { CLASS_IDS, type EditorKind } from "@/app/workshop/homebrew/types";
+import { useT } from "@/lib/locale";
 
 // "Start from": a search over the content pack that hands back a row to
 // copy into the draft. Pick, do not type: a DM changing one number on an
@@ -47,6 +48,7 @@ export function CatalogStart({
     extra,
   );
   const container = useRef<HTMLDivElement>(null);
+  const t = useT();
 
   useEffect(() => {
     function onClickOutside(event: MouseEvent) {
@@ -67,7 +69,7 @@ export function CatalogStart({
         <span className="w-44">
           <Select
             value={classSlug}
-            label="Class to browse"
+            label={t("Class to browse")}
             onChange={setClassSlug}
             options={CLASS_IDS.map((id) => ({ value: id as string, label: id, icon: { kind: "family" as const, key: `class-${id}` } }))}
           />
@@ -79,25 +81,24 @@ export function CatalogStart({
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onFocus={() => results.length && setOpen(true)}
-          placeholder="Start from something in the books..."
-          aria-label="Search the content pack to start from"
+          placeholder={t("Start from something in the books...")}
+          aria-label={t("Search the content pack to start from")}
           className={cn(ui.input, "pl-9")}
         />
         {loading ? <Loader2 className="absolute right-3 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-stone-500" /> : null}
       </div>
       {failed ? (
         <p className="live-in basis-full text-xs text-amber-300">
-          The books could not be searched just now. Type again to retry.
+          {t("The books could not be searched just now. Type again to retry.")}
         </p>
       ) : open && !results.length && query.trim() && !loading ? (
         <p className="live-in basis-full text-xs text-stone-500">
-          Nothing in the books matched &quot;{query.trim()}&quot;.
+          {t("Nothing in the books matched \"{query}\".", { query: query.trim() })}
         </p>
       ) : null}
       {packMissing && !failed ? (
         <p className="basis-full text-[11px] text-stone-500">
-          No content pack on this server: your own homebrew, ODM&apos;s feats and backgrounds, and the bundled SRD&apos;s spells, magic items,
-          species and subclasses are what you can start from.
+          {t("No content pack on this server: your own homebrew, ODM's feats and backgrounds, and the bundled SRD's spells, magic items, species and subclasses are what you can start from.")}
         </p>
       ) : null}
       {/* In the flow, not absolutely positioned: the editor sits in a sheet
@@ -125,10 +126,10 @@ export function CatalogStart({
                   <span className="truncate">{entry.name}</span>
                 </span>
                 <span className="flex shrink-0 flex-col items-end text-[11px] text-stone-500">
-                  <span>{entry.level !== undefined ? `level ${entry.level}` : entry.rarity || entry.kind || ""}</span>
+                  <span>{entry.level !== undefined ? t("level {level}", { level: entry.level }) : entry.rarity || entry.kind || ""}</span>
                   {/* Where the row is from, so a pack's version and the SRD's are told apart. */}
                   <span className="text-[10px] text-stone-600">
-                    {entry.source === "homebrew" ? "your homebrew" : entry.document || (entry.source === "srd" || entry.source === "bundled" ? "SRD 5.1" : "")}
+                    {entry.source === "homebrew" ? t("your homebrew") : entry.document || (entry.source === "srd" || entry.source === "bundled" ? "SRD 5.1" : "")}
                   </span>
                 </span>
               </button>

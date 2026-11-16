@@ -12,6 +12,12 @@
 //
 // The rules here are shared by the route and the table's own controls.
 
+import { translate } from "@/lib/messages-logic";
+import { pluralOf } from "@/lib/messages-logic";
+
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
+
 export type SessionHold = {
   // When the session ended (ms since the epoch).
   at: number;
@@ -33,9 +39,11 @@ export function maySteerSessions(viewer: { steersStory: boolean; isLead: boolean
 // break's and the X-card's.
 export const SESSION_REASON = "session";
 
-// What a refused move reads while the table is between sessions.
-export function sessionRefusal(hold: Pick<SessionHold, "number">): string {
-  return `Session ${hold.number} is over. Use OOC for table talk until the next session starts.`;
+// What a refused move reads while the table is between sessions. The words
+// follow the asker (t, threaded from the request by refuseDuringBreak); the
+// enT default keeps every other reader — and the English line — as they are.
+export function sessionRefusal(hold: Pick<SessionHold, "number">, t: T = enT): string {
+  return t("Session {number} is over. Use OOC for table talk until the next session starts.", { number: hold.number });
 }
 
 // What work that waits on the storyteller reads between sessions (an Ask,
@@ -46,12 +54,23 @@ export function heldWorkRefusal(hold: Pick<SessionHold, "number">): string {
 }
 
 // The chronicle's own lines at each end, so the story reads in sessions.
+// These lines are stored messages, so the writer passes the campaign's own
+// language (chronicleT in src/lib/dm/session-hold.ts); the enT default keeps
+// every other reader — and the stored English lines — as they are.
+export function sessionEndedLineT(t: T, number: number): string {
+  return t("Session {n} ends.", { n: number });
+}
+
 export function sessionEndedLine(number: number): string {
-  return `Session ${number} ends.`;
+  return sessionEndedLineT(enT, number);
+}
+
+export function sessionStartedLineT(t: T, number: number): string {
+  return t("Session {n} begins.", { n: number });
 }
 
 export function sessionStartedLine(number: number): string {
-  return `Session ${number} begins.`;
+  return sessionStartedLineT(enT, number);
 }
 
 // A "Previously, on..." opens the next session only after a real gap: a
@@ -120,10 +139,15 @@ export function sessionWhenLocal(startsAt: string, locale?: string): string {
 }
 
 // The line the banner and the home screen say about it.
-export function nextSessionWords(next: NextSession | null, when: string): string {
+export function nextSessionWordsT(t: T, next: NextSession | null, when: string): string {
+  const tp = pluralOf(t);
   if (!next) {
-    return "No next session is set yet.";
+    return t("No next session is set yet.");
   }
-  const coming = next.coming === 1 ? "1 coming" : `${next.coming} coming`;
-  return `Next session: ${when} · ${coming}`;
+  const coming = tp("{count} coming", "{count} coming", { count: next.coming });
+  return t("Next session: {when} · {coming}", { when, coming });
+}
+
+export function nextSessionWords(next: NextSession | null, when: string): string {
+  return nextSessionWordsT(enT, next, when);
 }

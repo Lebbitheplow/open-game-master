@@ -15,6 +15,7 @@ import { forgetPackArt } from "@/lib/worlds/use-pack-art";
 import { AvailablePluginCard, InstalledPluginRow } from "./PluginCards";
 import { PluginFilterBar } from "./PluginFilterBar";
 import { PluginThumb } from "./PluginThumb";
+import { useT } from "@/lib/locale";
 
 // The campaign plugin browser.
 //
@@ -46,6 +47,7 @@ type RegistryState = {
 };
 
 export function AdminWorldsPanel() {
+  const t = useT();
   const [state, setState] = useState<RegistryState | null>(null);
   const [busyId, setBusyId] = useState("");
   const [error, setError] = useState("");
@@ -101,13 +103,13 @@ export function AdminWorldsPanel() {
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        setError(data.error || "Could not save the registry URL.");
+        setError(data.error || t("Could not save the registry URL."));
         return;
       }
-      setNotice(next ? "Registry saved." : "Registry cleared.");
+      setNotice(next ? t("Registry saved.") : t("Registry cleared."));
       await load();
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "admin.worlds.unreachable" }));
     } finally {
       setBusyId("");
     }
@@ -125,18 +127,18 @@ export function AdminWorldsPanel() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setError(data.error || "Could not install that world.");
+        setError(data.error || t("Could not install that world."));
         return;
       }
       setNotice(
         data.replaced
-          ? `Updated ${data.pack.name}. Campaigns already using it pick up the new build on their next turn.`
-          : `Installed ${data.pack.name}.`,
+          ? t("Updated {name}. Campaigns already using it pick up the new build on their next turn.", { name: data.pack.name })
+          : t("Installed {name}.", { name: data.pack.name }),
       );
       forgetPackArt(data.pack?.id);
       await load();
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "admin.worlds.unreachable" }));
     } finally {
       setBusyId("");
     }
@@ -156,21 +158,21 @@ export function AdminWorldsPanel() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setError(data.error || "Could not install that world.");
+        setError(data.error || t("Could not install that world."));
         return;
       }
-      setNotice(`Installed ${bundle.name} as a workshop (${data.copied} entries). Find it under Workshop.`);
+      setNotice(t("Installed {name} as a workshop ({count} entries). Find it under Workshop.", { name: bundle.name, count: data.copied }));
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "admin.worlds.unreachable" }));
     } finally {
       setBusyId("");
     }
   }
 
   async function remove(pack: WorldPackSummary) {
-    const sure = await appConfirm(`Remove ${pack.name}? Campaigns that used it fall back to their plain setting.`, {
-      title: "Remove this world pack?",
-      actionLabel: "Remove",
+    const sure = await appConfirm(t("Remove {name}? Campaigns that used it fall back to their plain setting.", { name: pack.name }), {
+      title: t("Remove this world pack?"),
+      actionLabel: t("Remove", { context: "action.remove" }),
       tone: "danger",
     });
     if (!sure) return;
@@ -183,14 +185,14 @@ export function AdminWorldsPanel() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setError(data.error || "Could not remove that world.");
+        setError(data.error || t("Could not install that world."));
         return;
       }
-      setNotice(`Removed ${pack.name}. Campaigns that used it fall back to their plain setting.`);
+      setNotice(t("Removed {name}. Campaigns that used it fall back to their plain setting.", { name: pack.name }));
       forgetPackArt(pack.id);
       await load();
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "admin.worlds.unreachable" }));
     } finally {
       setBusyId("");
     }
@@ -198,14 +200,14 @@ export function AdminWorldsPanel() {
 
   async function onFile(file: File) {
     if (file.size > MAX_UPLOAD_BYTES) {
-      setError("That file is larger than 16MB, so it is not a world pack.");
+      setError(t("That file is larger than 16MB, so it is not a world pack."));
       return;
     }
     let parsed: unknown;
     try {
       parsed = JSON.parse(await file.text());
     } catch {
-      setError("That file is not valid JSON.");
+      setError(t("That file is not valid JSON."));
       return;
     }
     await install({ pack: parsed }, "upload");
@@ -238,36 +240,31 @@ export function AdminWorldsPanel() {
   const showFilter = available.length + state.installed.length > 1;
   const clearFilter = (
     <button type="button" onClick={() => setFilter(NO_PLUGIN_FILTER)} className={cn(ui.btnSmall, "text-xs")}>
-      Clear the filter
+      {t("Clear the filter")}
     </button>
   );
 
   return (
     <div className="space-y-4 text-sm">
       <section className={cn(ui.card, "ornate texture-noise p-5")}>
-        <SectionHead level="h2" title="Campaign plugins" glyph="system-plugin" />
+        <SectionHead level="h2" title={t("Campaign plugins")} glyph="system-plugin" />
         <p className="text-xs leading-5 text-stone-400">
-          A world pack renames the rules into a setting: its own races, classes, spells, gear,
-          monsters, factions and lore, plus a brief telling the GM how that world sounds. Every
-          mechanic stays 5e, so a character built in one still works anywhere.
+          {t("A world pack renames the rules into a setting: its own races, classes, spells, gear, monsters, factions and lore, plus a brief telling the GM how that world sounds. Every mechanic stays 5e, so a character built in one still works anywhere.")}
         </p>
         <p className="mt-2 text-xs leading-5 text-stone-500">
-          Packs based on an existing universe are community works. They are not distributed with
-          Open Game Master, are not covered by its MIT license, and are not endorsed by the
-          rights holders of the settings they reference. Installing one is your decision as the
-          operator of this server.
+          {t("Packs based on an existing universe are community works. They are not distributed with Open Game Master, are not covered by its MIT license, and are not endorsed by the rights holders of the settings they reference. Installing one is your decision as the operator of this server.")}
         </p>
         <p className="mt-2 text-xs leading-5 text-stone-400">
-          Make your own in a workshop&apos;s Plugin tool, or from a world you built in WorldForge:{" "}
+          {t("Make your own in a workshop's Plugin tool, or from a world you built in WorldForge: ")}{" "}
           <a
             href={PLUGIN_GUIDE_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="text-amber-200 underline decoration-amber-500/40 underline-offset-2 hover:text-amber-400"
           >
-            how to make a campaign plugin
-          </a>{" "}
-          on opengamemaster.com.
+            {t("how to make a campaign plugin")}
+          </a>
+          {t(" on opengamemaster.com.")}
         </p>
       </section>
 
@@ -276,9 +273,9 @@ export function AdminWorldsPanel() {
 
       {state.bundles?.length ? (
         <section className={cn(ui.card, "texture-noise p-5")}>
-          <SectionHead title="Prepared worlds" glyph="system-region" aside={<span className="tabular-nums">{state.bundles.length}</span>} />
+          <SectionHead title={t("Prepared worlds")} glyph="system-region" aside={<span className="tabular-nums">{state.bundles.length}</span>} />
           <p className="mb-2 text-[11px] text-stone-500">
-            A workshop someone else built: cast, places, maps, encounters and lore, ready to run. Installing one creates a workshop of your own from it.
+            {t("A workshop someone else built: cast, places, maps, encounters and lore, ready to run. Installing one creates a workshop of your own from it.")}
           </p>
           <ul className="stagger-up grid gap-2 sm:grid-cols-2">
             {state.bundles.map((bundle) => (
@@ -287,7 +284,7 @@ export function AdminWorldsPanel() {
                 <p className="font-display text-sm text-amber-100">{bundle.name}</p>
                 <p className="text-[11px] leading-4 text-stone-400">{bundle.blurb}</p>
                 <p className="text-[10px] text-stone-500">
-                  {bundle.author ? `by ${bundle.author}` : "community work"}
+                  {bundle.author ? t("by {name}", { name: bundle.author, context: "admin.worlds.by" }) : t("community work")}
                   {bundle.version ? `, v${bundle.version}` : ""}
                 </p>
                 {bundle.inspiredBy ? <UnofficialPackNotice inspiredBy={bundle.inspiredBy} rightsHolder={bundle.rightsHolder} /> : null}
@@ -298,7 +295,7 @@ export function AdminWorldsPanel() {
                   className={cn(ui.btnSmall, "text-xs")}
                 >
                   {busyId === `bundle:${bundle.id}` ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-                  Install as a workshop
+                  {t("Install as a workshop")}
                 </button>
               </li>
             ))}
@@ -307,7 +304,7 @@ export function AdminWorldsPanel() {
       ) : null}
 
       <section className={cn(ui.card, "texture-noise p-5")}>
-        <SectionHead title="Install from a file" glyph="tab-handout" />
+        <SectionHead title={t("Install from a file")} glyph="tab-handout" />
         <input
           ref={fileInput}
           type="file"
@@ -333,23 +330,22 @@ export function AdminWorldsPanel() {
           ) : (
             <Upload className="size-3.5" />
           )}
-          Choose a pack file
+          {t("Choose a pack file")}
         </button>
         <p className="mt-1 text-[11px] text-stone-500">
-          A single .json manifest. It is validated before anything is written, and lands in this
-          server&apos;s data directory.
+          {t("A single .json manifest. It is validated before anything is written, and lands in this server's data directory.")}
         </p>
       </section>
 
       <section className={cn(ui.card, "texture-noise p-5")}>
-        <SectionHead title="Registry" glyph="tab-facts" />
+        <SectionHead title={t("Registry")} glyph="tab-facts" />
         <div className="flex flex-wrap items-center gap-2">
           <input
             key={state.url ?? ""}
             ref={registryInput}
             defaultValue={state.url ?? ""}
             placeholder="https://example.org/worlds/index.json"
-            aria-label="Registry URL"
+            aria-label={t("Registry URL")}
             className={cn(ui.input, "min-w-0 flex-1 text-xs")}
           />
           <button
@@ -359,17 +355,15 @@ export function AdminWorldsPanel() {
             className={cn(ui.btnSmall, "text-xs")}
           >
             {busyId === "registry" ? <Loader2 className="size-3.5 animate-spin" /> : null}
-            Save
+            {t("Save", { context: "admin.worlds.save" })}
           </button>
         </div>
         <p className="mt-1 text-[11px] leading-4 text-stone-500">
-          A JSON index of downloadable campaigns, over https. None is built in. Blank falls
-          through to the
+          {t("A JSON index of downloadable campaigns, over https. None is built in. Blank falls through to the")}
           <span className="font-code"> WORLD_REGISTRY_URL </span>
-          environment variable, and
+          {t("environment variable, and")}
           <span className="font-code"> off </span>
-          browses nothing even when that is set. Whatever a registry lists is third-party content
-          this project neither ships nor vets, and nothing installs until you install it.
+          {t("browses nothing even when that is set. Whatever a registry lists is third-party content this project neither ships nor vets, and nothing installs until you install it.")}
         </p>
       </section>
 
@@ -381,7 +375,7 @@ export function AdminWorldsPanel() {
 
       <section className={cn(ui.card, "texture-noise p-5")}>
         <SectionHead
-          title="Available to download"
+          title={t("Available to download")}
           glyph="system-share"
           aside={
             available.length ? (
@@ -395,19 +389,19 @@ export function AdminWorldsPanel() {
           <EmptyState
             art="scrolls"
             size="sm"
-            title="No registry is set."
-            hint="Paste a registry's URL above to browse its campaigns, or install a pack from a file."
+            title={t("No registry is set.")}
+            hint={t("Paste a registry's URL above to browse its campaigns, or install a pack from a file.")}
           />
         ) : state.error ? (
           <p role="alert" className="motion-shake rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300">
             {state.error}
           </p>
         ) : !state.packs.length ? (
-          <EmptyState art="scrolls" size="sm" title="That registry lists no campaigns." />
+          <EmptyState art="scrolls" size="sm" title={t("That registry lists no campaigns.")} />
         ) : !available.length ? (
-          <EmptyState art="chest" size="sm" title="Everything this registry offers is already installed." />
+          <EmptyState art="chest" size="sm" title={t("Everything this registry offers is already installed.")} />
         ) : !shownAvailable.length ? (
-          <EmptyState art="scrolls" size="sm" title="Nothing to download matches that filter." action={clearFilter} />
+          <EmptyState art="scrolls" size="sm" title={t("Nothing to download matches that filter.")} action={clearFilter} />
         ) : (
           <ul className="stagger grid gap-3 sm:grid-cols-2">
             {shownAvailable.map((entry) => (
@@ -424,7 +418,7 @@ export function AdminWorldsPanel() {
 
       <section className={cn(ui.card, "texture-noise p-5")}>
         <SectionHead
-          title="Installed"
+          title={t("Installed", { context: "admin.worlds.installedHeading" })}
           glyph="system-homebrew"
           aside={
             <span className="tabular-nums">
@@ -433,9 +427,9 @@ export function AdminWorldsPanel() {
           }
         />
         {!state.installed.length ? (
-          <EmptyState art="map" size="sm" title="No world packs yet. Campaigns run on the built-in settings." />
+          <EmptyState art="map" size="sm" title={t("No world packs yet. Campaigns run on the built-in settings.")} />
         ) : !shownInstalled.length ? (
-          <EmptyState art="map" size="sm" title="No installed pack matches that filter." action={clearFilter} />
+          <EmptyState art="map" size="sm" title={t("No installed pack matches that filter.")} action={clearFilter} />
         ) : (
           <ul className="stagger space-y-2">
             {shownInstalled.map((pack) => (

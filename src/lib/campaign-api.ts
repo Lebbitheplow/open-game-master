@@ -4,13 +4,27 @@ import { storytellerSees, type ViewerCaps } from "@/lib/dm/viewer";
 import type { User } from "@/lib/db/users";
 import { isMemberMuted } from "@/lib/db/moderation";
 import { fillUsageScope, openUsageScope } from "@/lib/usage/scope";
+import { translate } from "@/lib/messages-logic";
+import { requestT } from "@/lib/request-locale";
 
 export type MemberContext = { user: User; campaign: Campaign };
 
+// A guard's refusal words: the request's language when the route hands the
+// request over (panels and alerts show the server's words raw), English
+// otherwise, so a route not yet converted keeps its bytes.
+function refusalT(request: Request | undefined): (key: string, vars?: Record<string, string | number>) => string {
+  if (!request) {
+    return (key, vars) => translate("en", key, vars);
+  }
+  return requestT(request);
+}
+
 // Resolves the logged-in user and their membership in a campaign, or the
-// error Response the route should return.
+// error Response the route should return. Routes whose refusals surface in
+// alerts pass the request, so a French reader's panel says so in French.
 export async function requireMember(
   campaignId: string,
+  request?: Request,
 ): Promise<MemberContext | Response> {
   // Opened before the first await so it is the route's (src/lib/usage/scope.ts).
   const scope = openUsageScope();
@@ -18,14 +32,15 @@ export async function requireMember(
   if (!user) {
     return unauthorized();
   }
+  const t = refusalT(request);
   if (user.mustChangePassword) {
     // Admin reset a temp password for this account; nothing else works until
     // the user sets their own via /api/auth/change-password.
-    return Response.json({ error: "Set a new password to continue." }, { status: 403 });
+    return Response.json({ error: t("Set a new password to continue.") }, { status: 403 });
   }
   const campaign = getCampaignForUser(campaignId, user.id);
   if (!campaign) {
-    return Response.json({ error: "Campaign not found." }, { status: 404 });
+    return Response.json({ error: t("Campaign not found.") }, { status: 404 });
   }
   // Everything this request goes on to ask of a model, a painter or a
   // speech server is this campaign's in the usage ledger.
@@ -66,14 +81,14 @@ export function seesStorytellerSecrets(context: MemberContext): boolean {
 // Membership plus the right to speak. A member the party lead has muted
 // keeps reading the table but every route that puts words in front of other
 // players (actions, asks, side chats) goes through here and is refused.
-export async function requireVoice(campaignId: string): Promise<MemberContext | Response> {
-  const context = await requireMember(campaignId);
+export async function requireVoice(campaignId: string, request?: Request): Promise<MemberContext | Response> {
+  const context = await requireMember(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }
   if (isMemberMuted(campaignId, context.user.id)) {
     return Response.json(
-      { error: "The party lead has muted you at this table." },
+      { error: refusalT(request)("The party lead has muted you at this table.") },
       { status: 403 },
     );
   }
@@ -83,26 +98,26 @@ export async function requireVoice(campaignId: string): Promise<MemberContext | 
 // Membership plus party-lead check. The lead owns the table: campaign info,
 // settings, invites, and who holds which seat. This is deliberately NOT the
 // story-authority check, because at a human-DM table the lead is a player.
-export async function requireLead(campaignId: string): Promise<MemberContext | Response> {
-  const context = await requireMember(campaignId);
+export async function requireLead(campaignId: string, request?: Request): Promise<MemberContext | Response> {
+  const context = await requireMember(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }
   if (!isLead(context)) {
-    return Response.json({ error: "Only the party lead can do that." }, { status: 403 });
+    return Response.json({ error: refusalT(request)("Only the party lead can do that.") }, { status: 403 });
   }
   return context;
 }
 
 // Membership plus the DM seat. 403s for everyone in an AI-run campaign,
 // where there is no such seat.
-export async function requireDm(campaignId: string): Promise<MemberContext | Response> {
-  const context = await requireMember(campaignId);
+export async function requireDm(campaignId: string, request?: Request): Promise<MemberContext | Response> {
+  const context = await requireMember(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }
   if (!isDm(context)) {
-    return Response.json({ error: "Only the Game Master can do that." }, { status: 403 });
+    return Response.json({ error: refusalT(request)("Only the Game Master can do that.") }, { status: 403 });
   }
   return context;
 }
@@ -114,17 +129,18 @@ export async function requireDm(campaignId: string): Promise<MemberContext | Res
 // bring the prep in (/api/campaigns/[id]/import follows the same rule). A
 // lead at a human-DM table is a player and stays out, as does every other
 // player: prepared fights are the story's secrets.
-export async function requirePrepAuthority(campaignId: string): Promise<MemberContext | Response> {
-  const context = await requireMember(campaignId);
+export async function requirePrepAuthority(campaignId: string, request?: Request): Promise<MemberContext | Response> {
+  const context = await requireMember(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }
   if (!hasPrepAuthority(context)) {
+    const t = refusalT(request);
     return Response.json(
       {
         error: context.campaign.dmUserId
-          ? "Only the Game Master can do that."
-          : "Only the party lead can do that.",
+          ? t("Only the Game Master can do that.")
+          : t("Only the party lead can do that."),
       },
       { status: 403 },
     );
@@ -145,17 +161,19 @@ export function hasPrepAuthority(context: MemberContext): boolean {
 // and the lead loses it, because those secrets are now the DM's to keep.
 export async function requireStoryAuthority(
   campaignId: string,
+  request?: Request,
 ): Promise<MemberContext | Response> {
-  const context = await requireMember(campaignId);
+  const context = await requireMember(campaignId, request);
   if (isErrorResponse(context)) {
     return context;
   }
   if (!capsFor(context).steersStory) {
+    const t = refusalT(request);
     return Response.json(
       {
         error: context.campaign.dmUserId
-          ? "Only the Game Master can do that."
-          : "Only the party lead can do that.",
+          ? t("Only the Game Master can do that.")
+          : t("Only the party lead can do that."),
       },
       { status: 403 },
     );

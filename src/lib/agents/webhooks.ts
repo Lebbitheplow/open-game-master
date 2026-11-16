@@ -16,6 +16,13 @@ import { grantUser, type ConnectionGrant } from "@/lib/agents/grants";
 import { playerOpportunities, turnIdentity, type OpportunityState, type PlayerOpportunity } from "./webhook-opportunities";
 import { AGAIN_SUFFIX, baseOpportunityId, GUARDED_TOOLS, guardVerdict, type GuardedTool, type GuardVerdict } from "./webhook-guard-logic";
 import { seatVerdict, stopWordsForAgent, type StopReason } from "./webhook-seat-logic";
+import { translate } from "@/lib/messages-logic";
+
+// The agent-facing stop words keep the server's English: an agent relays
+// them to its own user, and no table language reaches this far. The
+// sentences still live in the dictionaries (agents.link.*), read through an
+// English-bound translator.
+const agentT = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
 
 const MAX_SUBSCRIPTIONS = 5;
 const MAX_ATTEMPTS = 8;
@@ -343,7 +350,7 @@ export function pollLinkAnswer(token: string, now = Date.now()): PollAnswer {
 function stoppedAnswer(hash: string): PollAnswer {
   const row = getDatabase().prepare(`SELECT * FROM player_webhook_stops WHERE poll_token_hash = ?`).get(hash) as StopRow | undefined;
   if (!row) return { status: 404 };
-  return { status: 410, stopped: stoppedLink(row), error: stopWordsForAgent(row.reason as StopReason, "poll") };
+  return { status: 410, stopped: stoppedLink(row), error: stopWordsForAgent(agentT, row.reason as StopReason, "poll") };
 }
 
 type StopRow = { id: string; grant_id: string; campaign_id: string; character_id: string; delivery: "poll" | "push"; poll_token_hash: string | null; reason: string; stopped_at: string };
@@ -407,12 +414,12 @@ function liveState(grant: ConnectionGrant, id: string) {
   const found = getDatabase().prepare(`SELECT * FROM player_webhooks WHERE id = ? AND grant_id = ?`).get(id, grant.id) as Subscription | undefined;
   if (!found) {
     const stop = getDatabase().prepare(`SELECT reason, delivery FROM player_webhook_stops WHERE id = ? AND grant_id = ?`).get(id, grant.id) as { reason: StopReason; delivery: "poll" | "push" } | undefined;
-    throw new Error(stop ? stopWordsForAgent(stop.reason, stop.delivery) : "This subscription was removed: unsubscribed, replaced by a new one, or its connection revoked.");
+    throw new Error(stop ? stopWordsForAgent(agentT, stop.reason, stop.delivery) : "This subscription was removed: unsubscribed, replaced by a new one, or its connection revoked.");
   }
   const live = liveSubscription(found);
   if ("stopped" in live) {
     stopPlayerWebhook(found, live.stopped);
-    throw new Error(stopWordsForAgent(live.stopped, found.poll_token_hash ? "poll" : "push"));
+    throw new Error(stopWordsForAgent(agentT, live.stopped, found.poll_token_hash ? "poll" : "push"));
   }
   if ("gone" in live) throw new Error("This subscription is no longer active: its connection was revoked or its account cannot play now.");
   const { sub } = live;

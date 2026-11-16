@@ -6,6 +6,7 @@ import { subclassExtrasFor } from "@/lib/db/subclass-extras";
 import { publishPersisted } from "@/lib/events";
 import { featChoicesSchema } from "@/lib/schemas/sheet";
 import { applyOwedPicks } from "@/lib/srd/owed-picks-logic";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,9 +32,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ cam
   if (isErrorResponse(context)) {
     return context;
   }
+  const t = requestT(request);
   const parsed = owedSchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {
-    return Response.json({ error: parsed.error.issues[0]?.message || "Say which owed pick to make." }, { status: 400 });
+    return Response.json({ error: parsed.error.issues[0]?.message || t("Say which owed pick to make.") }, { status: 400 });
   }
   // A living character of the player's own, as the level-up reads it: the
   // dead make no picks.
@@ -45,7 +47,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ cam
       ? seated
       : null;
   if (!sheet) {
-    return Response.json({ error: "That is not one of your living characters." }, { status: 404 });
+    return Response.json({ error: t("That is not one of your living characters.") }, { status: 404 });
   }
   // The table's workshop and pack subclasses and its workshop feats, so the
   // regrant keeps what they grant (owed-picks-logic.ts OwedContext).
@@ -63,7 +65,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ cam
     ...(applied.featChoices ? { featChoices: applied.featChoices } : {}),
   });
   if (!updated) {
-    return Response.json({ error: "Could not save the pick." }, { status: 500 });
+    return Response.json({ error: t("Could not save the pick.") }, { status: 500 });
   }
   publishPersisted(campaignId, "sheet_updated", { sheet: updated });
   return Response.json({ sheet: updated, made: applied.made });

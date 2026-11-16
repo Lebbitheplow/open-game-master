@@ -4,6 +4,7 @@ import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById, setSheetWatching } from "@/lib/db/sheets";
 import { TABLE_WATCH, watchFeatureOf } from "@/lib/dm/before-roll-logic";
 import { publishPersisted } from "@/lib/events";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,13 +24,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ cam
   if (isErrorResponse(context)) {
     return context;
   }
+  // The watch toggle shows the refusal raw (WatchCard.tsx WatchToggle), so it
+  // answers in the asker's language.
+  const t = requestT(request);
   const parsed = bodySchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {
-    return Response.json({ error: "Invalid choice." }, { status: 400 });
+    return Response.json({ error: t("Invalid choice.") }, { status: 400 });
   }
   const sheet = getSheetById(parsed.data.characterId);
   if (!sheet || sheet.campaignId !== campaignId || sheet.userId !== context.user.id) {
-    return Response.json({ error: "That is not your character." }, { status: 403 });
+    return Response.json({ error: t("That is not your character.") }, { status: 403 });
   }
   const encounter = getActiveEncounter(campaignId);
   // The stops come before any d20 the GM's calls throw, the console's as the
@@ -40,7 +44,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ cam
   const power = watchFeatureOf(sheet, !encounter);
   if (parsed.data.on && !power) {
     return Response.json(
-      { error: encounter ? `${sheet.name} holds nothing the watch stop answers with.` : `Out of a fight the table is watched for Portent, Cosmic Omen or Restore Balance, and ${sheet.name} has none of them to use.` },
+      {
+        error: encounter
+          ? t("{name} holds nothing the watch stop answers with.", { name: sheet.name })
+          : t("Out of a fight the table is watched for Portent, Cosmic Omen or Restore Balance, and {name} has none of them to use.", { name: sheet.name }),
+      },
       { status: 409 },
     );
   }

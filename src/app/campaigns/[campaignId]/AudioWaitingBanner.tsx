@@ -1,6 +1,7 @@
 "use client";
 
 import { SessionBanner, bannerButtonClass } from "@/app/campaigns/[campaignId]/SessionBanner";
+import { useT } from "@/lib/locale";
 
 // Sound the browser is holding back, said where it can be seen. A browser
 // plays nothing until the page has had a click or a key press, so a tab that
@@ -24,6 +25,7 @@ export function AudioWaitingBanner({
   ambienceWaiting: boolean;
   onListen: () => void;
 }) {
+  const t = useT();
   if (narrationHeld <= 0 && !ambienceWaiting) {
     return null;
   }
@@ -33,22 +35,20 @@ export function AudioWaitingBanner({
   // apps' web view holds sound back the same way, and a phone is tapped.
   const said =
     narrationHeld === 1
-      ? "A passage arrived before sound could play here. Tap or click to hear it."
-      : `${narrationHeld} passages arrived before sound could play here. Tap or click to hear the newest; the others have replay buttons.`;
+      ? t("A passage arrived before sound could play here. Tap or click to hear it.")
+      : t("{count} passages arrived before sound could play here. Tap or click to hear the newest; the others have replay buttons.", { count: narrationHeld });
   return (
     <SessionBanner
       glyph={narration ? "ui-speech" : "tab-ambience"}
-      title={narration ? "Narration is waiting" : "Sound is waiting"}
+      title={narration ? t("Narration is waiting") : t("Sound is waiting")}
       actions={
         <button type="button" className={bannerButtonClass(true)} onClick={onListen}>
-          Listen
+          {t("Listen")}
         </button>
       }
     >
       <span role="status" className="block">
-        {narration
-          ? said
-          : "The table's sound starts once you tap or click anywhere here."}
+        {narration ? said : t("The table's sound starts once you tap or click anywhere here.")}
       </span>
     </SessionBanner>
   );

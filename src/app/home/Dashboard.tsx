@@ -4,6 +4,7 @@ import { ScrollText } from "lucide-react";
 import { appConfirm } from "@/components/ui/ConfirmDialog";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { ui } from "@/lib/ui";
+import { useT } from "@/lib/locale";
 import type { SessionUser } from "@/lib/campaign-types";
 import { offersStoryModel, useCapabilities, type ClientCapabilities } from "@/lib/use-capabilities";
 import { StarterDialog } from "@/app/home/StarterDialog";
@@ -51,6 +52,7 @@ function requestedWizard(): "campaign" | "solo" | "starter" | null {
 // below the fold. Everything the old dashboard offered is still here; only
 // the composition changed.
 export function Dashboard({ user, onLogout }: { user: SessionUser; onLogout: () => void }) {
+  const t = useT();
   const [campaigns, setCampaigns] = useState<HomeCampaign[]>([]);
   const [workshops, setWorkshops] = useState<WorkshopSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -153,7 +155,7 @@ export function Dashboard({ user, onLogout }: { user: SessionUser; onLogout: () 
   async function deleteCampaign(campaign: HomeCampaign) {
     if (
       !await appConfirm(
-        `Delete "${campaign.title}" for everyone? All characters, messages, and story progress are lost. This cannot be undone.`,
+        t("Delete \"{title}\" for everyone? All characters, messages, and story progress are lost. This cannot be undone.", { title: campaign.title }),
       )
     ) {
       return;
@@ -166,7 +168,7 @@ export function Dashboard({ user, onLogout }: { user: SessionUser; onLogout: () 
       setCampaigns((current) => current.filter((entry) => entry.id !== campaign.id));
     } else {
       const data = await response?.json().catch(() => ({}));
-      setActionError(data?.error || `Could not delete "${campaign.title}".`);
+      setActionError(data?.error || t("Could not delete \"{title}\".", { title: campaign.title }));
     }
   }
 
@@ -182,7 +184,7 @@ export function Dashboard({ user, onLogout }: { user: SessionUser; onLogout: () 
       );
       if (!response?.ok) {
         const data = await response?.json().catch(() => ({}));
-        setActionError(data?.error || "Could not make the copy.");
+        setActionError(data?.error || t("Could not make the copy."));
         return;
       }
       const data = await response.json().catch(() => ({}));
@@ -238,10 +240,10 @@ export function Dashboard({ user, onLogout }: { user: SessionUser; onLogout: () 
             <div className="ts-cluster">
               <AppHomeButton />
               <NotificationBell />
-              <Tooltip content="What this app is and how a table works" side="bottom">
-                <button type="button" onClick={() => setHowToOpen(true)} className={ui.btnSmall} aria-label="How to play">
+              <Tooltip content={t("What this app is and how a table works")} side="bottom">
+                <button type="button" onClick={() => setHowToOpen(true)} className={ui.btnSmall} aria-label={t("How to play")}>
                   <ScrollText className="size-4" />
-                  <span className="hidden sm:inline">How to play</span>
+                  <span className="hidden sm:inline">{t("How to play")}</span>
                 </button>
               </Tooltip>
               <span className="ts-username" aria-hidden="true">{user.username}</span>
@@ -251,7 +253,7 @@ export function Dashboard({ user, onLogout }: { user: SessionUser; onLogout: () 
           {user.deletionDueAt ? <DeletionBanner dueAt={user.deletionDueAt} className="ts-deletion" /> : null}
           {user.isAdmin ? <SetupNudge className="ts-deletion" /> : null}
 
-          <section className="ts-stage" aria-label="Title screen">
+          <section className="ts-stage" aria-label={t("Title screen")}>
             <div className="ts-stage-left">
               {/* The title block waits for the list: showing "empty table"
                   before the answer arrives would flash a lie at every account
@@ -320,6 +322,7 @@ export function Dashboard({ user, onLogout }: { user: SessionUser; onLogout: () 
 // answering, and unlit on a server with no AI storyteller at all.
 function DmStatusLine({ capabilities }: { capabilities: ClientCapabilities | null }) {
   const [version, setVersion] = useState("");
+  const t = useT();
   useEffect(() => {
     let cancelled = false;
     fetch("/api/auth/providers")
@@ -338,12 +341,12 @@ function DmStatusLine({ capabilities }: { capabilities: ClientCapabilities | nul
   const tone = !capabilities ? "wait" : !story?.configured ? "off" : story.reachable ? "awake" : "dozing";
   const words =
     tone === "wait"
-      ? "Waking the GM"
+      ? t("Waking the GM")
       : tone === "off"
-        ? "No AI storyteller · human-run tables"
+        ? t("No AI storyteller · human-run tables")
         : tone === "awake"
-          ? "The GM is awake"
-          : "The GM is not answering";
+          ? t("The GM is awake")
+          : t("The GM is not answering");
   const bits = [words];
   if (story?.model && tone !== "off") bits.push(story.model);
   if (version) bits.push(`v${version}`);

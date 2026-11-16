@@ -18,6 +18,15 @@ export type { JoinPreview };
 import { createSheetSchema, type CreateSheetInput } from "@/lib/schemas/sheet";
 import type { OlderBuilder } from "@/lib/srd/legality/older-builder";
 import type { Pregen } from "@/lib/starter/pregens";
+import type { Locale } from "@/lib/messages-logic";
+import { translate } from "@/lib/messages-logic";
+
+// The shape of a translator, as the pure builders take it
+// (src/lib/story-window.ts): the preview route passes its request's, so the
+// confirm sheet reads the asker's language. `locale` rides beside it for
+// the official content names (class-words.ts).
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
 
 // The ways a hero takes a seat, each written once: the join itself (POST
 // /sheet, POST /sheet/pregen, POST /sheet/offered) and the confirm sheet a
@@ -136,7 +145,7 @@ export function admitLibraryForSeat(
     return admitted;
   }
   const seated = withSeatPicks(admitted, level, picks, campaign, userId);
-  return seated.ok ? seated : { ok: false, error: seated.problems[0] ?? "Those picks are not within the rules.", problems: seated.problems };
+  return seated.ok ? seated : { ok: false, error: seated.problems[0] ?? enT("Those picks are not within the rules."), problems: seated.problems };
 }
 
 function preview(
@@ -148,6 +157,8 @@ function preview(
   unpicked: { ok: true; sheet: CreateSheetInput } | { ok: false },
   admitted: { ok: true; sheet: CreateSheetInput; rolledHp?: number[] } | { ok: false; problems: string[] },
   campaign: Campaign,
+  t: T = enT,
+  locale: Locale = "en",
 ): JoinPreview {
   const picks = unpicked.ok ? owedPicksOf(unpicked.sheet, toLevel, seatPicksContextFor(campaign)) : null;
   if (!admitted.ok) {
@@ -161,30 +172,30 @@ function preview(
     problems: [],
     rollsHp: Boolean(admitted.rolledHp),
     // The table's workshop subclasses and feats open picks too (owed-picks-logic.ts).
-    ...joinChanges(stored, fromLevel, admitted.sheet, toLevel, { extras: seatPicksContextFor(campaign).subclassExtras, campaignId: campaign.id }),
+    ...joinChanges(stored, fromLevel, admitted.sheet, toLevel, t, locale, { extras: seatPicksContextFor(campaign).subclassExtras, campaignId: campaign.id }),
     ...(picks ? { picks } : {}),
   };
 }
 
-export function previewLibraryJoin(character: LibraryCharacter, campaign: Campaign, userId: string, picks?: SeatPicks | null): JoinPreview {
+export function previewLibraryJoin(character: LibraryCharacter, campaign: Campaign, userId: string, picks?: SeatPicks | null, t: T = enT, locale: Locale = "en"): JoinPreview {
   const level = Math.max(1, Math.min(20, campaign.startingLevel));
   const unpicked = admitLibraryCharacter(character, campaign, userId, level);
   const admitted = hasSeatPicks(picks) && unpicked.ok ? withSeatPicks(unpicked, level, picks, campaign, userId) : unpicked;
-  return preview(character.name, character.sheet, character.level, level, unpicked, admitted, campaign);
+  return preview(character.name, character.sheet, character.level, level, unpicked, admitted, campaign, t, locale);
 }
 
-export function previewPregenJoin(pregen: Pregen, campaign: Campaign, userId: string, picks?: SeatPicks | null): JoinPreview {
+export function previewPregenJoin(pregen: Pregen, campaign: Campaign, userId: string, picks?: SeatPicks | null, t: T = enT, locale: Locale = "en"): JoinPreview {
   const unpicked = admitPregen(pregen, campaign, userId);
   const admitted = hasSeatPicks(picks) && unpicked.ok ? admitPregen(pregen, campaign, userId, picks) : unpicked;
   const built = createSheetSchema.parse(pregen.sheet);
-  return preview(built.name, built, 1, campaign.startingLevel, unpicked, admitted, campaign);
+  return preview(built.name, built, 1, campaign.startingLevel, unpicked, admitted, campaign, t, locale);
 }
 
 // A character the builder made for this table, not stored yet: the table
 // door judges it at the table's level, as its join will. It was built with
 // every choice its level offers, so the confirm sheet asks for none.
-export function previewBuiltJoin(sheet: CreateSheetInput, campaign: Campaign, userId: string, olderBuilder: OlderBuilder | null = null): JoinPreview {
+export function previewBuiltJoin(sheet: CreateSheetInput, campaign: Campaign, userId: string, olderBuilder: OlderBuilder | null = null, t: T = enT, locale: Locale = "en"): JoinPreview {
   const level = Math.max(1, Math.min(20, campaign.startingLevel));
   const admitted = admitSheet({ door: "table", level, sheet, userId, campaign, olderBuilder });
-  return preview(sheet.name, sheet, level, level, { ok: false }, admitted, campaign);
+  return preview(sheet.name, sheet, level, level, { ok: false }, admitted, campaign, t, locale);
 }

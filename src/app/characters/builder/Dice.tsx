@@ -1,6 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import { useT } from "@/lib/locale";
 import { FLICKER_FACES, pipsFor, tossMs, type AbilityRoll } from "./abilityDice";
 
 // The gradients every die shares, mounted once per dice grid. Zero-sized
@@ -119,9 +120,10 @@ function Die({
 // The four dice of one ability. Keyed by the roll's id at the call site so a
 // reroll remounts them and the toss plays again.
 export function DiceRow({ roll }: { roll: AbilityRoll | null }) {
+  const t = useT();
   const label = roll
-    ? `Rolled ${roll.dice.join(", ")}; the ${roll.dice[roll.dropIndex]} is set aside`
-    : "Not rolled yet";
+    ? t("Rolled {dice}; the {setAside} is set aside", { dice: roll.dice.join(", "), setAside: roll.dice[roll.dropIndex] })
+    : t("Not rolled yet");
   return (
     <span className="flex min-w-[192px] flex-[1_1_192px] items-center gap-[7px]" role="img" aria-label={label}>
       {[0, 1, 2, 3].map((index) => (

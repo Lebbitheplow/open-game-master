@@ -14,6 +14,10 @@ import type { Advantage } from "@/lib/dice";
 import { attackOdds, type AttackOdds } from "@/lib/srd/odds";
 import type { HandCard } from "@/lib/battlemap/hand-core";
 import type { HandAim, HandChoices } from "@/lib/battlemap/hand-play";
+import { translate } from "@/lib/messages-logic";
+
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
 
 // Where the aimed creature stands against a ranged or thrown card's reach:
 // inside a thrown weapon's melee reach, inside its normal range, past it
@@ -90,14 +94,14 @@ export function attackOddsWithDice(input: { attackBonus: number; dice: string; a
 export const RAPID_STRIKE_NEEDS_ADVANTAGE = "Rapid Strike trades this attack's advantage for one more attack, and it has none here. Aim at a creature you attack with advantage.";
 
 // The card as aimed: the options that hang on the aim judged against it.
-export function aimedCard(card: HandCard, aim: HandAim | null, attackerConditions: string[]): HandCard {
+export function aimedCard(card: HandCard, aim: HandAim | null, attackerConditions: string[], t: T = enT): HandCard {
   if (!card.options?.some((option) => option.needsAdvantage)) return card;
   const enemy = aim?.kind === "enemy" ? aim : null;
   const advantage = enemy ? previewAdvantage(card, enemy, attackerConditions).advantage : "none";
   return {
     ...card,
     options: card.options.map((option) =>
-      option.needsAdvantage ? { ...option, disabled: advantage === "advantage" ? null : RAPID_STRIKE_NEEDS_ADVANTAGE } : option,
+      option.needsAdvantage ? { ...option, disabled: advantage === "advantage" ? null : t("Rapid Strike trades this attack's advantage for one more attack, and it has none here. Aim at a creature you attack with advantage.") } : option,
     ),
   };
 }

@@ -74,22 +74,27 @@ export function rollTier(total: number): 1 | 2 | 3 | 4 | 5 {
 // The tier in words, shown beside the colour so a reader who cannot tell red
 // from green, or hears the tray read aloud, gets the same grade.
 const TIER_WORDS = { 1: "grim", 2: "poor", 3: "fair", 4: "good", 5: "heroic" } as const;
-export function rollWord(total: number): string {
-  return TIER_WORDS[rollTier(total)];
+const TIER_KEYS = { 1: "grim", 2: "poor", 3: "fair", 4: "good", 5: "heroic" } as const;
+// `t` reads the tier in the reader's language (builder.dice.tier.*); without
+// it the test-pinned English words stand.
+export function rollWord(total: number, t?: (key: string) => string): string {
+  const tier = rollTier(total);
+  return typeof t === "function" ? ({ "grim": t("grim"), "poor": t("poor"), "fair": t("fair"), "good": t("good"), "heroic": t("heroic") } as Record<string, string>)[TIER_KEYS[tier]] ?? String(TIER_KEYS[tier]) : TIER_WORDS[tier];
 }
 
 // The line a remarkable throw earns, or null: an 18, four sixes in one
 // throw, a pool that sums to 80 or more. The story players retell, noticed
 // in words first, so it reads the same with the effects turned down.
-export function poolHighlight(pool: PoolEntry[]): string | null {
+export function poolHighlight(pool: PoolEntry[], t?: (key: string) => string): string | null {
+  const say = (key: string, english: string) => (typeof t === "function" ? t(key) : english);
   if (pool.some((entry) => entry.roll?.dice.every((die) => die === 6))) {
-    return "Four sixes in one throw. The dice favour you.";
+    return say("Four sixes in one throw. The dice favour you.", "Four sixes in one throw. The dice favour you.");
   }
   if (pool.some((entry) => entry.total === 18)) {
-    return "An 18. The dice favour you.";
+    return say("An 18. The dice favour you.", "An 18. The dice favour you.");
   }
   if (poolSum(pool) >= 80) {
-    return "A heroic pool. Your table will hear about this.";
+    return say("A heroic pool. Your table will hear about this.", "A heroic pool. Your table will hear about this.");
   }
   return null;
 }
@@ -157,12 +162,25 @@ export type PoolEntry = { total: number; roll: PoolRoll | null };
 // hides the dice drawn inside it, so the set-aside die is named here: "Throw
 // of 14, good, from 6, 5, 3 and a 2 set aside, on Strength". A throw kept
 // from the sheet has no dice to name.
-export function throwName(entry: PoolEntry, placedOn: string | null): string {
+export function throwName(entry: PoolEntry, placedOn: string | null, t?: (key: string, vars?: Record<string, string | number>) => string): string {
   const roll = entry.roll;
   const dice = roll
-    ? `, from ${roll.dice.filter((_, at) => at !== roll.dropIndex).join(", ")} and a ${roll.dice[roll.dropIndex]} set aside`
+    ? typeof t === "function"
+      ? t(", from {kept} and a {setAside} set aside", {
+          kept: roll.dice.filter((_, at) => at !== roll.dropIndex).join(", "),
+          setAside: roll.dice[roll.dropIndex],
+        })
+      : `, from ${roll.dice.filter((_, at) => at !== roll.dropIndex).join(", ")} and a ${roll.dice[roll.dropIndex]} set aside`
     : "";
-  return `Throw of ${entry.total}, ${rollWord(entry.total)}${dice}${placedOn ? `, on ${placedOn}` : ", not placed"}`;
+  if (typeof t !== "function") {
+    return `Throw of ${entry.total}, ${rollWord(entry.total)}${dice}${placedOn ? `, on ${placedOn}` : ", not placed"}`;
+  }
+  return t("Throw of {total}, {tier}{dice}{placed}", {
+    total: entry.total,
+    tier: rollWord(entry.total, t),
+    dice,
+    placed: placedOn ? t(", on {label}", { label: placedOn }) : t(", not placed"),
+  });
 }
 
 export function rollPool(rng: Rng = Math.random): PoolEntry[] {
@@ -223,26 +241,42 @@ export function scoresFromSlots<K extends string>(
 }
 
 // The one sentence over the summary table: the standout score, named plainly.
-export function summaryLine({
-  method,
-  best,
-  who,
-}: {
-  method: "standard" | "pointbuy" | "roll";
-  best: { label: string; final: number } | null;
-  who: string;
-}): string {
+export function summaryLine(
+  {
+    method,
+    best,
+    who,
+  }: {
+    method: "standard" | "pointbuy" | "roll";
+    best: { label: string; final: number } | null;
+    who: string;
+  },
+  t?: (key: string, vars?: Record<string, string | number>) => string,
+): string {
+  const say = (key: string, vars: Record<string, string | number> = {}, english?: string) =>
+    typeof t === "function" ? t(key, vars) : (english ?? key);
   const lead =
     method === "roll"
-      ? "Six throws of four dice, the lowest set aside, placed your way."
+      ? say("Six throws of four dice, the lowest set aside, placed your way.", {}, "Six throws of four dice, the lowest set aside, placed your way.")
       : method === "pointbuy"
-        ? "Twenty-seven points, spent your way."
-        : "The same six numbers every hero starts from, placed your way.";
+        ? say("Twenty-seven points, spent your way.", {}, "Twenty-seven points, spent your way.")
+        : say("The same six numbers every hero starts from, placed your way.", {}, "The same six numbers every hero starts from, placed your way.");
   if (!best) {
     return lead;
   }
-  const as = who ? ` As ${/^[aeiou]/i.test(who) ? "an" : "a"} ${who}, that` : " That";
-  return `${lead} Your highest is ${best.label} at ${best.final}.${as} is the shape of the character you just made.`;
+  if (typeof t !== "function") {
+    const as = who ? ` As ${/^[aeiou]/i.test(who) ? "an" : "a"} ${who}, that` : " That";
+    return `${lead} Your highest is ${best.label} at ${best.final}.${as} is the shape of the character you just made.`;
+  }
+  const bestPart = say(" Your highest is {label} at {value}.", { label: best.label, value: best.final }, "");
+  const shape = who
+    ? say(
+        /^[aeiou]/i.test(who) ? " As an {who}, that is the shape of the character you just made." : " As a {who}, that is the shape of the character you just made.",
+        { who },
+        "",
+      )
+    : say(" That is the shape of the character you just made.", {}, "");
+  return `${lead}${bestPart}${shape}`;
 }
 
 // ---- the health explainer ----

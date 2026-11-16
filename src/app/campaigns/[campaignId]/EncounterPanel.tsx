@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
 import { MonsterTile } from "@/lib/ui";
 import { HEALTH_COLORS } from "@/lib/bestiary/health";
+import { useT } from "@/lib/locale";
 import { DmInitiativePanel } from "@/app/campaigns/[campaignId]/DmInitiativePanel";
 import { offSide, SideBadge } from "@/app/campaigns/[campaignId]/SideBadge";
 import { ConditionChip, type FaceLookup } from "@/app/campaigns/[campaignId]/BoardChrome";
@@ -46,6 +47,7 @@ export function EncounterPanel({
   // the monsters'. Without them a player's row falls back to an initial.
   sheets?: CharacterSheet[];
 }) {
+  const t = useT();
   const [ending, setEnding] = useState(false);
   const [openGroups, setOpenGroups] = useState<string[]>([]);
 
@@ -271,7 +273,7 @@ export function EncounterPanel({
                     enemy.knockedOut
                       ? "Alive at 0 hit points after a blow meant to knock it out: out of the fight, not dying."
                       : enemy.regenerating
-                        ? regeneratingNote(enemy.regenerating.stopped)
+                        ? regeneratingNote(t, enemy.regenerating.stopped)
                         : undefined
                   }
                 >
@@ -290,7 +292,7 @@ export function EncounterPanel({
                 {enemy.regenerating ? (
                   <span
                     key={enemy.regenerating.stopped ? "stopped" : "rising"}
-                    title={regeneratingNote(enemy.regenerating.stopped)}
+                    title={regeneratingNote(t, enemy.regenerating.stopped)}
                     className={cn(
                       "motion-pop ml-1.5 shrink-0 rounded-full border px-2 py-0.5 text-[10px]",
                       enemy.regenerating.stopped

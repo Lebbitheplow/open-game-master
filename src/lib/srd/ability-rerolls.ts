@@ -36,6 +36,25 @@ export function rerollBelowFor(choice: RerollChoice, current: number): number {
   return current > REROLL_NEVER && current < REROLL_ALWAYS ? current : REROLL_LOW_DEFAULT;
 }
 
+// The shape of a translator, as the pure sentence builders take it: the
+// surface that shows the words passes its own.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
+// The rule in the reader's words, from the same keys the creator's screens
+// use (creator.reroll.*): no parallel wording to drift.
+export function describeRerollT(t: T, rerollBelow: number): string {
+  const choice = rerollChoiceOf(rerollBelow);
+  if (choice === "keep") {
+    return t("The first roll stands", { context: "creator.reroll.keep" });
+  }
+  if (choice === "free") {
+    return t("Reroll as often as you like");
+  }
+  return t("Reroll a roll totalling under {total}", { total: rerollBelow });
+}
+
+// English-pinned, for the places that quote the stored data back (a settings
+// row's own value, an admin readout).
 export function describeReroll(rerollBelow: number): string {
   const choice = rerollChoiceOf(rerollBelow);
   if (choice === "keep") {
@@ -53,7 +72,8 @@ export function tableRerollBelow(tableSetting: number | null | undefined, server
 }
 
 // A table's setting in a settings row: its own rule, or the server's, named
-// when it is known so "follow the server" says what that means.
+// when it is known so "follow the server" says what that means. English
+// pinned; GameSettingsPanel builds the reader's words from the same keys.
 export function describeTableReroll(tableSetting: number | null | undefined, serverSetting: number | null): string {
   if (typeof tableSetting === "number") {
     return describeReroll(tableSetting);
@@ -61,6 +81,17 @@ export function describeTableReroll(tableSetting: number | null | undefined, ser
   return serverSetting === null
     ? "The server's reroll rule"
     : `The server's rule (${describeReroll(serverSetting).toLowerCase()})`;
+}
+
+// The same in the reader's words (table.settings.reroll.* covers the
+// follow-server half; the rule itself comes from creator.reroll.*).
+export function describeTableRerollT(t: T, tableSetting: number | null | undefined, serverSetting: number | null): string {
+  if (typeof tableSetting === "number") {
+    return describeRerollT(t, tableSetting);
+  }
+  return serverSetting === null
+    ? t("the server's reroll rule")
+    : t("the server's rule ({rule})", { rule: describeRerollT(t, serverSetting) });
 }
 
 // The builder's words for the rule a player is rolling under, from the

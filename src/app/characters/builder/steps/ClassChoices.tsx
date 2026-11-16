@@ -11,9 +11,11 @@ import type { BuilderActions, BuilderDerived } from "../useBuilderDerived";
 import type { BuilderState } from "../useBuilderState";
 import { PickPill, StepPanel } from "./shared";
 import { textKey } from "@/lib/language/text-logic";
-import { splitToolGrants } from "@/lib/srd/tool-choices";
+import { splitToolGrants, toolLabel } from "@/lib/srd/tool-choices";
+import { contentName } from "@/lib/content/names";
 import { optionFeatureName, optionKindRule, optionPicksSpells, remainingWords } from "@/lib/srd/options";
 import { contentSlug } from "@/lib/help";
+import { useLocale, useT, useTp } from "@/lib/locale";
 import { subclassChoiceSummary } from "@/lib/content/subclass-choices";
 import { featChoice } from "@/lib/schemas/sheet";
 import FeatChoicesFields, { knownTraining } from "../FeatChoicesFields";
@@ -47,6 +49,9 @@ export function ClassChoices({
   actions: BuilderActions;
   klass: ClassOption | undefined;
 }) {
+  const t = useT();
+  const tp = useTp();
+  const locale = useLocale();
   const { effectiveLevel, proficientSkills, styleSlots, styleChoices, optionSlots } = derived;
   // Each class's own at its own level: a rogue taken second brings two.
   const expertiseSlots = klass ? (derived.expertiseSlots ?? expertiseSlotsFor(klass.id, effectiveLevel)) : 0;
@@ -66,22 +71,24 @@ export function ClassChoices({
       {klass && expertiseSlots > 0 ? (
         <StepPanel
           anchor="expertise"
-          title={`Expertise (pick ${expertiseSlots})`}
+          title={t("Expertise (pick {count})", { count: expertiseSlots })}
           help={
             <>
               {expertiseSlots - expertiseChosen.length > 0 ? (
                 <span className="text-amber-300">
-                  {expertiseSlots - expertiseChosen.length} still to choose.{" "}
+                  {t("{count} still to choose. ", { count: expertiseSlots - expertiseChosen.length })}
                 </span>
               ) : null}
-              <GameTerm id="expertise">Expertise</GameTerm> doubles your{" "}
-              <GameTerm id="proficiency_bonus">proficiency bonus</GameTerm> on the chosen skills.
+              <GameTerm id="expertise">{t("Expertise")}</GameTerm>
+              {t(" doubles your ")}
+              <GameTerm id="proficiency_bonus">{t("proficiency bonus")}</GameTerm>
+              {t(" on the chosen skills.")}
             </>
           }
         >
           <div className="flex flex-wrap gap-2">
             {proficientSkills.length === 0 ? (
-              <span className="text-xs text-stone-500">Pick your class skills above first.</span>
+              <span className="text-xs text-stone-500">{t("Pick your class skills above first.")}</span>
             ) : null}
             {expertiseOptions.map((skillId) => {
               const skill = SRD_SKILLS.find((entry) => entry.id === skillId);
@@ -89,9 +96,9 @@ export function ClassChoices({
               return (
                 <PickPill
                   key={skillId}
-                  label={skill?.name ?? (skillId === THIEVES_TOOLS ? "Thieves' tools" : skillId)}
+                  label={skill?.name ?? (skillId === THIEVES_TOOLS ? t("Thieves' tools") : skillId)}
                   selected={selected}
-                  info={{ text: skill ? describeSkill(skillId) : "Your proficiency bonus is doubled for ability checks you make with thieves' tools." }}
+                  info={{ text: skill ? describeSkill(t, skillId, locale) : t("Your proficiency bonus is doubled for ability checks you make with thieves' tools.") }}
                   onClick={() =>
                     state.setExpertisePicks((current) => {
                       // Picks whose skill has since been dropped are swept
@@ -116,12 +123,11 @@ export function ClassChoices({
       {styleSlots > 0 ? (
         <StepPanel
           anchor="styles"
-          title={`Fighting style (pick ${styleSlots})`}
+          title={t("Fighting style (pick {count})", { count: styleSlots })}
           help={
             styleSlots - state.stylePicks.length > 0 ? (
               <span className="text-amber-300">
-                {styleSlots - state.stylePicks.length} still to choose. A fighting style is a
-                permanent edge with one kind of weapon or armour; read each card before picking.
+                {t(" still to choose. A fighting style is a permanent edge with one kind of weapon or armour; read each card before picking.", { count: styleSlots - state.stylePicks.length })}
               </span>
             ) : undefined
           }
@@ -164,16 +170,24 @@ export function ClassChoices({
         <StepPanel
           key={slot.kind}
           anchor="options"
-          title={`${slot.label} (pick ${slot.total})`}
+          title={t("{label} (pick {total})", { label: slot.label, total: slot.total })}
           help={
             <>
               {slot.remaining > 0 ? (
-                <span className="text-amber-300">{remainingWords(slot)}. </span>
+                <span className="text-amber-300">
+                  {[
+                    Math.floor(slot.remaining) ? t("{count} still to choose", { count: Math.floor(slot.remaining) }) : "",
+                    slot.remaining - Math.floor(slot.remaining) >= 0.5 ? t("and one more humanoid race to pair") : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  .{" "}
+                </span>
               ) : null}
               {rule ? `${rule} ` : null}
               {spells
                 ? "Tap the info button on any one to read the spell."
-                : "These are real abilities your character gets. Tap the info button on any one to read what it does."}
+                : t(" These are real abilities your character gets. Tap the info button on any one to read what it does.")}
             </>
           }
         >
@@ -200,7 +214,7 @@ export function ClassChoices({
                     <span className="block text-xs">{option.n}</span>
                     {notYet || option.req || !spells ? (
                       <span className="block text-sm text-stone-500">
-                        {notYet ? `Not yet: ${notYet} ` : option.req ? `Requires ${option.req}. ` : ""}
+                        {notYet ? `Not yet: ${notYet} ` : option.req ? t("Requires {req}. ", { req: option.req }) : ""}
                         {spells ? "" : option.d}
                       </span>
                     ) : null}
@@ -210,7 +224,7 @@ export function ClassChoices({
                   ) : (
                     <InfoButton
                       label={option.n}
-                      meta={option.req ? `Requires ${option.req}` : undefined}
+                      meta={option.req ? t("Requires {req}", { req: option.req }) : undefined}
                       text={option.d}
                     />
                   )}
@@ -232,7 +246,7 @@ export function ClassChoices({
           title={`${slot.label} (pick 1)`}
           help={
             <>
-              {slot.chosen ? null : <span className="text-amber-300">1 still to choose. </span>}
+              {slot.chosen ? null : <span className="text-amber-300">{t("1 still to choose. ")}</span>}
               {slot.subclass} asks for this. Each option gives your character what its card says.
             </>
           }
@@ -304,6 +318,9 @@ export function ToolGrantPanels({
   className?: string;
   backgroundName?: string;
 }) {
+  const t = useT();
+  const tp = useTp();
+  const locale = useLocale();
   const { toolGrants } = derived;
   const fromClass = splitToolGrants(classTools).choices.length;
   return (
@@ -315,19 +332,39 @@ export function ToolGrantPanels({
         const left = toolGrants.left[index] ?? 0;
         // Whose grant it is; a class taken second names its own levels
         // (derived.toolSources, backlog F9).
-        const source =
-          derived.toolSources?.[index] ??
-          (index < fromClass ? (className ? `your ${className} class` : "") : backgroundName ? `your ${backgroundName} background` : "");
+        const rawSource = derived.toolSources?.[index];
+        const source = rawSource
+          ? (() => {
+              let m = /^your class, background and species, which give you (.+) twice$/.exec(rawSource);
+              if (m) {
+                const tools = m[1].split(" and ").map((entry) => toolLabel(entry.trim(), t)).join(` ${t("and")} `);
+                return t("your class, background and species, which give you {tools} twice", { tools });
+              }
+              m = /^your (.+) class$/.exec(rawSource);
+              if (m) return t("your {name} class", { name: contentName("classes", m[1], locale) });
+              m = /^your (.+) background$/.exec(rawSource);
+              if (m) return t("your {name} background", { name: contentName("backgrounds", m[1], locale) });
+              m = /^your (.+) levels$/.exec(rawSource);
+              if (m) return t("your {name} levels", { name: contentName("classes", m[1], locale) });
+              return t(rawSource);
+            })()
+          : (index < fromClass
+            ? className
+              ? t("your {name} class", { name: className })
+              : ""
+            : backgroundName
+              ? t("your {name} background", { name: backgroundName })
+              : "");
         return (
           <StepPanel
             key={`${choice.label}-${index}`}
             anchor="tools"
-            title={`Tool proficiency: ${choice.count} ${choice.label}${choice.count === 1 ? "" : "s"}`}
+            title={tp("Tool proficiency: {count} {label}", "Tool proficiency: {count} {label}s", { count: choice.count, label: t(choice.label) })}
             help={
               left > 0 || source ? (
                 <>
-                  {left > 0 ? <span className="text-amber-300">{left} still to choose. </span> : null}
-                  {source ? `From ${source}.` : null}
+                  {left > 0 ? <span className="text-amber-300">{t("{count} still to choose. ", { count: left })}</span> : null}
+                  {source ? t("From {source}.", { source }) : null}
                 </>
               ) : undefined
             }
@@ -338,7 +375,7 @@ export function ToolGrantPanels({
                 return (
                   <PickPill
                     key={tool}
-                    label={tool}
+                    label={toolLabel(tool, t)}
                     selected={selected}
                     onClick={() => {
                       if (selected) {
@@ -359,7 +396,7 @@ export function ToolGrantPanels({
                       }
                     }}
                   >
-                    {tool}
+                    {toolLabel(tool, t)}
                   </PickPill>
                 );
               })}

@@ -20,6 +20,52 @@ export const DAMAGE_TYPES = [
 ];
 export const PHYSICAL_TYPES = ["bludgeoning", "piercing", "slashing"];
 
+// The thirteen damage types in Wizards of the Coast's official French SRD
+// 5.1 (SRD_CC_v5.1_FR.pdf), exactly as its « Types de dégâts » list (p. 106)
+// prints them; a type the list does not carry stays English.
+export const DAMAGE_TYPE_WORDS_FR: Record<string, string> = {
+  acid: "Acide",
+  bludgeoning: "Contondants",
+  cold: "Froid",
+  fire: "Feu",
+  force: "Force",
+  lightning: "Foudre",
+  necrotic: "Nécrotiques",
+  piercing: "Perforants",
+  poison: "Poison",
+  psychic: "Psychiques",
+  radiant: "Radiants",
+  slashing: "Tranchants",
+  thunder: "Tonnerre",
+};
+
+export type DamageLocale = "en" | "fr";
+
+// A damage type as a word on screen ("Slashing", « Tranchants »): the French
+// SRD's own capitalized list heading; a type the maps do not carry stays as
+// it was spelled in.
+export function damageTypeWord(type: string, locale: DamageLocale): string {
+  if (locale !== "fr") {
+    return type;
+  }
+  return DAMAGE_TYPE_WORDS_FR[type.trim().toLowerCase()] ?? type;
+}
+
+// The type word inside a damage expression ("1d6 slashing") reads in the
+// reader's language too, lowercase the way the French SRD's own weapon
+// tables write the cell (« 1d6 contondants »). English passes through. The
+// alternatives are DAMAGE_TYPES spelled out: a literal pattern, so a scan
+// sees the words it reads.
+const DAMAGE_TYPE_WORD_RE =
+  /\b(acid|bludgeoning|cold|fire|force|lightning|necrotic|piercing|poison|psychic|radiant|slashing|thunder)\b/g;
+
+export function damageWords(damage: string, locale: DamageLocale): string {
+  if (locale !== "fr") {
+    return damage;
+  }
+  return damage.replace(DAMAGE_TYPE_WORD_RE, (word) => (DAMAGE_TYPE_WORDS_FR[word] ?? word).toLowerCase());
+}
+
 const wholeWord = (text: string, word: string) =>
   new RegExp(`(^|[^a-z])${word.replace(/[^a-z ]/g, "")}([^a-z]|$)`).test(text);
 

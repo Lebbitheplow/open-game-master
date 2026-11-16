@@ -1,6 +1,7 @@
 "use client";
 
 import { useId } from "react";
+import { useT } from "@/lib/locale";
 import { contentSlug } from "@/lib/help";
 import type { BackgroundKit } from "@/lib/srd/gear-choices";
 import { InfoButton } from "@/components/ui/InfoDialog";
@@ -26,13 +27,14 @@ export default function BackgroundKitSection({
   onPick: (index: number, label: string) => void;
 }) {
   const captionId = useId();
+  const t = useT();
   if (!kit.choices.length && !kit.toolLines.length) {
     return null;
   }
   return (
     <div className="mb-3 space-y-2.5" data-builder-target="backgroundGear">
       <p className="text-xs text-stone-500">
-        The {backgroundName}&apos;s kit, free. Where it offers a choice, pick one.
+        {t("The {background}'s kit, free. Where it offers a choice, pick one.", { background: backgroundName })}
       </p>
       {kit.choices.map((choice, index) => {
         const taken = choice.alternatives[choice.chosen];
@@ -60,7 +62,7 @@ export default function BackgroundKitSection({
             {taken?.options ? (
               <div key={`${index}-${choice.chosen}`} className="reveal grid gap-1.5 sm:grid-cols-2">
                 <div>
-                  <span id={`${captionId}-${index}`} className="mb-1 block text-sm text-stone-400">Which {taken.label.toLowerCase()}</span>
+                  <span id={`${captionId}-${index}`} className="mb-1 block text-sm text-stone-400">{t("Which {label}", { label: taken.label.toLowerCase() })}</span>
                   <OptionPicker
                     labelledBy={`${captionId}-${index}`}
                     value={taken.items[0]?.name ?? ""}
@@ -94,10 +96,10 @@ export default function BackgroundKitSection({
                 label={entry.item}
                 reference={{ kind: "items", slug: contentSlug(entry.item), name: entry.item }}
               />
-              <span className="text-stone-500">from your tool proficiency</span>
+              <span className="text-stone-500">{t("from your tool proficiency")}</span>
             </>
           ) : (
-            <span className="text-amber-300">the tool you pick on the Ancestry step, beside the background.</span>
+            <span className="text-amber-300">{t("the tool you pick on the Ancestry step, beside the background.")}</span>
           )}
         </p>
       ))}

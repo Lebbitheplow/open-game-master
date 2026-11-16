@@ -151,6 +151,9 @@ await test("picking the fallen hero again from the library is refused, by the do
 
 await test("the spotlight line names the living: a fallen hero is left out, and their player's new hero is named.", async () => {
   const { composerGate } = await import("../src/app/campaigns/[campaignId]/composerGate.ts");
+  const { translate } = await import("../src/lib/messages-logic.ts");
+  // The gate's sentences take the reader's translator; the test reads English.
+  const t = (key, vars) => translate("en", key, vars);
   const sheet = (id, userId, name, extra = {}) => ({ id, userId, name, ...extra });
   const sheetsAtTable = [
     sheet("vex", "p1", "Vex", { deathSaves: DEAD }),
@@ -159,7 +162,7 @@ await test("the spotlight line names the living: a fallen hero is left out, and 
     sheet("hex", "p2", "Hex"),
   ];
   const gate = (floor) =>
-    composerGate({ floor, sheets: sheetsAtTable, meUserId: "p3", kind: "do", myName: "Oren", leadPrivate: false, openingNarrationPlaying: false });
+    composerGate(t, { floor, sheets: sheetsAtTable, meUserId: "p3", kind: "do", myName: "Oren", leadPrivate: false, openingNarrationPlaying: false });
   const spotlight = { mode: "spotlight", userIds: ["p1", "p2"], respondedUserIds: ["p2"] };
   const lit = gate(spotlight);
   assert.deepEqual(lit.spotlighted.map((s) => s.name), ["Vesper", "Hex"]);

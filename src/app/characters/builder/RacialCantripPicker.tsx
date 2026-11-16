@@ -4,6 +4,7 @@ import CatalogBrowser from "@/app/characters/builder/CatalogBrowser";
 import ContentPicker from "@/app/characters/builder/ContentPicker";
 import type { RaceOption } from "@/app/characters/builder/useBuilderOptions";
 import { GameTerm } from "@/components/ui/GameTerm";
+import { useT } from "@/lib/locale";
 import { contentSlug } from "@/lib/help";
 import { textKey } from "@/lib/language/text-logic";
 import { racialCantripsOf } from "@/lib/srd/racial-cantrips";
@@ -29,6 +30,7 @@ export function RacialCantripPicker({
   if (!choice) {
     return null;
   }
+  const t = useT();
   const { list, count } = choice;
   const picked = racialCantripsOf({ cantrips }).slice(0, count);
   const word = countWord(count).toLowerCase();
@@ -45,18 +47,22 @@ export function RacialCantripPicker({
       <span className="mb-1 flex flex-wrap items-center gap-1 text-stone-400">
         {count === 1 ? (
           <>
-            Bonus <GameTerm id="cantrip">cantrip</GameTerm> (one {list} cantrip)
+            {t("Bonus ")}
+            <GameTerm id="cantrip">cantrip</GameTerm>
+            {t(" (one {list} cantrip)", { list })}
           </>
         ) : (
           <>
-            Bonus <GameTerm id="cantrip">cantrips</GameTerm> ({word} {list} cantrips, {picked.length} of {count} picked)
+            {t("Bonus ")}
+            <GameTerm id="cantrip">cantrips</GameTerm>
+            {t(" ({word} {list} cantrips, {picked} of {count} picked)", { word, list, picked: picked.length, count })}
           </>
         )}
       </span>
       <p className="mb-1.5 text-xs text-stone-500">
         {count === 1
-          ? "A cantrip is a small spell you can cast as often as you like, forever. Pick one from the list below (tap ⓘ to read what each does), or search by name if you already have one in mind."
-          : `A cantrip is a small spell you can cast as often as you like, forever. Pick ${word} different ones from the list below (tap ⓘ to read what each does), or search by name if you already have some in mind.`}
+          ? t("A cantrip is a small spell you can cast as often as you like, forever. Pick one from the list below (tap ⓘ to read what each does), or search by name if you already have one in mind.")
+          : t("A cantrip is a small spell you can cast as often as you like, forever. Pick {word} different ones from the list below (tap ⓘ to read what each does), or search by name if you already have some in mind.", { word })}
       </p>
       {picked.length ? (
         <div className="mb-1.5 flex flex-wrap gap-1.5">
@@ -77,7 +83,7 @@ export function RacialCantripPicker({
               with the ⓘ that says what it does; the search is second. */}
           <CatalogBrowser
             kind="spells"
-            buttonLabel={`Every ${list} cantrip`}
+            buttonLabel={t("Every {list} cantrip", { list })}
             defaultOpen
             openSections={[`cantrips:${list}`]}
             selectedNames={picked}
@@ -86,17 +92,17 @@ export function RacialCantripPicker({
             sections={[
               {
                 key: `cantrips:${list}`,
-                label: `Every ${list} cantrip`,
+                label: t("Every {list} cantrip", { list }),
                 params: { class: list, level: "0" },
               },
             ]}
             metaOf={(entry) => entry.school ?? ""}
           />
-          <p className="mt-2 mb-1 text-xs text-stone-500">Or search by name:</p>
+          <p className="mt-2 mb-1 text-xs text-stone-500">{t("Or search by name:")}</p>
           <ContentPicker
             kind="spells"
             extraParams={{ class: list, level: "0" }}
-            placeholder="Search cantrips (e.g. fire bolt)"
+            placeholder={t("Search cantrips (e.g. fire bolt)")}
             onPick={(entry) => pick(entry.name)}
           />
         </>

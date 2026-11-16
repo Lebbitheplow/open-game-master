@@ -6,6 +6,7 @@ import { PageSkeleton } from "@/components/PageSkeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { ui } from "@/lib/ui";
 import { use } from "react";
+import { useT } from "@/lib/locale";
 import { BattleMapPanel } from "@/app/campaigns/[campaignId]/BattleMapPanel";
 import { MapPanel } from "@/app/campaigns/[campaignId]/MapPanel";
 import { useCampaignStream } from "@/app/campaigns/[campaignId]/useCampaignStream";
@@ -21,6 +22,7 @@ import { useCoversBackdrop } from "@/lib/backdrop-cover";
 // faint corner X back to the table, because a screen opened full-screen or
 // as an installed app has no other way out.
 export default function TablePage({ params }: { params: Promise<{ campaignId: string }> }) {
+  const t = useT();
   const { campaignId } = use(params);
   const { state, refreshBattleMap, markFxPlayed, markCameraDone, markTitleCardShown } = useCampaignStream(campaignId);
   // The view fills the window once it is up, and the layout's backdrop rests
@@ -37,10 +39,10 @@ export default function TablePage({ params }: { params: Promise<{ campaignId: st
       <main className="flex min-h-screen items-center justify-center bg-stone-950">
         <EmptyState
           art="map"
-          title={state.error || "Sign in as a member of this table to show it."}
+          title={state.error || t("Sign in as a member of this table to show it.")}
           action={
             <Link href="/" className={ui.btnSecondary}>
-              Back to campaigns
+              {t("Back to campaigns")}
             </Link>
           }
         />
@@ -79,7 +81,7 @@ export default function TablePage({ params }: { params: Promise<{ campaignId: st
       </div>
       <Link
         href={`/campaigns/${campaignId}`}
-        aria-label="Back to the table"
+        aria-label={t("Back to the table")}
         className="absolute left-[max(0.75rem,env(safe-area-inset-left))] top-[max(0.75rem,env(safe-area-inset-top))] z-10 rounded-md border border-stone-700 bg-stone-950/80 p-2 text-stone-300 opacity-30 transition-opacity hover:opacity-100 focus-visible:opacity-100"
       >
         <X className="size-4" />

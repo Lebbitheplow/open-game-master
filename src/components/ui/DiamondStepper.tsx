@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 
 // The stepper of a paced flow: one diamond per step joined by hairline rules.
 // Completed diamonds are solid gold and can be tapped to go back; the current
@@ -35,6 +36,7 @@ export function DiamondStepper({
   named?: boolean;
   className?: string;
 }) {
+  const t = useT();
   return (
     // A list, not a progressbar: a progressbar's children are presentational,
     // and these are buttons.
@@ -59,10 +61,10 @@ export function DiamondStepper({
                 aria-current={state === "current" ? "step" : undefined}
                 aria-label={
                   canGoBack
-                    ? `Back to step ${index + 1}: ${step.label}`
+                    ? t("Back to step {step}: {label}", { step: index + 1, label: step.label })
                     : canJump
-                      ? `Go to step ${index + 1}: ${step.label}`
-                      : `Step ${index + 1}: ${step.label}`
+                      ? t("Go to step {step}: {label}", { step: index + 1, label: step.label })
+                      : t("Step {step}: {label}", { step: index + 1, label: step.label })
                 }
                 title={step.label}
               >

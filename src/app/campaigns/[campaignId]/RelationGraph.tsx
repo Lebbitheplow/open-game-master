@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { HostSvgImage } from "@/components/ui/HostSvgImage";
 import { layoutGraph } from "@/lib/npcs/graph-layout";
 import type { RelationGraph as Graph } from "@/lib/npcs/forge";
+import { useT } from "@/lib/locale";
 
 // The cast's relationships drawn (docs/vtt-parity-implementation-plan.md
 // 5.5): portrait discs on a seeded force layout, edges with a mid-label,
@@ -17,8 +18,8 @@ const WIDTH = 640;
 const HEIGHT = 420;
 const RADIUS = 20;
 
-function describe(score: number): string {
-  return score >= 2 ? "close" : score >= 1 ? "friendly" : score <= -2 ? "hates" : score <= -1 ? "wary" : "knows";
+function describe(t: (key: string, vars?: Record<string, string | number>) => string, score: number): string {
+  return score >= 2 ? t("close", { context: "rel.close" }) : score >= 1 ? t("friendly", { context: "rel.friendly" }) : score <= -2 ? t("hates") : score <= -1 ? t("wary", { context: "rel.wary" }) : t("knows");
 }
 
 export function RelationGraph({
@@ -36,6 +37,7 @@ export function RelationGraph({
   onOpen: (name: string) => void;
   className?: string;
 }) {
+  const t = useT();
   const layout = useMemo(
     () =>
       new Map(
@@ -50,7 +52,7 @@ export function RelationGraph({
     [graph],
   );
   if (!graph.nodes.length) {
-    return <EmptyState size="sm" art="board" title="Write two people who know each other and the map draws itself." />;
+    return <EmptyState size="sm" art="board" title={t("Write two people who know each other and the map draws itself.")} />;
   }
   // A faction's hull: a soft disc around its members' centre, wide enough
   // to hold them all (docs/vtt-parity-implementation-plan.md section 6).
@@ -74,7 +76,7 @@ export function RelationGraph({
     <svg
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
       role="img"
-      aria-label="Who knows whom"
+      aria-label={t("Who knows whom")}
       className={cn("panel w-full rounded-lg", className)}
     >
       <defs>
@@ -123,8 +125,8 @@ export function RelationGraph({
               textAnchor="middle"
               className="fill-stone-400 text-[9px]"
             >
-              {edge.note || describe(edge.score)}
-              {edge.backScore !== undefined && edge.backScore !== edge.score ? ` / ${describe(edge.backScore)}` : ""}
+              {edge.note || describe(t, edge.score)}
+              {edge.backScore !== undefined && edge.backScore !== edge.score ? ` / ${describe(t, edge.backScore)}` : ""}
             </text>
           </g>
         );

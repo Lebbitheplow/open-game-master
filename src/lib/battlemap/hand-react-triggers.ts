@@ -16,6 +16,15 @@ import { resourceDef } from "@/lib/srd/class-resources";
 import { gateHolds, heldAuthored } from "@/lib/srd/authored-effects";
 import { findNamed, textKey } from "@/lib/language/text-logic";
 import type { Gate } from "@/lib/battlemap/hand-core";
+import { translate } from "@/lib/messages-logic";
+
+// Like hand-react.ts, the card's own words (table.hand.trigger.*) are read
+// with the translator of the component that draws the hand, so a language
+// switch rewords them with everything else. Pure otherwise: the ids, the
+// gates and the intents are untouched. The trigger `what` lines stay the
+// trigger table's own English — the engine matches them.
+type Translator = (key: string, vars?: Record<string, string | number>) => string;
+const enT: Translator = (key, vars) => translate("en", key, vars);
 
 // A hit as the trigger table reads it. The view keeps no advantage, so a
 // roll's edge (Restore Balance) is the engine's to see; the card waits for it.
@@ -34,7 +43,7 @@ function eventOfHit(hit: PublicLastHit): TriggerEvent {
 
 const costOf = (action: string | undefined): HandCost => (action === "reaction" ? "reaction" : action === "bonus" ? "bonus" : action === "none" ? "free" : "action");
 
-function card(sheet: CharacterSheet, turn: HandTurn, input: { id: string; name: string; cost: HandCost; spec: TriggerSpec; event: TriggerEvent; intent: HandCard["intent"]; rules: string; resource: string; onAlly?: boolean; aimEnemy?: boolean; anyTurn?: boolean }): HandCard {
+function card(sheet: CharacterSheet, turn: HandTurn, input: { id: string; name: string; cost: HandCost; spec: TriggerSpec; event: TriggerEvent; intent: HandCard["intent"]; rules: string; resource: string; onAlly?: boolean; aimEnemy?: boolean; anyTurn?: boolean }, t: Translator = enT): HandCard {
   const { event, spec } = input;
   // `aimEnemy`: the player picks the creature (Master of Hexes' new quarry).
   const target: HandTarget = input.onAlly ? "ally" : input.aimEnemy || (spec.aimsAt && event.creatureId) ? "enemy" : "none";
@@ -43,9 +52,9 @@ function card(sheet: CharacterSheet, turn: HandTurn, input: { id: string; name: 
     type: "ward",
     name: input.name,
     cost: input.cost,
-    range: target === "none" ? "Self" : "",
+    range: target === "none" ? t("Self", { context: "table.hand.react.selfRange" }) : "",
     dice: "",
-    roll: "no roll",
+    roll: t("no roll", { context: "table.hand.react.noRoll" }),
     rules: input.rules,
     resource: input.resource,
     condition: "",
@@ -61,7 +70,7 @@ function card(sheet: CharacterSheet, turn: HandTurn, input: { id: string; name: 
     spent: false,
     compose: false,
     intent: input.intent,
-    prompt: `${event.creatureName}: ${spec.what}`,
+    prompt: t("{name}: {what}", { name: event.creatureName, what: spec.what }),
     ...(event.creatureId ? { answers: { characterId: event.characterId || sheet.id, attackerId: event.creatureId, attacker: event.creatureName } } : {}),
   };
   // `anyTurn`: a spend that costs nothing of the turn and answers a record on
@@ -82,6 +91,7 @@ export function triggerCards(
   // a reaction whose text needs its creature seen (authored `sees: "attacker"`,
   // Halo of Spores) is not dealt for them, as authored-reactions.ts refuses it.
   unseen?: { has(id: string): boolean },
+  t: Translator = enT,
 ): HandCard[] {
   const events = [...hits.map(eventOfHit), ...saves.map(eventOfRecord)];
   if (!events.length) return [];
@@ -110,9 +120,9 @@ export function triggerCards(
         event,
         intent: cost === "reaction" ? { card: "reaction", feature: def.displayName } : { card: "feature", resourceId: id },
         rules: def.guidance.split(". ")[0].replace(/\.?$/, "."),
-        resource: def.atWill ? "" : `Uses ${state.max - state.used}/${state.max}`,
+        resource: def.atWill ? "" : t("Uses {left}/{max}", { left: state.max - state.used, max: state.max }),
         onAlly,
-      }));
+      }, t));
     }
   }
   for (const held of heldAuthored(sheet)) {
@@ -133,9 +143,9 @@ export function triggerCards(
       if (does.kind === "resist_instance" && does.bond) {
         const pool = reaction.pool;
         const left = !pool || !("id" in pool) || (sheet.resources[pool.id]?.max ?? 0) - (sheet.resources[pool.id]?.used ?? 0) >= (pool.amount ?? 1);
-        const petSpec: TriggerSpec = { on: [{ kind: "pet_damage" }], what: `damage your ${does.bond} has just taken` };
+        const petSpec: TriggerSpec = { on: [{ kind: "pet_damage" }], what: t("damage your {bond} has just taken", { bond: does.bond }) };
         for (const event of left ? openFor(petSpec, events, context(triggerKey(textKey(reaction.name), sheet.id))).slice(-1) : []) {
-          cards.push(card(sheet, turn, { id: reaction.name, name: reaction.name, cost: "reaction", spec: petSpec, event: { ...event, creatureId: null, creatureName: event.petName ?? does.bond }, intent: { card: "reaction", feature: reaction.name, variant: event.petName ?? does.bond }, rules: `Resistance to the damage your ${does.bond} just took: half of it comes back.`, resource: "" }));
+          cards.push(card(sheet, turn, { id: reaction.name, name: reaction.name, cost: "reaction", spec: petSpec, event: { ...event, creatureId: null, creatureName: event.petName ?? does.bond }, intent: { card: "reaction", feature: reaction.name, variant: event.petName ?? does.bond }, rules: t("Resistance to the damage your {bond} just took: half of it comes back.", { bond: does.bond }), resource: "" }, t));
         }
       }
       const spec = triggerSpecFor(reaction.name, { gateCondition: reaction.gate?.condition });
@@ -150,7 +160,7 @@ export function triggerCards(
         // An attack made with the reaction reaches only so far (Slayer's
         // Counter's weapon attack), as authored-reactions.ts refuses it beyond.
         if (does.kind === "attack" && does.rangeFt && event.creatureId && !near(event.creatureId, does.rangeFt)) continue;
-        cards.push(card(sheet, turn, { id: reaction.name, name: reaction.name, cost: "reaction", spec, event, intent: { card: "reaction", feature: reaction.name }, rules: `${reaction.name} answers ${spec.what}.`, resource: "" }));
+        cards.push(card(sheet, turn, { id: reaction.name, name: reaction.name, cost: "reaction", spec, event, intent: { card: "reaction", feature: reaction.name }, rules: t("{name} answers {what}.", { name: reaction.name, what: spec.what }), resource: "" }, t));
       }
     }
   }
@@ -164,21 +174,23 @@ export function dealtByTrigger(name: string, gateCondition?: string): boolean {
 
 // The moments a card comes up for (hand-react.ts). Counterspell names the spell it
 // answers, which no card can yet, so it is asked for in words as it always was.
+// The spell names stay English — findNamed matches the sheet's own records —
+// and each moment's words are keyed for the refusal the reader sees.
 const COMES_UP_WHEN = [
-  { spell: "Shield", when: "an attack hits you" },
-  { spell: "Hellish Rebuke", when: "a creature damages you" },
-  { spell: "Feather Fall", when: "you fall" },
+  { spell: "Shield", whenKey: "an attack hits you" },
+  { spell: "Hellish Rebuke", whenKey: "a creature damages you" },
+  { spell: "Feather Fall", whenKey: "you fall" },
 ];
 
 // A reaction spell's card in the fan, from a ring or the caster's own slots
 // (hand-spells.ts spellCard): shut, since the reaction strip deals it when its
 // moment comes (hand-react.ts), and open there it was refused in every state.
-export function waitsForTrigger(spell: string, fromRing = true): Gate {
+export function waitsForTrigger(spell: string, fromRing = true, t: Translator = enT): Gate {
   const moment = findNamed(COMES_UP_WHEN, spell, (row) => [row.spell]);
   return {
     reason: moment
-      ? `${spell} is cast as a reaction: its card comes up when ${moment.when}.`
-      : `${spell} is cast as a reaction: say so in your own words when its trigger comes${fromRing ? ", and it is cast from the ring" : ""}.`,
+      ? t("{spell} is cast as a reaction: its card comes up when {when}.", { spell, when: t(moment.whenKey) })
+      : t("{spell} is cast as a reaction: say so in your own words when its trigger comes{ring}.", { spell, ring: fromRing ? t(", and it is cast from the ring") : "" }),
     spent: false,
   };
 }

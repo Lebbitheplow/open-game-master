@@ -10,6 +10,7 @@ import { ui } from "@/lib/ui";
 import { PanelError } from "@/app/campaigns/[campaignId]/PanelKit";
 import { BEAT_LABELS, type BeatKind, type Suggestion } from "@/lib/workshop/board";
 import type { CompileSummary } from "@/lib/workshop/board-compile";
+import { useT, useTp } from "@/lib/locale";
 
 // What sits beside the workshop board: what the board is missing and what
 // it becomes. Both are collapsible cards so a phone can fold them away under
@@ -63,13 +64,15 @@ export function SuggestionsCard({
   busy: boolean;
   onAdd: (kind: BeatKind, title: string) => void;
 }) {
+  const t = useT();
+  const tp = useTp();
   if (!suggestions.length) {
     return null;
   }
   return (
-    <AsideCard title="What this board is missing" icon={<GameIcon icon={{ kind: "glyph", key: "rest-inspiration" }} size="size-7" />} tour="storyboard-missing">
+    <AsideCard title={t("What this board is missing", { context: "workshop.boardAsides.missingTitle" })} icon={<GameIcon icon={{ kind: "glyph", key: "rest-inspiration" }} size="size-7" />} tour="storyboard-missing">
       <p className="text-[11px] text-stone-500">
-        Counted, not guessed. Nothing here asked a model what your story needs.
+        {t("Counted, not guessed. Nothing here asked a model what your story needs.")}
       </p>
       {suggestions.map((suggestion) => (
         <div key={suggestion.id} className="flex flex-wrap items-center gap-2 text-xs">
@@ -105,6 +108,8 @@ export function SharedWorkshopCard({
   };
   onChanged: () => void;
 }) {
+  const t = useT();
+  const tp = useTp();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -114,13 +119,13 @@ export function SharedWorkshopCard({
     setBusy(true);
     setError("");
     try {
-      const sent = await readWrite(
+      const sent = await readWrite(t,
         fetch(`/api/workshops/${workshopId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ commonWorkshopId }),
         }),
-        "That could not be changed.",
+        t("That could not be changed."),
       );
       if (sent.error !== null) {
         setError(sent.error);
@@ -135,31 +140,26 @@ export function SharedWorkshopCard({
 
   return (
     <AsideCard
-      title="Shared workshop"
+      title={t("Shared workshop")}
       icon={<GameIcon icon={{ kind: "glyph", key: "system-cast" }} size="size-7" />}
       tour="storyboard-shared"
     >
       {shared.chapters.length ? (
         <p className="text-xs text-stone-400">
-          {shared.chapters.length === 1 ? "One chapter draws" : `${shared.chapters.length} chapters draw`} on
-          this workshop: {shared.chapters.map((chapter) => chapter.title).join(", ")}. Its cast,
-          places, maps and fights show in their pickers.
+          {tp("One chapter draws on this workshop: {list}. Its cast, places, maps and fights show in their pickers.", "{count} chapters draw on this workshop: {list}. Its cast, places, maps and fights show in their pickers.", { count: shared.chapters.length, list: shared.chapters.map((chapter) => chapter.title).join(", ") })}
         </p>
       ) : (
         <>
           <p className="text-xs text-stone-400">
-            Write the recurring cast, places, maps and fights once in one workshop, and let each
-            chapter&apos;s cards pick from it. Picks follow the shared rows as they change. A
-            campaign that imports this chapter brings what its cards pick, once, and later
-            chapters reuse it.
+            {t("Write the recurring cast, places, maps and fights once in one workshop, and let each chapter's cards pick from it. Picks follow the shared rows as they change. A campaign that imports this chapter brings what its cards pick, once, and later chapters reuse it.")}
           </p>
           <Select
-            label="Draws on"
+            label={t("Draws on")}
             value={shared.common?.id ?? ""}
             disabled={busy}
             onChange={(id) => void choose(id)}
             options={[
-              { value: "", label: "Nothing shared" },
+              { value: "", label: t("Nothing shared") },
               ...shared.choices.map((choice) => ({
                 value: choice.id,
                 label: choice.title,
@@ -175,12 +175,14 @@ export function SharedWorkshopCard({
 }
 
 export function CompileCard({ summary }: { summary: CompileSummary }) {
+  const t = useT();
+  const tp = useTp();
   return (
-    <AsideCard title="What this becomes" icon={<GameIcon icon={{ kind: "glyph", key: "tab-campaigns" }} size="size-7" />} tour="storyboard-compile">
+    <AsideCard title={t("What this becomes")} icon={<GameIcon icon={{ kind: "glyph", key: "tab-campaigns" }} size="size-7" />} tour="storyboard-compile">
       <p className="text-xs text-stone-400">
         {summary.lines.length
-          ? `Imported into a campaign, this board becomes ${summary.lines.join(", ")}.`
-          : "Nothing yet. Cards become lore, quests, prepared fights, GM notes and the story arc."}
+          ? t("Imported into a campaign, this board becomes {list}.", { list: summary.lines.join(", ") })
+          : t("Nothing yet. Cards become lore, quests, prepared fights, GM notes and the story arc.", { context: "workshop.boardAsides.becomesNone" })}
       </p>
       {summary.arcRefusal ? (
         <p className="reveal text-[11px] text-amber-300/70">{summary.arcRefusal}</p>

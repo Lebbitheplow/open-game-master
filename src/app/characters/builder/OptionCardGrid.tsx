@@ -9,10 +9,11 @@ import { Ribbon } from "@/components/ui/Ribbon";
 import { cn } from "@/lib/cn";
 import type { IconRef } from "@/lib/icons";
 import { ui } from "@/lib/ui";
-import { AbilityText } from "./AbilityText";
+import { CardText } from "./CardText";
 import { filterGroups, foldGroups } from "./lineage";
 import { useShowNumbers, writeNumbers } from "./numbersPref";
 import { useRovingGroup } from "./roving";
+import { useT, useTp } from "@/lib/locale";
 
 // One painted card in a lineage or class grid. `meta` is the canonical name
 // behind a world pack's reskin, searched along with the name. `keywords`
@@ -93,6 +94,8 @@ export function OptionCardGrid({
   numbersSwitch?: boolean;
 }) {
   const gridId = useId();
+  const t = useT();
+  const tp = useTp();
   const searchRef = useRef<HTMLInputElement>(null);
   const numbers = useShowNumbers();
   const [query, setQuery] = useState("");
@@ -190,25 +193,28 @@ export function OptionCardGrid({
               onChoose(lone.id);
             }
           }}
-          placeholder={`Search ${total} ${noun === "class" ? "classes" : `${noun}s`}`}
-          aria-label={`Search ${noun === "class" ? "classes" : `${noun}s`}`}
+          placeholder={t("Search {count} {list}", { count: total, list: nounWords(noun, false, t) })}
+          aria-label={t("Search {list}", { list: nounWords(noun, false, t) })}
           aria-describedby={`${gridId}-search-hint`}
           enterKeyHint={lone ? "done" : "search"}
           className={cn(ui.input, "pl-8")}
         />
         <span id={`${gridId}-search-hint`} className="sr-only" aria-live="polite">
           {lone
-            ? `One match, ${lone.name}. Press Enter to choose it.`
+            ? t("One match, {name}. Press Enter to choose it.", { name: lone.name })
             : query.trim()
-              ? `${shownCount} ${noun === "class" ? (shownCount === 1 ? "class" : "classes") : `${noun}${shownCount === 1 ? "" : "s"}`} match.`
-              : "Searches names, roles and the other words on each card. Tab on to the cards and move between them with the arrow keys."}
+              ? tp("{count} {noun} matches.", "{count} {noun} match.", {
+                  count: shownCount,
+                  noun: nounWords(noun, shownCount === 1, t),
+                })
+              : t("Searches names, roles and the other words on each card. Tab on to the cards and move between them with the arrow keys.")}
         </span>
       </label>
 
       {facets.length ? (
         // A suggestion of the filters a player reaches for; each step
         // decides which it offers.
-        <div className="mb-3 flex flex-wrap items-center gap-2" role="group" aria-label={`Filter ${noun === "class" ? "classes" : `${noun}s`}`}>
+        <div className="mb-3 flex flex-wrap items-center gap-2" role="group" aria-label={t("Filter {list}", { list: nounWords(noun, false, t) })}>
           {facets.map((facet) => (
             // Two to a line on a phone, side by side on a wider screen: the
             // select fills whatever box holds it.
@@ -218,17 +224,20 @@ export function OptionCardGrid({
               label={facet.label}
               value={picks[facet.key] ?? ANY}
               onChange={(next) => setPicks((current) => ({ ...current, [facet.key]: next }))}
-              options={[{ value: ANY, label: `${facet.label}: any` }, ...facet.options.map((option) => ({ value: option.value, label: `${facet.label}: ${option.label}` }))]}
+              options={[
+                { value: ANY, label: t("{label}: any", { label: facet.label }) },
+                ...facet.options.map((option) => ({ value: option.value, label: t("{label}: {value}", { label: facet.label, value: option.label }) })),
+              ]}
             />
             </div>
           ))}
           {filtering ? (
             <>
               <span className="text-xs text-stone-400" aria-live="polite">
-                {shownCount} of {total}
+                {t("{shown} of {total}", { shown: shownCount, total })}
               </span>
               <button type="button" onClick={() => setPicks({})} className={ui.btnSmall}>
-                Clear filters
+                {t("Clear filters")}
               </button>
             </>
           ) : null}
@@ -241,17 +250,21 @@ export function OptionCardGrid({
           (numbersPref.ts). */}
       {numbersSwitch ? (
         <label className="mb-3 flex min-h-10 w-fit cursor-pointer items-center gap-3 text-stone-300">
-          <Switch label="Show rules and numbers" on={numbers} onChange={writeNumbers} />
+          <Switch label={t("Show rules and numbers")} on={numbers} onChange={writeNumbers} />
           <span>
-            Show rules and numbers
-            <span className="block text-stone-400">Adds the hit die after HP, as in &ldquo;High HP, d10&rdquo;.</span>
+            {t("Show rules and numbers")}
+            <span className="block text-stone-400">{t("Adds the hit die after HP, as in “High HP, d10”.")}</span>
           </span>
         </label>
       ) : null}
 
       {shown.length ? null : (
         <p className="py-6 text-center text-xs text-stone-500">
-          No {noun} matches that. Clear the {filtering ? "filters" : "search"} to see all {total}.
+          {t("No {noun} matches that. Clear the {filter} to see all {total}.", {
+            noun: nounWords(noun, false, t),
+            filter: filtering ? t("filters") : t("search"),
+            total,
+          })}
         </p>
       )}
 
@@ -293,7 +306,7 @@ export function OptionCardGrid({
                       aria-pressed={chosen}
                       tabIndex={roving.tabIndex(option.id)}
                       data-roving-item={option.id}
-                      aria-label={`${option.name}${group.recommended ? ", fits this setting" : ""}`}
+                      aria-label={group.recommended ? t("{name}, fits this setting", { name: option.name }) : option.name}
                       aria-describedby={
                         [option.tagline ? `${descId}-tag` : "", option.chips.length ? `${descId}-chips` : ""]
                           .filter(Boolean)
@@ -308,7 +321,7 @@ export function OptionCardGrid({
                           <span className="creator-plate-name">{option.name}</span>
                           {option.tagline ? (
                             <span id={`${descId}-tag`} className="creator-plate-tag">
-                              {option.tagline}
+                              <CardText text={option.tagline} />
                             </span>
                           ) : null}
                         </span>
@@ -318,11 +331,11 @@ export function OptionCardGrid({
                         <span id={`${descId}-chips`} className="flex min-w-0 gap-1 overflow-hidden">
                           {option.chips.map((chip) => (
                             <span key={chip} className="creator-chip">
-                              <AbilityText text={chip} />
+                              <CardText text={chip} />
                             </span>
                           ))}
                         </span>
-                        <span className="creator-cta">{chosen ? "Chosen" : "Choose"}</span>
+                        <span className="creator-cta">{chosen ? t("Chosen") : t("Choose")}</span>
                       </span>
                     </button>
                     {group.recommended ? (
@@ -330,7 +343,7 @@ export function OptionCardGrid({
                       // said on the card itself where it applies.
                       <span className="creator-recommended">
                         <Star className="size-2.5 fill-current" aria-hidden="true" />
-                        Fits setting
+                        {t("Fits setting")}
                       </span>
                     ) : null}
                     <button
@@ -344,7 +357,7 @@ export function OptionCardGrid({
                     >
                       <span>?</span>
                     </button>
-                    {chosen ? <span className="creator-selected">✓ Selected</span> : null}
+                    {chosen ? <span className="creator-selected">{t("✓ Selected")}</span> : null}
                   </div>
                 );
               })}
@@ -355,10 +368,19 @@ export function OptionCardGrid({
       {folds && !searching ? (
         <div className="mt-2 flex justify-center">
           <button type="button" onClick={() => setExpanded((current) => !current)} className={ui.btnSmall} aria-expanded={expanded}>
-            {expanded ? "Show fewer" : `Show all ${total} (${hidden} more)`}
+            {expanded ? t("Show fewer") : t("Show all {count} ({hidden} more)", { count: total, hidden })}
           </button>
         </div>
       ) : null}
     </div>
   );
+}
+
+// The grid's noun as words: "classes"/"class", "lineages"/"lineage", for the
+// search box and the empty line (builder.grid.noun.*).
+function nounWords(noun: string, one: boolean, t: (key: string, vars?: Record<string, string | number>) => string): string {
+  if (noun === "class") {
+    return one ? t("class", { context: "builder.grid.noun.class" }) : t("classes");
+  }
+  return one ? t("lineage") : t("lineages");
 }

@@ -12,12 +12,12 @@ import { NumberStepper as KitStepper } from "@/components/ui/NumberStepper";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import {
   CAMPAIGN_DIFFICULTIES,
-  CAMPAIGN_DIFFICULTY_HINTS,
   type CampaignCover as CampaignCoverRef,
   type CampaignDifficulty,
 } from "@/lib/campaign-types";
 import type { Campaign } from "@/lib/db/campaigns";
 import { offersImages, useCapabilities } from "@/lib/use-capabilities";
+import { useT } from "@/lib/locale";
 import { CampaignCover, type CoverStatus } from "@/components/CampaignCover";
 
 // Matches the characters page: polls every 2.5 s while a render is queued
@@ -82,6 +82,7 @@ export function EditCampaignDialog({
   };
   onClose: () => void;
 }) {
+  const t = useT();
   const [title, setTitle] = useState(campaign.title);
   const [description, setDescription] = useState(campaign.description);
   const [theme, setTheme] = useState(campaign.theme);
@@ -268,14 +269,14 @@ export function EditCampaignDialog({
             <span className="mb-1 block text-stone-400">Difficulty</span>
             <SegmentedControl
               size="sm"
-              label="Difficulty"
+              label={t("Difficulty")}
               className="w-full"
-              options={CAMPAIGN_DIFFICULTIES.map((value) => ({ value, label: value }))}
+              options={CAMPAIGN_DIFFICULTIES.map((value) => ({ value, label: ({ "easy": t("easy"), "normal": t("normal"), "hard": t("hard"), "deadly": t("deadly"), "info": t("Difficulty is guidance to the Game Master, not a damage multiplier: every rule underneath stays 5e. It steers how hard encounters are built and how often a bad roll is allowed to really cost you.\n\n{list}\n\nThe party lead can change it later from the table's settings.") } as Record<string, string>)[value] ?? String(value) }))}
               value={difficulty}
               onChange={setDifficulty}
             />
             <p key={difficulty} className="motion-tab mt-1.5 text-xs text-stone-500">
-              {CAMPAIGN_DIFFICULTY_HINTS[difficulty]}
+              {({ "easy": t("Fights lean easy and the story forgives mistakes. Good for a first table."), "normal": t("Encounters built to the book. A careless party can still lose someone."), "hard": t("Bigger fights, fewer second chances, resources that actually run out."), "deadly": t("Assumes you want to lose characters. Plan retreats and bring spares.") } as Record<string, string>)[difficulty] ?? String(difficulty)}
             </p>
           </div>
         </Group>

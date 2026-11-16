@@ -31,16 +31,36 @@ const NOUN: Record<UndoBecause, string> = {
   subclass: "subclass",
   level: "level",
 };
+const NOUN_KEYS: Record<UndoBecause, string> = {
+  class: "class",
+  race: "ancestry",
+  subclass: "subclass",
+  level: "level",
+};
 
 // The line the bar shows and the live region says: what changed, and what
-// "Put it back" brings back.
-export function undoMessage(undo: Pick<BuildUndo, "because" | "from" | "to">): string {
+// "Put it back" brings back. `t` reads it in the reader's language
+// (builder.undo.*); without it the test-pinned English stands.
+export function undoMessage(
+  undo: Pick<BuildUndo, "because" | "from" | "to">,
+  t?: (key: string, vars?: Record<string, string | number>) => string,
+): string {
+  if (typeof t === "function") {
+    return t("Changed {noun} from {from} to {to}. Put it back to return to {from} with the picks that went with it.", {
+      noun: t(NOUN_KEYS[undo.because]),
+      from: undo.from,
+      to: undo.to,
+    });
+  }
   return `Changed ${NOUN[undo.because]} from ${undo.from} to ${undo.to}. Put it back to return to ${undo.from} with the picks that went with it.`;
 }
 
 // What the live region says once the old choice is back.
-export function putBackMessage(undo: Pick<BuildUndo, "from">): string {
-  return `Put back ${undo.from} and its picks.`;
+export function putBackMessage(
+  undo: Pick<BuildUndo, "from">,
+  t?: (key: string, vars?: Record<string, string | number>) => string,
+): string {
+  return typeof t === "function" ? t("Put back {from} and its picks.", { from: undo.from }) : `Put back ${undo.from} and its picks.`;
 }
 
 // Whether the fields have moved since the change rendered: another pick in

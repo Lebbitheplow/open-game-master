@@ -20,6 +20,7 @@ import { SpellMechFields } from "@/app/workshop/homebrew/SpellMechFields";
 import type { Data } from "@/app/workshop/homebrew/draft";
 import { effectiveSpellPreview } from "@/lib/workshop/spell-preview";
 import { bundledSpellNames, materialCostFrom } from "@/lib/srd/spell-facts";
+import { useT } from "@/lib/locale";
 import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 
 // The spell form. The description is the part the engine reads its damage
@@ -41,6 +42,7 @@ export function SpellFields({
   // is on that class's list (issue #833, src/lib/classes/class-spell-list.ts).
   workshopClasses?: Array<{ id: string; name: string }>;
 }) {
+  const t = useT();
   const set = (patch: Data) => onChange({ ...data, ...patch });
   // An older host never reads a spell's workshop class (src/lib/capabilities.ts
   // customSpellLists), so it is offered only where it counts; one already
@@ -54,65 +56,65 @@ export function SpellFields({
 
   return (
     <div className="space-y-3">
-      <SectionHead title="The casting" glyph="rest-spell-slot" className="mb-1" />
+      <SectionHead title={t("The casting")} glyph="rest-spell-slot" className="mb-1" />
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <NumberField
-          label="Level"
+          label={t("Level")}
           value={typeof data.level === "number" ? data.level : 1}
           min={0}
           max={9}
           onChange={(level) => set({ level: level === "" ? 0 : level })}
-          hint="0 is a cantrip."
+          hint={t("0 is a cantrip.")}
         />
         <SelectField
-          label="School"
+          label={t("School")}
           value={String(data.school ?? "evocation")}
           options={SPELL_SCHOOLS.map((value) => ({ value, label: value }))}
           onChange={(school) => set({ school })}
-          glossary={{ title: "Schools of magic", entries: glossaryFor(SPELL_SCHOOLS, SPELL_SCHOOL_BLURBS) }}
+          glossary={{ title: t("Schools of magic"), entries: glossaryFor(SPELL_SCHOOLS, SPELL_SCHOOL_BLURBS) }}
         />
         <TextField
-          label="Casting time"
+          label={t("Casting time")}
           value={String(data.casting_time ?? "")}
           onChange={(casting_time) => set({ casting_time })}
           maxLength={60}
           suggestions={CASTING_TIMES}
-          hint="How long it takes to cast. Most spells take one action."
+          hint={t("How long it takes to cast. Most spells take one action.")}
         />
         <TextField
-          label="Range"
+          label={t("Range")}
           value={String(data.range ?? "")}
           onChange={(range) => set({ range })}
           maxLength={60}
           suggestions={SPELL_RANGES}
-          hint="How far away the target can be. Self means the caster only."
+          hint={t("How far away the target can be. Self means the caster only.")}
         />
         <TextField
-          label="Components"
+          label={t("Components")}
           value={String(data.components ?? "")}
           onChange={(components) => set({ components })}
           maxLength={120}
           suggestions={SPELL_COMPONENTS}
-          hint="V spoken words, S a free hand, M a material (name it after M in brackets)."
+          hint={t("V spoken words, S a free hand, M a material (name it after M in brackets).")}
         />
         <TextField
-          label="Duration"
+          label={t("Duration")}
           value={String(data.duration ?? "")}
           onChange={(duration) => set({ duration })}
           maxLength={60}
           suggestions={SPELL_DURATIONS}
-          hint="How long the effect lasts. Concentration spells end when the caster loses focus."
+          hint={t("How long the effect lasts. Concentration spells end when the caster loses focus.")}
         />
         <div className="col-span-2 flex flex-wrap items-end gap-3">
-          <CheckField label="Concentration" checked={data.concentration === true} onChange={(concentration) => set({ concentration })} />
-          <CheckField label="Ritual" checked={data.ritual === true} onChange={(ritual) => set({ ritual })} />
+          <CheckField label={t("Concentration")} checked={data.concentration === true} onChange={(concentration) => set({ concentration })} />
+          <CheckField label={t("Ritual")} checked={data.ritual === true} onChange={(ritual) => set({ ritual })} />
         </div>
       </div>
 
       {hasMaterial ? (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <TextField
-            label="Material"
+            label={t("Material", { context: "workshop.homebrew.spell.material" })}
             className="col-span-2"
             value={String(data.material ?? "")}
             onChange={(material) => {
@@ -125,19 +127,19 @@ export function SpellFields({
             }}
             maxLength={300}
             placeholder="diamonds worth 300 gp, which the spell consumes"
-            hint="What the caster must hold. A component pouch or a focus stands in for one with no price."
+            hint={t("What the caster must hold. A component pouch or a focus stands in for one with no price.")}
           />
           <NumberField
-            label="Costs (gp)"
+            label={t("Costs (gp)")}
             value={cost ?? ""}
             min={0}
             max={1_000_000}
             onChange={(value) => set({ materialCostGp: value === "" || value === 0 ? undefined : value, ...(value === "" || value === 0 ? { materialConsumed: undefined } : {}) })}
-            hint="A priced material must be carried or paid for: the cast guard refuses the spell without it."
+            hint={t("A priced material must be carried or paid for: the cast guard refuses the spell without it.")}
           />
           <div className="flex items-end pb-1">
             <CheckField
-              label="The spell consumes it"
+              label={t("The spell consumes it")}
               checked={data.materialConsumed === true}
               onChange={(materialConsumed) => set({ materialConsumed: materialConsumed && cost ? true : undefined })}
             />
@@ -146,16 +148,16 @@ export function SpellFields({
       ) : null}
 
       <TextField
-        label="Runs as"
+        label={t("Runs as")}
         value={String(data.runsAs ?? "")}
         onChange={(runsAs) => set({ runsAs: runsAs.trim() || undefined })}
         maxLength={80}
         suggestions={RUNS_AS_OPTIONS}
-        hint="A published spell whose area, summons, reaction or transformation the engines lay for this one under its own name (a renamed Web still webs the board). A copy starts with the spell it was copied from."
+        hint={t("A published spell whose area, summons, reaction or transformation the engines lay for this one under its own name (a renamed Web still webs the board). A copy starts with the spell it was copied from.")}
       />
 
       <div className="space-y-1">
-        <SectionHead title="Classes that can learn it" glyph="tab-characters" className="mb-1" />
+        <SectionHead title={t("Classes that can learn it")} glyph="tab-characters" className="mb-1" />
         <ToggleChips
           options={[...CLASS_IDS, ...ownClasses.map((klass) => klass.id)]}
           selected={tagged}
@@ -166,24 +168,24 @@ export function SpellFields({
           ])}
         />
         {ownClasses.length ? (
-          <p className="text-[11px] text-stone-500">Ticking one of your own classes puts the spell on its list, whichever list that class casts from.</p>
+          <p className="text-[11px] text-stone-500">{t("Ticking one of your own classes puts the spell on its list, whichever list that class casts from.")}</p>
         ) : null}
       </div>
 
       <TextField
-        label="At higher levels"
+        label={t("At higher levels")}
         value={String(data.higher_level ?? "")}
         onChange={(higher_level) => set({ higher_level })}
         placeholder="The damage increases by 1d6 for each slot level above 1st."
         maxLength={2000}
-        hint="The engine scales the dice from this sentence when a spell is upcast."
+        hint={t("The engine scales the dice from this sentence when a spell is upcast.")}
       />
 
       <div className="panel space-y-1 rounded-lg px-3 py-2 text-xs text-stone-400">
         <p>
-          <span className="font-display tracking-wide text-amber-200/70">What the table resolves: </span>
+          <span className="font-display tracking-wide text-amber-200/70">{t("What the table resolves: ")}</span>{" "}
           {preview.line}.
-          {preview.line.startsWith("no dice") ? " Write it as \"takes 3d6 fire damage\", or give the block below its dice." : ""}
+          {preview.line.startsWith("no dice") ? ` ${t("Write it as \"takes 3d6 fire damage\", or give the block below its dice.")}` : ""}
         </p>
         {preview.conflicts.map((conflict) => (
           <p key={conflict} className="text-amber-300">{conflict}</p>

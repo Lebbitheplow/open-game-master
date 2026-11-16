@@ -3,6 +3,8 @@
 import { Loader2, Undo2 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/cn";
+import { useLocale, useT } from "@/lib/locale";
+import { localeTag } from "@/lib/messages-logic";
 import { ui } from "@/lib/ui";
 import { reloadPage } from "@/lib/navigation";
 
@@ -10,9 +12,11 @@ import { reloadPage } from "@/lib/navigation";
 // (src/lib/account-deletion.ts). One button calls it off; the page reloads
 // so whatever fetched the user sees the cleared stamp.
 export function DeletionBanner({ dueAt, className }: { dueAt: string; className?: string }) {
+  const t = useT();
+  const locale = useLocale();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const when = new Date(dueAt).toLocaleDateString(undefined, {
+  const when = new Date(dueAt).toLocaleDateString(localeTag(locale), {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -28,13 +32,13 @@ export function DeletionBanner({ dueAt, className }: { dueAt: string; className?
         body: JSON.stringify({ keepAccount: true }),
       });
       if (!response.ok) {
-        setError("Could not reach the server. Try again from account settings.");
+        setError(t("Could not reach the server. Try again from account settings."));
         setBusy(false);
         return;
       }
       reloadPage();
     } catch {
-      setError("Could not reach the server. Try again from account settings.");
+      setError(t("Could not reach the server. Try again from account settings."));
       setBusy(false);
     }
   }
@@ -48,12 +52,12 @@ export function DeletionBanner({ dueAt, className }: { dueAt: string; className?
       )}
     >
       <span>
-        This account is scheduled for deletion on {when}. Everything it owns goes with it.
+        {t("This account is scheduled for deletion on {date}. Everything it owns goes with it.", { date: when })}
         {error ? <span className="motion-shake block text-xs text-red-300">{error}</span> : null}
       </span>
       <button type="button" onClick={keep} disabled={busy} aria-busy={busy} className={ui.btnSmall}>
         {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Undo2 className="size-3.5" />}
-        Keep my account
+        {t("Keep my account")}
       </button>
     </div>
   );

@@ -33,6 +33,21 @@ import { bundledSpellFacts } from "@/lib/srd/spell-facts";
 import { textKey } from "@/lib/language/text-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { BoardControl } from "@/lib/addons/board-bridge";
+import { translate } from "@/lib/messages-logic";
+
+type T = (key: string, vars?: Record<string, string | number>) => string;
+const enT: T = (key, vars) => translate("en", key, vars);
+
+const KIND_KEY: Record<string, string> = {
+  celestial: "Celestial",
+  fey: "Fey",
+  fiend: "Fiend",
+};
+
+export function summonKindLabel(kind: string, t: T = enT): string {
+  const key = KIND_KEY[kind];
+  return key ? t(key) : title(kind);
+}
 
 // A challenge rating as the SRD prints it.
 export function crText(cr: number): string {
@@ -49,7 +64,7 @@ const title = (word: string) => word.replace(/^./, (c) => c.toUpperCase());
 // kinds and the per-target budget where the spell has them; or null when
 // there is nothing to choose. Listed under their challenge ratings when the
 // spell calls by rating, in the spell's own order when it names its forms.
-export function summonPick(catalogue: SummonCatalogue | undefined, slotLevel: number): { choice: HandChoice; summon: HandSummon } | null {
+export function summonPick(catalogue: SummonCatalogue | undefined, slotLevel: number, t: T = enT): { choice: HandChoice; summon: HandSummon } | null {
   if (!catalogue) return null;
   const slot = String(slotLevel);
   const forms = catalogue.forms.filter((form) => (form.counts[slot] ?? []).length > 0);
@@ -60,14 +75,14 @@ export function summonPick(catalogue: SummonCatalogue | undefined, slotLevel: nu
   return {
     choice: {
       arg: "variant",
-      label: "Creature",
-      options: forms.map((form) => ({ value: form.name, label: form.name, note: `CR ${crText(form.cr)} ${form.type}, AC ${form.ac}, ${form.hp} hit points` })),
+      label: t("Creature"),
+      options: forms.map((form) => ({ value: form.name, label: form.name, note: t("CR {cr} {type}, AC {ac}, {hp} hit points", { cr: crText(form.cr), type: form.type, ac: form.ac, hp: form.hp }) })),
       // Nothing is chosen for the player: the card waits for a pick.
       fallback: "",
     },
     summon: {
-      forms: Object.fromEntries(forms.map((form) => [form.name, { counts: form.counts[slot], ...(byRating ? { group: `CR ${crText(form.cr)}` } : {}) }])),
-      ...(kinds ? { kinds: kinds.map((kind) => ({ value: kind, label: title(kind) })) } : {}),
+      forms: Object.fromEntries(forms.map((form) => [form.name, { counts: form.counts[slot], ...(byRating ? { group: t("CR {cr}", { cr: crText(form.cr) }) } : {}) }])),
+      ...(kinds ? { kinds: kinds.map((kind) => ({ value: kind, label: summonKindLabel(kind, t) })) } : {}),
       ...(catalogue.perTarget && budget ? { mix: { budget, cost: catalogue.perTarget.cost } } : {}),
     },
   };
@@ -160,19 +175,19 @@ export function summonIntent(card: Pick<HandCard, "summon">, choices: SummonChoi
 
 // The pick in words: "Wolf, 8 of them", "Fey Warhorse", "2 Skeleton and
 // 1 Zombie".
-export function summonWords(card: Pick<HandCard, "summon">, choices: SummonChoices): string | null {
+export function summonWords(card: Pick<HandCard, "summon">, choices: SummonChoices, t: T = enT): string | null {
   const fields = summonIntent(card, choices);
   if (fields.mix) {
     const parts = fields.mix.map((entry) => `${entry.count} ${entry.variant}`);
-    return parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : parts[0];
+    return parts.length > 1 ? t("{head} and {tail}", { head: parts.slice(0, -1).join(", "), tail: parts.at(-1) ?? "" }) : parts[0];
   }
   if (!fields.variant) return null;
-  return summonPhrase(title(fields.variant), fields.count ?? null);
+  return summonPhrase(title(fields.variant), fields.count ?? null, t);
 }
 
 // The creature and its number in words: "Wolf, 8 of them", "Giant Elk".
-export function summonPhrase(label: string, count: number | null): string {
-  return count && count > 1 ? `${label}, ${count} of them` : label;
+export function summonPhrase(label: string, count: number | null, t: T = enT): string {
+  return count && count > 1 ? t("{label}, {count} of them", { label, count }) : label;
 }
 
 // The board view's own Hand panel (Hand.tsx nativePanel), over the bridge's
@@ -181,7 +196,7 @@ export function summonPhrase(label: string, count: number | null): string {
 // picked ("hand-count"), when it may come in more than one number, and a
 // per-target spell's forms as one more or one fewer each ("hand-mix",
 // "Skeleton:+"), as the Hand's own stepper takes them.
-export function summonBoardControls(card: Pick<HandCard, "summon">, choices: SummonChoices): BoardControl[] {
+export function summonBoardControls(card: Pick<HandCard, "summon">, choices: SummonChoices, t: T = enT): BoardControl[] {
   const summon = card.summon;
   if (!summon) return [];
   if (summon.mix) {
@@ -190,17 +205,17 @@ export function summonBoardControls(card: Pick<HandCard, "summon">, choices: Sum
       const now = choices.mix?.[form] ?? 0;
       const cost = summon.mix!.cost[form] ?? 1;
       return [
-        { value: `${form}:+`, label: `One more ${form} (${now})`, disabled: left >= cost ? null : "The slot's budget is spent." },
-        { value: `${form}:-`, label: `One fewer ${form}`, disabled: now > 0 ? null : `No ${form} yet.` },
+        { value: `${form}:+`, label: t("One more {form} ({now})", { form, now }), disabled: left >= cost ? null : t("The slot's budget is spent.") },
+        { value: `${form}:-`, label: t("One fewer {form}", { form }), disabled: now > 0 ? null : t("No {form} yet.", { form }) },
       ];
     });
-    return [{ id: "hand-mix", label: `Each target's form (${left} left)`, disabled: null, options }];
+    return [{ id: "hand-mix", label: t("Each target's form ({left} left)", { left }), disabled: null, options }];
   }
   const form = pickedForm(card, choices.form);
   const counts = form ? summon.forms[form].counts : [];
   if (counts.length < 2) return [];
   const chosen = summonCount(card, form, choices.count);
-  return [{ id: "hand-count", label: "Number", value: String(chosen), disabled: null, options: counts.map((count) => ({ value: String(count), label: String(count), disabled: null })) }];
+  return [{ id: "hand-count", label: t("Number"), value: String(chosen), disabled: null, options: counts.map((count) => ({ value: String(count), label: String(count), disabled: null })) }];
 }
 
 // A board control's reply as the pick it stands for: a number from
@@ -280,6 +295,7 @@ export function summonDoorRows(
   catalogues: Record<string, SummonCatalogue>,
   inFight: boolean,
   spells: Record<string, SpellFact> = {},
+  t: T = enT,
 ): SummonDoorRow[] {
   const rows: SummonDoorRow[] = [];
   const held = castingOf(sheet);
@@ -299,7 +315,7 @@ export function summonDoorRows(
     }
     const done = inFight ? completedCastingOf(sheet, spell) : null;
     if (done) {
-      rows.push({ ...base, state: "finish", slotLevel: done.slotLevel, ritual: done.ritual, pick: summonPick(catalogue, done.slotLevel ?? level), disabled: null, blocked: null });
+      rows.push({ ...base, state: "finish", slotLevel: done.slotLevel, ritual: done.ritual, pick: summonPick(catalogue, done.slotLevel ?? level, t), disabled: null, blocked: null });
       continue;
     }
     const slot = lowestSlot(sheet, level)?.level ?? null;
@@ -309,8 +325,8 @@ export function summonDoorRows(
       state: inFight ? "begin" : "cast",
       slotLevel: slot,
       ritual,
-      pick: inFight ? null : summonPick(catalogue, slot ?? level),
-      disabled: slot === null ? `No spell slot of level ${level} or higher is left${ritual ? "; it can still be cast as a ritual" : ""}.` : null,
+      pick: inFight ? null : summonPick(catalogue, slot ?? level, t),
+      disabled: slot === null ? t("No spell slot of level {level} or higher is left{ritual}.", { level, ritual: ritual ? t("; it can still be cast as a ritual") : "" }) : null,
       blocked: castBlocked(sheet, spell, inFight, slot ?? level, spells[textKey(spell)]),
     });
   }

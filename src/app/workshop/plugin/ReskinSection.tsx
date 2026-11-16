@@ -20,6 +20,7 @@ import {
 import type { WorldPackDraft } from "@/lib/worlds/draft";
 import { input, removeAt, replaceAt, type SectionProps } from "@/app/workshop/plugin/types";
 import { textKey } from "@/lib/language/text-logic";
+import { useT } from "@/lib/locale";
 
 // The reskin tables: the world's own names for things the engine already
 // has. Pick, do not type. A race, class or background is chosen from the
@@ -53,6 +54,7 @@ const ID_COPY: Record<IdKind, { title: string; prompt: string; blurb: string; ca
 };
 
 export function IdReskinList({ draft, onDraft, kind }: SectionProps & { kind: IdKind }) {
+  const t = useT();
   const copy = ID_COPY[kind];
   const list = draft[kind];
   const used = new Set(list.map((entry) => entry.id));
@@ -60,8 +62,8 @@ export function IdReskinList({ draft, onDraft, kind }: SectionProps & { kind: Id
   const set = (next: WorldPackDraft[IdKind]) => onDraft({ ...draft, [kind]: next } as WorldPackDraft);
   return (
     <section className={ui.card + " p-4"}>
-      <SectionHead title={copy.title} glyph="system-plugin" className="mb-0" />
-      <p className="mb-3 text-[11px] text-stone-500">{copy.blurb}</p>
+      <SectionHead title={t(copy.title)} glyph="system-plugin" className="mb-0" />
+      <p className="mb-3 text-[11px] text-stone-500">{t(copy.blurb)}</p>
       <div className="stagger space-y-1.5">
         {list.map((entry, index) => (
           <div key={`${entry.id}-${index}`} className="flex flex-wrap items-start gap-1.5 rounded-lg border border-stone-800 p-2">
@@ -71,16 +73,16 @@ export function IdReskinList({ draft, onDraft, kind }: SectionProps & { kind: Id
             <input
               value={entry.name}
               maxLength={60}
-              placeholder="Called here"
-              aria-label={`Name for ${catalogLabel(copy.catalog, entry.id)}`}
+              placeholder={t("Called here")}
+              aria-label={t("Name for {slug}", { slug: catalogLabel(copy.catalog, entry.id) })}
               onChange={(event) => set(replaceAt(list, index, { ...entry, name: event.target.value }) as typeof list)}
               className={cn(input, "w-40 min-w-0")}
             />
             <input
               value={entry.blurb}
               maxLength={200}
-              placeholder="One line about it"
-              aria-label="Blurb"
+              placeholder={t("One line about it")}
+              aria-label={t("Blurb")}
               onChange={(event) => set(replaceAt(list, index, { ...entry, blurb: event.target.value }) as typeof list)}
               className={cn(input, "min-w-0 flex-1")}
             />
@@ -88,8 +90,8 @@ export function IdReskinList({ draft, onDraft, kind }: SectionProps & { kind: Id
               <input
                 value={(entry as { castingLabel?: string | null }).castingLabel ?? ""}
                 maxLength={40}
-                placeholder="Its spells are called"
-                aria-label="Casting label"
+                placeholder={t("Its spells are called")}
+                aria-label={t("Casting label")}
                 onChange={(event) =>
                   set(
                     replaceAt(list as WorldPackDraft["classes"], index, {
@@ -104,7 +106,7 @@ export function IdReskinList({ draft, onDraft, kind }: SectionProps & { kind: Id
             <button
               type="button"
               onClick={() => set(removeAt(list, index) as typeof list)}
-              aria-label={`Remove ${catalogLabel(copy.catalog, entry.id)}`}
+              aria-label={t("Remove {name}", { name: catalogLabel(copy.catalog, entry.id) })}
               className={cn(ui.iconAction, rowIcon, "hover:text-red-300")}
             >
               <X className="size-3.5" />
@@ -114,7 +116,7 @@ export function IdReskinList({ draft, onDraft, kind }: SectionProps & { kind: Id
       </div>
       <div className="mt-2">
         <AddFromList
-          prompt={copy.prompt}
+          prompt={t(copy.prompt)}
           options={remaining}
           onPick={(id) =>
             set([
@@ -135,6 +137,7 @@ const NAME_COPY: Record<NameKind, { title: string; blurb: string }> = {
 };
 
 export function NameReskinList({ draft, onDraft, kind }: SectionProps & { kind: NameKind }) {
+  const t = useT();
   const copy = NAME_COPY[kind];
   const list = draft[kind];
   const set = (next: WorldPackDraft[NameKind]) => onDraft({ ...draft, [kind]: next } as WorldPackDraft);
@@ -149,8 +152,8 @@ export function NameReskinList({ draft, onDraft, kind }: SectionProps & { kind: 
   };
   return (
     <section className={ui.card + " p-4"}>
-      <SectionHead title={copy.title} glyph="system-plugin" className="mb-0" />
-      <p className="mb-3 text-[11px] text-stone-500">{copy.blurb}</p>
+      <SectionHead title={t(copy.title)} glyph="system-plugin" className="mb-0" />
+      <p className="mb-3 text-[11px] text-stone-500">{t(copy.blurb)}</p>
       <div className="stagger space-y-1.5">
         {list.map((entry, index) => (
           <div key={`${entry.from}-${index}`} className="flex flex-wrap items-start gap-1.5 rounded-lg border border-stone-800 p-2">
@@ -158,23 +161,23 @@ export function NameReskinList({ draft, onDraft, kind }: SectionProps & { kind: 
             <input
               value={entry.name}
               maxLength={80}
-              placeholder="Called here"
-              aria-label={`Name for ${entry.from}`}
+              placeholder={t("Called here")}
+              aria-label={t("Name for {slug}", { slug: entry.from })}
               onChange={(event) => set(replaceAt(list, index, { ...entry, name: event.target.value }))}
               className={cn(input, "w-40 min-w-0")}
             />
             <input
               value={entry.blurb}
               maxLength={200}
-              placeholder="One line about it"
-              aria-label="Blurb"
+              placeholder={t("One line about it")}
+              aria-label={t("Blurb")}
               onChange={(event) => set(replaceAt(list, index, { ...entry, blurb: event.target.value }))}
               className={cn(input, "min-w-0 flex-1")}
             />
             <button
               type="button"
               onClick={() => set(removeAt(list, index))}
-              aria-label={`Remove ${entry.from}`}
+              aria-label={t("Remove {name}", { name: entry.from })}
               className={cn(ui.iconAction, rowIcon, "hover:text-red-300")}
             >
               <X className="size-3.5" />
@@ -188,8 +191,8 @@ export function NameReskinList({ draft, onDraft, kind }: SectionProps & { kind: 
             <input
               value={feature}
               list="plugin-feature-options"
-              placeholder="Find a feature to rename"
-              aria-label="Feature to rename"
+              placeholder={t("Find a monster to rename")}
+              aria-label={t("Feature to rename")}
               onChange={(event) => setFeature(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
@@ -201,14 +204,14 @@ export function NameReskinList({ draft, onDraft, kind }: SectionProps & { kind: 
             />
             <Suggestions id="plugin-feature-options" options={FEATURE_OPTIONS()} />
             <button type="button" onClick={() => addFrom(feature)} disabled={!feature.trim()} className={cn(ui.btnSmall, "text-xs")}>
-              <Plus className="size-3.5" /> Add
+              <Plus className="size-3.5" /> {t("Add")}
             </button>
           </div>
         ) : (
           <ContentPick
             kind={kind}
-            label={`Find a ${kind === "spells" ? "spell" : "item"} to rename`}
-            placeholder={`Find a ${kind === "spells" ? "spell" : "item"} to rename`}
+            label={t(kind === "spells" ? "Find a spell to rename" : "Find an item to rename")}
+            placeholder={t(kind === "spells" ? "Find a spell to rename" : "Find an item to rename")}
             onPick={(entry) => addFrom(entry.name)}
           />
         )}

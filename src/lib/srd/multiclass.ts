@@ -7,6 +7,7 @@
 import spellSlotsJson from "@/lib/srd/spell-slots.json";
 import { findClass, spellSlotsFor } from "@/lib/srd";
 import { isThirdCaster, type ThirdCasterSetting } from "@/lib/srd/third-caster";
+import { translate } from "@/lib/messages-logic";
 import type { Ability, AbilityScores, ClassEntry } from "@/lib/schemas/sheet";
 
 // UI sanity cap: RAW is unbounded, but nobody at this table needs four.
@@ -209,6 +210,35 @@ export function describePrereq(classId: string): string {
   return prereq
     .map((required) => required.map((ability) => `${ABILITY_LABEL[ability]} 13`).join(" and "))
     .join(" or ");
+}
+
+// The shape of a translator, as the pure sentence builders take it.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
+const enT: T = (key) => translate("en", key);
+
+// The prerequisite in the reader's words: the ability names are the
+// dictionaries' (sheet.ability.*). describePrereq is its English form, kept
+// for the rules' own refusals the model reads.
+export function describePrereqT(t: T, classId: string): string {
+  const prereq = multiclassPrereq(classId);
+  if (!prereq) {
+    return t("no prerequisite");
+  }
+  return prereq
+    .map((required) =>
+      required.map((ability) => `${({ "str": t("Strength"), "dex": t("Dexterity"), "con": t("Constitution"), "int": t("Intelligence"), "wis": t("Wisdom"), "cha": t("Charisma") } as Record<string, string>)[ability] ?? String(ability)} 13`).join(` ${t("and")} `),
+    )
+    .join(` ${t("or")} `);
+}
+
+// The proficiencies a second class grants, in the reader's words.
+export function describeGrantT(t: T, grant: MulticlassGrant): string {
+  const parts = [...grant.armor, ...grant.weapons, ...grant.tools];
+  if (grant.skillChoice) {
+    parts.push(t(grant.skillChoice.from.length ? "one skill from its class list" : "one skill of your choice"));
+  }
+  return parts.length ? parts.join(", ") : t("no new proficiencies");
 }
 
 // Whether the character may take a first level in a NEW class. RAW checks

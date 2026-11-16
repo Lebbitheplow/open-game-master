@@ -4,8 +4,12 @@
 // regenerate"). One wording for the encounter panel, the Hand's target chips
 // and the board's condition chip. Pure.
 
-export function regeneratingNote(stopped: boolean): string {
+// The shape of a translator, as the pure sentence builders take it: the
+// surface that shows the words passes its own.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
+export function regeneratingNote(t: T, stopped: boolean): string {
   return stopped
-    ? "Down at 0 hit points, and the damage that stops its Regeneration landed: it dies at the start of its turn."
-    : "Down at 0 hit points, not dead: at the start of its turn it regains hit points and rises, unless the damage that stops its Regeneration (acid or fire for a troll) lands first.";
+    ? t("Down at 0 hit points, and the damage that stops its Regeneration landed: it dies at the start of its turn.")
+    : t("Down at 0 hit points, not dead: at the start of its turn it regains hit points and rises, unless the damage that stops its Regeneration (acid or fire for a troll) lands first.");
 }

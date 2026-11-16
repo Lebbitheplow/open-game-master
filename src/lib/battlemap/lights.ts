@@ -27,13 +27,23 @@ export const LIGHT_LIMITS = {
 
 // What a torch, a lantern and a bonfire look like in tiles, so the palette
 // offers something to pick rather than two empty number boxes.
+// The palette's words are the dictionaries' (scene.light.preset.*); the
+// surface that shows them passes its translator. The id stays the stored kind.
 export const LIGHT_PRESETS = [
-  { id: "candle", label: "Candle", brightRadius: 1, dimRadius: 2 },
-  { id: "torch", label: "Torch", brightRadius: 4, dimRadius: 8 },
+  { id: "candle", labelKey: "Candle", brightRadius: 1, dimRadius: 2 },
+  { id: "torch", labelKey: "Torch", brightRadius: 4, dimRadius: 8 },
   // A hooded lantern: 30 feet bright, 30 more dim (SRD 5.1).
-  { id: "lantern", label: "Lantern", brightRadius: 6, dimRadius: 12 },
-  { id: "bonfire", label: "Bonfire", brightRadius: 8, dimRadius: 8 },
+  { id: "lantern", labelKey: "Lantern", brightRadius: 6, dimRadius: 12 },
+  { id: "bonfire", labelKey: "Bonfire", brightRadius: 8, dimRadius: 8 },
 ] as const;
+
+// The shape of a translator, as the pure sentence builders take it.
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
+export function lightPresetLabel(t: T, id: string): string {
+  const preset = LIGHT_PRESETS.find((entry) => entry.id === id);
+  return t(preset?.labelKey ?? "Torch");
+}
 
 function clamp(value: unknown, min: number, max: number, fallback: number): number {
   const number = typeof value === "number" ? value : NaN;
@@ -108,6 +118,6 @@ export function toggleLight(
 }
 
 // "Bright 20 ft, dim to 40 ft", for a tooltip.
-export function describeLight(light: Pick<MapLight, "brightRadius" | "dimRadius">): string {
-  return `Bright ${light.brightRadius * TILE_FEET} ft, dim to ${light.dimRadius * TILE_FEET} ft`;
+export function describeLight(t: T, light: Pick<MapLight, "brightRadius" | "dimRadius">): string {
+  return t("Bright {bright} ft, dim to {dim} ft", { bright: light.brightRadius * TILE_FEET, dim: light.dimRadius * TILE_FEET });
 }

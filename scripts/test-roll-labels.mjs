@@ -18,7 +18,12 @@ const { redactRoll } = await import("../src/lib/dm/viewer.ts");
 const { buildGameStateBlock } = await import("../src/lib/dm/prompt.ts");
 const { beatSourceLines } = await import("../src/lib/dm/beats.ts");
 const { computeEncounterSummary } = await import("../src/lib/dm/encounter-summary.ts");
-const { rollCardLabel, rollChronicleLead, rollToastLead } = await import("../src/lib/roll-labels.ts");
+const { rollCardLabel, rollChronicleLead, rollKindLabel, rollToastLead } = await import("../src/lib/roll-labels.ts");
+
+const { translate } = await import("../src/lib/messages-logic.ts");
+
+// The dictionaries' English, for the worded builders under test.
+const enT = (key, vars) => translate("en", key, vars);
 
 const aria = world.addHero({ name: "Aria" });
 world.addHero({ name: "Bren" });
@@ -53,7 +58,7 @@ const eight = [
 ];
 
 await test("The chronicle card puts the attacker in front and names each creature once.", () => {
-  assert.deepEqual(eight.map((roll) => rollCardLabel(roll, sheetName(roll))), [
+  assert.deepEqual(eight.map((roll) => rollCardLabel(enT, roll, sheetName(roll))), [
     "Aria · Attack roll (Longsword vs Goblin)",
     "Aria · Damage (Longsword vs Goblin)",
     "Goblin · Attack roll (Club vs Aria)",
@@ -70,7 +75,7 @@ await test("A blind roll keeps the names and loses the numbers.", () => {
   assert.equal(blind.total, null);
   assert.equal(blind.breakdown, null);
   assert.deepEqual(blind.attacker, goblin);
-  assert.equal(rollCardLabel(blind, sheetName(blind)), "Goblin · Attack roll (Club vs Aria)");
+  assert.equal(rollCardLabel(enT, blind, sheetName(blind)), "Goblin · Attack roll (Club vs Aria)");
 });
 
 await test("Cinematic mode's toast and chronicle line name the attacker the same way.", () => {
@@ -84,8 +89,8 @@ await test("Cinematic mode's toast and chronicle line name the attacker the same
     "Wolf · Bite vs Goblin",
     "Shaman · Sacred Flame vs Aria",
   ];
-  assert.deepEqual(eight.map((roll) => rollToastLead(roll, sheetName(roll))), leads);
-  assert.deepEqual(eight.map((roll) => rollChronicleLead(roll, sheetName(roll))), leads);
+  assert.deepEqual(eight.map((roll) => rollToastLead(enT, roll, sheetName(roll))), leads);
+  assert.deepEqual(eight.map((roll) => rollChronicleLead(enT, roll, sheetName(roll))), leads);
 });
 
 const gameState = (rolls) =>
@@ -130,14 +135,14 @@ await test("A roll without an attacker reads exactly as it did before.", () => {
   const raw = getDatabase().prepare("SELECT attacker_json FROM rolls WHERE id = ?").get(legacy.id);
   assert.equal(raw.attacker_json, null);
   assert.equal(listRecentRolls(world.campaignId, 1)[0].attacker, null);
-  assert.equal(rollCardLabel(legacy, "Aria"), "Aria · Attack roll (Goblin: Club)");
-  assert.equal(rollToastLead(legacy, "Aria"), "Aria · Goblin: Club");
-  assert.equal(rollChronicleLead(legacy, "Aria"), "Goblin: Club");
-  assert.equal(rollCardLabel(check, "Aria"), "Aria · Skill check (Aria: Perception)");
-  assert.equal(rollChronicleLead({ ...check, detail: "" }, "Aria"), "Aria · Skill check");
+  assert.equal(rollCardLabel(enT, legacy, "Aria"), "Aria · Attack roll (Goblin: Club)");
+  assert.equal(rollToastLead(enT, legacy, "Aria"), "Aria · Goblin: Club");
+  assert.equal(rollChronicleLead(enT, legacy, "Aria"), "Goblin: Club");
+  assert.equal(rollCardLabel(enT, check, "Aria"), "Aria · Skill check (Aria: Perception)");
+  assert.equal(rollChronicleLead(enT, { ...check, detail: "" }, "Aria"), "Aria · Skill check");
   // One table names a roll kind, on the cards and in cinematic mode alike.
-  assert.equal(rollChronicleLead({ ...legacy, detail: "" }, "Aria"), "Aria · Attack roll");
-  assert.equal(rollToastLead({ ...check, characterId: null, detail: "" }, undefined), "The GM · Skill check");
+  assert.equal(rollChronicleLead(enT, { ...legacy, detail: "" }, "Aria"), "Aria · Attack roll");
+  assert.equal(rollToastLead(enT, { ...check, characterId: null, detail: "" }, undefined), "The GM · Skill check");
   assert.deepEqual(gameState([legacy, check]), ["- Aria: attack (Goblin: Club) rolled 24 (natural 20)", "- Aria: skill check (Aria: Perception) rolled 13"]);
   const beats = beatSourceLines(world.campaignId, "").map((line) => line.text).filter((text) => text.startsWith("Roll:"));
   assert.deepEqual(beats.slice(-2), ["Roll: Aria rolled Goblin: Club for 24.", "Roll: Aria rolled Aria: Perception for 13."]);

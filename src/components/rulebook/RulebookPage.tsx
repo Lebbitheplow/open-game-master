@@ -4,6 +4,7 @@ import "@/app/styles/rulebook.css";
 import { PagePrep } from "./PagePrep";
 import { Fragment, useMemo, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/locale";
 import { inlineText, parseBook, parseInline, type BookBlock, type InlineNode } from "@/lib/rulebook/markdown";
 import type { RulebookPageResponse } from "@/lib/rulebook/types";
 import { splitWords, textKey } from "@/lib/language/text-logic";
@@ -242,6 +243,7 @@ export function RulebookPage({
   canStart?: boolean;
 }) {
   const { page, chapter, prev, next } = data;
+  const t = useT();
   const blocks = useMemo(() => {
     const all = parseBook(page.md);
     // The entry's italic first line is lettered under the title already.
@@ -274,8 +276,8 @@ export function RulebookPage({
     <article className="rb-page" data-kind={page.kind}>
       <header className="rb-head">
         <p className="rb-running">
-          <span aria-hidden="true">{"❦"}</span> Chapter {chapter.numeral} <span className="rb-dot">&middot;</span>{" "}
-          <Digits text={chapter.title} />{" "}
+          <span aria-hidden="true">{"❦"}</span> {t("Chapter {numeral}", { numeral: chapter.numeral })}{" "}
+          <span className="rb-dot">&middot;</span> <Digits text={chapter.title} />{" "}
           <span aria-hidden="true">{"❦"}</span>
         </p>
         <h1 className="rb-title">
@@ -302,7 +304,7 @@ export function RulebookPage({
         ) : (
           <span />
         )}
-        <span className="rb-folio" aria-label={`Page ${page.folio}`}>
+        <span className="rb-folio" aria-label={t("Page {n}", { n: page.folio })}>
           {page.folio}
         </span>
         {next ? (

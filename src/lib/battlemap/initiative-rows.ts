@@ -6,6 +6,7 @@
 //
 // Pure: the public encounter's order in, indexes and labels out;
 // scripts/test-hand-engine.mjs drives it.
+import { translate } from "@/lib/messages-logic";
 
 export type OrderRow = { id: string; name: string; reflex?: boolean; extra?: string };
 
@@ -66,10 +67,19 @@ export const REFLEX_LABEL = "Thief's Reflexes";
 
 // What a second row for the same character says: Thief's Reflexes' second
 // turn in the first round, or an extra turn taken at once (Strength before
-// Death, issue 233), which names the feature it comes from.
-export function extraTurnTag(row: { reflex?: boolean; extra?: string }): { short: string; title: string } | null {
+// Death, issue 233), which names the feature it comes from. The feature's
+// name rides as it was built ({label}), the words around it are the
+// dictionaries'; extraTurnTag is its English form for the tests.
+export function extraTurnTagT(
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  row: { reflex?: boolean; extra?: string },
+): { short: string; title: string } | null {
   if (!row.reflex) return null;
   return row.extra
-    ? { short: "extra", title: `${row.extra}: an extra turn, taken now` }
-    : { short: "2nd", title: `${REFLEX_LABEL}: a second turn this round` };
+    ? { short: t("extra"), title: t("{extra}: an extra turn, taken now", { extra: row.extra }) }
+    : { short: t("2nd"), title: t("{label}: a second turn this round", { label: REFLEX_LABEL }) };
+}
+
+export function extraTurnTag(row: { reflex?: boolean; extra?: string }): { short: string; title: string } | null {
+  return extraTurnTagT((key) => translate("en", key), row);
 }

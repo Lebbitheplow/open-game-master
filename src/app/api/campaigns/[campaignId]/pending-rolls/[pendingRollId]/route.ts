@@ -17,6 +17,7 @@ import type { DamageAsk } from "@/lib/dm/attack-record";
 import { landedBody, landPendingRoll } from "@/lib/dm/pending-roll-land";
 import { answerOpportunityAsk } from "@/lib/dm/opportunity-ask-timer";
 import { publishPersisted } from "@/lib/events";
+import { requestT } from "@/lib/request-locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,6 +45,9 @@ export async function POST(
   if (isErrorResponse(context)) {
     return context;
   }
+  // The card shows the refusal raw (PendingRollCard.tsx submit), so it
+  // answers in the asker's language.
+  const t = requestT(request);
 
   // Body parsing happens before the pending-roll lookup on purpose: with no
   // await between the status check and resolvePendingRoll below, concurrent
@@ -51,28 +55,28 @@ export async function POST(
   const raw = await request.json().catch(() => ({}));
   const parsed = submitSchema.safeParse(raw);
   if (!parsed.success) {
-    return Response.json({ error: "Invalid roll submission." }, { status: 400 });
+    return Response.json({ error: t("Invalid roll submission.") }, { status: 400 });
   }
   // A roll parked before the break waits out the break with its turn:
   // resolving it would record initiative and lock the order, land damage or
   // resume the DM while the table is paused (table audit 2026-10-26, T05).
   // After Resume it resolves as it would have.
-  const paused = refuseDuringBreak(campaignId);
+  const paused = refuseDuringBreak(campaignId, undefined, request);
   if (paused) {
     return paused;
   }
 
   const pending = getPendingRoll(pendingRollId);
   if (!pending || pending.campaignId !== campaignId) {
-    return Response.json({ error: "Roll not found." }, { status: 404 });
+    return Response.json({ error: t("Roll not found.") }, { status: 404 });
   }
   if (pending.status !== "pending") {
-    return Response.json({ error: "That roll was already resolved." }, { status: 409 });
+    return Response.json({ error: t("That roll was already resolved.") }, { status: 409 });
   }
 
   // A watch stop holds no roll, and is answered on its own route.
   if (pending.parkedFor === "watch") {
-    return Response.json({ error: "That is a stop for Portent, not a roll." }, { status: 409 });
+    return Response.json({ error: t("That is a stop for Portent, not a roll.") }, { status: 409 });
   }
   // A screen that knows nothing of Portent shows this roll as one to type in:
   // the server throws it, so the table is never left on a refused answer.
@@ -83,7 +87,7 @@ export async function POST(
   // human-run one.
   const canForceFallback = steersStory(context);
   if (isFallback ? !isRoller && !canForceFallback : !isRoller) {
-    return Response.json({ error: "This is not your roll." }, { status: 403 });
+    return Response.json({ error: t("This is not your roll.") }, { status: 403 });
   }
 
   // The ask before an opportunity attack holds no dice. A screen that knows
@@ -100,7 +104,7 @@ export async function POST(
   // table is never left waiting on a button the answerer cannot see.
   if (pending.thrown) {
     const kept = landPendingRoll(context.campaign, pending, pending.thrown.outcome, pending.thrown.landing);
-    return kept ? Response.json(landedBody(kept)) : Response.json({ error: "That roll was already resolved." }, { status: 409 });
+    return kept ? Response.json(landedBody(kept)) : Response.json({ error: t("That roll was already resolved.") }, { status: 409 });
   }
 
   // The faces the player typed or their Pixels dice reported. A "digital"
@@ -119,8 +123,7 @@ export async function POST(
     if (!mayTypeFaces(pending.parkedFor, preferences.dicePolicy, preferences.member)) {
       return Response.json(
         {
-          error:
-            "This roll is thrown by the server: release it to roll, since typed dice count only for a player rolling real dice at a table that allows them.",
+          error: t("This roll is thrown by the server: release it to roll, since typed dice count only for a player rolling real dice at a table that allows them."),
         },
         { status: 403 },
       );
@@ -152,7 +155,7 @@ export async function POST(
     }
   } catch (error) {
     return Response.json(
-      { error: error instanceof Error ? error.message : "Invalid dice values." },
+      { error: error instanceof Error ? error.message : t("Invalid dice values.") },
       { status: 400 },
     );
   }
@@ -176,7 +179,7 @@ export async function POST(
       deadline: afterRollDeadline(campaignId, pending.userId),
     });
     if (!waiting) {
-      return Response.json({ error: "That roll was already resolved." }, { status: 409 });
+      return Response.json({ error: t("That roll was already resolved.") }, { status: 409 });
     }
     armAfterRollKeep(waiting.id, waiting.thrown?.deadline);
     publishPersisted(campaignId, "roll_pending", { pendingRoll: publicPendingRoll(waiting) });
@@ -189,7 +192,7 @@ export async function POST(
     source: isFallback || allDigital ? "digital" : "physical",
   });
   if (!roll) {
-    return Response.json({ error: "That roll was already resolved." }, { status: 409 });
+    return Response.json({ error: t("That roll was already resolved.") }, { status: 409 });
   }
   return Response.json(landedBody(roll));
 }

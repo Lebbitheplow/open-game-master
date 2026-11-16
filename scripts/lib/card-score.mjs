@@ -144,6 +144,10 @@ export async function stageScenario(scenario) {
   const { deriveHand, FRESH_TURN } = await import("../../src/lib/battlemap/hand.ts");
   const { composeSentence, intentBody, handReady, stepShare } = await import("../../src/lib/battlemap/hand-play.ts");
   const { reactionCards } = await import("../../src/lib/battlemap/hand-react.ts");
+  const { translate } = await import("../../src/lib/messages-logic.ts");
+  // The card's words read English here, the dictionaries' source (see
+  // composerGate); the scenario pins the English lines.
+  const t = (key, vars) => translate("en", key, vars);
   const { messageIntentSchema } = await import("../../src/lib/dm/intent-logic.ts");
   const { intentRefusal } = await import("../../src/lib/dm/intent-check.ts");
   const { spellAuthorsFor } = await import("../../src/lib/dm/spell-authors.ts");
@@ -212,7 +216,7 @@ export async function stageScenario(scenario) {
       damage: record.swings.reduce((sum, swing) => sum + (swing.hit ? swing.raw : 0), 0),
       answered: record.answered,
     };
-    cards = reactionCards(sheet, handTurn, [publicHit], [actor, ally].map((hero) => ({ id: hero.id, name: hero.name })));
+    cards = reactionCards(t, sheet, handTurn, [publicHit], [actor, ally].map((hero) => ({ id: hero.id, name: hero.name })));
   } else {
     const spells = await spellFactsFor(sheet, spellAuthorsFor(campaign));
     cards = deriveHand(sheet, handTurn, { spells, gear: { allies: 1 } });

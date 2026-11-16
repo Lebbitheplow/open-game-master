@@ -134,6 +134,12 @@ import { spreadGear } from "@/lib/dm/gear-zones";
 import { actorOfCall, calledOnItsOwn, withActor } from "@/lib/dm/acting-party";
 import { openEffect } from "@/lib/dm/last-hit";
 
+import { translate } from "@/lib/messages-logic";
+
+// The tool refusals read the model's protocol: pinned English.
+const enT = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
+
+
 // DM stat authority: the model changes sheets ONLY through these tools.
 // Every mutation is server-clamped, audit-logged, and published live.
 

@@ -18,6 +18,7 @@ import { publishSceneState } from "@/lib/dm/scene-state";
 import { currentScene } from "@/lib/dm/sky";
 import { bringBackTakenRows, takeBackTurnChanges, turnChangeWarnings, turnRevertRefusal } from "@/lib/dm/turn-revert";
 import { publishPersisted } from "@/lib/events";
+import { requestT } from "@/lib/request-locale";
 import { revertAuditEntry, undoConflictWarnings } from "@/lib/sheet-undo";
 
 export const runtime = "nodejs";
@@ -54,11 +55,14 @@ export async function POST(
   if (isErrorResponse(context)) {
     return context;
   }
+  // The event log shows the refusal and the warnings raw (EventLog.tsx post),
+  // so they answer in the asker's language.
+  const t = requestT(request);
 
   const raw = await request.json().catch(() => ({}));
   const parsed = bodySchema.safeParse(raw);
   if (!parsed.success) {
-    return Response.json({ error: "Invalid revert request." }, { status: 400 });
+    return Response.json({ error: t("Invalid revert request.") }, { status: 400 });
   }
   const { turnId, confirm } = parsed.data;
 
@@ -67,11 +71,11 @@ export async function POST(
   // revert of it undid them all at once.
   const turn = getDmTurn(turnId);
   if (!turn || turn.campaignId !== campaignId) {
-    return Response.json({ error: "That is not a GM turn of this table." }, { status: 400 });
+    return Response.json({ error: t("That is not a GM turn of this table.") }, { status: 400 });
   }
   if (turnStillPlaying(campaignId, turn)) {
     return Response.json(
-      { error: "That turn is still being played. Revert it once it is done, or stop it first." },
+      { error: t("That turn is still being played. Revert it once it is done, or stop it first.") },
       { status: 409 },
     );
   }
@@ -80,7 +84,7 @@ export async function POST(
   const reach = revertWindowStart(campaignId);
   if (reach && turn.createdAt < reach) {
     return Response.json(
-      { error: `That turn is too far back to revert: a table's last ${REVERT_WINDOW_TURNS} GM turns can be. Rewinding the chapter takes older ones back.` },
+      { error: t("That turn is too far back to revert: a table's last {count} GM turns can be. Rewinding the chapter takes older ones back.", { count: REVERT_WINDOW_TURNS }) },
       { status: 400 },
     );
   }
@@ -92,7 +96,7 @@ export async function POST(
   const changes = liveTurnChanges(campaignId, turnId);
   const rows = turnHasKeptRows(turnId);
   if (!entries.length && !clock && !changes.length && !rows) {
-    return Response.json({ error: "Nothing left to revert for that turn." }, { status: 400 });
+    return Response.json({ error: t("Nothing left to revert for that turn.") }, { status: 400 });
   }
   const refusal = rows ? turnRevertRefusal(turnId) : null;
   if (refusal) {

@@ -31,6 +31,7 @@ import type { Note } from "@/lib/db/notes";
 import type { GameSettings } from "@/lib/schemas/game-settings";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { heroFell } from "@/lib/characters/fallen-logic";
+import { useT } from "@/lib/locale";
 
 // The lead's desk. Everything the party lead can do to the table, in one
 // tab, rather than an invite block on Party, an approval queue on Notes,
@@ -91,6 +92,7 @@ function InvitesCard({
 }) {
   const [inviteCopied, setInviteCopied] = useState(false);
   const [inviteSharing, setInviteSharing] = useState(false);
+  const t = useT();
   // The joining toggle has no optimistic state (midGameJoinOpen rides the
   // stream), so a refused PATCH changes nothing on screen; this is the only
   // trace it leaves.
@@ -123,10 +125,10 @@ function InvitesCard({
       });
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
-        setJoinToggleError(data.error ?? "That change was not saved.");
+        setJoinToggleError(data.error ?? t("That change was not saved."));
       }
     } catch {
-      setJoinToggleError("Could not reach the table.");
+      setJoinToggleError(t("Could not reach the table."));
     }
   }
 
@@ -140,28 +142,28 @@ function InvitesCard({
   }
 
   return (
-    <Card glyph="tab-friends" title="Invites">
+    <Card glyph="tab-friends" title={t("Invites")}>
       <div className="flex flex-wrap items-center gap-1.5">
         {steersStory ? (
-          <span className="flex items-center gap-2 text-xs text-stone-300" title="Allow new players to join with the invite code mid-game">
-            <Switch on={midGameJoinOpen} onChange={() => void toggleMidGameJoin()} label="Allow new players to join with the invite code mid-game" />
-            Joining {midGameJoinOpen ? "open" : "closed"}
+          <span className="flex items-center gap-2 text-xs text-stone-300" title={t("Allow new players to join with the invite code mid-game")}>
+            <Switch on={midGameJoinOpen} onChange={() => void toggleMidGameJoin()} label={t("Allow new players to join with the invite code mid-game")} />
+            {midGameJoinOpen ? t("Joining open") : t("Joining closed")}
           </span>
         ) : (
           // A lead at a human-DM table shares the code but the setting is
           // the DM's, so the state shows without a control the server would
           // refuse.
           <span className="pk-chip px-2 text-xs text-stone-400">
-            Joining {midGameJoinOpen ? "open" : "closed"}
+            {midGameJoinOpen ? t("Joining open") : t("Joining closed")}
           </span>
         )}
         {midGameJoinOpen ? (
           <>
-            <KitButton onClick={copyInviteLink} title="Copy the invite link" className="font-code">
+            <KitButton onClick={copyInviteLink} title={t("Copy the invite link")} className="font-code">
               {inviteCopied ? <Check className="motion-pop size-3.5 text-emerald-400" /> : <LinkIcon className="size-3.5" />}
               {inviteCode}
             </KitButton>
-            <KitButton onClick={() => setInviteSharing(true)} title="Show the invite QR code and share options" aria-label="Show the invite QR code and share options">
+            <KitButton onClick={() => setInviteSharing(true)} title={t("Show the invite QR code and share options")} aria-label={t("Show the invite QR code and share options")}>
               <QrCode className="size-3.5" />
             </KitButton>
           </>
@@ -197,6 +199,7 @@ function LeadSeatCard({
 }) {
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const t = useT();
   const candidates = members.filter(
     (member) => member.userId !== leadUserId && !dmUserIds.includes(member.userId),
   );
@@ -206,7 +209,7 @@ function LeadSeatCard({
       sheets.find((sheet) => sheet.userId === userId && !sheet.isCompanion))?.name;
 
   async function makeLead(member: CampaignMember) {
-    if (!await appConfirm(`Make ${member.username} the party lead? You will lose this tab.`)) {
+    if (!await appConfirm(t("Make {name} the party lead? You will lose this tab.", { name: member.username }))) {
       return;
     }
     setBusy(member.userId);
@@ -219,17 +222,17 @@ function LeadSeatCard({
       });
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
-        setError(data.error ?? "The lead did not change.");
+        setError(data.error ?? t("The lead did not change."));
       }
     } catch {
-      setError("Could not reach the table.");
+      setError(t("Could not reach the table."));
     } finally {
       setBusy("");
     }
   }
 
   return (
-    <Card glyph="tab-lead" title="The lead seat">
+    <Card glyph="tab-lead" title={t("The lead seat")}>
       {candidates.length ? (
         <ul className="stagger space-y-1">
           {candidates.map((member) => {
@@ -239,18 +242,18 @@ function LeadSeatCard({
                 <span className="min-w-0 flex-1 truncate text-stone-300">
                   {member.username}
                   {character ? (
-                    <span className="text-stone-500"> as {character}</span>
+                    <span className="text-stone-500"> {t("as {name}", { name: character })}</span>
                   ) : null}
                 </span>
                 <KitButton disabled={busy !== ""} busy={busy === member.userId} onClick={() => makeLead(member)} className="shrink-0 disabled:opacity-40">
-                  Make lead
+                  {t("Make lead")}
                 </KitButton>
               </li>
             );
           })}
         </ul>
       ) : (
-        <p className="text-xs text-stone-500">Nobody else at the table to hand it to.</p>
+        <p className="text-xs text-stone-500">{t("Nobody else at the table to hand it to.")}</p>
       )}
       {error ? <PanelError className="mt-1.5">{error}</PanelError> : null}
     </Card>
@@ -299,6 +302,7 @@ export function LeadPanel({
 }) {
   const [editing, setEditing] = useState(false);
   const [prepOpen, setPrepOpen] = useState(false);
+  const t = useT();
   const pending = pendingCampaignNotes(notes);
   // The director route accepts any story authority, but Direct only exists
   // in the composer for a lead steering an AI narrator: a human DM has
@@ -317,9 +321,9 @@ export function LeadPanel({
       <div className="mb-3">
         <Ribbon tone="ember">
           <Crown className="mr-1 inline size-3" aria-hidden="true" />
-          Lead only
+          {t("Lead only")}
         </Ribbon>
-        <p className="mt-1.5 text-xs text-stone-400">You steer this table.</p>
+        <p className="mt-1.5 text-xs text-stone-400">{t("You steer this table.")}</p>
       </div>
 
       {steersStory ? (
@@ -336,7 +340,7 @@ export function LeadPanel({
       {steersStory ? (
         <Card
           glyph="tab-notes"
-          title="Notes to approve"
+          title={t("Notes to approve")}
           aside={
             pending.length ? (
               <span key={pending.length} className="count-pop rounded-full bg-gradient-to-b from-amber-300 to-amber-500 px-1.5 text-[11px] font-semibold text-amber-950">
@@ -354,15 +358,15 @@ export function LeadPanel({
               refreshNotes={refreshNotes}
             />
           ) : (
-            <p className="text-xs text-stone-500">Nothing waiting for you.</p>
+            <p className="text-xs text-stone-500">{t("Nothing waiting for you.")}</p>
           )}
         </Card>
       ) : null}
 
       {directsAi ? (
-        <Card glyph="system-cast" title="Direct the story">
+        <Card glyph="system-cast" title={t("Direct the story")}>
           <p className="mb-2 text-xs text-stone-500">
-            Pick Direct in the composer, then Private for a note only the GM sees.
+            {t("Pick {direct} in the composer, then {private} for a note only the GM sees.", { direct: t("Direct", { context: "table.composer.mode.lead" }), private: t("Private") })}
           </p>
           <DirectorArmedBanner campaignId={campaignId} steersStory armed={directorArm} />
           <div className="flex flex-wrap gap-1.5">
@@ -372,20 +376,16 @@ export function LeadPanel({
       ) : null}
 
       {steersStory && mode === "ai" ? (
-        <Card glyph="system-encounters" title="Prepared fights and maps">
-          <p className="text-xs text-stone-500">
-            What came in from a workshop, yours to finish: rosters, maps, rewards. Cue a fight and
-            the storyteller runs it, map and plan included, when the scene reaches it. The players
-            never see this.
-          </p>
+        <Card glyph="system-encounters" title={t("Prepared fights and maps")}>
+          <p className="text-xs text-stone-500">{t("What came in from a workshop, yours to finish: rosters, maps, rewards. Cue a fight and the storyteller runs it, map and plan included, when the scene reaches it. The players never see this.")}</p>
           {/* In the body, not the header: the panel is narrow and the title
               long, and an aside there was pushed past the card's edge. */}
           <KitButton
             onClick={() => setPrepOpen((open) => !open)}
-            title="The fights and maps this table was given"
+            title={t("The fights and maps this table was given")}
             className="mt-2"
           >
-            {prepOpen ? "Close the prep" : "Open the prep"}
+            {prepOpen ? t("Close the prep") : t("Open the prep")}
           </KitButton>
           {prepOpen ? (
             <div className="reveal mt-3 space-y-4">
@@ -418,17 +418,20 @@ export function LeadPanel({
       {isLead ? (
         <Card
           glyph="tab-campaigns"
-          title="Campaign details"
+          title={t("Campaign details")}
           aside={
-            <KitButton onClick={() => setEditing(true)} title="Edit title, premise, setting, difficulty, and player slots">
-              <Pencil className="size-3" /> Edit details
+            <KitButton onClick={() => setEditing(true)} title={t("Edit title, premise, setting, difficulty, and player slots")}>
+              <Pencil className="size-3" /> {t("Edit details")}
             </KitButton>
           }
         >
           <p className="gold-title truncate font-display">{campaign.title}</p>
           <p className="mt-1 text-xs text-stone-500">
-            Difficulty {campaign.difficulty} · Level {campaign.startingLevel} start · Up to{" "}
-            {campaign.maxPlayers} players
+            {t("Difficulty {difficulty} · Level {level} start · Up to {max} players", {
+              difficulty: ({ "easy": t("easy"), "normal": t("normal"), "hard": t("hard"), "deadly": t("deadly"), "info": t("Difficulty is guidance to the Game Master, not a damage multiplier: every rule underneath stays 5e. It steers how hard encounters are built and how often a bad roll is allowed to really cost you.\n\n{list}\n\nThe party lead can change it later from the table's settings.") } as Record<string, string>)[campaign.difficulty] ?? String(campaign.difficulty),
+              level: campaign.startingLevel,
+              max: campaign.maxPlayers,
+            })}
           </p>
         </Card>
       ) : null}

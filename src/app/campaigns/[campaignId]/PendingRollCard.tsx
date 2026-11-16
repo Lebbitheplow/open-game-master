@@ -12,12 +12,14 @@ import { CheckDie, CheckFrame, ModifierBreakdown } from "@/app/campaigns/[campai
 import { findSkill } from "@/lib/srd";
 import { heldInspiration } from "@/lib/dm/roll-riders";
 import { INSPIRED_KINDS } from "@/lib/dm/pending-inspiration";
+import { rollKindLabel } from "@/lib/roll-labels";
+import { useT } from "@/lib/locale";
 import { canWaitOnRoll } from "@/lib/dm/after-roll-logic";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { ownBeforeRollChoices } from "@/lib/dm/before-roll-logic";
-import { ROLL_KIND_LABELS } from "@/lib/roll-labels";
 
-const ABILITY_NAMES: Record<string, string> = {
+// The abilities' words by value; the keys live with the pending group.
+const ABILITY_KEYS: Record<string, string> = {
   str: "Strength",
   dex: "Dexterity",
   con: "Constitution",
@@ -68,6 +70,7 @@ export function PendingRollCard({
   // Who has spent their reaction this round, in a fight.
   reactionsUsed?: readonly string[];
 }) {
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   // Sampled once on mount; the fallback affordance appearing on the next
@@ -92,19 +95,20 @@ export function PendingRollCard({
 
   const character = sheets.find((sheet) => sheet.id === pending.characterId);
   const detailText = pending.detail.replaceAll("_", " ");
-  const label = `${character?.name ?? "Someone"}: ${pending.kind.replaceAll("_", " ")}${
+  const label = `${character?.name ?? t("Someone")}: ${rollKindLabel(t, pending.kind)}${
     detailText ? ` (${detailText})` : ""
   }`;
+
   // Enter raw die faces only; any flat bonus applies server-side.
   const flatModifier = entry.flatModifier;
   const modifierNote = flatModifier
-    ? `Enter the bare die numbers; the ${flatModifier} is added for you.`
+    ? t("Enter the bare die numbers; the {mod} is added for you.", { mod: flatModifier })
     : "";
   const advantageNote =
     pending.advantage === "advantage"
-      ? "advantage: roll both, highest counts"
+      ? t("advantage: roll both, highest counts")
       : pending.advantage === "disadvantage"
-        ? "disadvantage: roll both, lowest counts"
+        ? t("disadvantage: roll both, lowest counts")
         : "";
   const stale = mountedAt - new Date(pending.createdAt).getTime() > OWNER_FALLBACK_AFTER_MS;
   async function submit(body: unknown) {
@@ -121,10 +125,10 @@ export function PendingRollCard({
       );
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        setError(data.error || "Could not submit the roll.");
+        setError(data.error || t("Could not submit the roll."));
       }
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "creator.error.unreachable" }));
     } finally {
       setBusy(false);
     }
@@ -182,10 +186,10 @@ export function PendingRollCard({
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        setError(data.error || "Could not use your Portent.");
+        setError(data.error || t("Could not use your Portent."));
       }
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "creator.error.unreachable" }));
     } finally {
       setBusy(false);
     }
@@ -224,10 +228,10 @@ export function PendingRollCard({
       const response = await fetch(`/api/campaigns/${campaignId}/pending-rolls/${pending.id}/inspiration`, { method: "POST" });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        setError(data.error || "Could not spend your Inspiration.");
+        setError(data.error || t("Could not spend your Inspiration."));
       }
     } catch {
-      setError("Could not reach the server.");
+      setError(t("Could not reach the server.", { context: "creator.error.unreachable" }));
     } finally {
       setBusy(false);
     }
@@ -243,7 +247,7 @@ export function PendingRollCard({
 
   // What the card is about, for its head: the kind, the DC the table was
   // sent, and the ability behind a skill ("Athletics" is Strength).
-  const title = ROLL_KIND_LABELS[pending.kind] ?? "Roll";
+  const title = rollKindLabel(t, pending.kind);
   const skillId = pending.detail.trim().toLowerCase().replace(/[\s-]+/g, "_");
   const abilityId =
     pending.kind === "skill_check"
@@ -251,7 +255,7 @@ export function PendingRollCard({
       : pending.kind === "saving_throw" || pending.kind === "ability_check"
         ? skillId.slice(0, 3)
         : undefined;
-  const abilityName = abilityId ? ABILITY_NAMES[abilityId] : undefined;
+  const abilityName = abilityId ? (ABILITY_KEYS[abilityId] ? t(ABILITY_KEYS[abilityId]) : undefined) : undefined;
 
   if (!mine) {
     return (
@@ -259,8 +263,8 @@ export function PendingRollCard({
         <span className="flex min-w-0 items-center gap-2">
           <CheckDie state="waiting" sides={faces[0] ?? 20} size="size-7" />
           <span className="min-w-0">
-            Waiting for {character?.name ?? "a player"} to roll {pending.expression}
-            {heldOnly ? "" : " with real dice"}
+            {t("Waiting for {name} to roll {expr}", { name: character?.name ?? t("Someone"), expr: pending.expression })}
+            {heldOnly ? "" : t(" with real dice")}
           </span>
         </span>
         {steersStory && stale ? (
@@ -270,7 +274,7 @@ export function PendingRollCard({
             onClick={() => submit({ fallback: "digital" })}
             className="motion-press shrink-0 font-medium underline decoration-dotted underline-offset-2 disabled:opacity-50"
           >
-            Roll digitally
+            {t("Roll digitally")}
           </button>
         ) : null}
       </CheckFrame>
@@ -288,13 +292,13 @@ export function PendingRollCard({
               {title}
             </span>
             {pending.dc !== null ? (
-              <span className="check-well check-dim px-2 py-0.5 font-mono text-[11px]">Difficulty Class: {pending.dc}</span>
+              <span className="check-well check-dim px-2 py-0.5 font-mono text-[11px]">{t("Difficulty Class: {dc}", { dc: pending.dc })}</span>
             ) : null}
             <ModifierBreakdown expression={pending.expression} caption={abilityName} />
           </div>
           <p className="mt-1 flex items-center gap-2 text-sm">
             <Dices className="size-4 shrink-0" style={{ color: "var(--check-vine)" }} />
-            <span className="min-w-0">Your roll: {label}</span>
+            <span className="min-w-0">{t("Your roll: {label}", { label })}</span>
           </p>
           {pending.reason ? <p className="check-dim mt-0.5 text-xs">{pending.reason}</p> : null}
           {canInspire ? (
@@ -302,10 +306,10 @@ export function PendingRollCard({
               type="button"
               disabled={busy}
               onClick={() => void inspire()}
-              title="Spend your Inspiration: advantage on this roll."
+              title={t("Spend your Inspiration: advantage on this roll.")}
               className="motion-pop motion-press mt-1.5 inline-flex min-h-9 items-center gap-1.5 rounded-full border border-amber-400/60 bg-amber-500/10 px-3 text-xs text-amber-100 transition-colors duration-150 hover:bg-amber-500/20 disabled:opacity-50 sm:min-h-8"
             >
-              <Sparkles className="size-3.5" /> Spend Inspiration
+              <Sparkles className="size-3.5" /> {t("Spend Inspiration")}
             </button>
           ) : null}
           {beforeChoices.length ? (
@@ -326,18 +330,18 @@ export function PendingRollCard({
             </div>
           ) : null}
           {foretold.length ? (
-            <div role="group" aria-label="Use a number Portent foretold" className="mt-1.5 flex flex-wrap items-center gap-1.5">
-              <span className="text-xs">Portent, instead of rolling:</span>
+            <div role="group" aria-label={t("Use a number Portent foretold")} className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <span className="text-xs">{t("Portent, instead of rolling:")}</span>
               {foretold.map((value) => (
                 <button
                   key={value}
                   type="button"
                   disabled={busy}
                   onClick={() => void foretell(value)}
-                  title={`The foretold ${value} becomes this roll's d20, and is gone until your next long rest.`}
+                  title={t("The foretold {value} becomes this roll's d20, and is gone until your next long rest.", { value })}
                   className="motion-press inline-flex min-h-10 items-center justify-center rounded-full border border-amber-400/60 px-3 py-1 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 disabled:opacity-50"
                 >
-                  Use the {value}
+                  {t("Use the {value}", { value })}
                 </button>
               ))}
             </div>
@@ -351,11 +355,11 @@ export function PendingRollCard({
             {shakeActive ? (
               <span className="flex items-center gap-2 text-sm">
                 <Smartphone className="size-5 animate-bounce" style={{ color: "var(--check-vine)" }} />
-                Shake to roll {diceSummary}
+                {t("Shake to roll {summary}", { summary: diceSummary })}
               </span>
             ) : foretelling ? null : (
               <span className="text-xs">
-                Your rolls wait for you{canShake ? "" : " (shake to roll is on on your phone)"}.
+                {t("Your rolls wait for you")}{canShake ? "" : t(" (shake to roll is on on your phone)")}.
               </span>
             )}
             <button
@@ -364,7 +368,7 @@ export function PendingRollCard({
               onClick={() => submit({ fallback: "digital" })}
               className={SUBMIT_BUTTON}
             >
-              {busy ? <Loader2 className="size-4 animate-spin" /> : "Roll now"}
+              {busy ? <Loader2 className="size-4 animate-spin" /> : t("Roll now")}
             </button>
             {!shakeActive && !foretelling ? (
               <button
@@ -373,7 +377,7 @@ export function PendingRollCard({
                 onClick={() => void stopHolding()}
                 className="check-dim text-xs hover:underline disabled:opacity-50"
               >
-                Stop holding my rolls
+                {t("Stop holding my rolls")}
               </button>
             ) : null}
           </div>
@@ -383,10 +387,8 @@ export function PendingRollCard({
       {!heldOnly && diceSummary ? (
         <p className="mt-1 text-xs">
           {fullyAutomatic
-            ? `Roll ${diceSummary}. Your assigned dice fill in on their own.`
-            : `Roll ${diceSummary} at your table and enter each die below.${
-                modifierNote ? ` ${modifierNote}` : ""
-              } The game waits for your result.`}
+            ? t("Roll {summary}. Your assigned dice fill in on their own.", { summary: diceSummary })
+            : t("Roll {summary} at your table and enter each die below.{note} The game waits for your result.", { summary: diceSummary, note: modifierNote ? ` ${modifierNote}` : "" })}
         </p>
       ) : null}
       {!heldOnly && advantageNote ? (
@@ -401,7 +403,7 @@ export function PendingRollCard({
         : null}
       {!heldOnly && shakeActive ? (
         <p className="check-dim mt-0.5 flex items-center gap-1.5 text-xs">
-          <Smartphone className="size-3.5" /> Or shake to roll it digitally.
+          <Smartphone className="size-3.5" /> {t("Or shake to roll it digitally.")}
         </p>
       ) : null}
 
@@ -414,7 +416,7 @@ export function PendingRollCard({
           onClick={() => submit({ dice: submissionDice() })}
           className={SUBMIT_BUTTON}
         >
-          {busy ? <Loader2 className="size-4 animate-spin" /> : "Submit roll"}
+          {busy ? <Loader2 className="size-4 animate-spin" /> : t("Submit roll")}
         </button>
         <button
           type="button"
@@ -422,7 +424,7 @@ export function PendingRollCard({
           onClick={() => submit({ fallback: "digital" })}
           className="check-dim text-xs hover:underline disabled:opacity-50"
         >
-          Roll digitally instead
+          {t("Roll digitally instead")}
         </button>
       </div>
       )}
