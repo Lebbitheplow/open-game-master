@@ -26,7 +26,7 @@ import { orderEntryId, patchEnemyConditions, type Encounter, type EncounterEnemy
 import { insertRoll, markRollApplied } from "@/lib/db/rolls";
 import { rollAgainst } from "@/lib/roll-labels";
 import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
-import { d20Expression, type Advantage } from "@/lib/dice";
+import { d20Expression, rollExpression, type Advantage } from "@/lib/dice";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { healthState } from "@/lib/bestiary/health";
@@ -278,16 +278,26 @@ export function pcOpportunitySwing(input: {
   }
   clearHitSpent(campaign, sheet.id, folded.hitSpent);
   writeMarks(campaign.id, sheet.id, marks.assign);
+  // Great Weapon Fighting rerolls the 1s and 2s of a two-handed melee
+  // weapon's damage dice, on this attack as on the turn's own swing
+  // (pc-attack-damage.ts strikeDamage): the reaction's greatsword kept them.
+  const rerollBelow = riders.greatWeaponRerollBelow && profile.twoHanded && !profile.ranged ? riders.greatWeaponRerollBelow : 0;
+  if (rerollBelow) {
+    notes.push(`Great Weapon Fighting: rerolling damage dice of ${rerollBelow} or less`);
+  }
+  const damageTag = { roller: "hero", kind: "damage", who: sheet.name } as const;
+  const damageExpression = crit
+    ? critDamageExpression(profile.damageExpression, riders.critExtraDice, {
+        powerfulCritical: campaign.gameSettings.variantRules.powerfulCritical,
+        multiplyNumeric: campaign.gameSettings.variantRules.criticalDamageMods,
+      })
+    : profile.damageExpression;
   const damageOutcome = rollCharacterD20(campaign, sheet, {
     kind: "damage",
-    tag: { roller: "hero", kind: "damage", who: sheet.name },
-    expression: crit
-      ? critDamageExpression(profile.damageExpression, riders.critExtraDice, {
-          powerfulCritical: campaign.gameSettings.variantRules.powerfulCritical,
-          multiplyNumeric: campaign.gameSettings.variantRules.criticalDamageMods,
-        })
-      : profile.damageExpression,
+    tag: damageTag,
+    expression: damageExpression,
     detail: rollAgainst(`${profile.weapon} (opportunity attack)`, enemy.displayName),
+    ...(rerollBelow ? { throwIt: () => rollExpression(damageExpression, undefined, { rerollBelow, purpose: damageTag }) } : {}),
   });
   const dealt = Math.max(0, damageOutcome.total);
   return withOpportunityTurn(campaign.id, (turn) => {

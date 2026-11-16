@@ -230,4 +230,41 @@ await test("A05: Deflect Missiles answers a ranged weapon attack, never a ranged
   await kit.endFight();
 });
 
+// A06. SRD 5.1, Great Weapon Fighting: "When you roll a 1 or 2 on a damage
+// die for an attack you make with a melee weapon that you are wielding with
+// two hands, you can reroll the die and must use the new roll." An
+// opportunity attack is an attack: the turn's own greatsword swing rerolled
+// its 1s and 2s, and the same swing made as the goblin walked off kept them.
+await test("A06: Great Weapon Fighting rerolls the 1s and 2s of an opportunity attack's damage", async () => {
+  await kit.endFight();
+  const { getDatabase } = await import("../src/lib/db/core.ts");
+  const fighter = world.addHero({
+    class: "fighter",
+    level: 3,
+    abilities: { str: 16 },
+    proficiencies: { ...TRAINED },
+    equipment: [{ name: "Greatsword", qty: 1 }],
+    features: [{ name: "Fighting Style: Great Weapon Fighting", source: "choice" }],
+  });
+  // An AI-run companion takes the swing without a card asking first.
+  getDatabase().prepare("UPDATE character_sheets SET is_companion = 1 WHERE id = ?").run(fighter.id);
+  await kit.fight(1);
+  const [goblin] = world.enemies();
+  kit.setEnemy(goblin.id, { maxHp: 60, currentHp: 60 });
+  kit.place(fighter.id, 6, 7);
+  kit.place(goblin.id, 5, 7);
+  foesTurn(goblin);
+  world.clearDice();
+  // The swing hits on a 15; each of the greatsword's 2d6 shows a 1, and the
+  // reroll of each (taken die by die) a 6.
+  world.dice(15, 1, 6, 1, 6);
+  const walked = await world.invoke("move_token", { token: goblin.id, x: 2, y: 7 });
+  world.clearDice();
+  assert.equal(walked.ok, true, walked.error);
+  const left = kit.enemy(goblin.id).currentHp;
+  assert.equal(left, 60 - (6 + 6 + 3), `the 1s were rerolled to 6s: 15 damage, not 10 (the goblin has ${left})`);
+  await kit.endFight();
+  getDatabase().prepare("UPDATE character_sheets SET is_companion = 0 WHERE id = ?").run(fighter.id);
+});
+
 finish();
