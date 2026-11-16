@@ -64,6 +64,9 @@ I/O, so the browser, the tests and `scripts/check-addon.mjs` share them.
 | File | What it owns |
 |---|---|
 | `manifest.ts` | The `addon.json` schema (client-safe): fields, permissions, settings and option fields, setup, conflicts, exclusive, `addonFit`, `ADDON_API_VERSION`. `docs/addons/addon.schema.json` is generated from it |
+| `manifest-parts.ts` | Parts, repository-folder downloads and `modifies` (client-safe): their schemas and rules, the common `modifies` names, `modifiesClash` |
+| `parts.ts` | An addon's parts on this server: where a repository folder comes from for this copy (`fetchedFrom`, the working copy of a development folder), which parts can be fetched here and why not, `installableParts`, fetching a folder for setup |
+| `credits.ts` | Who made an addon and where their work lives (client-safe): `creditFor`, `catalogCredit`, the README's creators table (`creditsMarkdown`, `withCredits`) |
 | `contracts.ts` | Each extension point's arguments and result schema (client-safe), `toolPayload`, `normalizeOptionValues` |
 | `board-bridge.ts` | The board view contract (client-safe): the snapshot, the messages both ways, `BOARD_BRIDGE_VERSION`, and the anchor store the plate and the action ring read |
 | `native-board-client.ts` | Optional trusted desktop transport: native ownership, bounded picture transfers, layout/occlusions and iframe fallback; executable registration stays in the desktop app |
@@ -78,8 +81,8 @@ I/O, so the browser, the tests and `scripts/check-addon.mjs` share them.
 | `install.ts` | Install, update, remove; the replace guard for a same-id addon from elsewhere |
 | `store.ts` | The `addons` row in `app_settings`: per addon its source, origin, state, permissions, settings, setup version |
 | `installed.ts` | Reads disk and state together into an `InstalledAddon` with a status; development folders; conflicts; `readyAddon` |
-| `settings.ts` | Settings edits, effective values, required settings, which settings setup reads, which downloads apply |
-| `setup.ts` | Setup runs (Python venv, downloads, the addon's own tool), `setupIfDue`, `settingsEdit` |
+| `settings.ts` | Settings edits, effective values, required settings, which settings setup reads, which downloads apply, `chosenParts`, `partBytes` |
+| `setup.ts` | Setup runs (Python venv, downloads and repository folders for the chosen parts, removing a part left out, the addon's own tool), `setupIfDue`, `settingsEdit`, `partsEdit` |
 | `runtime.ts` | Starting and stopping programs, the environment they get, `callAddonTool`, probes, logs, idle stop |
 | `mcp-client.ts` | The JSON-RPC client over stdio: requests, progress, cancellation, server-to-client requests |
 | `sampling.ts` | Answering `sampling/createMessage` with the server's model, text and pictures |
@@ -92,7 +95,7 @@ I/O, so the browser, the tests and `scripts/check-addon.mjs` share them.
 | `map-view.ts` | What a map keeps for its addon's board view (`addon_view_json`) |
 | `view-data.ts` | The 256 KB cap on a board view's data and the refusal every door gives (`viewDataProblem`); imports nothing |
 | `static-files.ts` | Serving an addon's `ui/` and asset library with the sandboxing headers (and the embedder policy an isolated table needs) |
-| `offered.ts` | What ready addons contribute, for `GET /api/addons`; a board view's `threads` says its addon's threads permission was accepted |
+| `offered.ts` | What ready addons contribute, for `GET /api/addons`, each credited to its creator (`addonAuthor`, `addonUrl`); a board view's `threads` says its addon's threads permission was accepted and `parts` what it has; `addonCredits` for the licenses page |
 | `admin-view.ts` | The admin panel's picture of addons and the catalog; `installedResponse` |
 | `support.ts` | Where addons run at all (`ODM_ADDONS`, not on Android yet) |
 | `paths.ts` | `ADDONS_DIR` layout and `resolveInside`, the one path check every file access goes through |
@@ -116,7 +119,9 @@ The app around it:
 
 | Where | |
 |---|---|
-| `src/app/admin/AdminAddonsPanel.tsx`, `AdminAddonCard.tsx` | Admin > Addons |
+| `src/app/admin/AdminAddonsPanel.tsx`, `AdminAddonCard.tsx`, `AddonParts.tsx` | Admin > Addons; the credit line, what an addon modifies, and the parts picker both share |
+| `src/components/addons/AddonByline.tsx` | "from X by Y" where an importer, a generator or a board view is offered |
+| `src/app/licenses/page.tsx` | The addons switched on here, credited to their creators |
 | `src/components/addons/AddonFields.tsx` | Draws settings and option fields from a manifest |
 | `src/app/workshop/AddonImportButton.tsx`, `BundlePreview.tsx` | Import with an addon |
 | `src/app/workshop/maps/AddonMapGenerator.tsx` | Build a map with an addon |
@@ -224,13 +229,21 @@ Isolation does most of the work, by construction:
 | Board views | One per device at a time (the View switch) |
 | Map view data | A map carries one addon's view data; other views see `view: null` |
 
-For what isolation cannot cover there are three mechanisms:
+For what isolation cannot cover there are four mechanisms:
 
 - **Declared conflicts** (`conflicts` in the manifest). Either side may say
   it. `PATCH /api/admin/addons/<id>` refuses to switch one on while the other
   is on; if both end up on anyway (an update that started declaring it, a
   restored backup), both show `conflict` and neither runs. The catalog shows
   the clash before install.
+- **What they modify** (`modifies` in the manifest, `manifest-parts.ts`).
+  An addon names what it changes for everyone (`creature-models`, `sounds`)
+  and whether it replaces it or adds to it. Two that replace the same name
+  conflict exactly as declared conflicts do (`conflictReason` in
+  `installed.ts`), with neither naming the other; the catalog entry carries
+  the list, so the clash shows before install. Names are free text held to
+  a pattern, with the common ones labelled in `ADDON_MODIFIES`; a new common
+  one is added there.
 - **Shared resources** (`exclusive`, like `gpu` or `blender`). `resources.ts`
   keeps a first-come queue per name: a run waits until no other addon's run
   holds what it names, says "Waiting for X, which is using the gpu" on its
@@ -255,6 +268,18 @@ For what isolation cannot cover there are three mechanisms:
   page range), or, for a board view, chosen per device and handed to the view
   in `snapshot.options`. The browser keeps a device's view options in local
   storage (`AddonViewSwitch.tsx`), because the sandboxed frame cannot.
+- **Parts** (`parts` in the manifest) are pieces the admin installs or
+  leaves out; each setup download may name one (`part`). The state keeps the
+  admin's choice (`parts`, null for the author's defaults) and where the
+  files were fetched (`fetchedFrom`, for a folder of the addon's own
+  repository). A changed choice makes setup due (`partsEdit`); setup fetches
+  the chosen parts that can be fetched here and removes what it had fetched
+  for a part left out, dropped by a newer version or moved (it records each
+  part folder it fetched in `.setup/parts.json`, held to the data folder
+  when read back), which is why each part's download lands in a folder of
+  its own. A download may be a repository folder at a commit
+  (`github`), checked file by file like an install and skipped when its
+  files (by git's hashes) are what is already there.
 - **Setup** (`setup` in the manifest) runs once per set of installed files:
   a Python venv from a requirements file, https downloads checked by size and
   SHA-256 (per platform, and per setting with `when`), then the addon's own
@@ -325,6 +350,7 @@ and needs a second file for them, so avoid it.
 | Command | What it covers |
 |---|---|
 | `npx vitest run scripts/test-addons-core.mjs` | Contracts without a database or a process: manifest rules, settings, catalog entries, GitHub links, the bridge, view data |
+| `npx vitest run scripts/test-addons-parts.mjs` | Parts and repository-folder downloads, `modifies` conflicts, credits and the README table, and a split addon end to end with GitHub stubbed |
 | `npx vitest run scripts/test-addons-runtime.mjs` | End to end with the example addon in a scratch world: install, setup, runs, GitHub install and update (GitHub stubbed by replacing `fetch`), conflicts, turn-taking, sampling, removal |
 | `node scripts/check-addon.mjs <folder or zip> --run` | What the audit runs on each addon a pull request adds |
 | `node scripts/addon-catalog.mjs check` | The list's shape, offline (the core test runs it too) |

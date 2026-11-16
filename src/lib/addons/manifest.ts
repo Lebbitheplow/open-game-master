@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { githubFolderSchema, modifiesSchema, partProblems, partSchema } from "@/lib/addons/manifest-parts";
 
 // The addon manifest: the addon.json at the root of every addon package
 // (docs/addons/authoring.md is the author's reference for each field).
@@ -279,10 +280,15 @@ export const PLATFORM_KEY = /^(?:linux|win32|darwin)-(?:x64|arm64)$/;
 
 const settingValue = z.union([z.string().max(200), z.number(), z.boolean()]);
 
+// A download is one file over https checked by its SHA-256, or a folder of
+// a GitHub repository at a commit (`github`, manifest-parts.ts) checked
+// file by file against git's hashes; `bytes` is the file's size or the
+// folder's total, held exactly either way.
 export const setupDownloadSchema = z.object({
   id: z.string().regex(KEY),
-  url: z.string().url().max(500).refine((value) => value.startsWith("https://"), { message: "Downloads are https." }),
-  sha256: z.string().regex(/^[a-f0-9]{64}$/, "The file's SHA-256, in lowercase hex."),
+  url: z.string().url().max(500).refine((value) => value.startsWith("https://"), { message: "Downloads are https." }).optional(),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/, "The file's SHA-256, in lowercase hex.").optional(),
+  github: githubFolderSchema.optional(),
   bytes: z.number().int().min(1).max(20 * 1024 * 1024 * 1024),
   // The "<platform>-<arch>" keys this download is for; absent means all.
   platforms: z.array(z.string().regex(PLATFORM_KEY)).max(6).optional(),
@@ -297,11 +303,13 @@ export const setupDownloadSchema = z.object({
       equals: z.union([settingValue, z.array(settingValue).min(1).max(20)]),
     })
     .optional(),
+  // Only when the admin chose this part (the manifest's `parts`).
+  part: z.string().regex(KEY).optional(),
 });
 
 export const setupSchema = z.object({
   python: z.object({ requirements: packagePathSchema }).optional(),
-  downloads: z.array(setupDownloadSchema).max(20).default([]),
+  downloads: z.array(setupDownloadSchema).max(60).default([]),
   tool: z.string().regex(TOOL).optional(),
   // What it all takes on disk, for the admin to see before running it.
   diskMB: z.number().int().min(0).max(200_000).default(0),
@@ -340,6 +348,12 @@ export const addonManifestSchema = z
     // "blender"). Runs of addons naming the same one wait their turn instead
     // of running together (src/lib/addons/resources.ts).
     exclusive: z.array(z.string().regex(EXCLUSIVE_KEY, "Lowercase words joined by hyphens, like gpu.")).max(8).default([]),
+    // What it changes in the app, and whether it replaces it or adds to it;
+    // two addons that replace the same thing conflict (manifest-parts.ts).
+    modifies: z.array(modifiesSchema).max(12).default([]),
+    // Pieces the admin installs or leaves out, each fetched by the setup
+    // downloads that name it (manifest-parts.ts).
+    parts: z.array(partSchema).max(30).default([]),
     contributes: z
       .object({
         workshopImporters: z.array(workshopImporterSchema).max(10).default([]),
@@ -364,8 +378,10 @@ function manifestProblems(manifest: {
   settings: Array<{ key: string; type: string }>;
   requires: Array<{ setting?: string; program: string }>;
   runtime: { kind: string };
-  setup?: { python?: unknown; downloads: Array<{ id: string; when?: { setting: string } }> };
+  setup?: { python?: unknown; downloads: Array<{ id: string; to: string; url?: string; sha256?: string; github?: unknown; unpack: string; part?: string; when?: { setting: string } }> };
   conflicts: Array<{ id: string }>;
+  modifies: Array<{ what: string }>;
+  parts: Array<{ id: string }>;
   contributes: Record<ContributionKind, Array<{ id: string }>>;
 }): string[] {
   const problems: string[] = [];
@@ -384,12 +400,26 @@ function manifestProblems(manifest: {
     problems.push("setup.python is for an addon whose runtime is python.");
   }
   const downloadIds = new Set<string>();
-  for (const download of manifest.setup?.downloads ?? []) {
+  const downloads = manifest.setup?.downloads ?? [];
+  for (const download of downloads) {
     if (downloadIds.has(download.id)) problems.push(`Two setup downloads share the id "${download.id}".`);
     downloadIds.add(download.id);
     if (download.when && !settingKeys.has(download.when.setting)) {
       problems.push(`Setup download "${download.id}" depends on the setting "${download.when.setting}", which is not one of its settings.`);
     }
+    if (Boolean(download.url) === Boolean(download.github)) {
+      problems.push(`Setup download "${download.id}" names a url or a github folder, one of the two.`);
+    } else if (download.url && !download.sha256) {
+      problems.push(`Setup download "${download.id}" needs the file's sha256.`);
+    } else if (download.github && (download.sha256 || download.unpack !== "none")) {
+      problems.push(`Setup download "${download.id}" is a github folder, which is checked by git's hashes and lands unpacked: leave out sha256 and unpack.`);
+    }
+  }
+  problems.push(...partProblems(manifest.parts, downloads));
+  const modified = new Set<string>();
+  for (const entry of manifest.modifies) {
+    if (modified.has(entry.what)) problems.push(`"${entry.what}" is named twice under modifies.`);
+    modified.add(entry.what);
   }
   if (manifest.conflicts.some((conflict) => conflict.id === manifest.id)) {
     problems.push("An addon cannot conflict with itself.");

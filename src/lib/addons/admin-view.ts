@@ -4,6 +4,10 @@ import { conflictReason, hostFacts, listInstalledAddons, needsSetup, type AddonS
 import { githubUpdate } from "@/lib/addons/github";
 import { addonRegistryUrl, fetchAddonRegistry, DEFAULT_ADDON_REGISTRY_URL } from "@/lib/addons/registry";
 import { sourceFacts, type RegistryAddon } from "@/lib/addons/registry-index";
+import { catalogCredit, type AddonCredit } from "@/lib/addons/credits";
+import { modifiesClash, type AddonModifies } from "@/lib/addons/manifest-parts";
+import { installedCredit } from "@/lib/addons/offered";
+import { installableParts, partViews, type PartView } from "@/lib/addons/parts";
 import { runningAddonIds } from "@/lib/addons/runtime";
 import { downloadApplies, effectiveSettings, missingRequiredSettings } from "@/lib/addons/settings";
 import { runningSetup, setupIfDue } from "@/lib/addons/setup";
@@ -64,10 +68,17 @@ export type AdminAddon = {
   conflicts: Array<{ id: string; name: string; reason: string; on: boolean }>;
   // Shared resources its runs take turns for.
   exclusive: string[];
+  // What it changes in the app (two that replace the same thing conflict).
+  modifies: AddonModifies[];
+  // Its parts: size here, chosen or not, and why one cannot be fetched.
+  parts: PartView[];
+  // Its creator and their repository, for the card to credit.
+  credit: AddonCredit;
 };
 
 export type CatalogAddon = RegistryAddon & {
   installed: boolean;
+  credit: AddonCredit;
   fit: { ok: boolean; reason: string };
   // Installed addons it cannot run beside.
   clashes: Array<{ name: string; reason: string }>;
@@ -116,7 +127,7 @@ function originOf(addon: InstalledAddon, listed: RegistryAddon | undefined): Adm
 // What its setup does on this computer with the settings it has now (a
 // download for another platform, or for a quality tier not chosen, is left
 // out).
-function setupSteps(manifest: AddonManifest, saved: AddonState["settings"]): string[] {
+function setupSteps(manifest: AddonManifest, saved: AddonState["settings"], parts: string[]): string[] {
   const setup = manifest.setup;
   if (!setup) return [];
   const facts = hostFacts();
@@ -124,8 +135,9 @@ function setupSteps(manifest: AddonManifest, saved: AddonState["settings"]): str
   const steps: string[] = [];
   if (setup.python) steps.push(`Python packages from ${setup.python.requirements}`);
   for (const download of setup.downloads) {
-    if (!downloadApplies(download, `${facts.platform}-${facts.arch}`, settings)) continue;
-    steps.push(`download ${download.id} (${Math.max(1, Math.round(download.bytes / 1024 / 1024))} MB)`);
+    if (!downloadApplies(download, `${facts.platform}-${facts.arch}`, settings, parts)) continue;
+    const part = download.part ? manifest.parts.find((entry) => entry.id === download.part)?.title : "";
+    steps.push(`download ${download.id}${part ? ` for ${part}` : ""} (${Math.max(1, Math.round(download.bytes / 1024 / 1024))} MB)`);
   }
   if (setup.tool) steps.push("a step of its own");
   return steps;
@@ -157,6 +169,9 @@ export function adminAddon(
   const masked = maskSettings(manifest?.settings ?? [], addon.state.settings);
   const listed = catalog.find((entry) => entry.id === addon.id);
   const setupTask = runningSetup(addon.id);
+  const facts = hostFacts();
+  const platformKey = `${facts.platform}-${facts.arch}`;
+  const withManifest = manifest ? { ...addon, manifest } : null;
   return {
     id: addon.id,
     source: addon.source,
@@ -203,12 +218,15 @@ export function adminAddon(
       needed: manifest ? needsSetup(manifest, addon.state) : false,
       error: addon.state.setupError,
       diskMB: manifest?.setup?.diskMB ?? 0,
-      steps: manifest ? setupSteps(manifest, addon.state.settings) : [],
+      steps: withManifest ? setupSteps(withManifest.manifest, addon.state.settings, installableParts(withManifest, platformKey)) : [],
       task: setupTask ? taskView(setupTask) : null,
     },
     missingSettings: manifest ? missingRequiredSettings(manifest.settings, addon.state.settings).map((field) => field.label) : [],
     conflicts: conflictsOf(addon, all),
     exclusive: manifest?.exclusive ?? [],
+    modifies: manifest?.modifies ?? [],
+    parts: withManifest ? partViews(withManifest, platformKey) : [],
+    credit: installedCredit(addon),
   };
 }
 
@@ -252,8 +270,8 @@ export async function adminAddonsState(): Promise<AdminAddonsState> {
           { apiVersion: entry.apiVersion, platforms: entry.platforms, minServerVersion: entry.minServerVersion, runtime: { kind: "node", entry: "x", args: [] } },
           host,
         );
-        // Either side may say it: the entry names an installed addon, or an
-        // installed addon names the entry.
+        // Either side may say it: the entry names an installed addon, an
+        // installed addon names the entry, or both replace the same thing.
         const clashes = installed
           .filter((addon) => addon.id !== entry.id)
           .map((addon) => ({
@@ -261,10 +279,16 @@ export async function adminAddonsState(): Promise<AdminAddonsState> {
             reason:
               entry.conflicts.find((conflict) => conflict.id === addon.id)?.reason ??
               addon.manifest?.conflicts.find((conflict) => conflict.id === entry.id)?.reason ??
-              "",
+              modifiesClash(entry.modifies, addon.manifest?.modifies ?? []),
           }))
           .filter((clash) => clash.reason);
-        return { ...entry, installed: installedIds.has(entry.id), fit: fit.ok ? { ok: true, reason: "" } : fit, clashes };
+        return {
+          ...entry,
+          installed: installedIds.has(entry.id),
+          credit: catalogCredit(entry),
+          fit: fit.ok ? { ok: true, reason: "" } : fit,
+          clashes,
+        };
       }),
     },
   };

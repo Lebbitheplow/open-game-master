@@ -228,7 +228,7 @@ export function AddonBoardView({
       // Native startup must not wait for a cached iframe's one-time ready event.
       const send = readyAt ? postTo : postNativeBoard;
       if (!view) {
-        send(frame.current, { type: "scene", genre, appearance, options: normalizeOptionValues(boardView.options, viewOptions), assetsUrl });
+        send(frame.current, { type: "scene", genre, appearance, options: normalizeOptionValues(boardView.options, viewOptions), assetsUrl, parts: boardView.parts ?? [] });
         return;
       }
       send(frame.current, {
@@ -243,11 +243,12 @@ export function AddonBoardView({
           moveAim,
           assetsUrl,
           scenery,
+          parts: boardView.parts,
           viewOptions: { fields: boardView.options, values: viewOptions },
         }),
       });
     }
-  }, [readyAt, view, canDirect, genre, appearance, boardView.addonId, boardView.options, boardView.sessionLayout, looks, intents, moveAim, assetsUrl, viewOptions, nativeActive, scenery]);
+  }, [readyAt, view, canDirect, genre, appearance, boardView.addonId, boardView.options, boardView.sessionLayout, boardView.parts, looks, intents, moveAim, assetsUrl, viewOptions, nativeActive, scenery]);
 
 
 

@@ -2,6 +2,7 @@
 
 import { Hammer, Loader2, Puzzle, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { AddonByline, addonByText } from "@/components/addons/AddonByline";
 import { AddonFields, fieldDefaults, type FieldValues } from "@/components/addons/AddonFields";
 import { SectionHead } from "@/components/ui/SectionHead";
 import { Select } from "@/components/ui/Select";
@@ -136,11 +137,11 @@ export function AddonMapGenerator({
                 setOptions({});
               }}
               disabled={running}
-              options={mapGenerators.map((entry) => ({ value: key(entry), label: entry.title, hint: entry.addonName }))}
+              options={mapGenerators.map((entry) => ({ value: key(entry), label: entry.title, hint: addonByText(entry) }))}
             />
           ) : (
             <p className="text-sm text-amber-100">
-              {generator.title} <span className="text-xs text-stone-500">· {generator.addonName}</span>
+              {generator.title} <AddonByline owner={generator} />
             </p>
           )}
           {generator.description ? <p className="mt-1 text-xs text-stone-400">{generator.description}</p> : null}

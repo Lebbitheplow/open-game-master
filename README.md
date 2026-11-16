@@ -271,6 +271,21 @@ checks, see [Build an appearance theme](docs/appearance-themes.md). The guide
 uses Ancient Woodland as a worked example and includes the commands needed to
 validate a new theme without live campaign data.
 
+## Addon creators
+
+Addons are their creators' own projects, each kept in its creator's GitHub
+repository and audited before it joins the downloader list under
+**Admin > Addons**. Their repositories are the place to follow, star and
+support their work; the app credits each one wherever what it adds appears,
+and on the licenses page. Anyone can [write an addon](docs/addons/authoring.md)
+and [submit it to the list](docs/addons/guidelines.md#submitting-an-addon).
+
+<!-- addon-creators:start -->
+| Addon | Creator | Repository | What it adds |
+|---|---|---|---|
+| Isometric Tabletop | Laurent Sparks ([@laurentsparks-art](https://github.com/laurentsparks-art)) | [laurentsparks-art/isometric-tabletop](https://github.com/laurentsparks-art/isometric-tabletop) | Board view: Isometric |
+<!-- addon-creators:end -->
+
 ## Credits and licenses
 
 **The application is [MIT licensed](LICENSE). Third-party and unofficial campaign

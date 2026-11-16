@@ -272,10 +272,10 @@ this opted-in layout retain their original behavior.
 After `ready`, a session view without a tactical map receives:
 
 ```js
-{ odm: 1, type: "scene", genre, appearance, options, assetsUrl }
+{ odm: 1, type: "scene", genre, appearance, options, assetsUrl, parts }
 ```
 
-`appearance` and `options` have the same meaning as in a board snapshot.
+`appearance`, `options` and `parts` have the same meaning as in a board snapshot.
 This message supplies no map, tokens, story text, campaign state, or permissions.
 Tile/token/hover/anchor input is ignored without a map; map-file and portrait
 requests fail. A later mapped frame receives the normal projected snapshot.
@@ -560,6 +560,7 @@ latest state when `active` becomes true. Older views may ignore the hint.
   hasBackdrop,
   view,             // { data, files: [{ name, type, bytes }] } from your own generator, or null
   assetsUrl,        // where your asset library is served, ending in "/"
+  parts,            // your addon's parts set up on this server, e.g. ["highFantasy"] (authoring.md, "Parts"); [] from older hosts
   options,          // this viewer's choices for your view's options, e.g. { pixelScale: "2" }
   viewer: { canDirect },
   appearance: { theme: "night" | "day", reducedMotion, audio: { muted, volume } /* optional */ }

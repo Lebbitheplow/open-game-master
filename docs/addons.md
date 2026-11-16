@@ -56,15 +56,27 @@ commit that was audited and a hash of the addon's files at that commit:
 **Install** downloads that commit from the author's repository, checks the
 hash before unpacking anything, and installs nothing if it differs.
 
-Each entry shows the addon's name, its creator, and the GitHub user it comes
-from, linked to the exact source that was audited. It says what the addon
-adds, which programs it needs installed (for example Blender), what
-permissions it asks for, how much its setup downloads, and whether it runs on
-this server. **Install** downloads and unpacks it; it stays **off** until you
+Each entry shows the addon's name and its creator, linked to their GitHub
+profile and repository (and to any other repository its parts come from),
+with a link to the exact commit that was audited. It says what the addon
+adds, what it changes in the app, which programs it needs installed (for
+example Blender), what permissions it asks for, how much its setup
+downloads, and whether it runs on this server. **Install** downloads and unpacks it; it stays **off** until you
 switch it on. When the list has a newer version of an installed addon, its
 card offers **Update**. An update keeps the addon's settings and its data
 folder. New addons and new versions reach the list through pull requests that
 are audited before they are merged.
+
+**Addons in parts.** A large addon can come in parts you install or leave
+out, such as a 3D model and sound library with one part per campaign setting
+(high fantasy, dark fantasy, science fiction). Its entry lists each part with
+how much it downloads, the parts its author marked already chosen; pick the
+ones your tables play before **Install with N parts**. The card keeps the
+same choice: change it there and **Save parts**, and the setup fetches what
+you added and removes the files of what you left out. An update that drops
+a part, or moves it, gives that disk back the same way. A part can be
+unavailable here (made for another platform, or kept in the addon's own
+repository when the addon was installed from a .zip); the card says why.
 
 ## Switching an addon on
 
@@ -81,11 +93,19 @@ once:
 An update that asks for a permission you have not accepted switches the addon
 to **Waiting for your yes** until you accept again.
 
-An addon whose manifest says it cannot run beside another one (and why) will
-not switch on while that one is on; its card names the other addon, and the
-list says so before you install. Switch one of them off first. If two
-such addons end up on together anyway (an update that started declaring it),
-both show **Conflict** and neither runs until one is switched off.
+Two addons cannot be on together when either names the other as a conflict
+(and why), or when both **replace** the same thing in the app: an addon says
+what it modifies (creature and character models, map models, token
+pictures, map pictures, sound effects, music and ambience, the dice) and
+whether it replaces it or adds to it, so two that would fight over the same
+thing are kept apart even when their authors never heard of each other.
+Adding to something beside an addon that replaces it is fine. The card and
+the list both say what an addon changes; the second of two clashing addons
+will not switch on while the first is on, its card names the other and the
+reason, and the list shows the clash before you install. Switch one of them
+off first. If two such addons end up on together anyway (an update that
+started declaring it, a restored backup), both show **Conflict** and neither
+runs until one is switched off.
 
 Open **Settings and checks** on an addon's card to fill in its settings, see
 whether the programs it needs were found (and the version each reported), read
@@ -122,6 +142,12 @@ its manifest declares before it is used.
 | Workshop importer | Workshop shelf and hub: **Import with an addon** | Reads a file you pick (a rulebook PDF, a stat block file) and returns a workshop bundle. You see the same preview a bundle file gets, untick what you do not want, and **Import** creates a new workshop |
 | Map generator | Map library (workshop Maps, and the GM's map drawer): **Build a map with an addon** | Builds a battle map from a request (size, kind of place, light, a description in your words). It lands in the library as a prepared map, with a picture under the grid and, if the addon makes one, a 3D model for its board view |
 | Board view | The board's **View** switch (with **Options** for that device, when the view has any) | Draws the board in a sandboxed frame instead of the grid (an isometric, pixel-art or 3D table): the map, the figures, spell areas, auras, labels and the enemies' intents, with attacks, spells and pings as they happen. Taps on squares and figures work as they do on the flat board, and the plates and action ring open on the figures it drew |
+
+Each of these names the addon and its creator where it is offered (the
+importer, the generator, the View switch, with the creator linked to their
+repository), and the licenses page (`/licenses` on your server) lists every addon switched
+on here with its creator, license and repositories, so the people at your
+tables can find whose work they are using.
 
 The rules engine stays in charge throughout. A map's walls, doors and water
 are the terrain the server checked; a picture or a 3D model is how it looks. A

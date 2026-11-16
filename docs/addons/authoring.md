@@ -20,6 +20,7 @@ dependencies. Copy it and change it.
 - [The package](#the-package)
 - [addon.json](#addonjson)
 - [Setup](#setup)
+- [Parts: an addon in pieces](#parts-an-addon-in-pieces)
 - [The program](#the-program)
 - [Settings and options](#settings-and-options)
 - [Living beside other addons](#living-beside-other-addons)
@@ -63,7 +64,7 @@ every check the server does, including the ones a JSON Schema cannot express.
 | `name`, `description` | What the admin sees in the catalog and on the addon's card. Plain words: say what it does for a GM, not how |
 | `version` | `1.2.0`. The catalog offers an update whenever its version differs from the installed one |
 | `apiVersion` | The addon contract it was written against: `1`. A server refuses a contract it does not know rather than guess |
-| `author`, `license`, `homepage` | `license` is the addon's own (an SPDX id such as `MIT`) |
+| `author`, `license`, `homepage` | `license` is the addon's own (an SPDX id such as `MIT`). `author` is credited by name wherever what your addon adds appears (the importer, the map generator, the View switch, the licenses page, the README's [addon creators](../../README.md#addon-creators) table), linked to the GitHub repository it was installed from, else to `homepage` |
 | `minServerVersion` | Optional: the oldest server it works with |
 | `platforms` | Optional: `["linux", "win32", "darwin"]` or fewer. Absent means everywhere |
 | `runtime` | How it is started; see below |
@@ -72,6 +73,8 @@ every check the server does, including the ones a JSON Schema cannot express.
 | `setup` | Optional: what it fetches and prepares on the server before it is used; see [Setup](#setup) |
 | `conflicts` | Optional: addons it cannot run beside, each `{ "id", "reason" }`; see [Living beside other addons](#living-beside-other-addons) |
 | `exclusive` | Optional: shared resources its runs take turns for, like `["gpu"]`; see [Living beside other addons](#living-beside-other-addons) |
+| `modifies` | Optional: what it changes in the app, each `{ "what", "how": "replace" or "add" }`; two addons that replace the same thing never run together. See [Living beside other addons](#living-beside-other-addons) |
+| `parts` | Optional: pieces the admin installs or leaves out, such as one asset library per campaign setting; see [Parts](#parts-an-addon-in-pieces) |
 | `settings` | Fields the admin fills in once |
 | `contributes` | The extension points it adds to: `workshopImporters`, `mapGenerators`, `boardViews` |
 
@@ -165,8 +168,15 @@ before the addon is offered anywhere. In order:
    setting's value (`"when": { "setting": "quality", "equals": "high" }`, or
    a list of values), so the admin's choice decides what is fetched. A
    download already in place with the same checksum is not fetched again.
+   `part` ties a download to one of your [parts](#parts-an-addon-in-pieces).
+   A download may instead be a **folder of a GitHub repository** at a commit
+   (`"github": { "repo": "you/your-models", "commit": "<40 hex>", "path": "dark" }`,
+   or just `{ "path": "packs/dark" }` for a folder of the addon's own
+   repository at the commit it was installed from), fetched file by file and
+   each file checked against git's hash, as the addon itself is; `bytes` is
+   the folder's total, held exactly, and there is no `sha256` or `unpack`.
 3. **tool**: your own setup step, a tool your program offers, called with
-   `{ dataDir, publicDir, packageDir, host }`. Check a program, build a cache,
+   `{ dataDir, publicDir, packageDir, parts, host }`. Check a program, build a cache,
    fill the asset library. It may report progress and ask the storyteller like
    any call.
 
@@ -201,6 +211,66 @@ is served at `/api/addons/<id>/assets/<name>`, which a board view reads as
 served to anyone who can reach the server, like your `ui/` files, so nothing
 private belongs there. Models are `.glb`; pictures PNG, JPEG, WebP, GIF or
 SVG; also `.json`, `.ktx2`, `.wasm` and `.woff2`.
+
+## Parts: an addon in pieces
+
+An addon too big to download whole, or that most tables only need some of,
+declares its pieces as `parts`. The admin picks which to install, on the
+downloader list before install and on the addon's card after; setup fetches
+the parts chosen and removes the files of a part that was left out, or that
+a newer version of your addon dropped or moved to another folder. The
+parts marked `default` are chosen until the admin picks, so most never have
+to. A 3D model and sound library split per campaign setting is the case it
+was made for:
+
+```json
+"parts": [
+  { "id": "highFantasy", "title": "High fantasy", "description": "Elves, dragons, castles.", "default": true },
+  { "id": "darkFantasy", "title": "Dark fantasy", "description": "Ghouls, crypts, ruined chapels." },
+  { "id": "scifi", "title": "Science fiction" }
+],
+"setup": {
+  "downloads": [
+    { "id": "highModels", "part": "highFantasy", "url": "https://github.com/you/odm-3d/releases/download/v1.0.0/high-fantasy.zip",
+      "sha256": "<lowercase hex>", "bytes": 1834221123, "unpack": "zip", "to": "public/high-fantasy" },
+    { "id": "darkModels", "part": "darkFantasy", "github": { "path": "packs/dark-fantasy" },
+      "bytes": 912345678, "to": "public/dark-fantasy" },
+    { "id": "scifiModels", "part": "scifi", "github": { "repo": "you/odm-3d-scifi", "commit": "<40 hex>", "path": "" },
+      "bytes": 1203456789, "to": "public/scifi" }
+  ]
+}
+```
+
+Where a part's files live is up to you, and the three can be mixed:
+
+- **Release files** (`url`): zips attached to a release of your repository,
+  or of another one, up to 2 GB each on GitHub and 20 GB each here. The
+  usual home for big binary assets.
+- **A folder of the addon's own repository** (`github` with only a `path`):
+  kept beside the addon's folder, not inside it, so installing the addon
+  does not fetch it. It is fetched at the commit the addon was installed
+  from, so it needs an install from the list or a GitHub link; an addon
+  installed from a .zip shows that part as unavailable.
+- **A repository of its own per part** (`github` with `repo` and `commit`):
+  one repository per setting, pinned to an exact commit in your manifest, so
+  a new commit there reaches servers only with a new version of your addon.
+  The downloader credits those repositories beside yours.
+
+Every file of a GitHub folder must be a plain file under 100 MB (GitHub's
+limit); Git LFS pointers are refused, so put LFS-sized files in a release.
+A folder whose files did not change is not fetched again when your addon
+updates.
+
+The rules: each part has at least one download, and each of a part's
+downloads lands in a folder of its own (not `public` itself, and not inside
+or around another download's folder), so leaving a part out can remove its
+files and nothing else. Your program learns which parts it has from
+`ODM_ADDON_PARTS` (a JSON list of part ids), your setup tool from `parts`,
+and a board view from `snapshot.parts`; the campaign's setting arrives as
+`snapshot.genre`, so a view can pick the matching pack and fall back to one
+it has. Set `minServerVersion` to the first release that reads parts, so an
+older server says it needs an update instead of failing to read your
+manifest.
 
 ## The program
 
@@ -253,6 +323,7 @@ secrets. Added for the addon:
 | `ODM_ADDON_PUBLIC_DIR` | Its asset library, inside the data folder, served to its board views |
 | `VIRTUAL_ENV` | A Python addon's environment, once its setup made one (its `bin` or `Scripts` folder leads the PATH) |
 | `ODM_ADDON_SETTINGS` | The admin's settings as JSON, defaults filled in, secrets included |
+| `ODM_ADDON_PARTS` | The [parts](#parts-an-addon-in-pieces) chosen and fetchable on this server, as a JSON list of ids |
 | `ODM_ADDON_API_VERSION`, `ODM_SERVER_VERSION` | The contract and the server it is running under |
 
 ## Settings and options
@@ -289,7 +360,7 @@ importer, a map maker. Most of what could collide is kept apart for you:
 your own process, your own package and data folders, your own Python
 environment, your own settings, your own URLs, and contributions keyed by
 your id (two importers that both read `.pdf` are both offered, labelled by
-addon). Two things are yours to declare:
+addon). Three things are yours to declare:
 
 - **`conflicts`**: addons yours truly cannot run beside, and why
   (`{ "id": "other-3d-board", "reason": "Both take over the GPU for the whole session." }`).
@@ -297,6 +368,20 @@ addon). Two things are yours to declare:
   two declares it, and the catalog shows it before install. Use it for real
   incompatibilities, not for overlap: two board views already never draw at
   once on a device.
+- **`modifies`**: what your addon changes for everyone while it is on, and
+  whether it `replace`s it or `add`s to it
+  (`[{ "what": "creature-models", "how": "replace" }, { "what": "sounds", "how": "add" }]`).
+  Two addons that both replace the same thing conflict without either
+  naming the other, so an addon you have never heard of is still kept from
+  fighting yours; the downloader shows the clash before install and the
+  server refuses to switch the second one on. Adding beside a replacement is
+  fine. Use the common names so addons by different authors line up:
+  `creature-models`, `map-models`, `token-art`, `map-art`, `sounds`,
+  `music`, `dice`; for something another addon reads, name it
+  `<addon-id>/<thing>` (`isometric-tabletop/tile-set`). The checker notes a
+  name outside that list, since a misspelt one misses the clash it meant to
+  declare. A board view needs no entry for the board itself: the View switch
+  already shows one view per device.
 - **`exclusive`**: shared resources only one addon should use at a time,
   like `["gpu"]` for a model on the graphics card or `["blender"]` for a
   Blender that should not run twice. Your runs wait their turn behind other
