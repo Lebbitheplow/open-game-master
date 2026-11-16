@@ -339,7 +339,7 @@ export function resolveOpportunityAttacks(
       source: "digital",
     });
     // Mirror Image: a duplicate may take the attack instead (spell-defenses.ts).
-    const decoy = opportunityDecoy(campaign.id, sheet.id, hitOutcome.total);
+    const decoy = opportunityDecoy(campaign.id, sheet.id, hitOutcome.total, enemy);
     if (decoy) {
       notes.push(`${shownName(encounter.id, enemy.id, enemy.displayName)} takes an opportunity attack as ${sheet.name} pulls away: ${decoy}.`);
       continue;

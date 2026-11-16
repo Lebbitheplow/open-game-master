@@ -275,5 +275,44 @@ await test("Y06: a shield taken up over Mage Armor leaves the spell running", as
   assert.ok(world.sheet(mage.id).conditions.includes("mage armor"), "a shield is not armor donned");
 });
 
+// ---- Y07: Mirror Image does not fool an attacker that cannot see, or sees true ----
+
+// SRD 5.1, Mirror Image: "A creature is unaffected by this spell if it can't
+// see, if it relies on senses other than sight, such as blindsight, or if it
+// can perceive illusions as false, as with truesight." Every attacker rolled
+// against the duplicates: a dragon's bite (blindsight), a giant spider's,
+// and a blinded ogre's club were turned aside by illusions they never saw.
+async function mirrored(stats = {}, conditions = [], faces = [15, 20, 3]) {
+  const { world, sheets: [wizard], enemies: [goblin] } = await table([caster("wizard", "int", ["Mirror Image"])], 1, stats);
+  const cast = await world.invoke("cast_buff", { characterId: wizard.id, spell: "Mirror Image" });
+  assert.equal(cast.ok, true, cast.error);
+  if (conditions.length) {
+    getDatabase().prepare("UPDATE encounter_enemies SET conditions_json = ? WHERE id = ?").run(JSON.stringify(conditions), goblin.id);
+  }
+  // The attack's d20 (two with disadvantage), then the duplicates' d20 if
+  // one is asked, then damage.
+  world.dice(...faces);
+  const out = await world.invoke("enemy_attack", { enemyId: goblin.id, targetCharacterId: wizard.id, characterId: wizard.id });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  return { world, wizard };
+}
+
+await test("Y07: an attacker with blindsight strikes the caster, not a duplicate", async () => {
+  const { world, wizard } = await mirrored({ senses: { blindsight: 60, passivePerception: 10 } });
+  assert.ok(world.sheet(wizard.id).conditions.includes("mirror image"), "all three duplicates stand");
+  assert.ok(world.sheet(wizard.id).currentHp < world.sheet(wizard.id).maxHp, "the blow found the caster");
+});
+
+await test("Y07: a blinded attacker strikes the caster, not a duplicate", async () => {
+  const { world, wizard } = await mirrored({}, ["blinded"], [15, 15, 20, 3]);
+  assert.ok(world.sheet(wizard.id).conditions.includes("mirror image"), "all three duplicates stand");
+});
+
+await test("Y07: an attacker that sees by sight alone still meets the duplicates", async () => {
+  const { world, wizard } = await mirrored();
+  assert.ok(world.sheet(wizard.id).conditions.includes("mirror image (2)"), "a duplicate took it");
+});
+
 closeTables();
 finish();

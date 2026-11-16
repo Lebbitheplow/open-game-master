@@ -813,7 +813,7 @@ export function handleEnemyAttack(
     turn.rollIds.push(hitRoll.id);
 
     // Mirror Image: a duplicate may take the attack instead.
-    const decoy = mirrorImageDecoy(campaign.id, target.id, hitOutcome.total);
+    const decoy = mirrorImageDecoy(campaign.id, target.id, hitOutcome.total, enemy);
     if (decoy) {
       swings.push({ attack: attack.name, rolled: hitOutcome.total, hit: false, duplicate: decoy });
       return;
