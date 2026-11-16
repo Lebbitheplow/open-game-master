@@ -12,7 +12,7 @@
 export const DEFAULT_APP_ORIGINS = ["null", "https://localhost", "capacitor://localhost"];
 
 export const APP_CORS_METHODS = "GET, POST, PUT, PATCH, DELETE, OPTIONS";
-export const APP_CORS_HEADERS = "authorization, content-type, last-event-id, x-odm-client";
+export const APP_CORS_HEADERS = "authorization, content-type, last-event-id, x-odm-client, x-odm-locale";
 export const APP_CORS_EXPOSE = "content-type, content-length, content-disposition";
 
 // The origins an ODM_APP_ORIGINS value adds (comma separated), each
