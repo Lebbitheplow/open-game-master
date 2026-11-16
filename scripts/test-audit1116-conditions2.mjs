@@ -301,4 +301,21 @@ await test("D15: at exhaustion 4 a drain as large as the halved maximum kills", 
   assert.equal(world.sheet(hero.id).deathSaves?.dead, true, `a 20-point drain on a halved 20 left them alive: ${JSON.stringify(out.result.maxHpDrained ?? out.result)}`);
 });
 
+// D16. SRD 5.1, Mounted Combat: "you can ... use the mount's speed"; the
+// rider's exhaustion is the rider's ("2: Speed halved" is their own speed).
+// The board took the mount's 60 feet through the rider's exhaustion, so a
+// tired knight's warhorse walked 30.
+await test("D16: a rider's exhaustion does not slow the mount", async () => {
+  const { setMount } = await import("../src/lib/db/mounts.ts");
+  const { pcMoveBudget } = await import("../src/lib/battlemap/view.ts");
+  await stage();
+  board.giveTurn(kara.id);
+  setMount(field.campaignId, kara.id, { ref: "warhorse", name: "Warhorse", speed: 60, controlled: false, size: "Large" });
+  field.patch(kara.id, { exhaustion: 2 });
+  const budget = pcMoveBudget(field.campaignId, field.encounter(), board.map(), field.sheet(kara.id), board.token(kara.id));
+  setMount(field.campaignId, kara.id, null);
+  field.patch(kara.id, { exhaustion: 0 });
+  assert.equal(budget.speed, 60, `the warhorse moved at ${budget.speed} under a tired rider`);
+});
+
 finish();
