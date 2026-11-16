@@ -126,4 +126,32 @@ await test("A02: a mark whose creature falls moves only on a later turn of its h
   await kit.endFight();
 });
 
+// A03. SRD 5.1, Lay on Hands: "you can touch a creature and draw power from
+// the pool to restore a number of hit points to that creature", and hit
+// points never rise past the maximum. The pool paid whatever the call named:
+// 20 drawn for an ally 5 short spent 20 and told the table 20 were healed,
+// and a touch on an ally at full hit points spent 5 for nothing.
+await test("A03: Lay on Hands draws from the pool only the hit points it restores", async () => {
+  await kit.endFight();
+  const paladin = world.addHero({ class: "paladin", level: 5, proficiencies: { ...TRAINED }, features: [{ name: "Lay on Hands", source: "class", classId: "paladin" }] });
+  const ally = world.addHero({ class: "fighter", level: 5, maxHp: 30 });
+  world.patch(ally.id, { currentHp: 25 });
+  const pool = () => world.sheet(paladin.id).resources.lay_on_hands;
+  const touch = await world.invoke("use_resource", { characterId: paladin.id, resource: "Lay on Hands", targetCharacterId: ally.id, amount: 20 });
+  assert.equal(touch.ok, true, touch.error);
+  assert.equal(world.sheet(ally.id).currentHp, 30, "the ally is healed to full");
+  assert.equal(pool().used, 5, `the pool pays the 5 restored, not the 20 asked (used ${pool().used})`);
+  assert.doesNotMatch(JSON.stringify(touch.result), /"healed":20/, "the result tells the table 20 were healed");
+  const full = await world.invoke("use_resource", { characterId: paladin.id, resource: "Lay on Hands", targetCharacterId: ally.id, amount: 5 });
+  assert.equal(full.ok, false, "a touch on an ally at full hit points restores nothing and spends nothing");
+  assert.equal(pool().used, 5, "nothing more is drawn");
+  // A druid in a beast form is healed in the beast's hit points.
+  const druid = world.addHero({ class: "druid", level: 4, maxHp: 30 });
+  world.patch(druid.id, { wildShape: { form: "Wolf", beastHp: 9, beastMaxHp: 11, beastAc: 13 } });
+  const beast = await world.invoke("use_resource", { characterId: paladin.id, resource: "Lay on Hands", targetCharacterId: druid.id, amount: 10 });
+  assert.equal(beast.ok, true, beast.error);
+  assert.equal(world.sheet(druid.id).wildShape?.beastHp, 11, "the wolf is healed to its 11");
+  assert.equal(pool().used, 7, `the wolf's 2 missing hit points are what the pool pays (used ${pool().used})`);
+});
+
 finish();

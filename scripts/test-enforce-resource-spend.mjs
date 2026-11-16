@@ -203,11 +203,13 @@ await test("Lay on Hands heals exactly the points spent, from a pool of 5 x leve
   );
   assert.equal(world.sheet(friend.id).currentHp, before);
 
-  // Nor can the target be healed past their maximum.
+  // Nor can the target be healed past their maximum, and the pool pays only
+  // the 3 points that restore anything (SRD 5.1: the points drawn are the hit
+  // points restored; audit 2026-11-16, A03).
   world.patch(friend.id, { currentHp: 27 });
   await spend(world, paladin.id, "Lay on Hands", { amount: 13, targetCharacterId: friend.id });
   assert.equal(world.sheet(friend.id).currentHp, 30);
-  assert.deepEqual(world.sheet(paladin.id).resources.lay_on_hands, { max: 20, used: 20 });
+  assert.deepEqual(world.sheet(paladin.id).resources.lay_on_hands, { max: 20, used: 10 });
 });
 
 await test("Lay on Hands cannot raise the dead, and the points stay in the pool", async () => {
