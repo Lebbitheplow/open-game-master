@@ -198,4 +198,19 @@ await test("V07: an area's row says what a resistant hero took, and why; apply_d
   assert.equal(hurt.result.damageApplied, 4, `apply_damage: ${JSON.stringify(hurt.result)}`);
 });
 
+// V08. SRD 5.1, Concentration: "If you cast another spell that requires
+// concentration, you lose concentration on the first" and "Taking damage"
+// calls for a Constitution save. GAME STATE named the spell a hero holds
+// only inside the spell-slot line, so a tiefling fighter holding Darkness
+// (a species spell, no spellcasting block) read as holding nothing: the GM
+// had no word that a hit could end it, or that a second one would.
+await test("V08: GAME STATE names the spell a hero with no spellcasting block is concentrating on", async () => {
+  await kit.endFight();
+  const hero = world.addHero({ class: "fighter", level: 5, race: "tiefling", maxHp: 44, proficiencies: { ...TRAINED } });
+  world.patch(hero.id, { concentratingOn: "Darkness" });
+  assert.equal(world.sheet(hero.id).spellcasting ?? null, null, "the staging: no spellcasting block");
+  const told = describeSheet(world.sheet(hero.id), "a player", false);
+  assert.match(told, /Concentrating on: Darkness/, told.split("\n").filter((line) => /spell|Spell/.test(line)).join(" / "));
+});
+
 finish();

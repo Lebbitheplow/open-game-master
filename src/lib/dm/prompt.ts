@@ -885,10 +885,13 @@ export function describeSheet(
       );
     }
   }
+  // The spell-slot line names a caster's concentration; one with no slots (a
+  // tiefling's Darkness, a wand's Web) held it unseen by the GM.
+  const held = !sheet.spellcasting && sheet.concentratingOn ? ` | Concentrating on: ${sheet.concentratingOn}` : "";
   if (racialSpells) {
-    lines.push(`  ${racialSpells}`);
+    lines.push(`  ${racialSpells}${held}`);
   } else if (!sheet.spellcasting) {
-    lines.push(`  Spellcasting: none (cannot cast any spells)`);
+    lines.push(`  Spellcasting: none (cannot cast any spells)${held}`);
   }
   // The purse always prints, even with an empty pack: the model cannot keep a
   // purse it never sees (missed modify_gold calls on purchases). All of it, so
