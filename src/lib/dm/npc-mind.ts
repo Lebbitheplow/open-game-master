@@ -653,7 +653,9 @@ export function everyoneHears(campaign: Campaign, turnId: string, lines: readonl
   const now = nowInstant(campaign.id);
   const place = getCurrentLocation(campaign.id)?.name ?? "";
   for (const npc of listNpcs(campaign.id)) {
-    const present = npc.state.withParty || (here !== "" && textKey(npc.location) === here);
+    // Where the NPC is, not whether it travels with the party: one left in
+    // the courtyard while some of the party went on hears nothing said there.
+    const present = here === "" || !npc.location.trim() ? npc.state.withParty : textKey(npc.location) === here;
     if (tierOfNpc(npc) !== "primary" || npc.archived || !present || getNpcAway(npc.id) || npcSilencedBy(npc.state)) {
       continue;
     }
