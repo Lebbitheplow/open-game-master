@@ -6,7 +6,7 @@
 // Each reacting creature makes the opportunity attack its block makes
 // (enemy-profile.ts opportunityWeapon), once, spending its reaction: an
 // attack roll against the walker's Armor Class with both sides' conditions,
-// and the damage through applyEnemyDamage, the fight left open for the next
+// and the damage through landCreatureBlow, the fight left open for the next
 // turn to end (holdVictory, as every opportunity attack leaves it). It
 // carries what the same swing at a character carries (opportunity.ts):
 // Pack Tactics and the Flanking variant on the square the walker left from,
@@ -31,7 +31,7 @@ import { canEnemyAct } from "@/lib/dm/can-act";
 import { sideOf } from "@/lib/dm/combatant";
 import { attackContext, mergeAdvantage, sightBlockedBy } from "@/lib/dm/condition-logic";
 import { attackSenses, attackSight, enemySenses, fearAsRolled, sensesReaching } from "@/lib/dm/attack-light";
-import { applyEnemyDamage } from "@/lib/dm/enemy-damage";
+import { landCreatureBlow } from "@/lib/dm/enemy-blow";
 import { blowByType } from "@/lib/dm/enemy-hit";
 import { opportunityWeapon } from "@/lib/dm/enemy-profile";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
@@ -150,12 +150,14 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
     const damageRoll = insertRoll({ campaignId, characterId: null, requestedBy: "dm", kind: "damage", detail: label, result: damage, attacker: { kind: "enemy", id: reactor.id, name: reactor.displayName } });
     publishWithSeq(campaignId, allocateSeq(campaignId), "roll_result", { roll: damageRoll, source: "digital" });
     const blow = blowByType(attack, damage, crit);
-    const dealt = Math.max(1, enfeebledBlow(reactor, attack, false, Math.max(0, blow.amount)));
+    // No floor of 1: a penalty can bring a blow to nothing (SRD 5.1), as on
+    // every other door.
+    const dealt = enfeebledBlow(reactor, attack, false, Math.max(0, blow.amount));
     const sheets = listSheets(campaignId);
     const sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
     const magical = hasTrait(reactor.stats, "magicWeapons") || attack.magical === true;
     const { landed, rider } = withOpportunityTurn(campaignId, (turn) => {
-      const hit = applyEnemyDamage(campaign, turn, encounter, walker, dealt, sheets, sheetsById, blow.type, { crit, holdVictory: true, ...(magical ? { magical: true } : {}) });
+      const hit: Record<string, unknown> = dealt > 0 ? landCreatureBlow({ campaign, turn, encounter, target: walker, dealt, blow, sheets, sheetsById, crit, magical, holdVictory: true }) : {};
       const necrotic = /necrotic/i.test(blow.type ?? attack.type) ? dealt : 0;
       return { landed: hit, rider: hit.dead ? null : resolveRowOnHit(campaign, turn, reactor, attack, walker.id, { sheets, sheetsById, dealt: { total: dealt, necrotic } }) };
     });

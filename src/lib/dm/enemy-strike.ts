@@ -12,7 +12,7 @@
 // by side, a spell left on either), the riders on its roll (Bless, Bane), the
 // dice its traits add to a hit (side-allies.ts: Martial Advantage beside an
 // ally of its side, Surprise Attack), an effect's damage, Ray of
-// Enfeeblement, the blow by type, the damage through applyEnemyDamage (the
+// Enfeeblement, the blow by type, the damage through landCreatureBlow (the
 // target's resistances, Undead Fortitude, its concentration, its death and
 // the end of the fight), and what the hit carries (enemy-hit-rows.ts). The
 // attacker walks in first when it can (enemy-approach.ts).
@@ -43,7 +43,7 @@ import { chargeAfterHit, chargeForHit, enemyRunFeet, withChargeDice } from "@/li
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { enfeebledBlow, spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
-import { applyEnemyDamage } from "@/lib/dm/enemy-damage";
+import { landCreatureBlow } from "@/lib/dm/enemy-blow";
 import { approachTarget, reachesThisTurn, spendEnemyAction, standUpIfProne } from "@/lib/dm/enemy-approach";
 import { blowByType } from "@/lib/dm/enemy-hit";
 import { alternativeBlow, attackNamed, enemyAttackProfile, pastRangedLimit, plannedSwings, swingMode, type EnemyAttackProfile } from "@/lib/dm/enemy-profile";
@@ -265,7 +265,15 @@ export function enemyStrikesEnemy(
     // Stamped on the roll as it lands, so the after-fight card counts it.
     last = dealt > 0
       ? landRoll(damageRoll.id, now.id, () =>
-          applyEnemyDamage(campaign, turn, live, now, dealt, input.sheets, input.sheetsById, blow.type, {
+          landCreatureBlow({
+            campaign,
+            turn,
+            encounter: live,
+            target: now,
+            dealt,
+            blow,
+            sheets: input.sheets,
+            sheetsById: input.sheetsById,
             crit,
             magical: hasTrait(enemy.stats, "magicWeapons") || attack.spellAttack === true || attack.magical === true,
           }),

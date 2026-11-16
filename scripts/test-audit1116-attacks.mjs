@@ -148,6 +148,69 @@ await test("G03: a creature's 10-foot opportunity attack past another hero meets
   assert.equal(world.sheet(hero.id).currentHp, 30, `the swing hit through the other hero's half cover: ${out.notes.join(" ")}`);
 });
 
+// ---- G04: a creature's blow of two types at another creature ----
+
+const { enemiesStrikeWalker } = await import("../src/lib/dm/opportunity-sides.ts");
+// A hell hound's bite (SRD 5.1): "7 (1d8 + 3) piercing damage plus 7 (2d6)
+// fire damage", with a d6 for the d8 to keep the dice apart.
+const HOUND_BITE = { name: "Bite", toHit: 5, damage: "1d6+2+2d6", type: "piercing", riders: [{ dice: "2d6", type: "fire" }], mode: "melee", reach: 5 };
+
+// Two goblins on a bare floor: the first fights for the party (Dominate
+// Person), with a hell hound's bite; the second resists fire.
+async function houndAndGoblin() {
+  await kit.endFight();
+  await world.beginFight([{ monster: "goblin", count: 2 }], { heroFaces: { [anchor.id]: 20, [hero.id]: 3 }, enemyFace: 1 });
+  const map = kit.board();
+  maps.setBattleMapTerrain(map.id, ".".repeat(map.width * map.height));
+  const [hound, goblin] = world.enemies();
+  const setStats = (id, patch) => {
+    const row = world.enemies().find((enemy) => enemy.id === id);
+    getDatabase().prepare("UPDATE encounter_enemies SET ac = 10, max_hp = 100, current_hp = 100, stat_json = ? WHERE id = ?").run(JSON.stringify({ ...row.stats, ac: 10, resist: "", immune: "", vulnerable: "", traits: [], ...patch }), id);
+  };
+  setStats(hound.id, { attacks: [HOUND_BITE] });
+  setStats(goblin.id, { resist: "fire" });
+  encounters.patchEnemyConditions(hound.id, ["charmed"], { charmed: { spell: "Dominate Person", source: hero.id } });
+  place(anchor.id, 0, 9);
+  place(hero.id, 1, 9);
+  place(hound.id, 5, 5);
+  place(goblin.id, 6, 5);
+  return { hound, goblin };
+}
+const hpOf = (id) => world.enemies().find((enemy) => enemy.id === id).currentHp;
+
+await test("G04: a dominated creature's two-type bite meets a creature's fire resistance part by part (enemy_attack)", async () => {
+  // SRD 5.1, Damage Resistance: each damage type of a blow meets its own
+  // resistance. At a character the bite already split; at a creature it
+  // landed untyped, so the fire went through whole.
+  const { hound, goblin } = await houndAndGoblin();
+  world.clearDice();
+  // A hit, the d6 of 4 (+2 = 6 piercing), the 2d6 of 6s (12 fire, halved to 6).
+  world.dice(15, 4, 6, 6);
+  const out = await world.invoke("enemy_attack", { enemyId: hound.id, targetCharacterId: goblin.id });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(100 - hpOf(goblin.id), 6 + 6, JSON.stringify(out.result));
+});
+
+await test("G04: the same bite as an opportunity attack at a creature walking away meets the resistance too, and a blow of 0 deals 0", async () => {
+  const { goblin } = await houndAndGoblin();
+  world.clearDice();
+  world.dice(15, 4, 6, 6);
+  enemiesStrikeWalker(world.campaignId, goblin.id, [{ x: 6, y: 5 }, { x: 7, y: 5 }, { x: 8, y: 5 }], 1);
+  world.clearDice();
+  assert.equal(100 - hpOf(goblin.id), 6 + 6, "the fire was not halved");
+  // A penalty bringing the blow to nothing deals nothing (SRD 5.1 has no
+  // floor of 1, and pc_attack deals 0), where this door dealt 1.
+  const { hound: weak, goblin: walker } = await houndAndGoblin();
+  const row = world.enemies().find((enemy) => enemy.id === weak.id);
+  getDatabase().prepare("UPDATE encounter_enemies SET stat_json = ? WHERE id = ?").run(JSON.stringify({ ...row.stats, attacks: [{ name: "Slap", toHit: 5, damage: "1d4-3", type: "bludgeoning", mode: "melee", reach: 5 }] }), weak.id);
+  world.dice(15, 1);
+  const notes = enemiesStrikeWalker(world.campaignId, walker.id, [{ x: 6, y: 5 }, { x: 7, y: 5 }], 1);
+  world.clearDice();
+  assert.ok(notes.length, "no opportunity attack was made");
+  assert.equal(hpOf(walker.id), 100, `a blow of 0 took hit points: ${notes.join(" ")}`);
+});
+
 await kit.endFight();
 world.close();
 finish();
