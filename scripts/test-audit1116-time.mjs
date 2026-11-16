@@ -275,4 +275,42 @@ await test("W08 a long-term madness cured before its hours run out ends there: n
   assert.doesNotMatch(said, /long-term madness passes/, "the cured madness was said to pass when its hours ran out");
 });
 
+await test("W09 a buff spell that lasts ten days lasts ten days through cast_buff, not one, and the clock ends it", async () => {
+  // SRD 5.1, Spellcasting, Duration: "A spell's duration is the length of
+  // time the spell persists." Geas lasts 30 days, Antipathy/Sympathy and
+  // Contingency 10: a table's own buff of days is cast through cast_buff,
+  // which wrote any buff past 24 hours as 1,440 minutes.
+  await peace();
+  const { call } = await import("./lib/enforce-campaign.mjs");
+  const { cleric } = await import("./lib/enforce-spells.mjs");
+  world.signIn(world.owner);
+  const made = await call(await world.route("homebrew"), "POST", {
+    kind: "spell",
+    name: "Hearthward Vigil",
+    data: {
+      desc: "You touch a willing creature and lay a hearth's ward on it for ten days.",
+      level: 1,
+      school: "abjuration",
+      classes: ["cleric"],
+      concentration: false,
+      casting_time: "1 action",
+      range: "Touch",
+      components: "V, S",
+      duration: "10 days",
+      mech: { resolution: "buff", buff: { condition: "hearthward", target: "ally", rounds: 144000 } },
+    },
+  });
+  assert.equal(made.status, 201, JSON.stringify(made.json));
+  const priest = world.addHero({ name: "Oswin", ...cleric(5, { spellcasting: { prepared: ["Hearthward Vigil"] } }), equipment: [{ name: "Holy Symbol", qty: 1 }] });
+  const cast = await world.invoke("cast_buff", { characterId: priest.id, spell: "Hearthward Vigil", targetCharacterIds: [priest.id] });
+  assert.equal(cast.ok, true, cast.error);
+  const held = () => world.sheet(priest.id).conditions.some((name) => /hearthward/i.test(name));
+  assert.ok(held(), `the ward is on: ${world.sheet(priest.id).conditions.join(", ")}`);
+  assert.match(cast.result.duration, /10 days/, "the result says ten days");
+  await world.invoke("pass_time", { amount: 9, unit: "days" });
+  assert.ok(held(), "nine days on the ward still holds");
+  await world.invoke("pass_time", { amount: 2, unit: "days" });
+  assert.ok(!held(), "past its ten days the clock ends it");
+});
+
 finish();
