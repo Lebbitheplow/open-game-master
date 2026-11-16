@@ -82,7 +82,16 @@ export async function heroStates() {
       apply: (t, id) => {
         const encounter = t.world.encounter();
         assert.equal(encounter.round, 1, "the stage is in round 1");
-        encounters.saveEncounter({ ...encounter, surprisedIds: [id] });
+        // Its lost turn comes last in the order, so no creature's turn has
+        // come after it: a reaction is judged by where the creature acting
+        // stands against the surprised one's lost turn (can-act.ts), and on
+        // the stage the goblins roll below the heroes, so a hero's lost turn
+        // was already over when a goblin's hit came.
+        const current = encounter.order[encounter.turnIndex];
+        const own = encounter.order.find((entry) => entry.kind === "pc" && entry.characterId === id);
+        const order = own ? [...encounter.order.filter((entry) => entry !== own), own] : encounter.order;
+        const turnIndex = order.indexOf(current);
+        encounters.saveEncounter({ ...encounter, order, turnIndex: turnIndex < 0 ? encounter.turnIndex : turnIndex, surprisedIds: [id] });
       },
     },
     {
