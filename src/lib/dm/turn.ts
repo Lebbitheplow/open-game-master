@@ -307,6 +307,7 @@ import { handleNpcState, npcStateTools, NPC_STATE_TOOL_NAMES } from "@/lib/dm/np
 import { listNpcs } from "@/lib/db/npcs";
 import { readStateGuard } from "@/lib/dm/npc-state-guard";
 import { stateGuardPrompt } from "@/lib/dm/npc-state-guard-logic";
+import { npcStageOn, runStage } from "@/lib/dm/npc-stage";
 import { awayArrivalNote, everyoneHears, handleNpcInform, handleNpcPast, handleNpcSpeak, mindRosterNotes, mindTurnRefusal, mindsAwaitingTurn, npcMindsOn } from "@/lib/dm/npc-mind";
 import { sceneMindsPrompt, TIME_SKIP_TOOLS } from "@/lib/dm/npc-mind-logic";
 import { mindLines, mindSpeeches, narratorLines, quotedLines } from "@/lib/dm/voice-knowledge-logic";
@@ -2968,7 +2969,24 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
       // and tells them how long they lived through.
       const asksMinds = !toolsClosed && !sceneMindsNudged && turn.narrationParts.length > 0;
       const callsSoFar = asksMinds ? turnCalls(turn.conversation, toolCalls) : [];
-      const owedMinds = asksMinds ? mindsAwaitingTurn(campaign, turn.id, callsSoFar) : [];
+      // A staged table (npc-stage.ts): the engine runs their turns itself and
+      // hands the narrator what was decided.
+      const staged = asksMinds && npcStageOn(campaign) ? await runStage(campaign, callsSoFar, turn.narrationParts.join("\n\n")) : null;
+      if (staged) {
+        sceneMindsNudged = true;
+        tableNoteCalls(staged.heroFacts ? 2 : 1);
+        turn.conversation.push({
+          role: "assistant",
+          ...carried,
+          content: visibleText || "",
+          ...(toolCalls.length ? { tool_calls: echoedToolCalls } : {}),
+        });
+        answerRanAbove(fightOwnsFloor(campaignId), false);
+        turn.conversation.push({ role: "user", content: staged.note });
+        saveDmTurn(turn);
+        continue;
+      }
+      const owedMinds = asksMinds && !npcStageOn(campaign) ? mindsAwaitingTurn(campaign, turn.id, callsSoFar) : [];
       if (owedMinds.length) {
         sceneMindsNudged = true;
         tableNoteCalls(owedMinds.length);

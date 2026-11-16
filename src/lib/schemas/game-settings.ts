@@ -146,6 +146,10 @@ export const gameSettingsSchema = z.object({
   // made before keeps the single narrator, whose NPCs' knowledge was never
   // recorded and cannot be rebuilt.
   npcMinds: z.boolean().default(false),
+  // The stage (src/lib/dm/npc-stage.ts): the engine, not the narrator, gives
+  // every first-tier mind in the scene its turn and has a referee decide how
+  // each action ends. An experiment: off unless a table turns it on.
+  npcStage: z.boolean().default(false),
   // How many NPCs besides the party's companions the GM may give a mind of
   // their own (npc_past firstTier, src/lib/dm/npc-mind.ts). A ceiling, not a
   // quota: the GM uses as many as the story hinges on. Each one costs a model

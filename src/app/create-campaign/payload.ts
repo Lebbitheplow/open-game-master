@@ -144,6 +144,10 @@ export function campaignPayload(draft: CampaignDraft, { solo, aiNarrates }: Pick
       // matters only once a lasting companion travels with the party, so it
       // lives in the campaign's Bonds settings (AGENTS.md settings rule 2).
       //
+      // `npcStage`: an experiment, off for every table (the engine stages
+      // the minds' turns, docs/specs/ogm-npc-ego.md); a test table turns it
+      // on in its settings row.
+      //
       // `npcMinds`: not a choice. The server turns it on for every table it
       // creates (src/app/api/campaigns/route.ts), so first-tier characters
       // answer from their own minds; only tables made before it keep the

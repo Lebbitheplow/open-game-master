@@ -3244,6 +3244,7 @@
     "lib/db/mind-seats.ts#toUpperCase": [["key",1,"a mind seat's code, generated upper-case letters, typed in any case"]],
     "lib/db/npc-minds.ts#LIKE": [["key",1,"an NPC's id found in the stored speech JSON, an exact id narrowed after by parsing"]],
     "lib/db/npc-minds.ts#str-eq": [["key",1,"a speech entry's speaker kind (engine vocabulary)"]],
+    "lib/dm/npc-stage-logic.ts#str-eq": [["key",2,"a ruling's condition against the engine's own condition keys (wounded, unconscious)"]],
     "lib/dm/npc-state-logic.ts#str-list": [["key",3,"an NPC's custody, restraint and condition values (engine vocabulary)"]],
     "lib/dm/party-npcs-fight-logic.ts#str-eq": [["key",2,"an NPC's custody, restraint and condition values and an enemy row's status (engine vocabulary)"]],
     "lib/dm/party-npcs-fight-logic.ts#str-list": [["key",1,"an NPC's custody, restraint and condition values (engine vocabulary)"]],

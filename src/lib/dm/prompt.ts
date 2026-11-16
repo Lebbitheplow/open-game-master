@@ -1,3 +1,4 @@
+import { STAGE_RULES } from "@/lib/dm/npc-stage-logic";
 import { dragonAncestorType } from "@/lib/srd/dragon-ancestor";
 import { subclassChoicePickDescription } from "@/lib/srd/subclass-choice-picks";
 import { advanceRulesLine, openToAdvanceNames } from "@/lib/dm/advance-logic";
@@ -1973,6 +1974,9 @@ function turnRuleParts(state: TurnRuleState): {
   if (state.campaign.gameSettings.npcMinds) {
     const limit = firstTierLimit(state.campaign);
     settingsRules.push(`${NPC_MINDS_RULES} This table allows up to ${limit} first-tier NPC${limit === 1 ? "" : "s"} besides the party's companions: a ceiling, not a quota.`);
+    if (state.campaign.gameSettings.npcStage) {
+      settingsRules.push(STAGE_RULES);
+    }
   }
   if (
     state.campaign.gameSettings.relationships !== "off" &&
