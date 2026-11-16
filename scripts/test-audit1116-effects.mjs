@@ -424,5 +424,19 @@ await test("Y10: an enlarged goblin's club deals 1d4 more", async () => {
   assert.equal(before - world.sheet(fighter.id).currentHp, 12, "6 + 2 + 4");
 });
 
+// ---- Y11: Barkskin's floor on a creature ----
+
+// SRD 5.1, Barkskin: "the target's AC can't be less than 16, regardless of
+// what kind of armor it is wearing." A character's AC read the floor; a
+// creature's (an SRD druid casts Barkskin on itself) read only the bonuses,
+// so its AC stayed 11 to every attack.
+await test("Y11: a creature under Barkskin is struck against AC 16", async () => {
+  const { enemyAcWithEffects } = await import("../src/lib/dm/ac-effects.ts");
+  const { world, enemies: [druid] } = await table([FIGHTER], 1, { ac: 11 });
+  getDatabase().prepare("UPDATE encounter_enemies SET ac = 11, conditions_json = ?, condition_meta_json = ? WHERE id = ?")
+    .run(JSON.stringify(["barkskin"]), JSON.stringify({ barkskin: { spell: "Barkskin", source: druid.id, rounds: 600 } }), druid.id);
+  assert.equal(enemyAcWithEffects(world.campaignId, enemyOf(world, druid.id)), 16);
+});
+
 closeTables();
 finish();
