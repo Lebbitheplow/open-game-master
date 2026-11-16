@@ -416,7 +416,7 @@ export const SRD_TAIL_ROWS: Record<string, SpellMech> = {
   "remove curse": {
     resolution: "buff",
     cures: { conditions: ["cursed"], all: true },
-    note: "Ends every curse on the target; a cursed magic item's attunement is broken (narrated).",
+    note: "Ends every curse on the target and breaks its attunement to a cursed magic item, which can then be set down.",
   },
 
   // ---- words of power and wards of the mind ----

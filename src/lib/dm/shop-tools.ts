@@ -26,6 +26,7 @@ import { canAct } from "@/lib/dm/can-act";
 import { incapacitatedBy } from "@/lib/dm/condition-logic";
 import { turncoatsAtTable } from "@/lib/dm/turncoat";
 import { keepsFullValue, listPriceCp, magicValueOf, soldToShops, tradeTotalCp } from "@/lib/dm/trade-value";
+import { cursedHold } from "@/lib/srd/cursed-items";
 import { capacityProblem } from "@/lib/dm/load-rules";
 import {
   addStock,
@@ -505,6 +506,11 @@ export function handleSellItem(campaign: Campaign, rawArguments: string, at: Tra
   }
   const line = removal.item;
   const carried = line.name;
+  // An attuned cursed item is not sold away (src/lib/srd/cursed-items.ts).
+  const cursed = cursedHold(sheet, line);
+  if (cursed) {
+    return { error: cursed, refused: "rules" };
+  }
   // SRD 5.1, Selling Treasure: "Finding someone to buy a potion or a scroll
   // isn't too hard, but other items are out of the realm of most but the
   // wealthiest nobles." A shop buys potions and scrolls; any other magic item

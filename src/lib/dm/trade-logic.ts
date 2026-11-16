@@ -1,6 +1,8 @@
 import { addRowMath, handedOverRow, removeItemMath } from "@/lib/dm/mutation-math";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { addCopper, formatCopper, formatPrice, purseCopper } from "@/lib/srd/currency";
+import { cursedHold } from "@/lib/srd/cursed-items";
+import { lineNamed } from "@/lib/srd/item-row";
 
 // Player-to-player trade (docs/vtt-parity-implementation-plan.md 11.2),
 // the pure half: what an offer is, what it reads as, and the two patches
@@ -105,6 +107,15 @@ function moveItem(
 export function computeTrade(from: CharacterSheet, to: CharacterSheet, offer: TradeOffer): { from: Patch; to: Patch } | { error: string } {
   let fromEquipment = from.equipment;
   let toEquipment = to.equipment;
+  // An attuned cursed item stays with its bearer (src/lib/srd/cursed-items.ts).
+  for (const [bearer, lines] of [[from, offer.give], [to, offer.want]] as const) {
+    for (const line of lines) {
+      const cursed = cursedHold(bearer, bearer.equipment[lineNamed(bearer.equipment, line.name)]);
+      if (cursed) {
+        return { error: cursed };
+      }
+    }
+  }
   for (const line of offer.give) {
     const moved = moveItem(fromEquipment, toEquipment, line);
     if (!moved) {

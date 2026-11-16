@@ -11,6 +11,7 @@ import type { ToolError } from "@/lib/dm/tool-errors";
 import { alreadyInPack, notCarried } from "@/lib/dm/item-logic";
 import { isTableGearName } from "@/lib/db/homebrew";
 import { lineNamed } from "@/lib/srd/item-row";
+import { cursedHold } from "@/lib/srd/cursed-items";
 
 // A purchase or a sale outside a shop. The table prices it, not the model:
 // the content pack's list price (or the worth the item was given) is what a
@@ -24,7 +25,13 @@ export function computePurchase(
   args: { item: string; price?: number; qty: number; action: "buy" | "sell"; srdName?: string },
 ): Outcome | ToolError {
   // What is sold is the carried line, with what it is (item-tags.ts).
-  const item = (args.action === "sell" ? sheet.equipment[lineNamed(sheet.equipment, args.item)] : undefined) ?? { name: args.item, srdName: args.srdName };
+  const carried = args.action === "sell" ? sheet.equipment[lineNamed(sheet.equipment, args.item)] : undefined;
+  // An attuned cursed item is not sold away (src/lib/srd/cursed-items.ts).
+  const cursed = cursedHold(sheet, carried);
+  if (cursed) {
+    return { error: cursed, refused: "rules" };
+  }
+  const item = carried ?? { name: args.item, srdName: args.srdName };
   const listCp = listPriceCp(item);
   if (listCp === null && args.price === undefined) {
     return { error: `Nothing prices "${args.item}": send price, the gold one is worth. Nothing changed.`, retry: true };

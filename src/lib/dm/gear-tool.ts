@@ -44,6 +44,7 @@ import { storeBudget } from "@/lib/dm/turn-budget";
 import { gearPatch, implicitlyWorn } from "@/lib/dm/usage-rules";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import { acBreakdownFor } from "@/lib/srd";
+import { cursedHold } from "@/lib/srd/cursed-items";
 
 export { describeGround } from "@/lib/dm/gear-ground";
 
@@ -163,6 +164,11 @@ export function handleItemCall(
   const row = sheet.equipment[lineNamed(sheet.equipment, itemName)];
   if (!row) {
     return retry(`${sheet.name} carries no "${itemName}". They carry: ${sheet.equipment.map((item) => item.name).join(", ") || "nothing"}.`);
+  }
+  // An attuned cursed item stays with its bearer (src/lib/srd/cursed-items.ts).
+  const cursed = action === "drop" || action === "hand" ? cursedHold(sheet, row) : null;
+  if (cursed) {
+    return refuse(cursed);
   }
   switch (action) {
     case "equip":

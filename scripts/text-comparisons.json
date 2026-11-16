@@ -1457,7 +1457,7 @@
     "lib/dm/context-probe-logic.ts#toLowerCase": [["key",2,"model ids a server lists"]],
     "lib/dm/cure-spell.ts#str-endsWith": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/cure-spell.ts#str-eq": [["key",5,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
-    "lib/dm/cure-spell.ts#str-includes": [["key",1,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
+    "lib/dm/cure-spell.ts#str-includes": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/cure-spell.ts#toLowerCase": [["key",2,"condition labels (engine vocabulary)"]],
     "lib/dm/damage-logic.ts#[a-z]": [["english-source",4,"reference: damage types (values the schema lists) found as whole words"]],
     "lib/dm/damage-logic.ts#str-includes": [["english-source",2,"a block's resistance line (pack rows; the workshop writes it from its toggles)"]],

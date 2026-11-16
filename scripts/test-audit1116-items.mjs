@@ -80,5 +80,54 @@ await test("I01: an old bundle line handed to a friend who has one keeps both co
   assert.equal(rounds(taker.id, "arrows"), 40);
 });
 
+// I02. SRD 5.1, Berserker Axe: "This axe is cursed, and becoming attuned to
+// it extends the curse to you. As long as you remain cursed, you are
+// unwilling to part with the axe"; Remove Curse: "If the object is a cursed
+// magic item, its curse remains, but the spell breaks its owner's attunement
+// to the object so it can be removed or discarded." The sheet refused to end
+// the attunement, but handing the axe over, dropping it, selling it or
+// trading it away ended it at once; and Remove Curse broke nothing, so the
+// sheet's refusal never lifted.
+const cursedAxe = () => ({ name: "Berserker Axe", qty: 1, attuned: true, equipped: true });
+const cleric = () => world.addHero({
+  class: "cleric",
+  level: 5,
+  abilities: { wis: 16 },
+  spellcasting: { ability: "wis", slots: { 1: { max: 4, used: 0 }, 3: { max: 2, used: 0 } }, prepared: ["Remove Curse"], known: [], cantrips: [] },
+});
+
+await test("I02: an attuned Berserker Axe is not handed over, dropped, sold or traded away while the curse holds", async () => {
+  const bearer = world.addHero({ class: "barbarian", level: 5, equipment: [cursedAxe()] });
+  const friend = world.addHero({ class: "fighter", level: 5 });
+  const tries = [
+    ["hand", () => world.invoke("handle_item", { characterId: bearer.id, action: "hand", item: "Berserker Axe", toCharacterId: friend.id })],
+    ["drop", () => world.invoke("handle_item", { characterId: bearer.id, action: "drop", item: "Berserker Axe" })],
+    ["sell", () => world.invoke("purchase", { characterId: bearer.id, action: "sell", item: "Berserker Axe", price: 500 })],
+  ];
+  for (const [label, attempt] of tries) {
+    const out = await attempt();
+    assert.equal(out.ok, false, `${label}: the curse keeps the axe in hand`);
+    assert.match(String(out.error), /curse/i, label);
+    assert.deepEqual(world.sheet(bearer.id).equipment.map((item) => [item.name, item.attuned]), [["Berserker Axe", true]], label);
+  }
+  insertShop(world.campaignId, { name: "Axe and Anvil", kind: "smith", size: "town", markup: 1, buys: true, stock: [] });
+  const atShop = await world.invoke("sell_item", { characterId: bearer.id, shop: "Axe and Anvil", item: "Berserker Axe", priceCp: 50000 });
+  assert.equal(atShop.ok, false);
+  const { computeTrade } = await import("../src/lib/dm/trade-logic.ts");
+  const traded = computeTrade(world.sheet(bearer.id), world.sheet(friend.id), { toCharacterId: friend.id, give: [{ name: "Berserker Axe", qty: 1 }], giveCp: 0, want: [], wantCp: 0 });
+  assert.ok("error" in traded, "a trade cannot carry the axe off either");
+});
+
+await test("I02: Remove Curse breaks the attunement to a cursed item, and then the axe can be set down", async () => {
+  const bearer = world.addHero({ class: "barbarian", level: 5, equipment: [cursedAxe()] });
+  const priest = cleric();
+  const lifted = await world.invoke("cast_buff", { characterId: priest.id, spell: "Remove Curse", targetCharacterIds: [bearer.id], level: 3 });
+  assert.equal(lifted.ok, true, lifted.error);
+  assert.equal(world.sheet(bearer.id).equipment[0].attuned, undefined, "the attunement is broken");
+  assert.match(JSON.stringify(lifted.result), /Berserker Axe/);
+  const dropped = await world.invoke("handle_item", { characterId: bearer.id, action: "drop", item: "Berserker Axe" });
+  assert.equal(dropped.ok, true, dropped.error);
+});
+
 world.close();
 finish();
