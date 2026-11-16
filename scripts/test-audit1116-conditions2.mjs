@@ -318,6 +318,18 @@ await test("D16: a rider's exhaustion does not slow the mount", async () => {
   assert.equal(budget.speed, 60, `the warhorse moved at ${budget.speed} under a tired rider`);
 });
 
+// D18. SRD 5.1, Exhaustion: "4: Hit point maximum halved", a creature's as a
+// hero's. The console's correction of a creature's hit points (the human GM's
+// "set its hit points", catalog-enemy-hp.ts) allowed up to the stored
+// maximum: an ogre at exhaustion 4 (59, halved to 29) could be set to 59.
+await test("D18: the console corrects a creature at exhaustion 4 to its halved maximum at most", async () => {
+  const { enemyHpCorrection } = await import("../src/lib/dm/catalog-enemy-hp.ts");
+  const ogre = { displayName: "Ogre", status: "alive", currentHp: 20, maxHp: 59, conditions: ["exhaustion 4"] };
+  const over = enemyHpCorrection(ogre, 59);
+  assert.match(String(over.error ?? ""), /29 hit points at most/, `a tired ogre was set to ${JSON.stringify(over)}`);
+  assert.deepEqual(enemyHpCorrection(ogre, 29), { currentHp: 29, wakes: false });
+});
+
 // D19. The halving never leaves a living creature no maximum at all, as a
 // hero's never does (condition-logic.ts exhaustionMaxHp keeps 1): a 1 hit
 // point creature at exhaustion 4 was capped at 0 and left "alive" at 0.
