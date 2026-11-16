@@ -360,6 +360,94 @@ await test("G09: a silvered sword's opportunity attack passes a lycanthrope's re
   assert.equal(before - kit.dummy().currentHp, 4 + abilityMod(16), `the silvered blade was resisted on the opportunity attack: ${JSON.stringify(notes)}`);
 });
 
+// ---- G11: an enemy caster's Shield on every door ----
+
+// SRD 5.1, Shield: "Reaction, which you take when you are hit by an attack or
+// targeted by the magic missile spell ... Until the start of your next turn,
+// you have a +5 bonus to AC, including against the triggering attack, and you
+// take no damage from magic missile." The SRD mage, archmage and lich prepare
+// it. pc_attack and a character's opportunity attack already met it
+// (enemy-reactions.ts tryParry); a hero's Magic Missile, a pet's attack and a
+// creature's attack at another creature did not.
+const SHIELD_CASTER = { dc: 14, ability: "int", casterLevel: 9, spells: [{ name: "Shield", level: 1 }], slots: { 1: 4 } };
+const reacted = (id) => world.encounter().reactionsUsed.includes(id);
+const firstSlotsSpent = (id) => world.encounter().legendary.abilities?.[id]?.slots?.["1"] ?? 0;
+const caster = world.addHero({
+  class: "wizard", level: LEVEL, abilities: { str: 8, dex: 14, con: 12, int: 16, wis: 10, cha: 10 },
+  spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 } }, prepared: ["Magic Missile"], known: [], cantrips: [] },
+});
+
+await test("G11: a hero's Magic Missile at a mage who can cast Shield does nothing: the mage spends its reaction and a 1st-level slot, and the Shield is up", async () => {
+  const mage = await freshArena();
+  dress({ spellcasting: SHIELD_CASTER, traits: [] });
+  kit.stand(caster.id, 3);
+  world.clearDice();
+  world.dice(3, 3, 3);
+  const out = await kit.onTurnOf(caster.id, () => world.invoke("cast_at_enemy", { characterId: caster.id, targetEnemyId: mage.id, spell: "Magic Missile", level: 1 }));
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(kit.dummy().currentHp, mage.currentHp, `Magic Missile struck through Shield: ${JSON.stringify(out.result)}`);
+  assert.equal(reacted(mage.id), true, "the mage's reaction was not spent");
+  assert.equal(firstSlotsSpent(mage.id), 1, "no 1st-level slot was spent");
+  assert.ok(kit.dummy().conditions.includes("shielded"), "the Shield is not up");
+  assert.equal(world.sheet(caster.id).spellcasting.slots[1].used, 1, "the wizard's slot was not spent");
+});
+
+await test("G11: a Magic Missile at a mage whose Shield is already up does nothing, with no second slot spent", async () => {
+  const mage = await freshArena();
+  dress({ spellcasting: SHIELD_CASTER, traits: [] });
+  encounters.patchEnemyConditions(mage.id, ["shielded"], { shielded: { untilTurnOf: mage.id, spell: "Shield", source: mage.id } });
+  encounters.saveEncounter({ ...world.encounter(), reactionsUsed: [mage.id] });
+  kit.stand(caster.id, 3);
+  world.patch(caster.id, { spellcasting: { ...world.sheet(caster.id).spellcasting, slots: { 1: { max: 4, used: 0 } } } });
+  world.clearDice();
+  world.dice(3, 3, 3);
+  const out = await kit.onTurnOf(caster.id, () => world.invoke("cast_at_enemy", { characterId: caster.id, targetEnemyId: mage.id, spell: "Magic Missile", level: 1 }));
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(kit.dummy().currentHp, mage.currentHp, `Magic Missile struck a shielded mage: ${JSON.stringify(out.result)}`);
+  assert.equal(firstSlotsSpent(mage.id), 0);
+});
+
+await test("G11: a pet's bite that +5 AC turns into a miss meets the mage's Shield", async () => {
+  const mage = await freshArena();
+  dress({ spellcasting: SHIELD_CASTER, traits: [] });
+  const FANG = { name: "Fang", kind: "other", form: "wolf", hp: 11, maxHp: 11, ac: 13, speed: 40, attacks: [{ name: "Bite", toHit: 4, damage: "2d4+2", type: "piercing" }], notes: "" };
+  world.patch(hero.id, { pets: [FANG] });
+  world.clearDice();
+  // 8 + 4 = 12 hits AC 10 and misses 15.
+  world.dice(8, 3, 3);
+  const out = await kit.onTurnOf(hero.id, () => world.invoke("pet_attack", { characterId: hero.id, targetEnemyId: mage.id }));
+  world.clearDice();
+  world.patch(hero.id, { pets: [] });
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.hit, false, `the bite went through the Shield: ${JSON.stringify(out.result)}`);
+  assert.equal(kit.dummy().currentHp, mage.currentHp);
+  assert.equal(reacted(mage.id), true);
+});
+
+await test("G11: a dominated creature's blow at a mage, on its turn or as it walks away, meets the mage's Shield", async () => {
+  let { hound, goblin } = await houndAndGoblin();
+  let row = world.enemies().find((enemy) => enemy.id === goblin.id);
+  getDatabase().prepare("UPDATE encounter_enemies SET stat_json = ? WHERE id = ?").run(JSON.stringify({ ...row.stats, spellcasting: SHIELD_CASTER }), goblin.id);
+  world.clearDice();
+  // 8 + 5 = 13 hits AC 10 and misses 15.
+  world.dice(8, 4, 6, 6);
+  const out = await world.invoke("enemy_attack", { enemyId: hound.id, targetCharacterId: goblin.id });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(hpOf(goblin.id), 100, `the bite went through the Shield: ${JSON.stringify(out.result)}`);
+  assert.equal(reacted(goblin.id), true);
+  ({ hound, goblin } = await houndAndGoblin());
+  row = world.enemies().find((enemy) => enemy.id === goblin.id);
+  getDatabase().prepare("UPDATE encounter_enemies SET stat_json = ? WHERE id = ?").run(JSON.stringify({ ...row.stats, spellcasting: SHIELD_CASTER }), goblin.id);
+  world.dice(8, 4, 6, 6);
+  const notes = enemiesStrikeWalker(world.campaignId, goblin.id, [{ x: 6, y: 5 }, { x: 7, y: 5 }, { x: 8, y: 5 }], 1);
+  world.clearDice();
+  assert.ok(notes.length, "no opportunity attack was made");
+  assert.equal(hpOf(goblin.id), 100, `the opportunity attack went through the Shield: ${notes.join(" ")}`);
+});
+
 await kit.endFight();
 world.close();
 finish();

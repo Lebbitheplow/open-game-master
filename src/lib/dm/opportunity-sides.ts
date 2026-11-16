@@ -27,6 +27,7 @@ import { d20Expression, rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import { rollAgainst } from "@/lib/roll-labels";
 import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
+import { attackerUnseen, tryParry } from "@/lib/dm/enemy-reactions";
 import { canEnemyAct } from "@/lib/dm/can-act";
 import { sideOf } from "@/lib/dm/combatant";
 import { attackContext, mergeAdvantage, sightBlockedBy } from "@/lib/dm/condition-logic";
@@ -133,9 +134,11 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
     const label = rollAgainst(`${attack.name} (opportunity attack)`, walker.displayName);
     const hitRoll = insertRoll({ campaignId, characterId: null, requestedBy: "dm", kind: "attack", detail: label, advantage, result: toHit, attacker: { kind: "enemy", id: reactor.id, name: reactor.displayName } });
     publishWithSeq(campaignId, allocateSeq(campaignId), "roll_result", { roll: hitRoll, source: "digital" });
-    const hit = toHit.crit !== "nat1" && (toHit.crit === "nat20" || toHit.total >= vsAc);
-    if (!hit) {
-      notes.push(`${reactor.displayName} takes an opportunity attack as ${walker.displayName} pulls away and misses (${toHit.total} vs AC ${vsAc}).`);
+    const struck = toHit.crit !== "nat1" && (toHit.crit === "nat20" || toHit.total >= vsAc);
+    // The walker's Parry or Shield, as on every other door (enemy-reactions.ts).
+    const parry = struck && toHit.crit !== "nat20" ? tryParry({ encounter, enemy: walker, total: toHit.total, natural20: false, ac: vsAc, melee: true, attackerUnseen: attackerUnseen(reactor.conditions, walker.conditions, sight) }) : null;
+    if (!struck || parry) {
+      notes.push(`${reactor.displayName} takes an opportunity attack as ${walker.displayName} pulls away and misses (${toHit.total} vs AC ${vsAc}${parry ? `; ${parry.note}` : ""}).`);
       continue;
     }
     const crit = toHit.crit === "nat20" || context.autoCrit;

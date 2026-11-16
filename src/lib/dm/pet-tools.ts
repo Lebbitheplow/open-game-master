@@ -14,6 +14,8 @@ import { textKey } from "@/lib/language/text-logic";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { activeAuthored } from "@/lib/srd/authored-effects";
 import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
+import { attackerUnseen, tryParry } from "@/lib/dm/enemy-reactions";
+import { isSheetFoe } from "@/lib/dm/combat-sides-logic";
 import { petAttackCost } from "@/lib/dm/pet-attack-cost";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
 import type { CharacterSheet, SheetPet } from "@/lib/schemas/sheet";
@@ -411,7 +413,14 @@ export function handlePetAttack(
 
   // The enemy's real AC today: a spell or an effect on it counts.
   const vsAc = enemyAcWithEffects(campaign.id, enemy);
-  const hit = hitOutcome.crit !== "nat1" && (hitOutcome.crit === "nat20" || hitOutcome.total >= vsAc);
+  const struck = hitOutcome.crit !== "nat1" && (hitOutcome.crit === "nat20" || hitOutcome.total >= vsAc);
+  // The creature's Parry or Shield, as a character's own swing meets it
+  // (attack-swing.ts): a mage's Shield let a wolf's bite through.
+  const live = getActiveEncounter(campaign.id);
+  const parry = struck && hitOutcome.crit !== "nat20" && live && !isSheetFoe(enemy)
+    ? tryParry({ encounter: live, enemy, total: hitOutcome.total, natural20: false, ac: vsAc, melee: !ranged, attackerUnseen: attackerUnseen(pet.conditions ?? [], enemy.conditions, null) })
+    : null;
+  const hit = struck && !parry;
   const crit = hit && (hitOutcome.crit === "nat20" || incoming.autoCrit);
   if (!hit) {
     return {
@@ -420,6 +429,7 @@ export function handlePetAttack(
       rolled: hitOutcome.total,
       vsAc,
       hit: false,
+      ...(parry ? { reaction: parry.note } : {}),
       ...(incoming.notes.length ? { situation: incoming.notes.join("; ") } : {}),
       economy,
     };
