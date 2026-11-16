@@ -115,6 +115,19 @@ await test("Y17: the Hand deals Wake only beside an ally held by Sleep or Hypnot
   assert.deepEqual(call, { name: "take_action", args: { characterId: fighter.id, action: "wake", targetCharacterId: wizard.id } });
 });
 
+// take_action refuses a waker shaking themselves ("cannot shake themselves
+// awake"), but the card's ally picks offered the holder's own chip beside the
+// sleeper's, as a card that may aim at its holder does.
+await test("Y17: the Wake card's picks leave out the hero holding it", async () => {
+  const { world, fighter, wizard, first } = await stage();
+  world.patch(wizard.id, { conditions: ["unconscious"], conditionMeta: { unconscious: SLEEP(first.id) } });
+  const hero = world.sheet(fighter.id);
+  const card = deriveHand(hero, undefined, { gear: { sleepers: [{ id: wizard.id, name: "Wiz", feet: 5 }] } }).find((entry) => entry.id === "basic:wake");
+  assert.equal(card?.othersOnly, true, "the aim bar offered the waker their own chip");
+  const self = await world.invoke("take_action", { characterId: fighter.id, action: "wake", targetCharacterId: fighter.id });
+  assert.notEqual(self.ok, true, "the engine refuses a shake of oneself");
+});
+
 // Y21 on the Hand: take_action wake refuses a sleeper beyond the diagonal run
 // of wall pinching the corner two squares share (shake-awake.ts wallBetween),
 // but the card measured the 5 feet alone, so it was dealt there and every

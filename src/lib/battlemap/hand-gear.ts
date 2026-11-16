@@ -284,6 +284,9 @@ export function gearCards(sheet: CharacterSheet, turn: HandTurn, context: HandGe
           rules: "An action: shake an ally within 5 ft out of Sleep or Hypnotic Pattern. They wake still prone.",
           icon: { kind: "action", key: "help" },
           target: "ally",
+          // take_action refuses a shake of oneself: the aim bar leaves out
+          // the holder's own chip.
+          othersOnly: true,
           intent: { card: "basic", action: "wake" },
         },
         standing,
