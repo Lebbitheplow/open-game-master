@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { EmbeddingLanguageCheck, ProbedLanguage } from "@/lib/embedding-language-logic";
 import { embeddingWarning, type EmbeddingWarning } from "@/lib/embedding-language-text";
 import type { TableLanguage } from "@/lib/schemas/game-settings-options";
+import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 
 // The warning that this server's embedding model cannot read a table's
 // language, for every place that shows it (under Table language, above the
@@ -12,9 +13,15 @@ import type { TableLanguage } from "@/lib/schemas/game-settings-options";
 // model) and when the model reads every language asked about: nothing is shown
 // until there is something to say, and it appears without a reload. The server
 // probes each language once, so asking again costs a lookup.
+//
+// An app's screens opened on an older host, which has no check route, ask
+// nothing (SERVER_FEATURES embeddingLanguage in src/lib/capabilities.ts).
 export function useEmbeddingWarning(languages: readonly TableLanguage[]): EmbeddingWarning | null {
+  const offered = hostOffers(useCapabilities(), "embeddingLanguage");
   // A string, so a new array with the same languages asks nothing again.
-  const asked = JSON.stringify(languages.filter((language): language is ProbedLanguage => language !== "english"));
+  const asked = JSON.stringify(
+    offered ? languages.filter((language): language is ProbedLanguage => language !== "english") : [],
+  );
   const [known, setKnown] = useState<{ asked: string; checks: EmbeddingLanguageCheck[] } | null>(null);
   useEffect(() => {
     const probed = JSON.parse(asked) as ProbedLanguage[];

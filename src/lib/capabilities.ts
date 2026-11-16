@@ -360,6 +360,10 @@ export const SERVER_FEATURES = {
   // PATCH sheet's `levelUpTools`, the tool a new class's grant leaves to the
   // player (a bard's instrument); an older host drops it unread.
   multiclassTools: true,
+  // The warning that the embedding model cannot read a table's language
+  // (issue #984): GET /api/embeddings/language, which an older host answers
+  // with a 404, so the screens ask nothing there.
+  embeddingLanguage: true,
 } as const;
 export type ServerFeatures = { [K in keyof typeof SERVER_FEATURES]: boolean };
 
