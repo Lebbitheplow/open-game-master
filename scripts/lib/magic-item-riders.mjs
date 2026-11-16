@@ -22,6 +22,7 @@
 //   critExtra    dice added when the attack roll is a natural 20
 //   onHit        a save the creature hit makes or takes a condition: { vs
 //                (creature types), save (ability), dc, condition }
+//   wounds       a hit wounds the creature once per turn (Sword of Wounding)
 // cursed: attuning curses the wearer, and the attunement cannot be ended
 //   (nor the item set aside) until remove curse or similar magic.
 // armor:
@@ -82,7 +83,9 @@ export const GEAR_RIDERS = {
   },
   "sword of life stealing": { weapon: { critExtra: [d("3d6", "necrotic", { notVs: ["construct", "undead"] })] } },
   "sword of sharpness": { weapon: { critExtra: [d("4d6", "slashing")] } },
-  "sword of wounding": { weapon: {} },
+  // "Once per turn, when you hit a creature with an attack using this magic
+  // weapon, you can wound the target" (src/lib/dm/sword-wounding.ts).
+  "sword of wounding": { weapon: { wounds: true } },
   "trident of fish command": { weapon: {} },
   "vicious weapon": { weapon: { critExtra: [d("2d6", "weapon")] } },
   "vorpal sword": { weapon: { bonus: 3 } },

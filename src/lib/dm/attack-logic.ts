@@ -123,6 +123,8 @@ export type AttackProfile = {
   // The save a magic weapon's hit asks of the creatures it names (Giant
   // Slayer's prone), laid as creatureOnHit by itemRidersAgainst.
   gearOnHit?: GearOnHit[];
+  // A Sword of Wounding's hit wounds the creature (sword-wounding.ts).
+  gearWounds?: boolean;
   // A creature's natural attack (a beast form, a summoned creature): what
   // its hit does besides the damage (src/lib/dm/natural-onhit.ts), and the
   // "one prone creature" its hooves and stomps strike only.

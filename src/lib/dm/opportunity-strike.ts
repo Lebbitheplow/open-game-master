@@ -58,6 +58,7 @@ import { foldDamageRiders, landBlow, strikesAsMagic, withSneakAttack } from "@/l
 import { clearHitSpent, spendOnHit } from "@/lib/dm/pc-attack-riders";
 import { smiteSlotOf } from "@/lib/dm/opportunity-ask-logic";
 import { opportunityTwoHanded } from "@/lib/dm/opportunity-weapon";
+import { woundOnHit } from "@/lib/dm/sword-wounding";
 import { acBreakdownFor, computeSheetDerived, sizeForRace } from "@/lib/srd";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
 import { conditionsSpentAgainst } from "@/lib/srd/condition-effect-queries";
@@ -405,6 +406,11 @@ export function pcOpportunitySwing(input: {
     const dropped = Boolean(applied.dead) || struck?.status === "dead";
     // What a natural attack's hit carries (a wolf's bite: a Strength save or
     // prone), as the turn's swing lands it (attack-blow.ts).
+    // A Sword of Wounding's wound, once per turn (sword-wounding.ts).
+    const wound = !dropped && profile.gearWounds && !isSheetFoe(enemy) ? woundOnHit(campaign, enemy.id, sheet.id) : null;
+    if (wound) {
+      notes.push(wound);
+    }
     if (!dropped && profile.creatureOnHit && !isSheetFoe(enemy)) {
       notes.push(...landNaturalOnHit(campaign, { turn, attacker: { kind: "sheet", sheetId: sheet.id, name: sheet.name }, holderId: sheet.id, attack: profile.weapon, enemyId: enemy.id, onHit: profile.creatureOnHit }));
     }

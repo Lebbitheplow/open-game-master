@@ -115,6 +115,7 @@ export function gearProfileParts(
       ...(riders.critExtra?.length ? { gearCritDice: riders.critExtra } : {}),
       ...(riders.bonusVs ? { gearBonusVs: riders.bonusVs } : {}),
       ...(riders.onHit?.length ? { gearOnHit: riders.onHit } : {}),
+      ...(riders.wounds ? { gearWounds: true } : {}),
     },
   };
 }

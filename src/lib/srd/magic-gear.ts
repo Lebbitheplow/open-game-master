@@ -42,6 +42,9 @@ export type WeaponRiders = {
   // A save the creature hit makes or falls to a condition (Giant Slayer: a
   // giant's DC 15 Strength save or prone), against these creature types.
   onHit?: GearOnHit[];
+  // Sword of Wounding: a hit wounds the creature once per turn
+  // (src/lib/dm/sword-wounding.ts).
+  wounds?: boolean;
 };
 
 export type GearOnHit = { vs?: string[]; save: Ability; dc: number; condition: string };

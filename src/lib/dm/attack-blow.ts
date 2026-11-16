@@ -5,6 +5,7 @@
 // (pc-attack-resolve.ts); real dice reach it when the player's damage roll
 // lands (pc-attack-parked.ts).
 
+import { woundOnHit } from "@/lib/dm/sword-wounding";
 import { goreDrift } from "@/lib/dm/genre-gb-gore-drift";
 import { hookDrag } from "@/lib/dm/genre-gb-hook";
 import { darkFantasyCritMarks } from "@/lib/dm/genre-cc-a-dark-fantasy";
@@ -360,6 +361,10 @@ function hitExtras(scene: SwingScene, record: AttackRecord, dead: boolean, over:
   if (over || dead) {
     const spent = charged();
     return spent.length ? { ...out, charge: spent } : out;
+  }
+  const wound = extras.wounds ? woundOnHit(campaign, enemy.id, sheet.id) : null;
+  if (wound) {
+    out.wound = wound;
   }
   if (extras.creature) {
     const lines = landNaturalOnHit(campaign, {

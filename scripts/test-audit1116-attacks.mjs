@@ -717,6 +717,62 @@ await test("G19: a Giant Slayer's hit asks a giant for a DC 15 Strength save or 
   assert.equal(kit.dummy().conditions.includes("prone"), false);
 });
 
+// ---- G20: Sword of Wounding ----
+
+await test("G20: a Sword of Wounding's hit wounds the creature once per turn; at its turn start it bleeds 1d4 necrotic a wound, then a DC 15 Constitution save closes them", async () => {
+  // SRD 5.1, Sword of Wounding: "Once per turn, when you hit a creature with
+  // an attack using this magic weapon, you can wound the target. At the
+  // start of each of the wounded creature's turns, it takes 1d4 necrotic
+  // damage for each time you've wounded it, and it can then make a DC 15
+  // Constitution saving throw, ending the effect of all such wounds on
+  // itself on a success." The blade carried no rider at all.
+  const { turnStartEffects } = await import("../src/lib/dm/turn-start-effects.ts");
+  await freshArena();
+  dress({ saveMods: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 }, traits: [] });
+  // It needs attunement (SRD 5.1); an unattuned blade is a plain sword.
+  arm({ str: 16, equipment: [{ name: "Sword of Wounding", qty: 1, attuned: true }] });
+  kit.stand(hero.id, 1);
+  let swing = await kit.swing(hero.id, { weapon: "Sword of Wounding" }, 15, 4);
+  assert.equal(swing.ok, true, swing.error);
+  const wound = () => kit.dummy().conditions.find((entry) => /sword wound/i.test(entry));
+  const stacks = () => kit.dummy().conditionMeta[wound()]?.stacks;
+  assert.ok(wound(), `the hit left no wound: ${JSON.stringify(swing.result)}`);
+  assert.equal(stacks(), 1);
+  // A second hit the same turn wounds no more.
+  swing = await kit.swing(hero.id, { weapon: "Sword of Wounding" }, 15, 4);
+  assert.equal(swing.ok, true, swing.error);
+  assert.equal(stacks(), 1, "a second hit in one turn wounded again");
+  // The creature's turn starts: 1d4 necrotic of 3, a save of 5 fails.
+  const turnStart = (...faces) => {
+    world.clearDice();
+    world.dice(...faces);
+    const enemy = kit.dummy();
+    const lines = turnStartEffects(world.campaign(), world.encounter(), [enemy.id], new Map([[enemy.id, enemy]]), []);
+    world.clearDice();
+    return lines;
+  };
+  let before = kit.dummy().currentHp;
+  turnStart(3, 5);
+  assert.equal(before - kit.dummy().currentHp, 3, "the wound did not bleed");
+  assert.ok(wound(), "a failed save closed the wound");
+  // Then a save of 18 closes it.
+  before = kit.dummy().currentHp;
+  turnStart(2, 18);
+  assert.equal(before - kit.dummy().currentHp, 2);
+  assert.equal(wound(), undefined, "a made save left the wound open");
+  // The opportunity attack wounds too.
+  world.patch(anchor.id, { equipment: [{ name: "Shortbow", qty: 1 }] });
+  encounters.saveEncounter({ ...world.encounter(), reactionsUsed: [anchor.id] });
+  place(anchor.id, 9, 9);
+  place(kit.dummy().id, 3, 0);
+  place(hero.id, 2, 0);
+  world.clearDice();
+  world.dice(15, 4);
+  const notes = resolvePcOpportunityAttacks(world.campaign(), kit.dummy().id, { x: 3, y: 0 }, { x: 5, y: 0 }, [{ x: 4, y: 0 }, { x: 5, y: 0 }]);
+  world.clearDice();
+  assert.ok(wound(), `the opportunity attack left no wound: ${JSON.stringify(notes)}`);
+});
+
 await kit.endFight();
 world.close();
 finish();
