@@ -283,6 +283,15 @@ export function dismountSave(cause: DismountCause): { dc: number; ability: "dex"
   return cause === "voluntary" || cause === "mount-prone" ? null : { dc: DISMOUNT_SAVE_DC, ability: "dex" };
 }
 
+// "If you're knocked prone while mounted, you must make the same saving
+// throw" (SRD 5.1, Mounting and Dismounting). The save is owed for being laid
+// prone, once: a rider prone before an engine call and prone after it was
+// not knocked prone by it (one who kept the saddle and has not stood yet, or
+// a table set down that way), and owes nothing.
+export function riderKnockedProne(wasProne: boolean, isProne: boolean): boolean {
+  return isProne && !wasProne;
+}
+
 // PHB p.198: mounting or dismounting costs half the rider's movement.
 export function mountCost(riderSpeed: number): number {
   return Math.floor(Math.max(0, riderSpeed) / 2);

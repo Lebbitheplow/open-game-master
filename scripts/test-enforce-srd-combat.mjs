@@ -642,6 +642,52 @@ await test("CMB-10 the mount as a target: an attack aimed at a dodging warhorse 
   assert.deepEqual(wrong, [], wrong.join("; "));
 });
 
+// combat, Mounting and Dismounting: 'If an effect moves your mount against its will while you're on it, you must succeed on a DC 10 Dexterity saving throw or fall off the mount, landing prone in a space within 5 feet of it. If you're knocked prone while mounted, you must make the same saving throw.'
+await test("A rider knocked prone fails the DC 10 Dexterity save and falls from the mount, with no dismount call", async () => {
+  await stage(fighter);
+  kit.place(fighter.id, 5, 5, 0);
+  const up = await world.invoke("mount_up", { characterId: fighter.id, mount: "Warhorse" });
+  assert.equal(up.ok, true, up.error);
+  try {
+    const { out, unused } = await forced([1], "set_condition", { characterId: fighter.id, condition: "prone", reason: "knocked down" });
+    assert.equal(out.ok, true, out.error);
+    assert.equal(unused, 0, "a rider laid prone rolled no save to stay mounted");
+    assert.ok(world.sheet(fighter.id).conditions.includes("prone"), "the fallen rider is not prone");
+    assert.equal(getMounts(world.campaignId)[fighter.id], undefined, "a rider who failed the save is still mounted");
+  } finally {
+    setMount(world.campaignId, fighter.id, null);
+    world.clearDice();
+    world.patch(fighter.id, { conditions: [], conditionMeta: {} });
+  }
+});
+
+await test("A rider knocked prone who makes the save keeps the saddle, and rolls again only when knocked prone again", async () => {
+  await stage(fighter);
+  kit.place(fighter.id, 5, 5, 0);
+  const up = await world.invoke("mount_up", { characterId: fighter.id, mount: "Warhorse" });
+  assert.equal(up.ok, true, up.error);
+  try {
+    const first = await forced([20], "set_condition", { characterId: fighter.id, condition: "prone", reason: "knocked down" });
+    assert.equal(first.unused, 0, "a rider laid prone rolled no save to stay mounted");
+    assert.equal(getMounts(world.campaignId)[fighter.id]?.name, "Warhorse", "a rider who made the save came off the mount");
+    assert.ok(world.sheet(fighter.id).conditions.includes("prone"));
+    // The same prone asks for no second save: a 1 offered to the next call goes unrolled.
+    const later = await forced([1], "take_action", { characterId: fighter.id, action: "dodge" });
+    assert.equal(later.unused, 1, "the prone they kept the saddle through rolled a second save");
+    assert.equal(getMounts(world.campaignId)[fighter.id]?.name, "Warhorse");
+    // Up again, then knocked prone again: a new save, failed.
+    world.patch(fighter.id, { conditions: [], conditionMeta: {} });
+    await world.invoke("take_action", { characterId: fighter.id, mount: true, action: "dodge" });
+    const again = await forced([1], "set_condition", { characterId: fighter.id, condition: "prone", reason: "knocked down" });
+    assert.equal(again.unused, 0, "a rider knocked prone a second time rolled no save");
+    assert.equal(getMounts(world.campaignId)[fighter.id], undefined, "a rider who failed the second save is still mounted");
+  } finally {
+    setMount(world.campaignId, fighter.id, null);
+    world.clearDice();
+    world.patch(fighter.id, { conditions: [], conditionMeta: {} });
+  }
+});
+
 // ---- Initiative ----
 
 // combat, Initiative: 'The GM makes one roll for an entire group of identical creatures, so each member of the group acts at the same time.'
