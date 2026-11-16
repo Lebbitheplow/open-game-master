@@ -231,4 +231,26 @@ await test("W06 downtime and a pass_time of whole days give a long rest for each
   await peace();
 });
 
+await test("W07 a torch carried but not lit gives no light to see by off the board; lit, it does", async () => {
+  // SRD 5.1, Vision and Light: in darkness "A creature effectively suffers
+  // from the blinded condition when trying to see something in that area."
+  // Torch: "A torch burns for 1 hour, providing bright light": a lit one.
+  // The record of a lit light (W01) says which it is.
+  await peace();
+  place("The Drowned Stair", "cave");
+  const { rollerLight } = await import("../src/lib/dm/place-light.ts");
+  const scout = world.addHero({ class: "fighter", level: 3, maxHp: 30, abilities: { wis: 14 }, equipment: [{ name: "Torch", qty: 2 }] });
+  assert.equal(torchesOf(scout.id)?.litAt, undefined, "the torch starts in the pack, unlit");
+  assert.equal(rollerLight(world.campaignId, world.sheet(scout.id)), "dark", "a roll by sight reads the dark");
+  const dark = await world.invoke("check_notice", { dc: 5, characterIds: [scout.id], reason: "a tripwire on the stair" });
+  assert.equal(dark.ok, true, dark.error);
+  assert.deepEqual(dark.result.noticedBy, [], "an unlit torch in the pack showed the tripwire");
+  assert.match(dark.result.applied.join(" "), /darkness: sees nothing.*use_item/, "the GM is told the torch is there to light");
+  const lit = await world.invoke("use_item", { characterId: scout.id, item: "Torch" });
+  assert.equal(lit.ok, true, lit.error);
+  assert.equal(rollerLight(world.campaignId, world.sheet(scout.id)), "bright");
+  const seen = await world.invoke("check_notice", { dc: 5, characterIds: [scout.id], reason: "a tripwire on the stair" });
+  assert.deepEqual(seen.result.noticedBy, [world.sheet(scout.id).name], "the lit torch shows it");
+});
+
 finish();

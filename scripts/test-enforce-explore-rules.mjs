@@ -149,7 +149,8 @@ await test("Off the board the light is the place's, by its scene, not the sky's:
   await at(12);
   withScene(upsertCurrentLocation({ campaignId: world.campaignId, name: "Goblin Cave", layoutDescription: "a damp cavern under the hill" }), "cave");
   assert.equal(await notices(), false, "a cave at noon was bright");
-  world.patch(scout.id, { equipment: [{ name: "Torch", qty: 1 }] });
+  // A lit one: a torch still in the pack lights nothing (W07).
+  world.patch(scout.id, { equipment: [{ name: "Torch", qty: 1, litAt: clockOf(world) }] });
   assert.equal(await notices(), true, "a torch in the cave gave no light");
   world.patch(scout.id, { equipment: [] });
   upsertCurrentLocation({ campaignId: world.campaignId, name: "Kingsroad", layoutDescription: "an open road" });
