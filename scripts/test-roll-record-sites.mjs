@@ -33,7 +33,9 @@ const BY_HAND = {
   store: /\binsertRoll\(/g,
   // The publish and its event name, which may sit a line apart.
   send: /\bpublish\w*\([^;]{0,240}?"roll_result"/g,
-  join: /\brollIds\.push\(/g,
+  // Onto a turn's list in hand, in any of the ways a list grows, or onto its
+  // stored row.
+  join: /\brollIds\.(?:push|unshift|splice|concat)\(|\.rollIds\s*=(?!=)|\bjoinStoredTurn\(/g,
 };
 const KINDS = Object.keys(BY_HAND);
 

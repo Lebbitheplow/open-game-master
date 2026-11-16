@@ -22,6 +22,9 @@
 //   card on that message's rollIds. Such a roll joins no turn, so the card is
 //   drawn once.
 //
+// One kind of roll has neither and stands apart (`home: "apart"`): a
+// storyteller's secret, read from the roll list by the two seats that may.
+//
 // A new site that stores a roll calls recordRoll rather than insertRoll, a
 // publish of "roll_result" and a push onto rollIds:
 // scripts/test-roll-record-sites.mjs walks the source for those three and
@@ -56,7 +59,11 @@ export type RollRecord = RollInsert & {
   turn?: DmTurn | null;
   turnId?: string | null;
   // "line": the site posts a line of its own that carries the card.
-  home?: "turn" | "line";
+  // "apart": on no turn and no line. A storyteller's secret (roll-card.ts
+  // secretRoll): a turn's cards are named in the message every seat is sent,
+  // and that such a roll was made at all would give it away
+  // (src/lib/dm/viewer.ts rollAccessFor).
+  home?: "turn" | "line" | "apart";
   // Null for dice the site threw where it stands. Left out, it is read off
   // the held call: dice the player entered for this character and kind.
   landing?: RollLanded | null;
@@ -70,7 +77,10 @@ export function recordRoll(record: RollRecord): StoredRoll {
   // Dice rolled at the table are on record as the player's own, as a roll
   // card's are (pending-roll-land.ts).
   const stored = { ...insert, ...(landing?.physical ? { detail: `${insert.detail || insert.kind} (physical)` } : {}) } as RollInsert;
-  const target = home === "line" ? null : turnFor(turn ?? null, turnId ?? turn?.id ?? null);
+  // An id handed with a turn that is not that turn's own wins: the roll joins
+  // one turn, never the two.
+  const id = turnId ?? turn?.id ?? null;
+  const target = home === "line" || home === "apart" ? null : turnFor(turn && turn.id === id ? turn : null, id);
   let roll: StoredRoll;
   if (target?.storedId) {
     // The roll and its place on the turn stand or fall together.

@@ -115,6 +115,9 @@ export function secretRoll(
     dc,
     visibility: "secret",
     turn,
+    // Handed no turn, it joins none, a GM call's own included: the turn's
+    // cards are named in the message every seat is sent.
+    home: turn ? "turn" : "apart",
     landing: null,
     // Only the player whose character it is for is sent it.
     send: Boolean(characterId),

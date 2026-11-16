@@ -435,6 +435,8 @@ function recordProblems(mark, seq, cards) {
       }
     } else if (told.some((source) => source !== "digital") || /\(physical\)$/.test(roll.detail)) {
       problems.sent.push(`${what}: the server's dice, sent as [${told.join(", ")}]`);
+    } else if (roll.visibility === "public" && !told.length) {
+      problems.sent.push(`${what}: the server's dice, for every seat, sent to none`);
     }
     if (!roll.attacker && roll.characterId && (roll.kind === "attack" || roll.kind === "damage") && !entered.has(roll.id)) {
       problems.roller.push(`${what}: nobody is named as rolling it, so it reads as the roll of the character it lands on`);
