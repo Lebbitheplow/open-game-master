@@ -22,7 +22,7 @@ import { holdsFeat } from "@/lib/srd/feat-effects";
 import { spendHitDice } from "@/lib/dm/hit-dice";
 import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
 import { charmedBy } from "@/lib/dm/enemy-profile";
-import { effectiveSpeed } from "@/lib/dm/condition-logic";
+import { slowedSpeed } from "@/lib/dm/vitals-logic";
 import { characterEscape } from "@/lib/dm/grapple";
 import { callsManacles, foesManacles, manaclesUse } from "@/lib/dm/manacles";
 import { setCarriedTrap } from "@/lib/dm/set-traps";
@@ -507,7 +507,8 @@ export function handleTakeAction(
       // "The increase equals your speed, after applying any modifiers" (SRD
       // 5.1, Dash): at speed 0 it buys nothing, as the Hand's card says, and
       // a grappled hero's action was spent on it.
-      if (inFight && effectiveSpeed(sheet.conditions, sheet.speed) === 0) {
+      // Exhaustion's 0 as well (vitals-logic.ts slowedSpeed).
+      if (inFight && slowedSpeed(sheet) === 0) {
         return { error: `${sheet.name}'s speed is 0, so a Dash goes nowhere. Nothing was spent.`, refused: "rules" };
       }
       // Each Dash adds the speed again, so a second one (Cunning Action,

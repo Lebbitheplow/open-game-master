@@ -290,5 +290,41 @@ await test("D07: shoving the grappler out of reach ends its grapple", async () =
   assert.equal(field.sheet(kara.id).conditions.includes("grappled"), false, "the goblin let go from 10 feet away");
 });
 
+// D08. SRD 5.1, Exhaustion: "2: Speed halved", "5: Speed reduced to 0". The
+// board's walk counted it, but GAME STATE printed the sheet's whole speed
+// (a berserker two frenzies in read "Speed 30" while the board gave 15), the
+// AI's and the Hand's Dash at level 5 spent the action on a run of 0 feet,
+// and time passing stood a prone hero at level 5 up, who has no movement to
+// stand with.
+await test("D08: GAME STATE gives the speed exhaustion leaves", async () => {
+  const { describeSheet } = await import("../src/lib/dm/prompt.ts");
+  const tired = field.addHero({ name: "Tamsin", class: "barbarian", level: 3, maxHp: 30, speed: 30 });
+  field.patch(tired.id, { exhaustion: 2 });
+  assert.match(describeSheet(field.sheet(tired.id), "a player", false), /\| Speed 15 \|/);
+  field.patch(tired.id, { exhaustion: 5 });
+  assert.match(describeSheet(field.sheet(tired.id), "a player", false), /\| Speed 0 \|/);
+});
+
+await test("D08: a Dash at exhaustion 5 is refused and spends nothing", async () => {
+  await board.endFight();
+  await board.fight(1, { heroFaces: { [kara.id]: 20 } });
+  board.giveTurn(kara.id);
+  field.patch(kara.id, { exhaustion: 5 });
+  const dash = await field.invoke("take_action", { characterId: kara.id, action: "dash" });
+  field.patch(kara.id, { exhaustion: 0 });
+  assert.equal(dash.ok, false, `the Dash was taken at speed 0: ${JSON.stringify(dash.result)}`);
+  assert.equal(field.encounter().turnBudget?.actionUsed ?? false, false, "the action was spent");
+});
+
+await test("D08: time passing does not stand a hero up at exhaustion 5", async () => {
+  await board.endFight();
+  field.patch(kara.id, { exhaustion: 5, conditions: ["prone"], conditionMeta: {} });
+  const waited = await field.invoke("pass_time", { amount: 10, unit: "minutes", reason: "waiting" });
+  assert.equal(waited.ok, true, waited.error);
+  const still = field.sheet(kara.id).conditions.includes("prone");
+  field.patch(kara.id, { exhaustion: 0, conditions: [], conditionMeta: {} });
+  assert.equal(still, true, "a hero at speed 0 stood up as the minutes passed");
+});
+
 closeTables();
 finish();
