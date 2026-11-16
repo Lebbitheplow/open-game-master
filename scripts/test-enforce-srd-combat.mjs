@@ -22,6 +22,9 @@ const kit = await combatKit(world);
 const { getDatabase } = await import("../src/lib/db/core.ts");
 const { dismountSave } = await import("../src/lib/srd/mounts.ts");
 const { getMounts, setMount } = await import("../src/lib/db/mounts.ts");
+const { onPersonsTurn } = await import("../src/lib/dm/invoke.ts");
+const { settleTurn, turnHolder } = await import("../src/lib/dm/encounter-tools.ts");
+const { applyDmMutation } = await import("../src/lib/dm/mutations.ts");
 const moveRoute = await world.route("campaigns/[campaignId]/battle-map/move");
 
 const SLOTS = { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 }, 3: { max: 2, used: 0 } };
@@ -518,8 +521,7 @@ await test("CMB-09", async () => {
   const down = await world.invoke("dismount", { characterId: fighter.id });
   if (!down.ok) {
     // Leave the next test a rider on foot either way.
-    await world.invoke("dismount", { characterId: fighter.id, cause: "forced-move" });
-    world.clearDice();
+    setMount(world.campaignId, fighter.id, null);
     world.patch(fighter.id, { conditions: [], conditionMeta: {} });
   }
   assert.equal(down.ok, false, "the rider mounted and dismounted in the same move");
@@ -543,9 +545,7 @@ await test("CMB-10", async () => {
     const ride = await walk(fighter, 16, 5);
     assert.equal(ride.status, 200, `a controlled warhorse could not Dash for a rider who used their action: ${JSON.stringify(ride.body).slice(0, 200)}`);
   } finally {
-    world.dice(20);
-    await world.invoke("dismount", { characterId: fighter.id, cause: "forced-move" });
-    world.clearDice();
+    setMount(world.campaignId, fighter.id, null);
     world.patch(fighter.id, { conditions: [], conditionMeta: {} });
   }
 });
@@ -586,9 +586,7 @@ await test("CMB-10 Disengage and Dodge: a controlled warhorse takes either with 
       wrong.push("the mount took a second action in the same turn");
     }
   } finally {
-    world.dice(20);
-    await world.invoke("dismount", { characterId: fighter.id, cause: "forced-move" });
-    world.clearDice();
+    setMount(world.campaignId, fighter.id, null);
     world.patch(fighter.id, { conditions: [], conditionMeta: {} });
   }
   assert.deepEqual(wrong, [], wrong.join("; "));
@@ -632,11 +630,7 @@ await test("CMB-10 the mount as a target: an attack aimed at a dodging warhorse 
       wrong.push("the rider stayed mounted on a warhorse at 0 hit points");
     }
   } finally {
-    if (getMounts(world.campaignId)[fighter.id]) {
-      world.dice(20);
-      await world.invoke("dismount", { characterId: fighter.id, cause: "forced-move" });
-      world.clearDice();
-    }
+    setMount(world.campaignId, fighter.id, null);
     world.patch(fighter.id, { currentHp: 44, conditions: [], conditionMeta: {} });
   }
   assert.deepEqual(wrong, [], wrong.join("; "));
@@ -686,6 +680,78 @@ await test("A rider knocked prone who makes the save keeps the saddle, and rolls
     world.clearDice();
     world.patch(fighter.id, { conditions: [], conditionMeta: {} });
   }
+});
+
+// A rider on the Warhorse at (5, 5), for the tests of the save to stay
+// mounted; `run` gets them off again whatever it leaves.
+async function riding(run) {
+  await stage(fighter);
+  kit.place(fighter.id, 5, 5, 0);
+  const up = await world.invoke("mount_up", { characterId: fighter.id, mount: "Warhorse" });
+  assert.equal(up.ok, true, up.error);
+  try {
+    await run();
+  } finally {
+    setMount(world.campaignId, fighter.id, null);
+    world.clearDice();
+    world.patch(fighter.id, { conditions: [], conditionMeta: {} });
+  }
+}
+
+await test("A rider who kept the saddle when knocked prone rolls no second save for a dismount sent for the same prone", async () => {
+  await riding(async () => {
+    const first = await forced([20], "set_condition", { characterId: fighter.id, condition: "prone", reason: "knocked down" });
+    assert.equal(first.unused, 0, "a rider laid prone rolled no save to stay mounted");
+    const again = await forced([1], "dismount", { characterId: fighter.id, cause: "rider-prone" });
+    assert.equal(again.unused, 1, "the dismount rolled the prone rider's save a second time");
+    assert.equal(again.out.ok, false, "a dismount for a prone the rider already saved against went through");
+    assert.match(again.out.error, /already made the DC 10 DEX save/);
+    assert.equal(getMounts(world.campaignId)[fighter.id]?.name, "Warhorse", "the second save took them off the horse");
+  });
+});
+
+await test("A dismount for a rider the table says was knocked prone lays the prone and asks the save once", async () => {
+  await riding(async () => {
+    const { out, unused } = await forced([20, 1], "dismount", { characterId: fighter.id, cause: "rider-prone" });
+    assert.equal(out.ok, true, out.error);
+    assert.equal(unused, 1, "the call asked the save twice: once in the dismount and once as the call finished");
+    assert.ok(world.sheet(fighter.id).conditions.includes("prone"), "the rider knocked prone is not prone");
+    assert.equal(getMounts(world.campaignId)[fighter.id]?.name, "Warhorse", "a rider who made the save came off the mount");
+  });
+});
+
+await test("A rider knocked prone inside a person's hand-on, whose backstop settles too, makes one save", async () => {
+  await riding(async () => {
+    world.clearDice();
+    world.diceLog();
+    world.dice(20, 1);
+    // onPersonsTurn settles what its run did; the run settles its own
+    // stretch first, as continueBackstop does for the enemies it plays.
+    onPersonsTurn(world.campaign(), (turn) => {
+      const inner = turnHolder(world.campaignId);
+      const sheets = world.sheets();
+      applyDmMutation(world.campaign(), turn.id, "set_condition", JSON.stringify({ characterId: fighter.id, condition: "prone", reason: "a wolf's bite" }), sheets, new Map(sheets.map((sheet) => [sheet.id, sheet])));
+      settleTurn(world.campaign(), inner);
+    });
+    const unused = world.clearDice();
+    assert.equal(unused, 1, "the hand-on and its backstop each asked the rider's save");
+    assert.equal(getMounts(world.campaignId)[fighter.id]?.name, "Warhorse", "the second save took them off the horse");
+  });
+});
+
+// combat, Mounting and Dismounting: 'If an effect moves your mount against its will while you're on it, you must succeed on a DC 10 Dexterity saving throw or fall off the mount, landing prone in a space within 5 feet of it.'
+await test("A rider whose mount is moved against its will keeps the saddle on a made save and falls prone off it on a failed one", async () => {
+  await riding(async () => {
+    const made = await forced([20], "dismount", { characterId: fighter.id, cause: "forced-move" });
+    assert.equal(made.out.ok, true, made.out.error);
+    assert.equal(made.unused, 0, "the moved mount's rider rolled no save");
+    assert.equal(getMounts(world.campaignId)[fighter.id]?.name, "Warhorse", "a rider who made the save came off the mount");
+    assert.ok(!world.sheet(fighter.id).conditions.includes("prone"), "a rider who kept the saddle is prone");
+    const failed = await forced([1], "dismount", { characterId: fighter.id, cause: "forced-move" });
+    assert.equal(failed.out.ok, true, failed.out.error);
+    assert.equal(getMounts(world.campaignId)[fighter.id], undefined, "a rider who failed the save is still mounted");
+    assert.ok(world.sheet(fighter.id).conditions.includes("prone"), "a rider who fell off did not land prone");
+  });
 });
 
 // ---- Initiative ----

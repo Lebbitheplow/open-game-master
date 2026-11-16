@@ -2,6 +2,10 @@ import { z } from "zod";
 import { landsOnFeet } from "@/lib/dm/fall-landing";
 import { type Campaign } from "@/lib/db/campaigns";
 import { getMounts, setMount } from "@/lib/db/mounts";
+import { getSheetById } from "@/lib/db/sheets";
+import { getDmTurn } from "@/lib/db/dm-turns";
+import { currentTurnId } from "@/lib/dm/job-control";
+import { isProne, saddleSave } from "@/lib/dm/mount-thrown";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
@@ -13,6 +17,7 @@ import {
   MOUNT_SIZES,
   mountCost,
   type MountSize,
+  type MountState,
 } from "@/lib/srd/mounts";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -20,7 +25,6 @@ import { getActiveEncounter } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, getTokenByRef, moveToken } from "@/lib/db/battle-maps";
 import { speedToTiles } from "@/lib/battlemap/movement";
 import { publishEphemeral } from "@/lib/events";
-import { rollCharacterSave } from "@/lib/dm/forced-save";
 import { applyDmMutation } from "@/lib/dm/mutations";
 import { claimOncePerTurn } from "@/lib/dm/action-budget";
 import { reactionRefusal } from "@/lib/dm/reaction-gate";
@@ -79,7 +83,7 @@ export const mountTools: ToolDef[] = [
     type: "function",
     function: {
       name: "dismount",
-      description: `Take a character off their mount. A voluntary dismount costs half their movement (taken from their own turn's movement on the board) and needs no roll. When something threw them, send cause: the server rolls their DC ${DISMOUNT_SAVE_DC} DEX save and lays them prone on a failure, and a mount that goes down costs their reaction to land standing (prone without one); do not roll it or set the condition yourself.`,
+      description: `Take a character off their mount. A voluntary dismount costs half their movement (taken from their own turn's movement on the board) and needs no roll. When their mount was moved against its will, send cause forced-move: the server rolls their DC ${DISMOUNT_SAVE_DC} DEX save, and they come off, landing prone, only on a failure. A rider knocked prone is asked the same save by the server as the call that knocked them down finishes, so send nothing for it; cause rider-prone is only for a rider the table says was knocked prone that no call laid prone (it lays the prone and asks the save once). A mount that goes down (mount-prone) costs their reaction to land standing (prone without one). Do not roll the save or set the condition yourself.`,
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -308,6 +312,9 @@ export function handleDismount(
     return { error: `${sheet.name} is not mounted.`, refused: "rules" };
   }
   const cause = args.cause ?? "voluntary";
+  if (cause === "forced-move" || cause === "rider-prone") {
+    return thrownRider(campaign, sheet, current, cause, sheets, sheetsById, turn);
+  }
   const spent = cause === "voluntary" ? spendMountingMovement(campaign, sheet, turn) : null;
   if (spent && "error" in spent) {
     return spent;
@@ -317,46 +324,71 @@ export function handleDismount(
   if (cause === "mount-prone") {
     return mountFalls(campaign, sheet, current.name, sheets, sheetsById, turn);
   }
-
-  if (cause === "voluntary") {
-    tableNote(campaign, `${sheet.name} dismounts.`);
-    return {
-      ok: true,
-      dismounted: current.name,
-      ...(spent?.charged ? { movementSpent: holdsFeature(sheet, SADDLE) ? mountingFeet(sheet) : mountCost(sheet.speed) } : {}),
-      note: spent?.charged
-        ? holdsFeature(sheet, SADDLE)
-          ? "A deliberate dismount costs them 5 feet of movement (Born to the Saddle), taken from this turn's movement on the board, and needs no roll."
-          : "A deliberate dismount costs half their movement, taken from this turn's movement on the board, and needs no roll."
-        : "A deliberate dismount needs no roll. No movement was charged: no turn of theirs is running on the board.",
-    };
-  }
-  // Thrown: the server rolls the DC 10 Dexterity save from the rider's sheet
-  // and lays them prone on a failure (SRD 5.1, Mounted Combat).
-  tableNote(campaign, `${sheet.name} is thrown from ${current.name}.`);
-  const save = turn
-    ? rollCharacterSave(campaign, turn, sheet, "dex", DISMOUNT_SAVE_DC, `${sheet.name}: DEX save to land on their feet`)
-    : null;
-  // Born to the Saddle: off a mount on the ground, on their feet (fall-landing.ts).
-  const standing = landsOnFeet(sheet, { offMount: true, feet: mountAloft(campaign.id, sheet.id) ? null : 5 });
-  const failed = !standing && (!save || !save.success);
-  if (failed && turn) {
-    applyDmMutation(
-      campaign,
-      turn.id,
-      "set_condition",
-      JSON.stringify({ characterId: sheet.id, condition: "prone", reason: `thrown from ${current.name}` }),
-      sheets,
-      sheetsById,
-    );
-  }
+  tableNote(campaign, `${sheet.name} dismounts.`);
   return {
     ok: true,
     dismounted: current.name,
-    save: save?.total ?? "failed automatically",
+    ...(spent?.charged ? { movementSpent: holdsFeature(sheet, SADDLE) ? mountingFeet(sheet) : mountCost(sheet.speed) } : {}),
+    note: spent?.charged
+      ? holdsFeature(sheet, SADDLE)
+        ? "A deliberate dismount costs them 5 feet of movement (Born to the Saddle), taken from this turn's movement on the board, and needs no roll."
+        : "A deliberate dismount costs half their movement, taken from this turn's movement on the board, and needs no roll."
+      : "A deliberate dismount needs no roll. No movement was charged: no turn of theirs is running on the board.",
+  };
+}
+
+// The mount moved against its will, or the rider knocked prone: the DC 10
+// Dexterity save, and they come off only on a failure (SRD 5.1, Mounting and
+// Dismounting; mount-thrown.ts). A rider already knocked prone was asked as
+// the call that laid them down finished: a dismount sent for the same prone
+// rolls nothing again. Without a running turn the save is rolled all the
+// same, on the call's turn when the engine knows one.
+function thrownRider(
+  campaign: Campaign,
+  sheet: CharacterSheet,
+  mount: MountState,
+  cause: "forced-move" | "rider-prone",
+  sheets: CharacterSheet[],
+  sheetsById: Map<string, CharacterSheet>,
+  turn?: DmTurn,
+): ToolResult {
+  const live = getSheetById(sheet.id) ?? sheet;
+  const turnId = currentTurnId();
+  const on = turn ?? (turnId ? getDmTurn(turnId) : null);
+  if (cause === "rider-prone") {
+    if (mount.keptSaddle && isProne(live.conditions)) {
+      return {
+        error: `${sheet.name} already made the DC ${DISMOUNT_SAVE_DC} DEX save to stay mounted when they were knocked prone, and kept the saddle: still on ${mount.name}, still prone. That prone asks no second save. To take them off, they dismount on their own turn (no cause), or something else throws them.`,
+        refused: "rules",
+      };
+    }
+    // Knocked prone by the table's word, not by a call: the prone is laid
+    // here, after the save marks it kept or the rider is off, so the settle
+    // at the end of this call finds nothing left to ask.
+    const save = saddleSave(campaign, live, mount, on, "knocked prone");
+    if (!isProne(live.conditions) && on) {
+      applyDmMutation(campaign, on.id, "set_condition", JSON.stringify({ characterId: sheet.id, condition: "prone", reason: save.kept ? `knocked prone on ${mount.name}` : `fell from ${mount.name}` }), sheets, sheetsById);
+    }
+    return save.kept
+      ? { ok: true, kept: mount.name, save: save.total, dc: DISMOUNT_SAVE_DC, note: save.line }
+      : { ok: true, dismounted: mount.name, save: save.total, dc: DISMOUNT_SAVE_DC, landed: "prone, within 5 feet of the mount", note: save.line };
+  }
+  const save = saddleSave(campaign, live, mount, on, "mount moved");
+  if (save.kept) {
+    return { ok: true, kept: mount.name, save: save.total, dc: DISMOUNT_SAVE_DC, note: save.line };
+  }
+  // Born to the Saddle: off a mount on the ground, on their feet (fall-landing.ts).
+  const standing = landsOnFeet(live, { offMount: true, feet: mountAloft(campaign.id, sheet.id) ? null : 5 });
+  if (!standing && on && !isProne(live.conditions)) {
+    applyDmMutation(campaign, on.id, "set_condition", JSON.stringify({ characterId: sheet.id, condition: "prone", reason: `thrown from ${mount.name}` }), sheets, sheetsById);
+  }
+  return {
+    ok: true,
+    dismounted: mount.name,
+    save: save.total,
     dc: DISMOUNT_SAVE_DC,
-    ...(failed ? { landed: "prone, within 5 feet of the mount" } : { landed: "on their feet" }),
-    ...(standing ? { note: `${standing}: they land on their feet.` } : {}),
+    landed: standing ? "on their feet" : "prone, within 5 feet of the mount",
+    note: standing ? `${save.line} ${standing}: they land on their feet.` : save.line,
   };
 }
 

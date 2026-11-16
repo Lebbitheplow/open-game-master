@@ -301,10 +301,16 @@ export function savesAbout(campaign: Campaign, encounter: Encounter, name: strin
     return bindAbout(name, args, sheets);
   }
   if (name === "dismount" && (args.cause === "forced-move" || args.cause === "rider-prone")) {
-    // Thrown from the saddle: the DC 10 Dexterity save to land on their feet
-    // (SRD 5.1, Mounted Combat; mount-tools.ts).
+    // The mount moved against its will or the rider knocked prone: the DC 10
+    // Dexterity save to stay in the saddle (SRD 5.1, Mounting and
+    // Dismounting; mount-thrown.ts). A rider who already made it for the
+    // prone they lie in is asked nothing again.
     const rider = sheets.find((sheet) => sheet.id === args.characterId);
-    return rider && getMounts(campaign.id)[rider.id] ? heroesAbout([rider], " to land on their feet") : null;
+    const mount = rider ? getMounts(campaign.id)[rider.id] : undefined;
+    if (!rider || !mount || (args.cause === "rider-prone" && mount.keptSaddle)) {
+      return null;
+    }
+    return heroesAbout([rider], " to stay in the saddle");
   }
   if (name === "cast_buff") {
     return shapeAbout(campaign, encounter, args, sheets);

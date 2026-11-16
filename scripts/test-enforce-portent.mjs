@@ -503,7 +503,7 @@ await test("A save one creature makes stops too: a hazard forcing a hero's save 
 // The saves a GM call throws inside it, with no card to wait on
 // (src/lib/dm/foresight-saves.ts): each stopped for nobody.
 const { setParty, getParty } = await import("../src/lib/db/party.ts");
-const { setMount } = await import("../src/lib/db/mounts.ts");
+const { getMounts, setMount } = await import("../src/lib/db/mounts.ts");
 
 await test("The hours of cold stop too, and the number lands on the first hour's save.", async () => {
   await passBackstops();
@@ -560,18 +560,19 @@ await test("A condition laid with its save stops for that save, a character's or
   kit.setEnemy(goblin2.id, { conditions: [], conditionMeta: {} });
 });
 
-await test("A rider thrown from the saddle stops for the save to land on their feet.", async () => {
+await test("A rider whose mount is moved stops for the save to stay in the saddle.", async () => {
   await passBackstops();
   arm();
   setMount(fightWorld.campaignId, target.id, { name: "Riding Horse", speed: 60, size: "large", controlled: true, hp: 13, maxHp: 13 });
   await enemyTurn([modelCall("dismount", { characterId: target.id, cause: "forced-move" })], "Kara is thrown.");
   const [stop] = stops();
   assert.ok(stop, "the save stops");
-  assert.match(stop.reason, /Kara is about to make a saving throw to land on their feet\./);
+  assert.match(stop.reason, /Kara is about to make a saving throw to stay in the saddle\./);
   assert.equal((await answer(stop.id, { value: 17 })).status, 200);
   await settleQueue(fightWorld.campaignId);
   assert.equal(saveRolls().at(-1)?.breakdown.natural, 17);
-  assert.ok(!fightWorld.sheet(target.id).conditions.includes("prone"), "17 lands on their feet");
+  assert.ok(!fightWorld.sheet(target.id).conditions.includes("prone"), "a 17 left them prone");
+  assert.ok(getMounts(fightWorld.campaignId)[target.id], "a 17 took them off the horse");
   setMount(fightWorld.campaignId, target.id, null);
 });
 
