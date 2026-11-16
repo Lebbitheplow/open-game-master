@@ -6,6 +6,8 @@
 import type { Campaign } from "@/lib/db/campaigns";
 import { withSide } from "@/lib/dm/combat-sides-logic";
 import { getNpcAway } from "@/lib/db/npc-minds";
+import { getCurrentLocation } from "@/lib/db/locations";
+import { textKey } from "@/lib/language/text-logic";
 import { getNpcById, listNpcs, setNpcState } from "@/lib/db/npcs";
 import { insertEnemy, setEncounterSides, type Encounter, type EncounterEnemy } from "@/lib/db/encounters";
 import { lastAppearanceOfNpc, latestAppearance } from "@/lib/db/foe-history";
@@ -24,9 +26,13 @@ export function fieldPartyNpcs(campaign: Campaign, encounter: Encounter, taken: 
   const following = new Set(
     partyFollowers(npcs.map((npc) => ({ id: npc.id, name: npc.name, aliases: npc.aliases, state: npc.state, away: Boolean(getNpcAway(npc.id)) }))),
   );
+  // Only who is where the fight is: one left behind when the party split
+  // does not take the board.
+  const here = textKey(getCurrentLocation(campaign.id)?.name ?? "");
   const fielded: Array<{ entry: ResolvedEnemyRequest; field: NonNullable<ReturnType<typeof allyField>> }> = [];
   for (const npc of npcs) {
-    if (!following.has(npc.id) || taken.has(npc.id) || fielded.length >= MAX_COMBATANTS) {
+    const elsewhere = here !== "" && npc.location.trim() !== "" && textKey(npc.location) !== here;
+    if (!following.has(npc.id) || elsewhere || taken.has(npc.id) || fielded.length >= MAX_COMBATANTS) {
       continue;
     }
     const field = allyField(npc.state);

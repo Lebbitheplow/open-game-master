@@ -175,7 +175,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { conscienceSecretLines, souredLeaving } from "@/lib/dm/conscience";
 import { companionMomentBlock, settleCompanionLeaving } from "@/lib/dm/departure-turn";
 import { intentLinesForPrompt } from "@/lib/dm/departure";
-import { partySplit } from "@/lib/dm/party-split";
+import { partySplit, splitsParty } from "@/lib/dm/party-split";
 import { agendaLinesForPrompt } from "@/lib/dm/companion-agenda";
 import { pactLinesForPrompt } from "@/lib/dm/pacts";
 import { returnDirectorNotes } from "@/lib/dm/companion-revenge";
@@ -4095,6 +4095,7 @@ export function handleLocationCall(
       name,
       layoutDescription,
       connections,
+      followers: !splitsParty(campaign, args.characterIds),
     });
     if (!onRecord) {
       madeIds.push(location.id);

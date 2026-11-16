@@ -85,4 +85,27 @@ await test("an ally killed in the fight is dead in their record; the wolves stil
   assert.doesNotMatch(JSON.stringify(ended.result), /bondsClosed/, "an ally is not mourned as a foe");
 });
 
+await test("some of the party go on: who travels with it stays behind, is not at the fight there, and comes when all go", async () => {
+  const sven = world.addHero({ name: "Sven", race: "human", class: "fighter" });
+  assert.ok((await world.invoke("move_party", { name: "Cortile" })).ok);
+  upsertNpc({ campaignId: world.campaignId, name: "Teren" });
+  state({ name: "Teren", withParty: true });
+  assert.equal(getNpcByName(world.campaignId, "Teren").location, "Cortile");
+  // Live play: Brakk went to the gate with two soldiers; the captain, her
+  // guards and the prisoners on the cart were dragged there with him.
+  assert.ok((await world.invoke("move_party", { name: "Porta", characterIds: [brakk.id] })).ok);
+  assert.equal(getNpcByName(world.campaignId, "Teren").location, "Cortile", "a split leaves him where he was");
+  assert.equal(getNpcByName(world.campaignId, "Aldren").location, "Cortile", "and the prisoner on the cart");
+  const fight = await world.beginFight([{ monster: "wolf" }]);
+  const names = encounters.listEnemies(fight.id).map((row) => row.displayName);
+  assert.ok(!names.includes("Teren") && !names.includes("Aldren"), `left in the courtyard, not at the gate's fight: ${names.join(", ")}`);
+  for (const row of encounters.listEnemies(fight.id)) {
+    encounters.patchEnemyHp(row.id, 0, "dead");
+  }
+  assert.ok((await world.invoke("end_encounter", { outcome: "victory" })).ok);
+  assert.ok((await world.invoke("move_party", { name: "Cortile", characterIds: [brakk.id, sven.id] })).ok);
+  assert.ok((await world.invoke("move_party", { name: "Strada" })).ok);
+  assert.equal(getNpcByName(world.campaignId, "Teren").location, "Strada", "the whole party moving takes him along again");
+});
+
 finish();

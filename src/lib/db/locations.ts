@@ -139,6 +139,8 @@ export function upsertCurrentLocation(input: {
   name: string;
   layoutDescription?: string;
   connections?: string[];
+  // false when the party splits: who travels with it stays where it was.
+  followers?: boolean;
 }): CampaignLocation {
   const db = getDatabase();
   const now = nowIso();
@@ -186,7 +188,9 @@ export function upsertCurrentLocation(input: {
   });
 
   const id = apply();
-  followParty(input.campaignId, input.name.trim().slice(0, 80));
+  if (input.followers !== false) {
+    followParty(input.campaignId, input.name.trim().slice(0, 80));
+  }
   const location = getLocation(id);
   if (!location) {
     throw new Error("Failed to upsert location.");
