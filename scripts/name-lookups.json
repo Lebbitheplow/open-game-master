@@ -9,6 +9,10 @@
     "authoring": "the workshop's and WorldForge's authoring tools, which read what an author writes as they go"
   },
   "sites": {
+    "components/ui/GameIcon.tsx#keyed": [["key",2,"inventory and genre painting ids select measured image scales from the asset metadata"]],
+    "lib/inventory-art-logic.ts#whole": [["key",1,"a normalized illustration slug matched to an authored special painting key; this selects art, never a rules record"]],
+    "lib/inventory-art-logic.ts#partial": [["key",3,"illustration slug prefixes and leading or trailing physical-form tokens select decorative categories after canonical equipment matching"],["pattern",5,"fixed focus, wooden-shield, potion, scroll and rope patterns select artwork only; unknown names retain their category icon and no equipment rules depend on the painting"]],
+    "lib/inventory-art-logic.ts#keyed": [["key",2,"approved painting ids and physical-form slug keys select illustrative assets; a miss keeps the category icon and changes no item identity"]],
     "lib/theme-mode.ts#keyed": [["key",2,"browser preference cache entries are addressed by fixed storage keys, never by player-written names"]],
     "lib/theme-mode.ts#whole": [["key",1,"stored preference and artwork sentinel values select display behavior, not game records named by people"]],
     "components/ui/LobbyIcon.tsx#fallback": [["key",1,"a fixed heading-glyph key selects a decorative icon; an unknown key gets a generic settings fitting and changes no game identity"]],
@@ -891,7 +895,7 @@
     "components/sheet/useSpellPool.ts#whole": [["identity",1,"spells by whole name; class lists by slug"]],
     "components/ui/DateTimePicker.tsx#number": [["key",5,"digits a regex already captured, ids, headers, stored and form numbers (number inputs), dice parts, the pack's English text (\"1,000 feet\", a purse); src/: every site read"]],
     "components/ui/DateTimePicker.tsx#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
-    "components/ui/GameIcon.tsx#partial": [["key",1,"the selected asset path's action folder determines rectangular framing, including the original card after a genre variant fails"]],
+    "components/ui/GameIcon.tsx#partial": [["key",1,"the selected asset path's action folder determines rectangular framing, including the original card after a genre variant fails"],["key",2,"fixed inventory and item asset paths extract painting ids for circular-image sizing"]],
     "components/ui/HostSvgImage.tsx#partial": [["pattern",2,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "components/ui/ImageLightbox.tsx#normalizer": [["key",1,"slugs, hosts, file names, ids, env values, display text, throttle keys, model ids (src/: every site read)"]],
     "components/ui/ImageLightbox.tsx#partial": [["pattern",1,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
@@ -1004,7 +1008,7 @@
     "lib/backgrounds/index.ts#whole": [["identity",2,"a background feature by its whole name (textKey)"]],
     "lib/battlemap/attack-art.ts#keyed": [["key",1,"a card painting picked by an SRD beast form and its attack, each by its whole name (textKey); a miss shows the neutral natural-attack painting and no rule reads the choice"]],
     "lib/battlemap/card-art.ts#keyed": [["key",1,"a weapon or gear card painting by the item's icon slug, the same slug its round icon is found by (src/lib/icons.ts); a miss keeps the round icon"]],
-    "lib/equipment-art-logic.ts#keyed": [["key",3,"a genre equipment painting by the complete catalogue icon slug after the generated weapon spellings and bonus normalization, or through a generated gear spelling (src/lib/equipment-art-aliases.json) to its canonical slug; a miss preserves the supplied icon"]],
+    "lib/equipment-art-logic.ts#keyed": [["key",3,"a genre equipment painting by the complete catalogue icon slug after the generated weapon spellings and bonus normalization, or through a generated gear spelling (src/lib/equipment-art-aliases.json) to its canonical slug; a miss preserves the supplied icon"],["key",1,"an inventory painting id reads its authored canonical item key so existing genre art can still be selected"]],
     "lib/equipment-art-logic.ts#whole": [["key",1,"an authored base card id matched exactly to its genre variant; this selects artwork and applies no equipment rules"]],
     "lib/equipment-art-logic.ts#partial": [["parse",1,"the complete comma-inverted book spelling is reordered before a whole-name lookup"],["key",1,"a generated weapon spelling (src/lib/equipment-art-aliases.json) is matched by its entire key after word separators are removed, as in weaponNamed; no substring selects a painting"],["parse",1,"an authored base card id (src/lib/equipment-art.json) split after its kind prefix (weapon-, armor-, gear-) into the item slug it paints; never a name a person typed"]],
     "lib/battlemap/beats.ts#switch": [["key",1,"switches on tool names, event kinds, key names and kinds"]],
