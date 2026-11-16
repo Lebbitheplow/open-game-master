@@ -20,6 +20,7 @@ const ai = await aiEngine(world);
 const { setMemberRealDice } = await import("../src/lib/db/campaigns.ts");
 const { listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
 const pendingRoute = await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]");
+const moveRoute = await world.route("campaigns/[campaignId]/battle-map/move");
 
 const hero = world.addHero({
   name: "Kara", class: "fighter", level: 5, maxHp: 80, proficiencies: TRAINED,
@@ -304,6 +305,40 @@ await test("The opportunity attack keeps the attacker's own d20 rules: a halflin
   } finally {
     world.patch(hero.id, { race: before.race, features: before.features, proficiencies: before.proficiencies, equipment: before.equipment });
   }
+});
+
+// Q02 (rules audit 2026-11-16, tactics). SRD 5.1, Underwater Combat: "When
+// making a melee weapon attack, a creature that doesn't have a swimming speed
+// (either natural or granted by magic) has disadvantage on the attack roll
+// unless the weapon is a dagger, javelin, shortsword, spear, or trident." An
+// opportunity attack is a melee attack; pc_attack and enemy_attack read the
+// rule, the two reaction doors did not.
+await test("Q02: a character standing in water swings a longsword's opportunity attack at disadvantage", async () => {
+  const [gnoll] = await stage(2);
+  kit.openField([[6, 7, "~"]]);
+  kit.place(hero.id, 6, 7);
+  kit.dice(15, 2);
+  const out = await flee(gnoll);
+  assert.match(out.result.opportunityAttacks?.[0] ?? "", /misses/, `the longsword swung from the water rolled one die: ${JSON.stringify(out.result.opportunityAttacks)}`);
+});
+
+await test("Q02: a creature with no swimming speed standing in water makes its opportunity attack at disadvantage", async () => {
+  const [gnoll] = await stage(1);
+  kit.openField([[5, 7, "~"]]);
+  kit.place(hero.id, 6, 7);
+  kit.giveTurn(hero.id);
+  kit.dice(15, 2);
+  // The player's own walk off the board (the move route).
+  world.signIn({ id: hero.userId });
+  const response = await moveRoute.POST(
+    new Request(`http://odm.test/api/campaigns/${world.campaignId}/battle-map/move`, { method: "POST", body: JSON.stringify({ x: 9, y: 7 }) }),
+    { params: Promise.resolve({ campaignId: world.campaignId }) },
+  );
+  const body = await response.json().catch(() => ({}));
+  world.clearDice();
+  assert.equal(response.status, 200, JSON.stringify(body));
+  assert.equal(kit.enemy(gnoll.id).status, "alive");
+  assert.match(body.opportunityAttacks?.[0] ?? "", /miss/i, `the club swung from the water rolled one die: ${JSON.stringify(body.opportunityAttacks ?? body)}`);
 });
 
 await finish();

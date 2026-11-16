@@ -56,6 +56,20 @@ export function underwaterSwing(input: {
     : { disadvantage: true, misses: false, note: `underwater: a ${input.weapon} shot through water is at disadvantage` };
 }
 
+// An opportunity attack is a melee weapon attack like the turn's own (SRD
+// 5.1, Opportunity Attacks), so a creature under the water makes it with the
+// same handicap. Both reaction doors read it here (a character's,
+// opportunity-strike.ts; a creature's, opportunity.ts): they skipped it, so
+// a fighter with no swimming speed struck a fleeing creature with a
+// longsword on a straight roll from the bottom of a pool.
+export function underwaterOpportunity(
+  campaignId: string,
+  attackerRefId: string,
+  swing: { weapon: string; base: string | undefined; swims: boolean },
+): UnderwaterSwing {
+  return isImmersed(campaignId, attackerRefId) ? underwaterSwing({ ...swing, melee: true, beyondNormal: false }) : CLEAR;
+}
+
 // Whether a combatant stands in a water square of the board in play.
 export function isImmersed(campaignId: string, refId: string): boolean {
   const encounter = getActiveBoard(campaignId);
