@@ -32,6 +32,8 @@ import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { healthState } from "@/lib/bestiary/health";
 import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
 import { coverFor } from "@/lib/dm/attack-spatial";
+import { isPactWeapon } from "@/lib/srd/pact-weapon";
+import { textKey } from "@/lib/language/text-logic";
 import { attackSenses, attackSight, characterSenses, enemySenses, fearAsRolled, lightOnAttack } from "@/lib/dm/attack-light";
 import { adjudicateHit, weaponAttackProfile, type ResolvedWeapon } from "@/lib/dm/attack-logic";
 import { endInvisibilityOnCast, planMarks, writeMarks } from "@/lib/dm/attack-marks";
@@ -137,7 +139,11 @@ export function pcOpportunitySwing(input: {
   const shillelagh = shillelaghSwing(sheet, resolved, derived);
   // Hex Warrior's Charisma, as on the turn's swing (pc-attack-profile.ts).
   const hexed = shillelagh ? null : hexWarriorSwing(sheet, resolved, derived);
-  let profile = weaponAttackProfile(shillelagh?.derived ?? hexed?.derived ?? derived, sheet.proficiencies.weapons, shillelagh?.resolved ?? resolved, {
+  // SRD 5.1, Pact of the Blade: "You are proficient with it while you wield
+  // it", on the reaction's swing as on the turn's (pc-attack-profile.ts). A
+  // warlock's pact longsword struck without the bonus.
+  const pactForm = resolved.srd && isPactWeapon(sheet, resolved.displayName, resolved.srd.kind === "melee") ? [textKey(resolved.srd.name)] : [];
+  let profile = weaponAttackProfile(shillelagh?.derived ?? hexed?.derived ?? derived, [...sheet.proficiencies.weapons, ...pactForm], shillelagh?.resolved ?? resolved, {
     riders,
     martialArts: martialArtsApplies(sheet),
     // A worn item's bonus rides the reaction's swing as it does the turn's.

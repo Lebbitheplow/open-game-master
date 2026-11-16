@@ -282,6 +282,33 @@ await test("G06: a creature's 10-foot reach makes no opportunity attack through 
   assert.equal(world.sheet(hero.id).currentHp, 30, `the swing struck through the wall: ${out.notes.join(" ")}`);
 });
 
+// ---- G07: a pact weapon is proficient on an opportunity attack ----
+
+await test("G07: a Pact of the Blade warlock's opportunity attack with the pact weapon adds the proficiency the turn's swing adds", async () => {
+  // SRD 5.1, Pact of the Blade: "You are proficient with it while you wield
+  // it." pc_attack counted it; the reaction's swing read only the sheet's
+  // weapon training (simple weapons, for a warlock).
+  const { optionFeatureName } = await import("../src/lib/srd/options.ts");
+  const goblin = await freshArena();
+  world.patch(anchor.id, { equipment: [{ name: "Shortbow", qty: 1 }] });
+  const plain = world.sheet(hero.id).features.filter((feature) => !/pact/i.test(feature.name));
+  arm({ str: 16, weapons: ["simple"], equipment: [{ name: "Longsword", qty: 1 }], features: [...plain, { name: optionFeatureName("pact_boon", "Pact of the Blade"), source: "class" }] });
+  place(anchor.id, 9, 9);
+  place(goblin.id, 3, 0);
+  place(hero.id, 2, 0);
+  // The turn's swing: 5 + 3 + 3 = 11 hits AC 10.
+  const turn = await kit.swing(hero.id, { weapon: "Longsword" }, 5, 4);
+  assert.equal(turn.result.rolled, 5 + abilityMod(16) + PB, "the turn's swing left out the pact weapon's proficiency");
+  // The goblin walks away: the same 5 must hit too (8 without the bonus misses).
+  world.clearDice();
+  world.dice(5, 4);
+  const before = kit.dummy().currentHp;
+  const notes = resolvePcOpportunityAttacks(world.campaign(), goblin.id, { x: 3, y: 0 }, { x: 5, y: 0 }, [{ x: 4, y: 0 }, { x: 5, y: 0 }]);
+  world.clearDice();
+  assert.equal(before - kit.dummy().currentHp, 4 + abilityMod(16), `the opportunity attack left out the proficiency: ${JSON.stringify(notes)}`);
+  world.patch(hero.id, { features: plain });
+});
+
 await kit.endFight();
 world.close();
 finish();
