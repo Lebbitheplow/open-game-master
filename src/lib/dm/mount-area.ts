@@ -24,6 +24,7 @@ import { getMounts, setMount } from "@/lib/db/mounts";
 import { insertRoll } from "@/lib/db/rolls";
 import { rollExpression } from "@/lib/dice";
 import { handleDismount } from "@/lib/dm/mount-tools";
+import { mountedPet } from "@/lib/dm/pet-mount";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
@@ -49,6 +50,11 @@ export function areaOnMount(input: {
   const { campaign, turn, rider } = input;
   const mount = getMounts(campaign.id)[rider.id];
   if (input.ability !== "dex" || input.total <= 0 || !mount || mount.hp === undefined || mount.hp <= 0) {
+    return null;
+  }
+  // A ridden drake is the rider's pet, which the area strikes as a pet
+  // (pet-save.ts areaOnPets): struck here too, it took the blast twice.
+  if (mountedPet(rider, mount)) {
     return null;
   }
   // Aura of Protection covers "a friendly creature within 10 feet" (SRD

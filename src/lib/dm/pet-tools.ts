@@ -39,6 +39,7 @@ import { resolveMonster } from "@/lib/bestiary";
 import { commandPet, drakeSummonCost, essenceChoice } from "@/lib/dm/pet-command";
 import { petResistLine, petUnderwaterSwing } from "@/lib/dm/pet-underwater";
 import { petAttackBoard } from "@/lib/dm/pet-attack-board";
+import { fallFromPet, ridesPet } from "@/lib/dm/pet-mount";
 
 // The creatures bound to a character: familiars (Find Familiar, Pact of the
 // Chain), the Beast Master's companion, the Drakewarden's drake, and story
@@ -569,9 +570,12 @@ export function hurtPet(
   // Drake Companion: it lasts "until it drops to 0 hit points": then it is
   // gone, until the ranger summons it again.
   if (hp <= 0 && current.kind === "drake") {
+    // Its rider comes down with it (pet-mount.ts).
+    const ridden = ridesPet(campaign.id, sheet.id, current);
     patchSheet(sheet.id, { pets: others });
     publishSheet(campaign, sheet.id);
-    return { ok: true, pet: current.name, damage: dealt, ...typed, ...defended, vanished: `${current.name} drops to 0 hit points and is gone. ${sheet.name} can summon it again (summon_pet).` };
+    const fall = ridden ? fallFromPet(campaign, sheet.id) : null;
+    return { ok: true, pet: current.name, damage: dealt, ...typed, ...defended, vanished: `${current.name} drops to 0 hit points and is gone. ${sheet.name} can summon it again (summon_pet).`, ...(fall ? { fall } : {}) };
   }
   if (hp <= 0 && current.kind === "familiar") {
     // A familiar at 0 HP vanishes; the spell brings it back later.

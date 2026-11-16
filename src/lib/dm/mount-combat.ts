@@ -28,6 +28,9 @@ import { attackSight, enemySenses, fearAsRolled, lightOnAttack, sensesReaching }
 import { attackContext, DODGING, mergeAdvantage, type AdvantageState } from "@/lib/dm/condition-logic";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { handleDismount } from "@/lib/dm/mount-tools";
+import { mountedPet } from "@/lib/dm/pet-mount";
+import { strikePet } from "@/lib/dm/pet-strike";
+import { getSheetById } from "@/lib/db/sheets";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -116,6 +119,12 @@ export function strikeMount(input: {
 }): ToolResult {
   const { campaign, turn, enemy, rider } = input;
   const mount = getMounts(campaign.id)[rider.id];
+  // A ridden drake is struck as the drake, on its own record: its Armor
+  // Class, its Dodge, its immunity, its 0 (pet-mount.ts).
+  const drake = mountedPet(getSheetById(rider.id) ?? rider, mount);
+  if (drake) {
+    return strikePet({ campaign, turn, encounterId: input.encounterId, enemy, owner: rider, petName: drake.name, swings: input.swings, distance: input.distance, cover: input.cover, requested: input.requested });
+  }
   if (!mount || mount.ac === undefined || mount.hp === undefined) {
     return { error: mountTargetProblem(campaign.id, rider) ?? "No mount to strike.", retry: true };
   }

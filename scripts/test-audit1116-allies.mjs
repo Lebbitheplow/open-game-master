@@ -234,4 +234,53 @@ await test("U03: a pet's attack reads the light, its target's cover and its bow'
   await kit.endFight();
 });
 
+// U04. Bond of Fang and Scale: the drake "can carry you as a mount"; Drake
+// Companion: it "is immune to" its essence and lasts "until it drops to 0
+// hit points"; SRD 5.1, Mounted Combat: "If your mount is knocked prone, you
+// can use your reaction to dismount it as it falls and land on your feet.
+// Otherwise, you are dismounted and fall prone." mount_up copied the
+// drake's numbers onto the mount record, and the two were kept apart: an
+// attack aimed at the mount left the drake whole, and a fire trap struck it
+// twice, once as the mount and once as the pet.
+await test("U04: a ridden drake is struck as the drake, once, and its rider comes down when it drops", async () => {
+  await kit.endFight();
+  const ranger = world.addHero({ class: "ranger", subclass: "Drakewarden", level: 7, maxHp: 60, proficiencies: { ...TRAINED } });
+  world.patch(ranger.id, { features: [...world.sheet(ranger.id).features, { name: "Bond of Fang and Scale (Fire)", source: "class" }] });
+  const drake = await world.invoke("summon_pet", { characterId: ranger.id, kind: "drake", form: "drake", essence: "fire" });
+  assert.equal(drake.ok, true, drake.error);
+  const pet = () => petOf(ranger.id, "drake");
+  const { getMounts } = await import("../src/lib/db/mounts.ts");
+  const up = await world.invoke("mount_up", { characterId: ranger.id, mount: "Drake" });
+  assert.equal(up.ok, true, up.error);
+  await kit.fight(1);
+  const [enemy] = world.enemies();
+  kit.place(ranger.id, 5, 5);
+  kit.place(enemy.id, 5, 6);
+  const full = pet().hp;
+
+  // The club at the mount: the drake's own hit points.
+  enemyHoldsTheFloor();
+  const club = await forced([18, 18, 3], () => world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: ranger.id, targetMount: true }));
+  assert.equal(club.ok, true, club.error);
+  assert.equal(pet().hp, full - 5, `the blow aimed at the ridden drake left the drake whole: ${JSON.stringify(club.result)}`);
+
+  // A fire trap: the drake is immune to fire, and is struck once, as itself.
+  const trap = await forced([3, 3, 3, 3, 10, 10, 10, 10], () => world.invoke("aoe_damage", { characterIds: [ranger.id], saveAbility: "dex", dc: 15, damage: "4d6", type: "fire", halfOnSave: true, reason: "a fire trap" }));
+  assert.equal(trap.ok, true, trap.error);
+  const row = trap.result.results[0];
+  assert.equal(row.mount, undefined, `the drake made a second save as the mount: ${JSON.stringify(row.mount)}`);
+  assert.equal(pet().hp, full - 5, "the fire-immune drake took fire");
+  assert.equal(getMounts(world.campaignId)[ranger.id]?.name, "Drake", "the ranger still rides");
+
+  // Dropped to 0, the drake is gone and its rider comes down.
+  world.patch(ranger.id, { pets: world.sheet(ranger.id).pets.map((entry) => (entry.kind === "drake" ? { ...entry, hp: 2 } : entry)) });
+  kit.freshRound();
+  enemyHoldsTheFloor();
+  const last = await forced([18, 18, 3, 10, 10], () => world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: ranger.id, targetMount: true }));
+  assert.equal(last.ok, true, last.error);
+  assert.equal(pet(), undefined, "the drake at 0 is gone");
+  assert.equal(getMounts(world.campaignId)[ranger.id], undefined, `the ranger still rides a drake that is gone: ${JSON.stringify(last.result)}`);
+  await kit.endFight();
+});
+
 finish();
