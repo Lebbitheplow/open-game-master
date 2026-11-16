@@ -334,6 +334,32 @@ await test("G08: a druid in wolf form makes its opportunity attack with the wolf
   assert.ok(kit.dummy().conditions.includes("prone"), `the bite's rider never landed: ${JSON.stringify(notes)}`);
 });
 
+// ---- G09: a silvered weapon is silvered on an opportunity attack ----
+
+await test("G09: a silvered sword's opportunity attack passes a lycanthrope's resistance, as the turn's swing does", async () => {
+  // SRD 5.1, Werewolf: "Damage Immunities bludgeoning, piercing, and
+  // slashing from nonmagical attacks not made with silvered weapons", and
+  // Silvered Weapons. pc_attack carries the blade's material to the
+  // resistance; the reaction's swing dropped it.
+  const goblin = await freshArena();
+  dress({ resist: "bludgeoning, piercing, and slashing from nonmagical attacks that aren't silvered" });
+  world.patch(anchor.id, { equipment: [{ name: "Shortbow", qty: 1 }] });
+  arm({ str: 16, equipment: [{ name: "Silvered Longsword", srdName: "Longsword", qty: 1, tags: ["silvered"] }] });
+  place(anchor.id, 9, 9);
+  place(goblin.id, 3, 0);
+  place(hero.id, 2, 0);
+  let before = kit.dummy().currentHp;
+  const turn = await kit.swing(hero.id, { weapon: "Silvered Longsword" }, 15, 4);
+  assert.equal(turn.ok, true, turn.error);
+  assert.equal(before - kit.dummy().currentHp, 4 + abilityMod(16), "the turn's swing was resisted");
+  world.clearDice();
+  world.dice(15, 4);
+  before = kit.dummy().currentHp;
+  const notes = resolvePcOpportunityAttacks(world.campaign(), goblin.id, { x: 3, y: 0 }, { x: 5, y: 0 }, [{ x: 4, y: 0 }, { x: 5, y: 0 }]);
+  world.clearDice();
+  assert.equal(before - kit.dummy().currentHp, 4 + abilityMod(16), `the silvered blade was resisted on the opportunity attack: ${JSON.stringify(notes)}`);
+});
+
 await kit.endFight();
 world.close();
 finish();

@@ -37,6 +37,8 @@ import { textKey } from "@/lib/language/text-logic";
 import { attackSenses, attackSight, characterSenses, enemySenses, fearAsRolled, lightOnAttack } from "@/lib/dm/attack-light";
 import { adjudicateHit, weaponAttackProfile, type AttackProfile, type ResolvedWeapon } from "@/lib/dm/attack-logic";
 import { landNaturalOnHit } from "@/lib/dm/natural-onhit";
+import { weaponMaterial } from "@/lib/dm/damage-logic";
+import { lineNamed } from "@/lib/srd/item-row";
 import { endInvisibilityOnCast, planMarks, writeMarks } from "@/lib/dm/attack-marks";
 import {
   attackContext,
@@ -140,7 +142,12 @@ function weaponSwing(sheet: CharacterSheet, resolved: ResolvedWeapon, riders: Re
     // Dueling wants the other hand empty of weapons, here as on the turn.
     otherWeaponInHand: otherHandArmed({ equipment: sheet.equipment, weapon: resolved.displayName, shieldName: acBreakdownFor(sheet).shieldName }),
   });
-  return shillelagh ? { ...profile, magicWeapon: true } : profile;
+  // The blade's material (a silvered sword), for the resistances that name
+  // it, as the turn's swing carries it (pc-attack-profile.ts): the reaction
+  // left it off, and a werewolf resisted a silvered sword's opportunity
+  // attack.
+  const material = weaponMaterial(sheet.equipment[lineNamed(sheet.equipment, resolved.displayName)]);
+  return { ...profile, material, ...(shillelagh ? { magicWeapon: true } : {}) };
 }
 
 export function pcOpportunitySwing(input: {
