@@ -23,6 +23,7 @@
 //   onHit        a save the creature hit makes or takes a condition: { vs
 //                (creature types), save (ability), dc, condition }
 //   wounds       a hit wounds the creature once per turn (Sword of Wounding)
+//   oath         the Oathbow's sworn enemy (src/lib/dm/oathbow.ts)
 // cursed: attuning curses the wearer, and the attunement cannot be ended
 //   (nor the item set aside) until remove curse or similar magic.
 // armor:
@@ -71,7 +72,8 @@ export const GEAR_RIDERS = {
   },
   "mace of terror": { weapon: {} },
   "nine lives stealer": { weapon: { bonus: 2 } },
-  oathbow: { weapon: {} },
+  // The sworn enemy's advantage, cover, range and 3d6 (src/lib/dm/oathbow.ts).
+  oathbow: { weapon: { oath: true } },
   "scimitar of speed": { weapon: { bonus: 2 } },
   "sun blade": {
     weapon: {

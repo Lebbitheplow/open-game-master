@@ -773,6 +773,45 @@ await test("G20: a Sword of Wounding's hit wounds the creature once per turn; at
   assert.ok(wound(), `the opportunity attack left no wound: ${JSON.stringify(notes)}`);
 });
 
+// ---- G21: the Oathbow's sworn enemy ----
+
+await test("G21: an Oathbow shot swears its target: advantage, no half cover, +3d6 piercing on a hit, and disadvantage with any other weapon while it lives", async () => {
+  // SRD 5.1, Oathbow: "The target of your attack becomes your sworn enemy
+  // ... When you make a ranged attack roll with this weapon against your
+  // sworn enemy, you have advantage on the roll. In addition, your target
+  // gains no benefit from cover, other than total cover, and you suffer no
+  // disadvantage due to long range. If the attack hits, your sworn enemy
+  // takes an extra 3d6 piercing damage. While your sworn enemy lives, you
+  // have disadvantage on attack rolls with all other weapons." The bow
+  // carried no rider at all.
+  const goblin = await freshArena();
+  // It needs attunement (SRD 5.1).
+  arm({ str: 10, dex: 16, equipment: [{ name: "Oathbow", qty: 1, attuned: true }, { name: "Arrows", qty: 20 }, { name: "Dagger", qty: 1 }] });
+  // The ally in the line would give half cover.
+  world.patch(anchor.id, { equipment: [{ name: "Shortbow", qty: 1 }] });
+  place(goblin.id, 6, 0);
+  place(anchor.id, 3, 0);
+  place(hero.id, 0, 0);
+  // Two d20s (advantage), 2 and 15; the d8 of 4; the 3d6 of 3s.
+  const before = kit.dummy().currentHp;
+  const shot = await kit.swing(hero.id, { weapon: "Oathbow" }, 2, 15, 4, 3, 3, 3);
+  assert.equal(shot.ok, true, shot.error);
+  assert.equal(shot.d20s.length, 2, `the shot at the sworn enemy had no advantage: ${JSON.stringify(shot.result)}`);
+  assert.equal(shot.result.vsAc, 10, "the ally's half cover counted against the sworn enemy");
+  assert.equal(before - kit.dummy().currentHp, 4 + abilityMod(16) + 9, "no 3d6 piercing on the sworn enemy");
+  const sworn = world.sheet(hero.id).conditions.find((entry) => /sworn enemy/i.test(entry));
+  assert.ok(sworn, "no sworn enemy was recorded");
+  assert.equal(world.sheet(hero.id).conditionMeta[sworn].source, goblin.id);
+  // Another weapon while it lives: disadvantage.
+  kit.freshTurn();
+  place(hero.id, 5, 0);
+  const stab = await kit.swing(hero.id, { weapon: "Dagger" }, 15, 2, 3);
+  assert.equal(stab.ok, true, stab.error);
+  assert.equal(stab.d20s.length, 2, `the dagger rolled one d20 while the sworn enemy lives: ${JSON.stringify(stab.result)}`);
+  assert.equal(stab.result.rolled, 2 + abilityMod(16) + PB, "the dagger's lower die was not kept");
+  world.patch(hero.id, { conditions: [], conditionMeta: {} });
+});
+
 await kit.endFight();
 world.close();
 finish();

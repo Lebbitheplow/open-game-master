@@ -45,6 +45,8 @@ export type WeaponRiders = {
   // Sword of Wounding: a hit wounds the creature once per turn
   // (src/lib/dm/sword-wounding.ts).
   wounds?: boolean;
+  // Oathbow: its sworn enemy (src/lib/dm/oathbow.ts).
+  oath?: boolean;
 };
 
 export type GearOnHit = { vs?: string[]; save: Ability; dc: number; condition: string };

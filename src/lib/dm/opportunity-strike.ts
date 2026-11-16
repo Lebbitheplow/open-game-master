@@ -59,6 +59,7 @@ import { clearHitSpent, spendOnHit } from "@/lib/dm/pc-attack-riders";
 import { smiteSlotOf } from "@/lib/dm/opportunity-ask-logic";
 import { opportunityTwoHanded } from "@/lib/dm/opportunity-weapon";
 import { woundOnHit } from "@/lib/dm/sword-wounding";
+import { swornElsewhere } from "@/lib/dm/oathbow";
 import { acBreakdownFor, computeSheetDerived, sizeForRace } from "@/lib/srd";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
 import { conditionsSpentAgainst } from "@/lib/srd/condition-effect-queries";
@@ -227,6 +228,8 @@ export function pcOpportunitySwing(input: {
   const advantage: Advantage = mergeAdvantage([
     ...context.sources,
     ...(untrained || smallWithHeavy ? ["disadvantage" as const] : []),
+    // Another weapon than the Oathbow while its sworn enemy lives (oathbow.ts).
+    ...(swornElsewhere(sheet, profile) ? ["disadvantage" as const] : []),
     exhaustionRollState(sheet.exhaustion ?? 0, "attack").advantage,
     ...light.sources,
     ...attackRiders.advantageSources,

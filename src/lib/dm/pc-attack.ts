@@ -1,3 +1,4 @@
+import { swearOath } from "@/lib/dm/oathbow";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { distantStrikeSquare, distantStrikeTeleport } from "@/lib/dm/distant-strike";
@@ -583,6 +584,13 @@ function spendPcAttack(plan: AttackPlan): ToolError | null {
   if (plan.drawn) {
     patchSheet(sheet.id, { equipment: plan.drawn.equipment });
     context.notes.push(plan.drawn.note);
+  }
+  // The Oathbow's command phrase, said with the shot (oathbow.ts).
+  if (plan.swearOath) {
+    const sworn = swearOath(campaign, sheet.id, plan.enemy.id);
+    if (sworn) {
+      context.notes.push(sworn);
+    }
   }
   if (ammo && ammo.ok) {
     const carried = plan.drawn?.equipment ?? sheet.equipment;

@@ -6445,7 +6445,9 @@
         "kind": "weapon",
         "name": "Longbow"
       },
-      "weapon": {}
+      "weapon": {
+        "oath": true
+      }
     },
     {
       "name": "Obsidian Butterfly Knife",

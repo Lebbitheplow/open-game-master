@@ -125,6 +125,8 @@ export type AttackProfile = {
   gearOnHit?: GearOnHit[];
   // A Sword of Wounding's hit wounds the creature (sword-wounding.ts).
   gearWounds?: boolean;
+  // An Oathbow's sworn enemy (oathbow.ts).
+  gearOath?: boolean;
   // A creature's natural attack (a beast form, a summoned creature): what
   // its hit does besides the damage (src/lib/dm/natural-onhit.ts), and the
   // "one prone creature" its hooves and stomps strike only.

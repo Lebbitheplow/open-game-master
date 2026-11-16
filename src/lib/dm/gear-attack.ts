@@ -116,6 +116,7 @@ export function gearProfileParts(
       ...(riders.bonusVs ? { gearBonusVs: riders.bonusVs } : {}),
       ...(riders.onHit?.length ? { gearOnHit: riders.onHit } : {}),
       ...(riders.wounds ? { gearWounds: true } : {}),
+      ...(riders.oath ? { gearOath: true } : {}),
     },
   };
 }

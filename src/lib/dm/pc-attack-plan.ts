@@ -31,6 +31,7 @@ import type { EquipmentItem, CharacterSheet } from "@/lib/schemas/sheet";
 import { planMarks, type MarkPlan } from "@/lib/dm/attack-marks";
 import type { TypedRider } from "@/lib/dm/damage-parts";
 import { itemRidersAgainst } from "@/lib/dm/gear-attack";
+import { oathbowShot, swornElsewhere, withOathDice } from "@/lib/dm/oathbow";
 import { checkPcAttackRange } from "@/lib/dm/map-tools";
 import type { PcAttackArgs } from "@/lib/dm/pc-attack";
 import { graveTouchedType } from "@/lib/dm/ar-wbf-warlock-grave-logic";
@@ -113,6 +114,9 @@ export type AttackPlan = {
   spellSlotLevel: number | null;
   weaponAttack: boolean;
   ammo: AmmoSpend | null;
+  // An Oathbow shot that swears its target, written once the shot is made
+  // (pc-attack.ts, oathbow.ts).
+  swearOath?: boolean;
   // A weapon not in hand, drawn as part of the attack (issue #424): the pack
   // after the draw, and the line the result says.
   drawn: { equipment: EquipmentItem[]; note: string } | null;
@@ -359,6 +363,13 @@ export function planPcAttack(input: {
   if (weaponAttack && atRange && geometry.spatials.longRange && shotIgnoresLongRange(sheet)) {
     featNotes.push("Sharpshooter: no disadvantage at long range");
     geometry = { ...geometry, spatials: { ...geometry.spatials, longRange: false } };
+  }
+  // The Oathbow's sworn enemy: no cover but total, no long-range
+  // disadvantage, advantage and 3d6 below (oathbow.ts).
+  const oath = weaponAttack ? oathbowShot(sheet, profile, enemy.id, atRange) : null;
+  if (oath?.sworn) {
+    featNotes.push(`Oathbow: ${enemy.displayName} is the sworn enemy${geometry.cover ? ", its cover does not count" : ""}`);
+    geometry = { ...geometry, effectiveAc: geometry.effectiveAc - geometry.cover, cover: 0, screen: null, spatials: { ...geometry.spatials, longRange: false } };
   }
   let budget = input.reactionAttack ? null : budgetFor(
     encounter,
@@ -683,7 +694,7 @@ export function planPcAttack(input: {
     atRange,
   });
   // A magic weapon's dice against this target (src/lib/dm/gear-attack.ts).
-  const gear = itemRidersAgainst(folded.profile, enemy.stats.type, atRange);
+  const gear = itemRidersAgainst(oath?.sworn ? withOathDice(folded.profile) : folded.profile, enemy.stats.type, atRange);
   profile = gear.profile;
   const ambush = actionSwing ? ambushAttackDie(sheet, encounter.round, madeBefore, attacksAllowedFor(sheet)) : null;
   if (ambush) {
@@ -727,6 +738,12 @@ export function planPcAttack(input: {
   // the action, once a turn (src/lib/dm/authored-attacks.ts).
   // The last sources join the situation's own, and all of them cancel once.
   const sources = [...situation.sources];
+  if (oath?.sworn) {
+    sources.push("advantage");
+  } else if (weaponAttack && swornElsewhere(sheet, profile)) {
+    sources.push("disadvantage");
+    context.notes.push("Oathbow: disadvantage with any other weapon while the sworn enemy lives");
+  }
   if (maneuver?.use === "feint") {
     sources.push("advantage");
     context.notes.push("Feinting Attack: advantage on this attack, for their bonus action");
@@ -837,6 +854,7 @@ export function planPcAttack(input: {
     weaponAttack,
     // Curving Shot's reroll is the same arrow.
     ammo: options.featureBonus?.noAmmo ? null : ammo,
+    ...(oath?.swear ? { swearOath: true } : {}),
     drawn,
     typedRiders: [...folded.typedRiders, ...gear.typed, ...(curse ? [curse] : []), ...(tide ? [{ dice: tide.dice, type: tide.type }] : [])],
     droppedRiders,
