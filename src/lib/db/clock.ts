@@ -4,6 +4,7 @@ import { regenerationClock } from "@/lib/dm/regeneration-ring";
 import { getCampaignById } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { gutterBurntLights } from "@/lib/dm/light-timers";
+import { burnCarriedLights } from "@/lib/dm/carried-light-clock";
 import { fadeBeads } from "@/lib/dm/ar-ws-bead-store";
 import { dawnsBetween, rechargeAtDawn } from "@/lib/dm/item-charges";
 import { mealAtTable, upkeepAtDawns } from "@/lib/dm/supplies";
@@ -67,7 +68,9 @@ export function advanceClock(
   // `lifestyle`: whose lifestyle the caller charges for the dawns crossed, by
   // character id, with the copper a day their work covers (supplies.ts
   // upkeepAtDawns); only they are fed by it.
-  options: { meal?: boolean; lifestyle?: Record<string, number> } = {},
+  // `resting`: the time is a rest (take_rest), when no new light is lit
+  // (carried-light-clock.ts).
+  options: { meal?: boolean; lifestyle?: Record<string, number>; resting?: boolean } = {},
 ): { clock: CampaignClock; minutes: number; deathSaves: string[]; hourSaves: string[] } | ToolError {
   const current = getClock(campaignId);
   const moved = advance(current.instant, amount, unit);
@@ -138,7 +141,9 @@ export function advanceClock(
     settleInfusions(infusedIn, current.instant, moved.instant);
   }
   // The same clock burns torches down and brings the calendar's days round
-  // (docs/vtt-parity-implementation-plan.md 7.2 and 7.3).
+  // (docs/vtt-parity-implementation-plan.md 7.2 and 7.3): the lights the
+  // party carries, on the board and off it, then the board's own.
+  burnCarriedLights(campaignId, current.instant, moved.instant, options.resting === true);
   gutterBurntLights(campaignId, moved.instant);
   // And ends the hour of an Arcane Abeyance bead (ar-ws-bead-store.ts).
   fadeBeads(campaignId, moved.instant);

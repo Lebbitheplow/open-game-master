@@ -1,7 +1,7 @@
 import { pushImmune } from "@/lib/srd/genre-b-steampunk-moves";
 import { roadRaging } from "@/lib/dm/genre-gb-road-rage";
 import { readiedHeld } from "@/lib/dm/readied-kinds";
-import { carriedLight, lightPlacement } from "@/lib/dm/light-timers";
+import { boardLight } from "@/lib/dm/light-timers";
 import { getClock } from "@/lib/db/clock";
 import { getDatabase } from "@/lib/db/core";
 import type { Campaign } from "@/lib/db/campaigns";
@@ -112,9 +112,10 @@ export function publishBattleMapUpdate(campaignId: string) {
   publishEphemeral(campaignId, "battle_map_updated", {});
 }
 
-// The token fields for that light, lit as the party steps onto the board.
+// The token fields for that light as the party steps onto the board: lit
+// now, or carried with the burn it has left (light-timers.ts boardLight).
 export function carriedLightFields(campaignId: string, sheet: CharacterSheet) {
-  return lightPlacement(carriedLight(sheet), getClock(campaignId).instant);
+  return boardLight(campaignId, sheet, getClock(campaignId).instant);
 }
 
 export function createBattleMapForEncounter(

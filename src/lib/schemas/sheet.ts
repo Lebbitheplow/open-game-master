@@ -299,6 +299,11 @@ export const equipmentItemSchema = z.object({
   // The clock's minute each property waiting hours was spent (an Orb of
   // Dragonkind's Call Dragons, ChargeRule.regainHours), by its name.
   powersEmptiedAt: z.record(z.string().trim().min(1).max(40), z.number().int().min(0)).optional(),
+  // A carried light's burn (src/lib/dm/carried-light-logic.ts): the clock's
+  // minute one of these was lit, and the minutes of burn it had then (or has
+  // left, put out). Absent on every other row, and on a light never lit.
+  litAt: z.number().int().min(0).optional(),
+  burnLeft: z.number().int().min(0).max(100000).optional(),
   // Pounds per unit, for the optional encumbrance rule. Filled in from the
   // content pack when a sheet is read (src/lib/db/sheets.ts), so rows
   // written before the field still get weighed; a value a player typed
