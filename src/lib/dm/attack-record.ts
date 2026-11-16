@@ -82,6 +82,9 @@ export type AttackRecord = PendingAttack & {
   improvised?: boolean;
   // The weapon's catalog name, for Curving Shot's arrows.
   base?: string;
+  // The magic ammunition line the shot spent, as the fight's tally names it:
+  // a hit is counted there (ammo-tally.ts tallyHit).
+  magicAmmo?: string;
   special?: "net" | "lance";
   gearWeapon?: GearWeapon;
   material?: WeaponMaterial;
@@ -212,6 +215,7 @@ export function attackRecord(plan: AttackPlan, strike: { critExtraDice: number; 
     ...(profile.unarmed ? { unarmed: true } : {}),
     ...(profile.improvised ? { improvised: true } : {}),
     ...(profile.base ? { base: profile.base } : {}),
+    ...(plan.magicAmmo ? { magicAmmo: plan.magicAmmo } : {}),
     ...(plan.special ? { special: plan.special } : {}),
     ...(profile.gearWeapon ? { gearWeapon: profile.gearWeapon } : {}),
     ...(profile.material ? { material: profile.material } : {}),

@@ -117,6 +117,9 @@ export type AttackPlan = {
   // An Oathbow shot that swears its target, written once the shot is made
   // (pc-attack.ts, oathbow.ts).
   swearOath?: boolean;
+  // A magic ammunition line spent by the shot, as the fight's tally names it
+  // (pc-attack.ts, ammo-tally.ts): its hit is counted there.
+  magicAmmo?: string;
   // A weapon not in hand, drawn as part of the attack (issue #424): the pack
   // after the draw, and the line the result says.
   drawn: { equipment: EquipmentItem[]; note: string } | null;

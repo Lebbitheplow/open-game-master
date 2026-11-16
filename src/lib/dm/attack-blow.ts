@@ -6,6 +6,7 @@
 // lands (pc-attack-parked.ts).
 
 import { woundOnHit } from "@/lib/dm/sword-wounding";
+import { tallyHit } from "@/lib/dm/ammo-tally";
 import { goreDrift } from "@/lib/dm/genre-gb-gore-drift";
 import { hookDrag } from "@/lib/dm/genre-gb-hook";
 import { darkFantasyCritMarks } from "@/lib/dm/genre-cc-a-dark-fantasy";
@@ -107,6 +108,10 @@ export function landSwingBlow(
   // Death Strike: a surprised creature's failed save doubles the blow.
   const doubled = deathStrikeDoubles({ campaignId: campaign.id, turn: scene.turn, encounter, sheet, enemy, notes });
   const applied = land(dealt, ask.riders, crit, critExtraDice, doubled);
+  // A magic arrow that hits is magic no more (ammo-tally.ts).
+  if (record.magicAmmo) {
+    tallyHit(campaign.id, sheet.id, record.magicAmmo);
+  }
   if (hitLog && toHit) {
     // A critical that came only from the character it struck lying unconscious
     // at 0 within 5 ft keeps its ordinary damage from the same dice, for a

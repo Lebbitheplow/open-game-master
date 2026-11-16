@@ -219,6 +219,31 @@ export function recoveredAmmo(spent: number): number {
   return Math.floor(Math.max(0, spent) / 2);
 }
 
+// The ordinary line each kind comes back as, by the SRD gear row's own name
+// (src/lib/srd/adventuring-gear.ts), which carries the kind's tag.
+export const PLAIN_AMMO: Record<AmmoKind, string> = {
+  arrows: "Arrows",
+  bolts: "Crossbow Bolts",
+  bullets: "Sling Bullets",
+  needles: "Blowgun Needles",
+};
+
+// What half of a quiver line's spent pieces come back as. SRD 5.1,
+// Ammunition, +1, +2, or +3: "Once it hits a target, the ammunition is no
+// longer magical." Of the half recovered, the half of the misses comes back
+// as the magic line and the rest as ordinary ammunition of its kind; every
+// recovered piece came back magical, the ones that hit too. `hits` is
+// counted only for a magic line (ammo-tally.ts), so an ordinary line comes
+// back whole as itself.
+export function ammoSplit(spent: number, hits: number): { magic: number; plain: number } {
+  const back = recoveredAmmo(spent);
+  if (hits <= 0) {
+    return { magic: back, plain: 0 };
+  }
+  const magic = Math.min(back, recoveredAmmo(spent - hits));
+  return { magic, plain: back - magic };
+}
+
 // Whether the party is there to gather it: SRD 5.1, Ammunition: "At the end
 // of the battle, you can recover half your expended ammunition by taking a
 // minute to search the battlefield." A party that fled, or lies beaten, has

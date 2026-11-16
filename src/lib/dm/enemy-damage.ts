@@ -11,7 +11,7 @@ import { burnWebUnder } from "@/lib/dm/zone-cast";
 import { lightOil } from "@/lib/dm/gear-zones";
 import { endEncounter, getActiveEncounter, getEnemy, listEnemies, patchEnemyHp, saveEncounter, setEnemyConcentration, type Encounter, type EncounterEnemy, patchEnemyConditions } from "@/lib/db/encounters";
 import { activePublicEncounter } from "@/lib/db/encounter-view";
-import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
+import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { settleDying } from "@/lib/dm/death";
 import { dyingLeftAlone, isDying, MOST_SAVES_TO_SETTLE } from "@/lib/dm/death-logic";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -22,7 +22,8 @@ import { getBattleMapForEncounter, removeTokenByRef } from "@/lib/db/battle-maps
 import { publishEphemeral, publishPersisted, publishWithSeq } from "@/lib/events";
 import { closeFallenFoes } from "@/lib/dm/party-bonds";
 import { healthState } from "@/lib/bestiary/health";
-import { ammoCount, recoveredAmmo, searchesTheField, withAmmoCount } from "@/lib/srd/ammunition";
+import { searchesTheField } from "@/lib/srd/ammunition";
+import { recoverAmmo } from "@/lib/dm/ammo-tally";
 import { clearSpellConditionsByName } from "@/lib/dm/concentration";
 import { spellEffectsOnEnemyDamage } from "@/lib/dm/spell-effects";
 import { enemyDamageMath, fightOverLine } from "@/lib/dm/encounter-logic";
@@ -152,29 +153,7 @@ export function finishEncounter(
   // Half the ammunition spent in the fight is recovered from the field
   // (PHB). Only ever non-empty when the `ammunition` variant rule is on, so
   // a table that never asked for it pays nothing here.
-  const ammoRecovered: Record<string, number> = {};
-  for (const [key, entry] of searchesTheField(outcome) ? Object.entries(encounter.ammoSpent) : []) {
-    const back = recoveredAmmo(typeof entry === "object" ? entry.spent : entry);
-    if (back <= 0) {
-      continue;
-    }
-    const separator = key.indexOf("|");
-    const sheetId = key.slice(0, separator);
-    const itemName = key.slice(separator + 1);
-    const owner = getSheetById(sheetId);
-    if (!owner) {
-      continue;
-    }
-    const index = owner.equipment.findIndex((item) => item.name === itemName);
-    // A spent-out quiver comes back as the line it was (an Italian "Frecce"
-    // listed as Arrows stays arrows).
-    const equipment =
-      index >= 0
-        ? withAmmoCount(owner.equipment, index, ammoCount(owner.equipment[index]) + back)
-        : withAmmoCount([...owner.equipment, typeof entry === "object" ? entry.line : { name: itemName, qty: back }], owner.equipment.length, back);
-    patchSheet(sheetId, { equipment });
-    ammoRecovered[`${owner.name}: ${itemName}`] = back;
-  }
+  const ammoRecovered = searchesTheField(outcome) ? recoverAmmo(encounter) : {};
 
   // What the fight was worth: every enemy row (a creature the party turned
   // with a Dominate spell was overcome all the same), and every character

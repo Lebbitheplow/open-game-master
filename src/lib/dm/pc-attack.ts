@@ -6,7 +6,7 @@ import { endRageBound } from "@/lib/dm/rage-bound";
 import { spendFeatureUse } from "@/lib/dm/attack-onhit";
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
-import { getActiveEncounter, patchEnemyConditions, saveEncounter, type Encounter } from "@/lib/db/encounters";
+import { getActiveEncounter, patchEnemyConditions, type Encounter } from "@/lib/db/encounters";
 import { endInvisibilityOnCast, writeMarks } from "@/lib/dm/attack-marks";
 import { sanctuaryEndedByAttack } from "@/lib/dm/spell-defenses";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
@@ -32,6 +32,7 @@ import { markReactionUsed, storeBudget } from "@/lib/dm/turn-budget";
 import { spendReadied } from "@/lib/dm/object-actions";
 import { spendGiantKiller } from "@/lib/dm/reaction-attacks";
 import { withAmmoCount } from "@/lib/srd/ammunition";
+import { tallyShot } from "@/lib/dm/ammo-tally";
 import { lineNamed } from "@/lib/srd/item-row";
 import { returnsToHand, throwToGround } from "@/lib/dm/gear-ground";
 import { OPEN_HAND_CHOICES } from "@/lib/dm/attack-choice-rules";
@@ -596,21 +597,12 @@ function spendPcAttack(plan: AttackPlan): ToolError | null {
     const carried = plan.drawn?.equipment ?? sheet.equipment;
     const equipment = withAmmoCount(carried, ammo.index, ammo.remaining);
     patchSheet(sheet.id, { equipment });
-    // Tallied under the line's name as it reads NOW: a quiver written
-    // "Arrows (20)" is renamed by every shot, and the tally follows it so the
-    // end of the fight finds the line it has to refill. The last one spent
-    // takes the line off the sheet, so the tally keeps the line itself.
-    const emptied = ammo.remaining <= 0;
-    const before = `${sheet.id}|${ammo.name}`;
-    const after = `${sheet.id}|${emptied ? ammo.name : (equipment[ammo.index]?.name ?? ammo.name)}`;
-    const tally = { ...encounter.ammoSpent };
-    const spentOf = (entry: (typeof tally)[string] | undefined) => (typeof entry === "object" ? entry.spent : (entry ?? 0));
-    const spentSoFar = spentOf(tally[before]);
-    delete tally[before];
-    const spent = spentOf(tally[after]) + spentSoFar + 1;
-    tally[after] = emptied && carried[ammo.index] ? { spent, line: carried[ammo.index] } : spent;
-    encounter.ammoSpent = tally;
-    saveEncounter(encounter);
+    const tallied = tallyShot(encounter, sheet.id, ammo, carried, equipment);
+    // A magic piece that hits is counted against its line (attack-blow.ts),
+    // so the end of the fight brings it back as ordinary ammunition.
+    if (ammo.bonus) {
+      plan.magicAmmo = tallied;
+    }
   }
   // A flask shatters on impact or on the floor: one is spent whatever the
   // roll (src/lib/srd/gear-weapons.ts). An object picked up is no line.
