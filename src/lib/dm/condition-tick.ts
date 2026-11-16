@@ -38,6 +38,7 @@ import {
   type ConditionMetaMap,
 } from "@/lib/dm/condition-logic";
 import { tickConcentrationClocks } from "@/lib/dm/concentration-clock";
+import { settleRunningOut } from "@/lib/dm/full-duration-settle";
 import { settleDying, wakeStable } from "@/lib/dm/death";
 import { deathSavesInMinutes, isDying } from "@/lib/dm/death-logic";
 import { breakConcentration, endLethargicConcentration, lethargyMeta, withLethargy } from "@/lib/dm/concentration";
@@ -111,6 +112,9 @@ export function tickEncounterConditions(campaign: Campaign, encounter: Encounter
     counts: (source) => !source || !inOrder.has(source),
     saves: (holderId) => !inOrder.has(holderId),
   };
+  // A spell held to its end leaves what it leaves before the count ends what
+  // it holds (full-duration-settle.ts).
+  lines.push(...settleRunningOut(campaign, 1, (casterId) => !inOrder.has(casterId)));
   tickEnemyConditions(campaign, encounter, 1, lines, outside);
   tickSheetConditions(campaign, 1, lines, { encounter, ...outside });
   rollEffectSaves(campaign, encounter, (holderId) => !inOrder.has(holderId), lines);
@@ -160,6 +164,7 @@ export function tickClockConditions(campaign: Campaign, minutes: number, started
   // How long each creature lies senseless into the stretch, read before the
   // stretch runs: one that wakes on its last round has had no time to get up.
   const downFor = new Map(listSheets(campaign.id).map((sheet) => [sheet.id, roundsSenseless(sheet)]));
+  lines.push(...settleRunningOut(campaign, rounds, () => true));
   tickSheetConditions(campaign, rounds, lines, { endTurnBound: true });
   // Full Throttle that the stretch ended burns its knight (genre-b-steampunk-ends.ts).
   lines.push(...settleFullThrottle(campaign));
@@ -344,6 +349,10 @@ export function countTurnStarts(campaign: Campaign, encounter: Encounter, ids: s
   const starting = new Set(ids);
   const counted: string[] = [];
   const ownTurn: HolderTick = { counts: (source) => Boolean(source && starting.has(source)), saves: () => false };
+  // Settled before the conditions count: a banished fiend or a creature
+  // held by Flesh to Stone, its own minute run out first, was gone from the
+  // spell when the clock asked what it held (full-duration-settle.ts).
+  counted.push(...settleRunningOut(campaign, 1, (casterId) => starting.has(casterId)));
   tickEnemyConditions(campaign, encounter, 1, counted, ownTurn);
   tickSheetConditions(campaign, 1, counted, { encounter, ...ownTurn });
   counted.push(...tickConcentrationClocks(campaign, 1, (casterId) => starting.has(casterId)));

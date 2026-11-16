@@ -196,5 +196,43 @@ await test("Y04: Hideous Laughter at a creature of Intelligence 5 that fails sti
   assert.ok(kit.enemy(goblin.id).conditions.includes("incapacitated"));
 });
 
+// ---- Y05: Banishment held for its whole minute keeps an outsider away ----
+
+// SRD 5.1, Banishment: "If the target is native to a different plane of
+// existence than the one you're on, the target is banished ... returning to
+// its home plane. If the spell ends before 1 minute has passed, the target
+// reappears in the space it left ... Otherwise, the target doesn't return."
+// The banished condition's own minute ran out on the same turn start as the
+// concentration, and first, so the spell found nobody to send home and the
+// fiend stood back up in the fight.
+async function banishStage(type) {
+  const staged = await castStage(["Banishment"]);
+  const { world, kit, wizard, goblin } = staged;
+  kit.setEnemy(goblin.id, { stats: { type } });
+  world.dice(1);
+  const cast = await world.invoke("cast_at_enemy", { characterId: wizard.id, targetEnemyId: goblin.id, spell: "Banishment", level: 4 });
+  world.clearDice();
+  assert.equal(cast.ok, true, cast.error);
+  assert.ok(kit.enemy(goblin.id).conditions.includes("banished"));
+  // The wizard holds it through ten of their turns.
+  for (let round = 0; round < 11 && world.encounter(); round += 1) {
+    staged.roundOn();
+  }
+  return staged;
+}
+
+await test("Y05: a fiend banished and held for the whole minute does not come back", async () => {
+  const { world, kit, wizard, goblin } = await banishStage("fiend");
+  assert.equal(world.sheet(wizard.id).concentratingOn, null, "the minute is over");
+  assert.notEqual(kit.enemy(goblin.id).status, "alive", "it went home for good");
+});
+
+await test("Y05: a humanoid banished and held for the whole minute reappears as the spell ends", async () => {
+  const { world, kit, wizard, goblin } = await banishStage("humanoid");
+  assert.equal(world.sheet(wizard.id).concentratingOn, null, "the minute is over");
+  assert.equal(kit.enemy(goblin.id).status, "alive");
+  assert.ok(!kit.enemy(goblin.id).conditions.includes("banished"), "back from the demiplane");
+});
+
 closeTables();
 finish();
