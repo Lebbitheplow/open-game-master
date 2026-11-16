@@ -227,4 +227,33 @@ await test("V09: exhaustion 6 reads as death in GAME STATE and on the sheet's ta
   world.patch(hero.id, { exhaustion: 0 });
 });
 
+// V10. SRD 5.1, Unconscious: "An unconscious creature is incapacitated";
+// Incapacitated: "An incapacitated creature can't take actions or
+// reactions." A fighter dropped (or stunned) after the first swing of
+// Extra Attack still read in GAME STATE as having "1 attack left, bonus
+// action, reaction", and the turn was held open for that swing
+// (turnStillOwes): the narration guard and pc_attack's end of turn waited
+// on an attack an unconscious hero cannot make.
+await test("V10: a hero dropped mid-turn owes no swing, and GAME STATE's turn line offers them nothing", async () => {
+  await kit.endFight();
+  const { buildEncounterState } = await import("../src/lib/dm/turn.ts");
+  const { turnStillOwes } = await import("../src/lib/dm/turn-budget.ts");
+  const hero = world.addHero({ class: "fighter", level: 5, maxHp: 20, proficiencies: { ...TRAINED } });
+  await kit.fight(1);
+  const [foe] = world.enemies();
+  kit.giveTurn(hero.id);
+  kit.place(hero.id, 5, 5);
+  kit.place(foe.id, 5, 6);
+  const swung = await kit.swing(hero.id, foe.id, [3, 1]);
+  assert.equal(swung.ok, true, swung.error);
+  assert.equal(turnStillOwes(world.campaignId, hero.id).swings, 1, "the staging: Extra Attack's second swing is owed");
+  const dropped = await world.invoke("apply_damage", { characterId: hero.id, amount: 30, type: "slashing" });
+  assert.equal(dropped.ok, true, dropped.error);
+  assert.equal(world.sheet(hero.id).currentHp, 0);
+  assert.equal(turnStillOwes(world.campaignId, hero.id).swings, 0, "the turn waits on a swing a hero at 0 HP cannot make");
+  const line = buildEncounterState(world.campaignId, world.sheets()).turnBudget ?? "";
+  assert.doesNotMatch(line, /attack left|remaining/, `GAME STATE: ${line}`);
+  assert.match(line, /no action, bonus action or reaction/, line);
+});
+
 finish();
