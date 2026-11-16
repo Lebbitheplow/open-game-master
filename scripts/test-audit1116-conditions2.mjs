@@ -229,4 +229,38 @@ await test("D13: Mass Heal does the same for each creature it heals", async () =
   assert.deepEqual(cured(temple.sheet(hero.id)), [], `Mass Heal left ${cured(temple.sheet(hero.id))}: ${JSON.stringify(out.result)}`);
 });
 
+// D14. SRD 5.1, Exhaustion: "6: Death"; Concentration: "You lose
+// concentration on a spell if you ... die." set_condition's level 6 broke
+// the spell and wrote the death; a day without water, a frenzy outliving its
+// rage and a disease's toll wrote only the dead sheet: the spell stayed up on
+// a corpse, and Revivify found no moment of death to measure its minute from.
+const { minutesSinceDeath } = await import("../src/lib/dm/revival.ts");
+const { listRecentCampaignEvents } = await import("../src/lib/db/character-events.ts");
+function diedProperly(world, hero) {
+  const sheet = world.sheet(hero.id);
+  assert.equal(sheet.deathSaves?.dead, true, "not dead at exhaustion 6");
+  assert.equal(sheet.concentratingOn ?? null, null, `the dead still concentrate on ${JSON.stringify(sheet.concentratingOn)}`);
+  assert.notEqual(minutesSinceDeath(world.campaignId, hero.id), null, "no moment of death was written");
+  assert.ok(listRecentCampaignEvents(world.campaignId).some((event) => event.kind === "death" && event.campaignCharacterId === hero.id), "no death in the character's story");
+}
+
+await test("D14: a frenzy that takes a barbarian to exhaustion 6 ends their spell and writes the death", async () => {
+  const camp = await openWorld();
+  const berserker = camp.addHero({ name: "Hrolf", class: "barbarian", level: 6, maxHp: 60 });
+  camp.patch(berserker.id, { exhaustion: 5, conditions: ["frenzied"], conditionMeta: {}, concentratingOn: "Bless" });
+  const { settleFrenzies } = await import("../src/lib/dm/frenzy.ts");
+  settleFrenzies(camp.campaign());
+  diedProperly(camp, berserker);
+});
+
+await test("D14: a day without water that takes a hero to exhaustion 6 ends their spell and writes the death", async () => {
+  const RULES = { flanking: false, criticalFumbles: false, encumbrance: false, lingeringInjuries: false, powerfulCritical: false, criticalDamageMods: false, ammunition: false, restVariant: "standard", supplies: true };
+  const desert = await openWorld({ gameSettings: { variantRules: RULES } });
+  const walker = desert.addHero({ name: "Sefa", class: "cleric", level: 5, maxHp: 40, equipment: [{ name: "Rations (1 day)", qty: 5 }] });
+  desert.patch(walker.id, { exhaustion: 5, concentratingOn: "Bless" });
+  const out = await desert.invoke("pass_time", { amount: 1, unit: "days", water: "none" });
+  assert.equal(out.ok, true, out.error);
+  diedProperly(desert, walker);
+});
+
 finish();

@@ -21,6 +21,7 @@ import { settleOnDamage } from "@/lib/dm/spell-effects";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { handleSetCondition } from "@/lib/dm/set-condition";
 import { exhaustionPatch } from "@/lib/dm/vitals-logic";
+import { settleExhaustionDeath } from "@/lib/dm/exhaustion-death";
 import { isGnome } from "@/lib/srd/race-id";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
 import {
@@ -103,6 +104,11 @@ export function dropConditions(campaignId: string, sheetId: string, names: strin
 function setExhaustion(campaignId: string, sheet: CharacterSheet, level: number, why: string) {
   const patch = exhaustionPatch(sheet, level);
   patchSheetAudited(campaignId, sheet.id, patch, { kind: "exhaustion", reason: why, delta: { exhaustion: patch.exhaustion } });
+  // The sixth level kills, with all a death brings (exhaustion-death.ts).
+  const campaign = getCampaignById(campaignId);
+  if (campaign) {
+    settleExhaustionDeath(campaign, null, sheet, patch.exhaustion);
+  }
 }
 
 function addExhaustion(campaignId: string, sheetId: string, levels: number) {

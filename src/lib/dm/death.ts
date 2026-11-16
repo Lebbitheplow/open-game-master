@@ -83,7 +83,8 @@ function writeDeathState(
   }
 }
 
-function recordDeath(campaign: Campaign, sheet: CharacterSheet, cause: string, at?: number) {
+// The death record every way a character dies writes (exhaustion-death.ts too).
+export function recordDeath(campaign: Campaign, sheet: CharacterSheet, cause: string, at?: number) {
   // When, in the world's time: the window a revival spell holds to.
   noteDeathMoment(campaign.id, sheet.id, at);
   // On the fight's record too, as an enemy's death is (enemy-damage.ts), for
