@@ -1,0 +1,11 @@
+{
+  "scope": "Isolated resolver bundle with esbuild; not a full Next.js route budget measurement",
+  "prior": {
+    "bytes": 341926,
+    "gzipBytes": 76329
+  },
+  "current": {
+    "bytes": 67379,
+    "gzipBytes": 17454
+  }
+}

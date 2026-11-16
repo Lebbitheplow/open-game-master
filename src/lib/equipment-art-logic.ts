@@ -20,7 +20,10 @@ export const GENRE_VARIANTS = new Map<string, Map<string, Variant>>(
 // Every GameIcon on every page reaches this module, so it reads the weapon
 // spellings from a table generated off the catalogue
 // (scripts/generate-equipment-art-aliases.mjs) instead of loading the weapon
-// rules and the magic gear behind weaponNamed into the browser.
+// rules and the magic gear behind weaponNamed into the browser. The gear
+// spellings ("rations", "fine clothes") come from the same table, so the gear
+// catalogue stays out too.
+const ALIASES = new Map<string, string>(Object.entries(equipmentAliases.gear));
 const WEAPONS = new Map<string, string>(Object.entries(equipmentAliases.weapons));
 
 // A weapon's whole name past its bonus, a plural or an alias, also in the
@@ -38,8 +41,9 @@ function artworkKey(name: string): string {
 export function equipmentArtwork(icon: IconRef, genre: string | null | undefined, surface: "inventory" | "card"): IconRef {
   const variants = genre ? GENRE_VARIANTS.get(genre) : undefined;
   if (!variants || (icon.kind !== "item" && icon.kind !== "action")) return icon;
+  const key = artworkKey(icon.key);
   const variant = icon.kind === "item"
-    ? variants.get(artworkKey(icon.key))
+    ? variants.get(key) ?? variants.get(ALIASES.get(key) ?? "")
     : [...variants.values()].find((entry) => entry.baseCard === icon.key);
   if (!variant) return icon;
   const kind = surface === "card" ? "action" : "item";

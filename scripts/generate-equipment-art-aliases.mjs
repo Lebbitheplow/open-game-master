@@ -1,8 +1,9 @@
 // Keep the weapon catalogue out of every page that shows a round icon: the
 // genre equipment painting a carried weapon wears is found through this
 // generated table of its spellings instead of weaponNamed at runtime.
-// Approach by Smoebo (pull request #963), cut down to the weapon spellings
-// the shared starting-kit paintings need.
+// Approach by Smoebo (pull request #963): the weapon spellings, and the gear
+// catalogue's own spellings ("rations", "fine clothes") for every painted
+// piece of everyday equipment.
 // Run: node scripts/generate-equipment-art-aliases.mjs (--check to verify)
 import assert from "node:assert/strict";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -10,7 +11,7 @@ import { register } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 register("./lib/register-alias.mjs", import.meta.url);
-const { gearKey } = await import("../src/lib/srd/adventuring-gear.ts");
+const { SRD_GEAR, SRD_GOODS, gearKey, matchGear } = await import("../src/lib/srd/adventuring-gear.ts");
 const { pluralForms } = await import("../src/lib/srd/name-forms.ts");
 const { SRD_WEAPONS, WEAPON_ALIASES, weaponNamed } = await import("../src/lib/srd/weapons.ts");
 const { iconSlug } = await import("../src/lib/icons.ts");
@@ -20,6 +21,20 @@ const target = path.join(root, "src/lib/equipment-art-aliases.json");
 
 export function buildEquipmentArtAliases() {
   const supported = new Set([...GENRE_VARIANTS.values()].flatMap((variants) => [...variants.keys()]));
+  const aliases = new Map();
+  for (const gear of [...SRD_GEAR, ...SRD_GOODS]) {
+    const canonical = iconSlug(gear.name);
+    if (!supported.has(canonical)) continue;
+    const bare = gear.name.replace(/\s*\([^)]*\)\s*$/, "");
+    const comma = /^([^,]+),\s*(.+)$/.exec(bare);
+    const names = [gear.name, bare, ...(comma ? [`${comma[2]} ${comma[1]}`] : []), ...(gear.aliases ?? [])];
+    for (const name of names.flatMap((name) => pluralForms(gearKey(name)))) {
+      // Ask the catalogue to settle collisions before recording a spelling.
+      if (matchGear(name)?.name !== gear.name) continue;
+      const key = iconSlug(name);
+      if (key !== canonical) aliases.set(key, canonical);
+    }
+  }
   const weapons = new Map();
   for (const weapon of SRD_WEAPONS) {
     const canonical = iconSlug(weapon.name);
@@ -30,7 +45,8 @@ export function buildEquipmentArtAliases() {
       if (weaponNamed(name)?.name === weapon.name) weapons.set(iconSlug(name).replaceAll("-", ""), canonical);
     }
   }
-  return { weapons: Object.fromEntries([...weapons].sort(([a], [b]) => a.localeCompare(b, "en"))) };
+  const sorted = (entries) => Object.fromEntries([...entries].sort(([a], [b]) => a.localeCompare(b, "en")));
+  return { gear: sorted(aliases), weapons: sorted(weapons) };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -38,5 +54,5 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const check = process.argv.includes("--check");
   if (check) assert.deepEqual(JSON.parse(readFileSync(target, "utf8")), aliases, "src/lib/equipment-art-aliases.json is stale: rerun without --check");
   else writeFileSync(target, JSON.stringify(aliases, null, 2) + "\n");
-  console.log(`${Object.keys(aliases.weapons).length} weapon spellings ${check ? "verified" : "written"}.`);
+  console.log(`${Object.keys(aliases.weapons).length} weapon and ${Object.keys(aliases.gear).length} gear spellings ${check ? "verified" : "written"}.`);
 }

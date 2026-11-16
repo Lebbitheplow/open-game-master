@@ -34,7 +34,9 @@ for (const genre of new Set(subjects.map(r => r.genre))) {
   const names = new Set(classes.flatMap(c => GENRE_KITS[c.id].lines.flatMap(line => line.options.flatMap(option => option.items.map(item => item.name)))));
   assert.deepEqual(subjects.filter(r => r.genre === genre).map(r => r.label).sort(), [...names].filter(name => sharedNames.has(name)).sort(), genre + " starting-kit coverage");
 }
-assert.equal([...GENRE_VARIANTS.values()].reduce((n, v) => n + v.size, 0), 49, "every painting is listed once");
+// The 49 starting-kit paintings and the 87 everyday-equipment paintings of
+// scripts/test-extended-genre-equipment-art.mjs, each listed once.
+assert.equal([...GENRE_VARIANTS.values()].reduce((n, v) => n + v.size, 0), 49 + 87, "every painting is listed once");
 for (const row of subjects) {
   const original = Object.freeze({ kind: "item", key: row.label, family: `item-${row.kind}` });
   const inventory = equipmentArtwork(original, row.genre, "inventory");

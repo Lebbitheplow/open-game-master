@@ -437,7 +437,10 @@ export async function buildIconList() {
   }
 
   // Shared gear has separate genre exports so the fantasy set stays intact.
-  for (const { id, cardId, label, subject, kind, genre } of readJson("scripts/shared-genre-equipment-subjects.json")) {
+  for (const { id, cardId, label, subject, kind, genre } of [
+    ...readJson("scripts/shared-genre-equipment-subjects.json"),
+    ...readJson("scripts/extended-genre-equipment-subjects.json"),
+  ]) {
     list.push(entry("item", id, label, subject, { kind, genre, externalArt: true, width: 256, height: 256 }));
     list.push(entry("action", cardId, label, subject, { genre, externalArt: true, width: 256, height: 128 }));
   }
