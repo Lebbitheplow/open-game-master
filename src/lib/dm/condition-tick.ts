@@ -62,7 +62,7 @@ import { spellSchoolFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
-import { withinFeet } from "@/lib/dm/authored-saves";
+import { unseenBecause, withinFeet } from "@/lib/dm/authored-saves";
 
 // Condition upkeep: timed conditions count down and expire, save-ends
 // conditions get their re-save rolled server-side (enemy saves from stat
@@ -551,10 +551,20 @@ export function walkedEnemiesHeld(campaign: Campaign, encounter: Encounter): str
 // that ends its turn more than 30 feet away). Measured on the board as reach
 // is (authored-saves.ts): off the board it counts as close, as the fear's
 // reach did; a source no longer on the board is far.
+// Or only out of its sight (Fear: "If the creature ends its turn in a
+// location where it doesn't have line of sight to you, the creature can make
+// a Wisdom saving throw"): held while the holder still sees the caster, by
+// the board's line of sight and the conditions (a blinded holder, an
+// invisible caster). Without the save at all, Fear held its whole minute
+// whatever wall the creature fled behind.
 function heldClose(encounter: Encounter | undefined, holderId: string, instance: ConditionMeta | undefined): boolean {
-  const feet = instance?.saveEnds?.beyondFeet;
-  if (!feet || !encounter || !instance?.source) return false;
-  return withinFeet(encounter.id, instance.source, holderId, feet);
+  if (!encounter || !instance?.source) return false;
+  const feet = instance.saveEnds?.beyondFeet;
+  if (feet && withinFeet(encounter.id, instance.source, holderId, feet)) return true;
+  if (!instance.saveEnds?.unseen) return false;
+  const holder = getSheetById(holderId) ?? getEnemy(holderId);
+  const source = getSheetById(instance.source) ?? getEnemy(instance.source);
+  return Boolean(holder && source && !unseenBecause(encounter.id, holder, source));
 }
 
 function tickEnemyConditions(campaign: Campaign, encounter: Encounter, by: number, lines: string[], options: HolderTick = {}) {

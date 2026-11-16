@@ -48,6 +48,8 @@ const conditionBase = {
   // [the slot level it starts at, its rounds or null for "until dispelled"], ascending (Geas).
   roundsBySlot: z.array(z.tuple([level, rounds.nullable()])).max(9).optional(),
   saveEnds: z.boolean().optional(),
+  // The save only out of the caster's sight (Fear): a workshop copy keeps it.
+  saveUnseen: z.boolean().optional(),
   also: words(4).optional(),
   variants: words(12).optional(),
   endsOnDamage: z.boolean().optional(),

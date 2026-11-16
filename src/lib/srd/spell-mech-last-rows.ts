@@ -148,7 +148,7 @@ export const SRD_LAST_ROWS: Record<string, SpellMech> = {
   },
   fear: {
     resolution: "save", save: "wis", noDamage: true, area: true, areaFeet: 30,
-    condition: { name: "frightened", rounds: MINUTE, also: ["fleeing"] },
+    condition: { name: "frightened", rounds: MINUTE, also: ["fleeing"], saveEnds: true, saveUnseen: true },
     note: "A frightened creature drops what it holds and must Dash away each turn; it saves again only when it ends a turn out of the caster's sight.",
   },
 

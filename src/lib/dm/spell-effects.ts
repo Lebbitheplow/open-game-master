@@ -88,7 +88,7 @@ export function lifetimeAtSlot(spell: string, base: number | null, slotLevel?: n
 // Person: "The spell ends... after 1 minute"), so a save-ends condition keeps
 // the spell's duration as its count too.
 export function spellConditionMeta(
-  condition: Pick<SpellCondition, "rounds" | "roundsBySlot" | "saveEnds" | "endsOnDamage" | "saveOnDamage">,
+  condition: Pick<SpellCondition, "rounds" | "roundsBySlot" | "saveEnds" | "saveUnseen" | "endsOnDamage" | "saveOnDamage">,
   source: SpellSource,
   save: { ability: SaveAbilityId; dc: number } | null,
   roundsOverride?: number,
@@ -101,7 +101,7 @@ export function spellConditionMeta(
   const printed = bySlot ? (bySlot[1] ?? undefined) : spellLong ? (lifetimeAtSlot(source.spell, condition.rounds ?? null, source.slotLevel) ?? undefined) : condition.rounds;
   const rounds = roundsOverride ?? printed ?? (condition.saveEnds && !bySlot ? spellDurationRounds(source.spell) ?? undefined : undefined);
   return {
-    ...(condition.saveEnds && save ? { saveEnds: { ability: save.ability, dc: save.dc } } : {}),
+    ...(condition.saveEnds && save ? { saveEnds: { ability: save.ability, dc: save.dc, ...(condition.saveUnseen ? { unseen: true } : {}) } } : {}),
     ...(rounds ? { rounds } : {}),
     spell: source.spell.slice(0, 80),
     source: source.casterId.slice(0, 80),

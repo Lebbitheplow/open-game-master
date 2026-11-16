@@ -16,6 +16,9 @@ export type SpellCondition = {
   roundsBySlot?: Array<[number, number | null]>;
   // A repeat save at the end of each round ends it (Hold Person).
   saveEnds?: boolean;
+  // That save comes only at the end of a turn the creature ends where it
+  // cannot see the caster (Fear: "doesn't have line of sight to you").
+  saveUnseen?: boolean;
   // Conditions that land with it and end with it: Hypnotic Pattern's
   // charmed creature is also incapacitated, Hideous Laughter's is prone.
   also?: string[];

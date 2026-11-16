@@ -50,7 +50,9 @@ export type ConditionMeta = {
   // each save (Nature's Wrath: Strength or Dexterity; see likelierSave).
   // `beyondFeet`: the save comes only at the end of a turn the holder ends
   // farther than this from the source (Dreadful Aspect: 30 feet).
-  saveEnds?: { ability: SaveAbilityId; dc: number; or?: SaveAbilityId; beyondFeet?: number };
+  // `unseen`: only at the end of a turn the holder ends where it cannot see
+  // the source (Fear).
+  saveEnds?: { ability: SaveAbilityId; dc: number; or?: SaveAbilityId; beyondFeet?: number; unseen?: boolean };
   // Who or what put the condition there: the characterId or enemyId of the
   // charmer, the grappler or the source of the fear, or an engine word
   // ("stable" on the unconscious of a stabilized creature). Optional, and

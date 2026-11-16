@@ -83,5 +83,62 @@ await test("Y01: the warded creature's opportunity attack ends its Sanctuary", a
   assert.ok(!held(world, kara.id).includes("sanctuary"), "an opportunity attack is an attack: Sanctuary ends");
 });
 
+// ---- Y02: Fear's repeat save, out of the caster's sight ----
+
+// SRD 5.1, Fear: "If the creature ends its turn in a location where it
+// doesn't have line of sight to you, the creature can make a Wisdom saving
+// throw. On a successful save, the spell ends for that creature." The row
+// laid the fright for its minute with no save at all, so a goblin that fled
+// behind a wall stayed frightened for the whole minute.
+async function fearStage() {
+  const { openWorld } = await import("./lib/enforce-world.mjs");
+  const world = await openWorld({ gameSettings: { ttsEnabled: false } });
+  const kit = await combatKit(world);
+  const wizard = world.addHero({
+    name: "Wiz", class: "wizard", level: 5, abilities: { int: 18, con: 14, dex: 12 }, proficiencies: { ...TRAINED, saves: ["int", "wis"] },
+    spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 }, 3: { max: 2, used: 0 } }, known: [], prepared: ["Fear"], cantrips: [] },
+  });
+  const fighter = world.addHero({ name: "Fig", class: "fighter", level: 5, abilities: { str: 16 }, proficiencies: TRAINED, equipment: [{ name: "Longsword", qty: 1 }] });
+  await kit.fight(1, { heroFaces: { [wizard.id]: 20, [fighter.id]: 5 } });
+  const [goblin] = world.enemies();
+  const encounter = world.encounter();
+  const entry = (id) => encounter.order.find((each) => (each.kind === "pc" ? each.characterId : each.enemyId) === id);
+  kit.saveEncounter({ ...encounter, order: [entry(wizard.id), entry(goblin.id), entry(fighter.id)], turnIndex: 0, turnBudget: null });
+  kit.place(wizard.id, 2, 7);
+  kit.place(goblin.id, 4, 7);
+  kit.place(fighter.id, 2, 2);
+  world.dice(1);
+  const cast = await world.invoke("aoe_damage", { casterCharacterId: wizard.id, spell: "Fear", enemyIds: [goblin.id], level: 3 });
+  world.clearDice();
+  assert.equal(cast.ok, true, cast.error);
+  assert.ok(kit.enemy(goblin.id).conditions.includes("frightened"), "the goblin failed and is frightened");
+  // From here any save it rolls succeeds.
+  kit.setEnemy(goblin.id, { stats: { saveMods: { ...DUMMY.saveMods, wis: 40 } } });
+  // The goblin's turn ends after the wizard's: the pointer walks past it,
+  // and its turn's end comes with the next move (test-enforce-turn-end-saves.mjs).
+  const roundOn = () => {
+    assert.equal(kit.endTurn(wizard.userId), true);
+    assert.equal(kit.endTurn(fighter.userId), true);
+  };
+  return { world, kit, wizard, goblin, roundOn };
+}
+
+await test("Y02: a creature frightened by Fear that ends its turn behind a wall, out of the caster's sight, saves and shakes it off", async () => {
+  const { kit, goblin, roundOn } = await fearStage();
+  const height = kit.map().height;
+  kit.openField(Array.from({ length: height }, (_, y) => [8, y, "#"]));
+  kit.place(goblin.id, 14, 7);
+  roundOn();
+  assert.ok(!kit.enemy(goblin.id).conditions.includes("frightened"), "out of sight, its save ended the fear");
+  assert.ok(!kit.enemy(goblin.id).conditions.includes("fleeing"), "and the flight with it");
+});
+
+await test("Y02: a creature frightened by Fear that ends its turn still in the caster's sight makes no save", async () => {
+  const { kit, goblin, roundOn } = await fearStage();
+  kit.place(goblin.id, 14, 7);
+  roundOn();
+  assert.ok(kit.enemy(goblin.id).conditions.includes("frightened"), "in plain sight the fear holds");
+});
+
 closeTables();
 finish();
