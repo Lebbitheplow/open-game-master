@@ -276,6 +276,7 @@ import {
   mutationTools,
 } from "@/lib/dm/mutations";
 import { describeBudget } from "@/lib/dm/action-budget";
+import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
 import { turnStillOwes } from "@/lib/dm/turn-budget";
 import { castBuffTool } from "@/lib/dm/cast-tools";
 import {
@@ -544,7 +545,10 @@ export function buildEncounterState(campaignId: string, sheets: CharacterSheet[]
       enemyId: enemy.id,
       name: enemy.displayName,
       hp: `${enemy.currentHp}/${enemy.maxHp}`,
-      ac: enemy.ac,
+      // The AC its attackers roll against (Slow's -2, Shield's +5, an
+      // effect's change): the bare column told the GM a slowed goblin was AC
+      // 15 while every swing was rolled against 13.
+      ac: enemyAcWithEffects(campaignId, enemy),
       status: enemy.status,
       // Durations render inline so the model sees "stunned (2 more rounds)".
       conditions: enemy.conditions.map((condition) => {

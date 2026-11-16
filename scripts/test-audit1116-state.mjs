@@ -54,4 +54,29 @@ await test("V02: heal reports the hit points restored, not the amount asked, whe
   assert.equal(whole.result.healed, 7);
 });
 
+// V03. SRD 5.1, Slow: "A target takes a -2 penalty to AC"; Shield of Faith:
+// "+2 bonus to AC"; Shield: "+5 bonus to AC". The attack engine reads an
+// enemy's AC through enemyAcWithEffects (ac-effects.ts), but GAME STATE gave
+// the GM the bare column, so a slowed goblin read AC 15 while every swing
+// was rolled against 13.
+await test("V03: GAME STATE gives an enemy the AC the attacks are rolled against, with Slow, Shield of Faith and Shield", async () => {
+  await kit.endFight();
+  world.addHero({ class: "fighter", level: 3, proficiencies: { ...TRAINED } });
+  await kit.fight(1);
+  const { buildEncounterState } = await import("../src/lib/dm/turn.ts");
+  const { enemyAcWithEffects } = await import("../src/lib/dm/ac-effects.ts");
+  const { publicEncounter } = await import("../src/lib/db/encounter-view.ts");
+  const [foe] = world.enemies();
+  kit.setEnemy(foe.id, { ac: 15 });
+  for (const [held, ac] of [["slowed", 13], ["shield of faith", 17], ["shielded", 20]]) {
+    kit.setEnemy(foe.id, { conditions: [held], conditionMeta: {} });
+    assert.equal(enemyAcWithEffects(world.campaignId, kit.enemy(foe.id)), ac, `the staging: ${held}`);
+    const told = buildEncounterState(world.campaignId, world.sheets()).enemies.find((entry) => entry.enemyId === foe.id);
+    assert.equal(told.ac, ac, `${held}: GAME STATE says AC ${told.ac}, the attacks roll against ${ac}`);
+    // The GM console's encounter panel and the monster Hand read the same.
+    const shown = publicEncounter(world.encounter(), world.enemies(), { enemyNumbers: true }).enemies.find((entry) => entry.id === foe.id);
+    assert.equal(shown.ac, ac, `${held}: the console says AC ${shown.ac}`);
+  }
+});
+
 finish();

@@ -1,4 +1,5 @@
 import { isKnockedOut } from "@/lib/dm/knockout";
+import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
 import { type LastSave } from "@/lib/dm/last-save";
 import { triggerRecords } from "@/lib/dm/reaction-triggers";
 import type { TriggerRecordView } from "@/lib/srd/trigger-table";
@@ -460,7 +461,8 @@ export function publicEncounter(
         ? {
             currentHp: enemy.currentHp,
             maxHp: enemy.maxHp,
-            ac: enemy.ac,
+            // What its attackers roll against, as GAME STATE says it.
+            ac: enemyAcWithEffects(encounter.campaignId, enemy),
             initiative: enemy.initiative,
             ...legendaryView(encounter, enemy),
             actions: enemyActionsView(encounter, enemy, movementView(encounter, enemy, board), lair ?? undefined),
