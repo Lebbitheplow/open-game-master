@@ -2394,7 +2394,9 @@ export function continueBackstop(campaign: Campaign, turn: DmTurn) {
   // A person's hand-on (onPersonsTurn): it plays the rest of what is due.
   if (turn.actor === "human_dm") {
     if (encounter && enemiesDue(encounter).length) {
+      const holder = turnHolder(campaign.id);
       handOnEnemyTurns(campaign, turn, true);
+      settleBackstopRiders(campaign, holder);
     }
     return;
   }
@@ -2465,6 +2467,10 @@ function advanceAfterNarration(campaign: Campaign, turn?: DmTurn) {
     // An enemy it plays may take out the summon whose turn it is.
     const holder = turnHolder(campaign.id);
     const rest = autoActSkippedEnemies(campaign, turn, encounter, handoff.enemyIds, sheets, sheetsById);
+    // A rider one of them knocked prone makes the save to stay mounted
+    // (mount-thrown.ts): this close of the turn is no engine call, so
+    // settleTurn never sees it.
+    settleBackstopRiders(campaign, holder);
     // One of them waits on a roll or a watcher: the handoff keeps the ones
     // still to play, and the close goes on from here once it is in.
     if (rest) {
@@ -2552,9 +2558,22 @@ function advanceAfterNarration(campaign: Campaign, turn?: DmTurn) {
 // still owed their action and lifts the hold. An enemy it plays may take
 // out the summon whose turn it is. The party's fall is checked once, after
 // the whole DM turn (advanceAfterTurn).
+// The riders the backstop's enemies knocked prone make the save to stay
+// mounted. settleTurn asks it at the end of an engine call; the backstop
+// plays enemies outside one (after the narration, or resumed after a held
+// roll), so it asks here, once for the stretch it played.
+function settleBackstopRiders(campaign: Campaign, holder: TurnHolder | null) {
+  if (holder) {
+    settleProneRiders(campaign, holder.proneRiders);
+  }
+}
+
 function playEnemiesDue(campaign: Campaign, turn: DmTurn) {
   const holder = turnHolder(campaign.id);
   handOnEnemyTurns(campaign, turn, true);
+  // The blows it played have landed even when it stops on a held roll: a
+  // rider they knocked prone makes the save now (mount-thrown.ts).
+  settleBackstopRiders(campaign, holder);
   // Stopped on a held roll: the hold stays up until the pass goes on.
   if (backstopWaiting(turn.id)) {
     return;
