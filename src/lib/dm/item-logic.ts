@@ -1,8 +1,8 @@
-import { ITEM_EN_BY_FR } from "@/lib/content/names-fr";
 import { textKey } from "@/lib/language/text-logic";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
 import { matchArmor } from "@/lib/srd/armor";
 import { matchWeapon } from "@/lib/srd/weapons";
+import { ITEM_EN_BY_FR } from "@/lib/srd/item-names-fr";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { hasItemTag, itemRow, itemTags, type TaggedItem } from "@/lib/srd/item-tags";
 import { magicItemNamed, matchMagicItem } from "@/lib/srd/magic-items";

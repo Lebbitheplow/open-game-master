@@ -11,11 +11,16 @@
 // one. A "+1" stays in the item's own name, where magicItemBonus reads it;
 // srdName never carries one (src/lib/dm/item-logic.ts srdNameFor).
 //
-// Imports only text-logic, by a relative path, so the armor and magic-gear
-// tables, the sheet and the scripts that load the item math without the
-// path alias read it without a cycle.
-import { ITEM_EN_BY_FR } from "../content/names-fr.ts";
+// An item named by its official French SRD name ("Épée longue", "Cotte de
+// mailles") is its row without a srdName: the French names of the item
+// tables only (item-names-fr.ts, generated with no imports of its own), since
+// the table page loads this module.
+//
+// Imports only text-logic and that map, by relative paths, so the armor and
+// magic-gear tables, the sheet and the scripts that load the item math
+// without the path alias read it without a cycle.
 import { textKey } from "../language/text-logic.ts";
+import { ITEM_EN_BY_FR } from "./item-names-fr.ts";
 import type { InfusionMark } from "./infusions.ts";
 
 // `infusion`: an artificer's infusion laid in the row (src/lib/srd/infusions.ts),
