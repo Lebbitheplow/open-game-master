@@ -376,4 +376,37 @@ await test("U07: a pet's attack spends the Guiding Bolt advantage it used", asyn
   await kit.endFight();
 });
 
+// U08. Ranger's Companion: "you can use your action to verbally command it
+// to take the Attack ... action. Once you have the Extra Attack feature, you
+// can make one weapon attack yourself when you command the beast to take the
+// Attack action." The command took the whole action, so a 5th-level Beast
+// Master's own swing beside it was refused.
+await test("U08: a Beast Master with Extra Attack makes one weapon attack beside commanding the companion's attack", async () => {
+  await kit.endFight();
+  const ranger = world.addHero({ class: "ranger", subclass: "Beast Master", level: 5, maxHp: 50, abilities: { str: 16 }, proficiencies: { ...TRAINED }, equipment: [{ name: "Longsword", qty: 1 }] });
+  const summoned = await world.invoke("summon_pet", { characterId: ranger.id, kind: "beast_companion", form: "wolf" });
+  assert.equal(summoned.ok, true, summoned.error);
+  await kit.fight(1);
+  const [enemy] = world.enemies();
+  kit.setEnemy(enemy.id, { maxHp: 300 });
+  kit.place(ranger.id, 5, 5);
+  kit.place(enemy.id, 5, 6);
+  kit.giveTurn(ranger.id);
+  const bite = await forced([15, 1, 1, 20], () => world.invoke("pet_attack", { characterId: ranger.id, targetEnemyId: enemy.id }));
+  assert.equal(bite.ok, true, bite.error);
+  const own = await kit.swing(ranger.id, enemy.id, [15, 3], { weapon: "Longsword" });
+  assert.equal(own.ok, true, `the ranger's own attack beside the command was refused: ${own.error}`);
+  const third = await kit.swing(ranger.id, enemy.id, [15, 3], { weapon: "Longsword" });
+  assert.equal(third.ok, false, "a second weapon attack of the ranger's own beside the command was taken");
+  // Commanded first, the ranger's swing second: the other swing is not a
+  // second command.
+  kit.freshTurn();
+  kit.giveTurn(ranger.id);
+  const first = await forced([15, 1, 1, 20], () => world.invoke("pet_attack", { characterId: ranger.id, targetEnemyId: enemy.id }));
+  assert.equal(first.ok, true, first.error);
+  const twice = await forced([15, 1, 1, 20], () => world.invoke("pet_attack", { characterId: ranger.id, targetEnemyId: enemy.id }));
+  assert.equal(twice.ok, false, "the companion was commanded to attack twice in one turn");
+  await kit.endFight();
+});
+
 finish();
