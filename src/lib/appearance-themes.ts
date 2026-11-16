@@ -2,7 +2,7 @@
 // This catalog is safe to import in both client components and server schemas.
 import type { Genre } from "@/lib/schemas/game-settings-options";
 
-export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves"] as const;
+export const APPEARANCE_ICONS = ["sparkles", "leaf", "church", "flame", "shield", "waves", "anvil"] as const;
 export type AppearanceIcon = (typeof APPEARANCE_ICONS)[number];
 export const THEME_ART_SLOTS = {
   texture: "--theme-art-texture",
@@ -93,6 +93,16 @@ export const APPEARANCE_THEMES = [
       backdrop: "/assets/themes/tide/tide-shrine-v1.webp",
     },
     provenance: "public/assets/themes/tide/art-provenance.json",
+  },
+  {
+    id: "forge", name: "Deep Forge", description: "Dark basalt, hammered bronze, and ember light.", icon: "anvil", stylesheet: "src/app/styles/themes/forge.css",
+    art: {
+      texture: "/assets/themes/forge/basalt-v1.webp",
+      frame: "/assets/themes/forge/bronze-band-frame-v1.webp",
+      corner: "/assets/themes/forge/ember-plate-corner-v1.webp",
+      backdrop: "/assets/themes/forge/forge-hall-v1.webp",
+    },
+    provenance: "public/assets/themes/forge/art-provenance.json",
   },
 ] as const satisfies readonly AppearanceDefinition[];
 export type AppearanceTheme = (typeof APPEARANCE_THEMES)[number]["id"];

@@ -94,7 +94,7 @@ html[data-theme-ornaments="true"][data-theme] .theme-table .session-bubble {
   background: var(--material-inset);
   color: var(--color-stone-200);
   border-color: var(--appearance-rule);
-  border-radius: 12px 3px 12px 3px;
+  border-radius: var(--material-bubble-radius);
 }
 html[data-theme-ornaments="true"][data-theme] .theme-table .session-bubble-ooc { color: var(--color-stone-400); }
 html[data-theme-ornaments="true"][data-theme] .theme-table .session-speaker { color: var(--material-metal); }
@@ -166,7 +166,7 @@ html[data-theme-ornaments="true"][data-theme] .theme-table :is(.cine-rail, .cine
 html[data-theme-ornaments="true"][data-theme] .theme-table [aria-current="page"] {
   color: var(--color-stone-100);
   background: var(--material-inset);
-  border-radius: 16px 3px;
+  border-radius: var(--material-tab-radius);
   box-shadow: inset 0 2px 6px #0004;
 }
 html[data-theme-ornaments="true"][data-theme] .theme-table [aria-current="page"] > .rail-glyph {
