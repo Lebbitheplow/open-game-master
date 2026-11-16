@@ -9,6 +9,7 @@ import { AGENT_MARK } from "@/lib/dm/agent-mark";
 import { enqueueDmJob } from "@/lib/dm/queue";
 import { handleCompleteBeat } from "@/lib/dm/arc";
 import { handleCastBuff } from "@/lib/dm/cast-tools";
+import { summonFamiliar } from "@/lib/dm/familiar-cast";
 import { handleCheckNotice, handleGroupCheck } from "@/lib/dm/check-tools";
 import { handleAddCompanion } from "@/lib/dm/companion-tools";
 import { dismissCompanion } from "@/lib/dm/companion-dismissal";
@@ -253,7 +254,11 @@ function engineCall(
     case "apply_hazard":
       return handleApplyHazard(campaign, turn, rawArguments, sheets, sheetsById);
     case "summon_pet":
-      return handleSummonPet(campaign, rawArguments, sheets, sheetsById);
+      // A familiar is Find Familiar cast (familiar-cast.ts); the other pets bind.
+      return (
+        summonFamiliar(campaign, rawArguments, sheets, sheetsById, (cast) => applyDmMutation(campaign, turn.id, "use_spell_slot", JSON.stringify(cast), sheets, sheetsById).result) ??
+        handleSummonPet(campaign, rawArguments, sheets, sheetsById)
+      );
     case "pet_attack": {
       const unasked = characterCallUnasked(campaign.id, turn, rawArguments, "characterId");
       return unasked ? unasked : handlePetAttack(campaign, turn, rawArguments, sheets, sheetsById);

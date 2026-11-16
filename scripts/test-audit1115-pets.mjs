@@ -45,7 +45,7 @@ const petOf = (ownerId, name) => world.sheet(ownerId).pets.find((pet) => pet.nam
 await test("P01: a pet that fails a save is held by the condition it lays, for the effect's own duration", async () => {
   await kit.endFight();
   const warlock = world.addHero({ class: "warlock", level: 9, maxHp: 50, proficiencies: { ...TRAINED } });
-  world.patch(warlock.id, { currentHp: 50, features: [...world.sheet(warlock.id).features, { name: "Pact of the Chain", source: "class" }] });
+  world.patch(warlock.id, { currentHp: 50, gold: world.sheet(warlock.id).gold + 10, spellcasting: { ...world.sheet(warlock.id).spellcasting, ability: "cha", slots: { 1: { max: 2, used: 0 }, ...(world.sheet(warlock.id).spellcasting?.slots ?? {}) }, known: [...(world.sheet(warlock.id).spellcasting?.known ?? []), "Find Familiar"], prepared: world.sheet(warlock.id).spellcasting?.prepared ?? [], cantrips: world.sheet(warlock.id).spellcasting?.cantrips ?? [] }, features: [...world.sheet(warlock.id).features, { name: "Pact Boon: Pact of the Chain", source: "class" }] });
   const bound = await world.invoke("summon_pet", { characterId: warlock.id, kind: "familiar", form: "imp" });
   assert.equal(bound.ok, true, bound.error);
   const imp = () => petOf(warlock.id, "imp");

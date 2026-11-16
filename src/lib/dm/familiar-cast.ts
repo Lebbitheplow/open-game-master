@@ -8,8 +8,14 @@
 // Imported by cast-buff.ts only; it reaches mutations.ts through the cast
 // callback.
 
+import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
+import { getSheetById } from "@/lib/db/sheets";
+import { spellFactsFor } from "@/lib/content";
+import { ritualProblem } from "@/lib/dm/cast-rules";
 import { buildPet, handleSummonPet } from "@/lib/dm/pet-tools";
+import { resolveSheetRef, unknownSheetRef } from "@/lib/dm/rolls";
+import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolResult } from "@/lib/dm/tool-errors";
 import { familiarKindOf } from "@/lib/srd/familiar-forms";
@@ -19,12 +25,13 @@ export { familiarKindOf, isFindFamiliar } from "@/lib/srd/familiar-forms";
 export function castFindFamiliar(
   campaign: Campaign,
   // `castAs`: the name it is cast under, a table's workshop copy's own.
-  input: { caster: CharacterSheet; castAs?: string; variant?: string; level?: number; ritual?: boolean; reason?: string; sheets: CharacterSheet[]; sheetsById: Map<string, CharacterSheet> },
+  // `named`: summon_pet's own form, kind and name, instead of a variant.
+  input: { caster: CharacterSheet; castAs?: string; variant?: string; named?: { form: string; kind?: string; name?: string }; level?: number; ritual?: boolean; reason?: string; sheets: CharacterSheet[]; sheetsById: Map<string, CharacterSheet> },
   cast: (args: Record<string, unknown>) => Record<string, unknown>,
 ): ToolResult {
   const { caster } = input;
   const castAs = input.castAs?.trim() || "Find Familiar";
-  const { kind, form } = familiarKindOf(input.variant ?? "");
+  const { kind, form } = input.named ? { kind: input.named.kind, form: input.named.form } : familiarKindOf(input.variant ?? "");
   const built = buildPet(caster, { kind: "familiar", form });
   if ("error" in built) {
     return { ...built, error: `${built.error} Nothing was spent.` };
@@ -41,7 +48,7 @@ export function castFindFamiliar(
   if ("error" in spent) {
     return spent;
   }
-  const bound = handleSummonPet(campaign, JSON.stringify({ characterId: caster.id, kind: "familiar", form, creatureType: kind }), input.sheets, input.sheetsById);
+  const bound = handleSummonPet(campaign, JSON.stringify({ characterId: caster.id, kind: "familiar", form, ...(kind ? { creatureType: kind } : {}), ...(input.named?.name ? { name: input.named.name } : {}) }), input.sheets, input.sheetsById);
   if ("error" in bound) {
     return bound;
   }
@@ -53,4 +60,53 @@ export function castFindFamiliar(
     ...(spent.material ? { material: spent.material } : {}),
     note: "The familiar is bound to the caster as a pet (summon_pet's rules): it acts on its own, cannot attack, and vanishes at 0 hit points. Narrate exactly this.",
   };
+}
+
+const familiarCallSchema = z.object({
+  characterId: z.string(),
+  kind: z.literal("familiar"),
+  form: z.string().trim().min(1).max(60),
+  name: z.string().trim().max(60).optional(),
+  creatureType: z.enum(["celestial", "fey", "fiend"]).optional(),
+  reason: z.string().optional(),
+});
+
+// summon_pet with kind familiar is Find Familiar cast, as cast_buff casts it:
+// it bound the familiar for nothing, beside the door that charged the hour
+// and the 10 gp of incense (SRD 5.1, Find Familiar: "1st-level conjuration
+// (ritual)", "M (10 gp worth of charcoal, incense, and herbs that must be
+// consumed by fire in a brass brazier)"). As a ritual when the caster may
+// cast it as one (a wizard, Pact of the Chain: cast-rules.ts ritualProblem),
+// which spends no slot; with a 1st-level slot otherwise. Null for any other
+// kind of pet, whose summon_pet binds it as before.
+export function summonFamiliar(
+  campaign: Campaign,
+  rawArguments: string,
+  sheets: CharacterSheet[],
+  sheetsById: Map<string, CharacterSheet>,
+  cast: (args: Record<string, unknown>) => Record<string, unknown>,
+): ToolResult | null {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(rawArguments || "{}");
+  } catch {
+    return null;
+  }
+  const parsed = familiarCallSchema.safeParse(raw);
+  if (!parsed.success) {
+    return null;
+  }
+  const args = parsed.data;
+  const stale = resolveSheetRef(args.characterId, sheets, sheetsById);
+  const caster = stale ? (getSheetById(stale.id) ?? stale) : null;
+  if (!caster) {
+    return unknownSheetRef("characterId", args.characterId, sheets);
+  }
+  const castAs = "Find Familiar";
+  const ritual = !ritualProblem(caster, castAs, spellFactsFor(castAs, spellAuthorsFor(campaign)));
+  return castFindFamiliar(
+    campaign,
+    { caster, castAs, named: { form: args.form, kind: args.creatureType, name: args.name }, ritual, ...(ritual ? {} : { level: 1 }), reason: args.reason, sheets, sheetsById },
+    cast,
+  );
 }

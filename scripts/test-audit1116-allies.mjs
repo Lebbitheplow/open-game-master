@@ -181,7 +181,7 @@ await test("U03: a pet's attack reads the light, its target's cover and its bow'
   // U01's fight left the mastiff hurt: whole again.
   world.patch(keeper.id, { pets: world.sheet(keeper.id).pets.map((pet) => ({ ...pet, hp: pet.maxHp, conditions: [], conditionMeta: {} })) });
   const warlock = world.addHero({ class: "warlock", level: 5, maxHp: 40, proficiencies: { ...TRAINED } });
-  world.patch(warlock.id, { features: [...world.sheet(warlock.id).features, { name: "Pact of the Chain", source: "class" }] });
+  world.patch(warlock.id, { gold: world.sheet(warlock.id).gold + 10, spellcasting: { ...world.sheet(warlock.id).spellcasting, ability: "cha", slots: { 1: { max: 2, used: 0 }, ...(world.sheet(warlock.id).spellcasting?.slots ?? {}) }, known: [...(world.sheet(warlock.id).spellcasting?.known ?? []), "Find Familiar"], prepared: world.sheet(warlock.id).spellcasting?.prepared ?? [], cantrips: world.sheet(warlock.id).spellcasting?.cantrips ?? [] }, features: [...world.sheet(warlock.id).features, { name: "Pact Boon: Pact of the Chain", source: "class" }] });
   const sprite = await world.invoke("summon_pet", { characterId: warlock.id, kind: "familiar", form: "sprite" });
   assert.equal(sprite.ok, true, sprite.error);
   await kit.fight(2);
@@ -519,6 +519,32 @@ await test("U10: an animated skeleton attacks only in self-defence until its cas
   const answered = await shoot(far.id);
   assert.equal(answered.ok, true, answered.error);
   await kit.endFight();
+});
+
+// U11. SRD 5.1, Find Familiar: "1st-level conjuration (ritual)", casting
+// time 1 hour, "M (10 gp worth of charcoal, incense, and herbs that must be
+// consumed by fire in a brass brazier)". cast_buff paid the casting;
+// summon_pet's familiar, the other door to the same spell, cost nothing.
+await test("U11: a familiar summoned with summon_pet casts Find Familiar: the ritual's hour and 10 gp of incense, refused without the gold", async () => {
+  await kit.endFight();
+  const { getClock } = await import("../src/lib/db/clock.ts");
+  const wizardWith = (gold) => world.addHero({
+    class: "wizard", level: 3, maxHp: 20, abilities: { int: 16 }, gold, proficiencies: { ...TRAINED },
+    spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 } }, prepared: ["Find Familiar"], known: [], cantrips: [] },
+  });
+  const mage = wizardWith(50);
+  const before = getClock(world.campaignId).instant;
+  const owl = await world.invoke("summon_pet", { characterId: mage.id, kind: "familiar", form: "owl", name: "Hoot" });
+  assert.equal(owl.ok, true, owl.error);
+  assert.equal(petOf(mage.id, "hoot")?.form, "Owl");
+  assert.equal(world.sheet(mage.id).gold, 40, "the incense cost nothing");
+  assert.equal(world.sheet(mage.id).spellcasting.slots[1].used, 0, "a wizard's ritual spent a slot");
+  assert.ok(getClock(world.campaignId).instant > before, "the hour's casting took no time");
+  // No 10 gp of incense, and none carried: no familiar, nothing spent.
+  const poor = wizardWith(0);
+  const broke = await world.invoke("summon_pet", { characterId: poor.id, kind: "familiar", form: "cat" });
+  assert.equal(broke.ok, false, "a familiar bound with no incense");
+  assert.equal(world.sheet(poor.id).pets.length, 0);
 });
 
 finish();

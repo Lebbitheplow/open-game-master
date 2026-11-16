@@ -455,7 +455,7 @@ await test("K12: a pet caught in an area or a spell makes its own save from its 
   // An enemy's spell at a familiar: the imp's own CON save with advantage
   // (Magic Resistance), Shatter's half on a success, and the warlock untouched.
   const warlock = world.addHero({ class: "warlock", level: 3, maxHp: 30, proficiencies: { ...TRAINED } });
-  world.patch(warlock.id, { currentHp: 30, features: [...world.sheet(warlock.id).features, { name: "Pact of the Chain", source: "class" }] });
+  world.patch(warlock.id, { currentHp: 30, gold: world.sheet(warlock.id).gold + 10, spellcasting: { ...world.sheet(warlock.id).spellcasting, ability: "cha", slots: { 1: { max: 2, used: 0 }, ...(world.sheet(warlock.id).spellcasting?.slots ?? {}) }, known: [...(world.sheet(warlock.id).spellcasting?.known ?? []), "Find Familiar"], prepared: world.sheet(warlock.id).spellcasting?.prepared ?? [], cantrips: world.sheet(warlock.id).spellcasting?.cantrips ?? [] }, features: [...world.sheet(warlock.id).features, { name: "Pact Boon: Pact of the Chain", source: "class" }] });
   const bound = await world.invoke("summon_pet", { characterId: warlock.id, kind: "familiar", form: "imp" });
   assert.equal(bound.ok, true, bound.error);
   const imp = () => world.sheet(warlock.id).pets[0];

@@ -107,7 +107,7 @@ const wren = world.addHero({
   abilities: { cha: 16 },
   spellcasting: { ability: "cha", slots: { 3: { max: 2, used: 0 } }, known: ["Find Familiar"], prepared: [], cantrips: [] },
 });
-world.patch(wren.id, { features: [...world.sheet(wren.id).features, { name: "Pact of the Chain", source: "class" }] });
+world.patch(wren.id, { gold: world.sheet(wren.id).gold + 10, spellcasting: { ...world.sheet(wren.id).spellcasting, ability: "cha", slots: { 1: { max: 2, used: 0 }, ...(world.sheet(wren.id).spellcasting?.slots ?? {}) }, known: [...(world.sheet(wren.id).spellcasting?.known ?? []), "Find Familiar"], prepared: world.sheet(wren.id).spellcasting?.prepared ?? [], cantrips: world.sheet(wren.id).spellcasting?.cantrips ?? [] }, features: [...world.sheet(wren.id).features, { name: "Pact Boon: Pact of the Chain", source: "class" }] });
 const used = (sheet, level) => world.sheet(sheet.id).spellcasting.slots[level].used;
 const catalogues = async (sheet) => {
   const handler = await world.route("campaigns/[campaignId]/summons");
