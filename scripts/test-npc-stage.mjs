@@ -120,6 +120,10 @@ await test("pure rules: a hero only gains what the actor really carried and give
   const offered = [{ name: "Brakk", text: "Brakk porge il suo pesce a Mairon: «Mangia.»" }];
   assert.equal(logic.planMove({ thing: "il pesce", from: "Brakk", to: "Mairon" }, "Mairon", people, offered, italian).kind, "hand", "a thing the hero offered in their own words, the actor takes");
   assert.equal(logic.planMove({ thing: "il pesce", from: "Brakk", to: "Kranz" }, "Kranz", people, [{ name: "Brakk", text: "Guardo il mare." }], italian).kind, "refused", "a thing the hero never named stays theirs");
+  const pack = [{ name: "Brakk", state: "", carries: ["una bussola d'ottone", "Pesce"], hero: true }, ...people.slice(1)];
+  assert.equal(logic.planMove({ thing: "la bussola d'ottone", from: "Brakk", to: "Mairon" }, "Mairon", pack, [{ name: "Brakk", text: "Poi porge la bussola a Mairon: «Tua.»" }], italian).kind, "hand", "its first word names it when nothing else of theirs shares it");
+  const two = [{ name: "Brakk", state: "", carries: ["una bussola d'ottone", "una bussola rotta"], hero: true }, ...people.slice(1)];
+  assert.equal(logic.planMove({ thing: "la bussola d'ottone", from: "Brakk", to: "Mairon" }, "Mairon", two, [{ name: "Brakk", text: "Porge la bussola a Mairon." }], italian).kind, "refused", "but not when two of their things share it");
   assert.equal(logic.planMove({ thing: "il pesce", from: "Brakk", to: "Kranz" }, "Mairon", people, offered, italian).kind, "refused", "and only the actor takes it");
   assert.equal(logic.planMove({ thing: "un tesoro", from: "", to: "Brakk" }, "Mairon", people).kind, "refused", "nothing made up for a hero");
   assert.equal(logic.planMove({ thing: "un pesce", from: "", to: "Mairon" }, "Mairon", people).kind, "grant", "a character finds a thing");

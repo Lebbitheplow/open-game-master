@@ -86,6 +86,19 @@ await test("grant_item and remove_item reach a cast sheet; no other tool does, a
   assert.deepEqual(sheets.listSheets(world.campaignId).map((entry) => entry.id), [brakk.id], "the heroes' list never grew");
 });
 
+await test("the compass: a thing a character holds is never granted to a hero out of nothing", async () => {
+  npc("Kranz", { carries: ["una bussola d'ottone"], withParty: true });
+  npc("Ugo", { carries: ["una conchiglia"], withParty: false });
+  const made = await world.invoke("grant_item", { characterId: brakk.id, items: [{ item: "bussola d'ottone" }], reason: "strappata a Kranz" });
+  assert.ok(made.error && /handle_item/.test(made.error) && /Kranz/.test(made.error), JSON.stringify(made));
+  assert.ok(!namesOf(world.sheet(brakk.id)).some((name) => /bussola/i.test(name)), "no second compass");
+  const own = await world.invoke("grant_item", { characterId: brakk.id, item: "una conchiglia", reason: "trovata" });
+  assert.equal(own.ok, true, "a thing nobody in the scene holds is granted as before (Ugo, elsewhere, has one too)");
+  const moved = await world.invoke("handle_item", { characterId: "Kranz", action: "hand", item: "una bussola d'ottone", toCharacterId: brakk.id });
+  assert.equal(moved.ok, true, JSON.stringify(moved));
+  assert.deepEqual(cast.npcThings(getNpcByName(world.campaignId, "Kranz")), [], "one compass, now Brakk's");
+});
+
 await test("deleting the campaign takes the cast bots with it", async () => {
   const { deleteCampaign } = await import("../src/lib/db/campaigns.ts");
   const owner = sheets.listCastSheets(world.campaignId)[0].userId;

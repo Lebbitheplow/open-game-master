@@ -17,7 +17,7 @@ import { playLegendaryAction, playsWhole } from "@/lib/dm/legendary-play";
 import { handleApplyHazard } from "@/lib/dm/hazard-tools";
 import { handleSearchLore } from "@/lib/dm/lore-search";
 import { handleReadCard } from "@/lib/dm/prep-card-tool";
-import { withCastSheets } from "@/lib/dm/cast-sheet-refs";
+import { heldByCastRefusal, withCastSheets } from "@/lib/dm/cast-sheet-refs";
 import { applyDmMutation, MUTATION_TOOL_NAMES } from "@/lib/dm/mutations";
 import { handleWriteCampaignNote } from "@/lib/dm/note-tools";
 import {
@@ -210,6 +210,7 @@ function engineCall(
     // change to a player character is an offer they answer, from the console
     // as from the AI's turn (turn.ts).
     return (
+      heldByCastRefusal(campaign.id, name, rawArguments, sheetsById) ??
       maybeProposeItemChange(campaign, turn.id, name, rawArguments, sheetsById) ??
       applyDmMutation(campaign, turn.id, name, rawArguments, sheets, sheetsById, turn, casting).result
     );

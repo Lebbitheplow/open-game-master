@@ -172,6 +172,19 @@ export function thingNamed(things: readonly string[], words: string, keyOf: Thin
   return near.length === 1 ? near[0] : null;
 }
 
+// Whether a hero's own words named one of their things: the whole line, the
+// referee's words for it, or its first word when no other thing of theirs
+// shares it (Brakk «porge la bussola» names "una bussola d'ottone").
+function heroNamedIt(said: string, line: string, words: string, carries: readonly string[], keyOf: ThingKey): boolean {
+  const spoken = ` ${said} `;
+  if ([keyOf(line), keyOf(words)].some((key) => key && spoken.includes(` ${key} `))) {
+    return true;
+  }
+  const head = (thing: string) => keyOf(thing).split(" ")[0] ?? "";
+  const word = head(line);
+  return Boolean(word) && carries.filter((thing) => head(thing) === word).length === 1 && spoken.includes(` ${word} `);
+}
+
 // What the server does with one move, or why it does not: the acting
 // character is on one side of it, a hero is never the one who gives it up,
 // and only people present take part.
@@ -198,7 +211,7 @@ export function planMove(move: StageMove, actor: string, people: readonly StageP
   if (from?.hero) {
     const named = thingNamed(from.carries, move.thing, keyOf);
     const said = offered.filter((line) => textKey(line.name) === textKey(from.name)).map((line) => keyOf(line.text)).join(" ");
-    const theirs = Boolean(named && to && textKey(to.name) === textKey(actor) && keyOf(named) && said.includes(keyOf(named)));
+    const theirs = Boolean(named && to && textKey(to.name) === textKey(actor) && heroNamedIt(said, named, move.thing, from.carries, keyOf));
     if (!theirs) {
       return { kind: "refused", move, why: `a thing of ${from.name}'s is theirs to give up` };
     }
