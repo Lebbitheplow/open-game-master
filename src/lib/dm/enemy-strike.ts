@@ -11,8 +11,8 @@
 // enemyRowSwingOdds: both sides' conditions, light, Pack Tactics and flanking
 // by side, a spell left on either), the riders on its roll (Bless, Bane), the
 // dice its traits add to a hit (side-allies.ts: Martial Advantage beside an
-// ally of its side, Surprise Attack), an effect's damage, Ray of
-// Enfeeblement, the blow by type, the damage through applyEnemyDamage (the
+// ally of its side, Surprise Attack), an effect's damage, Enlarge/Reduce, Ray
+// of Enfeeblement, the blow by type, the damage through applyEnemyDamage (the
 // target's resistances, Undead Fortitude, its concentration, its death and
 // the end of the fight), and what the hit carries (enemy-hit-rows.ts). The
 // attacker walks in first when it can (enemy-approach.ts).
@@ -45,7 +45,7 @@ import { enfeebledBlow, spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
 import { applyEnemyDamage } from "@/lib/dm/enemy-damage";
 import { approachTarget, reachesThisTurn, spendEnemyAction, standUpIfProne } from "@/lib/dm/enemy-approach";
-import { blowByType } from "@/lib/dm/enemy-hit";
+import { blowByType, sizedAttack } from "@/lib/dm/enemy-hit";
 import { alternativeBlow, attackNamed, enemyAttackProfile, pastRangedLimit, plannedSwings, swingMode, type EnemyAttackProfile } from "@/lib/dm/enemy-profile";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { publishFx, tokenPosition } from "@/lib/dm/fx";
@@ -192,7 +192,10 @@ export function enemyStrikesEnemy(
     const swung: EnemyAttack = alternativeBlow(plannedAttack, { ranged: mode.ranged, bloodied: enemy.currentHp <= enemy.maxHp / 2 });
     // The charge this hit would ride, and its extra dice (enemy-charge.ts).
     const charge = chargeForHit(getActiveEncounter(campaign.id), enemy, swung, ranFeet);
-    const attack = charge ? withChargeDice(swung, charge) : swung;
+    // Enlarge/Reduce on the creature: its weapons grew or shrank with it, as
+    // on its swing at a character (enemy-hit.ts sizedAttack).
+    const sized = sizedAttack(charge ? withChargeDice(swung, charge) : swung, enemy.conditions);
+    const attack = sized.attack;
     const odds = enemyRowSwingOdds({
       campaign,
       encounterId: encounter.id,
@@ -261,7 +264,7 @@ export function enemyStrikesEnemy(
     turn.rollIds.push(damageRoll.id);
     const blow = blowByType(attack, damage, crit);
     // Ray of Enfeeblement halves a Strength weapon's blow (spell-retort.ts).
-    const dealt = enfeebledBlow(enemy, attack, mode.ranged, Math.max(0, blow.amount));
+    const dealt = enfeebledBlow(enemy, attack, mode.ranged, Math.max(sized.floor, blow.amount));
     // Stamped on the roll as it lands, so the after-fight card counts it.
     last = dealt > 0
       ? landRoll(damageRoll.id, now.id, () =>

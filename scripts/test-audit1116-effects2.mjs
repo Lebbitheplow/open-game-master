@@ -158,5 +158,86 @@ await test("Y14: a creature's Hideous Laughter at a hero of Intelligence 10 stil
   assert.ok(world.sheet(kara.id).conditions.includes("incapacitated"));
 });
 
+// ---- Y15: Enlarge/Reduce and Ray of Enfeeblement on every creature's strike ----
+
+// SRD 5.1, Enlarge/Reduce: enlarged, "the target's attacks with them deal
+// 1d4 extra damage"; reduced, "1d4 less damage (this can't reduce the damage
+// below 1)". Ray of Enfeeblement: "deals only half damage with weapon
+// attacks that use Strength". Y10 put the size on a creature's own swing and
+// its opportunity attack at a character; a creature fighting on the party's
+// side, a creature striking another as it walks off, and a creature striking
+// a pet as it walks off with its owner hit as printed (the last ignored Ray
+// of Enfeeblement too).
+async function sidesStage() {
+  const { openWorld } = await import("./lib/enforce-world.mjs");
+  const world = await openWorld({ gameSettings: { ttsEnabled: false } });
+  const kit = await combatKit(world);
+  const hero = world.addHero({ name: "Mira", class: "ranger", subclass: "Beast Master", level: 5, maxHp: 60, abilities: { str: 16 }, proficiencies: TRAINED, ac: 12, acOverride: true });
+  await kit.fight(2, { heroFaces: { [hero.id]: 20 } });
+  const [first, second] = world.enemies();
+  for (const enemy of [first, second]) {
+    kit.setEnemy(enemy.id, { maxHp: 200, currentHp: 200, stats: { ...DUMMY } });
+  }
+  kit.scatter();
+  return { world, kit, hero, first, second };
+}
+const sized = (kit, enemy, condition) => kit.setEnemy(enemy.id, { conditions: [condition], conditionMeta: { [condition]: { spell: condition === "enfeebled" ? "Ray of Enfeeblement" : "Enlarge/Reduce", source: "x", rounds: 10 } } });
+
+await test("Y15: a reduced creature fighting on the party's side deals 1d4 less", async () => {
+  const { world, kit, hero, first, second } = await sidesStage();
+  const { patchEnemyConditions } = await import("../src/lib/db/encounters.ts");
+  patchEnemyConditions(first.id, ["charmed", "reduced"], { charmed: { spell: "Dominate Person", source: hero.id }, reduced: { spell: "Enlarge/Reduce", source: hero.id, rounds: 10 } });
+  kit.place(first.id, 10, 2);
+  kit.place(second.id, 11, 2);
+  // The club's d20, its d6 at 6, Reduce's d4 at 4: 6 + 2 - 4.
+  world.dice(19, 6, 4);
+  const out = await world.invoke("enemy_attack", { enemyId: first.id, targetCharacterId: second.id });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(200 - kit.enemy(second.id).currentHp, 4, JSON.stringify(out.result).slice(0, 300));
+});
+
+await test("Y15: an enlarged creature's opportunity attack at a creature walking off its side deals 1d4 more", async () => {
+  const { world, kit, hero, first, second } = await sidesStage();
+  const { patchEnemyConditions } = await import("../src/lib/db/encounters.ts");
+  const { enemiesStrikeWalker } = await import("../src/lib/dm/opportunity-sides.ts");
+  patchEnemyConditions(first.id, ["charmed"], { charmed: { spell: "Dominate Person", source: hero.id } });
+  sized(kit, second, "enlarged");
+  kit.place(first.id, 11, 2);
+  kit.place(second.id, 10, 2);
+  world.dice(19, 6, 4);
+  const notes = enemiesStrikeWalker(world.campaignId, first.id, [{ x: 11, y: 2 }, { x: 12, y: 2 }, { x: 13, y: 2 }], 1);
+  world.clearDice();
+  assert.equal(notes.length, 1, "the enlarged goblin strikes as it goes");
+  assert.equal(200 - kit.enemy(first.id).currentHp, 12, "6 + 2 + 4");
+});
+
+async function petStage(condition) {
+  const staged = await sidesStage();
+  const { world, kit, hero, first } = staged;
+  const summoned = await world.invoke("summon_pet", { characterId: hero.id, kind: "beast_companion", form: "wolf" });
+  assert.equal(summoned.ok, true, summoned.error);
+  const { patchSheet } = await import("../src/lib/db/sheets.ts");
+  patchSheet(hero.id, { pets: world.sheet(hero.id).pets.map((pet) => ({ ...pet, conditions: [] })) });
+  sized(kit, first, condition);
+  kit.place(hero.id, 11, 2);
+  kit.place(first.id, 10, 2);
+  const before = world.sheet(hero.id).pets[0].hp;
+  const { strikePetsOnWalk } = await import("../src/lib/dm/opportunity-pets.ts");
+  world.dice(19, 6, 4);
+  const notes = strikePetsOnWalk(world.campaign(), hero.id, [{ x: 11, y: 2 }, { x: 12, y: 2 }, { x: 13, y: 2 }]);
+  world.clearDice();
+  assert.equal(notes.length, 1, "the goblin strikes the wolf as it goes");
+  return before - world.sheet(hero.id).pets[0].hp;
+}
+
+await test("Y15: a reduced creature's opportunity attack at a pet deals 1d4 less", async () => {
+  assert.equal(await petStage("reduced"), 4, "6 + 2 - 4");
+});
+
+await test("Y15: an enfeebled creature's opportunity attack at a pet deals half", async () => {
+  assert.equal(await petStage("enfeebled"), 4, "(6 + 2) / 2");
+});
+
 closeTables();
 finish();

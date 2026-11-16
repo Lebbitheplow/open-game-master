@@ -31,14 +31,14 @@ import { attackContext, effectiveSpeed, mergeAdvantage } from "@/lib/dm/conditio
 import { fearAsRolled } from "@/lib/dm/attack-light";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { effectOutcome } from "@/lib/dm/effect-tools";
-import { blowByType } from "@/lib/dm/enemy-hit";
+import { blowByType, sizedAttack } from "@/lib/dm/enemy-hit";
 import { opportunityWeapon } from "@/lib/dm/enemy-profile";
 import { goadBarsOpportunity } from "@/lib/dm/goaded";
 import { hasTrait } from "@/lib/dm/monster-abilities";
 import { leavesReachAt } from "@/lib/dm/opportunity-reach-logic";
 import { enemyOpportunityRiders, opportunitySight } from "@/lib/dm/opportunity-strike";
 import { handleDamagePet } from "@/lib/dm/pet-tools";
-import { spendEnemyRiders } from "@/lib/dm/spell-retort";
+import { enfeebledBlow, spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { conditionBlocksReactions } from "@/lib/srd/condition-effects";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import type { SheetPet } from "@/lib/schemas/sheet";
@@ -99,7 +99,11 @@ export function strikePetsOnWalk(campaign: Campaign, ownerId: string, steps: XY[
     }
     encounter.reactionsUsed = [...encounter.reactionsUsed, enemy.id];
     saveEncounter(encounter);
-    const { attack } = weapon;
+    // Enlarge/Reduce on the creature (enemy-hit.ts sizedAttack) and Ray of
+    // Enfeeblement (below), as on its swing at a character: the pet took the
+    // blow as printed.
+    const sized = sizedAttack(weapon.attack, enemy.conditions);
+    const attack = sized.attack;
     const context = attackContext({
       attackerConditions: fearAsRolled(encounter.id, enemy.id, enemy.conditions, enemy.conditionMeta),
       targetConditions: pet.conditions ?? [],
@@ -129,15 +133,16 @@ export function strikePetsOnWalk(campaign: Campaign, ownerId: string, steps: XY[
     const damageRoll = insertRoll({ campaignId: campaign.id, characterId: ownerId, requestedBy: "dm", kind: "damage", detail: label, result: damage, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName } });
     publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll: damageRoll, source: "digital" });
     const blow = blowByType(attack, damage, crit);
+    const amount = enfeebledBlow(enemy, attack, false, Math.max(sized.floor, blow.amount));
     const sheets = listSheets(campaign.id);
     const struck = handleDamagePet(
       campaign,
-      JSON.stringify({ characterId: ownerId, petName: pet.name, amount: Math.max(0, blow.amount), ...(blow.type ? { type: blow.type } : {}), ...(hasTrait(enemy.stats, "magicWeapons") || attack.magical ? { magical: true } : {}) }),
+      JSON.stringify({ characterId: ownerId, petName: pet.name, amount, ...(blow.type ? { type: blow.type } : {}), ...(hasTrait(enemy.stats, "magicWeapons") || attack.magical ? { magical: true } : {}) }),
       sheets,
       new Map(sheets.map((sheet) => [sheet.id, sheet])),
     );
     const after = "error" in struck ? "" : String(struck.vanished ?? struck.down ?? (struck.hp ? `${pet.name} is at ${struck.hp}` : ""));
-    notes.push(`${enemy.displayName} takes an opportunity attack as ${pet.name} pulls away with ${live.name}: ${crit ? "a critical hit for " : "hit for "}${"error" in struck ? blow.amount : struck.damage} damage.${after ? ` ${after}` : ""}`);
+    notes.push(`${enemy.displayName} takes an opportunity attack as ${pet.name} pulls away with ${live.name}: ${crit ? "a critical hit for " : "hit for "}${"error" in struck ? amount : struck.damage} damage.${after ? ` ${after}` : ""}`);
   }
   for (const content of notes) {
     const seq = allocateSeq(campaign.id);
