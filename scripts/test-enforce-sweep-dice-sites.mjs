@@ -29,12 +29,37 @@
 // was rolled) or REFUSED. A row is expected PARKED unless it is named in
 // RULING (thrown by the written scope above), KNOWN (thrown, against the
 // scope: a gap) or QUIET.
+//
+// Then the row's record (issue #915). The seat enters its own dice for every
+// card the row parked, so the call runs to its end, and every roll the call
+// stored is held to three things:
+//
+//   home    it is on one turn once, or on the one line its site posted for
+//           it: a roll on neither is thrown on the dice stage and never shown
+//           in the chronicle (scripts/lib/roll-homes.mjs);
+//   sent    it is sent as it was made: dice the seat entered are on record
+//           and sent as physical, so the stage does not throw them again, and
+//           the server's own as digital;
+//   roller  it names who rolled it: an attack or damage roll with no roller
+//           reads as the roll of the character it lands on (a fall, a trap).
+//
+// One function does all of these (src/lib/dm/roll-record.ts recordRoll). A
+// row whose site still records its roll by hand and misses one is listed
+// under `rows` in scripts/roll-record-sites.json with the checks it fails.
+// A row that fails a check it is not listed for fails this suite, and so
+// does a row listed for a check it now passes: the list only gets shorter.
+// The dice the server throws are seeded row by row, so a row stores the same
+// rolls on every run. `ODM_SWEEP_ROWS=print` prints the list as it stands.
 import assert from "node:assert/strict";
-import { openWorld } from "./lib/enforce-world.mjs";
+import fs from "node:fs";
+import path from "node:path";
+import { call } from "./lib/enforce-campaign.mjs";
+import { openWorld, seedDice } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { combatKit, TRAINED } from "./lib/enforce-combat.mjs";
 import { aiEngine } from "./lib/enforce-narrator.mjs";
 import { d20sOf, formArgs, installDiceSpy, staticRollSites, taggedFor } from "./lib/sweep-dice.mjs";
+import { announced, homeProblem, lastSeq, rollMark, rollsAfter } from "./lib/roll-homes.mjs";
 
 const { test, gap, finish } = suite("test-enforce-sweep-dice-sites");
 const spy = installDiceSpy();
@@ -47,6 +72,10 @@ const { listOpenPendingRolls } = await import("../src/lib/db/dm-turns.ts");
 const { getDatabase } = await import("../src/lib/db/core.ts");
 const { listRecentRolls } = await import("../src/lib/db/rolls.ts");
 const { REAL_DICE_SCOPE } = await import("../src/lib/dice/held-rolls.ts");
+const { entryDice } = await import("../src/lib/dice.ts");
+const submitRoute = await world.route("campaigns/[campaignId]/pending-rolls/[pendingRollId]");
+// The rows known to fail a check of their record, and which.
+const RECORD_ROWS = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, "roll-record-sites.json"), "utf8")).rows ?? {};
 
 const DEBUG = Boolean(process.env.ODM_SWEEP_DEBUG);
 // The promise every row is held to is quoted from the sentence itself, so a
@@ -335,8 +364,94 @@ const siteAt = (die) => sites.find((site) => site.file === die.file && site.line
 const reached = new Map();
 const unclassified = new Set();
 
-async function run(entry, door) {
+// ---- the row's record ----
+
+// The face the seat enters for a die: a d20 that hits a goblin and passes a
+// DC 10, and the middle of any other die.
+const faceFor = (sides) => (sides === 20 ? 13 : Math.ceil(sides / 2));
+
+// The seat enters its own dice for every card the row parked, and for each
+// card the call parks next (a hit's damage, a second roll), until none waits.
+// Returns the cards entered.
+async function enterParked() {
+  const entered = [];
+  for (let round = 0; round < 8; round += 1) {
+    const open = listOpenPendingRolls(world.campaignId).filter((pending) => pending.userId === hero.userId && pending.parkedFor === "real_dice");
+    if (!open.length) {
+      break;
+    }
+    for (const pending of open) {
+      world.signIn({ id: hero.userId });
+      const landed = await call(submitRoute, "POST", { dice: entryDice(pending.expression).map(faceFor) }, { campaignId: world.campaignId, pendingRollId: pending.id });
+      if (landed.status !== 200) {
+        throw new Error(`the seat's ${pending.kind} (${pending.expression}) was not taken: ${JSON.stringify(landed.json).slice(0, 200)}`);
+      }
+      entered.push({ id: pending.id, kind: pending.kind });
+    }
+  }
+  return entered;
+}
+
+// What is wrong with the record of the rolls stored since `mark`, check by check.
+function recordProblems(mark, seq, cards) {
+  const rolls = rollsAfter(world.campaignId, mark);
+  const problems = { home: [], sent: [], roller: [] };
+  const mine = (roll) => roll.characterId === hero.id || roll.attacker?.id === hero.id;
+  // The roll each entered card became: the one its card names, else the
+  // seat's next roll of that kind.
+  const entered = new Set();
+  for (const card of cards) {
+    const named = getDatabase().prepare("SELECT roll_id FROM pending_rolls WHERE id = ?").get(card.id)?.roll_id;
+    const roll = rolls.find((entry) => entry.id === named) ?? rolls.find((entry) => !entered.has(entry.id) && entry.kind === card.kind && mine(entry));
+    if (roll) {
+      entered.add(roll.id);
+    } else {
+      problems.sent.push(`the ${card.kind} the seat entered is on no record`);
+    }
+  }
+  for (const roll of rolls) {
+    const what = `${roll.kind} "${roll.detail}"`;
+    // A roll card's roll (request_roll, an attack's parts) on an AI's turn is
+    // added to the turn when the turn resumes (turn.ts resumeDmTurn), which
+    // this row does not wait for: the card that names it is its place till
+    // then. A roll that held its whole call is recorded by the call's own
+    // run, and is read where that run left it.
+    const resumes = getDatabase()
+      .prepare("SELECT 1 FROM pending_rolls p JOIN dm_turns t ON t.id = p.turn_id WHERE p.roll_id = ? AND t.actor = 'ai' AND json_extract(p.carry_json, '$.call') IS NULL")
+      .get(roll.id);
+    const home = resumes ? null : homeProblem(roll.id);
+    if (home) {
+      problems.home.push(`${what}: ${home}`);
+    }
+    // A roll behind the screen is sent seat by seat and is not in the log
+    // every seat may replay; what the log holds is read.
+    const told = announced(world.campaignId, seq, roll.id).map((payload) => payload.source);
+    if (entered.has(roll.id)) {
+      if (!/\(physical\)$/.test(roll.detail)) {
+        problems.sent.push(`${what}: the seat's own dice, and the record does not say so`);
+      }
+      if (told.some((source) => source !== "physical") || (roll.visibility === "public" && !told.length)) {
+        problems.sent.push(`${what}: the seat's own dice, sent as [${told.join(", ")}]`);
+      }
+    } else if (told.some((source) => source !== "digital") || /\(physical\)$/.test(roll.detail)) {
+      problems.sent.push(`${what}: the server's dice, sent as [${told.join(", ")}]`);
+    }
+    if (!roll.attacker && roll.characterId && (roll.kind === "attack" || roll.kind === "damage") && !entered.has(roll.id)) {
+      problems.roller.push(`${what}: nobody is named as rolling it, so it reads as the roll of the character it lands on`);
+    } else if (!roll.attacker && !roll.characterId && roll.requestedBy !== "dm") {
+      problems.roller.push(`${what}: names nobody`);
+    }
+  }
+  return { problems, rolls: rolls.length };
+}
+const CHECKS = ["home", "sent", "roller"];
+const recordNow = {};
+
+async function run(entry, door, seed) {
   doorNow = door;
+  // The server's dice from a seed of the row's own: the row stores the same
+  // rolls on every run, so its record is the same.
+  seedDice(seed);
   await reset(entry.stage);
   if (entry.setup) {
     await entry.setup(ctx());
@@ -350,6 +465,8 @@ async function run(entry, door) {
     world.say("dm", "A chandelier hangs low over the goblin, its rope tied off within reach.");
     world.say("player", words, world.sheet(who.id));
   }
+  const mark = rollMark();
+  const seq = lastSeq(world.campaignId);
   let out;
   try {
     out = await (door === "ai" ? (ai.fresh(), ai.invoke(entry.tool, args)) : world.invoke(entry.tool, args));
@@ -373,18 +490,26 @@ async function run(entry, door) {
   if (DEBUG) {
     console.log(`  ${verdict.padEnd(7)} ${entry.id}@${door} ${out.ok ? "" : `[${String(out.error).slice(0, 140)}] `}sites=${where.join(",")} parked=${parked.map((pending) => pending.kind).join(",")}`);
   }
-  return { verdict, where: where.filter((id) => !RULED_SITES[id]), out, parked, dice };
+  // The verdict is read before the seat answers: the dice it enters now are
+  // its own, and the call runs on with them.
+  const record = recordProblems(mark, seq, await enterParked());
+  spy.take();
+  return { verdict, where: where.filter((id) => !RULED_SITES[id]), out, parked, dice, record };
 }
 
 const tally = { PARKED: 0, RULED: 0, THROWN: 0, QUIET: 0, REFUSED: 0 };
 const ruledRows = {};
-for (const entry of rows) {
+let stored = 0;
+for (const [index, entry] of rows.entries()) {
   for (const door of CONSOLE_ONLY.has(entry.id) ? ["console"] : ["console", "ai"]) {
     const id = `${entry.id}@${door}`;
     const known = KNOWN[id] ?? KNOWN[entry.id];
     const refusedOk = REFUSED_OK[id] ?? REFUSED_OK[entry.id];
+    let record = null;
     const play = async () => {
-      const got = await run(entry, door);
+      const got = await run(entry, door, 9150 + index * 2 + (door === "ai" ? 1 : 0));
+      record = got.record;
+      stored += got.record.rolls;
       tally[got.verdict] += 1;
       if (got.verdict === "RULED") {
         for (const die of got.dice) {
@@ -413,8 +538,28 @@ for (const entry of rows) {
         assert.ok(["PARKED", "RULED", "QUIET"].includes(got.verdict), `${id}: ${got.verdict}${got.out.ok ? "" : ` [${String(got.out.error).slice(0, 200)}]`} ${got.where.join(", ")}`);
       });
     }
+    const listed = RECORD_ROWS[id] ?? [];
+    await test(`${id}: every roll the call stored has one home, is sent as it was made and names its roller${listed.length ? ` (listed as failing: ${listed.join(", ")})` : ""}`, () => {
+      assert.ok(record, `${id} did not run to its record`);
+      const failing = CHECKS.filter((check) => record.problems[check].length);
+      if (failing.length) {
+        recordNow[id] = failing;
+      }
+      const fresh = failing.filter((check) => !listed.includes(check));
+      assert.deepEqual(fresh, [], `${id} fails a check of its record it is not listed for. Record the roll through recordRoll (src/lib/dm/roll-record.ts).\n  ${fresh.flatMap((check) => record.problems[check].map((problem) => `${check}: ${problem}`)).join("\n  ")}`);
+      const closed = listed.filter((check) => !failing.includes(check));
+      assert.deepEqual(closed, [], `${id} now passes ${closed.join(", ")}: strike it from "rows" in scripts/roll-record-sites.json.`);
+    });
   }
 }
+seedDice(null);
+if (process.env.ODM_SWEEP_ROWS === "print") {
+  console.log(`ROWS ${JSON.stringify(recordNow)}`);
+}
+await test("every row listed as failing a check of its record is a row of this suite", () => {
+  const stale = Object.keys(RECORD_ROWS).filter((id) => !rows.some((entry) => id === `${entry.id}@console` || id === `${entry.id}@ai`));
+  assert.deepEqual(stale, [], `listed in scripts/roll-record-sites.json and not a row here: ${stale.join(", ")}`);
+});
 
 await test("every untagged d20 the rows met comes from a site this suite has classified", () => {
   assert.deepEqual([...unclassified], [], `untagged d20s from sites in neither list: ${[...unclassified].join(", ")}`);
@@ -583,7 +728,7 @@ await test("every roll site in src/ is classified, and every site that throws a 
   assert.deepEqual(warm, [], `sites said to be unreached that a row now reaches: ${warm.join(", ")}`);
 });
 
-console.log(`rows: ${rows.length} (${Object.values(tally).reduce((sum, count) => sum + count, 0)} runs over two doors) ${JSON.stringify(tally)}; forms with a reason and no row: ${Object.keys(NO_ROW).length}; roll sites classified: ${Object.keys(SITES).length}, unreached: ${Object.keys(UNREACHED).length}`);
+console.log(`rows: ${rows.length} (${Object.values(tally).reduce((sum, count) => sum + count, 0)} runs over two doors) ${JSON.stringify(tally)}; rolls on record: ${stored}, rows failing a check of their record: ${Object.keys(recordNow).length}; forms with a reason and no row: ${Object.keys(NO_ROW).length}; roll sites classified: ${Object.keys(SITES).length}, unreached: ${Object.keys(UNREACHED).length}`);
 for (const [site, ids] of Object.entries(ruledRows)) {
   console.log(`  RULED ${site} (${RULED_SITES[site]}): ${ids.size} rows`);
 }
