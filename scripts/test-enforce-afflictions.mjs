@@ -36,7 +36,14 @@ const afflict = (args, faces = []) => {
   world.dice(...faces);
   return world.invoke("afflict", args).finally(() => world.clearDice());
 };
-const days = (amount) => world.invoke("pass_time", { amount, unit: "days" });
+// Days that pass with nobody sleeping: half a day at a time, since a whole
+// day waited out ends in a night's long rest (rest-benefits.ts), whose
+// disease saves would take the dice a test queued for its own rest.
+const days = async (amount) => {
+  for (let half = 0; half < amount * 2; half += 1) {
+    await world.invoke("pass_time", { amount: 12, unit: "hours" });
+  }
+};
 const longRest = async (faces = []) => {
   await days(1);
   world.clearDice();
@@ -251,7 +258,7 @@ await test("Midnight Tears waits for midnight, then a DC 17 CON save against 9d6
   assert.equal(world.sheet(guest.id).currentHp, 90);
   world.clearDice();
   world.dice(1, 6, 6, 6, 6, 6, 6, 6, 6, 6);
-  await world.invoke("pass_time", { amount: 1, unit: "days" });
+  await days(1);
   world.clearDice();
   assert.equal(world.sheet(guest.id).currentHp, 90 - 54);
 });

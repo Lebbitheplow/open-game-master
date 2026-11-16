@@ -33,7 +33,8 @@ import { publishTitleCard } from "@/lib/dm/scene-state";
 import { handleApplyHazard } from "@/lib/dm/hazard-tools";
 import { describeWeather, weatherExposure, weatherTravelFactor } from "@/lib/srd/weather";
 import type { Weather } from "@/lib/scene/state";
-import { ADVANCE_UNITS, describeDuration, describeInstant, restMinutes } from "@/lib/dm/calendar";
+import { advance, ADVANCE_UNITS, describeDuration, describeInstant, restMinutes } from "@/lib/dm/calendar";
+import { passRestingDays, restingDaysLine, restingDaysResult } from "@/lib/dm/rest-benefits";
 import { handleTakeRest } from "@/lib/dm/rest-tools";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -579,7 +580,9 @@ function passVerb(minutes: number): string {
 
 export function handlePassTime(
   campaign: Campaign,
+  turnId: string,
   rawArguments: string,
+  sheets: CharacterSheet[],
 ): ToolResult {
   let args: z.infer<typeof passTimeSchema>;
   try {
@@ -588,6 +591,10 @@ export function handlePassTime(
     const refused = badArguments(`Invalid arguments: pass_time needs an amount and a unit.`, error, rawArguments);
     return { ...refused, error: `${refused.error}${mealRefused(rawArguments) ? ` ${MEAL_REFUSAL}` : ""}` };
   }
+  const span = advance(0, args.amount, args.unit);
+  if ("error" in span) {
+    return span;
+  }
   if (args.water) {
     setWaterRation(campaign.id, args.water);
   }
@@ -595,7 +602,10 @@ export function handlePassTime(
   // Every character's lifestyle is charged for the dawns below, so those
   // dawns feed whoever keeps one up.
   const lifestyle = Object.fromEntries(listSheets(campaign.id).map((sheet) => [sheet.id, 0]));
-  const moved = advanceClock(campaign.id, args.amount, args.unit, { meal: Boolean(args.meal), lifestyle });
+  // A whole day waited out is a day slept through: each ends in the night's
+  // long rest for the party (rest-benefits.ts), with no more time and no
+  // second lifestyle. A night alone is take_rest.
+  const moved = passRestingDays(campaign, turnId, sheets, span.minutes, { meal: Boolean(args.meal), lifestyle }, args.reason?.trim() || "the days waited out");
   if ("error" in moved) {
     return moved;
   }
@@ -617,7 +627,7 @@ export function handlePassTime(
   const sky = refreshSky(campaign.id, { before, minutes: moved.minutes });
   tableNote(
     campaign,
-    `${describeDuration(moved.minutes)} ${passVerb(moved.minutes)}${args.reason?.trim() ? `: ${asSentence(args.reason)}` : "."} It is now ${describeInstant(moved.clock.calendar, moved.clock.instant)}.`,
+    `${describeDuration(moved.minutes)} ${passVerb(moved.minutes)}${args.reason?.trim() ? `: ${asSentence(args.reason)}` : "."} It is now ${describeInstant(moved.clock.calendar, moved.clock.instant)}.${restingDaysLine(moved.rests)}`,
   );
   return {
     ok: true,
@@ -625,6 +635,7 @@ export function handlePassTime(
     now: describeInstant(moved.clock.calendar, moved.clock.instant),
     ...(sky?.summary ? { weather: sky.summary } : {}),
     ...(living.length ? { lifestyle: living } : {}),
+    ...restingDaysResult(moved.rests),
     // Rolled by the server as the time passed; narrate what they decided.
     ...(moved.deathSaves.length ? { deathSaves: moved.deathSaves } : {}),
     // A commanded undead's hourly save (ar-ws-command-hours.ts), rolled the same way.

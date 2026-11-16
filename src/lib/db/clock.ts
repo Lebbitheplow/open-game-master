@@ -10,6 +10,7 @@ import { dawnsBetween, rechargeAtDawn } from "@/lib/dm/item-charges";
 import { mealAtTable, upkeepAtDawns } from "@/lib/dm/supplies";
 import { afflictionClockTick } from "@/lib/dm/afflictions";
 import { poisonClockTick } from "@/lib/dm/affliction-poisons";
+import { hitDiseaseClockTick } from "@/lib/dm/hit-disease";
 import { fireCalendarEvents } from "@/lib/dm/calendar-fire";
 import { tickClockConditions } from "@/lib/dm/condition-tick";
 import { commandedHourlySaves } from "@/lib/dm/ar-ws-command-hours";
@@ -168,6 +169,8 @@ export function advanceClock(
   // its midnight (src/lib/dm/afflictions.ts, affliction-poisons.ts).
   afflictionClockTick(campaignId, moved.instant);
   poisonClockTick(campaignId, moved.instant);
+  // A bite's disease and its save every 24 hours (hit-disease.ts).
+  hitDiseaseClockTick(campaignId, moved.instant);
   // Mummy rot's 3d6 off the maximum for every 24 hours (mummy-rot.ts).
   mummyRotClock(campaignId, current.instant, moved.instant);
   // A companion's ultimatum whose deadline it passed (issue 503).

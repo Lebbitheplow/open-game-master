@@ -3,7 +3,7 @@ import { getSheetById } from "@/lib/db/sheets";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { withMoonlight } from "@/lib/dm/ar-ws-moonlight-logic";
-import { burnDown, burningSource, burnLeftAt, lightIn, litLight, putOutIn } from "@/lib/dm/carried-light-logic";
+import { burnDown, burningSource, burnLeftAt, lightIn, litLight, putOutIn, type LightSource } from "@/lib/dm/carried-light-logic";
 import { publishFx } from "@/lib/dm/fx";
 import { publishEphemeral } from "@/lib/events";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
@@ -20,13 +20,36 @@ import { RADIANT_LIGHT, radiantWeaponLit } from "@/lib/srd/infusions";
 // and the minutes a whole one burns.
 export type CarriedLight = { radius: number; dim: number; minutes: number };
 
-export function carriedLight(sheet: Pick<CharacterSheet, "equipment"> & { conditions?: readonly string[] }): CarriedLight {
-  const found = burningSource(sheet.equipment);
+type LightBearer = Pick<CharacterSheet, "equipment"> & { conditions?: readonly string[] };
+
+function sheds(sheet: LightBearer, source: LightSource | null): CarriedLight {
   // A Lunar sorcerer's moonlight is carried too (ar-ws-moonlight-logic.ts),
   // and an artificer's Radiant Weapon lit in the hand: bright light 30 feet
   // and dim 30 more, burning nothing (src/lib/dm/infusion-charges.ts).
-  const carried = withMoonlight(sheet, found ? { radius: found.source.radius, dim: found.source.dim, minutes: found.source.minutes } : { radius: 0, dim: 0, minutes: 0 });
+  const carried = withMoonlight(sheet, source ? { radius: source.radius, dim: source.dim, minutes: source.minutes } : { radius: 0, dim: 0, minutes: 0 });
   return radiantWeaponLit(sheet) && carried.radius < RADIANT_LIGHT.radius ? RADIANT_LIGHT : carried;
+}
+
+// The light a character carries and could shed: what a board lights as it is
+// laid (boardLight), lit or not yet.
+export function carriedLight(sheet: LightBearer): CarriedLight {
+  return sheds(sheet, burningSource(sheet.equipment)?.source ?? null);
+}
+
+// The light a character sheds now: a torch, candle, lamp or lantern only
+// while its record says it is lit (carried-light-logic.ts), a light that
+// never burns down always. The reads of what a character sees by take this
+// one: a check by sight in an unlit cave counted a torch still in the pack.
+export function shedLight(sheet: LightBearer): CarriedLight {
+  const found = burningSource(sheet.equipment);
+  return sheds(sheet, found && (found.source.minutes <= 0 || found.lamp.litAt !== undefined) ? found.source : null);
+}
+
+// The light a character carries unlit while they shed none, for the GM to be
+// told the dark is theirs to end; null otherwise.
+export function unlitLightNote(sheet: LightBearer): string | null {
+  const found = burningSource(sheet.equipment);
+  return found && found.source.minutes > 0 && found.lamp.litAt === undefined && shedLight(sheet).radius <= 0 ? `${found.lamp.name} not lit; use_item lights it` : null;
 }
 
 // The token fields for a light lit now, at `instant` on the clock.

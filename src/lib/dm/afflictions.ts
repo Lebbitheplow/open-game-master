@@ -424,6 +424,13 @@ export function afflictionClockTick(campaignId: string, to: number) {
     const next: Affliction[] = [];
     let changed = false;
     for (const entry of list) {
+      // One already cured (Lesser Restoration ending a long-term madness's
+      // paranoia) ends here and says nothing more: read raw, its hours ran
+      // out later and the chronicle said the cured madness passed.
+      if (!inForce(entry, sheet)) {
+        changed = true;
+        continue;
+      }
       if (entry.kind === "disease" && entry.onsetAt !== undefined && entry.onsetAt <= to) {
         // No turn named: the symptoms belong to the turn that moved the clock
         // (src/lib/db/sheet-audit.ts). The literal "clock" these once passed

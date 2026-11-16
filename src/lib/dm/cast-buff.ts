@@ -448,6 +448,8 @@ export function handleCastBuff(
   // Extended Spell paid for this cast doubles it (mt-srd-metamagic.ts).
   const lasts = extendedRounds(sheet, lifetimeAtSlot(resolvedMech.name, buff.rounds, slotLevel, authors));
   const rounds = lasts === null ? null : Math.max(1, lasts);
+  // Past a day it stays the spell's own: whole days as days, else minutes,
+  // the clock ending it (a table's ten-day ward was written as 1,440 minutes).
   const duration =
     rounds === null
       ? {}
@@ -455,7 +457,9 @@ export function handleCastBuff(
         ? { rounds }
         : rounds % 600 === 0 && rounds / 600 <= 24
           ? { hours: rounds / 600 }
-          : { minutes: Math.min(1440, Math.ceil(rounds / 10)) };
+          : rounds % 14400 === 0
+            ? { days: rounds / 14400 }
+            : { minutes: Math.ceil(rounds / 10) };
   const spellMeta: ConditionMeta = {
     spell: resolvedMech.name,
     source: sheet.id,
@@ -580,7 +584,9 @@ export function handleCastBuff(
     duration:
       "hours" in duration
         ? `${duration.hours} hour${duration.hours === 1 ? "" : "s"}`
-        : "minutes" in duration
+        : "days" in duration
+          ? `${duration.days} days`
+          : "minutes" in duration
           ? `${duration.minutes} minutes`
           : rounds === null
             ? "until dispelled"

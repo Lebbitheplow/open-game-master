@@ -177,4 +177,140 @@ await test("W05 a poison that runs its course ends its own poisoning and leaves 
   assert.ok(world.sheet(victim.id).conditions.includes("poisoned"), "the ten days' poisoning outlasts the tincture's");
 });
 
+await test("W06 downtime and a pass_time of whole days give a long rest for each day as the days pass, with no more time and no second lifestyle", async () => {
+  // SRD 5.1, Resting, Long Rest: "A long rest is a period of extended
+  // downtime, at least 8 hours long, during which a character sleeps or
+  // performs light activity" and "A character can't benefit from more than
+  // one long rest in a 24-hour period, and a character must have at least 1
+  // hit point at the start of the rest to gain its benefits." A day of
+  // downtime or of waiting is a day the hero sleeps through, so each one
+  // gives its night's benefits: a level of exhaustion a night, half the hit
+  // dice a night.
+  await peace();
+  const { listRecentMessages } = await import("../src/lib/db/messages.ts");
+  const { dawnsBetween } = await import("../src/lib/dm/item-charges.ts");
+  const said = () => listRecentMessages(world.campaignId, 4).map((message) => message.content).join(" ");
+  const scholar = world.addHero({ class: "fighter", level: 6, maxHp: 52, hitDice: { die: "d10", total: 6, spent: 6 }, gold: 20 });
+  world.patch(scholar.id, { currentHp: 9, exhaustion: 3 });
+  const began = now();
+  const studied = await world.invoke("downtime", { days: 3, characterId: scholar.id, activity: "research", topic: "the toll-keeper's ledger" });
+  assert.equal(studied.ok, true, studied.error);
+  assert.equal(now() - began, 3 * 1440, "three days pass, and no rest's eight hours on top");
+  const after = world.sheet(scholar.id);
+  assert.equal(after.exhaustion, 0, "three nights lift three levels, one a night");
+  assert.equal(after.hitDice.spent, 0, "half the hit dice a night: all six back by the second");
+  assert.equal(after.currentHp, 52);
+  assert.match(said(), /long rest/i, "the chronicle says they rested");
+
+  // Waiting: twenty hours is no whole day; forty-seven hold one night; two
+  // days hold two. The lifestyle is paid for the dawns once, as before.
+  const waiter = world.addHero({ class: "fighter", level: 4, maxHp: 40, gold: 10 });
+  world.patch(waiter.id, { currentHp: 5, exhaustion: 3 });
+  const lived = await world.invoke("set_lifestyle", { characterIds: [waiter.id], lifestyle: "modest" });
+  assert.equal(lived.ok, true, lived.error);
+  const from = now();
+  const purse = (id) => world.sheet(id).gold * 100 + (world.sheet(id).copper ?? 0);
+  await world.invoke("pass_time", { amount: 20, unit: "hours" });
+  assert.equal(world.sheet(waiter.id).currentHp, 5, "twenty hours hold no whole day, so no rest");
+  const storm = await world.invoke("pass_time", { amount: 47, unit: "hours", reason: "the snow closes the pass" });
+  assert.equal(storm.ok, true, storm.error);
+  assert.equal(world.sheet(waiter.id).exhaustion, 2, "forty-seven hours hold one night's rest");
+  assert.equal(world.sheet(waiter.id).currentHp, 40);
+  assert.match(said(), /long rest/i, "and the chronicle says so");
+  await world.invoke("pass_time", { amount: 2, unit: "days" });
+  assert.equal(world.sheet(waiter.id).exhaustion, 0, "two more days, two more nights");
+  assert.equal(now() - from, (20 + 47 + 48) * 60, "the clock moved only by the time asked");
+  assert.equal(purse(waiter.id), 1000 - 100 * dawnsBetween(from, now()), "the modest life paid once for each dawn");
+
+  // A day waited out in the middle of a fight is no rest.
+  const guard = world.addHero({ class: "fighter", level: 4, maxHp: 40 });
+  world.patch(guard.id, { currentHp: 12 });
+  await world.beginFight([{ monster: "goblin", count: 1 }]);
+  await world.invoke("pass_time", { amount: 1, unit: "days" });
+  assert.equal(world.sheet(guard.id).currentHp, 12, "no rest in a fight");
+  await peace();
+});
+
+await test("W07 a torch carried but not lit gives no light to see by off the board; lit, it does", async () => {
+  // SRD 5.1, Vision and Light: in darkness "A creature effectively suffers
+  // from the blinded condition when trying to see something in that area."
+  // Torch: "A torch burns for 1 hour, providing bright light": a lit one.
+  // The record of a lit light (W01) says which it is.
+  await peace();
+  place("The Drowned Stair", "cave");
+  const { rollerLight } = await import("../src/lib/dm/place-light.ts");
+  const scout = world.addHero({ class: "fighter", level: 3, maxHp: 30, abilities: { wis: 14 }, equipment: [{ name: "Torch", qty: 2 }] });
+  assert.equal(torchesOf(scout.id)?.litAt, undefined, "the torch starts in the pack, unlit");
+  assert.equal(rollerLight(world.campaignId, world.sheet(scout.id)), "dark", "a roll by sight reads the dark");
+  const dark = await world.invoke("check_notice", { dc: 5, characterIds: [scout.id], reason: "a tripwire on the stair" });
+  assert.equal(dark.ok, true, dark.error);
+  assert.deepEqual(dark.result.noticedBy, [], "an unlit torch in the pack showed the tripwire");
+  assert.match(dark.result.applied.join(" "), /darkness: sees nothing.*use_item/, "the GM is told the torch is there to light");
+  const lit = await world.invoke("use_item", { characterId: scout.id, item: "Torch" });
+  assert.equal(lit.ok, true, lit.error);
+  assert.equal(rollerLight(world.campaignId, world.sheet(scout.id)), "bright");
+  const seen = await world.invoke("check_notice", { dc: 5, characterIds: [scout.id], reason: "a tripwire on the stair" });
+  assert.deepEqual(seen.result.noticedBy, [world.sheet(scout.id).name], "the lit torch shows it");
+});
+
+await test("W08 a long-term madness cured before its hours run out ends there: no line says it passes later", async () => {
+  // SRD 5.1, Madness, Curing Madness: "A calm emotions spell can suppress the
+  // effects of madness, while a lesser restoration spell can rid a character
+  // of a short-term or long-term madness." Long-term madness lasts 1d10 x 10
+  // hours; once rid of it, there is nothing left to pass.
+  await peace();
+  const { listRecentMessages } = await import("../src/lib/db/messages.ts");
+  const thinker = world.addHero({ class: "fighter", level: 3, maxHp: 30 });
+  world.clearDice();
+  world.dice(25, 2);
+  const mad = await world.invoke("afflict", { characterId: thinker.id, kind: "madness", duration: "long" });
+  world.clearDice();
+  assert.equal(mad.ok, true, mad.error);
+  assert.ok(world.sheet(thinker.id).conditions.includes("paranoid"), "paranoid for twenty hours");
+  const cured = await world.invoke("clear_condition", { characterId: thinker.id, condition: "paranoid", reason: "lesser restoration" });
+  assert.equal(cured.ok, true, cured.error);
+  const waited = await world.invoke("pass_time", { amount: 21, unit: "hours" });
+  assert.equal(waited.ok, true, waited.error);
+  const said = listRecentMessages(world.campaignId, 8).map((message) => message.content).join(" ");
+  assert.doesNotMatch(said, /long-term madness passes/, "the cured madness was said to pass when its hours ran out");
+});
+
+await test("W09 a buff spell that lasts ten days lasts ten days through cast_buff, not one, and the clock ends it", async () => {
+  // SRD 5.1, Spellcasting, Duration: "A spell's duration is the length of
+  // time the spell persists." Geas lasts 30 days, Antipathy/Sympathy and
+  // Contingency 10: a table's own buff of days is cast through cast_buff,
+  // which wrote any buff past 24 hours as 1,440 minutes.
+  await peace();
+  const { call } = await import("./lib/enforce-campaign.mjs");
+  const { cleric } = await import("./lib/enforce-spells.mjs");
+  world.signIn(world.owner);
+  const made = await call(await world.route("homebrew"), "POST", {
+    kind: "spell",
+    name: "Hearthward Vigil",
+    data: {
+      desc: "You touch a willing creature and lay a hearth's ward on it for ten days.",
+      level: 1,
+      school: "abjuration",
+      classes: ["cleric"],
+      concentration: false,
+      casting_time: "1 action",
+      range: "Touch",
+      components: "V, S",
+      duration: "10 days",
+      mech: { resolution: "buff", buff: { condition: "hearthward", target: "ally", rounds: 144000 } },
+    },
+  });
+  assert.equal(made.status, 201, JSON.stringify(made.json));
+  const priest = world.addHero({ name: "Oswin", ...cleric(5, { spellcasting: { prepared: ["Hearthward Vigil"] } }), equipment: [{ name: "Holy Symbol", qty: 1 }] });
+  const cast = await world.invoke("cast_buff", { characterId: priest.id, spell: "Hearthward Vigil", targetCharacterIds: [priest.id] });
+  assert.equal(cast.ok, true, cast.error);
+  const held = () => world.sheet(priest.id).conditions.some((name) => /hearthward/i.test(name));
+  assert.ok(held(), `the ward is on: ${world.sheet(priest.id).conditions.join(", ")}`);
+  assert.match(cast.result.duration, /10 days/, "the result says ten days");
+  await world.invoke("pass_time", { amount: 9, unit: "days" });
+  assert.ok(held(), "nine days on the ward still holds");
+  await world.invoke("pass_time", { amount: 2, unit: "days" });
+  assert.ok(!held(), "past its ten days the clock ends it");
+});
+
 finish();

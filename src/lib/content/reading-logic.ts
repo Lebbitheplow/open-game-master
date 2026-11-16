@@ -94,7 +94,12 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 //      ends out of the caster's sight, Color Spray's blinds until the end of
 //      the caster's next turn, Hideous Laughter's passes over a creature
 //      of Intelligence 4 or less, and Hypnotic Pattern's holds its speed at
-//      0 (rules audit 2026-11-16, effects).
+//      0 (effects); an attack's rider reads a disease with a save every 24
+//      hours (an otyugh's bite: poisoned until cured, the dice a failure takes
+//      off the maximum) in place of a save at each turn's end, and a curse that
+//      takes every rest's benefit (a rakshasa's claw) as the condition the
+//      rests read (time). Both from the rules audit of 2026-11-16, one bump
+//      over main's 15.
 export const READER_REVISION = 16;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";

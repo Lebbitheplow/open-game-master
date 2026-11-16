@@ -163,6 +163,11 @@ export function resolveRowOnHit(
       out.notSwallowed = swallowed.notSwallowed;
     }
   }
+  // A creature's disease runs on no sheet: its poisoning holds (above), and
+  // its daily save is the GM's.
+  if (rider.disease && !saved) {
+    out.disease = `${target.displayName} is poisoned until the disease is cured; on a creature its save every 24 hours (${rider.disease.dice} off the maximum on a failure) is the GM's.`;
+  }
   if (rider.manual?.length) {
     out.manual = `The server does not model this part of ${attack.name}; resolve it by hand: ${rider.manual.join(" ")}`;
   }

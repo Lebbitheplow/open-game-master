@@ -184,6 +184,12 @@ function checkOnHit(raw: unknown, attack: string): Checked<OnHitRider | null> {
   if (drain && drained && drainDice && (drain.until === "short" || drain.until === "long")) {
     rider.scoreDrain = { ability: drained, dice: drainDice, diesAtZero: drain.diesAtZero === true, until: drain.until };
   }
+  // A disease with a daily save (an otyugh's bite, affliction-text.ts).
+  const disease = (source.disease ?? null) as Raw | null;
+  const diseaseDice = disease ? dice(disease.dice) : null;
+  if (diseaseDice) {
+    rider.disease = { dice: diseaseDice };
+  }
   // What holds a target it restrains (a giant spider's webbing,
   // hold-text.ts): its check and its numbers as an object.
   const hold = (source.hold ?? null) as Raw | null;

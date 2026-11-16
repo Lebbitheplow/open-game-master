@@ -10,6 +10,7 @@ import { clausesRig } from "./lib/sweep-clauses-genre-b-probes.mjs";
 const SRC = new URL("../src/", import.meta.url);
 const load = (file) => import(new URL(file, SRC).href);
 const { characterSenses } = await load("lib/dm/attack-light.ts");
+const { getClock } = await load("lib/db/clock.ts");
 
 const { test, finish } = suite("test-genre-gb-horror");
 const rig = await clausesRig();
@@ -29,7 +30,8 @@ await run("Light Against the Dark: an exorcist carrying a lit torch sees invisib
   const row = feature("exorcist", "Light Against the Dark", 7);
   const hero = rig.holder(row);
   const sight = () => characterSenses(world.sheet(hero.id)).truesight;
-  world.patch(hero.id, { equipment: [{ name: "Longsword", qty: 1, equipped: true }, { name: "Torch", qty: 1, equipped: true }] });
+  // Lit (W07): a torch still in the pack is no light.
+  world.patch(hero.id, { equipment: [{ name: "Longsword", qty: 1, equipped: true }, { name: "Torch", qty: 1, equipped: true, litAt: getClock(world.campaignId).instant }] });
   const { on, off } = await rig.both(hero, row, async () => sight());
   assert.deepEqual([on, off], [2, 0], `truesight ${on} squares with the feature and a torch, ${off} without the feature`);
   world.patch(hero.id, { equipment: [{ name: "Longsword", qty: 1, equipped: true }] });

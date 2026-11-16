@@ -230,6 +230,7 @@ function landRider(campaign: Campaign, turn: DmTurn, owner: CharacterSheet, enem
   const unrun = [
     ...(rider.drainMaxHp ? ["its hit point maximum drain"] : []),
     ...(rider.scoreDrain ? ["its ability score drain"] : []),
+    ...(rider.disease ? ["its disease"] : []),
     ...(rider.swallow ? ["the swallow"] : []),
     ...(rider.hold ? [`the ${rider.hold.name}'s hold as an object`] : []),
     ...(rider.unconsciousFailBy || rider.unconsciousAtMost ? ["its poison's sleep"] : []),
