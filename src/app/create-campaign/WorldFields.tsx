@@ -3,6 +3,7 @@
 import { ImageIcon } from "lucide-react";
 import { useState, type CSSProperties } from "react";
 import { InfoButton } from "@/components/ui/InfoDialog";
+import { EmbeddingLanguageLine } from "@/components/EmbeddingLanguageLine";
 import { Select } from "@/components/ui/Select";
 import { useTtsVoices } from "@/components/VoicePicker";
 import { cn } from "@/lib/cn";
@@ -250,6 +251,7 @@ export function WorldDetailsFields({
           options={TABLE_LANGUAGES.map((value) => ({ value, label: TABLE_LANGUAGE_LABELS[value] }))}
         />
         <p className="mt-1 text-xs text-stone-500">{TABLE_LANGUAGE_HELP}</p>
+        <EmbeddingLanguageLine languages={[draft.tableLanguage]} className="mt-1" />
       </div>
 
       <div className="flex items-start gap-3 rounded-lg border border-stone-800 bg-stone-950/40 p-3">

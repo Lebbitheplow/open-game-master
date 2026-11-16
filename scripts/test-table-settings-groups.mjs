@@ -83,11 +83,15 @@ await test("the search finds a setting by an everyday word", () => {
 await test("a row another panel links to names the group that holds it", () => {
   const groups = fs.readFileSync(new URL("../src/app/campaigns/[campaignId]/GameSettingsGroups.tsx", import.meta.url), "utf8");
   for (const [row, group] of Object.entries(ROW_GROUP)) {
-    assert.match(groups, new RegExp(`data-settings-row="${row}"`));
-    assert.equal(group, "ai");
+    // The group's own component, up to the next one, holds the row.
+    const component = `export function ${group[0].toUpperCase()}${group.slice(1)}Group(`;
+    const start = groups.indexOf(component);
+    assert.ok(start >= 0, component);
+    const end = groups.indexOf("\nexport ", start + component.length);
+    assert.match(groups.slice(start, end < 0 ? undefined : end), new RegExp(`data-settings-row="${row}"`), row);
   }
-  const party = fs.readFileSync(new URL("../src/app/campaigns/[campaignId]/PartyPanel.tsx", import.meta.url), "utf8");
-  assert.match(party, /closest<HTMLElement>\("\.cc-group:not\(\[data-open\]\)"\)/, "a link opens the closed group first");
+  const reveal = fs.readFileSync(new URL("../src/app/campaigns/[campaignId]/reveal-settings-row.ts", import.meta.url), "utf8");
+  assert.match(reveal, /closest<HTMLElement>\("\.cc-group:not\(\[data-open\]\)"\)/, "a link opens the closed group first");
 });
 
 // Every setting the single long panel offered is still offered: the patched

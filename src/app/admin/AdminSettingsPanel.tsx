@@ -17,7 +17,9 @@ import { apiSpeedEligibility } from "@/lib/speed-tier";
 import { describeEndpoint } from "@/lib/dm/sampling-logic";
 import type { SpeedChannel, SpeedNote } from "@/lib/speed-status";
 import type { ToolCallHealth } from "@/lib/tool-call-health";
+import type { CampaignLanguage } from "@/lib/db/campaigns";
 import { ToolsDroppedLine } from "@/app/admin/ToolsDroppedLine";
+import { EmbeddingLanguageLine } from "@/components/EmbeddingLanguageLine";
 import { AdminNetworkSections } from "@/app/admin/AdminNetworkSections";
 import { AdminPlayerAgentsSection } from "@/app/admin/AdminPlayerAgentsSection";
 import { AdminBackupSection } from "@/app/admin/AdminBackupSection";
@@ -97,6 +99,9 @@ export function AdminSettingsPanel() {
   const [speedNotes, setSpeedNotes] = useState<Partial<Record<SpeedChannel, SpeedNote>>>({});
   // Whether the GM's last call kept its tools (src/lib/tool-call-health.ts).
   const [toolHealth, setToolHealth] = useState<ToolCallHealth | null>(null);
+  // The campaigns playing in a language other than English, named in the
+  // warning when the embedding model cannot read it (EmbeddingLanguageLine).
+  const [languageCampaigns, setLanguageCampaigns] = useState<CampaignLanguage[]>([]);
   // A phone cannot run Ollama or a local ComfyUI install; the desktop shell
   // can, so the PC keeps the local-AI fields.
   const phoneWorld = deviceWorld && shellHost()?.platform === "android";
@@ -113,6 +118,7 @@ export function AdminSettingsPanel() {
           setDeviceWorld(Boolean(data.deviceWorld));
           setSpeedNotes(data.speedStatus ?? {});
           setToolHealth(data.toolCallHealth ?? null);
+          setLanguageCampaigns(data.tableLanguageCampaigns);
         }
       });
   }, []);
@@ -547,6 +553,11 @@ export function AdminSettingsPanel() {
           </div>
         ) : null}
         <ToolsDroppedLine health={toolHealth} />
+        <EmbeddingLanguageLine
+          languages={[...new Set(languageCampaigns.map((campaign) => campaign.language))]}
+          campaigns={languageCampaigns}
+          className="mt-3"
+        />
         <BackendProbe
           which="story"
           baseUrl={config.text.customBaseUrl}

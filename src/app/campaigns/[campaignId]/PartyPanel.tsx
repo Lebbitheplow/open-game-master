@@ -17,6 +17,7 @@ import { SectionHead } from "@/components/ui/SectionHead";
 import { PartyGone } from "@/app/campaigns/[campaignId]/PartyGone";
 import type { DepartingSheet } from "@/app/campaigns/[campaignId]/departing";
 import { KitButton, SettingToggle } from "./PanelKit";
+import { revealSettingsRow } from "@/app/campaigns/[campaignId]/reveal-settings-row";
 import { PartyOrderBar, PartyOrderHandle, usePartyOrder } from "./PartyOrder";
 import { useEffect, useId, useState, Suspense, lazy } from "react";
 import { cn } from "@/lib/cn";
@@ -134,29 +135,6 @@ function RequestCompanionButton({ campaignId }: { campaignId: string }) {
       {state === "sent" ? "The GM has been asked" : "Request a companion"}
     </KitButton>
   );
-}
-
-// Brings a table settings row into view once the Settings tab has mounted
-// it (a moment after the switch) and flashes it, so "change this" lands on
-// the one control meant rather than the top of a long panel. A row inside a
-// closed group is mounted but hidden, so its group is opened first.
-function revealSettingsRow(row: string, tries = 40) {
-  const element = document.querySelector<HTMLElement>(`[data-settings-row="${row}"]`);
-  if (!element) {
-    if (tries > 0) window.setTimeout(() => revealSettingsRow(row, tries - 1), 50);
-    return;
-  }
-  const closed = element.closest<HTMLElement>(".cc-group:not([data-open])");
-  if (closed) {
-    closed.querySelector<HTMLButtonElement>(".cc-group-toggle")?.click();
-    if (tries > 0) window.setTimeout(() => revealSettingsRow(row, tries - 1), 50);
-    return;
-  }
-  const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  element.scrollIntoView({ block: "center", behavior: still ? "auto" : "smooth" });
-  element.removeAttribute("data-flash");
-  void element.offsetWidth;
-  element.setAttribute("data-flash", "");
 }
 
 // A player sheet whose library entry is an ally the DM plays came in through

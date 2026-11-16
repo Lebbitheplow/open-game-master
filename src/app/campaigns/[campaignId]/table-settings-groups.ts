@@ -225,6 +225,7 @@ export function tableGroupSummary(id: TableGroupId, settings: GameSettings, cont
 // so a link can open the group before it brings the row into view.
 export const ROW_GROUP: Record<string, TableGroupId> = {
   allies: "ai",
+  "table-language": "world",
 };
 
 // Words a person might search for that the group's title and summary do not
