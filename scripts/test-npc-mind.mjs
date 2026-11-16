@@ -276,6 +276,15 @@ await test("a mind sees what it carries and how long it has gone without water, 
   assert.ok(memories("Kranz").some((entry) => entry.kind === "did" && /nasconde il sacco/.test(entry.content)), "its deed is remembered");
 });
 
+await test("a crowded stage never pushes a mind's own last words and deeds out of its window", () => {
+  const mine = Array.from({ length: 3 }, (_, index) => memory({ kind: "did", sourceKind: "self", content: `deed ${index}`, learnedAt: index }));
+  const crowd = Array.from({ length: 80 }, (_, index) => memory({ content: `scene ${index}`, learnedAt: 10 + index }));
+  const seen = logic.memoriesFor("n1", [...mine, ...crowd], 1000);
+  assert.equal(seen.length, logic.MIND_MEMORY_LIMIT);
+  assert.deepEqual(seen.slice(0, 3).map((entry) => entry.content), ["deed 0", "deed 1", "deed 2"], "its deeds stay, in order");
+  assert.equal(seen.at(-1).content, "scene 79", "the newest scene line too");
+});
+
 // ---- Ticket 02: news, the absent, late messages --------------------------
 
 await test("an absent NPC learns of an event only when news reaches them, from that source, at that time (A2)", async () => {

@@ -46,11 +46,20 @@ export const MIND_MEMORY_LIMIT = 40;
 export const MIND_TEXT_CHARS = 600;
 
 // What one NPC may read now: its own rows, learned no later than now.
+// Its own last words, deeds and guesses always ride too (the raft sandbox,
+// 2026-11-16): seven minds on one stage wrote some fifty scene lines a turn,
+// and a mind's own deed of the turn before fell out of its window, so it did
+// the same thing again, turn after turn.
+export const MIND_SELF_KEEP = 12;
+
 export function memoriesFor(npcId: string, memories: readonly NpcMemory[], now: number): NpcMemory[] {
   const own = memories.filter((memory) => memory.npcId === npcId && memory.learnedAt <= now);
   const background = own.filter((memory) => memory.sourceKind === "background");
   const lived = own.filter((memory) => memory.sourceKind !== "background");
-  return [...background, ...lived.slice(-Math.max(0, MIND_MEMORY_LIMIT - background.length))];
+  const room = Math.max(0, MIND_MEMORY_LIMIT - background.length);
+  const selfKept = new Set(lived.filter((memory) => memory.sourceKind === "self").slice(-Math.min(MIND_SELF_KEEP, room)));
+  const newest = new Set(lived.filter((memory) => !selfKept.has(memory)).slice(-Math.max(0, room - selfKept.size)));
+  return [...background, ...lived.filter((memory) => selfKept.has(memory) || newest.has(memory))];
 }
 
 // The two tiers. The first is played by its own mind and takes turns like
