@@ -46,7 +46,7 @@ import {
 } from "@/lib/dm/condition-logic";
 import type { Senses } from "@/lib/srd/senses";
 import { acWithEffects } from "@/lib/dm/ac-effects";
-import { coverFor } from "@/lib/dm/attack-spatial";
+import { coverFor, reachWalled } from "@/lib/dm/attack-spatial";
 import { canAct, canEnemyAct } from "@/lib/dm/can-act";
 import { opportunityReactionKey } from "@/lib/srd/authored-effects-more";
 import { conditionsOf } from "@/lib/dm/vitals-logic";
@@ -220,7 +220,8 @@ export function resolveOpportunityAttacks(
     const { attack, reachTiles: reach } = weapon;
     const leftFrom = leavesReachAt(steps, token, reach, footprintForSize(enemy.stats.size));
 
-    if (!leftFrom) {
+    // A wall between them is total cover (attack-spatial.ts reachWalled).
+    if (!leftFrom || reachWalled(encounter.id, enemy.id, characterId, leftFrom)) {
       continue;
     }
 
@@ -625,11 +626,13 @@ export function resolvePcOpportunityWalk(
     if (profile.ranged) {
       continue;
     }
+    // A wall between is total cover: no swing through it (attack-spatial.ts).
+    const clear = (at: XY | null) => (at && reachWalled(encounter.id, sheet.id, enemyId, at) ? null : at);
     // Polearm Master: a creature entering the polearm's reach provokes too.
-    const entering = polearmReachOpportunity(sheet, resolved.srd?.name) ? entersReachAt(steps, token, profile.reachTiles, 1, moverFootprint) : null;
+    const entering = polearmReachOpportunity(sheet, resolved.srd?.name) ? clear(entersReachAt(steps, token, profile.reachTiles, 1, moverFootprint)) : null;
     // Hold the Line (Cavalier 10): a creature that moves 5 feet or more while
     // within the reach provokes too.
-    const within = holdsFeature(sheet, "Hold the Line") ? movesWithinReachAt(steps, token, profile.reachTiles, 1, moverFootprint) : null;
+    const within = holdsFeature(sheet, "Hold the Line") ? clear(movesWithinReachAt(steps, token, profile.reachTiles, 1, moverFootprint)) : null;
     // Manifest Echo: a creature that moves 5 feet or more away from the echo
     // while within 5 feet of it provokes "as if you were in the echo's space"
     // (mt-fb-echo.ts).
@@ -637,7 +640,7 @@ export function resolvePcOpportunityWalk(
     // Where the walker is as the swing is made: the tile it left the reach
     // from, the one it entered the polearm's reach at, the one it stepped to
     // inside the reach, or the one it left the echo's side from.
-    const leaving = leavesReachAt(steps, token, profile.reachTiles, 1, moverFootprint);
+    const leaving = clear(leavesReachAt(steps, token, profile.reachTiles, 1, moverFootprint));
     const moverAt = leaving ?? entering ?? within ?? fromEcho;
     if (!moverAt) {
       continue;

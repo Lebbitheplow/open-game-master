@@ -68,6 +68,24 @@ export function wallBetween(encounterId: string, refA: string, refB: string): bo
 }
 
 
+// A wall between a reach and the square a walker left it from (or entered
+// it at): total cover, which "can't be targeted directly by an attack"
+// (SRD 5.1, Cover), so no opportunity attack is made through it, as
+// pc_attack refuses a reach weapon through the wall square between
+// (map-tools.ts checkPcAttackRange). The reaction measured the distance
+// alone and a glaive struck through the wall. Toe to toe nothing stands
+// between.
+export function reachWalled(encounterId: string, reactorRef: string, walkerRef: string, walkerAt: XY): boolean {
+  const map = getBattleMapForEncounter(encounterId);
+  const reactor = map ? getTokenByRef(map.id, reactorRef) : null;
+  const token = map ? getTokenByRef(map.id, walkerRef) : null;
+  if (!map || !reactor || !token) {
+    return false;
+  }
+  const walker = { ...token, x: walkerAt.x, y: walkerAt.y };
+  return tilesApart(reactor, walker) > 1 && !hasLineOfSightBetween(map.terrain, map.width, spaceOf(reactor), spaceOf(walker));
+}
+
 // The side a token's creature fights on while it threatens (alive, able to
 // act and to see), or null for one that does not threaten or is no
 // combatant (an object, a DM's hand-added slot). Sides are the encounter's

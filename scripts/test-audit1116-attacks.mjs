@@ -233,6 +233,55 @@ await test("G05: a creature's two-type bite at a pet walking off with its owner 
   assert.equal(ember.hp, 30 - 3, `the bite met the imp's defences as one type: ${notes.join(" ")}`);
 });
 
+// ---- G06: no opportunity attack through total cover ----
+
+// A wall down the whole of column x.
+function wallAt(x) {
+  const map = kit.board();
+  const tiles = new Array(map.width * map.height).fill(".");
+  for (let y = 0; y < map.height; y += 1) {
+    tiles[y * map.width + x] = "#";
+  }
+  maps.setBattleMapTerrain(map.id, tiles.join(""));
+}
+
+await test("G06: a glaive makes no opportunity attack through a wall at a goblin 10 feet off, as the turn's swing cannot", async () => {
+  // SRD 5.1, Cover: "A target with total cover can't be targeted directly by
+  // an attack or a spell." pc_attack refuses a reach weapon through the wall
+  // square between; the reaction's swing measured the distance alone.
+  const goblin = await freshArena();
+  world.patch(anchor.id, { equipment: [{ name: "Shortbow", qty: 1 }] });
+  arm({ str: 16, equipment: [{ name: "Glaive", qty: 1 }] });
+  place(anchor.id, 9, 9);
+  place(goblin.id, 3, 0);
+  place(hero.id, 1, 0);
+  wallAt(2);
+  const turn = await kit.swing(hero.id, { weapon: "Glaive" }, 15, 4);
+  assert.equal(turn.ok, false, "the turn's swing went through the wall");
+  world.clearDice();
+  world.dice(15, 4);
+  const before = kit.dummy().currentHp;
+  const notes = resolvePcOpportunityAttacks(world.campaign(), goblin.id, { x: 3, y: 0 }, { x: 5, y: 0 }, [{ x: 4, y: 0 }, { x: 5, y: 0 }]);
+  world.clearDice();
+  assert.equal(kit.dummy().currentHp, before, `the opportunity attack struck through the wall: ${JSON.stringify(notes)}`);
+});
+
+await test("G06: a creature's 10-foot reach makes no opportunity attack through a wall at a hero walking away", async () => {
+  const ogre = await freshArena();
+  dress({ attacks: [{ name: "Glaive", toHit: 5, damage: "1d10+3", type: "slashing", mode: "melee", reach: 10 }], traits: [] });
+  world.patch(anchor.id, { equipment: [{ name: "Shortbow", qty: 1 }] });
+  world.patch(hero.id, { ac: 12, acOverride: true, currentHp: 30, tempHp: 0 });
+  place(anchor.id, 9, 9);
+  place(ogre.id, 3, 0);
+  place(hero.id, 1, 0);
+  wallAt(2);
+  world.clearDice();
+  world.dice(15, 6);
+  const out = resolveOpportunityAttacks(world.campaign(), hero.id, { x: 1, y: 0 }, { x: 0, y: 0 }, false, [{ x: 0, y: 0 }]);
+  world.clearDice();
+  assert.equal(world.sheet(hero.id).currentHp, 30, `the swing struck through the wall: ${out.notes.join(" ")}`);
+});
+
 await kit.endFight();
 world.close();
 finish();

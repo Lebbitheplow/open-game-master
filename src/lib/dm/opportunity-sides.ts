@@ -42,7 +42,7 @@ import { enemyOpportunityRiders, withOpportunityTurn } from "@/lib/dm/opportunit
 import { enfeebledBlow, spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { hasTrait } from "@/lib/dm/monster-abilities";
 import { allyBeside } from "@/lib/dm/side-allies";
-import { coverFor, enemyFlanks } from "@/lib/dm/attack-spatial";
+import { coverFor, enemyFlanks, reachWalled } from "@/lib/dm/attack-spatial";
 import { effectOutcome } from "@/lib/dm/effect-tools";
 import { resolveRowOnHit } from "@/lib/dm/enemy-hit-rows";
 
@@ -86,7 +86,8 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
     const token = getTokenByRef(map.id, reactor.id);
     const weapon = opportunityWeapon(reactor.stats);
     const leftFrom = token && weapon ? leavesReachAt(steps, token, weapon.reachTiles, footprintForSize(reactor.stats.size), walkerFootprint) : null;
-    if (!weapon || !leftFrom || unseenByReactor(encounter.id, reactor, walker, leftFrom)) {
+    // A wall between them is total cover (attack-spatial.ts reachWalled).
+    if (!weapon || !leftFrom || reachWalled(encounter.id, reactor.id, walker.id, leftFrom) || unseenByReactor(encounter.id, reactor, walker, leftFrom)) {
       continue;
     }
     // Fear only with its source in sight, a Dodge only against an attacker

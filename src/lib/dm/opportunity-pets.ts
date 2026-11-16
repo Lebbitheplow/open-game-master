@@ -32,6 +32,7 @@ import { fearAsRolled } from "@/lib/dm/attack-light";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { effectOutcome } from "@/lib/dm/effect-tools";
 import { blowByType } from "@/lib/dm/enemy-hit";
+import { reachWalled } from "@/lib/dm/attack-spatial";
 import { opportunityWeapon } from "@/lib/dm/enemy-profile";
 import { goadBarsOpportunity } from "@/lib/dm/goaded";
 import { hasTrait } from "@/lib/dm/monster-abilities";
@@ -89,7 +90,8 @@ export function strikePetsOnWalk(campaign: Campaign, ownerId: string, steps: XY[
     const token = getTokenByRef(map.id, enemy.id);
     const weapon = opportunityWeapon(enemy.stats);
     const leftFrom = token && weapon ? leavesReachAt(steps, token, weapon.reachTiles, footprintForSize(enemy.stats.size)) : null;
-    if (!weapon || !leftFrom) {
+    // A wall between them is total cover (attack-spatial.ts reachWalled).
+    if (!weapon || !leftFrom || reachWalled(encounter.id, enemy.id, ownerId, leftFrom)) {
       continue;
     }
     // The light where the two of them were (the pet stands with its owner).
