@@ -11,6 +11,7 @@
   "sites": {
     "lib/dm/full-duration-settle.ts#keyed": [["key", 1, "a creature's conditionMeta by the condition key it was written under"]],
     "lib/dm/full-duration-settle.ts#partial": [["identity", 1, "a spell's condition instances by the spell's textKey, both sides (as concentration.ts settles them)"]],
+    "lib/dm/unseen-save.ts#keyed": [["key", 1, "a creature's conditionMeta by the condition key it was written under"]],
     "lib/theme-mode.ts#keyed": [["key",2,"browser preference cache entries are addressed by fixed storage keys, never by player-written names"]],
     "lib/theme-mode.ts#whole": [["key",1,"stored preference and artwork sentinel values select display behavior, not game records named by people"]],
     "components/ui/LobbyIcon.tsx#fallback": [["key",1,"a fixed heading-glyph key selects a decorative icon; an unknown key gets a generic settings fitting and changes no game identity"]],

@@ -6,8 +6,38 @@ import assert from "node:assert/strict";
 import "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 import { caster, closeTables, FIGHTER, table } from "./lib/enforce-spell-kit.mjs";
+import { combatKit, DUMMY, TRAINED } from "./lib/enforce-combat.mjs";
+import { dropMap } from "./lib/enforce-spells.mjs";
 
 const { test, finish } = suite("test-audit1116-effects2");
+
+// A wizard, a goblin and a fighter, in that order, on a board, the wizard's
+// turn (scripts/test-audit1116-effects.mjs castStage). `roundOn` ends the
+// wizard's and the fighter's turns; the goblin's, walked past between them,
+// ends with the second move (test-enforce-turn-end-saves.mjs).
+async function castStage(prepared) {
+  const { openWorld } = await import("./lib/enforce-world.mjs");
+  const world = await openWorld({ gameSettings: { ttsEnabled: false } });
+  const kit = await combatKit(world);
+  const wizard = world.addHero({
+    name: "Wiz", class: "wizard", level: 9, abilities: { int: 18, con: 14, dex: 12 }, proficiencies: { ...TRAINED, saves: ["int", "wis"] },
+    spellcasting: { ability: "int", slots: { 1: { max: 4, used: 0 }, 2: { max: 3, used: 0 }, 3: { max: 3, used: 0 }, 4: { max: 3, used: 0 }, 5: { max: 1, used: 0 } }, known: [], prepared, cantrips: [] },
+  });
+  const fighter = world.addHero({ name: "Fig", class: "fighter", level: 5, abilities: { str: 16 }, proficiencies: TRAINED, equipment: [{ name: "Longsword", qty: 1 }] });
+  await kit.fight(1, { heroFaces: { [wizard.id]: 20, [fighter.id]: 5 } });
+  const [goblin] = world.enemies();
+  const encounter = world.encounter();
+  const entry = (id) => encounter.order.find((each) => (each.kind === "pc" ? each.characterId : each.enemyId) === id);
+  kit.saveEncounter({ ...encounter, order: [entry(wizard.id), entry(goblin.id), entry(fighter.id)], turnIndex: 0, turnBudget: null });
+  kit.place(wizard.id, 2, 7);
+  kit.place(goblin.id, 4, 7);
+  kit.place(fighter.id, 2, 2);
+  const roundOn = () => {
+    assert.equal(kit.endTurn(wizard.userId), true);
+    assert.equal(kit.endTurn(fighter.userId), true);
+  };
+  return { world, kit, wizard, fighter, goblin, roundOn };
+}
 
 // ---- Y12: Mage Armor touches a creature who isn't wearing armor ----
 
@@ -24,6 +54,42 @@ await test("Y12: Mage Armor on a creature wearing armor is refused and spends no
   assert.match(cast.error, /armor/i);
   assert.equal(world.sheet(mage.id).spellcasting.slots["1"].used, 0, "nothing spent");
   assert.ok(!world.sheet(tank.id).conditions.includes("mage armor"));
+});
+
+// ---- Y13: Fear's save off the board ----
+
+// SRD 5.1, Fear: "If the creature ends its turn in a location where it
+// doesn't have line of sight to you, the creature can make a Wisdom saving
+// throw." Off the board nothing measures line of sight, so the save never
+// came and the goblin fled for the whole minute. The ruling: off the board,
+// the creature saves at the end of each of its turns after the first turn it
+// spent fleeing (on the board the line of sight decides, Y02).
+await test("Y13: off the board, a creature frightened by Fear saves from the end of its second turn", async () => {
+  const { world, kit, wizard, goblin, roundOn } = await castStage(["Fear"]);
+  world.dice(1);
+  const cast = await world.invoke("aoe_damage", { casterCharacterId: wizard.id, spell: "Fear", enemyIds: [goblin.id], level: 3 });
+  world.clearDice();
+  assert.equal(cast.ok, true, cast.error);
+  assert.ok(kit.enemy(goblin.id).conditions.includes("frightened"), "the goblin failed and is frightened");
+  await dropMap(world);
+  kit.setEnemy(goblin.id, { stats: { saveMods: { ...DUMMY.saveMods, wis: 40 } } });
+  roundOn();
+  assert.ok(kit.enemy(goblin.id).conditions.includes("frightened"), "its first turn is spent fleeing, with no save");
+  roundOn();
+  assert.ok(!kit.enemy(goblin.id).conditions.includes("frightened"), "the end of its second turn brings the save, and it passes");
+  assert.ok(!kit.enemy(goblin.id).conditions.includes("fleeing"), "and the flight ends with it");
+});
+
+await test("Y13: off the board, a hero frightened by a creature's Fear saves from the end of their second turn", async () => {
+  const { world, fighter, goblin, roundOn } = await castStage([]);
+  await dropMap(world);
+  // DC 1: any save passes, so only whether one is rolled is in question.
+  const fear = { spell: "Fear", source: goblin.id, rounds: 10, saveEnds: { ability: "wis", dc: 1, unseen: true } };
+  world.patch(fighter.id, { conditions: ["frightened", "fleeing"], conditionMeta: { frightened: fear, fleeing: fear } });
+  roundOn();
+  assert.ok(world.sheet(fighter.id).conditions.includes("frightened"), "the first turn is spent fleeing, with no save");
+  roundOn();
+  assert.ok(!world.sheet(fighter.id).conditions.includes("frightened"), "the second turn's end brings the save");
 });
 
 closeTables();

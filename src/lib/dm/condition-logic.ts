@@ -53,6 +53,9 @@ export type ConditionMeta = {
   // `unseen`: only at the end of a turn the holder ends where it cannot see
   // the source (Fear).
   saveEnds?: { ability: SaveAbilityId; dc: number; or?: SaveAbilityId; beyondFeet?: number; unseen?: boolean };
+  // A turn of its holder has ended under it: off the board, an `unseen` save
+  // comes from the end of the holder's second turn (unseen-save.ts).
+  turnEnded?: boolean;
   // Who or what put the condition there: the characterId or enemyId of the
   // charmer, the grappler or the source of the fear, or an engine word
   // ("stable" on the unconscious of a stabilized creature). Optional, and
