@@ -307,6 +307,38 @@ await test("I07: one kit of two handed over leaves the opened one's uses where t
   assert.equal(uses(c.id), 13, `the opened kit joined a whole one: ${JSON.stringify(world.sheet(c.id).equipment)}`);
 });
 
+// I08. SRD 5.1, Lifting and Carrying: "Your carrying capacity is your
+// Strength score multiplied by 15. This is the weight (in pounds) that you
+// can carry." grant_item, purchase and a shop refuse a load past it and ask
+// the player what to leave or drag (load-rules.ts capacityProblem); an item
+// handed over, taken from the party's pack or picked up was taken whatever
+// it weighed, and the bearer was left at 5 feet of speed without a word.
+await test("I08: a load past Strength x 15 is refused on a hand-over, the party's pack and a pick-up, as a grant refuses it", async () => {
+  const weak = { abilities: { str: 8, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }, equipment: [{ name: "Anvil", qty: 1, weight: 100 }] };
+  const wizard = world.addHero({ class: "wizard", level: 3, ...weak });
+  const fighter = world.addHero({ class: "fighter", level: 3, abilities: { str: 18, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }, equipment: [{ name: "Iron Ingot", qty: 3, weight: 30 }] });
+  const handed = await world.invoke("handle_item", { characterId: fighter.id, action: "hand", item: "Iron Ingot", toCharacterId: wizard.id });
+  assert.equal(handed.ok, false, "120 lb is the wizard's limit: 130 is past it");
+  assert.match(String(handed.error), /can carry 120 lb/);
+  assert.equal(world.sheet(fighter.id).equipment[0].qty, 3, "nothing moved");
+  const stowed = await world.invoke("party_stash", { characterId: fighter.id, do: "stow", name: "Iron Ingot", qty: 1 });
+  assert.equal(stowed.ok, true, stowed.error);
+  const taken = await world.invoke("party_stash", { characterId: wizard.id, do: "take", name: "Iron Ingot", qty: 1 });
+  assert.equal(taken.ok, false);
+  assert.match(String(taken.error), /can carry 120 lb/);
+  const dropped = await world.invoke("handle_item", { characterId: fighter.id, action: "drop", item: "Iron Ingot", qty: 1 });
+  assert.equal(dropped.ok, true, dropped.error);
+  const picked = await world.invoke("handle_item", { characterId: wizard.id, action: "pick_up", item: "Iron Ingot" });
+  assert.equal(picked.ok, false);
+  assert.match(String(picked.error), /can carry 120 lb/);
+  assert.deepEqual(world.sheet(wizard.id).equipment.map((item) => item.name), ["Anvil"]);
+  const { applyTrade } = await import("../src/lib/dm/trade.ts");
+  const offer = { toCharacterId: wizard.id, give: [{ name: "Iron Ingot", qty: 1 }], giveCp: 0, want: [], wantCp: 0 };
+  const traded = applyTrade(world.campaign(), { characterId: fighter.id, argsJson: JSON.stringify(offer) });
+  assert.ok("error" in traded, "a trade cannot load the wizard past it either");
+  assert.deepEqual(world.sheet(wizard.id).equipment.map((item) => item.name), ["Anvil"]);
+});
+
 world.close();
 loaded.close();
 finish();

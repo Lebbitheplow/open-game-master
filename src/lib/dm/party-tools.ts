@@ -7,6 +7,7 @@ import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { addPartyItem, removePartyItem, splitBankedXp } from "@/lib/dm/party-logic";
 import { grantItemMath, removeItemMath } from "@/lib/dm/mutation-math";
+import { capacityProblem } from "@/lib/dm/load-rules";
 import { addCopper, formatCopper, formatPrice, parseCoins, purseCopper, unreadCoins } from "@/lib/srd/currency";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
@@ -159,14 +160,20 @@ export function handlePartyStash(
     if ("error" in taken) {
       return taken;
     }
-    const { srdName, tags, worth, spell } = taken.item;
+    const { srdName, tags, worth, spell, weight } = taken.item;
     const granted = grantItemMath(fresh.equipment, taken.item.name, taken.removed, {
       identified: taken.item.identified !== false,
       srdName,
       tags,
       worth,
       spell,
+      weight,
     });
+    // Strength x 15 is all they can carry, as a grant holds it (load-rules.ts).
+    const tooHeavy = capacityProblem(fresh, granted.equipment, taken.item.name);
+    if (tooHeavy) {
+      return { ...tooHeavy, error: `${tooHeavy.error} It stays in the party's pack.` };
+    }
     patchSheet(fresh.id, { equipment: granted.equipment });
     const next = updateParty(campaign.id, (current) => ({ ...current, inventory: taken.inventory }));
     publishParty(campaign.id, next);

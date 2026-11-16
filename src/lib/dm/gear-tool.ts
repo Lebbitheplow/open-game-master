@@ -45,6 +45,7 @@ import { gearPatch, implicitlyWorn } from "@/lib/dm/usage-rules";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import { acBreakdownFor } from "@/lib/srd";
 import { cursedHold } from "@/lib/srd/cursed-items";
+import { capacityProblem } from "@/lib/dm/load-rules";
 
 export { describeGround } from "@/lib/dm/gear-ground";
 
@@ -348,6 +349,12 @@ function handOver(
   }
   const receiver = getSheetById(to.id) ?? to;
   const received = holdIfFree(addRowMath(receiver.equipment, handedOverRow(row, removal.removed, { from: sheet.id, to: receiver.id })), row.name);
+  // Strength x 15 is all the receiver can carry, as a grant holds it
+  // (load-rules.ts); nothing changes hands or is spent past it.
+  const tooHeavy = capacityProblem(receiver, received.equipment, row.name);
+  if (tooHeavy) {
+    return { ...tooHeavy, error: `${tooHeavy.error} Nothing was handed over.` };
+  }
   saveEquipment(campaign, turn, sheet, removal.equipment, "hand_item", { name: row.name, to: to.name, qty: removal.removed }, reason || `Handed ${row.name} to ${to.name}`);
   saveEquipment(campaign, turn, receiver, received.equipment, "hand_item", { name: row.name, from: sheet.name, qty: removal.removed }, reason || `Received ${row.name} from ${sheet.name}`);
   if (encounter && budget) {

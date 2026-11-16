@@ -29,6 +29,7 @@ import type { ItemTag } from "@/lib/schemas/item-tags";
 import { ownBudget, refuse, retry, saveEquipment } from "@/lib/dm/gear-store";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { addRowMath, handedOverRow, removeItemMath } from "@/lib/dm/mutation-math";
+import { capacityProblem } from "@/lib/dm/load-rules";
 import { toolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { storeBudget } from "@/lib/dm/turn-budget";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
@@ -242,9 +243,15 @@ export function pickUp(
     cost = spent.note ?? "";
   }
   const taken = Math.min(qty, found.item.item.qty);
-  takeFromDroppedItem(found.item.id, taken);
   const fresh = getSheetById(sheet.id) ?? sheet;
   const hold = holdIfFree(addRowMath(fresh.equipment, handedOverRow(found.item.item, taken, { to: fresh.id })), found.item.item.name);
+  // Strength x 15 is all they can carry, as a grant holds it (load-rules.ts):
+  // past it the thing stays on the ground, nothing spent.
+  const tooHeavy = capacityProblem(fresh, hold.equipment, found.item.item.name);
+  if (tooHeavy) {
+    return { ...tooHeavy, error: `${tooHeavy.error} It stays where it lies.` };
+  }
+  takeFromDroppedItem(found.item.id, taken);
   saveEquipment(campaign, turn, fresh, hold.equipment, "pick_up_item", { name: found.item.item.name, taken }, reason || `Picked up ${found.item.item.name}`);
   if (encounter && budget) {
     storeBudget(encounter, budget);

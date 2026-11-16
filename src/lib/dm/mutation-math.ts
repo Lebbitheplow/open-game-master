@@ -217,8 +217,9 @@ export function removeItemMath<Row extends EquipmentRow>(equipment: Row[], name:
 }
 
 // What a tool says an item is, beyond its name: its tags, its worth, a
-// scroll's spell.
-export type ItemFacts = { srdName?: string; tags?: ItemTag[]; worth?: number; spell?: string };
+// scroll's spell, and its own weight (a row the party's pack kept: taken
+// out without it, an item no table weighs weighed nothing).
+export type ItemFacts = { srdName?: string; tags?: ItemTag[]; worth?: number; spell?: string; weight?: number };
 
 function itemFacts(facts: ItemFacts): ItemFacts {
   return {
@@ -226,6 +227,7 @@ function itemFacts(facts: ItemFacts): ItemFacts {
     ...(facts.tags?.length ? { tags: facts.tags } : {}),
     ...(facts.worth ? { worth: facts.worth } : {}),
     ...(facts.spell ? { spell: facts.spell } : {}),
+    ...(facts.weight ? { weight: facts.weight } : {}),
   };
 }
 
