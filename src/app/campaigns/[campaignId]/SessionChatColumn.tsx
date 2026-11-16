@@ -3,6 +3,8 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { offerCorrectionReason } from "@/lib/correction-offer";
+import { appConfirm } from "@/components/ui/ConfirmDialog";
+import { hostOffers, useCapabilities } from "@/lib/use-capabilities";
 import { MessageList } from "@/app/campaigns/[campaignId]/MessageList";
 import { HaltedTurnBanner } from "@/app/campaigns/[campaignId]/HaltedTurnBanner";
 import { stagedHaltedTurn } from "@/lib/chronicle-logic";
@@ -41,6 +43,7 @@ export function SessionChatColumn({
   onRenarrate,
   onBrowseShop,
   onPinned,
+  onTakenBack,
   stage,
   keepTranscript = false,
   showTranscript = false,
@@ -67,6 +70,8 @@ export function SessionChatColumn({
   onBrowseShop: (shopId: string) => void;
   // A memory pin landed, so the pins panel should refetch.
   onPinned: () => void;
+  // A move taken back: its words go back into the composer to correct.
+  onTakenBack: (text: string) => void;
   // The fight stage (the board and the chronicle scroll) in place of the
   // transcript while a board is on the table and the columns are docked.
   stage?: ReactNode;
@@ -75,6 +80,8 @@ export function SessionChatColumn({
   children: ReactNode;
 }) {
   const { campaign, messages, rolls, sheets, locations, dmStatus, utilityCalls } = state;
+  // An older host has no take-back route (SERVER_FEATURES takeBackMove).
+  const offersTakeBack = hostOffers(useCapabilities(), "takeBackMove");
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
   // The passage a player is objecting to (DisputeDialog.tsx); only a table
   // the AI narrates has rulings to dispute this way.
@@ -155,6 +162,55 @@ export function SessionChatColumn({
         }}
         onRenarrate={steersStory ? onRenarrate : undefined}
         onBrowseShop={onBrowseShop}
+        onTakeBack={
+          steersStory && offersTakeBack
+            ? async (message) => {
+                const sure = await appConfirm(
+                  "The GM's answer to this move is taken back with it: the lines leave the chronicle, and the sheets, the clock and the fight go back to before the answer. The move's words come back to you to correct and send again.",
+                  { title: "Take back and rewrite?", actionLabel: "Take it back", tone: "danger" },
+                );
+                if (!sure) {
+                  return;
+                }
+                const url = `/api/campaigns/${campaignId}/messages/${message.id}/take-back`;
+                const send = async (confirm: boolean) => {
+                  const response = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(confirm ? { confirm: true } : {}),
+                  }).catch(() => null);
+                  const data = response ? ((await response.json().catch(() => ({}))) as Record<string, unknown>) : {};
+                  return { response, data };
+                };
+                let { response, data } = await send(false);
+                // 409 with warnings: newer changes stack on the answer, and
+                // the lead reads them before saying yes a second time.
+                if (response?.status === 409 && Array.isArray(data.warnings) && data.warnings.length) {
+                  const again = await appConfirm((data.warnings as string[]).join(" "), {
+                    title: "Take it back anyway?",
+                    actionLabel: "Take it back",
+                    tone: "danger",
+                  });
+                  if (!again) {
+                    return;
+                  }
+                  ({ response, data } = await send(true));
+                }
+                if (!response?.ok) {
+                  onError(
+                    !response
+                      ? "Could not reach the table to take that move back."
+                      : typeof data.error === "string" && data.error
+                        ? data.error
+                        : "Could not take that move back.",
+                  );
+                  return;
+                }
+                onTakenBack(typeof data.text === "string" ? data.text : message.content);
+                offerCorrectionReason(campaignId, data);
+              }
+            : undefined
+        }
         onContinueScene={
           steersStory
             ? async (message) => {

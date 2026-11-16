@@ -1,24 +1,6 @@
 import { z } from "zod";
 import { isErrorResponse, requireStoryAuthority, seesStorytellerSecrets } from "@/lib/campaign-api";
-import { correctionsField } from "@/lib/correction-reasons";
-import { getCampaignById, releaseStaleFightFloor } from "@/lib/db/campaigns";
-import { getDatabase } from "@/lib/db/core";
-import { previewTurnClockRewind, rewindTurnClock } from "@/lib/db/clock";
-import { getDmTurn, markDmTurnReverted } from "@/lib/db/dm-turns";
-import { listAuditForTurn } from "@/lib/db/sheet-audit";
-import { listSheets, patchSheet } from "@/lib/db/sheets";
-import { regainedSettle } from "@/lib/dm/vitals-logic";
-import { liveTurnChanges } from "@/lib/db/turn-changes";
-import { forgetTurnItemCasts } from "@/lib/db/item-cast-credits";
-import { REVERT_WINDOW_TURNS, revertWindowStart, turnHasKeptRows } from "@/lib/db/turn-rows";
-import { describeInstant } from "@/lib/dm/calendar";
-import { forgetTurnAnswers, forgetTurnHits } from "@/lib/dm/last-hit";
-import { turnStillPlaying } from "@/lib/dm/queue";
-import { publishSceneState } from "@/lib/dm/scene-state";
-import { currentScene } from "@/lib/dm/sky";
-import { bringBackTakenRows, takeBackTurnChanges, turnChangeWarnings, turnRevertRefusal } from "@/lib/dm/turn-revert";
-import { publishPersisted } from "@/lib/events";
-import { revertAuditEntry, undoConflictWarnings } from "@/lib/sheet-undo";
+import { runTurnRevert } from "@/lib/dm/turn-revert-run";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -62,135 +44,14 @@ export async function POST(
   }
   const { turnId, confirm } = parsed.data;
 
-  // Only a turn this table played. Rows once filed under a made-up turn
-  // ("clock", issue #622) gathered changes from the whole campaign, and a
-  // revert of it undid them all at once.
-  const turn = getDmTurn(turnId);
-  if (!turn || turn.campaignId !== campaignId) {
-    return Response.json({ error: "That is not a GM turn of this table." }, { status: 400 });
+  const result = runTurnRevert(context.campaign, context.user.id, turnId, {
+    confirm,
+    seesSecrets: seesStorytellerSecrets(context),
+  });
+  if (result.ok) {
+    return Response.json(result);
   }
-  if (turnStillPlaying(campaignId, turn)) {
-    return Response.json(
-      { error: "That turn is still being played. Revert it once it is done, or stop it first." },
-      { status: 409 },
-    );
-  }
-  // Past the window the rows a revert puts the fight back from are gone
-  // (src/lib/db/turn-rows.ts REVERT_WINDOW_TURNS): half a revert is refused.
-  const reach = revertWindowStart(campaignId);
-  if (reach && turn.createdAt < reach) {
-    return Response.json(
-      { error: `That turn is too far back to revert: a table's last ${REVERT_WINDOW_TURNS} GM turns can be. Rewinding the chapter takes older ones back.` },
-      { status: 400 },
-    );
-  }
-
-  const entries = listAuditForTurn(campaignId, turnId).filter(
-    (entry) => entry.undoable && entry.kind !== "undo",
-  );
-  const clock = previewTurnClockRewind(campaignId, turnId);
-  const changes = liveTurnChanges(campaignId, turnId);
-  const rows = turnHasKeptRows(turnId);
-  if (!entries.length && !clock && !changes.length && !rows) {
-    return Response.json({ error: "Nothing left to revert for that turn." }, { status: 400 });
-  }
-  const refusal = rows ? turnRevertRefusal(turnId) : null;
-  if (refusal) {
-    return Response.json({ error: refusal }, { status: 400 });
-  }
-
-  // Changes recorded after this turn conflict; changes inside it are being
-  // reverted anyway, so they are ignored. A clock moved again since stays
-  // where it is, and the lead is told before saying yes.
-  const warnings = entries.flatMap((entry) => undoConflictWarnings(entry, turnId));
-  if (clock && "kept" in clock) {
-    warnings.push(
-      `The clock has moved since this turn; it stays at ${describeInstant(clock.kept.calendar, clock.kept.instant)}.`,
-    );
-  }
-  warnings.push(...turnChangeWarnings(context.campaign, turnId, changes, seesStorytellerSecrets(context)));
-  if (warnings.length && !confirm) {
-    return Response.json({ warnings: [...new Set(warnings)] }, { status: 409 });
-  }
-
-  // One transaction: a step that fails leaves the table as it was, rather
-  // than its sheets put back, its events armed again and its test dice given
-  // back, with the revert still offered (and the dice given back twice).
-  const outcome = getDatabase().transaction(() => {
-    // A creature the turn sent away comes back first, so its sheet's own
-    // changes can be put back on it.
-    if (rows) {
-      bringBackTakenRows(context.campaign, turnId);
-    }
-    const errors: string[] = [];
-    // One ledger row per AI change reverted, each in its own undo's transaction.
-    const corrections: string[] = [];
-    for (const entry of [...entries].sort((a, b) => b.seq - a.seq)) {
-      const undone = revertAuditEntry(context.campaign, entry, { userId: context.user.id, kind: "turn_revert" });
-      if (!undone.ok) {
-        errors.push(undone.error);
-      } else if (undone.correctionId) {
-        corrections.push(undone.correctionId);
-      }
-    }
-    if (entries.length && errors.length === entries.length && !clock && !changes.length && !rows) {
-      return Response.json({ error: errors[0] }, { status: 400 });
-    }
-    // The turn's blows are taken back with the hit points they took: no
-    // reaction may answer one again.
-    forgetTurnHits(campaignId, turnId);
-    // And a reaction the turn took puts the hit it answered back as it was,
-    // open to be answered again (the refund and the spend are its audit rows).
-    forgetTurnAnswers(campaignId, turnId);
-    forgetTurnItemCasts(campaignId, turnId);
-    // After the sheets, so what their undo wrote to the clock (a long rest
-    // forgotten) is kept, and before the turn's rows are marked taken back:
-    // the clock as the turn found it is read from them (clock.ts).
-    const rewound = rewindTurnClock(campaignId, turnId);
-    if (rewound) {
-      const now = "restored" in rewound ? rewound.restored : rewound.kept;
-      // `reverted`: the event log stops offering this turn's time back.
-      publishPersisted(campaignId, "clock_changed", { clock: now, reverted: turnId });
-      // The status bar's hour and the sky read the scene state.
-      const campaign = getCampaignById(campaignId);
-      if (campaign) {
-        publishSceneState(campaignId, currentScene(campaign));
-      }
-    }
-    // After the sheets too: the fight's events, the test dice, the cards.
-    const takenBack = changes.length || rows ? takeBackTurnChanges(context.campaign, turnId, changes) : 0;
-    if (takenBack) {
-      // `reverted`: the event log stops offering what the turn kept.
-      publishPersisted(campaignId, "turn_changed", { reverted: turnId });
-    }
-    // A sheet whose hit points came back with its row, its death-save track
-    // left from another turn, ends the dying it no longer has (issue 968,
-    // vitals-logic.ts regainedSettle): the rows are written as they stood,
-    // past the rule patchSheet keeps.
-    for (const sheet of listSheets(campaignId)) {
-      const settled = regainedSettle(sheet);
-      if (settled) {
-        const healed = patchSheet(sheet.id, settled, { restoring: true });
-        if (healed) {
-          publishPersisted(campaignId, "sheet_updated", { sheet: healed });
-        }
-      }
-    }
-    // A floor left naming a fight that is not on (a table an older revert
-    // left so, issue 968) goes to what the table holds now.
-    const released = releaseStaleFightFloor(campaignId);
-    if (released) {
-      publishPersisted(campaignId, "floor_changed", { floor: released });
-    }
-    // The test fight's turn trace reads the turn as taken back from here on.
-    markDmTurnReverted(turnId);
-    return {
-      ok: true,
-      reverted: entries.length - errors.length,
-      ...(rewound ? { clock: "restored" in rewound ? "restored" : "kept" } : {}),
-      ...(takenBack ? { takenBack } : {}),
-      ...correctionsField(corrections),
-    };
-  })();
-  return outcome instanceof Response ? outcome : Response.json(outcome);
+  return "warnings" in result
+    ? Response.json({ warnings: result.warnings }, { status: result.status })
+    : Response.json({ error: result.error }, { status: result.status });
 }

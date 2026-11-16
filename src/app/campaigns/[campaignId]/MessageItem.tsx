@@ -80,6 +80,7 @@ export const MessageItem = memo(function MessageItem({
   onLoreCheck,
   onRenarrate,
   onContinueScene,
+  onTakeBack,
   onSelectVariant,
   onBrowseShop,
   mine,
@@ -123,6 +124,7 @@ export const MessageItem = memo(function MessageItem({
   // Reroll this narration's prose (lead only, latest DM message only).
   onRenarrate?: (message: CampaignMessage) => void;
   onContinueScene?: (message: CampaignMessage) => void;
+  onTakeBack?: (message: CampaignMessage) => void;
   // Browse the rerolled takes; the picked one is what the table reads.
   onSelectVariant?: (message: CampaignMessage, index: number) => void;
   // A shop's "is open" line opens the Market on that shop.
@@ -565,6 +567,7 @@ export const MessageItem = memo(function MessageItem({
       sheetsById={sheetsById}
       membersById={membersById}
       onReport={onReport}
+      onTakeBack={onTakeBack}
     />
   );
 });

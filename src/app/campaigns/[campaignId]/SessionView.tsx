@@ -1499,6 +1499,7 @@ export function SessionView({
                 onRenarrate={setRenarrate}
                 onBrowseShop={browseShop}
                 onPinned={bumpPins}
+                onTakenBack={setInput}
               >
                 {needsCharacter ? (
                   <Suspense fallback={<PanelLoading />}>
