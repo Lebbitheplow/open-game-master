@@ -118,15 +118,48 @@ const slots = {};
 for (const [slot] of SLOT_WORDS) {
   slots[slot] = [];
 }
+// Rows the reading above cannot place although their text says what they
+// are: the words for wearing them are missing or misprinted. Each is placed
+// by hand, with the words of its own text that say so; the row must still
+// hold them, so a pack that rewrites the row fails here until someone reads
+// it again.
+const READ_BY_HAND = {
+  // The opening is misprinted ("TThis scholar’s cap"), so "this cap" is not
+  // found there; then "While wearing it".
+  "skullcap of deep wisdom": ["head", "This cap has 9 charges"],
+  // Boots, a pendant, a necklace and a ring that never say "wear".
+  "ice riders": ["feet", "the soles of these boots"],
+  "stalking cat": ["neck", "This jade pendant"],
+  "secret-catching pearls": ["neck", "This necklace is a work of art"],
+  "friendly joybuzzer": ["ring", "This tin ring houses"],
+  // A buckle is worn on the belt it closes.
+  "honey buckle": ["waist", "While wearing this bear head-shaped belt buckle"],
+};
+const readByHand = new Set();
+function handSlot(row) {
+  const key = row.name.trim().toLowerCase();
+  const entry = READ_BY_HAND[key];
+  if (!entry || !String(row.text ?? "").includes(entry[1])) {
+    return null;
+  }
+  readByHand.add(key);
+  return entry[0];
+}
+
 const seen = new Set();
 for (const row of rows) {
-  const slot = slotOf(row.name, row.kind, row.category, row.text);
+  const slot = slotOf(row.name, row.kind, row.category, row.text) ?? handSlot(row);
   const key = row.name.trim().toLowerCase();
   if (!slot || seen.has(key)) {
     continue;
   }
   seen.add(key);
   slots[slot].push(row.name.trim());
+}
+const unread = Object.keys(READ_BY_HAND).filter((key) => !readByHand.has(key));
+if (unread.length) {
+  console.error(`no row holds the words quoted for: ${unread.join(", ")}; read the rows again and correct READ_BY_HAND.`);
+  process.exit(1);
 }
 
 const generated = {

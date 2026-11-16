@@ -107,6 +107,21 @@ await test("an item whose name does not say what it is has its place from its ru
   assert.deepEqual(wearConflict(cloak, [wings, cloak])?.wearing, ["Wings of Flying"]);
   // The thing named in the opening sentence and worn as "them" after.
   assert.equal(wearSlotOf(row("Scorpion Feet")), "feet");
+  // Rows whose text says what they are without a word for wearing them (or
+  // with it misprinted) are placed by hand in the generator.
+  const byHand = {
+    "Skullcap of Deep Wisdom": "head",
+    "Ice Riders": "feet",
+    "Stalking Cat": "neck",
+    "Secret-catching Pearls": "neck",
+    "Friendly Joybuzzer": "ring",
+    "Honey Buckle": "waist",
+  };
+  for (const [name, place] of Object.entries(byHand)) {
+    assert.equal(wearSlotOf(row(name)), place, name);
+  }
+  const skullcap = row("Skullcap of Deep Wisdom", { equipped: true, attuned: true });
+  assert.deepEqual(wearConflict(row("Hat of Disguise", { equipped: true }), [skullcap])?.wearing, ["Skullcap of Deep Wisdom"]);
   // A carried word in a name is what the thing is of, not the thing: SRD
   // 5.1's Belt of Giant Strength comes in a stone giant's strength too, and
   // a Potion Belt is worn ("While wearing the belt...").
