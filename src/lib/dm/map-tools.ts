@@ -44,6 +44,7 @@ import { spaceOf, tilesApart } from "@/lib/dm/board-reach";
 
 import {
   blocksMove,
+  crawlingTraits,
 
   tileAt,
   tileIndex,
@@ -766,8 +767,14 @@ export function handleMoveToken(
     // a refused walk stood the creature up all the same.
     let steps = path;
     let fearCut = false;
+    // Prone with less than half its speed left, it cannot stand and only
+    // crawls, every square costing one more (SRD 5.1, Being Prone): it
+    // walked at full cost, still prone.
+    let crawls = false;
     if (walking && resolved.enemy) {
-      standCost = standUpCost(encounter.id, resolved.enemy) ?? 0;
+      const stand = standUpCost(encounter.id, resolved.enemy);
+      crawls = stand === null && resolved.enemy.conditions.some((entry) => entry.toLowerCase() === "prone");
+      standCost = stand ?? 0;
       steps = awayFromFear(
         resolved.token,
         path,
@@ -783,7 +790,7 @@ export function handleMoveToken(
       approachCut = drawn.cut;
     }
     const budget = Math.floor(Math.max(0, (allowance ? allowance.tiles : (move?.tilesLeft ?? 0)) - standCost) / factor);
-    const walk = walkPathWithBudget(map.terrain, map.width, steps, budget, traits, resolved.token, moverFootprint > 1 ? { height: map.height, occupied, footprint: moverFootprint } : undefined);
+    const walk = walkPathWithBudget(map.terrain, map.width, steps, budget, crawls ? crawlingTraits(traits) : traits, resolved.token, moverFootprint > 1 ? { height: map.height, occupied, footprint: moverFootprint } : undefined);
     if (!walk.at && allowance) {
       return { error: `${resolved.token.name} cannot get anywhere toward (${args.x},${args.y}) on its legendary move (${allowance.tiles * 5} ft).${stillAt(tokens, resolved.token)}`, refused: "rules" };
     }

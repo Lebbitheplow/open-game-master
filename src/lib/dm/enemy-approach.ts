@@ -8,7 +8,7 @@ import { findPath, reachableTiles, walkPathWithBudget } from "@/lib/battlemap/mo
 import { hasLineOfSight } from "@/lib/battlemap/los";
 import { bestFiringPosition } from "@/lib/battlemap/tactics";
 import { occupiedTiles } from "@/lib/battlemap/view";
-import { climbsFrom, swimsFrom, type BattleToken, type MoveTraits } from "@/lib/battlemap/types";
+import { climbsFrom, crawlingTraits, swimsFrom, type BattleToken, type MoveTraits } from "@/lib/battlemap/types";
 import { footprintDistance, footprintForSize, nearestFootprintTile, type Footprint } from "@/lib/battlemap/footprint";
 import { tokenFootprint } from "@/lib/dm/board-reach";
 
@@ -248,7 +248,12 @@ export function approachTarget(
   if (budget > 0 && profile.melee) {
     // Toward the target, stopping at the first square its reach covers.
     // Through its allies' spaces, and a character's two sizes apart.
-    const swims = enemyMoveTraits(map.width, listTokens(map.id), attacker, enemy.encounterId);
+    // Still prone once it tried to stand (standUpIfProne, or a dry run's
+    // standUpCost), it had too little movement to stand and crawls, every
+    // square one more (SRD 5.1, Being Prone), as move_token walks it.
+    const crawls = enemy.conditions.some((entry) => entry.toLowerCase() === "prone") && (!options.dryRun || standUpCost(encounterId, enemy) === null);
+    const walking = enemyMoveTraits(map.width, listTokens(map.id), attacker, enemy.encounterId);
+    const swims = crawls ? crawlingTraits(walking) : walking;
     // A creature larger than a square walks as its whole space: it squeezes
     // a one-square gap at double cost and stops where all of it fits, as
     // move_token walks it. Walked as one square, an ogre slipped through a

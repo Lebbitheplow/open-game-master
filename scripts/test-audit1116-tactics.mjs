@@ -162,6 +162,44 @@ await test("Q04: a druid in a swimming beast's form crosses water at its own cos
   await kit.endFight();
 });
 
+// Q05. SRD 5.1, Being Prone: "You can't stand up if you don't have enough
+// movement left or if your speed is 0", and "Crawling: Every foot of
+// movement while crawling costs 1 extra foot." A prone creature that cannot
+// stand moves only by crawling. move_token stood an enemy up when it could
+// pay half its speed, and otherwise walked it at full cost, still prone.
+await test("Q05: a prone enemy with too little movement left to stand crawls, each square costing two", async () => {
+  await kit.endFight();
+  await kit.fight(1);
+  const [enemy] = world.enemies();
+  kit.setEnemy(enemy.id, { conditions: ["prone"], conditionMeta: { prone: {} } });
+  // 30 feet of speed, 20 of them walked: 10 left, short of the 15 standing costs.
+  kit.place(enemy.id, 5, 5, 4);
+  kit.enemyTurn(enemy.id);
+  const out = await world.invoke("move_token", { token: enemy.id, x: 8, y: 5 });
+  assert.equal(out.ok, true, out.error);
+  assert.deepEqual([kit.token(enemy.id).x, kit.token(enemy.id).y], [6, 5], "the prone creature walked two squares on 10 feet instead of crawling one");
+  assert.ok(kit.enemy(enemy.id).conditions.includes("prone"), "it stood up without the movement to pay for it");
+  await kit.endFight();
+});
+
+await test("Q05: enemy_attack's walk-up crawls a prone enemy that cannot stand, so it falls short of a target two squares off", async () => {
+  const target = world.addHero({ class: "fighter", level: 5, maxHp: 40, proficiencies: TRAINED });
+  await kit.endFight();
+  await kit.fight(1);
+  const [enemy] = world.enemies();
+  kit.setEnemy(enemy.id, { conditions: ["prone"], conditionMeta: { prone: {} } });
+  kit.place(enemy.id, 5, 5, 4);
+  kit.place(target.id, 8, 5);
+  kit.enemyTurn(enemy.id);
+  world.clearDice();
+  world.dice(15, 4);
+  await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: target.id });
+  world.clearDice();
+  assert.notDeepEqual([kit.token(enemy.id).x, kit.token(enemy.id).y], [7, 5], "the prone creature walked two squares on 10 feet to reach its target");
+  assert.equal(world.sheet(target.id).currentHp, 40, "a creature that could only crawl one square struck a target two squares off");
+  await kit.endFight();
+});
+
 await kit.endFight();
 world.close();
 finish();
