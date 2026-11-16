@@ -154,4 +154,44 @@ await test("A03: Lay on Hands draws from the pool only the hit points it restore
   assert.equal(pool().used, 7, `the wolf's 2 missing hit points are what the pool pays (used ${pool().used})`);
 });
 
+// A04. SRD 5.1, Rage: "If you are able to cast spells, you can't cast them
+// or concentrate on them while raging." Wild Shape: "You can't cast spells".
+// Magic Items, Wands: the wand lets its holder "cast" its spell. The cast
+// tools refused both, but use_item on a Wand of Magic Missiles spent a
+// charge for a raging barbarian and for a druid in a wolf's body, and sent
+// the GM to deal the missiles.
+await test("A04: a raging barbarian or a druid in beast form casts nothing from a wand, and no charge is spent", async () => {
+  await kit.endFight();
+  const wand = () => ({ name: "Wand of Magic Missiles", qty: 1, charges: 7 });
+  const raging = world.addHero({ class: "barbarian", level: 5, proficiencies: { ...TRAINED }, equipment: [wand()], features: [{ name: "Rage", source: "class", classId: "barbarian" }] });
+  const druid = world.addHero({ class: "druid", level: 4, proficiencies: { ...TRAINED }, equipment: [wand()], spellcasting: { ability: "wis", slots: { 1: { max: 3, used: 0 }, 2: { max: 2, used: 0 } }, prepared: ["Cure Wounds"], known: [], cantrips: [] } });
+  const charges = (id) => world.sheet(id).equipment.find((item) => /wand of magic missiles/i.test(item.name))?.charges;
+  await kit.fight(1);
+  const [foe] = world.enemies();
+  kit.giveTurn(raging.id);
+  const rage = await world.invoke("use_resource", { characterId: raging.id, resource: "Rage" });
+  assert.equal(rage.ok, true, rage.error);
+  const zapped = await world.invoke("use_item", { characterId: raging.id, item: "Wand of Magic Missiles", targetEnemyId: foe.id });
+  assert.equal(zapped.ok, false, "a raging barbarian let a wand's spell loose");
+  assert.match(String(zapped.error), /raging/);
+  assert.equal(charges(raging.id), 7, "no charge is spent on a spell that cannot be cast");
+  kit.giveTurn(druid.id);
+  world.patch(druid.id, { wildShape: { form: "Wolf", beastHp: 11, beastMaxHp: 11, beastAc: 13 } });
+  const wolf = await world.invoke("use_item", { characterId: druid.id, item: "Wand of Magic Missiles", targetEnemyId: foe.id });
+  assert.equal(wolf.ok, false, "a druid in a wolf's body let a wand's spell loose");
+  assert.equal(charges(druid.id), 7, "no charge is spent");
+  // Nor is a scroll read in the wolf's body: it stays in the pack.
+  world.patch(druid.id, { equipment: [...world.sheet(druid.id).equipment, { name: "Spell Scroll (Cure Wounds)", qty: 1, spell: "Cure Wounds" }] });
+  const read = await world.invoke("use_item", { characterId: druid.id, item: "Spell Scroll (Cure Wounds)" });
+  assert.equal(read.ok, false, "a druid in a wolf's body read a scroll");
+  assert.ok(world.sheet(druid.id).equipment.some((item) => /spell scroll/i.test(item.name)), "the scroll stays in the pack");
+  // Out of the rage and the form, the wand works as it should.
+  world.patch(druid.id, { wildShape: null });
+  kit.giveTurn(druid.id);
+  const freed = await world.invoke("use_item", { characterId: druid.id, item: "Wand of Magic Missiles", targetEnemyId: foe.id });
+  assert.equal(freed.ok, true, freed.error);
+  assert.equal(charges(druid.id), 6, "the staging: the druid in their own body spends a charge");
+  await kit.endFight();
+});
+
 finish();

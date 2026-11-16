@@ -38,6 +38,7 @@ import { highestSlotLevel, scrollCheckDc, scrollNumbers, scrollSpell, scrollUnre
 import "@/lib/db/item-cast-credits";
 import { recordItemCast } from "@/lib/srd/item-cast-credit";
 import { markItemSpellOnTurn } from "@/lib/dm/item-casts";
+import { casterStateProblem } from "@/lib/dm/cast-rules";
 import { afflictCondition, afflictionConditionsFor } from "@/lib/dm/afflictions";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import { rollCard } from "@/lib/dm/roll-card";
@@ -134,6 +135,13 @@ export function consumableRefusal(sheet: CharacterSheet, item: ScrollItem): Tool
   const unreadable = scrollUnreadable(sheet, item);
   if (unreadable) {
     return { error: unreadable, refused: "rules" };
+  }
+  // Reading a scroll casts its spell, which a raging barbarian or a druid in a
+  // beast form cannot do (cast-rules.ts casterStateProblem): asked before the
+  // scroll is spent, as a wand's charge is (item-use.ts).
+  const unable = scrollSpell(item) ? casterStateProblem(sheet) : null;
+  if (unable) {
+    return { ...unable, error: `${unable.error} The scroll stays in the pack.` };
   }
   // A scroll above what they can cast needs a spellcasting ability check.
   // One that cannot be made at all (no spellcasting ability on the sheet)
