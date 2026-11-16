@@ -128,4 +128,68 @@ await test("D11: a creature that falls asleep drops what it picked up", async ()
   void encounters;
 });
 
+// D12. SRD 5.1, Frightened: "The creature can't willingly move closer to the
+// source of its fear." Two fears are two instances, each with its own source
+// (condition-logic.ts); every walk read the first source only, so a hero
+// frightened by two goblins walked straight at the second one.
+const sources = (entry) => (entry ? [entry, ...(entry.others ?? [])].map((instance) => instance.source) : []);
+async function twoFears() {
+  const foes = await stage(2);
+  board.place(foes[0].id, 2, 7);
+  board.place(foes[1].id, 12, 7);
+  board.place(kara.id, 7, 7);
+  for (const foe of foes) {
+    const scared = await field.invoke("set_condition", { characterId: kara.id, condition: "frightened", reason: "a dreadful howl", rounds: 10, sourceEnemyId: foe.id });
+    assert.equal(scared.ok, true, scared.error);
+  }
+  assert.deepEqual(sources(field.sheet(kara.id).conditionMeta.frightened).sort(), foes.map((foe) => foe.id).sort());
+  return foes;
+}
+
+await test("D12: a hero frightened by two creatures walks closer to neither", async () => {
+  await twoFears();
+  board.giveTurn(kara.id);
+  // East: away from the first goblin, toward the second. The walk a
+  // companion, a typed move and pc_attack's approach all take
+  // (token-rules.ts walkCharacter).
+  const { walkCharacter } = await import("../src/lib/dm/token-rules.ts");
+  const out = walkCharacter(field.campaign(), field.encounter(), board.map(), field.sheet(kara.id), board.token(kara.id), { x: 10, y: 7 });
+  const at = board.token(kara.id);
+  assert.deepEqual([at.x, at.y], [7, 7], `the frightened hero walked toward the second goblin: ${JSON.stringify(out)}`);
+  assert.match(String(out.error ?? ""), /frightened/, JSON.stringify(out));
+});
+
+await test("D12: the player's own walk is refused the same", async () => {
+  await twoFears();
+  board.giveTurn(kara.id);
+  field.signIn(field.owner);
+  const moveRoute = await field.route("campaigns/[campaignId]/battle-map/move");
+  const response = await moveRoute.POST(
+    new Request("http://odm.test/move", { method: "POST", body: JSON.stringify({ x: 10, y: 7 }) }),
+    { params: Promise.resolve({ campaignId: field.campaignId }) },
+  );
+  assert.equal(response.status, 409, await response.text());
+});
+
+await test("D12: a creature frightened by two heroes walks closer to neither", async () => {
+  const [foe] = await stage(1);
+  const brin = field.sheets().find((sheet) => sheet.name === "Brin") ?? field.addHero({ name: "Brin", class: "fighter", level: 5, maxHp: 40 });
+  await board.endFight();
+  await board.fight(1, { heroFaces: { [kara.id]: 20, [brin.id]: 19 } });
+  const [goblin] = field.enemies();
+  void foe;
+  board.place(kara.id, 2, 7);
+  board.place(brin.id, 12, 7);
+  board.place(goblin.id, 7, 7);
+  for (const hero of [kara, brin]) {
+    const scared = await field.invoke("set_condition", { enemyId: goblin.id, condition: "frightened", reason: "a war cry", rounds: 10, sourceCharacterId: hero.id });
+    assert.equal(scared.ok, true, scared.error);
+  }
+  assert.equal(sources(board.enemy(goblin.id).conditionMeta.frightened).length, 2, JSON.stringify(board.enemy(goblin.id).conditionMeta));
+  board.enemyTurn(goblin.id);
+  const out = await field.invoke("move_token", { token: goblin.id, x: 10, y: 7 });
+  const at = board.token(goblin.id);
+  assert.ok(at.x <= 7, `the frightened goblin walked toward Brin to (${at.x},${at.y}): ${JSON.stringify(out)}`);
+});
+
 finish();

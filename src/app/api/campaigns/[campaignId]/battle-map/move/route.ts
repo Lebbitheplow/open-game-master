@@ -32,8 +32,8 @@ import { landWaits } from "@/lib/dm/retort-wait";
 import { riskyOrderGate } from "@/lib/dm/party-conduct";
 import { canAct } from "@/lib/dm/can-act";
 import { dominatedRefusal } from "@/lib/dm/companion-command";
-import { removeConditions } from "@/lib/dm/condition-logic";
-import { awayFromFear, fearSourceAt } from "@/lib/dm/enemy-approach";
+import { removeConditions, type ConditionMeta } from "@/lib/dm/condition-logic";
+import { awayFromFear, fearSourcesAt } from "@/lib/dm/enemy-approach";
 import { publishPersisted } from "@/lib/events";
 import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
 import { afterMoveLeashes } from "@/lib/dm/condition-leash";
@@ -244,13 +244,13 @@ export async function POST(
     }
   };
   // Frightened: a jump may not carry them closer to what they fear either.
-  const feared = scene ? null : fearSourceAt(map.id, sheet.conditions, sheet.conditionMeta as Record<string, { source?: string }>);
+  const feared = scene ? [] : fearSourcesAt(map.id, sheet.conditions, sheet.conditionMeta as Record<string, ConditionMeta>);
   if (parsed.data.jump && campaign) {
     if (readied) {
       return Response.json({ error: "A readied move is a walk up to your speed; jump on your own turn." }, { status: 409 });
     }
     const line = jumpLine(token, { x, y });
-    if (feared && awayFromFear(token, line, feared).length < line.length) {
+    if (awayFromFear(token, line, feared).length < line.length) {
       return Response.json({ error: "You are frightened and cannot move closer to what you fear. Move away from it, or hold your ground." }, { status: 409 });
     }
     const leap = jumpMove({ campaign, encounter, map, sheet, token, to: { x, y }, budgetTiles: budget, scene, disengaged: turnState?.disengaged ?? false });
@@ -366,8 +366,7 @@ export async function POST(
       );
   // Frightened: no square of the walk may be closer to the source of the
   // fear than where it began (SRD 5.1, Frightened).
-  const fear = feared;
-  if (fear && path && awayFromFear(token, path, fear).length < path.length) {
+  if (path && awayFromFear(token, path, feared).length < path.length) {
     return Response.json(
       { error: "You are frightened and cannot move closer to what you fear. Move away from it, or hold your ground." },
       { status: 409 },

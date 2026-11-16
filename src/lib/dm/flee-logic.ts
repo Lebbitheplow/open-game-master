@@ -67,6 +67,11 @@ export function nearerSquares(width: number, height: number, from: XY, source: S
   return out;
 }
 
+// The same for every source it fears at once: a square nearer any of them.
+export function nearerAnySquares(width: number, height: number, from: XY, sources: readonly Source[]): number[] {
+  return [...new Set(sources.flatMap((source) => nearerSquares(width, height, from, source)))];
+}
+
 // Where a fleeing creature runs to: of the squares it can reach this turn,
 // the one farthest from what it flees, the cheaper walk on a tie, and never
 // a square nearer than where it stands. Null when nowhere is farther (it is
