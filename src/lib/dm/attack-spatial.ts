@@ -68,6 +68,24 @@ export function wallBetween(encounterId: string, refA: string, refB: string): bo
 }
 
 
+// A wall between a reach and the square a walker left it from (or entered
+// it at): total cover, which "can't be targeted directly by an attack"
+// (SRD 5.1, Cover), so no opportunity attack is made through it, as
+// pc_attack refuses a reach weapon through the wall square between
+// (map-tools.ts checkPcAttackRange). The reaction measured the distance
+// alone and a glaive struck through the wall. Toe to toe nothing stands
+// between.
+export function reachWalled(encounterId: string, reactorRef: string, walkerRef: string, walkerAt: XY): boolean {
+  const map = getBattleMapForEncounter(encounterId);
+  const reactor = map ? getTokenByRef(map.id, reactorRef) : null;
+  const token = map ? getTokenByRef(map.id, walkerRef) : null;
+  if (!map || !reactor || !token) {
+    return false;
+  }
+  const walker = { ...token, x: walkerAt.x, y: walkerAt.y };
+  return tilesApart(reactor, walker) > 1 && !hasLineOfSightBetween(map.terrain, map.width, spaceOf(reactor), spaceOf(walker));
+}
+
 // The side a token's creature fights on while it threatens (alive, able to
 // act and to see), or null for one that does not threaten or is no
 // combatant (an object, a DM's hand-added slot). Sides are the encounter's
@@ -213,19 +231,22 @@ export function enemyFlanks(encounterId: string, enemyId: string, characterId: s
 // standing in the line between them, which gives half cover (SRD 5.1,
 // Cover); covers do not add up, the best one counts. The same reading
 // pc_attack takes for an enemy behind a wall, asked for a character.
-export function coverFor(encounterId: string, attackerRef: string, targetRef: string): 0 | 2 | 5 {
+// `targetAt`: the square the target stands on as the swing is made, when its
+// token has gone on (an opportunity attack, struck where it left the reach).
+export function coverFor(encounterId: string, attackerRef: string, targetRef: string, targetAt?: XY): 0 | 2 | 5 {
   const map = getBattleMapForEncounter(encounterId);
   const attacker = map ? getTokenByRef(map.id, attackerRef) : null;
-  const target = map ? getTokenByRef(map.id, targetRef) : null;
+  const token = map ? getTokenByRef(map.id, targetRef) : null;
+  const target = token && targetAt ? { ...token, x: targetAt.x, y: targetAt.y } : token;
   if (!map || !attacker || !target) {
     return 0;
   }
   const terrain = coverBetweenSpaces(map.terrain, map.width, map.height, spaceOf(attacker), spaceOf(target));
 
   // Blade Barrier gives three-quarters cover to what stands behind it (zone-rules.ts).
-  const blades = zoneCoverBetween(encounterId, attackerRef, targetRef);
+  const blades = zoneCoverBetween(encounterId, attackerRef, targetRef, undefined, targetAt);
   // Fortified Position: half cover within 10 feet of the artificer's cannon (cannon-board-dra.ts).
-  return terrain === 5 || blades === 5 ? 5 : creatureCover(encounterId, attackerRef, targetRef) || twilightShroudCover(map, targetRef) || fortifiedCover(map, targetRef) ? 2 : terrain;
+  return terrain === 5 || blades === 5 ? 5 : creatureCover(encounterId, attackerRef, targetRef, undefined, targetAt) || twilightShroudCover(map, targetRef) || fortifiedCover(map, targetRef) ? 2 : terrain;
 }
 
 // Twilight Shroud (Twilight Domain 17): the cleric and their allies have half
@@ -315,11 +336,13 @@ export function coversAgainst(encounterId: string, attackerRef: string, targetRe
 // `from`: a strike made from another square than the attacker's (Spiritual
 // Weapon's weapon, issue 659); the attacker standing in that line covers
 // the target like anyone else.
-export function creatureCover(encounterId: string, attackerRef: string, targetRef: string, from?: { x: number; y: number }): string | null {
+// `to`: the square the target stands on as the swing is made (coverFor).
+export function creatureCover(encounterId: string, attackerRef: string, targetRef: string, from?: { x: number; y: number }, to?: { x: number; y: number }): string | null {
   const map = getBattleMapForEncounter(encounterId);
   const own = map ? getTokenByRef(map.id, attackerRef) : null;
   const attacker = own && from ? { ...own, x: from.x, y: from.y } : own;
-  const target = map ? getTokenByRef(map.id, targetRef) : null;
+  const standing = map ? getTokenByRef(map.id, targetRef) : null;
+  const target = standing && to ? { ...standing, x: to.x, y: to.y } : standing;
   if (!map || !attacker || !target || tilesApart(attacker, target) <= 1) {
     return null;
   }

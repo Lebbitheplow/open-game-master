@@ -6,7 +6,7 @@
 // Each reacting creature makes the opportunity attack its block makes
 // (enemy-profile.ts opportunityWeapon), once, spending its reaction: an
 // attack roll against the walker's Armor Class with both sides' conditions,
-// and the damage through applyEnemyDamage, the fight left open for the next
+// and the damage through landCreatureBlow, the fight left open for the next
 // turn to end (holdVictory, as every opportunity attack leaves it). It
 // carries what the same swing at a character carries (opportunity.ts):
 // Pack Tactics and the Flanking variant on the square the walker left from,
@@ -31,7 +31,7 @@ import { canEnemyAct } from "@/lib/dm/can-act";
 import { sideOf } from "@/lib/dm/combatant";
 import { attackContext, mergeAdvantage, sightBlockedBy } from "@/lib/dm/condition-logic";
 import { attackSenses, attackSight, enemySenses, fearAsRolled, sensesReaching } from "@/lib/dm/attack-light";
-import { applyEnemyDamage } from "@/lib/dm/enemy-damage";
+import { landCreatureBlow } from "@/lib/dm/enemy-blow";
 import { blowByType } from "@/lib/dm/enemy-hit";
 import { opportunityWeapon } from "@/lib/dm/enemy-profile";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
@@ -42,7 +42,7 @@ import { enemyOpportunityRiders, withOpportunityTurn } from "@/lib/dm/opportunit
 import { enfeebledBlow, spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { hasTrait } from "@/lib/dm/monster-abilities";
 import { allyBeside } from "@/lib/dm/side-allies";
-import { enemyFlanks } from "@/lib/dm/attack-spatial";
+import { coverFor, enemyFlanks, reachWalled } from "@/lib/dm/attack-spatial";
 import { effectOutcome } from "@/lib/dm/effect-tools";
 import { resolveRowOnHit } from "@/lib/dm/enemy-hit-rows";
 
@@ -86,7 +86,8 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
     const token = getTokenByRef(map.id, reactor.id);
     const weapon = opportunityWeapon(reactor.stats);
     const leftFrom = token && weapon ? leavesReachAt(steps, token, weapon.reachTiles, footprintForSize(reactor.stats.size), walkerFootprint) : null;
-    if (!weapon || !leftFrom || unseenByReactor(encounter.id, reactor, walker, leftFrom)) {
+    // A wall between them is total cover (attack-spatial.ts reachWalled).
+    if (!weapon || !leftFrom || reachWalled(encounter.id, reactor.id, walker.id, leftFrom) || unseenByReactor(encounter.id, reactor, walker, leftFrom)) {
       continue;
     }
     // Fear only with its source in sight, a Dodge only against an attacker
@@ -125,7 +126,8 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
       ...(effect.advantage ? ["advantage" as const] : []),
       ...(effect.disadvantage ? ["disadvantage" as const] : []),
     ]);
-    const vsAc = enemyAcWithEffects(campaign.id, walker);
+    // Cover where the walker stood as it swung (SRD 5.1, Cover).
+    const vsAc = enemyAcWithEffects(campaign.id, walker) + coverFor(encounter.id, reactor.id, walker.id, leftFrom);
     const toHit = rollExpression(`${d20Expression(attack.toHit + effect.bonus, advantage)}${own.riders.diceSuffix}`, undefined, { purpose: { roller: "enemy", kind: "attack", who: reactor.displayName } });
     spendEnemyRiders(reactor, own.riders);
     const label = rollAgainst(`${attack.name} (opportunity attack)`, walker.displayName);
@@ -149,12 +151,14 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
     const damageRoll = insertRoll({ campaignId, characterId: null, requestedBy: "dm", kind: "damage", detail: label, result: damage, attacker: { kind: "enemy", id: reactor.id, name: reactor.displayName } });
     publishWithSeq(campaignId, allocateSeq(campaignId), "roll_result", { roll: damageRoll, source: "digital" });
     const blow = blowByType(attack, damage, crit);
-    const dealt = Math.max(1, enfeebledBlow(reactor, attack, false, Math.max(0, blow.amount)));
+    // No floor of 1: a penalty can bring a blow to nothing (SRD 5.1), as on
+    // every other door.
+    const dealt = enfeebledBlow(reactor, attack, false, Math.max(0, blow.amount));
     const sheets = listSheets(campaignId);
     const sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
     const magical = hasTrait(reactor.stats, "magicWeapons") || attack.magical === true;
     const { landed, rider } = withOpportunityTurn(campaignId, (turn) => {
-      const hit = applyEnemyDamage(campaign, turn, encounter, walker, dealt, sheets, sheetsById, blow.type, { crit, holdVictory: true, ...(magical ? { magical: true } : {}) });
+      const hit: Record<string, unknown> = dealt > 0 ? landCreatureBlow({ campaign, turn, encounter, target: walker, dealt, blow, sheets, sheetsById, crit, magical, holdVictory: true }) : {};
       const necrotic = /necrotic/i.test(blow.type ?? attack.type) ? dealt : 0;
       return { landed: hit, rider: hit.dead ? null : resolveRowOnHit(campaign, turn, reactor, attack, walker.id, { sheets, sheetsById, dealt: { total: dealt, necrotic } }) };
     });

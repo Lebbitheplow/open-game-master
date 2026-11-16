@@ -170,11 +170,12 @@ export function silencedImmunity(campaignId: string, refId: string): string {
 }
 
 // Blade Barrier's three-quarters cover between two combatants: 5 or 0.
-export function zoneCoverBetween(encounterId: string, attackerRef: string, targetRef: string, at?: XY): 0 | 5 {
+export function zoneCoverBetween(encounterId: string, attackerRef: string, targetRef: string, at?: XY, targetAt?: XY): 0 | 5 {
   const map = getBattleMapForEncounter(encounterId);
-  // A strike made from another square than the attacker's (issue 659).
+  // A strike made from another square than the attacker's (issue 659), or at
+  // a walker on the square it left a reach from (an opportunity attack).
   const from = at ?? (map ? getTokenByRef(map.id, attackerRef) : null);
-  const to = map ? getTokenByRef(map.id, targetRef) : null;
+  const to = targetAt ?? (map ? getTokenByRef(map.id, targetRef) : null);
   return map && from && to ? zoneCover(zonesOf(map), map.width, from, to) : 0;
 }
 
