@@ -188,6 +188,45 @@ export const SERVER_FEATURES = {
   // or one blow where many were asked), so they stay hidden there, and the
   // attack's field is that host's bonusAttack.
   actionParts: true,
+  // damage_object's `bound` (the console's "Manacles on"): whose set of
+  // manacles is struck when several creatures are bound. An older host
+  // strips it unread and refuses the blow, so the field stays hidden there.
+  manaclesBound: true,
+  // enemy_attack's and pet_attack's `charged`, and pc_attack's for a form's
+  // or summoned creature's Charge or Pounce (the console's "Ran straight at
+  // the target first"): with no board, the run a charge rides. An older
+  // host strips the first two unread and reads pc_attack's for Charger
+  // alone, so the two stay hidden there and pc_attack's reads as Charger's.
+  chargeRuns: true,
+  // apply_hazard's `place` (the console hazard form's "Set it on the board"
+  // and its square): a named trap set hidden on the board. An older host
+  // strips it unread and springs the trap at once, so the fields stay
+  // hidden there.
+  setTraps: true,
+  // learn_spell's `from` (the console's "A wizard copies it from"): a copy
+  // from a scroll rolls the Arcana check and uses the scroll up. An older
+  // host strips it unread and copies with no check, so it stays hidden there.
+  scrollCopy: true,
+  // cast_at_player's `petName` (the console's "Their pet"): the pet makes the
+  // save. An older host strips it unread and forces the save on the owner,
+  // so it stays hidden there.
+  petSaves: true,
+  // enemy_attack's `targetPet` (the console's "At their pet"): the creature
+  // strikes the pet at its own AC and conditions. An older host strips it
+  // unread and strikes the owner, so it stays hidden there.
+  petStrikes: true,
+  // apply_hazard's `enemyIds` (the console's "Enemies caught in it"): each
+  // enemy saves from its stat block. An older host strips it unread and
+  // catches nobody, so it stays hidden there.
+  enemyHazards: true,
+  // apply_hazard's frigid_water type and its `minutes`: an older host knows
+  // no such hazard and refuses it, so the choice stays hidden there.
+  frigidWater: true,
+  // A workshop item's checks.lockBonus (the item editor's "picking locks"
+  // chip under "A bonus to these checks", Gloves of Thievery's lock pick).
+  // An older host's item schema strips it unread, so the bonus an author set
+  // would be gone on save without a word: the chip stays hidden there.
+  itemLockBonus: true,
   // A test fight's moment saved as its prepared fight's set-up (issue 685):
   // "Save as set-up" on the test table (POST /api/campaigns/[id]/fight-setup)
   // and "Remove its set-up" on the fight, which an older host answers with

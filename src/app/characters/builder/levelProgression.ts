@@ -166,6 +166,7 @@ export function levelProgressionRows(input: ProgressionInput): ProgressionRow[] 
         : null;
     rows.push({
       level,
+      // The class table's row: the level's bonus, before any item.
       proficiency: proficiencyBonus(level),
       features,
       subclass: pickLevel === level ? { pick: input.subclass.trim() || null } : null,
@@ -250,6 +251,7 @@ function classListRows(input: ProgressionInput, classes: ReadonlyArray<Progressi
       cap && cap.count > 0 ? { ...cap, ...(wizard && casting ? { spellbook: spellbookAllowance(casting.held.level) } : {}) } : null;
     rows.push({
       level,
+      // The class table's row: the level's bonus, before any item.
       proficiency: proficiencyBonus(level),
       features,
       subclass: subclassLevelFor(entry.classId) === classLevel ? { pick: entry.subclass.trim() || null } : null,

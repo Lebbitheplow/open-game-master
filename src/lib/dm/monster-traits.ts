@@ -14,7 +14,13 @@
 //   - Surprise Attack (the bugbear, the doppelganger): a hit on a creature
 //     it surprised, in the first round, deals the extra dice it prints.
 //
+//   - Charge, Pounce and Trampling Charge (the boar, the lion, the
+//     triceratops): read whole by charge-logic.ts and played on the hit by
+//     enemy-charge.ts.
+//
 // Pure: no I/O. Traits are stored as "Name. text" or "Name: text" lines.
+
+import { playsCharge } from "@/lib/dm/charge-logic";
 
 type Traits = { traits?: string[] };
 
@@ -67,6 +73,16 @@ export function martialAdvantageDice(stats: Traits): string | null {
   return /\((\d+d\d+)\)/.exec(found)?.[1] ?? /(\d+d\d+)/.exec(found)?.[1] ?? "2d6";
 }
 
+// Relentless (SRD 5.1 boar, giant boar, wereboar): the most damage it can
+// take that would drop it to 0 and leave it at 1 hit point instead ("If the
+// boar takes 7 damage or less that would reduce it to 0 hit points"), or
+// null for a block without it.
+export function relentlessThreshold(stats: Traits & { fullTraits?: string[] }): number | null {
+  const found = [...(stats.fullTraits ?? []), ...(stats.traits ?? [])].find((entry) => /^relentless\b/i.test(entry.trim()));
+  const most = found ? /\btakes (\d{1,3}) damage or less\b/i.exec(found) : null;
+  return most ? Number(most[1]) : null;
+}
+
 // Surprise Attack's dice, or null.
 export function surpriseAttackDice(stats: Traits): string | null {
   const found = line(stats, /^surprise attack\b/i);
@@ -86,7 +102,7 @@ const ENGINE_READS = [
   /^immutable form\b/i, /^limited magic immunity\b/i, /^martial advantage\b/i, /^surprise attack\b/i,
   /^shapechanger\b/i, /^reaction:\s*parry\b/i, /^legendary action/i, /^lair action/i,
   /^turn(?:ing)? (?:resistance|defiance|immunity|vulnerability)\b/i, /^turning:/i,
-  /^(?:the \w+ can take \d+ legendary actions)/i, /^multiattack\b/i,
+  /^(?:the \w+ can take \d+ legendary actions)/i, /^multiattack\b/i, /^flyby\b/i, /^relentless\b/i,
 ];
 
 // The block's lines the engine does not read, each as its name: the DM's to
@@ -94,7 +110,7 @@ const ENGINE_READS = [
 export function manualTraits(stats: Traits & { fullTraits?: string[] }): string[] {
   return (stats.fullTraits?.length ? stats.fullTraits : stats.traits ?? [])
     .map((entry) => entry.trim())
-    .filter((entry) => entry && !ENGINE_READS.some((pattern) => pattern.test(entry)))
+    .filter((entry) => entry && !ENGINE_READS.some((pattern) => pattern.test(entry)) && !playsCharge(entry))
     .map((entry) => (/^(?:(?:reaction|bonus action|legendary action|lair action|action)s?:\s*)?([^.:(]{2,60}?)(?:\s*\([^)]*\))?\s*[.:]/i.exec(entry)?.[1] ?? entry.slice(0, 40)).trim())
     .filter((name, index, list) => list.indexOf(name) === index);
 }

@@ -524,6 +524,13 @@ export const PARTY_ADJUDICATIONS: CatalogEntry[] = [
         ],
       },
       { name: "spell", label: "Spell", kind: "text", required: true },
+      { name: "from", label: "A wizard copies it from", kind: "select", options: [
+          { value: "scroll", label: "A spell scroll they carry" },
+          { value: "book", label: "Another spellbook or a teacher" },
+        ],
+        help: "From a scroll, the server rolls their Intelligence (Arcana) check against 10 + the spell's level, and the scroll is used up either way.",
+        host: { feature: "scrollCopy" },
+      },
       REASON,
     ],
   },

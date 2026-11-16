@@ -19,6 +19,7 @@ import { chaosFaces, WILD_SURGE_TABLE } from "@/lib/srd/ar-ws-wild-surge-table";
 import { castFirstReason, levelledCastThisTurn } from "@/lib/dm/ar-ws-tempest-logic";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { computeSheetDerived } from "@/lib/srd";
+import { formulaMods } from "@/lib/srd/proficiency";
 import { authoredSpendFor, gateHolds, heldAuthored, resolveFormula, type AuthoredSpend, type HeldAuthored } from "@/lib/srd/authored-effects";
 import { resourceDef, resourceName, type ResourceDef } from "@/lib/srd/class-resources";
 import { otherPrice } from "@/lib/srd/counter-rules";
@@ -329,7 +330,7 @@ function spendCards(sheet: CharacterSheet, turn: HandTurn, held: HeldAuthored, s
       : null;
   // A variant a chosen option fixes (Lunar Phenomenon's phase) is the one card.
   const fixed = spend.variantFrom ? (heldAuthored(sheet).find((entry) => textKey(entry.feature) === textKey(spend.variantFrom!))?.choice ?? null) : null;
-  const aims = aimsOf(does, held.level, computeSheetDerived(sheet).abilityMods)
+  const aims = aimsOf(does, held.level, formulaMods(computeSheetDerived(sheet)))
     .filter((aim) => !fixed || !aim.variant || textKey(aim.variant) === textKey(fixed))
     // Release Tale aimed at a foe sent a healing tale's friend as the goblin,
     // and the engine refused it: the tale held says which side it is told at.

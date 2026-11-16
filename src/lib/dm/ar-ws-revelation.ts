@@ -21,6 +21,10 @@ import { isConditionNamed } from "@/lib/srd/feature-names";
 
 export const REVELATION_SEE = "revelation in flesh (see)";
 export const REVELATION_SQUEEZE = "revelation in flesh (squeeze)";
+// Freedom of Movement (SRD 5.1) has the same slip: "The target can also
+// spend 5 feet of movement to automatically escape from nonmagical
+// restraints, such as manacles or a creature that has it grappled."
+export const FREEDOM_OF_MOVEMENT = "freedom of movement";
 // "within 60 feet", in squares.
 const SEE_TILES = 12;
 // "spend 5 feet of movement", in squares.
@@ -56,12 +60,23 @@ type Held = { conditions: string[]; conditionMeta?: unknown };
 // is taken as nonmagical, which is what a net, a trap or a creature's grip is.
 export const spellRestraint = (entry: { spell?: string }): boolean => Boolean(entry.spell?.trim());
 
-// What a sorcerer in the squeezing form could slip now, or null when they do
-// not hold the form or nothing holds them: the grapple first, then a
-// nonmagical restraint; a spell's restraint is named so the caller can say
-// why the slip did not answer.
+// What gives this creature the 5-foot slip, or null: the squeezing form, or
+// Freedom of Movement on it (a character's or an enemy's). `name` is shown;
+// `key` names the line a reply carries when the slip could not answer.
+export type SlipFeature = { name: string; key: "revelationInFlesh" | "freedomOfMovement" };
+export function slipFeatureOf(held: Held): SlipFeature | null {
+  if (held.conditions.some((entry) => isConditionNamed(entry, REVELATION_SQUEEZE))) {
+    return { name: "Revelation in Flesh", key: "revelationInFlesh" };
+  }
+  return held.conditions.some((entry) => isConditionNamed(entry, FREEDOM_OF_MOVEMENT)) ? { name: "Freedom of Movement", key: "freedomOfMovement" } : null;
+}
+
+// What a creature with the slip (slipFeatureOf) could slip now, or null when
+// it has none or nothing holds it: the grapple first, then a nonmagical
+// restraint; a spell's restraint is named so the caller can say why the
+// slip did not answer.
 export function squeezeHoldOf(sheet: Held): SqueezeHold | null {
-  if (!sheet.conditions.some((entry) => isConditionNamed(entry, REVELATION_SQUEEZE))) {
+  if (!slipFeatureOf(sheet)) {
     return null;
   }
   const grappled = sheet.conditions.find((entry) => isConditionNamed(entry, "grappled"));

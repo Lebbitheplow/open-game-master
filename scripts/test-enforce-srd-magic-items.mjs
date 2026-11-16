@@ -90,7 +90,9 @@ await test("Every SRD item printing charges holds that many, regains what its te
   let checked = 0;
   for (const item of ITEMS) {
     const max = /\b(?:has|have|starts with) (\d+d\d+(?: ?[+-] ?\d+)?|\d+) charges/i.exec(item.text);
-    if (!max) continue;
+    // A family whose printed charges are one member's: the goat of
+    // traveling's 24 are its own row's, and each figurine waits its own days.
+    if (!max || item.name === "Figurine of Wondrous Power") continue;
     const rule = chargeRuleOf({ name: item.name, slug: item.id });
     assert.ok(rule, item.name);
     assert.equal(String(rule.max), /d/.test(max[1]) ? max[1].replace(/\s+/g, "") : max[1], `${item.name} charges`);

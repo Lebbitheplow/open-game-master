@@ -55,6 +55,7 @@ export const TARGET_PARAMS: Readonly<Record<string, TargetRule>> = {
   "apply_damage.enemyId": { kind: "both", why: "beside characterId: a character on either side is reached by characterId" },
   "apply_damage.targets[].enemyId": { kind: "both", why: "beside targets[].characterId" },
   "enemy_attack.targetMount": { kind: "both", why: "names no creature itself: the mount of the character targetCharacterId resolves, on whichever side" },
+  "enemy_attack.targetPet": { kind: "both", why: "names the pet of the character targetCharacterId resolves, on whichever side, by its name on their sheet" },
   "take_action.targetCharacterId": { kind: "ally", why: "Help's ally" },
   "use_reaction.targetCharacterId": { kind: "ally", why: "the ally a reaction protects (Protection, Interception)" },
   "use_resource.targetCharacterId": { kind: "ally", why: "the ally a feature touches (Lay on Hands, Bardic Inspiration)" },

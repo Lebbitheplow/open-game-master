@@ -9,7 +9,8 @@
 // that way would skip the roll, the cost and the rule behind it. What is left
 // to the model is who a character is in the story: a name, a race after a
 // reincarnation, a background, an alignment, a speed a curse changed, a
-// score a tome raised, a feat or a lasting ability the story granted.
+// score the story changed (a manual or tome read is use_item's, which
+// raises its maximum too), a feat or a lasting ability the story granted.
 //
 // Pure, so the refusal text is testable without a database.
 

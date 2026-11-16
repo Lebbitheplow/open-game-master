@@ -39,6 +39,8 @@ import { effectOutcome } from "@/lib/dm/effect-tools";
 import { enemyRowSwingOdds } from "@/lib/dm/enemy-swing-odds";
 import { resolveRowOnHit } from "@/lib/dm/enemy-hit-rows";
 import { hitTraitDice } from "@/lib/dm/side-allies";
+import { chargeAfterHit, chargeForHit, enemyRunFeet, withChargeDice } from "@/lib/dm/enemy-charge";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import { enfeebledBlow, spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
 import { applyEnemyDamage } from "@/lib/dm/enemy-damage";
@@ -79,6 +81,8 @@ export function enemyStrikesEnemy(
     // One swing made with its reaction, off its turn (Infectious Fury's
     // forced attack, mt-fb-spend.ts): its action and its turn are untouched.
     reaction?: boolean;
+    // No board: it ran straight at the target first (enemy-charge.ts).
+    charged?: boolean;
     sheets: CharacterSheet[];
     sheetsById: Map<string, CharacterSheet>;
   },
@@ -123,6 +127,8 @@ export function enemyStrikesEnemy(
     return spatial.blocked;
   }
   const live = getActiveEncounter(campaign.id) ?? encounter;
+  // Its run at the creature this turn, for a Charge or a Pounce (enemy-charge.ts).
+  const ranFeet = enemyRunFeet(encounter.id, enemy.id, target.id, input.charged === true);
   // A bonus action's swing spends the bonus action, not the action: it spent
   // the action here, so a creature that struck an enemy row with its bonus
   // attack lost its turn's action (found with issue #621).
@@ -183,7 +189,10 @@ export function enemyStrikesEnemy(
       continue;
     }
     shots += mode.ranged ? 1 : 0;
-    const attack: EnemyAttack = alternativeBlow(plannedAttack, { ranged: mode.ranged, bloodied: enemy.currentHp <= enemy.maxHp / 2 });
+    const swung: EnemyAttack = alternativeBlow(plannedAttack, { ranged: mode.ranged, bloodied: enemy.currentHp <= enemy.maxHp / 2 });
+    // The charge this hit would ride, and its extra dice (enemy-charge.ts).
+    const charge = chargeForHit(getActiveEncounter(campaign.id), enemy, swung, ranFeet);
+    const attack = charge ? withChargeDice(swung, charge) : swung;
     const odds = enemyRowSwingOdds({
       campaign,
       encounterId: encounter.id,
@@ -266,7 +275,11 @@ export function enemyStrikesEnemy(
     // What the hit carries besides its damage (a save or be knocked prone).
     const necrotic = blow.parts ? blow.parts.filter((part) => /necrotic/i.test(part.type)).reduce((sum, part) => sum + part.amount, 0) : /necrotic/i.test(blow.type ?? attack.type) ? dealt : 0;
     const onHit = resolveRowOnHit(campaign, turn, enemy, attack, now.id, { sheets: input.sheets, sheetsById: input.sheetsById, dealt: { total: dealt, necrotic } });
-    swings.push({ attack: attack.name, rolled: toHit.total, hit: true, ...(crit ? { crit: true } : {}), ...(traits.martial ? { martialAdvantage: true } : {}), damage: dealt, ...last, ...(onHit ?? {}) });
+    // A Charge or a Pounce, as at a character (enemy-charge.ts).
+    const charged = charge
+      ? chargeAfterHit(campaign, enemy, attack, charge, { id: now.id, name: now.displayName }, (ridden) => resolveRowOnHit(campaign, turn, enemy, ridden, now.id, { sheets: input.sheets, sheetsById: input.sheetsById, dealt: { total: 0, necrotic: 0 } }), () => (getEnemy(now.id)?.conditions ?? []).some((entry) => isConditionNamed(entry, "prone")))
+      : [];
+    swings.push({ attack: attack.name, rolled: toHit.total, hit: true, ...(crit ? { crit: true } : {}), ...(traits.martial ? { martialAdvantage: true } : {}), damage: dealt, ...last, ...(onHit ?? {}), ...(charged.length ? { charge: charged } : {}) });
   }
   const names = [...new Set(planned.map((attack) => attack.name))];
   return {

@@ -38,6 +38,7 @@ import { sanctuaryRefusal } from "@/lib/dm/spell-defenses";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import { thoughtShieldBack } from "@/lib/dm/thought-shield";
 import { sanctuaryWard } from "@/lib/dm/enemy-conditions";
+import { immuneLine, immuneToUse, settleSaveImmunity } from "@/lib/dm/save-immunity";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { outOfReach } from "@/lib/dm/spell-planes";
 import { badArguments, type ToolResult } from "@/lib/dm/tool-errors";
@@ -49,6 +50,7 @@ import { tieToTurn } from "@/lib/dm/turn-tie";
 import { enemySpellPool } from "@/lib/dm/enemy-spell-pool";
 import { isConditionNamed, isNamed } from "@/lib/srd/feature-names";
 import { authoredWardSave } from "@/lib/dm/ar-wbf-warlock-ward";
+import { castAtPet } from "@/lib/dm/pet-save";
 import { spellAreaShape } from "@/lib/dm/aoe-shape";
 
 // cast_at_player: a save forced on ONE character, by an enemy's spell or
@@ -78,10 +80,17 @@ const castAtPlayerSchema = z.object({
   // Set by apply_hazard for a trap: Dungeon Delver saves at advantage and
   // takes half (src/lib/srd/feat-combat.ts).
   hazard: z.enum(["trap"]).optional(),
+  // Set by apply_hazard for a named trap, with hazard "trap": the save and
+  // its damage are rolled here and the trap lays what a failure leaves, for
+  // its own duration and never as save-ends (src/lib/dm/trap-run.ts).
+  conditionByTrap: z.boolean().optional(),
   // Set by apply_hazard: the square a trap or hazard comes from, for the
   // cover between it and the character on a Dexterity save.
   fromX: z.coerce.number().int().min(0).optional(),
   fromY: z.coerce.number().int().min(0).optional(),
+  // The character's pet is the target instead, making its own save
+  // (src/lib/dm/pet-save.ts castAtPet).
+  petName: z.string().trim().min(1).max(60).optional(),
 });
 
 // Best-effort enemy concentration: when a tool call names the casting enemy
@@ -329,6 +338,13 @@ export function handleCastAtPlayer(
   if (!sheet) {
     return unknownSheetRef("characterId", args.characterId, sheets);
   }
+  // At the character's pet: its own save from its own block (SRD 5.1, Saving
+  // Throws), where the GM once chose the damage on apply_damage.
+  if (args.petName) {
+    const atPet = castAtPet(campaign, turn, { ...args, petName: args.petName, saveAbility: args.saveAbility as SaveAbility | undefined }, sheet);
+    const tracked = "error" in atPet ? null : trackEnemyConcentration(campaign, args.casterEnemyId, args.spell);
+    return tracked ? { ...atPet, enemyConcentration: tracked } : atPet;
+  }
   // casterEnemyId naming a character on the other side: their own cast,
   // from their sheet (sheet-foe-cast.ts, issue 503).
   const fromSheet = castFromFoeSheet(campaign, turn, sheet.id, args, sheets, sheetsById);
@@ -375,6 +391,11 @@ export function handleCastAtPlayer(
     });
     if ("error" in prepared) {
       return prepared;
+    }
+    // Withstood before, and immune to it for the while its block says
+    // (save-immunity.ts): no save is asked, and the creature keeps its action.
+    if (immuneToUse(getSheetById(sheet.id) ?? sheet, prepared)) {
+      return { error: `${immuneLine(sheet.name, prepared)} Nothing was spent; ${prepared.enemy.displayName} may target someone else or do something else.`, retry: true };
     }
     // Sanctuary answers a harmful spell as it answers an attack; the refused
     // caster keeps its action for another target.
@@ -517,6 +538,9 @@ export function handleCastAtPlayer(
     ...(save.notes.length ? { conditionEffects: save.notes } : {}),
     ...(use?.corrections.length ? { corrected: use.corrections } : {}),
   };
+  if (use && settleSaveImmunity(campaign.id, sheet.id, use, saved) && saved) {
+    base.immune = immuneLine(sheet.name, use);
+  }
 
   if (damage) {
     // The card shows the dice as rolled; the save halves or stops what lands.
@@ -636,7 +660,8 @@ export function handleCastAtPlayer(
   }
 
   const standing = getSheetById(sheet.id);
-  if (conditionName && !saved && standing && standing.currentHp > 0) {
+  const trapLays = args.hazard === "trap" && args.conditionByTrap === true;
+  if (conditionName && !saved && standing && standing.currentHp > 0 && !trapLays) {
     const condition = canonicalCondition(conditionName);
     const applied = layEnemyCondition(
       campaign,

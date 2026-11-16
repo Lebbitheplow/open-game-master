@@ -37,6 +37,7 @@ import { weaponNamed } from "@/lib/srd/weapons";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "@/lib/language/text-logic";
+import { pounceOpen, sheetBlock, sheetNaturalName } from "@/lib/dm/party-charge-logic";
 
 // The condition a marked creature's damage to someone else leaves on its
 // marker: the bonus attack is open against that creature on the marker's
@@ -87,10 +88,21 @@ export function featureBonusAttack(input: {
   profile: AttackProfile;
   melee: boolean;
   targetId?: string;
+  // The weapon the call names and the target's conditions, for a pounce.
+  weapon?: string;
+  targetConditions?: string[];
   mods: Record<string, number>;
 }): FeatureBonusAttack | { refused: ToolError } | null {
   const { sheet, budget, profile, melee } = input;
   const refusals: ToolError[] = [];
+  // Pounce, Trampling Charge (the block of the form the sheet wears or the
+  // creature a spell made it, party-charge-logic.ts): "If the target is
+  // prone, the lion can make one bite attack against it as a bonus action",
+  // at the creature its charge left prone this turn.
+  const pounce = pounceOpen(budget, sheetBlock(sheet), sheetNaturalName(sheet, input.weapon), sheet.name, input.targetId ? { id: input.targetId, conditions: input.targetConditions ?? [] } : null);
+  if (pounce) {
+    return { feature: pounce.name };
+  }
   if (holds(sheet, "war priest")) {
     if (budget.attacksMade <= 0 || budget.castThisAction) {
       refusals.push({ error: "War Priest's bonus attack follows the Attack action, and they have not taken it this turn.", retry: true });

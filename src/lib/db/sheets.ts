@@ -9,6 +9,7 @@ import { endedByFallingUnconscious, endedByLosingWeapon, fellUnconscious, rageSu
 import { keptFromDrain } from "@/lib/dm/ar-ws-inured";
 import { populateFeaturesForClasses } from "@/lib/srd/features";
 import { populateResources } from "@/lib/srd/class-resources";
+import { itemProficiencyBonus, proficiencyBonusOf } from "@/lib/srd/proficiency";
 import { XP_THRESHOLDS, acBreakdownFor, deriveAc, type AcSource } from "@/lib/srd";
 import { defaultHeld, keepHeldGuess, unguessed, wearGained } from "@/lib/dm/held-default";
 import { guessStands } from "@/lib/dm/gear-hands";
@@ -529,6 +530,8 @@ export function createSheet(
     campaignId,
     // The race's spells' counters (issue #833).
     { race: input.race, variant: input.racialChoices?.variant },
+    // An Ioun Stone of Mastery among the gear (src/lib/srd/proficiency.ts).
+    proficiencyBonusOf({ ...input, level, equipment: capAttunement(input.equipment ?? [], { ...input, level }) }),
   );
   // Unless the AC is pinned, it comes from the gear they are actually
   // carrying rather than the builder's suggestion. An absent flag means a
@@ -876,6 +879,12 @@ export function patchSheet(
     );
   }
 
+  // The proficiency bonus the counters sized by it read, with an attuned
+  // Ioun Stone of Mastery's +1 (src/lib/srd/proficiency.ts); a stone put on,
+  // set down or attuned re-sizes them as a level would.
+  const levelAfter = usingClasses ? summedLevel : (patch.level ?? existing.level);
+  const stoneMoved = patch.equipment !== undefined && itemProficiencyBonus(patch.equipment, existing) !== itemProficiencyBonus(existing.equipment, existing);
+
   const next = {
     name: patch.name ?? existing.name,
     race: patch.race ?? existing.race,
@@ -921,7 +930,8 @@ export function patchSheet(
       (patch.level !== undefined ||
       patch.features !== undefined ||
       patch.abilities !== undefined ||
-      patch.classes !== undefined
+      patch.classes !== undefined ||
+      stoneMoved
         ? populateResources(
             patch.features ?? existing.features,
             usingClasses ? summedLevel : (patch.level ?? existing.level),
@@ -936,6 +946,7 @@ export function patchSheet(
             patch.feats ?? existing.feats,
             existing.campaignId,
             { race: patch.race ?? existing.race },
+            proficiencyBonusOf({ ...existing, level: levelAfter, equipment: patch.equipment ?? existing.equipment }),
           )
         : existing.resources),
     equipment: patch.equipment ?? existing.equipment,
@@ -1018,6 +1029,7 @@ export function patchSheet(
       next.feats,
       existing.campaignId,
       { race: next.race },
+      proficiencyBonusOf(next),
     );
   }
 

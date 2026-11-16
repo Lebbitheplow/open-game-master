@@ -22,6 +22,8 @@ import { GENRE_A_FEATURE_DEFS, GENRE_A_MARK_ATTACKS } from "@/lib/srd/genre-a-fe
 import { GENRE_B_FEATURE_DEFS } from "@/lib/srd/authored-effects-genre-b";
 import { featTwinOf, tableFeat } from "@/lib/srd/feat-effects";
 import { textKey } from "@/lib/language/text-logic";
+import { proficiencyBonusOf } from "@/lib/srd/proficiency";
+import type { WornMagicItem } from "@/lib/srd/magic-items";
 import { choiceIn, isConditionNamed, isNamed } from "@/lib/srd/feature-names";
 
 export type FightingStyleId =
@@ -90,7 +92,9 @@ export type FeatureEffect =
   // turn budget; requiresCondition gates it (Divine Fury: raging).
   | {
       kind: "weapon_damage_rider";
-      dice: (level: number) => string;
+      // `mods.prof`: the character's proficiency bonus, which combatRiders
+      // passes (an authored rider's "prof": Genie's Wrath).
+      dice: (level: number, mods?: Record<string, number>) => string;
       type: string;
       when: "weapon" | "melee" | "ranged" | "attack";
       oncePerTurn?: boolean;
@@ -378,7 +382,7 @@ export const FEATURE_EFFECTS: FeatureDef[] = ([
     match: ["remarkable athlete"],
     effects: [{ kind: "half_proficiency", scope: "physical" }],
     guidance:
-      "Remarkable Athlete: half their proficiency bonus (rounded down) on Strength, Dexterity, and Constitution checks that do not already use it, initiative included. The server applies it.",
+      "Remarkable Athlete: half their proficiency bonus (rounded up) on Strength, Dexterity, and Constitution checks that do not already use it, initiative included. The server applies it.",
   },
   {
     // Enforced by the roll resolver with the dice grammar's floor suffix
@@ -845,6 +849,11 @@ export function combatRiders(sheet: {
   // The marks a spend lays that add an attack to the Attack action while they
   // hold (genre-a-feature-defs.ts GENRE_A_MARK_ATTACKS: Storm of Blades).
   conditions?: string[];
+  // What the proficiency bonus a rider's dice read is made of (an Ioun
+  // Stone of Mastery worn and attuned: srd/proficiency.ts).
+  equipment?: WornMagicItem[];
+  race?: string;
+  alignment?: string;
 }): CombatRiders {
   const level = clampLevel(sheet.level);
   // The level a feature's scaling resolves at: its granting class's when
@@ -949,7 +958,10 @@ export function combatRiders(sheet: {
       case "weapon_damage_rider":
         riders.damageRiders.push({
           feature,
-          dice: effect.dice(scaledLevel),
+          // "level" the granting class's; "prof" the character's (SRD 5.1
+          // Multiclassing: the total level's, so a warlock 1 / fighter 4's
+          // Genie's Wrath adds +3, not the warlock level's +2).
+          dice: effect.dice(scaledLevel, { prof: proficiencyBonusOf(sheet) }),
           type: effect.type,
           when: effect.when,
           oncePerTurn: Boolean(effect.oncePerTurn),
@@ -1168,6 +1180,10 @@ export type DefenseRiders = {
   // Trades) or "physical" for STR/DEX/CON only (Remarkable Athlete). The
   // broader scope wins when a sheet somehow carries both.
   halfProficiency: "all" | "physical" | "mental" | null;
+  // Every scope held, for the half a check takes (halfProficiencyBonus): a
+  // bard who is also a Champion keeps Remarkable Athlete's round-up on the
+  // physical checks, which the one broadest scope above loses.
+  halfScopes: Array<"all" | "physical" | "mental">;
 };
 
 // SRD 5.1 paladin, Aura of Protection: "You must be conscious to grant this
@@ -1182,7 +1198,9 @@ export function auraGranted(sheet: { currentHp?: number; conditions?: readonly s
 }
 
 export function defenseRiders(
-  sheet: { class: string; level: number; features: Array<{ name: string }>; campaignId?: string },
+  // `proficiencyBonus`: the character's own where the caller has it (an
+  // Ioun Stone of Mastery's +1 in it); else it is read from the sheet.
+  sheet: { class: string; level: number; features: Array<{ name: string }>; campaignId?: string; proficiencyBonus?: number; equipment?: WornMagicItem[] },
   // Ability modifiers, so a CHA-scaled aura resolves to a real number. When
   // omitted the aura's minimum stands in.
   abilityMods?: Record<string, number>,
@@ -1196,6 +1214,7 @@ export function defenseRiders(
     passiveBonus: 0,
     resistances: [],
     halfProficiency: null,
+    halfScopes: [],
   };
   for (const { effect } of effectsFor(sheet)) {
     switch (effect.kind) {
@@ -1206,7 +1225,7 @@ export function defenseRiders(
         riders.initiativeBonus += Math.max(0, abilityMods?.[effect.ability] ?? 0);
         break;
       case "initiative_proficiency":
-        riders.initiativeBonus += 2 + Math.floor((clampLevel(sheet.level) - 1) / 4);
+        riders.initiativeBonus += sheet.proficiencyBonus ?? proficiencyBonusOf(sheet);
         break;
       case "save_bonus":
         riders.saveBonus += Math.max(effect.min, abilityMods?.[effect.ability] ?? 0);
@@ -1228,6 +1247,9 @@ export function defenseRiders(
         break;
       case "half_proficiency":
         riders.halfProficiency = riders.halfProficiency === "all" ? "all" : effect.scope;
+        if (!riders.halfScopes.includes(effect.scope)) {
+          riders.halfScopes.push(effect.scope);
+        }
         break;
       default:
         break;
@@ -1248,6 +1270,24 @@ export function halfProficiencyCovers(
     return ability === "int" || ability === "wis";
   }
   return scope === "physical" && (ability === "str" || ability === "dex" || ability === "con");
+}
+
+// The half proficiency bonus a check of this ability takes from the scopes
+// held, the best of them: Remarkable Athlete's rounds up ("half your
+// proficiency bonus (round up)", SRD 5.1, Champion), Jack of All Trades'
+// and the rest round down. 0 when none covers it.
+export function halfProficiencyBonus(
+  scopes: ReadonlyArray<"all" | "physical" | "mental">,
+  ability: string,
+  proficiencyBonus: number,
+): number {
+  return scopes.reduce(
+    (best, scope) =>
+      halfProficiencyCovers(scope, ability)
+        ? Math.max(best, scope === "physical" ? Math.ceil(proficiencyBonus / 2) : Math.floor(proficiencyBonus / 2))
+        : best,
+    0,
+  );
 }
 
 // Halfling Lucky: a natural 1 on an attack roll, ability check, or saving

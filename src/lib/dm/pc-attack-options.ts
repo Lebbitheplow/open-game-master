@@ -85,6 +85,7 @@ export function checkAttackOptions(input: {
   sheet: CharacterSheet;
   args: {
     bonusAttack?: AnyBonusAttack;
+    weapon?: string;
     stunningStrike?: boolean;
     reckless?: boolean;
     nonlethal?: boolean;
@@ -106,6 +107,7 @@ export function checkAttackOptions(input: {
   // The target's size, and how many feet it stands from another creature
   // (null off the board): a run's bonus attack and Curving Shot's 60 feet.
   targetSize?: string;
+  targetConditions?: string[];
   feetFrom?: (otherId: string) => number | null;
 }): { refused: ToolError } | { options: AttackOptions } {
   const { sheet, args, profile, kind, atRange, derived, budget } = input;
@@ -154,7 +156,7 @@ export function checkAttackOptions(input: {
       const authored = featBonus ? { ok: true } : authoredBonusAttackProblem(sheet, budget, { id: input.targetId, size: input.targetSize });
       // War Priest, Unwavering Mark, Hungry Jaws, Pistol and Blade
       // (src/lib/dm/feature-bonus-attacks.ts).
-      const own = "refused" in authored ? featureBonusAttack({ sheet, budget, profile, melee: meleeWeapon, targetId: input.targetId, mods: derived.abilityMods }) : null;
+      const own = "refused" in authored ? featureBonusAttack({ sheet, budget, profile, melee: meleeWeapon, targetId: input.targetId, weapon: args.weapon, targetConditions: input.targetConditions, mods: derived.abilityMods }) : null;
       const granted = own && !("refused" in own) ? { ok: true } : own && "refused" in authored && authored.refused.error.startsWith(NO_BONUS_ATTACK_FEATURE) ? own : authored;
       if ("refused" in granted || !weaponAttack) {
         const gwmHint = holdsFeat(sheet, "Great Weapon Master") ? " Great Weapon Master's bonus attack follows a melee critical hit or a kill on this turn." : "";

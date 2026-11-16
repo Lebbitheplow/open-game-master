@@ -20,7 +20,7 @@ import { addConditionInstance, instancesOf, isIncapacitated, removeConditionInst
 import { immuneToCondition } from "@/lib/dm/damage-logic";
 import { settleEnemyIncapacitation } from "@/lib/dm/enemy-incapacitation";
 import { findSpellByName, spellMechanicsFor } from "@/lib/content";
-import { bakedSpellDuration } from "@/lib/content/baked-spells";
+import { bakedSlotDurations, bakedSpellDuration } from "@/lib/content/baked-spells";
 import { authoredSpellRow, durationRounds } from "@/lib/srd/spell-mechanics";
 import { roundsAtSlot, slotDurationsFromText } from "@/lib/srd/spell-duration";
 import type { SpellCondition } from "@/lib/srd/spell-mech-types";
@@ -73,8 +73,13 @@ export function lifetimeAtSlot(spell: string, base: number | null, slotLevel?: n
   }
   const row = findSpellByName(spell, authors);
   const mech = spellMechanicsFor({ spell, ...(typeof authors === "string" ? { userId: authors } : Array.isArray(authors) ? { userIds: authors } : {}) })?.mech;
-  const text = String(row?.data.higher_level ?? authoredSpellRow(spell)?.higher_level ?? "");
-  return roundsAtSlot(base, slotLevel, mech?.durationBySlot ? { at: mech.durationBySlot } : slotDurationsFromText(text));
+  const authored = authoredSpellRow(spell);
+  const text = String(row?.data.higher_level ?? authored?.higher_level ?? "");
+  // No content pack: what the SRD's text says a slot buys, baked as the
+  // base duration is. With no text to read, a 9th-level Mass Suggestion
+  // held for its 6th level's 24 hours, not a year and a day.
+  const baked = row || authored ? null : bakedSlotDurations(spell);
+  return roundsAtSlot(base, slotLevel, mech?.durationBySlot ? { at: mech.durationBySlot } : (baked ?? slotDurationsFromText(text)));
 }
 
 // The metadata one condition of a spell is stored with: its duration (the

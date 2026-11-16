@@ -25,8 +25,8 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3-multiple-ciphers";
-import { ADDED, ALIASES, DROPPED, EXTRA, REPLACED } from "./lib/magic-item-corrections.mjs";
-import { categoryBase, COUNTED_USES, DAILY_POWERS, GEAR_RIDERS, LAST_CHARGE_BECOMES } from "./lib/magic-item-riders.mjs";
+import { ADDED, ALIASES, DROPPED, EXTRA, REPLACED, UNCHARGED } from "./lib/magic-item-corrections.mjs";
+import { categoryBase, COUNTED_USES, DAILY_POWERS, GEAR_RIDERS, LAST_CHARGE_BECOMES, POWERS } from "./lib/magic-item-riders.mjs";
 import { nameBase } from "./lib/name-base.mjs";
 import { PLAYED_DOCUMENTS_SQL } from "../src/lib/content/edition.ts";
 
@@ -298,7 +298,10 @@ function chargesOf(desc, match) {
     new RegExp(`\\b(?:has|have|starts with) (${DICE}|\\d+) charges\\b`, "i").exec(desc) ??
     /\bof its (\d+) charges\b/i.exec(desc);
   if (!max) {
-    return match && COUNTED_USES[match] ? { ...COUNTED_USES[match] } : null;
+    if (!match) {
+      return null;
+    }
+    return COUNTED_USES[match] ? { ...COUNTED_USES[match] } : usesOf(desc);
   }
   const regain = new RegExp(`regains? (all|${DICE}|\\d+) (?:of its )?(?:expended )?charges daily at dawn`, "i").exec(desc);
   const out = { max: /d/i.test(max[1]) ? max[1].replace(/\s+/g, "") : Number(max[1]) };
@@ -326,6 +329,51 @@ function chargesOf(desc, match) {
     out.spentAway = true;
   }
   return out;
+}
+
+// The uses an SRD item counts without the word "charges", in the four ways
+// its text words them. Without this the row had no charges, so nothing else
+// about it kept it in the table: the Chime of Opening, Bag of Tricks, Horn of
+// Valhalla, Rod of Security, Restorative Ointment, Dust of Dryness and Bag of
+// Beans were missing, and use_item took the item for a consumable or refused
+// it. Read only for an SRD row (the other documents word theirs as they
+// like, and the corrections are written against the SRD's text).
+const COUNT_WORDS = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+const countOf = (word) => COUNT_WORDS[word.toLowerCase()] ?? (/^\d+$/.test(word) ? Number(word) : 0);
+
+function usesOf(desc) {
+  const DICE = "\\d+d\\d+(?:\\s*[+-]\\s*\\d+)?";
+  // "The chime can be used ten times. After the tenth time, it cracks and
+  // becomes useless."
+  const times = /\bcan be used (\w+) times\b/i.exec(desc);
+  if (times && countOf(times[1])) {
+    return { max: countOf(times[1]), ...(/becomes useless|is destroyed|crumbles/i.test(desc) ? { spentAway: true } : {}) };
+  }
+  // "contains 1d4 + 1 doses", "contains 1d6 + 4 pinches of dust", "Inside
+  // this heavy cloth bag are 3d4 dry beans": each is gone once used.
+  const doses = new RegExp(`\\b(?:contains|are) (${DICE}) (?:doses|pinches|dry beans)\\b`, "i").exec(desc);
+  if (doses) {
+    return { max: doses[1].replace(/\s+/g, ""), spentAway: true };
+  }
+  // "Once three fuzzy objects have been pulled from the bag, the bag can't
+  // be used again until the next dawn."
+  const pulls = /\bOnce (\w+) [^.]*?\bhave been [^.]*?can['’]t be used again until the next dawn/i.exec(desc);
+  if (pulls && countOf(pulls[1]) > 1) {
+    return { max: countOf(pulls[1]), regain: "all" };
+  }
+  // "Once you use the horn, it can't be used again until 7 days have
+  // passed", "The rod can't be used again until ten days have passed": one
+  // use, back that many days after it (src/lib/dm/item-charges.ts).
+  const days = /can['’]t be used again until (\w+) days have passed/i.exec(desc);
+  if (days && countOf(days[1])) {
+    return { max: 1, regainDays: countOf(days[1]) };
+  }
+  // The manuals and tomes: "The manual then loses its magic, but regains it
+  // in a century": one reading, back in a hundred years of days.
+  if (/loses its magic, but regains it in a century/i.test(desc)) {
+    return { max: 1, regainDays: 36500 };
+  }
+  return null;
 }
 
 // The spell an item casts in the sentence the SRD writes it in: "cast the
@@ -415,7 +463,7 @@ function gearOf(row, desc, match, rawDesc) {
   if (authored?.cursed) {
     out.cursed = true;
   }
-  const charges = chargesOf(desc, srd ? match : null);
+  const charges = srd && UNCHARGED[match] ? null : chargesOf(desc, srd ? match : null);
   const dailyCast = srd && !charges && !DAILY_POWERS[match] ? dailyCastOf(rawDesc) : null;
   if (charges) {
     out.charges = charges;
@@ -423,6 +471,16 @@ function gearOf(row, desc, match, rawDesc) {
     out.charges = { max: 1, regain: "all", daily: DAILY_POWERS[match] };
   } else if (dailyCast) {
     out.charges = { max: 1, regain: "all", daily: dailyCast };
+  }
+  if (srd && POWERS[match]) {
+    out.powers = POWERS[match];
+  }
+  // SRD 5.1, the manuals and tomes: "your Constitution score increases by 2,
+  // as does your maximum for that score". use_item applies it
+  // (src/lib/srd/studied-books.ts).
+  const reading = srd ? /your (Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma) score increases by (\d+), as does your maximum for that score/i.exec(desc) : null;
+  if (reading) {
+    out.reading = { ability: ABILITY[reading[1].toLowerCase()], amount: Number(reading[2]) };
   }
   return out;
 }
@@ -517,6 +575,7 @@ function collect() {
       effects: added.effects,
       ...(added.base ? { base: added.base } : {}),
       ...(added.charges ? { charges: added.charges } : {}),
+      ...(added.noWear ? { noWear: true } : {}),
     });
   }
   return {

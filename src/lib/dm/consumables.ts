@@ -24,7 +24,9 @@ import { allocateSeq } from "@/lib/db/campaigns";
 import { insertRoll } from "@/lib/db/rolls";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
-import { removeConditions } from "@/lib/dm/condition-logic";
+import { removeConditions, withTempHpClaim, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { isConditionNamed } from "@/lib/srd/feature-names";
+import { VITAL_HIT_DICE } from "@/lib/dm/hit-dice";
 import { heldDieWaits, rollExtrasFor, spendRollCarriers } from "@/lib/dm/forced-save";
 import { rollCharacterD20 } from "@/lib/dm/character-roll";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
@@ -35,6 +37,7 @@ import { highestSlotLevel, scrollCheckDc, scrollNumbers, scrollSpell, scrollUnre
 // The credits live in the database on the server (src/lib/db/item-cast-credits.ts).
 import "@/lib/db/item-cast-credits";
 import { recordItemCast } from "@/lib/srd/item-cast-credit";
+import { markItemSpellOnTurn } from "@/lib/dm/item-casts";
 import { afflictCondition, afflictionConditionsFor } from "@/lib/dm/afflictions";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import { rollCard } from "@/lib/dm/roll-card";
@@ -146,6 +149,8 @@ export function consumableRefusal(sheet: CharacterSheet, item: ScrollItem): Tool
   return null;
 }
 
+const HEROISM_TEMP_HP = 10;
+
 function condition(campaign: Campaign, turnId: string, target: CharacterSheet, name: string, minutes: number, reason: string) {
   const fresh = getSheetById(target.id) ?? target;
   return handleSetCondition(campaign, turnId, fresh, { condition: name, minutes: Math.min(1440, minutes) }, reason, {
@@ -206,7 +211,11 @@ export function applyConsumable(
     case "vitality": {
       const cleared = removeConditions(sheet.conditions, sheet.conditionMeta, ["poisoned", ...diseases]);
       write(campaign, sheet, { exhaustion: 0, conditions: cleared.conditions, conditionMeta: cleared.meta });
-      return { effect: `${sheet.name}'s exhaustion is gone, and any poison or disease with it.` };
+      // "For the next 24 hours, you regain the maximum number of hit points
+      // for any Hit Die you spend": a day's mark the hit dice read
+      // (src/lib/dm/hit-dice.ts). Without it the potion's second half was lost.
+      condition(campaign, turnId, sheet, VITAL_HIT_DICE, 24 * 60, reason);
+      return { effect: `${sheet.name}'s exhaustion is gone, and any poison or disease with it. For 24 hours every Hit Die they spend heals its maximum.` };
     }
     case "health": {
       const cleared = removeConditions(sheet.conditions, sheet.conditionMeta, ["blinded", "deafened", "paralyzed", "poisoned", ...diseases]);
@@ -214,8 +223,17 @@ export function applyConsumable(
       return { effect: `${sheet.name} is cured of any disease, and no longer blinded, deafened, paralyzed or poisoned.` };
     }
     case "heroism": {
-      write(campaign, sheet, { tempHp: Math.max(sheet.tempHp ?? 0, 10) });
+      const pool = sheet.tempHp ?? 0;
+      write(campaign, sheet, { tempHp: Math.max(pool, HEROISM_TEMP_HP) });
       condition(campaign, turnId, sheet, "blessed", 60, reason);
+      // "10 temporary hit points that last for 1 hour" (SRD 5.1): the potion's
+      // bless claims the pool it gave, so the two end together
+      // (src/lib/db/sheets.ts). Unclaimed, they lasted until a long rest.
+      const blessed = getSheetById(sheet.id);
+      const laid = blessed?.conditions.find((name) => isConditionNamed(name, "blessed"));
+      if (pool < HEROISM_TEMP_HP && blessed && laid && blessed.tempHp === HEROISM_TEMP_HP) {
+        write(campaign, blessed, { conditionMeta: withTempHpClaim(blessed.conditionMeta as ConditionMetaMap, laid, { spell: "", source: "item" }, HEROISM_TEMP_HP) });
+      }
       return { effect: `${sheet.name} gains 10 temporary hit points and is blessed for an hour.` };
     }
     case "giant": {
@@ -233,14 +251,55 @@ export function applyConsumable(
       const damage = rollCard(campaign, null, sheet.id, "damage", `${itemName}: it was poison`, "3d6", null);
       const hurt = applyPcDamage(campaign, turnId, sheet, { amount: damage.total, type: "poison", reason });
       const save = rollSave(campaign, getSheetById(sheet.id) ?? sheet, 13, `${sheet.name}: CON save vs ${itemName}`);
-      if (!save.success) {
-        condition(campaign, turnId, sheet, "poisoned", 60, reason);
+      if (save.success) {
+        return { effect: `It was poison: ${damage.total} poison damage.`, ...hurt };
       }
-      return { effect: `It was poison: ${damage.total} poison damage${save.success ? "" : ", and poisoned for an hour"}.`, ...hurt };
+      const course = poisonCourse(campaign, turnId, sheet.id, itemName);
+      if (course.rounds > 0) {
+        handleSetCondition(campaign, turnId, getSheetById(sheet.id) ?? sheet, { condition: "poisoned", rounds: course.rounds }, reason, { spellEffect: { source: "item" } });
+      }
+      return { effect: `It was poison: ${damage.total} poison damage, then ${course.line}`, ...hurt };
     }
     default:
       return null;
   }
+}
+
+// SRD 5.1, Potion of Poison, after a failed save: "At the start of each of
+// your turns while you are poisoned in this way, you take 3d6 poison damage.
+// At the end of each of your turns, you can repeat the saving throw. On a
+// successful save, the poison damage you take on your subsequent turns
+// decreases by 1d6. The poison ends when the damage decreases to 0." The
+// engine once left the drinker poisoned for an hour after the first 3d6 and
+// dealt nothing more. Rolled through at once, as Burnt Othur Fumes' turns
+// are (affliction-poisons.ts); a drinker who drops to 0 stops it there.
+// Returns the turns it lasted and the line for the result.
+function poisonCourse(campaign: Campaign, turnId: string, sheetId: string, itemName: string): { rounds: number; line: string } {
+  let dice = 3;
+  let rounds = 0;
+  let dealt = 0;
+  while (dice > 0 && rounds < 30) {
+    const before = getSheetById(sheetId);
+    if (!before || before.deathSaves?.dead || before.currentHp <= 0) {
+      break;
+    }
+    rounds += 1;
+    const hit = rollCard(campaign, null, before.id, "damage", `${itemName}: the poison, turn ${rounds}`, `${dice}d6`, null);
+    dealt += hit.total;
+    applyPcDamage(campaign, turnId, before, { amount: hit.total, type: "poison", reason: itemName });
+    const after = getSheetById(sheetId);
+    if (!after || after.deathSaves?.dead || after.currentHp <= 0) {
+      break;
+    }
+    if (rollSave(campaign, after, 13, `${after.name}: CON save vs ${itemName}, turn ${rounds}`).success) {
+      dice -= 1;
+    }
+  }
+  const end = dice === 0 ? ", until it ran out" : (getSheetById(sheetId)?.currentHp ?? 0) <= 0 ? ", until they fell" : "";
+  return {
+    rounds,
+    line: `${dealt} more over ${rounds} turn${rounds === 1 ? "" : "s"} (3d6 at the start of each, 1d6 less after each DC 13 Constitution save made)${end}; poisoned for those turns. Rolled and applied by the server.`,
+  };
 }
 
 function rollSave(campaign: Campaign, sheet: CharacterSheet, dc: number, detail: string): { success: boolean } {
@@ -296,6 +355,9 @@ function readScroll(campaign: Campaign, turnId: string, reader: CharacterSheet, 
   // The spell is cast from the scroll: the tool that resolves it next spends
   // no slot and uses the scroll's numbers (src/lib/srd/item-cast-credit.ts).
   recordItemCast(reader.id, { spell: name, level, item: `Spell Scroll (${name})`, saveDc: numbers.saveDc, attackBonus: numbers.attackBonus, paid: { row: scroll as EquipmentItem }, turnId });
+  // A spell cast, for the bonus-action spell rule (item-casts.ts); a failed
+  // check above cast nothing and marks nothing.
+  markItemSpellOnTurn(campaign.id, reader, own, "action");
   return {
     spellCast: name,
     spellLevel: level,

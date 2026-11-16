@@ -76,7 +76,21 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 // 13:  a serpentfolk's animal friendship is held to snakes and a duergar's
 //      Enlarge/Reduce to enlarge (their innate rows' freeLimit), and a
 //      centaur's Equine Build line names the push and the drag.
-export const READER_REVISION = 13;
+// 14:  a monster's save ability reads the immunity its text grants after a
+//      success ("immune to the dragon's Frightful Presence for the next 24
+//      hours"), and an attack's rider the kinds it spares ("a creature other
+//      than an elf or undead", a ghoul's claws); Destructive Wave reads as a
+//      hand-written row (5d6 thunder and 5d6 radiant or necrotic), and
+//      Warding Bond's and Fire Shield's notes leave their damage to the
+//      server (rules audit 2026-11-15, monsters and casting).
+// 15:  an attack's rider reads the ability score it drains, its dice, death
+//      at 0 and the rest that ends it ("the target's Strength score is
+//      reduced by 1d4", a shadow's Strength Drain), and what holds a target
+//      it restrains, the check that breaks it and its numbers as an object
+//      (a giant spider's webbing), and the kinds a shared 24-hour immunity
+//      covers ("the Dreadful Glare of all mummies (but not mummy lords)";
+//      rules audit 2026-11-15, monsters).
+export const READER_REVISION = 15;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";
 

@@ -9,6 +9,7 @@ import { conditionIncomingAttackState, conditionSpeed } from "@/lib/srd/conditio
 import { conditionSeesInvisible } from "@/lib/srd/condition-effect-queries";
 import { itemAbilityScore, type Wearer } from "@/lib/srd/magic-items";
 import { textKey } from "@/lib/language/text-logic";
+import type { CreatureHold } from "@/lib/bestiary/hold-text";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import { CALTROPS_WOUND } from "@/lib/battlemap/zones-gear";
 import { maxHpCannotFall } from "@/lib/dm/ar-ws-inured-logic";
@@ -106,6 +107,16 @@ export type ConditionMeta = {
   mote?: boolean;
   // A monster's grapple: its printed escape DC (grapple.ts).
   escapeDc?: number;
+  // What holds a restrained creature: the check that breaks it and the
+  // thing as an object (a giant spider's webbing, creature-hold.ts).
+  hold?: CreatureHold;
+  // Laid by magic with no spell named (set_enemy_condition magical): its
+  // repeat saves meet Magic Resistance as the first one did
+  // (condition-tick.ts).
+  magical?: boolean;
+  // Manacles the party's foes put on: their one key is the foes', not the
+  // party's (manacles.ts).
+  keyWithFoes?: boolean;
   // The Grappler feat's pin, on the grappler's own restraint: the creature
   // they hold pinned (grappler-pin.ts).
   pinning?: string;
@@ -115,6 +126,8 @@ export type ConditionMeta = {
   // Ends when the rest it was raised for ends, short or long (Hearth of
   // Moonlight and Shadow: "until the rest ends"): src/lib/dm/rest-logic.ts.
   untilRestEnds?: boolean;
+  // A drained score's value before the first drain (creature-drain-logic.ts).
+  scoreFrom?: number;
   // Each character a creature has withstood, where one mark answers several
   // (Instinctive Charm).
   sources?: string[];
@@ -356,10 +369,42 @@ export function removeConditionInstances(
   return { conditions, meta: nextMeta, ended: false, removed: list.length - kept.length };
 }
 
+// The instances that end because these combatants' turns are starting
+// (Dodge, Shield, the Protection style: untilTurnOf). A condition another
+// source still holds stays. The pointer runs it over the creatures' rows, the
+// sheets and the pets (condition-tick.ts endTurnStartHolds, pet-conditions.ts).
+export function endInstancesBoundTo(
+  conditions: string[],
+  meta: ConditionMetaMap,
+  starting: Set<string>,
+): { conditions: string[]; meta: ConditionMetaMap; ended: string[]; changed: boolean } {
+  let nextConditions = conditions;
+  let nextMeta = meta;
+  const ended: string[] = [];
+  let changed = false;
+  for (const name of conditions) {
+    const result = removeConditionInstances(nextConditions, nextMeta, name, (instance) =>
+      Boolean(instance.untilTurnOf && starting.has(instance.untilTurnOf)),
+    );
+    if (result.removed) {
+      changed = true;
+      nextConditions = result.conditions;
+      nextMeta = result.meta;
+      if (result.ended) {
+        ended.push(name);
+      }
+    }
+  }
+  return { conditions: nextConditions, meta: nextMeta, ended, changed };
+}
+
 const INCAPACITATING = ["incapacitated", "paralyzed", "stunned", "unconscious", "petrified"];
 // Each of these says "can't move" (or speed 0) in its own text (SRD 5.1,
 // Conditions); bare "incapacitated" takes actions and reactions only.
-const SPEED_ZERO = ["grappled", "restrained", "paralyzed", "stunned", "unconscious", "petrified"];
+// A hunting trap's jaws too (src/lib/srd/trap-specs.ts): the creature
+// caught must "stop moving", held after by a chain "typically 3 feet long",
+// so it cannot leave its square; it walked off with the trap on its leg.
+const SPEED_ZERO = ["grappled", "restrained", "paralyzed", "stunned", "unconscious", "petrified", "caught in a hunting trap"];
 const AUTO_FAIL_STR_DEX = ["paralyzed", "stunned", "unconscious", "petrified"];
 // Attacks against these have advantage. Each of them says so in its own
 // text; bare "incapacitated" only takes away actions and reactions.

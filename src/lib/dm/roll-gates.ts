@@ -58,12 +58,28 @@ const OPPOSED: Record<string, string> = {
   acrobatics: "athletics",
 };
 
-// Skills with which a character answers what a creature is trying: noticing
-// its hiding, seeing through its lie. The creature is the one acting, so a
-// tie (nothing changes) goes the character's way.
+// Skills with which a character answers what a creature is trying: seeing
+// through its lie, noticing what it does. The creature is the one acting, so
+// a tie (nothing changes) goes the character's way.
 const ANSWERING = new Set(["insight", "perception", "investigation"]);
 
 const skillId = (text: string | undefined) => (text ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+
+// Whether a tie goes to the character. A Stealth contest is the exception to
+// ANSWERING: whoever hides stays hidden on a tie (SRD 5.1, Contests: "the
+// situation remains the same as it was before the contest"), as the Hide
+// action and the ambush read it (combat-actions.ts, encounter-open.ts), so a
+// creature's Stealth must be beaten and a character's Stealth only met. Before,
+// check_notice and a contested request_roll gave the tie to the watcher.
+function tieGoesToCharacter(mine: string | null, theirs: string | null, hiding = false): boolean {
+  if (theirs === "stealth") {
+    return false;
+  }
+  if (mine === "stealth") {
+    return true;
+  }
+  return hiding || (mine ? ANSWERING.has(mine) : false);
+}
 
 // Whether the party's march forbids stealth right now: a normal or fast
 // pace on the clock, and no fight running. The refusal sentence, or null.
@@ -145,8 +161,8 @@ export type Charmable = { name: string; conditions: string[]; conditionMeta?: un
 type CharmMeta = Parameters<typeof charmedBy>[1];
 
 // Rolls the opponent's side of a contest and returns the DC the character's
-// check must reach: the opponent's total, plus one when the character is
-// the one trying to change things (a tie leaves them as they were).
+// check must reach: the opponent's total, plus one when the tie is the
+// opponent's (a tie leaves things as they were: tieGoesToCharacter).
 export function rollContest(
   campaign: Campaign,
   turn: DmTurn | null,
@@ -159,7 +175,7 @@ export function rollContest(
   const theirs = skillId(input.contestSkill) || (input.hiding ? "stealth" : mine ? OPPOSED[mine] ?? mine : null);
   const ability = ((theirs ? findSkill(theirs)?.ability : null) ?? input.ability ?? "str") as SaveAbility;
   const label = theirs ? (findSkill(theirs)?.name ?? theirs) : ability.toUpperCase();
-  const answering = input.hiding ? true : mine ? ANSWERING.has(mine) : false;
+  const answering = tieGoesToCharacter(mine, theirs, input.hiding);
   // "The charmer has advantage on any ability check to interact socially
   // with the creature" (SRD 5.1, Charmed): the opponent's Charisma side of
   // the contest, when it charmed the character it contests. Before, only

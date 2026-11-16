@@ -24,6 +24,7 @@ import { getFoe } from "@/lib/dm/sheet-foe";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import type { TypedRider } from "@/lib/dm/damage-parts";
 import type { CreatureOnHit } from "@/lib/srd/creature-attacks";
+import type { ChargeTrait } from "@/lib/dm/charge-logic";
 import type { GearWeapon } from "@/lib/srd/gear-weapons";
 import { damageTypeFeat, poisonerIgnoresResistance, type DamageTypeFeat } from "@/lib/srd/feat-combat";
 import { hasElvenAccuracy } from "@/lib/srd/feature-effects";
@@ -144,6 +145,8 @@ export type AttackRecord = PendingAttack & {
     poison?: boolean;
     tempHp?: { amount: number; feature: string };
     creature?: CreatureOnHit;
+    // A form's or a summoned creature's charge this hit rides (party-charge.ts).
+    charge?: ChargeTrait;
   };
   // The damage roll's record only: the roll it asks for, and the to-hit roll
   // it follows (Sentinel at Death's Door and the reactions read its d20).
@@ -185,6 +188,7 @@ export function attackRecord(plan: AttackPlan, strike: { critExtraDice: number; 
     ...(extras.poison ? { poison: true } : {}),
     ...(extras.tempHp ? { tempHp: extras.tempHp } : {}),
     ...(profile.creatureOnHit ? { creature: profile.creatureOnHit } : {}),
+    ...(extras.charge ? { charge: extras.charge } : {}),
   };
   return {
     attacker: sheet.name,

@@ -162,14 +162,16 @@ await test("extreme cold: a DC 10 Constitution save, and a level of exhaustion o
   assert.deepEqual(world.sheet(hardy.id).conditions, []);
 });
 
-await test("extreme heat: a DC 5 Constitution save, or the DC the caller gives for a later hour", async () => {
+await test("extreme heat: a DC 5 Constitution save, one higher for each further hour in a row, whatever DC the caller gives", async () => {
   kit.reset(frail.id);
-  // CON 8 and proficient: +2. A 3 makes DC 5 and a 2 does not.
+  // CON 8 and proficient: +2. A 3 makes DC 5 and a 2 does not make DC 6.
   await hazard([3], { type: "extreme_heat", characterIds: [frail.id] });
   assert.equal(world.sheet(frail.id).exhaustion, 0);
   await hazard([2], { type: "extreme_heat", characterIds: [frail.id] });
   assert.equal(world.sheet(frail.id).exhaustion, 1);
-  await hazard([3], { type: "extreme_heat", characterIds: [frail.id], dc: 6 });
+  // The third hour in a row is DC 7: a 3 (5) fails it, and a DC sent by the
+  // caller does not lower it.
+  await hazard([3], { type: "extreme_heat", characterIds: [frail.id], dc: 5 });
   assert.equal(world.sheet(frail.id).exhaustion, 2);
 });
 

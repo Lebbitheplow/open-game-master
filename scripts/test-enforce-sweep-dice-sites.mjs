@@ -494,6 +494,7 @@ const SITES = {
   "lib/dice/tray-rules.ts#trayExpressionProblem": "F reads an expression",
   "lib/dm/action-common.ts#rollEnemyContest": "F the creature's side of a contest",
   "lib/dm/advance-tick.ts#tickAdvances": "F d100",
+  "lib/dm/regeneration-ring.ts#ringHeals": "F a Ring of Regeneration's d6 for every ten minutes the clock moves (test-audit1115-rests.mjs R06): the item's healing dice, not a throw of the wearer",
   "lib/dm/mummy-rot.ts#mummyRotClock": "F the curse's daily 3d6 off the hit point maximum (test-enforce-mummy-rot.mjs): the disease's dice, not a throw of the cursed",
   "lib/dm/after-roll.ts#rerollD20s": "H an extra d20 on the after-the-roll card (Lucky, Chronal Shift)",
   "lib/dm/after-roll.ts#spendAfterRoll": "H the die or d20 a choice on the after-the-roll card adds",
@@ -535,9 +536,11 @@ const SITES = {
   "lib/dm/hit-dice.ts#spendHitDice": "D hit dice",
   "lib/dm/invoke-roll.ts#handleRequestRoll": "H",
   "lib/dm/item-charges.ts#rechargeAtDawn": "F", "lib/dm/item-charges.ts#spendChargesMath": "H the d20 on an item's last charge",
-  "lib/dm/mount-combat.ts#strikeMount": "F", "lib/dm/natural-onhit.ts#landNaturalOnHit": "D", "lib/dm/npc-agency.ts#advanceNpcAgency": "F",
+  "lib/dm/mount-combat.ts#strikeMount": "F", "lib/dm/natural-onhit.ts#resolveNaturalOnHit": "D", "lib/dm/npc-agency.ts#advanceNpcAgency": "F",
   "lib/dm/object-damage.ts#damageObject": "F the damage the GM names for an object, which no character's roll dealt",
   "lib/dm/opportunity-sides.ts#enemiesStrikeWalker": "F", "lib/dm/opportunity.ts#resolveOpportunityAttacks": "F",
+  "lib/dm/opportunity-pets.ts#strikePetsOnWalk": "F",
+  "lib/dm/pet-strike.ts#strikePet": "F", "lib/dm/pet-strike.ts#landRider": "F",
   "lib/dm/pc-attack-resolve.ts#throwToHit": "H",
   "lib/dm/pet-tools.ts#handlePetAttack": "H a bound creature's attack, which its player rolls",
   "lib/dm/prismatic.ts#rollRays": "D",
@@ -548,6 +551,7 @@ const SITES = {
   "lib/dm/zone-quake.ts#quakeFissures": "F",
   "lib/dm/fate-turn.ts#turned": "D Bend Luck's d4 on another creature's roll (a call already rolled)",
   "lib/dm/mount-area.ts#areaOnMount": "F a mount's own Dexterity save against an area that caught its rider",
+  "lib/dm/pet-save-roll.ts#rollPetSave": "F a pet's own save against an area or an effect that caught it, rolled by the server as a mount's is",
 };
 // A character's d20 no row of this suite reaches, and what it would take.
 const UNREACHED = {

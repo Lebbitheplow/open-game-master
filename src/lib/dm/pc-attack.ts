@@ -5,7 +5,7 @@ import { endRageBound } from "@/lib/dm/rage-bound";
 import { spendFeatureUse } from "@/lib/dm/attack-onhit";
 import { z } from "zod";
 import type { Campaign } from "@/lib/db/campaigns";
-import { getActiveEncounter, patchEnemyConditions, saveEncounter } from "@/lib/db/encounters";
+import { getActiveEncounter, patchEnemyConditions, saveEncounter, type Encounter } from "@/lib/db/encounters";
 import { endInvisibilityOnCast, writeMarks } from "@/lib/dm/attack-marks";
 import { sanctuaryEndedByAttack } from "@/lib/dm/spell-defenses";
 import { publishEncounter } from "@/lib/dm/enemy-damage";
@@ -45,6 +45,7 @@ import { walkHeld } from "@/lib/dm/player-word";
 import { commitConjuredStrike } from "@/lib/dm/conjured-strike";
 import { swallowCover } from "@/lib/dm/swallow";
 import { resolveEnemyRef } from "@/lib/dm/enemy-damage";
+import { pounceOpen, sheetBlock, sheetNaturalName } from "@/lib/dm/party-charge-logic";
 import { fittedText } from "@/lib/dm/fitted-text";
 
 // Re-exported for the callers that learned it here.
@@ -151,7 +152,7 @@ export const pcAttackTool: ToolDef = {
               charged: {
                 type: "boolean",
                 description:
-                  "Charger: true when they moved 10+ feet straight at the target first, for +5 damage. It goes with feature 'Charger' after a Dash.",
+                  "Ran straight at the target first: Charger's +5, or a form's or summoned creature's Charge or Pounce. Charger goes with feature 'Charger' after a Dash; a Charge or Pounce reads it only with no board.",
               },
               powerAttack: {
                 type: "boolean",
@@ -267,7 +268,9 @@ export const pcAttackArgsSchema = z.object({
   // Lucky: a luck point for an extra d20 on this attack roll, the best kept.
   luck: z.coerce.boolean().optional(),
   // Charger: they ran at least 10 feet straight at the target before the
-  // bonus-action attack, for its +5.
+  // bonus-action attack, for its +5. A form's or summoned creature's Charge
+  // or Pounce takes it with no board (party-charge.ts); on one the squares
+  // decide.
   charged: z.coerce.boolean().optional(),
   reckless: z.coerce.boolean().optional(),
   nonlethal: z.coerce.boolean().optional(),
@@ -337,12 +340,12 @@ export function handlePcAttack(
   if (!parsed.success) {
     return invalidArguments("Invalid arguments: pc_attack needs characterId and targetEnemyId.", parsed.error, raw);
   }
-  const args: PcAttackArgs = parsed.data;
-  const staleSheet = resolveSheetRef(args.characterId, sheets, sheetsById);
+  const staleSheet = resolveSheetRef(parsed.data.characterId, sheets, sheetsById);
   const sheet = staleSheet ? (getSheetById(staleSheet.id) ?? staleSheet) : null;
   if (!sheet) {
-    return unknownSheetRef("characterId", args.characterId, sheets);
+    return unknownSheetRef("characterId", parsed.data.characterId, sheets);
   }
+  const args: PcAttackArgs = pounceArgs(parsed.data, sheet, encounter);
   // Swallowed: from inside, only the creature that swallowed them
   // (src/lib/dm/swallow.ts).
   const inside = swallowCover({ kind: "sheet", id: sheet.id }, { kind: "enemy", id: resolveEnemyRef(encounter.id, args.targetEnemyId)?.id ?? args.targetEnemyId });
@@ -398,6 +401,20 @@ export function handlePcAttack(
     }
   }
   return attackFrom(campaign, turn, sheet, args, sheets, sheetsById, realDiceUserIds, toolCallId, engine);
+}
+
+// A Pounce's bite at the creature the form's or summoned creature's charge
+// left prone this turn (a warhorse's second hooves) is the bonus action its
+// trait gives: taken as a feature's bonus attack (feature-bonus-attacks.ts),
+// so the bite does not ask for an attack the Attack action no longer holds.
+// Once the bonus action is spent, the call is an ordinary attack again.
+function pounceArgs(args: PcAttackArgs, sheet: CharacterSheet, encounter: Encounter): PcAttackArgs {
+  const budget = encounter.turnBudget?.ownerId === sheet.id ? encounter.turnBudget : null;
+  if (args.bonusAttack || args.offHand || !budget || budget.bonusUsed) {
+    return args;
+  }
+  const enemy = resolveEnemyRef(encounter.id, args.targetEnemyId);
+  return pounceOpen(budget, sheetBlock(sheet), sheetNaturalName(sheet, args.weapon), sheet.name, enemy) ? { ...args, bonusAttack: "feature" } : args;
 }
 
 function attackFrom(

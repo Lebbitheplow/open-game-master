@@ -109,7 +109,14 @@ export function magicItemLine(item: EquipmentItem, equipment: readonly Equipment
   const rule = chargeRuleOf(item);
   if (rule) {
     const most = chargeMax(rule);
-    parts.push(`${chargesLeft(item, rule, most)}/${most} charges`);
+    parts.push(`${chargesLeft(item, rule, most)}/${most} ${rule.unit ?? "charge"}s`);
+  }
+  // A property used and not back yet (a Staff of Thunder and Lightning's
+  // Thunderclap until dawn), so the GM does not narrate it again.
+  for (const [power, left] of Object.entries(item.powerCharges ?? {})) {
+    if (left === 0) {
+      parts.push(`${power} spent`);
+    }
   }
   const state: string[] = [];
   if (item.attuned) {

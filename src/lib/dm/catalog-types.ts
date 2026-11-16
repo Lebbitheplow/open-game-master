@@ -150,6 +150,17 @@ export const MEAL_FIELD: CatalogField = {
   help: "Only when the party eats and drinks from something other than their packs. Covers the next dawn: no ration, no thirst. Scarce water still applies.",
 };
 
+// enemy_attack's and pet_attack's run before a Charge, Pounce or Trampling
+// Charge (enemy-charge.ts, party-charge.ts), one field in both. A board
+// measures the run itself; a fight with no board takes the person's word.
+export const CHARGED_RUN: CatalogField = {
+  name: "charged",
+  label: "Ran straight at the target first",
+  kind: "boolean",
+  host: { feature: "chargeRuns" },
+  help: "With no board only (on a board the squares decide): a Charge, Pounce or Trampling Charge rides the hit when the run is as long as its block says.",
+};
+
 // The field as this host should show it, or null when it cannot use it.
 export function fieldForHost(field: CatalogField, offers: (feature: string) => boolean): CatalogField | null {
   const shown = !field.host || offers(field.host.feature) ? field : field.host.older ? { ...field, ...field.host.older } : null;

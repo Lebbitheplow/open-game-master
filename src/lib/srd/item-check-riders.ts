@@ -10,6 +10,7 @@
 import { countsAsWorn } from "@/lib/srd/wear-slots";
 import { textKey } from "@/lib/language/text-logic";
 import { rowName, type RowItem } from "@/lib/srd/item-row";
+import type { RollKey } from "@/lib/srd/roll-keys";
 
 type Skill = string;
 
@@ -22,6 +23,9 @@ type CheckRiderRow = {
   bonus?: number;
   // Added to checks of these skills (Gloves of Thievery: Sleight of Hand).
   skillBonus?: Record<Skill, number>;
+  // Added to a Dexterity check made to pick a lock (the check's about
+  // 'locks', src/lib/dm/roll-about.ts), with thieves' tools or without.
+  lockBonus?: number;
   // Advantage on checks of these skills. The SRD's narrower wording ("that
   // rely on sight", "to move silently") is the ordinary use of the skill,
   // which is how the table reads it.
@@ -71,7 +75,8 @@ const ROWS: CheckRiderRow[] = [
     names: ["gloves of thievery"],
     requiresAttunement: false,
     skillBonus: { sleight_of_hand: 5 },
-    effect: "Gloves of Thievery: +5 to Sleight of Hand checks",
+    lockBonus: 5,
+    effect: "Gloves of Thievery: +5 to Sleight of Hand checks and Dexterity checks to pick locks",
   },
 ];
 
@@ -80,6 +85,7 @@ const keyOf = (name: string) => textKey(name.trim().replace(/^\+\d\s+/, ""));
 type NamedRiders = {
   bonus?: number;
   skillBonus?: Record<string, number>;
+  lockBonus?: number;
   advantage?: string[];
   requiresAttunement: boolean;
   carried: boolean;
@@ -102,6 +108,8 @@ export function checkRidersNamed(name: string): NamedRiders | null {
     carried: row.carried === true,
     ...(row.bonus ? { bonus: row.bonus } : {}),
     ...(row.skillBonus ? { skillBonus: row.skillBonus } : {}),
+    // The gloves' lock: a copy kept their Sleight of Hand +5 alone.
+    ...(row.lockBonus ? { lockBonus: row.lockBonus } : {}),
     ...(row.advantage?.length ? { advantage: row.advantage } : {}),
   };
 }
@@ -115,7 +123,7 @@ function rowFor(name: string): CheckRiderRow | null {
 type CarriedItem = { name: string; srdName?: string; equipped?: boolean; attuned?: boolean; gear?: unknown };
 
 type RowGear = {
-  checks?: { bonus?: number; skillBonus?: Record<string, number>; advantage?: string[] };
+  checks?: { bonus?: number; skillBonus?: Record<string, number>; lockBonus?: number; advantage?: string[] };
   magic?: { requiresAttunement?: boolean; carried?: boolean };
 };
 
@@ -130,6 +138,7 @@ function homebrewRow(item: CarriedItem): CheckRiderRow | null {
   const bits = [
     checks.bonus ? `${checks.bonus >= 0 ? "+" : ""}${checks.bonus} to ability checks` : "",
     ...Object.entries(checks.skillBonus ?? {}).map(([skill, bonus]) => `${bonus >= 0 ? "+" : ""}${bonus} to ${skill.replace(/_/g, " ")} checks`),
+    checks.lockBonus ? `${checks.lockBonus >= 0 ? "+" : ""}${checks.lockBonus} to Dexterity checks to pick locks` : "",
     checks.advantage?.length ? `advantage on ${checks.advantage.map((skill) => skill.replace(/_/g, " ")).join(", ")} checks` : "",
   ].filter(Boolean);
   return {
@@ -138,6 +147,7 @@ function homebrewRow(item: CarriedItem): CheckRiderRow | null {
     ...(gear?.magic?.carried ? { carried: true } : {}),
     ...(checks.bonus ? { bonus: checks.bonus } : {}),
     ...(checks.skillBonus ? { skillBonus: checks.skillBonus } : {}),
+    ...(checks.lockBonus ? { lockBonus: checks.lockBonus } : {}),
     ...(checks.advantage?.length ? { advantage: checks.advantage } : {}),
     effect: `${item.name}: ${bits.join("; ")}`,
   };
@@ -149,35 +159,63 @@ export type ItemCheckRiders = {
   notes: string[];
 };
 
-// The riders the character's items put on one check. `skill` is the skill
-// id for a skill check, absent for a raw ability check (which still takes the
-// flat bonus of a Stone of Good Luck).
-export function itemCheckRiders(
-  equipment: CarriedItem[] | undefined,
-  skill?: string,
-): ItemCheckRiders {
-  const out: ItemCheckRiders = { bonus: 0, advantage: false, notes: [] };
-  const counted = new Set<CheckRiderRow>();
+// The rows of the items that count on this character, each once: worn, and
+// in a place that lets it count (a second cloak's advantage is not a first
+// cloak's, src/lib/srd/wear-slots.ts), attuned where it asks for it.
+function countingRows(equipment: CarriedItem[] | undefined): CheckRiderRow[] {
+  const rows: CheckRiderRow[] = [];
   for (const item of equipment ?? []) {
     const row = homebrewRow(item) ?? rowFor(rowName(item));
-    if (!row || counted.has(row) || [...counted].some((seen) => seen.names[0] === row.names[0] && seen.effect === row.effect)) {
+    if (!row || rows.includes(row) || rows.some((seen) => seen.names[0] === row.names[0] && seen.effect === row.effect)) {
       continue;
     }
-    // Worn, and in a place that lets it count: a second cloak's advantage
-    // is not a first cloak's (src/lib/srd/wear-slots.ts).
     if (!row.carried && !countsAsWorn(item, equipment ?? [])) {
       continue;
     }
     if (row.requiresAttunement && !item.attuned) {
       continue;
     }
+    rows.push(row);
+  }
+  return rows;
+}
+
+// What a worn item reads from a check's call, as a roll key: the gloves'
+// lock bonus rides a raw Dexterity check (a thieves' tools check) about
+// 'locks', so an AI GM's call that leaves `about` unnamed is asked for it
+// (src/lib/dm/roll-feature-riders.ts unnamedTraitFields) and GAME STATE
+// names it. `rawCheck`: a skill check is never asked (Sleight of Hand takes
+// the +5 already).
+export function itemCheckKeys(equipment: CarriedItem[] | undefined): Array<RollKey & { rawCheck: true }> {
+  return countingRows(equipment).some((row) => row.lockBonus)
+    ? [{ roll: "check", abilities: ["dex"], about: "locks", rawCheck: true }]
+    : [];
+}
+
+// The riders the character's items put on one check. `skill` is the skill
+// id for a skill check, absent for a raw ability check (which still takes the
+// flat bonus of a Stone of Good Luck). `check`: the check's ability and what
+// it is about, for a rider keyed to them (the gloves on a lock).
+export function itemCheckRiders(
+  equipment: CarriedItem[] | undefined,
+  skill?: string,
+  check: { ability?: string; about?: string } = {},
+): ItemCheckRiders {
+  const out: ItemCheckRiders = { bonus: 0, advantage: false, notes: [] };
+  const picksLock = check.ability === "dex" && check.about === "locks";
+  for (const row of countingRows(equipment)) {
     let applies = false;
     if (row.bonus) {
       out.bonus += row.bonus;
       applies = true;
     }
-    if (skill && row.skillBonus?.[skill]) {
-      out.bonus += row.skillBonus[skill];
+    // "+5 bonus to Dexterity (Sleight of Hand) checks and Dexterity checks
+    // made to pick locks" (SRD 5.1, Gloves of Thievery): one bonus, so a
+    // Sleight of Hand check that picks a lock takes it once.
+    const skillPart = skill ? row.skillBonus?.[skill] ?? 0 : 0;
+    const lockPart = picksLock ? row.lockBonus ?? 0 : 0;
+    if (skillPart || lockPart) {
+      out.bonus += Math.max(skillPart, lockPart);
       applies = true;
     }
     if (skill && row.advantage?.includes(skill)) {
@@ -185,7 +223,6 @@ export function itemCheckRiders(
       applies = true;
     }
     if (applies) {
-      counted.add(row);
       out.notes.push(row.effect);
     }
   }

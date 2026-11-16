@@ -24,7 +24,7 @@ import { selectedCharacter } from "@/lib/player-characters";
 // The genre catalogs' rules text, all of it: the model reads it beside a
 // custom feature (src/lib/classes/feature-text.ts).
 import "@/lib/classes/feature-text-all";
-import { resourceDef } from "@/lib/srd/class-resources";
+import { rechargeOf, resourceDef } from "@/lib/srd/class-resources";
 import { foretoldStateLine } from "@/lib/dm/foretold-logic";
 import { featEngineTag } from "@/lib/srd/feat-combat";
 import { featFactsFor } from "@/lib/characters/catalog";
@@ -463,7 +463,7 @@ export function companionRules(campaign: Campaign, mode: "full" | "guests"): str
 ${setting}
 - A friendly NPC who joins one fight (a guard who takes your side, a stranger who draws a blade with the party) is a 'guest': add_companion them so the server tracks their HP, initiative, and attacks, and let them go afterwards. When a fight ends, every guest is dismissed AUTOMATICALLY and a table note says so; narrate their goodbye, and add_companion them again if the story keeps them around.
 - An ally who will fight or be targeted MUST go through add_companion BEFORE you narrate them joining, exactly like add_enemies for the other side; an ally who never went through add_companion has no sheet and cannot fight, be attacked, or be healed. Ordinary background NPCs (shopkeepers, quest-givers) are NOT companions; only use add_companion for someone who will act alongside the party.
-- A character's OWN bound creature (a familiar from Find Familiar, a Beast Master's companion, a Drakewarden's drake, a story pet) is a pet on their sheet, not a companion: a caster's Find Familiar is cast with cast_buff (the form in variant; the server pays the casting and binds the pet), and the others come with summon_pet (the server validates the granting feature and refuses characters who lack it), attack with pet_attack on the owner's own turn (it costs what the bond says: a Beast Master's companion the owner's action, a drake the bonus action, a Pact of the Chain familiar one attack of the Attack action; ordinary familiars cannot attack, and a downed owner commands nothing), route enemy damage at it with apply_damage, its petName and the damage's type (its own hit points and defenses, never the owner's; a familiar at 0 HP vanishes), and end the bond with dismiss_pet. Pets listed in GAME STATE are real; a pet not listed there does not exist.
+- A character's OWN bound creature (a familiar from Find Familiar, a Beast Master's companion, a Drakewarden's drake, a story pet) is a pet on their sheet, not a companion: a caster's Find Familiar is cast with cast_buff (the form in variant; the server pays the casting and binds the pet), and the others come with summon_pet (the server validates the granting feature and refuses characters who lack it), attack with pet_attack on the owner's own turn (it costs what the bond says: a Beast Master's companion the owner's action, a drake the bonus action, a Pact of the Chain familiar one attack of the Attack action; ordinary familiars cannot attack, and a downed owner commands nothing), an enemy's attack at it is enemy_attack with targetPet, other damage apply_damage with its petName and type (its own hit points and defenses, never the owner's; a familiar at 0 HP vanishes), a save forced on it alone with cast_at_player and its petName (an area that catches the owner catches their pets, and aoe_damage rolls each one's save), and end the bond with dismiss_pet. Pets listed in GAME STATE are real; a pet not listed there does not exist.
 - You play companions fully. Speak their dialogue inline in your narration with a voice matching their personality brief. They are supporting cast: they advise, banter, and fight, but never make the party's decisions, never outshine the players, and never speak for a player character.
 - In combat, on a companion's initiative turn, act for them: move_token with no forced if they need to reposition (it spends their speed and draws opportunity attacks like any walk), then pc_attack or cast_at_enemy with their characterId (or another tool that fits), then end_turn for them if no attack fits. Their turn ends with your reply: a move after their action is yours to make now with move_token, never a question to the players. If you do nothing on their turn, the server makes a basic attack for them automatically.
 - A companion GAME STATE says a player commands in fights is the exception: on its turn that player gives its orders, and you resolve them from the player's message exactly as you resolve a player character's, never moving or attacking for it on your own. Its voice and choices out of fights stay yours.
@@ -596,6 +596,17 @@ function companionCommandNote(campaign: Campaign, sheet: CharacterSheet, command
   }
   const name = commanderName(commander);
   return `; in fights ${name} commands them: on their turn wait for ${name}'s orders and resolve them as a player's`;
+}
+
+// A condition with what is left of it: its count, or the save that ends it.
+function conditionWords(condition: string, meta: { rounds?: number; saveEnds?: { ability: string; dc: number } } | undefined): string {
+  if (meta?.rounds) {
+    return `${condition} (${describeConditionDuration(meta.rounds)} left)`;
+  }
+  if (meta?.saveEnds) {
+    return `${condition} (save ends: ${meta.saveEnds.ability.toUpperCase()} DC ${meta.saveEnds.dc})`;
+  }
+  return condition;
 }
 
 export function describeSheet(
@@ -749,7 +760,7 @@ export function describeSheet(
     const parts = resourceEntries.map(([id, state]) => {
       const def = resourceDef(id);
       return `${def?.displayName ?? id} ${state.max - state.used}/${state.max}${
-        def?.recharge === "short" ? " (refills on any rest)" : ""
+        def && rechargeOf(def, sheet) === "short" ? " (refills on any rest)" : ""
       }`;
     });
     lines.push(
@@ -768,8 +779,11 @@ export function describeSheet(
       : " Cannot attack.";
     // What it shrugs off, so the damage the DM routes at it carries a type.
     const defenses = defenseWords(pet);
+    // What holds it, as a character's conditions read: a paralyzed familiar
+    // read as free, and the GM played it so.
+    const held = (pet.conditions ?? []).map((condition) => conditionWords(condition, pet.conditionMeta?.[condition]));
     lines.push(
-      `  Pet: ${pet.name} (${pet.form}, ${pet.creatureType ? `a ${pet.creatureType} ` : ""}${pet.kind.replaceAll("_", " ")}): ${pet.hp}/${pet.maxHp} HP, AC ${pet.ac}, speed ${pet.speed} ft.${attacks}${defenses ? ` Defenses: ${defenses}.` : ""}${pet.notes ? ` ${pet.notes}` : ""}`,
+      `  Pet: ${pet.name} (${pet.form}, ${pet.creatureType ? `a ${pet.creatureType} ` : ""}${pet.kind.replaceAll("_", " ")}): ${pet.hp}/${pet.maxHp} HP, AC ${pet.ac}, speed ${pet.speed} ft.${attacks}${defenses ? ` Defenses: ${defenses}.` : ""}${held.length ? ` Conditions: ${held.join(", ")}.` : ""}${pet.notes ? ` ${pet.notes}` : ""}`,
     );
   }
   // A creature a spell made: its stat block's attacks and how it ends
@@ -815,13 +829,7 @@ export function describeSheet(
           return `readied: ${READIED_WORDS[held.holds]}${held.spell ? ` (${held.spell})` : ""}, for when ${held.trigger}; you judge the trigger and release it off their turn with ${RELEASE_TOOLS[held.holds]}`;
         }
       }
-      if (meta?.rounds) {
-        return `${condition} (${describeConditionDuration(meta.rounds)} left)`;
-      }
-      if (meta?.saveEnds) {
-        return `${condition} (save ends: ${meta.saveEnds.ability.toUpperCase()} DC ${meta.saveEnds.dc})`;
-      }
-      return condition;
+      return conditionWords(condition, meta);
     });
     lines.push(`  Conditions: ${described.join(", ")}`);
     // Effect conditions (Bless, Haste, Starry Form...) carry enforced
@@ -843,9 +851,14 @@ export function describeSheet(
       lines.push(`  Spell slots (SHARED across their caster classes): ${slots || "none"}${pactLabel}`);
       for (const caster of sheet.spellcasting.casters) {
         const casterSpells = spellListLabel(caster);
+        // The sheet's derived DC with this class's ability in place of the
+        // first one's, so what a worn item adds (Robe of the Archmagi's +2)
+        // stays in, as the engine rolls it (spellSaveDcFor). Worked out as
+        // 8 + proficiency + the ability, the GM read out a DC 2 short.
+        const first = sheet.spellcasting.ability as keyof typeof derived.abilityMods;
         const dc =
-          8 +
-          derived.proficiencyBonus +
+          (derived.spellSaveDc ?? 8 + derived.proficiencyBonus + derived.abilityMods[first]) -
+          derived.abilityMods[first] +
           derived.abilityMods[caster.ability as keyof typeof derived.abilityMods];
         lines.push(
           `    As a ${caster.classId} (${caster.ability.toUpperCase()}, Save DC ${dc}): ${casterSpells}`,
@@ -1654,7 +1667,7 @@ export const requestRollTool = {
         againstEnemyId: {
           type: "string",
           description:
-            "A contest in a fight: the enemy opposing this skill or ability check, exact enemyId from GAME STATE. The server rolls its check from its stat block (Insight against Deception, Perception against Stealth) and the character must beat it; a tie changes nothing. Send no dc or difficulty with it.",
+            "A contest in a fight: the enemy opposing this skill or ability check, exact enemyId from GAME STATE. The server rolls its check from its stat block (Insight against Deception, Perception against Stealth); a tie changes nothing. Send no dc or difficulty with it.",
         },
         againstMonster: {
           type: "string",

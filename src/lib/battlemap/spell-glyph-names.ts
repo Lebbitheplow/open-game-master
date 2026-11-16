@@ -119,7 +119,7 @@ export const SPELL_GLYPH_NAMES: Partial<Record<SpellGlyph, string[]>> = {
     "Word of Recall",
   ],
   thunder: [
-    "Booming Blade", "Destructive Wave", "Thunder Step", "Thunderclap", "Thunderous Smite",
+    "Booming Blade", "Thunder Step", "Thunderclap", "Thunderous Smite",
   ],
   utility: [
     "Animal Messenger", "Ceremony", "Conjured Tower", "Continual Flame", "Control Flames", "Control Weather",

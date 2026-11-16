@@ -22,7 +22,12 @@
 //
 // A spell that runs on (Call Lightning's next bolt, a Spiritual Weapon's next
 // strike) outlasts its credit, so the item's row keeps its numbers while the
-// spell holds: runningItemSpell, written by src/lib/dm/item-casts.ts.
+// spell holds: runningItemSpell, written by src/lib/dm/item-casts.ts. An item
+// used up by the cast (a scroll read, a bead broken, a wand that crumbled)
+// leaves no row, so its taken credit carries them instead (`running`), for as
+// long as the spell holds. Before, they went after the credit's minute: a
+// Spirit Guardians read from a scroll then saved against the reader's own DC
+// (audit 2026-11-15, S10).
 
 import { findNamed, textKey } from "@/lib/language/text-logic";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
@@ -55,13 +60,19 @@ export type ItemCast = {
 };
 
 // `usedTurn`: the turn whose cast took it, so reverting that turn gives it back.
-export type ItemCastCredit = ItemCast & { key: string; at: number; usedAt?: number; usedTurn?: string };
+// `running`: taken by a cast whose item left no row behind; it carries the
+// item's numbers while the spell holds (runningItemSpell).
+export type ItemCastCredit = ItemCast & { key: string; at: number; usedAt?: number; usedTurn?: string; running?: boolean };
 
 // Where the credits are kept. `turn` names the GM turn running now, if any.
+// `holds`: whether a condition this character's casting of the spell laid
+// still holds on any creature at their table, for a spell that runs on others
+// only (Sanctuary on an ally, a curse on a foe).
 export type ItemCastStore = {
   read(sheetId: string): ItemCastCredit[];
   write(sheetId: string, credits: ItemCastCredit[]): void;
   turn?(): string | null;
+  holds?(sheetId: string, spell: string): boolean;
 };
 
 declare global {
@@ -78,10 +89,21 @@ const MEMORY: ItemCastStore = {
 };
 const store = (): ItemCastStore => globalThis.__odmItemCastStore ?? MEMORY;
 
-// A credit still standing: waiting for its cast, or taken within the minute
-// it lends its numbers.
+// A credit still standing: waiting for its cast, taken within the minute it
+// lends its numbers, or carrying a running spell's (kept until a new casting
+// of the spell takes its place).
 export function creditStands(credit: ItemCastCredit, now: number): boolean {
+  if (credit.running) {
+    return true;
+  }
   return credit.usedAt !== undefined ? now - credit.usedAt <= NUMBERS_AFTER_USE_MS : now - credit.at <= WINDOW_MS;
+}
+
+// Whether a credit lends its numbers to any asking now: waiting, or taken
+// within the minute. A running one past that lends only while its spell
+// holds, through runningItemSpell.
+function lendsNow(credit: ItemCastCredit, now: number): boolean {
+  return credit.usedAt === undefined || now - credit.usedAt <= NUMBERS_AFTER_USE_MS;
 }
 
 function live(sheetId: string, now: number): ItemCastCredit[] {
@@ -125,6 +147,29 @@ export function takeItemCast(
   return { spell: credit.spell, level: credit.level, item: credit.item, saveDc: credit.saveDc, attackBonus: credit.attackBonus, abilityMod: credit.abilityMod, storedIn: credit.storedIn, paid: credit.paid, turnId: credit.turnId };
 }
 
+// The cast that took this spell's credit used its item up, so no row can carry
+// the item's numbers on (src/lib/dm/ring-store.ts noteRunning): the credit
+// does, in place of an earlier one for the same spell.
+export function keepCastRunning(sheetId: string, spell: string, now = Date.now()) {
+  const key = textKey(spell);
+  const list = live(sheetId, now);
+  const taken = [...list].reverse().find((credit) => credit.key === key && credit.usedAt !== undefined && !credit.running);
+  if (taken) {
+    store().write(sheetId, list.filter((credit) => credit === taken || credit.key !== key || !credit.running).map((credit) => (credit === taken ? { ...credit, running: true } : credit)));
+  }
+}
+
+// A new casting of the spell from the caster's own slots: an item's running
+// numbers for it are over.
+export function dropCastRunning(sheetId: string, spell: string, now = Date.now()) {
+  const key = textKey(spell);
+  const list = live(sheetId, now);
+  const kept = list.filter((credit) => credit.key !== key || !credit.running);
+  if (kept.length !== list.length) {
+    store().write(sheetId, kept);
+  }
+}
+
 // The waiting credit gone without a cast: the cast it paid for will not happen.
 export function dropItemCast(sheetId: string, spell: string, now = Date.now()) {
   const key = textKey(spell);
@@ -144,6 +189,7 @@ export function spellDrawnMark(spell: string): string {
 export type RunningItemSpell = { spell: string; level: number; saveDc?: number; attackBonus?: number; abilityMod?: number };
 
 type RunningHolder = {
+  id?: string;
   concentratingOn?: string | null;
   conditions?: readonly string[];
   conditionMeta?: Record<string, { spell?: string } | undefined>;
@@ -151,19 +197,33 @@ type RunningHolder = {
 };
 
 // A spell an item cast that this character still holds: by their concentration
-// or by a condition it laid on them. Pure: read off the sheet, so it survives a
-// restart and ends when the spell does.
+// or by a condition it laid on them. Read off the sheet (the item's row), or,
+// for an item the cast used up, off its running credit (held also while a
+// condition it laid holds on another creature); both survive a restart and
+// end when the spell does.
 export function runningItemSpell(sheet: RunningHolder, spell: string): RunningItemSpell | null {
-  const entry = findNamed((sheet.equipment ?? []).flatMap((row) => row.castRunning ?? []), spell, (running) => [running.spell]);
-  if (!entry) {
-    return null;
-  }
   const holding = [
     ...(sheet.concentratingOn ? [sheet.concentratingOn] : []),
     ...(sheet.conditions ?? []),
     ...Object.values(sheet.conditionMeta ?? {}).flatMap((meta) => (meta?.spell ? [meta.spell] : [])),
   ];
-  return findNamed(holding, spell, (name) => [name]) ? entry : null;
+  const held = Boolean(findNamed(holding, spell, (name) => [name]));
+  const entry = findNamed((sheet.equipment ?? []).flatMap((row) => row.castRunning ?? []), spell, (running) => [running.spell]);
+  if (entry) {
+    return held ? entry : null;
+  }
+  const key = textKey(spell);
+  const credit = sheet.id ? [...store().read(sheet.id)].reverse().find((one) => one.running && one.key === key) : undefined;
+  if (!credit || !(held || store().holds?.(sheet.id!, spell))) {
+    return null;
+  }
+  return {
+    spell: credit.spell,
+    level: credit.level,
+    ...(credit.saveDc ? { saveDc: credit.saveDc } : {}),
+    ...(credit.attackBonus ? { attackBonus: credit.attackBonus } : {}),
+    ...(credit.abilityMod !== undefined ? { abilityMod: credit.abilityMod } : {}),
+  };
 }
 
 // Whether an item pays for this spell now: a cast waiting, or one still running.
@@ -182,6 +242,6 @@ export function itemCastNumbers(
     return null;
   }
   const key = textKey(spell);
-  const credit = [...live(sheetId, now)].reverse().find((entry) => entry.key === key);
+  const credit = [...live(sheetId, now)].reverse().find((entry) => entry.key === key && lendsNow(entry, now));
   return credit ? { saveDc: credit.saveDc, attackBonus: credit.attackBonus, abilityMod: credit.abilityMod } : null;
 }

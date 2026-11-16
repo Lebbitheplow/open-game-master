@@ -122,6 +122,7 @@ import { handlePcAttack, PC_ATTACK_PARKED, pcAttackTool } from "@/lib/dm/pc-atta
 import { handlePcAttackParts } from "@/lib/dm/pc-attack-parts";
 import { companionShot, endTurnAsked } from "@/lib/dm/pc-attack-approach";
 import { backstopAttack, handleEnemyAttack } from "@/lib/dm/enemy-attack";
+import { landWaits } from "@/lib/dm/retort-wait";
 import { isCompanionUserId } from "@/lib/db/users";
 import { commanderOf, dmPlaysTurn, dominatedRefusal, turnUserId, gmCompanionTurn } from "@/lib/dm/companion-command";
 import { setInitiativeFloor } from "@/lib/dm/initiative-floor";
@@ -1770,8 +1771,16 @@ function advancePointer(
     rest?: { saves: string[]; landOn?: string };
   },
 ): { enemiesPassed: string[]; wrapped: boolean; dyingPassed: string[] } | null {
-  const enemiesById = new Map(listEnemies(encounter.id).map((enemy) => [enemy.id, enemy]));
   const leaving = options?.leaving ?? (options?.rest ? undefined : encounter.order[encounter.turnIndex]);
+  // A turn ending is past the reaction any hit still waits on: what waited
+  // lands first, before the walk reads who can act (retort-wait.ts). Left
+  // waiting, a creature it slays took its next turn. The fight's end, if the
+  // last foe falls, waits for the GM's next turn: the caller holds the
+  // encounter it read.
+  if (leaving && !options?.rest && !options?.chained) {
+    landWaits(campaign, null, { holdVictory: true, tell: true });
+  }
+  const enemiesById = new Map(listEnemies(encounter.id).map((enemy) => [enemy.id, enemy]));
   // A turn held for the enemies before it has begun by the time the pointer
   // moves again (src/lib/dm/held-turn.ts).
   startHeldTurn(campaign, encounter);

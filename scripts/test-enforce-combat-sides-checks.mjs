@@ -52,7 +52,9 @@ await test("A hidden turncoat rogue meets the lookout with its own Stealth: expe
   const out = await world.invoke("check_notice", { characterIds: [lookout.id], againstEnemyId: turncoat.id, reason: "a rogue in the shadows" });
   world.clearDice();
   assert.equal(out.ok, true, out.error);
-  assert.equal(out.result.dc, 21, JSON.stringify(out.result));
+  // 21 is its Stealth; a tie keeps a hider hidden (SRD 5.1, Contests: "the
+  // situation remains the same as it was before the contest"), so the DC is 22.
+  assert.equal(out.result.dc, 22, JSON.stringify(out.result));
   const roll = contestRollOf(turncoat);
   assert.ok(roll, "the check is the character's own, on its own card");
 });

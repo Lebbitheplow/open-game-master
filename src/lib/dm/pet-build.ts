@@ -1,4 +1,4 @@
-import { proficiencyBonus } from "@/lib/srd";
+import { proficiencyBonusOf } from "@/lib/srd/proficiency";
 import { BEAST_FORMS, SHAPE_FORMS, beastFormsHolding, findBeastForm, findShapeForm, formatCr, wildShapeCapsFor, type BeastForm } from "@/lib/srd/beast-forms";
 import { isNamed } from "@/lib/srd/feature-names";
 import { featureChoiceOf } from "@/lib/srd/features";
@@ -172,7 +172,7 @@ export function buildPet(
   options: PetBuildOptions = {},
 ): SheetPet | ToolError {
   const level = sheet.level;
-  const pb = proficiencyBonus(level);
+  const pb = proficiencyBonusOf(sheet);
   if (args.kind === "familiar") {
     if (!knowsFindFamiliar(sheet) && !hasPactOfTheChain(sheet)) {
       return {

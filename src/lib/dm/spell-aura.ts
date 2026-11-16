@@ -47,6 +47,7 @@ import { rollAgainst } from "@/lib/roll-labels";
 import { textKey } from "@/lib/language/text-logic";
 import { withActor } from "@/lib/dm/acting-party";
 import { runningSpellKill } from "@/lib/dm/ar-ws-harvest";
+import { runningItemSpell } from "@/lib/srd/item-cast-credit";
 
 const FEET_PER_TILE = 5;
 
@@ -320,7 +321,11 @@ function heroism(campaign: Campaign, sheet: CharacterSheet) {
     }
     const caster = getSheetById(entry.source);
     const ability = caster?.spellcasting?.ability;
-    const each = caster && ability ? computeSheetDerived(caster).abilityMods[ability] : 0;
+    // From a Ring of Spell Storing, the original caster's modifier (SRD 5.1:
+    // "the spellcasting ability of the original caster"): read off the
+    // wearer's own sheet, a fighter casting a cleric's Heroism gave none.
+    const fromItem = caster ? runningItemSpell(caster, entry.spell)?.abilityMod : undefined;
+    const each = fromItem ?? (caster && ability ? computeSheetDerived(caster).abilityMods[ability] : 0);
     if (each > best) {
       best = each;
       owner = { name: condition, spell: entry.spell, source: entry.source };

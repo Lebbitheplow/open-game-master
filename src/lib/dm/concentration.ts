@@ -298,6 +298,24 @@ export function clearSpellConditionsByName(
       publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
     }
   }
+  // The pets these spells hold (a monster's Hold Monster on a familiar,
+  // pet-condition-lay.ts): the spell's end is theirs too.
+  for (const stale of listSheets(campaign.id)) {
+    const owner = getSheetById(stale.id) ?? stale;
+    let changed = false;
+    const pets = owner.pets.map((pet) => {
+      const cleared = pet.conditions?.length ? withoutSpellInstances(pet.conditions, (pet.conditionMeta ?? {}) as ConditionMetaMap, spellNames, conditionNames, casterId) : null;
+      if (!cleared?.changed) {
+        return pet;
+      }
+      changed = true;
+      return { ...pet, conditions: cleared.conditions, conditionMeta: cleared.meta };
+    });
+    const updated = changed ? patchSheet(owner.id, { pets }) : null;
+    if (updated) {
+      publishPersisted(campaign.id, "sheet_updated", { sheet: updated });
+    }
+  }
   if (!encounter) {
     endLethargicConcentration(campaign, lethargic.sheets);
     return;

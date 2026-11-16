@@ -81,14 +81,28 @@ export const chargeRuleSchema = z.object({
   lastChargeRegain: dice.optional(),
   regainAtDusk: flag,
   spentAway: flag,
+  // Emptied, all back this many days on (SRD 5.1, Horn of Valhalla's 7):
+  // carried so a copied SRD item keeps its wait (ChargeRule.regainDays).
+  regainDays: int(1, 36500).optional(),
+  // Spent, back this many hours on (SRD 5.1, Frost Brand's one an hour).
+  regainHours: int(1, 720).optional(),
+  regainOn: z.literal("long_rest").optional(),
+  unit: z.enum(["minute", "use", "card"]).optional(),
+  activation: z.enum(["bonus", "free"]).optional(),
   daily: z.string().trim().min(1).max(200).optional(),
   // A use past the last charge risks the item (SRD 5.1, Wind Fan).
   overuseRisk: int(1, 100).optional(),
+  // A use past the last asks its user a saving throw or a level of
+  // exhaustion (SRD 5.1, Ring of X-ray Vision): carried so a copy keeps it.
+  overuseSave: z.object({ ability: z.enum(["str", "dex", "con", "int", "wis", "cha"]), dc: int(1, 30) }).optional(),
 });
 
 export const checkRidersSchema = z.object({
   bonus: int(-5, 5).optional(),
   skillBonus: z.partialRecord(z.enum(SKILL_IDS), int(-10, 10)).optional(),
+  // A Dexterity check to pick a lock, with thieves' tools or without (SRD
+  // 5.1, Gloves of Thievery): src/lib/srd/item-check-riders.ts lockBonus.
+  lockBonus: int(-10, 10).optional(),
   advantage: z.array(z.enum(SKILL_IDS)).max(SKILL_IDS.length).optional(),
 });
 
@@ -132,6 +146,12 @@ export const itemMagicSchema = z.object({
   weaponRiders: weaponRidersSchema.optional(),
   armorRiders: armorRidersSchema.optional(),
   charges: chargeRuleSchema.optional(),
+  // Properties with a count of their own (ChargeRule per property name),
+  // carried so a copied Staff of Thunder and Lightning keeps them.
+  powers: z.record(z.string().trim().min(1).max(40), chargeRuleSchema).refine((powers) => Object.keys(powers).length <= 8, "at most 8 properties").optional(),
+  // A book whose study raises a score and its maximum (a Manual of Bodily
+  // Health), carried so a copy keeps it (src/lib/srd/studied-books.ts).
+  reading: z.object({ ability: z.enum(["str", "dex", "con", "int", "wis", "cha"]), amount: int(1, 4) }).optional(),
   checks: checkRidersSchema.optional(),
   spells: z.array(itemSpellSchema).max(24).optional(),
   attunedBy: attunedBySchema.optional(),
@@ -143,7 +163,9 @@ export type ItemMagic = {
   weaponRiders?: WeaponRiders;
   armorRiders?: ArmorRiders;
   charges?: ChargeRule;
-  checks?: { bonus?: number; skillBonus?: Partial<Record<(typeof SKILL_IDS)[number], number>>; advantage?: string[] };
+  powers?: Record<string, ChargeRule>;
+  reading?: { ability: "str" | "dex" | "con" | "int" | "wis" | "cha"; amount: number };
+  checks?: { bonus?: number; skillBonus?: Partial<Record<(typeof SKILL_IDS)[number], number>>; lockBonus?: number; advantage?: string[] };
   spells?: ItemSpell[];
   attunedBy?: AttunementRule;
   cursed?: boolean;
@@ -167,7 +189,7 @@ export function checkItemMagic(raw: Record<string, unknown>): { magic: ItemMagic
     source.charges = /dawn|day|long rest/i.test(String(recharge ?? "")) ? { ...rest, regain: "all" } : rest;
   }
   const picked = Object.fromEntries(
-    ["weaponRiders", "armorRiders", "charges", "checks", "spells", "attunedBy", "cursed", "carried"]
+    ["weaponRiders", "armorRiders", "charges", "powers", "reading", "checks", "spells", "attunedBy", "cursed", "carried"]
       .filter((key) => source[key] !== undefined && source[key] !== null)
       .map((key) => [key, source[key]]),
   );

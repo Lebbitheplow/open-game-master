@@ -22,6 +22,11 @@ import { LUCK_SPEND } from "@/lib/dm/roll-riders";
 import { foretoldLeft } from "@/lib/dm/foretold-logic";
 import { claimedAdvantage } from "@/lib/dm/pc-attack-options";
 import { askedFields, unnamedTraitFields } from "@/lib/dm/roll-feature-riders";
+import { lightHangsOnSense } from "@/lib/dm/notice-logic";
+import { dimLightSpares } from "@/lib/dm/dim-sight";
+import { CHECK_SENSES } from "@/lib/dm/roll-about";
+import { findSkill } from "@/lib/srd";
+import { textKey } from "@/lib/language/text-logic";
 import { rollExpression } from "@/lib/dice";
 import { heroRollTag } from "@/lib/dice-script-logic";
 import { getActiveEncounter } from "@/lib/db/encounters";
@@ -227,6 +232,17 @@ export function handleRequestRoll(
     if (asked.length) {
       return {
         error: `${sheet.name} holds a trait this roll can call on. Name ${askedFields(asked)}, as the fiction is, and send the roll again. Nothing was rolled.`,
+        retry: true,
+      };
+    }
+    // The light they stand in decides a check by sight (SRD 5.1, Vision and
+    // Light), which the engine reads only when the call names the sense: a
+    // Perception check in the dark that named none rolled as in daylight
+    // (finding K08). It is asked for, as a trait's field is.
+    const light = "light" in extras ? extras.light : null;
+    if (args.kind === "skill_check" && args.by === undefined && lightHangsOnSense(light, findSkill(textKey(args.skill ?? "").replace(/[\s-]+/g, "_"))?.id, Boolean(dimLightSpares(sheet)))) {
+      return {
+        error: `${sheet.name} stands in ${light === "dark" ? "darkness" : "dim light"}, which a check by sight reads. Name ${askedFields([{ field: "by", values: [...CHECK_SENSES] }])}, as the fiction is, and send the roll again. Nothing was rolled.`,
         retry: true,
       };
     }

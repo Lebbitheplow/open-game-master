@@ -60,7 +60,11 @@ await test("A check contested by a creature rolls the creature's own check from 
   assert.equal(out.result.success, true, "12 + 4 = 16 beats the creature's 15");
 });
 
-await test("A hidden creature is noticed against its own Stealth check: a passive Perception 15 misses an enemy with Stealth +6 that rolls 10 (16), and catches it when it rolls 8 (14).", async () => {
+// SRD 5.1, Contests: "If the contest results in a tie, the situation remains
+// the same as it was before the contest", so a hider whose Stealth ties the
+// passive score stays hidden (as the Hide action and the ambush read it): the
+// DC is its total + 1.
+await test("A hidden creature is noticed against its own Stealth check: a passive Perception 15 misses an enemy with Stealth +6 that rolls 10 (16), and catches it when it rolls 8 (14); a tie keeps it hidden.", async () => {
   const lookout = world.addHero({ class: "ranger", level: 1, abilities: { wis: 16 }, proficiencies: profs({ skills: ["perception"] }) });
   await kit.fight(1, { heroFaces: { [lookout.id]: 19 } });
   const [enemy] = world.enemies();
@@ -73,9 +77,9 @@ await test("A hidden creature is noticed against its own Stealth check: a passiv
   world.clearDice();
   await kit.endFight();
   assert.equal(hidden.ok, true, hidden.error);
-  assert.equal(hidden.result.dc, 16);
+  assert.equal(hidden.result.dc, 17);
   assert.deepEqual(hidden.result.noticedBy, []);
-  assert.equal(seen.result.dc, 14);
+  assert.equal(seen.result.dc, 15);
   assert.equal(seen.result.noticedBy.length, 1);
 });
 

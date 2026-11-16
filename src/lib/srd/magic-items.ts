@@ -19,11 +19,13 @@
 //     its text lets attune (a Staff of Power: a sorcerer, warlock or wizard);
 //   - a second copy of the same item adds nothing.
 
+import { drainedScores } from "@/lib/srd/ability-drain-logic";
 import { ignoresItemRequirements } from "@/lib/srd/mt-srd-artificer";
 import { genreWornRiders } from "@/lib/srd/genre-b-combat";
 import magicItemsJson from "@/lib/classes/magic-items.json";
 import { ATTUNEMENT_SLOTS, attunementSlotsFor } from "@/lib/srd/armor";
 import { countsAsWorn } from "@/lib/srd/wear-slots";
+import { checkRidersOf } from "@/lib/srd/item-check-riders";
 import type { Ability } from "@/lib/schemas/sheet";
 import type { ItemTag } from "@/lib/schemas/item-tags";
 import { textKey } from "@/lib/language/text-logic";
@@ -383,6 +385,24 @@ export function magicItemRiders(equipment: WornMagicItem[], wearer?: Wearer): Ma
   return riders;
 }
 
+// The pendant whose magic the hit dice and the death save read by name
+// (src/lib/dm/hit-dice.ts, death.ts).
+export const WOUND_CLOSURE = "Periapt of Wound Closure";
+
+// Whether the sheet wears this magic item where its magic works (worn, and
+// attuned by someone who may when it asks for that), for an item whose
+// effect one engine reads by name.
+export function wearsWorkingItem(equipment: WornMagicItem[], wearer: Wearer | undefined, name: string): boolean {
+  const wanted = magicItemNamed(name);
+  if (!wanted) {
+    return false;
+  }
+  return equipment.some((item) => {
+    const def = defOf(item);
+    return def !== null && def.match === wanted.match && itemActive(item, def, equipment, wearer);
+  });
+}
+
 // The flying, swimming and climbing speeds worn items give, in feet, the
 // best of each; `walking` is the wearer's walking speed, for the items whose
 // speed equals it (SRD 5.1, Winged Boots: "a flying speed equal to your
@@ -414,7 +434,9 @@ export function effectiveAbilities(
   // Belt of Dwarvenkind): a score at the maximum already gains nothing. The
   // raises count from the sheet's own score, and an item that sets the score
   // (an Amulet of Health's 19) wins only where it is higher still.
-  let raised = abilities;
+  // A score a creature's touch drained (a shadow's Strength Drain) is lower
+  // first, as the sheet's own score is (ability-drain-logic.ts).
+  let raised = drainedScores(abilities, wearer?.conditions);
   for (const increase of riders.abilityIncreases) {
     const score = raised[increase.ability];
     if (score < increase.max) {
@@ -422,11 +444,9 @@ export function effectiveAbilities(
     }
   }
   // A Potion of Giant Strength sets Strength for an hour, like the belt.
-  for (const condition of wearer?.conditions ?? []) {
-    const potion = /^giant strength \((\d+)\)$/i.exec(condition.trim());
-    if (potion) {
-      set.str = Math.max(set.str ?? 0, Math.min(30, Number(potion[1])));
-    }
+  const potion = potionStrength(wearer);
+  if (potion) {
+    set.str = Math.max(set.str ?? 0, potion);
   }
   if (!Object.keys(set).length) {
     return raised;
@@ -448,13 +468,31 @@ export function itemAbilityScore(
   wearer?: Wearer,
 ): number {
   const riders = magicItemRiders(equipment, wearer);
-  let out = score;
+  let out = drainedScores({ [ability]: score }, wearer?.conditions)[ability] ?? score;
   for (const increase of riders.abilityIncreases) {
     if (increase.ability === ability && out < increase.max) {
       out = Math.min(increase.max, out + increase.amount);
     }
   }
-  return Math.max(out, riders.abilitySet[ability] ?? 0);
+  // The potion's Strength counts here as in effectiveAbilities: carrying
+  // capacity and the lift limit read this score (SRD 5.1, Lifting and
+  // Carrying: Strength x 15, x 30 to push, drag or lift), and a drinker
+  // with Strength 10 under a Potion of Hill Giant Strength lifted only 300
+  // pounds where Strength 21 lifts 630.
+  return Math.max(out, riders.abilitySet[ability] ?? 0, ability === "str" ? potionStrength(wearer) : 0);
+}
+
+// The Strength a Potion of Giant Strength sets while it lasts: "giant
+// strength (21)" on the sheet (src/lib/dm/consumables.ts), or 0 with none.
+function potionStrength(wearer: Wearer | undefined): number {
+  let best = 0;
+  for (const condition of wearer?.conditions ?? []) {
+    const potion = /^giant strength \((\d+)\)$/i.exec(condition.trim());
+    if (potion) {
+      best = Math.max(best, Math.min(30, Number(potion[1])));
+    }
+  }
+  return best;
 }
 
 // ---- attunement ----
@@ -471,7 +509,12 @@ export function attunementProblem(
   const who = wearer?.name ?? "This character";
   const def = defOf(item);
   const cap = attunementSlotsFor(wearer);
-  if (def && !def.requiresAttunement) {
+  // An item whose magic rides checks alone (Gloves of Thievery, Boots of
+  // Elvenkind, Eyes of Minute Seeing: item-check-riders.ts) is no row of this
+  // table, and was attuned as an unknown item is, taking one of the three
+  // places though SRD 5.1 asks no attunement of it.
+  const checks = def ? null : checkRidersOf(item);
+  if ((def && !def.requiresAttunement) || (checks && !checks.requiresAttunement)) {
     return `${item.name} needs no attunement: it works for whoever wears it, and takes none of the ${cap} attunements.`;
   }
   if (def && wearer && !mayAttune(def, wearer)) {

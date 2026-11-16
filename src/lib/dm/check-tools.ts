@@ -1,5 +1,5 @@
 import { dungeonDelverNotices, hasDungeonDelver } from "@/lib/srd/feat-combat";
-import { CHECK_KEY_PROPERTIES, named, NONE } from "@/lib/dm/roll-about";
+import { CHECK_KEY_PROPERTIES, CHECK_SENSES, named, NONE } from "@/lib/dm/roll-about";
 import { CHECK_KEY_FIELDS } from "@/lib/dm/roll-args";
 import { askedFields, unnamedTraitFields } from "@/lib/dm/roll-feature-riders";
 import { z } from "zod";
@@ -24,8 +24,8 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { getActiveBattleMap } from "@/lib/battlemap/view";
 import { normalizeClock } from "@/lib/dm/calendar";
 import { getClock } from "@/lib/db/clock";
-import { sightPassiveShift, unawareReason } from "@/lib/dm/notice-logic";
-import { lightForSheet, offBoardAmbient } from "@/lib/dm/place-light";
+import { lightHangsOnSense, sightPassiveShift, unawareReason } from "@/lib/dm/notice-logic";
+import { boardLightFor, lightForSheet, offBoardAmbient, rollerLight } from "@/lib/dm/place-light";
 import { dimLightSpares } from "@/lib/dm/dim-sight";
 import { contestOpponent, marchStealthProblem, rollContest } from "@/lib/dm/roll-gates";
 import { weatherPerceptionRider } from "@/lib/srd/weather";
@@ -129,11 +129,11 @@ export const checkTools: ToolDef[] = [
           againstEnemyId: {
             type: "string",
             description:
-              "A creature of the running fight hiding (or lying, for insight): exact enemyId from GAME STATE. The server rolls its Stealth (or Deception) as the DC. Out of a fight, use againstMonster.",
+              "A creature of the running fight hiding (or lying, for insight): exact enemyId from GAME STATE. The server rolls its Stealth (or Deception) to set the DC. Out of a fight, use againstMonster.",
           },
           againstMonster: {
             type: "string",
-            description: "Out of a fight, who hides or lies: a bestiary creature, or for insight a tracked NPC's exact name. For insight an AI companion's exact name works too. The server rolls its Stealth or Deception as the DC.",
+            description: "Out of a fight, who hides or lies: a bestiary creature, or for insight a tracked NPC's exact name. For insight an AI companion's exact name works too. The server rolls its Stealth or Deception to set the DC.",
           },
           difficulty: {
             type: "string",
@@ -252,6 +252,15 @@ export function handleGroupCheck(
     if (holders.length) {
       return {
         error: `${holders.map((entry) => entry.sheet.name).join(" and ")} ${holders.length > 1 ? "hold" : "holds"} a trait this check can call on. Name ${askedFields(holders.flatMap((entry) => entry.gaps))}, as the fiction is, and send the check again. Nothing was rolled.`,
+        retry: true,
+      };
+    }
+    // The light a participant stands in decides a check by sight, read only
+    // when the call names the sense (invoke-roll.ts asks request_roll alike).
+    const unlit = args.by === undefined ? targets.filter((sheet) => lightHangsOnSense(rollerLight(campaign.id, getSheetById(sheet.id) ?? sheet), args.skill, Boolean(dimLightSpares(sheet)))) : [];
+    if (unlit.length) {
+      return {
+        error: `${unlit.map((sheet) => sheet.name).join(" and ")} ${unlit.length > 1 ? "stand" : "stands"} in dim light or darkness, which a check by sight reads. Name ${askedFields([{ field: "by", values: [...CHECK_SENSES] }])}, as the fiction is, and send the check again. Nothing was rolled.`,
         retry: true,
       };
     }
@@ -432,7 +441,8 @@ export function handleCheckNotice(
     };
   }
   // A creature that hides or lies sets the DC with its own roll (SRD 5.1,
-  // Contests; src/lib/dm/roll-gates.ts); a tie goes to the one noticing.
+  // Contests; src/lib/dm/roll-gates.ts); a tie keeps a hider hidden, and a
+  // liar's tie goes to the one listening.
   let contest: ReturnType<typeof rollContest> | null = null;
   // A tracked NPC's lie or act (issue 501), named where a stat block would
   // be: their Deception sets the DC, from their stat block or their nature
@@ -472,8 +482,8 @@ export function handleCheckNotice(
       ? weatherPerceptionRider(normalizeClock(campaign.clock).weather)
       : { disadvantage: false, passiveMod: 0, note: null };
   // Off the board the light is the place's, a lit torch or lantern and
-  // darkvision on top (src/lib/dm/place-light.ts, which a rolled check
-  // reads too). A board keeps its own light.
+  // darkvision on top; on a board, the light on each character's own square
+  // (src/lib/dm/place-light.ts, which a rolled check reads too).
   const ambient = offBoardAmbient(campaign.id, args.light ?? null);
   const noticedBy: string[] = [];
   const noticers: CharacterSheet[] = [];
@@ -500,13 +510,14 @@ export function handleCheckNotice(
       countedOut += 1;
       continue;
     }
+    const seenBy = ambient ? lightForSheet(ambient, fresh) : boardLightFor(campaign.id, fresh);
     const sight =
       sense === "perception"
         ? sightPassiveShift({
             pace: clock.travelPace,
             byEar: args.by === "hearing",
             spared: dimLightSpares(fresh),
-            ...(ambient ? { light: lightForSheet(ambient, fresh) } : {}),
+            ...(seenBy ? { light: seenBy } : {}),
           })
         : { shift: 0, blind: false, disadvantage: false, notes: [] };
     if (sight.notes.length) {
@@ -568,7 +579,7 @@ export function handleCheckNotice(
     missedBy,
     anyNoticed,
     ...(weather.note ? { weather: weather.note } : {}),
-    ...(contest ? { contest: `${contest.name} rolled ${contest.skill} ${contest.total}: that is the DC.` } : {}),
+    ...(contest ? { contest: `${contest.name} rolled ${contest.skill} ${contest.total}${contest.answering ? ": that is the DC." : `; a tie keeps it hidden, so the DC is ${contest.dc}.`}` } : {}),
     ...(shifts.length ? { applied: shifts } : {}),
     ...(seenThrough.length ? { seenThrough } : {}),
     note: seenThrough.length

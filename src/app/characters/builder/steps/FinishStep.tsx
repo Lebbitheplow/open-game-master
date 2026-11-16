@@ -131,6 +131,7 @@ export function FinishStep({
               </span>
             </Field>
             <span className="self-end">Speed {race.speed} ft</span>
+            {/* The level's bonus: a new character is attuned to nothing yet. */}
             <span className="self-end">Prof {formatModifier(proficiencyBonus(effectiveLevel))}</span>
             <span>Initiative {formatModifier(preview.derived.initiative)}</span>
             <span>Passive Perception {preview.derived.passivePerception}</span>

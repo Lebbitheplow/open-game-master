@@ -188,10 +188,13 @@ export function grovelingAllyNear(encounterId: string, characterId: string, enem
 }
 
 // And for an enemy's melee attack on a creature of the other side.
-export function enemyFlanks(encounterId: string, enemyId: string, characterId: string): boolean {
+// `at`: the square the character stands on as the swing is made, when the
+// token has gone on (an opportunity attack, struck as they left the reach).
+export function enemyFlanks(encounterId: string, enemyId: string, characterId: string, at?: { x: number; y: number }): boolean {
   const map = getBattleMapForEncounter(encounterId);
   const attacker = map ? getTokenByRef(map.id, enemyId) : null;
-  const target = map ? getTokenByRef(map.id, characterId) : null;
+  const token = map ? getTokenByRef(map.id, characterId) : null;
+  const target = token && at ? { ...token, x: at.x, y: at.y } : token;
   if (!map || !attacker || !target) {
     return false;
   }

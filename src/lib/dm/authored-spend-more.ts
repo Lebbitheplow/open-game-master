@@ -113,7 +113,7 @@ export function swarmPush(ctx: SpendContext, does: Extract<SpendDoes, { kind: "s
 // not on record.
 export function swarmDieBack(ctx: SpendContext, enemy: { id: string }): number {
   const rider = (ctx.held.entry.effects ?? []).find((effect) => effect.kind === "rider");
-  const dice = rider && "dice" in rider && rider.dice ? resolveFormula(rider.dice, ctx.held.level) : "1d6";
+  const dice = rider && "dice" in rider && rider.dice ? resolveFormula(rider.dice, ctx.held.level, ctx.mods) : "1d6";
   const sides = Number(/d(\d+)/.exec(dice)?.[1] ?? 6);
   const roll = listRecentRolls(ctx.campaign.id, 40)
     .filter((entry) => entry.kind === "damage" && entry.characterId === ctx.sheet.id && entry.targetEnemyId === enemy.id)

@@ -12,6 +12,7 @@ import {
   maxSpellLevelOf,
   preparedCount,
   spellCapWithGrantsOf,
+  countingScores,
   spellbookOf,
   widerListOf,
   type CasterView,
@@ -153,7 +154,8 @@ function CasterBook({
     ...view.spellbook,
   ]);
   // The spells a feature teaches count on top (spell-prep.ts spellCapWithGrantsOf).
-  const cap = spellCapWithGrantsOf(view, sheet.abilities);
+  // Counted from the scores worn items set (spell-prep.ts countingScores).
+  const cap = spellCapWithGrantsOf(view, countingScores(sheet));
   // With every slot taken (the ones waiting for a long rest count), the
   // server refuses another; the tiles say so before a tap does (issue 66).
   const full = editing && view.style !== "known" && cap !== null && preparedCount(view) >= cap.count;

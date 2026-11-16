@@ -164,7 +164,7 @@ await test("An action enemies do not take here is a retry naming the ones they d
   const goblin = await stage();
   const help = await act(goblin, "help");
   assert.equal(help.retry, true);
-  assert.match(help.error, /dash, disengage, dodge or escape/);
+  assert.match(help.error, /dash, disengage, dodge, escape, or use_object with Manacles/);
   kit.setEnemy(goblin.id, { conditions: ["stunned"] });
   const stunned = await act(goblin, "help");
   assert.equal(stunned.refused, "rules");

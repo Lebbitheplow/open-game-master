@@ -3,7 +3,7 @@
 // because both callers reach the same engine
 // (src/lib/dm/invoke.ts). The board's entries (pets, tokens, legendary
 // creatures) live in catalog-board.ts and are spread in at the end.
-import type { CatalogEntry } from "@/lib/dm/catalog-types";
+import { CHARGED_RUN, type CatalogEntry } from "@/lib/dm/catalog-types";
 import { ATTACK_FEATURE_NAMES } from "@/lib/dm/action-parts-logic";
 import { sceneOptions } from "@/lib/ambience/catalog";
 import { BOARD_ADJUDICATIONS } from "@/lib/dm/catalog-board";
@@ -214,7 +214,14 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
       { name: "powerAttack", label: "Power attack", kind: "boolean", help: "Great Weapon Master (heavy melee) or Sharpshooter (ranged): -5 to hit for +10 damage. Powerful Attacker: disadvantage for +10. Deadeye: the proficiency bonus off the roll for twice it on the damage." },
       { name: "luck", label: "Spend a luck point", kind: "boolean", help: "Lucky: an extra d20 on this attack roll, the best kept; the point is spent." },
       { name: "stunShot", label: "Stun on a crit (Stunning Sniper)", kind: "boolean", help: "A ranged weapon critical hit stuns the target until the shooter's next turn instead of doubling the damage." },
-      { name: "charged", label: "Charged 10 ft straight (Charger)", kind: "boolean", help: "Charger's bonus-action attack after a Dash: +5 damage when they ran at least 10 feet straight at the target." },
+      {
+        name: "charged",
+        label: "Ran straight at the target first",
+        kind: "boolean",
+        help: "Charger's bonus-action attack after a Dash: +5 damage after 10 feet. With no board, also a form's or summoned creature's Charge or Pounce (on a board the squares decide).",
+        // An older host reads the run for Charger alone (party-charge.ts).
+        host: { feature: "chargeRuns", older: { label: "Charged 10 ft straight (Charger)", help: "Charger's bonus-action attack after a Dash: +5 damage when they ran at least 10 feet straight at the target." } },
+      },
       { name: "reckless", label: "Reckless Attack", kind: "boolean", help: "Barbarian 2+, first attack of the turn. Attacks against them have advantage until their next turn." },
       { name: "nonlethal", label: "Knock out", kind: "boolean", help: "Melee only. A creature dropped to 0 falls unconscious instead of dying." },
       { name: "useInspiration", label: "Spend their Inspiration", kind: "boolean", help: "Advantage on this attack roll. Refused when they hold none." },
@@ -256,6 +263,8 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
       { name: "attack", label: "Attack", kind: "text", help: "Blank picks from the stat block." },
       ...advantageFields(),
       { name: "nonlethal", label: "Knock out", kind: "boolean", help: "Melee only. A player dropped to 0 falls unconscious and stable instead of dying." },
+      CHARGED_RUN,
+      { name: "targetPet", label: "At their pet", kind: "text", help: "The target's pet takes the attack instead, by name.", host: { feature: "petStrikes" } },
     ],
   },
   {
@@ -296,7 +305,8 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
     category: "combat",
     summary: "An enemy's spell or a trap on one character: the save from their sheet, then the damage or the condition.",
     fields: [
-      { name: "characterId", label: "Target", kind: "character", required: true },
+      { name: "characterId", label: "Target", kind: "character", required: true, help: "With a pet named below, its owner." },
+      { name: "petName", label: "Their pet", kind: "text", help: "The character's pet makes the save instead, by name.", host: { feature: "petSaves" } },
       { name: "saveAbility", label: "Save", kind: "select", options: ABILITIES, help: "Needed for a hazard (a trap); an enemy's ability or spell brings its own." },
       { name: "dc", label: "Save DC", kind: "number", min: 1, max: 30, help: "Needed with Save for a hazard." },
       { name: "damage", label: "Damage", kind: "dice", placeholder: "2d6", help: "Give damage, a condition, or both." },
@@ -394,7 +404,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
     category: "combat",
     summary: "Dodge, Dash, Disengage, Hide, Help, Grapple, Shove, Ready, Search, Use an Object, Escape, a Grappler's Pin or an improvised action, with its real contest and effect, for a character or an enemy.",
     fields: [
-      { name: "characterId", label: "Character", kind: "character", help: "Blank when an enemy acts." },
+      { name: "characterId", label: "Character", kind: "character", help: "Blank when an enemy acts, or when captors out of a fight lock Manacles (Object) on an Ally." },
       {
         name: "action",
         label: "Action",
@@ -456,7 +466,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
         onlyWhen: { field: "action", equals: ["search", "improvise"] },
         host: { feature: IMPROVISED, older: { label: "Search with", help: "Perception, or Investigation to reason it out." } },
       },
-      { name: "ability", label: "Or an ability", kind: "select", options: ABILITIES, onlyWhen: { field: "action", equals: ["improvise"] } },
+      { name: "ability", label: "Or an ability", kind: "select", options: ABILITIES, help: "Escape from manacles: Dexterity slips them, Strength breaks them (DC 20 either).", onlyWhen: { field: "action", equals: ["improvise", "escape"] } },
       {
         name: "contestSkill",
         label: "Enemy resists with",
@@ -501,7 +511,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
         name: "enemyId",
         label: "Enemy acting",
         kind: "enemy",
-        help: "Instead of a character: an enemy taking Dash, Disengage, Dodge, or Escape from a grapple or a spell's hold (Web, Entangle, Maze, Irresistible Dance). It spends the enemy's action; move it afterward with Move a token.",
+        help: "Instead of a character: an enemy taking Dash, Disengage, Dodge, Escape from a grapple or a spell's hold (Web, Entangle, Maze, Irresistible Dance), or Use an Object with Manacles on an Ally. It spends the enemy's action; move it afterward with Move a token.",
         // Sent under the name that server reads: it knows escapingEnemyId,
         // and dropped enemyId, so an escape from the console failed there.
         host: {
@@ -583,9 +593,11 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
           { value: "drowning", label: "Drowning" },
           { value: "extreme_cold", label: "Extreme cold" },
           { value: "extreme_heat", label: "Extreme heat" },
+          { value: "frigid_water", label: "Frigid water", host: "frigidWater" },
         ],
       },
-      { name: "characterIds", label: "Caught in it", kind: "characters", requiredUnless: "rank" },
+      { name: "characterIds", label: "Caught in it", kind: "characters", requiredUnless: ["rank", "enemyIds", "place"] },
+      { name: "enemyIds", label: "Enemies caught in it", kind: "enemies", help: "A trap, a fall or a hazard of your own: the server rolls each enemy's save from its stat block.", host: { feature: "enemyHazards" } },
       {
         name: "rank",
         label: "Or whoever walks",
@@ -606,11 +618,15 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
         other: { label: "One of this table's traps", placeholder: "Scything Blade" },
         help: "Runs the trap's own numbers instead of the severity table: an SRD sample trap, or a trap from this table's workshop.",
       },
+      { name: "place", label: "Set it on the board", kind: "boolean", help: "A trap by name, laid hidden from the players on the square below; the first creature to step there springs it.", host: { feature: "setTraps" } },
+      { name: "fromX", label: "Its square: column", kind: "number", min: 0, max: 99, help: "Where a set trap lies, or where a trap fires from (cover on a DEX save).", host: { feature: "setTraps" } },
+      { name: "fromY", label: "Its square: row", kind: "number", min: 0, max: 99, host: { feature: "setTraps" } },
       { name: "hours", label: "Hours of exposure", kind: "number", min: 1, max: 48, help: "Extreme cold or heat: one CON save an hour, a level of exhaustion for each failure." },
+      { name: "minutes", label: "Minutes in the water", kind: "number", min: 1, max: 120, help: "Frigid water: free for the Constitution score's minutes, then one CON save a minute.", host: { feature: "frigidWater" } },
       { name: "damage", label: "Damage", kind: "dice", help: "Only for a hazard of your own." },
       damageTypeField("damageType", "Damage type", "Resistances apply."),
       { name: "saveAbility", label: "Save", kind: "select", options: ABILITIES },
-      { name: "dc", label: "DC", kind: "number", min: 1, max: 30 },
+      { name: "dc", label: "DC", kind: "number", min: 1, max: 30, help: "Only for a hazard of your own; the book sets the rest." },
       { name: "halfOnSave", label: "Half on a save", kind: "boolean", default: true },
       conditionField("condition", "Condition on a failed save"),
       { name: "roundsWithoutAir", label: "Rounds without air", kind: "number", min: 0, max: 100 },

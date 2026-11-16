@@ -14,7 +14,7 @@ import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
 import { computeSheetDerived } from "@/lib/srd";
-import { resourceDef, resourceLevel } from "@/lib/srd/class-resources";
+import { rechargeOf, resourceDef, resourceLevel } from "@/lib/srd/class-resources";
 import {
   defaultShortRestDice,
   longRestPatch,
@@ -26,7 +26,7 @@ import { tickWorldTimeskip } from "@/lib/dm/world-tick";
 import { departureNote, departureOpenings } from "@/lib/dm/departure";
 import { pactMoment } from "@/lib/dm/pacts";
 import { readUneaseTells } from "@/lib/dm/conscience-voice";
-import { advanceClock, getClock, inShortRestWindow, openShortRestWindow, recordLongRests, setTravelPace } from "@/lib/db/clock";
+import { advanceClock, getClock, inShortRestWindow, openShortRestWindow, recordLongRests, recordRestEnds, setTravelPace } from "@/lib/db/clock";
 import { getDmTurn } from "@/lib/db/dm-turns";
 import { claimWindowRestDice, partyChefDie, partySongOfRestDie, playerChoosesHitDice, spendHitDice, windowRestDice } from "@/lib/dm/hit-dice";
 import { declaredThisTurn } from "@/lib/dm/player-word";
@@ -395,6 +395,7 @@ export function handleTakeRest(
       }
     }
     recordLongRests(campaign.id, resting, endsAt);
+    recordRestEnds(campaign.id, resting);
     // The saves a disease asks at the end of a long rest.
     const afflictions = afflictionsAfterLongRest(campaign, turnId, resting);
     // A lifestyle is paid for each dawn the rest crosses (lifestyle.ts).
@@ -524,6 +525,7 @@ export function handleTakeRest(
   // moves again.
   const waiting = choosers.filter((sheet) => !plan.has(sheet.id));
   openShortRestWindow(campaign.id, waiting.map((sheet) => sheet.id));
+  recordRestEnds(campaign.id, standing.map((sheet) => sheet.id));
   // Short-recharge resources (Ki, Second Wind, Action Surge...) refill for
   // everyone, hit dice spent or not.
   const refilled: string[] = [];
@@ -644,7 +646,7 @@ function applySlotRecovery(
       }
       // A counter that comes back on a short rest (Psi Font's "on a short
       // rest", every one) is given back by the very rest that spends it.
-      const everyRest = (def.rechargeFor?.(resourceLevel(def, live)) ?? def.recharge) === "short";
+      const everyRest = rechargeOf(def, live) === "short";
       const patch = {
         spellcasting: { ...live.spellcasting, slots: back.slots },
         resources: { ...live.resources, [id]: { max: state.max, used: everyRest ? state.used : state.used + 1 } },
