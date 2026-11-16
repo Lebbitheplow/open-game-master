@@ -661,7 +661,7 @@ export function resolvePcOpportunityWalk(
       continue;
     }
     if (
-      !canAct({ sheet, encounter, kind: "reaction" }).ok ||
+      !canAct({ sheet, encounter, kind: "reaction", actingId: enemyId }).ok ||
       conditionBlocksReactions(sheet.conditions)
     ) {
       continue;

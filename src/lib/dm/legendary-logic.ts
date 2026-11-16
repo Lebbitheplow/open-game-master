@@ -133,6 +133,11 @@ export type LegendaryState = {
   // settleTurn) still shows the action it paid, read where the live budget
   // has gone to the next creature.
   endedTurn?: TurnBudget;
+  // The characters of a wholly surprised party, while the ambushers play the
+  // round they lost after the order opened on round 2 (encounter-tools.ts
+  // openAfterAmbush): each has no reaction to an attack made before their
+  // own lost turn (can-act.ts isSurprised). Cleared as round 2 turns over.
+  ambushed?: string[];
 };
 
 export type LegendaryPurchaseRecord = {
@@ -253,6 +258,7 @@ export function normalizeLegendaryState(raw: unknown): LegendaryState {
     ...(record.endedTurn && typeof record.endedTurn === "object" && typeof (record.endedTurn as { ownerId?: unknown }).ownerId === "string"
       ? { endedTurn: record.endedTurn as TurnBudget }
       : {}),
+    ...(stringList(record.ambushed).length ? { ambushed: stringList(record.ambushed) } : {}),
   };
 }
 

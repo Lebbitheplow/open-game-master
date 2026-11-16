@@ -64,7 +64,11 @@ export function reactionRefusal(
       ? `${label} answers the hit that drops ${sheet.name} to 0 hit points, and they are not down. Nothing was spent.`
       : `${label} is taken as the hit that drops ${sheet.name} to 0 hit points lands, and the server has no such hit on them this turn. Nothing was spent.`, refused: "rules" };
   }
-  const allowed = canAct({ sheet: standing.sheet, encounter, kind: "reaction" });
+  // Whose turn is under way: the attacker of the hit the reaction answers,
+  // for surprise's "no reaction until that turn ends" (can-act.ts).
+  const answering = freshLastHit(campaignId, sheet.id);
+  const actingId = answering && answering.attacker.kind !== "hazard" ? answering.attacker.id : null;
+  const allowed = canAct({ sheet: standing.sheet, encounter, kind: "reaction", actingId });
   if (!allowed.ok) {
     return sheet.currentHp <= 0 && timing === "after" && !forAnother && !sheet.deathSaves?.dead
       ? { ...toolError(allowed), error: `${allowed.error} ${label} follows the damage rather than changing it, so a character that damage dropped is already unconscious and cannot take it.` }
