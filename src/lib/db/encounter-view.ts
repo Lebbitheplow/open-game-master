@@ -194,6 +194,11 @@ export type PublicTurn = {
   marks?: string[];
   // Flurry of Blows strikes bought and not yet made.
   flurryStrikes?: number;
+  // Slow holds the turn to an action or a bonus action and one attack, and
+  // takes the reaction (action-budget.ts slowedProblem). Without it the Hand
+  // offered a slowed fighter the bonus action and the swings the engine
+  // refused.
+  slowed?: boolean;
   dashed?: boolean;
   // How many Dashes the turn has taken, when more than one.
   dashes?: number;
@@ -268,6 +273,7 @@ function turnView(encounter: Encounter): { turn?: PublicTurn } {
       ...(budget.grantedActions ? { grantedActions: budget.grantedActions } : {}),
       ...(budget.oncePerTurn.length ? { marks: budget.oncePerTurn } : {}),
       ...(budget.flurryStrikes ? { flurryStrikes: budget.flurryStrikes } : {}),
+      ...(budget.slowed ? { slowed: true } : {}),
       ...(budget.dashed ? { dashed: true } : {}),
       ...((budget.dashes ?? 0) > 1 ? { dashes: budget.dashes } : {}),
       ...(budget.disengaged ? { disengaged: true } : {}),

@@ -324,6 +324,8 @@ export type HandTurn = {
   marks?: string[];
   // Flurry of Blows strikes bought and not made.
   flurryStrikes?: number;
+  // Slow: an action or a bonus action, one attack, no reaction.
+  slowed?: boolean;
   // This turn's action went on an attack-roll spell, so Extra Attack is gone.
   castThisAction?: boolean;
   // What the Attack action was made with, for the off-hand swing (issue
@@ -560,6 +562,7 @@ export function budgetOf(turn: HandTurn, sheet: Pick<CharacterSheet, "id">, allo
     ...(turn.extraActions ? { extraActions: turn.extraActions } : {}),
     ...(turn.grantedActions ? { grantedActions: turn.grantedActions } : {}),
     ...(turn.flurryStrikes ? { flurryStrikes: turn.flurryStrikes } : {}),
+    ...(turn.slowed ? { slowed: true } : {}),
     ...(turn.castThisAction ? { castThisAction: true } : {}),
     ...(turn.lightMeleeAttack ? { lightMeleeAttack: true } : {}),
     ...(turn.oneHandMeleeAttack ? { oneHandMeleeAttack: true } : {}),

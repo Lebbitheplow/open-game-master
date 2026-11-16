@@ -110,4 +110,35 @@ await test("V04: GAME STATE, the party panel and the sheet give a character the 
   assert.match(describeSheet(world.sheet(fighter.id), "a player", false), new RegExp(`\\| AC ${engine} \\|`));
 });
 
+// V05. SRD 5.1, Slow: "it can't use reactions", "On its turn, it can use
+// either an action or a bonus action, not both", and "Regardless of the
+// creature's abilities or magic items, it can't make more than one melee or
+// ranged attack during its turn." The engine's budget knew (slowedProblem),
+// but the public turn view dropped it, so after the Attack action the Hand
+// still offered a slowed fighter's bonus action and their Extra Attack swing,
+// and the turn's pips showed Bonus and Reaction open.
+await test("V05: the Hand shuts a slowed hero's bonus action and second swing after their attack, as the engine does", async () => {
+  await kit.endFight();
+  const { publicEncounter } = await import("../src/lib/db/encounter-view.ts");
+  const { turnFromEncounter, turnPips } = await import("../src/lib/battlemap/hand-table.ts");
+  const { costGate, attackGate } = await import("../src/lib/battlemap/hand-core.ts");
+  const hero = world.addHero({ class: "fighter", level: 5, maxHp: 44, proficiencies: { ...TRAINED } });
+  await kit.fight(1);
+  const [foe] = world.enemies();
+  world.patch(hero.id, { conditions: ["slowed"], conditionMeta: { slowed: { source: foe.id } } });
+  kit.giveTurn(hero.id);
+  kit.place(hero.id, 5, 5);
+  kit.place(foe.id, 5, 6);
+  const swung = await kit.swing(hero.id, foe.id, [15, 3]);
+  assert.equal(swung.ok, true, swung.error);
+  const turn = turnFromEncounter(publicEncounter(world.encounter(), world.enemies(), {}), world.sheet(hero.id), { myTurn: true });
+  const engineBonus = await world.invoke("take_action", { characterId: hero.id, action: "dash", bonus: true });
+  assert.equal(engineBonus.ok, false, "the staging: the engine refuses a slowed hero's bonus action after the attack");
+  assert.ok(costGate("bonus", turn, world.sheet(hero.id), "Second Wind"), "the Hand offers the bonus action the engine refuses");
+  assert.ok(attackGate(turn, 2, world.sheet(hero.id)), "the Hand offers a second swing a slowed hero cannot make");
+  const pips = Object.fromEntries(turnPips(turn).map((pip) => [pip.label, pip.used]));
+  assert.equal(pips.Bonus, true, "the Bonus pip reads open");
+  assert.equal(pips.Reaction, true, "the Reaction pip reads open");
+});
+
 finish();

@@ -49,6 +49,7 @@ export function turnFromEncounter(
     ...(own?.grantedActions ? { grantedActions: own.grantedActions } : {}),
     ...(own?.marks?.length ? { marks: own.marks } : {}),
     ...(own?.flurryStrikes ? { flurryStrikes: own.flurryStrikes } : {}),
+    ...(own?.slowed ? { slowed: true } : {}),
     ...(own?.castThisAction ? { castThisAction: true } : {}),
     ...(own && own.lightMeleeAttack !== undefined ? { lightMeleeAttack: own.lightMeleeAttack } : {}),
     ...(own && own.oneHandMeleeAttack !== undefined ? { oneHandMeleeAttack: own.oneHandMeleeAttack } : {}),
@@ -77,14 +78,16 @@ export function turnCharacterId(
 }
 
 export function turnPips(turn: HandTurn): TurnPip[] {
+  // Slow: "either an action or a bonus action, not both", and no reaction.
+  const acted = turn.actionUsed || turn.attacksMade > 0;
   return [
     {
       label: "Action",
-      used: turn.actionUsed && (turn.extraActions ?? 0) <= 0 && (turn.grantedActions ?? 0) <= 0,
+      used: (turn.actionUsed && (turn.extraActions ?? 0) <= 0 && (turn.grantedActions ?? 0) <= 0) || Boolean(turn.slowed && turn.bonusUsed),
       cost: "action",
     },
-    { label: "Bonus", used: turn.bonusUsed, cost: "bonus" },
-    { label: "Reaction", used: turn.reactionUsed, cost: "reaction" },
+    { label: "Bonus", used: turn.bonusUsed || Boolean(turn.slowed && acted), cost: "bonus" },
+    { label: "Reaction", used: turn.reactionUsed || Boolean(turn.slowed), cost: "reaction" },
   ];
 }
 
