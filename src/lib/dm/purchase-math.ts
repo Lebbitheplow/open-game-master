@@ -4,7 +4,7 @@
 
 import { grantItemMath, removeItemMath } from "@/lib/dm/mutation-math";
 import type { Outcome } from "@/lib/dm/resource-tools";
-import { keepsFullValue, listPriceCp, saleValueCp } from "@/lib/dm/trade-value";
+import { keepsFullValue, listPriceCp, saleValueCp, tradeTotalCp } from "@/lib/dm/trade-value";
 import { addCopper, formatCopper, formatPrice, purseCopper } from "@/lib/srd/currency";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { ToolError } from "@/lib/dm/tool-errors";
@@ -39,7 +39,7 @@ export function computePurchase(
   const priced = listCp === null ? "the price given" : args.action === "buy" ? "list price" : keepsFullValue(item) ? "full value" : "half the list price";
   const purse = { gold: sheet.gold, copper: sheet.copper ?? 0 };
   if (args.action === "buy") {
-    const totalCp = eachCp * args.qty;
+    const totalCp = listCp === null ? eachCp * args.qty : tradeTotalCp(item, listCp, args.qty, "buy");
     if (purseCopper(purse) < totalCp) {
       return {
         error: `${sheet.name} has ${formatCopper(purseCopper(purse))}; ${args.qty > 1 ? `${args.qty}x ` : ""}${args.item} costs ${formatPrice(totalCp)}. They cannot afford it.`,
@@ -73,7 +73,7 @@ export function computePurchase(
       retry: true,
     };
   }
-  const totalCp = eachCp * removal.removed;
+  const totalCp = listCp === null ? eachCp * removal.removed : tradeTotalCp(item, listCp, removal.removed, "sell");
   const received = addCopper(purse, totalCp).purse;
   return {
     patch: { gold: received.gold, copper: received.copper, equipment: removal.equipment },

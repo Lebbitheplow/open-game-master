@@ -25,7 +25,7 @@ import { sheetsAgainstParty } from "@/lib/dm/combat-sides";
 import { canAct } from "@/lib/dm/can-act";
 import { incapacitatedBy } from "@/lib/dm/condition-logic";
 import { turncoatsAtTable } from "@/lib/dm/turncoat";
-import { keepsFullValue, listPriceCp, magicValueOf, soldToShops } from "@/lib/dm/trade-value";
+import { keepsFullValue, listPriceCp, magicValueOf, soldToShops, tradeTotalCp } from "@/lib/dm/trade-value";
 import { capacityProblem } from "@/lib/dm/load-rules";
 import {
   addStock,
@@ -517,13 +517,15 @@ export function handleSellItem(campaign: Campaign, rawArguments: string, at: Tra
   // Selling Treasure), priced by the worth they were given; a name is never
   // read for a price (src/lib/dm/trade-value.ts).
   const listCp = listPriceCp(line);
-  const each = listCp !== null ? (keepsFullValue(line) || sellsAtFullValue(sheet) ? listCp : offerPriceCp(listCp)) : args.priceCp ?? null;
+  const full = keepsFullValue(line) || sellsAtFullValue(sheet);
+  const each = listCp !== null ? (full ? listCp : offerPriceCp(listCp)) : args.priceCp ?? null;
   if (each === null) {
     // `unpriced`: the Market has no price to send, so it hands the sale to
     // whoever runs the story to name one (MarketPanel.tsx).
     return { error: `The pack has no price for "${carried}"; send price, the gold the keeper pays for each.`, retry: true, unpriced: true };
   }
-  const total = each * removal.removed;
+  // Ammunition is priced by the round and its total rounded once (trade-value.ts).
+  const total = listCp !== null ? (full ? tradeTotalCp(line, listCp, removal.removed, "full") : tradeTotalCp(line, listCp, removal.removed, "sell")) : each * removal.removed;
   const paid = addCopper({ gold: sheet.gold, copper: sheet.copper }, total);
   const patch = { gold: paid.purse.gold, copper: paid.purse.copper, equipment: removal.equipment };
   patchSheet(sheet.id, patch);

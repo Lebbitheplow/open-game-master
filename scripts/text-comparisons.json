@@ -2346,6 +2346,7 @@
     "lib/srd/any-list-picks-logic.ts#str-eq": [["key",2,"a spell row's source and document ids"]],
     "lib/srd/ammunition.ts#str-key": [["english-source",1,"SRD weapon and ammunition names (reference data)"]],
     "lib/srd/ammunition.ts#str-list": [["english-source",11,"SRD weapon and ammunition names (reference data)"]],
+    "lib/srd/ammo-bundles.ts#str-list": [["english-source", 4, "the SRD's ammunition bundle names (reference data, the Adventuring Gear table)"]],
     "lib/srd/armor.ts#re-word": [["english-source",1,"SRD armour names and class or species proficiency terms (bundled data and the builder's pickers)"]],
     "lib/srd/armor.ts#str-eq": [["key",2,"class ids"]],
     "lib/srd/armor.ts#str-includes": [["english-source",4,"SRD armour names and class or species proficiency terms (bundled data and the builder's pickers)"]],

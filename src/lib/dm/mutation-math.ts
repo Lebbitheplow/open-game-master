@@ -4,6 +4,7 @@
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { textKey } from "../language/text-logic.ts";
 import { lineNamed } from "../srd/item-row.ts";
+import { bundlesAsRounds, carriedAsRounds } from "../srd/ammo-bundles.ts";
 import type { ItemTag } from "@/lib/schemas/item-tags";
 
 export type SlotState = { max: number; used: number };
@@ -132,7 +133,9 @@ export function spendSlotMath(slot: SlotState | undefined | null): SlotState | n
 // attuned to it. A homebrew block is read again from the entry when the
 // sheet is (hydrateHomebrewGear), so it does not travel either. Trades used
 // to keep the name alone, so a traded scroll lost its spell and a renamed
-// sword its weapon (issue #424, found beside it).
+// sword its weapon (issue #424, found beside it). A bundle of ammunition
+// travels as its rounds (src/lib/srd/ammo-bundles.ts): one "Arrows (20)"
+// handed to a friend who had one merged into a line of two arrows.
 export function handedOverRow<Row extends EquipmentRow>(row: Row, qty: number): Row {
   const {
     equipped: _equipped,
@@ -147,7 +150,7 @@ export function handedOverRow<Row extends EquipmentRow>(row: Row, qty: number): 
   void _attuning;
   void _layered;
   void _gear;
-  return { ...(kept as Row), qty: Math.max(1, Math.floor(qty)) };
+  return carriedAsRounds(kept as Row, qty);
 }
 
 // Whether two rows are the same thing, the rule grantItemMath merges by:
@@ -222,19 +225,24 @@ export function grantItemMath(
   // sheet.
   options: { identified?: boolean } & ItemFacts = {},
 ) {
-  const amount = Math.max(1, Math.floor(qty));
+  // A bundle of ammunition is its rounds, as a pack counts them (SRD 5.1,
+  // Adventuring Gear, "Arrows (20)"; src/lib/srd/ammo-bundles.ts): bought
+  // twice, "Arrows (20)" x2 was counted as two arrows.
   const known = options.identified !== false;
-  const facts = known ? itemFacts(options) : {};
+  const asRounds = bundlesAsRounds({ name, qty, ...(known && options.srdName ? { srdName: options.srdName } : {}) }, qty);
+  const named = asRounds.name;
+  const amount = Math.max(1, Math.floor(asRounds.qty));
+  const facts = known ? itemFacts({ ...options, srdName: asRounds.srdName }) : {};
   // Two scrolls of different spells, or two potions of different rows, are
   // two things, whatever they are called.
   const index = equipment.findIndex(
-    (item) => textKey(item.name) === textKey(name) && isIdentified(item) === known && item.spell === facts.spell && item.srdName === facts.srdName,
+    (item) => textKey(item.name) === textKey(named) && isIdentified(item) === known && item.spell === facts.spell && item.srdName === facts.srdName,
   );
   if (index < 0) {
     return {
       equipment: [
         ...equipment,
-        known ? { name, qty: amount, ...facts } : { name, qty: amount, identified: false },
+        known ? { name: named, qty: amount, ...facts } : { name: named, qty: amount, identified: false },
       ],
     };
   }

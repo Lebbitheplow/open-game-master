@@ -25,6 +25,7 @@ import { hasItemTag, type TaggedItem } from "@/lib/srd/item-tags";
 import type { ItemTag } from "@/lib/schemas/item-tags";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import { gearPriceCopper } from "@/lib/srd/adventuring-gear";
+import { bundleCount, roundPriceCp } from "@/lib/srd/ammo-bundles";
 
 export type TradedItem = TaggedItem & { worth?: number };
 
@@ -184,8 +185,37 @@ function tablePriceCp(name: string): number | null {
 // when neither knows it. The pack is read by srdNameWithBonus
 // (src/lib/srd/item-row.ts), so a "Spada lunga +1" is no 15 gp longsword, as
 // a "Longsword +1" is not.
-export function listPriceCp(item: TradedItem): number | null {
-  return tablePriceCp(srdNameWithBonus(item)) ?? (item.worth ? Math.round(item.worth * COPPER_PER_GOLD) : null);
+export function listPriceCp(item: TradedItem & { qty?: number }): number | null {
+  return ammoListCp(item) ?? tablePriceCp(srdNameWithBonus(item)) ?? (item.worth ? Math.round(item.worth * COPPER_PER_GOLD) : null);
+}
+
+// SRD 5.1 sells ammunition by the bundle ("Arrows (20) 1 gp") and a pack
+// counts it by the round (src/lib/srd/ammo-bundles.ts), so a line of it is
+// priced by the round, the bundle's price over its count, and a line still
+// named for its bundle as the rounds a shot reads in it. "Arrows" took the
+// bundle's gold piece for every arrow, bought or sold. Magic ammunition keeps
+// its own value.
+function ammoListCp(item: TradedItem & { qty?: number }): number | null {
+  const each = magicItemBonus(item.name) ? null : roundPriceCp(item);
+  if (each === null) {
+    return null;
+  }
+  const count = bundleCount(item.name);
+  return count !== null && (item.qty ?? 1) <= 1 ? each * count : each;
+}
+
+// What qty of a thing comes to at its list price, in whole copper: paid in
+// full, or sold at half (full for treasure). A round of ammunition is a
+// fraction of its bundle's price (sling bullets, 4 cp the twenty), so its
+// total is rounded once: rounded a round at a time, twenty arrows sold for
+// 40 cp and twenty sling bullets for 20. Anything else is priced one at a time,
+// as it always was.
+export function tradeTotalCp(item: TradedItem & { qty?: number }, listCp: number, qty: number, side: "buy" | "sell" | "full"): number {
+  if (ammoListCp(item) === null) {
+    return (side === "buy" || side === "full" ? listCp : saleValueCp(item, listCp)) * qty;
+  }
+  const whole = listCp * qty;
+  return side === "buy" ? Math.ceil(whole - 1e-9) : side === "full" ? Math.floor(whole + 1e-9) : Math.max(1, Math.floor(whole / 2 + 1e-9));
 }
 
 // Why a worth cannot be given to this item, or null when it can: the table's
