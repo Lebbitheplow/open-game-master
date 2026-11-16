@@ -82,6 +82,7 @@ import { ADVANTAGE_SOURCES, claimedAdvantage } from "@/lib/dm/pc-attack-options"
 import { unknownSheetRef } from "@/lib/dm/rolls";
 import { mountTargetProblem, strikeMount } from "@/lib/dm/mount-combat";
 import { petTargetProblem, strikePet } from "@/lib/dm/pet-strike";
+import { creatureUnderwaterSwing } from "@/lib/dm/pet-underwater";
 import { riderTakesIt } from "@/lib/dm/ar-wbf-feat-doors";
 import { enemySpellAttack } from "@/lib/dm/enemy-casting";
 import { gripsHeldBy, swallowCover, swallowMark, swallowRefusal } from "@/lib/dm/swallow";
@@ -601,7 +602,8 @@ export function handleEnemyAttack(
   }
   saveEncounter(live);
   // At the mount or the pet beside them, the routine's swings each from
-  // where the creature stands: its reach, its range, its bloodied blow.
+  // where the creature stands: its reach, its range, its bloodied blow, and
+  // its water (pet-underwater.ts), as its swing at the character reads them.
   const swingsBeside = (what: string) => {
     const bloodied = standing.currentHp <= standing.maxHp / 2;
     let shots = 0;
@@ -615,7 +617,12 @@ export function handleEnemyAttack(
         return { attack, skipped: past };
       }
       shots += mode.ranged ? 1 : 0;
-      return { attack: alternativeBlow(attack, { ranged: mode.ranged, bloodied }), ranged: mode.ranged };
+      const blow = alternativeBlow(attack, { ranged: mode.ranged, bloodied });
+      const water = creatureUnderwaterSwing(campaign.id, standing, blow, mode);
+      if (water?.misses && water.note) {
+        return { attack: blow, skipped: water.note };
+      }
+      return { attack: blow, ranged: mode.ranged, ...(water?.disadvantage && water.note ? { underwater: water.note } : {}) };
     });
   };
   const requested = () => claimedAdvantage({ requested: args.advantage, source: args.advantageSource, reason: args.advantageReason, byAi: turn.actor === "ai" }).requested;

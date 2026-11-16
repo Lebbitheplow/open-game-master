@@ -27,7 +27,7 @@ import { landBlow } from "@/lib/dm/pc-attack-damage";
 import { badArguments, noneNamed, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { swallowCoverError } from "@/lib/dm/swallow";
 import { buildPet, defenseWords, DRAKE_ESSENCES, petCreatureType } from "@/lib/dm/pet-build";
-import { attackContext, incapacitatedBy, type ConditionMetaMap } from "@/lib/dm/condition-logic";
+import { attackContext, incapacitatedBy, mergeAdvantage, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { charmedBy } from "@/lib/dm/enemy-profile";
 import { rollPetSave } from "@/lib/dm/pet-save-roll";
 import { settleOnDamage } from "@/lib/dm/spell-effects";
@@ -37,6 +37,9 @@ import { findTableMonster } from "@/lib/bestiary/homebrew-monsters";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { resolveMonster } from "@/lib/bestiary";
 import { commandPet, drakeSummonCost, essenceChoice } from "@/lib/dm/pet-command";
+import { petResistLine, petUnderwaterSwing } from "@/lib/dm/pet-underwater";
+import { petAttackBoard, spendMarksAgainst } from "@/lib/dm/pet-attack-board";
+import { fallFromPet, ridesPet } from "@/lib/dm/pet-mount";
 
 // The creatures bound to a character: familiars (Find Familiar, Pact of the
 // Chain), the Beast Master's companion, the Drakewarden's drake, and story
@@ -378,6 +381,9 @@ export function handlePetAttack(
   // made it (pet-build.ts petCreatureType). Only the warding spells counted.
   const feetTo = petFeetTo(encounter.id, sheet, enemy.id);
   const ranged = Boolean(attack.range) && !(attack.thrown && feetTo !== null && feetTo <= (attack.reach ?? 5));
+  // The light, its senses, the target's cover and the bow's range, read from
+  // its owner's square as the hero's attack reads them (pet-attack-board.ts).
+  const board = petAttackBoard({ campaign, encounterId: encounter.id, ownerId: sheet.id, pet, enemy, attack, ranged, feetTo });
   const incoming = attackContext({
     attackerConditions: pet.conditions ?? [],
     targetConditions: enemy.conditions,
@@ -385,8 +391,22 @@ export function handlePetAttack(
     adjacent: feetTo === null ? !ranged : feetTo <= 5,
     requested: "none",
     attackerType: petCreatureType(pet),
+    attackerSenses: board.attackerSenses,
+    targetSeesAttacker: board.targetSeesAttacker,
   });
-  const advantage = incoming.advantage;
+  incoming.notes.push(...board.notes);
+  // Its owner's water is its own (pet-underwater.ts): a bite without a
+  // swimming speed at disadvantage, a shot past normal range a miss.
+  const water = petUnderwaterSwing(campaign, sheet.id, pet, { attack: attack.name, ranged, beyondNormal: ranged && feetTo !== null && feetTo > (attack.range ?? feetTo) });
+  if (water?.note) {
+    incoming.notes.push(water.note);
+  }
+  if (water?.misses) {
+    const economy = charge.commit();
+    commandPet(campaign, sheet.id, pet.name);
+    return { ok: true, attack: `${pet.name}: ${attack.name}`, hit: false, missed: water.note, economy };
+  }
+  const advantage = mergeAdvantage([...incoming.sources, ...board.sources, ...(water?.disadvantage ? ["disadvantage" as const] : [])]);
   // Tagged as an ally's attack, so a foretold number a watch stop armed for
   // the pet lands on its d20 (foresight-saves.ts).
   const hitOutcome = rollExpression(d20Expression(attack.toHit, advantage), undefined, { purpose: { roller: "hero", kind: "attack", who: pet.name } });
@@ -408,9 +428,11 @@ export function handlePetAttack(
   const economy = charge.commit();
   // Commanded, the creature is not dodging this turn (pet-command.ts).
   commandPet(campaign, sheet.id, pet.name);
+  // What the roll used up on the target (pet-attack-board.ts).
+  spendMarksAgainst(enemy);
 
-  // The enemy's real AC today: a spell or an effect on it counts.
-  const vsAc = enemyAcWithEffects(campaign.id, enemy);
+  // The enemy's real AC today: a spell or an effect on it counts, and its cover.
+  const vsAc = enemyAcWithEffects(campaign.id, enemy) + board.cover;
   const hit = hitOutcome.crit !== "nat1" && (hitOutcome.crit === "nat20" || hitOutcome.total >= vsAc);
   const crit = hit && (hitOutcome.crit === "nat20" || incoming.autoCrit);
   if (!hit) {
@@ -538,7 +560,7 @@ export function hurtPet(
   // an imp takes no fire, a drake none of its essence. Two types are two
   // shares, each meeting its own (Flame Strike's fire and radiant).
   const adjusted = input.parts.map((part) =>
-    damageAdjust(part.amount, part.type, current.resist ?? "", current.immune ?? "", current.vulnerable ?? "", { magical: input.magical }),
+    damageAdjust(part.amount, part.type, petResistLine(campaign.id, sheet.id, current), current.immune ?? "", current.vulnerable ?? "", { magical: input.magical }),
   );
   const dealt = adjusted.reduce((sum, entry) => sum + entry.amount, 0);
   const types = input.parts.map((part) => part.type?.trim() ?? "").filter(Boolean);
@@ -550,9 +572,12 @@ export function hurtPet(
   // Drake Companion: it lasts "until it drops to 0 hit points": then it is
   // gone, until the ranger summons it again.
   if (hp <= 0 && current.kind === "drake") {
+    // Its rider comes down with it (pet-mount.ts).
+    const ridden = ridesPet(campaign.id, sheet.id, current);
     patchSheet(sheet.id, { pets: others });
     publishSheet(campaign, sheet.id);
-    return { ok: true, pet: current.name, damage: dealt, ...typed, ...defended, vanished: `${current.name} drops to 0 hit points and is gone. ${sheet.name} can summon it again (summon_pet).` };
+    const fall = ridden ? fallFromPet(campaign, sheet.id) : null;
+    return { ok: true, pet: current.name, damage: dealt, ...typed, ...defended, vanished: `${current.name} drops to 0 hit points and is gone. ${sheet.name} can summon it again (summon_pet).`, ...(fall ? { fall } : {}) };
   }
   if (hp <= 0 && current.kind === "familiar") {
     // A familiar at 0 HP vanishes; the spell brings it back later.

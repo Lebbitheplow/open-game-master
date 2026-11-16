@@ -12,7 +12,7 @@
 import type { Campaign } from "@/lib/db/campaigns";
 import { allocateSeq } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
-import { getActiveEncounter, type EncounterEnemy } from "@/lib/db/encounters";
+import { getActiveEncounter, getEnemy, type EncounterEnemy } from "@/lib/db/encounters";
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getMounts, setMount } from "@/lib/db/mounts";
 import { insertRoll } from "@/lib/db/rolls";
@@ -28,6 +28,12 @@ import { attackSight, enemySenses, fearAsRolled, lightOnAttack, sensesReaching }
 import { attackContext, DODGING, mergeAdvantage, type AdvantageState } from "@/lib/dm/condition-logic";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { handleDismount } from "@/lib/dm/mount-tools";
+import { mountedPet } from "@/lib/dm/pet-mount";
+import { strikePet } from "@/lib/dm/pet-strike";
+import { enemyOpportunityRiders } from "@/lib/dm/opportunity-strike";
+import { effectOutcome } from "@/lib/dm/effect-tools";
+import { spendEnemyRiders } from "@/lib/dm/spell-retort";
+import { getSheetById } from "@/lib/db/sheets";
 import { attacksAllowedFor, budgetFor, storeBudget } from "@/lib/dm/turn-budget";
 import { conditionTurnShape } from "@/lib/srd/condition-effects";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -106,7 +112,8 @@ export function strikeMount(input: {
   encounterId: string;
   enemy: EncounterEnemy;
   rider: CharacterSheet;
-  swings: Array<{ attack: EnemyAttack; ranged: boolean } | { attack: EnemyAttack; skipped: string }>;
+  // `underwater`: made from the water at disadvantage (pet-underwater.ts).
+  swings: Array<{ attack: EnemyAttack; ranged: boolean; underwater?: string } | { attack: EnemyAttack; skipped: string }>;
   distance: number | null;
   cover: number;
   requested: AdvantageState;
@@ -115,6 +122,12 @@ export function strikeMount(input: {
 }): ToolResult {
   const { campaign, turn, enemy, rider } = input;
   const mount = getMounts(campaign.id)[rider.id];
+  // A ridden drake is struck as the drake, on its own record: its Armor
+  // Class, its Dodge, its immunity, its 0 (pet-mount.ts).
+  const drake = mountedPet(getSheetById(rider.id) ?? rider, mount);
+  if (drake) {
+    return strikePet({ campaign, turn, encounterId: input.encounterId, enemy, owner: rider, petName: drake.name, swings: input.swings, distance: input.distance, cover: input.cover, requested: input.requested });
+  }
   if (!mount || mount.ac === undefined || mount.hp === undefined) {
     return { error: mountTargetProblem(campaign.id, rider) ?? "No mount to strike.", retry: true };
   }
@@ -151,8 +164,20 @@ export function strikeMount(input: {
       attackerType: enemy.stats.type,
       targetSeesAttacker: sight?.targetSees !== false,
     });
-    const advantage = mergeAdvantage([...context.sources, ...light.sources]);
-    const toHit = rollExpression(d20Expression(attack.toHit, advantage));
+    // The creature's own state, as its swing at the rider reads it (Bane's
+    // d4 off, Bless's on, Vicious Mockery's one disadvantage, exhaustion,
+    // sunlight) and the effects on it: the swing at the mount read none.
+    const own = enemyOpportunityRiders(campaign.id, getEnemy(enemy.id) ?? enemy);
+    const effect = effectOutcome(campaign.id, { kind: "enemy", id: enemy.id }, "attack");
+    const advantage = mergeAdvantage([
+      ...context.sources,
+      ...light.sources,
+      ...own.sources,
+      ...(effect.advantage ? ["advantage" as const] : []),
+      ...(effect.disadvantage || swing.underwater ? ["disadvantage" as const] : []),
+    ]);
+    const toHit = rollExpression(`${d20Expression(attack.toHit + effect.bonus, advantage)}${own.riders.diceSuffix}`, undefined, { purpose: { roller: "enemy", kind: "attack", who: enemy.displayName } });
+    spendEnemyRiders(enemy, own.riders);
     const hitRoll = insertRoll({
       campaignId: campaign.id,
       characterId: rider.id,
@@ -168,7 +193,7 @@ export function strikeMount(input: {
     const ac = mount.ac + input.cover;
     const hit = toHit.crit !== "nat1" && (toHit.crit === "nat20" || toHit.total >= ac);
     if (!hit) {
-      rows.push({ attack: attack.name, rolled: toHit.total, vsAc: ac, hit: false });
+      rows.push({ attack: attack.name, rolled: toHit.total, vsAc: ac, hit: false, ...(swing.underwater ? { situation: swing.underwater } : {}) });
       continue;
     }
     const crit = toHit.crit === "nat20" || context.autoCrit;
@@ -188,7 +213,7 @@ export function strikeMount(input: {
     publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll: damageRoll, source: "digital" });
     turn.rollIds.push(damageRoll.id);
     hp = Math.max(0, hp - damage.total);
-    rows.push({ attack: attack.name, rolled: toHit.total, vsAc: ac, hit: true, ...(crit ? { crit: true } : {}), damage: damage.total });
+    rows.push({ attack: attack.name, rolled: toHit.total, vsAc: ac, hit: true, ...(crit ? { crit: true } : {}), ...(swing.underwater ? { situation: swing.underwater } : {}), damage: damage.total });
   }
   const notes = [...light.notes, ...(dodging ? [`${mount.name} is dodging: disadvantage`] : [])];
   if (hp > 0) {

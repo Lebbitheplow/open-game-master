@@ -39,6 +39,7 @@ import { hasTrait } from "@/lib/dm/monster-abilities";
 import { leavesReachAt } from "@/lib/dm/opportunity-reach-logic";
 import { enemyOpportunityRiders, opportunitySight } from "@/lib/dm/opportunity-strike";
 import { hurtPet } from "@/lib/dm/pet-tools";
+import { creatureUnderwaterSwing } from "@/lib/dm/pet-underwater";
 import { spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { conditionBlocksReactions } from "@/lib/srd/condition-effects";
 import { isConditionNamed } from "@/lib/srd/feature-names";
@@ -111,7 +112,14 @@ export function strikePetsOnWalk(campaign: Campaign, ownerId: string, steps: XY[
     });
     const own = enemyOpportunityRiders(campaign.id, enemy);
     const effect = effectOutcome(campaign.id, { kind: "enemy", id: enemy.id }, "attack");
-    const advantage = mergeAdvantage([...context.sources, ...own.sources, ...(effect.advantage ? ["advantage" as const] : []), ...(effect.disadvantage ? ["disadvantage" as const] : [])]);
+    // A melee swing from the water, as its turn's own swing (pet-underwater.ts).
+    const water = creatureUnderwaterSwing(campaign.id, enemy, attack, { ranged: false, longRange: false });
+    const advantage = mergeAdvantage([
+      ...context.sources,
+      ...own.sources,
+      ...(effect.advantage ? ["advantage" as const] : []),
+      ...(effect.disadvantage || water?.disadvantage ? ["disadvantage" as const] : []),
+    ]);
     const label = rollAgainst(`${attack.name} (opportunity attack)`, pet.name);
     const toHit = rollExpression(`${d20Expression(attack.toHit + effect.bonus, advantage)}${own.riders.diceSuffix}`, undefined, { purpose: { roller: "enemy", kind: "attack", who: enemy.displayName } });
     spendEnemyRiders(enemy, own.riders);

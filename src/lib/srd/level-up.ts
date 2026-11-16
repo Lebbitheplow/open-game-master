@@ -80,6 +80,7 @@ import {
 import { textKey } from "@/lib/language/text-logic";
 import { splitToolGrants, toolPickProblem } from "@/lib/srd/tool-choices";
 import { carrySwapRecords } from "@/lib/dm/ar-ws-spell-swap-record";
+import { petsAtLevel } from "@/lib/dm/pet-level-logic";
 import { featChoice } from "@/lib/schemas/sheet";
 
 export type LevelUpContext = {
@@ -759,6 +760,11 @@ export function buildLevelUp(
     ...(spellcasting !== sheet.spellcasting ? { spellcasting } : {}),
     ...(multiclass ? { classes } : { level: target, subclass: classes[0].subclass }),
   };
+  // A companion's and a drake's numbers follow the ranger's level (pet-level-logic.ts).
+  const pets = petsAtLevel(sheet, { ...sheet, ...patch, level: target, ...(sheet.classes?.length || multiclass ? { classes } : {}) } as CharacterSheet);
+  if (pets !== sheet.pets) {
+    patch.pets = pets;
+  }
   return { patch, hpGained, ...(rolls ? { rolled: { hp: face } } : {}) };
 }
 
