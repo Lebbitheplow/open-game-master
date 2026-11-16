@@ -351,4 +351,16 @@ await test("D22: a drake out of action takes no Infused Strikes reaction", async
   assert.match(String(out.error), /paralyzed/, `the held drake was refused for something else: ${out.error}`);
 });
 
+// D23. SRD 5.1, Dodge: "You lose this benefit if you are incapacitated or if
+// your speed drops to 0." The steel defender dodges unless commanded, and a
+// stunned or grappled defender still turned every attack at it to
+// disadvantage.
+await test("D23: a steel defender out of action or held at speed 0 is not dodging", async () => {
+  const { defenderDodging } = await import("../src/lib/dm/defender-dodge.ts");
+  const defender = { name: "Defender", summon: { form: "Steel Defender" }, conditions: [] };
+  assert.ok(defenderDodging(defender), "the uncommanded defender is not dodging at all");
+  assert.equal(defenderDodging({ ...defender, conditions: ["stunned"] }), null, "a stunned defender still dodges");
+  assert.equal(defenderDodging({ ...defender, conditions: ["grappled"] }), null, "a grappled defender still dodges");
+});
+
 finish();
