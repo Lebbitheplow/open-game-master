@@ -13,7 +13,7 @@ import { breakDown } from "@/lib/dm/calendar";
 import { applyPcDamage } from "@/lib/dm/pc-damage";
 import type { Affliction } from "@/lib/dm/between-state";
 import { afflictionsOf, characterSave, publicDie, tableNote, writeAfflictions } from "@/lib/dm/between-io";
-import { afflictCondition, dropConditions, liveAfflictions } from "@/lib/dm/afflictions";
+import { afflictCondition, dropConditions, inForce, liveAfflictions } from "@/lib/dm/afflictions";
 import type { Poison } from "@/lib/srd/afflictions";
 import { POISONS } from "@/lib/srd/afflictions";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
@@ -154,7 +154,14 @@ export function poisonClockTick(campaignId: string, to: number) {
   for (const [characterId, list] of Object.entries(all)) {
     const next: Affliction[] = [];
     let changed = false;
+    const holder = getSheetById(characterId);
     for (const entry of list) {
+      // A poison whose poisoning was ended some other way is over: no more
+      // daily saves or damage for it.
+      if (holder && !inForce(entry, holder)) {
+        changed = true;
+        continue;
+      }
       const poison = entry.kind === "poison" ? (entry.poison ?? POISONS.find((row) => row.id === entry.id)) : null;
       if (!poison || entry.nextAt === undefined || entry.nextAt > to) {
         next.push(entry);

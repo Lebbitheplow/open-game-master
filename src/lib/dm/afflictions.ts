@@ -115,14 +115,19 @@ function addExhaustion(campaignId: string, sheetId: string, levels: number) {
 
 // ---- reading the records ----
 
+// Whether a record still holds: one whose conditions were all ended some other
+// way (Lesser Restoration ending Pale Tincture's poisoning) is over, so its
+// daily save and its hold on healing end with it.
+export function inForce(entry: Affliction, sheet: Pick<CharacterSheet, "conditions">): boolean {
+  return !entry.conditions.length ? entry.onsetAt !== undefined || entry.nextAt !== undefined : entry.conditions.some((name) => holds(sheet, name));
+}
+
 // A character's afflictions, with any whose conditions are all gone (cured
 // some other way) dropped. A disease still incubating, a scheduled poison
 // and an indefinite flaw have nothing to lose and are kept.
 export function liveAfflictions(campaignId: string, sheet: Pick<CharacterSheet, "id" | "conditions">): Affliction[] {
   const list = afflictionsOf(campaignId, sheet.id);
-  const kept = list.filter((entry) =>
-    !entry.conditions.length ? entry.onsetAt !== undefined || entry.nextAt !== undefined : entry.conditions.some((name) => holds(sheet, name)),
-  );
+  const kept = list.filter((entry) => inForce(entry, sheet));
   if (kept.length !== list.length) {
     writeAfflictions(campaignId, sheet.id, kept);
   }
@@ -443,7 +448,9 @@ export function afflictionClockTick(campaignId: string, to: number) {
 // poison deals can't be healed by any means"; issue #570, EQP-17). It never
 // takes away hit points they already have.
 export function healCeiling(campaignId: string, sheet: CharacterSheet, max = effectiveMaxHp(sheet)): number {
-  const unhealable = afflictionsOf(campaignId, sheet.id).reduce((sum, entry) => sum + (entry.kind === "poison" ? (entry.unhealable ?? 0) : 0), 0);
+  // Read from the records still in force: a heal in the same turn as the
+  // cure found the ended poison's damage still barred.
+  const unhealable = afflictionsOf(campaignId, sheet.id).reduce((sum, entry) => sum + (entry.kind === "poison" && inForce(entry, sheet) ? (entry.unhealable ?? 0) : 0), 0);
   return unhealable ? Math.max(Math.min(sheet.currentHp, max), max - unhealable) : max;
 }
 

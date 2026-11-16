@@ -70,4 +70,37 @@ await test("W01 use_item lights a torch rather than using it up, the daylight pu
   assert.equal(torchesOf(bearer.id)?.litAt, undefined, "nobody lit another while they slept");
 });
 
+await test("W02 Pale Tincture cured of its poisoning stops its daily save and lets the healing in", async () => {
+  // SRD 5.1, Poisons, Pale Tincture: "A creature subjected to this poison
+  // must succeed on a DC 16 Constitution saving throw or take 3 (1d6) poison
+  // damage and become poisoned. The poisoned creature must repeat the saving
+  // throw every 24 hours, taking 3 (1d6) poison damage on a failed save.
+  // Until this poison ends, the damage the poison deals can't be healed by
+  // any means." Lesser Restoration: "end either one disease or one condition
+  // afflicting it. The condition can be blinded, deafened, paralyzed, or
+  // poisoned."
+  await peace();
+  const victim = world.addHero({ class: "fighter", level: 5, maxHp: 44 });
+  world.patch(victim.id, { currentHp: 44 });
+  world.clearDice();
+  world.dice(5);
+  const out = await world.invoke("afflict", { characterId: victim.id, kind: "poison", name: "Pale Tincture", save: false });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.sheet(victim.id).currentHp, 39);
+  const cured = await world.invoke("clear_condition", { characterId: victim.id, condition: "poisoned", reason: "Lesser Restoration" });
+  assert.equal(cured.ok, true, cured.error);
+  const healed = await world.invoke("heal", { characterId: victim.id, amount: 10, reason: "cure wounds" });
+  assert.equal(healed.ok, true, healed.error);
+  assert.equal(world.sheet(victim.id).currentHp, 44, "the poison has ended, so its damage heals");
+  world.patch(victim.id, { currentHp: 30 });
+  world.diceLog();
+  world.dice(1, 6, 1, 6);
+  await world.invoke("pass_time", { amount: 25, unit: "hours" });
+  const rolled = world.diceLog();
+  world.clearDice();
+  assert.equal(rolled.filter((die) => die.sides === 20).length, 0, "no daily save for a poison already ended");
+  assert.ok(!world.sheet(victim.id).conditions.includes("poisoned"), "and no poisoning back");
+});
+
 finish();
