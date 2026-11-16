@@ -120,7 +120,8 @@ declare global {
 // re-embedded with it in the background, as a change of EMBEDDING_MODEL is
 // at a restart; until a row is re-embedded, search finds it by its words.
 // `boot`: the start-up pass runs its own reconcile and catch-up after this.
-export async function applyServerLanguage(language: TableLanguage, options: { boot?: boolean } = {}): Promise<boolean> {
+// The save that asked never waits on the re-embed.
+export function applyServerLanguage(language: TableLanguage, options: { boot?: boolean } = {}): boolean {
   const changed = setEmbeddingLanguage(language);
   if (!changed || options.boot) {
     return changed;
@@ -129,11 +130,15 @@ export async function applyServerLanguage(language: TableLanguage, options: { bo
   globalThis.__odmEmbeddingVerdicts = undefined;
   // A pass already running finishes first, so nothing it writes with the
   // old model lands after the stored vectors are cleared.
-  await globalThis.__odmEmbeddingCatchUp?.catch(() => 0);
-  reconcileEmbeddingModel();
-  void embedMissingVectors().catch((error) => {
-    console.error("[embeddings] re-embedding after the language change failed", error);
-  });
+  const running = globalThis.__odmEmbeddingCatchUp?.catch(() => 0) ?? Promise.resolve(0);
+  void running
+    .then(() => {
+      reconcileEmbeddingModel();
+      return embedMissingVectors();
+    })
+    .catch((error) => {
+      console.error("[embeddings] re-embedding after the language change failed", error);
+    });
   return true;
 }
 

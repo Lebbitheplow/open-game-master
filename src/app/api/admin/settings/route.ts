@@ -291,7 +291,7 @@ export async function PATCH(request: Request) {
   // A language that reads with another model switches the GM's memory to
   // it now and re-embeds the stored story in the background.
   if (parsed.data.serverLanguage !== undefined) {
-    await applyServerLanguage(saved.serverLanguage);
+    applyServerLanguage(saved.serverLanguage);
   }
   // A save that changes where pictures come from moves the campaigns stuck
   // on a backend that cannot paint onto the new default, when it can

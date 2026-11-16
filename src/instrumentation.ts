@@ -119,7 +119,7 @@ export async function register() {
         // The server's language picks the model before the stored vectors
         // are checked against it.
         const { getGlobalConfig } = await import("@/lib/db/app-settings");
-        await applyServerLanguage(getGlobalConfig().serverLanguage, { boot: true });
+        applyServerLanguage(getGlobalConfig().serverLanguage, { boot: true });
         reconcileEmbeddingModel();
         void embedMissingVectors().catch((error) => {
           console.error("[embeddings] catch-up failed", error);
