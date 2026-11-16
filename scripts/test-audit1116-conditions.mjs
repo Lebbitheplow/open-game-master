@@ -345,5 +345,20 @@ await test("D09: a summoned skeleton takes no exhaustion", async () => {
   assert.equal(worn.ok, false);
 });
 
+// D10. SRD 5.1, Protection from Evil and Good: aberrations, celestials,
+// elementals, fey, fiends and undead "can't charm, frighten, or possess the
+// target". A creature's action laid its condition naming itself, so the
+// ward read its kind; a creature's spell (cast_at_player) named nobody to
+// set_condition, and a fiend's Charm Person charmed the warded paladin.
+await test("D10: a warded hero is not charmed by a fiend's spell", async () => {
+  const { world, sheets: [paladin], enemies: [fiend] } = await table([FIGHTER], 1, { spells: ["Charm Person"], type: "fiend" });
+  world.patch(paladin.id, { conditions: ["protected from evil and good"], conditionMeta: {} });
+  world.dice(1);
+  const cast = await world.invoke("cast_at_player", { characterId: paladin.id, casterEnemyId: fiend.id, spell: "Charm Person", saveAbility: "wis", dc: 20 });
+  world.clearDice();
+  assert.equal(cast.ok, true, cast.error);
+  assert.equal(world.sheet(paladin.id).conditions.includes("charmed"), false, `the ward let the fiend's charm through: ${JSON.stringify(cast.result)}`);
+});
+
 closeTables();
 finish();

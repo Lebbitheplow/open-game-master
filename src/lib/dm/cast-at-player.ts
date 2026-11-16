@@ -150,9 +150,12 @@ export function layEnemyCondition(
       { spell: use.name, casterId: use.enemy.id, slotLevel: use.slotLevel },
       { ability: save.ability, dc: save.dc },
     );
-    const first = handleSetCondition(campaign, turn.id, fresh, { condition }, reason, { spellEffect });
+    // Its caster named, so a ward against its kind holds (Protection from
+    // Evil and Good: a fiend "can't charm, frighten, or possess the
+    // target"); unnamed, a fiend's Charm Person charmed the warded paladin.
+    const first = handleSetCondition(campaign, turn.id, fresh, { condition, sourceEnemyId: use.enemy.id }, reason, { spellEffect });
     const also = (use.spellCondition.also ?? []).filter((name) => name.toLowerCase() !== condition.toLowerCase());
-    const landed = also.filter((name) => !("error" in handleSetCondition(campaign, turn.id, getSheetById(sheet.id) ?? fresh, { condition: name }, reason, { spellEffect })));
+    const landed = also.filter((name) => !("error" in handleSetCondition(campaign, turn.id, getSheetById(sheet.id) ?? fresh, { condition: name, sourceEnemyId: use.enemy.id }, reason, { spellEffect })));
     return landed.length && !("error" in first) ? { ...first, alsoApplied: landed } : first;
   }
   // The block's own words for how long it lasts (monster-abilities.ts): a
