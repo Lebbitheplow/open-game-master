@@ -31,6 +31,7 @@ import { d20Expression, rollExpression } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import { rollAgainst } from "@/lib/roll-labels";
 import { enemyAcWithEffects } from "@/lib/dm/ac-effects";
+import { attackerUnseen, tryParry } from "@/lib/dm/enemy-reactions";
 import { markEnemyActed, markEnemyBonus } from "@/lib/dm/can-act";
 import { recordEnemyTurn } from "@/lib/dm/enemy-turn-logic";
 import { coverFor } from "@/lib/dm/attack-spatial";
@@ -225,13 +226,19 @@ export function enemyStrikesEnemy(
     publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll: hitRoll, source: "digital" });
     turn.rollIds.push(hitRoll.id);
     const natCrit = toHit.crit === "nat20";
-    const hit = toHit.crit !== "nat1" && (natCrit || toHit.total >= vsAc);
+    const struck = toHit.crit !== "nat1" && (natCrit || toHit.total >= vsAc);
+    // The target's Parry or Shield, as a character's swing meets it
+    // (attack-swing.ts): a dominated creature's blow went through a mage's
+    // Shield. Read on the live fight, so a reaction spent this call counts.
+    const fight = struck && !natCrit ? getActiveEncounter(campaign.id) : null;
+    const parry = fight ? tryParry({ encounter: fight, enemy: now, total: toHit.total, natural20: false, ac: vsAc, melee: !mode.ranged, attackerUnseen: attackerUnseen(enemy.conditions, now.conditions, null) }) : null;
+    const hit = struck && !parry;
     const crit = natCrit || (hit && odds.autoCrit);
     if (attackerPos && targetPos && !attackerPos.hidden) {
       publishFx(campaign.id, planAttackFx({ from: attackerPos.at, to: targetPos.at, fromTokenId: attackerPos.tokenId, toTokenId: targetPos.tokenId, hit, crit, ranged: mode.ranged, damageType: attack.type, visibility: hitRoll.visibility }));
     }
     if (!hit) {
-      swings.push({ attack: attack.name, rolled: toHit.total, hit: false, ...(toHit.crit === "nat1" ? { fumble: true } : {}) });
+      swings.push({ attack: attack.name, rolled: toHit.total, hit: false, ...(toHit.crit === "nat1" ? { fumble: true } : {}), ...(parry ? { reaction: parry.note } : {}) });
       continue;
     }
     // Martial Advantage and Surprise Attack add their dice to the blow, and

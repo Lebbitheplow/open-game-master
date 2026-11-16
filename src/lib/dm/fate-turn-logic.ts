@@ -44,7 +44,9 @@ export const fateTarget = (roll: JudgedRoll): number | null => ("ac" in roll ? r
 export function fateSucceeds(roll: JudgedRoll): boolean | null {
   const natural = roll.outcome.natural;
   if ("ac" in roll) {
-    return natural !== 1 && ((natural !== undefined && natural >= roll.critRange) || roll.outcome.total >= roll.ac);
+    // Only a natural 20 hits whatever the AC; a Champion's 19 hits by its
+    // total, as the attack rules it (after-roll-logic.ts attackHits).
+    return natural !== 1 && (natural === 20 || roll.outcome.total >= roll.ac);
   }
   return roll.dc === null ? null : roll.outcome.total >= roll.dc;
 }

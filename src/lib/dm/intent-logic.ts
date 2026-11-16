@@ -244,6 +244,8 @@ export function directCardCall(intent: MessageIntent, characterId: string, conte
           targetEnemyId: intent.targetId,
           ...(intent.weapon ? { weapon: intent.weapon } : {}),
           ...(intent.offHand ? { offHand: true } : {}),
+          // The magic ammunition the card picked (hand-ammo.ts).
+          ...(intent.item ? { ammo: intent.item } : {}),
           ...(intent.attack ?? {}),
           ...riders,
         },

@@ -51,12 +51,16 @@ import { critDamageExpression, ordinaryOfCritical } from "@/lib/dm/encounter-log
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
 import { hexWarriorSwing, shillelaghSwing } from "@/lib/dm/attack-features";
-import { otherHandArmed } from "@/lib/dm/attack-rules";
+import { isUndeadOrFiend, otherHandArmed, smiteDice } from "@/lib/dm/attack-rules";
 import { wearsUntrainedArmor } from "@/lib/srd/armor";
 import { liftsSmallHeavyPenalty } from "@/lib/srd/feat-combat";
 import { gearCritRiders, itemRidersAgainst } from "@/lib/dm/gear-attack";
 import { foldDamageRiders, landBlow, strikesAsMagic, withSneakAttack } from "@/lib/dm/pc-attack-damage";
-import { clearHitSpent } from "@/lib/dm/pc-attack-riders";
+import { clearHitSpent, spendOnHit } from "@/lib/dm/pc-attack-riders";
+import { smiteSlotOf } from "@/lib/dm/opportunity-ask-logic";
+import { opportunityTwoHanded } from "@/lib/dm/opportunity-weapon";
+import { woundOnHit } from "@/lib/dm/sword-wounding";
+import { swornElsewhere } from "@/lib/dm/oathbow";
 import { acBreakdownFor, computeSheetDerived, sizeForRace } from "@/lib/srd";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
 import { conditionsSpentAgainst } from "@/lib/srd/condition-effect-queries";
@@ -143,6 +147,8 @@ function weaponSwing(sheet: CharacterSheet, resolved: ResolvedWeapon, riders: Re
     worn: magicItemRiders(sheet.equipment, sheet).weaponRiders,
     // Dueling wants the other hand empty of weapons, here as on the turn.
     otherWeaponInHand: otherHandArmed({ equipment: sheet.equipment, weapon: resolved.displayName, shieldName: acBreakdownFor(sheet).shieldName }),
+    // A versatile weapon in both hands when the other is free (opportunity-weapon.ts).
+    twoHanded: opportunityTwoHanded(sheet, resolved, riders),
   });
   // The blade's material (a silvered sword), for the resistances that name
   // it, as the turn's swing carries it (pc-attack-profile.ts): the reaction
@@ -150,6 +156,12 @@ function weaponSwing(sheet: CharacterSheet, resolved: ResolvedWeapon, riders: Re
   // attack.
   const material = weaponMaterial(sheet.equipment[lineNamed(sheet.equipment, resolved.displayName)]);
   return { ...profile, material, ...(shillelagh ? { magicWeapon: true } : {}) };
+}
+
+// The slot Divine Smite would spend on a character's opportunity attack, or
+// null: a paladin's swing may carry it, as the turn's melee hit may.
+export function opportunitySmiteSlot(sheet: CharacterSheet): number | null {
+  return combatRiders(sheet).canSmite ? smiteSlotOf(sheet.spellcasting) : null;
 }
 
 export function pcOpportunitySwing(input: {
@@ -167,6 +179,9 @@ export function pcOpportunitySwing(input: {
   targetConditions: string[];
   // The tile the walker left the reach from (opportunitySight).
   moverAt: XY | null;
+  // Divine Smite's slot, when the player took it on the card
+  // (opportunity-ask.ts): paid only on a hit.
+  smiteSlot?: number;
 }): { note: string; dropped: boolean } {
   const { campaign, encounter, sheet, enemy, resolved } = input;
   const natural = input.natural ?? null;
@@ -219,6 +234,8 @@ export function pcOpportunitySwing(input: {
   const advantage: Advantage = mergeAdvantage([
     ...context.sources,
     ...(untrained || smallWithHeavy || underwater.disadvantage ? ["disadvantage" as const] : []),
+    // Another weapon than the Oathbow while its sworn enemy lives (oathbow.ts).
+    ...(swornElsewhere(sheet, profile) ? ["disadvantage" as const] : []),
     exhaustionRollState(sheet.exhaustion ?? 0, "attack").advantage,
     ...light.sources,
     ...attackRiders.advantageSources,
@@ -313,6 +330,25 @@ export function pcOpportunitySwing(input: {
     profile = { ...profile, damageExpression: `${profile.damageExpression}${critGear.suffix}` };
     typedRiders.push(...critGear.typed);
   }
+  // SRD 5.1, Divine Smite: "when you hit a creature with a melee weapon
+  // attack, you can expend one spell slot", and an opportunity attack is
+  // one. Paid on the hit as the turn's swing pays it (pc-attack-riders.ts
+  // spendOnHit), its dice radiant and doubled with the rest on a critical.
+  if (input.smiteSlot && !natural) {
+    const undeadOrFiend = isUndeadOrFiend(enemy);
+    const dice = smiteDice(input.smiteSlot, undeadOrFiend);
+    const spends = { characterId: sheet.id, smite: { slot: input.smiteSlot, dice, undeadOrFiend }, baseDamage: profile.damageExpression, critExtraDice: riders.critExtraDice };
+    const paid = withOpportunityTurn(campaign.id, (turn) => {
+      const sheets = listSheets(campaign.id);
+      return spendOnHit(campaign, turn.id, spends, sheets, new Map(sheets.map((entry) => [entry.id, entry])));
+    });
+    notes.push(...paid.notes);
+    if (paid.suffix) {
+      profile = { ...profile, damageExpression: `${profile.damageExpression}${paid.suffix}` };
+      typedRiders.push({ dice: `${dice}d8`, type: "radiant" });
+      notes.push(`Divine Smite (level ${input.smiteSlot} slot): +${dice}d8 radiant${undeadOrFiend ? ", against an undead or fiend" : ""}`);
+    }
+  }
   clearHitSpent(campaign, sheet.id, folded.hitSpent);
   writeMarks(campaign.id, sheet.id, marks.assign);
   // Great Weapon Fighting rerolls the 1s and 2s of a two-handed melee
@@ -389,6 +425,11 @@ export function pcOpportunitySwing(input: {
     const dropped = Boolean(applied.dead) || struck?.status === "dead";
     // What a natural attack's hit carries (a wolf's bite: a Strength save or
     // prone), as the turn's swing lands it (attack-blow.ts).
+    // A Sword of Wounding's wound, once per turn (sword-wounding.ts).
+    const wound = !dropped && profile.gearWounds && !isSheetFoe(enemy) ? woundOnHit(campaign, enemy.id, sheet.id) : null;
+    if (wound) {
+      notes.push(wound);
+    }
     if (!dropped && profile.creatureOnHit && !isSheetFoe(enemy)) {
       notes.push(...landNaturalOnHit(campaign, { turn, attacker: { kind: "sheet", sheetId: sheet.id, name: sheet.name }, holderId: sheet.id, attack: profile.weapon, enemyId: enemy.id, onHit: profile.creatureOnHit }));
     }

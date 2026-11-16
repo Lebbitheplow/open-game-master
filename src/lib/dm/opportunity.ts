@@ -23,18 +23,17 @@ import { d20Expression, rollExpression, type Advantage } from "@/lib/dice";
 import { publishWithSeq } from "@/lib/events";
 import {
   adjudicateHit,
-  resolveAttackWeapon,
   weaponAttackProfile,
-  weaponOf,
   type AttackProfile,
+  type ResolvedWeapon,
 } from "@/lib/dm/attack-logic";
 import { naturalOpportunity } from "@/lib/dm/opportunity-natural";
+import { opportunityWeaponFor } from "@/lib/dm/opportunity-weapon";
 import { RAGING } from "@/lib/srd/class-resources";
-import { acBreakdownFor, computeSheetDerived } from "@/lib/srd";
-import { matchWeapon, weaponNamed } from "@/lib/srd/weapons";
+import { computeSheetDerived } from "@/lib/srd";
+import { weaponNamed } from "@/lib/srd/weapons";
 import { underwaterOpportunity } from "@/lib/dm/underwater";
 import { swimsFrom } from "@/lib/battlemap/types";
-import { magicWeaponOfRow } from "@/lib/dm/gear-attack";
 import { combatRiders } from "@/lib/srd/feature-effects";
 import { conditionBlocksReactions } from "@/lib/srd/condition-effects";
 import { critDamageExpression, ordinaryOfCritical } from "@/lib/dm/encounter-logic";
@@ -56,7 +55,7 @@ import { opportunityReactionKey } from "@/lib/srd/authored-effects-more";
 import { conditionsOf } from "@/lib/dm/vitals-logic";
 import { attackSenses, characterSenses, enemySenses, fearAsRolled, lightOnAttack, sensesReaching } from "@/lib/dm/attack-light";
 import { charmedBy, opportunityWeapon } from "@/lib/dm/enemy-profile";
-import { enemyOpportunityRiders, opportunitySight, pcOpportunitySwing, withOpportunityTurn } from "@/lib/dm/opportunity-strike";
+import { enemyOpportunityRiders, opportunitySight, opportunitySmiteSlot, pcOpportunitySwing, withOpportunityTurn } from "@/lib/dm/opportunity-strike";
 import { holdsFeat } from "@/lib/srd/feat-effects";
 import { warCasterOpportunity } from "@/lib/dm/ar-wbf-feat-warcaster";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
@@ -524,26 +523,6 @@ function stokeRage(sheet: NonNullable<ReturnType<typeof getSheetById>>) {
   });
 }
 
-// The melee weapon a character strikes with when something walks away from
-// them: the best one they carry, one-handed beside a shield. A character
-// carrying only a bow has no opportunity attack to make. A magic weapon is
-// its base weapon (a Flame Tongue is a longsword, src/lib/dm/gear-attack.ts).
-function meleeWeaponFor(sheet: NonNullable<ReturnType<typeof getSheetById>>) {
-  const weaponFor = (item: (typeof sheet.equipment)[number]) =>
-    magicWeaponOfRow(item).srd ?? weaponOf(item) ?? matchWeapon(item);
-  const melee = sheet.equipment.filter((item) => {
-    const weapon = weaponFor(item);
-    return weapon !== null && weapon.kind === "melee";
-  });
-  const carriesWeapon = sheet.equipment.some((item) => weaponFor(item) !== null);
-  if (!melee.length && carriesWeapon) {
-    return null;
-  }
-  return resolveAttackWeapon(melee, sheet.proficiencies.weapons, undefined, {
-    shieldOnArm: acBreakdownFor(sheet).shieldName !== null,
-  });
-}
-
 // The other side of the same rule: a creature that walks out of a
 // character's reach eats a melee attack from them. Fires wherever an enemy
 // walks (the DM's move_token and the approach enemy_attack makes), and for a
@@ -616,7 +595,7 @@ export function resolvePcOpportunityWalk(
 
   // Who has the walker in reach somewhere on the walk, and the square it is
   // on as they swing, in the order the walk meets those squares.
-  const reaches: Array<{ id: string; resolved: ReturnType<typeof meleeWeaponFor>; natural: AttackProfile | null; token: XY; reachTiles: number; moverAt: XY; step: number; trigger: OpportunityTrigger }> = [];
+  const reaches: Array<{ id: string; resolved: ResolvedWeapon | null; natural: AttackProfile | null; token: XY; reachTiles: number; moverAt: XY; step: number; trigger: OpportunityTrigger }> = [];
   for (const stale of listSheets(campaign.id)) {
     const sheet = getSheetById(stale.id) ?? stale;
     if (sheet.id === enemyId || sideOf(encounter, "sheet", sheet.id, sheet) === moverSide) {
@@ -637,7 +616,7 @@ export function resolvePcOpportunityWalk(
     // (opportunity-natural.ts); a form with no melee attack swings nothing.
     const shaped = naturalOpportunity(sheet);
     const natural = shaped?.profile ?? null;
-    const resolved = shaped ? null : meleeWeaponFor(sheet);
+    const resolved = shaped ? null : opportunityWeaponFor(sheet);
     if (shaped ? !natural : !resolved) {
       continue;
     }
@@ -732,7 +711,9 @@ export function resolvePcOpportunityWalk(
     // the card never asks about a swing that could not be made. Let go, it
     // spends nothing and the walk goes on.
     const walker = shownName(encounter.id, enemy.id, enemy.displayName);
-    const answer = opportunityAnswer(campaign, sheet, { walkerId: enemyId, walker, weapon: natural?.weapon ?? resolved?.displayName ?? "", trigger: reach.trigger });
+    // A paladin's card offers Divine Smite too (opportunity-strike.ts).
+    const smiteSlot = natural ? null : opportunitySmiteSlot(sheet);
+    const answer = opportunityAnswer(campaign, sheet, { walkerId: enemyId, walker, weapon: natural?.weapon ?? resolved?.displayName ?? "", trigger: reach.trigger, ...(smiteSlot ? { smiteSlot } : {}) });
     if (answer && !answer.strike) {
       notes.push(letGoNote(sheet.name, walker));
       continue;
@@ -758,6 +739,7 @@ export function resolvePcOpportunityWalk(
       adjacent: reach.reachTiles <= 1,
       targetConditions: withLiveDodge(enemy.conditions),
       moverAt,
+      ...(answer?.smite && smiteSlot ? { smiteSlot } : {}),
     });
     notes.push(answer?.timedOut ? timedOutNote(sheet.name, note) : note);
     stops();

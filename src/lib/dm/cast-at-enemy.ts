@@ -9,7 +9,8 @@
 // the slot spend) and must never be imported by it.
 
 import { READ_THOUGHTS, isSuggestion, thoughtsReadBy } from "@/lib/dm/read-thoughts";
-import { isConditionNamed } from "@/lib/srd/feature-names";
+import { isConditionNamed, isNamed } from "@/lib/srd/feature-names";
+import { shieldAgainstMagicMissile } from "@/lib/dm/enemy-reactions";
 import { extendedMeta, factsAsCast, heightenedSave, secondTargetProblem } from "@/lib/dm/mt-srd-metamagic";
 import { spendRealityRend } from "@/lib/dm/genre-a-cyberpunk-spends";
 import { magicImmunityNote } from "@/lib/dm/monster-traits";
@@ -476,7 +477,10 @@ export function handleCastAtEnemy(
   // A ward around the target, an immunity to the spell's condition or
   // creature type, or Limited Magic Immunity (the rakshasa, src/lib/dm/monster-traits.ts): the
   // spell is cast, and spent, and does nothing to it (SRD 5.1).
-  const noEffect = ward ?? immune ?? spared ?? magicImmunityNote(enemy, spellName, slotLevel ?? facts?.level ?? 0);
+  // Shield takes every Magic Missile dart, raised now if it is not up yet
+  // (enemy-reactions.ts), read on the live fight so its reaction counts.
+  const live = getActiveEncounter(campaign.id);
+  const noEffect = ward ?? immune ?? spared ?? magicImmunityNote(enemy, spellName, slotLevel ?? facts?.level ?? 0) ?? (isNamed(spellName, "magic missile") && live && !isSheetFoe(enemy) ? shieldAgainstMagicMissile(live, enemy) : null);
   if (noEffect) {
     return { ok: true, ...base, ...castToNoEffect(noEffect) };
   }

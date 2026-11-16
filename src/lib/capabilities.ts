@@ -290,6 +290,15 @@ export const SERVER_FEATURES = {
   // Strike or Let it go on POST /api/campaigns/[id]/pending-rolls/[id]/opportunity.
   // An older host never asks (it takes the swing), so the card never draws there.
   opportunityAsk: true,
+  // Divine Smite on that card (G10): the ask's `smiteSlot`, answered with
+  // `smite: true` beside `strike`. An older host's route refuses the field,
+  // so the app draws the smite button only where the host offers it.
+  opportunitySmite: true,
+  // Magic ammunition (G18): pc_attack's `ammo`, the console's Ammunition
+  // field and a weapon card's pick of the +1 arrows it can fire (hand-ammo.ts).
+  // An older host strips `ammo` unread and fires ordinary arrows, so the app
+  // offers the pick only where the host reads it.
+  magicAmmo: true,
   // Watching a fight for Portent (src/lib/dm/foresight.ts): POST
   // /api/campaigns/[id]/foresight turns the stops on, and a stop's card
   // answers on pending-rolls/[id]/watch. An older host answers 404, so the

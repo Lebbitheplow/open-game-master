@@ -145,6 +145,8 @@ export type AttackRecord = PendingAttack & {
     poison?: boolean;
     tempHp?: { amount: number; feature: string };
     creature?: CreatureOnHit;
+    // A Sword of Wounding's wound (sword-wounding.ts).
+    wounds?: boolean;
     // A form's or a summoned creature's charge this hit rides (party-charge.ts).
     charge?: ChargeTrait;
   };
@@ -188,6 +190,7 @@ export function attackRecord(plan: AttackPlan, strike: { critExtraDice: number; 
     ...(extras.poison ? { poison: true } : {}),
     ...(extras.tempHp ? { tempHp: extras.tempHp } : {}),
     ...(profile.creatureOnHit ? { creature: profile.creatureOnHit } : {}),
+    ...(profile.gearWounds ? { wounds: true } : {}),
     ...(extras.charge ? { charge: extras.charge } : {}),
   };
   return {

@@ -1,3 +1,4 @@
+import { swearOath } from "@/lib/dm/oathbow";
 import { getFoe } from "@/lib/dm/sheet-foe";
 import { holdsFeature } from "@/lib/srd/feature-names";
 import { distantStrikeSquare, distantStrikeTeleport } from "@/lib/dm/distant-strike";
@@ -211,6 +212,10 @@ export const pcAttackTool: ToolDef = {
                 description:
                   "Paladin Divine Smite: the spell slot level to burn on a hit. The server spends the slot and adds the radiant dice.",
               },
+              ammo: {
+                type: "string",
+                description: "Magic ammunition to fire, as its sheet line (+1 Arrows). Omit for ordinary ammunition.",
+              },
               level: {
                 type: "integer",
                 minimum: 1,
@@ -254,6 +259,9 @@ export const pcAttackArgsSchema = z.object({
   twoHanded: z.coerce.boolean().optional(),
   offHand: z.coerce.boolean().optional(),
   smite: z.coerce.number().int().min(1).max(9).optional(),
+  // The ammunition line the shot fires, magic ammunition most often
+  // (ammunition.ts namedAmmo): ordinary ammunition when absent.
+  ammo: z.string().trim().min(1).max(80).optional(),
   maneuver: z.string().max(60).optional(),
   advantageSource: z.enum(ADVANTAGE_SOURCES).optional(),
   advantageReason: fittedText(200).optional(),
@@ -576,6 +584,13 @@ function spendPcAttack(plan: AttackPlan): ToolError | null {
   if (plan.drawn) {
     patchSheet(sheet.id, { equipment: plan.drawn.equipment });
     context.notes.push(plan.drawn.note);
+  }
+  // The Oathbow's command phrase, said with the shot (oathbow.ts).
+  if (plan.swearOath) {
+    const sworn = swearOath(campaign, sheet.id, plan.enemy.id);
+    if (sworn) {
+      context.notes.push(sworn);
+    }
   }
   if (ammo && ammo.ok) {
     const carried = plan.drawn?.equipment ?? sheet.equipment;

@@ -25,12 +25,14 @@ const NO_DICE: RollResult = { expression: "0", total: 0, terms: [] };
 
 // The answer, written on the card and landed: the walk's call runs again with
 // it. Null when the card was already answered.
-export async function answerOpportunityAsk(campaign: Campaign, pending: PendingRoll, answer: { strike: boolean; timedOut?: boolean }) {
+export async function answerOpportunityAsk(campaign: Campaign, pending: PendingRoll, answer: { strike: boolean; smite?: boolean; timedOut?: boolean }) {
   const ask = pending.carry?.ask;
   if (!ask || pending.status !== "pending") {
     return null;
   }
-  const carry = { ...pending.carry, ask: { ...ask, strike: answer.strike, ...(answer.timedOut ? { timedOut: true } : {}) } };
+  // A smite only on a swing, and only where the card offered one.
+  const smite = answer.strike && answer.smite === true && ask.smiteSlot !== undefined;
+  const carry = { ...pending.carry, ask: { ...ask, strike: answer.strike, ...(smite ? { smite: true } : {}), ...(answer.timedOut ? { timedOut: true } : {}) } };
   const written = setPendingCarry(pending.id, carry);
   if (!written) {
     return null;

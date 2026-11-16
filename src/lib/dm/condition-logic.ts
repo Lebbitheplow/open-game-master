@@ -45,6 +45,11 @@ export type ConditionMeta = {
   // "stunned for 1 round" was counted at the round's wrap, and ran out
   // before the turn it was meant to cost (audit 2026-11-13, T04).
   countsOn?: string;
+  // A condition that stacks (a Sword of Wounding's wounds): how many, and the
+  // turn ("round:turnIndex") the last was laid on, for a once-per-turn rider
+  // (src/lib/dm/sword-wounding.ts).
+  stacks?: number;
+  woundedOn?: string;
   // Re-save at each round wrap; success ends the condition.
   // `or`: a second ability the creature may roll instead, choosing again at
   // each save (Nature's Wrath: Strength or Dexterity; see likelierSave).

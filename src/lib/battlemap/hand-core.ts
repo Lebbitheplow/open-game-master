@@ -399,6 +399,10 @@ export type HandOptions = {
   // for a host too old to resolve them (src/lib/capabilities.ts
   // handItemCasts). Absent means they are.
   items?: boolean;
+  // Whether a weapon's card offers the magic ammunition it can fire
+  // (hand-ammo.ts): false for a host that does not read the pick
+  // (src/lib/capabilities.ts magicAmmo). Absent means it does.
+  magicAmmo?: boolean;
   // What the board says of the character's own square (PlayerMapView.self).
   board?: HandBoardFacts;
 };
