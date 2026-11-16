@@ -16,6 +16,7 @@ import { passableTiles } from "@/lib/battlemap/passage";
 import { getSheetById } from "@/lib/db/sheets";
 import { sheetSize } from "@/lib/srd";
 import { removeConditions } from "@/lib/dm/condition-logic";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import { resolvePcOpportunityWalk } from "@/lib/dm/opportunity";
 import { publishEphemeral } from "@/lib/events";
 import { swingMode, type EnemyAttackProfile } from "@/lib/dm/enemy-profile";
@@ -251,7 +252,7 @@ export function approachTarget(
     // Still prone once it tried to stand (standUpIfProne, or a dry run's
     // standUpCost), it had too little movement to stand and crawls, every
     // square one more (SRD 5.1, Being Prone), as move_token walks it.
-    const crawls = enemy.conditions.some((entry) => entry.toLowerCase() === "prone") && (!options.dryRun || standUpCost(encounterId, enemy) === null);
+    const crawls = enemy.conditions.some((entry) => isConditionNamed(entry, "prone")) && (!options.dryRun || standUpCost(encounterId, enemy) === null);
     const walking = enemyMoveTraits(map.width, listTokens(map.id), attacker, enemy.encounterId);
     const swims = crawls ? crawlingTraits(walking) : walking;
     // A creature larger than a square walks as its whole space: it squeezes

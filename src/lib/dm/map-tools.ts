@@ -61,6 +61,7 @@ import { resolveSheetRef } from "@/lib/dm/rolls";
 import { resolvePcOpportunityWalk } from "@/lib/dm/opportunity";
 import { releaseGrapplesOutOfReach } from "@/lib/dm/grapple";
 import { isIncapacitated } from "@/lib/dm/condition-logic";
+import { isConditionNamed } from "@/lib/srd/feature-names";
 import { canAct, canEnemyAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal, ownTurnOf } from "@/lib/dm/held-turn";
 import { afterMoveLeashes, leashRefusal } from "@/lib/dm/condition-leash";
@@ -773,7 +774,7 @@ export function handleMoveToken(
     let crawls = false;
     if (walking && resolved.enemy) {
       const stand = standUpCost(encounter.id, resolved.enemy);
-      crawls = stand === null && resolved.enemy.conditions.some((entry) => entry.toLowerCase() === "prone");
+      crawls = stand === null && resolved.enemy.conditions.some((entry) => isConditionNamed(entry, "prone"));
       standCost = stand ?? 0;
       steps = awayFromFear(
         resolved.token,
