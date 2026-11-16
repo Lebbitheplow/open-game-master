@@ -2976,6 +2976,16 @@ button.cine-chronicle-earlier:focus-visible { outline: 2px solid #f4e0a6; outlin
      heading gives way, as the Hand's own "Your hand" says it, and the plate
      takes its line. Another's turn keeps its heading, which is all it has. */
   .cine-fight-board[data-foot-band="tight"] .board-turn-hud > .board-eyebrow:not(:only-child) { display: none; }
+  /* A companion's heading named whose stats the plate shows, so the plate
+     says it there. The plate stands 6px higher, centred on the round's
+     line: a taller strip (the GM's own board, 77px) holds the row under it,
+     and at 14px they touched. The row's words give way to what still says
+     them: Undo move keeps its arrow (its name and title say the rest) and
+     the round's line its number. After a walk the row was 127px wider and
+     lay over the round's line. */
+  .cine-fight-board[data-foot-band="tight"] .turn-hud-who { display: inline; }
+  .cine-fight-board[data-foot-band="tight"] .board-turn-hud { top: 0.5rem; }
+  .cine-fight-board[data-foot-band="tight"] :is(.board-undo-word, [data-tour="battle-initiative"] > .board-eyebrow > span) { display: none; }
   /* The Hand's hint is a second sentence beside its heading. On a narrow
      board it pushed the pips and Hide to a second row, and the Hand stood
      21px further up the map for it. */

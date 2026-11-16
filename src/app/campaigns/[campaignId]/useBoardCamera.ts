@@ -471,11 +471,13 @@ export function useBoardCamera(
         watched.add(foot);
         observer.observe(foot);
       }
-      // The turn's heading changes width with whose turn it is.
-      const hud = frameEl.querySelector(TURN_HUD_SELECTOR);
-      if (hud && !watched.has(hud)) {
-        watched.add(hud);
-        observer.observe(hud);
+      // The turn's heading changes width with whose turn it is, and the row
+      // with Undo move, which comes after a walk.
+      for (const part of frameEl.querySelectorAll(`${TURN_HUD_SELECTOR}, .board-endturn`)) {
+        if (!watched.has(part)) {
+          watched.add(part);
+          observer.observe(part);
+        }
       }
       markFootBand(frameEl);
     };
