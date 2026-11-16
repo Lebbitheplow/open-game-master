@@ -97,10 +97,16 @@ export async function runStage(
   const facts: StageFact[] = [];
   const silent: string[] = [];
   const waiting = new Set(order.map((npc) => npc.id));
-  for (const actor of order) {
+  // Every mind reacts to the same moment at once (a local model serves them
+  // side by side); only the referee goes in order, so each outcome stands on
+  // the ones before it. What the others did reaches a mind next turn.
+  const answers = await Promise.all(
+    order.map(async (actor) => (await handleNpcSpeak(campaign, JSON.stringify({ name: actor.name, perceives: stageSenses(narration, []) || "Nothing new." }))) as Record<string, unknown>),
+  );
+  for (const [index, actor] of order.entries()) {
     waiting.delete(actor.id);
     const lines = facts.map(factLine);
-    const said = (await handleNpcSpeak(campaign, JSON.stringify({ name: actor.name, perceives: stageSenses(narration, lines) || "Nothing new." }))) as Record<string, unknown>;
+    const said = answers[index];
     if (said.ok !== true) {
       silent.push(actor.name);
       continue;

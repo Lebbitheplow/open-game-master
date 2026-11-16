@@ -42,8 +42,8 @@ table the work is split, and the server holds the order:
 | Role | Who | Task |
 | --- | --- | --- |
 | Players' referee | the narrator, as before | Resolves the players' action with the engine's tools and narrates it. |
-| Director | server | After that, every first-tier mind in the scene takes a turn, in an order that rotates. |
-| Senses | server | What the table was just told, plus how each earlier action of this moment ended. |
+| Director | server | After that, every first-tier mind in the scene takes a turn. Their voices and Egos run side by side on the same moment; the referee then rules on them one by one, in an order that rotates. What the others did reaches a mind next turn. |
+| Senses | server | What the table was just told; the referee also sees how each earlier action of this moment ended. |
 | Voice, Ego | as above | |
 | Referee | the narrator's model, one small prompt | Says whether the action is uncertain, its DC and modifier, and both outcomes. The server rolls the d20 and picks the branch. Never kills. |
 | Record | server | Drank, ate, things gained and lost, wounded or unconscious, written to the NPC's sheet. |
@@ -58,3 +58,10 @@ old flow. The stage does not run while an encounter is active.
 
 - Whether the Ego should ask the voice again before choosing for it.
 - Fear and pain as drives.
+
+## Local models
+
+The voices run on llama.cpp with Metal (`llama-server --parallel 4
+--reasoning-budget 0`), reached as the table's `custom` utility endpoint, so
+several minds are served at once. Gemma 4 thinks before answering unless its
+reasoning is switched off, and then spends its whole budget on the thought.
