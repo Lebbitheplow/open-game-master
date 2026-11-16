@@ -3713,7 +3713,7 @@
    {
     "c": "at the end of a long rest a soul trinket appears in your hand if you have none.",
     "is": "held",
-    "by": "src/lib/dm/mt-mr-trinkets.ts soulTrinketAtRestEnd (src/lib/dm/rest-tools.ts)",
+    "by": "src/lib/dm/mt-mr-trinkets.ts soulTrinketAtRestEnd (src/lib/dm/rest-benefits.ts)",
     "probe": "scripts/test-enforce-sweep-clauses-martial-rogue.mjs: deaths-friend-trinket-at-rest"
    }
   ]
