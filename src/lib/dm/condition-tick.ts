@@ -63,8 +63,7 @@ import { spellSchoolFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
-import { withinFeet } from "@/lib/dm/authored-saves";
-import { markTurnEnded, unseenSaveHold, type UnseenHold } from "@/lib/dm/unseen-save";
+import { markTurnEnded, saveHoldAtTurnEnd, type UnseenHold } from "@/lib/dm/unseen-save";
 
 // Condition upkeep: timed conditions count down and expire, save-ends
 // conditions get their re-save rolled server-side (enemy saves from stat
@@ -557,22 +556,12 @@ export function walkedEnemiesHeld(campaign: Campaign, encounter: Encounter): str
   return walked.filter((id) => turnHoldKeys(campaign, encounter.id, [id]).some((hold) => !recorded || recorded.has(hold)));
 }
 
-// A hold saved against only far from its source (Dreadful Aspect: a creature
-// that ends its turn more than 30 feet away). Measured on the board as reach
-// is (authored-saves.ts): off the board it counts as close, as the fear's
-// reach did; a source no longer on the board is far.
-// Or only out of its sight (Fear: "If the creature ends its turn in a
-// location where it doesn't have line of sight to you, the creature can make
-// a Wisdom saving throw"): held while the holder still sees the caster, by
-// the board's line of sight and the conditions (a blinded holder, an
-// invisible caster). Without the save at all, Fear held its whole minute
-// whatever wall the creature fled behind. Off the board, from the end of its
-// second turn (unseen-save.ts); "first" marks the first.
+// A hold saved against only far from its source (Dreadful Aspect) or only out
+// of its sight (Fear: "If the creature ends its turn in a location where it
+// doesn't have line of sight to you, the creature can make a Wisdom saving
+// throw"): unseen-save.ts, the one rule a pet's clock reads too.
 function heldClose(encounter: Encounter | undefined, holderId: string, instance: ConditionMeta | undefined): UnseenHold {
-  if (!encounter || !instance?.source) return null;
-  const feet = instance.saveEnds?.beyondFeet;
-  if (feet && withinFeet(encounter.id, instance.source, holderId, feet)) return "held";
-  return instance.saveEnds?.unseen ? unseenSaveHold(encounter.id, holderId, instance) : null;
+  return encounter ? saveHoldAtTurnEnd(encounter.id, holderId, instance) : null;
 }
 
 function tickEnemyConditions(campaign: Campaign, encounter: Encounter, by: number, lines: string[], options: HolderTick = {}) {
@@ -881,6 +870,7 @@ function tickSheetConditions(
   // the same counts, and their saves as their owner's turn ends. Before, a
   // condition on a pet had no clock at all.
   tickPetConditions(campaign, by, lines, {
+    encounterId: options?.encounter?.id,
     endTurnBound: options?.endTurnBound,
     counts: options?.counts,
     saves: options?.saves,

@@ -2019,7 +2019,7 @@
     "lib/dm/pet-strike.ts#whole": [["identity",1,"the pet a call already found, again on the record read before each swing, by its stored name"]],
     "lib/dm/pet-mount.ts#whole": [["identity",1,"the drake a mount record names (pet:<textKey of its name>, pet-command.ts drakeMount), on its rider's record by textKey"]],
     "lib/dm/pet-mount.ts#whole-single": [["identity",1,"whether the rider's mount record is this pet, by the ref drakeMount wrote from its name"]],
-    "lib/dm/pet-conditions.ts#keyed": [["key",1,"a pet's conditionMeta by the condition key it was written under"]],
+    "lib/dm/pet-conditions.ts#keyed": [["key",2,"a pet's conditionMeta by the condition key it was written under"]],
     "lib/dm/pet-conditions.ts#whole": [["identity",2,"condition labels still held on the record"]],
     "lib/dm/pet-tools.ts#fallback": [["identity",1,"a pet by whole name or form; with none asked, the only one"]],
     "lib/dm/pet-tools.ts#whole": [["identity",2,"a pet by whole name or form"],["identity",1,"the pet a call already found, again on the record read before a write (hurtPet), by its stored name and kind"],["identity",1,"the conditions a blow ended, against the record's own condition labels"]],
