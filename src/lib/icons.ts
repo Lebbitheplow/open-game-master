@@ -11,7 +11,7 @@
 
 import paintedIcons from "@/lib/painted-icons.json";
 
-export type IconKind = "spell" | "item" | "feature" | "option" | "feat" | "condition" | "action" | "glyph" | "family";
+export type IconKind = "spell" | "item" | "inventory" | "feature" | "option" | "feat" | "condition" | "action" | "glyph" | "family";
 
 // The catalogue's slug rule, kept identical to scripts/icon-set.mjs.
 export function iconSlug(name: string): string {

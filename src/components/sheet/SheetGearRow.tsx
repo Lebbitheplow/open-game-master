@@ -9,7 +9,8 @@ import { armorChangeMinutes } from "@/lib/dm/don-doff";
 import { guessStands, matchArmor } from "@/lib/srd/armor";
 import { swapQuestion, wearConflict, type WearConflict } from "@/lib/srd/wear-slots";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
-import { ITEM_CATEGORY_LABEL, itemCategory, itemCategoryIcon, itemToneStyle } from "@/lib/srd/item-category-logic";
+import { ITEM_CATEGORY_LABEL, itemCategory, itemToneStyle } from "@/lib/srd/item-category-logic";
+import { inventoryItemIcon } from "@/lib/inventory-art-logic";
 
 // One wearable item on the character sheet: its charges, whether it is
 // attuning or cursed, and the wear and attune toggles with the engine's
@@ -98,8 +99,7 @@ export function SheetGearRow({
   return (
     <>
     <div data-gear-row={item.name} data-tone={category} style={itemToneStyle(category, "row")} className="flex items-center gap-2 text-xs text-stone-300">
-      {/* The item's kind, which reads at this size; its own painting does not. */}
-      <GameIcon icon={itemCategoryIcon(category)} size="size-6" className="tone-rim" />
+      <GameIcon icon={inventoryItemIcon(item)} size="size-6" className="tone-rim" />
       <span className="min-w-0 grow truncate">
         <span className="sr-only">{ITEM_CATEGORY_LABEL[category]}: </span>
         {item.name}

@@ -1,0 +1,391 @@
+{
+  "armor-breastplate": {
+    "scale": 0.9017,
+    "item": "breastplate"
+  },
+  "armor-chain-mail": {
+    "scale": 0.9309,
+    "item": "chain-mail"
+  },
+  "armor-chain-shirt": {
+    "scale": 0.8792,
+    "item": "chain-shirt"
+  },
+  "armor-half-plate": {
+    "scale": 0.9495,
+    "item": "half-plate"
+  },
+  "armor-hide": {
+    "scale": 0.933,
+    "item": "hide"
+  },
+  "armor-leather": {
+    "scale": 0.9908,
+    "item": "leather"
+  },
+  "armor-padded": {
+    "scale": 0.8948,
+    "item": "padded"
+  },
+  "armor-plate": {
+    "scale": 1.1841,
+    "item": "plate"
+  },
+  "armor-ring-mail": {
+    "scale": 0.8697,
+    "item": "ring-mail"
+  },
+  "armor-scale-mail": {
+    "scale": 0.9135,
+    "item": "scale-mail"
+  },
+  "armor-shield": {
+    "scale": 0.8671,
+    "item": "shield"
+  },
+  "armor-splint": {
+    "scale": 0.9585,
+    "item": "splint"
+  },
+  "armor-studded-leather": {
+    "scale": 0.9311,
+    "item": "studded-leather"
+  },
+  "armor-wooden-shield": {
+    "scale": 0.9425,
+    "item": "shield"
+  },
+  "gear-acid": {
+    "scale": 1.8,
+    "item": "acid"
+  },
+  "gear-alchemists-fire": {
+    "scale": 0.9027,
+    "item": "alchemists-fire"
+  },
+  "gear-antitoxin": {
+    "scale": 1.8,
+    "item": "antitoxin"
+  },
+  "gear-ball-bearings": {
+    "scale": 0.8785,
+    "item": "ball-bearings"
+  },
+  "gear-caltrops": {
+    "scale": 0.936,
+    "item": "caltrops"
+  },
+  "gear-healers-kit": {
+    "scale": 0.8856,
+    "item": "healers-kit"
+  },
+  "gear-holy-water": {
+    "scale": 1.7092,
+    "item": "holy-water"
+  },
+  "gear-hooded-lantern": {
+    "scale": 1.8,
+    "item": "hooded-lantern"
+  },
+  "gear-oil": {
+    "scale": 1.7432,
+    "item": "oil"
+  },
+  "gear-potion-of-healing": {
+    "scale": 1.1491,
+    "item": "potion-of-healing"
+  },
+  "gear-rope": {
+    "scale": 0.9181,
+    "item": "rope"
+  },
+  "gear-spell-scroll": {
+    "scale": 0.8818,
+    "item": "spell-scroll"
+  },
+  "gear-tinderbox": {
+    "scale": 0.8867,
+    "item": "tinderbox"
+  },
+  "gear-torch": {
+    "scale": 0.8587,
+    "item": "torch"
+  },
+  "magic-amulet": {
+    "scale": 0.9195
+  },
+  "magic-bag": {
+    "scale": 0.8951
+  },
+  "magic-belt": {
+    "scale": 0.9314
+  },
+  "magic-book": {
+    "scale": 0.8591
+  },
+  "magic-boots": {
+    "scale": 0.9123
+  },
+  "magic-bottle": {
+    "scale": 0.9549
+  },
+  "magic-bowl": {
+    "scale": 0.9043
+  },
+  "magic-bracers": {
+    "scale": 0.8357
+  },
+  "magic-brazier": {
+    "scale": 0.8634
+  },
+  "magic-brooch": {
+    "scale": 0.8311
+  },
+  "magic-broom": {
+    "scale": 0.67
+  },
+  "magic-candle": {
+    "scale": 0.9122
+  },
+  "magic-carpet": {
+    "scale": 0.854
+  },
+  "magic-censer": {
+    "scale": 0.9114
+  },
+  "magic-circlet": {
+    "scale": 0.9853
+  },
+  "magic-cloak": {
+    "scale": 0.8465
+  },
+  "magic-cube": {
+    "scale": 1.0071
+  },
+  "magic-deck": {
+    "scale": 0.894
+  },
+  "magic-fan": {
+    "scale": 0.8973
+  },
+  "magic-feather": {
+    "scale": 0.685
+  },
+  "magic-figurine": {
+    "scale": 0.8728
+  },
+  "magic-gauntlets": {
+    "scale": 0.9412
+  },
+  "magic-gem": {
+    "scale": 0.914
+  },
+  "magic-gloves": {
+    "scale": 0.8603
+  },
+  "magic-goggles": {
+    "scale": 0.9678
+  },
+  "magic-hat": {
+    "scale": 0.7929
+  },
+  "magic-headband": {
+    "scale": 0.9537
+  },
+  "magic-helm": {
+    "scale": 0.9512
+  },
+  "magic-horn": {
+    "scale": 0.873
+  },
+  "magic-horseshoes": {
+    "scale": 0.8424
+  },
+  "magic-lantern": {
+    "scale": 1.8
+  },
+  "magic-mirror": {
+    "scale": 0.859
+  },
+  "magic-necklace": {
+    "scale": 0.9235
+  },
+  "magic-orb": {
+    "scale": 1.0218
+  },
+  "magic-pearl": {
+    "scale": 1.2864
+  },
+  "magic-pipes": {
+    "scale": 0.7889
+  },
+  "magic-ring": {
+    "scale": 1.033
+  },
+  "magic-robe": {
+    "scale": 0.8702
+  },
+  "magic-rod": {
+    "scale": 0.8915
+  },
+  "magic-shackles": {
+    "scale": 0.9236
+  },
+  "magic-staff": {
+    "scale": 0.8218
+  },
+  "magic-stone": {
+    "scale": 0.968
+  },
+  "magic-wand": {
+    "scale": 0.8857
+  },
+  "weapon-battleaxe": {
+    "scale": 0.8112,
+    "item": "battleaxe"
+  },
+  "weapon-blowgun": {
+    "scale": 0.9277,
+    "item": "blowgun"
+  },
+  "weapon-club": {
+    "scale": 0.9086,
+    "item": "club"
+  },
+  "weapon-dagger": {
+    "scale": 1.6581,
+    "item": "dagger"
+  },
+  "weapon-dart": {
+    "scale": 0.8553,
+    "item": "dart"
+  },
+  "weapon-flail": {
+    "scale": 0.9055,
+    "item": "flail"
+  },
+  "weapon-glaive": {
+    "scale": 0.8785,
+    "item": "glaive"
+  },
+  "weapon-greataxe": {
+    "scale": 0.7774,
+    "item": "greataxe"
+  },
+  "weapon-greatclub": {
+    "scale": 0.9714,
+    "item": "greatclub"
+  },
+  "weapon-greatsword": {
+    "scale": 0.9256,
+    "item": "greatsword"
+  },
+  "weapon-halberd": {
+    "scale": 0.7839,
+    "item": "halberd"
+  },
+  "weapon-hand-crossbow": {
+    "scale": 0.8736,
+    "item": "hand-crossbow"
+  },
+  "weapon-handaxe": {
+    "scale": 0.8837,
+    "item": "handaxe"
+  },
+  "weapon-heavy-crossbow": {
+    "scale": 0.8553,
+    "item": "heavy-crossbow"
+  },
+  "weapon-javelin": {
+    "scale": 1.2773,
+    "item": "javelin"
+  },
+  "weapon-lance": {
+    "scale": 0.8371,
+    "item": "lance"
+  },
+  "weapon-light-crossbow": {
+    "scale": 0.7658,
+    "item": "light-crossbow"
+  },
+  "weapon-light-hammer": {
+    "scale": 1.0822,
+    "item": "light-hammer"
+  },
+  "weapon-longbow": {
+    "scale": 0.8428,
+    "item": "longbow"
+  },
+  "weapon-longsword": {
+    "scale": 0.724,
+    "item": "longsword"
+  },
+  "weapon-mace": {
+    "scale": 0.8634,
+    "item": "mace"
+  },
+  "weapon-maul": {
+    "scale": 0.9675,
+    "item": "maul"
+  },
+  "weapon-morningstar": {
+    "scale": 0.8441,
+    "item": "morningstar"
+  },
+  "weapon-net": {
+    "scale": 0.9475,
+    "item": "net"
+  },
+  "weapon-pike": {
+    "scale": 0.9116,
+    "item": "pike"
+  },
+  "weapon-quarterstaff": {
+    "scale": 0.8612,
+    "item": "quarterstaff"
+  },
+  "weapon-rapier": {
+    "scale": 0.9098,
+    "item": "rapier"
+  },
+  "weapon-scimitar": {
+    "scale": 0.8382,
+    "item": "scimitar"
+  },
+  "weapon-shortbow": {
+    "scale": 0.9329,
+    "item": "shortbow"
+  },
+  "weapon-shortsword": {
+    "scale": 1.336,
+    "item": "shortsword"
+  },
+  "weapon-sickle": {
+    "scale": 0.8846,
+    "item": "sickle"
+  },
+  "weapon-sling": {
+    "scale": 0.8782,
+    "item": "sling"
+  },
+  "weapon-spear": {
+    "scale": 0.7199,
+    "item": "spear"
+  },
+  "weapon-trident": {
+    "scale": 0.9087,
+    "item": "trident"
+  },
+  "weapon-war-pick": {
+    "scale": 0.8715,
+    "item": "war-pick"
+  },
+  "weapon-warhammer": {
+    "scale": 0.9254,
+    "item": "warhammer"
+  },
+  "weapon-whip": {
+    "scale": 0.9206,
+    "item": "whip"
+  }
+}

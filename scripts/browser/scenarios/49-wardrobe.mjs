@@ -66,6 +66,11 @@ export default {
     const before = await gear();
     check(before[PROTECTION]?.equipped === true && before[ELVENKIND]?.equipped === false, "Vex starts in the Cloak of Protection");
     await eventually(() => place("cloak").count(), { label: "the paperdoll" });
+    const bracers = '/assets/icons/inventory/magic-bracers.webp';
+    // The app resolves bundled images locally and keeps the requested path.
+    const artImage = (src) => `img[src="${src}"], img[data-odm-src="${src}"]`;
+    check(await sheet.locator(artImage(bracers)).count() >= 2, "bracers have their own art in the inventory chip and worn tile");
+    check(await place("cloak").locator(artImage("/assets/icons/inventory/magic-cloak.webp")).count() === 1, "the cloak tile uses the circular cloak painting");
     // Twelve places on the body and in the hands, and Other items for her
     // orb, which has no place on the body (the tile is drawn only for a pack
     // that holds something for it).
@@ -92,6 +97,12 @@ export default {
     check(dollDay.length === 0, `the doll passes axe in the day theme: ${JSON.stringify(dollDay).slice(0, 400)}`);
     await t.shot("doll-day");
     await page.evaluate((mode) => (document.documentElement.dataset.theme = mode), dollTheme);
+    await openPlace("wrists");
+    const bracerRow = rowOf("Bracers of Defense");
+    check(await bracerRow.locator(artImage(bracers)).count() === 1, "the opened bracer row uses the same art");
+    await eventually(() => bracerRow.locator("img").evaluate(img => img.complete && img.naturalWidth > 0), { label: "the bracer artwork loaded" });
+    await t.shot("doll-bracers");
+    await t.tap(place("wrists"));
     // From the keyboard: an empty place opens and says nothing she carries goes there.
     await place("head").focus();
     await page.keyboard.press("Enter");

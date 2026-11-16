@@ -1,0 +1,1625 @@
+{
+  "description": "Approved circular inventory and paperdoll artwork. Card paintings remain separate.",
+  "records": [
+    {
+      "id": "armor-breastplate",
+      "label": "Breastplate",
+      "source": "Built-in image_gen",
+      "sourceSha256": "5d5425897605584737a3c3ddabf7df1c866e33786392e059757364432d86db5a",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: a proper medieval BREASTPLATE cuirass, polished steel chest and back joined by brown leather shoulder straps and side buckles; smooth domed chest with a central ridge and a short flared waist. Hollow neck and open armholes, NO sleeves, pauldrons, helmet, arms or person. Front three-quarter view, broad substantial chest silhouette.",
+      "export": {
+        "src": "/assets/icons/inventory/armor-breastplate.webp",
+        "sha256": "6ee16a8bc859a77fb3747bbe4ae9e0924661acb72e0934eca9fb1d2030b78c08",
+        "bytes": 18416,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9017
+    },
+    {
+      "id": "armor-chain-mail",
+      "label": "Chain mail",
+      "source": "Built-in image_gen",
+      "sourceSha256": "10519fb13476188e2bfd1bde9fc4ac929e0caeef2fab6c6cef975a531d658915",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's action-card weapons: warm ivory steel highlights, aged brass details, rich brown leather and honey wood, crisp silhouettes, restrained believable ornament. Square canvas with true transparent alpha. Physical object only, NO glow, fog, halo, backdrop, shadow outside object, golden swooshes, motion trails, text, border, circle, hands or character. Center the COMPLETE object inside a circle of diameter 82% of the square. Clearly readable at 32px, balanced substantial forms, slightly stylized but convincing construction. A CHAIN MAIL hauberk: silver interlocking steel rings, short sleeves and mid-thigh skirt, leather belt. Hollow unworn garment in front three-quarter view. NO solid breastplate or shoulder plates, no wearer or helmet.",
+      "export": {
+        "src": "/assets/icons/inventory/armor-chain-mail.webp",
+        "sha256": "624c9ba8d8d6e438690bfddcd2f7b395590435c908789f828079b3626ee8237b",
+        "bytes": 25306,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9309
+    },
+    {
+      "id": "armor-chain-shirt",
+      "label": "Chain shirt",
+      "source": "Built-in image_gen",
+      "sourceSha256": "7de57c743f1fe06ae0327fc93e9382f95350f2601e5bfaca9585dcfaf3bab491",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's action-card weapons: warm ivory steel highlights, aged brass details, rich brown leather and honey wood, crisp silhouettes, restrained believable ornament. Square canvas with true transparent alpha. Physical object only, NO glow, fog, halo, backdrop, shadow outside object, golden swooshes, motion trails, text, border, circle, hands or character. Center the COMPLETE object inside a circle of diameter 82% of the square. Clearly readable at 32px, balanced substantial forms, slightly stylized but convincing construction. CHAIN SHIRT: a short waist-length sleeveless vest of tiny interlocking silver steel rings, simple brown leather edging, open round neck and side slit. Hollow unworn garment, no pauldrons, NO solid metal chest plate. Compact short vest silhouette unlike a knee-length chain hauberk.",
+      "export": {
+        "src": "/assets/icons/inventory/armor-chain-shirt.webp",
+        "sha256": "6380f65743dc120d44f2db9a9b2c653a2b4222d072236cf257c0ce323e5ca150",
+        "bytes": 28316,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8792
+    },
+    {
+      "id": "armor-half-plate",
+      "label": "Half plate",
+      "source": "Built-in image_gen",
+      "sourceSha256": "5b3056227da5a3fa98647530b2bc542390bb5582744086e6e6e1f7c4792dd91f",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's action-card weapons: warm ivory steel highlights, aged brass details, rich brown leather and honey wood, crisp silhouettes, restrained believable ornament. Square canvas with true transparent alpha. Physical object only, NO glow, fog, halo, backdrop, shadow outside object, golden swooshes, motion trails, text, border, circle, hands or character. Center the COMPLETE object inside a circle of diameter 82% of the square. Clearly readable at 32px, balanced substantial forms, slightly stylized but convincing construction. HALF PLATE ARMOR shown as an unworn hollow upper-body assembly: bright steel breastplate, articulated shoulder pauldrons and segmented upper arm guards, leather straps and short armored hip tassets. Open neck, no helmet or person. Clearly plate armor, not chain mail.",
+      "export": {
+        "src": "/assets/icons/inventory/armor-half-plate.webp",
+        "sha256": "af66d8b0282b064aefa2065541989278b54d51906db78c358c9c30fd934d3352",
+        "bytes": 25474,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9495
+    },
+    {
+      "id": "armor-hide",
+      "label": "Hide",
+      "source": "Built-in image_gen",
+      "sourceSha256": "07694192262370df72917e498a54abc15b7669d1abe7366c7adff4419e9cb3ba",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's action-card weapons: warm ivory steel highlights, aged brass details, rich brown leather and honey wood, crisp silhouettes, restrained believable ornament. Square canvas with true transparent alpha. Physical object only, NO glow, fog, halo, backdrop, shadow outside object, golden swooshes, motion trails, text, border, circle, hands or character. Center the COMPLETE object inside a circle of diameter 82% of the square. Clearly readable at 32px, balanced substantial forms, slightly stylized but convincing construction. HIDE ARMOR: rough tawny animal-hide tunic with thick fur shoulder collar, irregular stitched leather panels and simple rawhide ties. Hollow unworn torso. Clearly primitive fur and hide, NO metal armor or shiny breastplate.",
+      "export": {
+        "src": "/assets/icons/inventory/armor-hide.webp",
+        "sha256": "de639961cf3c7aebc001fdeb7704488518fc9887c8b5bbb17438107441c76ee1",
+        "bytes": 23884,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.933
+    },
+    {
+      "id": "armor-leather",
+      "label": "Leather",
+      "source": "Built-in image_gen",
+      "sourceSha256": "0ebcb78998764dda931e815e98d78e62f8cb8c87c3c59600c6a671074226f175",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's action-card weapons: warm ivory steel highlights, aged brass details, rich brown leather and honey wood, crisp silhouettes, restrained believable ornament. Square canvas with true transparent alpha. Physical object only, NO glow, fog, halo, backdrop, shadow outside object, golden swooshes, motion trails, text, border, circle, hands or character. Center the COMPLETE object inside a circle of diameter 82% of the square. Clearly readable at 32px, balanced substantial forms, slightly stylized but convincing construction. A sleeveless fitted torso cuirass of plain rich chestnut leather, stitched panels, broad shoulder straps and side buckles. LEATHER ARMOR, no steel breastplate or metal shoulder armor, no studs. Front three-quarter view, neck opening empty, no wearer, no arms or head.",
+      "export": {
+        "src": "/assets/icons/inventory/armor-leather.webp",
+        "sha256": "482de56177a748048878770f21a71f7385ada6ae8e6eb94370e2894828be75c3",
+        "bytes": 15716,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9908
+    },
+    {
+      "id": "armor-padded",
+      "label": "Padded",
+      "source": "Built-in image_gen",
+      "sourceSha256": "68bf2fcc7c9cd6b8c9449c9b06fef3244486b8ae10ab73f0b296feda10ed1ff7",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's action-card weapons: warm ivory steel highlights, aged brass details, rich brown leather and honey wood, crisp silhouettes, restrained believable ornament. Square canvas with true transparent alpha. Physical object only, NO glow, fog, halo, backdrop, shadow outside object, golden swooshes, motion trails, text, border, circle, hands or character. Center the COMPLETE object inside a circle of diameter 82% of the square. Clearly readable at 32px, balanced substantial forms, slightly stylized but convincing construction. A PADDED ARMOR gambeson, ivory quilted fabric jacket with strong diamond stitching, short sleeves, brown leather waist tie, rounded shoulder shape. Unworn hollow garment front three-quarter view, no metal plates, no wearer.",
+      "export": {
+        "src": "/assets/icons/inventory/armor-padded.webp",
+        "sha256": "60db4c042ab80777dada65fdb51171770ac187b92beb0d39fdde4e0940fb3127",
+        "bytes": 21888,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8948
+    },
+    {
+      "id": "armor-plate",
+      "label": "Full plate",
+      "source": "Built-in image_gen",
+      "sourceSha256": "1aaf43762406a91194eb62f7eedf71da17f63a18f6849eccdf4c4d81dcf4b06e",
+      "prompt": "Use case: precise-object-edit. Edit target: attached full suit of steel plate armor. Preserve the entire design, materials, brushwork and proportions. Zoom out to show the COMPLETE helmet tip and both boots with ample transparent padding on ALL FOUR sides in a square canvas. Empty suit, no wearer or stand. True alpha background with no floor/shadow. Fit the whole suit in central 80% of canvas height.",
+      "export": {
+        "src": "/assets/icons/inventory/armor-plate.webp",
+        "sha256": "8e877c2de25a16573400885ff76a34333e278ccb6ad4797a341fc6eeada3cdd6",
+        "bytes": 10634,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.1841
+    },
+    {
+      "id": "armor-ring-mail",
+      "label": "Ring mail",
+      "source": "Built-in image_gen",
+      "sourceSha256": "1c1d792df0c20f311d0a5bc50d32d00f9251e474a0cc994532f705edca60a329",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's action-card weapons: warm ivory steel highlights, aged brass details, rich brown leather and honey wood, crisp silhouettes, restrained believable ornament. Square canvas with true transparent alpha. Physical object only, NO glow, fog, halo, backdrop, shadow outside object, golden swooshes, motion trails, text, border, circle, hands or character. Center the COMPLETE object inside a circle of diameter 82% of the square. Clearly readable at 32px, balanced substantial forms, slightly stylized but convincing construction. RING MAIL ARMOR: a brown leather armored tunic reinforced with rows of large separate overlapping steel RINGS stitched visibly onto the leather backing. Show a whole hollow unworn short-sleeve tunic, not a piece of jewelry. Broad obvious circular metal loops over brown backing, belt, no solid breastplate.",
+      "export": {
+        "src": "/assets/icons/inventory/armor-ring-mail.webp",
+        "sha256": "5a2d0a8156a34618d141ef89ada7b30f7b6f05b4e73e57322a66172e60a7ec09",
+        "bytes": 26178,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8697
+    },
+    {
+      "id": "armor-scale-mail",
+      "label": "Scale mail",
+      "source": "Built-in image_gen",
+      "sourceSha256": "a0e6142d6b7e17fa4bc09726bfaf6269ffa9baf7de87cbc807e5e46603e1213f",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's action-card weapons: warm ivory steel highlights, aged brass details, rich brown leather and honey wood, crisp silhouettes, restrained believable ornament. Square canvas with true transparent alpha. Physical object only, NO glow, fog, halo, backdrop, shadow outside object, golden swooshes, motion trails, text, border, circle, hands or character. Center the COMPLETE object inside a circle of diameter 82% of the square. Clearly readable at 32px, balanced substantial forms, slightly stylized but convincing construction. A SCALE MAIL armored tunic: many clearly overlapping silver steel teardrop scales arranged like fish scales over leather backing, broad short shoulder sleeves, brown belt. Hollow unworn garment, front three-quarter view, no wearer.",
+      "export": {
+        "src": "/assets/icons/inventory/armor-scale-mail.webp",
+        "sha256": "a5e09c5c33f9e2b17667f1da53dba388a52f997b9536af3f28c6b95ca8044d43",
+        "bytes": 24952,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9135
+    },
+    {
+      "id": "armor-shield",
+      "label": "Shield — steel heater",
+      "source": "Built-in image_gen",
+      "sourceSha256": "f6fcd5e8d7d1c93b6af848305fa90ce0018dca759d9c6f2cb3e6ddd31f460fd2",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: one sturdy medieval HEATER SHIELD: broad gently curved steel face, tapered lower point and rounded shoulders, rolled iron rim with restrained brass rivets, simple raised central reinforcement. Three-quarter view to show real thickness. No heraldic emblem, no glowing gem, no weapon or hand. Complete compact shield silhouette.",
+      "export": {
+        "src": "/assets/icons/inventory/armor-shield.webp",
+        "sha256": "a1bfdd3548e19d3b8495f260dc03c2666466393b66954d4c0242fc05f358456c",
+        "bytes": 16778,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8671
+    },
+    {
+      "id": "armor-splint",
+      "label": "Splint",
+      "source": "Built-in image_gen",
+      "sourceSha256": "0b38f755f08faaa12cf3e020351d13a05313d822585f4684430a9d602bdf9ace",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's action-card weapons: warm ivory steel highlights, aged brass details, rich brown leather and honey wood, crisp silhouettes, restrained believable ornament. Square canvas with true transparent alpha. Physical object only, NO glow, fog, halo, backdrop, shadow outside object, golden swooshes, motion trails, text, border, circle, hands or character. Center the COMPLETE object inside a circle of diameter 82% of the square. Clearly readable at 32px, balanced substantial forms, slightly stylized but convincing construction. SPLINT ARMOR: hollow unworn torso armor made of long narrow VERTICAL steel splints riveted onto dark leather backing. Clearly readable parallel upright strips of steel, shoulder guards made of the same vertical splints, leather waist belt and short segmented skirt. No solid breastplate, no scales, no wearer.",
+      "export": {
+        "src": "/assets/icons/inventory/armor-splint.webp",
+        "sha256": "090e915d4a8fd1a43503cd8c1370e2615a95e09bb3901af1696a4028cd1d89ba",
+        "bytes": 19142,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9585
+    },
+    {
+      "id": "armor-studded-leather",
+      "label": "Studded leather",
+      "source": "Built-in image_gen",
+      "sourceSha256": "4ae3c2a6d707c1b43dbb2c7509187325680f34b657f7b4ce7ae7302d39456787",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's action-card weapons: warm ivory steel highlights, aged brass details, rich brown leather and honey wood, crisp silhouettes, restrained believable ornament. Square canvas with true transparent alpha. Physical object only, NO glow, fog, halo, backdrop, shadow outside object, golden swooshes, motion trails, text, border, circle, hands or character. Center the COMPLETE object inside a circle of diameter 82% of the square. Clearly readable at 32px, balanced substantial forms, slightly stylized but convincing construction. A STUDDED LEATHER ARMOR cuirass, dark chestnut leather vest with visibly spaced round bright steel studs in neat rows, leather shoulder flaps and buckled belt. Unworn hollow torso, no metal breastplate, no wearer.",
+      "export": {
+        "src": "/assets/icons/inventory/armor-studded-leather.webp",
+        "sha256": "fbc9558850b03dc4953c72f16e8fc24139b6681c1dc50fa87f2a38595d33d39b",
+        "bytes": 22144,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9311
+    },
+    {
+      "id": "armor-wooden-shield",
+      "label": "Shield — wooden round",
+      "source": "Built-in image_gen",
+      "sourceSha256": "4d8aa9d5db3932ae8878716e5891e59fc824031da16f389b6cd52d69f9ebcb6b",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: a round WOODEN SHIELD of honey-brown oak planks, stitched rawhide rim, domed central iron boss and a few practical rivets. Slight three-quarter view, complete round silhouette, real visible plank grain and seams. No heraldry, gems or hand.",
+      "export": {
+        "src": "/assets/icons/inventory/armor-wooden-shield.webp",
+        "sha256": "9d57b012f4c0fbe0bbc7e0df8dc76a58b7cb64992b57f20e2b41fb887d233f8b",
+        "bytes": 26028,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9425
+    },
+    {
+      "id": "gear-acid",
+      "label": "Acid",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "a53ea3b5d706fc581bbaec124fd1cc4b8daed1176cd65904a3a97c1dd4c93f0d",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/gear-acid.webp",
+        "sha256": "2018d2dc8b5bcc0edbc86a96d1754cddf1126eed47546179771f254e58f2c2e2",
+        "bytes": 5992,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.8
+    },
+    {
+      "id": "gear-alchemists-fire",
+      "label": "Alchemist's Fire",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "0dfa9d59629f30d0294a423e9f71a2fd2062139600e46d2ef9b65838a67d7f07",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/gear-alchemists-fire.webp",
+        "sha256": "e57dfddbbd32c54616fe4fedf87576aa4df326a4e0f02f29068f420c44595a5c",
+        "bytes": 16966,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9027
+    },
+    {
+      "id": "gear-antitoxin",
+      "label": "Antitoxin",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "fb4e028ae963140677279c88c6b321947967512de212d20cd6d95abb5644ad75",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/gear-antitoxin.webp",
+        "sha256": "b1f8d694579011a9d2208521377924eaeb3d164d5498d1947927046a1c3a03ff",
+        "bytes": 5822,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.8
+    },
+    {
+      "id": "gear-ball-bearings",
+      "label": "Ball Bearings",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "a41bf82d262ffff3c964109d62b871799b8475dfa43594b57ad42335aa3bd35b",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/gear-ball-bearings.webp",
+        "sha256": "6ba84bdbaf6cf3f68ccc2a23619552910efaa52c08d8882d355cd3237ed0717f",
+        "bytes": 12874,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8785
+    },
+    {
+      "id": "gear-caltrops",
+      "label": "Caltrops",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "c0892a90c002965d5fabfb29462cf994807a5e92a7c298aac1b21ac3dfeb00bd",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/gear-caltrops.webp",
+        "sha256": "de839634411493e65c59cebeb4acfc6c96ad48762108536e5c3e888b4d78d4da",
+        "bytes": 7038,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.936
+    },
+    {
+      "id": "gear-healers-kit",
+      "label": "Healer's Kit",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "4d2c5d894ab37daa590022c2d6c4f57be93cc6434e08d25c7b0f0fc01aecf18e",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/gear-healers-kit.webp",
+        "sha256": "f05875fce88b79f778ed5855500bb6efeb1a5de7f94db857f2614189bc8feaa1",
+        "bytes": 15448,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8856
+    },
+    {
+      "id": "gear-holy-water",
+      "label": "Holy Water",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "1b32b8fbe769b3e19e5f69871ff43e4e933823c91933ed2f1b09c3abd46281a0",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/gear-holy-water.webp",
+        "sha256": "2fd455d4098858af659231a941790f8886670df45cb634ca57e990be55b9027d",
+        "bytes": 12286,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.7092
+    },
+    {
+      "id": "gear-hooded-lantern",
+      "label": "Hooded Lantern",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "5b204ecaad4e1a00e55ebc0c48fe8282c4c5e8f9c224bdfb8a91f90a231e7310",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/gear-hooded-lantern.webp",
+        "sha256": "194469ec1a4977088b51b24e5d0c086308331c05d02019fb351c8ef6e563d13c",
+        "bytes": 5744,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.8
+    },
+    {
+      "id": "gear-oil",
+      "label": "Oil",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "6cf990f817d0fdc77e72b2861b67f5220945433de1feaab61a73f003360dddc6",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/gear-oil.webp",
+        "sha256": "94b96c657229f167d9c72c76830ece398b7313d260cd7aff460e2981d363fcb7",
+        "bytes": 7366,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.7432
+    },
+    {
+      "id": "gear-potion-of-healing",
+      "label": "Potion of Healing",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "f16c2ab0f58c077f8ef8cfe45353dcc471f5ca598e00609826e24941d93f8a5c",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/gear-potion-of-healing.webp",
+        "sha256": "49f9692902b4b59a07b9c64345b2259a483f5b34fe60eaef6e23c69d2b126201",
+        "bytes": 14894,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.1491
+    },
+    {
+      "id": "gear-rope",
+      "label": "Rope",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "8ea33581cf0f6fa5b6494964b504a6308972be50230ff024657f20167bf13fc0",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/gear-rope.webp",
+        "sha256": "0f4c538aaf927f36908920dec78a62602372a6f49a84efe1bbfde68a81794b34",
+        "bytes": 16264,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9181
+    },
+    {
+      "id": "gear-spell-scroll",
+      "label": "Spell Scroll",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "2cb4cdb83ff277caedd977b0fdc52843e0980426de22a496641b6097475977e9",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/gear-spell-scroll.webp",
+        "sha256": "cd15dabe6a367053f64760d8b5f1c5c6d5595cf012fa3ad5bc90d29d08ff1065",
+        "bytes": 17984,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8818
+    },
+    {
+      "id": "gear-tinderbox",
+      "label": "Tinderbox",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "883e1a03fd85b34cc804b68e1291986dcbc1ef3b0b4603143dd8827d4753ca9f",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/gear-tinderbox.webp",
+        "sha256": "d69cc4201e47b1c04429002babd28c947283577b95f2def3b4ce70a3cd4e3de1",
+        "bytes": 14250,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8867
+    },
+    {
+      "id": "gear-torch",
+      "label": "Torch",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "5b990481c65e8cba186c717b1f276f26d0c365c0b6f8dc352ccd5498d5ee7f9b",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/gear-torch.webp",
+        "sha256": "ea26ec57a1a23a00fb6fbd46cbc93d42503245641f8ff847ee8c8dd1021893e2",
+        "bytes": 9038,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8587
+    },
+    {
+      "id": "magic-amulet",
+      "label": "Amulet",
+      "source": "Built-in image_gen",
+      "sourceSha256": "221c060c72ac2947765c3cd80ea88ead80a25d6c3b6ab9b1f0917fdd95940cb8",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: a single substantial protective AMULET, oval deep red garnet set in a restrained aged-brass pendant with bevelled rim, attached to a short brown leather cord arranged in a compact loop. Pendant dominant, full cord visible, no symbols or glow.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-amulet.webp",
+        "sha256": "0fbfabf9d48daaae5a5571dde104ca6f411b3fae2133c197df0c9725bc81e798",
+        "bytes": 16558,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9195
+    },
+    {
+      "id": "magic-bag",
+      "label": "Bag",
+      "source": "Built-in image_gen",
+      "sourceSha256": "78d96e8395403da19ac21d873710926186eab53247c52e4ba255b73c1c0fa7d9",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: A plump dark russet leather drawstring bag with a gathered opening and short braided drawstrings, flat rounded base, a few stitched seams. Three-quarter view. A small carrying sack, no backpack straps, no coins spilling.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-bag.webp",
+        "sha256": "9bad9592af4e2eee472a8df67c08c9c42278d39b84c3c41290581e1a28fb9499",
+        "bytes": 19058,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8951
+    },
+    {
+      "id": "magic-belt",
+      "label": "Belt",
+      "source": "Built-in image_gen",
+      "sourceSha256": "821a68205201a331222d9b4a1f2038c49655bb90ce633db67535a5060a3398c4",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: a broad brown leather adventurer's BELT coiled into a compact oval loop, one substantial rectangular aged-brass buckle centered toward viewer, visible punched holes, stitched edges and a short tucked loose end. No gemstones, no floating parts.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-belt.webp",
+        "sha256": "9acacfc0ccf679b4381a4558ca5196781619ab8efa336f827350376a6461b19d",
+        "bytes": 19348,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9314
+    },
+    {
+      "id": "magic-book",
+      "label": "Book",
+      "source": "Built-in image_gen",
+      "sourceSha256": "773d570ac96392eeb1073c1117ecce61b2a37f1c2c37c2324d8e4e9225c708b5",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: A closed thick walnut-brown leather spellbook at a three-quarter angle, thick ivory page block, four simple aged brass corner protectors and one working brass clasp. Rich leather wear, strong rectangular silhouette with diagonal placement. No writing or lettering.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-book.webp",
+        "sha256": "7c9aee7363f082baa931957d971d94bae7df2e81757f91bc4373422c25b7bc38",
+        "bytes": 24446,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8591
+    },
+    {
+      "id": "magic-boots",
+      "label": "Boots",
+      "source": "Built-in image_gen",
+      "sourceSha256": "3aed3236589a69d68d9a7ec8c7a29d04fe34bddfaf35e21774bc6c026b9be545",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: a matched pair of supple chestnut leather adventuring BOOTS, ankle-high folded cuffs, sturdy stitched soles, modest brass buckles. Both boots fully visible in a compact staggered three-quarter arrangement, toes naturally rounded. No wings, flame, claws or armored plates.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-boots.webp",
+        "sha256": "1053bea5ed4f2782ed4f452c6d6e915281d3f11e61270a7cd143a298d254656e",
+        "bytes": 18498,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9123
+    },
+    {
+      "id": "magic-bottle",
+      "label": "Bottle",
+      "source": "Built-in image_gen",
+      "sourceSha256": "10ddbff1061a432aed69543af22294520399469ba50adaeea457ac451edad971",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: A squat cobalt-blue glass bottle with a round belly, short narrow neck, aged brass collar and solid brass stopper, two tiny decorative side loops. Three-quarter view, clean complete silhouette. No mist, smoke, magical glow or liquid escaping.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-bottle.webp",
+        "sha256": "34405d3b8aace7518f3d62ed7d0aa1c8c77322174155dd965043ebce78b04fbc",
+        "bytes": 15920,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9549
+    },
+    {
+      "id": "magic-bowl",
+      "label": "Bowl",
+      "source": "Built-in image_gen",
+      "sourceSha256": "151b1bdcf08a6e85312e1a139e81324b67732a6de24311ec59ebedfe42c22e09",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: A shallow heavy silver ritual bowl with a thick aged brass rim and one simple band of dark blue enamel around the outside, three-quarter view looking into its empty hammered silver interior. Low circular foot, clean broad bowl silhouette, no contents or glow.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-bowl.webp",
+        "sha256": "59d2923a5092b614a7f3e73655a3d270518b5a6df09c9f49a3568ddfd97a139c",
+        "bytes": 19538,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9043
+    },
+    {
+      "id": "magic-bracers",
+      "label": "Bracers",
+      "source": "Built-in image_gen",
+      "sourceSha256": "694d3f7959b200afd9e3cbd8845d4c68e3ca9621ed740e49552d77b255d3dd09",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: a matched pair of leather forearm BRACERS with curved polished-steel outer plates, brass rivets, leather straps and buckles. Empty open forearm guards, no gloves or hands, compact paired arrangement with visible hollow cuffs.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-bracers.webp",
+        "sha256": "9ab6b3b3fc5cbf2cdc9d67b4971b2e2d9878e7048919ab38c3fc340e3e42e9ff",
+        "bytes": 25138,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8357
+    },
+    {
+      "id": "magic-brazier",
+      "label": "Brazier",
+      "source": "Built-in image_gen",
+      "sourceSha256": "9620eb89865d1cbdd792f87be5d7d6bb3bf422f7ddb3221b59ee0aad532f9357",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: A squat dark iron brazier bowl on three short sturdy curved legs, two small side handles, a handful of red-orange embers and two low natural flames contained over the bowl. Warm steel highlights and a narrow brass rim. Complete feet and flames, no floating sparks, no halo, no smoke.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-brazier.webp",
+        "sha256": "ca4e3613e543c3aa99bed95fec65198bf20f91c6aaad77a1b575799af91131c6",
+        "bytes": 20368,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8634
+    },
+    {
+      "id": "magic-brooch",
+      "label": "Brooch",
+      "source": "Built-in image_gen",
+      "sourceSha256": "7b23ed023a38effc6ebf35cf5c53025f681cf0eecf31a9dca8681cb0cfa6509a",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: one finely crafted BROOCH: curved silver oak leaf and small amber cabochon on a sturdy brass pin backing, subtle three-quarter view showing thick dimensional edges. Compact asymmetrical leaf silhouette, tactile jewelry, no starburst or glowing effects.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-brooch.webp",
+        "sha256": "9f97b31af2a29b06d81b85e7e115e5ea0defac383ff4684f0604cca079f9af7c",
+        "bytes": 19962,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8311
+    },
+    {
+      "id": "magic-broom",
+      "label": "Broom",
+      "source": "Built-in image_gen",
+      "sourceSha256": "77a5c8b3bc29d372ea2db842e37e8fb53ac9ef00a5a9ca081c9d55183a705553",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: A complete medieval broom with a slightly crooked walnut wood handle and dense tapered golden straw brush tied with two cord bands. Diagonal lower-left to upper-right across the square, entire handle and bristles visible with margins. Compact proportions, brush roughly one-third total length.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-broom.webp",
+        "sha256": "2d1d81d2684e849c49df1d8da367e47d9d3ca2877da0c2bb6d4ff89ba3acb5bc",
+        "bytes": 11810,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.67
+    },
+    {
+      "id": "magic-candle",
+      "label": "Candle",
+      "source": "Built-in image_gen",
+      "sourceSha256": "4bbdafd0d37dba336eea221b0627b7d81859687106fa712cb5afda8b6a3f46ef",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: A short thick warm ivory beeswax candle in a low aged brass chamberstick with one loop handle. A single small natural wick flame, wax drips on the candle itself. Entire candle, flame and holder visible. Flame does not cast a painted halo into transparent background.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-candle.webp",
+        "sha256": "4c022fad7a79d41071bf08666691b0a88a18b861c535d991c22f0f00c6a8c382",
+        "bytes": 16566,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9122
+    },
+    {
+      "id": "magic-carpet",
+      "label": "Carpet",
+      "source": "Built-in image_gen",
+      "sourceSha256": "9fb7b407c95e09e5195a6819269a48cff5f7ee5a78a8d0698d1329cbc48ba5ab",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: A richly woven burgundy and dark teal wool carpet partly rolled back on itself, ivory fringe on the visible short end, simple warm brass-color geometric woven border. Compact three-quarter view showing fabric thickness and curled roll, not a flat wide rectangle. No flying trail.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-carpet.webp",
+        "sha256": "359a8c6746ab271efcef407635b047c4d8611f92bedc019a13d86dd57ba00e12",
+        "bytes": 24890,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.854
+    },
+    {
+      "id": "magic-censer",
+      "label": "Censer",
+      "source": "Built-in image_gen",
+      "sourceSha256": "67983a45a5719c5ea1cbeea95bdcf4d91bc03e7f5eb09eeec3dbd597ffcf1808",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: A compact aged brass hanging incense burner with a rounded bowl, domed pierced lid and three short chain lengths converging at one ring handle above. Everything fully visible, chains form a tidy triangle over the vessel. Blue-grey oxidized recesses, practical medieval metalwork. No smoke, no wings, no glowing symbols.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-censer.webp",
+        "sha256": "c03557b0eb3cd51abba9ba33223b648976b634220490cbcfbbb43a5ed102422d",
+        "bytes": 18910,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9114
+    },
+    {
+      "id": "magic-circlet",
+      "label": "Circlet",
+      "source": "Built-in image_gen",
+      "sourceSha256": "37f11f7bcd4c02125118f7734bfb6aa98e2e8e3864c48ce995c9e2fd4feec285",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: one open-topped silver CIRCLET, thin but substantial curved brow band, shallow central chevron holding one small sapphire cabochon, simple restrained brass fittings. Three-quarter view revealing a complete oval band receding behind. No tall crown points, no spikes, no head.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-circlet.webp",
+        "sha256": "568e2b51d268bb5effed8dc39c2704a39ae95023b4d7f3b9172860d093d1bc4c",
+        "bytes": 12660,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9853
+    },
+    {
+      "id": "magic-cloak",
+      "label": "Cloak",
+      "source": "Built-in image_gen",
+      "sourceSha256": "7f655b241bc908e2d324685d04cb3a5c1ee150047a84e99c1f606f392755d444",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's action-card weapons: warm ivory steel highlights, aged brass details, rich brown leather and honey wood, crisp silhouettes, restrained believable ornament. Square canvas with true transparent alpha. Physical object only, NO glow, fog, halo, backdrop, shadow outside object, golden swooshes, motion trails, text, border, circle, hands or character. Center the COMPLETE object inside a circle of diameter 82% of the square. Clearly readable at 32px, balanced substantial forms, slightly stylized but convincing construction. An unworn deep forest-green wool CLOAK with folded hood and antique brass clasp, draped naturally in compact broad triangular folds. Front three-quarter view with empty opening, no person, face, arms or glowing lining.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-cloak.webp",
+        "sha256": "8003412af8750197310fa5d67f37467595d744df53d2ae54499fd99fbbcc47ba",
+        "bytes": 12646,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8465
+    },
+    {
+      "id": "magic-cube",
+      "label": "Cube",
+      "source": "Built-in image_gen",
+      "sourceSha256": "e310784efd2bffdbe85c10a9fba92cfe73a16a8819637112fed3d76a8c8b5ec3",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: A solid hand-sized dark blue-grey metal cube viewed in three-quarter perspective showing three faces, thick aged brass edges with simple corner joints. Each visible face has a small flat inset jade-green square centered within a recessed panel. Precise straight edges and coherent cube geometry, tactile heavy metal. No dice pips, letters, symbols, luminous panels or glow.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-cube.webp",
+        "sha256": "74df9be09a88ef261699777ed25915633ba66a001666a6e87c370da6d0dca012",
+        "bytes": 21428,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.0071
+    },
+    {
+      "id": "magic-deck",
+      "label": "Deck",
+      "source": "Built-in image_gen",
+      "sourceSha256": "20b5060b0b35fe8cd6db412abdf2431b6843449cbf2b6b5fa7329ac2b5786dc1",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: A thick small deck of parchment playing cards at a three-quarter angle, two cards slightly fanned atop the stack, burgundy backs with simple ivory geometric border and central brass-color diamond emblem. Corners complete, no writing or numbers.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-deck.webp",
+        "sha256": "56708fa6c4358b509a9c23a92f7bf5ead34e97fabe0be469f6718ba91b89e87e",
+        "bytes": 21654,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.894
+    },
+    {
+      "id": "magic-fan",
+      "label": "Fan",
+      "source": "Built-in image_gen",
+      "sourceSha256": "46f5b26e30e811434d6875c18e2a5a37558bb4a5673dd6e07f71ed72513a7743",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: An open folding hand fan with cream silk leaf and dark walnut wooden ribs, subtle muted blue border and small brass pivot. Clean semicircular spread seen at a slight angle, complete handle/pivot below. No tassel, no scenery or lettering on fabric.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-fan.webp",
+        "sha256": "6ce9eede882d2e43ff4080e3734553160b297931b7400b27894da9450015efc2",
+        "bytes": 15350,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8973
+    },
+    {
+      "id": "magic-feather",
+      "label": "Feather",
+      "source": "Built-in image_gen",
+      "sourceSha256": "84f84c8b681bb7a51c13b7c8300bfd91dde61d50943baa59fb926186fb8e9862",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: A single broad raven-blue feather with warm bronze highlights and a pale ivory quill, softly curved diagonally, visible layered barbs, whole tip and quill. One feather only, no ink pot, no particles.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-feather.webp",
+        "sha256": "867037ea875ac349e59322674bbd3aef370b2febadbb3d6dbae22e940df77eee",
+        "bytes": 16540,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.685
+    },
+    {
+      "id": "magic-figurine",
+      "label": "Figurine",
+      "source": "Built-in image_gen",
+      "sourceSha256": "9bd6cd37edb1e8ba873896f516bc983de34ec91b2268709d5a1687cae1072755",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: A small carved ivory statuette of a seated owl on a low dark wood oval pedestal. Clear owl silhouette with folded wings and carved feather facets, rich warm ivory carved material. One object, no living creature, no scenery.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-figurine.webp",
+        "sha256": "6259ee4d8e8dd02a225d6525a3a6b62e1116bf42d32e2e5bc559b538e3c8ab39",
+        "bytes": 18454,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8728
+    },
+    {
+      "id": "magic-gauntlets",
+      "label": "Gauntlets",
+      "source": "Built-in image_gen",
+      "sourceSha256": "0b5f49fcf962e27a3bc520984c8a1fb4635bd011b8cbe1067b441079d04ed806",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: a matched pair of steel armored GAUNTLETS with articulated finger plates over brown leather, broad wrist cuffs, believable four fingers and thumb on each. Compact slightly overlapping tabletop display, no wearer, no claws or gems.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-gauntlets.webp",
+        "sha256": "7b01d4c320986e721fdbb69756171368bbfadf742065f7746d3fbfb5dec31bdc",
+        "bytes": 25668,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9412
+    },
+    {
+      "id": "magic-gem",
+      "label": "Gem",
+      "source": "Built-in image_gen",
+      "sourceSha256": "f13942c3cbfd300089dfc0ff57fb64bde9f2dce24255601bf2eba1ca037e9fbf",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: one large emerald-green faceted GEMSTONE, asymmetric natural octagonal cut, broad clean facets reflecting ivory highlights, slightly tilted three-quarter view. No metal mount, no aura, no floating shards. Convincing cut mineral, not a luminous cartoon star.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-gem.webp",
+        "sha256": "9503545a8f47349c8ee1985da388893a6a32d706cb8d609fc97793cff123fec8",
+        "bytes": 18894,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.914
+    },
+    {
+      "id": "magic-gloves",
+      "label": "Gloves",
+      "source": "Built-in image_gen",
+      "sourceSha256": "cecb972a2582fc4d16c1e533bb53f35622156e4632b3f620b90608fc405bae55",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: a matched pair of soft brown leather GLOVES laid in a compact overlapping arrangement, each with exactly four fingers and one thumb, visibly stitched seams and short fitted cuffs. Empty gloves, no hands, no claws, metal or flames.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-gloves.webp",
+        "sha256": "32ad47b9535e7c17f992c278b15d7840e6172017723b1372f76109418940b699",
+        "bytes": 21048,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8603
+    },
+    {
+      "id": "magic-goggles",
+      "label": "Goggles",
+      "source": "Built-in image_gen",
+      "sourceSha256": "4648c2dc432ada6baced9a4a0bdaba35a9ec1f958fd744f8bea84585f00be819",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: a pair of compact medieval artificer's GOGGLES, two round pale smoky-blue glass lenses in aged-brass rims, brown leather eye cups and a brown strap tucked into a loop behind. Front three-quarter view, convincing connected bridge, no face or neon.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-goggles.webp",
+        "sha256": "d25cfa7018c86dfea3b91e4b5261acaae4e53941af501e8972211b5dc47b65bd",
+        "bytes": 18666,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9678
+    },
+    {
+      "id": "magic-hat",
+      "label": "Hat",
+      "source": "Built-in image_gen",
+      "sourceSha256": "8556c893522a808faa5a8ba941044d0aa36937ca3c99b3a55d85ab767b84ac62",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: a softly bent pointed wizard's HAT of deep indigo felt, broad asymmetrical brim, brown leather hatband and small aged-brass buckle. Strong compact silhouette, believable stitched fabric, no stars, runes or face.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-hat.webp",
+        "sha256": "90eec68afa6735e2a6ed08b5ec3bac8ee7488965cd9dd27679a522403f5eadd5",
+        "bytes": 13622,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.7929
+    },
+    {
+      "id": "magic-headband",
+      "label": "Headband",
+      "source": "Built-in image_gen",
+      "sourceSha256": "641f1a4c829eb1e783045248ffdbd10ab7a1d5b8f1b727f43d52c89da1d8a0cd",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: A simple narrow brown leather forehead band laid in a compact oval loop, small rectangular silver clasp, two short tied ends at back. A clean product cutout. Empty transparent space throughout the loop and surrounding the object. No jewel, no glowing materials. Square canvas.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-headband.webp",
+        "sha256": "50a8d874e8fbb45a6b7221b1ebbc0b4f5763cf1d39cd120c1199c62b6d6ee824",
+        "bytes": 15918,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9537
+    },
+    {
+      "id": "magic-helm",
+      "label": "Helm",
+      "source": "Built-in image_gen",
+      "sourceSha256": "b860f775601cc703c4764fd5c040b29f2146dd0bdde55d9aeb0f26bd79c2631a",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: one medieval steel HELMET with closed hinged visor, narrow eye slit, subtle central ridge and practical cheek guards. Three-quarter view, no head or face, no horns or huge crest. Polished steel, restrained brass hinges, dark open interior at bottom.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-helm.webp",
+        "sha256": "b65380fefef322f2cbc003db6f80af4136290384f154056814791af73fafb606",
+        "bytes": 16690,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9512
+    },
+    {
+      "id": "magic-horn",
+      "label": "Horn",
+      "source": "Built-in image_gen",
+      "sourceSha256": "c1ea27cc3909cd8594cc37b5d01a186b79ae19b95ac3b1d4568bf5d5cf1cb1f0",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: A single curved ivory-and-brown natural ox horn musical instrument, broad hollow bell with a simple brass rim and narrow brass mouthpiece, short leather strap tucked into the curve. Compact crescent shape, three-quarter view. The horn is hollow and playable.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-horn.webp",
+        "sha256": "167729d283ddb9a4896024eb71de510a9b4b74062ba81373a814f5176ea392c0",
+        "bytes": 17160,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.873
+    },
+    {
+      "id": "magic-horseshoes",
+      "label": "Horseshoes",
+      "source": "Built-in image_gen",
+      "sourceSha256": "b57934939e771c6589ffae791b3dea14cce4512fd8b1e9c2316c296fe6cd0751",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: A pair of complete forged silver-grey iron horseshoes, broad U shapes with clearly spaced rectangular nail holes, both open ends visible. Arranged slightly overlapping at a diagonal with one rotated, showing thickness and subtle warm steel highlights. No nails, no feet, no orange glowing holes, no lettering.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-horseshoes.webp",
+        "sha256": "2abc120e7ff451cc5e899ca8af9b041a585d894d0bae9179661f2f1a4eeadc64",
+        "bytes": 20952,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8424
+    },
+    {
+      "id": "magic-lantern",
+      "label": "Lantern",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "5b204ecaad4e1a00e55ebc0c48fe8282c4c5e8f9c224bdfb8a91f90a231e7310",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/magic-lantern.webp",
+        "sha256": "194469ec1a4977088b51b24e5d0c086308331c05d02019fb351c8ef6e563d13c",
+        "bytes": 5744,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.8
+    },
+    {
+      "id": "magic-mirror",
+      "label": "Mirror",
+      "source": "Built-in image_gen",
+      "sourceSha256": "ab433afe53b55dc44ba001a11cd7fff310dfc7f4d88bee8416e5b08a86802045",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: A compact oval hand mirror, reflective silver-grey glass with a soft abstract diagonal highlight, aged silver frame with restrained brass corners and a short dark leather wrapped handle. Three-quarter view shows frame thickness. No reflected person or landscape, no magic glow.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-mirror.webp",
+        "sha256": "657793961635bc4c742370156191da0fdca5acf26a3217a7f29ab81abe420152",
+        "bytes": 10812,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.859
+    },
+    {
+      "id": "magic-necklace",
+      "label": "Necklace",
+      "source": "Built-in image_gen",
+      "sourceSha256": "47dbb9a678fd0a6cd427586570e135f3f22a86e8b497bdaf977fa5a7734d4177",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: a NECKLACE made of polished amber and muted blue stone beads linked by small brass spacers, arranged in a natural oval loop with one modest central blue cabochon pendant. Whole necklace, warm hand-painted material details, no glow, distinguish from a single amulet.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-necklace.webp",
+        "sha256": "f29b8e834fc80850ce921b25de426c95684ad43f5e0230a1015ffed54b32a930",
+        "bytes": 20414,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9235
+    },
+    {
+      "id": "magic-orb",
+      "label": "Orb",
+      "source": "Built-in image_gen",
+      "sourceSha256": "0e7925fdbb5949d1adad39de2f778c1f3788d9c4dd22b45a168025742e9dd6c1",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: a pale smoky-blue CRYSTAL BALL resting in a compact three-footed aged-brass cradle. Entire sphere with soft realistic internal reflections, no miniature scene, bright aura or fog outside glass. Solid dimensional polished object.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-orb.webp",
+        "sha256": "7ea472d8dd592a9c7cdf72a2b9bc8079e64032924e1779354127b81d6f3f3fc8",
+        "bytes": 16458,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.0218
+    },
+    {
+      "id": "magic-pearl",
+      "label": "Pearl",
+      "source": "Built-in image_gen",
+      "sourceSha256": "b7e76e2076fce997d6cc79185a85d38037fb614afa2c2477fdf7aa5feed871de",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: one lustrous ivory PEARL, almost spherical with subtly irregular natural surface, creamy nacre and pale pink-blue reflected highlights. Dimensional hand-painted object, no pedestal, shell, metal mount, glow or surrounding shadow.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-pearl.webp",
+        "sha256": "66e832b27c697a98a9b73fa5e4d6a55630bef2d1e2b3a0205cbb819481e39013",
+        "bytes": 11126,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.2864
+    },
+    {
+      "id": "magic-pipes",
+      "label": "Pipes",
+      "source": "Built-in image_gen",
+      "sourceSha256": "9c471bf1d874dec5a9074612307e79747d642f3d7e3ef3249cb7c91726dfceb7",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: A compact set of seven graduated golden-brown wooden panpipes bound with two dark leather bands, open tube mouths clearly visible, sloping lower silhouette. Diagonal three-quarter view, simple practical musical instrument.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-pipes.webp",
+        "sha256": "1087672cabe8f02403be49bec6d956c74ec686384f5a91445ef7465590015c8e",
+        "bytes": 18282,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.7889
+    },
+    {
+      "id": "magic-ring",
+      "label": "Ring",
+      "source": "Built-in image_gen",
+      "sourceSha256": "df249c3497b6b52d92925a53684af381222cdcfd451eb17d6c306f021a7369e7",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: one solid aged-gold FINGER RING with a single deep green emerald cabochon in a restrained raised bezel. Three-quarter view showing the complete inner opening and the real thickness of the band. Simple strong silhouette, natural polished reflections, no glow or ornament spikes.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-ring.webp",
+        "sha256": "8c28e62d0381fa63a212067a5c2efe1f8b5a18637a30b4b8f69d6d2b269ea218",
+        "bytes": 17562,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.033
+    },
+    {
+      "id": "magic-robe",
+      "label": "Robe",
+      "source": "Built-in image_gen",
+      "sourceSha256": "1b72ef5db79faf3f637799b2c50f85c7007d918a44db9bd92a6c061f8f9775ba",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: an empty wizard's ROBE of rich indigo cloth, full-length garment with two hanging wide sleeves, simple brass-edged collar and tied brown belt. Front three-quarter view, empty neck opening, natural broad fabric folds. No hooded person, no face, hands, glowing lining or extra cloak.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-robe.webp",
+        "sha256": "8594c90d2d2a5426f41735a400723eb243ab3ab500a5008c96beda8100ae6108",
+        "bytes": 15440,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8702
+    },
+    {
+      "id": "magic-rod",
+      "label": "Rod",
+      "source": "Built-in image_gen",
+      "sourceSha256": "b4da40950a264f30a478892174a5bf884bcc76b6930163a72711a66dfb5c5efe",
+      "prompt": "Precise background-extraction edit of this Rod inventory illustration. Preserve the object exactly: all shapes, materials, details, colors, scale and composition. Remove ALL cloudy gray-white halo and backdrop around the upper end and in ALL holes between physical parts. Every pixel outside the actual wood, leather, metal and gemstone must have clean transparent alpha. No glow, no fog, no external shadow. In particular the top of this Rod is NOT a light source and must have no surrounding white region. Keep crisp antialiased object edges, preserve full canvas. The result is a clean isolated cutout of the same object.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-rod.webp",
+        "sha256": "39910cda91f1a2035ce9cab31c9f7e3ba3af05623279efe579fef52b611c5c72",
+        "bytes": 10888,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8915
+    },
+    {
+      "id": "magic-shackles",
+      "label": "Shackles",
+      "source": "Built-in image_gen",
+      "sourceSha256": "a3eb65f299a904d251fcdfd1f1ac2c874fe27d236e85fbddb3eab4a0f5b2a1c7",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: A pair of heavy medieval dark iron wrist shackles joined by three short visibly interlocking oval chain links. Two complete open-centered oval cuff rings, each with a clear hinge and square locking block. Cuffs arranged diagonally side by side, short chain hanging in a shallow U between them. No hands, no extra cuff, no chain tangles.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-shackles.webp",
+        "sha256": "2b0069b428bc38a6816a2162dfce8c645a67be924bcb9431488f3128ecfe8ea7",
+        "bytes": 20496,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9236
+    },
+    {
+      "id": "magic-staff",
+      "label": "Staff",
+      "source": "Built-in image_gen",
+      "sourceSha256": "55d8de3d41db721ce99896fc7ea39e38b70697383ad5b8fa418f2accb48ef4f1",
+      "prompt": "Precise background-extraction edit of this Staff inventory illustration. Preserve the object exactly: all shapes, materials, details, colors, scale and composition. Remove ALL cloudy gray-white halo and backdrop around the upper end and in ALL holes between physical parts. Every pixel outside the actual wood, leather, metal and gemstone must have clean transparent alpha. No glow, no fog, no external shadow. In particular the top of this Staff is NOT a light source and must have no surrounding white region. Keep crisp antialiased object edges, preserve full canvas. The result is a clean isolated cutout of the same object.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-staff.webp",
+        "sha256": "d09fcb8e1f658c6705f36794f95a74ce366e3f22868a64ae5bd4a711a0969720",
+        "bytes": 9206,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8218
+    },
+    {
+      "id": "magic-stone",
+      "label": "Stone",
+      "source": "Built-in image_gen",
+      "sourceSha256": "a09f8b1356102aeedaa7ef57d889a520b21dbf08f1e9c7d8ad50d18b123de53b",
+      "prompt": "Use case: stylized-concept. One isolated premium hand-painted medieval fantasy RPG inventory object matching the accepted ODM action-card weapons: rich natural materials, warm ivory highlights on silver steel, restrained aged-brass trim, tactile brown leather, sculptural brushwork, bold clean silhouette. Square image, real transparent alpha, clear cutout edges. NO backdrop, glow, halo, fog, external shadow, magic particles, text, frame, painted circle or character. All physical parts fully visible, centered with generous margins for a circular slot; readable at 32–64px. Detail supports the form; no excessive filigree. Subject: One palm-sized smooth dark blue-grey basalt talisman pebble, softly rounded asymmetrical oval, one simple shallow spiral engraved in its upper face, subtle warm natural mineral flecks. Three-quarter view showing solid thickness. Stone material, no gemstone, no face, no letters, no light or glow.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-stone.webp",
+        "sha256": "ddd4d1bbf8d8d5930331364ed67cf21fc38b375a3eecbe4a7a955d7a7a55d82b",
+        "bytes": 16134,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.968
+    },
+    {
+      "id": "magic-wand",
+      "label": "Wand",
+      "source": "Built-in image_gen",
+      "sourceSha256": "3275c6e141ac382da35176c6d3f2879258a851baf1ddb577ff628e7bd106245c",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's action-card weapons: warm ivory steel highlights, aged brass details, rich brown leather and honey wood, crisp silhouettes, restrained believable ornament. Square canvas with true transparent alpha. Physical object only, NO glow, fog, halo, backdrop, shadow outside object, golden swooshes, motion trails, text, border, circle, hands or character. Center the COMPLETE object inside a circle of diameter 82% of the square. Clearly readable at 32px, balanced substantial forms, slightly stylized but convincing construction. One elegant short slender dark walnut WAND with a small amethyst tip in a brass mount and wrapped grip. Near vertical 25 degree diagonal. Practical handheld magical implement, narrow tapered shaft, no bulky mace head, no spell effects.",
+      "export": {
+        "src": "/assets/icons/inventory/magic-wand.webp",
+        "sha256": "ab3ef02e3a2747d91118ce4b3d3c16d93f09ced9b5e9efdad4ce995e59b9e284",
+        "bytes": 6510,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8857
+    },
+    {
+      "id": "weapon-battleaxe",
+      "label": "Battleaxe",
+      "source": "Built-in image_gen",
+      "sourceSha256": "17f20144aa22f0ce770530c7820059bb3af8b62622856af579040fe1218c60ea",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's action-card weapons: warm ivory steel highlights, aged brass details, rich brown leather and honey wood, crisp silhouettes, restrained believable ornament. Square canvas with true transparent alpha. Physical object only, NO glow, fog, halo, backdrop, shadow outside object, golden swooshes, motion trails, text, border, circle, hands or character. Center the COMPLETE object inside a circle of diameter 82% of the square. Clearly readable at 32px, balanced substantial forms, slightly stylized but convincing construction. A one-handed BATTLEAXE, broad single crescent steel cutting blade, small rear poll, sturdy medium-length leather-wrapped wooden haft. Near upright diagonal. Distinct broad axe head occupies upper third.",
+      "export": {
+        "src": "/assets/icons/inventory/weapon-battleaxe.webp",
+        "sha256": "d0b601f5bac3d6b644922ca636dff1497242a0843f0e6e8e387de2a65fa7fcfd",
+        "bytes": 13598,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8112
+    },
+    {
+      "id": "weapon-blowgun",
+      "label": "Blowgun",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "8957503b763e1245d6892af22c7d818abb2aea68619f4038d0aa803f13fbfd3e",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/weapon-blowgun.webp",
+        "sha256": "2992578701fde54bbf34f903cd0df8845bb9779455c91ac4687dc9837606b806",
+        "bytes": 9076,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9277
+    },
+    {
+      "id": "weapon-club",
+      "label": "Club",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "80509e437b7c438d8daf665b5f84ff84de3fd8d85f2a484785fe9872ec8d86c3",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/weapon-club.webp",
+        "sha256": "3c8587b81522ce7e0ee02b175a8844ea2acc112dd97b342303b00e50f7ebebc7",
+        "bytes": 7594,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9086
+    },
+    {
+      "id": "weapon-dagger",
+      "label": "Dagger",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "6947669b3852a1a53f562cf65ab288189dc401749a91ef72a06c1e2a116ea07b",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/weapon-dagger.webp",
+        "sha256": "f378fb14399bb1a39bc1db232a072fda7378e5952d1111a3499dd5430fd531b0",
+        "bytes": 3280,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.6581
+    },
+    {
+      "id": "weapon-dart",
+      "label": "Dart",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "0cf3c8f9a06685cd403f1750190efed042653fae1be12671e7412c9a4d66edca",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/weapon-dart.webp",
+        "sha256": "5c303f05823d82e27931ab125eb334a822227626ed98b8af757cc7cdee222826",
+        "bytes": 5872,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8553
+    },
+    {
+      "id": "weapon-flail",
+      "label": "Flail",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "0baeff0a0c91e8dd340e21d44c8c9b68422cd8125e2be3ab924a8c7bde91848a",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/weapon-flail.webp",
+        "sha256": "37da888b12e3f4e8ff596146e5f3bbf1500f80c11b62850f897fa7bb198758ec",
+        "bytes": 8668,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9055
+    },
+    {
+      "id": "weapon-glaive",
+      "label": "Glaive",
+      "source": "Built-in image_gen",
+      "sourceSha256": "c6c8e9cba80068d0aae393d22d043ca085f105a310ef6495a59a171811741938",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's action-card weapons: warm ivory steel highlights, aged brass details, rich brown leather and honey wood, crisp silhouettes, restrained believable ornament. Square canvas with true transparent alpha. Physical object only, NO glow, fog, halo, backdrop, shadow outside object, golden swooshes, motion trails, text, border, circle, hands or character. Center the COMPLETE object inside a circle of diameter 82% of the square. Clearly readable at 32px, balanced substantial forms, slightly stylized but convincing construction. A GLAIVE with a prominent broad curved single-edged steel blade atop a long reinforced wooden shaft. Near-vertical orientation, slight diagonal. Stylized inventory perspective with the blade nearer the viewer and thicker, shaft receding mildly to a fully visible iron-capped butt. Distinctly a long polearm, not a sword or axe.",
+      "export": {
+        "src": "/assets/icons/inventory/weapon-glaive.webp",
+        "sha256": "a2ca71bae6024baecdef34634363e7e547129f713c5bfa485f76215400c87d30",
+        "bytes": 7064,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8785
+    },
+    {
+      "id": "weapon-greataxe",
+      "label": "Greataxe",
+      "source": "Built-in image_gen",
+      "sourceSha256": "e16899e5f5719e852d8f3f0f8ee92899d4f51a5e04d9ebed26e4084529f5d8e0",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's action-card weapons: warm ivory steel highlights, aged brass details, rich brown leather and honey wood, crisp silhouettes, restrained believable ornament. Square canvas with true transparent alpha. Physical object only, NO glow, fog, halo, backdrop, shadow outside object, golden swooshes, motion trails, text, border, circle, hands or character. Center the COMPLETE object inside a circle of diameter 82% of the square. Clearly readable at 32px, balanced substantial forms, slightly stylized but convincing construction. A heavy two-handed GREATAXE, imposing symmetric double crescent steel axe head, long thick oak haft with two-handed leather grip. Near upright diagonal; broad head spans half the canvas.",
+      "export": {
+        "src": "/assets/icons/inventory/weapon-greataxe.webp",
+        "sha256": "868255079b7b28549e47b862bedcae37b4d204c2015a71f6a29a9bf6d0ac56e0",
+        "bytes": 15982,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.7774
+    },
+    {
+      "id": "weapon-greatclub",
+      "label": "Greatclub",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "e33daf91a12f38e0b0b421791dd54954e9415563b2177f0ac8572a8d5eba87e3",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/weapon-greatclub.webp",
+        "sha256": "58baa1c1d1e8d792bda9f5f36389d8e2a984571a82895bdf20baff2feb9a77b7",
+        "bytes": 7574,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9714
+    },
+    {
+      "id": "weapon-greatsword",
+      "label": "Greatsword",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "1951a5174ecb5f5621ea0c3373289b8b17e5e286d5523e1aeea55e60dc7f44c9",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/weapon-greatsword.webp",
+        "sha256": "e4839c00777399c0655d181e3b0a0ce352ab47f6bd57eaa026347d3830da5326",
+        "bytes": 5762,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9256
+    },
+    {
+      "id": "weapon-halberd",
+      "label": "Halberd",
+      "source": "Built-in image_gen",
+      "sourceSha256": "26984496f8943ba2d7a4cc4087eac03bb6dada03d8d89a04ed03c6f998602e55",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's action-card weapons: warm ivory steel highlights, aged brass details, rich brown leather and honey wood, crisp silhouettes, restrained believable ornament. Square canvas with true transparent alpha. Physical object only, NO glow, fog, halo, backdrop, shadow outside object, golden swooshes, motion trails, text, border, circle, hands or character. Center the COMPLETE object inside a circle of diameter 82% of the square. Clearly readable at 32px, balanced substantial forms, slightly stylized but convincing construction. A HALBERD with a broad steel axe blade on one side, rear hook on opposite side, and long spear spike on top, all mounted on one long wooden pole. Near-vertical slight diagonal. Strong broad three-part head closer to viewer, long haft receding mildly to visible capped butt. Keep entire weapon, emphasize characteristic head for small icon.",
+      "export": {
+        "src": "/assets/icons/inventory/weapon-halberd.webp",
+        "sha256": "7d24e30d10717a0f2ab4039bfda47d27e8cc9f047ebf3cafc4e5edd0db6e7e04",
+        "bytes": 11394,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.7839
+    },
+    {
+      "id": "weapon-hand-crossbow",
+      "label": "Hand Crossbow",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "047c92d0031ad696f318dc6dab565f5190733c95263fc56930d5acc54fa9669a",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/weapon-hand-crossbow.webp",
+        "sha256": "1f885c78f2ed95565606208a15f2fdab6387db23924ba1a02c71db97859d8464",
+        "bytes": 11486,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8736
+    },
+    {
+      "id": "weapon-handaxe",
+      "label": "Handaxe",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "f35a99f58bd273a991610698a0791ce755bc550a96488635a9a91ba931a6d1a4",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/weapon-handaxe.webp",
+        "sha256": "3771586543220979e84f5cfa9b70c47100216fc4ec034774783be1a1e07cfbe8",
+        "bytes": 8484,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8837
+    },
+    {
+      "id": "weapon-heavy-crossbow",
+      "label": "Heavy Crossbow",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "63df18b0c81ad36294cffc937a024c118c7c01793c1d0fd51d80d1a796b182da",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/weapon-heavy-crossbow.webp",
+        "sha256": "e7339960e809d07aa4c4235e4c9f252632707ac3e64d36405e1d53789862e447",
+        "bytes": 11616,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8553
+    },
+    {
+      "id": "weapon-javelin",
+      "label": "Javelin",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "663dd5e6f9be708cc1ef966764da913f994d52fff575770873ee8f25dec293e8",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/weapon-javelin.webp",
+        "sha256": "3272a15b65ebf58550e1efbc5c49c164625e375449f4663c8dec404a57b20833",
+        "bytes": 3148,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.2773
+    },
+    {
+      "id": "weapon-lance",
+      "label": "Lance",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "a91ecf1e226090c1307fdbd7de1921fb8daa3d14facaa61ea78fd29c25238942",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/weapon-lance.webp",
+        "sha256": "4675b5e992c290d47e457781b0e9f133aa888bfc50c40fa6e931d6217085c0ca",
+        "bytes": 5494,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8371
+    },
+    {
+      "id": "weapon-light-crossbow",
+      "label": "Light Crossbow",
+      "source": "Built-in image_gen",
+      "sourceSha256": "a30fbf1ba7f72942a9608dbb1c377ee3c58ceb10ba53ec02880924474b280a33",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's action-card weapons: warm ivory steel highlights, aged brass details, rich brown leather and honey wood, crisp silhouettes, restrained believable ornament. Square canvas with true transparent alpha. Physical object only, NO glow, fog, halo, backdrop, shadow outside object, golden swooshes, motion trails, text, border, circle, hands or character. Center the COMPLETE object inside a circle of diameter 82% of the square. Clearly readable at 32px, balanced substantial forms, slightly stylized but convincing construction. A LIGHT CROSSBOW with honey-walnut shoulder stock and steel bow limbs, correctly joined taut bowstring and straight central bolt rail. Three-quarter view from slightly above, stock points toward lower left, bow arms spread widely across upper half, compact square-friendly triangular silhouette. No floating arrows or extra limbs.",
+      "export": {
+        "src": "/assets/icons/inventory/weapon-light-crossbow.webp",
+        "sha256": "c5b4454e17ee84c129487ad7ac5025a3e003f179b6953db13e7ba798618461a3",
+        "bytes": 17794,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.7658
+    },
+    {
+      "id": "weapon-light-hammer",
+      "label": "Light Hammer",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "ec9196fb8dc61635f19c3d46b5ea115f292baa32df2a674824fcfab20308dcf2",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/weapon-light-hammer.webp",
+        "sha256": "cedf39998d0ecca355a08e58b3d761c03add854775c4e974572471a2b1ab533c",
+        "bytes": 5726,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.0822
+    },
+    {
+      "id": "weapon-longbow",
+      "label": "Longbow",
+      "source": "Built-in image_gen",
+      "sourceSha256": "3ca6371810e2b5c3395d737c2e1225a4f4e5492f0c5007e9421c1763a016a7d6",
+      "prompt": "Precise background-extraction edit of this longbow illustration. Preserve the exact bow shape, wood grain, leather wrap, brass tips and physical bowstring. REMOVE ALL gray/brown cloudy halo, glow, fog, shadow and haze around and BETWEEN bow and string. Every nonphysical pixel must be fully transparent, including the entire large open region between curved wood and taut string. Clean crisp anti-aliased alpha edge. No change to the object design or canvas. The bow is not luminous. No background.",
+      "export": {
+        "src": "/assets/icons/inventory/weapon-longbow.webp",
+        "sha256": "07d0eb9334ef0066b4371abc6f95c246e34d819cae8b3ddd1680dfa15e0a35ec",
+        "bytes": 10076,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8428
+    },
+    {
+      "id": "weapon-longsword",
+      "label": "Longsword",
+      "source": "Built-in image_gen",
+      "sourceSha256": "f44929315e358b386397360ef797d67695d10126bfe855b3f1c9d7ed8a95dec7",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's action-card weapons: warm ivory steel highlights, aged brass details, rich brown leather and honey wood, crisp silhouettes, restrained believable ornament. Square canvas with true transparent alpha. Physical object only, NO glow, fog, halo, backdrop, shadow outside object, golden swooshes, motion trails, text, border, circle, hands or character. Center the COMPLETE object inside a circle of diameter 82% of the square. Clearly readable at 32px, balanced substantial forms, slightly stylized but convincing construction. A straight one-handed steel LONGSWORD with long tapering double-edged blade, plain straight crossguard and leather grip for one hand. Full sword shown near-vertical on 25 degree diagonal, pommel lower left and tip upper right; blade three times grip length, distinguish from a short dagger.",
+      "export": {
+        "src": "/assets/icons/inventory/weapon-longsword.webp",
+        "sha256": "5f4cf078f75fde9ddb36d2a8ee420a45ce2ee7b96c42e4b265b43bc687b7af4e",
+        "bytes": 8628,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.724
+    },
+    {
+      "id": "weapon-mace",
+      "label": "Mace",
+      "source": "Built-in image_gen",
+      "sourceSha256": "115ecc8ea2b828c13203e9cef5a86190ad5b0292b8dc56caf9a5fa8b7152ba78",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's action-card weapons: warm ivory steel highlights, aged brass details, rich brown leather and honey wood, crisp silhouettes, restrained believable ornament. Square canvas with true transparent alpha. Physical object only, NO glow, fog, halo, backdrop, shadow outside object, golden swooshes, motion trails, text, border, circle, hands or character. Center the COMPLETE object inside a circle of diameter 82% of the square. Clearly readable at 32px, balanced substantial forms, slightly stylized but convincing construction. A one-handed flanged MACE, clearly readable six-fin steel striking head, brass collar, stout brown leather grip, rounded pommel, near upright diagonal. No spikes, chain, axe edge or wooden striking head.",
+      "export": {
+        "src": "/assets/icons/inventory/weapon-mace.webp",
+        "sha256": "72bf8ef69490e7ab6576decc5514c214474fb5caf5691bd5f87597233244a023",
+        "bytes": 10884,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8634
+    },
+    {
+      "id": "weapon-maul",
+      "label": "Maul",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "b1227bfbcacd6c3d755df344b40ca10c883f084686159e789c14da6fa291bfa7",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/weapon-maul.webp",
+        "sha256": "70819fe905d622b02dee12cf2f73c1618ff386c787aaf9da1381c9572209ad13",
+        "bytes": 6572,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9675
+    },
+    {
+      "id": "weapon-morningstar",
+      "label": "Morningstar",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "e6e432bb05529ec4646bb8e8fa69392cdd58219ba0ae40773a170dfdb326de57",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/weapon-morningstar.webp",
+        "sha256": "0976addfec508c6e2084876e174b04b59215c7627acdfab2d607d008c8be8520",
+        "bytes": 7062,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8441
+    },
+    {
+      "id": "weapon-net",
+      "label": "Net",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "8b9584497a59b9414ab504ff70a8d82f19f85d769d3846f750a077495a7c51a5",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/weapon-net.webp",
+        "sha256": "2c32184c3b67377852f9d6f102877883ac46f1bfa90c644e37a6b4eb867a30c3",
+        "bytes": 21974,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9475
+    },
+    {
+      "id": "weapon-pike",
+      "label": "Pike",
+      "source": "Built-in image_gen",
+      "sourceSha256": "cde748e10669c625f2eaad87420b6633ff5752d356f09f9723c131757af9276d",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's action-card weapons: warm ivory steel highlights, aged brass details, rich brown leather and honey wood, crisp silhouettes, restrained believable ornament. Square canvas with true transparent alpha. Physical object only, NO glow, fog, halo, backdrop, shadow outside object, golden swooshes, motion trails, text, border, circle, hands or character. Center the COMPLETE object inside a circle of diameter 82% of the square. Clearly readable at 32px, balanced substantial forms, slightly stylized but convincing construction. A long thrusting PIKE: very narrow elongated triangular steel point above a long socket and reinforced straight wooden pole. Full weapon near-vertical, strong perspective shortening of the receding shaft so distinctive long steel head remains substantial in the circular composition. Iron butt cap visible. Different from broad-leaf spear: slender angular spike and long socket.",
+      "export": {
+        "src": "/assets/icons/inventory/weapon-pike.webp",
+        "sha256": "b317d0e89a1dae0febad85262e1789690f78b87d6cfa6702f2748a57f51e8232",
+        "bytes": 4000,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9116
+    },
+    {
+      "id": "weapon-quarterstaff",
+      "label": "Quarterstaff",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "7cd6d32979c8ea0f11a948678b42710466d0d5763533f9d2bfa1aa73464baa5e",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/weapon-quarterstaff.webp",
+        "sha256": "c20e337a3beda8ad40760256457f4518ba6fd8b9ed9534a23e260701997628c5",
+        "bytes": 4650,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8612
+    },
+    {
+      "id": "weapon-rapier",
+      "label": "Rapier",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "59ca64987c2a3efbae3e88ea7d6957b348ffd3ec5a409db3a29b5cc695aebf81",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/weapon-rapier.webp",
+        "sha256": "427858ac050c4c9de186a59028bad06cbfe9331773b843057bedfa060d2cfa1f",
+        "bytes": 7926,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9098
+    },
+    {
+      "id": "weapon-scimitar",
+      "label": "Scimitar",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "6c8b23d699f1f3a711278f6851dd901c143647773de69022b3ec346feec125a1",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/weapon-scimitar.webp",
+        "sha256": "5b6c4b771dd3e53953923be735bb0ab8f60da9fdf76dc96b5effa0779d71cec8",
+        "bytes": 7828,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8382
+    },
+    {
+      "id": "weapon-shortbow",
+      "label": "Shortbow",
+      "source": "Built-in image_gen",
+      "sourceSha256": "476ab13a57713be0aeb682409fb5ea6879e85ccb2a94ccf1e8b1f85156acd65e",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's action-card weapons: warm ivory steel highlights, aged brass details, rich brown leather and honey wood, crisp silhouettes, restrained believable ornament. Square canvas with true transparent alpha. Physical object only, NO glow, fog, halo, backdrop, shadow outside object, golden swooshes, motion trails, text, border, circle, hands or character. Center the COMPLETE object inside a circle of diameter 82% of the square. Clearly readable at 32px, balanced substantial forms, slightly stylized but convincing construction. A compact hunting SHORTBOW with strong recurve limbs of honey-brown wood and simple dark leather central grip. Upright, almost vertical, slight diagonal. Deeply curved broad silhouette, taut clearly connected bowstring, complete ends; no arrow. Unlike tall slim longbow this bow is short, stout and visibly recurved.",
+      "export": {
+        "src": "/assets/icons/inventory/weapon-shortbow.webp",
+        "sha256": "44f9c27cd287f89b65025f2beb2fc8ed061771598a1febe0c996fb0353a75bbd",
+        "bytes": 10498,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9329
+    },
+    {
+      "id": "weapon-shortsword",
+      "label": "Shortsword",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "a9d8bb0af7137024faa36d16fba371b1ee761e8007ced79e310a802d9d5cbb91",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/weapon-shortsword.webp",
+        "sha256": "9516aa710672df407bdc8fcb8672fb81b005868363f2fda337c6e04e1f41f787",
+        "bytes": 3806,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 1.336
+    },
+    {
+      "id": "weapon-sickle",
+      "label": "Sickle",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "542a7c2e45df01f4f00d3ff130c7af7597c338cf3e7ec0f64847a8e8ac166eef",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/weapon-sickle.webp",
+        "sha256": "0c8ac2b1487baafc6efebfd77fccb19fb1b9dc97f7f8eb0bea25aa4e715c135d",
+        "bytes": 7672,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8846
+    },
+    {
+      "id": "weapon-sling",
+      "label": "Sling",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "7f0a7de1c1f29b011bf24f7ea98f3ba13ac3a25e5553c0a7199c33144c14381f",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/weapon-sling.webp",
+        "sha256": "61960338c377b4b7d3297883005696354f4fdddd64aedda22ae4a8f20f8be962",
+        "bytes": 13776,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8782
+    },
+    {
+      "id": "weapon-spear",
+      "label": "Spear",
+      "source": "Built-in image_gen",
+      "sourceSha256": "6a645811024635cee89ca54a78f3cc6b30423bf6663b2ed2aaf8f3df80b44c37",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's action-card weapons: warm ivory steel highlights, aged brass details, rich brown leather and honey wood, crisp silhouettes, restrained believable ornament. Square canvas with true transparent alpha. Physical object only, NO glow, fog, halo, backdrop, shadow outside object, golden swooshes, motion trails, text, border, circle, hands or character. Center the COMPLETE object inside a circle of diameter 82% of the square. Clearly readable at 32px, balanced substantial forms, slightly stylized but convincing construction. A sturdy SPEAR with large leaf-shaped steel spearhead, reinforced wooden shaft and small iron butt cap. Full weapon upright on slight diagonal, gently foreshortened shaft, thick enough to read at icon size. Broad steel leaf head dominates the upper third; utilitarian brown leather binding, not a sword, no side axe blades.",
+      "export": {
+        "src": "/assets/icons/inventory/weapon-spear.webp",
+        "sha256": "04e2336d2acc3607bf1fdef289e70cb0c3d9b75f8e821ef126e9f65df6fdc762",
+        "bytes": 8378,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.7199
+    },
+    {
+      "id": "weapon-trident",
+      "label": "Trident",
+      "source": "Built-in image_gen",
+      "sourceSha256": "a2c1bdae388baa34df53ba6a128515691a03f45814401c32d76cdbafedded591",
+      "prompt": "Precise background-extraction edit of this Trident inventory illustration. Preserve the object exactly: all shapes, materials, details, colors, scale and composition. Remove ALL cloudy gray-white halo and backdrop around the upper end and in ALL holes between physical parts. Every pixel outside the actual wood, leather, metal and gemstone must have clean transparent alpha. No glow, no fog, no external shadow. In particular the top of this Trident is NOT a light source and must have no surrounding white region. Keep crisp antialiased object edges, preserve full canvas. The result is a clean isolated cutout of the same object.",
+      "export": {
+        "src": "/assets/icons/inventory/weapon-trident.webp",
+        "sha256": "8b65eaa11aa82d79f85a9b03e8d024bde2c18b6dfe4d7ada347a79e947bce9f7",
+        "bytes": 8258,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9087
+    },
+    {
+      "id": "weapon-war-pick",
+      "label": "War Pick",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "63fd970aad4ad1493e6839be61a519d9cf186afcdfedf17557bcc545108bc713",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/weapon-war-pick.webp",
+        "sha256": "85fc5382d09a03bb81c0e5b21801d3217ea6b9c8a7bf00d0461d340efc3670b8",
+        "bytes": 7144,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8715
+    },
+    {
+      "id": "weapon-warhammer",
+      "label": "Warhammer",
+      "source": "Built-in image_gen",
+      "sourceSha256": "43c718f33414092c5d54f235483e46682df9e3b18aae828be7f30435e6dc1764",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's action-card weapons: warm ivory steel highlights, aged brass details, rich brown leather and honey wood, crisp silhouettes, restrained believable ornament. Square canvas with true transparent alpha. Physical object only, NO glow, fog, halo, backdrop, shadow outside object, golden swooshes, motion trails, text, border, circle, hands or character. Center the COMPLETE object inside a circle of diameter 82% of the square. Clearly readable at 32px, balanced substantial forms, slightly stylized but convincing construction. A one-handed WARHAMMER, compact rectangular steel hammer face with a curved rear armor-piercing beak, sturdy wooden shaft with brown wrapped grip. Near upright diagonal. Head occupies upper third, no spikes on striking face.",
+      "export": {
+        "src": "/assets/icons/inventory/weapon-warhammer.webp",
+        "sha256": "d8c0e66daa296f2568602623c2ea3a6effa65ea4e6c5ecc148f7cc4968561ce8",
+        "bytes": 10844,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9254
+    },
+    {
+      "id": "weapon-whip",
+      "label": "Whip",
+      "source": "Reused collaborative action-card artwork",
+      "sourceSha256": "c88aefc6895ddcbacb66ba941039ce74d65cf469593fda488a5372b4caf317d8",
+      "prompt": null,
+      "export": {
+        "src": "/assets/icons/inventory/weapon-whip.webp",
+        "sha256": "b0a67f1e31682553dba65182c6f7ebe7edabe6c46b36d8932606ccf2e8a5f17d",
+        "bytes": 6834,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9206
+    }
+  ]
+}

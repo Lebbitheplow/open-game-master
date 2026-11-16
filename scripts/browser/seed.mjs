@@ -692,6 +692,7 @@ for (const viewport of ["desktop", "phone"]) {
         // an orb has no place on the body, so it is under Other items.
         { name: "Wand of Magic Missiles", qty: 1, equipped: false },
         { name: "Crystal Ball", qty: 1, equipped: false },
+        { name: "Bracers of Defense", qty: 1, equipped: true, attuned: false },
       ],
     }),
   );
