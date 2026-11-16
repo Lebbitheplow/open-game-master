@@ -34,6 +34,16 @@ export function spellSparesUndead(desc: string): boolean {
   return /no effect on (?:undead or constructs|constructs or undead)/i.test(desc);
 }
 
+// The SRD 5.1 healing spells whose own text says it ("This spell has no
+// effect on undead or constructs", src/lib/rulebook/srd-5.1.json), read when
+// no content pack gives the spell's text: without it Cure Wounds healed a
+// skeleton on a server with no pack, as CI and the app's own worlds run.
+const SRD_SPARES_UNDEAD = ["cure wounds", "healing word", "mass cure wounds", "mass healing word", "prayer of healing", "heal", "mass heal", "spare the dying"];
+
+function sparesUndead(spell: string, desc: string): boolean {
+  return desc ? spellSparesUndead(desc) : SRD_SPARES_UNDEAD.includes(textKey(spell));
+}
+
 export function healPet(
   campaign: Campaign,
   turnId: string,
@@ -72,7 +82,7 @@ export function healPet(
     const authors = spellAuthorsFor(campaign);
     const facts = spellFactsFor(input.spell, authors);
     const name = facts?.name ?? input.spell;
-    if (/undead|construct/i.test(kind) && spellSparesUndead(String(findSpellByName(input.spell, authors)?.data.desc ?? ""))) {
+    if (/undead|construct/i.test(kind) && sparesUndead(facts?.runsAs ?? name, String(findSpellByName(input.spell, authors)?.data.desc ?? ""))) {
       return { error: `${pet.name} is ${kind === "undead" ? "an undead" : `a ${kind}`}, and ${name} has no effect on undead or constructs. Nothing was spent.`, refused: "rules" };
     }
     // A pet makes no death saves (pet-tools.ts hurtPet: it drops or

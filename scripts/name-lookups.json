@@ -2024,7 +2024,7 @@
     "lib/dm/pet-mount.ts#whole": [["identity",1,"the drake a mount record names (pet:<textKey of its name>, pet-command.ts drakeMount), on its rider's record by textKey"]],
     "lib/dm/pet-mount.ts#whole-single": [["identity",1,"whether the rider's mount record is this pet, by the ref drakeMount wrote from its name"]],
     "lib/dm/pet-heal.ts#partial": [["pattern",2,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
-    "lib/dm/pet-heal.ts#whole": [["key",1,"a spell's runsAs by textKey against the engine's own spell id (Spare the Dying)"]],
+    "lib/dm/pet-heal.ts#whole": [["key",1,"a spell's runsAs by textKey against the engine's own spell id (Spare the Dying)"],["key",1,"a spell's runsAs by textKey against the SRD healing spells that spare undead and constructs, read only with no content pack"]],
     "lib/dm/undead-command.ts#keyed": [["key",2,"the command's reach by the spell the summon row runs as (summon-spells.ts engine names)"]],
     "lib/dm/undead-command.ts#whole": [["key",1,"the engine's own condition label on the summon's record, by textKey"]],
     "lib/dm/pet-pocket.ts#whole-single": [["identity",1,"the pet the call already found, again on the record read fresh, by its stored name and kind"],["identity",1,"the form a recall names against the pocketed familiar's stored form, both by textKey after the familiar table's own lookup"]],

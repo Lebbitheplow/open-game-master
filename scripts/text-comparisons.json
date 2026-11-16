@@ -1782,6 +1782,7 @@
     "lib/dm/pet-tools.ts#str-includes": [["key",1,"a condition label (engine vocabulary)"]],
     "lib/dm/pet-tools.ts#str-list": [["key",4,"tool schema enums and field names"]],
     "lib/dm/pet-heal.ts#re-word": [["key",1,"undead or construct read in the creature type a pet's record carries (engine vocabulary)"],["table-language",1,"meaning reader: a spell's description read for whether it has no effect on undead or constructs (pack rows, and a homebrew spell's free text; follow-up F)"]],
+    "lib/dm/pet-heal.ts#str-list": [["key",1,"the SRD 5.1 healing spells whose text spares undead and constructs, by textKey against a spell's runsAs (engine spell ids, read only with no content pack)"]],
     "lib/dm/pet-heal.ts#str-eq": [["key",2,"a creature type in the refusal's words, and the pet the call found again on the record read after the casting by its stored name (engine vocabulary)"]],
     "lib/dm/undead-command.ts#str-eq": [["key",1,"cast_buff's variant against the engine's own word for the command (engine vocabulary)"]],
     "lib/dm/undead-command.ts#str-key": [["key",1,"the command's reach by the spell's engine name (summon-spells.ts rows, engine vocabulary)"]],
