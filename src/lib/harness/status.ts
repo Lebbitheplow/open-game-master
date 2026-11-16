@@ -11,6 +11,7 @@ import { claudeAdapter } from "./adapters/claude.ts";
 import { opencodeAdapter } from "./adapters/opencode.ts";
 import { codexAdapter } from "./adapters/codex.ts";
 import { grokAdapter } from "./adapters/grok.ts";
+import { piAdapter } from "./adapters/pi.ts";
 import { fakeAdapter } from "./adapters/fake.ts";
 import type { HarnessAdapter, HarnessConfig, HarnessId, HarnessStatus } from "./types.ts";
 import { HARNESS_IDS } from "./types.ts";
@@ -23,6 +24,7 @@ export const ADAPTERS: Record<HarnessId, HarnessAdapter> = {
   codex: codexAdapter,
   opencode: opencodeAdapter,
   grok: grokAdapter,
+  pi: piAdapter,
 };
 
 // The scripted stand-in the tests drive (scripts/lib/fake-harness.mjs).
