@@ -363,4 +363,21 @@ await test("D23: a steel defender out of action or held at speed 0 is not dodgin
   assert.equal(defenderDodging({ ...defender, conditions: ["grappled"] }), null, "a grappled defender still dodges");
 });
 
+// D24. The lair rule of the books that print lair actions (SRD 5.1 prints
+// none): the creature "can't do so while incapacitated or otherwise unable to
+// take actions". A stunned dragon's lair still acted on initiative 20.
+await test("D24: a lair whose creature is stunned takes no lair action, and the GM's lair card says so", async () => {
+  const [foe] = await stage();
+  board.setEnemy(foe.id, { stats: { ...DUMMY, lairOptions: ["Stalactites fall on one creature the lair can see."] }, conditions: ["stunned"], conditionMeta: {} });
+  const encounter = field.encounter();
+  encounters.saveEncounter({ ...encounter, legendary: { ...encounter.legendary, lair: true, lairDue: encounter.round } });
+  const { lairChoices } = await import("../src/lib/dm/legendary-logic.ts");
+  const [card] = lairChoices(field.enemies(), field.encounter().legendary) ?? [];
+  const out = await field.invoke("lair_action", { action: "1" });
+  board.setEnemy(foe.id, { conditions: [], conditionMeta: {} });
+  assert.equal(out.ok, false, `the stunned creature's lair acted: ${JSON.stringify(out.result)}`);
+  assert.match(String(out.error), /stunned/, out.error);
+  assert.match(String(card?.refusal ?? ""), /stunned/, `the lair card offered it: ${JSON.stringify(card)}`);
+});
+
 finish();

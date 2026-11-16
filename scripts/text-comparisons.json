@@ -778,6 +778,7 @@
     "lib/dm/known-before-logic.ts#str-list": [["key",1,"the tie grades: acquainted, friend, close (fixed choice)"]],
     "lib/dm/lair-logic.ts#[a-z]": [["table-language",2,"meaning reader: legendary and lair action lines (pack rows, and the lines a workshop author writes) parsed for costs, saves and damage"]],
     "lib/dm/lair-logic.ts#re-word": [["table-language",2,"meaning reader: legendary and lair action lines (pack rows, and the lines a workshop author writes) parsed for costs, saves and damage"],["table-language",1,"meaning reader: a lair's traits (pack rows, and the lines a workshop author writes) read for a no-repeat rule"]],
+    "lib/dm/lair-logic.ts#str-eq": [["key",1,"a creature's status (engine vocabulary): the lair's creature alive to act"]],
     "lib/dm/lair-logic.ts#toLowerCase": [["table-language",2,"meaning reader: legendary and lair action lines (pack rows, and the lines a workshop author writes) parsed for costs, saves and damage"]],
     "lib/dm/legendary-play.ts#str-eq": [["key",2,"a condition label and a token kind (engine vocabulary)"]],
     "lib/dm/legendary-play.ts#str-key": [["key",1,"sizes keyed to the squares a creature covers (engine vocabulary)"]],
