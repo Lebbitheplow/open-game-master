@@ -326,7 +326,7 @@ export function handleTakeRest(
   // A long rest charges the resters' lifestyle for its dawns (below), so
   // those dawns feed them.
   const lifestyle = args.kind === "long" ? Object.fromEntries(resting.map((id) => [id, 0])) : undefined;
-  const clockAfter = advanceClock(campaign.id, restedMinutes, "minutes", { meal: Boolean(args.meal), lifestyle });
+  const clockAfter = advanceClock(campaign.id, restedMinutes, "minutes", { meal: Boolean(args.meal), lifestyle, resting: true });
   // The death saves those hours rolled for the dying (condition-tick.ts):
   // the GM narrates the rest from this result, and without them told a
   // character who died in the night that they still lay dying at dawn.

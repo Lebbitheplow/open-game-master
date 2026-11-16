@@ -76,7 +76,7 @@ import { ZONE_ARGS, zoneArgsSchema, zonePlacement } from "@/lib/dm/zone-args";
 import { castHealingSpell } from "@/lib/dm/heal-spell";
 import { spendWardDice } from "@/lib/dm/ar-ws-bastion";
 import { listedCalls, listRefusal, oneCasting, PART_LISTS, partsResult, type OneCasting } from "@/lib/dm/action-parts-logic";
-import { advanceClock, recordShapeEnd } from "@/lib/db/clock";
+import { advanceClock, getClock, recordShapeEnd } from "@/lib/db/clock";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { canAct } from "@/lib/dm/can-act";
 import { heldTurnRefusal } from "@/lib/dm/held-turn";
@@ -122,6 +122,7 @@ import { waypointProperty } from "@/lib/dm/waypoint-logic";
 import { badArguments, invalidArguments, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { worthProblem } from "@/lib/dm/trade-value";
 import { findCarriedItem, notCarried, sentItemTags, srdNameFor } from "@/lib/dm/item-logic";
+import { lightCarriedLight } from "@/lib/dm/light-timers";
 import { isTableGearName } from "@/lib/db/homebrew";
 import { freeSlotsLine, spentSlotRefusal } from "@/lib/dm/cast-rules";
 import { textKey } from "@/lib/language/text-logic";
@@ -1332,6 +1333,11 @@ function dmMutation(
       const unreadable = consumableRefusal(sheet, findCarriedItem(sheet.equipment, itemName) ?? { name: itemName });
       if (unreadable) {
         return { result: unreadable };
+      }
+      // A torch or a candle is lit, burning on the clock (light-timers.ts).
+      const lit = target.id === sheet.id ? lightCarriedLight(campaign.id, sheet, findCarriedItem(sheet.equipment, itemName), getClock(campaign.id).instant) : null;
+      if (lit) {
+        return { result: { ...lit, ...objectCharge.commit() } };
       }
       const outcome = computeUseItem(campaign, sheet, target, itemName);
       if ("error" in outcome) {

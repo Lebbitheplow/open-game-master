@@ -27,14 +27,15 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 // is not dark at midnight), or at an English table by the words of a place
 // with no scene, else the sky's by the hour. Null on a board, or where
 // neither settles it.
-export function offBoardAmbient(campaignId: string, named: Light | null = null): Light | null {
+// `hourAt`: the clock's instant whose hour the sky follows (now, unsaid).
+export function offBoardAmbient(campaignId: string, named: Light | null = null, hourAt?: number): Light | null {
   if (getActiveBattleMap(campaignId)) {
     return null;
   }
   const clock = getClock(campaignId);
   const place = getCurrentLocation(campaignId);
   return offBoardLight({
-    hour: breakDown(clock.calendar, clock.instant).hour,
+    hour: breakDown(clock.calendar, hourAt ?? clock.instant).hour,
     named,
     place: place
       ? {

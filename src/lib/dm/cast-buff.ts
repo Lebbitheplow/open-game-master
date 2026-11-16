@@ -34,6 +34,7 @@ import { extendedRounds, factsAsCast, twinExtra } from "@/lib/dm/mt-srd-metamagi
 import { lifetimeAtSlot } from "@/lib/dm/spell-effects";
 import { withTempHpClaim, type ConditionMeta, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { healDeathHook } from "@/lib/dm/death";
+import { neutralizeOnePoison, neutralizesPoison } from "@/lib/dm/poison-neutralize";
 import { castToNoEffect, spellReachProblem, spellWardOn } from "@/lib/dm/cast-reach";
 import { castShares } from "@/lib/srd/spell-mechanics";
 import { castRedirect } from "@/lib/dm/cast-redirect";
@@ -449,6 +450,7 @@ export function handleCastBuff(
     ...(quarry ? { quarry: quarry.id } : {}),
   };
   const applied: string[] = [];
+  const neutralized: string[] = [];
   for (const target of targetSheets) {
     if (warded.has(target.id)) {
       continue;
@@ -470,6 +472,11 @@ export function handleCastBuff(
       continue;
     }
     applied.push(target.name);
+    // Protection from Poison ends one poisoning as it lands (poison-neutralize.ts).
+    const cured = neutralizesPoison(condition) ? neutralizeOnePoison(campaign.id, target.id, resolvedMech.name) : null;
+    if (cured) {
+      neutralized.push(cured);
+    }
     // The maximum (and the current hit points with it) follows the
     // condition from here: src/lib/db/sheets.ts patchSheet, maxHpRiders.
     if (polymorphForm) {
@@ -545,6 +552,7 @@ export function handleCastBuff(
     targets: applied,
     ...(shared ? { companion: shared } : {}),
     ...(noEffect ? { noEffect } : {}),
+    ...(neutralized.length ? { poisonNeutralized: neutralized } : {}),
     ...(quarry ? { quarry: quarry.displayName } : {}),
     ...(maxHpGain ? { hitPoints: `+${maxHpGain} to the maximum and current hit points of each` } : {}),
     ...(polymorphForm
