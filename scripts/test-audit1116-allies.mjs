@@ -453,4 +453,72 @@ await test("U09: a healing spell or a potion heals a pet, up to its maximum, and
   await world.invoke("dismiss_pet", { characterId: keeper.id, petName: "Rattle" });
 });
 
+// U10. SRD 5.1, Animate Dead: "On each of your turns, you can use a bonus
+// action to mentally command any creature you made with this spell if the
+// creature is within 60 feet of you (if you control multiple creatures, you
+// can command any or all of them at the same time ...). If you issue no
+// commands, the creature only defends itself against hostile creatures."
+// The command was charged nowhere: the skeleton shot whoever the GM liked on
+// its own turn, and its caster's bonus action stayed whole.
+await test("U10: an animated skeleton attacks only in self-defence until its caster spends a bonus action to command it", async () => {
+  await kit.endFight();
+  const necro = world.addHero({
+    class: "wizard", level: 5, maxHp: 30, abilities: { int: 16 }, proficiencies: { ...TRAINED },
+    spellcasting: { ability: "int", slots: { 3: { max: 2, used: 0 } }, prepared: ["Animate Dead"], known: [], cantrips: [] },
+  });
+  const raised = await world.invoke("cast_buff", { characterId: necro.id, spell: "Animate Dead", variant: "skeleton" });
+  assert.equal(raised.ok, true, raised.error);
+  const [bones] = raised.result.summoned;
+  await kit.fight(2);
+  const [near, far] = world.enemies();
+  kit.setEnemy(near.id, { maxHp: 200 });
+  kit.setEnemy(far.id, { maxHp: 200, stats: { ...kit.enemy(far.id).stats, attacks: [{ name: "Shortbow", toHit: 4, damage: "1d6+2", type: "piercing", range: 80, longRange: 320 }] } });
+  kit.place(necro.id, 3, 3);
+  kit.place(bones.characterId, 5, 5);
+  kit.place(near.id, 5, 6);
+  kit.place(far.id, 12, 5);
+  const shoot = (target) => kit.swing(bones.characterId, target, [15, 3, 15], { weapon: "Shortbow" });
+
+  // No command: the creature 35 feet off has neither attacked it nor stands
+  // beside it.
+  kit.giveTurn(bones.characterId);
+  const unbidden = await shoot(far.id);
+  assert.equal(unbidden.ok, false, "an uncommanded skeleton shot a creature that never threatened it");
+  // The goblin beside it threatens it: it defends itself.
+  const beside = await kit.swing(bones.characterId, near.id, [15, 3], { weapon: "Shortsword" });
+  assert.equal(beside.ok, true, beside.error);
+
+  // The caster's bonus action commands it; a second command is refused.
+  kit.giveTurn(necro.id);
+  const slotsBefore = world.sheet(necro.id).spellcasting.slots[3].used;
+  const command = await world.invoke("cast_buff", { characterId: necro.id, spell: "Animate Dead", variant: "command" });
+  assert.equal(command.ok, true, command.error);
+  assert.equal(world.encounter().turnBudget.bonusUsed, true, `the command left the bonus action whole: ${JSON.stringify(world.encounter().turnBudget)}`);
+  assert.equal(world.sheet(necro.id).spellcasting.slots[3].used, slotsBefore, "the command spent a slot");
+  const again = await world.invoke("cast_buff", { characterId: necro.id, spell: "Animate Dead", variant: "command" });
+  assert.equal(again.ok, false, "two bonus actions in one turn");
+  kit.giveTurn(bones.characterId);
+  const bidden = await shoot(far.id);
+  assert.equal(bidden.ok, true, bidden.error);
+
+  // Too far to hear the command: refused, nothing spent.
+  world.patch(bones.characterId, { conditions: [], conditionMeta: {} });
+  kit.place(necro.id, 1, 1);
+  kit.place(bones.characterId, 16, 1);
+  kit.giveTurn(necro.id);
+  const farOff = await world.invoke("cast_buff", { characterId: necro.id, spell: "Animate Dead", variant: "command" });
+  assert.equal(farOff.ok, false, "a command reached a skeleton 75 feet away");
+  assert.equal(world.encounter().turnBudget?.bonusUsed ?? false, false, "the refused command spent the bonus action");
+
+  // A creature that attacked it is one it defends itself against.
+  kit.place(bones.characterId, 5, 5);
+  enemyHoldsTheFloor();
+  const struck = await forced([2, 1], () => world.invoke("enemy_attack", { enemyId: far.id, targetCharacterId: bones.characterId }));
+  assert.equal(struck.ok, true, struck.error);
+  kit.giveTurn(bones.characterId);
+  const answered = await shoot(far.id);
+  assert.equal(answered.ok, true, answered.error);
+  await kit.endFight();
+});
+
 finish();

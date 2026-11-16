@@ -26,6 +26,7 @@ import { toolError, type ToolError } from "@/lib/dm/tool-errors";
 import { houndAttackRefusal } from "@/lib/dm/ar-ws-hound-quarry";
 import { listOpenPendingRolls } from "@/lib/db/dm-turns";
 import { attackWaitsToolLine, attackRollWithPlayer } from "@/lib/dm/open-roll-logic";
+import { uncommandedRefusal } from "@/lib/dm/undead-command";
 
 export function gatePcAttack(input: {
   campaign: Campaign;
@@ -173,6 +174,12 @@ export function gatePcAttack(input: {
   const offQuarry = houndAttackRefusal(sheet, enemy);
   if (offQuarry) {
     return { refused: offQuarry };
+  }
+  // An undead of Animate Dead or Create Undead with no command from its
+  // caster only defends itself (undead-command.ts).
+  const unordered = onTurn ? uncommandedRefusal(campaign.id, encounter.id, sheet, enemy) : null;
+  if (unordered) {
+    return { refused: unordered };
   }
   // A charmed creature cannot attack the one who charmed it.
   const charmedAs = sheet.conditions.find((entry) => entry.trim().toLowerCase() === "charmed");

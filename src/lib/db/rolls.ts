@@ -199,6 +199,16 @@ export function lastAttackDetail(campaignId: string, characterId: string): strin
   return row?.detail || null;
 }
 
+// Whether a creature has made an attack roll at this character. An enemy's
+// id is its fight's own, so its rolls are this fight's: what an undead left
+// without a command answers (src/lib/dm/undead-command.ts).
+export function attackedBy(campaignId: string, characterId: string, attackerId: string): boolean {
+  const row = getDatabase()
+    .prepare(`SELECT 1 FROM rolls WHERE campaign_id = ? AND character_id = ? AND roll_kind = 'attack' AND json_extract(attacker_json, '$.id') = ? LIMIT 1`)
+    .get(campaignId, characterId, attackerId);
+  return Boolean(row);
+}
+
 // Every roll since a moment, oldest first: the span of one fight.
 export function listRollsSince(campaignId: string, sinceIso: string): StoredRoll[] {
   const rows = getDatabase()

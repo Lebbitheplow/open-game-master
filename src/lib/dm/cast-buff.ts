@@ -42,6 +42,7 @@ import { handleSetCondition } from "@/lib/dm/set-condition";
 import { handleDispelMagic } from "@/lib/dm/dispel";
 import { summonSpellFor } from "@/lib/srd/summon-spells";
 import { castSummon } from "@/lib/dm/summon-cast";
+import { commandsUndead, commandUndead } from "@/lib/dm/undead-command";
 import { castFindFamiliar, isFindFamiliar } from "@/lib/dm/familiar-cast";
 import { castShapeAtEnemy, enemyShapeSpellFor } from "@/lib/dm/enemy-polymorph";
 import { allyRowRefusal, allyRowsOf, layBuffOnRows } from "@/lib/dm/cast-buff-allies";
@@ -145,6 +146,13 @@ export function handleCastBuff(
   const grantedSpell = grantedCastOf(sheet, args.spell ?? "", spellFactsFor(args.spell ?? "", spellAuthorsFor(campaign)));
   if (!castsSpells(sheet) && !grantedSpell && !paidByItem(sheet, args.spell ?? "") && !itemCastOpen(campaign.id, sheet, args.spell ?? "")) {
     return { error: `${sheet.name} cannot cast spells.`, refused: "rules" };
+  }
+  // Animate Dead's and Create Undead's command is the spell's bonus action,
+  // no casting: asked before the cast guard, which would refuse a 1-minute
+  // casting in a fight (undead-command.ts).
+  const commanding = summonSpellFor(spellEngineName(args.spell, spellAuthorsFor(campaign)));
+  if (commanding && commandsUndead(commanding, args.variant)) {
+    return commandUndead(campaign, sheet, commanding, findSpellByName(args.spell, spellAuthorsFor(campaign))?.name ?? args.spell);
   }
   const barred = castBarred(campaign, turn.id, { characterId: sheet.id, spell: args.spell, ...(args.level ? { level: args.level } : {}), via: "buff" }, sheets, sheetsById);
   if (barred) {

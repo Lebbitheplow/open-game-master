@@ -2013,6 +2013,8 @@
     "lib/dm/pet-mount.ts#whole-single": [["identity",1,"whether the rider's mount record is this pet, by the ref drakeMount wrote from its name"]],
     "lib/dm/pet-heal.ts#partial": [["pattern",2,"a fixed pattern over text that reads no record's name: its English words are scripts/text-comparisons.json's to classify"]],
     "lib/dm/pet-heal.ts#whole": [["key",1,"a spell's runsAs by textKey against the engine's own spell id (Spare the Dying)"]],
+    "lib/dm/undead-command.ts#keyed": [["key",2,"the command's reach by the spell the summon row runs as (summon-spells.ts engine names)"]],
+    "lib/dm/undead-command.ts#whole": [["key",1,"the engine's own condition label on the summon's record, by textKey"]],
     "lib/dm/pet-conditions.ts#keyed": [["key",1,"a pet's conditionMeta by the condition key it was written under"]],
     "lib/dm/pet-conditions.ts#whole": [["identity",2,"condition labels still held on the record"]],
     "lib/dm/pet-tools.ts#fallback": [["identity",1,"a pet by whole name or form; with none asked, the only one"]],
