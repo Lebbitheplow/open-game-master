@@ -32,7 +32,8 @@ import { publishTitleCard } from "@/lib/dm/scene-state";
 import { describeDuration, describeInstant, restMinutes } from "@/lib/dm/calendar";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { authoredRestTempHp } from "@/lib/dm/authored-turns";
-import { auditRest, grantLongRest, whoGainsLongRest } from "@/lib/dm/rest-benefits";
+import { auditRest, grantLongRest, restlessIds, whoGainsLongRest } from "@/lib/dm/rest-benefits";
+import { NIGHTMARE_REST } from "@/lib/dm/nightmare-curse-logic";
 import { argumentsRefusal, type ToolResult } from "@/lib/dm/tool-errors";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
 import { recoverSlotLevels, regainedLine } from "@/lib/dm/genre-a-slots";
@@ -286,8 +287,13 @@ export function handleTakeRest(
   // long rest for those who gain from it (grantLongRest), a short one for
   // everyone standing (its uses come back below). Read from `resting` alone,
   // a short rest left the hold beside a full set of uses.
+  // The rakshasa's curse: no benefit from finishing a short rest either
+  // (nightmare-curse-logic.ts), so no hit dice, uses, slots or temporary hit
+  // points for the cursed; a long rest's night is whoGainsLongRest's to deny.
+  const restless = args.kind === "short" ? restlessIds(sheets) : new Set<string>();
+  const benefiting = sheets.filter((sheet) => !restless.has(sheet.id));
   if (args.kind === "short") {
-    for (const stale of sheets) {
+    for (const stale of benefiting) {
       const sheet = getSheetById(stale.id);
       if (sheet && !sheet.deathSaves?.dead && holdsDestructiveWrath(sheet)) {
         spendWrath(campaign.id, sheet.id);
@@ -356,14 +362,14 @@ export function handleTakeRest(
   const standing = sheets
     .map((stale) => getSheetById(stale.id))
     .filter((sheet): sheet is CharacterSheet => Boolean(sheet) && !sheet?.deathSaves?.dead);
-  const choosers = standing.filter((sheet) => playerChoosesHitDice(campaign.id, sheet));
+  const choosers = standing.filter((sheet) => !restless.has(sheet.id) && playerChoosesHitDice(campaign.id, sheet));
   const chooses = (id: string) => choosers.some((sheet) => sheet.id === id);
   const plan = new Map<string, number>();
   const leftToPlayers: string[] = [];
   if (args.spend?.length) {
     for (const entry of args.spend) {
       const sheet = resolveSheetRef(entry.characterId, sheets, sheetsById);
-      if (!sheet) {
+      if (!sheet || restless.has(sheet.id)) {
         continue;
       }
       if (chooses(sheet.id) && !humanDm) {
@@ -376,7 +382,7 @@ export function handleTakeRest(
     }
   } else {
     for (const sheet of standing) {
-      if (chooses(sheet.id)) {
+      if (chooses(sheet.id) || restless.has(sheet.id)) {
         continue;
       }
       const conMod = computeSheetDerived(sheet).abilityMods.con;
@@ -425,7 +431,7 @@ export function handleTakeRest(
   // Short-recharge resources (Ki, Second Wind, Action Surge...) refill for
   // everyone, hit dice spent or not.
   const refilled: string[] = [];
-  for (const stale of sheets) {
+  for (const stale of benefiting) {
     const sheet = getSheetById(stale.id);
     if (!sheet || sheet.deathSaves?.dead) {
       continue;
@@ -438,9 +444,9 @@ export function handleTakeRest(
   }
   // Arcane Recovery / Natural Recovery: a wizard or druid gets slots back on
   // a short rest, once per day, spending the tracked use.
-  const recovered = applySlotRecovery(campaign, turnId, sheets, reason);
+  const recovered = applySlotRecovery(campaign, turnId, benefiting, reason);
   // Talking Cure: an alienist counsels a companion through the rest (genre-b-mystery-rest.ts).
-  const resilience = [...authoredRestTempHp(campaign, sheets.map((sheet) => sheet.id)), ...talkingCure(campaign, turnId, sheets.map((sheet) => sheet.id))];
+  const resilience = [...authoredRestTempHp(campaign, benefiting.map((sheet) => sheet.id)), ...talkingCure(campaign, turnId, benefiting.map((sheet) => sheet.id))];
 
   tableNote(
     campaign,
@@ -474,6 +480,7 @@ export function handleTakeRest(
         }
       : {}),
     ...(recovered.length ? { slotsRecovered: recovered } : {}),
+    ...(restless.size ? { noBenefit: `${sheets.filter((sheet) => restless.has(sheet.id)).map((sheet) => sheet.name).join(", ")} (${NIGHTMARE_REST})` } : {}),
     ...(attuned.length ? { attuned } : {}),
     ...(resilience.length ? { restTempHp: resilience } : {}),
     note: "Narrate the breather from these real numbers.",

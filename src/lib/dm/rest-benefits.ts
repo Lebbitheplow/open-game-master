@@ -14,6 +14,7 @@ import { foretoldWords } from "@/lib/dm/foretold-logic";
 import { soulTrinketAtRestEnd } from "@/lib/dm/mt-mr-trinkets";
 import { longRestPatch } from "@/lib/dm/rest-logic";
 import { tranquilityAfterLongRest } from "@/lib/dm/srd-defenses";
+import { holdsNightmareCurse, NIGHTMARE_REST } from "@/lib/dm/nightmare-curse-logic";
 import { goingWithout } from "@/lib/dm/supplies";
 import type { ToolError } from "@/lib/dm/tool-errors";
 import type { CharacterSheet, FullPatchSheetInput } from "@/lib/schemas/sheet";
@@ -69,6 +70,8 @@ export function whoGainsLongRest(campaignId: string, sheets: CharacterSheet[], e
       unaffected.push(`${sheet.name} (dead)`);
     } else if (sheet.currentHp <= 0) {
       unaffected.push(`${sheet.name} (at 0 hit points; a long rest needs at least 1 to begin with)`);
+    } else if (holdsNightmareCurse(sheet.conditions)) {
+      unaffected.push(`${sheet.name} (${NIGHTMARE_REST})`);
     } else if (!longRestAllowed(last[sheet.id], endsAt)) {
       unaffected.push(`${sheet.name} (finished a long rest less than 24 hours ago)`);
     } else {
@@ -76,6 +79,13 @@ export function whoGainsLongRest(campaignId: string, sheets: CharacterSheet[], e
     }
   }
   return { resting, unaffected };
+}
+
+// Those a curse keeps from any rest's benefit (the rakshasa's claw,
+// nightmare-curse-logic.ts): a short rest gives them no hit dice, no
+// resources and no slots, as whoGainsLongRest gives them no night.
+export function restlessIds(sheets: CharacterSheet[]): Set<string> {
+  return new Set(sheets.filter((stale) => holdsNightmareCurse(getSheetById(stale.id)?.conditions ?? stale.conditions)).map((sheet) => sheet.id));
 }
 
 export type LongRestGrant = {

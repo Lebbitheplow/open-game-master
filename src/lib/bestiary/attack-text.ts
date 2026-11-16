@@ -5,7 +5,8 @@ import type { SaveAbility } from "@/lib/bestiary/statblock";
 import { textKey } from "@/lib/language/text-logic";
 import { readScoreDrain, SCORE_DRAIN_SENTENCE, type ScoreDrain } from "@/lib/bestiary/score-drain-text";
 import { HOLD_SENTENCE, readHold, type CreatureHold } from "@/lib/bestiary/hold-text";
-import { HIT_DISEASE_SENTENCE, readHitDisease, type HitDisease } from "@/lib/bestiary/affliction-text";
+import { HIT_DISEASE_SENTENCE, readHitDisease, readsRestlessCurse, RESTLESS_CURSE_SENTENCE, type HitDisease } from "@/lib/bestiary/affliction-text";
+import { NIGHTMARE_CURSE } from "@/lib/dm/nightmare-curse-logic";
 
 // What an attack's printed line says beyond its bonus and dice (SRD 5.1,
 // Monsters: Actions): melee or ranged, its reach and range, the typed dice
@@ -464,6 +465,13 @@ function readOnHit(hit: string, effectOnly: boolean): OnHitRider | null {
     rider.disease = disease;
     delete rider.repeatSave;
   }
+  // A curse that takes every rest's benefit (SRD 5.1 Rakshasa, Claw), held
+  // as a condition the rests read (nightmare-curse-logic.ts). Left in
+  // `manual`, the cursed hero woke whole.
+  const restless = !rider.condition && readsRestlessCurse(hit);
+  if (restless) {
+    rider.condition = NIGHTMARE_CURSE;
+  }
   // The sleep a poisoned hit can bring. Read here, not left in `manual`:
   // the text was dropped unread, so a drow's bolt or a couatl's bite poisoned
   // and never put anyone to sleep.
@@ -532,6 +540,9 @@ function readOnHit(hit: string, effectOnly: boolean): OnHitRider | null {
   }
   if (disease) {
     manual = manual.filter((sentence) => !HIT_DISEASE_SENTENCE.test(sentence));
+  }
+  if (restless) {
+    manual = manual.filter((sentence) => !RESTLESS_CURSE_SENTENCE.test(sentence));
   }
   // A drained score is the engine's (src/lib/srd/ability-drain-logic.ts).
   const drained = readScoreDrain(hit);

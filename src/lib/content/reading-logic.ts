@@ -92,8 +92,9 @@ export const READING_KINDS = ["spell", "monster", "feat", "race", "class", "back
 //      rules audit 2026-11-15, monsters).
 // 16:  an attack's rider reads a disease with a save every 24 hours (an
 //      otyugh's bite: poisoned until cured, the dice a failure takes off the
-//      maximum) in place of a save at each turn's end (rules audit
-//      2026-11-16, time).
+//      maximum) in place of a save at each turn's end, and a curse that takes
+//      every rest's benefit (a rakshasa's claw) as the condition the rests
+//      read (rules audit 2026-11-16, time).
 export const READER_REVISION = 16;
 export type ReadingKind = (typeof READING_KINDS)[number];
 export type ReadingSource = "hand-written" | "parsed" | "missing";

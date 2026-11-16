@@ -26,6 +26,17 @@ export function readHitDisease(hit: string): HitDisease | null {
   return daily ? { dice: daily[1].toLowerCase() } : null;
 }
 
+// A hit's curse that takes every rest's benefit (SRD 5.1, Rakshasa, Claw:
+// "the target is cursed if it is a creature ... The cursed target gains no
+// benefit from finishing a short or long rest"), laid by enemy-hit.ts as
+// src/lib/dm/nightmare-curse-logic.ts's condition.
+export function readsRestlessCurse(hit: string): boolean {
+  return /\bthe target is cursed\b/i.test(hit) && /\bgains no benefit from finishing a short or long rest\b/i.test(hit);
+}
+
+// The curse's sentences, carried by the condition and not told to the GM.
+export const RESTLESS_CURSE_SENTENCE = /\bthe target is cursed\b|\bthe magical curse takes effect\b|\bgains no benefit from finishing\b|\bthe curse lasts until\b/i;
+
 // The sentences of a hit the disease's reading carries, so they are not also
 // told to the GM.
 export const HIT_DISEASE_SENTENCE = /\bagainst disease\b|\bevery 24 hours that elapse\b|\bthe disease is cured\b|\bthe disease reduces\b|\breduction to the target's hit point maximum lasts\b/i;
