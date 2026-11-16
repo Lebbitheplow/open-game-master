@@ -499,6 +499,15 @@ export function isIncapacitated(conditions: string[]): boolean {
   return has(conditions, INCAPACITATING) !== null;
 }
 
+// Whether a Dodge still does anything: "You lose this benefit if you are
+// incapacitated ... or if your speed drops to 0" (SRD 5.1, Dodge). Read here,
+// where every attack and every saving throw reads it: the enemy's swing and
+// the opportunity attack dropped a grappled dodger's Dodge, while a hero's
+// attack at a grappled dodging foe and every Dexterity save kept it.
+function dodgeHolds(conditions: string[]): boolean {
+  return has(conditions, [DODGING]) !== null && !isIncapacitated(conditions) && !has(conditions, SPEED_ZERO);
+}
+
 // The condition that stops this combatant acting, for refusal messages.
 export function incapacitatedBy(conditions: string[]): string | null {
   return has(conditions, INCAPACITATING);
@@ -609,7 +618,7 @@ export function attackContext(input: {
   // 5.1, Dodge): not while blinded, nor against an invisible attacker it
   // cannot see through or a hidden one, nor one the dark hides.
   const dodgerSees = !sightBlockedBy(input.targetConditions, input.attackerConditions, targetSees) && input.targetSeesAttacker !== false;
-  if (has(input.targetConditions, [DODGING]) && !isIncapacitated(input.targetConditions) && dodgerSees) {
+  if (dodgeHolds(input.targetConditions) && dodgerSees) {
     sources.push("disadvantage");
     notes.push("target is dodging: disadvantage");
   }
@@ -655,7 +664,7 @@ export function rollDerivation(
       notes.push("restrained: disadvantage on DEX saves");
     }
     // The other half of the Dodge action.
-    if (ability === "dex" && has(conditions, [DODGING]) && !isIncapacitated(conditions)) {
+    if (ability === "dex" && dodgeHolds(conditions)) {
       sources.push("advantage");
       notes.push("dodging: advantage on DEX saves");
     }
