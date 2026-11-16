@@ -569,10 +569,13 @@ export function handleCastAtPlayer(
       : null;
     let dealt = typedParts ? typedParts.reduce((sum, part) => sum + part.amount, 0) : taken.damage;
     // Shield Master: a successful Dexterity save against an effect aimed at
-    // them alone costs the reaction to take no damage at all.
+    // them alone costs the reaction to take no damage at all. The caster is
+    // the creature whose turn is under way, for surprise's "no reaction until
+    // that turn ends" (can-act.ts): the pointer alone let a hero whose lost
+    // turn came after an ambusher's answer its spell in the round it lost.
     if (saved && dealt > 0 && ability === "dex" && shieldMasterSaveBonus(sheet) > 0) {
       const live = getActiveEncounter(campaign.id);
-      if (live && !live.reactionsUsed.includes(sheet.id) && canAct({ sheet, encounter: live, kind: "reaction" }).ok) {
+      if (live && !live.reactionsUsed.includes(sheet.id) && canAct({ sheet, encounter: live, kind: "reaction", actingId: use?.enemy.id ?? null }).ok) {
         markReactionUsed(live, sheet.id);
         dealt = 0;
         base.shieldMaster = `Shield Master: the reaction turns the successful save into no damage at all; ${sheet.name}'s reaction is used until their next turn.`;

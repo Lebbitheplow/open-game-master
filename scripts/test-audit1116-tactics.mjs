@@ -120,6 +120,27 @@ await test("Q03: in the round a wholly surprised party lost, only a hero whose l
   table.close();
 });
 
+// The same rule on a reaction that answers no hit: Shield Master's reaction
+// to a made Dexterity save against an enemy's spell judged surprise by the
+// pointer, so a hero whose lost turn came after the ambusher's turned its
+// spell to nothing in the round the party lost.
+await test("Q03: Shield Master's save reaction in the lost round waits for the hero's own lost turn", async () => {
+  const { table, heroes: [, slow] } = await surpriseTable(
+    [{ abilities: { dex: 16 } }, { class: "fighter", feats: ["Shield Master"], abilities: { dex: 10 }, equipment: [{ name: "Shield", qty: 1, equipped: true }] }],
+    { count: 2, enemyFace: 10, faces: [15, 2] },
+  );
+  assert.equal(table.encounter().round, 2);
+  const [first] = table.enemies();
+  table.clearDice();
+  table.dice(18, 3, 3, 3, 3);
+  const out = await table.invoke("cast_at_player", { characterId: slow.id, saveAbility: "dex", dc: 10, damage: "4d6", damageType: "fire", halfOnSave: true, casterEnemyId: first.id });
+  table.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(out.result.shieldMaster, undefined, `the hero on 2 used a reaction before their lost turn: ${out.result.shieldMaster}`);
+  assert.equal(table.sheet(slow.id).maxHp - table.sheet(slow.id).currentHp, 6, "a made save against 12 takes half");
+  table.close();
+});
+
 // Q04. SRD 5.1, Wild Shape: "Your game statistics are replaced by the
 // statistics of the beast", its speeds among them. Climbing, Swimming, and
 // Crawling: "each foot of movement costs 1 extra foot ... unless a creature
