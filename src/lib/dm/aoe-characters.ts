@@ -265,6 +265,7 @@ export function aoeOnCharacters(input: {
         blast,
         magical: Boolean(input.spell) || Boolean(enemyUse?.magical),
         source: (input.reason ?? input.spell ?? enemyUse?.name ?? "the area").slice(0, 120),
+        spell: input.spell,
         // What a failure lays, as on the character beside them.
         lays: {
           spell: plan?.conditions.length && conditionMeta ? { conditions: plan.conditions, meta: conditionMeta } : null,

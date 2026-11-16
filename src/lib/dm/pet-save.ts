@@ -89,6 +89,8 @@ export function areaOnPets(input: {
   magical: boolean;
   source: string;
   lays?: AreaLays;
+  // The spell the area is, when it is one: its rules for whom it passes over.
+  spell?: string;
 }): Array<Record<string, unknown>> | null {
   // A net, a web or a dragon's paralyzing breath deals nothing and binds:
   // before, a pet caught in one rolled no save and stayed free.
@@ -100,7 +102,16 @@ export function areaOnPets(input: {
   if (!standing.length) {
     return null;
   }
+  // An area that spares an Intelligence of 4 or less (a workshop spell that
+  // keeps Hideous Laughter's rule) passes over a wolf or an owl, as it passes
+  // over the creatures and characters it reaches (aoe-damage.ts, Y14): the pet
+  // made the save and took what it laid whatever its mind.
+  const intFloor = input.spell ? spellMechanicsFor({ spell: input.spell, userIds: spellAuthorsFor(input.campaign) })?.mech.sparesIntAtMost : undefined;
   return standing.map((pet) => {
+    const spared = input.spell ? sparedByIntelligence(input.spell, intFloor, { name: pet.name, int: petIntelligence(input.campaign, pet) }) : null;
+    if (spared) {
+      return { pet: pet.name, success: true, damage: 0, spared };
+    }
     const save = rollPetSave(input.campaign, input.turn, owner, pet, { ability: input.ability, dc: input.dc, magical: input.magical, source: input.source });
     const share = petDamageShare({ saved: save.success, halfOnSave: input.halfOnSave, ability: input.ability, evasion: save.evasion });
     const parts = partsTaken(input.blast, share).filter((part) => part.amount > 0);
