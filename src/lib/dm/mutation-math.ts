@@ -159,7 +159,13 @@ export function handedOverRow<Row extends EquipmentRow>(row: Row, qty: number, m
   void _gear;
   const lender = attuned ? move.from : attunedBy;
   const bond = lender && lender === move.to ? { attuned: true } : lender ? { attunedBy: lender } : {};
-  return carriedAsRounds({ ...(kept as Row), ...bond }, qty);
+  // A stacked row's charges are the one in use's, the rest whole
+  // (stabilize.ts kitAfterUse, item-charges.ts): some of a stack handed on
+  // are whole ones, and the one in use stays. Copied onto both, one kit of
+  // two came over as 3 uses where 10 were.
+  const { charges, ...rest } = kept as Row & { charges?: number };
+  const whole = charges === undefined || Math.floor(qty) < row.qty ? {} : { charges };
+  return carriedAsRounds({ ...(rest as Row), ...whole, ...bond }, qty);
 }
 
 // Whether two rows are the same thing, the rule grantItemMath merges by:
@@ -174,14 +180,19 @@ export function sameItemRow(a: EquipmentRow, b: EquipmentRow): boolean {
   );
 }
 
-// A row added to a pack, merged into the same thing when it is there.
+// A row added to a pack, merged into the same thing when it is there. A
+// stack holds one count of charges, the one in use's (handedOverRow): an
+// opened kit joins a whole one with its count, and two opened ones stay two
+// lines. Merged as whole, an opened kit's 3 uses became 10.
 export function addRowMath<Row extends EquipmentRow>(equipment: Row[], row: Row): Row[] {
-  const index = equipment.findIndex((item) => sameItemRow(item, row));
+  const used = (item: Row) => (item as Row & { charges?: number }).charges;
+  const index = equipment.findIndex((item) => sameItemRow(item, row) && (used(item) === undefined || used(row) === undefined));
   if (index < 0) {
     return [...equipment, row];
   }
   const next = [...equipment];
-  next[index] = { ...next[index], qty: next[index].qty + row.qty };
+  const charges = used(next[index]) ?? used(row);
+  next[index] = { ...next[index], qty: next[index].qty + row.qty, ...(charges === undefined ? {} : { charges }) };
   return next;
 }
 

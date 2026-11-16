@@ -287,6 +287,26 @@ await test("I06: a healer carrying a healer's kit stabilizes with it, no roll, w
   assert.match(JSON.stringify(checked.result), /Medicine/);
 });
 
+// I07. SRD 5.1, Healer's Kit: "The kit has ten uses." A stacked row's
+// charges are the uses of the one in use; the others are whole
+// (src/lib/dm/stabilize.ts kitAfterUse, item-charges.ts). Handing one kit of
+// two over copied the opened kit's count onto both (3 + 3 where 3 + 10 were
+// carried), and an opened kit handed to a friend with a whole one merged into
+// a stack of two whole kits (10 + 10 where 3 + 10 were).
+const uses = (id) => world.sheet(id).equipment.filter((item) => item.name === "Healer's Kit").reduce((sum, item) => sum + (item.charges ?? 10) + 10 * (item.qty - 1), 0);
+await test("I07: one kit of two handed over leaves the opened one's uses where they were, and none are made or lost", async () => {
+  const a = world.addHero({ class: "cleric", level: 3, equipment: [{ name: "Healer's Kit", qty: 2, charges: 3 }] });
+  const b = world.addHero({ class: "fighter", level: 3 });
+  const handed = await world.invoke("handle_item", { characterId: a.id, action: "hand", item: "Healer's Kit", toCharacterId: b.id });
+  assert.equal(handed.ok, true, handed.error);
+  assert.equal(uses(a.id) + uses(b.id), 13, `uses: ${uses(a.id)} and ${uses(b.id)}`);
+  assert.equal(uses(a.id), 3);
+  const c = world.addHero({ class: "fighter", level: 3, equipment: [{ name: "Healer's Kit", qty: 1 }] });
+  const back = await world.invoke("handle_item", { characterId: a.id, action: "hand", item: "Healer's Kit", toCharacterId: c.id });
+  assert.equal(back.ok, true, back.error);
+  assert.equal(uses(c.id), 13, `the opened kit joined a whole one: ${JSON.stringify(world.sheet(c.id).equipment)}`);
+});
+
 world.close();
 loaded.close();
 finish();
