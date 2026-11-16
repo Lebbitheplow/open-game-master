@@ -1862,9 +1862,12 @@ html[data-theme="light"] .cine-board-frame { box-shadow: 0 0 30px rgba(122, 88, 
 html[data-theme="light"] .cine-board-frame > :not(.board-view) { background: #f1ebde; border-color: rgba(122, 88, 20, 0.5); }
 html[data-theme="light"] .board-panel > .board-view { background: #0d0b1c; }
 /* The starfield board keeps night ink. Painted themes give the surrounding
-   dialog its own day materials, so restrict this palette to the board itself. */
+   dialog its own day materials, so restrict this palette to the board itself.
+   A card laid on the title screen's painting keeps it too (ts-night: the
+   setup card). */
 html[data-theme="light"]:not([data-theme-ornaments="true"]) .cine-tabletop,
-html[data-theme="light"][data-theme-ornaments="true"] .cine-tabletop .board-view {
+html[data-theme="light"][data-theme-ornaments="true"] .cine-tabletop .board-view,
+html[data-theme="light"] .ts-night {
   --color-stone-950: #0d0b1c;
   --color-stone-900: #151229;
   --color-stone-800: #211b3a;
