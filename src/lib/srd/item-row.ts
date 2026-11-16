@@ -14,6 +14,7 @@
 // Imports only text-logic, by a relative path, so the armor and magic-gear
 // tables, the sheet and the scripts that load the item math without the
 // path alias read it without a cycle.
+import { ITEM_EN_BY_FR } from "../content/names-fr.ts";
 import { textKey } from "../language/text-logic.ts";
 import type { InfusionMark } from "./infusions.ts";
 
@@ -30,7 +31,9 @@ export function baseName(name: string): string {
 }
 
 export function rowName(item: RowItem): string {
-  return item.srdName ?? withoutBonus(item.name);
+  if (item.srdName) return item.srdName;
+  const bare = withoutBonus(item.name);
+  return ITEM_EN_BY_FR[textKey(bare)] ?? bare;
 }
 
 // Whether the line is a workshop entry's: its slug names the entry

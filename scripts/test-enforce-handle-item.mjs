@@ -327,7 +327,7 @@ await test("What an enemy lets fall is asked what it is, as grant_item asks, at 
       campaign: world.campaign(), turn: createDmTurn(world.campaignId, []), sheets, sheetsById: new Map(sheets.map((sheet) => [sheet.id, sheet])), realDiceUserIds: new Set(),
     });
   };
-  for (const name of ["Scimitarra", "Cimeterre", "Cimitarra", "Krummsäbel", "Curved blade"]) {
+  for (const name of ["Scimitarra", "Cimitarra", "Krummsäbel", "Curved blade"]) {
     await freshFight();
     const [enemy] = world.enemies();
     kit.place(enemy.id, 3, 2);
