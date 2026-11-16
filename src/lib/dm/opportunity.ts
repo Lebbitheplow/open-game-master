@@ -54,7 +54,7 @@ import { opportunityReactionKey } from "@/lib/srd/authored-effects-more";
 import { conditionsOf } from "@/lib/dm/vitals-logic";
 import { attackSenses, characterSenses, enemySenses, fearAsRolled, lightOnAttack, sensesReaching } from "@/lib/dm/attack-light";
 import { opportunityWeapon } from "@/lib/dm/enemy-profile";
-import { enemyOpportunityRiders, opportunitySight, pcOpportunitySwing, withOpportunityTurn } from "@/lib/dm/opportunity-strike";
+import { enemyOpportunityRiders, opportunitySight, opportunitySmiteSlot, pcOpportunitySwing, withOpportunityTurn } from "@/lib/dm/opportunity-strike";
 import { holdsFeat } from "@/lib/srd/feat-effects";
 import { warCasterOpportunity } from "@/lib/dm/ar-wbf-feat-warcaster";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
@@ -714,7 +714,9 @@ export function resolvePcOpportunityWalk(
     // the card never asks about a swing that could not be made. Let go, it
     // spends nothing and the walk goes on.
     const walker = shownName(encounter.id, enemy.id, enemy.displayName);
-    const answer = opportunityAnswer(campaign, sheet, { walkerId: enemyId, walker, weapon: natural?.weapon ?? resolved?.displayName ?? "", trigger: reach.trigger });
+    // A paladin's card offers Divine Smite too (opportunity-strike.ts).
+    const smiteSlot = natural ? null : opportunitySmiteSlot(sheet);
+    const answer = opportunityAnswer(campaign, sheet, { walkerId: enemyId, walker, weapon: natural?.weapon ?? resolved?.displayName ?? "", trigger: reach.trigger, ...(smiteSlot ? { smiteSlot } : {}) });
     if (answer && !answer.strike) {
       notes.push(letGoNote(sheet.name, walker));
       continue;
@@ -740,6 +742,7 @@ export function resolvePcOpportunityWalk(
       adjacent: reach.reachTiles <= 1,
       targetConditions: withLiveDodge(enemy.conditions),
       moverAt,
+      ...(answer?.smite && smiteSlot ? { smiteSlot } : {}),
     });
     notes.push(answer?.timedOut ? timedOutNote(sheet.name, note) : note);
     stops();

@@ -50,12 +50,13 @@ import { critDamageExpression, ordinaryOfCritical } from "@/lib/dm/encounter-log
 import { publishEncounter } from "@/lib/dm/enemy-damage";
 import { martialArtsApplies } from "@/lib/dm/pc-attack-options";
 import { hexWarriorSwing, shillelaghSwing } from "@/lib/dm/attack-features";
-import { otherHandArmed } from "@/lib/dm/attack-rules";
+import { isUndeadOrFiend, otherHandArmed, smiteDice } from "@/lib/dm/attack-rules";
 import { wearsUntrainedArmor } from "@/lib/srd/armor";
 import { liftsSmallHeavyPenalty } from "@/lib/srd/feat-combat";
 import { gearCritRiders, itemRidersAgainst } from "@/lib/dm/gear-attack";
 import { foldDamageRiders, landBlow, strikesAsMagic, withSneakAttack } from "@/lib/dm/pc-attack-damage";
-import { clearHitSpent } from "@/lib/dm/pc-attack-riders";
+import { clearHitSpent, spendOnHit } from "@/lib/dm/pc-attack-riders";
+import { smiteSlotOf } from "@/lib/dm/opportunity-ask-logic";
 import { acBreakdownFor, computeSheetDerived, sizeForRace } from "@/lib/srd";
 import { conditionRollRiders } from "@/lib/srd/condition-effects";
 import { conditionsSpentAgainst } from "@/lib/srd/condition-effect-queries";
@@ -150,6 +151,12 @@ function weaponSwing(sheet: CharacterSheet, resolved: ResolvedWeapon, riders: Re
   return { ...profile, material, ...(shillelagh ? { magicWeapon: true } : {}) };
 }
 
+// The slot Divine Smite would spend on a character's opportunity attack, or
+// null: a paladin's swing may carry it, as the turn's melee hit may.
+export function opportunitySmiteSlot(sheet: CharacterSheet): number | null {
+  return combatRiders(sheet).canSmite ? smiteSlotOf(sheet.spellcasting) : null;
+}
+
 export function pcOpportunitySwing(input: {
   campaign: Campaign;
   encounter: Encounter;
@@ -165,6 +172,9 @@ export function pcOpportunitySwing(input: {
   targetConditions: string[];
   // The tile the walker left the reach from (opportunitySight).
   moverAt: XY | null;
+  // Divine Smite's slot, when the player took it on the card
+  // (opportunity-ask.ts): paid only on a hit.
+  smiteSlot?: number;
 }): { note: string; dropped: boolean } {
   const { campaign, encounter, sheet, enemy, resolved } = input;
   const natural = input.natural ?? null;
@@ -306,6 +316,25 @@ export function pcOpportunitySwing(input: {
   if (critGear?.suffix) {
     profile = { ...profile, damageExpression: `${profile.damageExpression}${critGear.suffix}` };
     typedRiders.push(...critGear.typed);
+  }
+  // SRD 5.1, Divine Smite: "when you hit a creature with a melee weapon
+  // attack, you can expend one spell slot", and an opportunity attack is
+  // one. Paid on the hit as the turn's swing pays it (pc-attack-riders.ts
+  // spendOnHit), its dice radiant and doubled with the rest on a critical.
+  if (input.smiteSlot && !natural) {
+    const undeadOrFiend = isUndeadOrFiend(enemy);
+    const dice = smiteDice(input.smiteSlot, undeadOrFiend);
+    const spends = { characterId: sheet.id, smite: { slot: input.smiteSlot, dice, undeadOrFiend }, baseDamage: profile.damageExpression, critExtraDice: riders.critExtraDice };
+    const paid = withOpportunityTurn(campaign.id, (turn) => {
+      const sheets = listSheets(campaign.id);
+      return spendOnHit(campaign, turn.id, spends, sheets, new Map(sheets.map((entry) => [entry.id, entry])));
+    });
+    notes.push(...paid.notes);
+    if (paid.suffix) {
+      profile = { ...profile, damageExpression: `${profile.damageExpression}${paid.suffix}` };
+      typedRiders.push({ dice: `${dice}d8`, type: "radiant" });
+      notes.push(`Divine Smite (level ${input.smiteSlot} slot): +${dice}d8 radiant${undeadOrFiend ? ", against an undead or fiend" : ""}`);
+    }
   }
   clearHitSpent(campaign, sheet.id, folded.hitSpent);
   writeMarks(campaign.id, sheet.id, marks.assign);
