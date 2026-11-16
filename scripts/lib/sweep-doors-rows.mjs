@@ -38,6 +38,12 @@ const TAKE_ACTION = {
   use_object: { args: () => ({ reason: "pulls the lever by the door" }) },
   improvise: { prelude: (t) => t.world.say("dm", "A brazier burns beside the door, its coals bright."), args: () => ({ skill: "athletics", difficulty: "easy", scene: "the brazier", distanceFt: 5, reason: "kicks the brazier over" }) },
   escape: { prelude: (t) => grab(t), args: () => ({}) },
+  // Sera asleep from Sleep beside Brom (shake-awake.ts).
+  wake: {
+    reaches: true,
+    prelude: (t) => t.world.patch(t.sera.id, { conditions: ["unconscious"], conditionMeta: { unconscious: { spell: "Sleep", source: adj(t), rounds: 10, endsOnDamage: true } } }),
+    args: (t) => ({ targetCharacterId: t.sera.id }),
+  },
 };
 
 const HANDLE_ITEM = {
@@ -247,6 +253,16 @@ const ENEMY_ACTION = {
       }
     },
     args: () => ({}),
+  },
+  // The second goblin caught in Hypnotic Pattern beside the first.
+  wake: {
+    prelude: async (t) => {
+      const { patchEnemyConditions } = await import("../../src/lib/db/encounters.ts");
+      const held = { spell: "Hypnotic Pattern", source: t.sera.id, rounds: 10, endsOnDamage: true };
+      patchEnemyConditions(far(t), ["charmed", "incapacitated", "hypnotized"], { charmed: held, incapacitated: held, hypnotized: held });
+      t.kit.place(far(t), 6, 6);
+    },
+    args: (t) => ({ targetEnemyId: far(t) }),
   },
 };
 

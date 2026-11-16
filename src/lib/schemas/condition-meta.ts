@@ -50,6 +50,9 @@ const conditionInstanceSchema = z.object({
         unseen: z.boolean().optional(),
       })
       .optional(),
+    // A turn of its holder has ended under it (Fear's save off the board,
+    // src/lib/dm/unseen-save.ts).
+    turnEnded: z.boolean().optional(),
     // The spell that laid the condition down, and the slot it was cast
     // from (src/lib/dm/spell-effects.ts): a broken concentration ends only
     // that spell's conditions, and an aura rolls the slot's dice.

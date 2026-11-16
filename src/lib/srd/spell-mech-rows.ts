@@ -16,11 +16,15 @@ export const SRD_EFFECT_ROWS: Record<string, SpellMech> = {
   "hypnotic pattern": {
     resolution: "save",
     save: "wis",
-    condition: { name: "charmed", rounds: MINUTE, also: ["incapacitated"], endsOnDamage: true },
+    // "While charmed by this spell, the creature is incapacitated and has a
+    // speed of 0" (SRD 5.1): "hypnotized" holds the speed, ending with the
+    // charm (condition-effects-spells.ts). Without it a hypnotized goblin
+    // walked on its turn.
+    condition: { name: "charmed", rounds: MINUTE, also: ["incapacitated", "hypnotized"], endsOnDamage: true },
     area: true,
     areaFeet: 30,
     noDamage: true,
-    note: "Charmed and incapacitated with a speed of 0 for the duration, no repeat save; it ends for a creature that takes damage (the server ends it) or is shaken out of it with an action.",
+    note: "Charmed and incapacitated with a speed of 0 for the duration, no repeat save; it ends for a creature that takes damage (the server ends it) or is shaken out of it (take_action wake, an action from within 5 feet).",
   },
   "blindness/deafness": {
     resolution: "save",

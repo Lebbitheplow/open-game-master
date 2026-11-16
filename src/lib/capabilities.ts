@@ -138,6 +138,10 @@ export const SERVER_FEATURES = {
   // beside someone in the same call. The console shows the fields only on a host
   // that reads them; an older one drops them unread.
   moveWithAction: true,
+  // take_action's wake (audit 2026-11-16, Y17): a creature within 5 feet
+  // shaken out of Sleep or Hypnotic Pattern. The Hand's Wake card and the
+  // console's "Shake awake" ask for it; an older host refuses the action.
+  shakeAwake: true,
   // An improvised action in a fight (take_action improvise): the console's
   // Improvise, the improvised action Ready holds, and every skill for its
   // check. An older host refuses the action and takes only Perception or

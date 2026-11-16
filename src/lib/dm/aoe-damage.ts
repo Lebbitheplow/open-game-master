@@ -2,6 +2,7 @@
 // spell planned by aoe-spell.ts, an enemy's breath or spell by enemy-casting.ts,
 // a trap). Split out of encounter-tools-extra.ts; never imports encounter-tools.
 
+import { sheetIntelligence, sparedByIntelligence } from "@/lib/dm/spell-spares-logic";
 import { proofUnresisted } from "@/lib/dm/genre-gh-proof";
 import { echoAreaSave } from "@/lib/dm/mt-fb-echo";
 import { beguilingBroken } from "@/lib/dm/mt-fb-arrow-riders";
@@ -312,6 +313,25 @@ export function handleAoeDamage(
       const type = sheetCreatureType(target);
       if (!fits(type)) {
         shielded.push(`${args.spell} affects only ${areaTypes.join(" or ")} creatures; ${target.name} is ${textKey(type)} and is passed over.`);
+        pcTargets.splice(pcTargets.indexOf(target), 1);
+      }
+    }
+  }
+  // Hideous Laughter named here passes over an Intelligence of 4 or less, a
+  // wolf or a polymorphed hero, as on cast_at_enemy (spell-spares-logic.ts).
+  const intFloor = args.spell ? spellMechanicsFor({ spell: args.spell, userIds: spellAuthorsFor(campaign) })?.mech.sparesIntAtMost : undefined;
+  if (intFloor !== undefined) {
+    for (const enemy of [...enemyTargets]) {
+      const spared = sparedByIntelligence(args.spell!, intFloor, { name: enemy.displayName, int: enemy.stats.abilities?.int });
+      if (spared) {
+        shielded.push(spared);
+        enemyTargets.splice(enemyTargets.indexOf(enemy), 1);
+      }
+    }
+    for (const target of [...pcTargets]) {
+      const spared = sparedByIntelligence(args.spell!, intFloor, { name: target.name, int: sheetIntelligence(target) });
+      if (spared) {
+        shielded.push(spared);
         pcTargets.splice(pcTargets.indexOf(target), 1);
       }
     }

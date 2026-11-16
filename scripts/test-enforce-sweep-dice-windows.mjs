@@ -184,7 +184,7 @@ const HERO_ACTION_SETUP = {
 };
 // Every action the form offers that this sweep knows makes a check; the
 // form's other actions are checked to exist below, so a new one is noticed.
-const QUIET_ACTIONS = ["dodge", "dash", "disengage", "help", "ready", "use_object", "pin"];
+const QUIET_ACTIONS = ["dodge", "dash", "disengage", "help", "ready", "use_object", "pin", "wake"];
 for (const action of Object.keys(HERO_ACTION)) {
   row(`take_action.hero_${action}`, "take_action", "hero", (c) => ({ characterId: c.karaId, action, reason: "the sweep", ...HERO_ACTION[action](c) }), { line: `I use my action to ${action}${action === "improvise" ? " by cutting the chandelier's rope so it falls on the goblin" : " the goblin"}.`, setup: HERO_ACTION_SETUP[action] });
 }

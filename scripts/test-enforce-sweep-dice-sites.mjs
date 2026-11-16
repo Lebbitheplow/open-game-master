@@ -228,6 +228,7 @@ const ACTION = {
   pin: (c) => ({ targetEnemyId: c.enemyId }),
   improvise: (c) => ({ skill: "athletics", difficulty: "moderate", targetEnemyId: c.enemyId, scene: "the chandelier", distanceFt: 5, reason: "swinging from the chandelier" }),
   help: (c) => ({ targetCharacterId: c.allyId, targetEnemyId: c.enemyId }),
+  wake: (c) => ({ targetCharacterId: c.allyId }),
   ready: (c) => ({ readied: "attack", trigger: "it steps closer", targetEnemyId: c.enemyId }),
   use_object: { item: "Rope" },
   dash: {},
@@ -235,6 +236,8 @@ const ACTION = {
   disengage: {},
 };
 const ACTION_SETUP = {
+  // The ally asleep from Sleep beside the hero (shake-awake.ts).
+  wake: (c) => world.patch(c.allyId, { conditions: ["unconscious"], conditionMeta: { unconscious: { spell: "Sleep", source: c.enemyId, rounds: 10, endsOnDamage: true } } }),
   hide: (c) => kit.setEnemy(c.enemyId, { conditions: ["blinded"] }),
   escape: (c) => world.patch(hero.id, { conditions: ["grappled"], conditionMeta: { grappled: { source: c.enemyId, sourceName: "Goblin", escapeDc: 12 } } }),
   pin: (c) => {

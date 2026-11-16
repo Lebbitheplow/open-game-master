@@ -49,6 +49,7 @@ import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { badArguments, toolError, type ToolError, type ToolResult } from "@/lib/dm/tool-errors";
 import { hasDestination, planActionWalk, walkActionPlan, type ActionWalk } from "@/lib/dm/action-walk";
 import { fittedText } from "@/lib/dm/fitted-text";
+import { shakeAwake } from "@/lib/dm/shake-awake";
 
 // The rest of a 5e turn: the actions that are not attacks or spells, plus
 // reactions. Dodge, Dash, Disengage, Hide, Help, Grapple, and Shove all had
@@ -107,7 +108,7 @@ export const actionTools: ToolDef[] = [
           },
           targetCharacterId: {
             type: "string",
-            description: "Help or manacles: the ally helped or bound, exact characterId from GAME STATE.",
+            description: "Help, Wake or manacles: the ally helped, woken or bound, exact characterId from GAME STATE.",
           },
           shove: {
             type: "string",
@@ -142,7 +143,7 @@ export const actionTools: ToolDef[] = [
           scene: { type: "string", description: "Improvise (required): the thing used, in the narration's words." },
           enemyId: {
             type: "string",
-            description: "The enemy taking Dash, Disengage, Dodge or Escape: exact enemyId from GAME STATE. Omit characterId; with Manacles it binds targetCharacterId.",
+            description: "The enemy taking Dash, Disengage, Dodge, Escape or Wake: exact enemyId from GAME STATE. Omit characterId; with Manacles it binds targetCharacterId.",
           },
           toward: { type: "string", description: "Dash or Disengage: who to move beside (id or name); the server walks them there." },
           spell: {
@@ -398,8 +399,8 @@ export function handleTakeAction(
   }
   // Off their turn, the action they readied: released with their reaction,
   // priced by nothing else (readied-release.ts). Readying is never a release.
-  // A pin is never readied (it is not among the readiable actions).
-  const readied = args.action === "ready" || args.action === "pin" ? null : readiedReleaseFor(sheet, encounter, args.action);
+  // A pin is never readied (it is not among the readiable actions), nor a wake.
+  const readied = args.action === "ready" || args.action === "pin" || args.action === "wake" ? null : readiedReleaseFor(sheet, encounter, args.action);
   if (readied && "error" in readied) {
     return toolError(readied);
   }
@@ -597,6 +598,8 @@ export function handleTakeAction(
       return characterEscape(campaign, turn, sheet, () => spend(), args.ability);
     case "pin":
       return pin(campaign, turn, sheet, encounter, args.targetEnemyId, () => spend());
+    case "wake":
+      return shakeAwake(campaign, sheet, args, sheets, sheetsById, () => spend());
     case "improvise":
       return improviseAction(
         campaign,

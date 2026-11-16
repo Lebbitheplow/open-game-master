@@ -19,7 +19,7 @@
 // The actions an enemy takes through take_action. Hide is not one: the engine
 // has no hidden state for an enemy that its attacks and the party's would
 // read and end.
-export const ENEMY_TAKE_ACTIONS = ["dash", "disengage", "dodge", "escape"] as const;
+export const ENEMY_TAKE_ACTIONS = ["dash", "disengage", "dodge", "escape", "wake"] as const;
 export type EnemyTakeAction = (typeof ENEMY_TAKE_ACTIONS)[number];
 
 export function isEnemyTakeAction(action: string): action is EnemyTakeAction {
@@ -213,6 +213,7 @@ const SPENT_WORDS: Record<EnemyTakeAction, string> = {
   disengage: "took the Disengage action",
   dodge: "took the Dodge action",
   escape: "spent its action trying to escape",
+  wake: "spent its action shaking a sleeper awake",
 };
 
 // Why an enemy that spent its action on one of these makes no attack: an

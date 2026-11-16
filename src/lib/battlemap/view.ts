@@ -203,8 +203,12 @@ export function pcMoveBudget(
   // the mount spent its action on a Disengage or a Dodge (take_action mount).
   const mountActed = budgetApplies(encounter.turnBudget, sheet.id, encounter.round) ? mountActionTaken(encounter.turnBudget.oncePerTurn) : null;
   const mountDash = mount?.controlled && (mountActed === null || mountActed === "dash") ? 1 : 0;
+  // Speed 0 is no square at all (speedToTiles keeps one for a speed it cannot
+  // read): a grappled or hypnotized character's board lit a square, and
+  // GAME STATE gave them 5 feet of movement at speed 0.
+  const speedTiles = speed > 0 ? speedToTiles(speed) : 0;
   // Drunken Technique's 10 feet ride the turn's marks (dm/mt-mr-turn.ts).
-  const fullTiles = Math.max(0, speedToTiles(speed) * (1 + dashes + mountDash) + turnBonusTiles(encounter.turnBudget, sheet.id, encounter.round) - token.movedThisRound);
+  const fullTiles = Math.max(0, speedTiles * (1 + dashes + mountDash) + turnBonusTiles(encounter.turnBudget, sheet.id, encounter.round) - token.movedThisRound);
   // Prone: the character stands for half their speed and walks on what is
   // left, or crawls at double cost, whichever reaches farther. `tiles` is
   // what the board lights; `fullTiles` is the movement actually in hand,
@@ -212,7 +216,7 @@ export function pcMoveBudget(
   const prone = sheet.conditions.some((entry) => entry.trim().toLowerCase() === "prone");
   // Tipsy Sway stands for 5 feet (src/lib/srd/authored-effects-more.ts).
   const tiles = prone
-    ? Math.max(fullTiles - standUpTiles(sheet, speedToTiles(speed)), Math.floor(fullTiles / 2))
+    ? Math.max(fullTiles - standUpTiles(sheet, speedTiles), Math.floor(fullTiles / 2))
     : fullTiles;
   return { speed, tiles: Math.max(0, tiles), fullTiles };
 }

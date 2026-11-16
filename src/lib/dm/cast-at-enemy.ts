@@ -8,6 +8,7 @@
 // of cast-tools.ts, which re-exports it; this module imports mutations (for
 // the slot spend) and must never be imported by it.
 
+import { sparedByIntelligence } from "@/lib/dm/spell-spares-logic";
 import { READ_THOUGHTS, isSuggestion, thoughtsReadBy } from "@/lib/dm/read-thoughts";
 import { isConditionNamed, isNamed } from "@/lib/srd/feature-names";
 import { shieldAgainstMagicMissile } from "@/lib/dm/enemy-reactions";
@@ -352,12 +353,9 @@ export function handleCastAtEnemy(
   // Hideous Laughter on a creature of Intelligence 4 or less: "isn't
   // affected" (SRD 5.1), cast and spent the same way. It laughed a wolf to
   // the ground.
-  const intelligence = enemy.stats.abilities?.int;
   const spared =
     (creatureType && mech?.immuneTypes?.some((type) => creatureType.includes(type)) ? `${spellName} has no effect on ${creatureType} creatures, and ${enemy.displayName} is one.` : null) ??
-    (mech?.sparesIntAtMost !== undefined && typeof intelligence === "number" && intelligence <= mech.sparesIntAtMost
-      ? `${spellName} has no effect on a creature with an Intelligence of ${mech.sparesIntAtMost} or less, and ${enemy.displayName}'s is ${intelligence}.`
-      : null);
+    sparedByIntelligence(spellName, mech?.sparesIntAtMost, { name: enemy.displayName, int: enemy.stats.abilities?.int });
   if (args.overchannel) {
     const problem = overchannelProblem(sheet, facts, Boolean(named?.dice ?? callerDice));
     if (problem) {

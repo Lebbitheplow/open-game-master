@@ -426,6 +426,8 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
           { value: "escape", label: "Escape a grapple or a spell's hold" },
           { value: "pin", label: "Pin the creature they grapple (Grappler feat)" },
           { value: "improvise", label: "Improvise", host: IMPROVISED },
+          // An older host refuses it (capabilities.ts shakeAwake).
+          { value: "wake", label: "Shake a sleeper awake (Sleep, Hypnotic Pattern)", host: "shakeAwake" },
         ],
       },
       { name: "bonus", label: "As a bonus action", kind: "boolean", help: "Cunning Action, Step of the Wind, Patient Defense." },
@@ -513,7 +515,7 @@ export const COMBAT_ADJUDICATIONS: CatalogEntry[] = [
         name: "enemyId",
         label: "Enemy acting",
         kind: "enemy",
-        help: "Instead of a character: an enemy taking Dash, Disengage, Dodge, Escape from a grapple or a spell's hold (Web, Entangle, Maze, Irresistible Dance), or Use an Object with Manacles on an Ally. It spends the enemy's action; move it afterward with Move a token.",
+        help: "Instead of a character: an enemy taking Dash, Disengage, Dodge, Escape from a grapple or a spell's hold (Web, Entangle, Maze, Irresistible Dance), Wake for an ally beside it, or Use an Object with Manacles on an Ally. It spends the enemy's action; move it afterward with Move a token.",
         // Sent under the name that server reads: it knows escapingEnemyId,
         // and dropped enemyId, so an escape from the console failed there.
         host: {

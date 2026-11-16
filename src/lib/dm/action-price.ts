@@ -30,6 +30,8 @@ export const ACTIONS = [
   "escape",
   "pin",
   "improvise",
+  // Shake a sleeper awake (shake-awake.ts).
+  "wake",
 ] as const;
 
 export type TakeActionName = (typeof ACTIONS)[number];
@@ -51,6 +53,7 @@ const ACTION_WORDS: Record<(typeof ACTIONS)[number], string> = {
   escape: "escape",
   pin: "pin",
   improvise: "an improvised action",
+  wake: "shaking a sleeper awake",
 };
 
 const MOVES = new Set<string>(["dodge", "dash", "disengage", "hide"]);

@@ -89,7 +89,7 @@ export function conditionNote(
     counted = true;
   }
   // A hold whose save the creature picks (Nature's Wrath) names both.
-  const save = meta.saveEnds ? `save ends (${meta.saveEnds.ability.toUpperCase()}${meta.saveEnds.or ? ` or ${meta.saveEnds.or.toUpperCase()}` : ""} ${meta.saveEnds.dc}${meta.saveEnds.beyondFeet ? `, beyond ${meta.saveEnds.beyondFeet} ft` : ""}${meta.saveEnds.unseen ? ", only out of the caster's sight" : ""})` : null;
+  const save = meta.saveEnds ? `save ends (${meta.saveEnds.ability.toUpperCase()}${meta.saveEnds.or ? ` or ${meta.saveEnds.or.toUpperCase()}` : ""} ${meta.saveEnds.dc}${meta.saveEnds.beyondFeet ? `, beyond ${meta.saveEnds.beyondFeet} ft` : ""}${meta.saveEnds.unseen ? ", only out of the caster's sight; off the board, after its first turn" : ""})` : null;
   let source: string | null = null;
   const raw = meta.source?.trim() ?? "";
   if (name.trim().toLowerCase() === "readied" && raw) {

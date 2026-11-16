@@ -63,7 +63,8 @@ import { spellSchoolFor } from "@/lib/content";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import { patchSheetAudited } from "@/lib/dm/audited-patch";
 import { tableNoteSeq } from "@/lib/dm/narration-slot";
-import { unseenBecause, withinFeet } from "@/lib/dm/authored-saves";
+import { withinFeet } from "@/lib/dm/authored-saves";
+import { markTurnEnded, unseenSaveHold, type UnseenHold } from "@/lib/dm/unseen-save";
 
 // Condition upkeep: timed conditions count down and expire, save-ends
 // conditions get their re-save rolled server-side (enemy saves from stat
@@ -565,15 +566,13 @@ export function walkedEnemiesHeld(campaign: Campaign, encounter: Encounter): str
 // a Wisdom saving throw"): held while the holder still sees the caster, by
 // the board's line of sight and the conditions (a blinded holder, an
 // invisible caster). Without the save at all, Fear held its whole minute
-// whatever wall the creature fled behind.
-function heldClose(encounter: Encounter | undefined, holderId: string, instance: ConditionMeta | undefined): boolean {
-  if (!encounter || !instance?.source) return false;
+// whatever wall the creature fled behind. Off the board, from the end of its
+// second turn (unseen-save.ts); "first" marks the first.
+function heldClose(encounter: Encounter | undefined, holderId: string, instance: ConditionMeta | undefined): UnseenHold {
+  if (!encounter || !instance?.source) return null;
   const feet = instance.saveEnds?.beyondFeet;
-  if (feet && withinFeet(encounter.id, instance.source, holderId, feet)) return true;
-  if (!instance.saveEnds?.unseen) return false;
-  const holder = getSheetById(holderId) ?? getEnemy(holderId);
-  const source = getSheetById(instance.source) ?? getEnemy(instance.source);
-  return Boolean(holder && source && !unseenBecause(encounter.id, holder, source));
+  if (feet && withinFeet(encounter.id, instance.source, holderId, feet)) return "held";
+  return instance.saveEnds?.unseen ? unseenSaveHold(encounter.id, holderId, instance) : null;
 }
 
 function tickEnemyConditions(campaign: Campaign, encounter: Encounter, by: number, lines: string[], options: HolderTick = {}) {
@@ -624,7 +623,11 @@ function tickEnemyConditions(campaign: Campaign, encounter: Encounter, by: numbe
       // Each source's hold asks its own save; this is one of them.
       const holds = (instance: ConditionMeta) => instanceIdentity(instance) === due.key && instance.saveEnds?.dc === due.dc;
       const instance = instancesOf((meta as ConditionMetaMap)[due.name]).find(holds);
-      if (!instance || heldClose(encounter, enemy.id, instance)) {
+      const held = instance ? heldClose(encounter, enemy.id, instance) : "held";
+      if (held === "first") {
+        meta = markTurnEnded(meta, due.name, holds);
+      }
+      if (!instance || held) {
         continue;
       }
       // The creature's full save (src/lib/dm/forced-save.ts), as the first
@@ -755,8 +758,13 @@ function tickSheetConditions(
       }
       // A hold that lets the character pick its save (Nature's Wrath).
       const due = listed.or ? { ...listed, ability: likelierSave(conditions, listed.ability, listed.or, listed.dc, (each) => computeSheetDerived(sheet).saves[each]) } : listed;
-      const holding = instancesOf((meta as ConditionMetaMap)[due.name]).find((instance) => instanceIdentity(instance) === due.key && instance.saveEnds?.dc === due.dc);
-      if (heldClose(options?.encounter, sheet.id, holding)) {
+      const holds = (instance: ConditionMeta) => instanceIdentity(instance) === due.key && instance.saveEnds?.dc === due.dc;
+      const holding = instancesOf((meta as ConditionMetaMap)[due.name]).find(holds);
+      const held = heldClose(options?.encounter, sheet.id, holding);
+      if (held === "first") {
+        meta = markTurnEnded(meta, due.name, holds);
+      }
+      if (held) {
         continue;
       }
       const effect = effectOf(listed);

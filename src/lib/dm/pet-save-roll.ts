@@ -51,6 +51,17 @@ export function petSaveBlockFor(campaign: Campaign, owner: CharacterSheet, pet: 
   return { saveMods: own, traits, from, conditionImmune };
 }
 
+// The pet's Intelligence from the same block (a wolf's 3, an owl's 2), for a
+// spell that passes over a low one (spell-spares-logic.ts). A drake's block
+// names none here.
+export function petIntelligence(campaign: Campaign, pet: SheetPet): number | undefined {
+  if (pet.kind === "drake") {
+    return undefined;
+  }
+  const table = pet.kind === "other" ? findTableMonster(spellAuthorsFor(campaign), pet.form) : null;
+  return table ? table.draft.stats.abilities?.int : findShapeForm(pet.form)?.abilities?.int;
+}
+
 export type PetSave = ForcedSave & { evasion: boolean };
 
 // The pet's save, rolled and shown as a dice card. The pet stands in its

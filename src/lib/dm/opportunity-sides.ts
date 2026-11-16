@@ -11,8 +11,8 @@
 // carries what the same swing at a character carries (opportunity.ts):
 // Pack Tactics and the Flanking variant on the square the walker left from,
 // a spell on the reactor (Bless, Bane), exhaustion, sunlight, an active
-// effect, Magic Weapons against a resistance to nonmagical blows, Ray of
-// Enfeeblement, and the rider its attack prints. It read conditions alone,
+// effect, Magic Weapons against a resistance to nonmagical blows,
+// Enlarge/Reduce, Ray of Enfeeblement, and the rider its attack prints. It read conditions alone,
 // so a wolf's bite at a dominated goblin walking off its packmate rolled one
 // d20 and never knocked it down.
 
@@ -33,7 +33,7 @@ import { sideOf } from "@/lib/dm/combatant";
 import { attackContext, mergeAdvantage, sightBlockedBy } from "@/lib/dm/condition-logic";
 import { attackSenses, attackSight, enemySenses, fearAsRolled, sensesReaching } from "@/lib/dm/attack-light";
 import { landCreatureBlow } from "@/lib/dm/enemy-blow";
-import { blowByType } from "@/lib/dm/enemy-hit";
+import { blowByType, sizedAttack } from "@/lib/dm/enemy-hit";
 import { charmedBy, opportunityWeapon } from "@/lib/dm/enemy-profile";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { leavesReachAt } from "@/lib/dm/opportunity-reach-logic";
@@ -110,7 +110,10 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
     }
     encounter.reactionsUsed = [...encounter.reactionsUsed, reactor.id];
     saveEncounter(encounter);
-    const { attack } = weapon;
+    // Enlarge/Reduce on the reactor: its weapon grew or shrank with it
+    // (enemy-hit.ts sizedAttack), as on its swing at a character.
+    const sized = sizedAttack(weapon.attack, reactor.conditions);
+    const attack = sized.attack;
     const context = attackContext({
       ...attackSenses(encounter.id, { refId: reactor.id, senses: enemySenses(reactor) }, { refId: walker.id, senses: enemySenses(walker), at: leftFrom }),
       attackerConditions: fearAsRolled(encounter.id, reactor.id, reactor.conditions, reactor.conditionMeta),
@@ -159,8 +162,8 @@ export function enemiesStrikeWalker(campaignId: string, walkerId: string, steps:
     publishWithSeq(campaignId, allocateSeq(campaignId), "roll_result", { roll: damageRoll, source: "digital" });
     const blow = blowByType(attack, damage, crit);
     // No floor of 1: a penalty can bring a blow to nothing (SRD 5.1), as on
-    // every other door.
-    const dealt = enfeebledBlow(reactor, attack, false, Math.max(0, blow.amount));
+    // every other door; only Reduce's own "can't reduce below 1" holds one.
+    const dealt = enfeebledBlow(reactor, attack, false, Math.max(sized.floor, blow.amount));
     const sheets = listSheets(campaignId);
     const sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
     const magical = hasTrait(reactor.stats, "magicWeapons") || attack.magical === true;

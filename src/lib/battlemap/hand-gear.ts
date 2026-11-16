@@ -265,6 +265,29 @@ export function gearCards(sheet: CharacterSheet, turn: HandTurn, context: HandGe
       ),
     );
   }
+  // Wake: only beside an ally Sleep or Hypnotic Pattern holds, within 5 feet
+  // as take_action's reach says; off the board nothing measures it
+  // (shake-awake.ts).
+  if ((context.sleepers ?? []).some((ally) => ally.id !== sheet.id && (ally.feet === undefined || ally.feet <= 5))) {
+    cards.push(
+      gated(
+        {
+          ...BLANK,
+          id: "basic:wake",
+          type: "basic",
+          name: "Wake",
+          cost: "action",
+          range: "5 ft",
+          rules: "An action: shake an ally within 5 ft out of Sleep or Hypnotic Pattern. They wake still prone.",
+          icon: { kind: "action", key: "help" },
+          target: "ally",
+          intent: { card: "basic", action: "wake" },
+        },
+        standing,
+        costGate("action", turn, sheet, "shaking them awake"),
+      ),
+    );
+  }
   if (context.mount) {
     cards.push(
       gated(

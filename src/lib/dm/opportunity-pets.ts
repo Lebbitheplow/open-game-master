@@ -31,7 +31,7 @@ import { attackContext, effectiveSpeed, mergeAdvantage } from "@/lib/dm/conditio
 import { fearAsRolled } from "@/lib/dm/attack-light";
 import { critDamageExpression } from "@/lib/dm/encounter-logic";
 import { effectOutcome } from "@/lib/dm/effect-tools";
-import { blowByType } from "@/lib/dm/enemy-hit";
+import { blowByType, scaledParts, sizedAttack } from "@/lib/dm/enemy-hit";
 import { reachWalled } from "@/lib/dm/attack-spatial";
 import { opportunityWeapon } from "@/lib/dm/enemy-profile";
 import { goadBarsOpportunity } from "@/lib/dm/goaded";
@@ -40,7 +40,7 @@ import { leavesReachAt } from "@/lib/dm/opportunity-reach-logic";
 import { enemyOpportunityRiders, opportunitySight } from "@/lib/dm/opportunity-strike";
 import { hurtPet } from "@/lib/dm/pet-tools";
 import { creatureUnderwaterSwing } from "@/lib/dm/pet-underwater";
-import { spendEnemyRiders } from "@/lib/dm/spell-retort";
+import { enfeebledBlow, spendEnemyRiders } from "@/lib/dm/spell-retort";
 import { conditionBlocksReactions } from "@/lib/srd/condition-effects";
 import { isConditionNamed } from "@/lib/srd/feature-names";
 import type { SheetPet } from "@/lib/schemas/sheet";
@@ -102,7 +102,11 @@ export function strikePetsOnWalk(campaign: Campaign, ownerId: string, steps: XY[
     }
     encounter.reactionsUsed = [...encounter.reactionsUsed, enemy.id];
     saveEncounter(encounter);
-    const { attack } = weapon;
+    // Enlarge/Reduce on the creature (enemy-hit.ts sizedAttack) and Ray of
+    // Enfeeblement (below), as on its swing at a character: the pet took the
+    // blow as printed.
+    const sized = sizedAttack(weapon.attack, enemy.conditions);
+    const attack = sized.attack;
     const context = attackContext({
       attackerConditions: fearAsRolled(encounter.id, enemy.id, enemy.conditions, enemy.conditionMeta),
       targetConditions: pet.conditions ?? [],
@@ -139,11 +143,14 @@ export function strikePetsOnWalk(campaign: Campaign, ownerId: string, steps: XY[
     const damageRoll = insertRoll({ campaignId: campaign.id, characterId: ownerId, requestedBy: "dm", kind: "damage", detail: label, result: damage, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName } });
     publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll: damageRoll, source: "digital" });
     const blow = blowByType(attack, damage, crit);
-    // A blow of two types (a hell hound's piercing and fire) meets the pet's
-    // defences part by part, as enemy_attack's at a pet does (pet-strike.ts):
-    // landed as one type, an imp took the fire it is immune to.
+    // Enlarge/Reduce's floor and Ray of Enfeeblement's halving on the whole
+    // blow, then a blow of two types (a hell hound's piercing and fire) meets
+    // the pet's defences part by part, each part its share of what is left,
+    // as enemy_attack's at a pet does (pet-strike.ts): landed as one type, an
+    // imp took the fire it is immune to.
+    const amount = enfeebledBlow(enemy, attack, false, Math.max(sized.floor, blow.amount));
     const struck = hurtPet(campaign, live, pet, {
-      parts: blow.parts ?? [{ amount: Math.max(0, blow.amount), type: blow.type }],
+      parts: blow.parts ? scaledParts(blow.parts, amount) : [{ amount, type: blow.type }],
       magical: hasTrait(enemy.stats, "magicWeapons") || attack.magical === true,
     });
     const after = String(struck.vanished ?? struck.down ?? (struck.hp ? `${pet.name} is at ${struck.hp}` : ""));

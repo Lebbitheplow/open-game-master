@@ -13,7 +13,7 @@ import { isConditionNamed } from "@/lib/srd/feature-names";
 const ENDS_ON_ARMOR = ["mage armor"];
 
 // Whether the pack holds a suit of armor (not a shield) that is worn.
-function wearsSuit(equipment: WornItem[]): boolean {
+export function wearsSuit(equipment: WornItem[]): boolean {
   return equipment.some((item) => isWorn(item, equipment) && (armorOfRow(item)?.armor.category ?? "shield") !== "shield");
 }
 
@@ -29,4 +29,12 @@ export function endedByDonning(
   }
   const cleared = removeConditions(after.conditions, after.conditionMeta, ending);
   return { conditions: cleared.conditions, conditionMeta: cleared.meta };
+}
+
+// Whether a spell that ends when armor goes on cannot be laid on a creature
+// already wearing it. SRD 5.1, Mage Armor: "You touch a willing creature who
+// isn't wearing armor": cast on the fighter in chain mail, the slot was spent
+// and nothing happened (cast-buff.ts refuses it unspent).
+export function armorBarsBuff(condition: string, equipment: WornItem[]): boolean {
+  return ENDS_ON_ARMOR.some((spell) => isConditionNamed(condition, spell)) && wearsSuit(equipment);
 }
