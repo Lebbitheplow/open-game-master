@@ -27,6 +27,7 @@ import {
   npcVoicedLines,
 } from "@/lib/db/npc-minds";
 import { requestUtilityMessage } from "@/lib/dm/model";
+import { sideOf } from "@/lib/dm/combatant";
 import { seatForMind } from "@/lib/db/mind-seats";
 import { askSeatHolder } from "@/lib/dm/mind-seat-relay";
 import { resolveTextTimeoutMs } from "@/lib/model-client";
@@ -400,6 +401,18 @@ function mindsFightTurn(campaign: Campaign, sheetId: string | null | undefined):
   return npc && tierOfNpc(npc) === "primary" && !getNpcAway(npc.id) ? { sheet, npc } : null;
 }
 
+// A first-tier NPC on the party's side of the board (src/lib/dm/party-npcs-fight.ts):
+// whether and whom it strikes is its mind's to choose, as a companion's is.
+function mindsAllyRow(campaign: Campaign, enemyId: string | null): { npc: Npc } | null {
+  const encounter = npcMindsOn(campaign) && enemyId ? getActiveEncounter(campaign.id) : null;
+  const row = encounter ? listEnemies(encounter.id).find((entry) => entry.id === enemyId) : undefined;
+  if (!encounter || !row?.npcId || row.status !== "alive" || sideOf(encounter, "enemy", row.id, row) !== "party") {
+    return null;
+  }
+  const npc = getNpcById(row.npcId);
+  return npc && !npc.archived && tierOfNpc(npc) === "primary" && !getNpcAway(npc.id) ? { npc } : null;
+}
+
 // Whether the companion whose fight turn it is still waits on its own mind:
 // its mind chooses this turn (mindsFightTurn) and gave no choice in the DM
 // turn `turnId`. The fight's backstop then wakes the narrator to ask it
@@ -467,7 +480,8 @@ export function mindTurnRefusal(campaign: Campaign, name: string, rawArguments: 
     return null;
   }
   const actor = args && typeof args === "object" && !Array.isArray(args) ? turnActorOf(name, args as Record<string, unknown>) : null;
-  const turn = mindsFightTurn(campaign, actor);
+  const enemyId = name === "enemy_attack" && args && typeof args === "object" ? (args as Record<string, unknown>).enemyId : null;
+  const turn = mindsFightTurn(campaign, actor) ?? mindsAllyRow(campaign, typeof enemyId === "string" ? enemyId : null);
   if (!turn) {
     return null;
   }
