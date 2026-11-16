@@ -2,13 +2,12 @@
 // leftovers of G13, G17, G18, G20 and G21. Each test failed before its fix.
 import assert from "node:assert/strict";
 import { openWorld } from "./lib/enforce-world.mjs";
-import { abilityMod, proficiencyBonus, suite } from "./lib/enforce-harness.mjs";
+import { suite } from "./lib/enforce-harness.mjs";
 import { gearKit, profs } from "./lib/enforce-equipment.mjs";
 
 const { test, finish } = suite("test-audit1116-attacks3");
 
 const LEVEL = 5;
-const PB = proficiencyBonus(LEVEL);
 const world = await openWorld();
 const kit = await gearKit(world);
 const anchor = world.addHero({ class: "fighter", level: LEVEL });
