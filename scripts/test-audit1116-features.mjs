@@ -194,4 +194,40 @@ await test("A04: a raging barbarian or a druid in beast form casts nothing from 
   await kit.endFight();
 });
 
+// A05. SRD 5.1, Deflect Missiles: "you can use your reaction to deflect or
+// catch the missile when you are hit by a ranged weapon attack." A spell's
+// ranged attack (a flameskull's Fire Ray, "Ranged Spell Attack") throws no
+// missile, and the monk turned its 16 fire damage away all the same.
+await test("A05: Deflect Missiles answers a ranged weapon attack, never a ranged spell attack", async () => {
+  await kit.endFight();
+  const monk = world.addHero({ class: "monk", level: 5, maxHp: 40, abilities: { dex: 16, wis: 14 }, proficiencies: { ...TRAINED }, features: [{ name: "Ki", source: "class", classId: "monk" }, { name: "Deflect Missiles", source: "class", classId: "monk" }] });
+  const struckBy = async (attack) => {
+    await kit.endFight();
+    world.patch(monk.id, { currentHp: 40 });
+    await kit.fight(1);
+    const [foe] = world.enemies();
+    kit.place(monk.id, 5, 5);
+    kit.place(foe.id, 5, 9);
+    kit.setEnemy(foe.id, { stats: { attacks: [attack] } });
+    foesTurn(foe);
+    world.clearDice();
+    world.dice(18, 8, 8);
+    const hit = await world.invoke("enemy_attack", { enemyId: foe.id, targetCharacterId: monk.id });
+    world.clearDice();
+    assert.equal(hit.ok, true, hit.error);
+    const hurt = world.sheet(monk.id).currentHp;
+    world.dice(10);
+    const deflect = await world.invoke("use_reaction", { characterId: monk.id, feature: "Deflect Missiles" });
+    world.clearDice();
+    return { hurt, deflect, after: world.sheet(monk.id).currentHp };
+  };
+  const arrow = await struckBy({ name: "Shortbow", toHit: 6, damage: "1d6+2", type: "piercing", ranged: true, range: "80/320 ft." });
+  assert.equal(arrow.deflect.ok, true, `the staging: an arrow is deflected (${arrow.deflect.error})`);
+  assert.ok(arrow.after > arrow.hurt, "the arrow's damage is cut");
+  const ray = await struckBy({ name: "Fire Ray", toHit: 6, damage: "2d10", type: "fire", ranged: true, range: "60 ft.", spellAttack: true });
+  assert.equal(ray.deflect.ok, false, "a ranged spell attack was deflected as a missile");
+  assert.equal(ray.after, ray.hurt, "the fire ray's damage stands");
+  await kit.endFight();
+});
+
 finish();
