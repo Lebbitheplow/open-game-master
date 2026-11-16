@@ -200,7 +200,7 @@ function ammoListCp(item: TradedItem & { qty?: number }): number | null {
   if (each === null) {
     return null;
   }
-  const count = bundleCount(item.name);
+  const count = bundleCount(item.name) ?? bundleCount(item.srdName);
   return count !== null && (item.qty ?? 1) <= 1 ? each * count : each;
 }
 
