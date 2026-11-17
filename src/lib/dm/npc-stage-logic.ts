@@ -68,6 +68,7 @@ export function renderRefereePrompt(input: {
   intent: string;
   speech: string;
   people: readonly StagePerson[];
+  ground?: readonly string[];
   scene: string;
   facts: readonly string[];
   heroLines?: readonly HeroLine[];
@@ -77,6 +78,7 @@ export function renderRefereePrompt(input: {
   );
   return [
     `Who is here:\n${people.join("\n")}`,
+    input.ground?.length ? `Lying here, nobody's, for anyone to take: ${input.ground.join("; ")}` : "",
     heroLinesBlock(input.heroLines ?? [], "What the heroes did and said this turn, in their own words:"),
     input.scene ? `The scene as last told:\n${clipText(input.scene, 1200)}` : "",
     input.facts.length ? `Already happened in this same moment:\n${input.facts.map((fact) => `- ${fact}`).join("\n")}` : "",

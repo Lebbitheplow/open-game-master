@@ -8,6 +8,7 @@ import { getNpcById, listNpcs, patchNpcAgency, setNpcPlace, type Npc } from "@/l
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import { listSheets, getSheetById } from "@/lib/db/sheets";
 import { listRelationships } from "@/lib/db/relationships";
+import { listDroppedItems } from "@/lib/db/dropped-items";
 import { getCurrentLocation, listLocations } from "@/lib/db/locations";
 import { recordExtractedFacts } from "@/lib/db/facts";
 import {
@@ -312,6 +313,7 @@ function identityOf(campaign: Campaign, npc: Npc): string[] {
     // Its own things, which only the sheet held: two days on the raft the
     // minds forgot who had the key and the bread (2026-11-16).
     npcThings(npc).length ? `What you have on you now (yours, and nobody else's): ${npcThings(npc).join("; ")}.` : "You carry nothing that matters beyond your clothes.",
+    lyingHere(campaign, npc),
     needsWords(npc.state, nowInstant(campaign.id)) ? `Your body right now: ${needsWords(npc.state, nowInstant(campaign.id))}. You feel it in everything you do, and it grows until you drink or eat.` : "",
     (dominantDrive(npc.state, nowInstant(campaign.id))?.urgency ?? 0) >= 60 ? "This need cannot wait any longer: this turn you act to satisfy it, by whatever means are yours (ask, bargain, take, threaten, strike). A gesture or a fine phrase is not enough." : "",
     `Your attitude toward the heroes in general: ${npc.attitude}.`,
@@ -320,6 +322,20 @@ function identityOf(campaign: Campaign, npc: Npc): string[] {
       ? `Your character sheet, as the rules hold it now (only you and the rules know these numbers):\n${describeSheet(sheet, "you", false, { encumbrance: campaign.gameSettings.variantRules?.encumbrance, compact: true })}`
       : "",
   ];
+}
+
+// What lies loose where this character stands, free to whoever takes it: on
+// the observer Zattera the biscuits and the water sat on the deck for hours
+// while a starving Kaku begged a catatonic hero for food (2026-11-17).
+function lyingHere(campaign: Campaign, npc: Npc): string {
+  const here = getCurrentLocation(campaign.id)?.name ?? "";
+  if (!here || (npc.location && textKey(npc.location) !== textKey(here) && !npc.state.withParty)) {
+    return "";
+  }
+  const things = listDroppedItems(campaign.id)
+    .filter((entry) => !entry.heldByEnemy && textKey(entry.place) === textKey(here))
+    .map((entry) => `${entry.item.name}${(entry.item.qty ?? 1) > 1 ? ` x${entry.item.qty}` : ""}`);
+  return things.length ? `Lying here where you stand, belonging to nobody, for anyone to take: ${things.join("; ")}.` : "";
 }
 
 // The relationship meter with each hero, and what it remembers of them:

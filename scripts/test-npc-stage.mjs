@@ -215,5 +215,23 @@ await test("the stage's outcomes handed over and never told are narrated with to
   assert.match(told, /Mairon, sedendosi accanto a Brakk/, `the stage was told (${model.requests.length - before} calls)`);
 });
 
+// The observer Zattera, 2026-11-17: food lay on the deck for hours while a
+// starving mind begged the hero for some; neither it nor the referee saw it.
+await test("what lies here is seen by every mind and by the referee, as nobody's", async () => {
+  const { handleLocationCall } = await import("../src/lib/dm/turn.ts");
+  const { insertDroppedItem } = await import("../src/lib/db/dropped-items.ts");
+  const { getCampaignById } = await import("../src/lib/db/campaigns.ts");
+  handleLocationCall(getCampaignById(world.campaignId), "move_party", JSON.stringify({ name: "La zattera", visionClear: true }), false);
+  insertDroppedItem({ campaignId: world.campaignId, mapId: null, x: null, y: null, place: "La zattera", item: { name: "Galletta", qty: 40 }, droppedBy: "", heldByEnemy: null });
+  const take = ego("Prendo una galletta dalle assi e la mangio.");
+  const ruling = json({ uncertain: false, dc: 5, modifier: 0, hero: "", success: { outcome: "Mairon prende una galletta dalle assi e la mangia.", changes: [] }, failure: { outcome: "", changes: [] } });
+  model.script([reply({ text: "Il sole sale." }), take, ruling, reply({ text: "Mairon mangia una galletta presa dalle assi." })]);
+  model.items([json({ moves: [] })]);
+  await model.turn(world, "Brakk guarda il mare.", brakk.id);
+  const mind = sentTo("You are one character").at(-1);
+  assert.match(textOf(mind), /Lying here where you stand, belonging to nobody, for anyone to take: Galletta x40/);
+  assert.match(textOf(sentTo("You are the referee").at(-1)), /Lying here, nobody's, for anyone to take: Galletta x40/);
+});
+
 model.close();
 finish();

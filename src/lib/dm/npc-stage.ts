@@ -7,6 +7,7 @@ import type { Campaign } from "@/lib/db/campaigns";
 import { getClock } from "@/lib/db/clock";
 import { listRecentDmTurns } from "@/lib/db/dm-turns";
 import { getActiveEncounter } from "@/lib/db/encounters";
+import { listDroppedItems } from "@/lib/db/dropped-items";
 import { getCurrentLocation } from "@/lib/db/locations";
 import { addNpcMemories, getNpcAway } from "@/lib/db/npc-minds";
 import { listNpcs, setNpcState, type Npc } from "@/lib/db/npcs";
@@ -96,6 +97,15 @@ function thingsOf(npc: Npc): string[] {
 
 // One turn of the stage. Null when nobody on stage is owed a turn (a fight
 // owns the floor, or the narrator already asked them all).
+// What lies loose here, by name and count, for the referee: a thing taken
+// from the ground exists.
+function groundHere(campaign: Campaign): string[] {
+  const here = textKey(getCurrentLocation(campaign.id)?.name ?? "");
+  return listDroppedItems(campaign.id)
+    .filter((entry) => !entry.heldByEnemy && here && textKey(entry.place) === here)
+    .map((entry) => `${entry.item.name}${(entry.item.qty ?? 1) > 1 ? ` x${entry.item.qty}` : ""}`);
+}
+
 export async function runStage(
   campaign: Campaign,
   calls: ReadonlyArray<{ name: string; args: Record<string, unknown>; result?: Record<string, unknown> | null }>,
@@ -145,7 +155,7 @@ export async function runStage(
         .filter((npc) => present.some((entry) => entry.id === npc.id))
         .map((npc) => ({ name: npc.name, state: [npcStateWords({ ...npc.state, carries: [] }), needsWords(npc.state, now)].filter(Boolean).join(", "), carries: thingsOf(npc) })),
     ];
-    const ruling = intent ? await referee(campaign, renderRefereePrompt({ actor: actor.name, intent, speech, people, scene: narration, facts: lines, heroLines })) : null;
+    const ruling = intent ? await referee(campaign, renderRefereePrompt({ actor: actor.name, intent, speech, people, ground: groundHere(campaign), scene: narration, facts: lines, heroLines })) : null;
     let fact: StageFact = { actor: actor.name, speech, outcome: intent, roll: "", hero: "" };
     if (ruling) {
       const settled = settleRuling(ruling, ruling.uncertain ? rollExpression("1d20").total : 0);
