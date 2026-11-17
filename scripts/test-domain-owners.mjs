@@ -19,6 +19,8 @@ const baseline = JSON.parse(readFileSync(baselinePath, "utf8"));
 // setter -> { module it lives in, the only places allowed to import it }
 const SETTERS = {
   patchSheet: { from: "@/lib/db/sheets", owners: ["src/lib/db/", "src/lib/owners/"] },
+  // Half a writer: the things go through the owner, the rest is still written directly.
+  patchWithItems: { from: "@/lib/dm/sheet-patch", owners: ["src/lib/db/", "src/lib/owners/"] },
   ownerWrite: { from: "@/lib/db/owner-gate", owners: ["src/lib/db/", "src/lib/owners/"] },
 };
 

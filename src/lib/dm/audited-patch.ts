@@ -1,4 +1,4 @@
-import { writeItems } from "@/lib/owners/items";
+import { patchWithItems } from "@/lib/dm/sheet-patch";
 import { allocateSeq } from "@/lib/db/campaigns";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { getSheetById } from "@/lib/db/sheets";
@@ -32,7 +32,7 @@ export function patchSheetAudited(
   if (!before) {
     return null;
   }
-  const updated = writeItems(sheetId, patch);
+  const updated = patchWithItems(sheetId, patch);
   if (!updated) {
     return null;
   }

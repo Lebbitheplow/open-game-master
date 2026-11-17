@@ -1,4 +1,4 @@
-import { writeItems } from "@/lib/owners/items";
+import { patchWithItems } from "@/lib/dm/sheet-patch";
 import { sanctuaryShortRest, type VesselRest } from "@/lib/dm/genie-vessel";
 import { OMEN_WORDS } from "@/lib/dm/before-roll-logic";
 import { foretoldWords } from "@/lib/dm/foretold-logic";
@@ -155,7 +155,7 @@ function auditRest(
   patch: FullPatchSheetInput,
   reason: string,
 ) {
-  const updated = writeItems(sheet.id, patch);
+  const updated = patchWithItems(sheet.id, patch);
   const entry = insertSheetAudit({
     campaignId: campaign.id,
     characterId: sheet.id,

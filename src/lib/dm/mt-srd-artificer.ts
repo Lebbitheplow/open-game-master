@@ -10,7 +10,7 @@
 // one is ended, which variant 'end' does for nothing. What each object does
 // is the GM's to narrate: the count is the engine's.
 
-import { writeItems } from "@/lib/owners/items";
+import { patchWithItems } from "@/lib/dm/sheet-patch";
 import type { Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { getSheetById, patchSheet } from "@/lib/db/sheets";
@@ -134,7 +134,7 @@ export function rightToolForTheJob(campaign: Campaign, stale: CharacterSheet, va
   }
   const meta = { ...(now.conditionMeta as ConditionMetaMap) };
   if (before) delete meta[before];
-  writeItems(sheet.id, {
+  patchWithItems(sheet.id, {
     equipment: addRowMath(equipment, { name: made, qty: 1 }),
     conditions: [...now.conditions.filter((entry) => entry !== before), `${RIGHT_TOOL} (${made})`],
     conditionMeta: meta,

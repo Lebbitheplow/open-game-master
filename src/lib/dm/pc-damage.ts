@@ -13,7 +13,7 @@
 //
 // This module must not import mutations.ts (which imports it).
 // Registers the incapacity watch's answer (Faithful Summons) wherever damage runs.
-import { writeItems } from "@/lib/owners/items";
+import { patchWithItems } from "@/lib/dm/sheet-patch";
 import { griefMadeStrength } from "@/lib/dm/genre-cc-a-dark-fantasy-more";
 import { ragesBeyondDeath } from "@/lib/dm/mt-fb-rage-death-logic";
 import "@/lib/dm/faithful-summons";
@@ -549,7 +549,7 @@ export function applyPcDamage(
   const soul = soulHold(soulSheet, math.dropped, Boolean(input.disintegrate) || isMassiveDamage(math.overkill, effectiveMaxHp(soulSheet)), !encounterNow?.reactionsUsed.includes(sheet.id));
   let soulInfo: Record<string, unknown> = {};
   if (soul && "patch" in soul) {
-    writeItems(sheet.id, soul.patch);
+    patchWithItems(sheet.id, soul.patch);
     if (encounterNow) {
       markReactionUsed(encounterNow, sheet.id);
     }

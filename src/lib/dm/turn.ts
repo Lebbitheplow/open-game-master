@@ -307,7 +307,8 @@ import { handleNpcState, npcStateTools, NPC_STATE_TOOL_NAMES } from "@/lib/dm/np
 import { listNpcs } from "@/lib/db/npcs";
 import { readStateGuard } from "@/lib/dm/npc-state-guard";
 import { stateGuardPrompt } from "@/lib/dm/npc-state-guard-logic";
-import { heldByCastRefusal, withCastSheets } from "@/lib/dm/cast-sheet-refs";
+import { withCastSheets } from "@/lib/dm/cast-sheet-refs";
+import { grantRefusal } from "@/lib/owners/items";
 import { npcStageOn, runStage } from "@/lib/dm/npc-stage";
 import type { HeroLine } from "@/lib/dm/npc-stage-logic";
 import { awayArrivalNote, everyoneHears, handleNpcInform, handleNpcPast, handleNpcSpeak, mindRosterNotes, mindTurnRefusal, mindsAwaitingTurn, npcMindsOn } from "@/lib/dm/npc-mind";
@@ -3472,7 +3473,7 @@ async function resolveModelCall(
       return unable;
     }
     const result =
-      heldByCastRefusal(campaign.id, name, gated.args, sheetsById) ??
+      grantRefusal(campaign.id, name, gated.args, sheetsById) ??
       maybeProposeItemChange(campaign, turn.id, name, gated.args, sheetsById) ??
       runHeld(campaign, turn, { name, rawArguments: gated.args, toolCallId: toolCall.id ?? null }, () => applyDmMutation(campaign, turn.id, name, gated.args, sheets, sheetsById, turn, toolCall.casting).result);
     if (!("error" in result)) {

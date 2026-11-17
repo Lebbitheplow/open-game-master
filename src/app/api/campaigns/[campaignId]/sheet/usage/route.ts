@@ -1,4 +1,4 @@
-import { writeItems } from "@/lib/owners/items";
+import { patchWithItems } from "@/lib/dm/sheet-patch";
 import { z } from "zod";
 import { capsFor, isErrorResponse, isLead, requireMember } from "@/lib/campaign-api";
 import { refuseDuringBreak } from "@/lib/dm/table-break";
@@ -353,7 +353,7 @@ export async function POST(
     );
   }
 
-  const updated = writeItems(sheet.id, patch);
+  const updated = patchWithItems(sheet.id, patch);
   if (!updated) {
     return Response.json({ error: "Character not found." }, { status: 404 });
   }

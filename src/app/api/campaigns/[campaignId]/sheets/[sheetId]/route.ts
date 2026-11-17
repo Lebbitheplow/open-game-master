@@ -1,4 +1,4 @@
-import { writeItems } from "@/lib/owners/items";
+import { patchWithItems } from "@/lib/dm/sheet-patch";
 import { isErrorResponse, requireStoryAuthority } from "@/lib/campaign-api";
 import { allocateSeq, campaignSeats } from "@/lib/db/campaigns";
 import { correctionsField } from "@/lib/correction-reasons";
@@ -61,7 +61,7 @@ export async function PATCH(
   );
   const saved = getDatabase().transaction(() => {
     const corrected = auditRowCorrected(campaignId, sheet.id, changed);
-    const updated = writeItems(sheet.id, patch);
+    const updated = patchWithItems(sheet.id, patch);
     if (!updated) {
       return null;
     }

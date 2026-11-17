@@ -1,4 +1,4 @@
-import { writeItems } from "@/lib/owners/items";
+import { patchWithItems } from "@/lib/dm/sheet-patch";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getDatabase } from "@/lib/db/core";
 import {
@@ -82,7 +82,7 @@ export function revertAuditEntry(campaign: Campaign, entry: SheetAuditEntry, by?
   let compensating: SheetAuditEntry | null = null;
   let correctionId: string | null = null;
   getDatabase().transaction(() => {
-    writeItems(entry.characterId, restore, { restoring: true });
+    patchWithItems(entry.characterId, restore, { restoring: true });
     compensating = insertSheetAudit({
       campaignId: campaign.id,
       characterId: entry.characterId,

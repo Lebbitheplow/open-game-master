@@ -51,3 +51,14 @@ export function checkOwnedFields(patch: Record<string, unknown>) {
     }
   }
 }
+
+// A patch cut in two: the fields a domain's owner writes, and the rest the
+// caller still writes itself. Pure: it opens no gate.
+export function splitOwnedFields<T extends Record<string, unknown>>(domain: OwnedDomain, patch: T): { owned: Partial<T>; rest: Partial<T> } {
+  const owned: Record<string, unknown> = {};
+  const rest: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(patch)) {
+    (FIELDS[domain].includes(key) ? owned : rest)[key] = value;
+  }
+  return { owned: owned as Partial<T>, rest: rest as Partial<T> };
+}

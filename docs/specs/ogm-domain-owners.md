@@ -153,7 +153,7 @@ Ogni fetta si chiude con test verdi, prova sui turni registrati e 10 turni dal v
 ## Stato
 
 - **Fetta 1, fatta.** `scripts/test-domain-owners.mjs` con `scripts/domain-owners-baseline.json`: 175 file
-  all'inizio, 160 dopo la fetta 2.
+  all'inizio, 161 dopo la fetta 2 (più i 16 di `patchWithItems`).
 - **Fetta 2, fatta in questa forma:**
   - `src/lib/db/owner-gate.ts`: `patchSheet` rifiuta `equipment`, `gold` e `copper` se il cancello degli
     Oggetti è chiuso. Con `OGM_OWNER_GATE=strict`, attivo in ogni suite `enforce-harness`, lancia
@@ -164,11 +164,16 @@ Ogni fetta si chiude con test verdi, prova sui turni registrati e 10 turni dal v
   - Gli scrittori trovati facendo girare tutte le suite con il cancello in misura (55 punti in 26 file)
     ora passano da `writeItems`.
   - `takeRecorded` è sciolto: il palco passa il turno a `handle_item` e chiede al proprietario.
-- **Restano porte generiche:** `audited-patch.ts`, `sheet-undo.ts` e le route della scheda passano da
-  `writeItems` con patch complete, perché scrivono anche altri domini. Si chiudono quando esistono i
-  proprietari di quei domini.
-- **Spostato alla fetta 3:** `heldByCastRefusal` resta una validazione prima di `grant_item`; sparisce
-  quando il master perde `grant_item` per i passaggi raccontati.
+- **Porte generiche chiuse.** `writeItems` accetta solo `equipment`, `gold` e `copper`: con qualunque
+  altro campo lancia un'eccezione. Una modifica che tocca anche altri campi (l'annulla, la UI della scheda,
+  `audited-patch.ts`, riposi, cure, negozio) passa da `src/lib/dm/sheet-patch.ts` `patchWithItems`, che la
+  divide in due: gli oggetti al proprietario, il resto a `patchSheet`. I 16 file che la chiamano sono
+  contati come scrittori diretti in `test-domain-owners.mjs`, perché scrivono ancora da soli gli altri
+  domini.
+- **`heldByCastRefusal` sciolto.** La regola ("un oggetto che un personaggio presente in scena tiene in
+  mano non si crea, si passa") ora è nel proprietario: `heldInScene`. Vale sulla scrittura stessa,
+  tramite `grant`, chiamato da `grant_item` per il master e per il palco. `grantRefusal` è la stessa regola
+  chiesta prima che una chiamata venga eseguita o proposta al giocatore.
 
 ## Verifica
 

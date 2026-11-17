@@ -134,6 +134,7 @@
     "src/lib/dm/save-immunity.ts",
     "src/lib/dm/set-condition.ts",
     "src/lib/dm/sheet-foe-damage.ts",
+    "src/lib/dm/sheet-patch.ts",
     "src/lib/dm/shop-tools.ts",
     "src/lib/dm/slayers-counter-mark.ts",
     "src/lib/dm/slow-cast.ts",
@@ -160,6 +161,24 @@
     "src/lib/dm/zone-cast.ts",
     "src/lib/portrait.ts",
     "src/lib/workshop/fight-setup.ts"
+  ],
+  "patchWithItems": [
+    "src/app/api/campaigns/[campaignId]/sheet/usage/route.ts",
+    "src/app/api/campaigns/[campaignId]/sheets/[sheetId]/route.ts",
+    "src/lib/dm/audited-patch.ts",
+    "src/lib/dm/authored-spends.ts",
+    "src/lib/dm/cast-guard.ts",
+    "src/lib/dm/heal-spell.ts",
+    "src/lib/dm/item-charges.ts",
+    "src/lib/dm/mt-srd-artificer.ts",
+    "src/lib/dm/mutations.ts",
+    "src/lib/dm/pact-fire.ts",
+    "src/lib/dm/pc-damage.ts",
+    "src/lib/dm/rest-tools.ts",
+    "src/lib/dm/shop-tools.ts",
+    "src/lib/dm/stabilize.ts",
+    "src/lib/dm/trade.ts",
+    "src/lib/sheet-undo.ts"
   ],
   "ownerWrite": []
 }

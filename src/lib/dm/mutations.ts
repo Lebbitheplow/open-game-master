@@ -1,4 +1,5 @@
-import { writeItems } from "@/lib/owners/items";
+import { grant, writeItems } from "@/lib/owners/items";
+import { patchWithItems } from "@/lib/dm/sheet-patch";
 import { studiedRecords } from "@/lib/srd/studied-books";
 import { ABILITIES } from "@/lib/schemas/abilities";
 import { markPaidOption } from "@/lib/dm/mt-srd-metamagic";
@@ -1187,7 +1188,10 @@ function dmMutation(
       if (noRoom) {
         return { result: noRoom };
       }
-      writeItems(sheet.id, { equipment: math.equipment });
+      const held = grant(campaign.id, sheet, name, math.equipment);
+      if (held) {
+        return { result: held };
+      }
       audit(campaign, turnId, sheet, "grant_item", { name, qty: args.qty ?? 1 }, reason, {
         equipment: math.equipment,
       });
@@ -1337,7 +1341,7 @@ function dmMutation(
       if ("error" in outcome) {
         return { result: outcome };
       }
-      writeItems(sheet.id, outcome.patch);
+      patchWithItems(sheet.id, outcome.patch);
       Object.assign(outcome.result, objectCharge.commit());
       // What the potion or scroll does, applied by the engine.
       const used = String(outcome.result.used ?? itemName);
@@ -1400,7 +1404,7 @@ function dmMutation(
       if (noRoom) {
         return { result: noRoom };
       }
-      writeItems(sheet.id, outcome.patch);
+      patchWithItems(sheet.id, outcome.patch);
       audit(
         campaign,
         turnId,
@@ -2042,7 +2046,7 @@ function dmMutation(
             ...(cost.gold ? { gold: left.gold, copper: left.copper } : {}),
             ...(fromScroll ? { equipment: withoutOneScroll(sheet.equipment, fromScroll) } : {}),
           };
-          writeItems(sheet.id, bookPatch);
+          patchWithItems(sheet.id, bookPatch);
           audit(campaign, turnId, sheet, "learn_spell", { action, spell, ...(cost.gold ? { cost } : {}), ...(check ? { from: "scroll", check } : {}) }, reason, bookPatch);
           publishSheet(campaign, sheet.id);
           if (cost.hours) {
@@ -2321,7 +2325,7 @@ function dmMutation(
       // moves the maximum for every level held, and a level the GM sets
       // brings its hit points by the table's method (update-sheet-hp-logic.ts).
       Object.assign(patch, storyEditHp(sheet, patch, { hpMethod: campaign.gameSettings.hpMethod, rollDie: defaultRng }) ?? {});
-      writeItems(sheet.id, patch);
+      patchWithItems(sheet.id, patch);
       audit(
         campaign,
         turnId,

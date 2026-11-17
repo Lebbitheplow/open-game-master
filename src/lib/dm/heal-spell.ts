@@ -22,7 +22,7 @@
 //
 // This module does not import mutations.ts: the cast is handed in.
 
-import { writeItems } from "@/lib/owners/items";
+import { patchWithItems } from "@/lib/dm/sheet-patch";
 import { regainHitPoints } from "@/lib/dm/regain";
 import { controlledDosage } from "@/lib/dm/genre-cc-a-dark-fantasy-more";
 import { spellBreaker } from "@/lib/dm/spell-breaker";
@@ -436,7 +436,7 @@ export function returnToLife(
       })
     : null;
   const patch = { deathSaves: null, currentHp: hp, conditions, conditionMeta: woke.conditionMeta, ...(lifted ? { exhaustion } : {}), ...(unattuned ? { equipment: unattuned } : {}) };
-  const updated = writeItems(fresh.id, patch);
+  const updated = patchWithItems(fresh.id, patch);
   const entry = insertSheetAudit({
     campaignId: campaign.id,
     characterId: fresh.id,

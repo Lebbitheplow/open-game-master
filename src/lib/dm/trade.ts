@@ -1,4 +1,4 @@
-import { writeItems } from "@/lib/owners/items";
+import { patchWithItems } from "@/lib/dm/sheet-patch";
 import type { Campaign } from "@/lib/db/campaigns";
 import { allocateSeq } from "@/lib/db/campaigns";
 import { insertCharacterEvent } from "@/lib/db/character-events";
@@ -35,8 +35,8 @@ export function applyTrade(campaign: Campaign, proposal: ItemProposal): { ok: tr
   }
   const summary = tradeSummary(offer, from.name, to.name);
   getDatabase().transaction(() => {
-    writeItems(from.id, computed.from);
-    writeItems(to.id, computed.to);
+    patchWithItems(from.id, computed.from);
+    patchWithItems(to.id, computed.to);
     for (const [sheet, patch] of [
       [from, computed.from],
       [to, computed.to],

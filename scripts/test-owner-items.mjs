@@ -8,7 +8,7 @@ import { openWorld } from "./lib/enforce-world.mjs";
 import { suite } from "./lib/enforce-harness.mjs";
 
 const { test, finish } = suite("test-owner-items");
-const world = await openWorld({ gameSettings: { ttsEnabled: false } });
+const world = await openWorld({ gameSettings: { ttsEnabled: false, npcMinds: true, npcStage: true, tableLanguage: "italian" } });
 const sheets = await import("../src/lib/db/sheets.ts");
 const items = await import("../src/lib/owners/items.ts");
 const { createDmTurn } = await import("../src/lib/db/dm-turns.ts");
@@ -71,6 +71,31 @@ await test("a hand-over is both halves in one step, and a second telling in the 
   assert.equal(out.ok, true);
   assert.equal(count(amleth.id, "Quarto di pesce crudo"), 2, "the next turn may hand another");
   assert.ok(namesOf(brakk.id).includes("Quarto di pesce crudo"), "Brakk keeps the last");
+});
+
+await test("the owner writes things only; a change that also touches other fields is cut in two", async () => {
+  assert.throws(() => items.writeItems(brakk.id, { equipment: [], currentHp: 1 }), /equipment, gold and copper only, not currentHp/);
+  const { patchWithItems } = await import("../src/lib/dm/sheet-patch.ts");
+  const updated = patchWithItems(brakk.id, { gold: 7, notes: "un barbaro stanco" });
+  assert.equal(updated.gold, 7, "the coin through the owner");
+  assert.equal(updated.notes, "un barbaro stanco", "and the rest beside it");
+});
+
+await test("a thing someone in the scene holds is not made on a hero's sheet, by any path that grants", async () => {
+  const { upsertNpc, getNpcByName, setNpcState } = await import("../src/lib/db/npcs.ts");
+  const minds = await import("../src/lib/db/npc-minds.ts");
+  const cast = await import("../src/lib/db/cast-sheets.ts");
+  const row = upsertNpc({ campaignId: world.campaignId, name: "Kranz" });
+  minds.setNpcTier(row.id, "primary");
+  setNpcState(row.id, { custody: "free", heldBy: "", restraint: "none", condition: "up", withParty: true, disarmed: false, carries: ["una bussola d'ottone"] });
+  cast.castSheetFor(getNpcByName(world.campaignId, "Kranz"));
+  const before = namesOf(brakk.id);
+  const hero = sheets.getSheetById(brakk.id);
+  const refused = items.grant(world.campaignId, hero, "la bussola d'ottone", [...hero.equipment, { name: "la bussola d'ottone", qty: 1 }]);
+  assert.match(refused?.error ?? "", /Kranz has "una bussola d'ottone".*handle_item/);
+  assert.deepEqual(namesOf(brakk.id), before, "the write itself refused it, not only the tool's check");
+  assert.equal(items.grant(world.campaignId, hero, "una corda", [...hero.equipment, { name: "una corda", qty: 1 }]), null, "what nobody holds is granted");
+  assert.ok(namesOf(brakk.id).includes("una corda"));
 });
 
 finish();

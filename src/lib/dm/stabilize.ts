@@ -8,7 +8,7 @@
 // point after 1d4 hours (src/lib/dm/death.ts rollStableTimer).
 //
 // This module must not import mutations.ts (which imports it).
-import { writeItems } from "@/lib/owners/items";
+import { patchWithItems } from "@/lib/dm/sheet-patch";
 import { recordSteadied } from "@/lib/dm/last-save";
 import { fieldSurgeonWait } from "@/lib/dm/genre-a-cyberpunk-defenses";
 import { catalogName } from "@/lib/srd/adventuring-gear";
@@ -100,7 +100,7 @@ function write(
   reason: string,
   patch: FullPatchSheetInput,
 ) {
-  const updated = writeItems(before.id, patch);
+  const updated = patchWithItems(before.id, patch);
   const entry = insertSheetAudit({
     campaignId: campaign.id,
     characterId: before.id,

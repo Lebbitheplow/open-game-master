@@ -1,4 +1,5 @@
 import { writeItems } from "@/lib/owners/items";
+import { patchWithItems } from "@/lib/dm/sheet-patch";
 import { allocateSeq, getCampaignById, type Campaign } from "@/lib/db/campaigns";
 import { advanceClock } from "@/lib/db/clock";
 import { companionNpcFor } from "@/lib/db/companion-npcs";
@@ -71,7 +72,7 @@ export function takeItem(campaign: Campaign, from: CharacterSheet, name: string,
     return null;
   }
   const patch = { equipment: taken.equipment };
-  writeItems(from.id, patch);
+  patchWithItems(from.id, patch);
   insertSheetAudit({ campaignId: campaign.id, characterId: from.id, turnId: turnId || null, kind: "item", delta: { removed: taken.item.name }, reason: why, seq: allocateSeq(campaign.id), before: from, patch });
   const updated = getSheetById(from.id);
   if (updated) {
@@ -83,7 +84,7 @@ export function takeItem(campaign: Campaign, from: CharacterSheet, name: string,
 export function giveItem(campaign: Campaign, to: CharacterSheet, row: EquipmentItem, why: string) {
   const fresh = getSheetById(to.id) ?? to;
   const patch = { equipment: addRowMath(fresh.equipment, row) };
-  writeItems(fresh.id, patch);
+  patchWithItems(fresh.id, patch);
   insertSheetAudit({ campaignId: campaign.id, characterId: fresh.id, turnId: null, kind: "item", delta: { added: row.name }, reason: why, seq: allocateSeq(campaign.id), before: fresh, patch });
   const updated = getSheetById(fresh.id);
   if (updated) {
@@ -245,7 +246,7 @@ function theft(campaign: Campaign, turnId: string, thief: CharacterSheet, party:
   if (purse && taken > 0) {
     writeItems(purse.id, { gold: 0, copper: 0 });
     const fresh = getSheetById(thief.id) ?? thief;
-    writeItems(fresh.id, addCopper(fresh, taken).purse);
+    patchWithItems(fresh.id, addCopper(fresh, taken).purse);
     for (const id of [purse.id, thief.id]) {
       const updated = getSheetById(id);
       if (updated) {

@@ -14,7 +14,7 @@
 // the generated table (src/lib/srd/magic-gear.ts) or a homebrew entry's own
 // charges.
 
-import { writeItems } from "@/lib/owners/items";
+import { patchWithItems } from "@/lib/dm/sheet-patch";
 import { allocateSeq } from "@/lib/db/campaigns";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { insertRoll } from "@/lib/db/rolls";
@@ -312,7 +312,7 @@ export function writeCharges(
   turnId: string | null = null,
 ) {
   const patch = { equipment };
-  const updated = writeItems(sheet.id, patch);
+  const updated = patchWithItems(sheet.id, patch);
   const entry = insertSheetAudit({
     campaignId,
     characterId: sheet.id,
