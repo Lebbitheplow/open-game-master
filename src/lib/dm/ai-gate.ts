@@ -20,7 +20,7 @@ import { splitParts } from "@/lib/dm/action-parts-logic";
 import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import { getActiveEncounter } from "@/lib/db/encounters";
-import { getRoll, markRollApplied } from "@/lib/db/rolls";
+import { getRoll, markRollApplied, markRollSpent } from "@/lib/db/rolls";
 import { awayRefusal, canCrossAway } from "@/lib/dm/fight-away-logic";
 import { isValidExpression } from "@/lib/dice";
 import { spellFactsFor } from "@/lib/content";
@@ -227,7 +227,10 @@ function targetOf(name: string, args: Record<string, unknown>): string {
 }
 
 // Damage or healing: dice the server rolls now, or (from the model) a total
-// it rolled this turn that nothing has applied.
+// it asked the server to roll this turn (request_roll) that nothing has
+// applied. The dice of every other call are spent as that call ends
+// (src/lib/dm/held-call.ts spendOwnRolls), so a total the engine has already
+// landed pays for nothing here.
 function number(ctx: GateContext, args: Record<string, unknown>, what: "damage" | "healing", targetId: string): GateOutcome {
   const dice = typeof args.dice === "string" ? args.dice.replace(/\s+/g, "") : "";
   if (dice) {
@@ -237,7 +240,13 @@ function number(ctx: GateContext, args: Record<string, unknown>, what: "damage" 
     }
     const sheet = ctx.sheetsById.get(targetId);
     const label = rollAgainst(String(args.reason ?? (what === "damage" ? "Damage" : "Healing")).slice(0, 60), sheet?.name ?? "the target");
+    const before = ctx.turn.rollIds.length;
     const rolled = rollCard(ctx.campaign, ctx.turn, sheet ? sheet.id : null, what === "damage" ? "damage" : "custom", label, dice, null);
+    // Spent as it is rolled: the call let through below applies it, and the
+    // same total sent bare afterwards would land it a second time.
+    for (const id of ctx.turn.rollIds.slice(before)) {
+      markRollSpent(id);
+    }
     const { dice: _sent, ...rest } = args;
     void _sent;
     return { args: JSON.stringify({ ...rest, amount: Math.max(1, rolled.total) }) };
