@@ -3302,6 +3302,41 @@
     "components/ui/GameIcon.tsx#re-word": [["key",2,"fixed inventory and item asset paths select the measured circular-image scale"]],
     "lib/inventory-art-logic.ts#re-affix": [["english-source",1,"the plural suffix of a resolved English catalog item's physical form, never an unknown item name"]],
     "lib/inventory-art-logic.ts#re-word": [["english-source",1,"staff, wand and rod prefixes of the resolved English magic-item catalog name select its focus painting"],["english-extra",4,"wooden shield, potion, scroll and rope painting aliases after locale-aware equipment resolution; an unmatched name retains its category icon and no mechanics depend on the painting"]],
-    "lib/inventory-art-logic.ts#str-key": [["english-extra",2,"physical-form and gear painting aliases after locale-aware canonical item matching; unidentified loot is excluded, and a name with no painting keeps its category icon without changing rules or identity"]]
+    "lib/inventory-art-logic.ts#str-key": [["english-extra",2,"physical-form and gear painting aliases after locale-aware canonical item matching; unidentified loot is excluded, and a name with no painting keeps its category icon without changing rules or identity"]],
+    "lib/i18n/locale.ts#toLowerCase": [
+      [
+        "key",
+        1,
+        "Accept-Language BCP 47 tag lower-cased (protocol)"
+      ]
+    ],
+    "lib/i18n/locale.ts#str-eq": [
+      [
+        "key",
+        4,
+        "BCP 47 locale code equality (fr/en) in parseLocale and localeFromAcceptLanguage"
+      ]
+    ],
+    "lib/i18n/locale.ts#str-startsWith": [
+      [
+        "key",
+        2,
+        "BCP 47 language tag prefix match (fr-/en-) on Accept-Language header"
+      ]
+    ],
+    "lib/i18n/translate.ts#[a-z]": [
+      [
+        "key",
+        1,
+        "template placeholder {varName} regex in interpolate"
+      ]
+    ],
+    "lib/i18n/translate.ts#str-eq": [
+      [
+        "key",
+        1,
+        "skip special context var name in interpolate"
+      ]
+    ]
   }
 }

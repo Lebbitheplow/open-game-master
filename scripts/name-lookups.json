@@ -3312,6 +3312,27 @@
     "components/ui/GameIcon.tsx#keyed": [["key",2,"inventory and genre painting ids select measured image scales from the asset metadata"]],
     "lib/inventory-art-logic.ts#whole": [["key",1,"a normalized illustration slug matched to an authored special painting key; this selects art, never a rules record"]],
     "lib/inventory-art-logic.ts#partial": [["key",3,"illustration slug prefixes and leading or trailing physical-form tokens select decorative categories after canonical equipment matching"],["pattern",5,"fixed focus, wooden-shield, potion, scroll and rope patterns select artwork only; unknown names retain their category icon and no equipment rules depend on the painting"]],
-    "lib/inventory-art-logic.ts#keyed": [["key",3,"approved painting ids, physical-form slug keys and shared gear paintings select illustrative assets; a miss keeps the category icon and changes no item identity"]]
+    "lib/inventory-art-logic.ts#keyed": [["key",3,"approved painting ids, physical-form slug keys and shared gear paintings select illustrative assets; a miss keeps the category icon and changes no item identity"]],
+    "lib/i18n/locale.ts#partial": [
+      [
+        "parse",
+        7,
+        "Accept-Language BCP 47 tag/q-weight parsing and cookie header splitting (protocol), never a record's name"
+      ]
+    ],
+    "lib/i18n/locale.ts#number": [
+      [
+        "parse",
+        1,
+        "Accept-Language q weight parsed as a number (protocol)"
+      ]
+    ],
+    "lib/i18n/locale.ts#whole": [
+      [
+        "parse",
+        1,
+        "cookie name equality in cookieValue (protocol), never a record's name"
+      ]
+    ]
   }
 }
