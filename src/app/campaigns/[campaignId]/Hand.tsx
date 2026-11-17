@@ -897,6 +897,9 @@ function HandInner({
       // The aim panel is up: on the board the Hand holds it to its share
       // and scrolls (world.css).
       data-aim={picked && !boardNative ? "true" : undefined}
+      // A held card's read panel is up: on a short board it lies over the
+      // cards' feet with the reason under it (world.css).
+      data-read={reading && !boardNative && !collapsed ? "true" : undefined}
       aria-label="Your hand"
       onKeyDown={(event) => {
         if (event.key !== "Escape") return;
@@ -1115,21 +1118,26 @@ function HandInner({
               onEdit={() => toComposer(sentence)}
               onCommit={() => void commit()}
             />
-          ) : reading && !boardNative ? (
-            <HandReadPanel card={reading} onClose={closeRead} />
-          ) : riders.length ? (
+          ) : reading && !boardNative ? null : riders.length ? (
             <p className="mt-1 animate-fade-up text-xs text-amber-200/80">
               {riders.map((rider) => rider.name).join(", ")} will ride your next attack card. Press it again to take it off.
             </p>
           ) : null}
         </>
       )}
-      {/* Inset past the shake (5px each way, say() above): on a phone the hand
-          scrolls, so it clips sideways, and the shake carried the first
-          letters off its edge ("Dren Vale has...", issue 668). */}
-      <p ref={noticeRef} role="status" className={cn("mt-1 px-1.5 text-xs text-amber-300", notice ? "" : "hidden")}>
-        {notice}
-      </p>
+      {/* The read panel and the reason said under it share a seat: on a short
+          board the two lie over the cards' feet as one, so a held card can be
+          read without the Hand growing over the map (world.css,
+          data-hand-share). Elsewhere the seat is only where they stand. */}
+      <div className="hand-read-seat">
+        {reading && !boardNative && !collapsed ? <HandReadPanel card={reading} onClose={closeRead} /> : null}
+        {/* Inset past the shake (5px each way, say() above): on a phone the hand
+            scrolls, so it clips sideways, and the shake carried the first
+            letters off its edge ("Dren Vale has...", issue 668). */}
+        <p ref={noticeRef} role="status" className={cn("mt-1 px-1.5 text-xs text-amber-300", notice ? "" : "hidden")}>
+          {notice}
+        </p>
+      </div>
       <HandMoreSheet
         genre={genre}
         open={moreOpen && !boardNative}

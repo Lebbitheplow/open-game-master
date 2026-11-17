@@ -3030,6 +3030,21 @@ button.cine-chronicle-earlier:focus-visible { outline: 2px solid #f4e0a6; outlin
   .cine-fight-board[data-hand-share] .hand-aim .hand-row[data-said] { display: none; }
   .cine-fight-board[data-hand-share] .hand-aim .hand-row-key { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .cine-fight-board[data-hand-share] .hand-aim .hand-row:not(:first-child)::before { content: "\00b7"; color: var(--color-stone-500); }
+  /* A held card's read panel (HandReadPanel) stood under the cards and made
+     the Hand taller by its own height: 407px on a laptop's 409px board, on
+     the turn's plate, with End turn over the board's top edge. On a short
+     share the panel and the reason said under it lie over the cards' feet
+     instead, from the Hand's foot, so the Hand is no taller for them and
+     the cards do not move. Together they are held to the height the cards
+     show above the edge (down to their names, useBoardCamera.ts), so they
+     never reach the Hand's heading or a reaction offered over the cards;
+     the panel scrolls what is past that, under its heading, which keeps
+     Close in view. */
+  .cine-fight-board[data-hand-share] .hand[data-read]:not([data-group-open]) > .hand-read-seat { position: absolute; inset: auto 0 var(--hand-tuck, 0px); z-index: 3; display: flex; flex-direction: column; max-height: 10.25rem; border-radius: 0.75rem; background: var(--hand-panel), var(--color-stone-950); }
+  .cine-fight-board[data-hand-share] .hand[data-read]:not([data-group-open]) .hand-read { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin-top: 0; padding-top: 0; background: none; }
+  .cine-fight-board[data-hand-share] .hand[data-read]:not([data-group-open]) .hand-read-seat > p { flex: none; padding-bottom: 0.25rem; }
+  .cine-fight-board[data-hand-share] .hand[data-read]:not([data-group-open]) .hand-read-head { position: sticky; top: 0; z-index: 1; padding-block: 0.375rem 0.125rem; background: var(--hand-panel), var(--color-stone-950); }
+  .cine-fight-board[data-hand-share] .hand[data-read]:not([data-group-open]) .hand-full-text-body { max-height: none; overflow: visible; }
   /* The cards at rest give way the same: they slide under the frame's lower
      edge by what the Hand is over its share (--hand-tuck), never so far that
      a name goes under it, and a card under the pointer or the keyboard's

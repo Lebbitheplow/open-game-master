@@ -185,8 +185,12 @@ export function HandFullText({ card }: { card: HandCard }) {
         const details = event.currentTarget;
         if (!details.open) return;
         window.requestAnimationFrame(() => {
-          const hand = details.closest<HTMLElement>(".hand");
-          if (!hand || hand.scrollHeight <= hand.clientHeight + 1) return;
+          // On a short board the read panel is the box that scrolls
+          // (world.css, data-hand-share), and the Hand is not.
+          const hand = [details.closest<HTMLElement>(".hand-read"), details.closest<HTMLElement>(".hand")].find(
+            (box) => box && box.scrollHeight > box.clientHeight + 1,
+          );
+          if (!hand) return;
           const below = details.getBoundingClientRect().bottom - hand.getBoundingClientRect().bottom;
           if (below > 0) hand.scrollTop += Math.min(below, details.getBoundingClientRect().top - hand.getBoundingClientRect().top - 8);
         });
@@ -211,7 +215,7 @@ export function HandReadPanel({ card, onClose }: { card: HandCard; onClose: () =
   }, [card.id]);
   return (
     <div ref={ref} className="hand-aim hand-read mt-1 rounded-xl border border-stone-600/60 bg-stone-950/80 p-2.5 shadow-elev-1" role="region" aria-label={`${card.name}, cannot be played now`}>
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="hand-read-head flex min-w-0 items-center gap-2">
         <span className="hand-type-chip" style={{ "--chip-tone": typeTone(card.type) } as CSSProperties}>
           {typeLabel(card.type)}
         </span>
