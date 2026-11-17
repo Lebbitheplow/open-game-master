@@ -18,7 +18,8 @@ import { oneOfKind, wornButIdle } from "@/lib/srd/wear-slots";
 import { rowName, srdNameWithBonus } from "@/lib/srd/item-row";
 import { matchWeapon } from "@/lib/srd/weapons";
 import { cardArtwork } from "@/lib/battlemap/card-art";
-import { ITEM_CATEGORY_LABEL, itemCategory, itemCategoryIcon, itemToneStyle, type CategoryItem } from "@/lib/srd/item-category-logic";
+import { ITEM_CATEGORY_LABEL, itemCategory, itemToneStyle, type CategoryItem } from "@/lib/srd/item-category-logic";
+import { inventoryItemIcon } from "@/lib/inventory-art-logic";
 
 // The pieces of the character sheet (docs/visual-overhaul-plan.md 8b.5), one
 // implementation drawn by both the session's sheet dialog and the character
@@ -321,10 +322,8 @@ export function SkillRows({
 
 // Every carried thing as an icon chip that opens its entry in the library,
 // so a rope and a Flame Tongue both say what they are. Worn and attuned gear
-// is marked on the chip. The chip leads with the picture of the item's kind
-// (a weapon, armor, something used up...), which reads at the chip's size
-// where the item's own painting did not; the hover shows the painting, the
-// Hand card's where the item has one.
+// is marked on the chip. The chip uses the circular inventory painting;
+// the hover keeps the Hand's rectangular painting where the item has one.
 export function EquipmentChips({
   equipment,
   extra,
@@ -350,7 +349,7 @@ export function EquipmentChips({
         return {
           name: item.qty > 1 ? `${item.name} x${item.qty}` : item.name,
           icon: cardArtwork({ kind: "item" as const, key: item.name, family: "item-gear" }),
-          lead: { icon: itemCategoryIcon(category), label: ITEM_CATEGORY_LABEL[category], tone: category, style: itemToneStyle(category, "chip") },
+          lead: { icon: inventoryItemIcon(item), label: ITEM_CATEGORY_LABEL[category], tone: category, style: itemToneStyle(category, "chip") },
           note:
             [
               wornNote(item),

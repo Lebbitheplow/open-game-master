@@ -7,7 +7,8 @@ import { SheetGearRows, type PendingWear } from "@/components/sheet/SheetGearRow
 import { DOLL_PLACES, dollPlaceOf, dollTileLabel, dollTileLine, dollTileNames, dollView, type DollPlaceId, type DollTile } from "@/components/sheet/paperdoll-logic";
 import type { CharacterSheet, EquipmentItem } from "@/lib/schemas/sheet";
 import { findNamed } from "@/lib/language/text-logic";
-import { itemCategory, itemCategoryIcon, itemToneStyle } from "@/lib/srd/item-category-logic";
+import { itemCategory, itemToneStyle } from "@/lib/srd/item-category-logic";
+import { inventoryItemIcon } from "@/lib/inventory-art-logic";
 
 type GearAsk = Record<string, { equipped?: boolean; attuned?: boolean; layered?: boolean }>;
 
@@ -153,7 +154,7 @@ function DollTileButton({ tile, open, controls, onPress }: { tile: DollTile; ope
         open && "border-solid border-amber-600 bg-amber-950/40",
       )}
     >
-      {category ? <GameIcon icon={itemCategoryIcon(category)} size="size-6" className="tone-rim" /> : null}
+      {first ? <GameIcon icon={inventoryItemIcon(first)} size="size-6" className="tone-rim" /> : null}
       <span className="min-w-0 grow">
         <span className={cn("block text-[10px] leading-tight", first ? "text-stone-400" : "text-stone-300")}>{tile.place.label}</span>
         {/* Two lines before it is cut: beside the figure a phone's tile is about a hundred pixels wide, which cut "Cloak of Protection" at "Prote". */}

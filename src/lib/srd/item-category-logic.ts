@@ -6,10 +6,9 @@ import { isBeyondPlainGear, itemTags, wieldedAs } from "@/lib/srd/item-tags";
 import { matchMagicItem } from "@/lib/srd/magic-items";
 import { matchWeapon } from "@/lib/srd/weapons";
 
-// What kind of thing a carried item is, for the one picture a sheet's row
-// leads with. An item's own painting cannot be told from another's at the
-// 24 to 32px a row gives it, so the row shows which of six kinds it is and
-// the painting stays where there is room for it (the hover and the entry).
+// What kind of thing a carried item is, for its tone and spoken label.
+// inventory-art-logic chooses its circular painting; these six pictures
+// remain the fallback for unknown items and unidentified loot.
 export const ITEM_CATEGORIES = ["melee", "ranged", "armor", "consumable", "magic", "gear"] as const;
 export type ItemCategory = (typeof ITEM_CATEGORIES)[number];
 

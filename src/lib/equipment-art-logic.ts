@@ -2,6 +2,7 @@ import { iconSlug, iconPath, isPainted, type IconRef } from "@/lib/icons";
 import { withoutBonus } from "@/lib/srd/item-row";
 import equipmentArt from "./equipment-art.json";
 import equipmentAliases from "./equipment-art-aliases.json";
+import inventoryArt from "./inventory-art.json";
 
 type Variant = { item: string; card: string; baseCard: string };
 // equipment-art.json lists, per genre, the base Hand cards that have a genre
@@ -39,6 +40,15 @@ function artworkKey(name: string): string {
 }
 
 export function equipmentArtwork(icon: IconRef, genre: string | null | undefined, surface: "inventory" | "card"): IconRef {
+  // A circular painting keeps the same genre override as its base item.
+  // This branch is never used to choose the Hand's rectangular artwork.
+  if (icon.kind === "inventory") {
+    const entry = (inventoryArt as Record<string, { item?: string }>)[icon.key];
+    if (surface !== "inventory" || !entry?.item) return icon;
+    const base: IconRef = { kind: "item", key: entry.item, family: icon.family };
+    const variant = equipmentArtwork(base, genre, surface);
+    return variant === base ? icon : variant;
+  }
   const variants = genre ? GENRE_VARIANTS.get(genre) : undefined;
   if (!variants || (icon.kind !== "item" && icon.kind !== "action")) return icon;
   const key = artworkKey(icon.key);
