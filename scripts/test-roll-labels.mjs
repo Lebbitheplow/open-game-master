@@ -148,7 +148,7 @@ await test("The post-fight summary credits a natural 20 to the PC who rolled it,
     ...eight.map((roll) => ({ characterId: roll.characterId, attacker: roll.attacker, kind: roll.kind, total: roll.total, applied: roll.applied, crit: roll.breakdown.crit ?? null })),
     // Aria's own natural 20 and her applied damage.
     { characterId: aria.id, attacker: asSheet(aria), kind: "attack", total: 25, crit: "nat20" },
-    { characterId: aria.id, attacker: asSheet(aria), kind: "damage", total: 11, applied: true, crit: null },
+    { characterId: aria.id, attacker: asSheet(aria), kind: "damage", total: 11, applied: true, targetEnemyId: "goblin", crit: null },
     // A roll with no attacker is the characterId sheet's, as before.
     { characterId: sera.id, kind: "attack", total: 1, crit: "nat1" },
   ];

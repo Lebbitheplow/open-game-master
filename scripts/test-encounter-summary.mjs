@@ -27,12 +27,15 @@ const summary = computeEncounterSummary({
     { id: "b", name: "Orla" },
   ],
   rolls: [
-    { characterId: "a", kind: "damage", total: 12, applied: true, crit: null },
+    { characterId: "a", kind: "damage", total: 12, applied: true, targetEnemyId: "e1", crit: null },
     { characterId: "a", kind: "damage", total: 9, applied: false, crit: null },
     { characterId: "a", kind: "attack", total: 25, crit: "nat20" },
-    { characterId: "b", kind: "damage", total: 6, applied: true, crit: null },
+    { characterId: "b", kind: "damage", total: 6, applied: true, targetEnemyId: "e2", crit: null },
     { characterId: "b", kind: "attack", total: 3, crit: "nat1" },
-    { characterId: null, kind: "damage", total: 40, applied: true, crit: null },
+    { characterId: null, kind: "damage", total: 40, applied: true, targetEnemyId: "e1", crit: null },
+    // A fall that hurt Orla, spent inside the engine's own call with no
+    // target named (rolls.ts markRollSpent): no blow of hers.
+    { characterId: "b", kind: "damage", total: 9, applied: true, targetEnemyId: null, crit: null },
   ],
   audits: [
     { characterId: "a", kind: "apply_damage", delta: { amount: 7 } },

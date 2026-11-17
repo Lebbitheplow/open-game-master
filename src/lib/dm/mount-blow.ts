@@ -15,12 +15,10 @@
 // (srd/mounts.ts MountState), so a condition other than prone (poisoned,
 // grappled) is named for the GM instead of laid.
 
-import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
+import type { Campaign } from "@/lib/db/campaigns";
 import type { DmTurn } from "@/lib/db/dm-turns";
 import type { EncounterEnemy } from "@/lib/db/encounters";
-import { insertRoll } from "@/lib/db/rolls";
 import { isValidExpression, rollExpression, type RollResult } from "@/lib/dice";
-import { publishWithSeq } from "@/lib/events";
 import { rollAgainst } from "@/lib/roll-labels";
 import { riderSpares, type OnHitRider } from "@/lib/bestiary/attack-text";
 import { sizeRank } from "@/lib/bestiary/enemy-numbers";
@@ -28,6 +26,7 @@ import type { EnemyAttack } from "@/lib/bestiary/statblock";
 import { damageAdjust } from "@/lib/dm/damage-logic";
 import { blowByType } from "@/lib/dm/enemy-hit";
 import { petResistLine } from "@/lib/dm/pet-underwater";
+import { recordRoll } from "@/lib/dm/roll-record";
 import { proficiencyForCr } from "@/lib/srd/creature-drain-logic";
 import type { MountState } from "@/lib/srd/mounts";
 import { findSummonForm, type SummonForm } from "@/lib/srd/summon-forms";
@@ -77,9 +76,9 @@ export function mountRider(
     const score = form?.abilities[onHit.save] ?? 10;
     const bonus = Math.floor((score - 10) / 2) + (form?.saves?.includes(onHit.save) ? proficiencyForCr(form.cr) : 0);
     const rolled = rollExpression(`1d20${bonus >= 0 ? "+" : ""}${bonus}`, undefined, { purpose: { roller: "enemy", kind: "save", who: mount.name } });
-    const roll = insertRoll({ campaignId: campaign.id, characterId: rider.id, requestedBy: "dm", kind: "saving_throw", detail: `${mount.name}: ${onHit.save.toUpperCase()} save against ${enemy.displayName}'s ${attack.name}`, dc: onHit.dc, result: rolled });
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
-    turn.rollIds.push(roll.id);
+    // Thrown here on the server's dice (landing null): the rider's own
+    // decided save, filed under the same character, is not this roll.
+    recordRoll({ campaignId: campaign.id, characterId: rider.id, requestedBy: "dm", kind: "saving_throw", detail: `${mount.name}: ${onHit.save.toUpperCase()} save against ${enemy.displayName}'s ${attack.name}`, dc: onHit.dc, result: rolled, turn, landing: null });
     saved = rolled.total >= onHit.dc;
     lines.riderSave = `${rolled.total} vs DC ${onHit.dc}`;
     lines.riderSaved = saved;
@@ -87,9 +86,7 @@ export function mountRider(
   let dealt = 0;
   if (onHit.damage && isValidExpression(onHit.damage) && !(saved && !onHit.halfOnSave)) {
     const rolled = rollExpression(onHit.damage, undefined, { purpose: { roller: "enemy", kind: "damage", who: enemy.displayName } });
-    const roll = insertRoll({ campaignId: campaign.id, characterId: rider.id, requestedBy: "dm", kind: "damage", detail: rollAgainst(`${attack.name} (rider)`, mount.name), result: rolled, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName } });
-    publishWithSeq(campaign.id, allocateSeq(campaign.id), "roll_result", { roll, source: "digital" });
-    turn.rollIds.push(roll.id);
+    recordRoll({ campaignId: campaign.id, characterId: rider.id, requestedBy: "dm", kind: "damage", detail: rollAgainst(`${attack.name} (rider)`, mount.name), result: rolled, attacker: { kind: "enemy", id: enemy.id, name: enemy.displayName }, turn, landing: null });
     const amount = saved ? Math.floor(rolled.total / 2) : rolled.total;
     const landed = adjusted(campaign.id, rider.id, form, [{ amount, type: onHit.damageType }], Boolean(attack.magical));
     dealt = landed.dealt;

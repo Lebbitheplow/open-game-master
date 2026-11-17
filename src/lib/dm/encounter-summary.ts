@@ -90,8 +90,13 @@ export function computeEncounterSummary(input: {
       continue;
     }
     // Damage that landed on an enemy counts as dealt; a hit that was
-    // never applied (a miss, a spell resisted) does not.
-    if (roll.kind === "damage" && roll.applied) {
+    // never applied (a miss, a spell resisted) does not. Only a stamp that
+    // names what the total landed on says that: a roll the engine spent
+    // inside its own call (src/lib/db/rolls.ts markRollSpent: a fall, a
+    // trap, the dice an AI GM sent for a character's damage) is stamped with
+    // no target, and counted here it read as damage dealt by the character
+    // it hurt.
+    if (roll.kind === "damage" && roll.applied && roll.targetEnemyId) {
       line.dealt += Math.max(0, roll.total);
     }
     if (roll.crit === "nat20") {
