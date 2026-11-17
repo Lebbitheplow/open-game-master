@@ -44,7 +44,7 @@ const DEAR = 20;
 // carries a threat, not a blow it did not see; nothing it does itself moves
 // its own bonds; a dear one hurt doubles the blame (and a foe hurt halves it).
 export function bondDeltas(
-  event: Pick<SceneEvent, "actor" | "verb" | "targets" | "object">,
+  event: Pick<SceneEvent, "actor" | "verb" | "targets" | "object"> & { success?: boolean },
   observer: string,
   channels: readonly SenseChannel[],
   affectionToward: (name: string) => number,
@@ -57,9 +57,11 @@ export function bondDeltas(
     return [];
   }
   const thing = event.object ? ` (${event.object})` : "";
+  // A deed that failed still shows the intent: judged the same, told as tried.
+  const tried = event.success === false ? "tried: " : "";
   if (event.targets.some((target) => textKey(target) === textKey(observer))) {
     const row = TO_ME[event.verb];
-    return row ? [{ toward: event.actor, trust: row.trust, affection: row.affection, fear: row.fear, reason: `${row.did}${thing}` }] : [];
+    return row ? [{ toward: event.actor, trust: row.trust, affection: row.affection, fear: row.fear, reason: `${tried}${row.did}${thing}` }] : [];
   }
   const row = TO_OTHER[event.verb];
   const victim = event.targets[0];
@@ -69,7 +71,7 @@ export function bondDeltas(
   const care = affectionToward(victim);
   const harm = row.trust < 0;
   const scale = care >= DEAR ? 2 : care <= -DEAR ? (harm ? 0.5 : 1) : 1;
-  const out: BondDelta[] = [{ toward: event.actor, trust: Math.round(row.trust * scale), affection: harm && care >= DEAR ? -10 : row.affection, fear: row.fear, reason: `${row.did} ${victim}${thing}` }];
+  const out: BondDelta[] = [{ toward: event.actor, trust: Math.round(row.trust * scale), affection: harm && care >= DEAR ? -10 : row.affection, fear: row.fear, reason: `${tried}${row.did} ${victim}${thing}` }];
   return out;
 }
 

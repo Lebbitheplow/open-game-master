@@ -40,7 +40,7 @@ export function addMoodlets(campaignId: string, npcId: string, born: readonly Mo
 }
 
 // What one event a mind took in stirs in it.
-export function moodsFromEvent(campaignId: string, npcId: string, observer: string, event: Pick<SceneEvent, "actor" | "verb" | "targets" | "object" | "instant">, channels: readonly SenseChannel[]) {
+export function moodsFromEvent(campaignId: string, npcId: string, observer: string, event: Pick<SceneEvent, "actor" | "verb" | "targets" | "object" | "instant" | "success">, channels: readonly SenseChannel[]) {
   const npc = getNpcById(npcId);
   if (!npc) {
     return;

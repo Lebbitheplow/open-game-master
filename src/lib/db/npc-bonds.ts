@@ -31,7 +31,7 @@ function saveBond(campaignId: string, npcId: string, bond: Bond) {
 }
 
 // One mind's bonds moved by one event it took in.
-export function bondsFromEvent(campaignId: string, npcId: string, observer: string, event: Pick<SceneEvent, "actor" | "verb" | "targets" | "object">, channels: readonly SenseChannel[]) {
+export function bondsFromEvent(campaignId: string, npcId: string, observer: string, event: Pick<SceneEvent, "actor" | "verb" | "targets" | "object" | "success">, channels: readonly SenseChannel[]) {
   const deltas = bondDeltas(event, observer, channels, (name) => getBond(campaignId, npcId, name)?.affection ?? 0);
   for (const delta of deltas) {
     saveBond(campaignId, npcId, applyDelta(getBond(campaignId, npcId, delta.toward), delta));

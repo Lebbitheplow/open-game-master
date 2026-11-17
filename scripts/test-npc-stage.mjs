@@ -289,6 +289,9 @@ await test("zones: a hero's whisper at the bow reaches the one beside them, not 
   witness(campaign, { actor: "Kaku", verb: "push", targets: ["Mairon"], object: "", zoneTo: "", volume: "normal", covert: false, speech: "", outcome: "Kaku spinge Mairon contro il bordo." });
   assert.equal(positionOf(world.campaignId, "La zattera", "Kaku"), "poppa", "laying hands on someone at the stern takes the actor there");
   assert.ok(kept("Mairon").some((line) => line.includes("spinge Mairon")), "the target feels and sees it");
+  setPosition(world.campaignId, "La zattera", "Kaku", "prua");
+  witness(campaign, { actor: "Kaku", verb: "steal", targets: ["Mairon"], object: "la ciotola", zoneTo: "", volume: "normal", covert: false, speech: "", outcome: "Kaku non riesce a strappare la ciotola a Mairon.", success: false });
+  assert.equal(positionOf(world.campaignId, "La zattera", "Kaku"), "poppa", "a failed snatch still reaches the one it was tried on");
 });
 
 await test("the body: a storm soaks and chills a mind on stage hour by hour; hungry, it is told of the biscuits on the deck (perception slice 4)", async () => {

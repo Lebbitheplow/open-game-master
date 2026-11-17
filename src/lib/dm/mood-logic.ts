@@ -69,7 +69,7 @@ const PAST: Partial<Record<SceneEvent["verb"], string>> = {
 // What an event the observer took in stirs in it (§9.2.1). Seen eating or
 // drinking while it starves stirs jealousy by how hungry or thirsty it is.
 export function appraise(
-  event: Pick<SceneEvent, "actor" | "verb" | "targets" | "object" | "instant">,
+  event: Pick<SceneEvent, "actor" | "verb" | "targets" | "object" | "instant"> & { success?: boolean },
   observer: string,
   channels: readonly SenseChannel[],
   context: { careToward: (name: string) => number; body: Moodles | null },
@@ -86,7 +86,7 @@ export function appraise(
   const victim = event.targets[0] ?? "";
   let born: Born[] = [];
   let cause = "";
-  const did = PAST[event.verb] ?? event.verb;
+  const did = `${event.success === false ? "tried: " : ""}${PAST[event.verb] ?? event.verb}`;
   if (toMe) {
     born = TO_ME[event.verb] ?? [];
     cause = `${event.actor} ${did} you${thing}`;
@@ -98,7 +98,7 @@ export function appraise(
     const need = event.verb === "eat" ? context.body.hunger : context.body.thirst;
     if (need >= 2) {
       born = [{ emotion: "jealousy", weight: 10 * need, hours: 2, atActor: true }];
-      cause = `${event.actor} ${event.verb === "eat" ? "ate" : "drank"}${thing} in front of you, and you have nothing`;
+      cause = `${event.actor} ${event.verb === "eat" ? "ate" : "drank"}${thing} in front of you while you go ${event.verb === "eat" ? "hungry" : "thirsty"}`;
     }
   }
   return born.map((entry) => ({

@@ -151,6 +151,8 @@ await test("bonds: a theft seen by the robbed leaves distrust with the reason; a
   assert.deepEqual(bonds.bondDeltas({ actor: "Ottone", verb: "strike", targets: ["Kaku"], object: "" }, "Mairon", ["hearing"], () => 0), [], "a blow only heard moves no bond");
   assert.deepEqual(bonds.bondDeltas(theft, "Ottone", ["sight"], () => 0), [], "one's own deed moves nothing");
   assert.equal(bonds.bondDeltas({ actor: "Ottone", verb: "threaten", targets: ["Kaku"], object: "" }, "Kaku", ["hearing"], () => 0)[0].fear, 10, "a threat is heard");
+  const failed = bonds.bondDeltas({ ...theft, success: false }, "Kaku", ["sight"], () => 0)[0];
+  assert.deepEqual([failed.trust, failed.reason], [-25, "tried: stole from you (Ciotola)"], "a failed theft is judged the same, told as tried");
 });
 
 const mood = await import("../src/lib/dm/mood-logic.ts");

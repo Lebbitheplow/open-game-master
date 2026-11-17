@@ -164,11 +164,15 @@ export function witness(campaign: Campaign, input: WitnessedEvent): SceneEvent |
     return null;
   }
   // Where it happened: a move takes the actor to its zone, and a hand laid on
-  // someone in another part of the place takes the actor to them first.
+  // (or reaching for) someone in another part of the place takes the actor to
+  // them first.
   const from = zoneOf(campaign, input.actor);
   let to = input.zoneTo ? moveTo(campaign, input.actor, input.zoneTo) : "";
   const reached = input.targets[0] ? zoneOf(campaign, input.targets[0]) : "";
-  if (!to && success(input) && CONTACT_VERBS.has(input.verb) && reached && reached !== from) {
+  // Tried or done, a hand reaches for the other where they stand: a failed
+  // snatch at Gruoch's bowl was only heard by Gruoch, one zone off in the dark
+  // (the observer Zattera, 2026-11-18).
+  if (!to && CONTACT_VERBS.has(input.verb) && reached && reached !== from) {
     to = moveTo(campaign, input.actor, reached);
   }
   const observers: Observer[] = onStage(campaign).map((npc) => ({ id: npc.id, name: npc.name, condition: npc.state.condition, zone: zoneOf(campaign, npc.name), ...(input.covert ? { passive: passiveOf(campaign, npc) } : {}) }));
