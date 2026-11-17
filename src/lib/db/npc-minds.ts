@@ -13,6 +13,7 @@ type MemoryRow = {
   source_name: string;
   content: string;
   learned_at: number;
+  importance: number;
 };
 
 export function addNpcMemories(
@@ -22,12 +23,12 @@ export function addNpcMemories(
   turnId = "",
 ): number {
   const insert = getDatabase().prepare(
-    `INSERT INTO npc_memories (id, campaign_id, npc_id, kind, source_kind, source_name, content, learned_at, turn_id, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO npc_memories (id, campaign_id, npc_id, kind, source_kind, source_name, content, learned_at, turn_id, created_at, importance)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   const at = nowIso();
   for (const npcId of npcIds) {
-    insert.run(randomUUID(), campaignId, npcId, memory.kind, memory.sourceKind, memory.sourceName, memory.content, Math.floor(memory.learnedAt), turnId, at);
+    insert.run(randomUUID(), campaignId, npcId, memory.kind, memory.sourceKind, memory.sourceName, memory.content, Math.floor(memory.learnedAt), turnId, at, Math.max(0, Math.min(3, Math.round(memory.importance ?? 1))));
   }
   return npcIds.length;
 }
@@ -82,7 +83,7 @@ export function npcsOnStageRecently(campaignId: string, turnIdsNewestFirst: read
 export function listNpcMemories(campaignId: string, npcId: string): NpcMemory[] {
   const rows = getDatabase()
     .prepare(
-      `SELECT npc_id, kind, source_kind, source_name, content, learned_at FROM npc_memories
+      `SELECT npc_id, kind, source_kind, source_name, content, learned_at, importance FROM npc_memories
        WHERE campaign_id = ? AND npc_id = ? ORDER BY learned_at, created_at, rowid`,
     )
     .all(campaignId, npcId) as MemoryRow[];
@@ -93,6 +94,7 @@ export function listNpcMemories(campaignId: string, npcId: string): NpcMemory[] 
     sourceName: row.source_name,
     content: row.content,
     learnedAt: row.learned_at,
+    importance: row.importance,
   }));
 }
 

@@ -1591,6 +1591,11 @@ function ensureSchema(db: SqliteDatabase) {
     ["owner_only", `INTEGER NOT NULL DEFAULT 0`],
   ]);
 
+  // How much a memory weighs when the window is full (docs/specs/
+  // ogm-npc-perception.md §11): 3 done to the mind or by it, 2 loud or by
+  // someone it feels strongly about, 1 the rest.
+  addColumns("npc_memories", [["importance", `INTEGER NOT NULL DEFAULT 1`]]);
+
   // A hero's own line on the stage (docs/specs/ogm-npc-perception.md).
   addColumns("scene_events", [["own_words", `INTEGER NOT NULL DEFAULT 0`]]);
 

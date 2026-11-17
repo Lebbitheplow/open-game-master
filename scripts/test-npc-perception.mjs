@@ -198,4 +198,23 @@ await test("stealth: a hidden theft rolled 15 is caught only by a passive 15 or 
   assert.match(line, /^You caught, though it was done so as not to be noticed: Ottone sfila/);
 });
 
+const mindLogic = await import("../src/lib/dm/npc-mind-logic.ts");
+
+await test("memory by importance: done to me or a weighty deed of mine 3, loud or by one I feel for 2; what weighed outlasts eighty lines of chatter", () => {
+  const ev = (actor, verb, targets = [], volume = "normal") => ({ actor, verb, targets, volume });
+  assert.equal(events.memoryImportance(ev("Ottone", "steal", ["Kaku"]), "Kaku", false), 3);
+  assert.equal(events.memoryImportance(ev("Kaku", "strike", ["Ottone"]), "Kaku", false), 3, "its own blow is its own story");
+  assert.equal(events.memoryImportance(ev("Kaku", "speak"), "Kaku", false), 1);
+  assert.equal(events.memoryImportance(ev("Ottone", "speak", [], "shout"), "Kaku", false), 2);
+  assert.equal(events.memoryImportance(ev("Ottone", "speak"), "Kaku", true), 2);
+  assert.equal(events.memoryImportance(ev("Ottone", "speak"), "Kaku", false), 1);
+  const memory = (content, learnedAt, importance = 1) => ({ npcId: "k", kind: "knowledge", sourceKind: "perceived", sourceName: "on stage", content, learnedAt, importance });
+  const theft = memory("Ottone stole my bowl", 5, 3);
+  const chatter = Array.from({ length: 80 }, (_, index) => memory(`chatter ${index}`, 10 + index));
+  const seen = mindLogic.memoriesFor("k", [theft, ...chatter], 1000);
+  assert.equal(seen.length, mindLogic.MIND_MEMORY_LIMIT);
+  assert.equal(seen[0].content, "Ottone stole my bowl", "the theft stays, in its place in time");
+  assert.equal(seen.at(-1).content, "chatter 79");
+});
+
 finish();

@@ -153,3 +153,19 @@ export function heroLineVolume(text: string): SceneVolume {
   }
   return "normal";
 }
+
+const WEIGHTY_VERBS: ReadonlySet<SceneVerb> = new Set(["strike", "steal", "bind", "free", "give", "heal", "threaten", "grab", "push", "flee"]);
+
+// How much the memory of an event weighs for one who took it in (§11): 3 when
+// done to them, or a weighty deed of their own (their own story); 2 when loud,
+// weighty, or by someone they feel strongly about; 1 the rest.
+export function memoryImportance(event: Pick<SceneEvent, "actor" | "verb" | "targets" | "volume">, observer: string, strongBond: boolean): number {
+  const mine = textKey(event.actor) === textKey(observer);
+  if (event.targets.some((target) => textKey(target) === textKey(observer)) || (mine && WEIGHTY_VERBS.has(event.verb))) {
+    return 3;
+  }
+  if (mine) {
+    return 1;
+  }
+  return WEIGHTY_VERBS.has(event.verb) || event.volume === "shout" || event.volume === "noise" || strongBond ? 2 : 1;
+}

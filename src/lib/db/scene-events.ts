@@ -2,12 +2,12 @@
 // who perceived each, and each mind's cursor. Recording an event also leaves
 // each perceiver one memory line of it, as they took it in: the memory is of
 // the event, never of the narrator's prose.
-import { bondsFromEvent } from "@/lib/db/npc-bonds";
+import { bondsFromEvent, getBond } from "@/lib/db/npc-bonds";
 import { moodsFromEvent } from "@/lib/db/npc-moods";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { addNpcMemories } from "@/lib/db/npc-minds";
 import { ON_STAGE_SOURCE } from "@/lib/dm/npc-mind-logic";
-import { perceivedLine, SCENE_VERBS, SCENE_VOLUMES, type SceneEvent, type SenseChannel } from "@/lib/dm/scene-events-logic";
+import { memoryImportance, perceivedLine, SCENE_VERBS, SCENE_VOLUMES, type SceneEvent, type SenseChannel } from "@/lib/dm/scene-events-logic";
 import type { Observer, Perception } from "@/lib/dm/senses-logic";
 
 type EventRow = {
@@ -95,7 +95,10 @@ export function recordSceneEvent(
     bondsFromEvent(campaignId, perception.observerId, names.get(perception.observerId) ?? "", event, perception.channels);
     const line = perceivedLine(event, names.get(perception.observerId) ?? "", perception.channels);
     if (line) {
-      addNpcMemories(campaignId, [perception.observerId], { kind: "knowledge", sourceKind: "perceived", sourceName: ON_STAGE_SOURCE, content: line, learnedAt: event.instant }, event.turnId);
+      const bond = getBond(campaignId, perception.observerId, event.actor);
+      const strong = Boolean(bond && (Math.abs(bond.trust) >= 30 || Math.abs(bond.affection) >= 30 || bond.fear >= 30));
+      const importance = memoryImportance(event, names.get(perception.observerId) ?? "", strong);
+      addNpcMemories(campaignId, [perception.observerId], { kind: "knowledge", sourceKind: "perceived", sourceName: ON_STAGE_SOURCE, content: line, learnedAt: event.instant, importance }, event.turnId);
     }
   }
   return { ...event, seq };

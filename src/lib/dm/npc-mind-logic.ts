@@ -38,6 +38,8 @@ export type NpcMemory = {
   content: string;
   // The game clock's instant when it learned it (src/lib/dm/calendar.ts).
   learnedAt: number;
+  // 0–3, how much it weighs when the window is full; 1 when not said.
+  importance?: number;
 };
 
 // The cap on what one context carries: the newest memories win, background
@@ -51,6 +53,7 @@ export const MIND_TEXT_CHARS = 600;
 // and a mind's own deed of the turn before fell out of its window, so it did
 // the same thing again, turn after turn.
 export const MIND_SELF_KEEP = 12;
+export const MIND_WEIGHTY_KEEP = 12;
 
 export function memoriesFor(npcId: string, memories: readonly NpcMemory[], now: number): NpcMemory[] {
   const own = memories.filter((memory) => memory.npcId === npcId && memory.learnedAt <= now);
@@ -58,8 +61,16 @@ export function memoriesFor(npcId: string, memories: readonly NpcMemory[], now: 
   const lived = own.filter((memory) => memory.sourceKind !== "background");
   const room = Math.max(0, MIND_MEMORY_LIMIT - background.length);
   const selfKept = new Set(lived.filter((memory) => memory.sourceKind === "self").slice(-Math.min(MIND_SELF_KEEP, room)));
-  const newest = new Set(lived.filter((memory) => !selfKept.has(memory)).slice(-Math.max(0, room - selfKept.size)));
-  return [...background, ...lived.filter((memory) => selfKept.has(memory) || newest.has(memory))];
+  // What weighed (done to it, by it, loud, by someone it feels for) outlasts
+  // the chatter (docs/specs/ogm-npc-perception.md §11): up to a third of the
+  // room, the newest of them, before recency fills the rest.
+  const weighty = new Set(
+    lived
+      .filter((memory) => !selfKept.has(memory) && (memory.importance ?? 1) >= 2)
+      .slice(-Math.max(0, Math.min(MIND_WEIGHTY_KEEP, room - selfKept.size))),
+  );
+  const newest = new Set(lived.filter((memory) => !selfKept.has(memory) && !weighty.has(memory)).slice(-Math.max(0, room - selfKept.size - weighty.size)));
+  return [...background, ...lived.filter((memory) => selfKept.has(memory) || weighty.has(memory) || newest.has(memory))];
 }
 
 // The two tiers. The first is played by its own mind and takes turns like
