@@ -359,6 +359,18 @@ await test("A blow aimed at the ridden steed meets the steed's own defenses type
   assert.equal(world.sheet(steed.id).currentHp, 16, `a steed immune to poison took the bite's poison as piercing: ${JSON.stringify(bite.result?.swings)}`);
 });
 
+await test("A ridden steed stands in the water its rider stands in: a blow's fire on it is halved.", async () => {
+  const wet = OPEN().map((row, y) => (y === 3 ? `${row.slice(0, 3)}~${row.slice(4)}` : row));
+  const swim = await riddenSteed(wet);
+  await giveAttacks(swim.world, swim.enemy, [{ name: "Flame Bite", toHit: 4, damage: "2d6", type: "fire" }]);
+  swim.world.clearDice();
+  swim.world.dice(15, 4, 4);
+  const flame = await swim.world.invoke("enemy_attack", { enemyId: swim.enemy.id, targetCharacterId: swim.paladin.id, targetMount: true });
+  swim.world.clearDice();
+  assert.equal(flame.ok, true, flame.error);
+  assert.equal(swim.world.sheet(swim.steed.id).currentHp, 15, `8 fire on a steed in its rider's water was not halved: ${JSON.stringify(flame.result?.swings)}`);
+});
+
 // What a hit carries onto a steed with a sheet lands on that sheet: the save
 // from the steed's own block, the rider's damage through its defenses once,
 // and the condition on the creature. "If your mount is knocked prone, you can
