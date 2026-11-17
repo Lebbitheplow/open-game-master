@@ -257,6 +257,21 @@
       "scale": 1.8
     },
     {
+      "id": "gear-backpack",
+      "label": "Backpack",
+      "source": "Built-in image_gen",
+      "sourceSha256": "6d16f7083abf342ce065441eef62f05dfff414f5f816284c0ff9a40ceffa8f30",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's approved action-card weapons and inventory items: warm ivory highlights, aged brass details, rich chestnut leather and honey-colored wood, crisp silhouettes, restrained believable ornament, painterly material texture. Square canvas with genuine transparent alpha. Physical object only; NO backdrop, external shadow, fog, halo, glow outside the object, floating particles, text, frame, painted circle, hands or character. Center the COMPLETE object with generous margin inside a circle of diameter 82% of the square. Readable at 32–40px, strong substantial forms and a clear three-quarter view. Subject: one sturdy medieval travel BACKPACK made of chestnut leather, a broad boxy main compartment with a curved flap secured by two aged-brass buckles, visible thick hand stitching, two modest side pockets, and two shoulder straps tucked closely behind. Compact upright bulging silhouette, clearly a worn-on-the-back pack rather than a drawstring pouch. A small rolled cream wool blanket strapped horizontally on top and one simple loop handle. No weapons, dangling pots or modern zippers.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-backpack.webp",
+        "sha256": "99293b9ce7638ac39b0a483afbccc4697191bccf4b8299509f30fed6b4d2d954",
+        "bytes": 21836,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9481
+    },
+    {
       "id": "gear-ball-bearings",
       "label": "Ball Bearings",
       "source": "Reused collaborative action-card artwork",
@@ -272,6 +287,21 @@
       "scale": 0.8785
     },
     {
+      "id": "gear-bedroll",
+      "label": "Bedroll",
+      "source": "Built-in image_gen",
+      "sourceSha256": "cc6cc93c904e6f4c807c965caa99cabe698c436e782f9df103344604d2f416f3",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's approved action-card weapons and inventory items: warm ivory highlights, aged brass details, rich chestnut leather and honey-colored wood, crisp silhouettes, restrained believable ornament, painterly material texture. Square canvas with genuine transparent alpha. Physical object only; NO backdrop, external shadow, fog, halo, glow outside the object, floating particles, text, frame, painted circle, hands or character. Center the COMPLETE object with generous margin inside a circle of diameter 82% of the square. Readable at 32–40px, strong substantial forms and a clear three-quarter view. Subject: one tightly rolled medieval travel BEDROLL of thick muted olive-gray wool, the spiral of the rolled blanket clearly visible at one end, wrapped around a cream linen sleeping layer. Two wide chestnut leather straps with simple aged-brass buckles hold the substantial cylindrical roll; a short leather carrying handle lies close between them. Tilted slightly diagonal to fit the round icon, whole roll and both ends visible. Tactile fuzzy woven wool, compact simple clear silhouette. No backpack, pillow outside the roll, tent, modern nylon or zipper.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-bedroll.webp",
+        "sha256": "d9e062241d09abfa2ccc7309e44e41997b0daaeb184ca389db210feae3bb3c99",
+        "bytes": 20844,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8791
+    },
+    {
       "id": "gear-caltrops",
       "label": "Caltrops",
       "source": "Reused collaborative action-card artwork",
@@ -285,6 +315,21 @@
         "height": 256
       },
       "scale": 0.936
+    },
+    {
+      "id": "gear-component-pouch",
+      "label": "Component pouch",
+      "source": "Built-in image_gen",
+      "sourceSha256": "550f4de0cfc5a6d6b0265638d8b4e8e74141d5e4463d4a4f3a9f6e2ce248f338",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's approved action-card weapons and inventory items: warm ivory highlights, aged brass details, rich chestnut leather and honey-colored wood, crisp silhouettes, restrained believable ornament, painterly material texture. Square canvas with genuine transparent alpha. Physical object only; NO backdrop, external shadow, fog, halo, glow outside the object, floating particles, text, frame, painted circle, hands or character. Center the COMPLETE object with generous margin inside a circle of diameter 82% of the square. Readable at 32–40px, strong substantial forms and a clear three-quarter view. Subject: a compact wizard's COMPONENT POUCH designed as a practical leather belt organizer, distinct from a drawstring sack. Broad rectangular chestnut leather satchel, its top flap folded open exposing three stitched compartments: a tiny stoppered amber glass vial, a short ivory feather and a little bundle of dried green herbs. An aged-brass fastening toggle, thick stitching and two close belt loops. Organized believable contents with simple grouped shapes readable when tiny. No glitter, no loose spilled powder, no gems, no long straps, no potion glow.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-component-pouch.webp",
+        "sha256": "7b3feb6a027e51a95d90865789547165269e89c4527e4fc02164290a6881c075",
+        "bytes": 21734,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9341
     },
     {
       "id": "gear-drum",
@@ -315,6 +360,21 @@
         "height": 256
       },
       "scale": 0.8856
+    },
+    {
+      "id": "gear-holy-symbol",
+      "label": "Holy symbol",
+      "source": "Built-in image_gen",
+      "sourceSha256": "b4dd8d337418927197f7bb1326036c6ba969c0f85ed5fc3008abae5b2474324d",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's approved action-card weapons and inventory items: warm ivory highlights, aged brass details, rich chestnut leather and honey-colored wood, crisp silhouettes, restrained believable ornament, painterly material texture. Square canvas with genuine transparent alpha. Physical object only; NO backdrop, external shadow, fog, halo, glow outside the object, floating particles, text, frame, painted circle, hands or character. Center the COMPLETE object with generous margin inside a circle of diameter 82% of the square. Readable at 32–40px, strong substantial forms and a clear three-quarter view. Subject: one clearly sacred fantasy HOLY SYMBOL pendant: a substantial aged-brass eight-rayed sun medallion surrounding a small warm ivory central disc, simple symmetrical sculpted rays, thick polished bevels and a small hanging loop. A short dark brown leather neck cord loops closely above the pendant. The medallion occupies most of the frame and has an unmistakable sunburst silhouette. Original generic fantasy religious design, no real-world religious cross, no franchise emblems, no letters, no magical glow or jewels.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-holy-symbol.webp",
+        "sha256": "86fca798fba2625d10ca7baca952a5a4f5df066a8ec1c96d314176e3136310a6",
+        "bytes": 19610,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.8496
     },
     {
       "id": "gear-holy-water",
@@ -407,6 +467,21 @@
       "scale": 0.9104
     },
     {
+      "id": "gear-rations",
+      "label": "Rations",
+      "source": "Built-in image_gen",
+      "sourceSha256": "0e561627cb88ab214d01a280564667424a7945086ab6dff72a2da32066213a25",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's approved action-card weapons and inventory items: warm ivory highlights, aged brass details, rich chestnut leather and honey-colored wood, crisp silhouettes, restrained believable ornament, painterly material texture. Square canvas with genuine transparent alpha. Physical object only; NO backdrop, external shadow, fog, halo, glow outside the object, floating particles, text, frame, painted circle, hands or character. Center the COMPLETE object with generous margin inside a circle of diameter 82% of the square. Readable at 32–40px, strong substantial forms and a clear three-quarter view. Subject: a compact bundle of TRAVEL RATIONS opened on folded coarse warm ivory linen: one small round brown hardtack biscuit, a modest wedge of aged pale yellow cheese with golden rind, and three strips of dark reddish dried meat. The folded fabric and a short leather tie contain the food in a single tight oval bundle. Rustic preserved trail food with tactile painterly textures; no banquet, no plates or cutlery, no shiny modern packaging, no large fresh fruit or extravagant meal. Distinct recognizable food silhouette.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-rations.webp",
+        "sha256": "1403db9ce92d8882db887c52b806f9073448814c37775fe39a5dc0092a38f6a9",
+        "bytes": 20358,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9264
+    },
+    {
       "id": "gear-rope",
       "label": "Rope",
       "source": "Reused collaborative action-card artwork",
@@ -437,6 +512,26 @@
       "scale": 0.8818
     },
     {
+      "id": "gear-thieves-tools",
+      "label": "Thieves’ tools",
+      "source": "Built-in image_gen",
+      "sourceSha256": "f0aeb16b35df07863d5c55236e8cb1a62d84e3743c05804d61949a4a792a18b0",
+      "prompt": "Use case: precise-object-edit. Transform this closed leather roll into an OPEN medieval fantasy hand-tool kit. Unfold the leather into a compact upright rectangular panel with slightly curled side edges and stitched pockets. Display five ordinary hand tools: a miniature brass-headed hammer with a short wooden handle, small steel pliers, two narrow metal files with walnut handles, and a round inspection mirror with a short handle. Make the silhouettes of the hammer, pliers and mirror prominent and easy to recognize at 32 pixels. The tools rest separately in the pockets, without crossing or merging. Keep the chestnut leather, ivory stitching, aged brass buckles, small decorative brass key badge and warm painterly sculptural style of the original. No blankets or rolled bedding. Physical objects only, all parts completely visible, near-square balanced composition fitting within a circular inventory slot with generous empty margins. Genuine transparent alpha background; no table, background, hands, people, writing, schematic, frame or external shadow.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-thieves-tools.webp",
+        "sha256": "eb0d04880f292f74f1c9e63dbe04368937e2cdbbc1757352206a45f9a6f06208",
+        "bytes": 23180,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.7937,
+      "revision": {
+        "reason": "User requested an open tool roll with visible tools to distinguish it from a bedroll",
+        "originalPrompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's approved action-card weapons and inventory items: warm ivory highlights, aged brass details, rich chestnut leather and honey-colored wood, crisp silhouettes, restrained believable ornament, painterly material texture. Square canvas with genuine transparent alpha. Physical object only; NO backdrop, external shadow, fog, halo, glow outside the object, floating particles, text, frame, painted circle, hands or character. Center the COMPLETE object with generous margin inside a circle of diameter 82% of the square. Readable at 32–40px, strong substantial forms and a clear three-quarter view. Subject: a medieval fantasy adventurer's compact CLOSED LEATHER TOOL ROLL, intended as the game's thieves' tools inventory icon. The dark chestnut leather rectangle is rolled inwards from both sides into a short broad bundle, with the leather folds visible at the ends. Two narrow leather fastening straps and aged-brass buckles hold it shut. A small brass key-shaped badge is stitched on the central exterior flap as a decorative emblem. Closed container only, no exposed implements, diagrams, measurements or instructions. Clearly a portable kit made of leather, not a wool bedroll, backpack or drawstring sack. Compact near-horizontal three-quarter view with strong tangible painterly leather textures.",
+        "originalSourceSha256": "428110529c234c9e4b30d3e63ebfe0d57aa4a04d42e377543b7b636fe1f6ee63"
+      }
+    },
+    {
       "id": "gear-tinderbox",
       "label": "Tinderbox",
       "source": "Reused collaborative action-card artwork",
@@ -465,6 +560,21 @@
         "height": 256
       },
       "scale": 0.8587
+    },
+    {
+      "id": "gear-waterskin",
+      "label": "Waterskin",
+      "source": "Built-in image_gen",
+      "sourceSha256": "fcedd3fe311f515e2a0ddface8c62fb0ff6dd5607e6bf31eae3d79ab26847fef",
+      "prompt": "Use case: stylized-concept. ONE isolated medieval RPG equipment icon, premium hand-painted sculptural game art matching ODM's approved action-card weapons and inventory items: warm ivory highlights, aged brass details, rich chestnut leather and honey-colored wood, crisp silhouettes, restrained believable ornament, painterly material texture. Square canvas with genuine transparent alpha. Physical object only; NO backdrop, external shadow, fog, halo, glow outside the object, floating particles, text, frame, painted circle, hands or character. Center the COMPLETE object with generous margin inside a circle of diameter 82% of the square. Readable at 32–40px, strong substantial forms and a clear three-quarter view. Subject: one traditional medieval WATERSKIN: a soft swollen pear-shaped brown leather water flask, narrow short neck with a small fitted wooden stopper bound by a leather thong, prominent stitched seam along one side, a slightly flattened bottom. A short dark carrying strap tucks closely behind its shoulder. Compact three-quarter view, warm worn chestnut leather, believable water-filled bulge. Clearly a narrow-necked drinking vessel rather than an open pouch, bottle, metal canteen, or modern water bladder. No open mouth or visible powder.",
+      "export": {
+        "src": "/assets/icons/inventory/gear-waterskin.webp",
+        "sha256": "c45a195594e64db85c3111cbf0d8d551f2ab501e2bfee194ed4a190301ec0341",
+        "bytes": 16620,
+        "width": 256,
+        "height": 256
+      },
+      "scale": 0.9407
     },
     {
       "id": "magic-amulet",

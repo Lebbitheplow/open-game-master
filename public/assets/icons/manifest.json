@@ -25065,6 +25065,83 @@
       "generator": "image_gen",
       "width": 256,
       "height": 256
+    },
+    {
+      "id": "inventory-gear-backpack",
+      "group": "inventory",
+      "key": "gear-backpack",
+      "label": "Backpack",
+      "src": "/assets/icons/inventory/gear-backpack.webp",
+      "bytes": 21836,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-thieves-tools",
+      "group": "inventory",
+      "key": "gear-thieves-tools",
+      "label": "Thieves’ tools",
+      "src": "/assets/icons/inventory/gear-thieves-tools.webp",
+      "bytes": 23180,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-holy-symbol",
+      "group": "inventory",
+      "key": "gear-holy-symbol",
+      "label": "Holy symbol",
+      "src": "/assets/icons/inventory/gear-holy-symbol.webp",
+      "bytes": 19610,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-component-pouch",
+      "group": "inventory",
+      "key": "gear-component-pouch",
+      "label": "Component pouch",
+      "src": "/assets/icons/inventory/gear-component-pouch.webp",
+      "bytes": 21734,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-rations",
+      "group": "inventory",
+      "key": "gear-rations",
+      "label": "Rations",
+      "src": "/assets/icons/inventory/gear-rations.webp",
+      "bytes": 20358,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-waterskin",
+      "group": "inventory",
+      "key": "gear-waterskin",
+      "label": "Waterskin",
+      "src": "/assets/icons/inventory/gear-waterskin.webp",
+      "bytes": 16620,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "id": "inventory-gear-bedroll",
+      "group": "inventory",
+      "key": "gear-bedroll",
+      "label": "Bedroll",
+      "src": "/assets/icons/inventory/gear-bedroll.webp",
+      "bytes": 20844,
+      "generator": "image_gen",
+      "width": 256,
+      "height": 256
     }
   ]
 }

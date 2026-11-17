@@ -20,6 +20,8 @@ const MAGIC_FORMS: Record<string, string> = {
   lantern: "lantern", bottle: "bottle", decanter: "bottle", candle: "candle", shackles: "shackles", feather: "feather",
   fan: "fan", mirror: "mirror", bowl: "bowl", censer: "censer", brazier: "brazier", cube: "cube", horseshoes: "horseshoes",
   quiver: "quiver", lute: "lute", drum: "drum",
+  boot: "boots", slipper: "boots", glove: "gloves", gauntlet: "gauntlets", bracer: "bracers",
+  pendant: "amulet", girdle: "belt", cap: "hat", codex: "book", purse: "bag",
 };
 const MAGIC_NAMES: Record<string, string> = {
   "crystal-ball": "orb", "dimensional-shackles": "shackles", "efreeti-bottle": "bottle",
@@ -27,6 +29,7 @@ const MAGIC_NAMES: Record<string, string> = {
   "handy-haversack": "bag", "instant-fortress": "cube", "scarab-of-protection": "brooch",
   "efficient-quiver": "quiver", "dust-of-disappearance": "dust",
   "dust-of-dryness": "dust", "dust-of-sneezing-and-choking": "dust",
+  "cubic-gate": "cube",
 };
 const GEAR_NAMES: Record<string, string> = {
   "acid-vial": "gear-acid", "alchemists-fire-flask": "gear-alchemists-fire",
@@ -38,6 +41,11 @@ const GEAR_NAMES: Record<string, string> = {
   "arcane-focus-wand": "magic-wand", "arcane-focus-rod": "magic-rod", "arcane-focus-staff": "magic-staff",
   "arcane-focus-orb": "magic-orb", "arcane-focus-crystal": "magic-gem",
   quiver: "gear-quiver", lute: "gear-lute", drum: "gear-drum",
+  "arcane-focus": "magic-gem", "wooden-staff-druidic-focus": "magic-staff",
+  "yew-wand-druidic-focus": "magic-wand", spellbook: "magic-book", robes: "magic-robe",
+  vestments: "magic-robe", "playing-card-set": "magic-deck", sack: "magic-bag",
+  "little-bag-of-sand": "magic-bag", "ink-1-ounce-bottle": "magic-bottle",
+  "rations-1-day": "gear-rations",
 };
 
 // Match a physical form at the start of a name, never a word hidden inside
@@ -81,11 +89,16 @@ export function inventoryItemIcon(item: CategoryItem): IconRef {
   // Unknown weapons/armor keep their honest category rather than being
   // mistaken for a necklace or ring because of a decorative name.
   if (category === "melee" || category === "ranged" || category === "armor") return itemCategoryIcon(category);
-  const gear = iconSlug(matchGear(name)?.name ?? name);
+  const knownGear = matchGear(name);
+  const gearName = knownGear?.name ?? name;
+  const withGenre = (icon: IconRef): IconRef => knownGear ? { ...icon, genreItem: gearName } : icon;
+  const gear = iconSlug(gearName);
   const direct = painting(GEAR_NAMES[gear] ?? `gear-${gear}`);
-  if (direct) return direct;
-  if (/^potions?(?:-|$)/.test(gear)) return painting("gear-potion-of-healing")!;
-  if (/^(?:spell-)?scrolls?(?:-|$)/.test(gear)) return painting("gear-spell-scroll")!;
-  if (/^ropes?(?:-|$)/.test(gear)) return painting("gear-rope")!;
-  return painting(magicPainting(magic?.name ?? name, Boolean(magic))) ?? itemCategoryIcon(category);
+  if (direct) return withGenre(direct);
+  if (/^potions?(?:-|$)/.test(gear)) return withGenre(painting("gear-potion-of-healing")!);
+  if (/^(?:spell-)?scrolls?(?:-|$)/.test(gear)) return withGenre(painting("gear-spell-scroll")!);
+  if (/^ropes?(?:-|$)/.test(gear)) return withGenre(painting("gear-rope")!);
+  // A gear alias can name a more specific visible form than its catalog row
+  // (Amulet belongs to Holy Symbol); retain that painting when the row has none.
+  return withGenre(painting(magicPainting(magic?.name ?? gearName, Boolean(magic))) ?? painting(magicPainting(name)) ?? itemCategoryIcon(category));
 }

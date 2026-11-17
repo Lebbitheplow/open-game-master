@@ -71,18 +71,18 @@ export default {
     const artImage = (src) => `img[src="${src}"], img[data-odm-src="${src}"]`;
     check(await sheet.locator(artImage(bracers)).count() >= 2, "bracers have their own art in the inventory chip and worn tile");
     check(await place("cloak").locator(artImage("/assets/icons/inventory/magic-cloak.webp")).count() === 1, "the cloak tile uses the circular cloak painting");
-    for (const id of ["gear-quiver", "gear-lute", "gear-drum", "magic-dust"]) {
+    for (const id of ["gear-quiver", "gear-lute", "gear-drum", "magic-dust", "gear-backpack", "gear-thieves-tools", "gear-holy-symbol", "gear-component-pouch", "gear-rations", "gear-waterskin", "gear-bedroll"]) {
       const added = sheet.locator(artImage(`/assets/icons/inventory/${id}.webp`)).first();
       check(await added.count() === 1, `${id} uses its approved inventory painting`);
       await added.scrollIntoViewIfNeeded();
       await eventually(() => added.evaluate(img => img.complete && img.naturalWidth > 0), { label: `${id} image loaded` });
     }
     await untilStill(page);
-    await t.shot("inventory-additions-night");
+    await t.shot("inventory-everyday-night");
     const additionsTheme = await page.evaluate(() => document.documentElement.dataset.theme ?? "");
     await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
     await untilStill(page);
-    await t.shot("inventory-additions-day");
+    await t.shot("inventory-everyday-day");
     await page.evaluate(theme => (document.documentElement.dataset.theme = theme), additionsTheme);
     // Twelve places on the body and in the hands, and Other items for her
     // orb, which has no place on the body (the tile is drawn only for a pack

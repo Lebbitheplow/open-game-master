@@ -40,6 +40,11 @@ function artworkKey(name: string): string {
 }
 
 export function equipmentArtwork(icon: IconRef, genre: string | null | undefined, surface: "inventory" | "card"): IconRef {
+  if (surface === "inventory" && icon.genreItem) {
+    const base: IconRef = { kind: "item", key: icon.genreItem, family: icon.family };
+    const variant = equipmentArtwork(base, genre, surface);
+    return variant === base ? icon : variant;
+  }
   // A circular painting keeps the same genre override as its base item.
   // This branch is never used to choose the Hand's rectangular artwork.
   if (icon.kind === "inventory") {

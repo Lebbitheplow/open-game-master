@@ -13,6 +13,7 @@ const { equipmentArtwork } = await import("../src/lib/equipment-art-logic.ts");
 const { cardArtwork } = await import("../src/lib/battlemap/card-art.ts");
 const { SRD_WEAPONS } = await import("../src/lib/srd/weapons.ts");
 const { SRD_ARMOR } = await import("../src/lib/srd/armor-table.ts");
+const { SRD_GEAR } = await import("../src/lib/srd/adventuring-gear.ts");
 const { GameIcon } = await import("../src/components/ui/GameIcon.tsx");
 const { EquipmentArtProvider } = await import("../src/components/ui/EquipmentArtProvider.tsx");
 const { EquipmentChips } = await import("../src/components/sheet/SheetParts.tsx");
@@ -60,7 +61,30 @@ for (const [name, key] of [
   ["Luth", "gear-lute"], ["Tambour", "gear-drum"],
   ["Poudre dessiccative", "magic-dust"], ["Poudre à éternuer", "magic-dust"],
   ["Poussière de disparition", "magic-dust"],
+  ["Arcane Focus", "magic-gem"], ["Crystal", "magic-gem"],
+  ["Arcane Focus (orb)", "magic-orb"], ["Arcane Focus (rod)", "magic-rod"],
+  ["Arcane Focus (staff)", "magic-staff"], ["Arcane Focus (wand)", "magic-wand"],
+  ["Wooden Staff (druidic focus)", "magic-staff"], ["Yew Wand", "magic-wand"],
+  ["Spellbook", "magic-book"], ["Robes", "magic-robe"], ["Vestments", "magic-robe"],
+  ["Playing Card Set", "magic-deck"], ["Deck of playing cards", "magic-deck"],
+  ["Sack", "magic-bag"], ["Little Bag of Sand", "magic-bag"],
+  ["Ink (1 ounce bottle)", "magic-bottle"], ["Glass bottle", "magic-bottle"],
+  ["Amulet", "gear-holy-symbol"], ["Cubic Gate", "magic-cube"],
+  ["Glove of Swift Return", "magic-gloves"], ["Clockwork Gauntlet", "magic-gauntlets"],
+  ["Clockwork Pendant", "magic-amulet"], ["Girdle of Traveling Alchemy", "magic-belt"],
+  ["Crafter’s Codex", "magic-book"], ["Resolute Bracer", "magic-bracers"],
+  ["Backpack", "gear-backpack"], ["Thieves' Tools", "gear-thieves-tools"],
+  ["Holy Symbol", "gear-holy-symbol"], ["Component Pouch", "gear-component-pouch"],
+  ["Rations (1 day)", "gear-rations"], ["Trail rations", "gear-rations"],
+  ["Waterskin", "gear-waterskin"], ["Bedroll", "gear-bedroll"],
+  ["Sac à dos", "gear-backpack"], ["Outils de voleur", "gear-thieves-tools"],
+  ["Symbole sacré", "gear-holy-symbol"], ["Sacoche à composantes", "gear-component-pouch"],
+  ["Outre", "gear-waterskin"], ["Sac de couchage", "gear-bedroll"],
 ]) expect(name, key);
+// Bare staves are weapon aliases; an explicitly named focus keeps its own art.
+expect("Staff", "weapon-quarterstaff");
+expect("Wooden Staff", "weapon-quarterstaff");
+expect("Unknown focus", "item-gear", { identified: false, srdName: "Arcane Focus" });
 expect("Sparkles", "magic-dust", { srdName: "Dust of Disappearance" });
 expect("Unknown powder", "item-gear", { identified: false, srdName: "Dust of Disappearance" });
 expect("Diamond dust", "item-gear");
@@ -85,7 +109,21 @@ for (const [name, key] of [["Longsword", "weapon-longsword"], ["Dagger", "weapon
   assert.ok(iconCandidates(card)[0].startsWith("/assets/icons/action/"));
 }
 
-assert.equal(report.length, 112);
+// Genre-only gear must keep its approved override even without a base painting.
+let genreChecks = 0;
+for (const genre of Object.keys(read("src/lib/equipment-art.json"))) for (const gear of SRD_GEAR) {
+  const base = { kind: "item", key: gear.name, family: "item-gear" };
+  const expected = equipmentArtwork(base, genre, "inventory");
+  if (expected === base) continue;
+  const actual = equipmentArtwork(resolve(gear.name), genre, "inventory");
+  assert.equal(actual.kind, expected.kind, `${genre}: ${gear.name}`);
+  assert.equal(actual.key, expected.key, `${genre}: ${gear.name}`);
+  const hidden = equipmentArtwork(resolve("Unknown item", { identified: false, srdName: gear.name }), genre, "inventory");
+  assert.equal(hidden.key, "item-gear");
+  genreChecks++;
+}
+assert.ok(genreChecks > 100);
+assert.equal(report.length, 119);
 for (const row of report) {
   const bytes = readFileSync(path.join(root, "public", row.export.src));
   assert.equal(createHash("sha256").update(bytes).digest("hex"), row.export.sha256);
@@ -107,15 +145,19 @@ assert.ok(!genreImage.includes("scale-[1.7]"));
 const item = { name: "Bracers of Defense", qty: 1, equipped: true, attuned: true };
 const sheet = { name: "Art Preview", equipment: [item], features: [], class: "fighter", level: 5, conditions: [], resources: {} };
 const wrap = node => renderToStaticMarkup(createElement(EquipmentArtProvider, { genre: "high_fantasy" }, node));
+const chest = createElement(EquipmentArtProvider, { genre: "cyberpunk" }, createElement(EquipmentChips, { equipment: [{ name: "Chest", qty: 1 }] }));
+assert.match(renderToStaticMarkup(chest), /\/item\/cyberpunk-chest.webp/);
+const privateChest = createElement(EquipmentArtProvider, { genre: "cyberpunk" }, createElement(EquipmentChips, { equipment: [{ name: "Unknown item", srdName: "Chest", identified: false, qty: 1 }] }));
+assert.ok(!renderToStaticMarkup(privateChest).includes("cyberpunk-chest.webp"));
 for (const node of [
   createElement(EquipmentChips, { equipment: [item] }),
   createElement(SheetGearRow, { sheet, item, worn: true, onGear() {} }),
   createElement(SheetPaperdoll, { sheet, armor: { armorName: null, shieldName: null }, mine: true, pending: null, onPending() {}, onGear() {} }),
 ]) assert.match(wrap(node), /\/inventory\/magic-bracers.webp/);
-for (const name of ["Quiver", "Lute", "Drum", "Dust of Disappearance"]) {
+for (const name of ["Quiver", "Lute", "Drum", "Dust of Disappearance", "Backpack", "Thieves' Tools", "Holy Symbol", "Component Pouch", "Rations (1 day)", "Waterskin", "Bedroll"]) {
   const added = { name, qty: 1 };
   for (const node of [createElement(EquipmentChips, { equipment: [added] }), createElement(SheetGearRow, { sheet, item: added, worn: false, onGear() {} })]) {
     assert.ok(wrap(node).includes(`/inventory/${resolve(name).key}.webp`), name);
   }
 }
-console.log("inventory art: base equipment, magic categories, identity, privacy, genres, card isolation, 112 exports and three rendered surfaces passed");
+console.log(`inventory art: base equipment, magic categories, identity, privacy, ${genreChecks} gear/genre overrides, card isolation, 119 exports and three rendered surfaces passed`);
