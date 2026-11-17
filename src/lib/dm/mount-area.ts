@@ -32,6 +32,7 @@ import { publishPersisted, publishWithSeq } from "@/lib/events";
 import type { CharacterSheet } from "@/lib/schemas/sheet";
 import type { SaveAbility } from "@/lib/bestiary/statblock";
 import { holdsFeat } from "@/lib/srd/feat-use";
+import { partsTaken, partsTotal, type DamagePart } from "@/lib/dm/aoe-parts";
 
 // Dexterity modifiers of the SRD 5.1 mounts (Dexterity 10 where not listed:
 // riding horse, pony, draft horse, elk, mule; and a beast the GM named).
@@ -44,8 +45,12 @@ export function areaOnMount(input: {
   ability: SaveAbility;
   dc: number;
   halfOnSave: boolean;
-  // The blast's whole, before any save.
+  // The blast's whole, before any save, and its parts by type.
   total: number;
+  parts?: DamagePart[];
+  // A spell's blast is magical, and a spell to what resists spells.
+  spell?: boolean;
+  magical?: boolean;
   reason: string;
   sheets: CharacterSheet[];
   sheetsById: Map<string, CharacterSheet>;
@@ -94,14 +99,23 @@ export function areaOnMount(input: {
   if (damage <= 0) {
     return row;
   }
-  const hp = mount.sheetId ? hurtSteed(campaign, turn.id, mount.sheetId, { amount: damage, reason: input.reason }) : Math.max(0, vitals.hp - damage);
+  // A creature's sheet meets the blast by its type, through its own
+  // defenses (a steed immune to fire takes none of a fireball): it took the
+  // share untyped.
+  const landing = share === 1 || !input.parts?.length ? input.parts : partsTaken(input.parts, "half");
+  const typed = landing && landing.filter((part) => part.amount > 0).length > 1 ? { parts: landing.filter((part) => part.amount > 0).map((part) => ({ amount: part.amount, type: part.type ?? "" })) } : { type: landing?.find((part) => part.amount > 0)?.type };
+  const struck = mount.sheetId
+    ? hurtSteed(campaign, turn.id, mount.sheetId, { amount: landing ? partsTotal(landing) : damage, ...typed, ...(input.spell ? { spell: true } : {}), ...(input.spell || input.magical ? { magical: true } : {}), reason: input.reason })
+    : null;
+  const hp = struck ? struck.hp : Math.max(0, vitals.hp - damage);
+  const landed = struck && struck.landed !== damage ? { damageApplied: struck.landed, ...(struck.resistance ? { resistance: struck.resistance } : {}) } : {};
   if (!mount.sheetId) {
     setMount(campaign.id, rider.id, { ...mount, hp });
   }
   if (hp > 0) {
     publishPersisted(campaign.id, "mounts_updated", { mounts: getMounts(campaign.id) });
-    return { ...row, mountHp: `${hp}/${vitals.maxHp}` };
+    return { ...row, ...landed, mountHp: `${hp}/${vitals.maxHp}` };
   }
   const fall = riderOfDownedMount({ campaign, turn, rider, mountName: mount.name, sheets: input.sheets, sheetsById: input.sheetsById });
-  return { ...row, mountDown: `${mount.name} drops to 0 hit points.`, fall };
+  return { ...row, ...landed, mountDown: `${mount.name} drops to 0 hit points.`, fall };
 }

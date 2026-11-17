@@ -244,7 +244,7 @@ export function aoeOnCharacters(input: {
       }
     }
     // The mount under them stands in the same square (mount-area.ts).
-    const ridden = areaOnMount({ campaign, turn, rider: getSheetById(sheet.id) ?? sheet, ability, dc: input.dc, halfOnSave, total: partsTotal(blast), reason, sheets, sheetsById });
+    const ridden = areaOnMount({ campaign, turn, rider: getSheetById(sheet.id) ?? sheet, ability, dc: input.dc, halfOnSave, total: partsTotal(blast), parts: blast, spell: Boolean(input.spell), magical: Boolean(enemyUse?.magical), reason, sheets, sheetsById });
     if (ridden) {
       row.mount = ridden;
     }

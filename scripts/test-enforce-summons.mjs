@@ -37,6 +37,7 @@ const { sideOf } = await import("../src/lib/dm/combatant.ts");
 const { test, finish } = suite("test-enforce-summons");
 const { listTokens } = await import("../src/lib/db/battle-maps.ts");
 const { getMounts } = await import("../src/lib/db/mounts.ts");
+const { setSheetSummon } = await import("../src/lib/db/sheets.ts");
 
 const summonsOf = (world, spell) =>
   world.sheets().filter((sheet) => sheet.summon && (!spell || sheet.summon.spell === spell));
@@ -320,6 +321,102 @@ await test("An area that catches the rider catches the steed under them: its fai
   assert.equal(blast.ok, true, blast.error);
   assert.equal(world.sheet(steed.id).currentHp, 9, "the blast that caught the rider did not take 10 from the steed's 19 hit points");
   assert.equal(getMounts(world.campaignId)[paladin.id]?.sheetId, steed.id, "a steed with hit points left stopped carrying its rider");
+});
+
+// The ridden steed's sheet meets a blow as any creature's sheet does: each
+// damage type of a two-type bite against its own defenses, and the water of
+// the square it shares with its rider ("Creatures and objects that are fully
+// immersed in water have resistance to fire damage", SRD 5.1, Underwater
+// Combat). The blow at a sheet steed was landed whole as its first type, and
+// the steed, off the board while ridden, stood in no water.
+async function giveAttacks(world, enemy, attacks) {
+  const { getDatabase } = await import("../src/lib/db/core.ts");
+  const stats = { ...world.enemies().find((entry) => entry.id === enemy.id).stats, attacks };
+  getDatabase().prepare("UPDATE encounter_enemies SET stat_json = ? WHERE id = ?").run(JSON.stringify(stats), enemy.id);
+}
+async function riddenSteed(rows) {
+  const { world, sheets: [paladin] } = await outOfFight([PALADIN()]);
+  await world.invoke("cast_buff", { characterId: paladin.id, spell: "Find Steed", level: 2, variant: "warhorse" });
+  const [steed] = summonsOf(world, "Find Steed");
+  const [enemy] = await thenFight(world, paladin.id);
+  await layMap(world, rows ?? OPEN(), { [paladin.id]: { x: 3, y: 3 }, [steed.id]: { x: 4, y: 3 }, [enemy.id]: { x: 3, y: 4 } });
+  holdTurn(world, paladin.id);
+  const up = await world.invoke("mount_up", { characterId: paladin.id, mount: "Warhorse" });
+  assert.equal(up.ok, true, up.error);
+  return { world, paladin, steed, enemy };
+}
+
+await test("A blow aimed at the ridden steed meets the steed's own defenses type by type: a steed immune to poison takes only a bite's piercing.", async () => {
+  const { world, paladin, steed, enemy } = await riddenSteed();
+  setSheetSummon(steed.id, { ...world.sheet(steed.id).summon, immune: "poison" });
+  await giveAttacks(world, enemy, [{ name: "Venom Bite", toHit: 4, damage: "1d6+2d6", type: "piercing/poison" }]);
+  world.clearDice();
+  // 15 hits AC 11; 3 piercing and 2 + 2 poison.
+  world.dice(15, 3, 2, 2);
+  const bite = await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: paladin.id, targetMount: true });
+  world.clearDice();
+  assert.equal(bite.ok, true, bite.error);
+  assert.equal(world.sheet(steed.id).currentHp, 16, `a steed immune to poison took the bite's poison as piercing: ${JSON.stringify(bite.result?.swings)}`);
+});
+
+// What a hit carries onto a steed with a sheet lands on that sheet: the save
+// from the steed's own block, the rider's damage through its defenses once,
+// and the condition on the creature. "If your mount is knocked prone, you can
+// use your reaction to dismount it as it falls and land on your feet" (SRD
+// 5.1, Mounted Combat): the steed is prone where it stands beside its rider.
+await test("A bite that knocks the ridden steed prone lays prone on the steed's own sheet, its fire meets the steed's resistance once, and the steed stands prone beside its rider.", async () => {
+  const { world, paladin, steed, enemy } = await riddenSteed();
+  setSheetSummon(steed.id, { ...world.sheet(steed.id).summon, resist: "fire" });
+  await giveAttacks(world, enemy, [{ name: "Bite", toHit: 4, damage: "1d6", type: "piercing", onHit: { save: "str", dc: 11, condition: "prone", damage: "2d6", damageType: "fire" } }]);
+  world.clearDice();
+  // 15 hits; 2 piercing; a 1 on the steed's Strength save; 4 + 4 fire.
+  world.dice(15, 2, 1, 4, 4);
+  const out = await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: paladin.id, targetMount: true });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(getMounts(world.campaignId)[paladin.id], undefined, `the steed knocked prone kept its rider: ${JSON.stringify(out.result)}`);
+  const horse = world.sheet(steed.id);
+  assert.equal(horse.currentHp, 19 - 2 - 4, `8 fire on a steed that resists fire did not land as 4: ${JSON.stringify(out.result?.swings)}`);
+  assert.ok(horse.conditions.includes("prone"), "the steed knocked prone is not prone on its sheet");
+  const rider = tokenOf(world, paladin.id);
+  const token = tokenOf(world, steed.id);
+  assert.ok(token, "the steed that threw its rider has no token");
+  assert.ok(Math.max(Math.abs(token.x - rider.x), Math.abs(token.y - rider.y)) <= 2, "the steed did not come back beside its rider");
+});
+
+// A creature called up and ridden whose sheet keeps its form's resistances
+// (a water elemental resists acid) meets the rider's damage once: the merged
+// door halved it by the form's block and again by the sheet's.
+await test("A ridden water elemental takes a bite's acid rider at half, not a quarter, and the bite's nonmagical piercing at half.", async () => {
+  const { world, sheets: [wizard] } = await outOfFight([WIZARD(["Conjure Elemental"])]);
+  const cast = await world.invoke("cast_buff", { characterId: wizard.id, spell: "Conjure Elemental", level: 5, variant: "water elemental" });
+  assert.equal(cast.ok, true, cast.error);
+  const [elemental] = summonsOf(world, "Conjure Elemental");
+  const [enemy] = await thenFight(world, wizard.id);
+  await layMap(world, OPEN(), { [wizard.id]: { x: 3, y: 3 }, [elemental.id]: { x: 4, y: 3 }, [enemy.id]: { x: 3, y: 4 } });
+  holdTurn(world, wizard.id);
+  const up = await world.invoke("mount_up", { characterId: wizard.id, mount: "Water Elemental" });
+  assert.equal(up.ok, true, up.error);
+  assert.equal(getMounts(world.campaignId)[wizard.id]?.sheetId, elemental.id);
+  const full = world.sheet(elemental.id).currentHp;
+  await giveAttacks(world, enemy, [{ name: "Bite", toHit: 9, damage: "1d6", type: "piercing", onHit: { damage: "2d6", damageType: "acid" } }]);
+  world.clearDice();
+  // 15 hits; 4 piercing; 4 + 4 acid.
+  world.dice(15, 4, 4, 4);
+  const out = await world.invoke("enemy_attack", { enemyId: enemy.id, targetCharacterId: wizard.id, targetMount: true });
+  world.clearDice();
+  assert.equal(out.ok, true, out.error);
+  assert.equal(world.sheet(elemental.id).currentHp, full - 2 - 4, `4 piercing and 8 acid on a water elemental: ${JSON.stringify(out.result?.swings)}`);
+});
+
+// An area meets the steed's sheet with the blast's own type: a steed immune
+// to fire takes nothing of a fireball it fails to dodge.
+await test("An area's fire that catches the rider meets the ridden steed's own immunity.", async () => {
+  const { world, paladin, steed } = await riddenSteed();
+  setSheetSummon(steed.id, { ...world.sheet(steed.id).summon, immune: "fire" });
+  const blast = await world.invoke("aoe_damage", { characterIds: [paladin.id], damage: 10, type: "fire", saveAbility: "dex", dc: 30, halfOnSave: false });
+  assert.equal(blast.ok, true, blast.error);
+  assert.equal(world.sheet(steed.id).currentHp, 19, "a steed immune to fire took the fire of the area");
 });
 
 await test("A paladin knocked prone who fails the save falls from the steed, which stands on the board and in the order again.", async () => {
