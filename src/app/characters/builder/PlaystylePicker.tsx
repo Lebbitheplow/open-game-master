@@ -103,10 +103,10 @@ export function PlaystylePicker({
                     >
                       <GameIcon icon={{ kind: "family", key: `class-${id}` }} size="size-8" className="shrink-0" />
                       <span className="min-w-0 flex-1">
-                        <span className="block font-display text-sm tracking-wide text-amber-50">{contentName("classes", id, locale)}</span>
-                        <span className="block text-[0.875rem] text-stone-500">{entry.roles.map((role) => ({ "tank": t("Tank"), "dps": t("DPS"), "healer": t("Healer"), "support": t("Support"), "control": t("Control"), "utility": t("Utility") } as Record<string, string>)[textKey(role)] ?? String(textKey(role))).join(" / ")}</span>
+                        <span className="block font-display text-sm tracking-wide text-amber-50">{contentName("classes", entry, locale)}</span>
+                        <span className="block text-[0.875rem] text-stone-500">{entry.roles.map((role) => ({ "tank": t("Tank"), "dps": t("DPS"), "healer": t("Healer"), "support": t("Support"), "control": t("Control"), "utility": t("Utility") } as Record<string, string>)[textKey(role)] ?? role).join(" / ")}</span>
                         {EASY_CLASSES.has(id) ? (
-                          <span className="mt-1 inline-block max-w-full rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2 py-0.5 text-[11px] leading-snug text-emerald-200">
+                          <span className="mt-1 inline-block max-w-full rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2 py-0.5 text-[0.875rem] leading-snug text-emerald-200">
                             {t("Easy to learn")}
                           </span>
                         ) : null}

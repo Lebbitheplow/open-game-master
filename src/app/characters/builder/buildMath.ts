@@ -315,7 +315,7 @@ export function buildMathSections({ t, derived, scores, klass, atTable }: BuildM
             }),
             working: [
               t("to hit: {parts}", { parts: workingOf(t, row.weapon.toHitParts) }),
-              t("damage adds {ability} modifier", { ability: ({ "str": t("Strength"), "dex": t("Dexterity"), "con": t("Constitution"), "int": t("Intelligence"), "wis": t("Wisdom"), "cha": t("Charisma") } as Record<string, string>)[textKey(row.weapon.ability)] ?? String(textKey(row.weapon.ability)) }),
+              t("damage adds {ability} modifier", { ability: t(row.weapon.ability) }),
               ...row.weapon.notes,
             ].join("; "),
           },

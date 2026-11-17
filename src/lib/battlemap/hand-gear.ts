@@ -134,12 +134,14 @@ function interactionCost(sheet: CharacterSheet, turn: HandTurn, t: T = enT): { c
 function handsFullReason(who: string, what: string, full: readonly string[], t: T): string {
   const items = full.join(" and ");
   if (
-    handsFullError(who, what, full) ===
-    `${who}'s hands are full (${items}), so ${what} cannot be drawn yet. Dropping one is free (handle_item drop); putting one away takes the object interaction.`
+    handsFullError(who, what, full, "drawn", "player") ===
+    `${who}'s hands are full (${items}), so ${what} cannot be drawn yet. Dropping one is free; putting one away takes your object interaction this turn.`
   ) {
-    return t("{name}'s hands are full ({items}), so {what} cannot be drawn yet. Dropping one is free (handle_item drop); putting one away takes the object interaction.", { name: who, items, what });
+    return t("{name}'s hands are full ({items}), so {what} cannot be drawn yet. Dropping one is free; putting one away takes your object interaction this turn.", { name: who, items, what });
   }
-  return handsFullError(who, what, full);
+  // The player's words (gear-hands.ts WAYS_OUT): a player never reads a
+  // tool's name.
+  return handsFullError(who, what, full, "drawn", "player");
 }
 
 function interactionGate(result: SpendResult, who: string, what: string, t: T): Gate {

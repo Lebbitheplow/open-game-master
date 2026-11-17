@@ -237,7 +237,7 @@ await test("a warlock built at 11, 13, 15, 17 and 20 holds its spells known and 
     assert.equal(built.derived.chosenSpells.length, built.derived.spellAdvice.count, `warlock ${level} spells known`);
     const owed = derive({ ...fields, spells: fields.spells.filter((name) => (spellLevelOf(name) ?? 0) < 6) });
     assert.ok(
-      spellsBlocks(owed.derived, builder.classes.find((entry) => entry.id === "warlock")).some((block) => /Mystic Arcanum/.test(JSON.stringify(block))),
+      spellsBlocks(t, owed.derived, builder.classes.find((entry) => entry.id === "warlock")).some((block) => /Mystic Arcanum/.test(JSON.stringify(block))),
       `warlock ${level} owes its arcanum`,
     );
     await saves(fields, `warlock at ${level}`);
@@ -255,7 +255,7 @@ await test("an Arcane Trickster built at 3 and 10 knows Mage Hand, and a full li
     assert.ok(fields.cantrips.includes("Mage Hand"), `trickster ${level}: ${fields.cantrips.join(", ")}`);
     await saves(fields, `trickster at ${level}`);
     const swapped = { ...fields, cantrips: fields.cantrips.map((name) => (name === "Mage Hand" ? "Fire Bolt" : name)) };
-    const owed = spellsBlocks(derive(swapped).derived, rogue);
+    const owed = spellsBlocks(t, derive(swapped).derived, rogue);
     assert.ok(owed.some((block) => /Mage Hand/.test(JSON.stringify(block))), `trickster ${level} owes Mage Hand`);
   }
 });

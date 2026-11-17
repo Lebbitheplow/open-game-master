@@ -178,7 +178,7 @@ function spellSections(cards: HandCard[], sheet: Pick<CharacterSheet, "spellcast
   }));
 }
 
-export function handBoardChoices(cards: HandCard[], mode: "attack" | "cast", t: T): Array<Pick<HandGroupSection, "label" | "cards">> {
+export function handBoardChoices(cards: HandCard[], mode: "attack" | "cast", t: T = enT): Array<Pick<HandGroupSection, "label" | "cards">> {
   const playable = cards.filter(card => card.disabled === null && !card.spent && !card.compose &&
     (mode === "attack" ? card.intent.card === "attack" : card.intent.card === "spell" && !card.fromItem));
   if (mode === "cast") return spellSections(playable, null, t);

@@ -57,9 +57,16 @@ export function owedPicks(t: Translator, blocks: ReadonlyArray<StepBlock>): Owed
   return out;
 }
 
-// "Two choices left on this step", or null when none are.
+const COUNT_WORDS = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
+
+// "Two choices left on this step", or null when none are. English spells a
+// small count out, as the builder always has; another language takes its
+// catalog's line with the figure.
 export function owedHeadline(t: Translator, count: number): string | null {
   const tp = pluralOf(t);
   if (count <= 0) return null;
-  return tp("{count} choice left on this step", "{count} choices left on this step", { count });
+  const line = tp("{count} choice left on this step", "{count} choices left on this step", { count });
+  const english = `${count} ${count === 1 ? "choice" : "choices"} left on this step`;
+  const words = COUNT_WORDS[count];
+  return line === english && words ? `${words} ${count === 1 ? "choice" : "choices"} left on this step` : line;
 }

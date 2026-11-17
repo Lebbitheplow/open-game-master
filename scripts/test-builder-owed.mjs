@@ -7,42 +7,45 @@ import { register } from "node:module";
 register("./lib/register-alias.mjs", import.meta.url);
 const submit = await import("../src/app/characters/builder/submit.ts");
 const { owedHeadline, owedPicks } = await import("../src/app/characters/builder/owed.ts");
+// The builder speaks the reader's language; these checks read it in English, the source.
+const { translate } = await import("../src/lib/messages-logic.ts");
+const enT = (key, vars) => translate("en", key, vars);
 
 const state = { name: "", backgroundSkills: [], bonusLanguages: [], racialAsi: [], racialSkills: [], feats: [], repeatSkills: [] };
 const background = { id: "pack_bg", name: "Wanderer", skills: [], skillChoice: { count: 2, from: ["athletics", "survival", "stealth"] }, languages: 1 };
 const halfElf = { id: "half_elf", name: "Half-Elf", skills: [], bonusLanguages: 1, asiChoice: { count: 2 }, skillChoice: { count: 2 } };
 
 // Identity, the last step before the summary (backlog F4): the name alone.
-assert.deepEqual(submit.identityBlocks(state).map((entry) => entry.target), ["name"]);
-assert.deepEqual(submit.identityBlocker(state), submit.identityBlocks(state)[0]);
-assert.deepEqual(submit.identityBlocks({ ...state, name: "Wren" }), []);
+assert.deepEqual(submit.identityBlocks(enT, state).map((entry) => entry.target), ["name"]);
+assert.deepEqual(submit.identityBlocker(enT, state), submit.identityBlocks(enT, state)[0]);
+assert.deepEqual(submit.identityBlocks(enT, { ...state, name: "Wren" }), []);
 
 // The background, asked beside the ancestry: itself, its skills, then any
 // open tool grant, in the gate's order.
-assert.deepEqual(submit.backgroundBlocks(state, undefined).map((entry) => entry.target), ["background"]);
+assert.deepEqual(submit.backgroundBlocks(enT, state, undefined).map((entry) => entry.target), ["background"]);
 const tools = { toolGrants: { choices: [{ label: "musical instrument" }], left: [1] } };
-const past = submit.backgroundBlocks(state, background, tools);
+const past = submit.backgroundBlocks(enT, state, background, tools);
 assert.deepEqual(past.map((entry) => entry.target), ["backgroundSkills", "tools"]);
 assert.equal(past[1].message, "Pick 1 more musical instrument you know how to use (tool proficiency).");
-assert.deepEqual(submit.backgroundBlocker(state, background, tools), past[0]);
-assert.deepEqual(submit.backgroundBlocks({ ...state, backgroundSkills: ["athletics", "stealth"] }, background, { toolGrants: { choices: [], left: [] } }), []);
+assert.deepEqual(submit.backgroundBlocker(enT, state, background, tools), past[0]);
+assert.deepEqual(submit.backgroundBlocks(enT, { ...state, backgroundSkills: ["athletics", "stealth"] }, background, { toolGrants: { choices: [], left: [] } }), []);
 
 // Ancestry: no race is the only thing said until one is chosen.
-assert.deepEqual(submit.ancestryBlocks(state, undefined).map((entry) => entry.target), ["race"]);
-const ancestry = submit.ancestryBlocks(state, halfElf, background);
+assert.deepEqual(submit.ancestryBlocks(enT, state, undefined).map((entry) => entry.target), ["race"]);
+const ancestry = submit.ancestryBlocks(enT, state, halfElf, background);
 assert.deepEqual(ancestry.map((entry) => entry.target), ["languages", "racialAsi", "racialSkills"]);
-assert.deepEqual(submit.ancestryBlocker(state, halfElf, background), ancestry[0], "the gate is the first owed");
+assert.deepEqual(submit.ancestryBlocker(enT, state, halfElf, background), ancestry[0], "the gate is the first owed");
 
 // Abilities: no scores is the only thing said.
-assert.deepEqual(submit.abilitiesBlocks({ abilities: null }).map((entry) => entry.target), ["scores"]);
+assert.deepEqual(submit.abilitiesBlocks(enT, { abilities: null }).map((entry) => entry.target), ["scores"]);
 
 // One link per block, in a player's words; the headline counts them.
-const picks = owedPicks([...ancestry, { target: "languages", message: "again" }]);
+const picks = owedPicks(enT, [...ancestry, { target: "languages", message: "again" }]);
 assert.deepEqual(picks.map((entry) => entry.label), ["Languages", "Ability bonus", "Race skills"]);
 assert.equal(picks[0].message, ancestry[0].message);
-assert.equal(owedHeadline(picks.length), "Three choices left on this step");
-assert.equal(owedHeadline(1), "One choice left on this step");
-assert.equal(owedHeadline(0), null);
+assert.equal(owedHeadline(enT, picks.length), "Three choices left on this step");
+assert.equal(owedHeadline(enT, 1), "One choice left on this step");
+assert.equal(owedHeadline(enT, 0), null);
 // A setting class grants its skills as a core class does: its count is
 // required at the class step, not a suggestion to scroll past (a netrunner
 // saved with none of its two picks).
@@ -52,12 +55,12 @@ assert.equal(owedHeadline(0), null);
   assert.ok(netrunner?.skillChoices.count > 0, "the staging: the netrunner picks skills");
   const state = { chosenSkills: [], subclass: "", stylePicks: [], expertisePicks: [], optionPicks: [] };
   const derived = { effectiveLevel: 1, primaryLevel: 1, styleSlots: 0, optionSlots: [], proficientSkills: [], expertiseSkills: [] };
-  const blocks = submit.callingBlocks(netrunner, state, derived);
+  const blocks = submit.callingBlocks(enT, netrunner, state, derived);
   assert.ok(
     blocks.some((entry) => entry.target === "classSkills"),
     `a netrunner with no skill picked is let through: ${JSON.stringify(blocks)}`,
   );
-  const picked = submit.callingBlocks(netrunner, { ...state, chosenSkills: netrunner.skillChoices.from.slice(0, netrunner.skillChoices.count) }, derived);
+  const picked = submit.callingBlocks(enT, netrunner, { ...state, chosenSkills: netrunner.skillChoices.from.slice(0, netrunner.skillChoices.count) }, derived);
   assert.ok(!picked.some((entry) => entry.target === "classSkills"), "its picks made, it passes");
 }
 

@@ -900,7 +900,7 @@ export function PartyPanel({
                     title={t("Concentrating on this spell")}
                   >
                     <GameIcon icon={spellGlyphIcon(sheet.concentratingOn)} size="size-4" />
-                    {contentName("spells", textKey(sheet.concentratingOn), locale)}
+                    {contentName("spells", sheet.concentratingOn, locale)}
                   </span>
                 ) : null}
               </div>

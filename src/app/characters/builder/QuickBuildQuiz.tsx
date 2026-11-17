@@ -228,7 +228,7 @@ function SeedCard({
           <p className="font-display text-base tracking-wide text-amber-50">{name}</p>
           <p className="text-sm text-stone-500">
             {t("{roles} · plays like {like}", {
-              roles: reading.roles.map((role) => ({ "tank": t("Tank"), "dps": t("DPS"), "healer": t("Healer"), "support": t("Support"), "control": t("Control"), "utility": t("Utility") } as Record<string, string>)[textKey(role)] ?? String(textKey(role))).join(" / "),
+              roles: reading.roles.map((role) => ({ "tank": t("Tank"), "dps": t("DPS"), "healer": t("Healer"), "support": t("Support"), "control": t("Control"), "utility": t("Utility") } as Record<string, string>)[textKey(role)] ?? role).join(" / "),
               like: reading.playsLike,
             })}
           </p>

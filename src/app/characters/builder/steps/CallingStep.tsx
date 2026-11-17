@@ -463,7 +463,7 @@ export function CallingStep({
               const name = skillLabel(skillId, locale);
               const source = skillSources.get(skillId.trim().toLowerCase());
               const sourceWord = source === "race" ? t("race") : source === "background" ? t("background", { context: "builder.calling.sourceBackground" }) : "";
-              const grantedBy = source === "race" && race ? contentName("species", race.id, locale) : source === "background" && background ? contentName("backgrounds", background.id, locale) : "";
+              const grantedBy = source === "race" && race ? contentName("species", race, locale) : source === "background" && background ? contentName("backgrounds", background, locale) : "";
               const trait = source === "race" && race ? grantingTrait(race.id, name) : null;
               const info = source
                 ? t("{name} is already yours: your {source} grants it{via}, so it is not offered as a class pick here.", {
@@ -534,7 +534,7 @@ export function classDetailsMeta(
   return [
     meta,
     saves?.length ? t("Saves {list}", { list: saves.map((ability) => t(abilityName(ability))).join(", ") }) : "",
-    reading ? t("Role: {roles}", { roles: reading.roles.map((role) => ({ "tank": t("Tank"), "dps": t("DPS"), "healer": t("Healer"), "support": t("Support"), "control": t("Control"), "utility": t("Utility") } as Record<string, string>)[textKey(role)] ?? String(textKey(role))).join(" / ") }) : "",
+    reading ? t("Role: {roles}", { roles: reading.roles.map((role) => ({ "tank": t("Tank"), "dps": t("DPS"), "healer": t("Healer"), "support": t("Support"), "control": t("Control"), "utility": t("Utility") } as Record<string, string>)[textKey(role)] ?? role).join(" / ") }) : "",
     reading
       ? reading.playsLike.toLowerCase() === id.toLowerCase()
         ? t("One of the core four")
