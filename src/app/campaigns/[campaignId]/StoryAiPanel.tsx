@@ -638,7 +638,7 @@ export function StoryAiPanel({
           <Select<StorySettings["proseSize"]>
             value={settings.proseSize}
             onChange={(proseSize) => patch({ proseSize })}
-            options={PROSE_SIZE_VALUES.map((size) => ({ value: size, label: ({ "tiny": t("Tiny", { context: "art.prose.tiny" }), "xsmall": t("Very short"), "small": t("Short"), "medium": t("Medium", { context: "art.prose.medium" }), "large": t("Long"), "xlarge": t("Very long"), "xxlarge": t("Huge"), "huge": t("Vast", { context: "art.prose.huge" }), "giant": t("Epic") } as Record<string, string>)[size] ?? String(size) }))}
+            options={PROSE_SIZE_VALUES.map((size) => ({ value: size, label: t.locale === "en" ? size : ({ "tiny": t("Tiny", { context: "art.prose.tiny" }), "xsmall": t("Very short"), "small": t("Short"), "medium": t("Medium", { context: "art.prose.medium" }), "large": t("Long"), "xlarge": t("Very long"), "xxlarge": t("Huge"), "huge": t("Vast", { context: "art.prose.huge" }), "giant": t("Epic") } as Record<string, string>)[size] ?? String(size) }))}
             label={t("Passages")}
             size="sm"
           />

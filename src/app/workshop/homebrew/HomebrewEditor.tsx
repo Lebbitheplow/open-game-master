@@ -110,12 +110,12 @@ export function HomebrewEditor({
 
       <CopySource kind={draft.kind} draft={draft} />
 
-      <SectionHead title={({ "item": t("The item"), "spell": t("The spell"), "feat": t("The feat"), "background": t("The background"), "race": t("The species"), "class": t("The class"), "archetype": t("The subclass"), "hazard": t("The hazard") } as Record<string, string>)[KIND_SINGULAR[draft.kind]] ?? String(KIND_SINGULAR[draft.kind])} glyph={KIND_GLYPHS[draft.kind]} className="mb-0" />
+      <SectionHead title={({ "item": t("The item"), "spell": t("The spell"), "feat": t("The feat"), "background": t("The background"), "race": t("The species"), "class": t("The class"), "archetype": t("The subclass"), "hazard": t("The hazard") } as Record<string, string>)[draft.kind] ?? String(KIND_SINGULAR[draft.kind])} glyph={KIND_GLYPHS[draft.kind]} className="mb-0" />
       <TextField
         label={t("Name")}
         value={draft.name}
         onChange={(name) => onDraft({ ...draft, name: name.slice(0, 80) })}
-        placeholder={t("What this {kind} is called", { kind: ({ "item": t("item"), "spell": t("spell"), "feat": t("feat"), "background": t("background"), "race": t("species"), "class": t("class"), "archetype": t("subclass"), "hazard": t("hazard") } as Record<string, string>)[KIND_SINGULAR[draft.kind]] ?? String(KIND_SINGULAR[draft.kind]) })}
+        placeholder={t("What this {kind} is called", { kind: ({ "item": t("item"), "spell": t("spell"), "feat": t("feat"), "background": t("background"), "race": t("species"), "class": t("class"), "archetype": t("subclass"), "hazard": t("hazard") } as Record<string, string>)[draft.kind] ?? String(KIND_SINGULAR[draft.kind]) })}
         maxLength={80}
       />
 

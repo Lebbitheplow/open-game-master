@@ -184,7 +184,7 @@ export function AdminAddonsPanel() {
         data = await response.json().catch(() => ({}));
       }
       if (!response.ok) {
-        setError(data.replaces ? t("Nothing was replaced.") : data.error || t("That did not work.", { context: "admin.addons.fail" }));
+        setError(data.replaces ? t("Nothing was replaced.") : data.error || t("Could not install that archive."));
         return;
       }
       forgetAddons();

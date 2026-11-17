@@ -137,7 +137,7 @@ export function ConfirmHost() {
                   : ui.btnPrimary
               }
             >
-              {current.actionLabel}
+              {current.actionLabel ?? t("Yes")}
             </button>
           </>
         ) : (

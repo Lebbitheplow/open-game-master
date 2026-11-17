@@ -12,7 +12,7 @@ import type { MadeAsset } from "@/lib/dm/world-outline";
 import type { WorldApi, WorldState } from "./useWorld";
 import type { OpenSystem } from "./WorldForgePanel";
 import { TypeChip } from "./world-ui";
-import { useT } from "@/lib/locale";
+import { useT, useTp } from "@/lib/locale";
 
 // "Draft a world from this idea" (plan M5 item 1, audit WF-08). A line or
 // two about the world comes back as an outline, with counts: people,
@@ -43,6 +43,7 @@ const plural = (count: number, one: string, many: string) => `${count} ${count =
 
 export function OutlineView({ api, world, onOpen, onOpenSystem }: { api: WorldApi; world: WorldState; onOpen: (ref: string) => void; onOpenSystem?: OpenSystem }) {
   const t = useT();
+  const tp = useTp();
   const { doc } = world;
   const [idea, setIdea] = useState("");
   const [hint, setHint] = useState("");
@@ -139,7 +140,7 @@ export function OutlineView({ api, world, onOpen, onOpenSystem }: { api: WorldAp
       stubs: [],
     });
     if (!ok) {
-      setLinkLines((lines) => [...lines, { text: t("Links not written: {error}.", { error: typeof json.error === "string" ? json.error : t("The server could not be reached.", { context: "workshop.world.paint.unreachable" }) }), left: true }]);
+      setLinkLines((lines) => [...lines, { text: t("Links not written: {error}.", { error: typeof json.error === "string" ? json.error : t("the server could not be reached") }), left: true }]);
       return;
     }
     const next = new Set([...done, ...ready.map(({ index }) => index)]);
@@ -200,14 +201,15 @@ export function OutlineView({ api, world, onOpen, onOpenSystem }: { api: WorldAp
           {outline.premise ? <p className="text-sm text-stone-200">{outline.premise}</p> : null}
           {counts ? (
             <p className="text-xs text-stone-400" data-testid="outline-counts">
-              {t("{people} people · {places} places · {factions} factions · {lore} lore entries · {creatures} creatures · {items} items. Nothing is made yet.", {
-                people: counts.people,
-                places: counts.places,
-                factions: counts.factions,
-                lore: counts.lore,
-                creatures: counts.creatures,
-                items: counts.items,
-              })}
+              {[
+                tp("{count} person", "{count} people", { count: counts.people }),
+                tp("{count} place", "{count} places", { count: counts.places }),
+                tp("{count} faction", "{count} factions", { count: counts.factions }),
+                tp("{count} lore entry", "{count} lore entries", { count: counts.lore }),
+                tp("{count} creature", "{count} creatures", { count: counts.creatures }),
+                tp("{count} item", "{count} items", { count: counts.items }),
+              ].join(" · ")}
+              {t(". Nothing is made yet.")}
             </p>
           ) : null}
           {outline.left.map((line) => (
@@ -273,7 +275,9 @@ export function OutlineView({ api, world, onOpen, onOpenSystem }: { api: WorldAp
             {phase === "making"
               ? t("Making {at} of {total}...", { at: Math.min(madeCount + failedCount + 1, taskRows.length), total: taskRows.length })
               : failedCount
-                ? t("Made {made} of {total}. {failed} were not made: each can be retried on its own below.", { made: madeCount, total: taskRows.length, failed: failedCount })
+                ? failedCount === 1
+                  ? t("Made {made} of {total}. One was not made: each can be retried on its own below.", { made: madeCount, total: taskRows.length })
+                  : t("Made {made} of {total}. {failed} were not made: each can be retried on its own below.", { made: madeCount, total: taskRows.length, failed: failedCount })
                 : t("Made all {total}.", { total: taskRows.length })}
           </p>
           <ul className="flex flex-col gap-1.5">

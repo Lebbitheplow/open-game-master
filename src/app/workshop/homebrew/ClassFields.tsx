@@ -305,7 +305,7 @@ export function ClassFields({ data, set }: { data: Data; set: (patch: Data) => v
         </Field>
       </div>
 
-      <Field label={t("Save", { context: "workshop.bestiary.attack.save" })} hint={saves.length === 2 ? t("Proficient in these two.") : t("Pick two.")} plain>
+      <Field label={t("Saving throws")} hint={saves.length === 2 ? t("Proficient in these two.") : t("Pick two.")} plain>
         <ToggleChips
           options={ABILITIES}
           selected={saves}

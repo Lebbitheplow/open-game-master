@@ -1,5 +1,13 @@
 {
   "messages": {
+    "Unlink it": "Délier",
+    "Made {made} of {total}. One was not made: each can be retried on its own below.": "{made} créés sur {total}. Un n’a pas été créé : chacun peut être relancé seul ci-dessous.",
+    ". Nothing is made yet.": ". Rien n’est fait encore.",
+    "everyone now acts at once": "tout le monde agit désormais en même temps",
+    "Back to the list": "Retour à la liste",
+    "Could not install that archive.": "Impossible d’installer cette archive.",
+    "That could not be made.": "Impossible de le créer.",
+    "the server could not be reached": "le serveur est injoignable",
     "Loading…": "Chargement…",
     "Reset": "Réinitialiser",
     "Remove": "Retirer",
@@ -9534,7 +9542,7 @@
     "to the traps, hazards and afflictions a GM sets at the table": "aux pièges, périls et afflictions qu’un MJ place à la table",
     "under its class in the character builder": "sous sa classe dans le créateur de personnage",
     "under {name} in the character builder": "sous {name} dans le créateur de personnage",
-    "under {name} in the character builder, from level {level}, the level that class picks a subclass, and at that level-up": "sous {name} dans le créateur de personnage, à partir du niveau {level}, celui où la classe choisit une sous-classe, et à ce passage de niveau",
+    "under {name} in the character builder from level {level}, the level that class picks a subclass, and at that level-up": "sous {name} dans le créateur de personnage, à partir du niveau {level}, celui où la classe choisit une sous-classe, et à ce passage de niveau",
     "where the books' own are": "là où sont celles des livres",
     "Offered {where}: for your own characters, and at every table you run as its owner, GM or assistant GM. At someone else's table it is offered once that table's owner or GM keeps a copy, from a Workshop bundle with your Homebrew in it.": "Proposé {where} : pour tes propres personnages, et à chaque table que tu mènes comme propriétaire, MJ ou MJ adjoint. À la table de quelqu’un d’autre, il est proposé dès que le propriétaire ou le MJ de cette table en garde une copie, depuis un pack d’atelier contenant ton homebrew.",
     "Flanking grants advantage": "La prise en tenaille accorde l’avantage",
@@ -11354,6 +11362,22 @@
     "builder.gear": {}
   },
   "plurals": {
+    "{count} place\u0000{count} places": [
+      "{count} lieu",
+      "{count} lieux"
+    ],
+    "{count} faction\u0000{count} factions": [
+      "{count} faction",
+      "{count} factions"
+    ],
+    "{count} creature\u0000{count} creatures": [
+      "{count} créature",
+      "{count} créatures"
+    ],
+    "{count} item\u0000{count} items": [
+      "{count} objet",
+      "{count} objets"
+    ],
     "{names} acts first: wait for its turn, then take yours.\u0000{names} act first: wait for their turns, then take yours.": [
       "{names} agit d’abord : attends son tour, puis joue le tien.",
       "{names} agissent d’abord : attends leur tour, puis joue le tien."

@@ -58,7 +58,7 @@ export function TypesView({ api, world }: { api: WorldApi; world: WorldState }) 
                 <span className="font-display text-sm" style={{ color: type.color }}>{t(type.name)}</span>
                 <span className="text-[11px] text-stone-500">{t(SHELF_LABELS[type.shelf])}{type.shelf === "lore" ? `, ${t(type.loreCategory)}` : ""}, {tp("{count} entry", "{count} entries", { count: used(type) })}</span>
                 <span className="ml-auto flex gap-1">
-                  <KitButton tone="small" onClick={() => setEditing(type)}>{t("Change", { context: "action.change" })}</KitButton>
+                  <KitButton tone="small" onClick={() => setEditing(type)}>{t("Edit")}</KitButton>
                   <KitButton
                     tone="iconDanger"
                     always

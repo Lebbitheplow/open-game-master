@@ -187,7 +187,7 @@ export function EntityPage({
   return (
     <article className="flex flex-col gap-4 animate-fade-up" data-tour="world-entry">
       <header className="flex flex-wrap items-start gap-3">
-        <button type="button" onClick={onBack} className="@2xl:hidden" aria-label={t("Entries")}>
+        <button type="button" onClick={onBack} className="@2xl:hidden" aria-label={t("Back to the list")}>
           <ArrowLeft className="size-5 text-stone-400" />
         </button>
         <span key={entity.portrait} className="motion-pop">
@@ -205,7 +205,7 @@ export function EntityPage({
         </div>
         <div className="flex basis-full flex-wrap gap-1.5 @lg:basis-auto">
           <KitButton tone="small" onClick={() => setEditing(true)} data-tour="world-edit">
-            <Pencil className="size-3.5" /> {t("Change", { context: "workshop.world.atlasCard.change" })}
+            <Pencil className="size-3.5" /> {t("Edit")}
           </KitButton>
           {canPaint ? (
             <KitButton

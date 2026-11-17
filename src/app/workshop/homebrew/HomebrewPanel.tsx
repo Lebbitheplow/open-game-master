@@ -441,7 +441,7 @@ export function HomebrewPanel({
               <GameIcon icon={{ kind: "glyph", key: "system-homebrew" }} size="size-10" />
               <Plus className="absolute -bottom-1 -right-1 size-4 rounded-full bg-stone-900 text-amber-300" aria-hidden="true" />
             </span>
-            <span className="font-display tracking-wide">{({ "item": t("New item"), "spell": t("New spell"), "feat": t("New feat"), "background": t("New background"), "race": t("New species"), "class": t("New class"), "archetype": t("New subclass"), "hazard": t("New hazard") } as Record<string, string>)[KIND_SINGULAR[kind]] ?? String(KIND_SINGULAR[kind])}</span>
+            <span className="font-display tracking-wide">{({ "item": t("New item"), "spell": t("New spell"), "feat": t("New feat"), "background": t("New background"), "race": t("New species"), "class": t("New class"), "archetype": t("New subclass"), "hazard": t("New hazard") } as Record<string, string>)[kind] ?? String(KIND_SINGULAR[kind])}</span>
           </button>
         </li>
       </ul>
@@ -505,7 +505,7 @@ export function HomebrewPanel({
             setEditing(null);
           }
         }}
-        title={editing?.id ? editing.draft.name || (({ "item": t("item"), "spell": t("spell"), "feat": t("feat"), "background": t("background"), "race": t("species"), "class": t("class"), "archetype": t("subclass"), "hazard": t("hazard") } as Record<string, string>)[KIND_SINGULAR[kind]] ?? String(KIND_SINGULAR[kind])) : (({ "item": t("New item"), "spell": t("New spell"), "feat": t("New feat"), "background": t("New background"), "race": t("New species"), "class": t("New class"), "archetype": t("New subclass"), "hazard": t("New hazard") } as Record<string, string>)[KIND_SINGULAR[editing?.draft.kind ?? kind]] ?? String(KIND_SINGULAR[editing?.draft.kind ?? kind]))}
+        title={editing?.id ? editing.draft.name || (({ "item": t("item"), "spell": t("spell"), "feat": t("feat"), "background": t("background"), "race": t("species"), "class": t("class"), "archetype": t("subclass"), "hazard": t("hazard") } as Record<string, string>)[kind] ?? String(KIND_SINGULAR[kind])) : (({ "item": t("New item"), "spell": t("New spell"), "feat": t("New feat"), "background": t("New background"), "race": t("New species"), "class": t("New class"), "archetype": t("New subclass"), "hazard": t("New hazard") } as Record<string, string>)[editing?.draft.kind ?? kind] ?? String(KIND_SINGULAR[editing?.draft.kind ?? kind]))}
         className="top-0 h-dvh max-h-none rounded-none pt-[max(0.5rem,env(safe-area-inset-top))] lg:top-1/2 lg:h-auto lg:max-h-[92vh] lg:w-[min(96vw,56rem)] lg:rounded-xl"
       >
         {editing?.id && editing.draft.kind === "item" && campaignId && onWorldEntry ? (

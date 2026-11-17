@@ -18,7 +18,7 @@ export function homebrewAvailabilityT(t: T, kind: HomebrewKind, parent?: { name:
     kind === "archetype"
       ? parent
         ? parent.subclassLevel
-          ? t("under {name} in the character builder, from level {level}, the level that class picks a subclass, and at that level-up", { name: parent.name, level: parent.subclassLevel })
+          ? t("under {name} in the character builder from level {level}, the level that class picks a subclass, and at that level-up", { name: parent.name, level: parent.subclassLevel })
           : t("under {name} in the character builder", { name: parent.name })
         : t("under its class in the character builder")
       : t(WHERE_KEYS[kind] ?? "where the books' own are");

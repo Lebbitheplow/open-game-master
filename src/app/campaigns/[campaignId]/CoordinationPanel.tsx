@@ -147,7 +147,7 @@ export function CoordinationPanel({
             {t("The lead changed the order after you were ready: {place}. Check your part still fits, then mark it Ready again.", {
               place: sequence
                 ? t("{name} is now {place}", { name: entry.name, place: placeWords(t, phase, entry.characterId) })
-                : t("everyone acts at once"),
+                : t("everyone now acts at once"),
             })}
           </p>
         ) : null}

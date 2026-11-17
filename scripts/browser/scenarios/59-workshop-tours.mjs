@@ -23,7 +23,10 @@ export default {
     // Each tool's label, as Help names its tour ("Tour WorldForge"), read
     // from the tool list itself rather than imported with its icons.
     const systemsFile = readFileSync(new URL("../../../src/app/workshop/[workshopId]/systems.ts", import.meta.url), "utf8");
-    const labels = new Map([...systemsFile.matchAll(/\{ id: "([a-z]+)", label: "([^"]+)"/g)].map((match) => [match[1], match[2]]));
+    // The labels sit in systemLabel's table since the French interface
+    // (#1016): "world": t("WorldForge"), the English the tour is named by.
+    const labelTable = systemsFile.slice(systemsFile.indexOf("export function systemLabel"), systemsFile.indexOf("export function systemBlurb"));
+    const labels = new Map([...labelTable.matchAll(/"([a-z]+)": t\("([^"]+)"/g)].map((match) => [match[1], match[2]]));
     const made = await api.post(`${base}/api/workshops`, { data: { title: `Tours ${Date.now().toString(36)}`, description: "" } });
     check(made.ok(), "a workshop for the check");
     const id = (await made.json()).workshop.id;

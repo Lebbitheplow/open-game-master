@@ -120,7 +120,7 @@ export function PlaceBattleMaps({
     const made = await api.makeForPlace(entity.ref, body);
     setBusy(false);
     if (!made) {
-      setError(api.error || t("That could not be built.", { context: "workshop.plugin.publish.buildFailed" }));
+      setError(api.error || t("That could not be made."));
       return;
     }
     setFighting(false);
@@ -154,7 +154,7 @@ export function PlaceBattleMaps({
             )}
             <span className="ml-auto flex flex-wrap gap-1">
               {record.found ? (
-                <KitButton tone="small" onClick={() => onOpenPrep(record.kind as PlaceBindingKind, record.ownId, entity.ref)} aria-label={`${t(WORD_KEYS[record.kind as PlaceBindingKind].open)} : ${record.name}`}>
+                <KitButton tone="small" onClick={() => onOpenPrep(record.kind as PlaceBindingKind, record.ownId, entity.ref)} aria-label={`${t(WORD_KEYS[record.kind as PlaceBindingKind].open)}: ${record.name}`}>
                   {record.kind === "map" ? <Grid3x3 className="size-3.5" /> : <Swords className="size-3.5" />} {t(WORD_KEYS[record.kind as PlaceBindingKind].open)}
                 </KitButton>
               ) : null}
@@ -164,7 +164,7 @@ export function PlaceBattleMaps({
                 disabled={busy}
                 onClick={() => void setLinks(bindings.filter((binding) => !(binding.kind === record.kind && binding.ref === record.ref)))}
                 title={t("Unlink it from this place; the map or fight itself stays")}
-                aria-label={t("Unlink {name}", { name: record.name || t("None", { context: "workshop.world.play.none" }) })}
+                aria-label={record.name ? t("Unlink {name}", { name: record.name }) : t("Unlink it")}
               >
                 <Unlink className="size-3.5" /> {t("Unlink")}
               </KitButton>
