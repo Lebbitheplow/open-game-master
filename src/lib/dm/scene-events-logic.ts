@@ -98,7 +98,7 @@ export function readEventShape(record: Record<string, unknown>, people: readonly
 // theirs or done to them. Only the channels it reached are told: seen
 // without being heard, the words stay out; heard without being seen, the
 // deed does.
-export function perceivedLine(event: Pick<SceneEvent, "actor" | "targets" | "speech" | "outcome" | "verb" | "ownWords"> & { volume?: SceneEvent["volume"] }, observer: string, channels: readonly SenseChannel[]): string {
+export function perceivedLine(event: Pick<SceneEvent, "actor" | "targets" | "speech" | "outcome" | "verb" | "ownWords"> & { volume?: SceneEvent["volume"]; covert?: boolean }, observer: string, channels: readonly SenseChannel[]): string {
   if (event.ownWords && !channels.includes("hearing")) {
     // Seen but not heard: the words stay with who was near enough.
     return channels.includes("sight") ? `You saw ${event.actor} ${event.volume === "whisper" ? "whisper to someone" : "do and say something"}, too far to make out the words.` : "";
@@ -119,7 +119,7 @@ export function perceivedLine(event: Pick<SceneEvent, "actor" | "targets" | "spe
   }
   const parts: string[] = [];
   if (sees && event.outcome) {
-    parts.push(`${onMe ? "Done to you, you saw" : "You saw"}: ${event.outcome}`);
+    parts.push(`${event.covert ? `You caught${onMe ? " it done to you" : ""}, though it was done so as not to be noticed` : onMe ? "Done to you, you saw" : "You saw"}: ${event.outcome}`);
   } else if (feels && onMe && event.outcome) {
     parts.push(`You felt it on your body: ${event.outcome}`);
   }

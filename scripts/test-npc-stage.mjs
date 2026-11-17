@@ -343,5 +343,18 @@ await test("mood: the robbed is furious in its frame; an insult said to it, read
   assert.ok(after.some((entry) => entry.emotion === "anger" && entry.toward === "Brakk" && entry.weight === 45), JSON.stringify(after));
 });
 
+await test("stealth: a hidden theft beats the commoners' passive 10 at 15, and is caught at 9 (perception slice 7)", async () => {
+  const { witness } = await import("../src/lib/dm/npc-stage.ts");
+  const { getCampaignById } = await import("../src/lib/db/campaigns.ts");
+  const campaign = getCampaignById(world.campaignId);
+  const kept = (name) => minds.listNpcMemories(world.campaignId, getNpcByName(world.campaignId, name).id).map((entry) => entry.content);
+  const theft = (stealth, thing) => witness(campaign, { actor: "Ottone", verb: "steal", targets: ["Kaku"], object: thing, zoneTo: "", volume: "silent", covert: true, speech: "", outcome: `Ottone sfila ${thing} dalla cintura di Kaku.`, stealth });
+  const hidden = theft(15, "la borsa");
+  assert.equal(hidden.stealth, 15);
+  assert.ok(!kept("Kaku").some((line) => line.includes("sfila la borsa")), "the victim never felt the purse go");
+  theft(9, "il coltello");
+  assert.ok(kept("Kaku").some((line) => line.startsWith("You caught it done to you, though it was done so as not to be noticed: Ottone sfila il coltello")), kept("Kaku").slice(-2).join(" | "));
+});
+
 model.close();
 finish();

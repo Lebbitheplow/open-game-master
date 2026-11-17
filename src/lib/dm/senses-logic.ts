@@ -16,6 +16,9 @@ export type Observer = {
   asleep?: boolean;
   // Where they stand in the place; "" when not known.
   zone?: string;
+  // Passive Perception (10 + Wisdom + proficiency, −5 when the body or the
+  // dark would give disadvantage), read only against a covert act.
+  passive?: number;
 };
 
 // What the place lets through: its zones, where the event happened, how far
@@ -37,7 +40,7 @@ export function voiceReach(volume: string, noise: 0 | 1): number {
 
 export type Perception = { observerId: string; channels: SenseChannel[] };
 
-export function perceive(event: Pick<SceneEvent, "actor" | "verb" | "targets" | "volume" | "covert">, observers: readonly Observer[], scene: SenseScene = OPEN_SCENE): Perception[] {
+export function perceive(event: Pick<SceneEvent, "actor" | "verb" | "targets" | "volume" | "covert"> & { stealth?: number | null }, observers: readonly Observer[], scene: SenseScene = OPEN_SCENE): Perception[] {
   const out: Perception[] = [];
   for (const observer of observers) {
     if (observer.condition === "dead") {
@@ -54,15 +57,20 @@ export function perceive(event: Pick<SceneEvent, "actor" | "verb" | "targets" | 
     if (onMe && PHYSICAL_VERBS.has(event.verb) && observer.condition !== "unconscious") {
       channels.push("touch");
     }
-    // A covert act is seen by its target alone until stealth is rolled
-    // against each watcher (slice 7).
+    // A covert act escapes whoever's passive Perception falls short of the
+    // actor's Stealth roll (§7), its target too unless a hand was laid on
+    // them (a purse lifted is not felt); with no roll it escapes all of them.
+    const touched = onMe && PHYSICAL_VERBS.has(event.verb);
+    const hidden = event.covert && !touched && !(typeof event.stealth === "number" && (observer.passive ?? 10) >= event.stealth);
     const far = observer.zone && scene.eventZone ? distance(scene.zones, observer.zone, scene.eventZone) : 0;
     const seen = far <= scene.sightRange && (!scene.dark || far === 0);
     const heard = far <= voiceReach(event.volume, scene.noise);
-    if (awake && seen && (!event.covert || onMe)) {
+    if (awake && seen && !hidden) {
       channels.push("sight");
     }
-    if ((awake && heard) || (observer.asleep && observer.condition !== "unconscious" && heard && (event.volume === "shout" || event.volume === "noise"))) {
+    if (hidden) {
+      // Nothing heard of it either: done so as not to be noticed.
+    } else if ((awake && heard) || (observer.asleep && observer.condition !== "unconscious" && heard && (event.volume === "shout" || event.volume === "noise"))) {
       channels.push("hearing");
     }
     if (channels.length) {

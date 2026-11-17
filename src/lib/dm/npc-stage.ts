@@ -9,6 +9,9 @@ import { listRecentDmTurns } from "@/lib/db/dm-turns";
 import { getActiveEncounter } from "@/lib/db/encounters";
 import { listDroppedItems } from "@/lib/db/dropped-items";
 import { currentScene } from "@/lib/dm/sky";
+import { computeSheetDerived } from "@/lib/srd";
+import { passiveScore } from "@/lib/dm/check-tools";
+import { moodles } from "@/lib/dm/body-logic";
 import { getCurrentLocation } from "@/lib/db/locations";
 import { getNpcAway } from "@/lib/db/npc-minds";
 import { getPerceptionCursor, lastSceneEventSeq, listPerceivedSince, recordSceneEvent, setPerceptionCursor } from "@/lib/db/scene-events";
@@ -134,7 +137,27 @@ function groundHere(campaign: Campaign): string[] {
 
 // One event in the party's place, recorded with who of the minds here took
 // it in and by which channel (senses-logic), each left a line of it.
-export type WitnessedEvent = Pick<SceneEvent, "actor" | "verb" | "targets" | "object" | "zoneTo" | "volume" | "covert" | "speech" | "outcome"> & { success?: boolean; ownWords?: boolean };
+export type WitnessedEvent = Pick<SceneEvent, "actor" | "verb" | "targets" | "object" | "zoneTo" | "volume" | "covert" | "speech" | "outcome"> & { success?: boolean; ownWords?: boolean; stealth?: number | null };
+
+// The actor's Stealth roll for a covert act (§7): d20 + Stealth from its
+// sheet (a hero's, a companion's or the cast sheet), rolled by the server.
+export function stealthRoll(campaign: Campaign, actor: string): number {
+  const sheet = sheetOf(campaign, actor);
+  const bonus = sheet ? (computeSheetDerived(sheet).skills.stealth ?? 0) : 0;
+  return rollExpression("1d20").total + bonus;
+}
+
+// Each watcher's passive Perception against it: −5 (disadvantage) when the
+// dark hides the place, or sleep or pain weighs at 3 or more.
+function passiveOf(campaign: Campaign, npc: Npc): number {
+  const sheet = sheetOf(campaign, npc.name);
+  if (!sheet) {
+    return 10;
+  }
+  const body = moodles(npc.state, getClock(campaign.id).instant);
+  const hampered = currentScene(campaign).isDark || body.sleep >= 3 || body.pain >= 3;
+  return passiveScore(campaign, sheet, "perception", hampered ? ["disadvantage"] : []);
+}
 
 export function witness(campaign: Campaign, input: WitnessedEvent): SceneEvent | null {
   if (!npcMindsOn(campaign)) {
@@ -148,7 +171,7 @@ export function witness(campaign: Campaign, input: WitnessedEvent): SceneEvent |
   if (!to && success(input) && CONTACT_VERBS.has(input.verb) && reached && reached !== from) {
     to = moveTo(campaign, input.actor, reached);
   }
-  const observers: Observer[] = onStage(campaign).map((npc) => ({ id: npc.id, name: npc.name, condition: npc.state.condition, zone: zoneOf(campaign, npc.name) }));
+  const observers: Observer[] = onStage(campaign).map((npc) => ({ id: npc.id, name: npc.name, condition: npc.state.condition, zone: zoneOf(campaign, npc.name), ...(input.covert ? { passive: passiveOf(campaign, npc) } : {}) }));
   const event: Omit<SceneEvent, "seq"> = {
     ...input,
     zoneTo: to,
@@ -156,7 +179,7 @@ export function witness(campaign: Campaign, input: WitnessedEvent): SceneEvent |
     instant: getClock(campaign.id).instant,
     place: getCurrentLocation(campaign.id)?.name ?? "",
     zoneFrom: from,
-    stealth: null,
+    stealth: input.covert ? (input.stealth ?? stealthRoll(campaign, input.actor)) : null,
     success: success(input),
   };
   // A move is seen where it left and where it arrived.

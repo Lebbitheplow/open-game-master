@@ -39,8 +39,8 @@ await test("the senses: the actor knows its deed, the awake see and hear, the ta
   const asleep = senses.perceive({ actor: "Kaku", verb: "shout", targets: [], volume: "shout", covert: false }, [{ id: "s", name: "Gruoch", condition: "up", asleep: true }]);
   assert.deepEqual(asleep[0].channels, ["hearing"], "a shout reaches a sleeper");
   const covert = Object.fromEntries(senses.perceive({ actor: "Mairon", verb: "steal", targets: ["Kaku"], volume: "silent", covert: true }, watchers).map((entry) => [entry.observerId, entry.channels]));
-  assert.equal(covert.o, undefined, "a covert act is not seen by a bystander (until stealth is rolled)");
-  assert.deepEqual(covert.k, ["sight"], "its target sees it; nothing is heard of a silent act");
+  assert.equal(covert.o, undefined, "a covert act with no stealth roll is not seen by a bystander");
+  assert.equal(covert.k, undefined, "nor by its target, when no hand was laid on them");
 });
 
 await test("a perceived event reads as the observer took it in, and only by the channels that reached them", () => {
@@ -178,6 +178,24 @@ await test("words read by the closed list: an insult angers, a threat frightens;
   assert.deepEqual(insult.map((entry) => [entry.emotion, entry.weight, entry.toward]), [["anger", 30, "Ottone"]]);
   assert.deepEqual(mood.parseWordReading({ kind: "love letter", intensity: 9 }), { kind: "nothing", intensity: 1 });
   assert.deepEqual(mood.appraiseWords(mood.parseWordReading(null), "Ottone", "ciao", 0), []);
+});
+
+await test("stealth: a hidden theft rolled 15 is caught only by a passive 15 or more, its victim included; a covert blow is still felt", () => {
+  const at = [
+    { id: "k", name: "Kaku", condition: "up", passive: 12 },
+    { id: "m", name: "Mairon", condition: "up", passive: 15 },
+    { id: "v", name: "Volodar", condition: "up", passive: 16 },
+  ];
+  const theft = { actor: "Ottone", verb: "steal", targets: ["Kaku"], volume: "silent", covert: true, stealth: 15 };
+  const got = Object.fromEntries(senses.perceive(theft, at).map((entry) => [entry.observerId, entry.channels]));
+  assert.equal(got.k, undefined, "the victim with passive 12 never notices");
+  assert.deepEqual(got.m, ["sight"], "15 meets 15");
+  assert.deepEqual(got.v, ["sight"]);
+  assert.deepEqual(senses.perceive({ ...theft, stealth: null }, at), [], "no roll: nobody");
+  const blow = senses.perceive({ actor: "Ottone", verb: "strike", targets: ["Kaku"], volume: "silent", covert: true, stealth: 20 }, at);
+  assert.deepEqual(blow, [{ observerId: "k", channels: ["touch", "sight"] }], "a blow is felt and seen by its target alone");
+  const line = events.perceivedLine({ actor: "Ottone", targets: ["Kaku"], speech: "", verb: "steal", covert: true, outcome: "Ottone sfila la ciotola a Kaku." }, "Mairon", ["sight"]);
+  assert.match(line, /^You caught, though it was done so as not to be noticed: Ottone sfila/);
 });
 
 finish();
