@@ -40,6 +40,13 @@ export type NpcState = {
   // the story never tracked it, and then nothing is said of hunger or thirst.
   drankAt?: number;
   ateAt?: number;
+  // The body the weather works on (docs/specs/ogm-npc-perception.md §8): when
+  // they last slept, how wet and how cold they are (0–4), and the instant the
+  // weather was last counted on them. Absent until a stage counts it.
+  sleptAt?: number;
+  wet?: number;
+  cold?: number;
+  bodyAt?: number;
 };
 
 export const DEFAULT_NPC_STATE: NpcState = { custody: "free", heldBy: "", restraint: "none", condition: "up", withParty: false, disarmed: false, carries: [] };
@@ -77,6 +84,10 @@ export function parseNpcState(raw: string | null | undefined): NpcState {
       : [],
     ...(typeof record.drankAt === "number" && Number.isFinite(record.drankAt) ? { drankAt: record.drankAt } : {}),
     ...(typeof record.ateAt === "number" && Number.isFinite(record.ateAt) ? { ateAt: record.ateAt } : {}),
+    ...(typeof record.sleptAt === "number" && Number.isFinite(record.sleptAt) ? { sleptAt: record.sleptAt } : {}),
+    ...(typeof record.wet === "number" && Number.isFinite(record.wet) ? { wet: Math.max(0, Math.min(4, Math.round(record.wet))) } : {}),
+    ...(typeof record.cold === "number" && Number.isFinite(record.cold) ? { cold: Math.max(0, Math.min(4, Math.round(record.cold))) } : {}),
+    ...(typeof record.bodyAt === "number" && Number.isFinite(record.bodyAt) ? { bodyAt: record.bodyAt } : {}),
   };
 }
 
@@ -89,7 +100,11 @@ export function isDefaultNpcState(state: NpcState): boolean {
     !state.disarmed &&
     state.carries.length === 0 &&
     state.drankAt === undefined &&
-    state.ateAt === undefined
+    state.ateAt === undefined &&
+    state.sleptAt === undefined &&
+    state.wet === undefined &&
+    state.cold === undefined &&
+    state.bodyAt === undefined
   );
 }
 
@@ -143,6 +158,11 @@ export function applyNpcStatePatch(current: NpcState, patch: NpcStatePatch): { s
   }
   if (typeof patch.ateAt === "number") {
     next.ateAt = patch.ateAt;
+  }
+  for (const key of ["sleptAt", "wet", "cold", "bodyAt"] as const) {
+    if (typeof patch[key] === "number") {
+      next[key] = patch[key];
+    }
   }
   if (current.condition === "dead" && next.condition !== "dead") {
     return { error: "they are dead on the record; the dead do not get up. Leave condition dead." };

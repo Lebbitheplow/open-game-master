@@ -12,6 +12,7 @@ import { listDroppedItems } from "@/lib/db/dropped-items";
 import { recordSceneEvent, speechHeardInTurn } from "@/lib/db/scene-events";
 import { perceive, type Observer } from "@/lib/dm/senses-logic";
 import { senseScene, whereEveryoneIs, zoneOf } from "@/lib/dm/scene-place";
+import { bodyFrame } from "@/lib/dm/body";
 import { currentScene } from "@/lib/dm/sky";
 import { getCurrentLocation, listLocations } from "@/lib/db/locations";
 import { recordExtractedFacts } from "@/lib/db/facts";
@@ -319,6 +320,7 @@ function identityOf(campaign: Campaign, npc: Npc): string[] {
     whereYouStand(campaign, npc),
     lyingHere(campaign, npc),
     needsWords(npc.state, nowInstant(campaign.id)) ? `Your body right now: ${needsWords(npc.state, nowInstant(campaign.id))}. You feel it in everything you do, and it grows until you drink or eat.` : "",
+    bodyFrame(campaign, npc, listNpcs(campaign.id).filter((other) => (other.id === npc.id || other.state.withParty) && !other.archived)),
     (dominantDrive(npc.state, nowInstant(campaign.id))?.urgency ?? 0) >= 60 ? "This need cannot wait any longer: this turn you act to satisfy it, by whatever means are yours (ask, bargain, take, threaten, strike). A gesture or a fine phrase is not enough." : "",
     `Your attitude toward the heroes in general: ${npc.attitude}.`,
     // A companion knows all of itself, as a player reads their own sheet.

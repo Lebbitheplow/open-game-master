@@ -104,4 +104,36 @@ await test("senses by distance: a whisper reaches the same zone, a voice the nex
   assert.ok(said("normal", { ...clear, dark: true }).k.includes("sight"));
 });
 
+const body = await import("../src/lib/dm/body-logic.ts");
+
+await test("the body: levels by hours since drink, food and sleep; rain soaks, wind and wet chill, a blanket helps; the worst sets the penalty", () => {
+  const now = 100 * 60;
+  const levels = body.moodles({ drankAt: now - 17 * 60, ateAt: now - 50 * 60, sleptAt: now - 21 * 60, wet: 3, cold: 1, condition: "wounded" }, now);
+  assert.deepEqual(levels, { thirst: 2, hunger: 3, sleep: 2, cold: 1, wet: 3, pain: 2 });
+  assert.equal(body.bodyPenalty(levels), 3);
+  assert.deepEqual(body.moodles({ condition: "up" }, now), { thirst: 0, hunger: 0, sleep: 0, cold: 0, wet: 0, pain: 0 }, "nothing tracked, nothing felt");
+  const gale = { temperature: "cold", wind: "gale", precipitation: 3, sheltered: false, covered: false };
+  const soaked = body.tickBody({ wet: 0, cold: 0 }, 4, gale);
+  assert.deepEqual(soaked, { wet: 4, cold: 4 }, "four hours of a cold gale and heavy rain: drenched and freezing");
+  assert.deepEqual(body.tickBody({ wet: 0, cold: 0 }, 1, gale), { wet: 1, cold: 1 }, "it climbs a level an hour");
+  assert.ok(body.tickBody({ wet: 0, cold: 0 }, 6, { ...gale, covered: true }).cold < 4, "a blanket keeps off the worst");
+  assert.deepEqual(body.tickBody({ wet: 4, cold: 3 }, 4, { temperature: "mild", wind: "calm", precipitation: 0, sheltered: false, covered: false }), { wet: 2, cold: 1 }, "dry mild air dries and warms, while still wet a little chill stays");
+  assert.match(body.bodyWords(levels), /tired|drowsy/);
+  assert.doesNotMatch(body.bodyWords(levels), /hungry|parched/, "thirst and hunger are counted in hours elsewhere");
+});
+
+await test("things advertise what they ease: with hunger at 2 the frame names the biscuits on the deck, free, and whose the fish is", () => {
+  assert.deepEqual(body.serves("Gallette"), ["hunger"]);
+  assert.deepEqual(body.serves("Barile d'acqua"), ["thirst"]);
+  assert.ok(body.serves("Coperta di lana").includes("cold"));
+  const ads = body.adsWords({ thirst: 0, hunger: 2, sleep: 0, cold: 3, wet: 0, pain: 0 }, [
+    { name: "Gallette", owner: "" },
+    { name: "Pesce", owner: "Kaku", zone: "poppa" },
+    { name: "Pane", owner: "Mairon" },
+    { name: "Corda", owner: "" },
+  ], "Mairon");
+  assert.match(ads, /What could ease your hunger: Gallette \(nobody's, free to take\); Pesce \(Kaku's, at poppa\); Pane \(yours\)\./);
+  assert.match(ads, /Nothing in sight would ease your cold\./);
+});
+
 finish();

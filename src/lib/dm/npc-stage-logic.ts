@@ -40,7 +40,7 @@ export const STAGE_REFEREE_SYSTEM = [
   "uncertain: false when nothing opposes the action and it cannot fail (drinking from an open barrel, speaking, handing over one's own thing, opening a lock with its key). True when someone resists or it is hard (taking a thing from a person, forcing a lock, striking, hiding something under watching eyes).",
   "dc: 5 easy, 10 moderate, 15 hard, 20 very hard; against a person, set it by how able and ready they are. modifier: -2 to 4, how apt this character is at this action, weakened by thirst, hunger or wounds.",
   "outcome: one or two short sentences in the action's language, saying what happened as a fact, complete: who did what to whom and how it ended. Never 'about to', never 'tries'.",
-  "changes: only what the outcome plainly did to a body, for the people listed: drank or ate (a real drink, a real meal), condition wounded or unconscious. Never dead. Nothing changes for a hero's body.",
+  "changes: only what the outcome plainly did to a body, for the people listed: drank or ate (a real drink, a real meal), slept (hours of real sleep), warmed (wrapped dry in a blanket or by a fire), condition wounded or unconscious. Never dead. Nothing changes for a hero's body. A person's listed body (cold, tired, in pain) weighs on what they try: put its check penalty in modifier.",
   "Things: the outcome says plainly what this character gave, took, put down, found or used up, with the thing's words as listed (the record of who holds what is kept from the story, not by you). A hero's thing passes to this character only when that hero gave or offered it in their own words this turn. Any other action aimed at a hero's body or belongings sets hero to that hero's name, and its outcome says only what the character attempts on them (the table resolves it).",
   "A thing that nobody listed has and that is not lying here does not exist in this moment (thrown away, eaten, lost, or never there): an action that uses it does nothing, and the outcome says plainly that it is not there (no 'tries to drink from it'). On the Zattera a vial thrown into the sea was drunk from a day later.",
   "When a hero asked something of this character or reached for their things this turn, the outcome says how this character's action answers it.",
@@ -76,7 +76,7 @@ export function renderRefereePrompt(input: {
     .join("\n\n");
 }
 
-export type StageChange = { name: string; drank: boolean; ate: boolean; condition: "" | "wounded" | "unconscious" };
+export type StageChange = { name: string; drank: boolean; ate: boolean; slept?: boolean; warmed?: boolean; condition: "" | "wounded" | "unconscious" };
 export type StageBranch = { outcome: string; changes: StageChange[]; event: Record<string, unknown> };
 export type StageRuling = { uncertain: boolean; dc: number; modifier: number; hero: string; success: StageBranch; failure: StageBranch };
 
@@ -89,6 +89,8 @@ function branchOf(value: unknown): StageBranch {
       name: String(entry.name).trim(),
       drank: entry.drank === true,
       ate: entry.ate === true,
+      slept: entry.slept === true,
+      warmed: entry.warmed === true,
       condition: entry.condition === "wounded" || entry.condition === "unconscious" ? entry.condition : "",
     }));
   const event = record.event && typeof record.event === "object" && !Array.isArray(record.event) ? (record.event as Record<string, unknown>) : {};

@@ -10,7 +10,7 @@ import { call, fakeModel, reply } from "./lib/enforce-narrator.mjs";
 const { test, finish } = suite("test-npc-stage");
 const logic = await import("../src/lib/dm/npc-stage-logic.ts");
 const minds = await import("../src/lib/db/npc-minds.ts");
-const { upsertNpc, getNpcByName, setNpcState } = await import("../src/lib/db/npcs.ts");
+const { upsertNpc, getNpcByName, getNpcById, setNpcState } = await import("../src/lib/db/npcs.ts");
 const { getClock } = await import("../src/lib/db/clock.ts");
 const { listSheets } = await import("../src/lib/db/sheets.ts");
 const { writeItems } = await import("../src/lib/owners/items.ts");
@@ -289,6 +289,26 @@ await test("zones: a hero's whisper at the bow reaches the one beside them, not 
   witness(campaign, { actor: "Kaku", verb: "push", targets: ["Mairon"], object: "", zoneTo: "", volume: "normal", covert: false, speech: "", outcome: "Kaku spinge Mairon contro il bordo." });
   assert.equal(positionOf(world.campaignId, "La zattera", "Kaku"), "poppa", "laying hands on someone at the stern takes the actor there");
   assert.ok(kept("Mairon").some((line) => line.includes("spinge Mairon")), "the target feels and sees it");
+});
+
+await test("the body: a storm soaks and chills a mind on stage hour by hour; hungry, it is told of the biscuits on the deck (perception slice 4)", async () => {
+  const { setClock } = await import("../src/lib/db/clock.ts");
+  const { weatherOnBodies, bodyFrame } = await import("../src/lib/dm/body.ts");
+  const { getCampaignById } = await import("../src/lib/db/campaigns.ts");
+  const { insertDroppedItem } = await import("../src/lib/db/dropped-items.ts");
+  const campaign = getCampaignById(world.campaignId);
+  const clock = getClock(world.campaignId);
+  setClock(world.campaignId, { ...clock, weather: { sky: "storm", temperature: "cold", wind: "gale", precipitation: 3 } });
+  const row = npc("Ottone", { bodyAt: clock.instant - 3 * 60, ateAt: clock.instant - 30 * 60 });
+  weatherOnBodies(campaign, [getNpcByName(world.campaignId, "Ottone")]);
+  const after = getNpcByName(world.campaignId, "Ottone").state;
+  assert.deepEqual([after.wet, after.cold], [3, 3], "three hours of a cold gale in heavy rain");
+  assert.equal(after.bodyAt, clock.instant);
+  insertDroppedItem({ campaignId: world.campaignId, mapId: null, x: null, y: null, place: "La zattera", item: { name: "Gallette", qty: 6 }, droppedBy: "" });
+  const frame = bodyFrame(campaign, getNpcById(row.id), []);
+  assert.match(frame, /You also feel: [^.]*shivering hard[^.]*soaked/);
+  assert.match(frame, /What could ease your hunger: [^.]*Gallette \(nobody's, free to take\)/);
+  setClock(world.campaignId, { ...getClock(world.campaignId), weather: clock.weather });
 });
 
 model.close();

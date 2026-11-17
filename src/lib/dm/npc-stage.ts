@@ -25,6 +25,7 @@ import { heroLineVolume, perceivedLine, readEventShape, type SceneEvent } from "
 import { perceive, type Observer, type Perception } from "@/lib/dm/senses-logic";
 import { ensureZones, moveTo, senseScene, whereEveryoneIs, zoneOf } from "@/lib/dm/scene-place";
 import { CONTACT_VERBS } from "@/lib/dm/zones-logic";
+import { bodyForReferee, weatherOnBodies } from "@/lib/dm/body";
 import { describeDuration } from "@/lib/dm/calendar";
 import {
   STAGE_REFEREE_SYSTEM,
@@ -188,6 +189,8 @@ export async function runStage(
   // The place's zones, made once from its description, and everyone here
   // placed in one (docs/specs/ogm-npc-perception.md §6).
   await ensureZones(campaign, [...listSheets(campaign.id).filter((sheet) => !sheet.isCompanion).map((sheet) => sheet.name), ...present.map((npc) => npc.name)], narration);
+  // The weather on every body here since it was last counted (§8).
+  weatherOnBodies(campaign, present);
   const touched = new Set(
     calls
       .filter((call) => call.name === "npc_speak" || call.name === "npc_inform")
@@ -244,7 +247,7 @@ export async function runStage(
       ...heroSheets().map((sheet) => ({ name: sheet.name, state: "", carries: sheet.equipment.map((item) => item.name), hero: true })),
       ...cast
         .filter((npc) => present.some((entry) => entry.id === npc.id))
-        .map((npc) => ({ name: npc.name, state: [npcStateWords({ ...npc.state, carries: [] }), needsWords(npc.state, now)].filter(Boolean).join(", "), carries: thingsOf(npc) })),
+        .map((npc) => ({ name: npc.name, state: [npcStateWords({ ...npc.state, carries: [] }), needsWords(npc.state, now), bodyForReferee(campaign, npc)].filter(Boolean).join(", "), carries: thingsOf(npc) })),
     ];
     const ruling = intent ? await referee(campaign, renderRefereePrompt({ actor: actor.name, intent, speech, people, ground: groundHere(campaign), place: placeHere(campaign), scene: narration, facts: lines, heroLines })) : null;
     let fact: StageFact = { actor: actor.name, speech, outcome: intent, roll: "", hero: "" };
@@ -264,6 +267,8 @@ export async function runStage(
           ...target.state,
           ...(change.drank ? { drankAt: now } : {}),
           ...(change.ate ? { ateAt: now } : {}),
+          ...(change.slept ? { sleptAt: now } : {}),
+          ...(change.warmed ? { cold: Math.max(0, (target.state.cold ?? 0) - 2), wet: Math.max(0, (target.state.wet ?? 0) - 1) } : {}),
           ...(change.condition && target.state.condition !== "dead" ? { condition: change.condition } : {}),
         });
       }
