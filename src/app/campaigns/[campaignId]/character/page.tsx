@@ -70,6 +70,7 @@ function CampaignCharacterPageInner({ campaignId }: { campaignId: string }) {
   const [helped, setHelped] = useState(false);
   const [built, setBuilt] = useState<JoinHero | null>(null);
   const builtSeq = useRef(0);
+  const nextBuiltId = () => `built-${(builtSeq.current += 1)}`;
 
   useEffect(() => {
     let cancelled = false;
@@ -153,11 +154,11 @@ function CampaignCharacterPageInner({ campaignId }: { campaignId: string }) {
     navigateTo(`/campaigns/${campaignId}`);
   }
 
+  // A built hero's id is a count kept in a ref, set from the event: the
+  // React Compiler refuses a clock read it cannot prove stays out of render.
   function submitNew(result: BuilderResult) {
     if (helped && flow !== "edit") {
-      // A fresh id per build, from the event (the React Compiler refuses a
-      // clock read it cannot prove stays out of render).
-      setBuilt({ kind: "built", id: `built-${(builtSeq.current += 1)}`, name: result.sheet.name, sheet: result.sheet });
+      setBuilt({ kind: "built", id: nextBuiltId(), name: result.sheet.name, sheet: result.sheet });
       return;
     }
     if (flow === "edit" && editCharacter) {
