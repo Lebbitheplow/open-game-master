@@ -13,8 +13,7 @@
 import { textKey } from "@/lib/language/text-logic";
 type Locale = "en" | "fr";
 import { srdRaceId } from "@/lib/srd/race-id";
-import { FR_NAMES_BY_TABLE } from "./names-fr";
-import { FR_TRANSLATED_NAMES_BY_TABLE } from "./names-fr-translated";
+import { frTables } from "@/lib/i18n/fr-tables";
 
 // The tables the maps carry, as the helper's callers name them.
 export type FrNamesTable =
@@ -96,14 +95,17 @@ const ITEM_TABLES: readonly FrNamesTable[] = ["gear", "weapons", "armor", "magic
 // One table's names, by its key. A Map rather than the generated record
 // itself: the lookup stays a data read, not a site the tables' key shape
 // has to answer for.
-const TABLES = new Map<string, Record<string, string>>(Object.entries(FR_NAMES_BY_TABLE));
-const TRANSLATED_TABLES = new Map<string, Record<string, string>>(Object.entries(FR_TRANSLATED_NAMES_BY_TABLE));
+// The tables arrive with the French catalog (src/lib/i18n/fr-tables.ts);
+// before they do, every name reads as its English row.
+const NONE: Record<string, Record<string, string>> = {};
+const frNames = () => frTables()?.names ?? NONE;
+const frTranslated = () => frTables()?.translated ?? NONE;
 
 function lookup(table: FrNamesTable, key: string): string | null {
   if (!key) {
     return null;
   }
-  const names = TABLES.get(table);
+  const names = frNames()[table];
   if (names) {
     if (table === "weapons") {
       const overridden = WEAPON_KEY_OVERRIDES.get(key);
@@ -115,7 +117,7 @@ function lookup(table: FrNamesTable, key: string): string | null {
       return names[key];
     }
   }
-  return TRANSLATED_TABLES.get(table)?.[key] ?? null;
+  return frTranslated()[table]?.[key] ?? null;
 }
 
 // The keys a table tries, in order: a row's own slug first (a third-party
@@ -172,7 +174,7 @@ export function classFeatureName(classId: string, featureName: string, locale: L
     return featureName;
   }
   const key = `${classId.trim().toLowerCase()}:${canonicalKey(featureName)}`;
-  return FR_NAMES_BY_TABLE.classFeatures[key] ?? featureName;
+  return frNames().classFeatures?.[key] ?? featureName;
 }
 
 // A species trait line ("Darkvision 60 ft", "Perception proficiency (Keen
@@ -204,8 +206,8 @@ export function speciesTraitName(raceId: string, traitLine: string, locale: Loca
   if (locale !== "fr" || !traitLine) {
     return traitLine;
   }
-  const traits = FR_NAMES_BY_TABLE.speciesTraits;
-  const extraTraits = FR_TRANSLATED_NAMES_BY_TABLE.speciesTraits ?? {};
+  const traits = (frNames().speciesTraits ?? {});
+  const extraTraits = frTranslated().speciesTraits ?? {};
   const species = canonicalKey(srdRaceId(raceId));
   const carries = (name: string) => {
     const k = `${species}:${canonicalKey(name)}`;
@@ -258,8 +260,8 @@ export function backgroundFeatureName(featureName: string, locale: Locale): stri
   const background = bracketed[1];
   const bgKey = `${canonicalKey(background)}:${canonicalKey(feature)}`;
   const hit =
-    FR_NAMES_BY_TABLE.backgroundFeatures[bgKey] ??
-    FR_TRANSLATED_NAMES_BY_TABLE.backgroundFeatures?.[bgKey];
+    frNames().backgroundFeatures?.[bgKey] ??
+    frTranslated().backgroundFeatures?.[bgKey];
   if (!hit) {
     return featureName;
   }
@@ -274,8 +276,8 @@ export function backgroundFeatureLabel(backgroundName: string, feature: string, 
   }
   const bgKey = `${canonicalKey(backgroundName)}:${canonicalKey(feature)}`;
   return (
-    FR_NAMES_BY_TABLE.backgroundFeatures[bgKey] ??
-    FR_TRANSLATED_NAMES_BY_TABLE.backgroundFeatures?.[bgKey] ??
+    frNames().backgroundFeatures?.[bgKey] ??
+    frTranslated().backgroundFeatures?.[bgKey] ??
     feature
   );
 }
@@ -289,5 +291,5 @@ export function subclassName(classId: string, subclass: string, locale: Locale):
     return subclass;
   }
   const key = `${classId.trim().toLowerCase()}:${canonicalKey(subclass)}`;
-  return FR_NAMES_BY_TABLE.subclasses[key] ?? subclass;
+  return frNames().subclasses?.[key] ?? subclass;
 }

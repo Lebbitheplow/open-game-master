@@ -227,7 +227,7 @@ export function TableRows({
         <LoadFailed error={loadError} onRetry={onRetry} />
       ) : tables.length === 0 ? (
         <p className="reveal text-[11px] text-stone-500">
-          {loaded ? t("No tables yet. Start one with New table, or paste one out of a book.") : t("Loading…")}
+          {loaded ? t("No tables yet. Start one with New table, or paste one out of a book.") : t("Loading...")}
         </p>
       ) : shown.length === 0 ? (
         <p className="live-in text-xs text-stone-500">{t("No table by that name.")}</p>

@@ -437,7 +437,7 @@ function ArcCard({ campaignId }: { campaignId: string }) {
       {expanded ? (
         <div className="reveal mt-2 space-y-2 pl-5">
           {loading ? (
-            <PanelLoading label={t("Loading…")} rows={2} />
+            <PanelLoading label={t("Loading...")} rows={2} />
           ) : arc ? (
             <>
               {arc.saga ? (

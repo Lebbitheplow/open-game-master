@@ -1,6 +1,6 @@
 // Pure translation helpers re-exported from the gettext-style runtime in
 // src/lib/i18n/translate.ts so existing callers and tests keep working.
-import { translate, translatePlural, type Locale, type TranslateVars } from "./i18n/translate";
+import { translate, translatePlural, type Locale, type TranslateVars } from "./i18n/translate.ts";
 
 export { translate, translatePlural, type Locale, type TranslateVars };
 export type MessageKey = string;

@@ -4,6 +4,8 @@
 // their refusals in this language, falling back to English.
 import { localeFromAcceptLanguage, resolveRequestLocale } from "@/lib/i18n/locale";
 import { translate, translatePlural, type Locale, type TranslateVars } from "@/lib/i18n/translate";
+// Routes answer in French with the catalog installed (translate.ts).
+import "@/lib/i18n/fr-catalog";
 
 export type BookLocale = Locale;
 export { localeFromAcceptLanguage };

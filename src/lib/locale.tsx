@@ -1,7 +1,9 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
+import { Suspense, createContext, use, useCallback, useContext, useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
+import { loadCatalog } from "./i18n/catalog-loader";
 import { LOCALE_COOKIE } from "./i18n/locale";
+import { catalogInstalled } from "./i18n/translate";
 import { localeTag, translate, translatePlural, type Locale, type MessageKey, type MessageVars } from "./messages-logic";
 
 // The interface's language, beside the theme and the scale (theme-mode.ts).
@@ -17,8 +19,30 @@ const LOCALE_KEY = "odm.locale";
 
 const ServerLocaleContext = createContext<Locale>("en");
 
+// The page the server rendered in French hydrates in French: until the
+// catalog's chunk is in (catalog-loader.ts), the tree waits under Suspense
+// and React keeps the server's HTML, rather than hydrating English over
+// French and throwing the page away. On the server the catalog is already
+// installed (fr-catalog.ts), so nothing waits there.
+function CatalogGate({ locale, children }: { locale: Locale; children: ReactNode }) {
+  if (!catalogInstalled(locale)) {
+    use(loadCatalog(locale));
+  }
+  return <>{children}</>;
+}
+
 export function LocaleProvider({ initialLocale, children }: { initialLocale: Locale; children: ReactNode }) {
-  return <ServerLocaleContext.Provider value={initialLocale}>{children}</ServerLocaleContext.Provider>;
+  return (
+    <ServerLocaleContext.Provider value={initialLocale}>
+      {initialLocale === "en" ? (
+        children
+      ) : (
+        <Suspense fallback={null}>
+          <CatalogGate locale={initialLocale}>{children}</CatalogGate>
+        </Suspense>
+      )}
+    </ServerLocaleContext.Provider>
+  );
 }
 
 const listeners = new Set<() => void>();
@@ -86,18 +110,34 @@ export function writeLocaleChoice(choice: LocaleChoice) {
   emit();
 }
 
+// The locale the screen shows: the reader's, once its catalog is in. Asked
+// for French before the chunk has arrived it starts the fetch and reads
+// English, then every translated string switches together when it lands.
+function shownLocale(): Locale {
+  const wanted = resolveLocale(readLocaleChoice());
+  if (catalogInstalled(wanted)) {
+    return wanted;
+  }
+  void loadCatalog(wanted).then(() => {
+    applyLocale();
+    emit();
+  });
+  return "en";
+}
+
 // Writes the choice onto <html>, as applyTheme writes the theme, so the
 // document's language matches the words on screen.
 export function applyLocale() {
   if (typeof document === "undefined") {
     return;
   }
-  document.documentElement.lang = localeTag(resolveLocale(readLocaleChoice()));
+  const wanted = resolveLocale(readLocaleChoice());
+  document.documentElement.lang = localeTag(catalogInstalled(wanted) ? wanted : "en");
 }
 
 export function useLocale(): Locale {
   const serverLocale = useContext(ServerLocaleContext);
-  return useSyncExternalStore(subscribe, () => resolveLocale(readLocaleChoice()), () => serverLocale);
+  return useSyncExternalStore(subscribe, shownLocale, () => serverLocale);
 }
 
 export function useLocaleChoice(): LocaleChoice {

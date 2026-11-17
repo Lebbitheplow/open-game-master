@@ -11,6 +11,8 @@ register("./lib/register-alias.mjs", import.meta.url);
 
 const catalog = JSON.parse(readFileSync(new URL("../src/lib/i18n/fr.json", import.meta.url), "utf8"));
 const { translate, translatePlural, formatMessage, pluralCategory, localeTag } = await import("../src/lib/messages-logic.ts");
+// The catalog as a server process installs it (src/lib/i18n/fr-catalog.ts).
+await import("../src/lib/i18n/fr-catalog.ts");
 
 let passed = 0;
 function test(name, fn) {

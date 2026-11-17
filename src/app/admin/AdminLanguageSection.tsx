@@ -29,7 +29,7 @@ export function AdminLanguageSection({
     <PageSection id="admin-language" heading="Language" glyph="tab-story">
       <Field
         label="The language your tables play in"
-        hint="New campaigns start in it, and the Game Master's memory reads the story in it. Each campaign can still pick its own under Table language. The app's own buttons and menus stay in English for now."
+        hint="New campaigns start in it, and the Game Master's memory reads the story in it. Each campaign can still pick its own under Table language. The buttons and menus follow each reader's browser, or the language they pick under Settings > Language."
       >
         <LanguageSelect value={value} onChange={onChange} label="Server language" className="w-full sm:max-w-xs" />
       </Field>

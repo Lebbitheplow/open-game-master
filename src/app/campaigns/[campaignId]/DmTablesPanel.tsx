@@ -473,7 +473,7 @@ export function DmTablesPanel({
         ) : loadError ? (
           <LoadFailed error={loadError} onRetry={() => void load()} />
         ) : (
-          <PanelLoading label={t("Loading…")} rows={2} />
+          <PanelLoading label={t("Loading...")} rows={2} />
         )}
         {loaded && loadError ? <LoadFailed error={loadError} onRetry={() => void load()} /> : null}
       </DeskCard>

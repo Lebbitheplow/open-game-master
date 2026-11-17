@@ -10,7 +10,7 @@
 // every other table. What reaches the engine and the protocol stays English.
 import type { HandCard } from "@/lib/battlemap/hand-core";
 import { contentName } from "@/lib/content/names";
-import { FR_NAMES_BY_TABLE } from "@/lib/content/names-fr";
+import { frTables } from "@/lib/i18n/fr-tables";
 import { resourceDisplayName } from "@/lib/srd/class-resources-fr";
 import { textKey } from "@/lib/language/text-logic";
 import { translate, type Locale } from "@/lib/messages-logic";
@@ -143,7 +143,7 @@ export function chipName(name: string, locale: Locale): string {
   if (coined) return translate("fr", coined);
   const row = CHIP_FEATURE_ROW[key];
   if (row) {
-    const print = FR_NAMES_BY_TABLE.classFeatures[row];
+    const print = frTables()?.names.classFeatures?.[row];
     if (print) {
       const bare = name.includes(":") ? print : print.includes(": ") ? print.split(": ").slice(1).join(": ") : print;
       return bare || print;

@@ -229,7 +229,7 @@ function AskDockInner({
             {t("Questions about the story, the world, the rules, or your sheet. Answers come from what the campaign has on record and never move the story forward.")}
           </p>
           {!loaded ? (
-            <PanelLoading label={t("Loading…")} rows={2} />
+            <PanelLoading label={t("Loading...")} rows={2} />
           ) : !asks.length && !pendingQuestion ? (
             <EmptyState size="sm" art="scrolls" title={t("Nothing asked yet. Put a question to the GM below.")} />
           ) : (

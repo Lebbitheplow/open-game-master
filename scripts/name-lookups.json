@@ -3841,13 +3841,6 @@
         "level progression lookup by key"
       ]
     ],
-    "app/characters/builder/buildMath.ts#keyed": [
-      [
-        "key",
-        1,
-        "build math lookup by key"
-      ]
-    ],
     "app/characters/builder/QuickBuildQuiz.tsx#keyed": [
       [
         "key",

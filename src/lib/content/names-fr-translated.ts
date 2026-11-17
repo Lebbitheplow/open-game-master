@@ -27,7 +27,7 @@ export const TRANSLATED_BACKGROUND_NAMES_FR: Record<string, string> = {
   "knight": "Chevalier",
   "mercenary-recruit": "Recrue mercenaire",
   "noble": "Noble",
-  "outlander": "Sauvageon",
+  "outlander": "Étranger",
   "pirate": "Pirate",
   "sage": "Érudit",
   "sailor": "Marin",
@@ -53,7 +53,7 @@ export const TRANSLATED_SPECIES_TRAIT_NAMES_FR: Record<string, string> = {
 
 export const TRANSLATED_BACKGROUND_FEATURE_NAMES_FR: Record<string, string> = {
   "charlatan:false-identity": "Fausse identité",
-  "criminal:criminal-contact": "Accointances avec la pègre",
+  "criminal:criminal-contact": "Contact dans le milieu",
   "entertainer:by-popular-demand": "À la demande générale",
   "folk-hero:rustic-hospitality": "Hospitalité rustique",
   "gladiator:by-popular-demand": "À la demande générale",
@@ -63,12 +63,12 @@ export const TRANSLATED_BACKGROUND_FEATURE_NAMES_FR: Record<string, string> = {
   "knight:retainers": "Domestiques",
   "mercenary-recruit:theoretical-experience": "Expérience théorique",
   "noble:position-of-privilege": "Position privilégiée",
-  "outlander:wanderer": "Éternel vagabond",
+  "outlander:wanderer": "Vagabond",
   "pirate:bad-reputation": "Mauvaise réputation",
   "sage:researcher": "Chercheur",
   "sailor:ships-passage": "Passage en mer",
   "soldier:military-rank": "Grade militaire",
-  "spy:criminal-contact": "Accointances avec la pègre",
+  "spy:criminal-contact": "Contact dans le milieu",
   "urchin:city-secrets": "Secrets de la ville",
 };
 

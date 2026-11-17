@@ -1,4 +1,6 @@
 import { LocaleApplier, LocaleProvider } from "@/lib/locale";
+// The server renders a French page with the catalog in hand (translate.ts).
+import "@/lib/i18n/fr-catalog";
 import { LOCALE_COOKIE, resolveLocale } from "@/lib/i18n/locale";
 import { ThemeApplier } from "@/lib/theme-mode";
 import type { Metadata, Viewport } from "next";
