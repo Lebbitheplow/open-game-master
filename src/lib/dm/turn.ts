@@ -1,3 +1,4 @@
+import { carryDroppedItems } from "@/lib/db/dropped-items";
 import { armsWatchRow } from "@/lib/dm/after-roll-table";
 import { tokenFootprint } from "@/lib/dm/board-reach";
 import { emptyTurnLine, type EmptyTurnPlayer } from "@/lib/dm/empty-turn";
@@ -3203,6 +3204,10 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     (finalCallLeaked || finalRepeated || (lastReplyEmpty && !turn.playerWhisperIds.length))
   ) {
     failed = await narrateAfterToolLeak(context, turn, finalRepeated);
+  } else if (!failed && !turn.narrationParts.length && !turn.playerWhisperIds.length) {
+    // Named in the log: on the Zattera two turns that ran pass_time and
+    // take_rest reached the table as "The GM had no answer" (2026-11-17).
+    console.warn(`[dm-turn] turn ${turn.id}: the loop ended after ${turn.callIndex} call(s) with no narration and no rescue (last reply empty: ${lastReplyEmpty}).`);
   }
   // A card no call carried out, the correction included, did not happen: it
   // goes back to its player, and the guard keeps the story from telling it
@@ -3938,6 +3943,10 @@ async function narrateAfterToolLeak(context: TurnContext, turn: DmTurn, repeated
   // An earlier passage said again is no narration of this turn (issue 942).
   const again = Boolean(read) && repeatsEarlierNarration(read, recentGmNarrations(campaignId));
   const narration = again ? "" : read;
+  if (!narration) {
+    // Why the rescue left the turn empty, for the operator (2026-11-17).
+    console.warn(`[dm-turn] turn ${turn.id}: tools-closed narration empty (${error ? `error ${failure?.code ?? "?"}` : !prose ? "no prose" : !read ? "all asides" : "a repeat"}).`);
+  }
   if (narration) {
     turn.narrationParts.push(narration);
   }
@@ -4154,6 +4163,7 @@ export function handleLocationCall(
     direction?: unknown;
     distance?: unknown;
     characterIds?: unknown;
+    aboard?: unknown;
   };
   try {
     args = JSON.parse(rawArguments || "{}");
@@ -4193,6 +4203,8 @@ export function handleLocationCall(
   // narration of the return would otherwise invent the room anew. (A place
   // known only as somebody's route has a row but no layout yet.)
   let returnedTo = false;
+  // Things lying aboard what the party travels on, carried along (aboard).
+  let carried = 0;
   // What the world simulation just wrote here, so the model narrates it
   // rather than asking generate_settlement for a place already peopled.
   let peopled: string | null = null;
@@ -4223,6 +4235,9 @@ export function handleLocationCall(
     }
     setOutFrom = previous?.id ?? null;
     movedToNewLocation = !previous || previous.id !== location.id;
+    if (movedToNewLocation && previous && args.aboard === true) {
+      carried = carryDroppedItems(campaign.id, previous.name, location.name);
+    }
     leftBed = movedToNewLocation ? previous?.ambience?.bed || null : null;
     returnedTo =
       movedToNewLocation &&
@@ -4342,6 +4357,7 @@ export function handleLocationCall(
           ? `Recorded. ${peopled} Continue the scene.`
           : "Recorded. Continue the scene.") +
       filedNote +
+      (carried ? ` ${carried} thing(s) lying aboard came along and lie here now.` : "") +
       (split ? ` ${split}` : "") +
       sceneNote,
     // Consumed by advance() as the chapter-break and inline-map signals,

@@ -181,5 +181,23 @@ await test("the master does not move things at a staged table: hand and remove_i
   assert.equal(masterItemRefusal({ ...campaign, gameSettings: { ...campaign.gameSettings, npcStage: false } }, "remove_item", "{}"), null, "a table without a stage keeps its tools");
 });
 
+await test("a thing nobody has does not exist for the referee, and a mind hears the words it wore out", async () => {
+  assert.match(logic.STAGE_REFEREE_SYSTEM, /nobody listed has and that is not lying here does not exist/);
+  const { wornWords } = await import("../src/lib/dm/npc-mind-logic.ts");
+  const { textKey } = await import("../src/lib/language/text-logic.ts");
+  const mairon = [
+    "Il mare è vasto, e ogni cosa è un dettaglio.",
+    "Un voto è un voto, Brakk, e un giuramento è un legame.",
+    "Il sole tramonta e il mare è vasto.",
+    "Il mare è così grande che ogni cosa è un dettaglio.",
+    "Un giuramento è più forte di un'ascia.",
+    "Questo giuramento vale più del mare.",
+  ];
+  const worn = wornWords(mairon, textKey);
+  assert.deepEqual(worn.slice(0, 2).sort(), ["giuramento", "mare"], JSON.stringify(worn));
+  assert.ok(!worn.includes("ogni") && !worn.includes("dettaglio"), JSON.stringify(worn));
+  assert.deepEqual(wornWords(["Ho sete.", "Dammi da bere."], textKey), []);
+});
+
 model.close();
 finish();

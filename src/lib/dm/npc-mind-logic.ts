@@ -720,3 +720,19 @@ export const MAX_FIRST_TIER_NPCS = 4;
 export function firstTierLimit(campaign: { gameSettings: { npcMindLimit?: number } }): number {
   return campaign.gameSettings.npcMindLimit ?? MAX_FIRST_TIER_NPCS;
 }
+
+// The words a mind has worn out: the ones in at least three of its own last
+// eight lines. Said back to it, the small voice models stop circling them
+// ("il mare è vasto", "un voto è un voto" turn after turn on the Zattera,
+// 2026-11-17).
+const COMMON_WORDS = new Set(["della", "delle", "dello", "degli", "nella", "nelle", "questo", "questa", "quello", "quella", "perché", "anche", "ancora", "siamo", "sono", "abbiamo", "hanno", "fatto", "essere", "about", "there", "their", "which", "would", "could", "these", "those", "come", "alla", "allo", "agli", "alle", "dalla", "dallo", "dove", "però", "cosa", "ogni", "solo", "così", "qui", "noi", "voi", "loro", "suoi", "sue", "tuoi", "miei", "nostro", "vostro", "ecco", "molto", "poco", "più", "fare", "dire", "that", "this", "with", "from", "have", "what", "your", "they", "just", "will"]);
+
+export function wornWords(said: readonly string[], keyOf: (text: string) => string): string[] {
+  const counts = new Map<string, number>();
+  for (const line of said.slice(-8)) {
+    for (const word of new Set(keyOf(line).split(/[^\p{L}]+/u).filter((word) => word.length >= 4 && !COMMON_WORDS.has(word)))) {
+      counts.set(word, (counts.get(word) ?? 0) + 1);
+    }
+  }
+  return [...counts].filter(([, count]) => count >= 3).sort((a, b) => b[1] - a[1]).map(([word]) => word).slice(0, 8);
+}

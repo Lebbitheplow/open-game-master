@@ -156,3 +156,16 @@ export function settleDroppedOnFightEnd(campaignId: string, encounterId: string)
   }
   return left;
 }
+
+// The things lying loose at a place the party carries along (a raft's deck, a
+// cart's bed) go where it goes: on the Zattera a compass dropped on the deck
+// stayed at the sandbank when the raft beached (2026-11-17). Things on a
+// board square or in an enemy's hand stay. Returns how many moved.
+export function carryDroppedItems(campaignId: string, from: string, to: string): number {
+  const moving = listDroppedItems(campaignId).filter((item) => !item.heldByEnemy && item.x === null && item.place === from);
+  for (const item of moving) {
+    keepRow("dropped_items", item.id);
+    getDatabase().prepare(`UPDATE dropped_items SET place = ? WHERE id = ?`).run(to.slice(0, 120), item.id);
+  }
+  return moving.length;
+}

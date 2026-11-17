@@ -20,6 +20,7 @@ const logic = await import("../src/lib/dm/items-reader-logic.ts");
 const { stripReasoningArtifacts } = await import("../src/lib/story-prompt.ts");
 const { withoutLeadingStopWords } = await import("../src/lib/language/language.ts");
 const { textKey } = await import("../src/lib/language/text-logic.ts");
+const { italianName } = await import("../src/lib/language/srd-names-it.ts");
 
 const db = getDatabase();
 const campaign = getCampaignById(campaignId);
@@ -92,7 +93,10 @@ for (const [k, turn] of turns.entries()) {
     const plan = logic.planItemMove(move, people, keyOf);
     const holder = plan.kind === "pickup" ? null : plan.kind === "refused" ? null : plan.from;
     const ok = plan.kind === "refused" ? `REFUSED (${plan.why})` : holder && !thingNamed((held.get(holder) ?? []).map((item) => item.name), plan.thing, keyOf) ? `REFUSED (${holder} has no ${plan.thing})` : "ok";
-    console.log(`  ${move.thing}: ${move.from || "∅"} → ${move.to || "gone"}  [${ok}]`);
+    const story = [...heroLines.map((line) => line.text), stage, narration].join("\n");
+    const line = holder ? thingNamed((held.get(holder) ?? []).map((item) => item.name), plan.thing, keyOf) : plan.kind === "pickup" ? plan.thing : null;
+    const told = ok === "ok" && line && !logic.storyNamesThing(line, story, keyOf, italianName(line)) ? `REFUSED (the turn never names ${line})` : ok;
+    console.log(`  ${move.thing}: ${move.from || "∅"} → ${move.to || "gone"}  [${told}]`);
   }
   if (!parsed.moves.length) console.log("  (no moves)");
 }

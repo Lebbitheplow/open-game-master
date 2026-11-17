@@ -94,6 +94,7 @@ import {
   heardMemory,
   MAX_FIRST_TIER_NPCS,
   ON_STAGE_SOURCE,
+  wornWords,
 } from "@/lib/dm/npc-mind-logic";
 
 // The NPC minds (docs/specs/ogm-npc-isolation-design.md): each named NPC and
@@ -333,6 +334,14 @@ function bondsOf(campaign: Campaign, npc: Npc, memories: NpcMemory[]): string[] 
     });
 }
 
+// The words this mind has worn out in its own lines, named so it says
+// something new (wornWords).
+function wornLine(memories: readonly NpcMemory[]): string {
+  const said = memories.filter((memory) => memory.sourceKind === "self" && (memory.kind === "said" || memory.kind === "lie")).map((memory) => memory.content);
+  const worn = wornWords(said, textKey);
+  return worn.length ? `Words you have already used too often: ${worn.join(", ")}. Do not use them again now; talk about what is in front of you, or what you want.` : "";
+}
+
 type AskOutcome =
   | { ok: true; proposal: NpcProposal; memories: NpcMemory[]; latencyMs: number; inputTokens: number; outputTokens: number }
   | { ok: false; error: string; latencyMs: number };
@@ -347,7 +356,7 @@ async function askMind(
   const memories = memoriesFor(npc.id, listNpcMemories(campaign.id, npc.id), nowInstant(campaign.id));
   const prompt = renderMindPrompt({
     name: npc.name,
-    identity: identityOf(campaign, npc),
+    identity: [...identityOf(campaign, npc), wornLine(memories)],
     inspiration: getNpcInspiration(npc.id),
     scores: scoresFor(campaign, npc),
     memories,

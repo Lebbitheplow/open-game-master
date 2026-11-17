@@ -14,7 +14,7 @@ import { READER_PROMPT_START } from "./lib/claims-reader.mjs";
 const { test, finish } = suite("test-claims");
 const world = await openWorld({ gameSettings: { ttsEnabled: false } });
 
-const { checkClaims, claimKindsFor, englishEndsTurn, englishKeepsTurn, namedSpeakers, parseReaderReply, quoteAsks, readerSystem, renderReaderInput, withoutAsides } = await import(
+const { checkClaims, claimKindsFor, englishEndsTurn, englishKeepsTurn, namedSpeakers, parseReaderReply, quoteAsks, readerSystem, renderReaderInput, withoutAsides, withoutSentences } = await import(
   "../src/lib/dm/claims-logic.ts"
 );
 const { askedThisTurn, leveledSpellNames, readClaims, ruledFor } = await import("../src/lib/dm/claims.ts");
@@ -569,6 +569,14 @@ await test("A turn asked for its player's answer is one the GM waits on: the cha
   assert.equal(askedThisTurn(campaign(), ask([mira.id]), sheets(), tamsin.id), true, "her commander's character was asked");
   assert.equal(askedThisTurn(campaign(), ask([tamsin.id]), sheets(), tamsin.id), true, "she was asked by her own id");
   setCompanionCommander(tamsin.id, null);
+});
+
+// 2026-11-17, Zattera: a corrected sentence cut out of a speech left its
+// closing guillemet alone on the page.
+await test("A cut sentence of speech takes its closing guillemet, and none is left without its opening.", () => {
+  assert.equal(withoutSentences("Kaku annuisce. «Tienila tu.» Mairon tace.", ["Tienila tu."]), "Kaku annuisce. Mairon tace.");
+  assert.equal(withoutSentences("«Ho sete. Dammi da bere.»\n\nGruoch beve.", ["Ho sete.", "Dammi da bere."]), "Gruoch beve.");
+  assert.equal(withoutSentences("Ioshua parla. «Il sacco è tuo.» Brakk tace. «Bene.»", ["Ioshua parla."]), "«Il sacco è tuo.» Brakk tace. «Bene.»", "whole speech stays");
 });
 
 world.close();

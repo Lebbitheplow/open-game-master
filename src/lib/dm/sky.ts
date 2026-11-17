@@ -44,7 +44,14 @@ export function skyIsDue(before: CampaignClock, after: CampaignClock, minutes: n
   }
   const dayBefore = Math.floor(before.instant / (24 * 60));
   const dayAfter = Math.floor(after.instant / (24 * 60));
-  return dayAfter > dayBefore || minutes >= 4 * 60;
+  if (dayAfter > dayBefore || minutes >= 4 * 60) {
+    return true;
+  }
+  // Rough weather blows over in hours, not at the next dawn: rolled again each
+  // time the clock crosses a two-hour mark. On the Zattera a storm set at
+  // noon held through every ten-minute step to the next day (2026-11-17).
+  const rough = after.weather.sky === "storm" || after.weather.sky === "rain" || after.weather.sky === "snow" || after.weather.wind === "gale";
+  return rough && Math.floor(after.instant / 120) > Math.floor(before.instant / 120);
 }
 
 export function refreshSky(
