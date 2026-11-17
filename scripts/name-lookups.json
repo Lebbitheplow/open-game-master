@@ -1878,7 +1878,6 @@
     "lib/dm/enemy-defenses.ts#partial": [["key",1,"damage types"]],
     "lib/dm/enemy-hit.ts#first": [["key",3,"a hit's first damage part takes the rounding"]],
     "lib/dm/enemy-hit.ts#keyed": [["key",5,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],
-    "lib/dm/mount-combat.ts#partial": [["parse",1,"an attack's damage types, the first the hit's own"]],
     "lib/dm/enemy-hit.ts#partial": [["parse",5,"an attack's damage and types"],["authoring",1,"size read from the race's words"]],
     "lib/dm/enemy-hit-rows.ts#partial": [["parse",1,"a creature type's base word and the subtype its brackets name (\"humanoid (elf)\"), for the kinds a rider spares"]],
     "lib/dm/enemy-polymorph-logic.ts#keyed": [["key",1,"ids, refs, slugs, tool names, field names, env names, event kinds, UI keys, caches, door and map keys; a sheet's conditionMeta by the condition key it was written under; the usage route's gear map by the sheet's own stored item names (src/: every site read)"]],

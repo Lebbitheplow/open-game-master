@@ -14,6 +14,7 @@
 
 import { getBattleMapForEncounter, getTokenByRef } from "@/lib/db/battle-maps";
 import { getActiveBoard } from "@/lib/db/encounters";
+import { getMounts } from "@/lib/db/mounts";
 import { TERRAIN, tileAt } from "@/lib/battlemap/types";
 import { tilesBetween } from "@/lib/dm/attack-spatial";
 import { swimsFrom } from "@/lib/battlemap/types";
@@ -83,11 +84,28 @@ export function underwaterOpportunity(
   return isImmersed(campaignId, attackerRefId) ? underwaterSwing({ ...swing, melee: true, beyondNormal: false }) : CLEAR;
 }
 
-// Whether a combatant stands in a water square of the board in play.
+// Who rides the creature whose sheet this is, by the mount record's sheet id.
+function riderOf(campaignId: string, sheetId: string): string | null {
+  for (const [riderId, mount] of Object.entries(getMounts(campaignId))) {
+    if (mount.sheetId === sheetId) {
+      return riderId;
+    }
+  }
+  return null;
+}
+
+// Whether a combatant stands in a water square of the board in play. A
+// creature carrying a rider has no token of its own and stands in its rider's
+// square (mount-link.ts), so it is in the water its rider is in: a ridden
+// steed's sheet stood in none.
 export function isImmersed(campaignId: string, refId: string): boolean {
   const encounter = getActiveBoard(campaignId);
   const map = encounter ? getBattleMapForEncounter(encounter.id) : null;
-  const token = map ? getTokenByRef(map.id, refId) : null;
+  let token = map ? getTokenByRef(map.id, refId) : null;
+  if (map && !token) {
+    const rider = riderOf(campaignId, refId);
+    token = rider ? getTokenByRef(map.id, rider) : null;
+  }
   if (!map || !token || token.movement === "fly") {
     return false;
   }
