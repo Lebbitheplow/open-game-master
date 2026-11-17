@@ -60,9 +60,13 @@ export function CreateCampaignDialog({
   // The default genre's preset writes the first theme, exactly as picking any
   // other portal would; typing in the field takes it over for good.
   const locale = useLocale();
+  // The handlers below read the locale through a ref, kept current after
+  // each render (never written during one).
   const localeRef = useRef(locale);
-  localeRef.current = locale;
-  const [draft, setDraft] = useState<CampaignDraft>(() => presetTheme(DEFAULT_DRAFT, localeRef.current));
+  useEffect(() => {
+    localeRef.current = locale;
+  }, [locale]);
+  const [draft, setDraft] = useState<CampaignDraft>(() => presetTheme(DEFAULT_DRAFT, locale));
   // Every write goes through here, from handlers and callbacks only, so the
   // ref is always the draft as last written: a save pressed right after
   // typing reads the line just typed.

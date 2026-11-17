@@ -456,7 +456,11 @@ export function mathPartLabel(t: T, label: string): string {
   if (modifier) {
     const ability = modifier[1].toLowerCase();
     if (["str", "dex", "con", "int", "wis", "cha"].includes(ability)) {
-      return t("{ability} modifier", { ability: ({ "str": t("Strength"), "dex": t("Dexterity"), "con": t("Constitution"), "int": t("Intelligence"), "wis": t("Wisdom"), "cha": t("Charisma") } as Record<string, string>)[ability] ?? String(ability) });
+      // English keeps the sheet's own "DEX modifier"; a translation names
+      // the ability in full ("modificateur de Dextérité").
+      const full = ({ str: "Strength", dex: "Dexterity", con: "Constitution", int: "Intelligence", wis: "Wisdom", cha: "Charisma" } as Record<string, string>)[ability];
+      const line = t("{ability} modifier", { ability: t(full) });
+      return line === `${full} modifier` ? label : line;
     }
   }
   const key = MATH_PART_KEYS[label];

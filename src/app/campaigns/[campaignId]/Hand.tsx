@@ -507,7 +507,7 @@ function HandInner({
   // advantage to trade) is judged against it (hand-odds.ts aimedCard).
   const raised = useMemo(
     () => (picked ? aimedCard(picked, aim ?? (picked.target === "enemy" ? defaultAim : null), conditions, t) : null),
-    [picked, aim, defaultAim, conditions],
+    [picked, aim, defaultAim, conditions, t],
   );
 
   const attachedRiders = picked?.intent.card === "attack" && !picked.intent.offHand ? riders : EMPTY_CARDS;
@@ -773,7 +773,7 @@ function HandInner({
       const attack = boardChoices === "attack";
       const choices = handBoardChoices(cards, boardChoices, t);
       return {
-        title: attack ? t("Choose a weapon") : t("Choose a spell"),
+        title: attack ? t("Choose an attack") : t("Choose a spell"),
         lines: [...(choices.length ? [] : [attack ? "No attacks are available right now." : "No spells are available right now."]), ...(notice ? [notice] : [])],
         controls: [...choices.map(({ label, cards }): BoardControl => ({
           id: "hand-card", label, disabled: null,
@@ -801,7 +801,9 @@ function HandInner({
       { id: "hand-play", label: picked.compose ? t("Write in chat") : t("Play {name}", { name: pickedName }), disabled: inputBlocked && picked.cost !== "reaction" && picked.intent.card !== "reaction" ? blockedReason : handReady(picked, aim, { trigger: barProps.trigger ?? "", area: barProps.areaPick, ...(barProps.choice !== null ? { choice: barProps.choice } : {}), mix: barProps.mix, shares: barProps.shares }) ? null : picked.summon ? t("Choose the creature first.") : t("Choose a target, area or trigger first.") },
       { id: "hand-edit", label: t("Edit in chat"), disabled: null }, { id: "hand-back", label: t("Back"), disabled: null }, close,
     ] };
-  }, [t, locale, boardNative, boardSwap, boardChoices, cards, picked, rows, sentence, offered, aim, attachedRiders, barProps.options, barProps.chosen, barProps.choice, barProps.count, barProps.mix, barProps.trigger, barProps.areaPick, barProps.shares, splits, notice, inputBlocked, blockedReason]);
+  // `t` is bound to the locale (locale.tsx useT), so it stands for both:
+  // listing the two left the React Compiler unable to keep this memo.
+  }, [t, boardNative, boardSwap, boardChoices, cards, picked, rows, sentence, offered, aim, attachedRiders, barProps.options, barProps.chosen, barProps.choice, barProps.count, barProps.mix, barProps.trigger, barProps.areaPick, barProps.shares, splits, notice, inputBlocked, blockedReason]);
   const nativeSignature = JSON.stringify([campaignId, sheet?.id, signature, nativePanel, sending && !boardSwap]);
   useEffect(() => {
     if (swapReply.current && swapTurn.current !== `${campaignId}:${sheet?.id}:${signature}`) {

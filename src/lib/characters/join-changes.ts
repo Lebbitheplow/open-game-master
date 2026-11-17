@@ -4,6 +4,7 @@ import type { OwedContext } from "@/lib/srd/owed-picks-logic";
 import { textKey } from "@/lib/language/text-logic";
 import type { OwedPicks } from "@/lib/characters/seat-picks";
 import { classDisplayNameFor, classLevelWords } from "@/lib/characters/class-words";
+import { classWords } from "@/lib/sheet-words";
 import type { Locale } from "@/lib/messages-logic";
 import { translate } from "@/lib/messages-logic";
 import { pluralOf } from "@/lib/messages-logic";
@@ -97,10 +98,11 @@ function slotLine(sheet: Sheet, t: T): string {
 }
 
 // "fighter 3 / plague doctor 2": the classes in words, as the rest of the
-// confirmation reads them — in the reader's language where the official-name
-// maps carry it (class-words.ts).
+// confirmation reads them. English keeps the sheet's own words (classWords);
+// another language names them where the official-name maps carry it
+// (class-words.ts).
 function classLine(sheet: Sheet, level: number, locale: Locale): string {
-  return classLevelWords({ class: sheet.class, level, classes: sheet.classes }, (id) => classDisplayNameFor(id, locale));
+  return classLevelWords({ class: sheet.class, level, classes: sheet.classes }, locale === "en" ? classWords : (id) => classDisplayNameFor(id, locale));
 }
 
 export function joinChanges(

@@ -164,16 +164,16 @@ for (const { label, fields, weapon } of CASES) {
 test("the working names its parts: a rogue's Dexterity save and an expert's Stealth", () => {
   const built = builder.build(CASES[2].fields);
   const rows = rowsOf(tableOf({ ...built, klass: builder.classes.find((entry) => entry.id === "rogue") }));
-  assert.equal(rows.get("save-dex").working, "Dexterity modifier +3, proficiency +2");
-  assert.equal(rows.get("skill-stealth").working, "Dexterity modifier +3, expertise +4");
-  assert.equal(rows.get("skill-athletics").working, "Strength modifier -1");
-  assert.match(rows.get("weapon-Rapier").working, /^to hit: Dexterity modifier \+3, proficiency \+2; damage adds Dexterity modifier/);
+  assert.equal(rows.get("save-dex").working, "DEX modifier +3, proficiency +2");
+  assert.equal(rows.get("skill-stealth").working, "DEX modifier +3, expertise +4");
+  assert.equal(rows.get("skill-athletics").working, "STR modifier -1");
+  assert.match(rows.get("weapon-Rapier").working, /^to hit: DEX modifier \+3, proficiency \+2; damage adds DEX modifier/);
 });
 
 test("a wizard's spell save DC shows its parts", () => {
   const built = builder.build(CASES[1].fields);
   const rows = rowsOf(tableOf({ ...built, klass: builder.classes.find((entry) => entry.id === "wizard") }));
-  assert.equal(rows.get("spell-dc").working, "base +8, proficiency +2, Intelligence modifier +3");
+  assert.equal(rows.get("spell-dc").working, "base +8, proficiency +2, INT modifier +3");
   assert.equal(rows.get("slots-1").label, "1st-level slots");
   assert.equal(rows.get("slots-2").label, "2nd-level slots");
 });

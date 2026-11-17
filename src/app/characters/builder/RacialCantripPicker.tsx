@@ -26,11 +26,11 @@ export function RacialCantripPicker({
   cantrips: string[];
   onChange: (cantrips: string[]) => void;
 }) {
+  const t = useT();
   const choice = race.cantripChoice;
   if (!choice) {
     return null;
   }
-  const t = useT();
   const { list, count } = choice;
   const picked = racialCantripsOf({ cantrips }).slice(0, count);
   const word = countWord(count).toLowerCase();

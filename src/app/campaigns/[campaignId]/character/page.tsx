@@ -5,7 +5,7 @@ import { GameIcon } from "@/components/ui/GameIcon";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { useSearchParams } from "next/navigation";
 import { useT } from "@/lib/locale";
-import { Suspense, use, useEffect, useState } from "react";
+import { Suspense, use, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { PIXEL_ICONS, PixelTile, ui } from "@/lib/ui";
 import CharacterBuilder, {
@@ -69,6 +69,7 @@ function CampaignCharacterPageInner({ campaignId }: { campaignId: string }) {
   // the confirm sheet (backlog F1 and F6), held here until it seats.
   const [helped, setHelped] = useState(false);
   const [built, setBuilt] = useState<JoinHero | null>(null);
+  const builtSeq = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -154,7 +155,9 @@ function CampaignCharacterPageInner({ campaignId }: { campaignId: string }) {
 
   function submitNew(result: BuilderResult) {
     if (helped && flow !== "edit") {
-      setBuilt({ kind: "built", id: String(Date.now()), name: result.sheet.name, sheet: result.sheet });
+      // A fresh id per build, from the event (the React Compiler refuses a
+      // clock read it cannot prove stays out of render).
+      setBuilt({ kind: "built", id: `built-${(builtSeq.current += 1)}`, name: result.sheet.name, sheet: result.sheet });
       return;
     }
     if (flow === "edit" && editCharacter) {

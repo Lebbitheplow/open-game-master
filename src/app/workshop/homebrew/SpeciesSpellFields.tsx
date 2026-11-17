@@ -36,7 +36,7 @@ const L = SPECIES_SPELL_LIMITS;
 // How often a levelled spell is cast without a slot, as one pick: "once a
 // long rest", "2 times a short rest". Its value is "<uses>-<rest>". The
 // words read the reader's language (speciesSpellUsesWords is t-first).
-const useOptions = (t: (key: string, vars?: Record<string, string | number>) => string) =>
+const usesOptions = (t: (key: string, vars?: Record<string, string | number>) => string) =>
   (["long", "short"] as const).flatMap((rest) =>
     Array.from({ length: L.uses }, (_, at) => ({ value: `${at + 1}-${rest}`, label: speciesSpellUsesWords({ uses: at + 1, rest }, t) })),
   );
@@ -78,7 +78,7 @@ function SpellRow({ row, put, remove }: { row: Data; put: (next: Data) => void; 
             <Select<string>
               label={t("How often {name} is cast without a spell slot", { name })}
               value={`${uses}-${rest}`}
-              options={useOptions(t)}
+              options={usesOptions(t)}
               onChange={(value) => {
                 const [count, back] = value.split("-");
                 put({ ...row, uses: Number(count), rest: back });

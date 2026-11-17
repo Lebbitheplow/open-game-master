@@ -212,13 +212,13 @@ function SeedCard({
   background: BackgroundOption | undefined;
   onChoose: () => void;
 }) {
+  const t = useT();
   if (!klass) {
     return null;
   }
   const reading = classRoles(klass);
   const [first, second] = abilityPriority(klass);
   const name = [race?.name, klass.name].filter(Boolean).join(" ");
-  const t = useT();
   return (
     <div className="panel flex h-full flex-col gap-2 rounded-xl p-3" data-quick-seed={seed.classId}>
       <p className="eyebrow text-[0.875rem] text-amber-400/80">{title}</p>
