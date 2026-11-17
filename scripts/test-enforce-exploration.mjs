@@ -300,5 +300,20 @@ await test("a lantern burns on its flask of oil: with none carried it gives no l
   assert.ok(carriedLight({ equipment: [{ name: "Hooded Lantern", qty: 1 }, { name: "Flask of Oil", qty: 2 }] }).radius > 0);
 });
 
+// Fork PR 1019 (2026-11-17): a storm set at noon held through every short
+// step to the next day, since the sky was rolled again only at dawn.
+await test("A storm blows over in hours: rough weather is rolled again at each two-hour mark, fair weather waits for dawn.", async () => {
+  const { skyIsDue } = await import("../src/lib/dm/sky.ts");
+  const storm = { sky: "storm", temperature: "cold", wind: "gale", precipitation: 3 };
+  const rain = { sky: "rain", temperature: "mild", wind: "calm", precipitation: 1 };
+  const clear = { sky: "clear", temperature: "mild", wind: "calm", precipitation: 0 };
+  const at = (instant, weather) => ({ calendar: "harptos", instant, weather });
+  assert.equal(skyIsDue(at(600, storm), at(610, storm), 10), false, "ten minutes inside the mark");
+  assert.equal(skyIsDue(at(710, storm), at(720, storm), 10), true, "the two-hour mark crossed");
+  assert.equal(skyIsDue(at(710, rain), at(730, rain), 20), true, "rain too");
+  assert.equal(skyIsDue(at(710, clear), at(720, clear), 10), false, "a clear sky waits for dawn");
+  assert.equal(skyIsDue(at(1430, clear), at(1450, clear), 20), true, "a dawn still rolls every sky");
+});
+
 world.close();
 finish();
