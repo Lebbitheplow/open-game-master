@@ -22,7 +22,7 @@ import { publishPersisted } from "@/lib/events";
 import type { SpendContext } from "@/lib/dm/authored-spend-effects";
 import { removeConditions } from "@/lib/dm/condition-logic";
 import { holdIfFree } from "@/lib/dm/gear-hands";
-import { saveEquipment } from "@/lib/dm/gear-store";
+import { saveEquipment } from "@/lib/owners/items";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";
 import { addRowMath, handedOverRow } from "@/lib/dm/mutation-math";
 import type { ToolError } from "@/lib/dm/tool-errors";

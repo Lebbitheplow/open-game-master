@@ -3,6 +3,7 @@ import { withStartingCharges } from "@/lib/srd/item-charge-rules";
 import { rollExpression } from "@/lib/dice";
 import { getDatabase, nowIso, parseJson } from "@/lib/db/core";
 import { touchCampaign } from "@/lib/db/campaigns";
+import { checkOwnedFields, ownerWrite } from "@/lib/db/owner-gate";
 import { effectiveMaxHp, endedByRegain, maxHpRiders, removeConditions, tempHpClaims, withoutTempHpClaims, type ConditionMetaMap } from "@/lib/dm/condition-logic";
 import { settlePact, vanishStrays } from "@/lib/dm/mt-srd-pact";
 import { endedByFallingUnconscious, endedByLosingWeapon, fellUnconscious, rageSuspension } from "@/lib/dm/mt-srd-unconscious";
@@ -472,7 +473,7 @@ export function settleHeldGear(campaignId: string): CharacterSheet[] {
     const stored = parseJson<EquipmentItem[]>(row?.equipment_json ?? "[]", []);
     const equipment = withDefaultHeld(stored, guessed ? unguessed(sheet.equipment) : sheet.equipment, sheet, lastAttackedWith(sheet));
     const same = equipment === stored || (guessed && equipment.every((item, at) => item.equipped === stored[at]?.equipped));
-    const updated = same ? null : patchSheet(sheet.id, { equipment }, { guessing: true });
+    const updated = same ? null : ownerWrite("items", () => patchSheet(sheet.id, { equipment }, { guessing: true }));
     if (updated) {
       changed.push(updated);
     }
@@ -842,6 +843,7 @@ export function patchSheet(
   // marks (src/lib/dm/held-default.ts keepHeldGuess).
   options: { restoring?: boolean; guessing?: boolean } = {},
 ): CharacterSheet | null {
+  checkOwnedFields(input);
   const existing = getSheetById(sheetId);
   if (!existing) {
     return null;

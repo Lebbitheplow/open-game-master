@@ -1,10 +1,11 @@
+import { writeItems } from "@/lib/owners/items";
 import { isErrorResponse, requireStoryAuthority } from "@/lib/campaign-api";
 import { allocateSeq, campaignSeats } from "@/lib/db/campaigns";
 import { correctionsField } from "@/lib/correction-reasons";
 import { getDatabase } from "@/lib/db/core";
 import { coherentCorrection } from "@/lib/dm/correction-rules";
 import { sheetForViewer } from "@/lib/dm/sheet-view";
-import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { getSheetById } from "@/lib/db/sheets";
 import { insertSheetAudit, type SheetAuditEntry } from "@/lib/db/sheet-audit";
 import { auditRowCorrected, recordTurnCorrection } from "@/lib/db/turn-ledger";
 import { fullPatchSheetSchema } from "@/lib/schemas/sheet";
@@ -60,7 +61,7 @@ export async function PATCH(
   );
   const saved = getDatabase().transaction(() => {
     const corrected = auditRowCorrected(campaignId, sheet.id, changed);
-    const updated = patchSheet(sheet.id, patch);
+    const updated = writeItems(sheet.id, patch);
     if (!updated) {
       return null;
     }

@@ -3,8 +3,9 @@
 // they must not reach what that module does. The rules are in
 // src/lib/srd/spell-storing.ts.
 
+import { writeItems } from "@/lib/owners/items";
 import type { Campaign } from "@/lib/db/campaigns";
-import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { getSheetById } from "@/lib/db/sheets";
 import { writeCharges } from "@/lib/dm/item-charges";
 import { carriedItemsMatching } from "@/lib/dm/item-logic";
 import type { ToolError } from "@/lib/dm/tool-errors";
@@ -149,7 +150,7 @@ export function noteRunning(sheetId: string, cast: ItemCast) {
     ...(cast.attackBonus ? { attackBonus: cast.attackBonus } : {}),
     ...(cast.abilityMod !== undefined ? { abilityMod: cast.abilityMod } : {}),
   };
-  patchSheet(sheet.id, { equipment: sheet.equipment.map((item) => (item === row ? { ...item, castRunning: [...kept, entry] } : item)) });
+  writeItems(sheet.id, { equipment: sheet.equipment.map((item) => (item === row ? { ...item, castRunning: [...kept, entry] } : item)) });
 }
 
 // A new casting from their own slots: an item's numbers for the spell are done.

@@ -40,7 +40,7 @@ import { spellDrawnMark } from "@/lib/srd/item-cast-credit";
 import { hasItemTag } from "@/lib/srd/item-tags";
 import { gearWeaponFor } from "@/lib/srd/gear-weapons";
 import { withAmmoCount } from "@/lib/srd/ammunition";
-import { saveEquipment } from "@/lib/dm/gear-store";
+import { saveEquipment } from "@/lib/owners/items";
 import { lightOil, spreadGear } from "@/lib/dm/gear-zones";
 import { matchGear } from "@/lib/srd/adventuring-gear";
 import { scrollSpell } from "@/lib/srd/scrolls";

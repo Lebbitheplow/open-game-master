@@ -1,3 +1,4 @@
+import { writeItems } from "@/lib/owners/items";
 import type { SystemGlyph } from "@/lib/system-glyphs";
 import { z } from "zod";
 import { type Campaign } from "@/lib/db/campaigns";
@@ -147,7 +148,7 @@ export function handlePartyStash(
       if ("error" in added) {
         return added;
       }
-      patchSheet(fresh.id, { equipment: taken.equipment });
+      writeItems(fresh.id, { equipment: taken.equipment });
       const party = updateParty(campaign.id, (current) => ({ ...current, inventory: added.inventory }));
       publishParty(campaign.id, party);
       tableNote(campaign, `${fresh.name} puts ${taken.item.name}${taken.removed > 1 ? ` x${taken.removed}` : ""} in the party's pack.`, "cue-bell");
@@ -167,7 +168,7 @@ export function handlePartyStash(
       worth,
       spell,
     });
-    patchSheet(fresh.id, { equipment: granted.equipment });
+    writeItems(fresh.id, { equipment: granted.equipment });
     const next = updateParty(campaign.id, (current) => ({ ...current, inventory: taken.inventory }));
     publishParty(campaign.id, next);
     tableNote(campaign, `${fresh.name} takes ${taken.item.name}${taken.removed > 1 ? ` x${taken.removed}` : ""} from the party's pack.`, "cue-bell");
@@ -194,7 +195,7 @@ export function handlePartyStash(
         refused: "rules",
       };
     }
-    patchSheet(fresh.id, { gold: change.purse.gold, copper: change.purse.copper });
+    writeItems(fresh.id, { gold: change.purse.gold, copper: change.purse.copper });
     const party = updateParty(campaign.id, (current) => ({
       ...current,
       copper: current.copper + copper,
@@ -209,7 +210,7 @@ export function handlePartyStash(
     return { error: `The common purse holds ${formatCopper(party.copper)}.`, refused: "rules" };
   }
   const change = addCopper({ gold: fresh.gold, copper: fresh.copper }, copper);
-  patchSheet(fresh.id, { gold: change.purse.gold, copper: change.purse.copper });
+  writeItems(fresh.id, { gold: change.purse.gold, copper: change.purse.copper });
   const next = updateParty(campaign.id, (current) => ({
     ...current,
     copper: Math.max(0, current.copper - copper),

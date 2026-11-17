@@ -1,3 +1,4 @@
+import { writeItems } from "@/lib/owners/items";
 import { sanctuaryShortRest, type VesselRest } from "@/lib/dm/genie-vessel";
 import { OMEN_WORDS } from "@/lib/dm/before-roll-logic";
 import { foretoldWords } from "@/lib/dm/foretold-logic";
@@ -9,7 +10,7 @@ import type { SystemGlyph } from "@/lib/system-glyphs";
 import { z } from "zod";
 import { allocateSeq, type Campaign } from "@/lib/db/campaigns";
 import { getActiveEncounter } from "@/lib/db/encounters";
-import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { getSheetById } from "@/lib/db/sheets";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
 import { insertCampaignMessage } from "@/lib/db/messages";
 import { publishPersisted, publishWithSeq } from "@/lib/events";
@@ -154,7 +155,7 @@ function auditRest(
   patch: FullPatchSheetInput,
   reason: string,
 ) {
-  const updated = patchSheet(sheet.id, patch);
+  const updated = writeItems(sheet.id, patch);
   const entry = insertSheetAudit({
     campaignId: campaign.id,
     characterId: sheet.id,

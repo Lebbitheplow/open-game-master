@@ -150,6 +150,26 @@ Ogni fetta si chiude con test verdi, prova sui turni registrati e 10 turni dal v
 8. **Scontro** (91 file): ultimo, è il più grande.
 9. **Confine chiuso.** Lista di eccezioni vuota; `patchSheet` non è più esportato.
 
+## Stato
+
+- **Fetta 1, fatta.** `scripts/test-domain-owners.mjs` con `scripts/domain-owners-baseline.json`: 175 file
+  all'inizio, 160 dopo la fetta 2.
+- **Fetta 2, fatta in questa forma:**
+  - `src/lib/db/owner-gate.ts`: `patchSheet` rifiuta `equipment`, `gold` e `copper` se il cancello degli
+    Oggetti è chiuso. Con `OGM_OWNER_GATE=strict`, attivo in ogni suite `enforce-harness`, lancia
+    un'eccezione; in gioco scrive comunque e nomina nel log chi ha scritto fuori, una volta per punto
+    del codice, così un tavolo non perde un turno per uno scrittore non ancora migrato.
+  - `src/lib/owners/items.ts`: `writeItems`, `saveEquipment` (spostata da `gear-store.ts`), `give`
+    (passaggio atomico) e `handedThisTurn` (lo stesso passaggio nello stesso turno non si ripete).
+  - Gli scrittori trovati facendo girare tutte le suite con il cancello in misura (55 punti in 26 file)
+    ora passano da `writeItems`.
+  - `takeRecorded` è sciolto: il palco passa il turno a `handle_item` e chiede al proprietario.
+- **Restano porte generiche:** `audited-patch.ts`, `sheet-undo.ts` e le route della scheda passano da
+  `writeItems` con patch complete, perché scrivono anche altri domini. Si chiudono quando esistono i
+  proprietari di quei domini.
+- **Spostato alla fetta 3:** `heldByCastRefusal` resta una validazione prima di `grant_item`; sparisce
+  quando il master perde `grant_item` per i passaggi raccontati.
+
 ## Verifica
 
 - Unità: ogni proprietario, comando per comando (valido, rifiutato, ripetuto nel turno).

@@ -25,8 +25,9 @@
 // the other watches there do; vanishStrays reaches the ground and the other
 // sheets, after the write.
 
+import { writeItems } from "@/lib/owners/items";
 import { listDroppedItems, takeFromDroppedItem } from "@/lib/db/dropped-items";
-import { listSheets, patchSheet } from "@/lib/db/sheets";
+import { listSheets } from "@/lib/db/sheets";
 import { publishPersisted } from "@/lib/events";
 import { textKey } from "@/lib/language/text-logic";
 import type { EquipmentItem } from "@/lib/schemas/sheet";
@@ -129,7 +130,7 @@ export function vanishStrays(campaignId: string, ownerId: string): string[] {
       continue;
     }
     gone.push(...sheet.equipment.filter((item) => item.pact === mark).map((item) => item.name));
-    const updated = asPactWrite(() => patchSheet(sheet.id, { equipment: sheet.equipment.filter((item) => item.pact !== mark) }));
+    const updated = asPactWrite(() => writeItems(sheet.id, { equipment: sheet.equipment.filter((item) => item.pact !== mark) }));
     if (updated) {
       publishPersisted(campaignId, "sheet_updated", { sheet: updated });
     }

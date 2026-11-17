@@ -43,7 +43,7 @@ import { spendEnemyAction } from "@/lib/dm/enemy-approach";
 import { rollCharacterCheck } from "@/lib/dm/contest-roll";
 import { computeAbilityScore, toolProficiencyBonus } from "@/lib/dm/roll-riders";
 import { findCarriedItem } from "@/lib/dm/item-logic";
-import { saveEquipment } from "@/lib/dm/gear-store";
+import { saveEquipment } from "@/lib/owners/items";
 import { placeName } from "@/lib/dm/gear-ground";
 import { tilesApart } from "@/lib/dm/board-reach";
 import { publishBattleMapUpdate } from "@/lib/dm/map-tools";

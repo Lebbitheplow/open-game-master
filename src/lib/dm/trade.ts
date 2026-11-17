@@ -1,10 +1,11 @@
+import { writeItems } from "@/lib/owners/items";
 import type { Campaign } from "@/lib/db/campaigns";
 import { allocateSeq } from "@/lib/db/campaigns";
 import { insertCharacterEvent } from "@/lib/db/character-events";
 import { getDatabase } from "@/lib/db/core";
 import type { ItemProposal } from "@/lib/db/item-proposals";
 import { insertSheetAudit } from "@/lib/db/sheet-audit";
-import { getSheetById, patchSheet } from "@/lib/db/sheets";
+import { getSheetById } from "@/lib/db/sheets";
 import { computeTrade, normalizeTradeOffer, tradeSummary } from "@/lib/dm/trade-logic";
 import { publishEphemeral, publishPersisted } from "@/lib/events";
 
@@ -34,8 +35,8 @@ export function applyTrade(campaign: Campaign, proposal: ItemProposal): { ok: tr
   }
   const summary = tradeSummary(offer, from.name, to.name);
   getDatabase().transaction(() => {
-    patchSheet(from.id, computed.from);
-    patchSheet(to.id, computed.to);
+    writeItems(from.id, computed.from);
+    writeItems(to.id, computed.to);
     for (const [sheet, patch] of [
       [from, computed.from],
       [to, computed.to],

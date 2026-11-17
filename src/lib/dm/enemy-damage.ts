@@ -1,3 +1,4 @@
+import { writeItems } from "@/lib/owners/items";
 import { settleDroppedOnFightEnd } from "@/lib/db/dropped-items";
 import { layFlamesOnDeath } from "@/lib/dm/cauterizing-flames";
 import { recordTrigger } from "@/lib/dm/last-save";
@@ -11,7 +12,7 @@ import { burnWebUnder } from "@/lib/dm/zone-cast";
 import { lightOil } from "@/lib/dm/gear-zones";
 import { endEncounter, getActiveEncounter, getEnemy, listEnemies, patchEnemyHp, saveEncounter, setEnemyConcentration, type Encounter, type EncounterEnemy, patchEnemyConditions } from "@/lib/db/encounters";
 import { activePublicEncounter } from "@/lib/db/encounter-view";
-import { getSheetById, listSheets, patchSheet } from "@/lib/db/sheets";
+import { getSheetById, listSheets } from "@/lib/db/sheets";
 import { settleDying } from "@/lib/dm/death";
 import { dyingLeftAlone, isDying, MOST_SAVES_TO_SETTLE } from "@/lib/dm/death-logic";
 import type { DmTurn } from "@/lib/db/dm-turns";
@@ -173,7 +174,7 @@ export function finishEncounter(
       index >= 0
         ? withAmmoCount(owner.equipment, index, ammoCount(owner.equipment[index]) + back)
         : withAmmoCount([...owner.equipment, typeof entry === "object" ? entry.line : { name: itemName, qty: back }], owner.equipment.length, back);
-    patchSheet(sheetId, { equipment });
+    writeItems(sheetId, { equipment });
     ammoRecovered[`${owner.name}: ${itemName}`] = back;
   }
 

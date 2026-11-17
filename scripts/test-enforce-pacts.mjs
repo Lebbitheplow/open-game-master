@@ -26,7 +26,7 @@ const rolls = await import("../src/lib/db/rolls.ts");
 const whispers = await import("../src/lib/db/dm-whispers.ts");
 const conscienceDb = await import("../src/lib/db/companion-conscience.ts");
 const pactsDb = await import("../src/lib/db/pacts.ts");
-const sheetsDb = await import("../src/lib/db/sheets.ts");
+const items = await import("../src/lib/owners/items.ts");
 const factions = await import("../src/lib/db/factions.ts");
 const { getClock } = await import("../src/lib/db/clock.ts");
 const { getParty } = await import("../src/lib/db/party.ts");
@@ -285,7 +285,7 @@ await test("theft with nothing priced takes the fullest purse by all its coin, s
   const t = await table({ kael: { equipment: [], gold: 0, copper: 75 }, brin: { equipment: [], gold: 0, copper: 40 } });
   for (const name of ["Seren", "Thorne"]) {
     const sheet = t.companion(name);
-    sheetsDb.patchSheet(sheet.id, { equipment: [], gold: 0, copper: 0 });
+    items.writeItems(sheet.id, { equipment: [], gold: 0, copper: 0 });
   }
   t.axes("Thorne", { drive: 2 });
   t.rung("Seren", 2);

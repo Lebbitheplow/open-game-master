@@ -31,6 +31,10 @@
 // into docs/rules-enforcement-ledger.md.
 import fs from "node:fs";
 
+// Every suite runs with the domain owners' gate shut (src/lib/db/owner-gate.ts):
+// a write that bypasses an owner fails the test that made it.
+process.env.OGM_OWNER_GATE ??= "strict";
+
 const SEVERITIES = new Set(["high", "medium", "low"]);
 
 export function suite(name) {

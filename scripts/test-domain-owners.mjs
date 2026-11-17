@@ -19,7 +19,6 @@ const baseline = JSON.parse(readFileSync(baselinePath, "utf8"));
 // setter -> { module it lives in, the only places allowed to import it }
 const SETTERS = {
   patchSheet: { from: "@/lib/db/sheets", owners: ["src/lib/db/", "src/lib/owners/"] },
-  writeItems: { from: "@/lib/owners/item-store", owners: ["src/lib/db/", "src/lib/owners/"] },
   ownerWrite: { from: "@/lib/db/owner-gate", owners: ["src/lib/db/", "src/lib/owners/"] },
 };
 
