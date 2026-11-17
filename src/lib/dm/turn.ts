@@ -64,6 +64,7 @@ import {
   type ToolDefLike,
   type ToolGroupId,
   type ToolProfile,
+  withoutPetFields,
 } from "@/lib/dm/tool-profiles";
 import { casts, ruleContextFor } from "@/lib/dm/rule-context";
 import { companionMode } from "@/lib/dm/companion-tools";
@@ -1758,7 +1759,7 @@ export function compactTurnTools(
   const offered = compactToolNames(names, signals, opened);
   const closed = closedGroups(names, offered);
   return {
-    tools: [...full.filter((tool) => offered.has(tool.function.name)).map(compactTool), ...(closed.length ? [moreToolsTool(closed)] : [])],
+    tools: [...full.filter((tool) => offered.has(tool.function.name)).map((tool) => compactTool(signals.pets ? tool : withoutPetFields(tool))), ...(closed.length ? [moreToolsTool(closed)] : [])],
     offered,
     closed,
   };

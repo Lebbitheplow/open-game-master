@@ -396,6 +396,8 @@ await test("the players' words open the group the move needs on the first call",
   const first = requests.find((body) => Array.isArray(body.tools));
   assert.ok(first.tools.some((tool) => tool.function.name === "haggle"), "the shop group rides from the start");
   assert.ok(first.tools.some((tool) => tool.function.name === "purchase"), "and the trade itself is in the exploring core");
+  const heal = first.tools.find((tool) => tool.function.name === "heal");
+  assert.ok(heal && !("petName" in heal.function.parameters.properties), "a table with no pet is not offered heal's petName, which a 16K window has no room for");
   const turn = getDmTurn(getLatestDmTurnId(campaign.id));
   assert.deepEqual(turn.contextTrace.profile.intent, ["shop"]);
 });

@@ -363,6 +363,24 @@ export const COMPACT_OMITS: Record<string, string[]> = {
   use_resource: ["targetEnemyIds"],
 };
 
+// Arguments only a table with a pet can use (ProfileSignals.pets): a compact
+// call to a table with none leaves them off. heal's petName alone is about 20
+// tokens, and the 16K core had less than that to spare once it came (a shop
+// turn's group no longer fitted beside it).
+export const COMPACT_PET_FIELDS: Record<string, string[]> = {
+  heal: ["petName"],
+};
+
+// `tool` as a table with no pet is offered it in a compact call.
+export function withoutPetFields<T extends ToolDefLike>(tool: T): T {
+  const omit = COMPACT_PET_FIELDS[tool.function.name];
+  const schema = tool.function.parameters as { properties?: Record<string, unknown> } | undefined;
+  if (!omit || !schema?.properties) {
+    return tool;
+  }
+  return { ...tool, function: { ...tool.function, parameters: { ...schema, properties: Object.fromEntries(Object.entries(schema.properties).filter(([key]) => !omit.includes(key))) } } };
+}
+
 function withoutOmitted(name: string, parameters: unknown): unknown {
   const omit = COMPACT_OMITS[name];
   const schema = parameters as { properties?: Record<string, unknown> } | undefined;
