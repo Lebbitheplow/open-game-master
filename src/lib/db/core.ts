@@ -3135,6 +3135,10 @@ function ensureSchema(db: SqliteDatabase) {
   // 731, src/lib/dm/known-before-logic.ts): {grade, how}, or '' for anyone
   // the party meets in play. A module carries it to the tables made from it.
   addColumns("npcs", [["known_before_json", `TEXT NOT NULL DEFAULT ''`]]);
+  // The NPC's body as the server keeps it: free or someone's prisoner, what
+  // holds them, standing or down, travelling with the party
+  // (src/lib/dm/npc-state-logic.ts). '' is a free, unbound, standing NPC.
+  addColumns("npcs", [["state_json", `TEXT NOT NULL DEFAULT ''`]]);
   // When the party first dealt with an NPC (src/lib/db/npcs.ts Npc.metAt),
   // which a reaction roll reads: it is for strangers. The rows already
   // played get it once, from what play recorded about them.

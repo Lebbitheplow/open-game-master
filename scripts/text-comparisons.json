@@ -14,6 +14,10 @@
     "lib/db/core.ts"
   ],
   "sites": {
+    "lib/dm/npc-state-guard-logic.ts#str-list": [["table-language",1,"Italian and English words for a body's change in the narrator's prose, only deciding whether a utility read of the narration is worth its call: a miss is caught on the next turn's read of a named person"]],
+    "lib/dm/party-npcs-fight-logic.ts#str-list": [["key",1,"an NPC's custody, restraint and condition values (engine vocabulary)"]],
+    "lib/dm/party-npcs-fight-logic.ts#str-eq": [["key",2,"an NPC's custody, restraint and condition values and an enemy row's status (engine vocabulary)"]],
+    "lib/dm/npc-state-logic.ts#str-list": [["key",3,"an NPC's custody, restraint and condition values (engine vocabulary)"]],
     "components/ui/LobbyIcon.tsx#str-key": [["key",1,"fixed heading-glyph keys select decorative fittings"]],
     "lib/appearance-themes.ts#str-list": [["key",1,"registered icon keys define the checked picker and lobby symbol vocabulary, not player-written text"]],
     "lib/dm/genre-cc-a-drones.ts#str-eq": [["key",2,"a gas's damage type and condition, the engine's own vocabulary (zone rows)"]],
@@ -1970,7 +1974,7 @@
     "lib/dm/tool-merge-logic.ts#str-key": [["key",1,"the old names a tool's renamed arguments were sent under (field names)"]],
     "lib/dm/tool-merge-logic.ts#str-list": [["key",11,"tool names and the argument keys a merged tool hands each handler (engine vocabulary)"]],
     "lib/dm/tool-merge.ts#str-eq": [["key",1,"tool names"]],
-    "lib/dm/tool-profiles.ts#re-word": [["english-extra",13,"tool groups opened before the turn by English words in the players' newest lines (ENGLISH_INTENT), read only at an English table (turn.ts englishPlayerText): a guess, and a miss, as at a table in another language, costs one more_tools call that opens the group"]],
+    "lib/dm/tool-profiles.ts#re-word": [["english-extra",14,"tool groups opened before the turn by English words in the players' newest lines (ENGLISH_INTENT), read only at an English table (turn.ts englishPlayerText): a guess, and a miss, as at a table in another language, costs one more_tools call that opens the group"]],
     "lib/dm/tool-profiles.ts#str-eq": [["key",1,"tool names, tool group ids and schema keys"]],
     "lib/dm/tool-profiles.ts#str-list": [["key",1,"tool names, tool group ids and schema keys"]],
     "lib/dm/tool-profiles.ts#toLowerCase": [["key",2,"tool group id (tool argument)"]],
@@ -3076,7 +3080,7 @@
     "lib/dm/srd-defenses.ts#\\b": [["key",2,"tool schema enums and field names, statuses, condition labels and ids (engine vocabulary)"]],
     "lib/dm/summon-rules.ts#\\b": [["english-source",2,"reference: the SRD Magic Weapons trait in the block's trait line"]],
     "lib/dm/sunlight-turn.ts#\\b": [["english-source",1,"a Sunlight Hypersensitivity trait's printed radiant damage (stat-block text)"]],
-    "lib/dm/tool-profiles.ts#\\b": [["english-extra",26,"tool groups opened before the turn by English words in the players' newest lines (ENGLISH_INTENT), read only at an English table (turn.ts englishPlayerText): a guess, and a miss, as at a table in another language, costs one more_tools call that opens the group"]],
+    "lib/dm/tool-profiles.ts#\\b": [["english-extra",28,"tool groups opened before the turn by English words in the players' newest lines (ENGLISH_INTENT), read only at an English table (turn.ts englishPlayerText): a guess, and a miss, as at a table in another language, costs one more_tools call that opens the group"]],
     "lib/dm/tool-profiles.ts#\\w": [["english-extra",2,"tool groups opened before the turn by English words in the players' newest lines (ENGLISH_INTENT), read only at an English table (turn.ts englishPlayerText): a guess, and a miss, as at a table in another language, costs one more_tools call that opens the group"]],
     "lib/dm/tool-text.ts#\\b": [["key",1,"tool-call markup (tool names, XML tags)"],["key",2,"an agent program's call written as text: invoke, parameter and function_calls tags, with or without a namespace (issue 794)"],["key",4,"the server's own lines and the ids they carry, which a model copies back: its tags and argument keys, the same at every table, cut from the reply and held from the draft (issue 900)"],["key",5,"the story arc's markers the prompt itself writes ([NOW], [ahead], a waypoint checklist and its step numbers), ODM's own markup a model copies back into the story, the same at every table (issue 941)"]],
     "lib/dm/tool-text.ts#\\w": [["key",1,"an agent program's call written as text: invoke, parameter and function_calls tags, with or without a namespace (issue 794)"]],

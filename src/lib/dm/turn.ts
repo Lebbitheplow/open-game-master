@@ -185,7 +185,7 @@ import { textKey } from "@/lib/language/text-logic";
 import { conscienceSecretLines, souredLeaving } from "@/lib/dm/conscience";
 import { companionMomentBlock, settleCompanionLeaving } from "@/lib/dm/departure-turn";
 import { intentLinesForPrompt } from "@/lib/dm/departure";
-import { partySplit } from "@/lib/dm/party-split";
+import { partySplit, splitsParty } from "@/lib/dm/party-split";
 import { agendaLinesForPrompt } from "@/lib/dm/companion-agenda";
 import { pactLinesForPrompt } from "@/lib/dm/pacts";
 import { returnDirectorNotes } from "@/lib/dm/companion-revenge";
@@ -302,6 +302,10 @@ import { routeToolCall } from "@/lib/dm/tool-merge";
 import { acceptsCall, offeredAs } from "@/lib/dm/tool-merge-logic";
 import { petTools, PET_TOOL_NAMES } from "@/lib/dm/pet-tools";
 import { socialTools, SOCIAL_TOOL_NAMES, handleSetNpc, npcRosterForPrompt } from "@/lib/dm/social-tools";
+import { handleNpcState, npcStateTools, NPC_STATE_TOOL_NAMES } from "@/lib/dm/npc-state-tools";
+import { readStateGuard } from "@/lib/dm/npc-state-guard";
+import { stateGuardPrompt } from "@/lib/dm/npc-state-guard-logic";
+import { listNpcs } from "@/lib/db/npcs";
 import { worldForPrompt } from "@/lib/dm/world-prompt";
 import { spellAuthorsFor } from "@/lib/dm/spell-authors";
 import {
@@ -395,6 +399,7 @@ export const TURN_RUN_NAMES: ReadonlySet<string> = new Set<string>([
   ...SPLIT_DAMAGE_TOOL_NAMES,
   ...PET_TOOL_NAMES,
   ...SOCIAL_TOOL_NAMES,
+  ...NPC_STATE_TOOL_NAMES,
   ...RELATIONSHIP_TOOL_NAMES,
   ...WORLD_RUN_NAMES,
   "generate_image",
@@ -1591,6 +1596,10 @@ export function dmTurnTools(
     ...hazardTools,
     ...petTools,
     ...socialTools,
+    // What has happened to an NPC's body (src/lib/dm/npc-state-tools.ts).
+    // A fight's trimmed set has no room for it, like complete_beat: it still
+    // runs when called by name, and through more_tools.
+    ...(leanTools && inEncounter ? [] : npcStateTools),
     // In a fight, deeds alone (issue 503): most executions happen there.
     ...relationshipTools(campaign, inEncounter),
     ...(inEncounter ? [] : worldTools),
@@ -1691,6 +1700,7 @@ export function profileSignals(campaign: Campaign, sheets: readonly CharacterShe
     inEncounter,
     shopOpen: !inEncounter && Boolean(shopsBlock(campaign)),
     mounts: Object.keys(getMounts(campaign.id)).length > 0,
+    trackedNpcs: !inEncounter && listNpcs(campaign.id).some((npc) => !npc.archived && !npc.companionSheetId),
     pets: sheets.some((sheet) => (sheet.pets?.length ?? 0) > 0),
     scene: !inEncounter && Boolean(getSceneTracker(campaign.id)),
     quests: !inEncounter && listQuests(campaign.id).length > 0,
@@ -2036,6 +2046,8 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
   // call for them was spent.
   const cards = cardsPlayed(context);
   let intentNudged = false;
+  // The NPC state guard sends the narrator back once (npc-state-guard.ts).
+  let stateNudged = false;
   // The same single shot for a spell a reply cast with nothing behind it,
   // which its caster's player asked for (issue 570).
   let castNudged = false;
@@ -2429,6 +2441,8 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
     // from; a lone set_npc is bookkeeping like record_event.
     const socialRollCalls = socialCalls.filter((toolCall) => toolCall.name !== "set_npc");
     const setNpcCalls = socialCalls.filter((toolCall) => toolCall.name === "set_npc");
+    // npc_state is bookkeeping too: a prisoner taken beside the narration.
+    const npcStateCalls = runnable.filter((toolCall) => toolCall.name === "npc_state");
     const relationshipCalls = runnable.filter((toolCall) =>
       (RELATIONSHIP_TOOL_NAMES as readonly string[]).includes(toolCall.name),
     );
@@ -2530,6 +2544,16 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
         refused.add(npcCall);
       }
     }
+    const npcStateResults = new Map<string, Record<string, unknown>>();
+    for (const stateCall of npcStateCalls) {
+      const result = handleNpcState(campaign, stateCall.rawArguments);
+      npcStateResults.set(stateCall.id ?? "npc_state", result);
+      if (!("error" in result)) {
+        accepted.add(stateCall);
+      } else {
+        refused.add(stateCall);
+      }
+    }
     // Waypoints tick before the beat is judged, so an arrival and the beat
     // it lands in the same reply resolve in order (issue #31). The location
     // calls above already ran; the rest of the tools tick again below, and a
@@ -2623,6 +2647,8 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
           return whisperResults.get(toolCall.id ?? "send_whisper") ?? { ok: true };
         case "set_npc":
           return setNpcResults.get(toolCall.id ?? "set_npc") ?? { ok: true };
+        case "npc_state":
+          return npcStateResults.get(toolCall.id ?? "npc_state") ?? { ok: true };
         case MORE_TOOLS:
           return moreToolsResults.get(toolCall.id ?? MORE_TOOLS) ?? { ok: true };
         default:
@@ -2679,7 +2705,8 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
         eventCalls.length > 0 ||
         whisperCalls.length > 0 ||
         noteCalls.length > 0 ||
-        setNpcCalls.length > 0) &&
+        setNpcCalls.length > 0 ||
+        npcStateCalls.length > 0) &&
         !turn.narrationParts.length);
 
     if (!needsFollowUp) {
@@ -2846,6 +2873,31 @@ async function runAdvance(context: TurnContext, turn: DmTurn) {
           role: "user",
           content: intentCorrection(card.intent, card.characterId, card.name, card.resolution),
         });
+        saveDmTurn(turn);
+        continue;
+      }
+      // The prose held to the NPC state record (src/lib/dm/npc-state-guard.ts):
+      // a body changed on screen with no npc_state, or a line the record
+      // makes impossible, sends the narrator back once. A change alone keeps
+      // the narration and asks for the calls; a clash withdraws this reply's
+      // narration to be told again. A read that fails lets it all stand.
+      const stateRead =
+        !finalCall && !stateNudged && turn.narrationParts.length > 0
+          ? await readStateGuard(campaign, turn, sheets.map((sheet) => sheet.name), turn.narrationParts.join("\n\n"), turnCalls(turn.conversation, toolCalls))
+          : null;
+      if (stateRead && (stateRead.clashes.length || stateRead.unrecorded.length)) {
+        stateNudged = true;
+        if (stateRead.clashes.length && narration && turn.narrationParts[turn.narrationParts.length - 1] === narration) {
+          turn.narrationParts.pop();
+        }
+        turn.conversation.push({
+          role: "assistant",
+          ...carried,
+          content: visibleText || "",
+          ...(toolCalls.length ? { tool_calls: echoedToolCalls } : {}),
+        });
+        answerRanAbove(fightOwnsFloor(campaignId), false);
+        turn.conversation.push({ role: "user", content: stateGuardPrompt(stateRead) });
         saveDmTurn(turn);
         continue;
       }
@@ -4022,6 +4074,8 @@ export function handleLocationCall(
       name,
       layoutDescription,
       connections,
+      // Some of the party going on: whoever travels with it stays put.
+      followers: !splitsParty(campaign, args.characterIds),
     });
     if (!onRecord) {
       madeIds.push(location.id);

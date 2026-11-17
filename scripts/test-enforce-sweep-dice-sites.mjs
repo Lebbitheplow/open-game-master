@@ -591,7 +591,7 @@ const NO_ROW = {
   add_companion: "a companion", dismiss_companion: "a companion",
   // The world.
   move_party: "the party's place", update_location: "the place", start_scene: "opens a scene", end_scene: "closes a scene", set_weather: "the weather",
-  pass_time: "the clock", roll_treasure: "the GM's treasure dice", check_notice: "passive scores, no dice: check_notice.active is its row", set_npc: "a person", npc_reaction: "the person's 2d6",
+  pass_time: "the clock", roll_treasure: "the GM's treasure dice", check_notice: "passive scores, no dice: check_notice.active is its row", set_npc: "a person", npc_state: "an NPC's body, no dice", npc_reaction: "the person's 2d6",
   romance_advance: "a courtship stage", relationship_end: "ends a bond", relationship_scheme: "an NPC's scheme", request_player_input: "a question",
   send_whisper: "a whisper", record_event: "the chronicle", complete_beat: "the arc", write_campaign_note: "a note", recall_story: "memory", search_lore: "lore",
   read_card: "prep", generate_image: "a picture", set_ambience: "sound", show_title: "a title", play_sting: "sound", show_handout: "a handout", dismiss_handout: "a handout",
